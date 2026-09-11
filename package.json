@@ -19,6 +19,8 @@
     "dependencies": {
         "@hotwired/stimulus": "^3.2.2",
         "@hotwired/turbo": "^8.0.23",
-        "@laragear/webpass": "^2.1.2"
+        "@laragear/webpass": "^2.1.2",
+        "sortablejs": "^1.15.7",
+        "viewerjs": "^1.13.0"
     }
 }

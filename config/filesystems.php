@@ -38,6 +38,15 @@ return [
             'report' => false,
         ],
 
+        // Фотографии и документы. Раздаются Caddy с диска по /media, мимо PHP.
+        'media' => [
+            'driver' => 'local',
+            'root' => storage_path('app/media'),
+            'url' => env('APP_URL').'/media',
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

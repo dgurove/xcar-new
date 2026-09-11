@@ -1,0 +1,89 @@
+<?php
+
+namespace App\Http\Admin;
+
+use App\Cars\Settlement;
+use App\Offers\Actions\ChangeOfferState;
+use App\Offers\Actions\CreateOffer;
+use App\Offers\Actions\UpdateOffer;
+use App\Offers\BidState;
+use App\Offers\Offer;
+use App\Offers\OfferState;
+use App\Offers\Tag;
+use Illuminate\Http\Request;
+
+class OfferController
+{
+    public const PRESETS = [
+        'all' => 'Все', 'draft' => 'Черновики', 'gallery' => 'Галерея', 'open' => 'В продаже',
+        'bids' => 'Со ставками', 'sold' => 'В сделке', 'archive' => 'Архив',
+    ];
+
+    public const SORTS = ['fresh' => 'Сначала новые', 'closing' => 'Скоро закроются', 'number' => 'По номеру'];
+
+    public function index(Request $request)
+    {
+        $preset = $request->query('preset', 'all');
+        $sort = $request->query('sort', 'fresh');
+
+        $q = Offer::query()->with(['brand', 'model', 'media'])->withCount(['activeBids', 'interests']);
+
+        match ($preset) {
+            'draft' => $q->where('state', OfferState::Draft),
+            'gallery' => $q->where('state', OfferState::Gallery),
+            'open' => $q->whereIn('state', [OfferState::Open, OfferState::Closed]),
+            'bids' => $q->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
+            'sold' => $q->whereIn('state', [OfferState::Sold, OfferState::Delivered]),
+            'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
+            default => $q->whereNotIn('state', [OfferState::Archived]),
+        };
+        match ($sort) {
+            'closing' => $q->orderByRaw('bids_close_at asc nulls last'),
+            'number' => $q->orderByDesc('number'),
+            default => $q->orderByDesc('updated_at'),
+        };
+
+        return view('admin.offers.index', [
+            'offers' => $q->paginate(24)->withQueryString(),
+            'preset' => $preset,
+            'sort' => $sort,
+            'counts' => [
+                'draft' => Offer::where('state', OfferState::Draft)->count(),
+                'bids' => Offer::whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->count(),
+            ],
+        ]);
+    }
+
+    public function store(Request $request, CreateOffer $create)
+    {
+        $offer = $create($request->user());
+
+        return redirect("/admin/offers/{$offer->number}");
+    }
+
+    public function edit(Offer $offer)
+    {
+        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user', 'events.user']);
+
+        return view('admin.offers.edit', [
+            'offer' => $offer,
+            'tags' => Tag::orderBy('sort')->get(),
+            'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id'),
+        ]);
+    }
+
+    public function update(OfferRequest $request, Offer $offer, UpdateOffer $update)
+    {
+        $update($offer, $request->payload(), $request->user());
+
+        return redirect("/admin/offers/{$offer->number}")->with('toast', 'Сохранено');
+    }
+
+    public function state(Request $request, Offer $offer, ChangeOfferState $change)
+    {
+        $next = OfferState::from($request->validate(['state' => ['required', 'string']])['state']);
+        $change($offer, $next, $request->user());
+
+        return redirect("/admin/offers/{$offer->number}")->with('toast', $next->label());
+    }
+}

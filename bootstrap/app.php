@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: [__DIR__.'/../routes/web.php', __DIR__.'/../routes/auth.php'],
+        web: [__DIR__.'/../routes/web.php', __DIR__.'/../routes/auth.php', __DIR__.'/../routes/admin.php'],
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/vhod');
         $middleware->redirectUsersTo('/');
+        $middleware->alias(['staff' => App\Http\Middleware\EnsureStaff::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

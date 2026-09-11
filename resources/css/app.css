@@ -224,3 +224,38 @@
 #topbar { view-transition-name: topbar; }
 #tabbar { view-transition-name: tabbar; }
 ::view-transition-group(topbar), ::view-transition-group(tabbar) { animation-duration: 0s; }
+
+/* Комбобокс и фотографии */
+@layer components {
+  .combobox { @apply relative; }
+  .combobox-list { @apply absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-auto rounded-(--radius-m) bg-surface p-1 shadow-(--shadow-drop); }
+  .combobox-option { @apply flex w-full items-baseline justify-between gap-3 rounded-(--radius-s) px-3 py-2 text-left hover:bg-surface-3; min-height: 44px; }
+  .combobox-create { @apply text-accent-text; }
+
+  .photo-grid { @apply grid grid-cols-3 gap-2 sm:grid-cols-4; }
+  .photo-cell { @apply relative aspect-[4/3] overflow-hidden rounded-(--radius-m) bg-surface-3; touch-action: pan-y; }
+  .photo-cell img { @apply size-full object-cover; }
+  .photo-cell.is-hidden img { @apply opacity-40; }
+  .photo-cell .photo-actions { @apply absolute inset-x-0 bottom-0 flex justify-between bg-chrome/70 px-1 py-0.5 text-white; }
+  .photo-cell .photo-actions button { @apply rounded-(--radius-s) p-1.5; }
+  .photo-main { @apply absolute left-1 top-1 rounded-(--radius-s) bg-accent px-1.5 py-0.5 text-xs text-white; }
+  .sortable-ghost { @apply opacity-40; }
+
+  .sticky-actions { @apply fixed inset-x-0 z-30 flex gap-2 bg-bar px-4 py-2 md:sticky md:bottom-0;
+    bottom: calc(var(--spacing-tabbar) + env(safe-area-inset-bottom)); box-shadow: 0 -1px 0 0 var(--color-line); }
+  @media (min-width: 768px) { .sticky-actions { bottom: 0; } }
+
+  .presets { @apply -mx-4 flex gap-2 overflow-x-auto px-4 pb-1; scrollbar-width: none; }
+  .presets::-webkit-scrollbar { display: none; }
+  .preset { @apply shrink-0 rounded-full bg-surface px-3.5 py-2 text-sm leading-none text-ink-muted whitespace-nowrap; min-height: 36px; }
+  .preset[aria-current="true"] { @apply bg-chrome text-white; }
+  .dark .preset[aria-current="true"] { @apply bg-white text-chrome; }
+
+  .tile { @apply flex flex-col overflow-hidden rounded-(--radius-xl) bg-surface; }
+  .tile-photo { @apply relative aspect-[4/3] bg-surface-3; }
+  .tile-photo img { @apply size-full object-cover; }
+  .tile-body { @apply flex flex-1 flex-col gap-1.5 p-4; }
+  .row { @apply flex items-center gap-3 rounded-(--radius-l) bg-surface p-3; }
+  .row-photo { @apply size-16 shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; }
+  .row-photo img { @apply size-full object-cover; }
+}
