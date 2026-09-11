@@ -1,3 +1,3 @@
-{{-- Счётчик на пункте таб-бара. Обёртка есть всегда, чтобы live мог её заменить. --}}
+{{-- Счётчик на пункте. Обёртка есть всегда, чтобы live мог её обновить по data-badge. --}}
 @props(['href', 'badges'])
-<span id="{{ \App\Support\Nav::badgeId($href) }}" class="contents">@if (!empty($badges[$href]))<span class="badge">{{ $badges[$href] > 99 ? '99+' : $badges[$href] }}</span>@endif</span>
+<span data-badge="{{ $href }}" class="contents">@if (!empty($badges[$href]))<span class="badge">{{ $badges[$href] > 99 ? '99+' : $badges[$href] }}</span>@endif</span>

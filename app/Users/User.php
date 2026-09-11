@@ -11,13 +11,17 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
 use Laragear\WebAuthn\WebAuthnAuthentication;
+use Spatie\Image\Enums\Fit;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 #[Fillable(['name', 'phone', 'email', 'password', 'role', 'access', 'notification_settings'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements WebAuthnAuthenticatable
+class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, WebAuthnAuthentication;
+    use HasFactory, InteractsWithMedia, Notifiable, WebAuthnAuthentication;
 
     protected function casts(): array
     {
@@ -63,5 +67,43 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
     public function phoneFormatted(): string
     {
         return Phone::format($this->phone);
+    }
+
+    // -------------------------------------------------------------- имя и аватар
+
+    /** «Иван П.» — для капсулы в шапке и таб-бара. */
+    public function shortName(): string
+    {
+        $parts = preg_split('/\s+/', trim($this->name)) ?: [];
+        if (count($parts) < 2) {
+            return $this->name;
+        }
+
+        return $parts[0].' '.mb_substr($parts[1], 0, 1).'.';
+    }
+
+    /** Одна-две буквы для кружка без фото. */
+    public function initials(): string
+    {
+        $parts = array_slice(preg_split('/\s+/', trim($this->name)) ?: [], 0, 2);
+
+        return mb_strtoupper(implode('', array_map(fn ($p) => mb_substr($p, 0, 1), $parts))) ?: '·';
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('avatar')->useDisk('media')->singleFile();
+    }
+
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        $this->addMediaConversion('thumb')->fit(Fit::Crop, 128, 128)->format('webp')->nonQueued();
+    }
+
+    public function avatarUrl(): ?string
+    {
+        $media = $this->getFirstMedia('avatar');
+
+        return $media ? \App\Media\MediaUrl::for($media, 'thumb') : null;
     }
 }

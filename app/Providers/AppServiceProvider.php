@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Live\PublishLiveUpdates;
 use App\Notifications\Notify;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -16,5 +17,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(Notify::class);
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(\App\Mail\OnMessage::class);
+        Paginator::defaultView('vendor.pagination.xcar');
+        Paginator::defaultSimpleView('vendor.pagination.xcar');
     }
 }

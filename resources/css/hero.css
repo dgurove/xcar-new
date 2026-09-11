@@ -1,0 +1,107 @@
+/* Кадр паркинга: первый экран и страница входа. Свой размер под ширину и
+   тему, до загрузки — крошечная копия в base64 (LQIP), чтобы не мигало. */
+
+:root {
+  --lqip-dark-wide: url("data:image/webp;base64,UklGRmoAAABXRUJQVlA4IF4AAACwBACdASogABEAPrFIn0snJCKhsBgIAOAWCWkAuwAPS6o14qobNH3hin9LtMUAAP7xGTdAmccmnSUIVOWww28H/cLdmJTivcNCu9ga8JEfinIbTA6m1z5TsqGmYAAA");
+  --lqip-dark-tall: url("data:image/webp;base64,UklGRmYAAABXRUJQVlA4IFoAAADQBACdASoUACIAPqlEmkmmI6IhMAqowBUJaQDI1CHfwMWgE6EE5hwk+nBDv71/gAD+9Bi+Fg2h9a4K3hrNUUHCjtmu4o8yAPAt+HwryiBwOJiM1OaRDzVjsAA=");
+  --lqip-light-wide: url("data:image/webp;base64,UklGRnwAAABXRUJQVlA4IHAAAABQBACdASogABEAPqlEmEmmI6IhMAwAwBUJZwAAWp9iUazRiYlkw4NGVE4AAPzY5XVY39b4INJWCaWB8nULCx6XdX/NsxgN6UAgjbxeysDoSgi/L/HMZfSVWx8hP8dYff5JeoCTKahJrvaj3LzqYQAA");
+  --lqip-light-tall: url("data:image/webp;base64,UklGRoYAAABXRUJQVlA4IHoAAABQBQCdASoUACIAPqlKn0mmJKMhMBqqqMAVCWkAzfwdEZ4Wyq4tN4AaCQqsvRinveXMPmAA/u6fN4tNnUXg386ZxvGVb8BLyexoaHT7Hm2gVWD0YZzNrsNg+FdfV0Ju1M8HczipNz28z6wHtfB7L11c9161/tPhvYTAAA==");
+}
+
+.parking-photo {
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center 42%;
+  background-image: image-set(
+      url("/images/hero/parking-light-m-960.webp") type("image/webp"),
+      url("/images/hero/parking-light-m-960.jpg") type("image/jpeg")),
+    var(--lqip-light-tall);
+}
+
+.dark .parking-photo,
+.parking-photo--dark {
+  background-image: image-set(
+      url("/images/hero/parking-m-960.webp") type("image/webp"),
+      url("/images/hero/parking-m-960.jpg") type("image/jpeg")),
+    var(--lqip-dark-tall);
+}
+
+/* Плотный экран телефона: у тёмного кадра для него есть свой размер. */
+@media (max-width: 639px) and (min-resolution: 2.5dppx) {
+  .dark .parking-photo,
+  .parking-photo--dark {
+    background-image: image-set(
+      url("/images/hero/parking-m-1440.webp") type("image/webp"),
+      url("/images/hero/parking-m-1440.jpg") type("image/jpeg")),
+    var(--lqip-dark-tall);
+  }
+}
+
+@media (min-width: 640px) {
+  .parking-photo {
+    background-position: center 55%;
+    background-image: image-set(
+      url("/images/hero/parking-light-1280.webp") type("image/webp"),
+      url("/images/hero/parking-light-1280.jpg") type("image/jpeg")),
+    var(--lqip-light-wide);
+  }
+
+  .dark .parking-photo,
+  .parking-photo--dark {
+    background-image: image-set(
+      url("/images/hero/parking-1280.webp") type("image/webp"),
+      url("/images/hero/parking-1280.jpg") type("image/jpeg")),
+    var(--lqip-dark-wide);
+  }
+}
+
+@media (min-width: 1280px) {
+  .parking-photo {
+    background-image: image-set(
+      url("/images/hero/parking-light-1920.webp") type("image/webp"),
+      url("/images/hero/parking-light-1920.jpg") type("image/jpeg")),
+    var(--lqip-light-wide);
+  }
+
+  .dark .parking-photo,
+  .parking-photo--dark {
+    background-image: image-set(
+      url("/images/hero/parking-1920.webp") type("image/webp"),
+      url("/images/hero/parking-1920.jpg") type("image/jpeg")),
+    var(--lqip-dark-wide);
+  }
+}
+
+@media (min-width: 1920px) {
+  .parking-photo {
+    background-image: image-set(
+      url("/images/hero/parking-light-2400.webp") type("image/webp"),
+      url("/images/hero/parking-light-2400.jpg") type("image/jpeg")),
+    var(--lqip-light-wide);
+  }
+
+  .dark .parking-photo,
+  .parking-photo--dark {
+    background-image: image-set(
+      url("/images/hero/parking-2400.webp") type("image/webp"),
+      url("/images/hero/parking-2400.jpg") type("image/jpeg")),
+    var(--lqip-dark-wide);
+  }
+}
+
+@media (min-width: 2560px) {
+  .parking-photo {
+    background-image: image-set(
+      url("/images/hero/parking-light-3200.webp") type("image/webp"),
+      url("/images/hero/parking-light-3200.jpg") type("image/jpeg")),
+    var(--lqip-light-wide);
+  }
+
+  .dark .parking-photo,
+  .parking-photo--dark {
+    background-image: image-set(
+      url("/images/hero/parking-3200.webp") type("image/webp"),
+      url("/images/hero/parking-3200.jpg") type("image/jpeg")),
+    var(--lqip-dark-wide);
+  }
+}

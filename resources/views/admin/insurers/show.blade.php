@@ -43,7 +43,7 @@
     </div>
 
     @if ($problems && $w->blocks->isNotEmpty())
-        <div class="card mb-4 border-l-4 border-danger">
+        <div class="box mb-4 border-l-4 border-danger">
             <div class="mb-2 font-medium text-danger">Маршрут не включится</div>
             <ul class="flex flex-col gap-1 text-sm">@foreach ($problems as $p)<li>{{ $p }}</li>@endforeach</ul>
         </div>
@@ -71,7 +71,7 @@
                     </x-ui.sheet>
                     <div class="flex min-h-12 flex-col gap-2" data-sortable-target="stages">
                         @foreach ($block->stages as $stage)
-                            <a href="/admin/marshruty/etapy/{{ $stage->id }}" class="card-nested block" data-stage-id="{{ $stage->id }}">
+                            <a href="/admin/marshruty/etapy/{{ $stage->id }}" class="box-nested block" data-stage-id="{{ $stage->id }}">
                                 <div class="flex items-start gap-2">
                                     <span class="flex-1 font-medium">{{ $stage->name }}</span>
                                     @if ($occupied[$stage->id] ?? 0)<span class="badge">{{ $occupied[$stage->id] }}</span>@endif

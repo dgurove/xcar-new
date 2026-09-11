@@ -1,0 +1,114 @@
+{{-- Шапка xcar.ru. Телефон: квадраты (поиск, закладка · логотип · колокольчик, тема).
+     Десктоп: знак и два ряда капсул — справочное и разделы. --}}
+@props(['surface' => 'site', 'overHero' => false])
+@php
+    $user = auth()->user();
+    $path = '/'.ltrim(request()->path(), '/');
+    $capsules = \App\Support\Nav::capsules($user, $surface);
+    $top = \App\Support\Nav::top($user, $surface);
+    $badges = \App\Support\Nav::badges($user, $surface);
+    $searchAction = $surface === 'park' ? '/mashiny' : ($user?->isStaff() ? '/admin/offers' : '/');
+    $cabinet = $surface === 'park' ? '/kabinet' : '/lk';
+    $siteUrl = rtrim(config('app.url'), '/').'/';
+    $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
+@endphp
+<header id="header" class="header{{ $overHero ? ' header--over' : '' }}">
+    {{-- Телефон --}}
+    <div class="container-site grid grid-cols-[auto_1fr_auto] items-center gap-3 py-2 md:hidden">
+        <div class="flex gap-1">
+            <div class="contents" data-controller="sheet">
+                <button type="button" class="header-btn header-sq" data-action="sheet#open" aria-label="Поиск">
+                    <x-ui.icon name="search" class="size-[18px]"/>
+                </button>
+                <x-ui.sheet id="search-sheet" title="Поиск">
+                    <form method="get" action="{{ $searchAction }}">
+                        <input type="search" name="q" value="{{ request('q') }}" class="field-input" placeholder="{{ $surface === 'park' ? 'VIN, госномер, марка' : 'Марка, модель, VIN' }}" enterkeyhint="search" autofocus>
+                    </form>
+                </x-ui.sheet>
+            </div>
+            @if ($user && $surface !== 'park')
+                <a href="/lk/izbrannoe" class="header-btn header-sq relative" aria-label="Избранное">
+                    <x-ui.icon name="bookmark" class="size-[18px]"/><x-ui.badge href="/lk/izbrannoe" :badges="$badges"/>
+                </a>
+            @endif
+        </div>
+        <a href="{{ $surface === 'park' ? '/' : '/' }}" class="flex items-center justify-self-center gap-2" aria-label="XCar">
+            <x-ui.logo class="h-10 w-auto"/>
+            @if ($surface === 'park')<span class="tag">стоянка</span>@endif
+        </a>
+        <div class="flex gap-1">
+            @if ($user)
+                <div class="contents" data-controller="sheet notifications">
+                    <button type="button" class="header-btn header-sq relative" data-action="sheet#open notifications#refresh" aria-label="Уведомления">
+                        <x-ui.icon name="bell" class="size-[18px]"/><x-ui.badge href="/lk/uvedomleniya" :badges="$badges"/>
+                    </button>
+                    <x-ui.sheet id="notifications-sheet" title="Уведомления">
+                        <turbo-frame id="notifications-latest" src="/lk/uvedomleniya/svezhie" loading="lazy" data-notifications-target="frame" class="block min-h-32"></turbo-frame>
+                        <div class="mt-4 flex gap-2">
+                            <a href="/lk/uvedomleniya" class="btn btn-s btn-quiet flex-1">Все уведомления</a>
+                        </div>
+                    </x-ui.sheet>
+                </div>
+            @else
+                <a href="/vhod" class="header-btn header-sq" aria-label="Войти"><x-ui.icon name="login" class="size-[18px]"/></a>
+            @endif
+            <button type="button" class="header-btn header-sq" data-controller="theme" data-action="theme#toggle" aria-label="Тема">
+                <x-ui.icon name="sun" class="on-light size-[18px]"/><x-ui.icon name="moon" class="on-dark size-[18px]"/>
+            </button>
+        </div>
+    </div>
+
+    {{-- Десктоп --}}
+    <div class="container-site hidden grid-cols-[auto_1fr] items-start gap-1 py-2 md:grid">
+        <a href="/" class="row-span-2 mr-1 shrink-0 self-start" aria-label="XCar"><x-ui.logo mark class="h-16 w-16"/></a>
+        <div class="header-row">
+            <form method="get" action="{{ $searchAction }}" class="header-btn header-h header-search relative justify-start px-3" role="search">
+                <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>
+                <input type="search" name="q" value="{{ request('q') }}" placeholder="{{ $surface === 'park' ? 'VIN, госномер, марка' : 'Поиск объявления…' }}" class="w-28 sm:w-36 lg:w-52" aria-label="Поиск">
+            </form>
+            @foreach ($top as $item)
+                <a href="{{ $item['href'] }}" class="header-btn header-h flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>{{ $item['label'] }}</a>
+            @endforeach
+            @if ($user)
+                <a href="{{ $cabinet }}" class="header-btn header-h ml-auto max-w-[11rem] gap-2 px-4 text-sm" @if (str_starts_with($path, $cabinet)) aria-current="page" @endif>
+                    <x-ui.avatar :user="$user" :size="20"/><span class="truncate">{{ $user->shortName() }}</span>
+                </a>
+                <form method="post" action="/vyhod" class="contents">@csrf
+                    <button type="submit" class="header-btn header-btn-square header-h w-[1.875rem]" aria-label="Выйти"><x-ui.icon name="exit" class="size-4"/></button>
+                </form>
+            @else
+                <a href="/vhod" class="header-btn header-h ml-auto px-5 text-sm">Войти</a>
+                <a href="/registraciya" class="header-btn header-btn-cta header-h px-5 text-sm">Регистрация</a>
+            @endif
+            <button type="button" class="header-btn header-btn-square header-h w-[1.875rem]" data-controller="theme" data-action="theme#toggle" aria-label="Тема">
+                <x-ui.icon name="sun" class="on-light size-4"/><x-ui.icon name="moon" class="on-dark size-4"/>
+            </button>
+        </div>
+        <div class="header-row">
+            @foreach ($capsules as $item)
+                <a href="{{ $item['href'] }}" class="header-btn header-h relative flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>
+                    {{ $item['label'] }}<x-ui.badge :href="$item['href']" :badges="$badges"/>
+                </a>
+            @endforeach
+            @if ($surface === 'park')<span class="header-btn header-h px-4 text-sm text-ink-muted">стоянка</span>@endif
+            @if ($user)
+                <div class="contents" data-controller="sheet notifications">
+                    <button type="button" class="header-btn header-btn-square header-h relative w-[1.875rem]" data-action="sheet#open notifications#refresh" aria-label="Уведомления">
+                        <x-ui.icon name="bell" class="size-4"/><x-ui.badge href="/lk/uvedomleniya" :badges="$badges"/>
+                    </button>
+                    <x-ui.sheet id="notifications-sheet-wide" title="Уведомления">
+                        <turbo-frame id="notifications-latest-wide" src="/lk/uvedomleniya/svezhie" loading="lazy" data-notifications-target="frame" class="block min-h-32"></turbo-frame>
+                        <div class="mt-4 flex gap-2">
+                            <a href="/lk/uvedomleniya" class="btn btn-s btn-quiet flex-1">Все уведомления</a>
+                        </div>
+                    </x-ui.sheet>
+                </div>
+                @if ($surface !== 'park')
+                    <a href="/lk/izbrannoe" class="header-btn header-btn-square header-h relative w-[1.875rem]" aria-label="Избранное">
+                        <x-ui.icon name="bookmark" class="size-4"/><x-ui.badge href="/lk/izbrannoe" :badges="$badges"/>
+                    </a>
+                @endif
+            @endif
+        </div>
+    </div>
+</header>

@@ -18,6 +18,11 @@ Route::post('/push/podpiska', [\App\Http\Pwa\PushController::class, 'store'])->m
 Route::delete('/push/podpiska', [\App\Http\Pwa\PushController::class, 'destroy'])->middleware('auth');
 
 Route::get('/', [CatalogController::class, 'index'])->name('home');
+Route::view('/voprosy', 'site.pages.voprosy');
+Route::view('/kontakty', 'site.pages.kontakty');
+Route::view('/obrabotka-dannyh', 'site.pages.obrabotka-dannyh');
+Route::view('/soglashenie', 'site.pages.soglashenie');
+Route::view('/soglasie', 'site.pages.soglasie');
 Route::get('/galereya', [CatalogController::class, 'gallery']);
 Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
 Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
@@ -35,6 +40,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/lk', [ProfileController::class, 'show'])->name('cabinet');
     Route::put('/lk', [ProfileController::class, 'update']);
+    Route::get('/lk/profil', [ProfileController::class, 'show']);
     Route::get('/lk/izbrannoe', [ListsController::class, 'favorites']);
     Route::get('/lk/stavki', [ListsController::class, 'bids']);
     Route::get('/lk/interesy', [ListsController::class, 'interests']);
@@ -47,6 +53,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/sdelki/fayly/{media}', [DealController::class, 'file']);
 
     Route::get('/lk/uvedomleniya', [NotificationController::class, 'index']);
+    Route::get('/lk/uvedomleniya/svezhie', [NotificationController::class, 'latest']);
     Route::post('/lk/uvedomleniya/prochitano', [NotificationController::class, 'readAll']);
     Route::put('/lk/uvedomleniya/nastroyki', [NotificationController::class, 'settings']);
     Route::get('/lk/uvedomleniya/{id}', [NotificationController::class, 'open']);

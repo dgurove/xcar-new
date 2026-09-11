@@ -14,6 +14,15 @@ class NotificationController
         ]);
     }
 
+    /** Пять последних — для шторки колокольчика. */
+    public function latest(Request $request)
+    {
+        return view('cabinet.notifications-latest', [
+            'items' => $request->user()->notifications()->latest()->limit(5)->get(),
+            'frame' => $request->header('Turbo-Frame', 'notifications-latest'),
+        ]);
+    }
+
     public function open(Request $request, string $id)
     {
         $item = $request->user()->notifications()->findOrFail($id);
@@ -26,7 +35,7 @@ class NotificationController
     {
         $request->user()->unreadNotifications()->update(['read_at' => now()]);
 
-        return back();
+        return $request->ajax() ? response()->noContent() : back();
     }
 
     public function settings(Request $request)

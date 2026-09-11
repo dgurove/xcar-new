@@ -2,7 +2,7 @@
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($yards as $yard)
             @php $free = $yard->capacity ? max(0, $yard->capacity - $yard->stored_vehicles_count) : null; $share = $yard->capacity ? min(100, round($yard->stored_vehicles_count / $yard->capacity * 100)) : 0; @endphp
-            <div class="card flex flex-col gap-3" data-controller="sheet">
+            <div class="box flex flex-col gap-3" data-controller="sheet">
                 <div class="flex items-start gap-2">
                     <div class="min-w-0 flex-1">
                         <div class="font-medium">{{ $yard->name }}@unless ($yard->is_active) <span class="chip bg-closed-soft text-closed">закрыта</span>@endunless</div>
@@ -27,7 +27,7 @@
                 </x-ui.sheet>
             </div>
         @endforeach
-        <div class="card flex flex-col justify-center" data-controller="sheet">
+        <div class="box flex flex-col justify-center" data-controller="sheet">
             <x-ui.button type="button" variant="secondary" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Стоянка</x-ui.button>
             <x-ui.sheet id="yard-new" title="Новая стоянка">
                 <form method="post" action="/stoyanki" class="flex flex-col gap-4">

@@ -34,7 +34,7 @@ Route::prefix('admin')->middleware(['auth', 'staff'])->group(function () {
     Route::post('/stavki/{bid}/otklonit', [BidController::class, 'decline']);
     Route::post('/interesy/{interest}', [InterestController::class, 'update']);
 
-    Route::view('/eshchyo', 'admin.more');
+    Route::redirect('/eshchyo', '/lk', 301);
     Route::get('/sdelki', [DealController::class, 'index']);
     Route::post('/sdelki/{deal}/zametka', [DealController::class, 'note']);
 

@@ -1,58 +1,32 @@
-{{-- Оболочка приложения: шапка, содержимое, таб-бар. --}}
-@props(['title' => null, 'surface' => null, 'back' => null, 'wide' => false])
+{{-- Оболочка страницы: шапка, содержимое с крошками и заголовком, подвал, таб-бар.
+     heading по умолчанию равен title; :heading="false" — без заголовка.
+     Слот actions — ряд справа от h1 (поделиться, закладка, стрелки). --}}
+@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'surface' => null, 'wide' => false, 'back' => null, 'narrow' => false])
 @php
-    $user = auth()->user();
     $surface ??= \App\Http\Middleware\ParkHost::isPark(request()) ? 'park' : 'site';
-    $tabs = \App\Support\Nav::tabs($user, $surface);
-    $badges = \App\Support\Nav::badges($user, $surface);
-    $path = '/'.ltrim(request()->path(), '/');
+    $heading = $heading === false ? null : ($heading ?? $title);
 @endphp
-<x-ui.layout :title="$title" data-controller="live">
-    <header class="topbar" id="topbar">
-        <div class="mx-auto flex h-(--spacing-header) max-w-(--container-site) items-center gap-2 px-4">
-            <a href="{{ $surface === 'park' ? '/' : '/' }}" class="mr-2 flex items-center" aria-label="{{ config('app.name') }}">
-                <img src="/images/xcar.svg" alt="" class="h-6 dark:hidden">
-                <img src="/images/xcar-white.svg" alt="" class="hidden h-6 dark:block">
-                @if ($surface === 'park')<span class="ml-2 text-sm text-ink-muted">стоянка</span>@endif
-            </a>
-            <nav class="hidden items-center gap-1 md:flex">
-                @foreach ($tabs as $tab)
-                    <a href="{{ $tab['href'] }}" class="navlink" @if (\App\Support\Nav::isCurrent($tab, $path)) aria-current="page" @endif>{{ $tab['label'] }} <x-ui.badge :href="$tab['href']" :badges="$badges"/></a>
-                @endforeach
-            </nav>
-            <div class="ml-auto flex items-center gap-1">
-                <button type="button" class="btn btn-ghost btn-sm px-2" data-controller="theme" data-action="theme#toggle" aria-label="Тема">
-                    <x-ui.icon name="sun" class="size-5 dark:hidden"/><x-ui.icon name="moon" class="hidden size-5 dark:block"/>
-                </button>
-                @auth
-                    <a href="{{ $surface === 'park' ? '/eshchyo' : ($user->isStaff() ? '/admin/eshchyo' : '/lk') }}" class="btn btn-ghost btn-sm px-2 hidden md:inline-flex">{{ $user->name }}</a>
-                @else
-                    <a href="/vhod" class="btn btn-secondary btn-sm hidden md:inline-flex">Войти</a>
-                @endauth
-            </div>
-        </div>
-    </header>
+<x-ui.layout :title="$title" data-controller="live" class="min-h-dvh flex flex-col">
+    <x-ui.header :surface="$surface" :over-hero="$overHero"/>
 
-    <main {{ $attributes->merge(['class' => 'mx-auto w-full px-4 py-5 '.($wide ? 'max-w-(--container-site)' : 'max-w-3xl')]) }}
-          style="padding-bottom: calc(var(--spacing-tabbar) + env(safe-area-inset-bottom) + 1.25rem)">
-        @if ($back || $title)
-            <div class="mb-4 flex items-center gap-2">
-                @if ($back)<a href="{{ $back }}" class="btn btn-ghost btn-sm -ml-2 px-2 md:hidden" aria-label="Назад"><x-ui.icon name="chevron-left" class="size-5"/></a>@endif
-                @if ($title)<h1 class="text-2xl">{{ $title }}</h1>@endif
+    <main id="main" class="grow {{ $overHero ? '' : 'relative' }}">
+        @if ($overHero)
+            {{ $slot }}
+        @else
+            <div {{ $attributes->merge(['class' => 'container-site pt-6 pb-10 sm:pt-8 sm:pb-14'.($narrow ? ' max-w-3xl' : '')]) }}>
+                <x-ui.crumbs :trail="$trail"/>
+                @if ($heading || isset($actions))
+                    <div class="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+                        @if ($heading)<h1 class="text-[28px] sm:text-[34px]">{{ $heading }}@if ($count !== null) <span class="nums ml-2 text-lg font-normal text-ink-dim">{{ $count }}</span>@endif</h1>@endif
+                        @isset($actions)<div class="flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2">{{ $actions }}</div>@endisset
+                    </div>
+                @endif
+                {{ $slot }}
             </div>
         @endif
-        {{ $slot }}
     </main>
 
-    <nav class="tabbar" id="tabbar" aria-label="Разделы">
-        @foreach ($tabs as $tab)
-            <a href="{{ $tab['href'] }}" class="tab" @if (\App\Support\Nav::isCurrent($tab, $path)) aria-current="page" @endif data-tab="{{ $tab['match'] }}">
-                <x-ui.icon :name="$tab['icon']"/>
-                <span>{{ $tab['label'] }}</span>
-                <x-ui.badge :href="$tab['href']" :badges="$badges"/>
-            </a>
-        @endforeach
-    </nav>
-
+    <x-ui.footer :surface="$surface"/>
+    <x-ui.tabbar :surface="$surface"/>
     <x-ui.toasts/>
 </x-ui.layout>

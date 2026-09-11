@@ -98,7 +98,7 @@
         <x-ui.card title="Исходы" data-controller="repeater">
             <div class="flex flex-col gap-3" data-repeater-target="list">
                 @foreach ($exits as $i => $exit)
-                    <div class="card-nested grid gap-2 sm:grid-cols-[1fr_auto]" data-row>
+                    <div class="box-nested grid gap-2 sm:grid-cols-[1fr_auto]" data-row>
                         @if (!empty($exit['id']))<input type="hidden" name="exits[{{ $i }}][id]" value="{{ $exit['id'] }}">@endif
                         <input name="exits[{{ $i }}][label]" value="{{ $exit['label'] ?? '' }}" class="field-input" placeholder="Надпись на кнопке">
                         <div class="flex gap-2">
@@ -114,7 +114,7 @@
                 @endforeach
             </div>
             <template data-repeater-target="template">
-                <div class="card-nested grid gap-2 sm:grid-cols-[1fr_auto]" data-row>
+                <div class="box-nested grid gap-2 sm:grid-cols-[1fr_auto]" data-row>
                     <input name="exits[__i__][label]" class="field-input" placeholder="Надпись на кнопке">
                     <div class="flex gap-2">
                         <select name="exits[__i__][actor]" class="field-input !w-auto">@foreach (Actor::options() as $k => $l)<option value="{{ $k }}">{{ $l }}</option>@endforeach</select>

@@ -5,7 +5,7 @@
             <img src="/images/xcar.svg" alt="XCar" class="h-8 dark:hidden">
             <img src="/images/xcar-white.svg" alt="XCar" class="hidden h-8 dark:block">
         </a>
-        <div class="card">
+        <div class="box">
             <h1 class="mb-5 text-xl">{{ $title }}</h1>
             {{ $slot }}
         </div>

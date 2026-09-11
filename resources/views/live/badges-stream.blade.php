@@ -1,3 +1,3 @@
-@foreach (\App\Support\Nav::tabs(auth()->user(), $surface) as $tab)
-<turbo-stream action="replace" target="{{ \App\Support\Nav::badgeId($tab['href']) }}"><template><x-ui.badge :href="$tab['href']" :badges="$badges"/></template></turbo-stream>
+@foreach (\App\Support\Nav::badgePaths(auth()->user(), $surface) as $href)
+<turbo-stream action="update" targets="[data-badge='{{ $href }}']"><template>@if (!empty($badges[$href]))<span class="badge">{{ $badges[$href] > 99 ? '99+' : $badges[$href] }}</span>@endif</template></turbo-stream>
 @endforeach

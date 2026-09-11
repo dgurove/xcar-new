@@ -29,7 +29,7 @@
 
     <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         @foreach ([['Машин', $stats['cars']], ['С фото', $stats['photos']], ['С ценами', $stats['priced']], ['Сумма лучших', $stats['sum'] ? number_format($stats['sum'], 0, '', ' ').' ₽'.($stats['ours'] ? ' · '.($stats['sum'] >= $stats['ours'] ? '+' : '−').number_format(abs($stats['sum'] - $stats['ours']), 0, '', ' ') : '') : '—']] as [$label, $value])
-            <div class="card !p-4"><div class="text-sm text-ink-muted">{{ $label }}</div><div class="text-xl font-semibold tabular-nums">{{ $value }}</div></div>
+            <div class="box !p-4"><div class="text-sm text-ink-muted">{{ $label }}</div><div class="text-xl font-semibold tabular-nums">{{ $value }}</div></div>
         @endforeach
     </div>
 

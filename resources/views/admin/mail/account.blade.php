@@ -3,7 +3,7 @@
     @if (session('check'))
         <div class="mb-4 flex flex-col gap-2">
             @foreach (session('check') as $kind => $r)
-                <div class="card-nested flex gap-3 text-sm"><span class="shrink-0 font-medium uppercase">{{ $kind }}</span><span class="{{ $r['ok'] ? 'text-open' : 'text-danger' }}">{{ $r['message'] }}</span></div>
+                <div class="box-nested flex gap-3 text-sm"><span class="shrink-0 font-medium uppercase">{{ $kind }}</span><span class="{{ $r['ok'] ? 'text-open' : 'text-danger' }}">{{ $r['message'] }}</span></div>
             @endforeach
         </div>
     @endif

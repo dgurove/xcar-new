@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Route;
 // Стоянка — свой хост того же приложения. Вход общий; пускает раздел «park».
 Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->group(function () {
     Route::redirect('/', '/zayavki');
-    Route::view('/eshchyo', 'park.more');
+    Route::redirect('/eshchyo', '/kabinet', 301);
+    Route::view('/kabinet', 'park.cabinet');
 
     Route::get('/zayavki', [RequestController::class, 'index']);
     Route::get('/zayavki/novaya', [RequestController::class, 'create']);

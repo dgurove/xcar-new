@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "xcar-new",
+      "runtimeExecutable": "./serve-local.sh",
+      "runtimeArgs": [],
+      "port": 8010
+    }
+  ]
+}

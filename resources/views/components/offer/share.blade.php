@@ -19,7 +19,7 @@
                     <label class="check"><input type="checkbox" data-share-target="field" data-key="{{ $f['key'] }}" data-value="{{ $f['value'] }}" @checked($f['on']) data-action="share#compose"><span>{{ $f['label'] }} <span class="text-ink-muted">{{ \Illuminate\Support\Str::limit($f['value'], 40) }}</span></span></label>
                 @endforeach
             </div>
-            <pre class="card-nested whitespace-pre-wrap font-sans text-sm" data-share-target="preview"></pre>
+            <pre class="box-nested whitespace-pre-wrap font-sans text-sm" data-share-target="preview"></pre>
             @if ($photos->isNotEmpty())
                 <div class="grid grid-cols-4 gap-1.5">
                     @foreach ($photos->take(30) as $i => $media)

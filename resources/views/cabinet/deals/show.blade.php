@@ -31,7 +31,7 @@
                     </div>
                 @endif
                 @if ($position?->payload)
-                    <div class="card-nested mb-4 text-sm">
+                    <div class="box-nested mb-4 text-sm">
                         @foreach ($position->payload as $k => $v)<div><span class="text-ink-muted">{{ collect($position->stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach
                     </div>
                 @endif
