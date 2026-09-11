@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 /** На хосте стоянки живут только её маршруты и вход: витрина и админ оттуда не отвечают. */
 class ParkHost
 {
-    private const SHARED = ['vhod', 'vyhod', 'registraciya', 'parol', 'passkey', 'up', 'media', 'live', 'chaty'];
+    private const SHARED = ['vhod', 'vyhod', 'registraciya', 'parol', 'passkey', 'up', 'media', 'live', 'chaty', 'manifest.webmanifest', 'offline', 'push', 'sw.js'];
 
     public function handle(Request $request, Closure $next)
     {

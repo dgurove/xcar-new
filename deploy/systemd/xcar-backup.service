@@ -1,0 +1,11 @@
+# Ночной бэкап. Ставится из выпуска:
+#   ln -sfn /srv/xcar/current/deploy/systemd/xcar-backup.{service,timer} /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now xcar-backup.timer
+[Unit]
+Description=Бэкап базы и файлов xcar
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /srv/xcar/current/deploy/backup.sh

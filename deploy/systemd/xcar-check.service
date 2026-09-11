@@ -1,0 +1,9 @@
+[Unit]
+Description=Проверка xcar
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+SuccessExitStatus=0 1
+ExecStart=/bin/bash /srv/xcar/current/deploy/check.sh --telegram

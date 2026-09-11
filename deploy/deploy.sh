@@ -43,6 +43,8 @@ build() {
 migrate() {
     echo "==> миграции"
     compose_in "$(release_dir)" up -d --wait postgres
+    # Дамп базы перед миграциями: откатить их нечем. Первый раз базы может не быть.
+    remote "docker exec xcar-postgres-1 pg_isready -q 2>/dev/null && bash $(release_dir)/deploy/backup.sh db || echo '    бэкап пропущен'"
     compose_in "$(release_dir)" run --rm --no-deps app php artisan migrate --force
 }
 
@@ -50,7 +52,13 @@ up() {
     echo "==> запуск"
     compose_in "$(release_dir)" up -d --remove-orphans
     remote "ln -sfn $(release_dir) $ROOT/current"
+    timers
     prune
+}
+
+timers() {
+    remote "for u in xcar-backup.service xcar-backup.timer xcar-check.service xcar-check.timer; do ln -sfn $ROOT/current/deploy/systemd/\$u /etc/systemd/system/\$u; done; \
+        systemctl daemon-reload && systemctl enable --now xcar-backup.timer xcar-check.timer >/dev/null 2>&1 || true"
 }
 
 prune() {
@@ -74,6 +82,7 @@ case "${1:-all}" in
     logs)     shift; compose_in "$(current_dir)" logs --tail=200 "$@" ;;
     artisan)  shift; compose_in "$(current_dir)" exec app php artisan "$@" ;;
     check)    check ;;
+    backup)   remote "bash $ROOT/current/deploy/backup.sh ${2:-all}" ;;
     rollback)
         TAG="$2"; [ -d "$(release_dir)" ] || true
         remote "sed -i 's/^TAG=.*/TAG=$TAG/' $ROOT/env/.env"

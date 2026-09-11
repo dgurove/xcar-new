@@ -32,8 +32,14 @@ abstract class Notice extends Notification implements ShouldQueue
 
     public function via(User $user): array
     {
-        return $user->email && $user->wantsMail() ? ['database', 'mail'] : ['database'];
+        $via = ['database', \App\Push\WebPushChannel::class];
+        if ($user->email && $user->wantsMail()) {
+            $via[] = 'mail';
+        }
+
+        return $via;
     }
+
 
     public function toArray(User $user): array
     {

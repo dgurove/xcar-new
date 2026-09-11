@@ -11,6 +11,13 @@ return [
         'subscriber_key' => env('MERCURE_SUBSCRIBER_KEY'),
     ],
 
+    // Ключи Web Push (VAPID): php artisan push:keys.
+    'vapid' => [
+        'subject' => env('VAPID_SUBJECT', 'mailto:proverka@xcar.ru'),
+        'public' => env('VAPID_PUBLIC_KEY'),
+        'private' => env('VAPID_PRIVATE_KEY'),
+    ],
+
     // Исходящий прокси для carcade.com: адрес прода у них в бане.
     'carcade_proxy' => env('CARCADE_PROXY'),
 

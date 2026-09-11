@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Mail\Console\SyncMail::class,
         App\Mail\Console\WatchMail::class,
         App\Mail\Console\ReconcileMail::class,
+        App\Push\Console\MakeKeys::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/vhod');

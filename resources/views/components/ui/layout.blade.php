@@ -18,6 +18,10 @@
     <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
     <title>{{ $title ? "$title — " : '' }}{{ config('app.name') }}</title>
     <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/pwa/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.webmanifest">
+    @auth<meta name="badge-count" content="{{ auth()->user()->unreadCount() }}">@endauth
+    @if (config('xcar.vapid.public'))<meta name="vapid-key" content="{{ config('xcar.vapid.public') }}">@endif
     <link rel="preload" href="/fonts/onest-var.woff2" as="font" type="font/woff2" crossorigin>
     {{-- Тема до первой отрисовки, иначе тёмная страница мигает белым. --}}
     <script>
@@ -30,7 +34,7 @@
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body {{ $attributes->merge(['class' => 'min-h-full antialiased']) }}>
+<body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" {{ $attributes->except('data-controller')->merge(['class' => 'min-h-full antialiased']) }}>
     {{ $slot }}
 </body>
 </html>

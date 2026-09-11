@@ -12,6 +12,11 @@ use App\Http\Site\InterestController;
 use App\Http\Site\OfferController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/manifest.webmanifest', [\App\Http\Pwa\PwaController::class, 'manifest']);
+Route::get('/offline', [\App\Http\Pwa\PwaController::class, 'offline']);
+Route::post('/push/podpiska', [\App\Http\Pwa\PushController::class, 'store'])->middleware('auth');
+Route::delete('/push/podpiska', [\App\Http\Pwa\PushController::class, 'destroy'])->middleware('auth');
+
 Route::get('/', [CatalogController::class, 'index'])->name('home');
 Route::get('/galereya', [CatalogController::class, 'gallery']);
 Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');

@@ -1,0 +1,10 @@
+[Unit]
+Description=Бэкап xcar раз в сутки
+
+[Timer]
+OnCalendar=*-*-* 03:20:00
+RandomizedDelaySec=20m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

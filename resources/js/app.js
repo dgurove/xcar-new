@@ -16,3 +16,11 @@ for (const [path, module] of Object.entries(controllers)) {
 
 Turbo.config.drive.progressBarDelay = 200;
 touchPrefetch();
+
+// View Transitions роняют промис, когда вкладка скрыта или переход перебит
+// следующим: страница при этом в порядке, в консоли этому не место.
+window.addEventListener('unhandledrejection', (event) => {
+    if (['InvalidStateError', 'AbortError'].includes(event.reason?.name) && /transition/i.test(event.reason?.message || '')) {
+        event.preventDefault();
+    }
+});
