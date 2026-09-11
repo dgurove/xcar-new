@@ -49,13 +49,13 @@ systemctl restart docker
 echo "==> каталоги и настройки"
 mkdir -p /srv/xcar/env /srv/xcar/releases
 cd /srv/xcar/env
-gen() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$1"; }
+gen() { openssl rand -hex "$1"; }
 if [ ! -s .env ]; then
-    DBP=$(gen 32); PUB=$(gen 48); SUB=$(gen 48)
+    DBP=$(gen 16); PUB=$(gen 32); SUB=$(gen 32)
     cat > .env <<EOE
 TAG=
 ACME_EMAIL=
-SITE_ADDRESSES=http://$(curl -fsS -4 https://ifconfig.me || hostname -I | awk '{print $1}')
+SITE_ADDRESSES=http://$(hostname -I | awk '{print $1}')
 REDIRECT_ADDRESSES=http://redirect.localhost
 REDIRECT_TO=xcar.ru
 CADDY_GLOBAL_EXTRA=
