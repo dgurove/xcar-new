@@ -48,7 +48,7 @@ node scripts/icons.mjs           # иконки PWA из favicon.svg
 Локальная база `xcar_new` (роль xcar/xcar, порт 5432). Порт 8010, потому
 что 8000 занят старым проектом. Стоянка локально — `http://park.localhost:8010`
 (вход отдельный). Почта локально — IMAP-сервер на Twisted
-`/tmp/claude-501/imapserver.py` (порт 1143, `offer`/`deal` : `parol`, письма
+`scripts/imapserver.py (venv с twisted)` (порт 1143, `offer`/`deal` : `parol`, письма
 файлами в `imapdrop/<user>/`) и `mailpit` (SMTP 1025, веб 8025); хаба Mercure
 локально нет — live проверяется на сервере.
 
