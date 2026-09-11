@@ -18,3 +18,7 @@ foreach ([
 ] as $path => $title) {
     Route::view($path, 'site.placeholder', ['title' => $title]);
 }
+
+if (app()->isLocal()) {
+    Route::view('/admin/ui', 'admin.ui');
+}
