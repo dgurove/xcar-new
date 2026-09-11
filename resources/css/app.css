@@ -147,3 +147,80 @@
 
   .turbo-progress-bar { background: var(--color-accent); height: 2px; }
 }
+
+/* ------------------------------------------------------------- кит */
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-(--radius-m) px-5 py-3 font-medium leading-none
+      transition-colors select-none disabled:opacity-50 disabled:pointer-events-none
+      active:scale-[.98] motion-safe:transition-transform;
+    min-height: 48px;
+  }
+  .btn-primary   { @apply bg-accent text-white hover:bg-accent-hover; }
+  .btn-secondary { @apply bg-surface-3 text-ink hover:bg-line/60; }
+  .btn-ghost     { @apply text-ink hover:bg-surface-3; }
+  .btn-danger    { @apply bg-danger-soft text-danger hover:bg-danger hover:text-white; }
+  .btn-sm        { @apply px-3 py-2 text-sm; min-height: 36px; }
+  .btn-block     { @apply w-full; }
+
+  .field { @apply flex flex-col gap-1.5; }
+  .field-label { @apply text-sm text-ink-muted; }
+  .field-input {
+    @apply w-full rounded-(--radius-m) bg-surface-3 px-4 py-3 text-ink placeholder:text-ink-dim
+      outline-none focus:ring-2 focus:ring-accent/60 disabled:opacity-60;
+    min-height: 48px;
+  }
+  .field-error { @apply text-sm text-danger; }
+  .field-invalid .field-input { @apply ring-2 ring-danger/60; }
+  select.field-input { @apply appearance-none bg-no-repeat pr-10; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23808080' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-position: right 14px center; }
+  textarea.field-input { @apply min-h-28 py-3; field-sizing: content; }
+
+  .check { @apply inline-flex items-center gap-3 select-none; }
+  .check input { @apply size-5 shrink-0 appearance-none rounded-(--radius-s) bg-surface-3 bg-center bg-no-repeat outline-none
+      checked:bg-accent focus-visible:ring-2 focus-visible:ring-accent/60; }
+  .check input:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5'%3E%3Cpath d='m3.5 8.5 3 3 6-7'/%3E%3C/svg%3E"); }
+
+  .card { @apply rounded-(--radius-xl) bg-surface p-5; }
+  .card-nested { @apply rounded-(--radius-l) bg-surface-2 p-4; }
+
+  .chip { @apply inline-flex items-center gap-1 rounded-(--radius-s) bg-surface-3 px-2 py-1 text-sm leading-none; }
+  .badge { @apply inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-semibold leading-5 text-white tabular-nums; }
+
+  /* Шторка: снизу на телефоне, по центру на десктопе. */
+  .sheet {
+    @apply m-0 w-full max-w-lg rounded-t-(--radius-xl) bg-surface p-5 text-ink shadow-(--shadow-drop)
+      md:m-auto md:rounded-(--radius-xl);
+    max-height: calc(100dvh - 2rem);
+    margin-top: auto;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+  }
+  .sheet::backdrop { background: rgb(0 0 0 / .45); }
+  .sheet[open] { animation: sheet-in .22s cubic-bezier(.2,.8,.2,1); }
+  @keyframes sheet-in { from { transform: translateY(24px); opacity: 0; } }
+
+  .toasts { @apply pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4;
+    top: calc(.75rem + env(safe-area-inset-top)); }
+  .toast { @apply pointer-events-auto rounded-(--radius-l) bg-chrome px-4 py-3 text-sm text-white shadow-(--shadow-drop); }
+  .toast-danger { @apply bg-danger; }
+
+  .tabbar {
+    @apply fixed inset-x-0 bottom-0 z-40 flex bg-bar md:hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -1px 0 0 var(--color-line);
+  }
+  .tab { @apply relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] leading-tight text-ink-muted; min-height: 56px; }
+  .tab svg { @apply size-6; }
+  .tab[aria-current="page"] { @apply text-accent-text; }
+  .tab .badge { @apply absolute left-1/2 top-1.5 ml-2; }
+
+  .topbar { @apply sticky top-0 z-30 bg-bar; padding-top: env(safe-area-inset-top); box-shadow: 0 1px 0 0 var(--color-line); }
+  .navlink { @apply rounded-(--radius-m) px-3 py-2 text-ink-muted hover:bg-surface-3 hover:text-ink; }
+  .navlink[aria-current="page"] { @apply text-ink; }
+}
+
+/* Шапка и таб-бар при переходе стоят на месте, едет только содержимое. */
+#topbar { view-transition-name: topbar; }
+#tabbar { view-transition-name: tabbar; }
+::view-transition-group(topbar), ::view-transition-group(tabbar) { animation-duration: 0s; }

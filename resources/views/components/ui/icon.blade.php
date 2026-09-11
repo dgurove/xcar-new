@@ -1,0 +1,30 @@
+@props(['name'])
+@php
+$paths = [
+    'car' => 'M5 17h14M6 17V9.5A1.5 1.5 0 0 1 7.5 8h9A1.5 1.5 0 0 1 18 9.5V17M6 17H4v-3l2-1m12 4h2v-3l-2-1M7 8l1.2-3h7.6L17 8M8.5 13.5h.01M15.5 13.5h.01',
+    'mail' => 'M3 7l9 6 9-6M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z',
+    'deal' => 'M12 3v18m4-14H10a2.5 2.5 0 0 0 0 5h4a2.5 2.5 0 0 1 0 5H7',
+    'park' => 'M4 20V6l8-3 8 3v14M4 20h16M9 20v-5h6v5M9 10h.01M15 10h.01',
+    'more' => 'M5 12h.01M12 12h.01M19 12h.01',
+    'bell' => 'M6 9a6 6 0 1 1 12 0v4l2 3H4l2-3V9m4 8a2 2 0 0 0 4 0',
+    'heart' => 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z',
+    'user' => 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0',
+    'grid' => 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+    'photo' => 'M4 6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6Zm3 10 4-5 3 3 2-2 3 4M15.5 9h.01',
+    'cart' => 'M3 4h2l2 11h11l2-7H7M9 20h.01M17 20h.01',
+    'sun' => 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-14v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10-1.4-1.4 1.4m0 10 1.4 1.4M7 17l-1.4 1.4',
+    'moon' => 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z',
+    'x' => 'M6 6l12 12M18 6 6 18',
+    'plus' => 'M12 5v14M5 12h14',
+    'chevron-right' => 'm9 6 6 6-6 6',
+    'chevron-left' => 'm15 6-6 6 6 6',
+    'check' => 'm5 12 5 5 9-10',
+    'faceid' => 'M4 8V5a1 1 0 0 1 1-1h3m8 0h3a1 1 0 0 1 1 1v3m0 8v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3m5-7v2m6-2v2m-4.5 4.5a3 3 0 0 0 3 0',
+    'key' => 'M14 3a7 7 0 0 0-6.7 9L3 16.3V21h4.7l1-1v-2h2l1-1v-2h2l1.3-1.3A7 7 0 1 0 14 3Zm2 5h.01',
+    'logout' => 'M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4m4-4 4-4-4-4m4 4H9',
+    'search' => 'M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13ZM20 20l-4.5-4.5',
+    'camera' => 'M4 8a1 1 0 0 1 1-1h2.5l1.5-2h6l1.5 2H19a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8Zm8 9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',
+    'trash' => 'M4 7h16M9 7V4h6v3m-7 0v13h8V7',
+];
+@endphp
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" {{ $attributes->merge(['class' => 'size-6']) }}><path d="{{ $paths[$name] ?? '' }}"/></svg>

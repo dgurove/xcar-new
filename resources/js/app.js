@@ -14,5 +14,5 @@ for (const [path, module] of Object.entries(controllers)) {
     application.register(name, module.default);
 }
 
-Turbo.setProgressBarDelay(200);
+Turbo.config.drive.progressBarDelay = 200;
 touchPrefetch();
