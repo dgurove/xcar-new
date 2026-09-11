@@ -30,6 +30,7 @@ final class SaveStage
                 'asks' => $data['asks'] ?? 'nothing',
                 'fields' => Stage::keyFields($data['fields'] ?? []),
                 'staff_fields' => Stage::keyFields($data['staff_fields'] ?? []),
+                'template_id' => $data['template_id'] ?: null,
             ])->save();
 
             $keep = [];

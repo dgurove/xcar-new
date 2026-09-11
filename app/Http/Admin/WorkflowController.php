@@ -121,6 +121,7 @@ class WorkflowController
             'exits' => old('exits', $stage->exists ? $stage->exits->map(fn ($e) => $e->only('id', 'label', 'actor', 'to_stage_id', 'confirm'))->all() : []),
             'fields' => old('fields', $stage->fields ?? []),
             'staffFields' => old('staff_fields', $stage->staff_fields ?? []),
+            'templates' => \App\Mail\Template::where('scope', \App\Mail\Scope::Offers)->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 
@@ -138,6 +139,7 @@ class WorkflowController
             'ask_title' => ['nullable', 'string', 'max:120'],
             'ask_text' => ['nullable', 'string', 'max:2000'],
             'asks' => ['required', Rule::enum(Asks::class)],
+            'template_id' => ['nullable', 'exists:mail_templates,id'],
             'fields' => ['nullable', 'array'],
             'fields.*.key' => ['nullable', 'string', 'max:40'],
             'fields.*.label' => ['nullable', 'string', 'max:80'],

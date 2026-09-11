@@ -46,7 +46,7 @@ Route::middleware('auth')->group(function () {
 // Заглушки разделов до их этапов.
 foreach ([
     '/zakupki' => 'Закупки',
-    '/admin/razgovory' => 'Разговоры', '/admin/zakupki' => 'Закупки',
+    '/admin/zakupki' => 'Закупки',
 ] as $path => $title) {
     Route::view($path, 'site.placeholder', ['title' => $title]);
 }

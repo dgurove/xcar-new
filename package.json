@@ -21,6 +21,7 @@
         "@hotwired/turbo": "^8.0.23",
         "@laragear/webpass": "^2.1.2",
         "sortablejs": "^1.15.7",
+        "trix": "^2.1.19",
         "viewerjs": "^1.13.0"
     }
 }

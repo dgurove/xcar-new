@@ -1,7 +1,10 @@
 <x-ui.shell title="Ещё">
     <div class="flex flex-col gap-2">
         @foreach ([
+            ['Кандидаты из писем', 'mail', '/admin/kandidaty'],
             ['Страховые и маршруты', 'shield', '/admin/strahovye'],
+            ['Ящики', 'mail', '/admin/yashchiki'],
+            ['Шаблоны писем', 'file', '/admin/shablony'],
             ['Кабинет', 'user', '/lk'],
             ['На сайт', 'car', '/'],
         ] as [$label, $icon, $href])

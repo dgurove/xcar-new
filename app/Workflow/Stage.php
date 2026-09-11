@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  */
 #[Fillable([
     'workflow_id', 'block_id', 'name', 'position', 'waits_for', 'limit_minutes', 'deadline_source',
-    'offer_state', 'car_place', 'ask_title', 'ask_text', 'asks', 'fields', 'staff_fields',
+    'offer_state', 'car_place', 'ask_title', 'ask_text', 'asks', 'fields', 'staff_fields', 'template_id',
 ])]
 class Stage extends Model
 {
@@ -47,6 +47,11 @@ class Stage extends Model
     public function block(): BelongsTo
     {
         return $this->belongsTo(Block::class, 'block_id');
+    }
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(\App\Mail\Template::class, 'template_id');
     }
 
     public function exits(): HasMany

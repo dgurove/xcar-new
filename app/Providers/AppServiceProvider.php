@@ -15,5 +15,6 @@ class AppServiceProvider extends ServiceProvider
     {
         Event::subscribe(Notify::class);
         Event::subscribe(PublishLiveUpdates::class);
+        Event::subscribe(\App\Mail\OnMessage::class);
     }
 }

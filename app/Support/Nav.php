@@ -30,7 +30,7 @@ final class Nav
         if ($user?->isStaff()) {
             return [
                 self::tab('Офферы', 'car', '/admin/offers', '/admin/offers'),
-                self::tab('Разговоры', 'mail', '/admin/razgovory', '/admin/razgovory'),
+                self::tab('Почта', 'mail', '/admin/pochta', '/admin/pochta'),
                 self::tab('Сделки', 'deal', '/admin/sdelki'),
                 self::tab('Закупки', 'cart', '/admin/zakupki'),
                 self::tab('Ещё', 'more', '/admin/eshchyo'),
@@ -65,6 +65,7 @@ final class Nav
         $badges = [];
         if ($user->isStaff()) {
             $badges['/admin/offers'] = Bid::where('state', BidState::Active)->count();
+            $badges['/admin/pochta'] = \App\Mail\Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', \App\Mail\Scope::Offers))->count();
             $badges['/admin/sdelki'] = Position::where('track', 'sale')
                 ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
                 ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))

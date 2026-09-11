@@ -38,6 +38,13 @@ return [
             'report' => false,
         ],
 
+        // Сырые письма и вложения: наружу только через приложение.
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'throw' => false,
+        ],
+
         // Фотографии и документы. Раздаются Caddy с диска по /media, мимо PHP.
         'media' => [
             'driver' => 'local',

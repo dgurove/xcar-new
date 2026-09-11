@@ -259,3 +259,24 @@
   .row-photo { @apply size-16 shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; }
   .row-photo img { @apply size-full object-cover; }
 }
+
+/* Редактор писем (Trix) в цветах кита */
+@import "trix/dist/trix.css";
+@layer components {
+  trix-toolbar { @apply mb-2; }
+  trix-toolbar .trix-button-group { @apply rounded-(--radius-s) border-0 bg-surface-3; margin-bottom: 4px; }
+  trix-toolbar .trix-button { @apply border-0 text-ink; border-bottom: 0; }
+  trix-toolbar .trix-button::before { filter: var(--trix-icon-filter, none); }
+  .dark trix-toolbar .trix-button::before { filter: invert(1); }
+  trix-toolbar .trix-button.trix-active { @apply bg-accent-soft; }
+  trix-toolbar .trix-button-group--file-tools, trix-toolbar .trix-button-group--history-tools { display: none; }
+  trix-toolbar .trix-dialog { @apply rounded-(--radius-m) border-0 bg-surface shadow-(--shadow-drop); }
+  trix-editor { @apply min-h-48; }
+  trix-editor:empty:not(:focus)::before { color: var(--color-ink-dim); }
+  .trix-content blockquote { @apply border-l-2 border-line pl-3 text-ink-muted; }
+  .trix-content a { @apply text-accent-text; }
+}
+@layer components {
+  trix-toolbar .trix-button--icon-heading-1, trix-toolbar .trix-button--icon-code, trix-toolbar .trix-button--icon-strike,
+  trix-toolbar .trix-button--icon-decrease-nesting-level, trix-toolbar .trix-button--icon-increase-nesting-level { display: none; }
+}

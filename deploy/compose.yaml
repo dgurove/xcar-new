@@ -46,7 +46,7 @@ services:
 
   queue:
     <<: *app
-    command: php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=default,mail,notifications
+    command: php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=default,notifications
     healthcheck:
       disable: true
 
@@ -54,13 +54,20 @@ services:
   # retry_after, чтобы работник не считал их зависшими.
   queue-long:
     <<: *app
-    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=long
+    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=long,mail
     healthcheck:
       disable: true
 
   scheduler:
     <<: *app
     command: php artisan schedule:work
+    healthcheck:
+      disable: true
+
+  # IMAP IDLE: по процессу на активный ящик, надсмотрщик внутри команды.
+  mail-watch:
+    <<: *app
+    command: php artisan mail:watch
     healthcheck:
       disable: true
 

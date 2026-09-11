@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Admin\BidController;
+use App\Http\Admin\CandidateController;
+use App\Http\Admin\MailAccountController;
+use App\Http\Admin\MailController;
+use App\Http\Admin\MailTemplateController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\InsurerController;
 use App\Http\Admin\InterestController;
@@ -51,6 +55,40 @@ Route::prefix('admin')->middleware(['auth', 'staff'])->group(function () {
     Route::get('/marshruty/etapy/{stage}', [WorkflowController::class, 'editStage']);
     Route::put('/marshruty/etapy/{stage}', [WorkflowController::class, 'updateStage']);
     Route::delete('/marshruty/etapy/{stage}', [WorkflowController::class, 'destroyStage']);
+
+    Route::get('/pochta', [MailController::class, 'index']);
+    Route::get('/pochta/novoe', [MailController::class, 'compose']);
+    Route::post('/pochta', [MailController::class, 'send']);
+    Route::post('/pochta/fayl', [MailController::class, 'file']);
+    Route::post('/pochta/sinhronizaciya', [MailController::class, 'sync']);
+    Route::get('/pochta/vlozheniya/{attachment}', [MailController::class, 'attachment']);
+    Route::post('/pochta/pisma/{message}/flag', [MailController::class, 'flag']);
+    Route::post('/pochta/pisma/{message}/razbor', [MailController::class, 'reparse']);
+    Route::post('/pochta/pisma/{message}/snova', [MailController::class, 'resend']);
+    Route::get('/pochta/{thread}', [MailController::class, 'show']);
+    Route::get('/pochta/{thread}/otvet/{message}', [MailController::class, 'reply']);
+    Route::post('/pochta/{thread}/neprochitano', [MailController::class, 'unread']);
+    Route::post('/pochta/{thread}/privyazka', [MailController::class, 'link']);
+
+    Route::get('/yashchiki', [MailAccountController::class, 'index']);
+    Route::get('/yashchiki/novyy', [MailAccountController::class, 'create']);
+    Route::post('/yashchiki', [MailAccountController::class, 'store']);
+    Route::get('/yashchiki/{account}', [MailAccountController::class, 'edit']);
+    Route::put('/yashchiki/{account}', [MailAccountController::class, 'update']);
+    Route::delete('/yashchiki/{account}', [MailAccountController::class, 'destroy']);
+    Route::post('/yashchiki/{account}/proverka', [MailAccountController::class, 'test']);
+    Route::post('/yashchiki/{account}/sinhronizaciya', [MailAccountController::class, 'sync']);
+
+    Route::get('/shablony', [MailTemplateController::class, 'index']);
+    Route::get('/shablony/novyy', [MailTemplateController::class, 'create']);
+    Route::post('/shablony', [MailTemplateController::class, 'store']);
+    Route::get('/shablony/{template}', [MailTemplateController::class, 'edit']);
+    Route::put('/shablony/{template}', [MailTemplateController::class, 'update']);
+    Route::delete('/shablony/{template}', [MailTemplateController::class, 'destroy']);
+
+    Route::get('/kandidaty', [CandidateController::class, 'index']);
+    Route::post('/kandidaty/{candidate}/zavesti', [CandidateController::class, 'promote']);
+    Route::post('/kandidaty/{candidate}/otklonit', [CandidateController::class, 'reject']);
 
     Route::get('/spravochnik/marki', [ReferenceController::class, 'brands']);
     Route::get('/spravochnik/modeli', [ReferenceController::class, 'models']);

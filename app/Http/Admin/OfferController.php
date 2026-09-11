@@ -68,6 +68,8 @@ class OfferController
 
         return view('admin.offers.edit', [
             'offer' => $offer,
+            'threads' => \App\Mail\Thread::where('offer_id', $offer->id)->get(),
+            'import' => \App\Mail\Jobs\ImportCandidateMedia::progress($offer->id),
             'insurers' => \App\Workflow\Insurer::where('is_active', true)->orWhere('id', $offer->insurer_id)->orderBy('name')->pluck('name', 'id'),
             'stages' => $offer->insurer ? $offer->insurer->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
             'tags' => Tag::orderBy('sort')->get(),

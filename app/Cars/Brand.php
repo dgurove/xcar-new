@@ -31,7 +31,7 @@ class Brand extends Model
         $name = trim($name);
         $slug = self::slugFor($name);
 
-        return self::query()->where('slug', $slug)->orWhereRaw('lower(name) = ?', [mb_strtolower($name)])->first()
+        return self::query()->where('slug', $slug)->orWhereRaw('lower(name) = ?', [mb_strtolower($name)])->orWhereRaw('lower(name_ru) = ?', [mb_strtolower($name)])->first()
             ?? self::create(['slug' => $slug, 'name' => $name]);
     }
 }

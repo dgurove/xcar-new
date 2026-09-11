@@ -15,6 +15,8 @@ FROM dunglas/frankenphp:${FRANKENPHP_VERSION}-php${PHP_VERSION}-bookworm AS base
 WORKDIR /app
 
 RUN install-php-extensions bcmath exif gd intl pcntl pdo_pgsql zip
+# p7zip — архивы фотографий от страховых приходят и в .7z.
+RUN apt-get update && apt-get install -y --no-install-recommends p7zip-full && rm -rf /var/lib/apt/lists/*
 
 COPY deploy/php/app.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY deploy/php/entrypoint.sh /usr/local/bin/entrypoint

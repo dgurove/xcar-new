@@ -12,6 +12,9 @@
                 @if ($stage->awaitsManager() && ($req = $offer->requirements()->where('stage_id', $stage->id)->whereNull('done_at')->first()))
                     <div class="text-sm text-ink-muted">Менеджеру: «{{ $req->title }}»</div>
                 @endif
+                @if ($stage->template_id)
+                    <a href="/admin/pochta/novoe?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-secondary btn-sm self-start"><x-ui.icon name="send" class="size-4"/> Письмо страховой</a>
+                @endif
                 @if ($staffExits->isNotEmpty())
                     <div class="flex flex-wrap gap-2">
                         @foreach ($staffExits as $exit)

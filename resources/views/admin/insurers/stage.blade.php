@@ -67,6 +67,12 @@
             <x-ui.button type="button" variant="ghost" size="sm" class="mt-2" data-action="repeater#add"><x-ui.icon name="plus" class="size-4"/> Поле менеджера</x-ui.button>
         </x-ui.card>
 
+        @if ($templates->isNotEmpty())
+        <x-ui.card title="Письмо страховой">
+            <x-ui.field name="template_id" label="Шаблон" :options="$templates" placeholder="Не пишем" :value="$stage->template_id"/>
+        </x-ui.card>
+        @endif
+
         <x-ui.card title="Что вписываем мы на входе" data-controller="repeater">
             <div class="flex flex-col gap-2" data-repeater-target="list">
                 @foreach ($staffFields as $i => $field)

@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Users\Console\CreateUser::class,
         App\Offers\Console\TickOffers::class,
         App\Notifications\Console\SendDigest::class,
+        App\Mail\Console\SyncMail::class,
+        App\Mail\Console\WatchMail::class,
+        App\Mail\Console\ReconcileMail::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/vhod');
