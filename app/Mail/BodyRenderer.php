@@ -11,7 +11,7 @@ final class BodyRenderer
 {
     private const FORBIDDEN = ['script', 'iframe', 'object', 'embed', 'applet', 'form', 'base', 'meta', 'link'];
 
-    public function document(Message $message, bool $remoteImages = false, bool $dark = false): string
+    public function document(Message $message, bool $remoteImages = false, string $base = '/admin/pochta'): string
     {
         $body = $this->body($message);
         foreach (self::FORBIDDEN as $tag) {
@@ -22,11 +22,11 @@ final class BodyRenderer
         $body = preg_replace('/(href|src)\s*=\s*(["\'])\s*javascript:[^"\']*\2/i', '$1="#"', $body) ?? $body;
         $body = preg_replace('/\sdir\s*=\s*(["\'])\s*rtl\s*\1/i', '', $body) ?? $body;
         $body = preg_replace('/\bdirection\s*:\s*rtl\b/i', 'direction:ltr', $body) ?? $body;
-        $body = $this->inlineImages($message, $body);
+        $body = $this->inlineImages($message, $body, $base);
 
         $images = "'self' data:".($remoteImages ? ' https: http:' : '');
         $csp = "default-src 'none'; img-src {$images}; style-src 'unsafe-inline'; font-src data:; form-action 'none'";
-        $colors = $dark ? 'background:#0d0d0d;color:#ededed' : 'background:#fff;color:#1d1d1b';
+        $colors = 'background:#fff;color:#1d1d1b';
 
         return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'.$csp.'">'
             .'<base target="_blank"><style>html,body{margin:0;padding:0;'.$colors.';font-family:Onest,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45;word-break:break-word}'
@@ -49,14 +49,14 @@ final class BodyRenderer
         return $text === '' ? '<p style="color:#808080">Письмо без текста</p>' : '<pre class="plain">'.e($text).'</pre>';
     }
 
-    private function inlineImages(Message $message, string $html): string
+    private function inlineImages(Message $message, string $html, string $base): string
     {
         if (! str_contains($html, 'cid:')) {
             return $html;
         }
         $map = [];
         foreach ($message->attachments->whereNotNull('content_id') as $attachment) {
-            $map['cid:'.$attachment->content_id] = "/admin/pochta/vlozheniya/{$attachment->id}";
+            $map['cid:'.$attachment->content_id] = "{$base}/vlozheniya/{$attachment->id}";
         }
 
         return $map ? strtr($html, $map) : $html;

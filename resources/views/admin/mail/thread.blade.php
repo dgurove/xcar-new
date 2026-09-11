@@ -1,18 +1,24 @@
-@php use App\Mail\{Direction, ParseState, SendState}; @endphp
+@php use App\Mail\{Direction, ParseState, SendState}; $park = $base === '/pochta'; @endphp
 <x-ui.shell :title="$thread->subject ?: '(без темы)'" :back="$base" :wide="true">
     <div class="mb-4 flex flex-wrap items-center gap-2" data-controller="sheet">
         <span class="chip">{{ $thread->account->title }}</span>
-        @if ($thread->offer)
+        @if ($park && $thread->vehicle)
+            <a href="/mashiny/{{ $thread->vehicle->id }}" class="chip bg-accent-soft text-accent-text">{{ $thread->vehicle->titleWithYear() }}{{ $thread->vehicle->ref ? ' · '.$thread->vehicle->ref : '' }}</a>
+        @elseif (!$park && $thread->offer)
             <a href="/admin/offers/{{ $thread->offer->number }}" class="chip bg-accent-soft text-accent-text">№ {{ $thread->offer->number }} · {{ $thread->offer->title() }}</a>
         @endif
-        <button type="button" class="chip" data-action="sheet#open">{{ $thread->offer ? 'Перепривязать' : 'Привязать к офферу' }}</button>
-        <x-ui.sheet id="link" title="Оффер" :open="$errors->has('number')">
+        <button type="button" class="chip" data-action="sheet#open">{{ ($park ? $thread->vehicle : $thread->offer) ? 'Перепривязать' : ($park ? 'Привязать к машине' : 'Привязать к офферу') }}</button>
+        <x-ui.sheet id="link" :title="$park ? 'Машина' : 'Оффер'" :open="$errors->has('number') || $errors->has('vehicle_id')">
             <form method="post" action="{{ $base }}/{{ $thread->id }}/privyazka" class="flex flex-col gap-3">
                 @csrf
-                <x-ui.field name="number" label="Номер оффера" inputmode="numeric" :value="$thread->offer?->number" autofocus/>
+                @if ($park)
+                    <x-ui.combobox name="vehicle_id" label="Машина" url="/spravochnik/mashiny" :value="$thread->vehicle_id" :text="$thread->vehicle?->titleWithYear()"/>
+                @else
+                    <x-ui.field name="number" label="Номер оффера" inputmode="numeric" :value="$thread->offer?->number" autofocus/>
+                @endif
                 <div class="flex gap-2">
                     <x-ui.button class="flex-1">Привязать</x-ui.button>
-                    @if ($thread->offer)<x-ui.button variant="ghost" name="number" value="">Отвязать</x-ui.button>@endif
+                    @if ($park ? $thread->vehicle : $thread->offer)<x-ui.button variant="ghost" name="{{ $park ? 'vehicle_id' : 'number' }}" value="">Отвязать</x-ui.button>@endif
                 </div>
             </form>
         </x-ui.sheet>

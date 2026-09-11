@@ -4,6 +4,7 @@
         @if ($parent)<input type="hidden" name="parent" value="{{ $parent->id }}">@endif
         @if ($thread)<input type="hidden" name="thread" value="{{ $thread->id }}">@endif
         @if ($offer)<input type="hidden" name="offer" value="{{ $offer->id }}">@endif
+        @if ($vehicle ?? null)<input type="hidden" name="vehicle" value="{{ $vehicle->id }}">@endif
         <x-ui.card>
             <div class="flex flex-col gap-4">
                 @if ($accounts->count() > 1)

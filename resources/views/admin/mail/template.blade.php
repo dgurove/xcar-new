@@ -11,7 +11,7 @@
                 <x-ui.field name="subject" label="Тема" :value="$template->subject"/>
                 <x-ui.editor name="body" label="Письмо" :value="$template->body"/>
                 <div class="flex flex-wrap gap-1.5">
-                    @foreach (\App\Mail\Template::PLACEHOLDERS as $p)<span class="chip font-mono text-xs">@{{ {{ $p }} }}</span>@endforeach
+                    @foreach (array_unique([...\App\Mail\Template::PLACEHOLDERS, ...\App\Mail\Template::PARK_PLACEHOLDERS]) as $p)<span class="chip font-mono text-xs">@{{ {{ $p }} }}</span>@endforeach
                 </div>
             </div>
         </x-ui.card>

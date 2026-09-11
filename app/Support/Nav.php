@@ -57,12 +57,18 @@ final class Nav
     }
 
     /** Счётчики на пунктах: путь → число. Ноль не отдаётся. */
-    public static function badges(?User $user): array
+    public static function badges(?User $user, string $surface = 'site'): array
     {
         if (! $user) {
             return [];
         }
         $badges = [];
+        if ($surface === 'park') {
+            $badges['/zayavki'] = \App\Park\Request::where('state', \App\Park\RequestState::New)->count();
+            $badges['/pochta'] = \App\Mail\Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', \App\Mail\Scope::Park))->count();
+
+            return array_filter($badges);
+        }
         if ($user->isStaff()) {
             $badges['/admin/offers'] = Bid::where('state', BidState::Active)->count();
             $badges['/admin/pochta'] = \App\Mail\Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', \App\Mail\Scope::Offers))->count()

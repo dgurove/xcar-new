@@ -46,6 +46,9 @@ class LoginController
     public static function home(): string
     {
         $user = Auth::user();
+        if (request()->getHost() === config('xcar.park_host')) {
+            return '/zayavki';
+        }
 
         return $user?->isStaff() ? '/admin/offers' : '/';
     }

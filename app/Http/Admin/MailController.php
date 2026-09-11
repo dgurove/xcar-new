@@ -37,7 +37,7 @@ class MailController
         $slug = $request->query('yashchik');
         $q = trim((string) $request->query('q'));
 
-        $threads = Thread::query()->with(['account', 'offer.brand', 'offer.model'])
+        $threads = Thread::query()->with(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model'])
             ->whereIn('account_id', $accounts->pluck('id'))
             ->when($slug, fn ($t) => $t->whereHas('account', fn ($a) => $a->where('slug', $slug)))
             ->when($q !== '', fn ($t) => $t->where(fn ($w) => $w->whereRaw('lower(subject) like ?', ['%'.mb_strtolower($q).'%'])->orWhereRaw('participants::text ilike ?', ['%'.$q.'%'])))
@@ -46,7 +46,7 @@ class MailController
             'unread' => $threads->where('unread_count', '>', 0),
             'files' => $threads->where('has_attachments', true),
             'sent' => $threads->whereHas('messages', fn ($m) => $m->where('direction', Direction::Out)),
-            'linked' => $threads->whereNotNull('offer_id'),
+            'linked' => $this->scope === Scope::Park ? $threads->whereNotNull('vehicle_id') : $threads->whereNotNull('offer_id'),
             default => null,
         };
 
@@ -65,15 +65,14 @@ class MailController
     public function show(Request $request, Thread $thread, MarkThreadRead $markRead, BodyRenderer $renderer)
     {
         $this->guard($thread);
-        $thread->load(['account', 'offer.brand', 'offer.model', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        $thread->load(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'messages.attachments', 'messages.addresses', 'messages.author']);
         $markRead($thread);
-        $dark = $request->cookie('theme') === 'dark';
 
         return view('admin.mail.thread', [
             'thread' => $thread,
             'messages' => $thread->messages,
             'renderer' => $renderer,
-            'documents' => fn (Message $m) => $renderer->document($m, $request->boolean('kartinki'), $dark),
+            'documents' => fn (Message $m) => $renderer->document($m, $request->boolean('kartinki'), $this->base),
             'base' => $this->base,
         ]);
     }
@@ -85,10 +84,26 @@ class MailController
         abort_unless($account, 404);
         $template = $request->query('shablon') ? Template::find($request->query('shablon')) : null;
         $offer = $request->query('offer') ? Offer::where('number', $request->query('offer'))->first() : null;
-        $defaults = $composer->fresh($account, $template, $offer ? self::placeholders($offer) + ['to' => $offer->insurer?->email ?? ''] : []);
+        $vehicle = $request->query('mashina') ? \App\Park\Vehicle::find($request->query('mashina')) : null;
+        $thread = null;
+        $parent = null;
+        $values = [];
+        if ($offer) {
+            $values = self::placeholders($offer) + ['to' => $offer->insurer?->email ?? ''];
+        }
+        if ($vehicle) {
+            // Письмо о машине отвечает в ту ветку, которой приехала заявка.
+            $thread = Thread::where('vehicle_id', $vehicle->id)->orderByDesc('last_message_at')->first();
+            $parent = $thread?->messages()->where('direction', Direction::In)->orderByDesc('date_at')->first();
+            $values = self::vehiclePlaceholders($vehicle) + ['to' => $parent?->replyToAddress() ?? $vehicle->client?->email() ?? ''];
+        }
+        $defaults = $composer->fresh($account, $template, $values);
+        if ($parent) {
+            $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
+        }
 
-        return view('admin.mail.compose', ['account' => $account, 'accounts' => $accounts, 'thread' => null, 'parent' => null, 'defaults' => $defaults,
-            'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'base' => $this->base]);
+        return view('admin.mail.compose', ['account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults,
+            'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base]);
     }
 
     public function reply(Request $request, Thread $thread, Message $message, Composer $composer)
@@ -100,7 +115,7 @@ class MailController
         $defaults = $mode === 'forward' ? $composer->forward($message) : $composer->reply($message, $mode === 'all');
 
         return view('admin.mail.compose', ['account' => $message->account, 'accounts' => collect([$message->account]), 'thread' => $thread, 'parent' => $message,
-            'defaults' => $defaults, 'mode' => $mode, 'templates' => collect(), 'offer' => $thread->offer, 'base' => $this->base]);
+            'defaults' => $defaults, 'mode' => $mode, 'templates' => collect(), 'offer' => $thread->offer, 'vehicle' => $thread->vehicle, 'base' => $this->base]);
     }
 
     public function send(Request $request, Composer $composer)
@@ -119,6 +134,7 @@ class MailController
             'forward' => ['nullable', 'array'],
             'forward.*' => ['integer'],
             'offer' => ['nullable', 'integer'],
+            'vehicle' => ['nullable', 'integer'],
         ]);
         $account = Account::where('slug', $data['account'])->where('scope', $this->scope)->firstOrFail();
         if (! $composer->emails($data['to'])) {
@@ -130,6 +146,9 @@ class MailController
         $message = $composer->create($account, $data, $parent, $request->user(), $thread);
         if (! empty($data['offer']) && $message->thread && ! $message->thread->offer_id) {
             $message->thread->update(['offer_id' => $data['offer']]);
+        }
+        if (! empty($data['vehicle']) && $message->thread && ! $message->thread->vehicle_id) {
+            $message->thread->update(['vehicle_id' => $data['vehicle']]);
         }
 
         return redirect("{$this->base}/{$message->thread_id}")->with('toast', 'Письмо в очереди');
@@ -177,6 +196,12 @@ class MailController
     public function link(Request $request, Thread $thread, LinkThread $link)
     {
         $this->guard($thread);
+        if ($this->scope === Scope::Park) {
+            $vehicle = $request->input('vehicle_id') ? \App\Park\Vehicle::find($request->input('vehicle_id')) : null;
+            $thread->update(['vehicle_id' => $vehicle?->id]);
+
+            return back()->with('toast', $vehicle ? 'Привязано' : 'Отвязано');
+        }
         $number = (int) preg_replace('/\D/', '', (string) $request->input('number'));
         if ($number === 0) {
             $thread->update(['offer_id' => null]);
@@ -230,6 +255,26 @@ class MailController
             'price' => $offer->deal?->amount ? number_format($offer->deal->amount, 0, '', ' ').' ₽' : ($offer->asking_price ? number_format($offer->asking_price, 0, '', ' ').' ₽' : ''),
             'manager' => $offer->deal?->buyer?->name ?? '',
             'insurer' => $offer->insurer?->name ?? '',
+            'today' => now()->translatedFormat('j F Y'),
+        ];
+    }
+
+    /** Подстановки шаблона из машины на стоянке. */
+    public static function vehiclePlaceholders(\App\Park\Vehicle $vehicle): array
+    {
+        $vehicle->loadMissing(['brand', 'model', 'client', 'yard']);
+
+        return [
+            'ref' => $vehicle->ref ?? '',
+            'car' => $vehicle->titleWithYear(),
+            'vin' => $vehicle->vin ?? '',
+            'plate' => $vehicle->plate ?? '',
+            'yard' => $vehicle->yard?->name ?? '',
+            'address' => $vehicle->yard?->address ?? '',
+            'date' => ($vehicle->released_at ?? $vehicle->accepted_at)?->format('d.m.Y') ?? now()->format('d.m.Y'),
+            'days' => (string) ($vehicle->daysStored() ?? ''),
+            'damages' => $vehicle->damages() ? implode(', ', $vehicle->damages()).($vehicle->damage_note ? '. '.$vehicle->damage_note : '') : 'не обнаружены',
+            'client' => $vehicle->client?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),
         ];
     }

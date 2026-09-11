@@ -15,13 +15,14 @@ class CandidateController
     {
         $preset = $request->query('preset', 'new');
         $candidates = Candidate::with(['message.account', 'message.attachments', 'offer'])
+            ->where('scope', \App\Mail\Scope::Offers)
             ->where('state', CandidateState::tryFrom($preset) ?? CandidateState::New)
             ->latest()->paginate(30)->withQueryString();
 
         return view('admin.mail.candidates', [
             'candidates' => $candidates,
             'preset' => $preset,
-            'counts' => ['new' => Candidate::where('state', CandidateState::New)->count()],
+            'counts' => ['new' => Candidate::where('scope', \App\Mail\Scope::Offers)->where('state', CandidateState::New)->count()],
         ]);
     }
 

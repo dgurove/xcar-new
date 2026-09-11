@@ -1,0 +1,71 @@
+<?php
+
+use App\Http\Park\ActController;
+use App\Http\Park\ClientController;
+use App\Http\Park\MailController;
+use App\Http\Park\ParkCandidateController;
+use App\Http\Park\RequestController;
+use App\Http\Park\VehicleController;
+use App\Http\Park\YardController;
+use Illuminate\Support\Facades\Route;
+
+// Стоянка — свой хост того же приложения. Вход общий; пускает раздел «park».
+Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->group(function () {
+    Route::redirect('/', '/zayavki');
+    Route::view('/eshchyo', 'park.more');
+
+    Route::get('/zayavki', [RequestController::class, 'index']);
+    Route::get('/zayavki/novaya', [RequestController::class, 'create']);
+    Route::post('/zayavki', [RequestController::class, 'store']);
+    Route::get('/zayavki/{zayavka}', [RequestController::class, 'show']);
+    Route::post('/zayavki/{zayavka}/priem', [RequestController::class, 'intake']);
+    Route::post('/zayavki/{zayavka}/perestanovka', [RequestController::class, 'move']);
+    Route::post('/zayavki/{zayavka}/vydacha', [RequestController::class, 'release']);
+    Route::post('/zayavki/{zayavka}/zakryt', [RequestController::class, 'close']);
+
+    Route::get('/mashiny', [VehicleController::class, 'index']);
+    Route::get('/mashiny/{vehicle}', [VehicleController::class, 'show']);
+    Route::put('/mashiny/{vehicle}', [VehicleController::class, 'update']);
+    Route::post('/mashiny/{vehicle}/media', [VehicleController::class, 'upload']);
+    Route::post('/mashiny/{vehicle}/media/poryadok', [VehicleController::class, 'reorder']);
+    Route::delete('/mashiny/{vehicle}/media/{media}', [VehicleController::class, 'destroyMedia']);
+    Route::post('/mashiny/{vehicle}/zametka', [VehicleController::class, 'note']);
+    Route::post('/mashiny/{vehicle}/perestanovka', [VehicleController::class, 'move']);
+    Route::post('/mashiny/{vehicle}/vydacha', [VehicleController::class, 'release']);
+    Route::get('/spravochnik/mashiny', [VehicleController::class, 'suggest']);
+    Route::get('/spravochnik/marki', [\App\Http\Admin\ReferenceController::class, 'brands']);
+    Route::get('/spravochnik/modeli', [\App\Http\Admin\ReferenceController::class, 'models']);
+    Route::post('/spravochnik/marki', [\App\Http\Admin\ReferenceController::class, 'createBrand']);
+    Route::post('/spravochnik/modeli', [\App\Http\Admin\ReferenceController::class, 'createModel']);
+    Route::get('/akty/{vehicle}/{kind}', [ActController::class, 'show'])->where('kind', 'priem|vydacha');
+
+    Route::get('/stoyanki', [YardController::class, 'index']);
+    Route::post('/stoyanki', [YardController::class, 'store']);
+    Route::put('/stoyanki/{yard}', [YardController::class, 'update']);
+    Route::get('/klienty', [ClientController::class, 'index']);
+    Route::post('/klienty', [ClientController::class, 'store']);
+    Route::put('/klienty/{client}', [ClientController::class, 'update']);
+
+    Route::get('/kandidaty', [ParkCandidateController::class, 'index']);
+    Route::post('/kandidaty/{candidate}/zavesti', [ParkCandidateController::class, 'promote']);
+    Route::post('/kandidaty/{candidate}/otklonit', [ParkCandidateController::class, 'reject']);
+
+    Route::get('/pochta', [MailController::class, 'index']);
+    Route::get('/pochta/novoe', [MailController::class, 'compose']);
+    Route::post('/pochta', [MailController::class, 'send']);
+    Route::post('/pochta/fayl', [MailController::class, 'file']);
+    Route::post('/pochta/sinhronizaciya', [MailController::class, 'sync']);
+    Route::get('/pochta/vlozheniya/{attachment}', [MailController::class, 'attachment']);
+    Route::post('/pochta/pisma/{message}/flag', [MailController::class, 'flag']);
+    Route::post('/pochta/pisma/{message}/razbor', [MailController::class, 'reparse']);
+    Route::post('/pochta/pisma/{message}/snova', [MailController::class, 'resend']);
+    Route::get('/pochta/{thread}', [MailController::class, 'show']);
+    Route::get('/pochta/{thread}/otvet/{message}', [MailController::class, 'reply']);
+    Route::post('/pochta/{thread}/neprochitano', [MailController::class, 'unread']);
+    Route::post('/pochta/{thread}/privyazka', [MailController::class, 'link']);
+});
+
+// На хосте стоянки ничего, кроме стоянки и входа.
+Route::domain(config('xcar.park_host'))->group(function () {
+    Route::fallback(fn () => abort(404));
+});

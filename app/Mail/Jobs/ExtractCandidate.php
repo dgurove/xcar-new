@@ -24,23 +24,27 @@ final class ExtractCandidate implements ShouldQueue
 
     public function handle(Extractor $extractor): void
     {
-        $message = Message::with('thread')->find($this->messageId);
+        $message = Message::with(['thread', 'account'])->find($this->messageId);
         if (! $message || $message->direction !== Direction::In) {
             return;
         }
-        $fields = $extractor->extract($message->subject, $message->text_body ?: $message->html_body, $message->from_email);
+        $park = $message->account->scope === \App\Mail\Scope::Park;
+        $body = $message->text_body ?: $message->html_body;
+        $fields = $park ? (new \App\Mail\Extraction\ParkExtractor)->extract($message->subject, $body, $message->from_email)
+            : $extractor->extract($message->subject, $body, $message->from_email);
         $code = Code::normalize($fields['code']['value'] ?? null);
-        if (! Extractor::looksLikeOffer($fields)) {
+        if ($park ? ! \App\Mail\Extraction\ParkExtractor::looksLikeRequest($fields) : ! Extractor::looksLikeOffer($fields)) {
             return;
         }
-        if ($code && Offer::where('claim_ref_key', self::key($code))->exists()) {
+        if ($code && ($park ? \App\Park\Vehicle::where('ref_key', self::key($code))->exists() : Offer::where('claim_ref_key', self::key($code))->exists())) {
             return;
         }
 
-        $existing = Candidate::whereIn('state', [CandidateState::New, CandidateState::Rejected])
+        $scope = $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers;
+        $existing = Candidate::where('scope', $scope)->whereIn('state', [CandidateState::New, CandidateState::Rejected])
             ->where(fn ($q) => $code ? $q->where('code', $code) : $q->where('message_id', $message->id))->first();
         if (! $existing) {
-            Candidate::create(['code' => $code, 'message_id' => $message->id, 'thread_id' => $message->thread_id, 'subject' => $message->subject, 'extracted' => $fields]);
+            Candidate::create(['scope' => $scope, 'code' => $code, 'message_id' => $message->id, 'thread_id' => $message->thread_id, 'subject' => $message->subject, 'extracted' => $fields]);
 
             return;
         }

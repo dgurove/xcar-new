@@ -23,14 +23,15 @@ final class OnMessage
     public function parsed(MessageParsed $e): void
     {
         $message = $e->message;
-        $offer = $this->link->auto($message);
-        if (! $offer && $message->direction === Direction::In && $message->account->scope === Scope::Offers) {
+        $linked = $this->link->auto($message);
+        if (! $linked && $message->direction === Direction::In) {
             ExtractCandidate::dispatch($message->id);
         }
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;
-        $this->publish->refresh($topic, ['/admin/pochta', "/admin/pochta/{$message->thread_id}", '/admin/kandidaty', '/pochta', "/pochta/{$message->thread_id}"]);
+        $base = $message->account->scope === Scope::Park ? '/pochta' : '/admin/pochta';
+        $this->publish->refresh($topic, [$base, "{$base}/{$message->thread_id}", '/admin/kandidaty', '/kandidaty', '/zayavki']);
         if ($message->direction === Direction::In && ! $message->is_seen) {
-            $this->publish->toast($topic, ($message->from_name ?: $message->from_email).': '.($message->subject ?: 'без темы'), "/admin/pochta/{$message->thread_id}");
+            $this->publish->toast($topic, ($message->from_name ?: $message->from_email).': '.($message->subject ?: 'без темы'), "{$base}/{$message->thread_id}");
             $this->publish->badges($topic);
         }
     }

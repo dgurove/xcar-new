@@ -1,6 +1,6 @@
 <x-ui.shell title="Почта" :wide="true">
     <div class="mb-4 flex flex-col gap-3">
-        <x-ui.switch :items="['/admin/pochta' => 'Письма', '/admin/chaty' => 'Чаты'.($chatsUnread ? ' · '.$chatsUnread : '')]" current="/admin/pochta"/>
+        @if ($base === '/admin/pochta')<x-ui.switch :items="['/admin/pochta' => 'Письма', '/admin/chaty' => 'Чаты'.($chatsUnread ? ' · '.$chatsUnread : '')]" current="/admin/pochta"/>@endif
         <form method="get" class="flex gap-2" data-controller="autosubmit">
             @if ($slug)<input type="hidden" name="yashchik" value="{{ $slug }}">@endif
             @if ($preset !== 'all')<input type="hidden" name="preset" value="{{ $preset }}">@endif
@@ -43,6 +43,7 @@
                         <div class="mt-1 flex items-center gap-2 text-sm text-ink-muted">
                             @if ($thread->has_attachments)<x-ui.icon name="clip" class="size-4 shrink-0"/>@endif
                             @if ($thread->offer)<span class="chip">№ {{ $thread->offer->number }} · {{ $thread->offer->title() }}</span>@endif
+                            @if ($thread->vehicle)<span class="chip">{{ $thread->vehicle->titleWithYear() }}</span>@endif
                             @if ($accounts->count() > 1 && !$slug)<span class="chip">{{ $thread->account->title }}</span>@endif
                         </div>
                     </div>

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id'])]
+#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id'])]
 class Thread extends Model
 {
     protected $table = 'mail_threads';
@@ -31,6 +31,11 @@ class Thread extends Model
     public function offer(): BelongsTo
     {
         return $this->belongsTo(Offer::class);
+    }
+
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(\App\Park\Vehicle::class, 'vehicle_id');
     }
 
     /** Собеседники без нас самих. */

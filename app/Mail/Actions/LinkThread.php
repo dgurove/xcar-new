@@ -18,10 +18,16 @@ final class LinkThread
         $thread->update(['offer_id' => $offer->id]);
     }
 
-    public function auto(Message $message): ?Offer
+    public function auto(Message $message): Offer|\App\Park\Vehicle|null
     {
         $thread = $message->thread;
-        if (! $thread || $thread->offer_id) {
+        if (! $thread) {
+            return null;
+        }
+        if ($message->account->scope === \App\Mail\Scope::Park) {
+            return $this->autoPark($message, $thread);
+        }
+        if ($thread->offer_id) {
             return null;
         }
         $codes = array_unique([...$this->matcher->findAll($message->subject), ...$this->matcher->findAll($message->text_body ?: $message->html_body)]);
@@ -41,6 +47,27 @@ final class LinkThread
         }
 
         return null;
+    }
+
+    /** Стоянка: ветка ↔ машина по номеру убытка, VIN или госномеру. */
+    private function autoPark(Message $message, Thread $thread): ?\App\Park\Vehicle
+    {
+        if ($thread->vehicle_id) {
+            return null;
+        }
+        $text = $message->subject.' '.($message->text_body ?: $message->html_body);
+        $fields = (new \App\Mail\Extraction\ParkExtractor)->extract($message->subject, $message->text_body ?: $message->html_body, $message->from_email);
+        $vehicle = null;
+        if ($code = $fields['code']['value'] ?? null) {
+            $vehicle = \App\Park\Vehicle::where('ref_key', \App\Park\Vehicle::keyFor($code))->latest()->first();
+        }
+        $vehicle ??= ($vin = $this->vin($message)) ? \App\Park\Vehicle::where('vin', $vin)->latest()->first() : null;
+        $vehicle ??= ($plate = $fields['plate']['value'] ?? null) ? \App\Park\Vehicle::where('plate', mb_strtoupper($plate))->latest()->first() : null;
+        if ($vehicle) {
+            $thread->update(['vehicle_id' => $vehicle->id]);
+        }
+
+        return $vehicle;
     }
 
     private function vin(Message $message): ?string

@@ -12,7 +12,9 @@ class FragmentController
 {
     public function badges(Request $request)
     {
-        return Stream::view('live.badges-stream', ['badges' => Nav::badges($request->user())]);
+        $surface = \App\Http\Middleware\ParkHost::isPark($request) ? 'park' : 'site';
+
+        return Stream::view('live.badges-stream', ['badges' => Nav::badges($request->user(), $surface), 'surface' => $surface]);
     }
 
     public function card(Request $request, Offer $offer)

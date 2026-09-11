@@ -1,9 +1,10 @@
 {{-- Оболочка приложения: шапка, содержимое, таб-бар. --}}
-@props(['title' => null, 'surface' => 'site', 'back' => null, 'wide' => false])
+@props(['title' => null, 'surface' => null, 'back' => null, 'wide' => false])
 @php
     $user = auth()->user();
+    $surface ??= \App\Http\Middleware\ParkHost::isPark(request()) ? 'park' : 'site';
     $tabs = \App\Support\Nav::tabs($user, $surface);
-    $badges = \App\Support\Nav::badges($user);
+    $badges = \App\Support\Nav::badges($user, $surface);
     $path = '/'.ltrim(request()->path(), '/');
 @endphp
 <x-ui.layout :title="$title" data-controller="live">

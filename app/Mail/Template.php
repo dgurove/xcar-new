@@ -18,6 +18,8 @@ class Template extends Model
 
     public const PLACEHOLDERS = ['number', 'car', 'vin', 'claim_ref', 'price', 'manager', 'insurer', 'today'];
 
+    public const PARK_PLACEHOLDERS = ['ref', 'car', 'vin', 'plate', 'yard', 'address', 'date', 'days', 'damages', 'client', 'today'];
+
     public function render(array $values): array
     {
         $map = [];
