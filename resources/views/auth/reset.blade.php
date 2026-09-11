@@ -1,10 +1,13 @@
 <x-ui.auth title="Новый пароль">
-    <form method="post" action="/parol/novyj" class="flex flex-col gap-4">
+    <form method="post" action="/parol/novyj" class="mt-6 space-y-3">
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
-        <x-ui.field name="email" label="Почта" type="email" :value="$email" autocomplete="email" required/>
-        <x-ui.field name="password" label="Пароль" type="password" autocomplete="new-password" autofocus required/>
-        <x-ui.field name="password_confirmation" label="Ещё раз" type="password" autocomplete="new-password" required/>
-        <x-ui.button block>Сохранить</x-ui.button>
+        <input name="email" type="email" required autocomplete="email" class="field-input" placeholder="Почта" value="{{ old('email', $email) }}">
+        <input name="password" type="password" required autocomplete="new-password" class="field-input" placeholder="Новый пароль" autofocus>
+        <input name="password_confirmation" type="password" required autocomplete="new-password" class="field-input" placeholder="Ещё раз">
+        @foreach (['email', 'password'] as $field)
+            @error($field)<p class="text-sm text-danger">{{ $message }}</p>@enderror
+        @endforeach
+        <button type="submit" class="btn btn-accent w-full">Сохранить</button>
     </form>
 </x-ui.auth>

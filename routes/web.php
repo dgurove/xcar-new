@@ -40,7 +40,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/lk', [ProfileController::class, 'show'])->name('cabinet');
     Route::put('/lk', [ProfileController::class, 'update']);
-    Route::get('/lk/profil', [ProfileController::class, 'show']);
+    Route::get('/lk/profil', [ProfileController::class, 'profile']);
     Route::get('/lk/izbrannoe', [ListsController::class, 'favorites']);
     Route::get('/lk/stavki', [ListsController::class, 'bids']);
     Route::get('/lk/interesy', [ListsController::class, 'interests']);

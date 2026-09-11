@@ -1,8 +1,13 @@
 <x-ui.auth title="Восстановление пароля">
-    <form method="post" action="/parol" class="flex flex-col gap-4">
-        @csrf
-        <x-ui.field name="email" label="Почта" type="email" inputmode="email" autocomplete="email" autofocus required/>
-        <x-ui.button block>Отправить ссылку</x-ui.button>
-    </form>
-    <p class="mt-5 text-center text-sm"><a href="/vhod" class="text-ink-muted">Вернуться ко входу</a></p>
+    @if (session('status'))
+        <x-ui.flash class="mt-6">{{ session('status') }}</x-ui.flash>
+    @else
+        <form method="post" action="/parol" class="mt-6 space-y-3">
+            @csrf
+            <input name="email" type="email" required inputmode="email" autocomplete="email" class="field-input" placeholder="Почта" value="{{ old('email') }}" autofocus>
+            @error('email')<p class="text-sm text-danger">{{ $message }}</p>@enderror
+            <button type="submit" class="btn btn-accent w-full">Прислать ссылку</button>
+        </form>
+    @endif
+    <a href="/vhod" class="mt-5 inline-block text-sm text-ink-muted hover:text-accent-text">Вернуться ко входу</a>
 </x-ui.auth>

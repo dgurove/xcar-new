@@ -1,17 +1,22 @@
-<x-ui.shell title="Мои ставки">
-    <div class="flex flex-col gap-2">
-        @forelse ($bids as $bid)
-            <a href="/offers/{{ $bid->offer->number }}" class="row">
-                <div class="row-photo"><x-offer.photo :media="$bid->offer->mainPhoto()" sizes="64px"/></div>
-                <div class="min-w-0 flex-1">
-                    <div class="truncate font-medium">{{ $bid->offer->titleWithYear() }}</div>
-                    <div class="text-sm text-ink-muted">{{ $bid->state->label() }} · {{ $bid->created_at->translatedFormat('j M') }}</div>
+<x-ui.cabinet title="Заявки" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Заявки']]">
+    @if ($bids->isEmpty())
+        <x-ui.empty href="/" link="В каталог">Вы ещё не подтверждали офферы.</x-ui.empty>
+    @else
+        <div class="space-y-3">
+            @foreach ($bids as $bid)
+                @php $offer = $bid->offer; @endphp
+                <div class="box flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+                    <a href="/offers/{{ $offer->number }}" class="min-w-0 sm:flex-1">
+                        <div class="hover:text-accent-text">{{ $offer->titleWithYear() }}</div>
+                        <div class="nums mt-1 text-sm font-normal text-ink-dim">оффер {{ $offer->number }} · {{ $bid->created_at->translatedFormat('j M') }}</div>
+                    </a>
+                    <div class="flex items-center justify-between gap-3 sm:contents">
+                        <div class="nums sm:text-right">{{ number_format($bid->amount, 0, '', ' ') }} ₽</div>
+                        <x-ui.pill :tone="match ($bid->state) { \App\Offers\BidState::Accepted => 'open', \App\Offers\BidState::Active => 'urgent', \App\Offers\BidState::Declined => 'danger', default => 'closed' }">{{ $bid->state->label() }}</x-ui.pill>
+                    </div>
                 </div>
-                <x-offer.price :amount="$bid->amount"/>
-            </a>
-        @empty
-            <p class="text-ink-muted">Ставок пока нет.</p>
-        @endforelse
-    </div>
-    <div class="mt-4">{{ $bids->links() }}</div>
-</x-ui.shell>
+            @endforeach
+        </div>
+        <div class="mt-8">{{ $bids->links() }}</div>
+    @endif
+</x-ui.cabinet>

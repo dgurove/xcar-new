@@ -1,6 +1,11 @@
-<x-ui.shell title="Избранное" :wide="true">
-    @if ($offers->isEmpty())<p class="text-ink-muted">Отмечайте машины сердцем — они соберутся здесь.</p>@else
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">@foreach ($offers as $offer)<x-offer.tile :offer="$offer"/>@endforeach</div>
-        <div class="mt-4">{{ $offers->links() }}</div>
+<x-ui.cabinet title="Избранное" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Избранное']]">
+    @if ($offers->isEmpty())
+        <x-ui.empty href="/" link="В предложения">Пока пусто.</x-ui.empty>
+    @else
+        <div class="mb-4 flex justify-end"><x-ui.view-switch/></div>
+        <div class="{{ \App\Support\ListView::containerClass(\App\Support\ListView::fromRequest(request())) }}" data-controller="ticker">
+            @foreach ($offers as $offer)<x-offer.card :offer="$offer"/>@endforeach
+        </div>
+        <div class="mt-8">{{ $offers->links() }}</div>
     @endif
-</x-ui.shell>
+</x-ui.cabinet>

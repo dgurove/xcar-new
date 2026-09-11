@@ -1,15 +1,20 @@
+{{-- Вход, регистрация, пароль: свой экран без шапки и подвала — фото паркинга,
+     белый знак, карточка формы. Тема карточки — по общей теме, фото всегда тёмное. --}}
 @props(['title'])
-<x-ui.layout :title="$title">
-    <main class="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-8">
-        <a href="/" class="flex justify-center">
-            <img src="/images/xcar.svg" alt="XCar" class="h-8 dark:hidden">
-            <img src="/images/xcar-white.svg" alt="XCar" class="hidden h-8 dark:block">
+<x-ui.layout :title="$title" class="auth-page">
+    <div class="fixed inset-0">
+        <x-ui.photo-parking class="absolute inset-0" dark/>
+        <div class="auth-shade absolute inset-0"></div>
+    </div>
+    <main class="relative flex min-h-dvh flex-col items-center justify-center px-4 py-12">
+        <a href="/" class="mb-7 shrink-0" aria-label="XCar">
+            <img src="/images/xcar-white.svg" alt="XCar" width="180" height="45" class="h-9 w-auto sm:h-10">
         </a>
-        <div class="box">
-            <h1 class="mb-5 text-xl">{{ $title }}</h1>
+        <div class="w-full max-w-md rounded-(--radius-xl) bg-surface p-6 text-ink shadow-(--shadow-drop) sm:p-8">
+            <h1 class="text-2xl">{{ $title }}</h1>
             {{ $slot }}
         </div>
-        @isset($footer)<p class="text-center text-sm text-ink-muted">{{ $footer }}</p>@endisset
+        @isset($footer)<p class="mt-5 text-center text-sm text-white/70">{{ $footer }}</p>@endisset
     </main>
     <x-ui.toasts/>
 </x-ui.layout>

@@ -1,9 +1,9 @@
-<x-ui.shell title="Уведомления">
+<x-ui.cabinet title="Уведомления" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Уведомления']]">
     <div class="mb-4 flex items-center gap-2" data-controller="sheet">
         @if ($unread)
-            <form method="post" action="/lk/uvedomleniya/prochitano">@csrf<x-ui.button variant="secondary" size="sm">Всё прочитано</x-ui.button></form>
+            <form method="post" action="/lk/uvedomleniya/prochitano">@csrf<x-ui.button variant="secondary" size="s">Всё прочитано</x-ui.button></form>
         @endif
-        <x-ui.button type="button" variant="ghost" size="sm" class="ml-auto" data-action="sheet#open">Настройки</x-ui.button>
+        <x-ui.button type="button" variant="secondary" size="s" class="ml-auto" data-action="sheet#open">Настройки</x-ui.button>
         <x-ui.sheet id="notification-settings" title="Уведомления">
             @if (config('xcar.vapid.public'))
             <div class="mb-4 flex flex-col gap-2" data-controller="push">
@@ -21,20 +21,20 @@
     </div>
 
     @if ($items->isEmpty())
-        <div class="py-24 text-center text-ink-muted">Пока тихо</div>
+        <x-ui.empty>Уведомлений пока нет.</x-ui.empty>
     @else
-        <div class="flex flex-col gap-2">
+        <div class="space-y-3">
             @foreach ($items as $item)
-                <a href="/lk/uvedomleniya/{{ $item->id }}" class="row items-start">
-                    @unless ($item->read_at)<span class="mt-2 size-2 shrink-0 rounded-full bg-accent"></span>@endunless
-                    <div class="min-w-0 flex-1">
-                        <div class="{{ $item->read_at ? 'text-ink-muted' : 'font-medium' }}">{{ $item->data['title'] }}</div>
-                        @if (!empty($item->data['text']))<div class="text-sm text-ink-muted">{{ $item->data['text'] }}</div>@endif
+                <a href="/lk/uvedomleniya/{{ $item->id }}" class="box block transition-colors hover:bg-surface-2">
+                    <div class="flex items-start justify-between gap-3">
+                        <p class="font-medium">{{ $item->data['title'] }}</p>
+                        <p class="nums shrink-0 text-sm font-normal text-ink-dim">{{ $item->created_at->translatedFormat($item->created_at->isToday() ? 'H:i' : 'j M, H:i') }}</p>
                     </div>
-                    <span class="shrink-0 text-sm text-ink-dim tabular-nums">{{ $item->created_at->translatedFormat($item->created_at->isToday() ? 'H:i' : 'j M') }}</span>
+                    @if (!empty($item->data['text']))<p class="mt-1 whitespace-pre-line text-ink-muted">{{ $item->data['text'] }}</p>@endif
+                    @unless ($item->read_at)<span class="mt-3 inline-block rounded-full bg-accent-soft px-3 py-1 text-xs text-accent-text">Не прочитано</span>@endunless
                 </a>
             @endforeach
         </div>
-        <div class="mt-4">{{ $items->links() }}</div>
+        <div class="mt-8">{{ $items->links() }}</div>
     @endif
-</x-ui.shell>
+</x-ui.cabinet>
