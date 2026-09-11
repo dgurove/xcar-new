@@ -2,9 +2,15 @@
 
 namespace App\Support;
 
+use App\Chats\Chat;
+use App\Mail\Scope;
+use App\Mail\Thread;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\DealState;
+use App\Offers\Favorite;
+use App\Park\Request;
+use App\Park\RequestState;
 use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Position;
@@ -60,7 +66,6 @@ final class Nav
             return [
                 self::item('Предложения', 'car', '/', '/'),
                 self::item('Галерея', 'photo', '/galereya'),
-                self::item('Закупки', 'cart', '/zakupki', tab: false),
                 self::item('Избранное', 'bookmark', '/lk/izbrannoe', capsule: false),
                 self::item('Уведомления', 'bell', '/lk/uvedomleniya', capsule: false),
             ];
@@ -69,7 +74,6 @@ final class Nav
         return [
             self::item('Предложения', 'car', '/', '/'),
             self::item('Галерея', 'photo', '/galereya'),
-            self::item('Закупки', 'cart', '/zakupki'),
         ];
     }
 
@@ -157,15 +161,15 @@ final class Nav
         }
         $badges = [];
         if ($surface === 'park') {
-            $badges['/zayavki'] = \App\Park\Request::where('state', \App\Park\RequestState::New)->count();
-            $badges['/pochta'] = \App\Mail\Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', \App\Mail\Scope::Park))->count();
+            $badges['/zayavki'] = Request::where('state', RequestState::New)->count();
+            $badges['/pochta'] = Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count();
 
             return array_filter($badges);
         }
         if ($user->isStaff()) {
             $badges['/admin/offers'] = Bid::where('state', BidState::Active)->count();
-            $badges['/admin/pochta'] = \App\Mail\Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', \App\Mail\Scope::Offers))->count();
-            $badges['/admin/chaty'] = \App\Chats\Chat::where('unread_for_staff', '>', 0)->count();
+            $badges['/admin/pochta'] = Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count();
+            $badges['/admin/chaty'] = Chat::where('unread_for_staff', '>', 0)->count();
             $badges['/admin/sdelki'] = Position::where('track', 'sale')
                 ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
                 ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))
@@ -174,7 +178,7 @@ final class Nav
             $badges['/lk/sdelki'] = Requirement::where('user_id', $user->id)->whereNull('done_at')->count();
         }
         $badges['/lk/uvedomleniya'] = $user->unreadCount();
-        $badges['/lk/izbrannoe'] = \App\Offers\Favorite::where('user_id', $user->id)->count();
+        $badges['/lk/izbrannoe'] = Favorite::where('user_id', $user->id)->count();
 
         return array_filter($badges);
     }

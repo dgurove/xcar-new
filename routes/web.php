@@ -5,17 +5,23 @@ use App\Http\Cabinet\ListsController;
 use App\Http\Cabinet\NotificationController;
 use App\Http\Cabinet\ProfileController;
 use App\Http\Live\FragmentController;
+use App\Http\Pwa\PushController;
+use App\Http\Pwa\PwaController;
 use App\Http\Site\BidController;
 use App\Http\Site\CatalogController;
+use App\Http\Site\ChatController;
 use App\Http\Site\FavoriteController;
 use App\Http\Site\InterestController;
 use App\Http\Site\OfferController;
+use App\Http\Site\PurchaseController;
+use App\Http\Site\ShareController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
-Route::get('/manifest.webmanifest', [\App\Http\Pwa\PwaController::class, 'manifest']);
-Route::get('/offline', [\App\Http\Pwa\PwaController::class, 'offline']);
-Route::post('/push/podpiska', [\App\Http\Pwa\PushController::class, 'store'])->middleware('auth');
-Route::delete('/push/podpiska', [\App\Http\Pwa\PushController::class, 'destroy'])->middleware('auth');
+Route::get('/manifest.webmanifest', [PwaController::class, 'manifest']);
+Route::get('/offline', [PwaController::class, 'offline']);
+Route::post('/push/podpiska', [PushController::class, 'store'])->middleware('auth');
+Route::delete('/push/podpiska', [PushController::class, 'destroy'])->middleware('auth');
 
 Route::get('/', [CatalogController::class, 'index'])->name('home');
 Route::view('/voprosy', 'site.pages.voprosy');
@@ -32,11 +38,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/stavki/{bid}/otozvat', [BidController::class, 'withdraw']);
     Route::post('/offers/{offer}/interes', [InterestController::class, 'store']);
     Route::post('/offers/{offer}/izbrannoe', [FavoriteController::class, 'toggle']);
-    Route::post('/offers/{offer}/pdf', [\App\Http\Site\ShareController::class, 'pdf']);
-    Route::post('/offers/{offer}/chat', [\App\Http\Site\ChatController::class, 'open']);
-    Route::get('/chaty/{chat}/soobshcheniya', [\App\Http\Site\ChatController::class, 'messages']);
-    Route::post('/chaty/{chat}/soobshcheniya', [\App\Http\Site\ChatController::class, 'post']);
-    Route::get('/chaty/{chat}/fayly/{file}', [\App\Http\Site\ChatController::class, 'file']);
+    Route::post('/offers/{offer}/pdf', [ShareController::class, 'pdf']);
+    Route::post('/offers/{offer}/chat', [ChatController::class, 'open']);
+    Route::get('/chaty/{chat}/soobshcheniya', [ChatController::class, 'messages']);
+    Route::post('/chaty/{chat}/soobshcheniya', [ChatController::class, 'post']);
+    Route::get('/chaty/{chat}/fayly/{file}', [ChatController::class, 'file']);
 
     Route::get('/lk', [ProfileController::class, 'show'])->name('cabinet');
     Route::put('/lk', [ProfileController::class, 'update']);
@@ -60,19 +66,18 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/live/badges', [FragmentController::class, 'badges']);
 
-    Route::get('/zakupki', [\App\Http\Site\PurchaseController::class, 'index']);
-    Route::get('/zakupki/{purchase}', [\App\Http\Site\PurchaseController::class, 'show']);
-    Route::get('/zakupki/{purchase}/{car}', [\App\Http\Site\PurchaseController::class, 'car']);
-    Route::post('/zakupki/{purchase}/{car}/cena', [\App\Http\Site\PurchaseController::class, 'offer']);
-    Route::post('/zakupki/ceny/{offer}/otozvat', [\App\Http\Site\PurchaseController::class, 'withdraw']);
+    Route::get('/zakupki', [PurchaseController::class, 'index'])->middleware('purchases');
+    Route::get('/zakupki/{purchase}', [PurchaseController::class, 'show'])->middleware('purchases');
+    Route::get('/zakupki/{purchase}/{car}', [PurchaseController::class, 'car'])->middleware('purchases');
+    Route::post('/zakupki/{purchase}/{car}/cena', [PurchaseController::class, 'offer'])->middleware('purchases');
+    Route::post('/zakupki/ceny/{offer}/otozvat', [PurchaseController::class, 'withdraw'])->middleware('purchases');
 });
-
 
 if (app()->isLocal()) {
     Route::view('/admin/ui', 'admin.ui');
     // На сервере медиатеку раздаёт Caddy; artisan serve этого не умеет.
     Route::get('/media/{path}', function (string $path) {
-        $file = \Illuminate\Support\Facades\Storage::disk('media')->path($path);
+        $file = Storage::disk('media')->path($path);
         abort_unless(is_file($file), 404);
 
         return response()->file($file, ['Cache-Control' => 'public, max-age=3600']);

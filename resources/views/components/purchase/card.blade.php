@@ -10,7 +10,7 @@
 @endphp
 <article id="car-{{ $car->id }}" class="card rise group{{ $hasMedia ? '' : ' card--blank' }}">
     @if ($hasMedia)
-        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop touchstart->frames#start touchend->frames#end">
+        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop touchstart->frames#start:passive touchend->frames#end:passive">
             <a href="{{ $href }}" class="block h-full w-full" data-action="frames#click">
                 @foreach ($photos as $i => $frame)
                     <x-offer.photo :media="$frame" sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw" data-frames-target="frame" :hidden="$i > 0"/>

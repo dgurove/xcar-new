@@ -1,5 +1,17 @@
 <?php
 
+use App\Http\Middleware\EnsurePurchases;
+use App\Http\Middleware\EnsureSection;
+use App\Http\Middleware\EnsureStaff;
+use App\Http\Middleware\ParkHost;
+use App\Live\SubscriberCookie;
+use App\Mail\Console\ReconcileMail;
+use App\Mail\Console\SyncMail;
+use App\Mail\Console\WatchMail;
+use App\Notifications\Console\SendDigest;
+use App\Offers\Console\TickOffers;
+use App\Push\Console\MakeKeys;
+use App\Users\Console\CreateUser;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,20 +24,20 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
-        App\Users\Console\CreateUser::class,
-        App\Offers\Console\TickOffers::class,
-        App\Notifications\Console\SendDigest::class,
-        App\Mail\Console\SyncMail::class,
-        App\Mail\Console\WatchMail::class,
-        App\Mail\Console\ReconcileMail::class,
-        App\Push\Console\MakeKeys::class,
+        CreateUser::class,
+        TickOffers::class,
+        SendDigest::class,
+        SyncMail::class,
+        WatchMail::class,
+        ReconcileMail::class,
+        MakeKeys::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/vhod');
         $middleware->redirectUsersTo('/');
-        $middleware->alias(['staff' => App\Http\Middleware\EnsureStaff::class, 'section' => App\Http\Middleware\EnsureSection::class]);
-        $middleware->web(append: [App\Http\Middleware\ParkHost::class, App\Live\SubscriberCookie::class]);
-        $middleware->encryptCookies(except: [App\Live\SubscriberCookie::NAME]);
+        $middleware->alias(['staff' => EnsureStaff::class, 'section' => EnsureSection::class, 'purchases' => EnsurePurchases::class]);
+        $middleware->web(append: [ParkHost::class, SubscriberCookie::class]);
+        $middleware->encryptCookies(except: [SubscriberCookie::NAME]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

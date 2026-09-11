@@ -91,7 +91,8 @@ export default class extends Controller {
         if (!paths?.includes(location.pathname)) return;
         // Человек что-то печатает — не дёргаем страницу под руками.
         if (document.querySelector('form[data-dirty]') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
-        if (document.querySelector('dialog[open]')) return;
+        // Блок в потоке (sheet--inflow) открыт всегда — мешает только модальная шторка.
+        if (document.querySelector('dialog:modal')) return;
         Turbo.renderStreamMessage('<turbo-stream action="refresh"></turbo-stream>');
     }
 

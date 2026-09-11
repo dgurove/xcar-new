@@ -13,9 +13,9 @@
     $canBid = !$admin && ($user?->role->canBid() ?? false) && $offer->bidsOpen();
     $hasMarks = $admin || $offer->car_place || (!$gallery && ($offer->isFresh() || $offer->isEndingSoon() || !$offer->state->acceptsBids() || $offer->secondsLeft()));
 @endphp
-<article id="offer-{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card rise group'.($hasMedia ? '' : ' card--blank')]) }}>
+<article id="{{ $admin ? 'admin-offer-' : 'offer-' }}{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card rise group'.($hasMedia ? '' : ' card--blank')]) }}>
     @if ($hasMedia)
-        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop touchstart->frames#start touchend->frames#end">
+        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop touchstart->frames#start:passive touchend->frames#end:passive">
             <a href="{{ $href }}" class="block h-full w-full" data-action="frames#click">
                 @foreach ($photos as $i => $frame)
                     <x-offer.photo :media="$frame" sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw" :eager="false" data-frames-target="frame" :hidden="$i > 0"/>

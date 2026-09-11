@@ -15,6 +15,12 @@ for (const [path, module] of Object.entries(controllers)) {
 }
 
 Turbo.config.drive.progressBarDelay = 200;
+
+// Morph не должен снимать open с диалогов: серверный HTML его не знает,
+// а блок в потоке и открытая шторка живут на клиенте.
+document.addEventListener('turbo:before-morph-attribute', (event) => {
+    if (event.target instanceof HTMLDialogElement && event.detail.attributeName === 'open') event.preventDefault();
+});
 touchPrefetch();
 
 // View Transitions роняют промис, когда вкладка скрыта или переход перебит
