@@ -42,6 +42,7 @@ build() {
 
 migrate() {
     echo "==> миграции"
+    compose_in "$(release_dir)" up -d --wait postgres
     compose_in "$(release_dir)" run --rm --no-deps app php artisan migrate --force
 }
 
@@ -67,7 +68,7 @@ case "${1:-all}" in
     all)      snapshot; build; migrate; up; check ;;
     snapshot) snapshot ;;
     build)    snapshot; build ;;
-    migrate)  compose_in "$(current_dir)" run --rm --no-deps app php artisan migrate --force ;;
+    migrate)  compose_in "$(current_dir)" up -d --wait postgres; compose_in "$(current_dir)" run --rm --no-deps app php artisan migrate --force ;;
     up)       compose_in "$(current_dir)" up -d --remove-orphans ;;
     ps)       compose_in "$(current_dir)" ps ;;
     logs)     shift; compose_in "$(current_dir)" logs --tail=200 "$@" ;;
