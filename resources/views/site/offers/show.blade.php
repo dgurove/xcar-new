@@ -70,5 +70,5 @@
         </div>
     @endif
 
-    <x-offer.action-bar :offer="$offer" :my-bid="$myBid" :chat="$chat"/>
+    <x-offer.action-bar :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat"/>
 </x-ui.shell>

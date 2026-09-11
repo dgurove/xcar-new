@@ -1,11 +1,11 @@
 {{-- Полоса действий на телефоне: одна лаймовая кнопка и кружок чата. Нет действия — нет полосы. --}}
-@props(['offer', 'myBid' => null, 'chat' => null])
+@props(['offer', 'myBid' => null, 'myInterest' => null, 'chat' => null])
 @php
     $user = auth()->user();
     $gallery = $offer->isGallery();
     $prices = !$gallery && ($user?->role->canSeePrices() ?? false);
     $canBid = ($user?->role->canBid() ?? false) && $offer->bidsOpen();
-    $interest = !$user?->isStaff() && ($gallery || !$prices) && $offer->state->acceptsInterest();
+    $interest = !$user?->isStaff() && ($gallery || !$prices) && $offer->state->acceptsInterest() && !$myInterest;
     $label = $user?->isStaff() ? 'Редактировать' : ($canBid && $prices ? ($myBid ? 'Изменить предложение' : 'Подтвердить предложение') : ($interest ? ($gallery ? 'Проявить интерес' : 'Узнать цену') : null));
 @endphp
 @if ($label)
