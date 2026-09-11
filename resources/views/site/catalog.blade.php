@@ -19,12 +19,12 @@
         @endif
     </form>
 
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" id="catalog">
+        @foreach ($offers as $offer)<x-offer.tile :offer="$offer"/>@endforeach
+    </div>
     @if ($offers->isEmpty())
-        <div class="py-24 text-center text-ink-muted">@if (array_filter($filters)) Ничего не нашлось @else Предложений пока нет @endif</div>
+        <div class="py-24 text-center text-ink-muted" id="catalog-empty">@if (array_filter($filters)) Ничего не нашлось @else Предложений пока нет @endif</div>
     @else
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" id="catalog">
-            @foreach ($offers as $offer)<x-offer.tile :offer="$offer"/>@endforeach
-        </div>
         <div class="mt-4">{{ $offers->links() }}</div>
     @endif
 </x-ui.shell>

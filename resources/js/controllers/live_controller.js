@@ -67,6 +67,7 @@ export default class extends Controller {
             return;
         }
         Turbo.renderStreamMessage(html);
+        if (document.getElementById('catalog')?.children.length) document.getElementById('catalog-empty')?.remove();
     }
 
     pending() {
