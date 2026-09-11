@@ -39,7 +39,7 @@
                     </div>
                     <div class="flex shrink-0 items-center gap-1">
                         <span class="text-sm text-ink-dim tabular-nums">{{ $message->date_at?->translatedFormat('j M, H:i') }}</span>
-                        <form method="post" action="{{ $base }}/pisma/{{ $message->id }}/flag">@csrf<button class="btn btn-ghost btn-sm px-1.5 {{ $message->is_flagged ? 'text-urgent' : 'text-ink-dim' }}" aria-label="Отметить"><x-ui.icon name="flag" class="size-5"/></button></form>
+                        <form method="post" action="{{ $base }}/pisma/{{ $message->id }}/flag">@csrf<button class="btn btn-ghost btn-s px-1.5 {{ $message->is_flagged ? 'text-urgent' : 'text-ink-dim' }}" aria-label="Отметить"><x-ui.icon name="flag" class="size-5"/></button></form>
                     </div>
                 </div>
 
@@ -66,7 +66,7 @@
                         <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="{{ $documents($message) }}" title="Письмо" class="block w-full" style="height:120px" data-frame-target="frame" data-action="load->frame#fit"></iframe>
                     </div>
                     @if (!request()->boolean('kartinki') && $renderer->hasRemoteImages($message))
-                        <a href="{{ request()->fullUrlWithQuery(['kartinki' => 1]) }}#msg-{{ $message->id }}" class="btn btn-ghost btn-sm mt-2">Показать картинки</a>
+                        <a href="{{ request()->fullUrlWithQuery(['kartinki' => 1]) }}#msg-{{ $message->id }}" class="btn btn-ghost btn-s mt-2">Показать картинки</a>
                     @endif
                 @endif
 
@@ -86,9 +86,9 @@
                 @endif
 
                 <div class="mt-4 flex flex-wrap gap-2">
-                    <a href="{{ $base }}/{{ $thread->id }}/otvet/{{ $message->id }}" class="btn btn-secondary btn-sm">Ответить</a>
-                    <a href="{{ $base }}/{{ $thread->id }}/otvet/{{ $message->id }}?rezhim=all" class="btn btn-ghost btn-sm">Всем</a>
-                    <a href="{{ $base }}/{{ $thread->id }}/otvet/{{ $message->id }}?rezhim=forward" class="btn btn-ghost btn-sm">Переслать</a>
+                    <a href="{{ $base }}/{{ $thread->id }}/otvet/{{ $message->id }}" class="btn btn-quiet btn-s">Ответить</a>
+                    <a href="{{ $base }}/{{ $thread->id }}/otvet/{{ $message->id }}?rezhim=all" class="btn btn-ghost btn-s">Всем</a>
+                    <a href="{{ $base }}/{{ $thread->id }}/otvet/{{ $message->id }}?rezhim=forward" class="btn btn-ghost btn-s">Переслать</a>
                 </div>
             </x-ui.card>
         @endforeach

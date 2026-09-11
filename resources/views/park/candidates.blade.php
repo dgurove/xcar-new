@@ -21,9 +21,9 @@
                         @if ($files->isNotEmpty())<span class="chip"><x-ui.icon name="clip" class="size-3.5"/> {{ $files->count() }}</span>@endif
                     </div>
                     <div class="mt-auto flex flex-wrap gap-2">
-                        <a href="/pochta/{{ $c->thread_id }}" class="btn btn-ghost btn-sm">Письмо</a>
+                        <a href="/pochta/{{ $c->thread_id }}" class="btn btn-ghost btn-s">Письмо</a>
                         @if ($c->state === CandidateState::Promoted)
-                            <a href="/mashiny/{{ $c->vehicle_id }}" class="btn btn-secondary btn-sm ml-auto">Машина</a>
+                            <a href="/mashiny/{{ $c->vehicle_id }}" class="btn btn-quiet btn-s ml-auto">Машина</a>
                         @else
                             <form method="post" action="/kandidaty/{{ $c->id }}/otklonit" class="ml-auto">@csrf<x-ui.button size="sm" variant="ghost">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Отклонить' }}</x-ui.button></form>
                             <form method="post" action="/kandidaty/{{ $c->id }}/zavesti">@csrf<x-ui.button size="sm">Завести заявку</x-ui.button></form>

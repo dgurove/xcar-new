@@ -1,7 +1,7 @@
 // Service worker XCar. HTML — только из сети (страницы живые), при обрыве
 // — /offline. Сборка и картинки — из кэша, картинок не больше ~40 МБ:
 // у iOS потолок около 50.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const STATIC = `static-${VERSION}`;
 const MEDIA = `media-${VERSION}`;
 const MEDIA_LIMIT = 400;

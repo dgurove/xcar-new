@@ -1,10 +1,10 @@
 @php use App\Park\RequestType; @endphp
 <x-ui.shell title="Новая заявка" :trail="[['Стоянка', '/'], ['Заявки', '/zayavki'], ['Новая']]" narrow>
-    <div class="mb-4 presets">
+    <x-ui.pills class="mb-6">
         @foreach (RequestType::cases() as $t)
-            <a href="/zayavki/novaya?tip={{ $t->value }}{{ $vehicle ? '&mashina='.$vehicle->id : '' }}" class="preset" @if ($type === $t) aria-current="true" @endif>{{ $t->label() }}</a>
+            <x-ui.pill :href="'/zayavki/novaya?tip='.$t->value.($vehicle ? '&mashina='.$vehicle->id : '')" :current="$type === $t">{{ $t->label() }}</x-ui.pill>
         @endforeach
-    </div>
+    </x-ui.pills>
     <form method="post" action="/zayavki" id="request-form" class="flex flex-col gap-4">
         @csrf
         <input type="hidden" name="type" value="{{ $type->value }}">

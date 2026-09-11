@@ -189,12 +189,6 @@
   @media (min-width: 640px) { .btn-round { width: 2.25rem; height: 2.25rem; } }
   .btn-round.btn-lg { width: 3.5rem; height: 3.5rem; }
 
-  /* Старые имена — до конца реворка. */
-  .btn-primary   { @apply bg-accent text-white hover:bg-accent-hover; }
-  .btn-secondary { @apply bg-surface-3 text-ink hover:bg-line; }
-  .btn-sm        { @apply px-[1.125rem] text-sm; height: 2.75rem; }
-  @media (min-width: 640px) { .btn-sm { height: 2.5rem; } }
-
   /* ------------------------------------------------------------- поля */
 
   .field { @apply flex flex-col gap-1.5; }
@@ -652,20 +646,6 @@
   .photo-cell .photo-actions button { @apply rounded-(--radius-s) p-1.5; }
   .photo-main { @apply absolute left-1 top-1 rounded-(--radius-s) bg-accent px-1.5 py-0.5 text-xs text-white; }
   .sortable-ghost { @apply opacity-40; }
-
-  /* Старое — до конца реворка: плитки, пресеты, липкая полоса. */
-  .presets { @apply -mx-4 flex gap-2 overflow-x-auto px-4 pb-1; scrollbar-width: none; }
-  .presets::-webkit-scrollbar { display: none; }
-  .preset { @apply shrink-0 rounded-full bg-surface px-3.5 py-2 text-sm leading-none text-ink-muted whitespace-nowrap; min-height: 36px; }
-  .preset[aria-current="true"] { @apply bg-accent text-white; }
-  .tile { @apply flex flex-col overflow-hidden rounded-(--radius-xl) bg-surface; }
-  .tile-photo { @apply relative aspect-[4/3] bg-surface-3; }
-  .tile-photo img { @apply size-full object-cover; }
-  .tile-body { @apply flex flex-1 flex-col gap-1.5 p-4; }
-  .sticky-actions { @apply fixed inset-x-0 z-30 flex gap-2 bg-bar px-4 py-2 md:sticky md:bottom-0;
-    bottom: calc(var(--spacing-tabbar) + env(safe-area-inset-bottom)); box-shadow: 0 -1px 0 0 var(--color-line); }
-  @media (min-width: 768px) { .sticky-actions { bottom: 0; } }
-  body:has(.sticky-actions) main { padding-bottom: 5.5rem; }
 }
 
 /* Редактор писем (Trix) в цветах кита */

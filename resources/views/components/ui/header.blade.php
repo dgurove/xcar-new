@@ -22,7 +22,7 @@
                 </button>
                 <x-ui.sheet id="search-sheet" title="Поиск">
                     <form method="get" action="{{ $searchAction }}">
-                        <input type="search" name="q" value="{{ request('q') }}" class="field-input" placeholder="{{ $surface === 'park' ? 'VIN, госномер, марка' : 'Марка, модель, VIN' }}" enterkeyhint="search" autofocus>
+                        <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" class="field-input" placeholder="{{ $surface === 'park' ? 'VIN, госномер, марка' : 'Марка, модель, VIN' }}" enterkeyhint="search" autofocus>
                     </form>
                 </x-ui.sheet>
             </div>
@@ -64,7 +64,7 @@
         <div class="header-row">
             <form method="get" action="{{ $searchAction }}" class="header-btn header-h header-search relative justify-start px-3" role="search">
                 <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>
-                <input type="search" name="q" value="{{ request('q') }}" placeholder="{{ $surface === 'park' ? 'VIN, госномер, марка' : 'Поиск объявления…' }}" class="w-28 sm:w-36 lg:w-52" aria-label="Поиск">
+                <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" placeholder="{{ $surface === 'park' ? 'VIN, госномер, марка' : 'Поиск объявления…' }}" class="w-28 sm:w-36 lg:w-52" aria-label="Поиск">
             </form>
             @foreach ($top as $item)
                 <a href="{{ $item['href'] }}" class="header-btn header-h flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>{{ $item['label'] }}</a>

@@ -4,7 +4,7 @@
             <x-ui.icon name="file" class="size-5 shrink-0 text-ink-muted"/>
             <a href="/sdelki/fayly/{{ $media->id }}" target="_blank" class="flex-1 truncate">{{ $media->file_name }}</a>
             <span class="text-sm text-ink-muted">{{ $media->humanReadableSize }}</span>
-            <form method="post" action="/lk/sdelki/{{ $requirement->deal_id }}/fayly/{{ $media->id }}">@csrf @method('delete')<button class="btn btn-ghost btn-sm px-2 text-ink-muted" aria-label="Убрать"><x-ui.icon name="x" class="size-5"/></button></form>
+            <form method="post" action="/lk/sdelki/{{ $requirement->deal_id }}/fayly/{{ $media->id }}">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Убрать"><x-ui.icon name="x" class="size-5"/></button></form>
         </div>
     @endforeach
 </div>

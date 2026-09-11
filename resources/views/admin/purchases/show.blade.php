@@ -37,9 +37,9 @@
         <div class="flex gap-2">
             <form method="post" action="/admin/zakupki/{{ $n }}/fayl" enctype="multipart/form-data" class="flex-1" data-controller="autosubmit">
                 @csrf
-                <label class="btn btn-secondary w-full cursor-pointer"><x-ui.icon name="plus" class="size-5"/> Загрузить xlsx<input type="file" name="file" accept=".xlsx" hidden data-action="change->autosubmit#submit"></label>
+                <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="plus" class="size-5"/> Загрузить xlsx<input type="file" name="file" accept=".xlsx" hidden data-action="change->autosubmit#submit"></label>
             </form>
-            @if ($stats['cars'])<a href="/admin/zakupki/{{ $n }}/xlsx" class="btn btn-secondary flex-1" data-turbo="false"><x-ui.icon name="file" class="size-5"/> Выгрузить xlsx</a>@endif
+            @if ($stats['cars'])<a href="/admin/zakupki/{{ $n }}/xlsx" class="btn btn-quiet flex-1" data-turbo="false"><x-ui.icon name="file" class="size-5"/> Выгрузить xlsx</a>@endif
         </div>
         @if ($stats['cars'])
         <x-ui.toolbar :pills="\App\Http\Admin\PurchaseController::PRESETS" :pill="$preset" pill-param="preset" name="purchase">

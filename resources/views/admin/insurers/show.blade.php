@@ -56,7 +56,7 @@
                     <div class="mb-3 flex items-center gap-2">
                         <span class="cursor-grab text-ink-dim md:touch-none" data-handle><x-ui.icon name="grip" class="size-5"/></span>
                         <h2 class="flex-1 text-lg">{{ $block->name }}</h2>
-                        <button type="button" class="btn btn-ghost btn-sm px-2" data-action="sheet#open" aria-label="Блок"><x-ui.icon name="edit" class="size-5"/></button>
+                        <button type="button" class="btn btn-ghost btn-s px-2" data-action="sheet#open" aria-label="Блок"><x-ui.icon name="edit" class="size-5"/></button>
                     </div>
                     <x-ui.sheet id="block-{{ $block->id }}" title="Блок">
                         <form method="post" action="/admin/marshruty/bloki/{{ $block->id }}" class="flex flex-col gap-4">
@@ -97,7 +97,7 @@
                             </a>
                         @endforeach
                     </div>
-                    <a href="/admin/marshruty/{{ $w->id }}/etapy/novyy?blok={{ $block->id }}" class="btn btn-ghost btn-sm mt-2 self-start"><x-ui.icon name="plus" class="size-4"/> Этап</a>
+                    <a href="/admin/marshruty/{{ $w->id }}/etapy/novyy?blok={{ $block->id }}" class="btn btn-ghost btn-s mt-2 self-start"><x-ui.icon name="plus" class="size-4"/> Этап</a>
                 </x-ui.card>
             @endforeach
         </div>

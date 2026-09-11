@@ -19,7 +19,7 @@
                     </div>
                 @endforeach
                 @if ($stage->template_id)
-                    <a href="/admin/pochta/novoe?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-secondary btn-sm self-start"><x-ui.icon name="send" class="size-4"/> Письмо страховой</a>
+                    <a href="/admin/pochta/novoe?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-quiet btn-s self-start"><x-ui.icon name="send" class="size-4"/> Письмо страховой</a>
                 @endif
                 @if ($staffExits->isNotEmpty())
                     <div class="flex flex-wrap gap-2">
@@ -52,7 +52,7 @@
         <div class="flex flex-wrap gap-2">
             <x-ui.button type="button" variant="ghost" size="sm" data-action="sheet#open">Поставить на этап</x-ui.button>
             @if ($offer->deal)
-                <a href="#deal-note" class="btn btn-ghost btn-sm">Заметка к сделке</a>
+                <a href="#deal-note" class="btn btn-ghost btn-s">Заметка к сделке</a>
             @endif
         </div>
         <x-ui.sheet id="place-on-stage" title="Поставить на этап">

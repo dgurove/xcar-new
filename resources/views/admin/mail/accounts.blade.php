@@ -13,6 +13,6 @@
                 <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
             </a>
         @endforeach
-        <a href="/admin/yashchiki/novyy" class="btn btn-secondary self-start"><x-ui.icon name="plus" class="size-5"/> Ящик</a>
+        <a href="/admin/yashchiki/novyy" class="btn btn-quiet self-start"><x-ui.icon name="plus" class="size-5"/> Ящик</a>
     </div>
 </x-ui.shell>

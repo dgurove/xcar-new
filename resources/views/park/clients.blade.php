@@ -7,7 +7,7 @@
                     <div class="font-medium">{{ $client->name }} <span class="text-sm text-ink-muted tabular-nums">{{ $client->vehicles_count }}</span></div>
                     <div class="truncate text-sm text-ink-muted">{{ implode(' · ', array_filter([$c['name'] ?? null, $c['phone'] ?? null, $c['email'] ?? null, implode(', ', $client->sender_domains ?? [])])) }}</div>
                 </div>
-                <button type="button" class="btn btn-ghost btn-sm px-2" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
+                <button type="button" class="btn btn-ghost btn-s px-2" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
                 <x-ui.sheet id="client-{{ $client->id }}" title="Клиент">
                     <form method="post" action="/klienty/{{ $client->id }}" class="flex flex-col gap-4">
                         @csrf @method('put')

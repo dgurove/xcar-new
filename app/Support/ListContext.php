@@ -27,7 +27,7 @@ final class ListContext
             return null;
         }
 
-        return new self($list, array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => $v !== null && $v !== ''), ListView::fromRequest($request));
+        return new self($list, array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== ''), ListView::fromRequest($request));
     }
 
     public function isGallery(): bool

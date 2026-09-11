@@ -29,7 +29,7 @@ class CatalogController
     private function list(Request $request, bool $gallery)
     {
         $user = $request->user();
-        $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => $v !== null && $v !== '');
+        $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
         $view = ListView::fromRequest($request);
         $prices = ! $gallery && ($user?->role->canSeePrices() ?? false);
         $sort = CatalogQuery::sort($filters, $gallery, $prices);

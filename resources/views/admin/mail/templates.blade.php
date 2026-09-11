@@ -9,6 +9,6 @@
                 <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
             </a>
         @endforeach
-        <a href="/admin/shablony/novyy" class="btn btn-secondary self-start"><x-ui.icon name="plus" class="size-5"/> Шаблон</a>
+        <a href="/admin/shablony/novyy" class="btn btn-quiet self-start"><x-ui.icon name="plus" class="size-5"/> Шаблон</a>
     </div>
 </x-ui.shell>
