@@ -21,8 +21,12 @@ final class PlaceOffer
             throw ValidationException::withMessages(['amount' => 'Назовите цену']);
         }
 
+        if (Offer::where('car_id', $car->id)->where('user_id', $by->id)->where('state', OfferState::Chosen)->exists()) {
+            throw ValidationException::withMessages(['amount' => 'Ваша цена уже выбрана']);
+        }
+
         return DB::transaction(function () use ($car, $by, $amount, $comment) {
-            Offer::where('car_id', $car->id)->where('user_id', $by->id)->whereIn('state', [OfferState::Active, OfferState::Chosen])->update(['state' => OfferState::Withdrawn]);
+            Offer::where('car_id', $car->id)->where('user_id', $by->id)->where('state', OfferState::Active)->update(['state' => OfferState::Withdrawn]);
             $offer = Offer::create(['car_id' => $car->id, 'user_id' => $by->id, 'amount' => $amount, 'comment' => $comment ?: null]);
             app(\App\Live\Publisher::class)->refresh(\App\Live\Topics::STAFF, ["/admin/zakupki/{$car->purchase->number}", "/admin/zakupki/{$car->purchase->number}/{$car->ref}"]);
 

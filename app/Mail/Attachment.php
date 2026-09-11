@@ -31,7 +31,7 @@ class Attachment extends Model
 
     public function isImage(): bool
     {
-        return str_starts_with((string) $this->mime, 'image/');
+        return str_starts_with((string) $this->mime, 'image/') && $this->mime !== 'image/svg+xml';
     }
 
     public function isPdf(): bool

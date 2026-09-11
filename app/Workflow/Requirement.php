@@ -30,7 +30,7 @@ class Requirement extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('files')->useDisk('media');
+        $this->addMediaCollection('files')->useDisk('private');
     }
 
     public function offer(): BelongsTo

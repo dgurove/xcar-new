@@ -45,7 +45,7 @@ class Vehicle extends Model implements HasMedia
 
     public static function keyFor(string $ref): string
     {
-        return mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $ref));
+        return (string) \App\Mail\Extraction\Code::key($ref);
     }
 
     public function brand(): BelongsTo

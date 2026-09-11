@@ -63,7 +63,7 @@ final class PublishLiveUpdates
     {
         $n = $e->offer->number;
         $this->publish->refresh(Topics::STAFF, ["/admin/offers/{$n}", '/admin/sdelki']);
-        if ($deal = $e->offer->deal()->first()) {
+        if ($deal = $e->deal ?? $e->offer->deal()->first()) {
             $this->publish->refresh(Topics::user($deal->buyer_id), ['/lk/sdelki', "/lk/sdelki/{$deal->id}"]);
         }
     }

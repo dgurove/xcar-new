@@ -77,7 +77,7 @@ class Offer extends Model implements HasMedia
     {
         $value = trim((string) $value) ?: null;
         $this->attributes['claim_ref'] = $value;
-        $this->attributes['claim_ref_key'] = $value ? mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $value)) : null;
+        $this->attributes['claim_ref_key'] = \App\Mail\Extraction\Code::key($value);
     }
 
     public function insurer(): BelongsTo

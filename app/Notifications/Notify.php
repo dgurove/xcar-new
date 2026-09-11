@@ -63,7 +63,7 @@ final class Notify
 
     public function stageEntered(StageEntered $e): void
     {
-        $deal = $e->offer->deal()->with('buyer')->first();
+        $deal = $e->deal ?? $e->offer->deal()->with('buyer')->first();
         if (! $deal?->buyer) {
             return;
         }

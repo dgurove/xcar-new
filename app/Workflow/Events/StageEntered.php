@@ -20,5 +20,6 @@ final class StageEntered
         public Stage $to,
         public ?Outcome $exit = null,
         public ?User $by = null,
+        public ?\App\Offers\Deal $deal = null,
     ) {}
 }

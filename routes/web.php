@@ -44,6 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/lk/sdelki/{deal}/otvet', [DealController::class, 'answer']);
     Route::post('/lk/sdelki/{deal}/fayly', [DealController::class, 'upload']);
     Route::delete('/lk/sdelki/{deal}/fayly/{media}', [DealController::class, 'removeFile']);
+    Route::get('/sdelki/fayly/{media}', [DealController::class, 'file']);
 
     Route::get('/lk/uvedomleniya', [NotificationController::class, 'index']);
     Route::post('/lk/uvedomleniya/prochitano', [NotificationController::class, 'readAll']);

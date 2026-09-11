@@ -79,6 +79,21 @@ class DealController
         return Stream::view('cabinet.deals.files-stream', ['requirement' => $requirement->fresh()]);
     }
 
+    /** Файл просьбы: только участник сделки и сотрудники — диск закрытый. */
+    public function file(Request $request, Media $media)
+    {
+        abort_unless($media->model_type === \App\Workflow\Requirement::class, 404);
+        $requirement = \App\Workflow\Requirement::findOrFail($media->model_id);
+        abort_unless($requirement->user_id === $request->user()->id || $request->user()->isStaff(), 404);
+
+        return response()->file($media->getPath(), [
+            'Content-Type' => $media->mime_type,
+            'Content-Disposition' => (str_starts_with((string) $media->mime_type, 'image/') && $media->mime_type !== 'image/svg+xml' || $media->mime_type === 'application/pdf' ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode($media->file_name),
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, max-age=86400',
+        ]);
+    }
+
     public function removeFile(Request $request, Deal $deal, Media $media)
     {
         abort_unless($deal->buyer_id === $request->user()->id, 404);

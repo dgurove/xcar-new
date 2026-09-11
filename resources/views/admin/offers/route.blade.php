@@ -12,6 +12,12 @@
                 @if ($stage->awaitsManager() && ($req = $offer->requirements()->where('stage_id', $stage->id)->whereNull('done_at')->first()))
                     <div class="text-sm text-ink-muted">Менеджеру: «{{ $req->title }}»</div>
                 @endif
+                @php $answered = $offer->requirements()->whereNotNull('done_at')->with('media')->get()->filter(fn ($r) => $r->media->isNotEmpty()); @endphp
+                @foreach ($answered as $r)
+                    <div class="flex flex-wrap gap-1.5 text-sm">
+                        @foreach ($r->getMedia('files') as $f)<a href="/sdelki/fayly/{{ $f->id }}" target="_blank" class="chip"><x-ui.icon name="file" class="size-3.5"/> {{ \Illuminate\Support\Str::limit($f->file_name, 28) }}</a>@endforeach
+                    </div>
+                @endforeach
                 @if ($stage->template_id)
                     <a href="/admin/pochta/novoe?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-secondary btn-sm self-start"><x-ui.icon name="send" class="size-4"/> Письмо страховой</a>
                 @endif

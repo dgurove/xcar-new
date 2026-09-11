@@ -107,13 +107,15 @@
                 @endauth
             </x-ui.card>
             @auth
-                <div class="flex gap-2" data-controller="sheet">
+                <div class="flex gap-2">
                     <x-offer.share :offer="$offer" class="flex-1"/>
                     @if ($chat)
-                        <x-ui.button type="button" variant="secondary" class="flex-1" data-action="sheet#open"><x-ui.icon name="chat" class="size-5"/> Чат@if ($chat->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</x-ui.button>
-                        <x-ui.sheet id="chat" title="Чат по № {{ $offer->number }}" :open="request()->boolean('chat')" class="!max-w-2xl">
-                            <x-chat.box :chat="$chat" :messages="$chat->messages()->with(['author', 'files'])->get()" :user="$user"/>
-                        </x-ui.sheet>
+                        <div class="flex flex-1" data-controller="sheet">
+                            <x-ui.button type="button" variant="secondary" class="flex-1" data-action="sheet#open"><x-ui.icon name="chat" class="size-5"/> Чат@if ($chat->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</x-ui.button>
+                            <x-ui.sheet id="chat" title="Чат по № {{ $offer->number }}" :open="request()->boolean('chat')" class="!max-w-2xl">
+                                <x-chat.box :chat="$chat" :messages="$chat->messages()->with(['author', 'files'])->get()" :user="$user"/>
+                            </x-ui.sheet>
+                        </div>
                     @elseif ($user->isStaff())
                         @if ($chatsCount)<a href="/admin/chaty?q={{ $offer->number }}&preset=all" class="btn btn-secondary flex-1"><x-ui.icon name="chat" class="size-5"/> Чаты · {{ $chatsCount }}</a>@endif
                     @elseif ($offer->chat_enabled && $offer->state->acceptsInterest())

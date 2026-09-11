@@ -54,6 +54,6 @@ final class ExtractCandidate implements ShouldQueue
 
     public static function key(string $code): string
     {
-        return mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $code));
+        return (string) Code::key($code);
     }
 }

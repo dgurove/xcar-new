@@ -38,7 +38,9 @@
 
         <div class="flex flex-col gap-4">
             <x-ui.card>
-                @if ($purchase->acceptsOffers())
+                @if ($mine?->state === \App\Purchases\OfferState::Chosen)
+                    <div class="rounded-(--radius-l) bg-accent-soft p-4 text-accent-text">Ваша цена {{ number_format($mine->amount, 0, '', ' ') }} ₽ выбрана — с вами свяжутся</div>
+                @elseif ($purchase->acceptsOffers())
                     <form method="post" action="/zakupki/{{ $purchase->number }}/{{ $car->ref }}/cena{{ $suffix }}" class="flex flex-col gap-3">
                         @csrf
                         <x-ui.field name="amount" :label="$mine ? 'Новая цена, ₽' : 'Ваша цена, ₽'" inputmode="numeric" :value="$mine?->amount" required/>

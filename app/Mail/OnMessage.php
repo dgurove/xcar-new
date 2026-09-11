@@ -24,7 +24,9 @@ final class OnMessage
     {
         $message = $e->message;
         $linked = $this->link->auto($message);
-        if (! $linked && $message->direction === Direction::In) {
+        $thread = $message->thread;
+        // Ветка уже привязана — это переписка по машине, а не новая: кандидатов из неё не делаем.
+        if (! $linked && ! $thread?->offer_id && ! $thread?->vehicle_id && $message->direction === Direction::In) {
             ExtractCandidate::dispatch($message->id);
         }
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;

@@ -168,11 +168,13 @@ class MailController
         abort_unless($attachment->message->account->scope === $this->scope || auth()->user()->isStaff(), 404);
         $contents = $attachment->contents();
         abort_if($contents === null, 404);
-        $inline = $attachment->isImage() || $attachment->isPdf();
+        // SVG — не картинка, а документ со скриптами: только на скачивание.
+        $inline = ($attachment->isImage() && $attachment->mime !== 'image/svg+xml') || $attachment->isPdf();
 
         return response($contents, 200, [
             'Content-Type' => $attachment->mime ?: 'application/octet-stream',
             'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode($attachment->filename),
+            'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=86400',
         ]);
     }

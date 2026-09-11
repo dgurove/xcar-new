@@ -29,6 +29,8 @@ final class EnterStage
 
         $position = Position::where('offer_id', $offer->id)->where('track', $track)->with('stage')->first();
         $from = $position?->stage;
+        // Сделку запоминаем до смены состояния: конечный этап её закрывает, а написать менеджеру надо именно тогда.
+        $deal = $offer->deal()->with('buyer')->first();
 
         if ($from) {
             Requirement::where('offer_id', $offer->id)->where('stage_id', $from->id)->whereNull('done_at')
@@ -60,7 +62,7 @@ final class EnterStage
             $offer->log(OfferEventType::PlaceChanged, $by, ['place' => $to->car_place->value]);
         }
 
-        if ($to->awaitsManager() && ($deal = $offer->deal()->first()) && $deal->buyer_id) {
+        if ($to->awaitsManager() && $deal && $deal->isActive() && $deal->buyer_id) {
             Requirement::create([
                 'offer_id' => $offer->id,
                 'deal_id' => $deal->id,
@@ -77,7 +79,7 @@ final class EnterStage
         $offer->log(OfferEventType::StageEntered, $by, [
             'track' => $track->value, 'from' => $from?->name, 'to' => $to->name, 'block' => $to->block?->name, 'exit' => $exit?->label,
         ]);
-        StageEntered::dispatch($offer, $track, $from, $to, $exit, $by);
+        StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal);
 
         return $offer;
     }
