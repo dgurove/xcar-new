@@ -77,7 +77,7 @@ export default class extends Controller {
             pill = document.createElement('button');
             pill.id = 'live-pending';
             pill.type = 'button';
-            pill.className = 'btn btn-primary btn-sm fixed left-1/2 z-40 -translate-x-1/2 shadow-(--shadow-drop)';
+            pill.className = 'btn btn-s btn-accent fixed left-1/2 z-40 -translate-x-1/2 shadow-(--shadow-drop)';
             pill.style.top = 'calc(var(--spacing-header) + env(safe-area-inset-top) + .75rem)';
             pill.dataset.count = '0';
             pill.addEventListener('click', () => Turbo.visit(location.pathname));

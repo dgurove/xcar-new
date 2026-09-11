@@ -1,131 +1,74 @@
 @php
-    use App\Offers\OfferState;
     $user = auth()->user();
-    $gallery = $offer->state === OfferState::Gallery;
-    $canSeePrices = $user?->role->canSeePrices() && ! $gallery;
+    $gallery = $offer->isGallery();
+    $prices = !$gallery && ($user?->role->canSeePrices() ?? false);
+    $back = $context?->backUrl() ?? ($gallery ? '/galereya' : '/');
+    $facts = array_filter([
+        'Год' => $offer->year,
+        'Пробег' => $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null,
+        'Кузов' => $offer->body?->label(), 'КПП' => $offer->transmission?->label(), 'Привод' => $offer->drive?->label(),
+        'Топливо' => $offer->fuel?->label(), 'Объём' => $offer->engine_volume ? $offer->engine_volume.' см³' : null,
+        'Мощность' => $offer->engine_power ? $offer->engine_power.' л. с.' : null, 'Цвет' => $offer->color,
+        'VIN' => $offer->vinMasked(), 'Причина' => $offer->damage_cause?->label(),
+        'Повреждения' => $offer->damage_zones ? implode(', ', array_map(fn ($z) => \App\Cars\DamageZone::labelOf($z), $offer->damage_zones)) : null,
+        'На ходу' => $offer->is_runnable === null ? null : ($offer->is_runnable ? 'Да' : 'Нет'),
+        'Ключи' => $offer->has_keys === null ? null : ($offer->has_keys ? 'Есть' : 'Нет'), 'Документы' => $offer->papers?->label(),
+        'Город' => $offer->settlement?->name, 'Где сейчас' => $offer->car_place?->label(), 'Осмотр' => $offer->inspection_address,
+    ], fn ($v) => $v !== null && $v !== '');
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :back="$gallery ? '/galereya' : '/'" :wide="true">
-    <div class="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div class="flex flex-col gap-4">
-            <div class="relative overflow-hidden rounded-(--radius-xl) bg-surface" data-controller="gallery">
-                @if ($photos->isNotEmpty())
-                    <div class="flex snap-x snap-mandatory overflow-x-auto" data-gallery-target="strip" style="scrollbar-width:none">
-                        @foreach ($photos as $i => $media)
-                            <a href="{{ \App\Media\MediaUrl::for($media, 'w1440') }}" class="aspect-[4/3] w-full shrink-0 snap-center" data-action="click->gallery#open" data-index="{{ $i }}">
-                                <x-offer.photo :media="$media" sizes="(min-width: 1024px) 60vw, 100vw" :eager="$i === 0" class="size-full object-cover"/>
-                            </a>
-                        @endforeach
-                    </div>
-                    @if ($photos->count() > 1)<span class="absolute bottom-2 right-2 chip bg-chrome/70 text-white" data-gallery-target="counter">1 / {{ $photos->count() }}</span>@endif
-                @else
-                    <div class="aspect-[4/3]"><x-offer.photo :media="null"/></div>
-                @endif
-                @auth<x-offer.favorite :offer="$offer" class="absolute right-2 top-2"/>@endauth
-            </div>
+<x-ui.shell :title="$offer->titleWithYear()" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['Оффер '.$offer->number]]" data-offer-page="{{ $offer->number }}">
+    <x-slot:actions>
+        @auth<x-offer.share :offer="$offer" icon/>@endauth
+        @auth<x-offer.favorite :offer="$offer" variant="compact"/>@endauth
+        <x-ui.nav-arrows class="ml-auto sm:ml-0"
+            :prev="$position['prev'] ? $context->offerUrl($position['prev']) : null"
+            :next="$position['next'] ? $context->offerUrl($position['next']) : null"
+            :back="$back" :index="$position['index']" :total="$position['total']"/>
+    </x-slot:actions>
 
-            <x-ui.card>
-                <div class="flex flex-wrap items-center gap-2">
-                    <x-offer.state :state="$offer->state"/>
-                    <span class="chip">№ {{ $offer->number }}</span>
-                    @if ($offer->car_place)<span class="chip">{{ $offer->car_place->label() }}</span>@endif
-                    @foreach ($offer->tags ?? [] as $tag)<span class="chip bg-accent-soft text-accent-text">{{ $tag }}</span>@endforeach
+    <div class="-mt-3 mb-6 flex flex-wrap gap-1.5"><x-offer.tags :offer="$offer" :facts="false"/></div>
+
+    <div class="grid gap-8 lg:grid-cols-[1fr_22rem]">
+        <div class="lg:col-start-1 lg:row-start-1">
+            <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()"/>
+        </div>
+
+        <aside class="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-32 lg:self-start">
+            <x-offer.deal-box :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat" :chats-count="$chatsCount"/>
+        </aside>
+
+        <div class="lg:col-start-1 lg:row-start-2">
+            @if ($prices && $offer->asking_price)
+                <div class="mb-8 lg:hidden">
+                    <div class="nums text-[26px] leading-none">{{ number_format($offer->asking_price, 0, '', ' ') }} ₽ @if ($offer->prices_include_vat)<span class="text-sm font-normal text-ink-muted">с НДС</span>@endif</div>
                 </div>
-                <dl class="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
-                    @foreach ([
-                        'Год' => $offer->year, 'Пробег' => $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null,
-                        'Кузов' => $offer->body?->label(), 'Коробка' => $offer->transmission?->label(), 'Привод' => $offer->drive?->label(),
-                        'Топливо' => $offer->fuel?->label(), 'Объём' => $offer->engine_volume ? $offer->engine_volume.' см³' : null,
-                        'Мощность' => $offer->engine_power ? $offer->engine_power.' л. с.' : null, 'Цвет' => $offer->color,
-                        'VIN' => $offer->vinMasked(), 'Причина' => $offer->damage_cause?->label(),
-                        'Повреждения' => $offer->damage_zones ? implode(', ', array_map(fn ($z) => \App\Cars\DamageZone::labelOf($z), $offer->damage_zones)) : null,
-                        'На ходу' => $offer->is_runnable === null ? null : ($offer->is_runnable ? 'Да' : 'Нет'),
-                        'Ключи' => $offer->has_keys === null ? null : ($offer->has_keys ? 'Есть' : 'Нет'), 'Документы' => $offer->papers?->label(),
-                        'Город' => $offer->settlement?->name, 'Осмотр' => $offer->inspection_address,
-                    ] as $label => $value)
-                        @if ($value !== null && $value !== '')<div><dt class="text-ink-muted">{{ $label }}</dt><dd class="tabular-nums">{{ $value }}</dd></div>@endif
+            @endif
+
+            <section>
+                <h2 class="text-xl">Характеристики</h2>
+                <dl class="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3">
+                    @foreach ($facts as $label => $value)
+                        <div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-medium" @if ($label === 'Где сейчас') data-offer-place @endif>{{ $value }}</dd></div>
                     @endforeach
                 </dl>
-                @if ($offer->description)<p class="mt-4 whitespace-pre-line">{{ $offer->description }}</p>@endif
-            </x-ui.card>
-        </div>
+            </section>
 
-        <div class="flex flex-col gap-4">
-            <x-ui.card>
-                @if ($canSeePrices)
-                    <div class="flex items-baseline justify-between">
-                        <span class="text-ink-muted">Цена</span>
-                        <x-offer.price :amount="$offer->asking_price" class="text-2xl"/>
-                    </div>
-                    @if ($offer->minBid() && $offer->state === OfferState::Open)
-                        <div class="mt-1 flex items-baseline justify-between text-sm"><span class="text-ink-muted">Ставка от</span><x-offer.price :amount="$offer->minBid()" muted/></div>
-                    @endif
-                    @if ($offer->state === OfferState::Open && $offer->bids_close_at)
-                        <div class="mt-1 flex items-baseline justify-between text-sm"><span class="text-ink-muted">Приём до</span><span class="tabular-nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}"></span></div>
-                    @endif
-                @endif
-
-                @if ($gallery)<div class="text-accent-text">Скоро в продаже</div>@endif
-                @auth
-                    @if ($gallery)
-                        @if ($myInterest)
-                            <div class="mt-4 rounded-(--radius-l) bg-accent-soft p-4 text-accent-text">Сообщим, когда откроется приём</div>
-                        @else
-                            <form method="post" action="/offers/{{ $offer->number }}/interes" class="mt-4 flex flex-col gap-3">
-                                @csrf
-                                <x-ui.field name="comment" label="Что важно уточнить" type="textarea" rows="2"/>
-                                <x-ui.button block>Интересно</x-ui.button>
-                            </form>
-                        @endif
-                    @elseif ($user->role->canBid() && $offer->bidsOpen())
-                        @if ($myBid)
-                            <div class="mt-4 rounded-(--radius-l) bg-accent-soft p-4">
-                                <div class="flex items-baseline justify-between"><span>Ваша ставка</span><x-offer.price :amount="$myBid->amount"/></div>
-                                <form method="post" action="/stavki/{{ $myBid->id }}/otozvat" class="mt-2">@csrf<button class="text-sm text-ink-muted">Отозвать</button></form>
-                            </div>
-                        @endif
-                        <form method="post" action="/offers/{{ $offer->number }}/stavka" class="mt-4 flex flex-col gap-3">
-                            @csrf
-                            <x-ui.field name="amount" :label="$myBid ? 'Новая ставка, ₽' : 'Ваша ставка, ₽'" inputmode="numeric" :placeholder="$offer->minBid() ? number_format($offer->minBid(), 0, '', ' ') : null" required/>
-                            <x-ui.field name="comment" label="Комментарий" type="textarea" rows="2"/>
-                            <x-ui.button block>{{ $myBid ? 'Поднять ставку' : 'Сделать ставку' }}</x-ui.button>
-                        </form>
-                    @elseif (!$user->role->canSeePrices() && $offer->state->acceptsInterest())
-                        @if ($myInterest)
-                            <div class="rounded-(--radius-l) bg-accent-soft p-4 text-accent-text">{{ $myInterest->state === \App\Offers\InterestState::New ? 'Менеджер свяжется с вами' : 'С вами связались' }}</div>
-                        @else
-                            <form method="post" action="/offers/{{ $offer->number }}/interes" class="flex flex-col gap-3">
-                                @csrf
-                                <x-ui.field name="comment" label="Что важно уточнить" type="textarea" rows="2"/>
-                                <x-ui.button block>Узнать цену</x-ui.button>
-                            </form>
-                        @endif
-                    @elseif ($offer->state === OfferState::Closed)
-                        <p class="mt-4 text-ink-muted">Приём ставок закрыт</p>
-                    @endif
-                @else
-                    <x-ui.button href="/vhod?intended=/offers/{{ $offer->number }}" block class="mt-2">{{ $gallery ? 'Войти' : 'Войти, чтобы узнать цену' }}</x-ui.button>
-                @endauth
-            </x-ui.card>
-            @auth
-                <div class="flex gap-2">
-                    <x-offer.share :offer="$offer" class="flex-1"/>
-                    @if ($chat)
-                        <div class="flex flex-1" data-controller="sheet">
-                            <x-ui.button type="button" variant="secondary" class="flex-1" data-action="sheet#open"><x-ui.icon name="chat" class="size-5"/> Чат@if ($chat->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</x-ui.button>
-                            <x-ui.sheet id="chat" title="Чат по № {{ $offer->number }}" :open="request()->boolean('chat')" class="!max-w-2xl">
-                                <x-chat.box :chat="$chat" :messages="$chat->messages()->with(['author', 'files'])->get()" :user="$user"/>
-                            </x-ui.sheet>
-                        </div>
-                    @elseif ($user->isStaff())
-                        @if ($chatsCount)<a href="/admin/chaty?q={{ $offer->number }}&preset=all" class="btn btn-secondary flex-1"><x-ui.icon name="chat" class="size-5"/> Чаты · {{ $chatsCount }}</a>@endif
-                    @elseif ($offer->chat_enabled && $offer->state->acceptsInterest())
-                        <form method="post" action="/offers/{{ $offer->number }}/chat" class="flex-1">@csrf<x-ui.button variant="secondary" block><x-ui.icon name="chat" class="size-5"/> Написать</x-ui.button></form>
-                    @endif
-                </div>
-                @if ($user->isStaff())
-                    <a href="/admin/offers/{{ $offer->number }}" class="btn btn-secondary">Редактировать</a>
-                @endif
-            @endauth
+            @if ($offer->description)
+                <section class="mt-8">
+                    <h2 class="text-xl">Описание</h2>
+                    <p class="mt-4 whitespace-pre-line text-ink-muted">{{ $offer->description }}</p>
+                </section>
+            @endif
         </div>
     </div>
+
+    @if ($chat)
+        <div data-controller="sheet" data-action="chat:open@window->sheet#open" class="contents">
+            <x-ui.sheet id="chat" title="Чат по № {{ $offer->number }}" :open="request()->boolean('chat')" wide>
+                <x-chat.box :chat="$chat" :messages="$chat->messages()->with(['author', 'files'])->get()" :user="$user"/>
+            </x-ui.sheet>
+        </div>
+    @endif
+
+    <x-offer.action-bar :offer="$offer" :my-bid="$myBid" :chat="$chat"/>
 </x-ui.shell>

@@ -214,6 +214,37 @@ class Offer extends Model implements HasMedia
         return $this->state->acceptsBids() && (! $this->bids_close_at || $this->bids_close_at->isFuture());
     }
 
+    // -------------------------------------------------------------- метки
+
+    public function isGallery(): bool
+    {
+        return $this->state === OfferState::Gallery;
+    }
+
+    /** Опубликован меньше суток назад. */
+    public function isFresh(): bool
+    {
+        return $this->published_at !== null && $this->published_at->gt(now()->subDay());
+    }
+
+    /** До закрытия приёма меньше суток. */
+    public function isEndingSoon(): bool
+    {
+        $left = $this->secondsLeft();
+
+        return $left !== null && $left > 0 && $left < 86400;
+    }
+
+    /** Секунд до закрытия приёма; null — приём не ограничен или закрыт. */
+    public function secondsLeft(): ?int
+    {
+        if (! $this->bids_close_at || ! $this->state->acceptsBids()) {
+            return null;
+        }
+
+        return (int) max(0, now()->diffInSeconds($this->bids_close_at, false));
+    }
+
     public function isFavoriteOf(?User $user): bool
     {
         return $user && $this->favorites->contains('user_id', $user->id);

@@ -1,30 +1,59 @@
-<x-ui.shell :wide="true" :title="$gallery ? 'Скоро в продаже' : null">
-    <form method="get" class="mb-4 flex flex-col gap-3" data-controller="autosubmit">
-        <div class="flex gap-2">
-            <label class="relative flex-1">
-                <x-ui.icon name="search" class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-dim"/>
-                <input type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Марка, модель, номер" class="field-input !bg-surface pl-11" enterkeyhint="search">
-            </label>
-            <select name="sort" class="field-input !w-auto !bg-surface" data-action="autosubmit#submit" aria-label="Сортировка">
-                @foreach (\App\Offers\CatalogQuery::SORTS as $k => $l)<option value="{{ $k }}" @selected(($filters['sort'] ?? 'fresh') === $k)>{{ $l }}</option>@endforeach
-            </select>
-        </div>
-        @if ($brands->count() > 1 || !empty($filters['brand']))
-        <div class="presets">
-            <a href="{{ request()->fullUrlWithQuery(['brand' => null, 'page' => null]) }}" class="preset" @if (empty($filters['brand'])) aria-current="true" @endif>Все</a>
-            @foreach ($brands as $brand)
-                <a href="{{ request()->fullUrlWithQuery(['brand' => $brand->slug, 'page' => null]) }}" class="preset" @if (($filters['brand'] ?? null) === $brand->slug) aria-current="true" @endif>{{ $brand->name }}</a>
-            @endforeach
-        </div>
-        @endif
-    </form>
-
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}">
-        @foreach ($offers as $offer)<x-offer.tile :offer="$offer"/>@endforeach
-    </div>
-    @if ($offers->isEmpty())
-        <div class="py-24 text-center text-ink-muted" id="catalog-empty">@if (array_filter($filters)) Ничего не нашлось @elseif ($gallery) Пока пусто @else Предложений пока нет @endif</div>
-    @else
-        <div class="mt-4">{{ $offers->links() }}</div>
+{{-- Главная и галерея: первый экран (без фильтров), заголовки-переключатели разделов, тулбар, карточки. --}}
+@php
+    $user = auth()->user();
+    $trail = $hero ? [] : [['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения']];
+    $sections = array_filter([
+        ['Предложения', $counts['offers'], '/', !$gallery],
+        $counts['gallery'] || $gallery ? ['Галерея', $counts['gallery'], '/galereya', $gallery] : null,
+        $counts['purchases'] ? ['Закупки', $counts['purchases'], '/zakupki', false] : null,
+    ]);
+@endphp
+<x-ui.shell :title="$gallery ? 'Скоро в продаже' : ($hero ? null : 'Предложения')" :heading="false" :over-hero="$hero" :trail="$trail">
+    @if ($hero)
+        <x-ui.hero :count="$counts['offers']" :label="\App\Support\Plural::of($counts['offers'], ['предложение доступно', 'предложения доступно', 'предложений доступно'])" href="#catalog-section"/>
     @endif
+
+    <div id="catalog-section" @class(['over-hero' => $hero])>
+        <div @class(['container-site pb-10 sm:pb-14', 'pt-10 sm:pt-14' => $hero])>
+            <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+                @foreach ($sections as [$label, $count, $href, $current])
+                    <x-ui.section-title :count="$count" :href="$current ? null : $href" :current="$current" :level="$current ? 'h1' : 'h2'">{{ $label }}</x-ui.section-title>
+                @endforeach
+            </div>
+
+            <x-ui.toolbar class="mt-5" :sorts="$sorts" :sort="$sort" :pills="$views" :pill="$filters['view'] ?? ''" :hidden="[\App\Support\ListView::PARAM => $view]" :name="$gallery ? 'gallery' : 'catalog'">
+                <x-slot:extra><x-ui.view-switch/></x-slot:extra>
+                <x-slot:filters>
+                    <input name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Марка, модель, VIN" class="field-input field-s">
+                    <select name="brand" class="field-input field-s" aria-label="Марка">
+                        <option value="">Любая марка</option>
+                        @foreach ($brands as $brand)<option value="{{ $brand->slug }}" @selected(($filters['brand'] ?? '') === $brand->slug)>{{ $brand->name }}</option>@endforeach
+                    </select>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input name="year_from" value="{{ $filters['year_from'] ?? '' }}" placeholder="Год от" inputmode="numeric" class="field-input field-s nums">
+                        <input name="year_to" value="{{ $filters['year_to'] ?? '' }}" placeholder="до" inputmode="numeric" class="field-input field-s nums">
+                    </div>
+                    @if ($prices)
+                        <div class="grid grid-cols-2 gap-2">
+                            <input name="price_from" value="{{ $filters['price_from'] ?? '' }}" placeholder="Цена от" inputmode="numeric" class="field-input field-s nums">
+                            <input name="price_to" value="{{ $filters['price_to'] ?? '' }}" placeholder="до" inputmode="numeric" class="field-input field-s nums">
+                        </div>
+                    @endif
+                </x-slot:filters>
+            </x-ui.toolbar>
+
+            <div class="mt-6">
+                @if ($offers->isEmpty())
+                    <x-ui.empty :href="$gallery ? '/galereya' : '/'" :link="$filters ? 'Сбросить фильтры' : null" id="catalog-empty">
+                        @if ($filters) По этим условиям ничего нет. @elseif ($gallery) Пока пусто. @else Предложений пока нет. @endif
+                    </x-ui.empty>
+                @else
+                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
+                        @foreach ($offers as $offer)<x-offer.card :offer="$offer" :context="$context"/>@endforeach
+                    </div>
+                    <div class="mt-10">{{ $offers->links() }}</div>
+                @endif
+            </div>
+        </div>
+    </div>
 </x-ui.shell>

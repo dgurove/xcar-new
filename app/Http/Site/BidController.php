@@ -19,7 +19,7 @@ class BidController
         $amount = (int) preg_replace('/\D+/', '', $data['amount']);
         $place($offer, $request->user(), $amount, $data['comment'] ?? null);
 
-        return redirect("/offers/{$offer->number}")->with('toast', 'Ставка принята к рассмотрению');
+        return back()->with('toast', 'Ставка принята к рассмотрению');
     }
 
     public function withdraw(Request $request, Bid $bid, WithdrawBid $withdraw)

@@ -2,7 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 
 // Лента фото: свайп по snap-scroll, счётчик, полноэкранный просмотр.
 export default class extends Controller {
-    static targets = ['strip', 'counter'];
+    static targets = ['strip', 'counter', 'thumb'];
 
     connect() {
         if (!this.hasStripTarget) return;
@@ -15,7 +15,24 @@ export default class extends Controller {
         this.viewer?.destroy();
     }
 
+    prev() { this.to(this.index() - 1); }
+
+    next() { this.to(this.index() + 1); }
+
+    // Клик по миниатюре или стрелке: прокрутить ленту к кадру.
+    to(i) {
+        const n = this.stripTarget.children.length;
+        if (typeof i === 'object') i = Number(i.params.index);
+        i = ((i % n) + n) % n;
+        this.stripTarget.scrollTo({ left: i * this.stripTarget.clientWidth, behavior: 'smooth' });
+    }
+
+    index() {
+        return Math.round(this.stripTarget.scrollLeft / this.stripTarget.clientWidth);
+    }
+
     updateCounter() {
+        this.thumbTargets?.forEach((t, k) => t.classList.toggle('ring-2', k === this.index()));
         if (!this.hasCounterTarget) return;
         const i = Math.round(this.stripTarget.scrollLeft / this.stripTarget.clientWidth) + 1;
         this.counterTarget.textContent = `${i} / ${this.stripTarget.children.length}`;

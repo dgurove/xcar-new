@@ -1,5 +1,5 @@
 {{-- Поделиться: текст из отмеченных строк в буфер, PDF из отмеченных фото через navigator.share. --}}
-@props(['offer', 'variant' => 'secondary', 'size' => null])
+@props(['offer', 'variant' => 'secondary', 'size' => null, 'icon' => false])
 @php
     $user = auth()->user();
     $fields = \App\Offers\Share\Caption::fields($offer, $user);
@@ -7,13 +7,17 @@
     $id = 'share-'.$offer->number;
 @endphp
 <div data-controller="share" data-share-url-value="/offers/{{ $offer->number }}/pdf" data-share-vat-value="{{ \App\Offers\Share\Caption::vatMark($offer) }}" data-share-name-value="{{ $offer->number }} {{ $offer->titleWithYear() }}.pdf" class="contents">
-    <x-ui.button type="button" :variant="$variant" :size="$size" data-action="share#open" {{ $attributes }}><x-ui.icon name="share" class="size-5"/> Поделиться</x-ui.button>
-    <dialog id="{{ $id }}" class="sheet" data-share-target="dialog" data-action="click->share#backdrop">
-        <div class="flex items-start justify-between gap-4">
+    @if ($icon)
+        <button type="button" class="btn btn-s btn-quiet btn-round" data-action="share#open" aria-label="Поделиться" title="Поделиться" {{ $attributes }}><x-ui.icon name="share" class="size-5"/></button>
+    @else
+        <x-ui.button type="button" :variant="$variant" :size="$size" data-action="share#open" {{ $attributes }}><x-ui.icon name="share" class="size-5"/> Поделиться</x-ui.button>
+    @endif
+    <dialog id="{{ $id }}" class="sheet sheet-wide" data-share-target="dialog" data-action="click->share#backdrop">
+        <div class="mb-4 flex items-center justify-between gap-4">
             <h2 class="text-lg">Поделиться</h2>
-            <button type="button" class="btn btn-ghost btn-sm -mr-2 -mt-1 ml-auto" data-action="share#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-5"/></button>
+            <button type="button" class="sheet-close ml-auto" data-action="share#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button>
         </div>
-        <div class="mt-3 flex flex-col gap-4">
+        <div class="flex flex-col gap-4">
             <div class="flex flex-col gap-2">
                 @foreach ($fields as $f)
                     <label class="check"><input type="checkbox" data-share-target="field" data-key="{{ $f['key'] }}" data-value="{{ $f['value'] }}" @checked($f['on']) data-action="share#compose"><span>{{ $f['label'] }} <span class="text-ink-muted">{{ \Illuminate\Support\Str::limit($f['value'], 40) }}</span></span></label>
