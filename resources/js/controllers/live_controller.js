@@ -46,6 +46,7 @@ export default class extends Controller {
         this.source.addEventListener('refresh', (e) => this.refresh(JSON.parse(e.data)));
         this.source.addEventListener('toast', (e) => this.toast(JSON.parse(e.data)));
         this.source.addEventListener('badges', () => this.badges());
+        this.source.addEventListener('chat', (e) => document.dispatchEvent(new CustomEvent('live:chat', { detail: JSON.parse(e.data) })));
         this.source.onopen = () => { if (this.wasOpen) this.catchup(); this.wasOpen = true; };
     }
 

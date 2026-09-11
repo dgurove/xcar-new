@@ -65,7 +65,8 @@ final class Nav
         $badges = [];
         if ($user->isStaff()) {
             $badges['/admin/offers'] = Bid::where('state', BidState::Active)->count();
-            $badges['/admin/pochta'] = \App\Mail\Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', \App\Mail\Scope::Offers))->count();
+            $badges['/admin/pochta'] = \App\Mail\Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', \App\Mail\Scope::Offers))->count()
+                + \App\Chats\Chat::where('unread_for_staff', '>', 0)->count();
             $badges['/admin/sdelki'] = Position::where('track', 'sale')
                 ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
                 ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))

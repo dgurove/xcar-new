@@ -70,6 +70,9 @@ Route::prefix('admin')->middleware(['auth', 'staff'])->group(function () {
     Route::post('/pochta/{thread}/neprochitano', [MailController::class, 'unread']);
     Route::post('/pochta/{thread}/privyazka', [MailController::class, 'link']);
 
+    Route::get('/chaty', [\App\Http\Admin\ChatController::class, 'index']);
+    Route::get('/chaty/{chat}', [\App\Http\Admin\ChatController::class, 'show']);
+
     Route::get('/yashchiki', [MailAccountController::class, 'index']);
     Route::get('/yashchiki/novyy', [MailAccountController::class, 'create']);
     Route::post('/yashchiki', [MailAccountController::class, 'store']);

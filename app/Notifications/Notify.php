@@ -29,6 +29,7 @@ final class Notify
             InterestRegistered::class => 'interest',
             StageEntered::class => 'stageEntered',
             StageDue::class => 'stageDue',
+            \App\Chats\Events\ChatMessagePosted::class => 'chat',
         ];
     }
 
@@ -82,6 +83,19 @@ final class Notify
             $deal?->buyer?->notify(new StageDueNotice($e->offer, $e->position, $e->overdue, $deal->id));
         }
         Notification::send($this->staff(), new StageDueNotice($e->offer, $e->position, $e->overdue));
+    }
+
+    /** Уведомление только о первом непрочитанном: дальше человек уже в чате. */
+    public function chat(\App\Chats\Events\ChatMessagePosted $e): void
+    {
+        $chat = $e->message->chat;
+        if ($e->message->author_kind === \App\Chats\AuthorKind::Participant) {
+            if ($chat->unread_for_staff === 1) {
+                Notification::send($this->staff(), new ChatNotice($e->message, true));
+            }
+        } elseif ($chat->unread_for_user === 1) {
+            $chat->user->notify(new ChatNotice($e->message, false));
+        }
     }
 
     private function staff()

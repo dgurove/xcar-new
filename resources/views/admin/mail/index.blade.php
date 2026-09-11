@@ -1,5 +1,6 @@
 <x-ui.shell title="Почта" :wide="true">
     <div class="mb-4 flex flex-col gap-3">
+        <x-ui.switch :items="['/admin/pochta' => 'Письма', '/admin/chaty' => 'Чаты'.($chatsUnread ? ' · '.$chatsUnread : '')]" current="/admin/pochta"/>
         <form method="get" class="flex gap-2" data-controller="autosubmit">
             @if ($slug)<input type="hidden" name="yashchik" value="{{ $slug }}">@endif
             @if ($preset !== 'all')<input type="hidden" name="preset" value="{{ $preset }}">@endif

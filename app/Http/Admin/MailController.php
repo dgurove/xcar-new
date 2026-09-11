@@ -58,6 +58,7 @@ class MailController
             'q' => $q,
             'base' => $this->base,
             'unread' => Thread::whereIn('account_id', $accounts->pluck('id'))->where('unread_count', '>', 0)->count(),
+            'chatsUnread' => \App\Chats\Chat::where('unread_for_staff', '>', 0)->count(),
         ]);
     }
 

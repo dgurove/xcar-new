@@ -14,6 +14,7 @@
         @if ($threads->count() === 1)<a href="/admin/pochta/{{ $threads->first()->id }}" class="chip"><x-ui.icon name="mail" class="size-4"/> Переписка</a>
         @elseif ($threads->isNotEmpty())<a href="/admin/pochta?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}" class="chip"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</a>@endif
         @if ($import)<span class="chip bg-urgent-soft text-urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</span>@endif
+        @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" variant="ghost" size="sm" class="ml-auto"/>@endif
         @if ($errors->has('state'))<span class="field-error w-full">{{ $errors->first('state') }}</span>@endif
     </div>
 

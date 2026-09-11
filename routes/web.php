@@ -22,6 +22,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/stavki/{bid}/otozvat', [BidController::class, 'withdraw']);
     Route::post('/offers/{offer}/interes', [InterestController::class, 'store']);
     Route::post('/offers/{offer}/izbrannoe', [FavoriteController::class, 'toggle']);
+    Route::post('/offers/{offer}/pdf', [\App\Http\Site\ShareController::class, 'pdf']);
+    Route::post('/offers/{offer}/chat', [\App\Http\Site\ChatController::class, 'open']);
+    Route::get('/chaty/{chat}/soobshcheniya', [\App\Http\Site\ChatController::class, 'messages']);
+    Route::post('/chaty/{chat}/soobshcheniya', [\App\Http\Site\ChatController::class, 'post']);
+    Route::get('/chaty/{chat}/fayly/{file}', [\App\Http\Site\ChatController::class, 'file']);
 
     Route::get('/lk', [ProfileController::class, 'show'])->name('cabinet');
     Route::put('/lk', [ProfileController::class, 'update']);

@@ -28,6 +28,7 @@ final class PublishLiveUpdates
             InterestRegistered::class => 'interest',
             StageEntered::class => 'stage',
             NotificationSent::class => 'notification',
+            \App\Chats\Events\ChatMessagePosted::class => 'chat',
         ];
     }
 
@@ -65,6 +66,15 @@ final class PublishLiveUpdates
         if ($deal = $e->offer->deal()->first()) {
             $this->publish->refresh(Topics::user($deal->buyer_id), ['/lk/sdelki', "/lk/sdelki/{$deal->id}"]);
         }
+    }
+
+    public function chat(\App\Chats\Events\ChatMessagePosted $e): void
+    {
+        $chat = $e->message->chat;
+        $data = ['chat' => $chat->id, 'seq' => $e->message->seq];
+        ($this->publish)([Topics::user($chat->user_id), Topics::STAFF], 'chat', $data);
+        $this->publish->badges(Topics::STAFF);
+        $this->publish->refresh(Topics::STAFF, ['/admin/chaty']);
     }
 
     public function notification(NotificationSent $e): void

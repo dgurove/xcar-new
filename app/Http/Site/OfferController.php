@@ -20,6 +20,8 @@ class OfferController
             'photos' => $offer->visiblePhotos(),
             'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->where('state', BidState::Active)->first() : null,
             'myInterest' => $user ? $offer->interests()->where('user_id', $user->id)->first() : null,
+            'chat' => $user && ! $user->isStaff() ? \App\Chats\Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first() : null,
+            'chatsCount' => $user?->isStaff() ? \App\Chats\Chat::where('offer_id', $offer->id)->count() : 0,
         ]);
     }
 }

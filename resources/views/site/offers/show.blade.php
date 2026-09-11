@@ -106,9 +106,24 @@
                     <x-ui.button href="/vhod?intended=/offers/{{ $offer->number }}" block class="mt-2">{{ $gallery ? 'Войти' : 'Войти, чтобы узнать цену' }}</x-ui.button>
                 @endauth
             </x-ui.card>
-            @if ($user?->isStaff())
-                <a href="/admin/offers/{{ $offer->number }}" class="btn btn-secondary">Редактировать</a>
-            @endif
+            @auth
+                <div class="flex gap-2" data-controller="sheet">
+                    <x-offer.share :offer="$offer" class="flex-1"/>
+                    @if ($chat)
+                        <x-ui.button type="button" variant="secondary" class="flex-1" data-action="sheet#open"><x-ui.icon name="chat" class="size-5"/> Чат@if ($chat->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</x-ui.button>
+                        <x-ui.sheet id="chat" title="Чат по № {{ $offer->number }}" :open="request()->boolean('chat')" class="!max-w-2xl">
+                            <x-chat.box :chat="$chat" :messages="$chat->messages()->with(['author', 'files'])->get()" :user="$user"/>
+                        </x-ui.sheet>
+                    @elseif ($user->isStaff())
+                        @if ($chatsCount)<a href="/admin/chaty?q={{ $offer->number }}&preset=all" class="btn btn-secondary flex-1"><x-ui.icon name="chat" class="size-5"/> Чаты · {{ $chatsCount }}</a>@endif
+                    @elseif ($offer->chat_enabled && $offer->state->acceptsInterest())
+                        <form method="post" action="/offers/{{ $offer->number }}/chat" class="flex-1">@csrf<x-ui.button variant="secondary" block><x-ui.icon name="chat" class="size-5"/> Написать</x-ui.button></form>
+                    @endif
+                </div>
+                @if ($user->isStaff())
+                    <a href="/admin/offers/{{ $offer->number }}" class="btn btn-secondary">Редактировать</a>
+                @endif
+            @endauth
         </div>
     </div>
 </x-ui.shell>
