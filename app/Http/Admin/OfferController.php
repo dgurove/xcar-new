@@ -37,6 +37,12 @@ class OfferController
             'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
             default => $q->whereNotIn('state', [OfferState::Archived]),
         };
+        if ($term = trim((string) $request->query('q'))) {
+            $like = '%'.mb_strtolower($term).'%';
+            $q->where(fn ($w) => $w->whereRaw('cast(number as text) like ?', [$like])->orWhereRaw('lower(vin) like ?', [$like])
+                ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$like])->orWhereRaw('lower(name_ru) like ?', [$like]))
+                ->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$like])));
+        }
         match ($sort) {
             'closing' => $q->orderByRaw('bids_close_at asc nulls last'),
             'number' => $q->orderByDesc('number'),

@@ -1,4 +1,4 @@
-<x-ui.shell :title="match($mode) { 'reply' => 'Ответ', 'all' => 'Ответ всем', 'forward' => 'Пересылка', default => 'Новое письмо' }" :back="$thread ? $base.'/'.$thread->id : $base">
+<x-ui.shell :title="match($mode) { 'reply' => 'Ответ', 'all' => 'Ответ всем', 'forward' => 'Пересылка', default => 'Новое письмо' }" :trail="[['Главная', '/'], ['Почта', $base], ...($thread ? [[$thread->subject ?: '(без темы)', $base.'/'.$thread->id]] : []), [match($mode) { 'reply' => 'Ответ', 'all' => 'Ответ всем', 'forward' => 'Пересылка', default => 'Новое письмо' }]]" narrow>
     <form method="post" action="{{ $base }}" id="compose" class="flex flex-col gap-4" data-controller="photos" data-photos-url-value="{{ $base }}/fayl">
         @csrf
         @if ($parent)<input type="hidden" name="parent" value="{{ $parent->id }}">@endif
@@ -49,7 +49,7 @@
             <x-ui.button type="button" variant="secondary" size="sm" class="mt-2" data-action="photos#pick"><x-ui.icon name="clip" class="size-4"/> Приложить</x-ui.button>
         </x-ui.card>
     </form>
-    <div class="sticky-actions">
-        <x-ui.button form="compose" class="flex-1">Отправить</x-ui.button>
-    </div>
+    <x-ui.action-bar>
+        <x-ui.button form="compose" class="min-w-0 flex-1">Отправить</x-ui.button>
+    </x-ui.action-bar>
 </x-ui.shell>

@@ -1,19 +1,18 @@
-<x-ui.shell title="Чаты" :wide="true">
-    <div class="mb-4 flex flex-col gap-3">
-        <x-ui.switch :items="['/admin/pochta' => 'Письма', '/admin/chaty' => 'Чаты']" current="/admin/chaty"/>
-        <form method="get" data-controller="autosubmit">
-            @if ($preset !== 'unread')<input type="hidden" name="preset" value="{{ $preset }}">@endif
-            <label class="relative block">
-                <x-ui.icon name="search" class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-dim"/>
-                <input type="search" name="q" value="{{ $q }}" placeholder="Имя, телефон, номер оффера" class="field-input !bg-surface pl-11" enterkeyhint="search">
-            </label>
-        </form>
-        <x-ui.presets :items="\App\Http\Admin\ChatController::PRESETS" :current="$preset" :counts="['unread' => $unread]"/>
+<x-ui.shell title="Чаты" :heading="false" :trail="[['Главная', '/'], ['Чаты']]">
+    <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        <x-ui.section-title href="/admin/pochta" :current="false">Письма</x-ui.section-title>
+        <x-ui.section-title level="h1" :count="$chats->total()">Чаты</x-ui.section-title>
     </div>
+
+    <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\ChatController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" name="chats">
+        <x-slot:filters>
+            <input name="q" value="{{ $q }}" placeholder="Имя, телефон, номер оффера" class="field-input field-s">
+        </x-slot:filters>
+    </x-ui.toolbar>
     @if ($chats->isEmpty())
-        <div class="py-24 text-center text-ink-muted">Чатов нет</div>
+        <x-ui.empty class="mt-6">Чатов нет.</x-ui.empty>
     @else
-        <div class="flex flex-col gap-2">
+        <div class="mt-6 flex flex-col gap-2">
             @foreach ($chats as $chat)
                 <a href="/admin/chaty/{{ $chat->id }}" class="row items-start">
                     <div class="row-photo"><x-offer.photo :media="$chat->offer->mainPhoto()" sizes="64px"/></div>
@@ -28,6 +27,6 @@
                 </a>
             @endforeach
         </div>
-        <div class="mt-4">{{ $chats->links() }}</div>
+        <div class="mt-8">{{ $chats->links() }}</div>
     @endif
 </x-ui.shell>

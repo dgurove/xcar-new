@@ -1,10 +1,10 @@
 @php use App\Mail\CandidateState; @endphp
-<x-ui.shell title="Кандидаты" back="/admin/eshchyo" :wide="true">
-    <div class="mb-4"><x-ui.presets :items="\App\Http\Admin\CandidateController::PRESETS" :current="$preset" :counts="$counts"/></div>
+<x-ui.shell title="Кандидаты" :count="$candidates->total()" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Кандидаты']]">
+    <x-ui.toolbar :pills="\App\Http\Admin\CandidateController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" name="candidates"/>
     @if ($candidates->isEmpty())
-        <div class="py-24 text-center text-ink-muted">Пусто</div>
+        <x-ui.empty class="mt-6">Пусто.</x-ui.empty>
     @else
-        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             @foreach ($candidates as $c)
                 @php $x = $c->extracted; $v = fn ($f) => $x[$f]['value'] ?? null; $files = $c->message->attachments->reject->is_inline; @endphp
                 <x-ui.card class="flex flex-col gap-3">

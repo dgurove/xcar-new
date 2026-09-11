@@ -1,5 +1,5 @@
 @php $new = !$account->exists; $enc = ['ssl' => 'SSL', 'tls' => 'STARTTLS', 'none' => 'без шифрования']; @endphp
-<x-ui.shell :title="$new ? 'Новый ящик' : $account->title" back="/admin/yashchiki">
+<x-ui.shell :title="$new ? 'Новый ящик' : $account->title" :trail="[['Главная', '/'], ['Ящики', '/admin/yashchiki'], [$new ? 'Новый' : $account->title]]" narrow>
     @if (session('check'))
         <div class="mb-4 flex flex-col gap-2">
             @foreach (session('check') as $kind => $r)
@@ -50,12 +50,12 @@
             </x-ui.card>
         @endif
     </form>
-    <div class="sticky-actions">
-        <x-ui.button form="account-form" class="flex-1">Сохранить</x-ui.button>
+    <x-ui.action-bar>
+        <x-ui.button form="account-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @unless ($new)
             <form method="post" action="/admin/yashchiki/{{ $account->slug }}/proverka">@csrf<x-ui.button variant="secondary">Проверить</x-ui.button></form>
             <form method="post" action="/admin/yashchiki/{{ $account->slug }}/sinhronizaciya">@csrf<x-ui.button variant="secondary" aria-label="Синхронизировать"><x-ui.icon name="refresh" class="size-5"/></x-ui.button></form>
             <form method="post" action="/admin/yashchiki/{{ $account->slug }}" data-turbo-confirm="Удалить ящик вместе с письмами?">@csrf @method('delete')<x-ui.button variant="danger"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
         @endunless
-    </div>
+    </x-ui.action-bar>
 </x-ui.shell>

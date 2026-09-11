@@ -1,9 +1,9 @@
-<x-ui.shell title="Страховые" back="/admin/eshchyo">
+<x-ui.shell title="Страховые" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Страховые']]" narrow>
     <div class="flex flex-col gap-3">
         @foreach ($insurers as $insurer)
             <a href="/admin/strahovye/{{ $insurer->id }}" class="row">
                 <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-2"><span class="font-medium">{{ $insurer->name }}</span>@unless ($insurer->is_active)<span class="chip bg-closed-soft text-closed">выключена</span>@endunless</div>
+                    <div class="flex items-center gap-2"><span class="font-medium">{{ $insurer->name }}</span>@unless ($insurer->is_active)<x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">выключена</x-ui.pill>@endunless</div>
                     <div class="text-sm text-ink-muted">
                         @foreach (\App\Workflow\Track::cases() as $track)
                             @php $w = $insurer->workflow($track); @endphp

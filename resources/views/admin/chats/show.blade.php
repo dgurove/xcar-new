@@ -1,4 +1,4 @@
-<x-ui.shell :title="$chat->user->name" back="/admin/chaty">
+<x-ui.shell :title="$chat->user->name" :trail="[['Главная', '/'], ['Чаты', '/admin/chaty'], [$chat->user->name]]" narrow>
     <a href="/admin/offers/{{ $chat->offer->number }}" class="row mb-3">
         <div class="row-photo"><x-offer.photo :media="$chat->offer->mainPhoto()" sizes="64px"/></div>
         <div class="min-w-0 flex-1">

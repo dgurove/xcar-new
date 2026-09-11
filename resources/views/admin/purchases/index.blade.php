@@ -1,7 +1,7 @@
-<x-ui.shell title="Закупки" :wide="true">
-    <div class="mb-4 flex items-center gap-2" data-controller="sheet">
-        <a href="/admin/zakupki/ogranicheniya" class="chip">Кому что не показывать{{ $restricted ? ' · '.$restricted : '' }}</a>
-        <x-ui.button type="button" size="sm" class="ml-auto" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/> Закупка</x-ui.button>
+<x-ui.shell title="Закупки" :trail="[['Главная', '/'], ['Закупки']]">
+    <div class="mb-6 flex items-center gap-2" data-controller="sheet">
+        <x-ui.pill tone="plain" href="/admin/zakupki/ogranicheniya">Кому что не показывать{{ $restricted ? ' · '.$restricted : '' }}</x-ui.pill>
+        <button type="button" class="btn btn-s btn-accent ml-auto rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/> Закупка</button>
         <x-ui.sheet id="purchase-new" title="Новая закупка">
             <form method="post" action="/admin/zakupki" class="flex flex-col gap-4">
                 @csrf
@@ -16,17 +16,17 @@
         @forelse ($purchases as $p)
             <a href="/admin/zakupki/{{ $p->number }}" class="row items-start">
                 <div class="min-w-0 flex-1">
-                    <div class="font-medium">№ {{ $p->number }} · {{ $p->title ?: $p->publicTitle() }}</div>
-                    <div class="mt-1 flex flex-wrap gap-1.5 text-sm">
-                        <span class="chip {{ match($p->state->tone()) { 'open' => 'bg-open-soft text-open', 'plain' => '', default => 'bg-closed-soft text-closed' } }}">{{ $p->state->label() }}</span>
-                        <span class="chip tabular-nums">{{ $p->cars_count }} машин</span>
-                        @if ($p->offers_close_at)<span class="chip tabular-nums">до {{ $p->offers_close_at->translatedFormat('j M, H:i') }}</span>@endif
+                    <div class="font-medium">{{ $p->title ?: $p->publicTitle() }} <span class="nums text-sm font-normal text-ink-dim">№ {{ $p->number }}</span></div>
+                    <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm">
+                        <x-ui.pill :tone="$p->state->tone() === 'open' ? 'open' : ($p->state->tone() === 'plain' ? 'plain' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $p->state->label() }}</x-ui.pill>
+                        <span class="chip nums font-normal">{{ $p->cars_count }} машин</span>
+                        @if ($p->offers_close_at)<span class="chip nums font-normal">до {{ $p->offers_close_at->translatedFormat('j M, H:i') }}</span>@endif
                     </div>
                 </div>
                 <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
             </a>
         @empty
-            <div class="py-24 text-center text-ink-muted">Закупок ещё нет</div>
+            <x-ui.empty>Закупок ещё нет.</x-ui.empty>
         @endforelse
     </div>
 </x-ui.shell>

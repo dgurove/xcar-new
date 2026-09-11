@@ -4,28 +4,31 @@
     $n = $offer->number;
     $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && $s !== OfferState::Delivered);
 @endphp
-<x-ui.shell :title="'№ '.$n.' · '.$offer->title()" back="/admin/offers" :wide="true">
-    <div class="mb-4 flex flex-wrap items-center gap-2">
-        <x-offer.state :state="$offer->state"/>
+<x-ui.shell :title="$offer->titleWithYear()" :trail="[['Главная', '/'], ['Офферы', '/admin/offers'], ['Оффер '.$n]]">
+    <x-slot:actions>
+        @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" icon/>@endif
+        @if ($offer->state->isPublic())<a href="/offers/{{ $n }}" class="btn btn-s btn-quiet btn-round" aria-label="На сайте" title="На сайте"><x-ui.icon name="car" class="size-5"/></a>@endif
+    </x-slot:actions>
+
+    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
+        <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
         @if ($offer->bids_close_at && $offer->state === OfferState::Open)
-            <span class="chip" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}"></span>
+            <x-ui.pill tone="plain"><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}"></span></x-ui.pill>
         @endif
-        @if ($offer->state->isPublic())<a href="/offers/{{ $n }}" class="chip">На сайте →</a>@endif
-        @if ($threads->count() === 1)<a href="/admin/pochta/{{ $threads->first()->id }}" class="chip"><x-ui.icon name="mail" class="size-4"/> Переписка</a>
-        @elseif ($threads->isNotEmpty())<a href="/admin/pochta?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}" class="chip"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</a>@endif
-        @if ($import)<span class="chip bg-urgent-soft text-urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</span>@endif
-        @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" variant="ghost" size="sm" class="ml-auto"/>@endif
-        @if ($errors->has('state'))<span class="field-error w-full">{{ $errors->first('state') }}</span>@endif
+        @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/admin/pochta/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
+        @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/admin/pochta?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
+        @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
+        @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>
 
-    <div class="grid items-start gap-4 lg:grid-cols-[1fr_380px] lg:grid-rows-[auto_1fr]">
+    <div class="grid items-start gap-6 lg:grid-cols-[1fr_22rem] lg:grid-rows-[auto_1fr]">
     @if ($offer->positions->isNotEmpty())
-        <div class="flex flex-col gap-4 lg:col-start-2 lg:row-start-1">
+        <div class="flex flex-col gap-6 lg:col-start-2 lg:row-start-1">
             @include('admin.offers.route')
         </div>
     @endif
 
-    <form method="post" action="/admin/offers/{{ $n }}" id="offer-form" class="flex flex-col gap-4 lg:col-start-1 lg:row-start-1 lg:row-span-2">
+    <form method="post" action="/admin/offers/{{ $n }}" id="offer-form" class="flex flex-col gap-6 lg:col-start-1 lg:row-start-1 lg:row-span-2">
         @csrf @method('put')
 
         <x-ui.card title="Машина">
@@ -54,8 +57,7 @@
                     <span class="field-label">Повреждения</span>
                     <div class="flex flex-wrap gap-2">
                         @foreach (DamageZone::cases() as $zone)
-                            <label><input type="checkbox" name="damage_zones[]" value="{{ $zone->value }}" class="peer sr-only" @checked(in_array($zone->value, old('damage_zones', $offer->damage_zones ?? [])))>
-                                <span class="chip cursor-pointer select-none px-3 py-2 peer-checked:bg-chrome peer-checked:text-white dark:peer-checked:bg-white dark:peer-checked:text-chrome">{{ $zone->label() }}</span></label>
+                            <label class="choice"><input type="checkbox" name="damage_zones[]" value="{{ $zone->value }}" @checked(in_array($zone->value, old('damage_zones', $offer->damage_zones ?? [])))><span>{{ $zone->label() }}</span></label>
                         @endforeach
                     </div>
                 </div>
@@ -98,15 +100,14 @@
         <x-ui.card title="Метки">
             <div class="flex flex-wrap gap-2">
                 @foreach ($tags as $tag)
-                    <label><input type="checkbox" name="tags[]" value="{{ $tag->name }}" class="peer sr-only" @checked(in_array($tag->name, old('tags', $offer->tags ?? [])))>
-                        <span class="chip cursor-pointer select-none px-3 py-2 peer-checked:bg-chrome peer-checked:text-white dark:peer-checked:bg-white dark:peer-checked:text-chrome">{{ $tag->name }}</span></label>
+                    <label class="choice"><input type="checkbox" name="tags[]" value="{{ $tag->name }}" @checked(in_array($tag->name, old('tags', $offer->tags ?? [])))><span>{{ $tag->name }}</span></label>
                 @endforeach
             </div>
         </x-ui.card>
         @endif
     </form>
 
-    <div class="flex flex-col gap-4 lg:col-start-2 {{ $offer->positions->isNotEmpty() ? 'lg:row-start-2' : 'lg:row-start-1 lg:row-span-2' }}">
+    <div class="flex flex-col gap-6 lg:col-start-2 {{ $offer->positions->isNotEmpty() ? 'lg:row-start-2' : 'lg:row-start-1 lg:row-span-2' }}">
         <x-ui.card title="Фотографии" data-controller="photos" data-photos-url-value="/admin/offers/{{ $n }}/media">
             <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             <div class="mb-3 flex gap-2">
@@ -131,11 +132,11 @@
 
         @if ($offer->bids->isNotEmpty())
         <x-ui.card title="Ставки">
-            <div class="flex flex-col divide-y divide-line/40">
+            <div class="flex flex-col gap-2">
                 @foreach ($offer->bids as $bid)
-                    <div class="flex items-center gap-3 py-2.5">
-                        <div class="flex-1">
-                            <div class="flex items-baseline gap-2"><x-offer.price :amount="$bid->amount"/><span class="text-sm text-ink-muted">{{ $bid->state->label() }}</span></div>
+                    <div class="box-nested flex flex-wrap items-center gap-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-baseline gap-2"><span class="nums">{{ number_format($bid->amount, 0, '', ' ') }} ₽</span><x-ui.pill :tone="match ($bid->state) { \App\Offers\BidState::Accepted => 'open', \App\Offers\BidState::Active => 'urgent', \App\Offers\BidState::Declined => 'danger', default => 'closed' }" class="!min-h-0 !py-1 text-xs">{{ $bid->state->label() }}</x-ui.pill></div>
                             <div class="text-sm text-ink-muted">{{ $bid->user->name }} · {{ $bid->user->phoneFormatted() }} · {{ $bid->created_at->translatedFormat('j M, H:i') }}</div>
                             @if ($bid->comment)<div class="text-sm">{{ $bid->comment }}</div>@endif
                         </div>
@@ -151,10 +152,10 @@
 
         @if ($offer->interests->isNotEmpty())
         <x-ui.card title="Интерес">
-            <div class="flex flex-col divide-y divide-line/40">
+            <div class="flex flex-col gap-2">
                 @foreach ($offer->interests as $interest)
-                    <div class="flex items-center gap-3 py-2.5">
-                        <div class="flex-1">
+                    <div class="box-nested flex flex-wrap items-center gap-3">
+                        <div class="min-w-0 flex-1">
                             <div>{{ $interest->user->name }} <a href="tel:+{{ $interest->user->phone }}" class="text-accent-text">{{ $interest->user->phoneFormatted() }}</a></div>
                             <div class="text-sm text-ink-muted">{{ $interest->state->label() }} · {{ $interest->created_at->translatedFormat('j M, H:i') }}</div>
                             @if ($interest->comment)<div class="text-sm">{{ $interest->comment }}</div>@endif
@@ -174,7 +175,7 @@
             <div class="flex flex-col gap-2 text-sm">
                 @foreach ($offer->events->take(30) as $event)
                     <div class="flex gap-3">
-                        <span class="shrink-0 tabular-nums text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
+                        <span class="nums shrink-0 font-normal text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
                         <span>{{ match($event->type) {
                             \App\Offers\OfferEventType::Created => 'Создан',
                             \App\Offers\OfferEventType::Updated => 'Изменён: '.implode(', ', $event->payload['fields'] ?? []),
@@ -198,10 +199,10 @@
     </div>
     </div>
 
-    <div class="sticky-actions" data-controller="sheet">
-        <x-ui.button form="offer-form" class="flex-1">Сохранить</x-ui.button>
+    <x-ui.action-bar data-controller="sheet">
+        <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @if ($transitions->isNotEmpty())
-            <x-ui.button type="button" variant="secondary" data-action="sheet#open"><x-ui.icon name="more" class="size-5"/></x-ui.button>
+            <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
             <x-ui.sheet id="offer-actions" title="Оффер № {{ $n }}">
                 <div class="flex flex-col gap-2">
                     @foreach ($transitions as $next)
@@ -216,5 +217,5 @@
                 </div>
             </x-ui.sheet>
         @endif
-    </div>
+    </x-ui.action-bar>
 </x-ui.shell>

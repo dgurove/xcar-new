@@ -5,9 +5,9 @@
     <span class="field-label">{{ $label }}</span>
     <div class="flex rounded-(--radius-m) bg-surface-3 p-1">
         @foreach (['1' => 'Да', '0' => 'Нет', '' => '—'] as $opt => $text)
-            <label class="flex-1">
-                <input type="radio" name="{{ $name }}" value="{{ $opt }}" class="peer sr-only" @checked((string) $v === $opt)>
-                <span class="block rounded-(--radius-s) py-2 text-center text-sm text-ink-muted peer-checked:bg-surface peer-checked:text-ink">{{ $text }}</span>
+            <label class="tri flex-1">
+                <input type="radio" name="{{ $name }}" value="{{ $opt }}" class="sr-only" @checked((string) $v === $opt)>
+                <span class="block rounded-(--radius-s) py-2 text-center text-sm text-ink-muted">{{ $text }}</span>
             </label>
         @endforeach
     </div>

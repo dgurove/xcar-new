@@ -7,7 +7,7 @@
     [$limitValue, $limitUnit] = $m === null ? [null, 'hours'] : ($m % 1440 === 0 ? [$m / 1440, 'days'] : ($m % 60 === 0 ? [$m / 60, 'hours'] : [$m, 'minutes']));
     $types = ['text' => 'Строка', 'number' => 'Число', 'date' => 'Дата', 'textarea' => 'Текст'];
 @endphp
-<x-ui.shell :title="$stage->exists ? $stage->name : 'Новый этап'" :back="$back">
+<x-ui.shell :title="$stage->exists ? $stage->name : 'Новый этап'" :trail="[['Главная', '/'], ['Страховые', '/admin/strahovye'], ['Маршрут', $back], [$stage->exists ? $stage->name : 'Новый этап']]" narrow>
     <form method="post" action="{{ $stage->exists ? '/admin/marshruty/etapy/'.$stage->id : '/admin/marshruty/'.$w->id.'/etapy' }}" id="stage-form" class="flex flex-col gap-4">
         @csrf @if ($stage->exists) @method('put') @endif
 
@@ -131,10 +131,10 @@
         </x-ui.card>
     </form>
 
-    <div class="sticky-actions">
-        <x-ui.button form="stage-form" class="flex-1">Сохранить</x-ui.button>
+    <x-ui.action-bar>
+        <x-ui.button form="stage-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @if ($stage->exists)
             <form method="post" action="/admin/marshruty/etapy/{{ $stage->id }}" data-turbo-confirm="Удалить этап «{{ $stage->name }}»?">@csrf @method('delete')<x-ui.button variant="danger"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
         @endif
-    </div>
+    </x-ui.action-bar>
 </x-ui.shell>

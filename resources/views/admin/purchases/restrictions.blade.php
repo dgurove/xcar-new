@@ -1,4 +1,4 @@
-<x-ui.shell title="Кому что не показывать" back="/admin/zakupki">
+<x-ui.shell title="Кому что не показывать" :trail="[['Главная', '/'], ['Закупки', '/admin/zakupki'], ['Ограничения']]" narrow>
     <div class="flex flex-col gap-2">
         @foreach ($users as $user)
             @php $hidden = $restrictions[$user->id]->hidden_kinds ?? []; @endphp
@@ -7,7 +7,7 @@
                 <span class="min-w-40 flex-1">{{ $user->name }} <span class="text-sm text-ink-muted">{{ $user->phoneFormatted() }}</span></span>
                 <div class="flex flex-wrap gap-1.5">
                     @foreach (\App\Purchases\Kind::cases() as $kind)
-                        <label><input type="checkbox" name="hidden[]" value="{{ $kind->value }}" class="peer sr-only" @checked(in_array($kind->value, $hidden, true)) data-action="change->autosubmit#submit"><span class="chip cursor-pointer select-none peer-checked:bg-danger-soft peer-checked:text-danger">{{ $kind->label() }}</span></label>
+                        <label class="choice choice-danger"><input type="checkbox" name="hidden[]" value="{{ $kind->value }}" @checked(in_array($kind->value, $hidden, true)) data-action="change->autosubmit#submit"><span>{{ $kind->label() }}</span></label>
                     @endforeach
                 </div>
             </form>

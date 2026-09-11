@@ -1,13 +1,10 @@
-<x-ui.shell title="Сделки" :wide="true">
-    <div class="mb-4 flex flex-col gap-3">
-        <x-ui.sort :items="\App\Http\Admin\DealController::SORTS" :current="$sort"/>
-        <x-ui.presets :items="\App\Http\Admin\DealController::PRESETS" :current="$preset"/>
-    </div>
+<x-ui.shell title="Сделки" :count="$deals->total()" :trail="[['Главная', '/'], ['Сделки']]">
+    <x-ui.toolbar :sorts="\App\Http\Admin\DealController::SORTS" :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" name="deals"/>
 
     @if ($deals->isEmpty())
-        <div class="py-24 text-center text-ink-muted">Сделок нет</div>
+        <x-ui.empty class="mt-6">Сделок нет.</x-ui.empty>
     @else
-        <div class="flex flex-col gap-2">
+        <div class="mt-6 flex flex-col gap-2">
             @foreach ($deals as $deal)
                 @php $offer = $deal->offer; $position = $offer->position(); @endphp
                 <a href="/admin/offers/{{ $offer->number }}" class="row items-start">
@@ -15,22 +12,23 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex items-baseline gap-2">
                             <span class="truncate font-medium">{{ $offer->titleWithYear() }}</span>
-                            <span class="shrink-0 text-sm text-ink-muted">№ {{ $offer->number }}</span>
+                            <span class="nums shrink-0 text-sm font-normal text-ink-dim">№ {{ $offer->number }}</span>
                         </div>
-                        <div class="text-sm text-ink-muted">{{ $deal->buyer?->name }} · <span class="font-semibold text-ink tabular-nums">{{ number_format($deal->amount, 0, '', ' ') }} ₽</span></div>
-                        <div class="mt-1.5 flex flex-wrap gap-1.5">
+                        <div class="text-sm text-ink-muted">{{ $deal->buyer?->name }} · <span class="nums text-ink">{{ number_format($deal->amount, 0, '', ' ') }} ₽</span></div>
+                        <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
                             @if ($deal->state !== \App\Offers\DealState::Active)
-                                <span class="chip {{ $deal->state === \App\Offers\DealState::Done ? 'bg-open-soft text-open' : 'bg-danger-soft text-danger' }}">{{ $deal->state->label() }}</span>
+                                <x-ui.pill :tone="$deal->state === \App\Offers\DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.pill>
                             @elseif ($position)
-                                <x-route.status :position="$position"/>
+                                <x-ui.pill :tone="$position->isOverdue() ? 'urgent' : 'plain'">{{ $position->stage->block?->name ?? $position->stage->name }}</x-ui.pill>
+                                <x-route.clock :position="$position" side="staff"/>
                             @else
-                                <x-offer.state :state="$offer->state"/>
+                                <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
                             @endif
                         </div>
                     </div>
                 </a>
             @endforeach
         </div>
-        <div class="mt-4">{{ $deals->links() }}</div>
+        <div class="mt-8">{{ $deals->links() }}</div>
     @endif
 </x-ui.shell>

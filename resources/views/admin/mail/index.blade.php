@@ -1,34 +1,34 @@
-<x-ui.shell title="Почта" :wide="true">
-    <div class="mb-4 flex flex-col gap-3">
-        @if ($base === '/admin/pochta')<x-ui.switch :items="['/admin/pochta' => 'Письма', '/admin/chaty' => 'Чаты'.($chatsUnread ? ' · '.$chatsUnread : '')]" current="/admin/pochta"/>@endif
-        <form method="get" class="flex gap-2" data-controller="autosubmit">
-            @if ($slug)<input type="hidden" name="yashchik" value="{{ $slug }}">@endif
-            @if ($preset !== 'all')<input type="hidden" name="preset" value="{{ $preset }}">@endif
-            <label class="relative flex-1">
-                <x-ui.icon name="search" class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-dim"/>
-                <input type="search" name="q" value="{{ $q }}" placeholder="Тема, отправитель" class="field-input !bg-surface pl-11" enterkeyhint="search">
-            </label>
-            <a href="{{ $base }}/novoe{{ $slug ? '?yashchik='.$slug : '' }}" class="btn btn-primary shrink-0"><x-ui.icon name="edit" class="size-5"/><span class="hidden sm:inline">Написать</span></a>
-        </form>
-        <div class="flex items-center gap-2">
-            <x-ui.presets :items="\App\Http\Admin\MailController::PRESETS" :current="$preset" :counts="['unread' => $unread]"/>
-        </div>
-        @if ($accounts->count() > 1)
-            <div class="presets">
-                <a href="{{ request()->fullUrlWithQuery(['yashchik' => null, 'page' => null]) }}" class="preset" @if (!$slug) aria-current="true" @endif>Все ящики</a>
-                @foreach ($accounts as $account)
-                    <a href="{{ request()->fullUrlWithQuery(['yashchik' => $account->slug, 'page' => null]) }}" class="preset" @if ($slug === $account->slug) aria-current="true" @endif>{{ $account->title }}</a>
-                @endforeach
-            </div>
+<x-ui.shell title="Почта" :heading="false" :trail="[['Главная', '/'], ['Почта']]">
+    <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        @if ($base === '/admin/pochta')
+            <x-ui.section-title level="h1" :count="$threads->total()">Письма</x-ui.section-title>
+            <x-ui.section-title href="/admin/chaty" :current="false" :count="$chatsUnread ?: null">Чаты</x-ui.section-title>
+        @else
+            <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
         @endif
     </div>
 
+    <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\MailController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" :hidden="['yashchik' => $slug]" name="mail">
+        <x-slot:extra>
+            <a href="{{ $base }}/novoe{{ $slug ? '?yashchik='.$slug : '' }}" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">Написать</span></a>
+        </x-slot:extra>
+        <x-slot:filters>
+            <input name="q" value="{{ $q }}" placeholder="Тема, отправитель" class="field-input field-s">
+            @if ($accounts->count() > 1)
+                <select name="yashchik" class="field-input field-s" aria-label="Ящик">
+                    <option value="">Все ящики</option>
+                    @foreach ($accounts as $account)<option value="{{ $account->slug }}" @selected($slug === $account->slug)>{{ $account->title }}</option>@endforeach
+                </select>
+            @endif
+        </x-slot:filters>
+    </x-ui.toolbar>
+
     @if ($accounts->isEmpty())
-        <div class="py-24 text-center text-ink-muted">Ящиков ещё нет — <a href="/admin/yashchiki/novyy" class="text-accent-text">завести</a></div>
+        <x-ui.empty class="mt-6" href="/admin/yashchiki/novyy" link="Завести ящик">Ящиков ещё нет.</x-ui.empty>
     @elseif ($threads->isEmpty())
-        <div class="py-24 text-center text-ink-muted">Писем нет</div>
+        <x-ui.empty class="mt-6">Писем нет.</x-ui.empty>
     @else
-        <div class="flex flex-col gap-2" id="threads">
+        <div class="mt-6 flex flex-col gap-2" id="threads">
             @foreach ($threads as $thread)
                 @php $who = collect($thread->counterparts())->map(fn ($p) => $p['name'] ?: $p['email'])->take(3)->implode(', ') ?: $thread->account->title; @endphp
                 <a href="{{ $base }}/{{ $thread->id }}" class="row items-start">
@@ -50,6 +50,6 @@
                 </a>
             @endforeach
         </div>
-        <div class="mt-4">{{ $threads->links() }}</div>
+        <div class="mt-8">{{ $threads->links() }}</div>
     @endif
 </x-ui.shell>

@@ -1,12 +1,12 @@
 @php use App\Purchases\{PurchaseState, ImportState}; $n = $purchase->number; @endphp
-<x-ui.shell :title="'№ '.$n.' · '.($purchase->title ?: $purchase->publicTitle())" back="/admin/zakupki" :wide="true">
-    <div class="mb-4 flex flex-wrap items-center gap-2" data-controller="sheet">
-        <span class="chip {{ match($purchase->state->tone()) { 'open' => 'bg-open-soft text-open', 'plain' => '', default => 'bg-closed-soft text-closed' } }}">{{ $purchase->state->label() }}</span>
-        @if ($purchase->offers_close_at)<span class="chip tabular-nums">до {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span>@endif
-        @if ($purchase->state->isPublic())<a href="/zakupki/{{ $n }}" class="chip">На сайте →</a>@endif
-        @if ($stats['pending'])<span class="chip bg-urgent-soft text-urgent">выкачка: {{ $stats['pending'] }}</span>@endif
-        @if ($errors->any())<span class="field-error w-full">{{ $errors->first() }}</span>@endif
-        <x-ui.button type="button" variant="secondary" size="sm" class="ml-auto" data-action="sheet#open"><x-ui.icon name="more" class="size-5"/></x-ui.button>
+<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :trail="[['Главная', '/'], ['Закупки', '/admin/zakupki'], ['Закупка '.$n]]">
+    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-2" data-controller="sheet">
+        <x-ui.pill :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}</x-ui.pill>
+        @if ($purchase->offers_close_at)<x-ui.pill tone="plain"><span class="nums font-normal">до {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span></x-ui.pill>@endif
+        @if ($purchase->state->isPublic())<x-ui.pill tone="plain" href="/zakupki/{{ $n }}">На сайте</x-ui.pill>@endif
+        @if ($stats['pending'])<x-ui.pill tone="urgent">выкачка: {{ $stats['pending'] }}</x-ui.pill>@endif
+        @if ($errors->any())<x-ui.flash tone="danger" class="w-full">{{ $errors->first() }}</x-ui.flash>@endif
+        <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <x-ui.sheet id="purchase-actions" title="Закупка № {{ $n }}">
             <form method="post" action="/admin/zakupki/{{ $n }}" class="flex flex-col gap-3">
                 @csrf @method('put')
@@ -29,7 +29,7 @@
 
     <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         @foreach ([['Машин', $stats['cars']], ['С фото', $stats['photos']], ['С ценами', $stats['priced']], ['Сумма лучших', $stats['sum'] ? number_format($stats['sum'], 0, '', ' ').' ₽'.($stats['ours'] ? ' · '.($stats['sum'] >= $stats['ours'] ? '+' : '−').number_format(abs($stats['sum'] - $stats['ours']), 0, '', ' ') : '') : '—']] as [$label, $value])
-            <div class="box !p-4"><div class="text-sm text-ink-muted">{{ $label }}</div><div class="text-xl font-semibold tabular-nums">{{ $value }}</div></div>
+            <div class="box !p-4"><div class="nums text-2xl leading-none">{{ $value }}</div><div class="mt-2 text-sm text-ink-muted">{{ $label }}</div></div>
         @endforeach
     </div>
 
@@ -42,11 +42,9 @@
             @if ($stats['cars'])<a href="/admin/zakupki/{{ $n }}/xlsx" class="btn btn-secondary flex-1" data-turbo="false"><x-ui.icon name="file" class="size-5"/> Выгрузить xlsx</a>@endif
         </div>
         @if ($stats['cars'])
-        <form method="get" data-controller="autosubmit">
-            @if ($preset !== 'all')<input type="hidden" name="preset" value="{{ $preset }}">@endif
-            <label class="relative block"><x-ui.icon name="search" class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-dim"/><input type="search" name="q" value="{{ $q }}" placeholder="ДЛ, VIN, марка" class="field-input !bg-surface pl-11" enterkeyhint="search"></label>
-        </form>
-        <x-ui.presets :items="\App\Http\Admin\PurchaseController::PRESETS" :current="$preset"/>
+        <x-ui.toolbar :pills="\App\Http\Admin\PurchaseController::PRESETS" :pill="$preset" pill-param="preset" name="purchase">
+            <x-slot:filters><input name="q" value="{{ $q }}" placeholder="ДЛ, VIN, марка" class="field-input field-s"></x-slot:filters>
+        </x-ui.toolbar>
         @endif
     </div>
 
@@ -60,13 +58,13 @@
                     <div class="text-sm text-ink-muted">{{ implode(' · ', array_filter([$car->price_listing ? number_format($car->price_listing, 0, '', ' ').' ₽' : null, $car->kind->label(), $car->settlement?->name ?? $car->city])) }}</div>
                     <div class="mt-1 flex flex-wrap items-center gap-1.5 text-sm">
                         @if ($best)<span class="font-semibold tabular-nums {{ $best->state === \App\Purchases\OfferState::Chosen ? 'text-accent-text' : '' }}">{{ number_format($best->amount, 0, '', ' ') }} ₽</span><span class="text-ink-dim">{{ $car->activeOffers->count() }}</span>@endif
-                        @if ($bad)<span class="chip bg-urgent-soft text-urgent">{{ $car->specs_state->needsAttention() ? $car->specs_state->label() : $car->photos_state->label() }}</span>@endif
+                        @if ($bad)<x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">{{ $car->specs_state->needsAttention() ? $car->specs_state->label() : $car->photos_state->label() }}</x-ui.pill>@endif
                         @if (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true))<span class="chip">фото едут</span>@endif
-                        @unless ($car->is_published)<span class="chip bg-closed-soft text-closed">скрыта</span>@endunless
+                        @unless ($car->is_published)<x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">скрыта</x-ui.pill>@endunless
                     </div>
                 </div>
             </a>
         @endforeach
     </div>
-    <div class="mt-4">{{ $cars->links() }}</div>
+    <div class="mt-8">{{ $cars->links() }}</div>
 </x-ui.shell>

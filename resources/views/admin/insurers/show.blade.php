@@ -3,9 +3,9 @@
     $w = $workflow;
     $base = "/admin/strahovye/{$insurer->id}";
 @endphp
-<x-ui.shell :title="$insurer->name" back="/admin/strahovye" :wide="true">
-    <div class="mb-4 flex flex-wrap items-center gap-2" data-controller="sheet">
-        @unless ($insurer->is_active)<span class="chip bg-closed-soft text-closed">выключена</span>@endunless
+<x-ui.shell :title="$insurer->name" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Страховые', '/admin/strahovye'], [$insurer->name]]">
+    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-2" data-controller="sheet">
+        @unless ($insurer->is_active)<x-ui.pill tone="closed">выключена</x-ui.pill>@endunless
         <x-ui.button type="button" variant="secondary" size="sm" data-action="sheet#open">Реквизиты</x-ui.button>
         <x-ui.sheet id="insurer-form" title="Страховая" :open="$errors->hasAny(['name', 'email', 'phone'])">
             <form method="post" action="{{ $base }}" class="flex flex-col gap-4">
@@ -22,19 +22,19 @@
                 <form method="post" action="{{ $base }}" class="mt-3" data-turbo-confirm="Удалить страховую?">@csrf @method('delete')<x-ui.button variant="danger" block>Удалить</x-ui.button></form>
             @endif
         </x-ui.sheet>
-        <div class="presets ml-auto !mx-0 !px-0">
+        <div class="ml-auto flex gap-2">
             @foreach (Track::cases() as $t)
-                <a href="{{ $base }}?vetka={{ $t->value }}" class="preset" @if ($track === $t) aria-current="true" @endif>{{ $t->label() }}</a>
+                <x-ui.pill :href="$base.'?vetka='.$t->value" :current="$track === $t">{{ $t->label() }}</x-ui.pill>
             @endforeach
         </div>
     </div>
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
         @if ($w->is_active)
-            <span class="chip bg-open-soft text-open">Маршрут включён</span>
+            <x-ui.pill tone="open">Маршрут включён</x-ui.pill>
             <form method="post" action="/admin/marshruty/{{ $w->id }}/vklyuchit">@csrf<input type="hidden" name="active" value="0"><x-ui.button variant="ghost" size="sm">Выключить</x-ui.button></form>
         @elseif (!$problems)
-            <span class="chip bg-closed-soft text-closed">Маршрут выключен</span>
+            <x-ui.pill tone="closed">Маршрут выключен</x-ui.pill>
             <form method="post" action="/admin/marshruty/{{ $w->id }}/vklyuchit">@csrf<input type="hidden" name="active" value="1"><x-ui.button size="sm">Включить</x-ui.button></form>
         @endif
         @if ($errors->has('workflow'))<span class="field-error w-full">{{ $errors->first('workflow') }}</span>@endif
@@ -83,7 +83,7 @@
                                     @elseif ($stage->limit_minutes)
                                         <span class="chip">{{ $stage->limit_minutes >= 1440 ? intdiv($stage->limit_minutes, 1440).' д' : ($stage->limit_minutes >= 60 ? intdiv($stage->limit_minutes, 60).' ч' : $stage->limit_minutes.' мин') }}</span>
                                     @endif
-                                    @if ($stage->offer_state)<x-offer.state :state="$stage->offer_state"/>@endif
+                                    @if ($stage->offer_state)<span class="chip">{{ $stage->offer_state->label() }}</span>@endif
                                     @if ($stage->car_place)<span class="chip bg-open-soft text-open">{{ $stage->car_place->label() }}</span>@endif
                                     @if ($stage->asks !== \App\Workflow\Asks::Nothing)<span class="chip">{{ $stage->asks->label() }}</span>@endif
                                 </div>
