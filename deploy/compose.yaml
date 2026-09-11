@@ -1,0 +1,105 @@
+# Боевой стек xcar-new. Обычный docker compose. Настройки приложения — из
+# `.env.app` рядом (в git не лежит, образец `.env.app.example`), настройки
+# стека — из `.env`.
+name: xcar
+
+x-app: &app
+  image: xcar/app:${TAG:?нужен тег образа из deploy.sh}
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+    target: app
+  restart: unless-stopped
+  env_file:
+    - .env.app
+  environment: &app-env
+    TZ: Europe/Moscow
+    # Ключи хаба обязаны совпадать у сервера и у тех, кто публикует.
+    MERCURE_PUBLISHER_KEY: ${MERCURE_PUBLISHER_KEY:?ключ издателя Mercure}
+    MERCURE_SUBSCRIBER_KEY: ${MERCURE_SUBSCRIBER_KEY:?ключ подписчика Mercure}
+    MERCURE_HUB_URL: http://app/.well-known/mercure
+  volumes:
+    - storage:/app/storage
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  app:
+    <<: *app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      <<: *app-env
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      SITE_ADDRESSES: ${SITE_ADDRESSES:-http://localhost}
+      REDIRECT_ADDRESSES: ${REDIRECT_ADDRESSES:-http://redirect.localhost}
+      REDIRECT_TO: ${REDIRECT_TO:-localhost}
+      CADDY_GLOBAL_EXTRA: ${CADDY_GLOBAL_EXTRA:-}
+    volumes:
+      - storage:/app/storage
+      # Сертификаты. Терять нельзя: Let's Encrypt считает попытки.
+      - caddy_data:/data
+      - caddy_config:/config
+
+  queue:
+    <<: *app
+    command: php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=default,mail,notifications
+    healthcheck:
+      disable: true
+
+  # Долгие задачи (выкачка фото, разбор ящика) — своим соединением с большим
+  # retry_after, чтобы работник не считал их зависшими.
+  queue-long:
+    <<: *app
+    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=long
+    healthcheck:
+      disable: true
+
+  scheduler:
+    <<: *app
+    command: php artisan schedule:work
+    healthcheck:
+      disable: true
+
+  postgres:
+    image: postgres:18.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:?имя базы}
+      POSTGRES_USER: ${DB_USERNAME:?пользователь базы}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?пароль базы}
+      TZ: Europe/Moscow
+    command:
+      - postgres
+      - -c
+      - max_connections=100
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - log_min_duration_statement=1000
+    volumes:
+      # С 18-й версии монтировать надо /var/lib/postgresql, не .../data.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  storage:
+  caddy_data:
+  caddy_config:

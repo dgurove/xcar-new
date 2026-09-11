@@ -1,0 +1,149 @@
+/* ==========================================================================
+   XCar. Единственный источник правды по цвету, типографике и скруглениям —
+   для витрины, кабинета, админа и стоянки.
+
+   Девять правил:
+   1. Лайм — глагол, а не поверхность: действие, активный пункт, текущий шаг.
+      На лайме текст всегда белый.
+   2. Тёмное — только хром: первый экран и, в тёмной теме, полосы шапки и
+      таб-бара. Третьего фона нет.
+   3. У карточек тени нет. Тень только у висящего над страницей: шторка,
+      меню, сообщение.
+   4. Обводок нет. Белое на сером различается заливкой.
+   5. Скругление 24 — основное. 16 вложенное, 12 поле, 8 чип.
+   6. Заголовки — 500, не 700. Полужирным набираются числа.
+   7. Подписей под элементами нет. Непонятный блок переделывается.
+   8. Числа табличные: цена не дёргает соседей при обновлении.
+   9. Пустой блок не рисуется.
+   ========================================================================== */
+
+@import "tailwindcss";
+
+@source "../views";
+@source "../js";
+
+@font-face {
+  font-family: "Onest";
+  src: url("/fonts/onest-var.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+  --color-chrome: #121212;
+  --color-chrome-light: #1d1d1b;
+  --color-bar: #ffffff;
+
+  --color-ground: #f7f7f7;
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f7f7;
+  --color-surface-3: #ececec;
+  --color-line: #d0d0d0;
+
+  --color-ink: #1d1d1b;
+  --color-ink-muted: #808080;
+  --color-ink-dim: #a7a7a7;
+  --color-ink-invert: #ffffff;
+
+  --color-accent: #97bf0d;
+  --color-accent-hover: #669709;
+  --color-accent-soft: #f0f7d8;
+  --color-accent-text: #669709;
+
+  --color-open: #669709;
+  --color-open-soft: #f0f7d8;
+  --color-urgent: #ff8800;
+  --color-urgent-soft: #fff3e0;
+  --color-closed: #808080;
+  --color-closed-soft: #ececec;
+  --color-danger: #ff0037;
+  --color-danger-soft: #ffe8ec;
+
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 16px;
+  --radius-xl: 24px;
+
+  --shadow-drop: 0 0 1px 0 rgb(0 0 0 / .04), 0 2px 6px 0 rgb(0 0 0 / .04),
+                 0 16px 24px 0 rgb(0 0 0 / .12);
+
+  --container-site: 1320px;
+  --spacing-header: 56px;
+  --spacing-tabbar: 56px;
+  --spacing-safe-b: env(safe-area-inset-bottom);
+  --spacing-safe-t: env(safe-area-inset-top);
+}
+
+:root { color-scheme: light; }
+
+.dark {
+  color-scheme: dark;
+  --color-bar: #121212;
+  --color-ground: #161616;
+  --color-surface: #0d0d0d;
+  --color-surface-2: #1a1a1a;
+  --color-surface-3: #242424;
+  --color-line: #2a2a2a;
+  --color-ink: #ededed;
+  --color-ink-muted: #9a9a9a;
+  --color-ink-dim: #6a6a6a;
+  --color-ink-invert: #161616;
+  --color-accent-hover: #7ca30b;
+  --color-accent-soft: #1a2605;
+  --color-accent-text: #a6cf3a;
+  --color-open: #a6cf3a;
+  --color-open-soft: #1a2605;
+  --color-urgent-soft: #2a1a00;
+  --color-closed: #9a9a9a;
+  --color-closed-soft: #262626;
+  --color-danger-soft: #33000a;
+  --shadow-drop: 0 0 1px 0 rgb(0 0 0 / .5), 0 2px 6px 0 rgb(0 0 0 / .5),
+                 0 16px 24px 0 rgb(0 0 0 / .6);
+}
+
+@layer base {
+  html {
+    /* Холст под резиновым оверскроллом iOS — цвет полосы, не страницы. */
+    background-color: var(--color-bar);
+    scroll-padding-top: 5rem;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "tnum" 1, "ss01" 1;
+    overscroll-behavior-y: none;
+    touch-action: manipulation;
+  }
+
+  h1, h2, h3, h4 { font-weight: 500; }
+
+  /* 16px — ниже iOS приближает страницу при фокусе в поле. */
+  input, select, textarea, button { font: inherit; font-size: 16px; }
+
+  ::selection { background: var(--color-accent-soft); }
+
+  /* Переходы между страницами: с iOS 18.2 и Chrome 126 — чистым CSS. */
+  @view-transition { navigation: auto; }
+  html[data-turbo-visit-direction="forward"]::view-transition-new(root) {
+    animation: 220ms cubic-bezier(.2,.8,.2,1) both slide-in;
+  }
+  html[data-turbo-visit-direction="back"]::view-transition-old(root) {
+    animation: 200ms cubic-bezier(.2,.8,.2,1) both slide-out;
+    z-index: 1;
+  }
+  @keyframes slide-in  { from { transform: translateX(24px); opacity: 0 } }
+  @keyframes slide-out { to   { transform: translateX(24px); opacity: 0 } }
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  }
+
+  .turbo-progress-bar { background: var(--color-accent); height: 2px; }
+}

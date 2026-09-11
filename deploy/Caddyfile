@@ -1,0 +1,103 @@
+# Граница и сервер приложения — один процесс FrankenPHP под Laravel Octane.
+# Переменные CADDY_SERVER_* и APP_PUBLIC_PATH выставляет `octane:frankenphp`,
+# остальные приходят из compose.
+{
+	email {$ACME_EMAIL:proverka@example.com}
+	admin {$CADDY_SERVER_ADMIN_HOST}:{$CADDY_SERVER_ADMIN_PORT}
+
+	# Пусто в бою. `local_certs` — самоподписанные сертификаты для проверки
+	# стека, когда ACME пройти нельзя.
+	{$CADDY_GLOBAL_EXTRA}
+
+	log {
+		output stderr
+		format json
+	}
+
+	servers {
+		trusted_proxies static private_ranges
+	}
+
+	frankenphp {
+		worker {
+			file "{$APP_PUBLIC_PATH}/frankenphp-worker.php"
+			{$CADDY_SERVER_WORKER_DIRECTIVE}
+		}
+	}
+}
+
+(common) {
+	log {
+		output stderr
+		# Токен Mercure приезжает в строке запроса — в журнал не пускаем.
+		format filter {
+			request>uri query {
+				replace authorization ВЫРЕЗАНО
+			}
+		}
+	}
+
+	encode zstd br gzip
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+(app) {
+	root * {$APP_PUBLIC_PATH}
+
+	# Медиатека с диска, мимо PHP.
+	handle_path /media/* {
+		root * /app/storage/app/media
+		file_server
+		header Cache-Control "public, max-age=2592000"
+	}
+
+	handle /build/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Service worker всегда свежий, иначе обновление приложения ждёт сутки.
+	handle /sw.js {
+		header Cache-Control "no-cache"
+		file_server
+	}
+
+	php_server {
+		index frankenphp-worker.php
+		try_files {path} frankenphp-worker.php
+		resolve_root_symlink
+	}
+}
+
+# Проверка живости только изнутри контейнера: ответ даёт php, не сервер.
+http://127.0.0.1:2020 {
+	import app
+}
+
+# Все имена сайта одним блоком: приложение само разбирает хост.
+# Пока домена нет — `http://<ip>`; в бою — `xcar.ru, park.xcar.ru`.
+# `http://app` — внутреннее имя, по нему очередь публикует в хаб.
+{$SITE_ADDRESSES:http://localhost}, http://app {
+	import common
+
+	# Хаб живых обновлений. Приложение публикует всё только с `private=on`:
+	# список тем в токене подписчика ограничивает доставку, а не подписку.
+	mercure {
+		publisher_jwt {$MERCURE_PUBLISHER_KEY}
+		subscriber_jwt {$MERCURE_SUBSCRIBER_KEY}
+	}
+
+	import app
+}
+
+# Прежние имена уводим на основные. Пусто, пока домена нет.
+{$REDIRECT_ADDRESSES:http://redirect.localhost} {
+	import common
+	redir https://{$REDIRECT_TO:localhost}{uri} permanent
+}
