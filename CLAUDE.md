@@ -35,13 +35,32 @@
 
 ```bash
 ./serve-local.sh                 # http://localhost:8010 (php@8.5 и postgres из brew)
+php artisan queue:work database-long --queue=long,mail --stop-when-empty   # почта, фото, закупки
+php artisan queue:work --stop-when-empty                                   # конверсии, уведомления
+php artisan offers:tick | mail:sync | mail:reconcile | notifications:digest | push:keys
 npm run build                    # ассеты; npm run dev — с горячей перезагрузкой
+node scripts/icons.mjs           # иконки PWA из favicon.svg
 ./deploy/server-setup.sh         # один раз на новый сервер
-./deploy/deploy.sh               # выкладка: снимок git → сборка на сервере → миграции → up
+./deploy/deploy.sh               # выкладка: снимок git → сборка → бэкап базы → миграции → up → таймеры
+./deploy/deploy.sh backup|check|artisan …|rollback TAG
 ```
 
 Локальная база `xcar_new` (роль xcar/xcar, порт 5432). Порт 8010, потому
-что 8000 занят старым проектом.
+что 8000 занят старым проектом. Стоянка локально — `http://park.localhost:8010`
+(вход отдельный). Почта локально — IMAP-сервер на Twisted
+`/tmp/claude-501/imapserver.py` (порт 1143, `offer`/`deal` : `parol`, письма
+файлами в `imapdrop/<user>/`) и `mailpit` (SMTP 1025, веб 8025); хаба Mercure
+локально нет — live проверяется на сервере.
+
+## Модули
+
+`app/Offers` (оффер, ставки, сделки, шеринг PDF), `app/Workflow` (страховые
+и маршруты по этапам, `ChangeOfferState` — одна дверь состояний),
+`app/Mail` (ящики, синк, треды, кандидаты, шаблоны), `app/Chats`, `app/Park`
+(стоянка), `app/Purchases` (закупки Carcade), `app/Notifications`
+(`Notice` — база, канал database+mail+push), `app/Push`, `app/Live` (Mercure:
+`card/refresh/toast/badges`), `app/Media`, `app/Cars`, `app/Users`.
+Заметки по этапам — `notes/etap-*.md`.
 
 ## Сервер
 
