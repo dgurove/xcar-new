@@ -46,15 +46,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/lk/uvedomleniya/{id}', [NotificationController::class, 'open']);
 
     Route::get('/live/badges', [FragmentController::class, 'badges']);
+
+    Route::get('/zakupki', [\App\Http\Site\PurchaseController::class, 'index']);
+    Route::get('/zakupki/{purchase}', [\App\Http\Site\PurchaseController::class, 'show']);
+    Route::get('/zakupki/{purchase}/{car}', [\App\Http\Site\PurchaseController::class, 'car']);
+    Route::post('/zakupki/{purchase}/{car}/cena', [\App\Http\Site\PurchaseController::class, 'offer']);
+    Route::post('/zakupki/ceny/{offer}/otozvat', [\App\Http\Site\PurchaseController::class, 'withdraw']);
 });
 
-// Заглушки разделов до их этапов.
-foreach ([
-    '/zakupki' => 'Закупки',
-    '/admin/zakupki' => 'Закупки',
-] as $path => $title) {
-    Route::view($path, 'site.placeholder', ['title' => $title]);
-}
 
 if (app()->isLocal()) {
     Route::view('/admin/ui', 'admin.ui');

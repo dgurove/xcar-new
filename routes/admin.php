@@ -70,6 +70,27 @@ Route::prefix('admin')->middleware(['auth', 'staff'])->group(function () {
     Route::post('/pochta/{thread}/neprochitano', [MailController::class, 'unread']);
     Route::post('/pochta/{thread}/privyazka', [MailController::class, 'link']);
 
+    Route::get('/zakupki', [\App\Http\Admin\PurchaseController::class, 'index']);
+    Route::post('/zakupki', [\App\Http\Admin\PurchaseController::class, 'store']);
+    Route::get('/zakupki/ogranicheniya', [\App\Http\Admin\PurchaseController::class, 'restrictions']);
+    Route::post('/zakupki/ogranicheniya/{user}', [\App\Http\Admin\PurchaseController::class, 'restrict']);
+    Route::post('/zakupki/ceny/{offer}/vybrat', [\App\Http\Admin\PurchaseController::class, 'choose']);
+    Route::get('/zakupki/{purchase}', [\App\Http\Admin\PurchaseController::class, 'show']);
+    Route::put('/zakupki/{purchase}', [\App\Http\Admin\PurchaseController::class, 'update']);
+    Route::post('/zakupki/{purchase}/sostoyanie', [\App\Http\Admin\PurchaseController::class, 'state']);
+    Route::post('/zakupki/{purchase}/fayl', [\App\Http\Admin\PurchaseController::class, 'upload']);
+    Route::post('/zakupki/{purchase}/import', [\App\Http\Admin\PurchaseController::class, 'import']);
+    Route::get('/zakupki/{purchase}/xlsx', [\App\Http\Admin\PurchaseController::class, 'export']);
+    Route::post('/zakupki/{purchase}/zanovo', [\App\Http\Admin\PurchaseController::class, 'refetch']);
+    Route::get('/zakupki/{purchase}/{car}', [\App\Http\Admin\PurchaseController::class, 'car']);
+    Route::put('/zakupki/{purchase}/{car}', [\App\Http\Admin\PurchaseController::class, 'updateCar']);
+    Route::post('/zakupki/{purchase}/{car}/zabrat', [\App\Http\Admin\PurchaseController::class, 'fetch']);
+    Route::post('/zakupki/mashiny/{car}/media', [\App\Http\Admin\PurchaseCarPhotoController::class, 'store']);
+    Route::post('/zakupki/mashiny/{car}/media/poryadok', [\App\Http\Admin\PurchaseCarPhotoController::class, 'reorder']);
+    Route::post('/zakupki/mashiny/{car}/media/{media}/skryt', [\App\Http\Admin\PurchaseCarPhotoController::class, 'toggle']);
+    Route::post('/zakupki/mashiny/{car}/media/{media}/glavnoe', [\App\Http\Admin\PurchaseCarPhotoController::class, 'main']);
+    Route::delete('/zakupki/mashiny/{car}/media/{media}', [\App\Http\Admin\PurchaseCarPhotoController::class, 'destroy']);
+
     Route::get('/chaty', [\App\Http\Admin\ChatController::class, 'index']);
     Route::get('/chaty/{chat}', [\App\Http\Admin\ChatController::class, 'show']);
 
