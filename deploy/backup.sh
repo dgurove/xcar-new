@@ -20,9 +20,12 @@ mkdir -p "$BACKUPS"
 
 db="$BACKUPS/db-$STAMP.dump"
 echo "==> база $DB_DATABASE"
-docker exec xcar-postgres-1 pg_dump -U "$DB_USERNAME" -d "$DB_DATABASE" -Fc --no-owner --no-privileges > "$db"
+# Дамп и проверка оглавления — внутри контейнера: формату custom нужен seek,
+# из конвейера pg_restore --list отвечает «did not find magic string».
+docker exec xcar-postgres-1 sh -c "pg_dump -U '$DB_USERNAME' -d '$DB_DATABASE' -Fc --no-owner --no-privileges -f /tmp/backup.dump && pg_restore --list /tmp/backup.dump > /dev/null"
+docker cp xcar-postgres-1:/tmp/backup.dump "$db"
+docker exec xcar-postgres-1 rm -f /tmp/backup.dump
 test -s "$db" || { echo "дамп пустой" >&2; exit 1; }
-docker exec -i xcar-postgres-1 pg_restore --list /dev/stdin < "$db" > /dev/null || { echo "дамп не читается" >&2; exit 1; }
 echo "    $(du -h "$db" | cut -f1)"
 
 if [ "$WITH_FILES" = "1" ]; then
