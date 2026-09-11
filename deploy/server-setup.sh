@@ -41,8 +41,9 @@ if ! command -v docker >/dev/null; then
     curl -fsSL https://get.docker.com | sh >/dev/null
 fi
 mkdir -p /etc/docker
+# Зеркало Docker Hub: с нового адреса Hub быстро отвечает 429 на сборке.
 [ -s /etc/docker/daemon.json ] || cat > /etc/docker/daemon.json <<'EOJ'
-{ "log-driver": "json-file", "log-opts": { "max-size": "20m", "max-file": "5" } }
+{ "log-driver": "json-file", "log-opts": { "max-size": "20m", "max-file": "5" }, "registry-mirrors": ["https://mirror.gcr.io"] }
 EOJ
 systemctl restart docker
 
