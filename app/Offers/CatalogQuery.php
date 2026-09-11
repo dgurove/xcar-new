@@ -10,11 +10,11 @@ final class CatalogQuery
 {
     public const SORTS = ['fresh' => 'Сначала новые', 'closing' => 'Скоро закроются', 'price_asc' => 'Дешевле', 'price_desc' => 'Дороже'];
 
-    public static function for(?User $user, array $filters = []): Builder
+    public static function for(?User $user, array $filters = [], bool $gallery = false): Builder
     {
         $q = Offer::query()
             ->with(['brand', 'model', 'settlement', 'media', 'favorites'])
-            ->whereIn('state', [OfferState::Open, OfferState::Closed]);
+            ->whereIn('state', $gallery ? [OfferState::Gallery] : [OfferState::Open, OfferState::Closed]);
 
         if (! empty($filters['brand'])) {
             $q->whereHas('brand', fn ($b) => $b->where('slug', $filters['brand']));

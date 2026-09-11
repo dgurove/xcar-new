@@ -13,6 +13,7 @@ use App\Http\Site\OfferController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [CatalogController::class, 'index'])->name('home');
+Route::get('/galereya', [CatalogController::class, 'gallery']);
 Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
 Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
 
@@ -44,7 +45,7 @@ Route::middleware('auth')->group(function () {
 
 // Заглушки разделов до их этапов.
 foreach ([
-    '/galereya' => 'Галерея', '/zakupki' => 'Закупки',
+    '/zakupki' => 'Закупки',
     '/admin/razgovory' => 'Разговоры', '/admin/zakupki' => 'Закупки',
 ] as $path => $title) {
     Route::view($path, 'site.placeholder', ['title' => $title]);

@@ -1,9 +1,10 @@
 @php
     use App\Offers\OfferState;
     $user = auth()->user();
-    $canSeePrices = $user?->role->canSeePrices();
+    $gallery = $offer->state === OfferState::Gallery;
+    $canSeePrices = $user?->role->canSeePrices() && ! $gallery;
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" back="/" :wide="true">
+<x-ui.shell :title="$offer->titleWithYear()" :back="$gallery ? '/galereya' : '/'" :wide="true">
     <div class="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div class="flex flex-col gap-4">
             <div class="relative overflow-hidden rounded-(--radius-xl) bg-surface" data-controller="gallery">
@@ -63,8 +64,19 @@
                     @endif
                 @endif
 
+                @if ($gallery)<div class="text-accent-text">Скоро в продаже</div>@endif
                 @auth
-                    @if ($user->role->canBid() && $offer->bidsOpen())
+                    @if ($gallery)
+                        @if ($myInterest)
+                            <div class="mt-4 rounded-(--radius-l) bg-accent-soft p-4 text-accent-text">Сообщим, когда откроется приём</div>
+                        @else
+                            <form method="post" action="/offers/{{ $offer->number }}/interes" class="mt-4 flex flex-col gap-3">
+                                @csrf
+                                <x-ui.field name="comment" label="Что важно уточнить" type="textarea" rows="2"/>
+                                <x-ui.button block>Интересно</x-ui.button>
+                            </form>
+                        @endif
+                    @elseif ($user->role->canBid() && $offer->bidsOpen())
                         @if ($myBid)
                             <div class="mt-4 rounded-(--radius-l) bg-accent-soft p-4">
                                 <div class="flex items-baseline justify-between"><span>Ваша ставка</span><x-offer.price :amount="$myBid->amount"/></div>
@@ -91,7 +103,7 @@
                         <p class="mt-4 text-ink-muted">Приём ставок закрыт</p>
                     @endif
                 @else
-                    <x-ui.button href="/vhod?intended=/offers/{{ $offer->number }}" block class="mt-2">Войти, чтобы узнать цену</x-ui.button>
+                    <x-ui.button href="/vhod?intended=/offers/{{ $offer->number }}" block class="mt-2">{{ $gallery ? 'Войти' : 'Войти, чтобы узнать цену' }}</x-ui.button>
                 @endauth
             </x-ui.card>
             @if ($user?->isStaff())

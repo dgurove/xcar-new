@@ -18,7 +18,7 @@ class FragmentController
     public function card(Request $request, Offer $offer)
     {
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites']);
-        $visible = $offer->state->isPublic();
+        $visible = $request->query('list') === 'gallery' ? $offer->state === \App\Offers\OfferState::Gallery : $offer->state->isPublic();
         $present = $request->boolean('present');
 
         return Stream::view('site.offers.card-stream', ['offer' => $offer, 'visible' => $visible, 'present' => $present]);

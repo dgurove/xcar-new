@@ -35,6 +35,7 @@ final class PublishLiveUpdates
     {
         $n = $e->offer->number;
         $this->publish->card($n);
+        $this->publish->refresh(Topics::CATALOG, ["/offers/{$n}"]);
         $this->publish->refresh(Topics::STAFF, ["/admin/offers/{$n}", '/admin/offers', '/admin/sdelki']);
     }
 
@@ -64,7 +65,6 @@ final class PublishLiveUpdates
         if ($deal = $e->offer->deal()->first()) {
             $this->publish->refresh(Topics::user($deal->buyer_id), ['/lk/sdelki', "/lk/sdelki/{$deal->id}"]);
         }
-        $this->publish->card($n);
     }
 
     public function notification(NotificationSent $e): void

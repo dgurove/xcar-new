@@ -57,7 +57,7 @@ export default class extends Controller {
         const present = !!document.getElementById(`offer-${number}`);
         const list = document.getElementById('catalog');
         if (!present && !list) return;
-        const r = await fetch(`/offers/${number}/card?present=${present ? 1 : 0}`, { headers: { Accept: 'text/vnd.turbo-stream.html' } });
+        const r = await fetch(`/offers/${number}/card?present=${present ? 1 : 0}&list=${list?.dataset.list || ''}`, { headers: { Accept: 'text/vnd.turbo-stream.html' } });
         if (!r.ok) return;
         const html = await r.text();
         // Новая плитка въезжает наверх, только если человек стоит в начале

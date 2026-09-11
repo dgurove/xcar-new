@@ -17,6 +17,20 @@ class CatalogController
             'offers' => CatalogQuery::for($request->user(), $filters)->paginate(24)->withQueryString(),
             'filters' => $filters,
             'brands' => Brand::whereHas('offers', fn ($o) => $o->whereIn('state', [OfferState::Open, OfferState::Closed]))->orderBy('name')->get(),
+            'gallery' => false,
+        ]);
+    }
+
+    /** Галерея «скоро в продаже»: без цены, принимаем интерес. */
+    public function gallery(Request $request)
+    {
+        $filters = $request->only(['brand', 'q', 'sort']);
+
+        return view('site.catalog', [
+            'offers' => CatalogQuery::for($request->user(), $filters, gallery: true)->paginate(24)->withQueryString(),
+            'filters' => $filters,
+            'brands' => Brand::whereHas('offers', fn ($o) => $o->where('state', OfferState::Gallery))->orderBy('name')->get(),
+            'gallery' => true,
         ]);
     }
 }

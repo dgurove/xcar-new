@@ -1,4 +1,4 @@
-<x-ui.shell :wide="true">
+<x-ui.shell :wide="true" :title="$gallery ? 'Скоро в продаже' : null">
     <form method="get" class="mb-4 flex flex-col gap-3" data-controller="autosubmit">
         <div class="flex gap-2">
             <label class="relative flex-1">
@@ -19,11 +19,11 @@
         @endif
     </form>
 
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" id="catalog">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}">
         @foreach ($offers as $offer)<x-offer.tile :offer="$offer"/>@endforeach
     </div>
     @if ($offers->isEmpty())
-        <div class="py-24 text-center text-ink-muted" id="catalog-empty">@if (array_filter($filters)) Ничего не нашлось @else Предложений пока нет @endif</div>
+        <div class="py-24 text-center text-ink-muted" id="catalog-empty">@if (array_filter($filters)) Ничего не нашлось @elseif ($gallery) Пока пусто @else Предложений пока нет @endif</div>
     @else
         <div class="mt-4">{{ $offers->links() }}</div>
     @endif

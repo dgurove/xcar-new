@@ -11,7 +11,9 @@
         <span class="text-sm text-ink-muted">{{ implode(' · ', array_slice($offer->facts(), 1, 3)) }}</span>
         @if ($offer->settlement)<span class="text-sm text-ink-muted">{{ $offer->settlement->name }}</span>@endif
         <span class="mt-auto flex items-center justify-between pt-1">
-            @if ($user?->role->canSeePrices())
+            @if ($offer->state === \App\Offers\OfferState::Gallery)
+                <span class="text-sm text-accent-text">Скоро в продаже</span>
+            @elseif ($user?->role->canSeePrices())
                 <x-offer.price :amount="$offer->asking_price"/>
             @else
                 <span class="text-sm text-accent-text">Узнать цену</span>
