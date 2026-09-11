@@ -13,4 +13,9 @@ enum OfferEventType: string
     case BidDeclined = 'bid_declined';
     case Interest = 'interest';
     case Note = 'note';
+    case StageEntered = 'stage_entered';
+    case StageReminded = 'stage_reminded';
+    case StageOverdue = 'stage_overdue';
+    case PlaceChanged = 'place_changed';
+    case RequirementAnswered = 'requirement_answered';
 }

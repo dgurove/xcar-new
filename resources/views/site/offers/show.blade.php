@@ -26,6 +26,7 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <x-offer.state :state="$offer->state"/>
                     <span class="chip">№ {{ $offer->number }}</span>
+                    @if ($offer->car_place)<span class="chip">{{ $offer->car_place->label() }}</span>@endif
                     @foreach ($offer->tags ?? [] as $tag)<span class="chip bg-accent-soft text-accent-text">{{ $tag }}</span>@endforeach
                 </div>
                 <dl class="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">

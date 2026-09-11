@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Cabinet\DealController;
 use App\Http\Cabinet\ListsController;
+use App\Http\Cabinet\NotificationController;
 use App\Http\Cabinet\ProfileController;
+use App\Http\Live\FragmentController;
 use App\Http\Site\BidController;
 use App\Http\Site\CatalogController;
 use App\Http\Site\FavoriteController;
@@ -11,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [CatalogController::class, 'index'])->name('home');
 Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
+Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
 
 Route::middleware('auth')->group(function () {
     Route::post('/offers/{offer}/stavka', [BidController::class, 'store']);
@@ -23,12 +27,25 @@ Route::middleware('auth')->group(function () {
     Route::get('/lk/izbrannoe', [ListsController::class, 'favorites']);
     Route::get('/lk/stavki', [ListsController::class, 'bids']);
     Route::get('/lk/interesy', [ListsController::class, 'interests']);
+
+    Route::get('/lk/sdelki', [DealController::class, 'index']);
+    Route::get('/lk/sdelki/{deal}', [DealController::class, 'show']);
+    Route::post('/lk/sdelki/{deal}/otvet', [DealController::class, 'answer']);
+    Route::post('/lk/sdelki/{deal}/fayly', [DealController::class, 'upload']);
+    Route::delete('/lk/sdelki/{deal}/fayly/{media}', [DealController::class, 'removeFile']);
+
+    Route::get('/lk/uvedomleniya', [NotificationController::class, 'index']);
+    Route::post('/lk/uvedomleniya/prochitano', [NotificationController::class, 'readAll']);
+    Route::put('/lk/uvedomleniya/nastroyki', [NotificationController::class, 'settings']);
+    Route::get('/lk/uvedomleniya/{id}', [NotificationController::class, 'open']);
+
+    Route::get('/live/badges', [FragmentController::class, 'badges']);
 });
 
 // Заглушки разделов до их этапов.
 foreach ([
-    '/galereya' => 'Галерея', '/zakupki' => 'Закупки', '/lk/uvedomleniya' => 'Уведомления', '/lk/sdelki' => 'Сделки',
-    '/admin/razgovory' => 'Разговоры', '/admin/sdelki' => 'Сделки', '/admin/zakupki' => 'Закупки', '/admin/eshchyo' => 'Ещё',
+    '/galereya' => 'Галерея', '/zakupki' => 'Закупки',
+    '/admin/razgovory' => 'Разговоры', '/admin/zakupki' => 'Закупки',
 ] as $path => $title) {
     Route::view($path, 'site.placeholder', ['title' => $title]);
 }

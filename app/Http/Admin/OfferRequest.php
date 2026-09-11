@@ -58,6 +58,9 @@ class OfferRequest extends FormRequest
             'tags.*' => ['string', 'max:40'],
             'bids_close_at' => ['nullable', 'date'],
             'chat_enabled' => ['boolean'],
+            'insurer_id' => ['nullable', 'exists:insurers,id'],
+            'claim_ref' => ['nullable', 'string', 'max:60'],
+            'insurer_deadline_at' => ['nullable', 'date'],
         ];
     }
 

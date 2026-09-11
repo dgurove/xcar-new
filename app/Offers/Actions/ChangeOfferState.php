@@ -2,23 +2,30 @@
 
 namespace App\Offers\Actions;
 
+use App\Offers\Bid;
+use App\Offers\BidState;
+use App\Offers\DealState;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Users\User;
+use App\Workflow\Actions\EnterStage;
+use App\Workflow\Requirement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** Единственная дверь для смены состояния оффера: проверка перехода, метки времени, лента, событие. */
+/**
+ * Единственная дверь для смены состояния оффера: проверка перехода, метки
+ * времени, сделка, лента, событие. Если оффер идёт по маршруту и с текущего
+ * этапа есть наш исход на этап с таким состоянием — маршрут догоняет кнопку.
+ */
 final class ChangeOfferState
 {
-    public const BIDS_WINDOW_DAYS = 3;
-
-    public function __invoke(Offer $offer, OfferState $next, User $by): Offer
+    public function __invoke(Offer $offer, OfferState $next, ?User $by, bool $followRoute = true): Offer
     {
-        return DB::transaction(function () use ($offer, $next, $by) {
+        return DB::transaction(function () use ($offer, $next, $by, $followRoute) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
             $from = $offer->state;
 
@@ -32,7 +39,7 @@ final class ChangeOfferState
                 $this->readyToPublish($offer);
                 $offer->published_at ??= now();
                 if (! $offer->bids_close_at || $offer->bids_close_at->isPast()) {
-                    $offer->bids_close_at = now()->addDays(self::BIDS_WINDOW_DAYS);
+                    $offer->bids_close_at = now()->addDays((int) config('xcar.bids_window_days'));
                 }
             }
             if ($next === OfferState::Gallery) {
@@ -42,10 +49,15 @@ final class ChangeOfferState
             $offer->state = $next;
             $offer->save();
             $offer->log(OfferEventType::StateChanged, $by, ['from' => $from->value, 'to' => $next->value]);
+            $this->settleDeal($offer, $next);
 
             OfferStateChanged::dispatch($offer, $by);
             if ($next === OfferState::Open && $from !== OfferState::Closed) {
                 OfferPublished::dispatch($offer, $by);
+            }
+
+            if ($followRoute && ($exit = $offer->stage()?->exitInto($next))) {
+                $offer = app(EnterStage::class)($offer, $exit->to, $by, [], $exit);
             }
 
             return $offer;
@@ -62,5 +74,21 @@ final class ChangeOfferState
         if ($missing) {
             throw ValidationException::withMessages(['state' => 'Для публикации не хватает: '.implode(', ', $missing)]);
         }
+    }
+
+    /** Сделка живёт, пока оффер в сделке: выдан — завершена, всё остальное — сорвалась. */
+    private function settleDeal(Offer $offer, OfferState $next): void
+    {
+        $deal = $offer->deal()->first();
+        if (! $deal || in_array($next, [OfferState::Sold], true)) {
+            return;
+        }
+        $state = $next === OfferState::Delivered ? DealState::Done : DealState::Cancelled;
+        $deal->update(['state' => $state, 'closed_at' => now()]);
+        if ($state === DealState::Cancelled && $deal->bid?->state === BidState::Accepted) {
+            Bid::whereKey($deal->bid_id)->update(['state' => BidState::Declined]);
+        }
+        Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'deal'])]);
+        $offer->unsetRelation('deal');
     }
 }

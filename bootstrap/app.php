@@ -13,11 +13,15 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands([
         App\Users\Console\CreateUser::class,
+        App\Offers\Console\TickOffers::class,
+        App\Notifications\Console\SendDigest::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/vhod');
         $middleware->redirectUsersTo('/');
         $middleware->alias(['staff' => App\Http\Middleware\EnsureStaff::class]);
+        $middleware->web(append: [App\Live\SubscriberCookie::class]);
+        $middleware->encryptCookies(except: [App\Live\SubscriberCookie::NAME]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -14,8 +14,14 @@
         @if ($errors->has('state'))<span class="field-error w-full">{{ $errors->first('state') }}</span>@endif
     </div>
 
-    <div class="grid gap-4 lg:grid-cols-[1fr_380px]">
-    <form method="post" action="/admin/offers/{{ $n }}" id="offer-form" class="flex flex-col gap-4">
+    <div class="grid items-start gap-4 lg:grid-cols-[1fr_380px] lg:grid-rows-[auto_1fr]">
+    @if ($offer->positions->isNotEmpty())
+        <div class="flex flex-col gap-4 lg:col-start-2 lg:row-start-1">
+            @include('admin.offers.route')
+        </div>
+    @endif
+
+    <form method="post" action="/admin/offers/{{ $n }}" id="offer-form" class="flex flex-col gap-4 lg:col-start-1 lg:row-start-1 lg:row-span-2">
         @csrf @method('put')
 
         <x-ui.card title="Машина">
@@ -76,6 +82,14 @@
             </div>
         </x-ui.card>
 
+        <x-ui.card title="Страховая">
+            <div class="grid gap-4 sm:grid-cols-2">
+                <x-ui.field name="insurer_id" label="Страховая" :options="$insurers" placeholder="—" :value="$offer->insurer_id"/>
+                <x-ui.field name="claim_ref" label="Номер убытка" :value="$offer->claim_ref"/>
+                <x-ui.field name="insurer_deadline_at" label="Продать до" type="date" :value="$offer->insurer_deadline_at?->toDateString()"/>
+            </div>
+        </x-ui.card>
+
         @if ($tags->isNotEmpty())
         <x-ui.card title="Метки">
             <div class="flex flex-wrap gap-2">
@@ -88,7 +102,7 @@
         @endif
     </form>
 
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4 lg:col-start-2 {{ $offer->positions->isNotEmpty() ? 'lg:row-start-2' : 'lg:row-start-1 lg:row-span-2' }}">
         <x-ui.card title="Фотографии" data-controller="photos" data-photos-url-value="/admin/offers/{{ $n }}/media">
             <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             <div class="mb-3 flex gap-2">
@@ -166,6 +180,11 @@
                             \App\Offers\OfferEventType::BidDeclined => 'Ставка отклонена',
                             \App\Offers\OfferEventType::BidWithdrawn => 'Ставка отозвана',
                             \App\Offers\OfferEventType::Interest => 'Интерес',
+                            \App\Offers\OfferEventType::StageEntered => (($event->payload['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($event->payload['to'] ?? '').(!empty($event->payload['exit']) ? ' («'.$event->payload['exit'].'»)' : ''),
+                            \App\Offers\OfferEventType::StageOverdue => 'Срок вышел: '.($event->payload['stage'] ?? ''),
+                            \App\Offers\OfferEventType::StageReminded => 'Срок подходит: '.($event->payload['stage'] ?? ''),
+                            \App\Offers\OfferEventType::PlaceChanged => 'Машина: '.\App\Offers\CarPlace::labelOf($event->payload['place'] ?? null),
+                            \App\Offers\OfferEventType::RequirementAnswered => 'Менеджер: «'.($event->payload['exit'] ?? '').'»'.(!empty($event->payload['fields']) ? ' — '.implode(', ', $event->payload['fields']) : ''),
                             default => $event->type->value } }}</span>
                         @if ($event->user)<span class="ml-auto text-ink-muted">{{ $event->user->name }}</span>@endif
                     </div>

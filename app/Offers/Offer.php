@@ -13,6 +13,11 @@ use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Media\HasPhotos;
 use App\Users\User;
+use App\Workflow\Insurer;
+use App\Workflow\Position;
+use App\Workflow\Requirement;
+use App\Workflow\Stage;
+use App\Workflow\Track;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,7 +30,7 @@ use Spatie\MediaLibrary\HasMedia;
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
     'incident_date', 'description', 'settlement_id', 'inspection_address', 'floor_price', 'repair_estimate',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'bids_close_at', 'sort_weight',
-    'chat_enabled',
+    'chat_enabled', 'insurer_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
 ])]
 class Offer extends Model implements HasMedia
 {
@@ -37,6 +42,8 @@ class Offer extends Model implements HasMedia
     {
         return [
             'state' => OfferState::class,
+            'car_place' => CarPlace::class,
+            'insurer_deadline_at' => 'date',
             'body' => Body::class,
             'transmission' => Transmission::class,
             'drive' => Drive::class,
@@ -64,6 +71,41 @@ class Offer extends Model implements HasMedia
     public function getRouteKeyName(): string
     {
         return 'number';
+    }
+
+    public function setClaimRefAttribute(?string $value): void
+    {
+        $value = trim((string) $value) ?: null;
+        $this->attributes['claim_ref'] = $value;
+        $this->attributes['claim_ref_key'] = $value ? mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $value)) : null;
+    }
+
+    public function insurer(): BelongsTo
+    {
+        return $this->belongsTo(Insurer::class);
+    }
+
+    public function positions(): HasMany
+    {
+        return $this->hasMany(Position::class);
+    }
+
+    public function requirements(): HasMany
+    {
+        return $this->hasMany(Requirement::class)->latest();
+    }
+
+    /** Где оффер стоит на ветке маршрута; null — маршрута на ветке нет. */
+    public function position(Track $track = Track::Sale): ?Position
+    {
+        $positions = $this->relationLoaded('positions') ? $this->positions : $this->positions()->with('stage.block', 'stage.exits.to')->get();
+
+        return $positions->firstWhere('track', $track);
+    }
+
+    public function stage(Track $track = Track::Sale): ?Stage
+    {
+        return $this->position($track)?->stage;
     }
 
     public function brand(): BelongsTo

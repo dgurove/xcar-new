@@ -11,6 +11,7 @@ return new class extends Migration
     {
         // Номер оффера — из последовательности, чтобы черновик и опубликованный
         // нумеровались одним рядом и номер не менялся при публикации.
+        DB::statement('DROP SEQUENCE IF EXISTS offer_numbers');
         DB::statement('CREATE SEQUENCE offer_numbers START 1001');
 
         Schema::create('offers', function (Blueprint $table) {

@@ -3,9 +3,10 @@
 @php
     $user = auth()->user();
     $tabs = \App\Support\Nav::tabs($user, $surface);
+    $badges = \App\Support\Nav::badges($user);
     $path = '/'.ltrim(request()->path(), '/');
 @endphp
-<x-ui.layout :title="$title">
+<x-ui.layout :title="$title" data-controller="live">
     <header class="topbar" id="topbar">
         <div class="mx-auto flex h-(--spacing-header) max-w-(--container-site) items-center gap-2 px-4">
             <a href="{{ $surface === 'park' ? '/' : '/' }}" class="mr-2 flex items-center" aria-label="{{ config('app.name') }}">
@@ -15,7 +16,7 @@
             </a>
             <nav class="hidden items-center gap-1 md:flex">
                 @foreach ($tabs as $tab)
-                    <a href="{{ $tab['href'] }}" class="navlink" @if (\App\Support\Nav::isCurrent($tab, $path)) aria-current="page" @endif>{{ $tab['label'] }}</a>
+                    <a href="{{ $tab['href'] }}" class="navlink" @if (\App\Support\Nav::isCurrent($tab, $path)) aria-current="page" @endif>{{ $tab['label'] }} <x-ui.badge :href="$tab['href']" :badges="$badges"/></a>
                 @endforeach
             </nav>
             <div class="ml-auto flex items-center gap-1">
@@ -47,6 +48,7 @@
             <a href="{{ $tab['href'] }}" class="tab" @if (\App\Support\Nav::isCurrent($tab, $path)) aria-current="page" @endif data-tab="{{ $tab['match'] }}">
                 <x-ui.icon :name="$tab['icon']"/>
                 <span>{{ $tab['label'] }}</span>
+                <x-ui.badge :href="$tab['href']" :badges="$badges"/>
             </a>
         @endforeach
     </nav>

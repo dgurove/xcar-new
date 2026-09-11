@@ -12,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
 use Laragear\WebAuthn\WebAuthnAuthentication;
 
-#[Fillable(['name', 'phone', 'email', 'password', 'role', 'access'])]
+#[Fillable(['name', 'phone', 'email', 'password', 'role', 'access', 'notification_settings'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements WebAuthnAuthenticatable
 {
@@ -25,6 +25,7 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
             'password' => 'hashed',
             'role' => Role::class,
             'access' => 'array',
+            'notification_settings' => 'array',
             'email_verified_at' => 'datetime',
         ];
     }
@@ -47,6 +48,16 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
     public function canAccess(Section $section): bool
     {
         return $this->isAdmin() || in_array($section->value, $this->access ?? [], true);
+    }
+
+    public function wantsMail(): bool
+    {
+        return ($this->notification_settings['mail'] ?? true) !== false;
+    }
+
+    public function unreadCount(): int
+    {
+        return $this->unreadNotifications()->count();
     }
 
     public function phoneFormatted(): string
