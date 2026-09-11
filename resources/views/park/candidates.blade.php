@@ -1,6 +1,6 @@
 @php use App\Mail\CandidateState; @endphp
-<x-ui.shell title="Из писем" back="/eshchyo" :wide="true">
-    <div class="mb-4"><x-ui.presets :items="\App\Http\Admin\CandidateController::PRESETS" :current="$preset" :counts="$counts"/></div>
+<x-ui.shell title="Из писем" :count="$candidates->total()" :trail="[['Стоянка', '/'], ['Кабинет', '/kabinet'], ['Из писем']]">
+    <x-ui.toolbar class="mb-6" :pills="\App\Http\Admin\CandidateController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" name="candidates"/>
     @if ($candidates->isEmpty())
         <div class="py-24 text-center text-ink-muted">Пусто</div>
     @else

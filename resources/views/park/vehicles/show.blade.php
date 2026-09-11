@@ -1,10 +1,10 @@
 @php use App\Park\{VehicleState, RequestType}; $photos = $vehicle->visiblePhotos(); @endphp
-<x-ui.shell :title="$vehicle->titleWithYear()" back="/mashiny" :wide="true">
-    <div class="mb-4 flex flex-wrap items-center gap-2" data-controller="sheet">
+<x-ui.shell :title="$vehicle->titleWithYear()" :trail="[['Стоянка', '/'], ['Машины', '/mashiny'], [$vehicle->plate ?: $vehicle->ref ?: 'Машина']]">
+    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-park.state :vehicle="$vehicle"/>
-        @if ($vehicle->ref)<span class="chip">{{ $vehicle->ref }}</span>@endif
-        @if ($threads->count())<a href="{{ $threads->count() === 1 ? '/pochta/'.$threads->first()->id : '/pochta?preset=linked&q='.urlencode($vehicle->ref ?? '') }}" class="chip"><x-ui.icon name="mail" class="size-4"/> {{ $threads->count() === 1 ? 'Письмо' : 'Писем: '.$threads->count() }}</a>@endif
-        <x-ui.button type="button" variant="secondary" size="sm" class="ml-auto" data-action="sheet#open"><x-ui.icon name="more" class="size-5"/></x-ui.button>
+        @if ($vehicle->ref)<span class="chip nums font-normal">{{ $vehicle->ref }}</span>@endif
+        @if ($threads->count())<x-ui.pill tone="plain" :href="$threads->count() === 1 ? '/pochta/'.$threads->first()->id : '/pochta?preset=linked&q='.urlencode($vehicle->ref ?? '')" class="!min-h-0 !py-1 text-xs"><x-ui.icon name="mail" class="size-4"/> {{ $threads->count() === 1 ? 'Письмо' : 'Писем: '.$threads->count() }}</x-ui.pill>@endif
+        <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <x-ui.sheet id="vehicle-actions" title="Машина">
             <div class="flex flex-col gap-2">
                 @if ($vehicle->state === VehicleState::Expected)
@@ -54,8 +54,7 @@
                         <span class="field-label">Повреждения</span>
                         <div class="flex flex-wrap gap-2">
                             @foreach ($zones as $zone)
-                                <label><input type="checkbox" name="damage_zones[]" value="{{ $zone->value }}" class="peer sr-only" @checked(in_array($zone->value, old('damage_zones', $vehicle->damage_zones ?? [])))>
-                                    <span class="chip cursor-pointer select-none px-3 py-2 peer-checked:bg-chrome peer-checked:text-white dark:peer-checked:bg-white dark:peer-checked:text-chrome">{{ $zone->label() }}</span></label>
+                                <label class="choice"><input type="checkbox" name="damage_zones[]" value="{{ $zone->value }}" @checked(in_array($zone->value, old('damage_zones', $vehicle->damage_zones ?? [])))><span>{{ $zone->label() }}</span></label>
                             @endforeach
                         </div>
                     </div>
@@ -116,5 +115,5 @@
             </x-ui.card>
         </div>
     </div>
-    <div class="sticky-actions"><x-ui.button form="vehicle-form" class="flex-1">Сохранить</x-ui.button></div>
+    <x-ui.action-bar><x-ui.button form="vehicle-form" class="min-w-0 flex-1">Сохранить</x-ui.button></x-ui.action-bar>
 </x-ui.shell>

@@ -11,7 +11,14 @@ use Illuminate\Support\Facades\Route;
 
 // Стоянка — свой хост того же приложения. Вход общий; пускает раздел «park».
 Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->group(function () {
-    Route::redirect('/', '/zayavki');
+    Route::get('/', function () {
+        return view('park.home', [
+            'stored' => \App\Park\Vehicle::where('state', \App\Park\VehicleState::Stored)->count(),
+            'expected' => \App\Park\Vehicle::where('state', \App\Park\VehicleState::Expected)->count(),
+            'requests' => \App\Park\Request::where('state', \App\Park\RequestState::New)->count(),
+            'fresh' => \App\Park\Request::with('vehicle')->where('state', \App\Park\RequestState::New)->orderByRaw('planned_at asc nulls last')->limit(6)->get(),
+        ]);
+    });
     Route::redirect('/eshchyo', '/kabinet', 301);
     Route::view('/kabinet', 'park.cabinet');
 

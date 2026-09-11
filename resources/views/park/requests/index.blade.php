@@ -1,26 +1,24 @@
 @php use App\Park\RequestType; @endphp
-<x-ui.shell title="Заявки" :wide="true">
-    <div class="mb-4 flex flex-col gap-3">
-        <div class="flex items-center gap-3">
-            <x-ui.sort :items="\App\Http\Park\RequestController::SORTS" :current="$sort"/>
-            <a href="{{ request()->fullUrlWithQuery(['gotovye' => $done ? null : 1, 'page' => null]) }}" class="chip {{ $done ? 'bg-chrome text-white dark:bg-white dark:text-chrome' : '' }}">Готовые</a>
-            <a href="/zayavki/novaya" class="btn btn-primary btn-sm ml-auto shrink-0"><x-ui.icon name="plus" class="size-4"/> Заявка</a>
-        </div>
-        <x-ui.presets :items="$presets" :current="$preset" :counts="$counts"/>
-    </div>
+<x-ui.shell title="Заявки" :count="$requests->total()" :trail="[['Стоянка', '/'], ['Заявки']]">
+    <x-ui.toolbar :sorts="\App\Http\Park\RequestController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="['gotovye' => $done ? 1 : null]" name="requests">
+        <x-slot:extra>
+            <x-ui.pill :href="request()->fullUrlWithQuery(['gotovye' => $done ? null : 1, 'page' => null])" :current="$done">Готовые</x-ui.pill>
+            <a href="/zayavki/novaya" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="plus" class="size-4"/> Заявка</a>
+        </x-slot:extra>
+    </x-ui.toolbar>
     @if ($requests->isEmpty())
-        <div class="py-24 text-center text-ink-muted">{{ $done ? 'Готовых нет' : 'Всё сделано' }}</div>
+        <x-ui.empty class="mt-6">{{ $done ? 'Готовых нет.' : 'Всё сделано.' }}</x-ui.empty>
     @else
-        <div class="flex flex-col gap-2">
+        <div class="mt-6 flex flex-col gap-2">
             @foreach ($requests as $r)
                 <x-park.vehicle-row :vehicle="$r->vehicle" :href="'/zayavki/'.$r->id">
-                    <span class="chip {{ $r->isOverdue() ? 'bg-danger-soft text-danger' : ($r->isOpen() ? 'bg-accent-soft text-accent-text' : 'bg-closed-soft text-closed') }}">{{ $r->type->label() }}{{ $r->type === RequestType::Move && $r->yard ? ' → '.$r->yard->name : '' }}</span>
-                    @if ($r->planned_at)<span class="chip tabular-nums {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
+                    <x-ui.pill :tone="$r->isOverdue() ? 'danger' : ($r->isOpen() ? 'soft' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $r->type->label() }}{{ $r->type === RequestType::Move && $r->yard ? ' → '.$r->yard->name : '' }}</x-ui.pill>
+                    @if ($r->planned_at)<span class="chip nums font-normal {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
                     @if (!$r->isOpen())<span class="chip">{{ $r->state->label() }}</span>@endif
                     @if ($r->contact)<span class="text-sm text-ink-muted">{{ $r->contact }}</span>@endif
                 </x-park.vehicle-row>
             @endforeach
         </div>
-        <div class="mt-4">{{ $requests->links() }}</div>
+        <div class="mt-8">{{ $requests->links() }}</div>
     @endif
 </x-ui.shell>

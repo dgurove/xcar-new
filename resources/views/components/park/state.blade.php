@@ -1,9 +1,9 @@
+{{-- Состояние машины пилюлями: где стоит и сколько, либо когда выдана. --}}
 @props(['vehicle'])
-@php $tone = $vehicle->state->tone(); @endphp
-<span class="chip {{ match($tone) { 'open' => 'bg-open-soft text-open', 'urgent' => 'bg-urgent-soft text-urgent', default => 'bg-closed-soft text-closed' } }}">{{ $vehicle->state->label() }}</span>
+<x-ui.pill :tone="match ($vehicle->state->tone()) { 'open' => 'open', 'urgent' => 'urgent', default => 'closed' }" class="!min-h-0 !py-1 text-xs">{{ $vehicle->state->label() }}</x-ui.pill>
 @if ($vehicle->state === \App\Park\VehicleState::Stored)
     <span class="chip">{{ $vehicle->yard?->name }}</span>
-    <span class="chip tabular-nums">{{ $vehicle->daysStored() }} дн.</span>
+    <span class="chip nums font-normal">{{ $vehicle->daysStored() }} дн.</span>
 @elseif ($vehicle->state === \App\Park\VehicleState::Released)
-    <span class="chip tabular-nums">{{ $vehicle->released_at?->translatedFormat('j M Y') }}</span>
+    <span class="chip nums font-normal">{{ $vehicle->released_at?->translatedFormat('j M Y') }}</span>
 @endif

@@ -1,17 +1,17 @@
-<x-ui.shell title="Стоянки" :wide="true">
+<x-ui.shell title="Стоянки" :trail="[['Стоянка', '/'], ['Стоянки']]">
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($yards as $yard)
             @php $free = $yard->capacity ? max(0, $yard->capacity - $yard->stored_vehicles_count) : null; $share = $yard->capacity ? min(100, round($yard->stored_vehicles_count / $yard->capacity * 100)) : 0; @endphp
             <div class="box flex flex-col gap-3" data-controller="sheet">
                 <div class="flex items-start gap-2">
                     <div class="min-w-0 flex-1">
-                        <div class="font-medium">{{ $yard->name }}@unless ($yard->is_active) <span class="chip bg-closed-soft text-closed">закрыта</span>@endunless</div>
+                        <div class="font-medium">{{ $yard->name }}@unless ($yard->is_active) <x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">закрыта</x-ui.pill>@endunless</div>
                         @if ($yard->address)<div class="text-sm text-ink-muted">{{ $yard->address }}</div>@endif
                     </div>
-                    <button type="button" class="btn btn-ghost btn-sm px-2" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
+                    <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
                 </div>
                 <a href="/mashiny?stoyanka={{ $yard->id }}" class="flex flex-col gap-1.5">
-                    <div class="flex items-baseline justify-between"><span class="text-2xl font-semibold tabular-nums">{{ $yard->stored_vehicles_count }}</span><span class="text-sm text-ink-muted">{{ $yard->capacity ? "из {$yard->capacity} · свободно {$free}" : 'машин' }}</span></div>
+                    <div class="flex items-baseline justify-between"><span class="nums text-[40px] leading-none">{{ $yard->stored_vehicles_count }}</span><span class="text-sm text-ink-muted">{{ $yard->capacity ? "из {$yard->capacity} · свободно {$free}" : 'машин' }}</span></div>
                     @if ($yard->capacity)<div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full {{ $share > 90 ? 'bg-danger' : 'bg-accent' }}" style="width:{{ $share }}%"></div></div>@endif
                 </a>
                 <x-ui.sheet id="yard-{{ $yard->id }}" title="Стоянка">

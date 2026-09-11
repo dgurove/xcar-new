@@ -1,23 +1,14 @@
-<x-ui.shell :title="$yard ? $yard->name : 'Машины'" :back="$yard ? '/stoyanki' : null" :wide="true">
-    <div class="mb-4 flex flex-col gap-3">
-        <form method="get" class="flex gap-2" data-controller="autosubmit">
-            @foreach (request()->except('q', 'page') as $k => $v)@if (!is_array($v))<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endif @endforeach
-            <label class="relative flex-1">
-                <x-ui.icon name="search" class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-dim"/>
-                <input type="search" name="q" value="{{ $q }}" placeholder="Номер, VIN, госномер, марка" class="field-input !bg-surface pl-11" enterkeyhint="search">
-            </label>
-            <x-ui.sort :items="\App\Http\Park\VehicleController::SORTS" :current="$sort"/>
-        </form>
-        <x-ui.presets :items="\App\Http\Park\VehicleController::PRESETS" :current="$preset" :counts="$counts"/>
-    </div>
+<x-ui.shell :title="$yard ? $yard->name : 'Машины'" :count="$vehicles->total()" :trail="$yard ? [['Стоянка', '/'], ['Стоянки', '/stoyanki'], [$yard->name]] : [['Стоянка', '/'], ['Машины']]">
+    <x-ui.toolbar :sorts="\App\Http\Park\VehicleController::SORTS" :sort="$sort" :pills="\App\Http\Park\VehicleController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['yard' => request('yard'), \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)])" name="vehicles">
+        <x-slot:extra><x-ui.view-switch/></x-slot:extra>
+        <x-slot:filters><input name="q" value="{{ $q }}" placeholder="Номер, VIN, госномер, марка" class="field-input field-s"></x-slot:filters>
+    </x-ui.toolbar>
     @if ($vehicles->isEmpty())
-        <div class="py-24 text-center text-ink-muted">Машин нет</div>
+        <x-ui.empty class="mt-6">Машин нет.</x-ui.empty>
     @else
-        <div class="flex flex-col gap-2">
-            @foreach ($vehicles as $vehicle)
-                <x-park.vehicle-row :vehicle="$vehicle"><x-park.state :vehicle="$vehicle"/></x-park.vehicle-row>
-            @endforeach
+        <div class="mt-6 {{ \App\Support\ListView::containerClass(\App\Support\ListView::fromRequest(request())) }}" data-controller="ticker">
+            @foreach ($vehicles as $vehicle)<x-park.card :vehicle="$vehicle"/>@endforeach
         </div>
-        <div class="mt-4">{{ $vehicles->links() }}</div>
+        <div class="mt-8">{{ $vehicles->links() }}</div>
     @endif
 </x-ui.shell>

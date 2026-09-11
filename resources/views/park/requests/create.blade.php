@@ -1,5 +1,5 @@
 @php use App\Park\RequestType; @endphp
-<x-ui.shell title="Новая заявка" back="/zayavki">
+<x-ui.shell title="Новая заявка" :trail="[['Стоянка', '/'], ['Заявки', '/zayavki'], ['Новая']]" narrow>
     <div class="mb-4 presets">
         @foreach (RequestType::cases() as $t)
             <a href="/zayavki/novaya?tip={{ $t->value }}{{ $vehicle ? '&mashina='.$vehicle->id : '' }}" class="preset" @if ($type === $t) aria-current="true" @endif>{{ $t->label() }}</a>
@@ -37,5 +37,5 @@
             </div>
         </x-ui.card>
     </form>
-    <div class="sticky-actions"><x-ui.button form="request-form" class="flex-1">Завести</x-ui.button></div>
+    <x-ui.action-bar><x-ui.button form="request-form" class="min-w-0 flex-1">Завести</x-ui.button></x-ui.action-bar>
 </x-ui.shell>

@@ -1,5 +1,5 @@
 @php use App\Park\{RequestType, RequestState, VehicleState}; @endphp
-<x-ui.shell :title="$req->type->label().' · '.$vehicle->titleWithYear()" back="/zayavki">
+<x-ui.shell :title="$req->type->label().' · '.$vehicle->titleWithYear()" :trail="[['Стоянка', '/'], ['Заявки', '/zayavki'], [$req->type->label()]]" narrow>
     <div class="flex flex-col gap-4">
         <x-park.vehicle-row :vehicle="$vehicle">
             <x-park.state :vehicle="$vehicle"/>
@@ -30,8 +30,7 @@
                             <span class="field-label">Повреждения</span>
                             <div class="flex flex-wrap gap-2">
                                 @foreach ($zones as $zone)
-                                    <label><input type="checkbox" name="damage_zones[]" value="{{ $zone->value }}" class="peer sr-only" @checked(in_array($zone->value, old('damage_zones', [])))>
-                                        <span class="chip cursor-pointer select-none px-3 py-2 peer-checked:bg-chrome peer-checked:text-white dark:peer-checked:bg-white dark:peer-checked:text-chrome">{{ $zone->label() }}</span></label>
+                                    <label class="choice"><input type="checkbox" name="damage_zones[]" value="{{ $zone->value }}" @checked(in_array($zone->value, old('damage_zones', [])))><span>{{ $zone->label() }}</span></label>
                                 @endforeach
                             </div>
                         </div>
@@ -48,19 +47,19 @@
                     @include('park.vehicles.gallery', ['vehicle' => $vehicle])
                 </x-ui.card>
             </form>
-            <div class="sticky-actions">
-                <x-ui.button form="act-form" class="flex-1">Принять на стоянку</x-ui.button>
+            <x-ui.action-bar>
+                <x-ui.button form="act-form" class="min-w-0 flex-1">Принять на стоянку</x-ui.button>
                 <form method="post" action="/zayavki/{{ $req->id }}/zakryt" data-turbo-confirm="Отменить заявку?">@csrf<input type="hidden" name="done" value="0"><x-ui.button variant="ghost">Отменить</x-ui.button></form>
-            </div>
+            </x-ui.action-bar>
         @elseif ($req->isOpen() && $req->type === RequestType::Move && $vehicle->state === VehicleState::Stored)
             <form method="post" action="/zayavki/{{ $req->id }}/perestanovka" id="act-form">
                 @csrf
                 <x-ui.card title="Перестановка"><x-ui.field name="yard_id" label="Куда" :options="$yards" :value="$req->yard_id" required/></x-ui.card>
             </form>
-            <div class="sticky-actions">
-                <x-ui.button form="act-form" class="flex-1">Переставить</x-ui.button>
+            <x-ui.action-bar>
+                <x-ui.button form="act-form" class="min-w-0 flex-1">Переставить</x-ui.button>
                 <form method="post" action="/zayavki/{{ $req->id }}/zakryt" data-turbo-confirm="Отменить заявку?">@csrf<input type="hidden" name="done" value="0"><x-ui.button variant="ghost">Отменить</x-ui.button></form>
-            </div>
+            </x-ui.action-bar>
         @elseif ($req->isOpen() && $req->type === RequestType::Release && $vehicle->state === VehicleState::Stored)
             <form method="post" action="/zayavki/{{ $req->id }}/vydacha" id="act-form">
                 @csrf
@@ -71,19 +70,19 @@
                     </div>
                 </x-ui.card>
             </form>
-            <div class="sticky-actions">
-                <x-ui.button form="act-form" class="flex-1">Выдать</x-ui.button>
+            <x-ui.action-bar>
+                <x-ui.button form="act-form" class="min-w-0 flex-1">Выдать</x-ui.button>
                 <form method="post" action="/zayavki/{{ $req->id }}/zakryt" data-turbo-confirm="Отменить заявку?">@csrf<input type="hidden" name="done" value="0"><x-ui.button variant="ghost">Отменить</x-ui.button></form>
-            </div>
+            </x-ui.action-bar>
         @elseif ($req->isOpen())
             <form method="post" action="/zayavki/{{ $req->id }}/zakryt" id="act-form">
                 @csrf<input type="hidden" name="done" value="1">
                 <x-ui.card :title="$req->type->label()"><x-ui.field name="note" label="Что сделано" type="textarea"/></x-ui.card>
             </form>
-            <div class="sticky-actions">
-                <x-ui.button form="act-form" class="flex-1">{{ $req->type->verb() }}</x-ui.button>
+            <x-ui.action-bar>
+                <x-ui.button form="act-form" class="min-w-0 flex-1">{{ $req->type->verb() }}</x-ui.button>
                 <form method="post" action="/zayavki/{{ $req->id }}/zakryt" data-turbo-confirm="Отменить заявку?">@csrf<input type="hidden" name="done" value="0"><x-ui.button variant="ghost">Отменить</x-ui.button></form>
-            </div>
+            </x-ui.action-bar>
         @endif
     </div>
 </x-ui.shell>
