@@ -33,7 +33,7 @@ services:
       - "443:443/udp"
     environment:
       <<: *app-env
-      ACME_EMAIL: ${ACME_EMAIL:-}
+      ACME_EMAIL: ${ACME_EMAIL:-proverka@xcar.ru}
       SITE_ADDRESSES: ${SITE_ADDRESSES:-http://localhost}
       REDIRECT_ADDRESSES: ${REDIRECT_ADDRESSES:-http://redirect.localhost}
       REDIRECT_TO: ${REDIRECT_TO:-localhost}
