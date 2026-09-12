@@ -1,7 +1,10 @@
 {{-- Машина закупки: та же карточка, что у оффера; вся карточка — ссылка. --}}
 @props(['car', 'purchase', 'query' => '', 'showKind' => false])
 @php
-    $mine = $car->offerOf(auth()->user());
+    $staff = auth()->user()?->isStaff() ?? false;
+    $mine = $staff ? null : $car->offerOf(auth()->user());
+    $best = $staff ? $car->bestOffer() : null;
+    $active = $staff ? $car->offers->whereIn('state', [\App\Purchases\OfferState::Active, \App\Purchases\OfferState::Chosen]) : collect();
     $href = "/zakupki/{$purchase->number}/{$car->ref}".($query ? '?'.$query : '');
     $main = $car->mainPhoto();
     $photos = $car->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
@@ -38,14 +41,20 @@
         @endif
     </div>
     <div class="card-extra">
-        @if (!$mine)<span class="tag" style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d">Без цены</span>@endif
+        @if (!$staff && !$mine)<span class="tag" style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d">Без цены</span>@endif
         @if ($showKind)<span class="tag">{{ $car->kind->label() }}</span>@endif
         @foreach ($facts as $fact)<span class="tag">{{ $fact }}</span>@endforeach
         @if ($car->settlement?->name ?? $car->city)<span class="text-sm text-ink-dim">{{ $car->settlement?->name ?? $car->city }}</span>@endif
         <span class="card-aside"><span class="nums text-sm font-normal text-ink-dim">{{ $car->dl }}</span></span>
     </div>
     <div class="card-action">
-        @if ($mine)
+        @if ($staff)
+            @if ($best)
+                <a href="{{ $href }}" class="btn btn-s {{ $best->state === \App\Purchases\OfferState::Chosen ? 'btn-accent' : 'btn-quiet' }} w-full gap-2 whitespace-nowrap"><span class="nums">{{ number_format($best->amount, 0, '', ' ') }} ₽</span><span class="truncate font-normal opacity-80">{{ $best->user->shortName() }}{{ $active->count() > 1 ? ' +'.($active->count() - 1) : '' }}</span></a>
+            @else
+                <a href="{{ $href }}" class="btn btn-s btn-ghost w-full whitespace-nowrap text-ink-dim">Нет предложений</a>
+            @endif
+        @elseif ($mine)
             <a href="{{ $href }}" class="btn btn-s btn-accent nums w-full whitespace-nowrap">{{ number_format($mine->amount, 0, '', ' ') }} ₽</a>
         @else
             <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Предложить</a>

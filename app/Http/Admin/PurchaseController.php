@@ -28,7 +28,7 @@ use Illuminate\Validation\Rule;
 
 class PurchaseController
 {
-    public const PRESETS = ['all' => 'Все', 'offers' => 'С ценами', 'attention' => 'Требуют внимания', 'nophoto' => 'Без фото'];
+    public const PRESETS = ['all' => 'Все', 'offers' => 'С предложениями', 'attention' => 'Требуют внимания', 'nophoto' => 'Без фото'];
 
     public function index()
     {
@@ -52,7 +52,9 @@ class PurchaseController
         $cars = $purchase->cars()->with(['brand', 'model', 'media', 'offers.user'])
             ->when($q !== '', fn ($c) => $c->where(fn ($w) => $w->whereRaw('lower(dl) like ?', ['%'.mb_strtolower($q).'%'])->orWhereRaw('lower(brand_raw) like ?', ['%'.mb_strtolower($q).'%'])->orWhere('vin', 'like', '%'.strtoupper($q).'%')));
         match ($preset) {
-            'offers' => $cars->whereHas('offers', fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen])),
+            // С предложениями — самые дорогие сверху: так видно, за что менеджеры борются.
+            'offers' => $cars->whereHas('offers', fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen]))
+                ->withMax(['offers as top_offer' => fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen])], 'amount')->reorder('top_offer', 'desc'),
             'attention' => $cars->where(fn ($w) => $w->whereIn('specs_state', ['failed', 'partial', 'gone'])->orWhereIn('photos_state', ['failed', 'partial', 'gone'])),
             'nophoto' => $cars->where('photos_count', 0),
             default => null,

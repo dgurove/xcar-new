@@ -28,7 +28,7 @@
     </div>
 
     <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        @foreach ([['Машин', $stats['cars']], ['С фото', $stats['photos']], ['С ценами', $stats['priced']], ['Сумма лучших', $stats['sum'] ? number_format($stats['sum'], 0, '', ' ').' ₽'.($stats['ours'] ? ' · '.($stats['sum'] >= $stats['ours'] ? '+' : '−').number_format(abs($stats['sum'] - $stats['ours']), 0, '', ' ') : '') : '—']] as [$label, $value])
+        @foreach ([['Машин', $stats['cars']], ['С фото', $stats['photos']], ['С предложениями', $stats['priced']], ['Сумма лучших', $stats['sum'] ? number_format($stats['sum'], 0, '', ' ').' ₽'.($stats['ours'] ? ' · '.($stats['sum'] >= $stats['ours'] ? '+' : '−').number_format(abs($stats['sum'] - $stats['ours']), 0, '', ' ') : '') : '—']] as [$label, $value])
             <x-ui.stat :value="$value" :label="$label"/>
         @endforeach
     </div>
@@ -57,7 +57,14 @@
                     <div class="flex items-baseline gap-2"><span class="truncate font-medium">{{ $car->titleWithYear() }}</span><span class="shrink-0 text-sm text-ink-dim">{{ $car->dl }}</span></div>
                     <div class="text-sm text-ink-muted">{{ implode(' · ', array_filter([$car->price_listing ? number_format($car->price_listing, 0, '', ' ').' ₽' : null, $car->kind->label(), $car->settlement?->name ?? $car->city])) }}</div>
                     <div class="mt-1 flex flex-wrap items-center gap-1.5 text-sm">
-                        @if ($best)<span class="font-semibold tabular-nums {{ $best->state === \App\Purchases\OfferState::Chosen ? 'text-accent-text' : '' }}">{{ number_format($best->amount, 0, '', ' ') }} ₽</span><span class="text-ink-dim">{{ $car->activeOffers->count() }}</span>@endif
+                        @php $active = $car->offers->whereIn('state', [\App\Purchases\OfferState::Active, \App\Purchases\OfferState::Chosen]); @endphp
+                        @if ($best)
+                            <span class="font-semibold tabular-nums {{ $best->state === \App\Purchases\OfferState::Chosen ? 'text-accent-text' : '' }}">{{ number_format($best->amount, 0, '', ' ') }} ₽</span>
+                            <span class="text-ink-muted">{{ $best->user->shortName() }}{{ $best->state === \App\Purchases\OfferState::Chosen ? ' · выбран' : '' }}</span>
+                            @if ($active->count() > 1)<span class="text-ink-dim">{{ $active->count() }} {{ \App\Support\Plural::of($active->count(), ['предложение', 'предложения', 'предложений']) }}</span>@endif
+                        @else
+                            <span class="text-ink-dim">нет предложений</span>
+                        @endif
                         @if ($bad)<x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">{{ $car->specs_state->needsAttention() ? $car->specs_state->label() : $car->photos_state->label() }}</x-ui.pill>@endif
                         @if (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true))<span class="chip">фото едут</span>@endif
                         @unless ($car->is_published)<x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">скрыта</x-ui.pill>@endunless

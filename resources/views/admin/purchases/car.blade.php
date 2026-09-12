@@ -66,7 +66,7 @@
                 @if ($car->locked_fields)<div class="mt-2 text-sm text-ink-muted">Правлено руками: {{ implode(', ', $car->locked_fields) }}</div>@endif
             </x-ui.card>
             @if ($car->offers->isNotEmpty())
-            <x-ui.card title="Цены покупателей" class="order-3">
+            <x-ui.card title="Предложения менеджеров" class="order-3">
                 <div class="flex flex-col gap-2">
                     @foreach ($car->offers as $offer)
                         <div class="box-nested">
