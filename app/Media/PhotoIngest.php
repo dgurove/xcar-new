@@ -65,7 +65,8 @@ final class PhotoIngest
         }
     }
 
-    private function shrink(string $path, int $max): string
+    /** Тот же приём без медиатеки: путь к ужатому webp во временном файле; удалить — забота вызвавшего. */
+    public function shrink(string $path, int $max = self::MAX_DIMENSION): string
     {
         $webp = $path.'.webp';
         try {

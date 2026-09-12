@@ -13,10 +13,12 @@ final class MediaUrl
         return self::url($media, $conversion).'?v='.($media->updated_at?->timestamp ?? 0);
     }
 
+    /** Конверсии вниз и оригинал как самый широкий кандидат. */
     public static function srcset(Media $media): string
     {
-        return collect([320, 640, 960, 1440])
+        return collect([320, 640, 960])
             ->map(fn ($w) => self::for($media, "w{$w}")." {$w}w")
+            ->push(self::for($media).' '.PhotoIngest::MAX_DIMENSION.'w')
             ->implode(', ');
     }
 

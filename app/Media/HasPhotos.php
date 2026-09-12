@@ -28,7 +28,8 @@ trait HasPhotos
         if ($media?->collection_name === 'papers') {
             return;
         }
-        foreach ([320, 640, 960, 1440] as $width) {
+        // Верхний размер — сам оригинал (1600 px из PhotoIngest), конверсии только вниз.
+        foreach ([320, 640, 960] as $width) {
             $this->addMediaConversion("w{$width}")->width($width)->format('webp')->queued();
         }
         $this->addMediaConversion('thumb')->fit(Fit::Crop, 400, 300)->format('webp')->queued();

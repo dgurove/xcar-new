@@ -7,7 +7,7 @@
         <div class="relative overflow-hidden rounded-(--radius-xl) bg-surface-3">
             <div class="flex snap-x snap-mandatory overflow-x-auto" data-gallery-target="strip" style="scrollbar-width:none">
                 @foreach ($photos as $i => $media)
-                    <a href="{{ \App\Media\MediaUrl::for($media, 'w1440') }}" class="aspect-[4/3] w-full shrink-0 snap-center cursor-zoom-in" data-action="click->gallery#open" data-index="{{ $i }}">
+                    <a href="{{ \App\Media\MediaUrl::for($media) }}" class="aspect-[4/3] w-full shrink-0 snap-center cursor-zoom-in" data-action="click->gallery#open" data-index="{{ $i }}">
                         <x-offer.photo :media="$media" sizes="(min-width: 1024px) 60vw, 100vw" :eager="$i === 0" class="size-full object-cover"/>
                     </a>
                 @endforeach

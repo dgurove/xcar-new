@@ -6,6 +6,7 @@ use App\Chats\AuthorKind;
 use App\Chats\Chat;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Message;
+use App\Media\PhotoIngest;
 use App\Users\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -36,9 +37,19 @@ final class PostMessage
             $kind = $by?->isStaff() ? AuthorKind::Staff : AuthorKind::Participant;
             $message = $chat->messages()->create(['seq' => $chat->messages_count + 1, 'author_id' => $by?->id, 'author_kind' => $kind, 'text' => $text ?: null]);
             foreach ($files as $file) {
-                $path = 'chats/'.$chat->id.'/'.Str::uuid().'.'.($file->guessExtension() ?: 'bin');
-                Storage::disk('private')->put($path, $file->getContent());
-                $message->files()->create(['name' => mb_substr($file->getClientOriginalName(), 0, 255), 'mime' => (string) $file->getMimeType(), 'size' => $file->getSize(), 'path' => $path]);
+                $mime = (string) $file->getMimeType();
+                if (str_starts_with($mime, 'image/')) {
+                    // Кадр с телефона — 1600 px webp, как и везде; исходник в чате не нужен.
+                    $webp = app(PhotoIngest::class)->shrink($file->getRealPath());
+                    $path = 'chats/'.$chat->id.'/'.Str::uuid().'.webp';
+                    Storage::disk('private')->put($path, file_get_contents($webp));
+                    @unlink($webp);
+                    $mime = 'image/webp';
+                } else {
+                    $path = 'chats/'.$chat->id.'/'.Str::uuid().'.'.($file->guessExtension() ?: 'bin');
+                    Storage::disk('private')->put($path, $file->getContent());
+                }
+                $message->files()->create(['name' => mb_substr($file->getClientOriginalName(), 0, 255), 'mime' => $mime, 'size' => Storage::disk('private')->size($path), 'path' => $path]);
             }
             $chat->update([
                 'messages_count' => $chat->messages_count + 1,

@@ -21,6 +21,8 @@ final class SharePdf
 
     public const QUALITY = 72;
 
+    public const DISK = 'cache';
+
     public function __construct(private PdfWriter $writer) {}
 
     /** @param  list<int>  $mediaIds */
@@ -31,13 +33,14 @@ final class SharePdf
             throw new RuntimeException('Не выбрано ни одной фотографии');
         }
         $key = substr(sha1($offer->id.':'.$media->pluck('id')->implode(',').':'.(int) $watermark.':'.$media->max('updated_at')), 0, 16);
+        // Готовый PDF — кэш: пересобирается из фото, storage:gc стирает старые.
         $path = "share/{$offer->id}/{$key}.pdf";
-        $disk = Storage::disk('private');
+        $disk = Storage::disk(self::DISK);
         if ($disk->exists($path)) {
             return $disk->path($path);
         }
 
-        $work = storage_path('app/share/tmp/'.$key);
+        $work = $disk->path('tmp/share-'.$key);
         @mkdir($work, 0775, true);
         try {
             $photos = [];
@@ -73,7 +76,7 @@ final class SharePdf
 
     private function prune(int $offerId, string $keep): void
     {
-        $disk = Storage::disk('private');
+        $disk = Storage::disk(self::DISK);
         $files = collect($disk->files("share/{$offerId}"))->filter(fn ($f) => $f !== $keep)->sortByDesc(fn ($f) => $disk->lastModified($f))->values();
         foreach ($files->slice(5) as $f) {
             $disk->delete($f);

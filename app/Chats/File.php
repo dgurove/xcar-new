@@ -13,6 +13,11 @@ class File extends Model
 
     protected $table = 'chat_files';
 
+    protected static function booted(): void
+    {
+        static::deleted(fn (File $file) => Storage::disk('private')->delete($file->path));
+    }
+
     public function message(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Message::class, 'message_id');
