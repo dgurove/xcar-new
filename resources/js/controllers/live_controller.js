@@ -80,7 +80,8 @@ export default class extends Controller {
             pill.className = 'btn btn-s btn-accent fixed left-1/2 z-40 -translate-x-1/2 shadow-(--shadow-drop)';
             pill.style.top = 'calc(var(--spacing-header) + env(safe-area-inset-top) + .75rem)';
             pill.dataset.count = '0';
-            pill.addEventListener('click', () => Turbo.visit(location.pathname));
+            // Морф на месте с фильтрами и прокруткой, без слайда; новое — сверху.
+            pill.addEventListener('click', () => { Turbo.visit(location.href, { action: 'replace' }); scrollTo({ top: 0, behavior: 'smooth' }); });
             document.body.appendChild(pill);
         }
         pill.dataset.count = String(Number(pill.dataset.count) + 1);

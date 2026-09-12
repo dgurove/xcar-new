@@ -9,6 +9,7 @@ use App\Notifications\Notify;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -22,5 +23,9 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(OnMessage::class);
         Event::listen(Login::class, AttachGuestEnquiry::class);
         Paginator::defaultView('vendor.pagination.xcar');
+        // После выкладки Turbo видит новый хэш и делает одну полную загрузку —
+        // иначе дописывает второй бандл рядом со старым: два Turbo, два Stimulus.
+        Vite::useScriptTagAttributes(['data-turbo-track' => 'reload']);
+        Vite::useStyleTagAttributes(['data-turbo-track' => 'reload']);
     }
 }

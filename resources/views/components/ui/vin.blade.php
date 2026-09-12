@@ -10,7 +10,7 @@
     @if ($afterLabel)<span class="field-label flex items-center gap-1.5"><label for="{{ $id }}">{{ $label }}</label>{{ $afterLabel }}</span>
     @else<label for="{{ $id }}" class="field-label">{{ $label }}</label>@endif
     <div class="vin-box">
-        <input id="{{ $id }}" name="{{ $name }}" type="text" value="{{ $bound }}" maxlength="17" autocapitalize="characters" autocomplete="off" spellcheck="false"
+        <input id="{{ $id }}" name="{{ $name }}" type="text" value="{{ $bound }}" maxlength="17" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false"
             data-vin-target="input" data-action="input->vin#check keydown.enter->vin#enter"
             {{ $attributes->except('id')->merge(['class' => 'field-input uppercase']) }}>
         <button type="button" class="vin-magic" data-vin-target="button" data-action="vin#fill" aria-label="Заполнить по VIN" title="Заполнить по VIN" disabled>

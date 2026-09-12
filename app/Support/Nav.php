@@ -53,7 +53,7 @@ final class Nav
 
         if ($user?->isStaff()) {
             return [
-                self::item('Предложения', 'car', '/', '/'),
+                self::item('Предложения', 'car', '/', ['/', '/offers']),
                 self::item('Галерея', 'photo', '/galereya'),
                 self::item('Закупки', 'cart', '/zakupki'),
                 self::item('Уведомления', 'bell', '/lk/uvedomleniya', capsule: false),
@@ -62,7 +62,7 @@ final class Nav
 
         if ($user?->role === Role::Manager) {
             return [
-                self::item('Предложения', 'car', '/', '/'),
+                self::item('Предложения', 'car', '/', ['/', '/offers']),
                 self::item('Галерея', 'photo', '/galereya', tab: false),
                 self::item('Закупки', 'cart', '/zakupki'),
                 self::item('Сделки', 'deal', '/lk/sdelki'),
@@ -72,7 +72,7 @@ final class Nav
 
         if ($user?->isApproved()) {
             return [
-                self::item('Предложения', 'car', '/', '/'),
+                self::item('Предложения', 'car', '/', ['/', '/offers']),
                 self::item('Галерея', 'photo', '/galereya'),
                 self::item('Избранное', 'bookmark', '/lk/izbrannoe', capsule: false),
                 self::item('Уведомления', 'bell', '/lk/uvedomleniya', capsule: false),

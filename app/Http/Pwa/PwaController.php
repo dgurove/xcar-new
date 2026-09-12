@@ -59,4 +59,14 @@ class PwaController
     {
         return view('site.offline');
     }
+
+    /** Воркер с версией из хэша сборки: новая выкладка — новый кэш, без правки руками. */
+    public function worker()
+    {
+        $manifest = public_path('build/manifest.json');
+        $version = is_file($manifest) ? 'b'.substr(md5_file($manifest), 0, 8) : 'dev';
+        $js = str_replace('__VERSION__', $version, file_get_contents(resource_path('sw.js')));
+
+        return response($js, 200, ['Content-Type' => 'text/javascript; charset=utf-8', 'Cache-Control' => 'no-cache']);
+    }
 }

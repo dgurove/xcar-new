@@ -1,5 +1,5 @@
 @php use App\Park\{VehicleState, RequestType}; $photos = $vehicle->visiblePhotos(); @endphp
-<x-ui.shell :title="$vehicle->titleWithYear()">
+<x-ui.shell :title="$vehicle->titleWithYear()" :back="['Машины', '/mashiny']">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-park.state :vehicle="$vehicle"/>
         @if ($vehicle->ref)<span class="chip">{{ $vehicle->ref }}</span>@endif

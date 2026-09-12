@@ -5,7 +5,7 @@
     $open = $deal->requirements->whereNull('done_at');
     $answered = $deal->requirements->whereNotNull('done_at')->sortByDesc('done_at');
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()">
+<x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/rabota/sdelki']">
     <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
         @if ($deal->state !== DealState::Active)
             <x-ui.pill :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.pill>

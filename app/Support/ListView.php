@@ -23,6 +23,19 @@ final class ListView
         return in_array($vid, [self::LIST, self::GRID], true) ? $vid : null;
     }
 
+    /**
+     * sizes для кадра карточки: в строке кадр 4.5–6 rem, и без этого браузер
+     * на телефоне берёт оригинал 1600 px под каждую из двадцати карточек.
+     */
+    public static function sizes(?string $view): string
+    {
+        return match ($view) {
+            self::LIST => '(min-width: 640px) 6rem, 4.5rem',
+            self::GRID => '(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw',
+            default => '(min-width: 1024px) 320px, (min-width: 640px) 45vw, 4.5rem',
+        };
+    }
+
     public static function containerClass(?string $view): string
     {
         return match ($view) {

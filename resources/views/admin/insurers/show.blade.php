@@ -3,7 +3,7 @@
     $w = $workflow;
     $base = "/nastroyki/strahovye/{$insurer->id}";
 @endphp
-<x-ui.shell :title="$insurer->name">
+<x-ui.shell :title="$insurer->name" :back="['Страховые', '/nastroyki/strahovye']">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-2" data-controller="sheet">
         @unless ($insurer->is_active)<x-ui.pill tone="closed">выключена</x-ui.pill>@endunless
         <x-ui.button type="button" variant="secondary" size="sm" data-action="sheet#open">Реквизиты</x-ui.button>

@@ -13,7 +13,7 @@
             <form method="post" action="/vyhod" class="contents">@csrf<button type="submit" class="tab"><x-ui.icon name="exit" class="icon-line"/><x-ui.icon name="exit" fill class="icon-fill"/><span>{{ $tab['label'] }}</span></button></form>
             @continue
         @endif
-        <a href="{{ $tab['href'] }}" class="tab" @if ($tab['href'] === $current) aria-current="page" @endif>
+        <a href="{{ $tab['href'] }}" class="tab" data-turbo-action="replace" data-action="tabbar#tap" @if ($tab['href'] === $current) aria-current="page" @endif>
             @if ($loop->last && $user)
                 <x-ui.avatar :user="$user" :size="25"/>
             @else

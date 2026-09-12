@@ -13,5 +13,5 @@
     };
 @endphp
 @foreach ($buttons as $b)
-    <a href="{{ $b['url'] }}" class="btn btn-s btn-quiet btn-round shrink-0 {{ $b['class'] }}" aria-label="{{ $b['label'] }}" title="{{ $b['label'] }}"><x-ui.icon :name="$b['icon']" class="size-5"/></a>
+    <a href="{{ $b['url'] }}" class="btn btn-s btn-quiet btn-round shrink-0 {{ $b['class'] }}" data-turbo-action="replace" aria-label="{{ $b['label'] }}" title="{{ $b['label'] }}"><x-ui.icon :name="$b['icon']" class="size-5"/></a>
 @endforeach

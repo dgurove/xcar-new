@@ -62,12 +62,6 @@
 		file_server
 	}
 
-	# Service worker всегда свежий, иначе обновление приложения ждёт сутки.
-	handle /sw.js {
-		header Cache-Control "no-cache"
-		file_server
-	}
-
 	php_server {
 		index frankenphp-worker.php
 		try_files {path} frankenphp-worker.php

@@ -1,5 +1,5 @@
 @php use App\Purchases\{PurchaseState, ImportState}; $n = $purchase->number; @endphp
-<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()">
+<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :back="['Закупки', '/zakupki']">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-2" data-controller="sheet">
         <x-ui.pill :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}</x-ui.pill>
         @if ($purchase->offers_close_at)<x-ui.pill tone="plain"><span>до {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span></x-ui.pill>@endif

@@ -4,6 +4,8 @@
 import * as Turbo from '@hotwired/turbo';
 import { Application } from '@hotwired/stimulus';
 import { touchPrefetch } from './touch-prefetch';
+import { confirmSheet } from './confirm';
+import { netGuards } from './net';
 
 const application = Application.start();
 window.Stimulus = application;
@@ -14,14 +16,31 @@ for (const [path, module] of Object.entries(controllers)) {
     application.register(name, module.default);
 }
 
-Turbo.config.drive.progressBarDelay = 200;
+// Полоса — только у долгих визитов: с префетчем на touchstart быстрые укладываются в 400 мс.
+Turbo.config.drive.progressBarDelay = 400;
+// data-turbo-confirm — своей шторкой, не системным диалогом.
+Turbo.config.forms.confirm = (message, form, submitter) => confirmSheet(message, { form, submitter });
 
-// Morph не должен снимать open с диалогов: серверный HTML его не знает,
-// а блок в потоке и открытая шторка живут на клиенте.
+// Морф бережёт то, что живёт на клиенте и серверному HTML неизвестно:
+// open у диалогов (блок в потоке, открытая шторка), текущий кадр карусели,
+// поле с фокусом или набранным текстом (тосты — постоянный узел, морф их обходит).
 document.addEventListener('turbo:before-morph-attribute', (event) => {
-    if (event.target instanceof HTMLDialogElement && event.detail.attributeName === 'open') event.preventDefault();
+    const { attributeName } = event.detail;
+    const el = event.target;
+    if (el instanceof HTMLDialogElement && attributeName === 'open') event.preventDefault();
+    if (el.matches('[data-frames-target="frame"]') && ['hidden', 'loading'].includes(attributeName)) event.preventDefault();
+    if (el.matches('.card-dot') && attributeName === 'class') event.preventDefault();
+});
+document.addEventListener('turbo:before-morph-element', (event) => {
+    const el = event.target;
+    if (el === document.activeElement && el.matches('input, textarea, select')) event.preventDefault();
+    if (el.matches('input, textarea') && el.value !== el.defaultValue) event.preventDefault();
 });
 touchPrefetch();
+pressFeedback();
+inPageAnchors();
+netGuards();
+imageFade();
 
 // View Transitions роняют промис, когда вкладка скрыта или переход перебит
 // следующим: страница при этом в порядке, в консоли этому не место.
@@ -30,3 +49,52 @@ window.addEventListener('unhandledrejection', (event) => {
         event.preventDefault();
     }
 });
+
+// Нажатое держится, пока не приедет экран: класс is-pending на карточке, строке,
+// кнопке или табе с момента turbo:click до рендера (стили — блок «нажатие» в app.css).
+// Кнопка отправки получает aria-busy — кольцо вместо текста. Ссылка или GET-форма
+// из открытой шторки закрывает её сама: при morph-визите Turbo диалог не трогает.
+function pressFeedback() {
+    const clear = () => document.querySelectorAll('.is-pending').forEach((el) => el.classList.remove('is-pending'));
+    document.addEventListener('turbo:click', (event) => {
+        event.target.closest('.card, .row, .stat, .pill, .btn, .tab, .header-btn')?.classList.add('is-pending');
+        const dialog = event.target.closest('dialog[open]');
+        if (dialog?.matches(':modal')) dialog.close();
+    });
+    for (const name of ['turbo:before-render', 'turbo:load', 'turbo:fetch-request-error', 'turbo:before-cache']) document.addEventListener(name, clear);
+    document.addEventListener('turbo:submit-start', (event) => {
+        const { formSubmission } = event.detail;
+        formSubmission.submitter?.setAttribute('aria-busy', 'true');
+        const dialog = event.target.closest('dialog[open]');
+        if (formSubmission.method === 'get' && dialog?.matches(':modal')) dialog.close();
+    });
+    document.addEventListener('turbo:submit-end', (event) => event.detail.formSubmission.submitter?.removeAttribute('aria-busy'));
+}
+
+// Android: долгое нажатие по фото и хрому не открывает меню Chrome «Открыть в новой вкладке».
+document.addEventListener('contextmenu', (event) => {
+    if (event.target.closest('.tabbar, .header, .card-media, .action-bar, .photo-strip, [data-gallery-target="strip"]')) event.preventDefault();
+});
+
+// Якорь на той же странице: плавно и без записи в историю («Смотреть предложения»).
+function inPageAnchors() {
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest('a[href^="#"]');
+        const target = link && link.hash.length > 1 && document.getElementById(decodeURIComponent(link.hash.slice(1)));
+        if (!target) return;
+        event.preventDefault();
+        target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    });
+}
+
+// Кадры появляются плавно: незагруженным img — is-loading до load, из кэша — сразу.
+function imageFade() {
+    const mark = () => document.querySelectorAll('.card-media img, .photo-cell img, [data-gallery-target="strip"] img').forEach((img) => {
+        if (!img.complete) img.classList.add('is-loading');
+    });
+    document.addEventListener('turbo:load', mark);
+    document.addEventListener('turbo:render', mark);
+    const done = (event) => event.target.classList?.remove('is-loading');
+    document.addEventListener('load', done, true);
+    document.addEventListener('error', done, true);
+}

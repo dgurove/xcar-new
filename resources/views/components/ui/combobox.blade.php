@@ -5,7 +5,7 @@
      @if ($create) data-combobox-create-value="{{ $create }}" @endif @if ($depends) data-combobox-depends-value="{{ $depends }}" data-combobox-param-value="{{ $param }}" @endif
      data-action="combobox:reset->combobox#reset">
     <label for="{{ $id }}" class="field-label">{{ $label }}</label>
-    <input id="{{ $id }}" type="text" class="field-input" value="{{ $text }}" autocomplete="off" data-combobox-target="input"
+    <input id="{{ $id }}" type="text" class="field-input" value="{{ $text }}" autocomplete="off" autocorrect="off" autocapitalize="words" data-combobox-target="input"
            data-action="input->combobox#search focus->combobox#open" {{ $attributes }}>
     <input type="hidden" name="{{ $name }}" value="{{ old($name, $value) }}" data-combobox-target="hidden">
     <div class="combobox-list" data-combobox-target="list" hidden></div>

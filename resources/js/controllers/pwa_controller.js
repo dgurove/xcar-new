@@ -21,10 +21,15 @@ export default class extends Controller {
         document.removeEventListener('turbo:load', this.onLoad);
     }
 
+    // Скрипт воркера всегда из сети; в standalone полных загрузок нет, поэтому
+    // обновление проверяется ещё и при возврате из фона.
     async register() {
         if (!('serviceWorker' in navigator) || window.swRegistered) return;
         window.swRegistered = true;
-        try { await navigator.serviceWorker.register('/sw.js'); } catch {}
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
+            document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && registration.update().catch(() => {}));
+        } catch {}
     }
 
     badge() {

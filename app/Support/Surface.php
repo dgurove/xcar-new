@@ -21,9 +21,14 @@ enum Surface: string
         };
     }
 
+    /** Поверхность запроса; до middleware (404 на чужом пути, страницы ошибок) — по хосту. */
     public static function current(): self
     {
-        return app()->bound(self::class) ? app(self::class) : self::Site;
+        if (app()->bound(self::class)) {
+            return app(self::class);
+        }
+
+        return app()->runningInConsole() || ! app()->has('request') ? self::Site : self::fromHost(request()->getHost());
     }
 
     public function host(): string

@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Storage;
 
 Route::get('/manifest.webmanifest', [PwaController::class, 'manifest']);
 Route::get('/offline', [PwaController::class, 'offline']);
+Route::get('/sw.js', [PwaController::class, 'worker']);
 Route::post('/push/podpiska', [PushController::class, 'store'])->middleware('auth');
 Route::delete('/push/podpiska', [PushController::class, 'destroy'])->middleware('auth');
 

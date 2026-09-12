@@ -17,7 +17,7 @@
         'Город' => $offer->settlement?->name, 'Где сейчас' => $offer->car_place?->label(), 'Осмотр' => $offer->inspection_address,
     ], fn ($v) => $v !== null && $v !== '');
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">
+<x-ui.shell :title="$offer->titleWithYear()" :back="[$gallery ? 'Галерея' : 'Предложения', $back]" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">
     <x-slot:actions>
         @auth<x-offer.share :offer="$offer" icon/>@endauth
         @auth<x-offer.favorite :offer="$offer" variant="compact"/>@endauth

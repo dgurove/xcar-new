@@ -12,7 +12,7 @@
     <form class="mt-2 flex items-end gap-2" data-chat-target="form" data-action="submit->chat#send">
         <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-chat-target="files" data-action="change->chat#filesPicked">
         <button type="button" class="btn btn-ghost px-2" data-action="chat#pick" aria-label="Приложить"><x-ui.icon name="clip" class="size-5"/></button>
-        <textarea name="text" rows="1" class="field-input !min-h-12 flex-1 resize-none" placeholder="Сообщение" data-chat-target="input" data-action="keydown->chat#keydown" enterkeyhint="send"></textarea>
+        <textarea name="text" rows="1" class="field-input !min-h-12 flex-1 resize-none" placeholder="Сообщение" data-chat-target="input" data-action="keydown->chat#keydown" enterkeyhint="enter"></textarea>
         <button class="btn btn-accent px-3" aria-label="Отправить"><x-ui.icon name="send" class="size-5"/></button>
     </form>
     <div class="mt-1 text-sm text-ink-muted" data-chat-target="status" hidden></div>

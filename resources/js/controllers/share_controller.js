@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { openSheet, closeSheet } from '../sheet';
 
 // Поделиться оффером. Текст и файл уходят порознь: вместе мессенджеры теряют
 // файл. Текст кладётся в буфер до первого await — share() требует свежего
@@ -13,13 +14,13 @@ export default class extends Controller {
     }
 
     open() {
-        this.dialogTarget.showModal();
+        openSheet(this.dialogTarget);
         this.compose();
         this.prepare();
     }
 
     close() {
-        this.dialogTarget.close();
+        closeSheet(this.dialogTarget);
     }
 
     backdrop(event) {

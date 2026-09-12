@@ -1,10 +1,8 @@
 {{-- Стрелки к соседям по списку и счётчик «2/20». Соседа нет — стрелка гаснет,
-     а не исчезает. Вне списка — «К списку (N)». --}}
+     а не исчезает. Назад к списку — «‹ Раздел» в шапке (x-ui.shell back). --}}
 @props(['prev' => null, 'next' => null, 'back' => null, 'index' => null, 'total' => 0, 'lg' => false])
 <div {{ $attributes->merge(['class' => 'flex items-center gap-0.5 sm:gap-1']) }} data-controller="nav">
-    @if ($index === null)
-        @if ($back)<a href="{{ $back }}" class="nums mr-1 shrink-0 text-xs font-normal text-ink-dim transition-colors hover:text-ink sm:mr-2">К списку @if ($total > 0)({{ $total }})@endif</a>@endif
-    @else
+    @if ($index !== null)
         <span class="nums mr-1 shrink-0 text-xs font-normal text-ink-dim sm:mr-2">{{ $index }}/{{ $total }}</span>
     @endif
     @foreach ([['prev', $prev, 'Предыдущее', 'chevron-left'], ['next', $next, 'Следующее', 'chevron-right']] as [$dir, $href, $label, $icon])

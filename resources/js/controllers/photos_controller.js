@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { confirmSheet } from '../confirm';
 import Sortable from 'sortablejs';
 
 // Фотографии: загрузка по одному файлу с прогрессом (выбор или drop на карточку), перестановка перетаскиванием,
@@ -104,7 +105,13 @@ export default class extends Controller {
     }
 
     async perform(id, act, confirm) {
-        if (confirm && !window.confirm(confirm)) return false;
+        if (this.busy) return false;
+        if (confirm && !(await confirmSheet(confirm, { danger: act === 'udalit' }))) return false;
+        this.busy = true;
+        try { return await this.run(id, act); } finally { this.busy = false; }
+    }
+
+    async run(id, act) {
         const url = `${this.urlValue}/${id}${act === 'udalit' ? '' : '/' + act}`;
         const r = await this.post(url, act === 'udalit' ? '_method=delete' : '', 'application/x-www-form-urlencoded');
         if (!r.ok) { window.toast?.('Не получилось', 'danger'); return false; }

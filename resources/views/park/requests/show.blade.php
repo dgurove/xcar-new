@@ -9,7 +9,7 @@
         default => $req->type->verb(),
     };
 @endphp
-<x-ui.shell :title="$req->type->label().' · '.$vehicle->titleWithYear()" narrow>
+<x-ui.shell :title="$req->type->label().' · '.$vehicle->titleWithYear()" :back="['Заявки', '/']" narrow>
     <div class="flex flex-col gap-4">
         <x-park.vehicle-row :vehicle="$vehicle">
             <x-park.state :vehicle="$vehicle"/>

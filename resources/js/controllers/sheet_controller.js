@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { openSheet, closeSheet } from '../sheet';
 
 // Шторка на <dialog>. Открывается кнопкой в том же контроллере, событием
 // (например deal:open@window) или сразу, если сервер вернул форму с ошибками
@@ -34,17 +35,17 @@ export default class extends Controller {
         }
     }
 
+    // Клавиатура выезжает только там, где поле помечено autofocus (поиск);
+    // фильтры и формы открываются целиком.
     open() {
         if (this.media?.matches) return;
-        const d = this.dialogTarget;
-        if (d.open) d.close();
-        d.showModal();
-        d.querySelector('[autofocus], input:not([type=hidden]), textarea, select')?.focus();
+        openSheet(this.dialogTarget);
+        this.dialogTarget.querySelector('[autofocus]')?.focus();
     }
 
     close() {
-        this.dialogTarget.close();
-        if (this.media?.matches) this.dialogTarget.show();
+        if (this.media?.matches) { this.dialogTarget.close(); this.dialogTarget.show(); return; }
+        closeSheet(this.dialogTarget);
     }
 
     backdrop(event) {
