@@ -61,6 +61,13 @@ final class UpdateHandler
             return;
         }
         $message = new Registration($user);
+        // Клиент мог показать старую клавиатуру: по уже решённому не перерешаем, только переписываем след.
+        if (! $user->isPending()) {
+            $this->bot->answer($press->queryId, $user->isRejected() ? 'Уже отклонён.' : "Уже решено: {$user->role->label()}.");
+            $this->bot->edit($press->chatId, $press->messageId, $message->text($message->decided()), $message->afterDecision());
+
+            return;
+        }
         if ($press->action === 'reject') {
             $this->decide->reject($user);
             $this->bot->answer($press->queryId, 'Отклонён.');

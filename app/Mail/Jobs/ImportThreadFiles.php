@@ -39,9 +39,10 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         $this->onConnection('database-long')->onQueue('long')->afterCommit();
     }
 
+    /** Замок на ветку и письмо: ждущая джоба одного письма не должна глотать джобу следующего. */
     public function uniqueId(): string
     {
-        return (string) $this->threadId;
+        return $this->threadId.':'.($this->messageId ?? 'all');
     }
 
     public function handle(PinThread $pin, AttachmentImporter $importer, Publisher $publish): void

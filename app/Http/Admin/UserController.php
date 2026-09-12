@@ -76,7 +76,12 @@ class UserController
     {
         abort_unless($request->user()->isAdmin(), 404);
         // Себя из администраторов не разжаловать: иначе в панель никто не зайдёт — data() оставляет Admin.
-        $user->update($this->data($request, $user));
+        $data = $this->data($request, $user);
+        // Роль ждущему через шторку — это и есть допуск: без approved_at менеджер остался бы за стеной и пропал бы из «Ждут».
+        if (! $user->isApproved() && $data['role'] !== Role::Visitor) {
+            $data += ['approved_at' => now(), 'approved_by' => $request->user()->id, 'rejected_at' => null];
+        }
+        $user->update($data);
 
         return back()->with('toast', 'Сохранено');
     }
