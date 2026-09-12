@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import * as Turbo from '@hotwired/turbo';
 
 // Приложение на телефоне: воркер, бейдж на иконке, установка на экран «Домой».
 export default class extends Controller {
@@ -29,6 +30,8 @@ export default class extends Controller {
         try {
             const registration = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
             document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && registration.update().catch(() => {}));
+            // Тап по уведомлению (Android): воркер просит окно перейти — обычный визит.
+            navigator.serviceWorker.addEventListener('message', (e) => e.data?.navigate && Turbo.visit(e.data.navigate));
         } catch {}
     }
 

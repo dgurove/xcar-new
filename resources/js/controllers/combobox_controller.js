@@ -65,6 +65,12 @@ export default class extends Controller {
     }
 
     async createNew(name) {
+        if (this.busy) return;
+        this.busy = true;
+        try { await this.create(name); } finally { this.busy = false; }
+    }
+
+    async create(name) {
         const body = { name };
         if (this.dependsValue) body[this.paramValue] = document.querySelector(this.dependsValue)?.value;
         const r = await fetch(this.createValue, {

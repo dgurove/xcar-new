@@ -96,6 +96,12 @@ export default class extends Controller {
     }
 
     async send() {
+        if (this.sending) return;
+        this.sending = true;
+        try { await this.share(); } finally { this.sending = false; }
+    }
+
+    async share() {
         this.writeCaption();
         if (this.pdf && navigator.canShare?.({ files: [this.pdf] })) {
             try { await navigator.share({ files: [this.pdf] }); this.close(); } catch {}

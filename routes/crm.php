@@ -87,6 +87,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::put('/zakupki/{purchase}', [PurchaseController::class, 'update']);
     Route::post('/zakupki/{purchase}/sostoyanie', [PurchaseController::class, 'state']);
     Route::post('/zakupki/{purchase}/fayl', [PurchaseController::class, 'upload']);
+    Route::get('/zakupki/{purchase}/import', [PurchaseController::class, 'preview']);
     Route::post('/zakupki/{purchase}/import', [PurchaseController::class, 'import']);
     Route::get('/zakupki/{purchase}/xlsx', [PurchaseController::class, 'export']);
     Route::post('/zakupki/{purchase}/zanovo', [PurchaseController::class, 'refetch']);

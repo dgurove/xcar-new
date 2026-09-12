@@ -1,6 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { confirmSheet } from '../confirm';
-import Sortable from 'sortablejs';
+import { loadSortable } from '../lib/sortable';
 
 // Фотографии: загрузка по одному файлу с прогрессом (выбор или drop на карточку), перестановка перетаскиванием,
 // действия глаз · поворот · корзина на плитке и в просмотрщике.
@@ -23,7 +23,9 @@ export default class extends Controller {
         });
     }
 
-    gridTargetConnected(grid) {
+    async gridTargetConnected(grid) {
+        const Sortable = await loadSortable();
+        if (!grid.isConnected) return;
         this.sortable?.destroy();
         this.sortable = Sortable.create(grid, {
             animation: 150,

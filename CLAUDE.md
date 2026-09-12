@@ -34,6 +34,9 @@
   имени файла. Никаких Alpine/Livewire/Vue.
 - Каждое изменение состояния — Action + событие; контроллеры и экраны в
   модели не пишут. Событие → Mercure → Turbo Stream, никаких `poll`.
+  POST всегда отвечает редиректом — иначе Turbo молча роняет ответ.
+- Воркер — `resources/sw.js`, отдаётся маршрутом `/sw.js` (`PwaController::worker`)
+  с версией из хэша сборки; `@vite` с `data-turbo-track=reload`.
 - Код по предметным областям: `app/Offers`, `app/Mail`, `app/Park`,
   `app/Purchases`, `app/Users`, `app/Cars`, `app/Media`, `app/Live`.
   HTTP по поверхностям: `app/Http/{Site,Cabinet,Admin,Park}`; маршруты —
@@ -54,6 +57,18 @@
   пилюлями разделов (`x-ui.cabinet`), вход на фото паркинга. Классы кита и
   девять правил — в шапке `resources/css/app.css`; витрина кита — `/ui` на
   CRM (local). Тёмная тема — `.dark` в CSS, утилиты `dark:` не пишем.
+- Ощущение приложения (см. блоки «нажатие», «ленты», «хром под пальцем» в
+  `app.css` и `resources/js/{app,sheet,confirm,net}.js`): у всего нажимаемого
+  есть `:active`, голый `:hover` пишется только внутри `@media (hover: hover)`;
+  токены движения `--ease-out/--ease-in/--ease-spring`, `--dur-fast/--dur/--dur-slow`;
+  переходы push/pop, а `replace`-визит (табы, сортировка, пилюли, фильтры,
+  поиск — `data-turbo-action="replace"`) и morph-refresh без анимации; страница
+  объекта отдаёт `x-ui.shell back="['Раздел', '/url']"` — «‹ Раздел» в шапке;
+  подтверждения — `data-turbo-confirm` через свою шторку (`confirm.js`), не
+  `window.confirm`; шторки открываются/закрываются через `sheet.js` (свайп
+  вниз, уход); 419/429/обрыв сети — `net.js` (тост, повтор), страницы ошибок —
+  `resources/views/errors/*` на оболочке; серверный flash — `<template id="flash">`,
+  узел `#toasts` постоянный; `x-ui.field` сам ставит клавиатуру по имени поля.
 - CRM и стоянка плотнее витрины: `<body class="surface-crm|park">` включает
   поля 44/40 px с подписью 13 px, карточки с меньшими полями, плитки списка с
   фото на треть высоты и строки в 80 px (блок «Плотность» в `app.css`).

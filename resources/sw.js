@@ -92,7 +92,8 @@ self.addEventListener('notificationclick', (event) => {
     const target = new URL(event.notification.data?.navigate || '/', location.origin).href;
     event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
         const open = list.find((c) => 'focus' in c);
-        if (open) { open.navigate(target); return open.focus(); }
+        // Открытое окно переходит само (Turbo.visit в pwa_controller) — без перезагрузки и без разрыва live.
+        if (open) { open.postMessage({ navigate: target }); return open.focus(); }
         return self.clients.openWindow(target);
     }));
 });

@@ -98,12 +98,22 @@ class PurchaseController
         $request->validate(['file' => ['required', 'file', 'mimes:xlsx', 'max:20480']]);
         $path = $request->file('file')->storeAs("purchases/{$purchase->id}", now()->format('Ymd-His').'.xlsx', 'private');
         try {
-            $preview = $importer->preview($purchase, Storage::disk('private')->path($path));
+            $importer->preview($purchase, Storage::disk('private')->path($path));
         } catch (\Throwable $e) {
             Storage::disk('private')->delete($path);
 
             return back()->withErrors(['file' => $e->getMessage()]);
         }
+
+        // POST отвечает редиректом, иначе Turbo молча роняет ответ; предпросмотр — своей страницей.
+        return redirect("/zakupki/{$purchase->number}/import?".http_build_query(['path' => $path]));
+    }
+
+    public function preview(Request $request, Purchase $purchase, Importer $importer)
+    {
+        $path = $request->query('path', '');
+        abort_unless(str_starts_with($path, "purchases/{$purchase->id}/") && Storage::disk('private')->exists($path), 404);
+        $preview = $importer->preview($purchase, Storage::disk('private')->path($path));
 
         return view('admin.purchases.import', ['purchase' => $purchase, 'path' => $path, 'rows' => $preview['rows'], 'stats' => $preview['stats']]);
     }

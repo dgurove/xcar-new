@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
-import Sortable from 'sortablejs';
+import { loadSortable } from '../lib/sortable';
 
 // Редактор маршрута: блоки переставляются за ручку, этапы — между блоками.
 // После каждой перестановки порядок целиком уходит на сервер.
@@ -7,8 +7,10 @@ export default class extends Controller {
     static targets = ['blocks', 'stages'];
     static values = { url: String };
 
-    connect() {
+    async connect() {
         this.instances = [];
+        const Sortable = await loadSortable();
+        if (!this.element.isConnected) return;
         if (this.hasBlocksTarget) {
             this.instances.push(Sortable.create(this.blocksTarget, { animation: 150, handle: '[data-handle]', onEnd: () => this.save() }));
         }

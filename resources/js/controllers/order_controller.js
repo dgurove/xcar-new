@@ -1,11 +1,13 @@
 import { Controller } from '@hotwired/stimulus';
-import Sortable from 'sortablejs';
+import { loadSortable } from '../lib/sortable';
 
 // Список, который переставляют за ручку: после перестановки порядок id уходит на сервер.
 export default class extends Controller {
     static values = { url: String };
 
-    connect() {
+    async connect() {
+        const Sortable = await loadSortable();
+        if (!this.element.isConnected) return;
         this.sortable = Sortable.create(this.element, { animation: 150, handle: '[data-handle]', delay: 150, delayOnTouchOnly: true, onEnd: () => this.save() });
     }
 

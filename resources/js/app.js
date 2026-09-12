@@ -41,6 +41,8 @@ pressFeedback();
 inPageAnchors();
 netGuards();
 imageFade();
+freshness();
+focusInvalid();
 
 // View Transitions роняют промис, когда вкладка скрыта или переход перебит
 // следующим: страница при этом в порядке, в консоли этому не место.
@@ -97,4 +99,36 @@ function imageFade() {
     const done = (event) => event.target.classList?.remove('is-loading');
     document.addEventListener('load', done, true);
     document.addEventListener('error', done, true);
+}
+
+// Снимок «назад» старше 10 с и возврат из фона дольше минуты — тихий replace:
+// морф на месте с сохранением прокрутки, заодно свежие csrf-token и темы live.
+// Только на списках и не под руками: открытая шторка или правка формы — не трогаем.
+function freshness() {
+    const cachedAt = new Map();
+    let action = null;
+    const quiet = () => document.querySelector('.cards, [data-list]') && !document.querySelector('form[data-dirty], dialog:modal');
+    const refresh = () => Turbo.visit(location.href, { action: 'replace' });
+    document.addEventListener('turbo:before-cache', () => cachedAt.set(location.href, Date.now()));
+    document.addEventListener('turbo:visit', (event) => { action = event.detail.action; });
+    document.addEventListener('turbo:load', () => {
+        if (action === 'restore' && Date.now() - (cachedAt.get(location.href) ?? Date.now()) > 10_000 && quiet()) refresh();
+        action = null;
+    });
+    let hiddenAt = 0;
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+        if (hiddenAt && Date.now() - hiddenAt > 60_000 && quiet()) refresh();
+    });
+}
+
+// Ошибка валидации приводит к полю: после морфа с preserve-scroll человек стоит у
+// «Сохранить», а красное поле — вне экрана.
+function focusInvalid() {
+    document.addEventListener('turbo:load', () => {
+        const bad = document.querySelector('.field-invalid .field-input');
+        if (!bad) return;
+        bad.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        bad.focus({ preventScroll: true });
+    });
 }

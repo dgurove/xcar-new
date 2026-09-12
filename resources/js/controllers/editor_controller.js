@@ -1,11 +1,12 @@
 import { Controller } from '@hotwired/stimulus';
-import 'trix';
 
-// Trix без вложений: файлы к письму идут отдельным списком.
+// Trix без вложений: файлы к письму идут отдельным списком. Сам Trix — половина
+// бандла — грузится здесь, только на экране с редактором.
 export default class extends Controller {
     static targets = ['editor'];
 
-    connect() {
+    async connect() {
+        await import('trix');
         this.block = (e) => e.preventDefault();
         this.editorTarget.addEventListener('trix-file-accept', this.block);
     }

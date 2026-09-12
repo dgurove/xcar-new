@@ -1,16 +1,19 @@
 import { Controller } from '@hotwired/stimulus';
-import Webpass from '@laragear/webpass';
+
+const webpass = () => import('@laragear/webpass').then((m) => m.default);
 
 // Ключ доступа (Face ID / Touch ID). Блок показывается только там, где
 // устройство умеет проверять владельца, иначе кнопки нет вовсе.
 export default class extends Controller {
     static targets = ['root', 'alias'];
 
-    connect() {
+    async connect() {
+        const Webpass = await webpass();
         if (Webpass.isSupported()) this.element.hidden = false;
     }
 
     async login() {
+        const Webpass = await webpass();
         const { success, data, error } = await Webpass.assert('/passkey/login/options', '/passkey/login');
         if (success) {
             window.Turbo.visit(data?.redirect ?? '/');
@@ -21,6 +24,7 @@ export default class extends Controller {
 
     async register() {
         const alias = this.hasAliasTarget ? this.aliasTarget.value : navigator.platform;
+        const Webpass = await webpass();
         const { success, error } = await Webpass.attest('/passkey/register/options', {
             path: '/passkey/register',
             body: { alias },
