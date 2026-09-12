@@ -3,6 +3,8 @@
 namespace App\Http\Admin;
 
 use App\Cars\Settlement;
+use App\Chats\Chat;
+use App\Chats\Message as ChatMessage;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
@@ -81,6 +83,7 @@ class OfferController
         return view('admin.offers.edit', [
             'offer' => $offer,
             'threads' => Thread::where('offer_id', $offer->id)->get(),
+            'chats' => Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'import' => ImportThreadFiles::progress($offer->id),
             'insurers' => Insurer::where('is_active', true)->orWhere('id', $offer->insurer_id)->orderBy('name')->pluck('name', 'id'),
             'stages' => $offer->insurer ? $offer->insurer->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),

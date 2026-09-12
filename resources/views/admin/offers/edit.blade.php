@@ -22,6 +22,7 @@
         @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/rabota/pochta/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
         @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/rabota/pochta?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
         @if ($offer->deal)<x-ui.pill tone="open" href="/rabota/sdelki/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
+        @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/rabota/chaty?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
         @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>
@@ -55,6 +56,23 @@
 
             @if ($offer->positions->isNotEmpty())
                 @include('admin.offers.route')
+            @endif
+
+            @if ($chats->isNotEmpty())
+            <x-ui.card title="Чаты" class="order-5">
+                <div class="flex flex-col divide-y divide-line/40">
+                    @foreach ($chats as $chat)
+                        <a href="/rabota/chaty/{{ $chat->id }}" class="flex items-center gap-3 py-2">
+                            <x-ui.avatar :user="$chat->user" :size="36"/>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->displayName() }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span></div>
+                                <div class="truncate text-sm text-ink-muted">{{ $chat->last_text ? \Illuminate\Support\Str::limit($chat->last_text, 80) : 'Файл' }}</div>
+                            </div>
+                            @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif
+                        </a>
+                    @endforeach
+                </div>
+            </x-ui.card>
             @endif
 
             @if ($offer->interests->isNotEmpty())

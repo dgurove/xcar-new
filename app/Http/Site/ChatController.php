@@ -9,19 +9,26 @@ use App\Chats\Chat;
 use App\Chats\File;
 use App\Chats\GuestEnquiry;
 use App\Offers\Offer;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /** Чат: одни и те же концы для витрины, CRM и гостя с обращением; право решает Chat::allows. */
 class ChatController
 {
     public function __construct(private GuestEnquiry $guest) {}
 
-    public function open(Request $request, Offer $offer, OpenChat $open)
+    /** Первое сообщение покупателя: чат заводится здесь же, ответ — лента и её адрес в заголовках. */
+    public function open(Request $request, Offer $offer, OpenChat $open, PostMessage $post)
     {
-        abort_unless($offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest()), 404);
-        $open($offer, $request->user());
+        abort_unless($offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest()) && ! $request->user()->isStaff(), 404);
+        $this->validateMessage($request);
+        $chat = $open($offer, $request->user());
+        $this->guarded(fn () => $post($chat, $request->user(), $request->input('text'), $request->file('files', [])));
+        $messages = $chat->messages()->with(['author', 'files'])->get();
 
-        return redirect("/offers/{$offer->number}?chat=1");
+        return response(view('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $request->user()]))
+            ->header('X-Chat-Id', (string) $chat->id)->header('X-Chat-Url', "/chaty/{$chat->id}/soobshcheniya");
     }
 
     public function messages(Request $request, Chat $chat, MarkChatRead $read)
@@ -29,7 +36,10 @@ class ChatController
         abort_unless($chat->allows($request->user(), $this->guest->token($request)), 404);
         $after = (int) $request->query('after', 0);
         $messages = $chat->messages()->with(['author', 'files'])->where('seq', '>', $after)->get();
-        $read($chat, $request->user());
+        // Прочитано — только когда лента на экране; догон в закрытой шторке бейдж не гасит.
+        if ($request->boolean('read', true)) {
+            $read($chat, $request->user());
+        }
 
         return view('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $request->user()]);
     }
@@ -37,12 +47,27 @@ class ChatController
     public function post(Request $request, Chat $chat, PostMessage $post)
     {
         abort_unless($chat->allows($request->user(), $this->guest->token($request)), 404);
-        $request->validate(['text' => ['nullable', 'string', 'max:4000'], 'files' => ['nullable', 'array', 'max:10'], 'files.*' => ['file', 'max:20480']]);
+        $this->validateMessage($request);
         $after = (int) $request->input('after', 0);
-        $post($chat, $request->user(), $request->input('text'), $request->file('files', []));
+        $this->guarded(fn () => $post($chat, $request->user(), $request->input('text'), $request->file('files', [])));
         $messages = $chat->messages()->with(['author', 'files'])->where('seq', '>', $after)->get();
 
         return view('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $request->user()]);
+    }
+
+    /** Лента ходит fetch-ом и ждёт HTML; ошибка проверки должна прийти JSON-ом 422, а не редиректом со страницей. */
+    private function validateMessage(Request $request): void
+    {
+        $this->guarded(fn () => $request->validate(['text' => ['nullable', 'string', 'max:4000'], 'files' => ['nullable', 'array', 'max:10'], 'files.*' => ['file', 'max:20480']]));
+    }
+
+    private function guarded(callable $action): mixed
+    {
+        try {
+            return $action();
+        } catch (ValidationException $e) {
+            throw new HttpResponseException(response()->json(['message' => $e->validator->errors()->first()], 422));
+        }
     }
 
     public function file(Request $request, Chat $chat, File $file)

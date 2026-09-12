@@ -1,5 +1,5 @@
 {{-- Начинка блока цены: цена, срок приёма, предложение цены или интерес, чат. --}}
-@props(['offer', 'myBid' => null, 'myInterest' => null, 'chat' => null, 'inSheet' => false])
+@props(['offer', 'myBid' => null, 'myInterest' => null, 'chat' => null, 'canChat' => false, 'inSheet' => false])
 @php
     $user = auth()->user();
     $gallery = $offer->isGallery();
@@ -47,9 +47,7 @@
         @endif
     @endif
 
-    @if ($chat)
-        <button type="button" class="btn btn-quiet mt-3 w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="chat:open"><x-ui.icon name="chat" class="size-5"/> Написать в чат@if ($chat->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</button>
-    @elseif ($offer->chat_enabled && $offer->state->acceptsInterest())
-        <form method="post" action="/offers/{{ $offer->number }}/chat" class="mt-3">@csrf<button type="submit" class="btn btn-quiet w-full"><x-ui.icon name="chat" class="size-5"/> Написать в чат</button></form>
+    @if ($canChat)
+        <button type="button" class="btn btn-quiet mt-3 w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="chat:open"><x-ui.icon name="chat" class="size-5"/> Написать в чат@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</button>
     @endif
 @endguest

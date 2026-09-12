@@ -5,32 +5,46 @@ import { Controller } from '@hotwired/stimulus';
 // приходит только событие {chat, seq}, текст всегда берётся с сервера.
 export default class extends Controller {
     static targets = ['list', 'form', 'input', 'files', 'status'];
-    static values = { url: String, id: Number, last: Number };
+    static values = { url: String, open: String, id: Number, last: Number };
 
     connect() {
         this.onLive = (e) => e.detail?.chat === this.idValue && e.detail.seq > this.lastValue && this.fetch();
         this.onVisible = () => document.visibilityState === 'visible' && this.fetch();
+        this.onOpen = () => setTimeout(() => this.fetch(), 50);
         document.addEventListener('live:chat', this.onLive);
         document.addEventListener('visibilitychange', this.onVisible);
+        window.addEventListener('chat:open', this.onOpen);
+        // Страховка без живого канала: раз в 20 секунд, пока лента на экране.
+        this.timer = setInterval(() => this.fetch(), 20000);
         this.scroll();
     }
 
     disconnect() {
         document.removeEventListener('live:chat', this.onLive);
         document.removeEventListener('visibilitychange', this.onVisible);
+        window.removeEventListener('chat:open', this.onOpen);
+        clearInterval(this.timer);
+    }
+
+    // Лента видна — значит прочитано; в закрытой шторке догоняем молча, бейдж остаётся.
+    visible() {
+        return this.element.checkVisibility?.() ?? true;
     }
 
     async fetch() {
-        const r = await fetch(`${this.urlValue}?after=${this.lastValue}`, { headers: { Accept: 'text/html' } });
+        if (!this.urlValue) return;
+        const r = await fetch(`${this.urlValue}?after=${this.lastValue}&read=${this.visible() ? 1 : 0}`, { headers: { Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest' } });
         if (r.ok) this.append(await r.text());
     }
 
     append(html) {
         const box = document.createElement('div');
         box.innerHTML = html;
+        // Первое сообщение завело чат: приветствие-заглушка уходит, лента дальше живёт по seq.
+        if (!this.lastValue) this.listTarget.replaceChildren();
         for (const el of [...box.children]) {
             const seq = Number(el.dataset.seq);
-            if (seq <= this.lastValue) continue;
+            if (!seq || seq <= this.lastValue) continue;
             this.listTarget.append(el);
             this.lastValue = seq;
         }
@@ -69,8 +83,14 @@ export default class extends Controller {
         files.forEach((f) => form.append('files[]', f));
         this.formTarget.querySelector('button[type=submit], button:not([type])').disabled = true;
         try {
-            const r = await fetch(this.urlValue, { method: 'POST', body: form, headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, Accept: 'text/html' } });
-            if (!r.ok) { const d = await r.json().catch(() => ({})); window.toast?.(d.message || 'Не отправилось', 'danger'); return; }
+            // Чата ещё нет — первое сообщение уходит на open, ответ приносит адрес ленты.
+            const r = await fetch(this.urlValue || this.openValue, { method: 'POST', body: form, headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!r.ok) {
+                const d = await r.json().catch(() => ({}));
+                window.toast?.(d.message || (r.status === 401 || r.status === 419 ? 'Войдите заново' : 'Не отправилось'), 'danger');
+                return;
+            }
+            if (!this.urlValue) { this.urlValue = r.headers.get('X-Chat-Url') || ''; this.idValue = Number(r.headers.get('X-Chat-Id') || 0); }
             this.append(await r.text());
             this.inputTarget.value = '';
             this.filesTarget.value = '';

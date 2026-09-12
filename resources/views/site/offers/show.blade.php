@@ -34,7 +34,7 @@
         </div>
 
         <aside class="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-32 lg:self-start">
-            <x-offer.deal-box :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat"/>
+            <x-offer.deal-box :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat" :can-chat="$canChat"/>
         </aside>
 
         <div class="lg:col-start-1 lg:row-start-2">
@@ -62,13 +62,13 @@
         </div>
     </div>
 
-    @if ($chat)
+    @if ($canChat)
         <div data-controller="sheet" data-action="chat:open@window->sheet#open" class="contents">
             <x-ui.sheet id="chat" title="Чат по № {{ $offer->number }}" :open="request()->boolean('chat')" wide>
-                <x-chat.box :chat="$chat" :messages="$chat->messages()->with(['author', 'files'])->get()" :user="$user"/>
+                <x-chat.box :chat="$chat" :messages="$chat?->messages()->with(['author', 'files'])->get() ?? collect()" :user="$user" open="/offers/{{ $offer->number }}/chat"/>
             </x-ui.sheet>
         </div>
     @endif
 
-    <x-offer.action-bar :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat"/>
+    <x-offer.action-bar :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat" :can-chat="$canChat"/>
 </x-ui.shell>

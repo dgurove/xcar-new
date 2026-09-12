@@ -677,7 +677,7 @@
     width: var(--action-w); justify-self: var(--action-self); margin-top: var(--action-mt); padding: var(--action-pad);
   }
   .card-action .btn { padding-inline: var(--card-btn-pad); font-size: var(--card-btn-size); height: var(--card-btn-h); }
-  .card-action .btn-round { width: var(--card-btn-h); padding: 0; }
+  .card-action .btn-round { width: var(--card-btn-h); padding: 0; flex: 0 0 auto; aspect-ratio: 1; }
   .card-action > .btn:not(.btn-round), .card-action > form, .card-action > span:not(.btn-round) { flex: 1 1 auto; min-width: 0; }
   .card-aside { display: flex; flex: none; min-width: 0; align-items: center; gap: .5rem; width: var(--aside-w); justify-content: space-between; margin-left: var(--aside-push); }
   .card-price { font-size: var(--price-size); line-height: 1.25; text-align: var(--price-align); }
