@@ -45,7 +45,15 @@ return [
             'throw' => false,
         ],
 
-        // Фотографии и документы. Раздаются Caddy с диска по /media, мимо PHP.
+        // Воспроизводимое: PDF шеринга, части писем с IMAP, временные файлы.
+        // Не бэкапится, storage:gc чистит по сроку.
+        'cache' => [
+            'driver' => 'local',
+            'root' => storage_path('app/cache'),
+            'throw' => false,
+        ],
+
+        // Фотографии. Раздаются Caddy с диска по /media, мимо PHP.
         'media' => [
             'driver' => 'local',
             'root' => storage_path('app/media'),

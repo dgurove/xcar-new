@@ -2,15 +2,24 @@
 # Первичная настройка сервера. Запускается один раз с рабочей машины после
 # того, как ключ уже на сервере:  ./deploy/server-setup.sh
 #
-# Что делает: выключает вход по паролю, ставит docker и ufw, заводит
-# /srv/xcar/{env,releases}, кладёт образцы настроек с сгенерированными ключами.
+# Что делает: выключает вход по паролю, ставит docker и ufw, размечает
+# второй диск под данные (/srv/xcar/data), заводит /srv/xcar/{env,releases},
+# кладёт образцы настроек с сгенерированными ключами. Повторный запуск
+# безопасен: сделанное не переделывает.
+#
+#   ./deploy/server-setup.sh          # всё
+#   ./deploy/server-setup.sh disk     # только диск данных и настройки docker
 set -euo pipefail
 SSH_HOST="${SSH_HOST:-xcar-next}"
+STEP="${1:-all}"
 cd "$(dirname "$0")"
 
-ssh "$SSH_HOST" bash -s <<'REMOTE'
+ssh "$SSH_HOST" STEP="$STEP" DATA_DEV="${DATA_DEV:-/dev/sdb}" bash -s <<'REMOTE'
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
+DATA=/srv/xcar/data
+
+if [ "$STEP" = all ]; then
 
 echo "==> sshd: только ключ"
 mkdir -p /etc/ssh/sshd_config.d
@@ -40,12 +49,49 @@ if ! command -v docker >/dev/null; then
     echo "==> docker"
     curl -fsSL https://get.docker.com | sh >/dev/null
 fi
-mkdir -p /etc/docker
+fi # STEP=all
+
+echo "==> docker: журналы, зеркало, потолок кэша сборки"
 # Зеркало Docker Hub: с нового адреса Hub быстро отвечает 429 на сборке.
-[ -s /etc/docker/daemon.json ] || cat > /etc/docker/daemon.json <<'EOJ'
-{ "log-driver": "json-file", "log-opts": { "max-size": "20m", "max-file": "5" }, "registry-mirrors": ["https://mirror.gcr.io"] }
-EOJ
-systemctl restart docker
+# Кэш сборки без потолка съедал по 2,5 ГБ за выкладку — GC демона держит 3 ГБ.
+mkdir -p /etc/docker
+python3 - <<'EOP'
+import json, os
+p = '/etc/docker/daemon.json'
+cfg = json.load(open(p)) if os.path.exists(p) and os.path.getsize(p) else {}
+want = {
+    "log-driver": "json-file", "log-opts": {"max-size": "20m", "max-file": "5"},
+    "registry-mirrors": ["https://mirror.gcr.io"],
+    "builder": {"gc": {"enabled": True, "defaultKeepStorage": "3GB"}},
+}
+new = {**cfg, **want}
+if new != cfg:
+    json.dump(new, open(p, 'w'), indent=2, ensure_ascii=False)
+    open('/run/xcar-docker-changed', 'w').close()
+EOP
+if [ -e /run/xcar-docker-changed ]; then rm -f /run/xcar-docker-changed; systemctl restart docker; fi
+
+echo "==> диск данных $DATA"
+# Второй диск целиком, без таблицы разделов. Размечается только пустой.
+if [ -b "$DATA_DEV" ]; then
+    blkid "$DATA_DEV" >/dev/null 2>&1 || mkfs.ext4 -q -L xcar-data "$DATA_DEV"
+    UUID="$(blkid -s UUID -o value "$DATA_DEV")"
+    grep -q "UUID=$UUID" /etc/fstab || echo "UUID=$UUID $DATA ext4 defaults,noatime 0 2" >> /etc/fstab
+    mkdir -p "$DATA"
+    mountpoint -q "$DATA" || mount "$DATA"
+else
+    echo "    $DATA_DEV нет — данные останутся на корневом диске в $DATA"
+    mkdir -p "$DATA"
+fi
+# Владельцы — по UID внутри контейнеров: www-data 33, postgres 999.
+cd "$DATA"
+mkdir -p storage media private cache postgres backups
+chown 33:33 storage media private cache backups
+chown 999:999 postgres
+chmod 750 postgres
+df -h "$DATA" | awk 'NR==2{print "    " $2 " всего, " $4 " свободно"}'
+
+[ "$STEP" = all ] || exit 0
 
 echo "==> каталоги и настройки"
 mkdir -p /srv/xcar/env /srv/xcar/releases

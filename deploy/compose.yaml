@@ -1,7 +1,19 @@
 # Боевой стек xcar-new. Обычный docker compose. Настройки приложения — из
 # `.env.app` рядом (в git не лежит, образец `.env.app.example`), настройки
 # стека — из `.env`.
+#
+# Данные лежат не в томах, а на втором диске `${XCAR_DATA}` (см.
+# `server-setup.sh`): `storage/` — рабочие каталоги Laravel, поверх него
+# `media/` (публичное, Caddy отдаёт сам), `private/` (письма, документы),
+# `cache/` (воспроизводимое, не бэкапится), `postgres/` — база. Так бэкап и
+# `du` видят каждую часть отдельно, а корневой диск занят только системой.
 name: xcar
+
+x-data: &data
+  - ${XCAR_DATA:-/srv/xcar/data}/storage:/app/storage
+  - ${XCAR_DATA:-/srv/xcar/data}/media:/app/storage/app/media
+  - ${XCAR_DATA:-/srv/xcar/data}/private:/app/storage/app/private
+  - ${XCAR_DATA:-/srv/xcar/data}/cache:/app/storage/app/cache
 
 x-app: &app
   image: xcar/app:${TAG:?нужен тег образа из deploy.sh}
@@ -18,8 +30,7 @@ x-app: &app
     MERCURE_PUBLISHER_KEY: ${MERCURE_PUBLISHER_KEY:?ключ издателя Mercure}
     MERCURE_SUBSCRIBER_KEY: ${MERCURE_SUBSCRIBER_KEY:?ключ подписчика Mercure}
     MERCURE_HUB_URL: http://app/.well-known/mercure
-  volumes:
-    - storage:/app/storage
+  volumes: *data
   depends_on:
     postgres:
       condition: service_healthy
@@ -39,7 +50,10 @@ services:
       REDIRECT_TO: ${REDIRECT_TO:-localhost}
       CADDY_GLOBAL_EXTRA: ${CADDY_GLOBAL_EXTRA:-}
     volumes:
-      - storage:/app/storage
+      - ${XCAR_DATA:-/srv/xcar/data}/storage:/app/storage
+      - ${XCAR_DATA:-/srv/xcar/data}/media:/app/storage/app/media
+      - ${XCAR_DATA:-/srv/xcar/data}/private:/app/storage/app/private
+      - ${XCAR_DATA:-/srv/xcar/data}/cache:/app/storage/app/cache
       # Сертификаты. Терять нельзя: Let's Encrypt считает попытки.
       - caddy_data:/data
       - caddy_config:/config
@@ -95,9 +109,12 @@ services:
       - random_page_cost=1.1
       - -c
       - log_min_duration_statement=1000
+      # Тела писем — большие text-поля; lz4 жмёт их быстрее pglz.
+      - -c
+      - default_toast_compression=lz4
     volumes:
       # С 18-й версии монтировать надо /var/lib/postgresql, не .../data.
-      - postgres_data:/var/lib/postgresql
+      - ${XCAR_DATA:-/srv/xcar/data}/postgres:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -106,7 +123,5 @@ services:
       start_period: 30s
 
 volumes:
-  postgres_data:
-  storage:
   caddy_data:
   caddy_config:

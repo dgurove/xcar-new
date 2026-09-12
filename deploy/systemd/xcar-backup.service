@@ -2,7 +2,7 @@
 #   ln -sfn /srv/xcar/current/deploy/systemd/xcar-backup.{service,timer} /etc/systemd/system/
 #   systemctl daemon-reload && systemctl enable --now xcar-backup.timer
 [Unit]
-Description=Бэкап базы и файлов xcar
+Description=Бэкап xcar: база, снимки в S3, журналы
 After=docker.service
 Requires=docker.service
 

@@ -36,7 +36,7 @@ current_dir() { remote "readlink -f $ROOT/current"; }
 
 build() {
     echo "==> сборка образа"
-    remote "docker builder prune -f --filter until=48h >/dev/null 2>&1 || true"
+    # Кэш сборки подрезает сам демон (builder.gc в daemon.json, server-setup.sh).
     compose_in "$(release_dir)" build app
 }
 
@@ -61,9 +61,9 @@ timers() {
         systemctl daemon-reload && systemctl enable --now xcar-backup.timer xcar-check.timer >/dev/null 2>&1 || true"
 }
 
-prune() {
-    remote "cd $ROOT/releases && ls -1dt dg-* 2>/dev/null | tail -n +6 | xargs -r rm -rf; \
-        docker images 'xcar/app' --format '{{.Tag}}' | sort -r | tail -n +6 | xargs -r -I{} docker rmi xcar/app:{} >/dev/null 2>&1 || true"
+prune() { # три последних выпуска и образа: есть куда откатиться, корневой диск не растёт
+    remote "cd $ROOT/releases && ls -1dt dg-* 2>/dev/null | tail -n +4 | xargs -r rm -rf; \
+        docker images 'xcar/app' --format '{{.Tag}}' | sort -r | tail -n +4 | xargs -r -I{} docker rmi xcar/app:{} >/dev/null 2>&1 || true"
 }
 
 check() {

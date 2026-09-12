@@ -59,7 +59,7 @@ COPY --from=composer-bin /usr/bin/composer /usr/bin/composer
 # Каталоги storage — до dump-autoload: package:discover поднимает приложение,
 # и без storage/framework/views оно падает на компиляторе блейда.
 RUN set -eux; \
-    mkdir -p storage/app/media storage/app/private storage/app/public \
+    mkdir -p storage/app/media storage/app/private storage/app/public storage/app/cache \
         storage/framework/cache/data storage/framework/sessions storage/framework/views \
         storage/logs bootstrap/cache; \
     COMPOSER_ALLOW_SUPERUSER=1 composer dump-autoload --optimize --no-dev; \
