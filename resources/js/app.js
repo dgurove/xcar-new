@@ -5,6 +5,7 @@ import * as Turbo from '@hotwired/turbo';
 import { Application } from '@hotwired/stimulus';
 import { touchPrefetch } from './touch-prefetch';
 import { confirmSheet } from './confirm';
+import { closeSheet } from './sheet';
 import { netGuards } from './net';
 import { live } from './live';
 
@@ -64,7 +65,12 @@ function pressFeedback() {
     document.addEventListener('turbo:click', (event) => {
         event.target.closest('.card, .row, .stat, .pill, .btn, .tab, .header-btn')?.classList.add('is-pending');
         const dialog = event.target.closest('dialog[open]');
-        if (dialog?.matches(':modal')) dialog.close();
+        if (!dialog?.matches(':modal')) return;
+        // Запись шторки в истории снимается до визита, иначе «назад» вернёт на шторку.
+        event.preventDefault();
+        event.detail.originalEvent.preventDefault();
+        const link = event.target.closest('a[href]');
+        closeSheet(dialog).then(() => Turbo.visit(event.detail.url, { action: link?.dataset.turboAction || 'advance' }));
     });
     for (const name of ['turbo:before-render', 'turbo:load', 'turbo:fetch-request-error', 'turbo:before-cache']) document.addEventListener(name, clear);
     document.addEventListener('turbo:submit-start', (event) => {

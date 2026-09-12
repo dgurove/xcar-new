@@ -33,7 +33,7 @@ export function confirmSheet(message, options = {}) {
         d.addEventListener('click', (e) => { if (e.target === d) closeSheet(d); });
         d.addEventListener('cancel', (e) => { e.preventDefault(); closeSheet(d); });
         d.addEventListener('close', () => { d.remove(); resolve(answer); });
-        openSheet(d);
+        openSheet(d, { history: false });
         d.querySelector('[data-cancel]').focus();
     });
 }

@@ -24,6 +24,7 @@ export default class extends Controller {
         if (this.dialogTarget.open) this.dialogTarget.close();
     }
 
+
     // В потоке — открыт немодально; иначе закрыт до вызова open().
     place() {
         const d = this.dialogTarget;
