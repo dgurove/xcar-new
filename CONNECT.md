@@ -24,11 +24,18 @@ check, журналы контейнеров за день — в `logs/ГГГГ
 files [каталог]`, посмотреть снимки — `restore.sh snapshots`.
 Перед миграцией `deploy.sh` снимает только локальный дамп.
 
-Три приложения на трёх именах. Пока без домена — через nip.io (резолвится в
-тот же IP без своего DNS): `http://200.169.180.17.nip.io` (сайт),
-`http://crm.200.169.180.17.nip.io` (CRM), `http://park.200.169.180.17.nip.io`
-(стоянка); голый `http://200.169.180.17` уводит 301 на имя nip.io — на IP
-cookie не принимаются и вход не держится; `https://` по IP не работает,
-сертификата на адрес не бывает. Итог — `xcar.ru`, `crm.xcar.ru`, `park.xcar.ru`; при
-переезде на домен меняются `SITE_ADDRESSES` в `.env` и `APP_URL`, `CRM_HOST`,
-`PARK_HOST`, `SESSION_DOMAIN`, `WEBAUTHN_*` в `.env.app`.
+Три приложения на трёх именах: `https://xcar.ru`, `https://crm.xcar.ru`,
+`https://park.xcar.ru` (с 12.09.2026; сертификаты Caddy выпускает сам, ACME
+на `dev@dgurov.com`). `api.xcar.ru`, голый IP и имена nip.io — 301 на
+`https://xcar.ru`. Cookie сессии на `.xcar.ru` — один вход на всех трёх.
+`www.xcar.ru` в DNS пока нет — когда появится, дописать в `REDIRECT_ADDRESSES`.
+
+Telegram-бот владельца (регистрации с кнопками решения): `TELEGRAM_BOT_TOKEN`,
+`TELEGRAM_OWNER_CHAT_ID` в `.env.app`; те же значения в `.env` как
+`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` для `check.sh`. До `api.telegram.org`
+с сервера доходит только IPv6 — сеть compose с `enable_ipv6`, смена сети
+требует `compose down` и `up`.
+
+Старый сервер `ssh xcar-new` (201.24.57.130) заморожен 12.09.2026: приложение
+в `artisan down`, очереди остановлены, дамп базы на нём —
+`/var/backups/xcar/db-pereezd-20260912.dump`. Не удалять до 20.09.2026.
