@@ -74,7 +74,8 @@ final class PublishLiveUpdates
     {
         $chat = $e->message->chat;
         $data = ['chat' => $chat->id, 'seq' => $e->message->seq];
-        ($this->publish)([Topics::user($chat->user_id), Topics::STAFF], 'chat', $data);
+        $topics = [Topics::STAFF, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
+        ($this->publish)($topics, 'chat', $data);
         $this->publish->badges(Topics::STAFF);
         $this->publish->refresh(Topics::STAFF, ['/perepiski/chaty']);
     }

@@ -19,7 +19,7 @@ final class PostMessage
     private const MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'application/pdf'];
 
     /** @param  list<UploadedFile>  $files */
-    public function __invoke(Chat $chat, User $by, ?string $text, array $files = []): Message
+    public function __invoke(Chat $chat, ?User $by, ?string $text, array $files = []): Message
     {
         $text = trim((string) $text);
         if ($text === '' && ! $files) {
@@ -33,8 +33,8 @@ final class PostMessage
 
         $message = DB::transaction(function () use ($chat, $by, $text, $files) {
             $chat = Chat::whereKey($chat->id)->lockForUpdate()->firstOrFail();
-            $kind = $by->isStaff() ? AuthorKind::Staff : AuthorKind::Participant;
-            $message = $chat->messages()->create(['seq' => $chat->messages_count + 1, 'author_id' => $by->id, 'author_kind' => $kind, 'text' => $text ?: null]);
+            $kind = $by?->isStaff() ? AuthorKind::Staff : AuthorKind::Participant;
+            $message = $chat->messages()->create(['seq' => $chat->messages_count + 1, 'author_id' => $by?->id, 'author_kind' => $kind, 'text' => $text ?: null]);
             foreach ($files as $file) {
                 $path = 'chats/'.$chat->id.'/'.Str::uuid().'.'.($file->guessExtension() ?: 'bin');
                 Storage::disk('private')->put($path, $file->getContent());

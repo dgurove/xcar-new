@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 class ChatController
 {
-    public const PRESETS = ['unread' => 'Непрочитанные', 'all' => 'Все'];
+    public const PRESETS = ['unread' => 'Непрочитанные', 'all' => 'Все', 'offers' => 'По предложениям', 'enquiries' => 'Обращения'];
 
     public function index(Request $request)
     {
@@ -18,7 +18,10 @@ class ChatController
         $q = trim((string) $request->query('q'));
         $chats = Chat::with(['offer.brand', 'offer.model', 'offer.media', 'user'])
             ->when($preset === 'unread', fn ($c) => $c->where('unread_for_staff', '>', 0))
+            ->when($preset === 'offers', fn ($c) => $c->whereNotNull('offer_id'))
+            ->when($preset === 'enquiries', fn ($c) => $c->whereNull('offer_id'))
             ->when($q !== '', fn ($c) => $c->where(fn ($w) => $w->whereHas('user', fn ($u) => $u->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%'])->orWhere('phone', 'like', '%'.preg_replace('/\D/', '', $q).'%'))
+                ->orWhereRaw('lower(guest_name) like ?', ['%'.mb_strtolower($q).'%'])
                 ->orWhereHas('offer', fn ($o) => $o->where('number', (int) $q))))
             ->orderByDesc('last_message_at')->paginate(30)->withQueryString();
 

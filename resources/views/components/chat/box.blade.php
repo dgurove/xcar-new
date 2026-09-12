@@ -2,7 +2,7 @@
 @props(['chat', 'messages', 'user', 'tall' => false])
 <div data-controller="chat" data-chat-url-value="/chaty/{{ $chat->id }}/soobshcheniya" data-chat-id-value="{{ $chat->id }}" data-chat-last-value="{{ $messages->max('seq') ?? 0 }}" class="flex flex-col {{ $tall ? 'min-h-[60dvh]' : '' }}">
     <div class="flex flex-1 flex-col gap-2 overflow-y-auto {{ $tall ? '' : 'max-h-[50dvh]' }} py-2" data-chat-target="list">
-        @include('chat.messages', ['messages' => $messages, 'user' => $user])
+        @include('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $user])
     </div>
     <form class="mt-2 flex items-end gap-2" data-chat-target="form" data-action="submit->chat#send">
         <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-chat-target="files" data-action="change->chat#filesPicked">

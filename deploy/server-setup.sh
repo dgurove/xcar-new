@@ -51,12 +51,13 @@ echo "==> каталоги и настройки"
 mkdir -p /srv/xcar/env /srv/xcar/releases
 cd /srv/xcar/env
 gen() { openssl rand -hex "$1"; }
+IP=$(hostname -I | awk '{print $1}')
 if [ ! -s .env ]; then
     DBP=$(gen 16); PUB=$(gen 32); SUB=$(gen 32)
     cat > .env <<EOE
 TAG=
 ACME_EMAIL=
-SITE_ADDRESSES=http://$(hostname -I | awk '{print $1}')
+SITE_ADDRESSES=http://$IP, http://$IP.nip.io, http://crm.$IP.nip.io, http://park.$IP.nip.io
 REDIRECT_ADDRESSES=http://redirect.localhost
 REDIRECT_TO=xcar.ru
 CADDY_GLOBAL_EXTRA=
@@ -70,7 +71,8 @@ fi
 if [ ! -s .env.app ]; then
     DBP=$(sed -n 's/^DB_PASSWORD=//p' .env)
     KEY="base64:$(head -c 32 /dev/urandom | base64)"
-    ADDR=$(sed -n 's/^SITE_ADDRESSES=//p' .env | cut -d, -f1)
+    ADDR=$(sed -n 's/^SITE_ADDRESSES=//p' .env | cut -d, -f2 | xargs)
+    HOST=${ADDR#*://}
     cat > .env.app <<EOE
 APP_NAME=XCar
 APP_ENV=production
@@ -96,6 +98,11 @@ QUEUE_CONNECTION=database
 FILESYSTEM_DISK=local
 OCTANE_SERVER=frankenphp
 MAIL_MAILER=log
+SESSION_DOMAIN=.$HOST
+CRM_HOST=crm.$HOST
+PARK_HOST=park.$HOST
+WEBAUTHN_ID=$HOST
+WEBAUTHN_ORIGINS=http://$HOST,http://crm.$HOST,http://park.$HOST
 EOE
 fi
 chmod 600 .env .env.app

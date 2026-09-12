@@ -4,14 +4,22 @@
 set -uo pipefail
 ROOT=/srv/xcar
 env_value() { sed -nE "s/^$1=\"?([^\"]*)\"?\r?$/\1/p" "$ROOT/env/.env" | tail -1; }
-SITE="$(env_value SITE_ADDRESSES | cut -d, -f1 | xargs)"; SITE="${SITE:-http://127.0.0.1}"
-case "$SITE" in http*) ;; *) SITE="https://$SITE" ;; esac
+ADDRESSES="$(env_value SITE_ADDRESSES)"; ADDRESSES="${ADDRESSES:-http://127.0.0.1}"
 problems=()
 
-code() { curl -sS -m 10 -o /dev/null -w '%{http_code}' -H 'Host: '"${SITE#*://}" "$@" 2>/dev/null || echo 000; }
-for path in /up / /vhod /manifest.webmanifest; do
-    c="$(code "http://127.0.0.1$path")"
-    [ "$c" = 200 ] || problems+=("$path → $c")
+# Каждое имя: сайт отдаёт страницы, CRM и стоянка гостю — вход.
+code() { curl -sS -m 10 -o /dev/null -w '%{http_code}' -H "Host: $1" "http://127.0.0.1$2" 2>/dev/null || echo 000; }
+first=1
+for addr in ${ADDRESSES//,/ }; do
+    host="${addr#*://}"
+    for path in /up /vhod /manifest.webmanifest; do
+        c="$(code "$host" "$path")"
+        [ "$c" = 200 ] || problems+=("$host$path → $c")
+    done
+    if [ $first = 1 ]; then
+        c="$(code "$host" /)"; [ "$c" = 200 ] || problems+=("$host/ → $c")
+    fi
+    first=0
 done
 
 for name in app queue queue-long scheduler mail-watch postgres; do

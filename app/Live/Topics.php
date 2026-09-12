@@ -2,6 +2,7 @@
 
 namespace App\Live;
 
+use App\Users\Section;
 use App\Users\User;
 
 final class Topics
@@ -17,16 +18,25 @@ final class Topics
         return 'user/'.($user instanceof User ? $user->id : $user);
     }
 
+    /** Обращение гостя: тема одного чата, попадает в токен только по cookie. */
+    public static function chat(int $chat): string
+    {
+        return "chat/{$chat}";
+    }
+
     /** Что человек вправе слушать. */
-    public static function for(?User $user): array
+    public static function for(?User $user, ?int $guestChat = null): array
     {
         $topics = [self::CATALOG];
+        if ($guestChat) {
+            $topics[] = self::chat($guestChat);
+        }
         if ($user) {
             $topics[] = self::user($user);
             if ($user->isStaff()) {
                 $topics[] = self::STAFF;
             }
-            if ($user->canAccess(\App\Users\Section::Park)) {
+            if ($user->canAccess(Section::Park)) {
                 $topics[] = self::PARK;
             }
         }

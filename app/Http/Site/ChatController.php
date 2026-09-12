@@ -7,12 +7,15 @@ use App\Chats\Actions\OpenChat;
 use App\Chats\Actions\PostMessage;
 use App\Chats\Chat;
 use App\Chats\File;
+use App\Chats\GuestEnquiry;
 use App\Offers\Offer;
 use Illuminate\Http\Request;
 
-/** Чат по офферу: одни и те же концы для витрины и админки, право решает Chat::allows. */
+/** Чат: одни и те же концы для витрины, CRM и гостя с обращением; право решает Chat::allows. */
 class ChatController
 {
+    public function __construct(private GuestEnquiry $guest) {}
+
     public function open(Request $request, Offer $offer, OpenChat $open)
     {
         abort_unless($offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest()), 404);
@@ -23,28 +26,28 @@ class ChatController
 
     public function messages(Request $request, Chat $chat, MarkChatRead $read)
     {
-        abort_unless($chat->allows($request->user()), 404);
+        abort_unless($chat->allows($request->user(), $this->guest->token($request)), 404);
         $after = (int) $request->query('after', 0);
         $messages = $chat->messages()->with(['author', 'files'])->where('seq', '>', $after)->get();
         $read($chat, $request->user());
 
-        return view('chat.messages', ['messages' => $messages, 'user' => $request->user()]);
+        return view('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $request->user()]);
     }
 
     public function post(Request $request, Chat $chat, PostMessage $post)
     {
-        abort_unless($chat->allows($request->user()), 404);
+        abort_unless($chat->allows($request->user(), $this->guest->token($request)), 404);
         $request->validate(['text' => ['nullable', 'string', 'max:4000'], 'files' => ['nullable', 'array', 'max:10'], 'files.*' => ['file', 'max:20480']]);
         $after = (int) $request->input('after', 0);
         $post($chat, $request->user(), $request->input('text'), $request->file('files', []));
         $messages = $chat->messages()->with(['author', 'files'])->where('seq', '>', $after)->get();
 
-        return view('chat.messages', ['messages' => $messages, 'user' => $request->user()]);
+        return view('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $request->user()]);
     }
 
     public function file(Request $request, Chat $chat, File $file)
     {
-        abort_unless($chat->allows($request->user()), 404);
+        abort_unless($chat->allows($request->user(), $this->guest->token($request)), 404);
         $file->load('message');
         abort_unless($file->message->chat_id === $chat->id, 404);
         $contents = $file->contents();

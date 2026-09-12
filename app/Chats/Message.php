@@ -35,9 +35,9 @@ class Message extends Model
         return $this->hasMany(File::class, 'message_id');
     }
 
-    /** Своё ли это сообщение для читающего: участник видит свои справа, сотрудник — свои. */
-    public function isMine(User $user): bool
+    /** Своё ли это сообщение для читающего: участник (и гость) видит свои справа, сотрудник — свои. */
+    public function isMine(?User $user): bool
     {
-        return $user->isStaff() ? $this->author_kind !== AuthorKind::Participant : $this->author_kind === AuthorKind::Participant;
+        return $user?->isStaff() ? $this->author_kind !== AuthorKind::Participant : $this->author_kind === AuthorKind::Participant;
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+use App\Chats\AuthorKind;
+use App\Chats\Events\ChatMessagePosted;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
@@ -29,7 +31,7 @@ final class Notify
             InterestRegistered::class => 'interest',
             StageEntered::class => 'stageEntered',
             StageDue::class => 'stageDue',
-            \App\Chats\Events\ChatMessagePosted::class => 'chat',
+            ChatMessagePosted::class => 'chat',
         ];
     }
 
@@ -86,15 +88,15 @@ final class Notify
     }
 
     /** Уведомление только о первом непрочитанном: дальше человек уже в чате. */
-    public function chat(\App\Chats\Events\ChatMessagePosted $e): void
+    public function chat(ChatMessagePosted $e): void
     {
         $chat = $e->message->chat;
-        if ($e->message->author_kind === \App\Chats\AuthorKind::Participant) {
+        if ($e->message->author_kind === AuthorKind::Participant) {
             if ($chat->unread_for_staff === 1) {
                 Notification::send($this->staff(), new ChatNotice($e->message, true));
             }
         } elseif ($chat->unread_for_user === 1) {
-            $chat->user->notify(new ChatNotice($e->message, false));
+            $chat->user?->notify(new ChatNotice($e->message, false));
         }
     }
 

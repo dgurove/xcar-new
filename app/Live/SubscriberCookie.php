@@ -2,6 +2,7 @@
 
 namespace App\Live;
 
+use App\Chats\GuestEnquiry;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -18,11 +19,11 @@ final class SubscriberCookie
         if (! config('xcar.mercure.subscriber_key')) {
             return $response;
         }
-        $topics = Topics::for($request->user());
+        $topics = Topics::for($request->user(), app(GuestEnquiry::class)->chat($request)?->id);
         if (Jwt::topicsOf($request->cookie(self::NAME)) !== $topics) {
             $response->headers->setCookie(new Cookie(
                 self::NAME, Jwt::subscriber($topics), now()->addMinutes((int) config('session.lifetime')),
-                '/.well-known/mercure', null, $request->isSecure(), true, false, 'lax',
+                '/.well-known/mercure', config('session.domain'), $request->isSecure(), true, false, 'lax',
             ));
         }
 

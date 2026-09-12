@@ -12,7 +12,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @if (config('xcar.mercure.subscriber_key'))
     <meta name="mercure-hub" content="/.well-known/mercure">
-    <meta name="mercure-topics" content="{{ implode(',', \App\Live\Topics::for(auth()->user())) }}">
+    <meta name="mercure-topics" content="{{ implode(',', \App\Live\Topics::for(auth()->user(), app(\App\Chats\GuestEnquiry::class)->chat(request())?->id)) }}">
     @endif
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

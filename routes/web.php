@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Cabinet\ChatController as CabinetChatController;
 use App\Http\Cabinet\DealController;
 use App\Http\Cabinet\ListsController;
 use App\Http\Cabinet\NotificationController;
@@ -10,6 +11,7 @@ use App\Http\Pwa\PwaController;
 use App\Http\Site\BidController;
 use App\Http\Site\CatalogController;
 use App\Http\Site\ChatController;
+use App\Http\Site\EnquiryController;
 use App\Http\Site\FavoriteController;
 use App\Http\Site\InterestController;
 use App\Http\Site\OfferController;
@@ -26,13 +28,19 @@ Route::delete('/push/podpiska', [PushController::class, 'destroy'])->middleware(
 
 Route::get('/', [CatalogController::class, 'index'])->name('home');
 Route::view('/voprosy', 'site.pages.voprosy');
-Route::view('/kontakty', 'site.pages.kontakty');
+Route::get('/kontakty', [EnquiryController::class, 'show']);
+Route::post('/kontakty', [EnquiryController::class, 'store'])->middleware('throttle:5,1');
 Route::view('/obrabotka-dannyh', 'site.pages.obrabotka-dannyh');
 Route::view('/soglashenie', 'site.pages.soglashenie');
 Route::view('/soglasie', 'site.pages.soglasie');
 Route::get('/galereya', [CatalogController::class, 'gallery']);
 Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
 Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
+
+// Лента чата открыта и гостю с обращением — право решает Chat::allows по cookie.
+Route::get('/chaty/{chat}/soobshcheniya', [ChatController::class, 'messages'])->middleware('throttle:120,1');
+Route::post('/chaty/{chat}/soobshcheniya', [ChatController::class, 'post'])->middleware('throttle:30,1');
+Route::get('/chaty/{chat}/fayly/{file}', [ChatController::class, 'file']);
 
 Route::middleware('auth')->group(function () {
     Route::post('/offers/{offer}/stavka', [BidController::class, 'store']);
@@ -41,14 +49,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/offers/{offer}/izbrannoe', [FavoriteController::class, 'toggle']);
     Route::post('/offers/{offer}/pdf', [ShareController::class, 'pdf']);
     Route::post('/offers/{offer}/chat', [ChatController::class, 'open']);
-    Route::get('/chaty/{chat}/soobshcheniya', [ChatController::class, 'messages']);
-    Route::post('/chaty/{chat}/soobshcheniya', [ChatController::class, 'post']);
-    Route::get('/chaty/{chat}/fayly/{file}', [ChatController::class, 'file']);
 
     Route::get('/lk', [ProfileController::class, 'show'])->name('cabinet');
     Route::put('/lk', [ProfileController::class, 'update']);
     Route::get('/lk/profil', [ProfileController::class, 'profile']);
     Route::get('/lk/izbrannoe', [ListsController::class, 'favorites']);
+    Route::get('/lk/chaty', [CabinetChatController::class, 'index']);
     Route::get('/lk/stavki', [ListsController::class, 'bids']);
     Route::get('/lk/interesy', [ListsController::class, 'interests']);
 

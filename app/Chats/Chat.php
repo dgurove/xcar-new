@@ -9,9 +9,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['offer_id', 'user_id', 'messages_count', 'unread_for_user', 'unread_for_staff', 'last_message_at'])]
+/** Чат по предложению (пара оффер + участник) или обращение с сайта (без предложения; у гостя — по токену). */
+#[Fillable(['offer_id', 'user_id', 'guest_name', 'guest_token', 'messages_count', 'unread_for_user', 'unread_for_staff', 'last_message_at'])]
 class Chat extends Model
 {
+    /** Токен гостя открытым текстом — только сразу после создания, для cookie. */
+    public ?string $plainToken = null;
+
     protected function casts(): array
     {
         return ['last_message_at' => 'datetime'];
@@ -32,14 +36,32 @@ class Chat extends Model
         return $this->hasMany(Message::class)->orderBy('seq');
     }
 
-    /** Читать и писать может участник или сотрудник; постороннему — 404, а не 403, чтобы перебором не узнать, какие чаты есть. */
-    public function allows(?User $user): bool
+    public function isEnquiry(): bool
     {
-        return $user && ($user->id === $this->user_id || $user->isStaff());
+        return $this->offer_id === null;
     }
 
-    public function unreadFor(User $user): int
+    /** Имя собеседника для сотрудника. */
+    public function displayName(): string
     {
-        return $user->isStaff() ? $this->unread_for_staff : $this->unread_for_user;
+        return $this->user?->name ?? $this->guest_name ?? 'Гость';
+    }
+
+    /**
+     * Читать и писать может участник, сотрудник или гость с токеном из cookie;
+     * постороннему — 404, а не 403, чтобы перебором не узнать, какие чаты есть.
+     */
+    public function allows(?User $user, ?string $token = null): bool
+    {
+        if ($user && ($user->id === $this->user_id || $user->isStaff())) {
+            return true;
+        }
+
+        return $token !== null && $this->guest_token !== null && hash_equals($this->guest_token, hash('sha256', $token));
+    }
+
+    public function unreadFor(?User $user): int
+    {
+        return $user?->isStaff() ? $this->unread_for_staff : $this->unread_for_user;
     }
 }

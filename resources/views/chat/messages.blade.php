@@ -2,7 +2,7 @@
     @php $mine = $m->isMine($user); $system = $m->author_kind === \App\Chats\AuthorKind::System; @endphp
     <div class="flex {{ $system ? 'justify-center' : ($mine ? 'justify-end' : 'justify-start') }}" data-seq="{{ $m->seq }}">
         <div class="max-w-[85%] {{ $system ? 'text-center text-sm text-ink-muted' : 'rounded-(--radius-l) px-3.5 py-2.5 '.($mine ? 'bg-accent-soft' : 'bg-surface-3') }}">
-            @if (!$system && !$mine)<div class="mb-0.5 text-xs text-ink-muted">{{ $m->author?->name ?? ($m->author_kind === \App\Chats\AuthorKind::Staff ? 'XCar' : '') }}</div>@endif
+            @if (!$system && !$mine)<div class="mb-0.5 text-xs text-ink-muted">{{ $m->author?->name ?? ($m->author_kind === \App\Chats\AuthorKind::Staff ? 'XCar' : ($chat->guest_name ?? '')) }}</div>@endif
             @if ($m->text)<div class="whitespace-pre-line break-words">{{ $m->text }}</div>@endif
             @if ($m->files->isNotEmpty())
                 <div class="mt-1.5 flex flex-wrap gap-1.5">
