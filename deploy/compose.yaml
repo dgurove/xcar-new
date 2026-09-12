@@ -61,7 +61,7 @@ services:
 
   queue:
     <<: *app
-    command: php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=default,notifications
+    command: php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=notifications,default
     healthcheck:
       disable: true
 
