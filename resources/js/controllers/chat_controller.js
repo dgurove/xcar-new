@@ -93,6 +93,7 @@ export default class extends Controller {
             if (!this.urlValue) { this.urlValue = r.headers.get('X-Chat-Url') || ''; this.idValue = Number(r.headers.get('X-Chat-Id') || 0); }
             this.append(await r.text());
             this.inputTarget.value = '';
+            this.formTarget.dispatchEvent(new CustomEvent('draft:clear'));
             this.filesTarget.value = '';
             this.filesPicked();
         } finally {

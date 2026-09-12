@@ -5,7 +5,7 @@
             <x-ui.pill :href="'/zayavki/novaya?tip='.$t->value.($vehicle ? '&mashina='.$vehicle->id : '')" :current="$type === $t">{{ $t->label() }}</x-ui.pill>
         @endforeach
     </x-ui.pills>
-    <form method="post" action="/zayavki" id="request-form" data-controller="vin" class="flex flex-col gap-4">
+    <form method="post" action="/zayavki" id="request-form" data-controller="vin draft" class="flex flex-col gap-4">
         @csrf
         <input type="hidden" name="type" value="{{ $type->value }}">
         @if ($type === RequestType::Intake && !$vehicle)

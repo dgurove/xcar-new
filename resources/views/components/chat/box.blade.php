@@ -9,7 +9,7 @@
             <div class="flex justify-center"><div class="max-w-[85%] text-center text-sm text-ink-muted">{{ \App\Chats\Actions\OpenChat::GREETING }}</div></div>
         @endif
     </div>
-    <form class="mt-2 flex items-end gap-2" data-chat-target="form" data-action="submit->chat#send">
+    <form class="mt-2 flex items-end gap-2" data-chat-target="form" data-action="submit->chat#send" data-controller="draft" data-draft-key-value="chat:{{ $chat?->id ?? request()->path() }}">
         <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-chat-target="files" data-action="change->chat#filesPicked">
         <button type="button" class="btn btn-ghost px-2" data-action="chat#pick" aria-label="Приложить"><x-ui.icon name="clip" class="size-5"/></button>
         <textarea name="text" rows="1" class="field-input !min-h-12 flex-1 resize-none" placeholder="Сообщение" data-chat-target="input" data-action="keydown->chat#keydown" enterkeyhint="enter"></textarea>

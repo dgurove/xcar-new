@@ -7,7 +7,7 @@
     // Кнопки скидки — только те, что не уводят ниже порога: сам порог наружу не выдаём.
     $discounts = array_filter([2, 5], fn ($p) => round($asking * (1 - $p / 100) / 1000) * 1000 >= $min);
 @endphp
-<form method="post" action="/offers/{{ $offer->number }}/stavka" class="mt-6" data-controller="bid" data-bid-asking-value="{{ $asking }}">
+<form method="post" action="/offers/{{ $offer->number }}/stavka" class="mt-6" data-controller="bid draft" data-bid-asking-value="{{ $asking }}">
     @csrf
     @if ($myBid)
         <p class="box-nested mb-4 text-sm">Ваша цена: <span class="nums">{{ number_format($myBid->amount, 0, '', ' ') }} ₽</span> — {{ mb_strtolower($myBid->state->label()) }}</p>

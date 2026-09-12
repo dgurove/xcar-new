@@ -43,6 +43,7 @@ netGuards();
 imageFade();
 freshness();
 focusInvalid();
+relaunchScroll();
 
 // View Transitions роняют промис, когда вкладка скрыта или переход перебит
 // следующим: страница при этом в порядке, в консоли этому не место.
@@ -131,4 +132,25 @@ function focusInvalid() {
         bad.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         bad.focus({ preventScroll: true });
     });
+}
+
+// Приложение выгрузили из фона и открыли заново — страница грузится с нуля, а
+// человек стоял на тридцатой карточке. Позиция пишется при уходе в фон и
+// возвращается только на полной загрузке того же адреса, если ей меньше получаса.
+function relaunchScroll() {
+    const key = () => 'scroll:' + location.href;
+    const save = () => { try { localStorage.setItem(key(), JSON.stringify({ y: scrollY, at: Date.now() })); } catch {} };
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && save());
+    window.addEventListener('pagehide', save);
+    const nav = performance.getEntriesByType('navigation')[0];
+    if (!['navigate', 'reload'].includes(nav?.type)) return;
+    try {
+        const saved = JSON.parse(localStorage.getItem(key()) || 'null');
+        if (saved && Date.now() - saved.at < 30 * 60 * 1000 && saved.y > 0) requestAnimationFrame(() => scrollTo(0, saved.y));
+        for (const k of Object.keys(localStorage)) {
+            if (!k.startsWith('scroll:') && !k.startsWith('draft:')) continue;
+            const at = JSON.parse(localStorage.getItem(k) || '{}').at ?? 0;
+            if (Date.now() - at > 24 * 3600 * 1000) localStorage.removeItem(k);
+        }
+    } catch {}
 }

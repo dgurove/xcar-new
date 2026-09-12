@@ -107,7 +107,7 @@
             </x-ui.card>
         </div>
 
-        <form method="post" action="/predlozheniya/{{ $n }}" id="offer-form" data-controller="vin" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+        <form method="post" action="/predlozheniya/{{ $n }}" id="offer-form" data-controller="vin draft" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @csrf @method('put')
 
             <x-ui.card title="Машина" class="order-2">
