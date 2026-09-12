@@ -3,6 +3,7 @@
 namespace App\Workflow;
 
 use App\Offers\CarPlace;
+use App\Offers\OfferState;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -14,12 +15,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * первого блока, конец — этап без исходов. Включить можно только маршрут
  * без дыр: иначе оффер молча встал бы в тупик на живой сделке.
  */
-#[Fillable(['insurer_id', 'track', 'is_active'])]
+#[Fillable(['insurer_id', 'track', 'is_active', 'auto_start'])]
 class Workflow extends Model
 {
     protected function casts(): array
     {
-        return ['track' => Track::class, 'is_active' => 'bool'];
+        return ['track' => Track::class, 'is_active' => 'bool', 'auto_start' => 'bool'];
     }
 
     public function insurer(): BelongsTo
@@ -73,7 +74,8 @@ class Workflow extends Model
             if ($stage->asks !== Asks::Nothing && ! $stage->awaitsManager()) {
                 $problems[] = "Этап «{$stage->name}» просит менеджера что-то приложить, но кнопок менеджера у него нет";
             }
-            if ($stage->waits_for === WaitsFor::Manager && ! $stage->awaitsManager()) {
+            // На приёме ход менеджера — ставка, а не кнопка маршрута.
+            if ($stage->waits_for === WaitsFor::Manager && ! $stage->awaitsManager() && $stage->offer_state !== OfferState::Open) {
                 $problems[] = "Этап «{$stage->name}» ждёт менеджера, а нажать ему нечего";
             }
             if ($this->track === Track::Service && $stage->offer_state) {

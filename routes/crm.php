@@ -29,6 +29,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/predlozheniya/{offer}/sostoyanie', [OfferController::class, 'state']);
     Route::post('/predlozheniya/{offer}/iskhod/{exit}', [RouteController::class, 'exit']);
     Route::post('/predlozheniya/{offer}/etap', [RouteController::class, 'place']);
+    Route::post('/predlozheniya/{offer}/vyvoz', [RouteController::class, 'pickup']);
+    Route::delete('/predlozheniya/{offer}/vyvoz', [RouteController::class, 'dropPickup']);
 
     Route::post('/predlozheniya/{offer}/media', [OfferPhotoController::class, 'store']);
     Route::post('/predlozheniya/{offer}/media/poryadok', [OfferPhotoController::class, 'reorder']);
@@ -94,7 +96,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::delete('/strahovye/{insurer}', [InsurerController::class, 'destroy']);
 
         Route::post('/marshruty/{workflow}/vklyuchit', [WorkflowController::class, 'activate']);
-        Route::post('/marshruty/{workflow}/tipovoy', [WorkflowController::class, 'typical']);
+        Route::post('/marshruty/{workflow}/zapusk', [WorkflowController::class, 'autoStart']);
+        Route::post('/marshruty/{workflow}/zapolnit', [WorkflowController::class, 'fill']);
         Route::post('/marshruty/{workflow}/poryadok', [WorkflowController::class, 'reorder']);
         Route::post('/marshruty/{workflow}/bloki', [WorkflowController::class, 'storeBlock']);
         Route::put('/marshruty/bloki/{block}', [WorkflowController::class, 'updateBlock']);

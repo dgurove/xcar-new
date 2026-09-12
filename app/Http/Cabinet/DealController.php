@@ -5,12 +5,16 @@ namespace App\Http\Cabinet;
 use App\Live\Stream;
 use App\Media\PhotoIngest;
 use App\Offers\Deal;
-use App\Offers\DealState;
-use App\Offers\OfferState;
+use App\Offers\OfferEventType;
 use App\Workflow\Actions\AnswerRequirement;
+use App\Workflow\Actor;
+use App\Workflow\Block;
 use App\Workflow\Outcome;
+use App\Workflow\Requirement;
+use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class DealController
@@ -29,14 +33,12 @@ class DealController
         abort_unless($deal->buyer_id === $request->user()->id, 404);
         $deal->load(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'openRequirement.media', 'requirements']);
         $position = $deal->offer->position(Track::Sale);
-        // Лестница шагов: тупики срыва не показываем, пока сделка в них не встала.
-        $blocks = $position ? $position->stage->workflow->blocks()->with('stages')->get()->filter(fn ($b) => $b->id === $position->stage->block_id
-            || $b->stages->contains(fn ($s) => ! in_array($s->offer_state, [OfferState::Cancelled, OfferState::Archived], true)))->values() : collect();
-        $steps = $deal->offer->events()->where('type', \App\Offers\OfferEventType::StageEntered)->where('created_at', '>=', $deal->created_at)->oldest()->get()
+        $steps = $deal->offer->events()->where('type', OfferEventType::StageEntered)->where('created_at', '>=', $deal->created_at)->oldest()->get()
             ->filter(fn ($e) => ($e->payload['track'] ?? 'sale') === 'sale')
             ->map(fn ($e) => ['at' => $e->created_at, 'block' => $e->payload['block'] ?? null])
             ->filter(fn ($s) => $s['block'])
             ->values();
+        $blocks = $position ? $this->ladder($position->stage, $steps->pluck('block')->all()) : collect();
 
         return view('cabinet.deals.show', [
             'deal' => $deal,
@@ -45,8 +47,34 @@ class DealController
             'blocks' => $blocks,
             'steps' => $steps,
             'requirement' => $deal->openRequirement,
-            'exits' => $deal->openRequirement ? $position?->stage->exitsFor(\App\Workflow\Actor::Manager) : collect(),
+            'exits' => $deal->openRequirement ? $position?->stage->exitsFor(Actor::Manager) : collect(),
         ]);
+    }
+
+    /**
+     * Лестница: позади — где сделка была по журналу, текущий блок, впереди —
+     * пока путь однозначен. Развилка её обрывает: у маршрута с двумя ветками
+     * покупки менеджер увидел бы обе, включая ту, от которой отказался.
+     * Тупики срыва и возвраты назад впереди не считаются. Блоки сравниваются
+     * по имени: у двух веток покупки блок «Согласуем с поставщиком» свой.
+     */
+    private function ladder(Stage $stage, array $passedNames): Collection
+    {
+        $all = $stage->workflow->blocks()->with('stages.exits.to.block')->get();
+        $current = $all->firstWhere('id', $stage->block_id);
+        $behind = collect($passedNames)->map(fn ($name) => $all->firstWhere('name', $name))->filter()
+            ->reject(fn (Block $b) => $b->name === $current->name)->unique('name')->values();
+        $ladder = $behind->push($current);
+        $seen = $ladder->pluck('id')->all();
+        while (true) {
+            $next = $current->nextBlocks()->reject(fn (Block $b) => $b->isDeadEnd() || in_array($b->id, $seen, true));
+            if ($next->count() !== 1) {
+                return $ladder;
+            }
+            $current = $next->first();
+            $seen[] = $current->id;
+            $ladder->push($current);
+        }
     }
 
     public function answer(Request $request, Deal $deal, AnswerRequirement $answer)
@@ -82,8 +110,8 @@ class DealController
     /** Файл просьбы: только участник сделки и сотрудники — диск закрытый. */
     public function file(Request $request, Media $media)
     {
-        abort_unless($media->model_type === \App\Workflow\Requirement::class, 404);
-        $requirement = \App\Workflow\Requirement::findOrFail($media->model_id);
+        abort_unless($media->model_type === Requirement::class, 404);
+        $requirement = Requirement::findOrFail($media->model_id);
         abort_unless($requirement->user_id === $request->user()->id || $request->user()->isStaff(), 404);
 
         return response()->file($media->getPath(), [

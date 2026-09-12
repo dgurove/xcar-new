@@ -18,4 +18,5 @@ enum OfferEventType: string
     case StageOverdue = 'stage_overdue';
     case PlaceChanged = 'place_changed';
     case RequirementAnswered = 'requirement_answered';
+    case RouteDropped = 'route_dropped';
 }

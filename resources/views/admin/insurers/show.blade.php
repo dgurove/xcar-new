@@ -37,6 +37,13 @@
             <x-ui.pill tone="closed">Маршрут выключен</x-ui.pill>
             <form method="post" action="/nastroyki/marshruty/{{ $w->id }}/vklyuchit">@csrf<input type="hidden" name="active" value="1"><x-ui.button size="sm">Включить</x-ui.button></form>
         @endif
+        @if ($track === Track::Service && $w->blocks->isNotEmpty())
+            <form method="post" action="/nastroyki/marshruty/{{ $w->id }}/zapusk" class="flex items-center gap-2">
+                @csrf<input type="hidden" name="auto_start" value="{{ $w->auto_start ? 0 : 1 }}">
+                <x-ui.pill tone="plain">{{ $w->auto_start ? 'Для каждой машины' : 'По кнопке на карточке' }}</x-ui.pill>
+                <x-ui.button variant="ghost" size="sm">{{ $w->auto_start ? 'Только по кнопке' : 'Для каждой машины' }}</x-ui.button>
+            </form>
+        @endif
         @if ($errors->has('workflow'))<span class="field-error w-full">{{ $errors->first('workflow') }}</span>@endif
         @if ($errors->has('stage'))<span class="field-error w-full">{{ $errors->first('stage') }}</span>@endif
         @if ($errors->has('block'))<span class="field-error w-full">{{ $errors->first('block') }}</span>@endif
@@ -106,7 +113,9 @@
     <div class="mt-4 flex flex-wrap gap-2" data-controller="sheet">
         <x-ui.button type="button" variant="secondary" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Блок</x-ui.button>
         @if ($w->blocks->isEmpty())
-            <form method="post" action="/nastroyki/marshruty/{{ $w->id }}/tipovoy">@csrf<x-ui.button>Заполнить типовым маршрутом</x-ui.button></form>
+            @foreach (\App\Workflow\Preset::forTrack($track) as $preset)
+                <form method="post" action="/nastroyki/marshruty/{{ $w->id }}/zapolnit">@csrf<input type="hidden" name="preset" value="{{ $preset->value }}"><x-ui.button>{{ $preset->label() }}</x-ui.button></form>
+            @endforeach
         @endif
         <x-ui.sheet id="block-new" title="Новый блок">
             <form method="post" action="/nastroyki/marshruty/{{ $w->id }}/bloki" class="flex flex-col gap-4">

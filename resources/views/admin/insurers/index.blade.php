@@ -7,7 +7,7 @@
                     <div class="text-sm text-ink-muted">
                         @foreach (\App\Workflow\Track::cases() as $track)
                             @php $w = $insurer->workflow($track); @endphp
-                            {{ $track->label() }}: {{ $w?->is_active ? 'маршрут включён' : ($w ? 'маршрут выключен' : 'нет маршрута') }}{{ $loop->last ? '' : ' · ' }}
+                            {{ $track->label() }}: {{ $w?->is_active ? 'маршрут включён'.($track === \App\Workflow\Track::Service && !$w->auto_start ? ', по кнопке' : '') : ($w ? 'маршрут выключен' : 'нет маршрута') }}{{ $loop->last ? '' : ' · ' }}
                         @endforeach
                     </div>
                 </div>

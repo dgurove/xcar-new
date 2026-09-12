@@ -188,6 +188,7 @@
                             \App\Offers\OfferEventType::StageEntered => (($event->payload['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($event->payload['to'] ?? '').(!empty($event->payload['exit']) ? ' («'.$event->payload['exit'].'»)' : ''),
                             \App\Offers\OfferEventType::StageOverdue => 'Срок вышел: '.($event->payload['stage'] ?? ''),
                             \App\Offers\OfferEventType::StageReminded => 'Срок подходит: '.($event->payload['stage'] ?? ''),
+                            \App\Offers\OfferEventType::RouteDropped => 'Вывоз отменён',
                             \App\Offers\OfferEventType::PlaceChanged => 'Машина: '.\App\Offers\CarPlace::labelOf($event->payload['place'] ?? null),
                             \App\Offers\OfferEventType::RequirementAnswered => 'Менеджер: «'.($event->payload['exit'] ?? '').'»'.(!empty($event->payload['fields']) ? ' — '.implode(', ', $event->payload['fields']) : ''),
                             default => $event->type->value } }}</span>

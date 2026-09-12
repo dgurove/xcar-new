@@ -14,6 +14,7 @@ use App\Users\User;
 use App\Workflow\Events\StageDue;
 use App\Workflow\Events\StageEntered;
 use App\Workflow\Requirement;
+use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Support\Facades\Notification;
@@ -65,6 +66,10 @@ final class Notify
 
     public function stageEntered(StageEntered $e): void
     {
+        // Вывоз — наша работа: менеджеру про шаги эвакуатора не пишем.
+        if ($e->track === Track::Service) {
+            return;
+        }
         $deal = $e->deal ?? $e->offer->deal()->with('buyer')->first();
         if (! $deal?->buyer) {
             return;

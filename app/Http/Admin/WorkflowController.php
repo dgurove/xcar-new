@@ -6,17 +6,18 @@ use App\Mail\Scope;
 use App\Mail\Template;
 use App\Offers\CarPlace;
 use App\Offers\OfferState;
+use App\Workflow\Actions\ApplyPreset;
 use App\Workflow\Actions\DeleteBlock;
 use App\Workflow\Actions\DeleteStage;
 use App\Workflow\Actions\ReorderStages;
 use App\Workflow\Actions\RevalidateWorkflow;
 use App\Workflow\Actions\SaveBlock;
 use App\Workflow\Actions\SaveStage;
-use App\Workflow\Actions\SeedTypicalRoute;
 use App\Workflow\Actor;
 use App\Workflow\Asks;
 use App\Workflow\Block;
 use App\Workflow\DeadlineSource;
+use App\Workflow\Preset;
 use App\Workflow\Stage;
 use App\Workflow\WaitsFor;
 use App\Workflow\Workflow;
@@ -37,11 +38,19 @@ class WorkflowController
         return redirect($this->back($workflow))->with('toast', $workflow->is_active ? 'Маршрут включён' : 'Маршрут выключен');
     }
 
-    public function typical(Workflow $workflow, SeedTypicalRoute $seed)
+    public function autoStart(Request $request, Workflow $workflow)
     {
-        $seed($workflow);
+        $workflow->update(['auto_start' => $request->boolean('auto_start')]);
 
-        return redirect($this->back($workflow));
+        return redirect($this->back($workflow))->with('toast', $workflow->auto_start ? 'Для каждой машины' : 'По кнопке на карточке');
+    }
+
+    public function fill(Request $request, Workflow $workflow, ApplyPreset $apply)
+    {
+        $preset = Preset::from($request->validate(['preset' => ['required', Rule::enum(Preset::class)]])['preset']);
+        $apply($workflow, $preset);
+
+        return redirect($this->back($workflow))->with('toast', 'Маршрут заполнен');
     }
 
     public function reorder(Request $request, Workflow $workflow, ReorderStages $reorder)

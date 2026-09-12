@@ -71,7 +71,10 @@ node scripts/icons.mjs           # иконки PWA из favicon.svg
 ## Модули
 
 `app/Offers` (оффер, ставки, сделки, шеринг PDF), `app/Workflow` (страховые
-и маршруты по этапам, `ChangeOfferState` — одна дверь состояний),
+и маршруты по этапам, `ChangeOfferState` — одна дверь состояний; боевые
+маршруты — заготовки `Presets/*`, ими же `InsurerSeeder` заводит три
+страховые; маршрут вывоза запускается с каждым предложением или по кнопке —
+`workflows.auto_start`),
 `app/Mail` (ящики, синк, треды, кандидаты, шаблоны), `app/Chats` (чаты по
 предложениям и обращения с `/kontakty` — у гостя по cookie), `app/Park`
 (стоянка), `app/Purchases` (закупки Carcade), `app/Notifications`

@@ -49,8 +49,14 @@
         @endforeach
         @if ($errors->has('exit'))<p class="field-error">{{ $errors->first('exit') }}</p>@endif
 
+        @php $service = $offer->insurer?->workflow(Track::Service); $pickup = $offer->position(Track::Service); @endphp
         <div class="flex flex-wrap gap-2">
             <x-ui.button type="button" variant="ghost" size="sm" data-action="sheet#open">Поставить на этап</x-ui.button>
+            @if ($service?->is_active && !$pickup && !in_array($offer->state, [\App\Offers\OfferState::Delivered, \App\Offers\OfferState::Cancelled, \App\Offers\OfferState::Archived], true))
+                <form method="post" action="/predlozheniya/{{ $offer->number }}/vyvoz" data-turbo-confirm="Забираем машину от страхователя?">@csrf<x-ui.button variant="ghost" size="sm">Нужен вывоз</x-ui.button></form>
+            @elseif ($pickup && !$service?->auto_start && $pickup->stage->is($service->startStage()))
+                <form method="post" action="/predlozheniya/{{ $offer->number }}/vyvoz" data-turbo-confirm="Снять с вывоза?">@csrf @method('delete')<x-ui.button variant="ghost" size="sm" class="text-danger">Вывоз не нужен</x-ui.button></form>
+            @endif
             @if ($offer->deal)
                 <a href="#deal-note" class="btn btn-ghost btn-s">Заметка к сделке</a>
             @endif
