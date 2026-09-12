@@ -26,7 +26,7 @@ final class PlaceBid
             }
             $min = $offer->minBid();
             if ($min && $amount < $min) {
-                throw ValidationException::withMessages(['amount' => 'Не меньше '.number_format($min, 0, '', ' ').' ₽']);
+                throw ValidationException::withMessages(['amount' => 'Такую цену не принимаем — предложите выше']);
             }
 
             $offer->bids()->where('user_id', $by->id)->where('state', BidState::Active)->update(['state' => BidState::Withdrawn]);
