@@ -4,7 +4,7 @@
 <form method="post" action="/offers/{{ $offer->number }}/stavka" class="mt-6" data-controller="bid" data-bid-asking-value="{{ $asking }}" data-bid-min-value="{{ $min }}">
     @csrf
     @if ($myBid)
-        <p class="box-nested mb-4 text-sm">Предложение: <span class="nums">{{ number_format($myBid->amount, 0, '', ' ') }} ₽</span> — {{ $myBid->state->label() }}</p>
+        <p class="box-nested mb-4 text-sm">Ваша цена: <span class="nums">{{ number_format($myBid->amount, 0, '', ' ') }} ₽</span> — {{ mb_strtolower($myBid->state->label()) }}</p>
     @endif
     @if ($asking)
         <div class="flex flex-wrap gap-2">

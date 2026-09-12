@@ -5,7 +5,7 @@ namespace App\Users;
 enum Role: string
 {
     case Visitor = 'visitor';     // зарегистрировался сам: каталог без цен, интерес
-    case Manager = 'manager';     // внешний партнёр: цены, ставки, закупки, сделки
+    case Manager = 'manager';     // внешний партнёр: цены, подтверждения, закупки, сделки
     case Moderator = 'moderator'; // сотрудник: панель
     case Admin = 'admin';         // владелец: всё
 

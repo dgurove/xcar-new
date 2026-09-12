@@ -80,10 +80,10 @@
                 <x-ui.field name="floor_price" label="Закупочная, ₽" inputmode="numeric" :value="$offer->floor_price"/>
                 <x-ui.field name="repair_estimate" label="Ремонт, ₽" inputmode="numeric" :value="$offer->repair_estimate"/>
                 <x-ui.field name="asking_price" label="Цена продажи, ₽" inputmode="numeric" :value="$offer->asking_price"/>
-                <x-ui.field name="min_bid_price" label="Нижняя граница ставки, ₽" inputmode="numeric" :value="$offer->min_bid_price" :placeholder="$offer->minBid() ? number_format($offer->minBid(), 0, '', ' ') : null"/>
+                <x-ui.field name="min_bid_price" label="Минимальная цена, ₽" inputmode="numeric" :value="$offer->min_bid_price" :placeholder="$offer->minBid() ? number_format($offer->minBid(), 0, '', ' ') : null"/>
                 <x-ui.field name="min_bid_share" label="Доля до продажной" inputmode="decimal" :value="$offer->min_bid_share" placeholder="0,6"/>
                 <x-ui.tri name="prices_include_vat" label="Цены с НДС" :value="$offer->prices_include_vat"/>
-                <x-ui.field name="bids_close_at" label="Приём ставок до" type="datetime-local" :value="$offer->bids_close_at?->format('Y-m-d\TH:i')"/>
+                <x-ui.field name="bids_close_at" label="Приём подтверждений до" type="datetime-local" :value="$offer->bids_close_at?->format('Y-m-d\TH:i')"/>
                 <div class="flex items-end pb-3"><x-ui.check name="chat_enabled" :checked="$offer->chat_enabled">Чат с покупателями</x-ui.check></div>
             </div>
         </x-ui.card>
@@ -131,7 +131,7 @@
         </x-ui.card>
 
         @if ($offer->bids->isNotEmpty())
-        <x-ui.card title="Ставки">
+        <x-ui.card title="Подтверждения">
             <div class="flex flex-col gap-2">
                 @foreach ($offer->bids as $bid)
                     <div class="box-nested flex flex-wrap items-center gap-3">
@@ -141,7 +141,7 @@
                             @if ($bid->comment)<div class="text-sm">{{ $bid->comment }}</div>@endif
                         </div>
                         @if ($bid->state === \App\Offers\BidState::Active)
-                            <form method="post" action="/stavki/{{ $bid->id }}/prinyat" data-turbo-confirm="Принять ставку {{ number_format($bid->amount, 0, '', ' ') }} ₽ и открыть сделку?">@csrf<x-ui.button size="sm">Принять</x-ui.button></form>
+                            <form method="post" action="/stavki/{{ $bid->id }}/prinyat" data-turbo-confirm="Принять подтверждение {{ number_format($bid->amount, 0, '', ' ') }} ₽ и открыть сделку?">@csrf<x-ui.button size="sm">Принять</x-ui.button></form>
                             <form method="post" action="/stavki/{{ $bid->id }}/otklonit">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>
                         @endif
                     </div>
@@ -180,16 +180,16 @@
                             \App\Offers\OfferEventType::Created => 'Создан',
                             \App\Offers\OfferEventType::Updated => 'Изменён: '.implode(', ', $event->payload['fields'] ?? []),
                             \App\Offers\OfferEventType::StateChanged => OfferState::from($event->payload['to'])->label(),
-                            \App\Offers\OfferEventType::BidPlaced => 'Ставка '.number_format($event->payload['amount'] ?? 0, 0, '', ' ').' ₽',
-                            \App\Offers\OfferEventType::BidAccepted => 'Ставка принята',
-                            \App\Offers\OfferEventType::BidDeclined => 'Ставка отклонена',
-                            \App\Offers\OfferEventType::BidWithdrawn => 'Ставка отозвана',
+                            \App\Offers\OfferEventType::BidPlaced => 'Подтверждение '.number_format($event->payload['amount'] ?? 0, 0, '', ' ').' ₽',
+                            \App\Offers\OfferEventType::BidAccepted => 'Подтверждение принято',
+                            \App\Offers\OfferEventType::BidDeclined => 'Подтверждение отклонено',
+                            \App\Offers\OfferEventType::BidWithdrawn => 'Подтверждение отозвано',
                             \App\Offers\OfferEventType::Interest => 'Интерес',
                             \App\Offers\OfferEventType::StageEntered => (($event->payload['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($event->payload['to'] ?? '').(!empty($event->payload['exit']) ? ' («'.$event->payload['exit'].'»)' : ''),
                             \App\Offers\OfferEventType::StageOverdue => 'Срок вышел: '.($event->payload['stage'] ?? ''),
                             \App\Offers\OfferEventType::StageReminded => 'Срок подходит: '.($event->payload['stage'] ?? ''),
                             \App\Offers\OfferEventType::RouteDropped => 'Вывоз отменён',
-                            \App\Offers\OfferEventType::PlaceChanged => 'Машина: '.\App\Offers\CarPlace::labelOf($event->payload['place'] ?? null),
+                            \App\Offers\OfferEventType::PlaceChanged => 'Автомобиль: '.\App\Offers\CarPlace::labelOf($event->payload['place'] ?? null),
                             \App\Offers\OfferEventType::RequirementAnswered => 'Менеджер: «'.($event->payload['exit'] ?? '').'»'.(!empty($event->payload['fields']) ? ' — '.implode(', ', $event->payload['fields']) : ''),
                             default => $event->type->value } }}</span>
                         @if ($event->user)<span class="ml-auto text-ink-muted">{{ $event->user->name }}</span>@endif
@@ -211,7 +211,7 @@
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                             <x-ui.button block :variant="$next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary')">{{ match($next) {
                                 OfferState::Open => $offer->state === OfferState::Closed ? 'Открыть приём снова' : 'Опубликовать',
-                                OfferState::Gallery => 'В галерею «скоро»', OfferState::Draft => 'В черновик', OfferState::Closed => 'Закрыть приём ставок',
+                                OfferState::Gallery => 'В галерею «скоро»', OfferState::Draft => 'В черновик', OfferState::Closed => 'Закрыть приём подтверждений',
                                 OfferState::Sold => 'В сделку', OfferState::Cancelled => 'Снять с продажи', OfferState::Archived => 'В архив', default => $next->label() } }}</x-ui.button>
                         </form>
                     @endforeach

@@ -41,7 +41,7 @@ class ProfileController
         } elseif ($surface === Surface::Crm) {
             $badges = Nav::badges($user);
             $tiles = [
-                [$badges['/'] ?? 0, ['ставка ждёт ответа', 'ставки ждут ответа', 'ставок ждут ответа'], '/?preset=bids'],
+                [$badges['/'] ?? 0, ['подтверждение ждёт ответа', 'подтверждения ждут ответа', 'подтверждений ждут ответа'], '/?preset=bids'],
                 [$badges['/sdelki'] ?? 0, ['сделка требует внимания', 'сделки требуют внимания', 'сделок требуют внимания'], '/sdelki'],
                 [$badges['/perepiski/pochta'] ?? 0, ['непрочитанный тред', 'непрочитанных треда', 'непрочитанных тредов'], '/perepiski/pochta?preset=unread'],
                 [$badges['/perepiski/chaty'] ?? 0, ['непрочитанный чат', 'непрочитанных чата', 'непрочитанных чатов'], '/perepiski/chaty?preset=unread'],
@@ -50,7 +50,7 @@ class ProfileController
             $button = ['/', 'К предложениям'];
         } elseif ($user->role === Role::Manager) {
             $tiles = [
-                [Bid::where('user_id', $user->id)->where('state', BidState::Active)->count(), ['заявка на рассмотрении', 'заявки на рассмотрении', 'заявок на рассмотрении'], '/lk/stavki'],
+                [Bid::where('user_id', $user->id)->where('state', BidState::Active)->count(), ['подтверждение на рассмотрении', 'подтверждения на рассмотрении', 'подтверждений на рассмотрении'], '/lk/stavki'],
                 [Deal::where('buyer_id', $user->id)->where('state', DealState::Active)->count(), ['принята, идёт сделка', 'приняты, идут сделки', 'принято, идут сделки'], '/lk/sdelki'],
                 [Requirement::where('user_id', $user->id)->whereNull('done_at')->count(), ['действие за Вами', 'действия за Вами', 'действий за Вами'], '/lk/sdelki'],
                 [Favorite::where('user_id', $user->id)->count(), ['в избранном', 'в избранном', 'в избранном'], '/lk/izbrannoe'],

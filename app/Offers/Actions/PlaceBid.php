@@ -16,13 +16,13 @@ final class PlaceBid
     public function __invoke(Offer $offer, User $by, int $amount, ?string $comment = null): Bid
     {
         if (! $by->role->canBid()) {
-            throw ValidationException::withMessages(['amount' => 'Ставки принимаются от менеджеров']);
+            throw ValidationException::withMessages(['amount' => 'Подтверждать могут только менеджеры']);
         }
 
         return DB::transaction(function () use ($offer, $by, $amount, $comment) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
             if (! $offer->bidsOpen()) {
-                throw ValidationException::withMessages(['amount' => 'Приём ставок закрыт']);
+                throw ValidationException::withMessages(['amount' => 'Приём подтверждений закрыт']);
             }
             $min = $offer->minBid();
             if ($min && $amount < $min) {

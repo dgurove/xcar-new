@@ -17,9 +17,9 @@ enum BidState: string
     {
         return match ($this) {
             self::Active => 'На рассмотрении',
-            self::Accepted => 'Принята',
-            self::Declined => 'Отклонена',
-            self::Withdrawn => 'Отозвана',
+            self::Accepted => 'Принято',
+            self::Declined => 'Отклонено',
+            self::Withdrawn => 'Отозвано',
         };
     }
 }

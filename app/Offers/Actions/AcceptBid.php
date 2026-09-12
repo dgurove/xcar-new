@@ -14,7 +14,7 @@ use App\Users\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** Принять ставку: сделка, остальные ставки отклонены, оффер в сделке. */
+/** Принять подтверждение: сделка, остальные подтверждения отклонены, оффер в сделке. */
 final class AcceptBid
 {
     public function __construct(private ChangeOfferState $changeState) {}
@@ -24,7 +24,7 @@ final class AcceptBid
         return DB::transaction(function () use ($bid, $by) {
             $bid = Bid::whereKey($bid->id)->lockForUpdate()->firstOrFail();
             if ($bid->state !== BidState::Active) {
-                throw ValidationException::withMessages(['bid' => 'Ставка уже '.$bid->state->label()]);
+                throw ValidationException::withMessages(['bid' => 'Подтверждение уже '.mb_strtolower($bid->state->label())]);
             }
             $offer = $bid->offer;
 

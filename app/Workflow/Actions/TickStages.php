@@ -6,14 +6,14 @@ use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
-use App\Workflow\Events\StageDue;
 use App\Workflow\Actor;
+use App\Workflow\Events\StageDue;
 use App\Workflow\Position;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-/** Раз в минуту: исходы по времени, просрочки, напоминания, закрытие приёма ставок. */
+/** Раз в минуту: исходы по времени, просрочки, напоминания, закрытие приёма подтверждений. */
 final class TickStages
 {
     public function __construct(private TakeExit $takeExit, private ChangeOfferState $changeState) {}
@@ -67,7 +67,7 @@ final class TickStages
                 ($this->changeState)($offer, OfferState::Closed, null);
                 $counts['closed']++;
             } catch (Throwable $e) {
-                Log::warning('Часы: приём ставок не закрылся', ['offer' => $offer->number, 'error' => $e->getMessage()]);
+                Log::warning('Часы: приём подтверждений не закрылся', ['offer' => $offer->number, 'error' => $e->getMessage()]);
             }
         }
 

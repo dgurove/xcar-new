@@ -171,7 +171,7 @@ final class Nav
 
         $links = [self::link('Сводка', '/lk', exact: true)];
         if ($user->role === Role::Manager) {
-            $links[] = self::link('Заявки', '/lk/stavki');
+            $links[] = self::link('Подтверждения', '/lk/stavki');
             $links[] = self::link('Сделки', '/lk/sdelki');
         } elseif (! $user->isStaff()) {
             $links[] = self::link('Интерес', '/lk/interesy');

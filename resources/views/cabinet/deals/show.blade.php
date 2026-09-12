@@ -21,7 +21,8 @@
                         <h2 class="text-xl">{{ $position->stage->block?->name ?? 'Идёт работа' }}</h2>
                         <x-route.clock :position="$position"/>
                     </div>
-                    @if ($position->stage->managerText())<p class="mt-3 whitespace-pre-line text-ink-muted">{{ $position->stage->managerText() }}</p>@endif
+                    @php $about = $requirement ? $position->stage->block?->text : $position->stage->managerText(); @endphp
+                    @if ($about)<p class="mt-3 whitespace-pre-line text-ink-muted">{{ $about }}</p>@endif
                     @if ($position->payload)
                         <dl class="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
                             @foreach ($position->payload as $k => $v)

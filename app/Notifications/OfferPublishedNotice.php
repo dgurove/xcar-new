@@ -15,7 +15,7 @@ final class OfferPublishedNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->offer->asking_price ? number_format($this->offer->asking_price, 0, '', ' ').' ₽ · приём ставок до '.$this->offer->bids_close_at?->translatedFormat('j M, H:i') : null;
+        return $this->offer->asking_price ? number_format($this->offer->asking_price, 0, '', ' ').' ₽ · приём подтверждений до '.$this->offer->bids_close_at?->translatedFormat('j M, H:i') : null;
     }
 
     public function href(): string

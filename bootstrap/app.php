@@ -12,6 +12,7 @@ use App\Notifications\Console\SendDigest;
 use App\Offers\Console\TickOffers;
 use App\Push\Console\MakeKeys;
 use App\Users\Console\CreateUser;
+use App\Workflow\Console\RefillInsurers;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         CreateUser::class,
         TickOffers::class,
+        RefillInsurers::class,
         SendDigest::class,
         SyncMail::class,
         WatchMail::class,

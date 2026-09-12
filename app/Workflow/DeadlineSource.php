@@ -4,7 +4,7 @@ namespace App\Workflow;
 
 use App\Cars\HasLabels;
 
-/** Откуда этап берёт срок: свой лимит, окно приёма ставок или дата от страховой. */
+/** Откуда этап берёт срок: свой лимит, окно приёма подтверждений или дата от страховой. */
 enum DeadlineSource: string
 {
     use HasLabels;
@@ -17,7 +17,7 @@ enum DeadlineSource: string
     {
         return match ($this) {
             self::Own => 'Свой срок',
-            self::BidsClose => 'Срок приёма ставок',
+            self::BidsClose => 'Срок приёма подтверждений',
             self::InsurerDeadline => 'Срок от страховой',
         };
     }

@@ -11,6 +11,7 @@ use App\Cars\Fuel;
 use App\Cars\Papers;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
+use App\Mail\Extraction\Code;
 use App\Media\HasPhotos;
 use App\Users\User;
 use App\Workflow\Insurer;
@@ -77,7 +78,7 @@ class Offer extends Model implements HasMedia
     {
         $value = trim((string) $value) ?: null;
         $this->attributes['claim_ref'] = $value;
-        $this->attributes['claim_ref_key'] = \App\Mail\Extraction\Code::key($value);
+        $this->attributes['claim_ref_key'] = Code::key($value);
     }
 
     public function insurer(): BelongsTo
@@ -194,7 +195,7 @@ class Offer extends Model implements HasMedia
 
     // -------------------------------------------------------------- деньги
 
-    /** Нижняя граница ставки: заданная руками или по доле между закупочной и продажной. */
+    /** Нижняя граница подтверждения: заданная руками или по доле между закупочной и продажной. */
     public function minBid(): ?int
     {
         if ($this->min_bid_price) {

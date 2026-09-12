@@ -10,8 +10,8 @@ enum OfferState: string
 
     case Draft = 'draft';
     case Gallery = 'gallery';       // «скоро в продаже»: без цены, принимаем интерес
-    case Open = 'open';             // в каталоге, принимаем ставки
-    case Closed = 'closed';         // приём ставок закрыт, машина ещё видна
+    case Open = 'open';             // в каталоге, принимаем подтверждения
+    case Closed = 'closed';         // приём подтверждений закрыт, машина ещё видна
     case Sold = 'sold';             // идёт сделка
     case Delivered = 'delivered';
     case Cancelled = 'cancelled';
@@ -22,7 +22,7 @@ enum OfferState: string
         return match ($this) {
             self::Draft => 'Черновик',
             self::Gallery => 'В галерее',
-            self::Open => 'Приём ставок',
+            self::Open => 'Приём подтверждений',
             self::Closed => 'Приём закрыт',
             self::Sold => 'Идёт сделка',
             self::Delivered => 'Выдан',

@@ -28,7 +28,7 @@ final class Caption
             ['mileage', 'Пробег', $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null, false],
             ['vin', 'VIN', $offer->vin ? 'VIN '.$offer->vin : null, false],
             ['tags', 'Метки', $offer->tags ? implode(', ', $offer->tags) : null, false],
-            ['until', 'Приём ставок до', $offer->bids_close_at?->translatedFormat('d.m.Y H:i'), false],
+            ['until', 'Приём подтверждений до', $offer->bids_close_at?->translatedFormat('d.m.Y H:i'), false],
         ];
 
         return array_values(array_map(fn ($r) => ['key' => $r[0], 'label' => $r[1], 'value' => (string) $r[2], 'on' => $r[3]],

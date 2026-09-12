@@ -19,7 +19,7 @@ class BidController
         $amount = (int) preg_replace('/\D+/', '', $data['amount']);
         $place($offer, $request->user(), $amount, $data['comment'] ?? null);
 
-        return back()->with('toast', 'Ставка принята к рассмотрению');
+        return back()->with('toast', 'Подтверждение отправлено');
     }
 
     public function withdraw(Request $request, Bid $bid, WithdrawBid $withdraw)
@@ -27,6 +27,6 @@ class BidController
         abort_unless($bid->user_id === $request->user()->id, 403);
         $withdraw($bid, $request->user());
 
-        return back()->with('toast', 'Ставка отозвана');
+        return back()->with('toast', 'Подтверждение отозвано');
     }
 }

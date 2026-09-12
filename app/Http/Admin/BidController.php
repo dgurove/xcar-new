@@ -13,13 +13,13 @@ class BidController
     {
         $accept($bid, $request->user());
 
-        return back()->with('toast', 'Ставка принята, сделка открыта');
+        return back()->with('toast', 'Подтверждение принято, сделка открыта');
     }
 
     public function decline(Request $request, Bid $bid, DeclineBid $decline)
     {
         $decline($bid, $request->user());
 
-        return back()->with('toast', 'Ставка отклонена');
+        return back()->with('toast', 'Подтверждение отклонено');
     }
 }

@@ -10,7 +10,7 @@ final class BidAcceptedNotice extends Notice
 
     public function title(): string
     {
-        return 'Ваша ставка '.number_format($this->deal->amount, 0, '', ' ').' ₽ принята — № '.$this->deal->offer->number;
+        return 'Ваше подтверждение '.number_format($this->deal->amount, 0, '', ' ').' ₽ принято — № '.$this->deal->offer->number;
     }
 
     public function text(): ?string

@@ -19,7 +19,7 @@ class OfferController
 {
     public const PRESETS = [
         'all' => 'Все', 'draft' => 'Черновики', 'gallery' => 'Галерея', 'open' => 'В продаже',
-        'bids' => 'Со ставками', 'sold' => 'В сделке', 'archive' => 'Архив',
+        'bids' => 'С подтверждениями', 'sold' => 'В сделке', 'archive' => 'Архив',
     ];
 
     public const SORTS = ['fresh' => 'Сначала новые', 'closing' => 'Скоро закроются', 'number' => 'По номеру'];

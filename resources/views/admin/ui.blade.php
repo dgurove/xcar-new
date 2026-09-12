@@ -75,7 +75,7 @@
                 </x-ui.sheet>
             </div>
             <div class="mt-4 flex flex-col gap-2">
-                <x-ui.flash>Ставка принята к рассмотрению</x-ui.flash>
+                <x-ui.flash>Подтверждение отправлено</x-ui.flash>
                 <x-ui.flash tone="danger">Не получилось</x-ui.flash>
                 <x-ui.flash tone="accent">Письмо у нас</x-ui.flash>
             </div>

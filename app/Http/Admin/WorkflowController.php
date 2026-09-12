@@ -42,7 +42,7 @@ class WorkflowController
     {
         $workflow->update(['auto_start' => $request->boolean('auto_start')]);
 
-        return redirect($this->back($workflow))->with('toast', $workflow->auto_start ? 'Для каждой машины' : 'По кнопке на карточке');
+        return redirect($this->back($workflow))->with('toast', $workflow->auto_start ? 'Для каждого автомобиля' : 'По кнопке на карточке');
     }
 
     public function fill(Request $request, Workflow $workflow, ApplyPreset $apply)

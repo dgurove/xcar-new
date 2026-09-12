@@ -74,7 +74,7 @@ class Workflow extends Model
             if ($stage->asks !== Asks::Nothing && ! $stage->awaitsManager()) {
                 $problems[] = "Этап «{$stage->name}» просит менеджера что-то приложить, но кнопок менеджера у него нет";
             }
-            // На приёме ход менеджера — ставка, а не кнопка маршрута.
+            // На приёме ход менеджера — подтверждение, а не кнопка маршрута.
             if ($stage->waits_for === WaitsFor::Manager && ! $stage->awaitsManager() && $stage->offer_state !== OfferState::Open) {
                 $problems[] = "Этап «{$stage->name}» ждёт менеджера, а нажать ему нечего";
             }
@@ -82,7 +82,7 @@ class Workflow extends Model
                 $problems[] = "Этап «{$stage->name}» меняет состояние продажи, хотя стоит в маршруте вывоза";
             }
             if ($this->track === Track::Sale && $stage->car_place) {
-                $problems[] = "Этап «{$stage->name}» переставляет машину, хотя стоит в маршруте продажи";
+                $problems[] = "Этап «{$stage->name}» меняет положение автомобиля, хотя стоит в маршруте продажи";
             }
             if ($this->track === Track::Service && $stage->waits_for === WaitsFor::Manager) {
                 $problems[] = "Этап «{$stage->name}» ждёт менеджера, а в вывозе менеджер не участвует";
@@ -97,7 +97,7 @@ class Workflow extends Model
             }
         }
         if ($this->track === Track::Service && $stages->every(fn (Stage $s) => $s->car_place !== CarPlace::Ours)) {
-            $problems[] = 'Ни один этап не доводит машину до нашей площадки';
+            $problems[] = 'Ни один этап не доводит автомобиль до нашей площадки';
         }
 
         return array_values(array_unique($problems));

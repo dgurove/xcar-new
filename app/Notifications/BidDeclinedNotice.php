@@ -10,7 +10,7 @@ final class BidDeclinedNotice extends Notice
 
     public function title(): string
     {
-        return 'Ставка '.number_format($this->bid->amount, 0, '', ' ').' ₽ по № '.$this->bid->offer->number.' отклонена';
+        return 'Подтверждение '.number_format($this->bid->amount, 0, '', ' ').' ₽ по № '.$this->bid->offer->number.' отклонено';
     }
 
     public function text(): ?string

@@ -27,7 +27,7 @@
         <span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт"></span>
     </div>
 @elseif (!$gallery && !$offer->state->acceptsBids() && $offer->state !== \App\Offers\OfferState::Draft)
-    <div class="mt-5 rounded-(--radius-l) bg-surface-2 px-4 py-3 text-sm text-ink-muted">Приём предложений закрыт</div>
+    <div class="mt-5 rounded-(--radius-l) bg-surface-2 px-4 py-3 text-sm text-ink-muted">Приём подтверждений закрыт</div>
 @endif
 
 @guest

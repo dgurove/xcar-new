@@ -40,8 +40,8 @@
         @if ($track === Track::Service && $w->blocks->isNotEmpty())
             <form method="post" action="/nastroyki/marshruty/{{ $w->id }}/zapusk" class="flex items-center gap-2">
                 @csrf<input type="hidden" name="auto_start" value="{{ $w->auto_start ? 0 : 1 }}">
-                <x-ui.pill tone="plain">{{ $w->auto_start ? 'Для каждой машины' : 'По кнопке на карточке' }}</x-ui.pill>
-                <x-ui.button variant="ghost" size="sm">{{ $w->auto_start ? 'Только по кнопке' : 'Для каждой машины' }}</x-ui.button>
+                <x-ui.pill tone="plain">{{ $w->auto_start ? 'Для каждого автомобиля' : 'По кнопке на карточке' }}</x-ui.pill>
+                <x-ui.button variant="ghost" size="sm">{{ $w->auto_start ? 'Только по кнопке' : 'Для каждого автомобиля' }}</x-ui.button>
             </form>
         @endif
         @if ($errors->has('workflow'))<span class="field-error w-full">{{ $errors->first('workflow') }}</span>@endif

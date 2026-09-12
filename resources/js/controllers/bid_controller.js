@@ -1,6 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 
-// Форма ставки: видимое поле с разделителями, на сервер — число; кнопки
+// Форма подтверждения: видимое поле с разделителями, на сервер — число; кнопки
 // полной цены и скидок; ниже минимума кнопка гаснет.
 export default class extends Controller {
     static targets = ['display', 'amount', 'submit', 'low'];

@@ -16,7 +16,7 @@ use Illuminate\Database\Seeder;
  */
 class InsurerSeeder extends Seeder
 {
-    private const INSURERS = [
+    public const INSURERS = [
         // имя, продажа, вывоз с каждым предложением
         ['Т-Страхование', Preset::TBank, false],
         ['АльфаСтрахование', Preset::Alfa, false],
