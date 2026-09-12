@@ -27,23 +27,27 @@ Route::get('/offline', [PwaController::class, 'offline']);
 Route::post('/push/podpiska', [PushController::class, 'store'])->middleware('auth');
 Route::delete('/push/podpiska', [PushController::class, 'destroy'])->middleware('auth');
 
-Route::get('/', [CatalogController::class, 'index'])->name('home');
-Route::view('/voprosy', 'site.pages.voprosy');
+// Без стены: обращение (и гостю по cookie), юридические страницы.
 Route::get('/kontakty', [EnquiryController::class, 'show']);
 Route::post('/kontakty', [EnquiryController::class, 'store'])->middleware('throttle:5,1');
 Route::view('/obrabotka-dannyh', 'site.pages.obrabotka-dannyh');
 Route::view('/soglashenie', 'site.pages.soglashenie');
 Route::view('/soglasie', 'site.pages.soglasie');
-Route::get('/galereya', [CatalogController::class, 'gallery']);
-Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
-Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
-
 // Лента чата открыта и гостю с обращением — право решает Chat::allows по cookie.
 Route::get('/chaty/{chat}/soobshcheniya', [ChatController::class, 'messages'])->middleware('throttle:120,1');
 Route::post('/chaty/{chat}/soobshcheniya', [ChatController::class, 'post'])->middleware('throttle:30,1');
 Route::get('/chaty/{chat}/fayly/{file}', [ChatController::class, 'file']);
 
-Route::middleware('auth')->group(function () {
+// Сайт закрыт: дальше только с открытым доступом (SiteWall).
+Route::middleware('wall')->group(function () {
+    Route::get('/', [CatalogController::class, 'index'])->name('home');
+    Route::view('/voprosy', 'site.pages.voprosy');
+    Route::get('/galereya', [CatalogController::class, 'gallery']);
+    Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
+    Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
+});
+
+Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/offers/{offer}/stavka', [BidController::class, 'store']);
     Route::post('/stavki/{bid}/otozvat', [BidController::class, 'withdraw']);
     Route::post('/offers/{offer}/interes', [InterestController::class, 'store']);

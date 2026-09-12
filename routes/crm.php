@@ -105,6 +105,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::get('/polzovateli', [UserController::class, 'index']);
         Route::post('/polzovateli', [UserController::class, 'store']);
         Route::put('/polzovateli/{user}', [UserController::class, 'update']);
+        Route::post('/polzovateli/{user}/dostup', [UserController::class, 'decide']);
 
         Route::get('/tegi', [TagController::class, 'index']);
         Route::post('/tegi', [TagController::class, 'store']);

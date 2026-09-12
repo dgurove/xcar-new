@@ -19,6 +19,12 @@ return [
         'private' => env('VAPID_PRIVATE_KEY'),
     ],
 
+    // Бот владельца: регистрации с кнопками решения. chat_id бот подсказывает сам — напишите ему.
+    'telegram' => [
+        'token' => env('TELEGRAM_BOT_TOKEN'),
+        'owner_chat_id' => env('TELEGRAM_OWNER_CHAT_ID'),
+    ],
+
     // Исходящий прокси для carcade.com: адрес прода у них в бане.
     'carcade_proxy' => env('CARCADE_PROXY'),
 

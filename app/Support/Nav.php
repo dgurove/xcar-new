@@ -70,7 +70,7 @@ final class Nav
             ];
         }
 
-        if ($user) {
+        if ($user?->isApproved()) {
             return [
                 self::item('Предложения', 'car', '/', '/'),
                 self::item('Галерея', 'photo', '/galereya'),
@@ -79,17 +79,19 @@ final class Nav
             ];
         }
 
-        return [
-            self::item('Предложения', 'car', '/', '/'),
-            self::item('Галерея', 'photo', '/galereya'),
-        ];
+        // Сайт закрыт: гостю и ждущему решения — только обращение.
+        return [];
     }
 
     /** Пункты таб-бара: до четырёх разделов и «Кабинет». */
     public static function tabs(?User $user, ?Surface $surface = null): array
     {
+        $surface ??= Surface::current();
         $tabs = array_values(array_filter(self::sections($user, $surface), fn ($i) => $i['tab']));
         $tabs = array_slice($tabs, 0, 4);
+        if ($surface === Surface::Site && $user && ! $user->isApproved()) {
+            return [self::item('Контакты', 'mail', '/kontakty'), self::item('Выйти', 'exit', '/vyhod', capsule: false) + ['logout' => true]];
+        }
         $tabs[] = $user
             ? self::item('Кабинет', 'user', '/lk')
             : self::item('Войти', 'login', '/vhod');
@@ -119,6 +121,9 @@ final class Nav
             ];
         }
 
+        if (! $user?->isApproved()) {
+            return [self::item('Контакты', 'mail', '/kontakty')];
+        }
         $top = [
             self::item('Вопросы', 'file', '/voprosy'),
             self::item('Контакты', 'mail', '/kontakty'),

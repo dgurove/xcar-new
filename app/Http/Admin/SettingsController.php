@@ -23,7 +23,8 @@ class SettingsController
             ['Метки', Tag::count(), '/nastroyki/tegi'],
         ];
         if ($request->user()->isAdmin()) {
-            $tiles[] = ['Пользователи', User::whereIn('role', [Role::Admin, Role::Moderator, Role::Manager])->count(), '/nastroyki/polzovateli'];
+            $waiting = User::whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->count();
+            $tiles[] = [$waiting ? 'Ждут доступа' : 'Пользователи', $waiting ?: User::whereIn('role', [Role::Admin, Role::Moderator, Role::Manager])->count(), '/nastroyki/polzovateli'];
         }
 
         return view('admin.settings.index', ['tiles' => $tiles]);

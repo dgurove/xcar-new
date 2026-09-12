@@ -2,6 +2,7 @@
 
 namespace App\Users;
 
+use App\Media\MediaUrl;
 use App\Support\Phone;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -16,7 +17,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'phone', 'email', 'password', 'role', 'access', 'notification_settings'])]
+#[Fillable(['name', 'phone', 'email', 'password', 'role', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -31,6 +32,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'access' => 'array',
             'notification_settings' => 'array',
             'email_verified_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
         ];
     }
 
@@ -47,6 +50,22 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function isAdmin(): bool
     {
         return $this->role === Role::Admin;
+    }
+
+    /** Сайт закрыт: внутрь — сотрудник или тот, кому доступ открыли. */
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null || $this->isStaff();
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->rejected_at !== null && ! $this->isApproved();
+    }
+
+    public function isPending(): bool
+    {
+        return ! $this->isApproved() && ! $this->isRejected();
     }
 
     public function canAccess(Section $section): bool
@@ -104,6 +123,6 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     {
         $media = $this->getFirstMedia('avatar');
 
-        return $media ? \App\Media\MediaUrl::for($media, 'thumb') : null;
+        return $media ? MediaUrl::for($media, 'thumb') : null;
     }
 }

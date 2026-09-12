@@ -22,6 +22,7 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('/vyhod', [LoginController::class, 'logout'])->name('logout');
+    Route::post('/registraciya/zanovo', [RegisterController::class, 'again']);
     Route::post('/passkey/register/options', [PasskeyController::class, 'registerOptions']);
     Route::post('/passkey/register', [PasskeyController::class, 'register']);
     Route::delete('/passkey/{id}', [PasskeyController::class, 'destroy']);

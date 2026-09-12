@@ -126,3 +126,13 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+
+# IPv6 в контейнерах нужен ради Telegram: до api.telegram.org с сервера по
+# IPv4 не достучаться, по IPv6 отвечает сразу. Подсеть локальная (ULA),
+# наружу Docker выпускает через NAT66 сам. Смена сети требует `down` и `up`.
+networks:
+  default:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fd00:aca2::/64

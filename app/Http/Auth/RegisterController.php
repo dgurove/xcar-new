@@ -36,4 +36,17 @@ class RegisterController
 
         return redirect(Surface::current() === Surface::Site ? '/' : Surface::Site->url());
     }
+
+    /** Отклонённый регистрируется заново: старый аккаунт уходит, чтобы телефон и почта освободились. */
+    public function again(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->isRejected(), 404);
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        $user->delete();
+
+        return redirect('/registraciya');
+    }
 }

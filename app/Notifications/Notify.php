@@ -9,6 +9,10 @@ use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
+use App\Telegram\Jobs\NotifyOwner;
+use App\Telegram\Messages\Registration;
+use App\Users\Events\AccessDecided;
+use App\Users\Events\UserRegistered;
 use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Events\StageDue;
@@ -33,7 +37,22 @@ final class Notify
             StageEntered::class => 'stageEntered',
             StageDue::class => 'stageDue',
             ChatMessagePosted::class => 'chat',
+            UserRegistered::class => 'registered',
+            AccessDecided::class => 'accessDecided',
         ];
+    }
+
+    /** Новый человек — владельцу в Telegram с кнопками решения. */
+    public function registered(UserRegistered $e): void
+    {
+        NotifyOwner::dispatch(new Registration($e->user));
+    }
+
+    public function accessDecided(AccessDecided $e): void
+    {
+        if ($e->approved) {
+            $e->user->notify(new AccessOpenedNotice);
+        }
     }
 
     public function offerPublished(OfferPublished $e): void

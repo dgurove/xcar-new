@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Support\Phone;
+use App\Users\Actions\DecideAccess;
 use App\Users\Role;
 use App\Users\Section;
 use App\Users\User;
@@ -13,16 +14,19 @@ use Illuminate\Validation\Rule;
 /** Пользователи: роль, доступ к стоянке, почта. Только для администратора. */
 class UserController
 {
-    public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'visitors' => 'Посетители'];
+    public const PRESETS = ['waiting' => 'Ждут', 'staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
 
     public function index(Request $request)
     {
         abort_unless($request->user()->isAdmin(), 404);
-        $preset = $request->query('preset', 'staff');
+        $waiting = User::whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor);
+        $preset = $request->query('preset', $waiting->exists() ? 'waiting' : 'staff');
         $q = User::query()->orderBy('name');
         match ($preset) {
+            'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->reorder('created_at', 'desc'),
+            'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
             'managers' => $q->where('role', Role::Manager),
-            'visitors' => $q->where('role', Role::Visitor),
+            'visitors' => $q->where('role', Role::Visitor)->whereNotNull('approved_at'),
             default => $q->whereIn('role', [Role::Admin, Role::Moderator]),
         };
         if ($term = trim((string) $request->query('q'))) {
@@ -33,9 +37,11 @@ class UserController
             'users' => $q->paginate(50)->withQueryString(),
             'preset' => $preset,
             'counts' => [
+                'waiting' => $waiting->count(),
                 'staff' => User::whereIn('role', [Role::Admin, Role::Moderator])->count(),
                 'managers' => User::where('role', Role::Manager)->count(),
-                'visitors' => User::where('role', Role::Visitor)->count(),
+                'visitors' => User::where('role', Role::Visitor)->whereNotNull('approved_at')->count(),
+                'rejected' => User::whereNotNull('rejected_at')->whereNull('approved_at')->count(),
             ],
         ]);
     }
@@ -46,9 +52,24 @@ class UserController
         $data = $this->data($request);
         // Пароль случайный: человек входит по коду из письма или заводит ключ доступа.
         $data['password'] = Str::random(32);
-        User::create($data);
+        User::create($data + ['approved_at' => now(), 'approved_by' => $request->user()->id]);
 
         return redirect('/nastroyki/polzovateli?preset='.$this->presetOf($data['role']))->with('toast', 'Добавлен');
+    }
+
+    /** Решение по ждущему: открыть с выбранной ролью или отклонить. */
+    public function decide(Request $request, User $user, DecideAccess $decide)
+    {
+        abort_unless($request->user()->isAdmin() && ! $user->is($request->user()), 404);
+        if ($request->boolean('reject')) {
+            $decide->reject($user, $request->user());
+
+            return back()->with('toast', 'Отклонён');
+        }
+        $role = Role::from($request->validate(['role' => ['required', Rule::enum(Role::class)]])['role']);
+        $decide->approve($user, $role, $request->user());
+
+        return back()->with('toast', "Доступ открыт: {$role->label()}");
     }
 
     public function update(Request $request, User $user)

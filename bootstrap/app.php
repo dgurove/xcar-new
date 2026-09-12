@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsurePurchases;
 use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\ResolveSurface;
+use App\Http\Middleware\SiteWall;
 use App\Live\SubscriberCookie;
 use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
@@ -14,6 +15,7 @@ use App\Offers\Console\TickOffers;
 use App\Push\Console\MakeKeys;
 use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
+use App\Telegram\Console\Poll;
 use App\Users\Console\CreateUser;
 use App\Workflow\Console\RefillInsurers;
 use Illuminate\Foundation\Application;
@@ -39,11 +41,12 @@ return Application::configure(basePath: dirname(__DIR__))
         MovePapers::class,
         Gc::class,
         Report::class,
+        Poll::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/vhod');
         $middleware->redirectUsersTo('/');
-        $middleware->alias(['staff' => EnsureStaff::class, 'section' => EnsureSection::class, 'purchases' => EnsurePurchases::class]);
+        $middleware->alias(['staff' => EnsureStaff::class, 'section' => EnsureSection::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
         $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME]);
     })

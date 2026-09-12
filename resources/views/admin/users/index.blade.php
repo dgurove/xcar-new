@@ -37,9 +37,18 @@
                             <span class="truncate font-medium">{{ $user->name }}</span>
                             <x-ui.pill :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')" class="!min-h-0 !py-0.5 text-xs">{{ $user->role->label() }}</x-ui.pill>
                             @if ($user->canAccess(Section::Park) && !$user->isAdmin())<span class="chip text-xs">Стоянка</span>@endif
+                            @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
                         </div>
-                        <div class="truncate text-sm text-ink-muted">{{ $user->phoneFormatted() }}{{ $user->email ? ' · '.$user->email : '' }}</div>
+                        <div class="truncate text-sm text-ink-muted">{{ $user->phoneFormatted() }}{{ $user->email ? ' · '.$user->email : '' }}{{ $user->isPending() ? ' · '.$user->created_at->translatedFormat('j M, H:i') : '' }}</div>
                     </div>
+                    @if (!$user->isApproved() && !$user->is($me))
+                        <form method="post" action="/nastroyki/polzovateli/{{ $user->id }}/dostup" class="flex items-center gap-1.5">
+                            @csrf
+                            <select name="role" class="field-input field-s !w-auto" aria-label="Роль">@foreach (Role::cases() as $r)<option value="{{ $r->value }}" @selected($r === Role::Manager)>{{ $r->label() }}</option>@endforeach</select>
+                            <x-ui.button size="sm">Открыть</x-ui.button>
+                            @unless ($user->isRejected())<x-ui.button size="sm" variant="ghost" name="reject" value="1" data-turbo-confirm="Отклонить {{ $user->name }}?">Отклонить</x-ui.button>@endunless
+                        </form>
+                    @endif
                     <button type="button" class="btn btn-ghost btn-s px-2" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
                     <x-ui.sheet id="user-{{ $user->id }}" :title="$user->name">
                         <form method="post" action="/nastroyki/polzovateli/{{ $user->id }}" class="flex flex-col gap-4">
