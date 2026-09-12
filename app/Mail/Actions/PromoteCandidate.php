@@ -6,7 +6,6 @@ use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
-use App\Mail\Jobs\ImportCandidateMedia;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
@@ -14,10 +13,10 @@ use App\Users\User;
 use App\Workflow\Insurer;
 use Illuminate\Support\Facades\DB;
 
-/** Кандидат → черновик оффера: поля из письма, страховая по отправителю, ветка писем привязана, фото — джобой. */
+/** Кандидат → черновик оффера: поля из письма, страховая по отправителю, ветка писем привязана — её файлы едут в черновик. */
 final class PromoteCandidate
 {
-    public function __construct(private CreateOffer $create, private UpdateOffer $update) {}
+    public function __construct(private CreateOffer $create, private UpdateOffer $update, private LinkThread $link) {}
 
     public function __invoke(Candidate $candidate, User $by): Offer
     {
@@ -48,11 +47,12 @@ final class PromoteCandidate
             ], fn ($x) => $x !== null && $x !== ''), $by);
 
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
-            $candidate->thread?->update(['offer_id' => $offer->id]);
+            if ($candidate->thread) {
+                ($this->link)($candidate->thread, $offer);
+            }
 
             return $offer;
         });
-        ImportCandidateMedia::dispatch($candidate->id, $offer->id);
 
         return $offer;
     }

@@ -18,7 +18,9 @@ use Throwable;
 final class PhotoIngest
 {
     public const MAX_DIMENSION = 1600;
+
     public const QUALITY = 80;
+
     public const MAX_SOURCE_PIXELS = 40_000_000;
 
     public function fromUpload(HasMedia $model, string $collection, UploadedFile $file, array $properties = [], int $max = self::MAX_DIMENSION): Media
@@ -39,6 +41,8 @@ final class PhotoIngest
         $webp = null;
         try {
             $this->checkSize($path);
+            // Отпечаток исходника — чтобы тот же файл (из письма, с телефона, из архива) не лёг второй раз.
+            $properties += ['sha' => hash_file('sha256', $path)];
             $webp = $this->shrink($path, $max);
 
             return $model->addMedia($webp)

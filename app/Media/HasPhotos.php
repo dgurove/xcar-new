@@ -52,6 +52,12 @@ trait HasPhotos
         return $this->visiblePhotos()->first();
     }
 
+    /** Такой файл уже есть в медиатеке — по отпечатку исходника (custom property `sha`). */
+    public function hasFile(string $sha): bool
+    {
+        return $this->media()->where('custom_properties->sha', $sha)->exists();
+    }
+
     /** @return Collection<int, Media> */
     public function papers(): Collection
     {

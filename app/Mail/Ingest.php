@@ -3,7 +3,7 @@
 namespace App\Mail;
 
 use App\Mail\Events\MessageParsed;
-use App\Mail\Jobs\PinAttachments;
+use App\Mail\Jobs\ImportThreadFiles;
 use Illuminate\Support\Facades\DB;
 
 /** Разобранное письмо → база: поля, адреса, опись вложений, ветка; дальше — событие и закрепление файлов, если ветка привязана. */
@@ -43,9 +43,11 @@ final class Ingest
         });
 
         $message = $message->fresh(['account', 'thread', 'attachments']);
+        // Ветка уже привязана — файлы этого письма едут к машине; если привяжется сейчас (OnMessage), LinkThread поставит джобу на всю ветку.
+        $linked = $message->thread?->isLinked() ?? false;
         MessageParsed::dispatch($message);
-        if ($message->thread?->isLinked()) {
-            PinAttachments::dispatch($message->thread_id);
+        if ($linked) {
+            ImportThreadFiles::dispatch($message->thread_id, $message->id);
         }
 
         return $message;

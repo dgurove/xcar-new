@@ -5,22 +5,32 @@ namespace App\Mail\Actions;
 use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Jobs\ExtractCandidate;
-use App\Mail\Jobs\PinAttachments;
+use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 
-/** Ветка ↔ оффер: по коду убытка в теме или теле, либо руками. Привязанная ветка закрепляет свои файлы у нас. */
+/**
+ * Ветка ↔ машина (оффер или машина стоянки): по коду убытка в теме или теле,
+ * по VIN, либо руками. Одна дверь: как бы ни привязали, файлы ветки едут в
+ * медиатеку машины (ImportThreadFiles).
+ */
 final class LinkThread
 {
     public function __construct(private CodeMatcher $matcher) {}
 
-    public function __invoke(Thread $thread, Offer $offer): void
+    public function __invoke(Thread $thread, Offer|Vehicle $to): void
     {
-        $thread->update(['offer_id' => $offer->id]);
-        PinAttachments::dispatch($thread->id);
+        $thread->update($to instanceof Offer ? ['offer_id' => $to->id] : ['vehicle_id' => $to->id]);
+        ImportThreadFiles::dispatch($thread->id);
+    }
+
+    /** Отвязать: ссылка обнуляется, уже привезённые файлы и blobs остаются (blobs отпустит storage:gc). */
+    public function unlink(Thread $thread): void
+    {
+        $thread->update(['offer_id' => null, 'vehicle_id' => null]);
     }
 
     public function auto(Message $message): Offer|Vehicle|null
@@ -69,8 +79,7 @@ final class LinkThread
         $vehicle ??= ($vin = $this->vin($message)) ? Vehicle::where('vin', $vin)->latest()->first() : null;
         $vehicle ??= ($plate = $fields['plate']['value'] ?? null) ? Vehicle::where('plate', mb_strtoupper($plate))->latest()->first() : null;
         if ($vehicle) {
-            $thread->update(['vehicle_id' => $vehicle->id]);
-            PinAttachments::dispatch($thread->id);
+            $this($thread, $vehicle);
         }
 
         return $vehicle;

@@ -201,13 +201,13 @@ class MailController
         $this->guard($thread);
         if ($this->scope === Scope::Park) {
             $vehicle = $request->input('vehicle_id') ? Vehicle::find($request->input('vehicle_id')) : null;
-            $thread->update(['vehicle_id' => $vehicle?->id]);
+            $vehicle ? $link($thread, $vehicle) : $link->unlink($thread);
 
             return back()->with('toast', $vehicle ? 'Привязано' : 'Отвязано');
         }
         $number = (int) preg_replace('/\D/', '', (string) $request->input('number'));
         if ($number === 0) {
-            $thread->update(['offer_id' => null]);
+            $link->unlink($thread);
 
             return back()->with('toast', 'Отвязано');
         }

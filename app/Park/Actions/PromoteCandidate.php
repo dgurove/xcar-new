@@ -2,18 +2,20 @@
 
 namespace App\Park\Actions;
 
+use App\Mail\Actions\LinkThread;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Park\Client;
 use App\Park\Request;
 use App\Park\RequestType;
+use App\Park\Vehicle;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
-/** Письмо о хранении → машина «ожидается» и заявка на приём, ветка привязана к машине. Фото — джобой. */
+/** Письмо о хранении → машина «ожидается» и заявка на приём, ветка привязана к машине — её файлы едут в карточку. */
 final class PromoteCandidate
 {
-    public function __construct(private CreateRequest $create) {}
+    public function __construct(private CreateRequest $create, private LinkThread $link) {}
 
     public function __invoke(Candidate $candidate, User $by): Request
     {
@@ -28,11 +30,12 @@ final class PromoteCandidate
                 'note' => $candidate->subject,
             ]);
             $candidate->update(['state' => CandidateState::Promoted, 'vehicle_id' => $request->vehicle_id]);
-            $candidate->thread?->update(['vehicle_id' => $request->vehicle_id]);
+            if ($candidate->thread) {
+                ($this->link)($candidate->thread, Vehicle::find($request->vehicle_id));
+            }
 
             return $request;
         });
-        \App\Park\Jobs\ImportCandidateMedia::dispatch($candidate->id, $request->vehicle_id);
 
         return $request;
     }
