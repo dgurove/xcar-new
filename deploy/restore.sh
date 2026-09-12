@@ -14,7 +14,7 @@ RESTIC_IMAGE=restic/restic:0.18.0
 env_value() { sed -nE "s/^$1=\"?([^\"]*)\"?\r?$/\1/p" "$ROOT/env/$2" | tail -1; }
 DB="$(env_value DB_DATABASE .env.app)"; USER="$(env_value DB_USERNAME .env.app)"
 for k in RESTIC_REPOSITORY RESTIC_PASSWORD AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION; do
-    declare "$k=$(env_value $k .env)"
+    export "$k=$(env_value $k .env)"
 done
 
 restic() { # $1 — каталог хоста, куда restic пишет (/out внутри)

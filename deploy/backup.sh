@@ -28,7 +28,7 @@ env_value() { sed -nE "s/^$1=\"?([^\"]*)\"?\r?$/\1/p" "$ROOT/env/$2" | tail -1; 
 DB_DATABASE="$(env_value DB_DATABASE .env.app)"; DB_USERNAME="$(env_value DB_USERNAME .env.app)"
 test -n "$DB_DATABASE" -a -n "$DB_USERNAME" || { echo "в .env.app нет DB_DATABASE/DB_USERNAME" >&2; exit 1; }
 for k in RESTIC_REPOSITORY RESTIC_PASSWORD AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION S3_ENDPOINT S3_BUCKET; do
-    declare "$k=$(env_value $k .env)"
+    export "$k=$(env_value $k .env)"
 done
 mkdir -p "$BACKUPS" "$DATA/cache/restic"
 
@@ -88,11 +88,11 @@ ship_logs() {
         docker logs -t --since 24h "$c" 2>&1 | gzip -1 > "$tmp/$day/${c#xcar-}.log.gz"
     done
     journalctl -u docker --since yesterday --until today --no-pager 2>/dev/null | gzip -1 > "$tmp/$day/docker.journal.gz"
-    docker run --rm -v "$tmp:/logs:ro" \
+    docker run --rm --entrypoint sh -v "$tmp:/logs:ro" \
         -e RCLONE_CONFIG_S3_TYPE=s3 -e RCLONE_CONFIG_S3_PROVIDER=Other \
         -e "RCLONE_CONFIG_S3_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" -e "RCLONE_CONFIG_S3_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
         -e "RCLONE_CONFIG_S3_ENDPOINT=$S3_ENDPOINT" -e "RCLONE_CONFIG_S3_REGION=$AWS_DEFAULT_REGION" \
-        "$RCLONE_IMAGE" sh -c "rclone copy /logs 's3:$S3_BUCKET/logs' -q && rclone delete --min-age 90d 's3:$S3_BUCKET/logs' -q && rclone rmdirs --leave-root 's3:$S3_BUCKET/logs' -q"
+        "$RCLONE_IMAGE" -c "rclone copy /logs 's3:$S3_BUCKET/logs' -q && rclone delete --min-age 90d 's3:$S3_BUCKET/logs' -q && rclone rmdirs --leave-root 's3:$S3_BUCKET/logs' -q"
     rm -rf "$tmp"
 }
 
