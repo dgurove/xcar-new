@@ -191,6 +191,9 @@
 .turbo-progress-bar { background: var(--color-accent); height: 2px; top: calc(env(safe-area-inset-top) + var(--spacing-header)); z-index: 41; }
 body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
+/* Последняя минута таймера — цветом срочности, без подписи. */
+[data-controller~="timer"].is-last { color: var(--color-urgent); }
+
 /* Числа: табличные и полужирные — цены, счётчики, таймеры, чтобы не дёргали соседей.
    Даты, телефоны и номера набираются обычными цифрами: у табличной единицы широкая
    ячейка, и текст выглядит разреженным. */

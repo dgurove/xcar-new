@@ -124,6 +124,8 @@ async function badges() {
     if (!topics.includes('user/')) return;
     try {
         const r = await fetch('/live/badges', { headers: { Accept: 'text/vnd.turbo-stream.html' } });
+        const date = Date.parse(r.headers.get('Date') || '');
+        if (date) window.clockOffset = date - Date.now();
         if (r.ok) Turbo.renderStreamMessage(await r.text());
         document.dispatchEvent(new CustomEvent('badges:updated'));
     } catch {}

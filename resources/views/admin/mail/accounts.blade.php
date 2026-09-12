@@ -7,7 +7,7 @@
                     <div class="text-sm text-ink-muted">
                         {{ $account->scope->label() }} · писем {{ $account->messages_count }}
                         @if ($account->last_error)· <span class="text-danger">{{ \Illuminate\Support\Str::limit($account->last_error, 60) }}</span>
-                        @elseif ($account->synced_at)· проверен {{ $account->synced_at->diffForHumans() }}@endif
+                        @elseif ($account->synced_at)· проверен <time datetime="{{ $account->synced_at->toIso8601String() }}" data-controller="timer" data-timer-since-value="{{ $account->synced_at->toIso8601String() }}" data-timer-human-value="true">{{ $account->synced_at->diffForHumans() }}</time>@endif
                     </div>
                 </div>
                 <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>

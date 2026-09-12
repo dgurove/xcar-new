@@ -19,10 +19,11 @@
 @endif
 
 @if ($left !== null && $left > 0)
-    <div class="mt-5 flex items-baseline justify-between gap-3 rounded-(--radius-l) bg-surface-2 px-4 py-3">
+    <div class="mt-5 flex items-baseline justify-between gap-3 rounded-(--radius-l) bg-surface-2 px-4 py-3" data-closes-with-timer>
         <span class="text-sm text-ink-muted">Приём закрывается</span>
         <span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт"></span>
     </div>
+    <div class="mt-5 rounded-(--radius-l) bg-surface-2 px-4 py-3 text-sm text-ink-muted" hidden data-shows-when-closed>Приём подтверждений закрыт</div>
 @elseif (!$gallery && !$offer->state->acceptsBids() && $offer->state !== \App\Offers\OfferState::Draft)
     <div class="mt-5 rounded-(--radius-l) bg-surface-2 px-4 py-3 text-sm text-ink-muted">Приём подтверждений закрыт</div>
 @endif
@@ -31,7 +32,7 @@
     <a href="/vhod?intended={{ urlencode(request()->getRequestUri()) }}" class="btn btn-accent mt-6 w-full">{{ $gallery ? 'Войти' : 'Войти, чтобы узнать цену' }}</a>
 @else
     @if ($canBid && $prices)
-        <x-offer.bid-form :offer="$offer" :my-bid="$myBid"/>
+        <div data-closes-with-timer><x-offer.bid-form :offer="$offer" :my-bid="$myBid"/></div>
     @elseif ($wantsInterest)
         @if ($myInterest)
             <p class="flash flash-accent mt-6">{{ $gallery ? 'Сообщим, когда откроется приём' : ($myInterest->state === \App\Offers\InterestState::New ? 'Менеджер свяжется с Вами' : 'С Вами связались') }}</p>

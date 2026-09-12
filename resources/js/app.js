@@ -49,6 +49,7 @@ focusInvalid();
 relaunchScroll();
 keyboardInset();
 heroTransition();
+timerDone();
 
 // View Transitions роняют промис, когда вкладка скрыта или переход перебит
 // следующим: страница при этом в порядке, в консоли этому не место.
@@ -209,5 +210,24 @@ function heroTransition() {
     });
     document.addEventListener('turbo:load', () => {
         document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => { el.style.viewTransitionName = ''; });
+    });
+}
+
+// Таймер дошёл до нуля: всё, что помечено data-closes-with-timer, гаснет сразу
+// (форма цены, кнопка «Подтвердить»), а через три секунды страница перечитывается
+// морфом — сервер к этому времени закрыл приём (CloseBids).
+function timerDone() {
+    let planned = null;
+    document.addEventListener('timer:done', () => {
+        document.querySelectorAll('[data-closes-with-timer]').forEach((el) => {
+            if (el.matches('button, a')) { el.classList.add('btn-quiet'); el.classList.remove('btn-accent'); el.setAttribute('aria-disabled', 'true'); el.style.pointerEvents = 'none'; }
+            else el.hidden = true;
+        });
+        document.querySelectorAll('[data-shows-when-closed]').forEach((el) => { el.hidden = false; });
+        clearTimeout(planned);
+        planned = setTimeout(() => {
+            if (document.querySelector('form[data-dirty], dialog:modal')) return;
+            Turbo.visit(location.href, { action: 'replace' });
+        }, 3000);
     });
 }
