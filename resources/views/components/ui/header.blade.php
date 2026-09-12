@@ -36,7 +36,7 @@
                     </a>
                 @endif
             </div>
-            <a href="/" class="flex items-center justify-self-center" aria-label="XCar"><x-ui.brand class="h-10"/></a>
+            <a href="/" class="flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>
         @else
             <a href="/" class="flex min-w-0 items-center justify-self-start" aria-label="XCar"><x-ui.brand class="h-10"/></a>
         @endif
