@@ -82,7 +82,7 @@ php artisan queue:work database-long --queue=long,mail --stop-when-empty   # п�
 php artisan queue:work --stop-when-empty                                   # конверсии, уведомления
 php artisan offers:tick | mail:sync | mail:reconcile | notifications:digest | push:keys
 npm run build                    # ассеты; npm run dev — с горячей перезагрузкой
-node scripts/icons.mjs           # иконки PWA из favicon.svg
+node scripts/icons.mjs           # иконки трёх приложений и экраны запуска iOS из resources/icons
 ./deploy/server-setup.sh         # один раз на новый сервер
 ./deploy/deploy.sh               # выкладка: снимок git → сборка → бэкап базы → миграции → up → таймеры
 ./deploy/deploy.sh backup|check|artisan …|rollback TAG

@@ -14,13 +14,18 @@
     <meta name="mercure-hub" content="/.well-known/mercure">
     <meta name="mercure-topics" content="{{ implode(',', \App\Live\Topics::for(auth()->user(), app(\App\Chats\GuestEnquiry::class)->chat(request())?->id)) }}">
     @endif
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ $surface->short() }}">
+    {{-- Иначе iOS делает из цены «1 250 000» телефонную ссылку; номера телефонов — сами tel:. --}}
+    <meta name="format-detection" content="telephone=no">
     <title>{{ $title ? "$title — " : '' }}{{ $surface->label() }}</title>
     <link rel="icon" href="/pwa/{{ $surface->value }}/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/pwa/{{ $surface->value }}/apple-touch-icon.png">
+    <link rel="icon" href="/pwa/{{ $surface->value }}/favicon.ico" sizes="32x32">
+    <link rel="apple-touch-icon" sizes="180x180" href="/pwa/{{ $surface->value }}/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
+    <x-ui.startup/>
     @auth<meta name="badge-count" content="{{ auth()->user()->unreadCount() }}">@endauth
     @if (config('xcar.vapid.public'))<meta name="vapid-key" content="{{ config('xcar.vapid.public') }}">@endif
     <link rel="preload" href="/fonts/onest-var.woff2" as="font" type="font/woff2" crossorigin>

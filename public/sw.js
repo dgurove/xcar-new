@@ -1,7 +1,7 @@
 // Service worker XCar. HTML — только из сети (страницы живые), при обрыве
 // — /offline. Сборка и картинки — из кэша, картинок не больше ~40 МБ:
 // у iOS потолок около 50.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const STATIC = `static-${VERSION}`;
 const MEDIA = `media-${VERSION}`;
 const MEDIA_LIMIT = 400;
@@ -63,7 +63,7 @@ self.addEventListener('push', (event) => {
     event.waitUntil(self.registration.showNotification(n.title || 'XCar', {
         body: n.body || '',
         icon: `/pwa/${surface()}/icon-192.png`,
-        badge: `/pwa/${surface()}/icon-192.png`,
+        badge: `/pwa/${surface()}/icon-mono-512.png`, // Android рисует бейдж силуэтом
         tag: n.tag,
         data: { navigate: n.navigate || '/' },
     }));

@@ -48,18 +48,15 @@ enum Surface: string
     {
         return match ($this) {
             self::Site => 'XCar',
-            self::Crm => 'XCar CRM',
-            self::Park => 'XCar Стоянка',
+            self::Crm => 'CRM XCar',
+            self::Park => 'Park XCar',
         };
     }
 
+    /** Имя под иконкой на экране «Домой» — совпадает с label(), в 12 знаков укладывается. */
     public function short(): string
     {
-        return match ($this) {
-            self::Site => 'XCar',
-            self::Crm => 'CRM',
-            self::Park => 'Стоянка',
-        };
+        return $this->label();
     }
 
     /** Слово слева от логотипа в шапке; у сайта его нет. */

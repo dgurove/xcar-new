@@ -12,36 +12,46 @@ class PwaController
         $surface = Surface::current();
         $dir = '/pwa/'.$surface->value;
 
-        [$description, $start, $shortcuts] = match ($surface) {
-            Surface::Site => ['Предложения, сделки, закупки', '/', [
-                ['name' => 'Предложения', 'url' => '/'], ['name' => 'Сделки', 'url' => '/lk/sdelki'], ['name' => 'Уведомления', 'url' => '/lk/uvedomleniya'],
+        [$description, $shortcuts] = match ($surface) {
+            Surface::Site => ['Предложения, сделки, закупки', [
+                ['Предложения', '/', 'car'], ['Сделки', '/lk/sdelki', 'deal'], ['Уведомления', '/lk/uvedomleniya', 'bell'],
             ]],
-            Surface::Crm => ['Предложения, галерея, работа, закупки', '/', [
-                ['name' => 'Предложения', 'url' => '/'], ['name' => 'Галерея', 'url' => '/galereya'], ['name' => 'Работа', 'url' => '/rabota'], ['name' => 'Закупки', 'url' => '/zakupki'],
+            Surface::Crm => ['Предложения, галерея, работа, закупки', [
+                ['Предложения', '/', 'car'], ['Галерея', '/galereya', 'photo'], ['Работа', '/rabota', 'deal'], ['Закупки', '/zakupki', 'cart'],
             ]],
-            Surface::Park => ['Заявки, машины, стоянки', '/', [
-                ['name' => 'Заявки', 'url' => '/'], ['name' => 'Машины', 'url' => '/mashiny'],
+            Surface::Park => ['Заявки, машины, стоянки', [
+                ['Заявки', '/', 'flag'], ['Машины', '/mashiny', 'car'],
             ]],
         };
 
+        // Иконка — чёрный квадрат во весь холст: стекло на iOS 26 и маску на Android кладёт система,
+        // поэтому фон запуска и полосы — тот же чёрный, чтобы квадрат не читался на сером.
         return response()->json([
             'name' => $surface->label(),
             'short_name' => $surface->short(),
             'description' => $description,
-            'start_url' => $start,
-            'id' => $start,
+            'start_url' => '/',
+            'id' => '/',
             'scope' => '/',
             'display' => 'standalone',
+            'display_override' => ['standalone'],
             'orientation' => 'portrait',
-            'background_color' => '#121212',
-            'theme_color' => '#121212',
+            'background_color' => '#000000',
+            'theme_color' => '#000000',
             'lang' => 'ru',
+            'categories' => ['business'],
+            'launch_handler' => ['client_mode' => 'navigate-existing'],
             'icons' => [
-                ['src' => "$dir/icon-192.png", 'sizes' => '192x192', 'type' => 'image/png'],
-                ['src' => "$dir/icon-512.png", 'sizes' => '512x512', 'type' => 'image/png'],
+                ['src' => "$dir/icon-192.png", 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => "$dir/icon-512.png", 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => "$dir/icon-1024.png", 'sizes' => '1024x1024', 'type' => 'image/png', 'purpose' => 'any'],
                 ['src' => "$dir/icon-maskable-512.png", 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+                ['src' => "$dir/icon-mono-512.png", 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'monochrome'],
             ],
-            'shortcuts' => $shortcuts,
+            'shortcuts' => array_map(fn ($s) => [
+                'name' => $s[0], 'url' => $s[1],
+                'icons' => [['src' => "$dir/shortcut-$s[2].png", 'sizes' => '96x96', 'type' => 'image/png']],
+            ], $shortcuts),
         ], 200, ['Content-Type' => 'application/manifest+json', 'Cache-Control' => 'public, max-age=3600']);
     }
 
