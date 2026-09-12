@@ -59,16 +59,6 @@ enum Surface: string
         return $this->label();
     }
 
-    /** Слово слева от логотипа в шапке; у сайта его нет. */
-    public function word(): ?string
-    {
-        return match ($this) {
-            self::Site => null,
-            self::Crm => 'CRM',
-            self::Park => 'PARK',
-        };
-    }
-
     public function home(): string
     {
         return '/';

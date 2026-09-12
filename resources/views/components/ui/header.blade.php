@@ -1,6 +1,6 @@
 {{-- Шапка xcar.ru. Телефон: квадраты (поиск, закладка · логотип · колокольчик, тема);
-     в CRM и на стоянке поиска нет — слева слово CRM/PARK и логотип.
-     Десктоп: слово и знак, два ряда капсул — справочное и разделы. --}}
+     в CRM и на стоянке поиска нет — слева знак приложения (x-ui.brand).
+     Десктоп: знак и два ряда капсул — справочное и разделы. --}}
 @props(['overHero' => false])
 @php
     $surface = \App\Support\Surface::current();
@@ -36,12 +36,9 @@
                     </a>
                 @endif
             </div>
-            <a href="/" class="flex items-center justify-self-center" aria-label="XCar"><x-ui.logo class="h-10 w-auto"/></a>
+            <a href="/" class="flex items-center justify-self-center" aria-label="XCar"><x-ui.brand class="h-10"/></a>
         @else
-            <a href="/" class="flex min-w-0 items-center gap-2 justify-self-start" aria-label="XCar">
-                <span class="surface-word shrink-0">{{ $surface->word() }}</span>
-                <x-ui.logo class="h-10 w-auto min-w-0 object-contain object-left"/>
-            </a>
+            <a href="/" class="flex min-w-0 items-center justify-self-start" aria-label="XCar"><x-ui.brand class="h-10"/></a>
         @endif
         <div class="flex gap-1">
             @if ($user)
@@ -67,10 +64,7 @@
 
     {{-- Десктоп --}}
     <div class="container-site hidden grid-cols-[auto_1fr] items-start gap-1 py-2 md:grid">
-        <a href="/" class="row-span-2 mr-1 flex shrink-0 items-center gap-2 self-start" aria-label="XCar">
-            @if ($surface->word())<span class="surface-word surface-word-lg">{{ $surface->word() }}</span>@endif
-            <x-ui.logo mark class="h-16 w-16"/>
-        </a>
+        <a href="/" class="row-span-2 mr-1 flex shrink-0 items-center self-start" aria-label="XCar"><x-ui.brand class="h-16"/></a>
         <div class="header-row">
             <form method="get" action="{{ $searchAction }}" class="header-btn header-h header-search relative justify-start px-3" role="search">
                 <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>

@@ -90,6 +90,13 @@ Route::middleware(['auth', 'wall'])->group(function () {
 Route::get('/admin/{path?}', fn (string $path = '') => redirect(LegacyAdmin::target($path, request()->getQueryString()), 301))->where('path', '.*');
 
 if (app()->isLocal()) {
+    // Вход без пароля для проверки глазами: /dev/vhod/1 — первый пользователь.
+    Route::get('/dev/vhod/{user}', function (\App\Users\User $user) {
+        auth()->login($user, true);
+
+        return redirect('/');
+    });
+
     // На сервере медиатеку раздаёт Caddy; artisan serve этого не умеет.
     Route::get('/media/{path}', function (string $path) {
         $file = Storage::disk('media')->path($path);

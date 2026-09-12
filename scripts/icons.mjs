@@ -81,6 +81,16 @@ for (const name of SURFACES) {
     }
 }
 
+// Знаки CRM и P для шапки: без фона, обрезаны по знаку, в двух цветах (как xcar.svg / xcar-white.svg).
+for (const name of ['crm', 'park']) {
+    const svg = readFileSync(at(`../resources/icons/${name}.svg`), 'utf8');
+    const { info } = await sharp(Buffer.from(svg)).trim().toBuffer({ resolveWithObject: true });
+    const box = `${-info.trimOffsetLeft} ${-info.trimOffsetTop} ${info.width} ${info.height}`;
+    const cropped = svg.replace(/<rect[^>]*\/>\s*/, '').replace(/viewBox="[^"]*"/, `viewBox="${box}"`).replace(/width="\d+" height="\d+"/, `width="${info.width}" height="${info.height}"`);
+    writeFileSync(at(`../public/images/${name}-white.svg`), cropped);
+    writeFileSync(at(`../public/images/${name}.svg`), cropped.replaceAll('fill="white"', 'fill="black"'));
+}
+
 // Общий favicon.ico в корне — сайт.
 writeFileSync(at('../public/favicon.ico'), readFileSync(at('../public/pwa/site/favicon.ico')));
 

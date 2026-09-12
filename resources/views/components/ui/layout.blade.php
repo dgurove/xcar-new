@@ -31,7 +31,6 @@
     <link rel="preload" href="/fonts/onest-var.woff2" as="font" type="font/woff2" crossorigin>
     @if ($surface !== \App\Support\Surface::Site)
     <meta name="robots" content="noindex, nofollow">
-    <link rel="preload" href="/fonts/anton.woff2" as="font" type="font/woff2" crossorigin>
     @endif
     {{-- Тема до первой отрисовки, иначе тёмная страница мигает белым. --}}
     <script>
