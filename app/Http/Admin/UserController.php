@@ -54,12 +54,8 @@ class UserController
     public function update(Request $request, User $user)
     {
         abort_unless($request->user()->isAdmin(), 404);
-        $data = $this->data($request, $user);
-        // Себя из администраторов не разжаловать: иначе в панель никто не зайдёт.
-        if ($user->is($request->user())) {
-            $data['role'] = Role::Admin;
-        }
-        $user->update($data);
+        // Себя из администраторов не разжаловать: иначе в панель никто не зайдёт — data() оставляет Admin.
+        $user->update($this->data($request, $user));
 
         return back()->with('toast', 'Сохранено');
     }
@@ -67,14 +63,16 @@ class UserController
     private function data(Request $request, ?User $user = null): array
     {
         $request->merge(['phone' => Phone::normalize($request->input('phone'))]);
+        // У себя роль не меняется — селект отключён и в запрос не попадает.
+        $self = $user?->is($request->user()) ?? false;
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'phone' => ['required', 'digits:11', Rule::unique('users', 'phone')->ignore($user)],
             'email' => ['nullable', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user)],
-            'role' => ['required', Rule::enum(Role::class)],
+            'role' => [$self ? 'nullable' : 'required', Rule::enum(Role::class)],
         ]);
         $data['email'] = $data['email'] ?: null;
-        $data['role'] = Role::from($data['role']);
+        $data['role'] = $self ? Role::Admin : Role::from($data['role']);
         $data['access'] = $request->boolean('park') ? [Section::Park->value] : [];
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
 

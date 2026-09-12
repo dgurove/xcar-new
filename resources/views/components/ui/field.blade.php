@@ -5,7 +5,8 @@
     $bound = old($name, $value);
 @endphp
 <div class="field {{ $span }} {{ $error ? 'field-invalid' : '' }}">
-    @if ($label)<label for="{{ $id }}" class="field-label {{ $afterLabel ? 'flex items-center gap-1.5' : '' }}">{{ $label }}@if ($afterLabel) {{ $afterLabel }}@endif</label>@endif
+    @if ($label && $afterLabel)<span class="field-label flex items-center gap-1.5"><label for="{{ $id }}">{{ $label }}</label>{{ $afterLabel }}</span>
+    @elseif ($label)<label for="{{ $id }}" class="field-label">{{ $label }}</label>@endif
     @if ($options !== null)
         <select id="{{ $id }}" name="{{ $name }}" {{ $attributes->except('id')->merge(['class' => 'field-input']) }}>
             @if ($placeholder)<option value="">{{ $placeholder }}</option>@endif
