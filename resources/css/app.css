@@ -441,7 +441,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet {
     @apply m-0 w-full max-w-none rounded-t-(--radius-xl) bg-surface p-5 text-ink shadow-(--shadow-drop);
     margin-top: auto;
-    max-height: calc(100dvh - 2rem);
+    max-height: calc(100dvh - 2rem - var(--kb, 0px));
+    margin-bottom: var(--kb, 0px);
     padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
     overscroll-behavior: contain;
   }
@@ -612,6 +613,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .action-bar { position: sticky; bottom: 0; }
   }
   body:has(.action-bar) main { padding-bottom: 5.5rem; }
+  /* Клавиатура: таб-бар спрятан, полоса садится на клавиатуру (--kb ставит app.js). */
+  html.kb-open .action-bar, body:has(.tabbar.is-hidden) .action-bar { bottom: var(--kb, 0px); }
 }
 
 /* ------------------------------------------------------------- первый экран */
@@ -735,6 +738,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   .card-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity var(--dur-fast) ease-out; }
   @media (hover: hover) { .card-media img { transition: transform .5s var(--ease-out), opacity var(--dur-fast) ease-out; } }
+  /* Лента кадров: snap по кадру, без полосы прокрутки, вертикальный свайп — страница. */
+  .card-strip { display: flex; width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; touch-action: pan-x pan-y; }
+  .card-strip::-webkit-scrollbar { display: none; }
+  .card-strip img { position: static; flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; }
   /* Кадр появляется плавно, а не выскакивает: is-loading ставит app.js до события load. */
   .photo-cell img, [data-gallery-target="strip"] img { transition: opacity var(--dur-fast) ease-out; }
   img.is-loading { opacity: 0; }
@@ -847,6 +854,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 #tabbar { view-transition-name: tabbar; }
 .action-bar { view-transition-name: actionbar; }
 ::view-transition-group(header), ::view-transition-group(tabbar), ::view-transition-group(actionbar) { animation-duration: 0s; }
+
+/* Кадр карточки летит в галерею и обратно (имя ставит app.js на время перехода). */
+::view-transition-group(hero) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); z-index: 2; }
+::view-transition-old(hero), ::view-transition-new(hero) { animation: none; mix-blend-mode: normal; width: 100%; height: 100%; object-fit: cover; overflow: clip; }
+::view-transition-image-pair(hero) { isolation: auto; }
 
 /* ------------------------------------------------------------- прочее из кита */
 

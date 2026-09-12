@@ -4,7 +4,7 @@
 <html lang="ru" class="h-full">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="theme-color" content="#ffffff">
     <meta name="view-transition" content="same-origin">
     <meta name="turbo-refresh-method" content="morph">

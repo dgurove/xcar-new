@@ -16,10 +16,10 @@
 @endphp
 <article id="{{ $admin ? 'admin-offer-' : 'offer-' }}{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card rise group']) }}>
     @if ($hasMedia)
-        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop touchstart->frames#start:passive touchend->frames#end:passive">
-            <a href="{{ $href }}" class="block h-full w-full" data-action="frames#click">
+        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
+            <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
                 @foreach ($photos as $i => $frame)
-                    <x-offer.photo :media="$frame" :sizes="$sizes" :eager="false" data-frames-target="frame" :hidden="$i > 0"/>
+                    <x-offer.photo :media="$frame" :sizes="$sizes" :eager="false" data-frames-target="frame"/>
                 @endforeach
             </a>
             @if ($photos->count() > 1)

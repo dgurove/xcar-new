@@ -24,13 +24,13 @@ Turbo.config.drive.progressBarDelay = 400;
 Turbo.config.forms.confirm = (message, form, submitter) => confirmSheet(message, { form, submitter });
 
 // Морф бережёт то, что живёт на клиенте и серверному HTML неизвестно:
-// open у диалогов (блок в потоке, открытая шторка), текущий кадр карусели,
+// open у диалогов (блок в потоке, открытая шторка), точки и подгрузка кадров,
 // поле с фокусом или набранным текстом (тосты — постоянный узел, морф их обходит).
 document.addEventListener('turbo:before-morph-attribute', (event) => {
     const { attributeName } = event.detail;
     const el = event.target;
     if (el instanceof HTMLDialogElement && attributeName === 'open') event.preventDefault();
-    if (el.matches('[data-frames-target="frame"]') && ['hidden', 'loading'].includes(attributeName)) event.preventDefault();
+    if (el.matches('[data-frames-target="frame"]') && attributeName === 'loading') event.preventDefault();
     if (el.matches('.card-dot') && attributeName === 'class') event.preventDefault();
 });
 document.addEventListener('turbo:before-morph-element', (event) => {
@@ -47,6 +47,8 @@ imageFade();
 freshness();
 focusInvalid();
 relaunchScroll();
+keyboardInset();
+heroTransition();
 
 // View Transitions роняют промис, когда вкладка скрыта или переход перебит
 // следующим: страница при этом в порядке, в консоли этому не место.
@@ -161,4 +163,51 @@ function relaunchScroll() {
             if (Date.now() - at > 24 * 3600 * 1000) localStorage.removeItem(k);
         }
     } catch {}
+}
+
+// Клавиатура iOS не уменьшает layout viewport: 100dvh и fixed-низ остаются под ней.
+// Высота перекрытия — в --kb на <html>, класс kb-open; полоса действий и шторка
+// садятся на клавиатуру (app.css). Android с interactive-widget=resizes-content
+// ужимает viewport сам — там поправка выходит нулевой.
+function keyboardInset() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+        const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
+        document.documentElement.style.setProperty('--kb', `${kb}px`);
+        document.documentElement.classList.toggle('kb-open', kb > 100);
+    };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    update();
+}
+
+// Фото карточки перетекает в главный кадр галереи и обратно: одно имя
+// view-transition-name у кадра, на который смотрели, и у кадра на новой странице.
+// Старый элемент помечается до захвата снимка (turbo:click / turbo:visit restore),
+// новый — в newBody на turbo:before-render; после рендера имена снимаются,
+// иначе два одинаковых имени отменят переход.
+function heroTransition() {
+    const name = (el) => { if (el) el.style.viewTransitionName = 'hero'; };
+    const cardImg = (card) => {
+        const strip = card?.querySelector('.card-strip');
+        if (!strip) return card?.querySelector('.card-media img');
+        return [...strip.querySelectorAll('img')].find((img) => Math.abs(img.offsetLeft - strip.scrollLeft) < 4) || strip.querySelector('img');
+    };
+    const pageImg = (root) => root.querySelector('[data-gallery-target="strip"] img, .photo-strip img');
+    document.addEventListener('turbo:click', (event) => name(cardImg(event.target.closest('.card'))));
+    document.addEventListener('turbo:visit', (event) => {
+        if (event.detail.action === 'restore' && document.body.dataset.offerPage) name(pageImg(document.body));
+    });
+    document.addEventListener('turbo:before-render', (event) => {
+        const body = event.detail.newBody;
+        const from = document.querySelector('[style*="view-transition-name"]');
+        if (!from) return;
+        const number = from.closest('.card')?.dataset.offerNumber;
+        if (body.dataset.offerPage) name(pageImg(body));
+        else if (number) name(cardImg(body.querySelector(`#offer-${number}, #admin-offer-${number}`)));
+    });
+    document.addEventListener('turbo:load', () => {
+        document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => { el.style.viewTransitionName = ''; });
+    });
 }

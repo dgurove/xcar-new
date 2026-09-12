@@ -1,26 +1,48 @@
 import { Controller } from '@hotwired/stimulus';
 
-// Кадры в карточке списка: точки, стрелки, свайп, общий тик cards:tick.
-// Ручное листание останавливает автолистание на всей странице.
+// Кадры в карточке списка — лента со snap: кадр едет за пальцем и доезжает с
+// инерцией, точки следуют за прокруткой. Стрелки и общий тик cards:tick листают
+// программно; касание ленты останавливает автолистание на всей странице.
+// Морф сохраняет узел ленты вместе с её scrollLeft — кадр не сбрасывается.
 export default class extends Controller {
-    static targets = ['frame', 'dot'];
+    static targets = ['strip', 'frame', 'dot'];
 
     connect() {
         this.i = 0;
-        this.swiped = false;
+        this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
+        this.onScroll = () => {
+            const i = Math.round(this.stripTarget.scrollLeft / Math.max(1, this.stripTarget.clientWidth));
+            if (i === this.i) return;
+            this.i = i;
+            this.dots();
+            this.preload();
+        };
+        this.stripTarget.addEventListener('scroll', this.onScroll, { passive: true });
+    }
+
+    disconnect() {
+        this.stripTarget.removeEventListener('scroll', this.onScroll);
     }
 
     show(i) {
         const n = this.frameTargets.length;
         if (n < 2) return;
         this.i = (i + n) % n;
-        this.frameTargets.forEach((f, k) => { f.hidden = k !== this.i; });
-        this.dotTargets.forEach((d, k) => d.classList.toggle('card-dot--on', k === this.i));
-        const next = this.frameTargets[(this.i + 1) % n];
-        if (next && !next.dataset.loaded) { next.loading = 'eager'; next.dataset.loaded = '1'; }
+        this.preload();
+        this.stripTarget.scrollTo({ left: this.i * this.stripTarget.clientWidth, behavior: this.reduce.matches ? 'auto' : 'smooth' });
+        this.dots();
     }
 
-    next() { if (!this.stopped) this.show(this.i + 1); }
+    dots() {
+        this.dotTargets.forEach((d, k) => d.classList.toggle('card-dot--on', k === this.i));
+    }
+
+    preload() {
+        const next = this.frameTargets[(this.i + 1) % this.frameTargets.length];
+        if (next && next.loading === 'lazy') next.loading = 'eager';
+    }
+
+    next() { if (!this.stopped && this.element.getBoundingClientRect().bottom > 0) this.show(this.i + 1); }
 
     manual(event) {
         event.preventDefault(); event.stopPropagation();
@@ -38,22 +60,13 @@ export default class extends Controller {
 
     stopAll() { window.dispatchEvent(new CustomEvent('cards:stop')); }
 
-    start(event) {
-        const t = event.touches[0];
-        this.x = t.clientX; this.y = t.clientY;
-    }
-
-    end(event) {
-        if (this.x === undefined) return;
-        const t = event.changedTouches[0];
-        const dx = t.clientX - this.x, dy = t.clientY - this.y;
-        this.x = undefined;
-        if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+    touch() {
         this.stopAll();
-        this.show(this.i + (dx < 0 ? 1 : -1));
-        this.swiped = true;
-        setTimeout(() => { this.swiped = false; }, 400);
+        this.left = this.stripTarget.scrollLeft;
     }
 
-    click(event) { if (this.swiped) event.preventDefault(); }
+    // Протянул ленту — это не тап по карточке.
+    click(event) {
+        if (this.left !== undefined && Math.abs(this.stripTarget.scrollLeft - this.left) > 8) event.preventDefault();
+    }
 }
