@@ -11,7 +11,7 @@
     $site = \App\Support\Surface::current() === \App\Support\Surface::Site;
 @endphp
 <x-ui.layout :title="$title" class="min-h-dvh flex flex-col">
-    <x-ui.header :over-hero="$overHero" :back="$back"/>
+    <x-ui.header :over-hero="$overHero" :back="$back" :heading="$overHero ? null : $heading"/>
 
     <main id="main" class="grow {{ $overHero ? '' : 'relative' }}{{ $site ? '' : ' pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom))] md:pb-0' }}">
         @if ($overHero)

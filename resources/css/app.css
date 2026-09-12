@@ -492,7 +492,30 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* ------------------------------------------------------------- шапка */
 
 @layer components {
+  /* Шапка — как navigation bar: то же стекло, что у таб-бара, волосяная линия и заголовок
+     экрана по центру появляются, когда содержимое ушло под неё (.is-scrolled / .is-past-title). */
   .header { @apply sticky top-0 z-40 bg-bar text-ink; padding-top: env(safe-area-inset-top); }
+  .header > div { position: relative; }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .header:not(.header--over) { background: color-mix(in srgb, var(--color-bar) 80%, transparent); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
+  }
+  @media (prefers-reduced-transparency: reduce) { .header { background: var(--color-bar); backdrop-filter: none; } }
+  .header::after { content: ''; position: absolute; inset: auto 0 0 0; height: 1px; background: rgb(60 60 67 / .29); opacity: 0; transition: opacity var(--dur-fast); }
+  .dark .header::after { background: rgb(84 84 88 / .6); }
+  @media (min-resolution: 2dppx) { .header::after { height: .5px; } }
+  .header.is-scrolled:not(.header--over)::after { opacity: 1; }
+  .header-title {
+    position: absolute; left: 50%; top: 50%; translate: -50% calc(-50% + 6px); max-width: 45%; pointer-events: none;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 17px; font-weight: 500; line-height: 1.2;
+    opacity: 0; transition: opacity var(--dur-fast), translate var(--dur-fast) var(--ease-out);
+  }
+  .header.is-past-title .header-title { opacity: 1; translate: -50% -50%; }
+  /* Заголовок в центре — «‹ Раздел» сжимается до шеврона, как в iOS. */
+  .header.is-past-title .header-back span { display: none; }
+  .header.is-past-title .header-back { padding-right: .5rem; }
+  /* На сайте центр занят логотипом — он уступает место заголовку. */
+  .surface-site .header.is-past-title .header-brand { opacity: 0; transition: opacity var(--dur-fast); }
+  .header-brand { transition: opacity var(--dur-fast); }
   .header--over { @apply fixed inset-x-0; }
 
   .header-btn {

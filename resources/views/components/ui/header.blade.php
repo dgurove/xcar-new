@@ -1,7 +1,7 @@
 {{-- Шапка xcar.ru. Телефон: квадраты (поиск, закладка · логотип · колокольчик, тема);
      в CRM и на стоянке поиска нет — слева знак приложения (x-ui.brand).
      Десктоп: знак и два ряда капсул — справочное и разделы. --}}
-@props(['overHero' => false, 'back' => null])
+@props(['overHero' => false, 'back' => null, 'heading' => null])
 @php
     $surface = \App\Support\Surface::current();
     $park = $surface === \App\Support\Surface::Park;
@@ -23,7 +23,7 @@
             <a href="{{ $back[1] }}" class="header-btn header-back {{ $site ? '' : 'justify-self-start' }}" data-controller="back" data-action="back#go" data-turbo-action="replace">
                 <x-ui.icon name="chevron-left" class="-ml-1 size-5 shrink-0"/><span class="truncate">{{ $back[0] }}</span>
             </a>
-            @if ($site)<a href="/" class="flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>@endif
+            @if ($site)<a href="/" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>@endif
         @elseif ($site)
             <div class="flex gap-1">
                 <div class="contents" data-controller="sheet">
@@ -42,7 +42,7 @@
                     </a>
                 @endif
             </div>
-            <a href="/" class="flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>
+            <a href="/" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>
         @else
             <a href="/" class="flex min-w-0 items-center justify-self-start" aria-label="XCar"><x-ui.brand class="h-10"/></a>
         @endif
@@ -67,6 +67,8 @@
                 <x-ui.icon name="sun" class="on-light size-[18px]"/><x-ui.icon name="moon" class="on-dark size-[18px]"/>
             </button>
         </div>
+        {{-- Заголовок экрана собирается в шапку, когда h1 ушёл под неё (app.js → .is-past-title). --}}
+        @if ($heading)<span class="header-title" aria-hidden="true">{{ $heading }}</span>@endif
     </div>
 
     {{-- Десктоп --}}

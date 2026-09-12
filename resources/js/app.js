@@ -49,6 +49,7 @@ focusInvalid();
 relaunchScroll();
 keyboardInset();
 systemTheme();
+headerState();
 heroTransition();
 timerDone();
 
@@ -245,4 +246,26 @@ function systemTheme() {
     });
     document.addEventListener('turbo:render', paint);
     document.addEventListener('turbo:load', paint);
+}
+
+// Шапка знает, что под ней: is-scrolled — страница сдвинута (линия), is-past-title —
+// h1 ушёл под шапку (заголовок собирается в центр). Только на телефоне.
+function headerState() {
+    let observer = null;
+    const header = () => document.getElementById('header');
+    const onScroll = () => header()?.classList.toggle('is-scrolled', scrollY > 4);
+    addEventListener('scroll', onScroll, { passive: true });
+    const watch = () => {
+        observer?.disconnect();
+        onScroll();
+        const h1 = document.querySelector('#main h1');
+        const h = header();
+        if (!h1 || !h) { h?.classList.remove('is-past-title'); return; }
+        observer = new IntersectionObserver(([entry]) => {
+            h.classList.toggle('is-past-title', !entry.isIntersecting && entry.boundingClientRect.top < 0);
+        }, { rootMargin: `-${h.offsetHeight}px 0px 0px 0px` });
+        observer.observe(h1);
+    };
+    document.addEventListener('turbo:load', watch);
+    document.addEventListener('turbo:render', watch);
 }
