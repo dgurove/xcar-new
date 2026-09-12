@@ -1,7 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 
 // Форма подтверждения: видимое поле с разделителями, на сервер — число; кнопка
-// полной цены. Нижний порог на клиенте не известен намеренно.
+// полной цены и скидок (сервер показывает только те, что не ниже порога). Сам порог на клиенте не известен намеренно.
 export default class extends Controller {
     static targets = ['display', 'amount', 'submit'];
     static values = { asking: Number };
@@ -13,6 +13,10 @@ export default class extends Controller {
 
     set(event) {
         this.write(Number(event.params.amount));
+    }
+
+    discount(event) {
+        this.write(Math.round(this.askingValue * (1 - Number(event.params.percent) / 100) / 1000) * 1000);
     }
 
     input() {

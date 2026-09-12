@@ -1,7 +1,12 @@
-{{-- Форма предложения цены: кнопка полной цены, поле с разделителями. Нижний порог покупателю не показываем —
+{{-- Форма предложения цены: кнопка полной цены и скидки, которые порог не пробивают, поле с разделителями. Нижний порог покупателю не показываем —
      иначе все напишут ровно его; сервер просто не примет цену ниже. --}}
 @props(['offer', 'myBid' => null])
-@php $asking = (int) $offer->asking_price; @endphp
+@php
+    $asking = (int) $offer->asking_price;
+    $min = (int) ($offer->minBid() ?? 0);
+    // Кнопки скидки — только те, что не уводят ниже порога: сам порог наружу не выдаём.
+    $discounts = array_filter([2, 5], fn ($p) => round($asking * (1 - $p / 100) / 1000) * 1000 >= $min);
+@endphp
 <form method="post" action="/offers/{{ $offer->number }}/stavka" class="mt-6" data-controller="bid" data-bid-asking-value="{{ $asking }}">
     @csrf
     @if ($myBid)
@@ -10,6 +15,9 @@
     @if ($asking)
         <div class="flex flex-wrap gap-2">
             <button type="button" class="btn btn-s btn-quiet nums" data-action="bid#set" data-bid-amount-param="{{ $asking }}">{{ number_format($asking, 0, '', ' ') }}</button>
+            @foreach ($discounts as $percent)
+                <button type="button" class="btn btn-s btn-quiet" data-action="bid#discount" data-bid-percent-param="{{ $percent }}">−{{ $percent }}%</button>
+            @endforeach
         </div>
     @endif
     <label for="bid-amount" class="mt-4 block text-sm text-ink-dim">Цена, ₽</label>
