@@ -1,4 +1,4 @@
-<x-ui.shell title="Настройки" :trail="[['Главная', '/'], ['Настройки']]">
+<x-ui.shell title="Настройки">
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach ($tiles as [$title, $value, $forms, $href])
             <a href="{{ $href }}" class="box transition-colors hover:bg-accent-soft">

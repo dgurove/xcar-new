@@ -11,7 +11,7 @@ final class BodyRenderer
 {
     private const FORBIDDEN = ['script', 'iframe', 'object', 'embed', 'applet', 'form', 'base', 'meta', 'link'];
 
-    public function document(Message $message, bool $remoteImages = false, string $base = '/perepiski/pochta'): string
+    public function document(Message $message, bool $remoteImages = false, string $base = '/rabota/pochta'): string
     {
         $body = $this->body($message);
         foreach (self::FORBIDDEN as $tag) {

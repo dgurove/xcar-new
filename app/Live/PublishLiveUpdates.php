@@ -39,7 +39,7 @@ final class PublishLiveUpdates
         $n = $e->offer->number;
         $this->publish->card($n);
         $this->publish->refresh(Topics::CATALOG, ["/offers/{$n}"]);
-        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/', '/sdelki']);
+        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/', '/rabota/sdelki']);
     }
 
     public function bid(BidPlaced $e): void
@@ -53,7 +53,7 @@ final class PublishLiveUpdates
     {
         $n = $e->bid->offer->number;
         $this->publish->refresh(Topics::user($e->bid->user_id), ['/lk/stavki', '/lk/sdelki', "/offers/{$n}"]);
-        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/sdelki']);
+        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/rabota/sdelki']);
     }
 
     public function interest(InterestRegistered $e): void
@@ -64,7 +64,7 @@ final class PublishLiveUpdates
     public function stage(StageEntered $e): void
     {
         $n = $e->offer->number;
-        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/sdelki']);
+        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/rabota/sdelki']);
         if ($deal = $e->deal ?? $e->offer->deal()->first()) {
             $this->publish->refresh(Topics::user($deal->buyer_id), ['/lk/sdelki', "/lk/sdelki/{$deal->id}"]);
         }
@@ -80,7 +80,7 @@ final class PublishLiveUpdates
         if ($chat->user_id) {
             $this->publish->badges(Topics::user($chat->user_id));
         }
-        $this->publish->refresh(Topics::STAFF, ['/perepiski/chaty']);
+        $this->publish->refresh(Topics::STAFF, ['/rabota/chaty']);
     }
 
     public function notification(NotificationSent $e): void

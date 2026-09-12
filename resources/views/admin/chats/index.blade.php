@@ -1,8 +1,5 @@
-<x-ui.shell title="Чаты" :heading="false" :trail="[['Главная', '/'], ['Переписки', '/perepiski'], ['Чаты']]">
-    <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-        <x-ui.section-title href="/perepiski/pochta" :current="false" :count="$mailUnread ?: null">Почта</x-ui.section-title>
-        <x-ui.section-title level="h1" :count="$chats->total()">Чаты</x-ui.section-title>
-    </div>
+<x-ui.shell title="Чаты" :heading="false">
+    <x-admin.work-titles current="chaty" :count="$chats->total()"/>
 
     <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\ChatController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" name="chats">
         <x-slot:filters>
@@ -14,7 +11,7 @@
     @else
         <div class="mt-6 flex flex-col gap-2">
             @foreach ($chats as $chat)
-                <a href="/perepiski/chaty/{{ $chat->id }}" class="row items-start">
+                <a href="/rabota/chaty/{{ $chat->id }}" class="row items-start">
                     <div class="row-photo">
                         @if ($chat->offer)<x-offer.photo :media="$chat->offer->mainPhoto()" sizes="64px"/>
                         @else<div class="flex size-full items-center justify-center text-ink-dim"><x-ui.icon name="chat" class="size-7"/></div>@endif

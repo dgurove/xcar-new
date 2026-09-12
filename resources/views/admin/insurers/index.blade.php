@@ -1,4 +1,4 @@
-<x-ui.shell title="Страховые" :trail="[['Главная', '/'], ['Настройки', '/nastroyki'], ['Страховые']]" narrow>
+<x-ui.shell title="Страховые" narrow>
     <div class="flex flex-col gap-3">
         @foreach ($insurers as $insurer)
             <a href="/nastroyki/strahovye/{{ $insurer->id }}" class="row">

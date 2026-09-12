@@ -62,13 +62,13 @@ enum Surface: string
         };
     }
 
-    /** Тег у логотипа; у сайта его нет. */
-    public function tag(): ?string
+    /** Слово слева от логотипа в шапке; у сайта его нет. */
+    public function word(): ?string
     {
         return match ($this) {
             self::Site => null,
             self::Crm => 'CRM',
-            self::Park => 'стоянка',
+            self::Park => 'PARK',
         };
     }
 

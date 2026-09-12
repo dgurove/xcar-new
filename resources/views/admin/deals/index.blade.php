@@ -1,5 +1,6 @@
-<x-ui.shell title="Сделки" :count="$deals->total()" :trail="[['Главная', '/'], ['Сделки']]">
-    <x-ui.toolbar :sorts="\App\Http\Admin\DealController::SORTS" :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" name="deals"/>
+<x-ui.shell title="Сделки" :heading="false">
+    <x-admin.work-titles current="sdelki" :count="$deals->total()"/>
+    <x-ui.toolbar class="mt-5" :sorts="\App\Http\Admin\DealController::SORTS" :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" name="deals"/>
 
     @if ($deals->isEmpty())
         <x-ui.empty class="mt-6">Сделок нет.</x-ui.empty>

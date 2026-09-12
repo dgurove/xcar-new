@@ -4,6 +4,7 @@ use App\Http\Admin\BidController;
 use App\Http\Admin\CandidateController;
 use App\Http\Admin\ChatController;
 use App\Http\Admin\DealController;
+use App\Http\Admin\GalleryController;
 use App\Http\Admin\InsurerController;
 use App\Http\Admin\InterestController;
 use App\Http\Admin\MailAccountController;
@@ -24,6 +25,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::get('/', [OfferController::class, 'index'])->name('crm.offers');
     Route::get('/predlozheniya', fn () => redirect('/'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
     Route::post('/predlozheniya', [OfferController::class, 'store']);
+    // Из писем: кандидаты в предложения — раньше карточки, иначе iz-pisem примут за номер.
+    Route::get('/predlozheniya/iz-pisem', [CandidateController::class, 'index']);
+    Route::post('/predlozheniya/iz-pisem/{candidate}/zavesti', [CandidateController::class, 'promote']);
+    Route::post('/predlozheniya/iz-pisem/{candidate}/otklonit', [CandidateController::class, 'reject']);
     Route::get('/predlozheniya/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
     Route::put('/predlozheniya/{offer}', [OfferController::class, 'update']);
     Route::post('/predlozheniya/{offer}/sostoyanie', [OfferController::class, 'state']);
@@ -42,12 +47,11 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/stavki/{bid}/otklonit', [BidController::class, 'decline']);
     Route::post('/interesy/{interest}', [InterestController::class, 'update']);
 
-    Route::get('/sdelki', [DealController::class, 'index']);
-    Route::post('/sdelki/{deal}/zametka', [DealController::class, 'note']);
-
-    // Переписки: почта и чаты под одним заголовком.
-    Route::redirect('/perepiski', '/perepiski/pochta');
-    Route::prefix('perepiski/pochta')->group(function () {
+    // Работа: сделки, почта и чаты под одним заголовком.
+    Route::redirect('/rabota', '/rabota/sdelki');
+    Route::get('/rabota/sdelki', [DealController::class, 'index']);
+    Route::post('/rabota/sdelki/{deal}/zametka', [DealController::class, 'note']);
+    Route::prefix('rabota/pochta')->group(function () {
         Route::get('/', [MailController::class, 'index']);
         Route::get('/novoe', [MailController::class, 'compose']);
         Route::post('/', [MailController::class, 'send']);
@@ -62,8 +66,14 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::post('/{thread}/neprochitano', [MailController::class, 'unread']);
         Route::post('/{thread}/privyazka', [MailController::class, 'link']);
     });
-    Route::get('/perepiski/chaty', [ChatController::class, 'index']);
-    Route::get('/perepiski/chaty/{chat}', [ChatController::class, 'show']);
+    Route::get('/rabota/chaty', [ChatController::class, 'index']);
+    Route::get('/rabota/chaty/{chat}', [ChatController::class, 'show']);
+
+    Route::get('/galereya', [GalleryController::class, 'index']);
+    Route::post('/galereya', [GalleryController::class, 'store']);
+    // Старые адреса разделов — закладки и ссылки из уведомлений.
+    Route::get('/sdelki', fn () => redirect('/rabota/sdelki', 301));
+    Route::get('/perepiski/{path?}', fn (?string $path = null) => redirect('/rabota'.($path ? "/{$path}" : '').(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301))->where('path', '.*');
 
     Route::get('/zakupki', [PurchaseController::class, 'index']);
     Route::post('/zakupki', [PurchaseController::class, 'store']);
@@ -123,10 +133,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::get('/shablony/{template}', [MailTemplateController::class, 'edit']);
         Route::put('/shablony/{template}', [MailTemplateController::class, 'update']);
         Route::delete('/shablony/{template}', [MailTemplateController::class, 'destroy']);
-
-        Route::get('/kandidaty', [CandidateController::class, 'index']);
-        Route::post('/kandidaty/{candidate}/zavesti', [CandidateController::class, 'promote']);
-        Route::post('/kandidaty/{candidate}/otklonit', [CandidateController::class, 'reject']);
     });
 
     Route::get('/spravochnik/marki', [ReferenceController::class, 'brands']);

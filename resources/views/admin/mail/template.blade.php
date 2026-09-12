@@ -1,5 +1,5 @@
 @php $new = !$template->exists; @endphp
-<x-ui.shell :title="$new ? 'Новый шаблон' : $template->name" :trail="[['Главная', '/'], ['Настройки', '/nastroyki'], ['Шаблоны', '/nastroyki/shablony'], [$new ? 'Новый' : $template->name]]" narrow>
+<x-ui.shell :title="$new ? 'Новый шаблон' : $template->name" narrow>
     <form method="post" action="{{ $new ? '/nastroyki/shablony' : '/nastroyki/shablony/'.$template->id }}" id="template-form" class="flex flex-col gap-4">
         @csrf @unless ($new) @method('put') @endunless
         <x-ui.card>

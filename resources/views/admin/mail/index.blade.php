@@ -1,13 +1,10 @@
 @php $crm = $base !== '/pochta'; @endphp
-<x-ui.shell title="Почта" :heading="false" :trail="$crm ? [['Главная', '/'], ['Переписки', '/perepiski'], ['Почта']] : [['Главная', '/'], ['Почта']]">
-    <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-        @if ($crm)
-            <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
-            <x-ui.section-title href="/perepiski/chaty" :current="false" :count="$chatsUnread ?: null">Чаты</x-ui.section-title>
-        @else
-            <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
-        @endif
-    </div>
+<x-ui.shell title="Почта" :heading="false">
+    @if ($crm)
+        <x-admin.work-titles current="pochta" :count="$threads->total()"/>
+    @else
+        <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
+    @endif
 
     <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\MailController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" :hidden="['yashchik' => $slug]" name="mail">
         <x-slot:extra>

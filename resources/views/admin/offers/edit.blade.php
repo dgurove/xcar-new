@@ -4,7 +4,7 @@
     $n = $offer->number;
     $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && $s !== OfferState::Delivered);
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :trail="[['Главная', '/'], ['Предложения', '/'], ['№ '.$n]]">
+<x-ui.shell :title="$offer->titleWithYear()">
     <x-slot:actions>
         @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" icon/>@endif
         @if ($offer->state->isPublic())<a href="{{ \App\Support\Surface::Site->url("/offers/$n") }}" data-turbo="false" class="btn btn-s btn-quiet btn-round" aria-label="На сайте" title="На сайте"><x-ui.icon name="car" class="size-5"/></a>@endif
@@ -15,8 +15,8 @@
         @if ($offer->bids_close_at && $offer->state === OfferState::Open)
             <x-ui.pill tone="plain"><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}"></span></x-ui.pill>
         @endif
-        @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/perepiski/pochta/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
-        @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/perepiski/pochta?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
+        @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/rabota/pochta/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
+        @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/rabota/pochta?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
         @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>

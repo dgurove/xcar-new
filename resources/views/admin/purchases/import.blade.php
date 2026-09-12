@@ -1,4 +1,4 @@
-<x-ui.shell :title="'Файл для закупки № '.$purchase->number" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], ['Закупка '.$purchase->number, '/zakupki/'.$purchase->number], ['Файл']]" narrow>
+<x-ui.shell :title="'Файл для закупки № '.$purchase->number" narrow>
     <x-ui.card>
         <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
             @foreach ($stats as $label => $value)<div><dt class="text-ink-muted">{{ $label }}</dt><dd class="text-lg font-semibold tabular-nums">{{ $value }}</dd></div>@endforeach

@@ -27,7 +27,7 @@ final class ChatNotice extends Notice
     public function href(): string
     {
         if ($this->forStaff) {
-            return Surface::Crm->url("/perepiski/chaty/{$this->message->chat_id}");
+            return Surface::Crm->url("/rabota/chaty/{$this->message->chat_id}");
         }
 
         return $this->message->chat->isEnquiry() ? '/kontakty' : "/offers/{$this->message->chat->offer->number}?chat=1";

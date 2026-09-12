@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
 class OfferController
 {
     public const PRESETS = [
-        'all' => 'Все', 'draft' => 'Черновики', 'gallery' => 'Галерея', 'open' => 'В продаже',
+        'all' => 'Все', 'draft' => 'Черновики', 'open' => 'В продаже',
         'bids' => 'С подтверждениями', 'sold' => 'В сделке', 'archive' => 'Архив',
     ];
 
@@ -34,18 +34,15 @@ class OfferController
 
         match ($preset) {
             'draft' => $q->where('state', OfferState::Draft),
-            'gallery' => $q->where('state', OfferState::Gallery),
             'open' => $q->whereIn('state', [OfferState::Open, OfferState::Closed]),
             'bids' => $q->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
             'sold' => $q->whereIn('state', [OfferState::Sold, OfferState::Delivered]),
             'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
-            default => $q->whereNotIn('state', [OfferState::Archived]),
+            // Галерея — свой раздел.
+            default => $q->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),
         };
         if ($term = trim((string) $request->query('q'))) {
-            $like = '%'.mb_strtolower($term).'%';
-            $q->where(fn ($w) => $w->whereRaw('cast(number as text) like ?', [$like])->orWhereRaw('lower(vin) like ?', [$like])
-                ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$like])->orWhereRaw('lower(name_ru) like ?', [$like]))
-                ->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$like])));
+            $q->search($term);
         }
         match ($sort) {
             'closing' => $q->orderByRaw('bids_close_at asc nulls last'),

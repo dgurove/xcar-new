@@ -1,5 +1,5 @@
 @php $name = $chat->displayName(); @endphp
-<x-ui.shell :title="$name" :trail="[['Главная', '/'], ['Переписки', '/perepiski'], ['Чаты', '/perepiski/chaty'], [$name]]" narrow>
+<x-ui.shell :title="$name" narrow>
     @if ($chat->offer)
         <a href="/predlozheniya/{{ $chat->offer->number }}" class="row mb-3">
             <div class="row-photo"><x-offer.photo :media="$chat->offer->mainPhoto()" sizes="64px"/></div>

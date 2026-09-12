@@ -20,7 +20,7 @@ class CandidateController
             ->where('state', CandidateState::tryFrom($preset) ?? CandidateState::New)
             ->latest()->paginate(30)->withQueryString();
 
-        return view('admin.mail.candidates', [
+        return view('admin.offers.candidates', [
             'candidates' => $candidates,
             'preset' => $preset,
             'counts' => ['new' => Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->count()],

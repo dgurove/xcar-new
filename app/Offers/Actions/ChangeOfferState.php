@@ -43,6 +43,7 @@ final class ChangeOfferState
                 }
             }
             if ($next === OfferState::Gallery) {
+                $this->readyForGallery($offer);
                 $offer->published_at ??= now();
             }
 
@@ -62,6 +63,19 @@ final class ChangeOfferState
 
             return $offer;
         });
+    }
+
+    /** В галерее без цены, но с чем показать: марка, модель, фото. */
+    private function readyForGallery(Offer $offer): void
+    {
+        $missing = array_keys(array_filter([
+            'марка' => ! $offer->brand_id,
+            'модель' => ! $offer->model_id,
+            'фотографии' => $offer->visiblePhotos()->isEmpty(),
+        ]));
+        if ($missing) {
+            throw ValidationException::withMessages(['state' => 'Для галереи не хватает: '.implode(', ', $missing)]);
+        }
     }
 
     private function readyToPublish(Offer $offer): void

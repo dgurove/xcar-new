@@ -2,7 +2,6 @@
 
 namespace App\Http\Admin;
 
-use App\Chats\Chat;
 use App\Live\Stream;
 use App\Mail\Account;
 use App\Mail\Actions\LinkThread;
@@ -30,7 +29,7 @@ class MailController
 {
     public const PRESETS = ['all' => 'Все', 'unread' => 'Непрочитанные', 'files' => 'С вложениями', 'sent' => 'Отправленные', 'linked' => 'По предложениям'];
 
-    public function __construct(private Scope $scope = Scope::Offers, private string $base = '/perepiski/pochta') {}
+    public function __construct(private Scope $scope = Scope::Offers, private string $base = '/rabota/pochta') {}
 
     public function index(Request $request)
     {
@@ -60,7 +59,6 @@ class MailController
             'q' => $q,
             'base' => $this->base,
             'unread' => Thread::whereIn('account_id', $accounts->pluck('id'))->where('unread_count', '>', 0)->count(),
-            'chatsUnread' => Chat::where('unread_for_staff', '>', 0)->count(),
         ]);
     }
 

@@ -16,8 +16,8 @@ class PwaController
             Surface::Site => ['Предложения, сделки, закупки', '/', [
                 ['name' => 'Предложения', 'url' => '/'], ['name' => 'Сделки', 'url' => '/lk/sdelki'], ['name' => 'Уведомления', 'url' => '/lk/uvedomleniya'],
             ]],
-            Surface::Crm => ['Предложения, переписки, сделки, закупки', '/', [
-                ['name' => 'Предложения', 'url' => '/'], ['name' => 'Переписки', 'url' => '/perepiski/pochta'], ['name' => 'Сделки', 'url' => '/sdelki'], ['name' => 'Закупки', 'url' => '/zakupki'],
+            Surface::Crm => ['Предложения, галерея, работа, закупки', '/', [
+                ['name' => 'Предложения', 'url' => '/'], ['name' => 'Галерея', 'url' => '/galereya'], ['name' => 'Работа', 'url' => '/rabota'], ['name' => 'Закупки', 'url' => '/zakupki'],
             ]],
             Surface::Park => ['Заявки, машины, стоянки', '/zayavki', [
                 ['name' => 'Заявки', 'url' => '/zayavki'], ['name' => 'Машины', 'url' => '/mashiny'],

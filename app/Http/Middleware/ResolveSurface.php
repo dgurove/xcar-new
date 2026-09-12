@@ -31,6 +31,12 @@ class ResolveSurface
             abort_if($user && ! $allowed && ! in_array($first, self::ANYONE, true), 404);
         }
 
-        return $next($request);
+        $response = $next($request);
+        // CRM и стоянка — не для поисковиков; для сайта решается отдельно, когда всё завершим.
+        if ($surface !== Surface::Site && method_exists($response, 'header')) {
+            $response->header('X-Robots-Tag', 'noindex, nofollow');
+        }
+
+        return $response;
     }
 }

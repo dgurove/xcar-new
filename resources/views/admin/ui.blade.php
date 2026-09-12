@@ -1,5 +1,5 @@
 {{-- Витрина кита (только local): каждый элемент сверяется с localhost:8000. --}}
-<x-ui.shell title="Кит" :trail="[['Главная', '/'], ['Кит']]">
+<x-ui.shell title="Кит">
     <div class="flex flex-col gap-6">
         <x-ui.card title="Кнопки">
             <div class="flex flex-wrap items-center gap-2">

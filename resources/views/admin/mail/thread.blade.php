@@ -1,5 +1,5 @@
 @php use App\Mail\{Direction, ParseState, SendState}; $park = $base === '/pochta'; @endphp
-<x-ui.shell :title="$thread->subject ?: '(без темы)'" :trail="[['Главная', '/'], ...($base !== '/pochta' ? [['Переписки', '/perepiski']] : []), ['Почта', $base], [$thread->subject ?: '(без темы)']]">
+<x-ui.shell :title="$thread->subject ?: '(без темы)'">
     <div class="mb-4 flex flex-wrap items-center gap-2" data-controller="sheet">
         <span class="chip">{{ $thread->account->title }}</span>
         @if ($park && $thread->vehicle)

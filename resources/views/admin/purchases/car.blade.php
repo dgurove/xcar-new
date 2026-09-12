@@ -1,5 +1,5 @@
 @php use App\Cars\{Transmission, Fuel}; use App\Purchases\{Kind, OfferState, ImportState}; $n = $purchase->number; @endphp
-<x-ui.shell :title="$car->titleWithYear()" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], ['Закупка '.$n, '/zakupki/'.$n], [$car->dl]]">
+<x-ui.shell :title="$car->titleWithYear()">
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <span class="chip">{{ str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl }}</span>
         <span class="chip">№ {{ $car->ref }}</span>

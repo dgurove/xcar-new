@@ -1,4 +1,4 @@
-<x-ui.shell title="Шаблоны писем" :trail="[['Главная', '/'], ['Настройки', '/nastroyki'], ['Шаблоны']]" narrow>
+<x-ui.shell title="Шаблоны писем" narrow>
     <div class="flex flex-col gap-2">
         @foreach ($templates as $template)
             <a href="/nastroyki/shablony/{{ $template->id }}" class="row">

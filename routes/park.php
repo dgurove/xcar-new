@@ -29,6 +29,9 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
 
     Route::get('/zayavki', [RequestController::class, 'index']);
     Route::get('/zayavki/novaya', [RequestController::class, 'create']);
+    Route::get('/zayavki/iz-pisem', [ParkCandidateController::class, 'index']);
+    Route::post('/zayavki/iz-pisem/{candidate}/zavesti', [ParkCandidateController::class, 'promote']);
+    Route::post('/zayavki/iz-pisem/{candidate}/otklonit', [ParkCandidateController::class, 'reject']);
     Route::post('/zayavki', [RequestController::class, 'store']);
     Route::get('/zayavki/{zayavka}', [RequestController::class, 'show']);
     Route::post('/zayavki/{zayavka}/priem', [RequestController::class, 'intake']);
@@ -58,10 +61,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/klienty', [ClientController::class, 'index']);
     Route::post('/klienty', [ClientController::class, 'store']);
     Route::put('/klienty/{client}', [ClientController::class, 'update']);
-
-    Route::get('/kandidaty', [ParkCandidateController::class, 'index']);
-    Route::post('/kandidaty/{candidate}/zavesti', [ParkCandidateController::class, 'promote']);
-    Route::post('/kandidaty/{candidate}/otklonit', [ParkCandidateController::class, 'reject']);
 
     Route::get('/pochta', [MailController::class, 'index']);
     Route::get('/pochta/novoe', [MailController::class, 'compose']);

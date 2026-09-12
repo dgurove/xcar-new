@@ -19,7 +19,7 @@
                     </div>
                 @endforeach
                 @if ($stage->template_id)
-                    <a href="/perepiski/pochta/novoe?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-quiet btn-s self-start"><x-ui.icon name="send" class="size-4"/> Письмо страховой</a>
+                    <a href="/rabota/pochta/novoe?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-quiet btn-s self-start"><x-ui.icon name="send" class="size-4"/> Письмо страховой</a>
                 @endif
                 @if ($staffExits->isNotEmpty())
                     <div class="flex flex-wrap gap-2">
@@ -78,7 +78,7 @@
 @if ($offer->deal)
 <x-ui.card title="Сделка" id="deal-note">
     <div class="mb-3 text-sm text-ink-muted">{{ $offer->deal->buyer?->name }} · <a href="tel:+{{ $offer->deal->buyer?->phone }}" class="text-accent-text">{{ $offer->deal->buyer?->phoneFormatted() }}</a> · <span class="font-semibold text-ink tabular-nums">{{ number_format($offer->deal->amount, 0, '', ' ') }} ₽</span></div>
-    <form method="post" action="/sdelki/{{ $offer->deal->id }}/zametka" class="flex flex-col gap-2">
+    <form method="post" action="/rabota/sdelki/{{ $offer->deal->id }}/zametka" class="flex flex-col gap-2">
         @csrf
         <textarea name="notes" class="field-input" placeholder="Заметка">{{ old('notes', $offer->deal->notes) }}</textarea>
         <x-ui.button size="sm" variant="secondary" class="self-end">Сохранить</x-ui.button>

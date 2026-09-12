@@ -1,4 +1,4 @@
-<x-ui.shell title="Кому что не показывать" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], ['Ограничения']]" narrow>
+<x-ui.shell title="Кому что не показывать" narrow>
     <div class="flex flex-col gap-2">
         @foreach ($users as $user)
             @php $hidden = $restrictions[$user->id]->hidden_kinds ?? []; @endphp

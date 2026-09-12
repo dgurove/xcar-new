@@ -1,5 +1,5 @@
 @php use App\Park\{RequestType, RequestState, VehicleState}; @endphp
-<x-ui.shell :title="$req->type->label().' · '.$vehicle->titleWithYear()" :trail="[['Стоянка', '/'], ['Заявки', '/zayavki'], [$req->type->label()]]" narrow>
+<x-ui.shell :title="$req->type->label().' · '.$vehicle->titleWithYear()" narrow>
     <div class="flex flex-col gap-4">
         <x-park.vehicle-row :vehicle="$vehicle">
             <x-park.state :vehicle="$vehicle"/>

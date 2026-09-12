@@ -1,5 +1,5 @@
 @php $new = !$account->exists; $enc = ['ssl' => 'SSL', 'tls' => 'STARTTLS', 'none' => 'без шифрования']; @endphp
-<x-ui.shell :title="$new ? 'Новый ящик' : $account->title" :trail="[['Главная', '/'], ['Настройки', '/nastroyki'], ['Ящики', '/nastroyki/yashchiki'], [$new ? 'Новый' : $account->title]]" narrow>
+<x-ui.shell :title="$new ? 'Новый ящик' : $account->title" narrow>
     @if (session('check'))
         <div class="mb-4 flex flex-col gap-2">
             @foreach (session('check') as $kind => $r)

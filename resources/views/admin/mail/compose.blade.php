@@ -1,4 +1,4 @@
-<x-ui.shell :title="match($mode) { 'reply' => 'Ответ', 'all' => 'Ответ всем', 'forward' => 'Пересылка', default => 'Новое письмо' }" :trail="[['Главная', '/'], ...($base !== '/pochta' ? [['Переписки', '/perepiski']] : []), ['Почта', $base], ...($thread ? [[$thread->subject ?: '(без темы)', $base.'/'.$thread->id]] : []), [match($mode) { 'reply' => 'Ответ', 'all' => 'Ответ всем', 'forward' => 'Пересылка', default => 'Новое письмо' }]]" narrow>
+<x-ui.shell :title="match($mode) { 'reply' => 'Ответ', 'all' => 'Ответ всем', 'forward' => 'Пересылка', default => 'Новое письмо' }" narrow>
     <form method="post" action="{{ $base }}" id="compose" class="flex flex-col gap-4" data-controller="photos" data-photos-url-value="{{ $base }}/fayl">
         @csrf
         @if ($parent)<input type="hidden" name="parent" value="{{ $parent->id }}">@endif

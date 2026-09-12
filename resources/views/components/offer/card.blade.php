@@ -60,7 +60,7 @@
     <div class="card-action">
         @if ($admin)
             <x-ui.pill :tone="$offer->state->tone()" class="w-full">{{ $offer->state->label() }}</x-ui.pill>
-            @if ($offer->active_bids_count ?? 0)<span class="badge">{{ $offer->active_bids_count }}</span>@endif
+            @if ($gallery ? ($offer->interests_count ?? 0) : ($offer->active_bids_count ?? 0))<span class="badge">{{ $gallery ? $offer->interests_count : $offer->active_bids_count }}</span>@endif
         @elseif ($gallery || !$prices)
             <a href="{{ $href }}" class="btn btn-s {{ $offer->state->acceptsInterest() ? 'btn-accent' : 'btn-quiet' }} w-full whitespace-nowrap">{{ $gallery ? 'Проявить интерес' : 'Узнать цену' }}</a>
         @elseif ($canBid)

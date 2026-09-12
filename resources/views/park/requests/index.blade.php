@@ -1,9 +1,10 @@
 @php use App\Park\RequestType; @endphp
-<x-ui.shell title="Заявки" :count="$requests->total()" :trail="[['Стоянка', '/'], ['Заявки']]">
+<x-ui.shell title="Заявки" :count="$requests->total()">
     <x-ui.toolbar :sorts="\App\Http\Park\RequestController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="['gotovye' => $done ? 1 : null]" name="requests">
         <x-slot:extra>
             <x-ui.pill :href="request()->fullUrlWithQuery(['gotovye' => $done ? null : 1, 'page' => null])" :current="$done">Готовые</x-ui.pill>
-            <a href="/zayavki/novaya" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="plus" class="size-4"/> Заявка</a>
+            <a href="/zayavki/novaya" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Заявка</span></a>
+            <a href="/zayavki/iz-pisem" class="btn btn-s btn-quiet relative shrink-0 rounded-full" aria-label="Из писем"><x-ui.icon name="mail" class="size-4"/><span class="hidden sm:inline">Из писем</span><x-ui.badge href="/zayavki/iz-pisem" :badges="\App\Support\Nav::badges(auth()->user())"/></a>
         </x-slot:extra>
     </x-ui.toolbar>
     @if ($requests->isEmpty())

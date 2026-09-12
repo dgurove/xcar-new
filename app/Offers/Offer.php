@@ -20,6 +20,7 @@ use App\Workflow\Requirement;
 use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -213,6 +214,16 @@ class Offer extends Model implements HasMedia
     public function bidsOpen(): bool
     {
         return $this->state->acceptsBids() && (! $this->bids_close_at || $this->bids_close_at->isFuture());
+    }
+
+    /** Поиск в списках CRM: номер, VIN, марка, модель. */
+    public function scopeSearch(Builder $q, string $term): Builder
+    {
+        $like = '%'.mb_strtolower(trim($term)).'%';
+
+        return $q->where(fn ($w) => $w->whereRaw('cast(number as text) like ?', [$like])->orWhereRaw('lower(vin) like ?', [$like])
+            ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$like])->orWhereRaw('lower(name_ru) like ?', [$like]))
+            ->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$like])));
     }
 
     // -------------------------------------------------------------- метки

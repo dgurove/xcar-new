@@ -16,7 +16,7 @@ class ParkCandidateController
         $candidates = Candidate::with(['message.attachments', 'thread', 'vehicle'])->where('scope', Scope::Park)
             ->where('state', CandidateState::tryFrom($preset) ?? CandidateState::New)->latest()->paginate(30)->withQueryString();
 
-        return view('park.candidates', ['candidates' => $candidates, 'preset' => $preset,
+        return view('park.requests.candidates', ['candidates' => $candidates, 'preset' => $preset,
             'counts' => ['new' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count()]]);
     }
 

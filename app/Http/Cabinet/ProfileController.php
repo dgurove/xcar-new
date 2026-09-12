@@ -2,8 +2,7 @@
 
 namespace App\Http\Cabinet;
 
-use App\Mail\Candidate;
-use App\Mail\CandidateState;
+use App\Media\PhotoIngest;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
@@ -42,10 +41,10 @@ class ProfileController
             $badges = Nav::badges($user);
             $tiles = [
                 [$badges['/'] ?? 0, ['подтверждение ждёт ответа', 'подтверждения ждут ответа', 'подтверждений ждут ответа'], '/?preset=bids'],
-                [$badges['/sdelki'] ?? 0, ['сделка требует внимания', 'сделки требуют внимания', 'сделок требуют внимания'], '/sdelki'],
-                [$badges['/perepiski/pochta'] ?? 0, ['непрочитанный тред', 'непрочитанных треда', 'непрочитанных тредов'], '/perepiski/pochta?preset=unread'],
-                [$badges['/perepiski/chaty'] ?? 0, ['непрочитанный чат', 'непрочитанных чата', 'непрочитанных чатов'], '/perepiski/chaty?preset=unread'],
-                [Candidate::where('state', CandidateState::New)->count(), ['кандидат из писем', 'кандидата из писем', 'кандидатов из писем'], '/nastroyki/kandidaty'],
+                [$badges['/rabota/sdelki'] ?? 0, ['сделка требует внимания', 'сделки требуют внимания', 'сделок требуют внимания'], '/rabota/sdelki'],
+                [$badges['/rabota/pochta'] ?? 0, ['непрочитанный тред', 'непрочитанных треда', 'непрочитанных тредов'], '/rabota/pochta?preset=unread'],
+                [$badges['/rabota/chaty'] ?? 0, ['непрочитанный чат', 'непрочитанных чата', 'непрочитанных чатов'], '/rabota/chaty?preset=unread'],
+                [$badges['/predlozheniya/iz-pisem'] ?? 0, ['письмо с предложением ждёт', 'письма с предложением ждут', 'писем с предложением ждут'], '/predlozheniya/iz-pisem'],
             ];
             $button = ['/', 'К предложениям'];
         } elseif ($user->role === Role::Manager) {
@@ -94,7 +93,7 @@ class ProfileController
         }
         if ($request->hasFile('avatar')) {
             // Исходник с телефона до 8 МБ не нужен: аватар живёт в 128 px.
-            app(\App\Media\PhotoIngest::class)->fromUpload($user, 'avatar', $request->file('avatar'), max: 512);
+            app(PhotoIngest::class)->fromUpload($user, 'avatar', $request->file('avatar'), max: 512);
         }
 
         return back()->with('toast', 'Сохранено');

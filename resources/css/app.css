@@ -35,8 +35,19 @@
   font-display: swap;
 }
 
+/* Anton — только слово CRM/PARK в шапке, латиница. */
+@font-face {
+  font-family: "Anton";
+  src: url("/fonts/anton.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF;
+}
+
 @theme {
   --font-sans: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: "Anton", Impact, "Arial Narrow Bold", sans-serif;
 
   --color-chrome: #121212;
   --color-chrome-light: #1d1d1b;
@@ -359,16 +370,25 @@
   .header-sq { height: 2.5rem; width: 2.5rem; border-radius: 0; }
   .header-h  { height: 1.875rem; }
 
-  /* Ряд капсул: внешние углы 8px, между — полный радиус. Квадрат в конце ряда
-     обрезает соседу правый край. */
+  /* Ряд капсул: внешние углы 8px, между — полный радиус. Квадрат
+     (.header-btn-square) обрезает соседям обращённую к нему сторону. Кнопка
+     со шторкой стоит в обёртке display: contents — обёртка помечена
+     .header-sq-wrap, чтобы соседство считалось сквозь неё. */
   .header-row { display: flex; align-items: stretch; gap: .25rem; }
-  .header-row > * { border-radius: 9999px; }
+  .header-row > *, .header-row > .header-sq-wrap > .header-btn { border-radius: 9999px; }
   .header-row > :first-child { border-radius: var(--radius-s) 9999px 9999px var(--radius-s); }
-  .header-row > :last-child  { border-radius: 9999px var(--radius-s) var(--radius-s) 9999px; }
+  .header-row > :last-child, .header-row > :last-child.header-sq-wrap > .header-btn { border-radius: 9999px var(--radius-s) var(--radius-s) 9999px; }
   .header-row > :only-child  { border-radius: var(--radius-s); }
-  .header-row > .header-btn-square,
-  .header-row > :last-child.header-btn-square { border-radius: 0; }
-  .header-row > :has(+ .header-btn-square) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .header-row .header-btn-square { border-radius: 0; }
+  .header-row > :has(+ .header-btn-square, + .header-sq-wrap),
+  .header-row > .header-sq-wrap:has(+ .header-btn-square, + .header-sq-wrap) > .header-btn { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .header-row > :is(.header-btn-square, .header-sq-wrap) + *,
+  .header-row > :is(.header-btn-square, .header-sq-wrap) + .header-sq-wrap > .header-btn { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+
+  /* Слово CRM / PARK слева от логотипа, высотой в него: у Anton прописные .867 em,
+     при line-height 1 они стоят в строке почти по центру — ряд flex выравнивает их по логотипу. */
+  .surface-word { font-family: var(--font-display); font-weight: 400; line-height: 1; text-transform: uppercase; color: var(--color-ink); font-size: calc(2.5rem / .867); height: 2.5rem; display: flex; align-items: center; }
+  .surface-word-lg { font-size: calc(4rem / .867); height: 4rem; }
 
   .header-badge {
     position: absolute; top: -.25rem; inset-inline-end: -.25rem;
@@ -383,7 +403,7 @@
   .dark .on-light { display: none; }
   .dark .on-dark  { display: block; }
   .header-search input { @apply h-full w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-dim; }
-  .header-btn .badge { position: absolute; top: -.25rem; inset-inline-end: -.25rem; }
+  .header-btn .badge, .btn .badge { position: absolute; top: -.25rem; inset-inline-end: -.25rem; }
 
   /* Подвал на телефоне — над таб-баром. */
   .footer { padding-bottom: calc(2.5rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }

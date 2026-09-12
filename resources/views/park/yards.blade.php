@@ -1,4 +1,4 @@
-<x-ui.shell title="Стоянки" :trail="[['Стоянка', '/'], ['Стоянки']]">
+<x-ui.shell title="Стоянки">
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($yards as $yard)
             @php $free = $yard->capacity ? max(0, $yard->capacity - $yard->stored_vehicles_count) : null; $share = $yard->capacity ? min(100, round($yard->stored_vehicles_count / $yard->capacity * 100)) : 0; @endphp

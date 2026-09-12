@@ -1,16 +1,17 @@
 @php use App\Mail\CandidateState; @endphp
-<x-ui.shell title="Из писем" :count="$candidates->total()" :trail="[['Стоянка', '/'], ['Кабинет', '/lk'], ['Из писем']]">
-    <x-ui.toolbar class="mb-6" :pills="\App\Http\Admin\CandidateController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" name="candidates"/>
+{{-- Письма на стоянку, из которых ещё не заведена заявка. --}}
+<x-ui.shell title="Из писем" :count="$candidates->total()">
+    <x-ui.toolbar :pills="\App\Http\Admin\CandidateController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" name="candidates"/>
     @if ($candidates->isEmpty())
-        <div class="py-24 text-center text-ink-muted">Пусто</div>
+        <x-ui.empty class="mt-6">Писем с заявками нет.</x-ui.empty>
     @else
-        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             @foreach ($candidates as $c)
                 @php $v = fn ($f) => $c->extracted[$f]['value'] ?? null; $files = $c->message->attachments->reject->is_inline; @endphp
                 <x-ui.card class="flex flex-col gap-3">
-                    <div>
-                        <div class="font-medium">{{ $c->code ?: ($c->subject ?: 'Письмо') }}</div>
-                        <div class="text-sm text-ink-muted">{{ $v('sender') }} · {{ $c->created_at->translatedFormat('j M, H:i') }}</div>
+                    <div class="min-w-0">
+                        <div class="text-lg leading-snug">{{ $c->code ?: ($c->subject ?: 'Письмо') }}</div>
+                        <div class="mt-0.5 text-sm text-ink-muted">{{ implode(' · ', array_filter([$v('sender'), $c->created_at->translatedFormat('j M, H:i')])) }}</div>
                         @if ($c->code && $c->subject)<div class="mt-1 truncate text-sm">{{ $c->subject }}</div>@endif
                     </div>
                     <div class="flex flex-wrap gap-1.5 text-sm">
@@ -20,13 +21,13 @@
                         @foreach ((array) $v('phones') as $phone)<a href="tel:{{ preg_replace('/\D/', '', $phone) }}" class="chip text-accent-text">{{ $phone }}</a>@endforeach
                         @if ($files->isNotEmpty())<span class="chip"><x-ui.icon name="clip" class="size-3.5"/> {{ $files->count() }}</span>@endif
                     </div>
-                    <div class="mt-auto flex flex-wrap gap-2">
+                    <div class="mt-auto flex flex-wrap items-center gap-2">
                         <a href="/pochta/{{ $c->thread_id }}" class="btn btn-ghost btn-s">Письмо</a>
                         @if ($c->state === CandidateState::Promoted)
-                            <a href="/mashiny/{{ $c->vehicle_id }}" class="btn btn-quiet btn-s ml-auto">Машина</a>
+                            <x-ui.pill tone="closed" href="/mashiny/{{ $c->vehicle_id }}" class="ml-auto">Машина</x-ui.pill>
                         @else
-                            <form method="post" action="/kandidaty/{{ $c->id }}/otklonit" class="ml-auto">@csrf<x-ui.button size="sm" variant="ghost">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Отклонить' }}</x-ui.button></form>
-                            <form method="post" action="/kandidaty/{{ $c->id }}/zavesti">@csrf<x-ui.button size="sm">Завести заявку</x-ui.button></form>
+                            <form method="post" action="/zayavki/iz-pisem/{{ $c->id }}/otklonit" class="ml-auto">@csrf<x-ui.button size="sm" variant="ghost">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Отклонить' }}</x-ui.button></form>
+                            <form method="post" action="/zayavki/iz-pisem/{{ $c->id }}/zavesti">@csrf<x-ui.button size="sm">Завести</x-ui.button></form>
                         @endif
                     </div>
                 </x-ui.card>

@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Chats\Chat;
+use App\Mail\Candidate;
+use App\Mail\CandidateState;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Bid;
@@ -36,15 +38,14 @@ final class Nav
                 self::item('Стоянки', 'park', '/stoyanki'),
                 self::item('Почта', 'mail', '/pochta'),
                 self::item('Клиенты', 'user', '/klienty', tab: false),
-                self::item('Из писем', 'mail', '/kandidaty', tab: false),
             ];
         }
 
         if ($surface === Surface::Crm) {
             return [
                 self::item('Предложения', 'car', '/', ['/', '/predlozheniya']),
-                self::item('Переписки', 'mail', '/perepiski'),
-                self::item('Сделки', 'deal', '/sdelki'),
+                self::item('Галерея', 'photo', '/galereya'),
+                self::item('Работа', 'deal', '/rabota'),
                 self::item('Закупки', 'cart', '/zakupki'),
                 self::item('Настройки', 'settings', '/nastroyki', tab: false),
             ];
@@ -142,7 +143,6 @@ final class Nav
             return ['' => [
                 self::link('Сводка', '/lk', exact: true),
                 self::link('Клиенты', '/klienty'),
-                self::link('Из писем', '/kandidaty'),
                 self::link('Уведомления', '/lk/uvedomleniya'),
                 self::link('Профиль', '/lk/profil'),
                 self::link('Шаблоны', Surface::Crm->url('/nastroyki/shablony')),
@@ -153,7 +153,6 @@ final class Nav
             return [
                 '' => [self::link('Сводка', '/lk', exact: true)],
                 'Настройки' => [
-                    self::link('Кандидаты', '/nastroyki/kandidaty'),
                     self::link('Страховые', '/nastroyki/strahovye'),
                     self::link('Ящики', '/nastroyki/yashchiki'),
                     self::link('Шаблоны', '/nastroyki/shablony'),
@@ -189,17 +188,35 @@ final class Nav
         return ['' => $links];
     }
 
-    /** Счётчики на пунктах: путь → число. Ноль не отдаётся. */
+    /**
+     * Счётчики на пунктах: путь → число. Ноль не отдаётся. В запросе считается
+     * один раз — шапка, заголовки разделов и кнопки списков берут одно и то же;
+     * память на самом запросе, а не в процессе: воркер живёт долго.
+     */
     public static function badges(?User $user, ?Surface $surface = null): array
     {
         $surface ??= Surface::current();
         if (! $user) {
             return [];
         }
+        $memo = app()->runningInConsole() ? null : request()->attributes;
+        $key = "nav.badges:{$user->id}:{$surface->value}";
+        if ($memo?->has($key)) {
+            return $memo->get($key);
+        }
+        $badges = self::count($user, $surface);
+        $memo?->set($key, $badges);
+
+        return $badges;
+    }
+
+    private static function count(User $user, Surface $surface): array
+    {
         $badges = ['/lk/uvedomleniya' => $user->unreadCount()];
 
         if ($surface === Surface::Park) {
             $badges['/zayavki'] = Request::where('state', RequestState::New)->count();
+            $badges['/zayavki/iz-pisem'] = Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count();
             $badges['/pochta'] = Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count();
 
             return array_filter($badges);
@@ -207,13 +224,14 @@ final class Nav
 
         if ($surface === Surface::Crm) {
             $badges['/'] = Bid::where('state', BidState::Active)->count();
-            $badges['/perepiski/pochta'] = Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count();
-            $badges['/perepiski/chaty'] = Chat::where('unread_for_staff', '>', 0)->count();
-            $badges['/perepiski'] = $badges['/perepiski/pochta'] + $badges['/perepiski/chaty'];
-            $badges['/sdelki'] = Position::where('track', 'sale')
+            $badges['/predlozheniya/iz-pisem'] = Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->count();
+            $badges['/rabota/pochta'] = Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count();
+            $badges['/rabota/chaty'] = Chat::where('unread_for_staff', '>', 0)->count();
+            $badges['/rabota/sdelki'] = Position::where('track', 'sale')
                 ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
                 ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))
                 ->count();
+            $badges['/rabota'] = $badges['/rabota/sdelki'] + $badges['/rabota/pochta'] + $badges['/rabota/chaty'];
 
             return array_filter($badges);
         }
@@ -239,8 +257,13 @@ final class Nav
             $paths[] = '/lk/sdelki';
         }
         if ($surface === Surface::Crm) {
-            $paths[] = '/perepiski/pochta';
-            $paths[] = '/perepiski/chaty';
+            $paths[] = '/rabota/sdelki';
+            $paths[] = '/rabota/pochta';
+            $paths[] = '/rabota/chaty';
+            $paths[] = '/predlozheniya/iz-pisem';
+        }
+        if ($surface === Surface::Park) {
+            $paths[] = '/zayavki/iz-pisem';
         }
 
         return array_values(array_unique($paths));

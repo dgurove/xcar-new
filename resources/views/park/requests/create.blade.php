@@ -1,5 +1,5 @@
 @php use App\Park\RequestType; @endphp
-<x-ui.shell title="Новая заявка" :trail="[['Стоянка', '/'], ['Заявки', '/zayavki'], ['Новая']]" narrow>
+<x-ui.shell title="Новая заявка" narrow>
     <x-ui.pills class="mb-6">
         @foreach (RequestType::cases() as $t)
             <x-ui.pill :href="'/zayavki/novaya?tip='.$t->value.($vehicle ? '&mashina='.$vehicle->id : '')" :current="$type === $t">{{ $t->label() }}</x-ui.pill>
