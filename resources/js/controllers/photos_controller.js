@@ -54,15 +54,46 @@ export default class extends Controller {
         return this.uploadFiles(files);
     }
 
+    // Превью выбранных кадров встают в ленту сразу, с кольцом прогресса; кадр
+    // ужимается до 1600 px ещё в телефоне (4 МБ → ~300 КБ), отпечаток исходника
+    // считается здесь же, чтобы дубли из писем и архивов по-прежнему отсекались.
+    // Экран не гаснет, пока идёт очередь; неудавшийся кадр — повтор тапом.
     async uploadFiles(files) {
         if (this.uploading || !files.length) return;
+        if (!this.hasGridTarget || this.collectionValue !== 'photos') return this.uploadWithBar(files);
+        this.uploading = true;
+        this.pendingCells ??= new Map();
+        const cells = files.map((file) => this.pendingCell(file));
+        const wake = await navigator.wakeLock?.request?.('screen').catch(() => null);
+        let next = this.prepare(files[0]);
+        for (let i = 0; i < files.length; i++) {
+            const cell = cells[i];
+            const prepared = await next;
+            next = files[i + 1] ? this.prepare(files[i + 1]) : null;
+            try {
+                const html = await this.send(prepared, (p) => cell.style.setProperty('--p', p));
+                this.pendingCells.delete(cell);
+                cell.remove();
+                this.apply(html);
+                this.restorePending();
+            } catch (e) {
+                cell.classList.add('is-failed');
+                cell.title = e.message || 'Не загрузилось';
+            }
+        }
+        wake?.release?.().catch(() => {});
+        this.uploading = false;
+    }
+
+    // Документы и файлы без ленты кадров — полоса «n из N», как раньше.
+    async uploadWithBar(files) {
         this.uploading = true;
         let n = 0;
         for (const file of files) {
             n++;
             this.showProgress(`${n} из ${files.length}`, 0);
             try {
-                this.apply(await this.send(file, (p) => this.showProgress(`${n} из ${files.length}`, p)));
+                this.apply(await this.send(await this.prepare(file), (p) => this.showProgress(`${n} из ${files.length}`, p)));
             } catch (e) {
                 window.toast?.(e.message || 'Файл не загрузился', 'danger');
             }
@@ -71,11 +102,59 @@ export default class extends Controller {
         this.uploading = false;
     }
 
-    send(file, onProgress) {
+    pendingCell(file) {
+        const cell = document.createElement('div');
+        cell.className = 'photo-cell is-uploading';
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.alt = '';
+        img.onload = () => URL.revokeObjectURL(img.src);
+        cell.append(img);
+        cell.addEventListener('click', () => { if (cell.classList.contains('is-failed')) { cell.remove(); this.pendingCells.delete(cell); this.uploadFiles([file]); } });
+        this.pendingCells.set(cell, file);
+        this.gridTarget.append(cell);
+        return cell;
+    }
+
+    // Ответ сервера подменяет ряд целиком — ещё не отправленные превью возвращаются.
+    restorePending() {
+        for (const cell of this.pendingCells.keys()) this.gridTarget.append(cell);
+    }
+
+    async prepare(file) {
+        const sha = await this.sha(file);
+        if (!file.type.startsWith('image/') || this.collectionValue !== 'photos') return { file, sha };
+        try {
+            const bitmap = await createImageBitmap(file);
+            const max = Math.max(bitmap.width, bitmap.height);
+            if (max <= 1600 && file.size < 600_000) { bitmap.close(); return { file, sha }; }
+            const scale = Math.min(1, 1600 / max);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(bitmap.width * scale);
+            canvas.height = Math.round(bitmap.height * scale);
+            canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            bitmap.close();
+            const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', .85));
+            if (!blob) return { file, sha };
+            return { file: new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }), sha };
+        } catch {
+            return { file, sha }; // HEIC на Android и прочее, что телефон не декодирует — как есть
+        }
+    }
+
+    async sha(file) {
+        try {
+            const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+            return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+        } catch { return ''; }
+    }
+
+    send({ file, sha }, onProgress) {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             const form = new FormData();
             form.append('file', file);
+            if (sha) form.append('sha', sha);
             form.append('collection', this.collectionValue);
             form.append('_token', this.token);
             xhr.open('POST', this.urlValue);
@@ -207,12 +286,13 @@ export default class extends Controller {
     }
 
     showProgress(label, ratio) {
+        if (!this.hasProgressTarget) return;
         this.progressTarget.hidden = false;
         this.progressTarget.querySelector('[data-label]').textContent = label;
         this.progressTarget.querySelector('[data-bar]').style.width = `${Math.round(ratio * 100)}%`;
     }
 
-    hideProgress() { this.progressTarget.hidden = true; }
+    hideProgress() { if (this.hasProgressTarget) this.progressTarget.hidden = true; }
 
     get token() { return document.querySelector('meta[name=csrf-token]').content; }
 }

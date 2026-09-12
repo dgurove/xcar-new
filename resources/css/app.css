@@ -879,6 +879,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .photo-cell { @apply relative h-28 min-w-16 shrink-0 snap-start overflow-hidden rounded-(--radius-m) bg-surface-3 sm:h-36; touch-action: pan-x; }
   .photo-cell img { @apply h-full w-auto max-w-[16rem] cursor-zoom-in object-contain; }
   .photo-cell.is-hidden img { @apply opacity-40 grayscale; }
+  /* Кадр в очереди: превью сразу, кольцо прогресса (--p от 0 до 1), красная точка — не ушёл, тап — повтор. */
+  .photo-cell.is-uploading img { opacity: .55; }
+  .photo-cell.is-uploading::after {
+    content: ''; position: absolute; inset: 0; margin: auto; width: 28px; height: 28px; border-radius: 50%;
+    background: conic-gradient(var(--color-accent) calc(var(--p, 0) * 360deg), rgb(255 255 255 / .35) 0);
+    -webkit-mask: radial-gradient(circle, transparent 9px, #000 10px); mask: radial-gradient(circle, transparent 9px, #000 10px);
+  }
+  .photo-cell.is-failed { cursor: pointer; }
+  .photo-cell.is-failed::after { background: var(--color-danger); -webkit-mask: none; mask: none; width: 12px; height: 12px; }
   /* Плитка «добавить» — вне ленты: у ленты snap, и всё, что лежит в ней без
      привязки, уезжает за край. */
   .photo-add { @apply flex h-28 w-20 shrink-0 sm:aspect-[4/3] sm:w-auto cursor-pointer items-center justify-center rounded-(--radius-m) bg-surface-3 text-ink-muted transition-colors hover:bg-line hover:text-ink sm:h-36; }

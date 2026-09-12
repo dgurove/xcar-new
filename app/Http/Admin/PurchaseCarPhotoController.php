@@ -15,7 +15,7 @@ class PurchaseCarPhotoController
     {
         $request->validate(['file' => ['required', 'file', 'max:65536']]);
         try {
-            $ingest->fromUpload($car, 'photos', $request->file('file'));
+            $ingest->fromPhone($car, 'photos', $request);
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

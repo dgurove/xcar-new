@@ -85,7 +85,7 @@ class VehicleController
             if ($request->input('collection') === 'papers') {
                 $vehicle->addMedia($file)->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $file->getClientOriginalName()) ?: 'dokument')->toMediaCollection('papers');
             } else {
-                $ingest->fromUpload($vehicle, 'photos', $file);
+                $ingest->fromPhone($vehicle, 'photos', $request);
             }
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);

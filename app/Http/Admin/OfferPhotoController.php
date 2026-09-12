@@ -21,7 +21,7 @@ class OfferPhotoController
             if ($request->input('collection') === 'papers') {
                 $offer->addMedia($file)->usingFileName(self::safeName($file->getClientOriginalName()))->toMediaCollection('papers');
             } else {
-                $ingest->fromUpload($offer, 'photos', $file);
+                $ingest->fromPhone($offer, 'photos', $request);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);

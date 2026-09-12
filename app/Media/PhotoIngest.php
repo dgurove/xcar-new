@@ -2,6 +2,7 @@
 
 namespace App\Media;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -26,6 +27,15 @@ final class PhotoIngest
     public function fromUpload(HasMedia $model, string $collection, UploadedFile $file, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
         return $this->add($model, $collection, $file->getRealPath(), $file->getClientOriginalName(), $properties, $max);
+    }
+
+    /** Загрузка с телефона: кадр ужат до отправки, отпечаток исходника приходит полем sha. */
+    public function fromPhone(HasMedia $model, string $collection, Request $request, int $max = self::MAX_DIMENSION): Media
+    {
+        $sha = $request->input('sha');
+        $properties = is_string($sha) && preg_match('/^[a-f0-9]{64}$/', $sha) ? ['sha' => $sha] : [];
+
+        return $this->fromUpload($model, $collection, $request->file('file'), $properties, $max);
     }
 
     public function fromString(HasMedia $model, string $collection, string $contents, string $name, array $properties = []): Media
