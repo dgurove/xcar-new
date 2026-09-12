@@ -4,11 +4,12 @@ namespace App\Mail\Actions;
 
 use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Jobs\ExtractCandidate;
+use App\Mail\Jobs\PinAttachments;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Offers\Offer;
 
-/** Ветка ↔ оффер: по коду убытка в теме или теле, либо руками. */
+/** Ветка ↔ оффер: по коду убытка в теме или теле, либо руками. Привязанная ветка закрепляет свои файлы у нас. */
 final class LinkThread
 {
     public function __construct(private CodeMatcher $matcher) {}
@@ -16,6 +17,7 @@ final class LinkThread
     public function __invoke(Thread $thread, Offer $offer): void
     {
         $thread->update(['offer_id' => $offer->id]);
+        PinAttachments::dispatch($thread->id);
     }
 
     public function auto(Message $message): Offer|\App\Park\Vehicle|null
@@ -33,14 +35,14 @@ final class LinkThread
         $codes = array_unique([...$this->matcher->findAll($message->subject), ...$this->matcher->findAll($message->text_body ?: $message->html_body)]);
         foreach ($codes as $code) {
             if ($offer = Offer::where('claim_ref_key', ExtractCandidate::key($code))->first()) {
-                $thread->update(['offer_id' => $offer->id]);
+                $this($thread, $offer);
 
                 return $offer;
             }
         }
         if ($vin = $this->vin($message)) {
             if ($offer = Offer::where('vin', $vin)->latest()->first()) {
-                $thread->update(['offer_id' => $offer->id]);
+                $this($thread, $offer);
 
                 return $offer;
             }
@@ -65,6 +67,7 @@ final class LinkThread
         $vehicle ??= ($plate = $fields['plate']['value'] ?? null) ? \App\Park\Vehicle::where('plate', mb_strtoupper($plate))->latest()->first() : null;
         if ($vehicle) {
             $thread->update(['vehicle_id' => $vehicle->id]);
+            PinAttachments::dispatch($thread->id);
         }
 
         return $vehicle;

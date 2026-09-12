@@ -2,6 +2,7 @@
 
 namespace App\Mail\Jobs;
 
+use App\Mail\Actions\PinThread;
 use App\Mail\Candidate;
 use App\Mail\Extraction\AttachmentImporter;
 use App\Offers\Offer;
@@ -23,15 +24,20 @@ final class ImportCandidateMedia implements ShouldQueue
         $this->onConnection('database-long')->onQueue('long');
     }
 
-    public function handle(AttachmentImporter $importer): void
+    public function handle(AttachmentImporter $importer, PinThread $pin): void
     {
         $candidate = Candidate::find($this->candidateId);
         $offer = Offer::find($this->offerId);
         if (! $candidate || ! $offer) {
             return;
         }
-        self::report($offer->id, 'Читаем письмо');
+        self::report($offer->id, 'Забираем файлы из ящика');
         try {
+            // Файлы письма лежат в ящике; черновику они нужны у нас — сначала закрепить.
+            if ($candidate->thread) {
+                $pin($candidate->thread);
+            }
+            self::report($offer->id, 'Читаем письмо');
             $attachments = $importer->attachmentsOf($candidate->message_id, $candidate->thread_id);
             $importer->import($offer, $attachments, 'photos', 'papers', [], fn ($stage, $i = null, $n = null) => self::report($offer->id, $stage, $i, $n));
         } finally {

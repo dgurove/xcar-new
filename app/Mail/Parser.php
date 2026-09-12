@@ -8,18 +8,19 @@ use Webklex\PHPIMAP\Address as ImapAddress;
 use Webklex\PHPIMAP\Message as ImapMessage;
 
 /**
- * Разбор сырого письма. Каждый заголовок прогоняется через iconv_mime_decode
- * ещё раз: тему из нескольких encoded-word webklex не раскодирует. Имена
- * вложений читаются из сырого письма самостоятельно — библиотека портит
- * base64 в перенесённых заголовках.
+ * Разбор письма по частям: блок заголовков — через webklex (адреса, дата),
+ * каждый заголовок прогоняется через iconv_mime_decode ещё раз: тему из
+ * нескольких encoded-word библиотека не раскодирует. Тексты приходят уже
+ * раскодированными частями (см. Receiver), имена вложений — из структуры.
  */
 final class Parser
 {
     private const KEPT_HEADERS = ['message_id', 'in_reply_to', 'references', 'subject', 'thread_topic', 'list_unsubscribe', 'x_mailer', 'content_type', 'authentication_results'];
 
-    public function parse(string $raw): array
+    /** Всё, что даёт блок заголовков: идентификаторы, тема, адреса, дата. */
+    public function headers(string $block): array
     {
-        $message = ImapMessage::fromString($raw);
+        $message = ImapMessage::fromString(rtrim($block)."\r\n\r\n");
         $subject = $this->decode($this->header($message, 'subject'));
         $addresses = [];
         foreach (AddressKind::cases() as $kind) {
@@ -27,8 +28,6 @@ final class Parser
         }
         $from = collect($addresses)->firstWhere('kind', AddressKind::From);
         $to = collect($addresses)->where('kind', AddressKind::To)->values();
-        $text = $this->clean((string) $message->getTextBody());
-        $html = $this->clean((string) $message->getHTMLBody());
 
         return [
             'message_id' => $this->normalizeId($this->header($message, 'message_id')),
@@ -40,47 +39,21 @@ final class Parser
             'from_name' => $from['name'] ?? null,
             'to_preview' => $to->isEmpty() ? null : mb_substr($to->map(fn ($a) => $a['name'] ? "{$a['name']} <{$a['email']}>" : $a['email'])->implode(', '), 0, 255),
             'date' => $this->date($message),
-            'text_body' => $text ?: null,
-            'html_body' => $html ?: null,
-            'preview' => $this->preview($text, $html),
-            'headers' => $this->headers($message),
+            'headers' => $this->keptHeaders($message),
             'addresses' => $addresses,
-            'attachments' => $this->attachments($message, $html, $raw),
         ];
     }
 
-    /** Только заголовки, без MIME: хватает, чтобы записать письмо и найти его двойника по Message-ID. */
-    public function peek(string $raw): array
+    /** Текст и HTML письма (уже в UTF-8) → поля для базы. */
+    public function texts(string $text, string $html): array
     {
-        $head = $this->headerBlock($raw);
-        $subject = $this->decode($this->rawHeader($head, 'Subject'));
-        $from = $this->rawHeader($head, 'From');
-        $fromEmail = $fromName = null;
-        if ($from !== null) {
-            if (preg_match('/<([^>]+)>/', $from, $m)) {
-                $fromEmail = mb_strtolower(trim($m[1]));
-                $fromName = $this->personal(trim(str_replace($m[0], '', $from)));
-            } elseif (preg_match('/[^\s<>,;]+@[^\s<>,;]+/', $from, $m)) {
-                $fromEmail = mb_strtolower(trim($m[0]));
-            }
-        }
-        $date = null;
-        if ($rawDate = $this->rawHeader($head, 'Date')) {
-            try {
-                $date = $this->local(new DateTimeImmutable($rawDate));
-            } catch (Throwable) {
-            }
-        }
+        $text = $this->clean($text);
+        $html = $this->clean($html);
 
         return [
-            'message_id' => $this->normalizeId($this->rawHeader($head, 'Message-ID')),
-            'in_reply_to' => $this->normalizeId($this->rawHeader($head, 'In-Reply-To')),
-            'references' => $this->normalizeReferences($this->rawHeader($head, 'References')),
-            'subject' => $subject ?: null,
-            'subject_normalized' => $this->normalizeSubject($subject),
-            'from_email' => $fromEmail,
-            'from_name' => $fromName,
-            'date' => $date,
+            'text_body' => $text ?: null,
+            'html_body' => $html ?: null,
+            'preview' => $this->preview($text, $html),
         ];
     }
 
@@ -136,23 +109,6 @@ final class Parser
         return $chain ? implode(' ', array_unique($chain)) : null;
     }
 
-    private function headerBlock(string $raw): string
-    {
-        $normalized = str_replace(["\r\n", "\r"], "\n", $raw);
-        $head = explode("\n\n", $normalized, 2)[0] ?? '';
-
-        return preg_replace('/\n[ \t]+/', ' ', $head) ?? $head;
-    }
-
-    private function rawHeader(string $head, string $name): ?string
-    {
-        if (! preg_match('/^'.preg_quote($name, '/').'[ \t]*:[ \t]*(.*)$/mi', $head, $m)) {
-            return null;
-        }
-
-        return trim($m[1]) ?: null;
-    }
-
     private function header(ImapMessage $message, string $name): ?string
     {
         try {
@@ -164,7 +120,7 @@ final class Parser
         return is_scalar($value) ? (string) $value : null;
     }
 
-    private function headers(ImapMessage $message): array
+    private function keptHeaders(ImapMessage $message): array
     {
         $headers = [];
         foreach (self::KEPT_HEADERS as $name) {
@@ -220,107 +176,6 @@ final class Parser
     private function local(DateTimeImmutable $date): DateTimeImmutable
     {
         return $date->setTimezone(new \DateTimeZone((string) config('app.timezone')));
-    }
-
-    private function attachments(ImapMessage $message, string $html, string $raw): array
-    {
-        $attachments = [];
-        $position = 0;
-        $repairs = $this->filenameRepairs($raw);
-        foreach ($message->getAttachments() as $attachment) {
-            try {
-                $contents = (string) $attachment->getContent();
-            } catch (Throwable) {
-                continue;
-            }
-            if ($contents === '') {
-                continue;
-            }
-            $contentId = $this->normalizeId(is_scalar($attachment->getId()) ? (string) $attachment->getId() : null);
-            $mime = is_scalar($attachment->getMimeType()) ? (string) $attachment->getMimeType() : null;
-            $disposition = is_scalar($attachment->getDisposition()) ? strtolower((string) $attachment->getDisposition()) : '';
-            $attachments[] = [
-                'filename' => $this->attachmentName($attachment->getName(), $contentId, $mime, $contents, $position, $repairs),
-                'mime' => $mime,
-                'contents' => $contents,
-                'content_id' => $contentId,
-                // Inline — не «есть Content-ID», а «на него ссылается тело».
-                'is_inline' => $disposition === 'inline' || ($contentId !== null && str_contains($html, 'cid:'.$contentId)),
-                'position' => $position++,
-            ];
-        }
-
-        return $attachments;
-    }
-
-    private function attachmentName(mixed $name, ?string $contentId, ?string $mime, string $contents, int $position, array $repairs): string
-    {
-        $raw = is_scalar($name) ? (string) $name : null;
-        $name = $this->decode($raw);
-        if ($raw !== null && str_contains($name, '=?')) {
-            $name = $repairs[$this->filenameKey($raw)] ?? $name;
-        }
-        $name = trim(str_replace(['/', '\\', "\0"], '_', $name));
-        if ($name !== '' && ! ($contentId !== null && $name === $contentId)) {
-            return mb_substr($name, 0, 200);
-        }
-        if ($mime === 'message/rfc822') {
-            $subject = $this->nestedSubject($contents);
-
-            return mb_substr($subject ? 'Письмо — '.$subject : 'Письмо '.($position + 1), 0, 200).'.eml';
-        }
-        $ext = match ($mime) {
-            'application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'text/plain' => 'txt',
-            'text/html' => 'html', 'application/zip' => 'zip', 'application/msword' => 'doc',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
-            'application/vnd.ms-excel' => 'xls', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
-            default => null,
-        };
-
-        return 'вложение-'.($position + 1).($ext ? '.'.$ext : '');
-    }
-
-    /** Имена из сырого письма: заголовок разворачивается, соседние encoded-word склеиваются, раскодируется целиком. */
-    private function filenameRepairs(string $raw): array
-    {
-        $unfolded = preg_replace("/\r?\n[ \t]+/", ' ', $raw) ?? $raw;
-        if (preg_match_all('/(?:file)?name\s*=\s*"([^"]*)"/i', $unfolded, $m) < 1) {
-            return [];
-        }
-        $repairs = [];
-        foreach (array_unique($m[1]) as $candidate) {
-            if (! str_contains($candidate, '=?')) {
-                continue;
-            }
-            $decoded = $this->decode($candidate);
-            if ($decoded !== '' && ! str_contains($decoded, '=?')) {
-                $repairs[$this->filenameKey($candidate)] = $decoded;
-            }
-        }
-
-        return $repairs;
-    }
-
-    /** Ключ сравнения — начинка первого encoded-word без ничего, кроме букв и цифр: первое слово уцелевает всегда. */
-    private function filenameKey(string $name): string
-    {
-        if (preg_match('/=\?[^?]+\?[BbQq]\?([^?]*)/', $name, $m)) {
-            $name = $m[1];
-        }
-
-        return (string) preg_replace('/[^A-Za-z0-9]/', '', $name);
-    }
-
-    private function nestedSubject(string $contents): ?string
-    {
-        $head = explode("\r\n\r\n", str_replace("\n", "\r\n", str_replace("\r\n", "\n", $contents)), 2)[0] ?? '';
-        $head = preg_replace('/\r\n[ \t]+/', ' ', $head) ?? $head;
-        if (! preg_match('/^Subject:\s*(.+)$/mi', $head, $m)) {
-            return null;
-        }
-        $subject = preg_replace('/[\r\n]+/', ' ', $this->decode(trim($m[1])));
-
-        return $subject !== '' ? mb_substr($subject, 0, 120) : null;
     }
 
     private function preview(string $text, string $html): ?string

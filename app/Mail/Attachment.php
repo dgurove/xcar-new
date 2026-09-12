@@ -7,14 +7,32 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['message_id', 'filename', 'mime', 'size', 'path', 'content_id', 'is_inline', 'position'])]
+/**
+ * Вложение — строка описи, не файл. Файл живёт в ящике (section + encoding),
+ * пока ветку не привязали к машине: тогда он закрепляется у нас (blob_sha).
+ * path — только у ещё не отправленного письма: файл в outbox на диске cache.
+ */
+#[Fillable(['message_id', 'filename', 'mime', 'size', 'path', 'section', 'encoding', 'blob_sha', 'pinned_at', 'content_id', 'is_inline', 'position'])]
 class Attachment extends Model
 {
     protected $table = 'mail_attachments';
 
     protected function casts(): array
     {
-        return ['is_inline' => 'bool', 'size' => 'int'];
+        return ['is_inline' => 'bool', 'size' => 'int', 'pinned_at' => 'datetime'];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleted(function (Attachment $attachment) {
+            if ($attachment->path) {
+                Storage::disk(Parts::CACHE_DISK)->delete($attachment->path);
+            }
+            Storage::disk(Parts::CACHE_DISK)->delete("mail/{$attachment->id}");
+            if ($attachment->blob_sha) {
+                Blobs::release($attachment->blob_sha);
+            }
+        });
     }
 
     public function message(): BelongsTo
@@ -22,11 +40,20 @@ class Attachment extends Model
         return $this->belongsTo(Message::class, 'message_id');
     }
 
+    /** Абсолютный путь к файлу — где бы он ни лежал; null, если письма уже нет в ящике. */
+    public function file(): ?string
+    {
+        return app(Parts::class)->file($this);
+    }
+
     public function contents(): ?string
     {
-        $disk = Storage::disk(Message::DISK);
+        return app(Parts::class)->contents($this);
+    }
 
-        return $disk->exists($this->path) ? $disk->get($this->path) : null;
+    public function isPinned(): bool
+    {
+        return $this->blob_sha !== null;
     }
 
     public function isImage(): bool

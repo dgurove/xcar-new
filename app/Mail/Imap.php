@@ -14,7 +14,8 @@ use Webklex\PHPIMAP\IMAP as ImapConst;
 
 /**
  * Разговор с IMAP-сервером по протоколу, без объектной надстройки webklex:
- * папки со STATUS, UID по диапазону, сырые письма пачками, флаги, APPEND, IDLE.
+ * папки со STATUS, UID по диапазону, структура писем и их части по секциям,
+ * флаги, APPEND, IDLE. Целиком письмо не качается никогда.
  * Проверено на mail.ru: есть IDLE, UIDPLUS, LIST-STATUS; нет CONDSTORE.
  */
 final class Imap
@@ -80,62 +81,67 @@ final class Imap
         return $uids;
     }
 
-    /** @return array<int, int> uid → байт */
-    public function sizes(string $path, array $uids): array
+    /**
+     * Структура писем без скачивания: дерево MIME, флаги, дата, размер.
+     *
+     * @return array<int, array{structure: array, flags: list<string>, internal_at: ?DateTimeImmutable, size: int}>
+     */
+    public function structures(string $path, array $uids): array
     {
         if (! $uids) {
             return [];
         }
         $this->select($path, false);
-        $rows = $this->connection()->fetch(['RFC822.SIZE'], array_values($uids), null, ImapConst::ST_UID)->validatedData();
-        $sizes = [];
-        foreach ((array) $rows as $uid => $row) {
-            $sizes[(int) $uid] = (int) (is_array($row) ? ($row['RFC822.SIZE'] ?? 0) : $row);
-        }
-
-        return $sizes;
-    }
-
-    /** @return array<int, string> uid → блок заголовков */
-    public function headers(string $path, array $uids): array
-    {
-        if (! $uids) {
-            return [];
-        }
-        $this->select($path, false);
-        $rows = $this->connection()->fetch(['RFC822.HEADER'], array_values($uids), null, ImapConst::ST_UID)->validatedData();
-        $headers = [];
-        foreach ((array) $rows as $uid => $row) {
-            $headers[(int) $uid] = (string) (is_array($row) ? ($row['RFC822.HEADER'] ?? '') : $row);
-        }
-
-        return $headers;
-    }
-
-    /** @return list<array{uid: int, raw: string, flags: list<string>, internal_at: ?DateTimeImmutable, size: int}> */
-    public function fetch(string $path, array $uids): array
-    {
-        if (! $uids) {
-            return [];
-        }
-        $this->select($path, false);
-        $rows = $this->connection()->fetch(['RFC822', 'FLAGS', 'INTERNALDATE', 'RFC822.SIZE'], array_values($uids), null, ImapConst::ST_UID)->validatedData();
-        $messages = [];
-        foreach ((array) $rows as $uid => $row) {
-            $raw = (string) ($row['RFC822'] ?? '');
-            if ($raw === '') {
-                continue;
-            }
-            $messages[] = [
-                'uid' => (int) $uid,
-                'raw' => $raw,
-                'flags' => array_map('strval', (array) ($row['FLAGS'] ?? [])),
-                'internal_at' => $this->date($row['INTERNALDATE'] ?? null),
-                'size' => isset($row['RFC822.SIZE']) ? (int) $row['RFC822.SIZE'] : strlen($raw),
+        // Ответ читаем сырыми строками и разбираем сами: штатный лексер webklex ломается на «"utf-8")».
+        $response = $this->connection()->requestAndResponse('UID FETCH', [implode(',', array_values($uids)), '(BODYSTRUCTURE FLAGS INTERNALDATE RFC822.SIZE)'], true);
+        $rows = [];
+        foreach (Structure::fromResponse($response->getResponse()) as $uid => $pairs) {
+            $rows[$uid] = [
+                'structure' => is_array($pairs['BODYSTRUCTURE'] ?? null) ? $pairs['BODYSTRUCTURE'] : [],
+                'flags' => array_values(array_filter(array_map(fn ($f) => is_scalar($f) ? (string) $f : '', (array) ($pairs['FLAGS'] ?? [])))),
+                'internal_at' => $this->date($pairs['INTERNALDATE'] ?? null),
+                'size' => (int) ($pairs['RFC822.SIZE'] ?? 0),
             ];
         }
 
-        return $messages;
+        return $rows;
+    }
+
+    /** Блок заголовков одного письма. */
+    public function header(string $path, int $uid): string
+    {
+        return $this->parts($path, $uid, ['HEADER'])['HEADER'] ?? '';
+    }
+
+    /**
+     * Части письма по секциям (1, 1.2, HEADER, 2.MIME) как они лежат в письме — ещё в транспортной кодировке.
+     *
+     * @return array<string, string> секция → содержимое
+     */
+    public function parts(string $path, int $uid, array $sections): array
+    {
+        if (! $sections) {
+            return [];
+        }
+        $this->select($path, false);
+        $items = array_map(fn ($s) => "BODY.PEEK[$s]", $sections);
+        $items[] = 'UID';
+        $row = $this->connection()->fetch($items, [$uid], null, ImapConst::ST_UID)->validatedData();
+        $row = (array) ($row[$uid] ?? []);
+        $parts = [];
+        foreach ($sections as $section) {
+            $value = $row["BODY[$section]"] ?? null;
+            if (is_string($value)) {
+                $parts[$section] = $value;
+            }
+        }
+
+        return $parts;
+    }
+
+    public function part(string $path, int $uid, string $section): ?string
+    {
+        return $this->parts($path, $uid, [$section])[$section] ?? null;
     }
 
     /** @return array<int, list<string>> */

@@ -2,27 +2,21 @@
 
 namespace App\Mail;
 
-use App\Mail\Jobs\ParseMessage;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Зеркало ящика. Приём и разбор разведены: сырой .eml ложится на диск и в
- * базу «ждёт разбора», MIME разбирает джоб. Ключ идемпотентности —
- * (folder, uid_validity, uid); одно письмо в ящике — одна запись:
- * двойник по Message-ID переезжает за письмом, а не заводится второй раз.
+ * Зеркало ящика. Письмо целиком не скачивается: по структуре берутся
+ * заголовки и текст, вложения остаются в ящике описью с номерами секций.
+ * Ключ идемпотентности — (folder, uid_validity, uid); одно письмо в ящике —
+ * одна запись: двойник по Message-ID переезжает за письмом, а не заводится
+ * второй раз.
  */
 final class Sync
 {
-    public const MAX_FETCH_BYTES = 25 * 1024 * 1024;   // больше — только заголовки
+    public const BATCH = 50;
 
-    public const BUDGET_BYTES = 24 * 1024 * 1024;      // пачка за один FETCH
-
-    public const BATCH = 25;
-
-    public function __construct(private Parser $parser, private Threads $threads) {}
+    public function __construct(private Receiver $receiver, private Ingest $ingest, private Threads $threads) {}
 
     public function account(Account $account, bool $full = false): int
     {
@@ -75,23 +69,14 @@ final class Sync
         }
 
         $uids = $imap->uids($folder->path, $folder->last_uid + 1, $account->sync_from);
-        $sizes = $uids ? $this->sizes($imap, $folder->path, $uids) : [];
         $stored = 0;
-
-        $oversized = array_values(array_filter($uids, fn ($u) => ($sizes[$u] ?? 0) > self::MAX_FETCH_BYTES));
-        if ($oversized) {
-            $stored += $this->storeHeadersOnly($account, $folder, $snapshot, $oversized, $sizes, $imap);
-            $uids = array_values(array_diff($uids, $oversized));
-            $folder->forceFill(['last_uid' => max($folder->last_uid, max($oversized))])->save();
-        }
-
-        foreach ($this->batches($uids, $sizes) as $chunk) {
-            foreach ($imap->fetch($folder->path, $chunk) as $raw) {
+        foreach (array_chunk($uids, self::BATCH) as $chunk) {
+            foreach ($imap->structures($folder->path, $chunk) as $uid => $row) {
                 try {
-                    $stored += (int) $this->store($account, $folder, $snapshot, $raw);
+                    $stored += (int) $this->store($account, $folder, $snapshot, $imap, $uid, $row);
                 } catch (Throwable $e) {
                     // Одно непринятое письмо не останавливает папку: UID снова попадёт в диапазон.
-                    Log::error('Почта: письмо не записалось', ['account' => $account->email, 'folder' => $folder->path, 'uid' => $raw['uid'], 'error' => $e->getMessage()]);
+                    Log::error('Почта: письмо не записалось', ['account' => $account->email, 'folder' => $folder->path, 'uid' => $uid, 'error' => $e->getMessage()]);
                 }
             }
             $folder->forceFill(['last_uid' => max($folder->last_uid, max($chunk))])->save();
@@ -123,25 +108,27 @@ final class Sync
         }
     }
 
-    private function store(Account $account, Folder $folder, array $snapshot, array $raw, bool $headersOnly = false): bool
+    private function store(Account $account, Folder $folder, array $snapshot, Imap $imap, int $uid, array $row): bool
     {
-        $existing = Message::where('folder_id', $folder->id)->where('uid_validity', $snapshot['uid_validity'])->where('imap_uid', $raw['uid'])->first();
+        $existing = Message::where('folder_id', $folder->id)->where('uid_validity', $snapshot['uid_validity'])->where('imap_uid', $uid)->first();
         if ($existing) {
-            $this->applyFlags($existing, $raw['flags']);
+            $this->applyFlags($existing, $row['flags']);
 
             return false;
         }
-        $peek = $this->parser->peek($raw['raw']);
-        $adopted = $peek['message_id'] ? Message::where('account_id', $account->id)->where('message_id', $peek['message_id'])->orderByRaw('imap_uid is null desc')->first() : null;
+        $parsed = $this->receiver->receive($imap, $folder->path, $uid, $row['structure']);
+        $adopted = $parsed['message_id'] ? Message::where('account_id', $account->id)->where('message_id', $parsed['message_id'])->orderByRaw('imap_uid is null desc')->first() : null;
         if ($adopted) {
             $adopted->forceFill([
                 'folder_id' => $folder->id,
-                'imap_uid' => $raw['uid'],
+                'imap_uid' => $uid,
                 'uid_validity' => $snapshot['uid_validity'],
                 // Наш ответ доехал до «Отправленных» — значит APPEND состоялся.
                 'appended_to_sent_at' => $adopted->isOutgoing() ? ($adopted->appended_to_sent_at ?? now()) : null,
             ])->save();
-            $this->applyFlags($adopted, $raw['flags']);
+            // Файлы нашего письма теперь лежат в ящике: опись по секциям, локальные копии больше не нужны.
+            $this->ingest->attachments($adopted, $parsed['attachments']);
+            $this->applyFlags($adopted, $row['flags']);
 
             return false;
         }
@@ -149,87 +136,26 @@ final class Sync
         $message = Message::create([
             'account_id' => $account->id,
             'folder_id' => $folder->id,
-            'direction' => $folder->kind === FolderKind::Sent || ($peek['from_email'] && $peek['from_email'] === mb_strtolower($account->email)) ? Direction::Out : Direction::In,
-            'imap_uid' => $raw['uid'],
+            'direction' => $folder->kind === FolderKind::Sent || ($parsed['from_email'] && $parsed['from_email'] === mb_strtolower($account->email)) ? Direction::Out : Direction::In,
+            'imap_uid' => $uid,
             'uid_validity' => $snapshot['uid_validity'],
-            'message_id' => $peek['message_id'],
-            'in_reply_to' => $peek['in_reply_to'],
-            'references_header' => $peek['references'],
-            'subject' => $peek['subject'],
-            'subject_normalized' => $peek['subject_normalized'],
-            'from_email' => $peek['from_email'],
-            'from_name' => $peek['from_name'],
-            'date_at' => $peek['date'],
-            'internal_at' => $raw['internal_at'],
-            'size' => $raw['size'],
-            'is_seen' => $this->flag($raw['flags'], 'seen'),
-            'is_answered' => $this->flag($raw['flags'], 'answered'),
-            'is_flagged' => $this->flag($raw['flags'], 'flagged'),
-            'is_draft' => $this->flag($raw['flags'], 'draft'),
-            'is_deleted' => $this->flag($raw['flags'], 'deleted'),
-            'raw_path' => $this->storeRaw($account, $raw['raw']),
-            'parse_state' => $headersOnly ? ParseState::Failed : ParseState::Pending,
-            'parse_error' => $headersOnly ? 'Письмо слишком большое, забраны только заголовки. Тело и вложения — в почтовом клиенте.' : null,
+            'message_id' => $parsed['message_id'],
+            'subject' => $parsed['subject'],
+            'from_email' => $parsed['from_email'],
+            'from_name' => $parsed['from_name'],
+            'date_at' => $parsed['date'],
+            'internal_at' => $row['internal_at'],
+            'size' => $row['size'],
+            'is_seen' => $this->flag($row['flags'], 'seen'),
+            'is_answered' => $this->flag($row['flags'], 'answered'),
+            'is_flagged' => $this->flag($row['flags'], 'flagged'),
+            'is_draft' => $this->flag($row['flags'], 'draft'),
+            'is_deleted' => $this->flag($row['flags'], 'deleted'),
+            'parse_state' => ParseState::Pending,
         ]);
-        if (! $headersOnly) {
-            ParseMessage::dispatch($message->id);
-        }
+        $this->ingest->apply($message, $parsed);
 
         return true;
-    }
-
-    private function storeHeadersOnly(Account $account, Folder $folder, array $snapshot, array $uids, array $sizes, Imap $imap): int
-    {
-        $stored = 0;
-        try {
-            foreach ($imap->headers($folder->path, $uids) as $uid => $block) {
-                Log::warning('Почта: письмо не забрано целиком', ['account' => $account->email, 'uid' => $uid, 'bytes' => $sizes[$uid] ?? 0]);
-                $stored += (int) $this->store($account, $folder, $snapshot, ['uid' => (int) $uid, 'raw' => $block, 'flags' => [], 'internal_at' => null, 'size' => $sizes[$uid] ?? 0], headersOnly: true);
-            }
-        } catch (Throwable $e) {
-            Log::error('Почта: заголовки больших писем не получены', ['folder' => $folder->path, 'error' => $e->getMessage()]);
-        }
-
-        return $stored;
-    }
-
-    private function sizes(Imap $imap, string $path, array $uids): array
-    {
-        try {
-            return $imap->sizes($path, $uids);
-        } catch (Throwable $e) {
-            Log::warning('Почта: размеры писем не получены', ['folder' => $path, 'error' => $e->getMessage()]);
-
-            return [];
-        }
-    }
-
-    private function batches(array $uids, array $sizes): array
-    {
-        if (! $uids) {
-            return [];
-        }
-        if (! $sizes) {
-            return array_chunk($uids, self::BATCH);
-        }
-        $batches = [];
-        $batch = [];
-        $bytes = 0;
-        foreach ($uids as $uid) {
-            $size = $sizes[$uid] ?? 0;
-            if ($batch && ($bytes + $size > self::BUDGET_BYTES || count($batch) >= self::BATCH)) {
-                $batches[] = $batch;
-                $batch = [];
-                $bytes = 0;
-            }
-            $batch[] = $uid;
-            $bytes += $size;
-        }
-        if ($batch) {
-            $batches[] = $batch;
-        }
-
-        return $batches;
     }
 
     private function refreshFlags(Account $account, Folder $folder, Imap $imap): void
@@ -245,14 +171,6 @@ final class Sync
                 $this->applyFlags($message, $flags[$message->imap_uid]);
             }
         }
-    }
-
-    private function storeRaw(Account $account, string $raw): string
-    {
-        $path = sprintf('mail/%s/%s/%s.eml', $account->slug, now()->format('Y/m'), Str::uuid());
-        Storage::disk(Message::DISK)->put($path, $raw);
-
-        return $path;
     }
 
     private function flag(array $flags, string $flag): bool

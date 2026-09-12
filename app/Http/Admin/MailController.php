@@ -168,12 +168,13 @@ class MailController
     {
         $attachment->load('message.account');
         abort_unless($attachment->message->account->scope === $this->scope || auth()->user()->isStaff(), 404);
-        $contents = $attachment->contents();
-        abort_if($contents === null, 404);
+        // Файл — из outbox, из закреплённых или из ящика через кэш; отдаётся с диска, не через память.
+        $file = $attachment->file();
+        abort_if($file === null, 404, 'Файла нет: письмо удалено из ящика');
         // SVG — не картинка, а документ со скриптами: только на скачивание.
         $inline = ($attachment->isImage() && $attachment->mime !== 'image/svg+xml') || $attachment->isPdf();
 
-        return response($contents, 200, [
+        return response()->file($file, [
             'Content-Type' => $attachment->mime ?: 'application/octet-stream',
             'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode($attachment->filename),
             'X-Content-Type-Options' => 'nosniff',

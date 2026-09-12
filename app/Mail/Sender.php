@@ -68,7 +68,7 @@ final class Sender
         foreach ($message->attachments as $attachment) {
             $contents = $attachment->contents();
             if ($contents === null) {
-                Log::warning('Почта: вложение исчезло с диска', ['message' => $message->id, 'path' => $attachment->path]);
+                Log::warning('Почта: вложения нет ни у нас, ни в ящике', ['message' => $message->id, 'attachment' => $attachment->id]);
                 continue;
             }
             $email->attach($contents, $attachment->filename, $attachment->mime ?: 'application/octet-stream');

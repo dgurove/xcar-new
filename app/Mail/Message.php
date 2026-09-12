@@ -8,19 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
     'account_id', 'folder_id', 'thread_id', 'direction', 'imap_uid', 'uid_validity', 'message_id', 'in_reply_to',
     'references_header', 'subject', 'subject_normalized', 'from_email', 'from_name', 'to_preview', 'date_at',
-    'internal_at', 'size', 'is_seen', 'is_answered', 'is_flagged', 'is_draft', 'is_deleted', 'raw_path', 'text_body',
+    'internal_at', 'size', 'is_seen', 'is_answered', 'is_flagged', 'is_draft', 'is_deleted', 'text_body',
     'html_body', 'preview', 'headers', 'parse_state', 'parse_error', 'send_state', 'send_error', 'send_attempts',
     'sent_at', 'appended_to_sent_at', 'has_attachments', 'attachments_count', 'created_by',
 ])]
 class Message extends Model
 {
-    public const DISK = 'private';
-
     protected $table = 'mail_messages';
 
     protected function casts(): array
@@ -101,16 +98,6 @@ class Message extends Model
         }
 
         return implode(' ', array_unique($chain));
-    }
-
-    public function rawContents(): ?string
-    {
-        if (! $this->raw_path) {
-            return null;
-        }
-        $disk = Storage::disk(self::DISK);
-
-        return $disk->exists($this->raw_path) ? $disk->get($this->raw_path) : null;
     }
 
     /** Файлы, которые видны как вложения: без картинок, вставленных в тело. */

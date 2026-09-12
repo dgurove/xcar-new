@@ -11,25 +11,43 @@ from twisted.python import log
 DROP = '/tmp/claude-501/imapdrop'
 USERS = {b'offer': b'parol', b'deal': b'parol'}
 
-@implementer(imap4.IMessage)
-class Msg:
-    def __init__(self, uid, raw, flags=None, date=None):
-        self.uid = uid; self.raw = raw; self.flags = set(flags or []); self.date = date or time.strftime('%d-%b-%Y %H:%M:%S +0000', time.gmtime())
-        self.msg = email.message_from_bytes(raw)
-    def getUID(self): return self.uid
-    def getFlags(self): return list(self.flags)
-    def getInternalDate(self): return self.date
+@implementer(imap4.IMessagePart)
+class Part:
+    """Часть MIME поверх email.message: Twisted собирает из неё BODYSTRUCTURE и отдаёт BODY[1.2]."""
+    def __init__(self, msg):
+        self.msg = msg
     def getHeaders(self, negate, *names):
+        # Twisted ищет ключи в нижнем регистре.
         h = {}
         for k, v in self.msg.items():
             if (k.lower() in [n.lower() for n in names]) != negate or not names:
-                h[k] = v
+                # Развёрнутый и без кавычек: Twisted режет параметры по «;» и кавычки оставляет в значениях.
+                v = ' '.join(str(v).splitlines())
+                h[k.lower()] = v.replace('"', '') if k.lower() in ('content-type', 'content-disposition') else v
         return h
+    def getBodyFile(self):
+        if self.msg.is_multipart():
+            return io.BytesIO(self.msg.as_bytes().split(b'\n\n', 1)[1].replace(b'\n', b'\r\n'))
+        payload = self.msg.get_payload(decode=False)
+        return io.BytesIO(payload.encode('utf-8', 'surrogateescape').replace(b'\n', b'\r\n') if isinstance(payload, str) else payload)
+    def getSize(self): return len(self.getBodyFile().getvalue())
+    def isMultipart(self): return self.msg.is_multipart()
+    def getSubPart(self, part):
+        parts = self.msg.get_payload()
+        if not isinstance(parts, list) or part >= len(parts): raise IndexError(part)
+        return Part(parts[part])
+
+@implementer(imap4.IMessage)
+class Msg(Part):
+    def __init__(self, uid, raw, flags=None, date=None):
+        super().__init__(email.message_from_bytes(raw))
+        self.uid = uid; self.raw = raw; self.flags = set(flags or []); self.date = date or time.strftime('%d-%b-%Y %H:%M:%S +0000', time.gmtime())
+    def getUID(self): return self.uid
+    def getFlags(self): return list(self.flags)
+    def getInternalDate(self): return self.date
     def getBodyFile(self):
         return io.BytesIO(self.raw.split(b'\r\n\r\n', 1)[1] if b'\r\n\r\n' in self.raw else self.raw.split(b'\n\n', 1)[1] if b'\n\n' in self.raw else b'')
     def getSize(self): return len(self.raw)
-    def isMultipart(self): return False
-    def getSubPart(self, part): raise IndexError
 
 @implementer(imap4.IMailbox)
 class Box:

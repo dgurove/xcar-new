@@ -58,7 +58,7 @@ final class AttachmentImporter
         }
     }
 
-    /** Вложения письма-кандидата и всех писем той же ветки. */
+    /** Вложения письма-кандидата и всех писем той же ветки; одинаковые файлы (по содержимому) — один раз. */
     public function attachmentsOf(?int $messageId, ?int $threadId): Collection
     {
         if (! $messageId && ! $threadId) {
@@ -66,7 +66,7 @@ final class AttachmentImporter
         }
 
         return Message::with('attachments')->where(fn ($q) => $q->when($messageId, fn ($q) => $q->whereKey($messageId))->when($threadId, fn ($q) => $q->orWhere('thread_id', $threadId)))
-            ->get()->flatMap(fn (Message $m) => $m->attachments)->unique('id')->values();
+            ->get()->flatMap(fn (Message $m) => $m->attachments)->unique(fn (Attachment $a) => $a->blob_sha ?? 'id:'.$a->id)->values();
     }
 
     private function addDocument(HasMedia $model, string $collection, Attachment $document): void

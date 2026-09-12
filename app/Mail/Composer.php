@@ -117,14 +117,14 @@ final class Composer
 
     private function attach(Message $message, array $data, ?Message $parent): void
     {
-        $disk = Storage::disk(Message::DISK);
+        $disk = Storage::disk(Parts::CACHE_DISK);
         $position = 0;
         foreach ((array) ($data['files'] ?? []) as $path) {
-            if (! str_starts_with((string) $path, 'mail/outbox/') || ! $disk->exists($path)) {
+            if (! str_starts_with((string) $path, 'outbox/') || ! $disk->exists($path)) {
                 continue;
             }
             $message->attachments()->create([
-                'filename' => Str::after(basename($path), '-'),
+                'filename' => substr(basename($path), 37), // после uuid и дефиса
                 'mime' => $disk->mimeType($path) ?: null,
                 'size' => $disk->size($path),
                 'path' => $path,
@@ -132,13 +132,12 @@ final class Composer
             ]);
         }
         if ($parent && ! empty($data['forward'])) {
+            // Пересылаемый файл не копируется: тот же blob, что у исходного письма.
             foreach ($parent->attachments()->whereIn('id', (array) $data['forward'])->get() as $original) {
                 if (($contents = $original->contents()) === null) {
                     continue;
                 }
-                $path = sprintf('mail/%s/attachments/%s/%s-%s', $message->account->slug, $message->id, Str::uuid(), $original->filename);
-                $disk->put($path, $contents);
-                $message->attachments()->create(['filename' => $original->filename, 'mime' => $original->mime, 'size' => $original->size, 'path' => $path, 'position' => $position++]);
+                $message->attachments()->create(['filename' => $original->filename, 'mime' => $original->mime, 'size' => strlen($contents), 'blob_sha' => Blobs::put($contents), 'pinned_at' => now(), 'position' => $position++]);
             }
         }
         $message->forceFill(['has_attachments' => $position > 0, 'attachments_count' => $position])->save();

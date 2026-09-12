@@ -63,6 +63,9 @@ class MailAccountController
 
     public function destroy(Account $account)
     {
+        // Каскад в базе файлы не трогает: закреплённые вложения отпускаются через модель.
+        \App\Mail\Attachment::whereHas('message', fn ($q) => $q->where('account_id', $account->id))->whereNotNull('blob_sha')
+            ->chunkById(200, fn ($chunk) => $chunk->each->delete());
         $account->delete();
 
         return redirect('/nastroyki/yashchiki')->with('toast', 'Ящик удалён');

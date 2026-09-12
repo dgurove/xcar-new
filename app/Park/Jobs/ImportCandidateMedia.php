@@ -2,6 +2,7 @@
 
 namespace App\Park\Jobs;
 
+use App\Mail\Actions\PinThread;
 use App\Mail\Candidate;
 use App\Mail\Extraction\AttachmentImporter;
 use App\Park\Vehicle;
@@ -22,11 +23,14 @@ final class ImportCandidateMedia implements ShouldQueue
         $this->onConnection('database-long')->onQueue('long');
     }
 
-    public function handle(AttachmentImporter $importer): void
+    public function handle(AttachmentImporter $importer, PinThread $pin): void
     {
         $candidate = Candidate::find($this->candidateId);
         $vehicle = Vehicle::find($this->vehicleId);
         if ($candidate && $vehicle) {
+            if ($candidate->thread) {
+                $pin($candidate->thread);
+            }
             $importer->import($vehicle, $importer->attachmentsOf($candidate->message_id, $candidate->thread_id), 'photos', 'papers');
         }
     }

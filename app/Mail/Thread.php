@@ -38,6 +38,12 @@ class Thread extends Model
         return $this->belongsTo(\App\Park\Vehicle::class, 'vehicle_id');
     }
 
+    /** Ветка ведётся по машине: файлы её писем закрепляются у нас, а не живут только в ящике. */
+    public function isLinked(): bool
+    {
+        return $this->offer_id !== null || $this->vehicle_id !== null;
+    }
+
     /** Собеседники без нас самих. */
     public function counterparts(): array
     {
