@@ -55,7 +55,7 @@
         @if ($offer->settlement)<span class="text-sm text-ink-dim">{{ $offer->settlement->name }}</span>@endif
         <span class="card-aside">
             @if ($prices || $admin)
-                @if ($offer->asking_price)<span class="card-price nums"><span class="card-price-now">{{ number_format($offer->asking_price, 0, '', ' ') }} ₽</span></span>@endif
+                @if ($offer->asking_price)<span class="card-price nums">@if ($user?->isStaff() && $offer->floor_price)<span class="card-price-from">{{ number_format($offer->floor_price, 0, '', ' ') }}</span> → @endif<span class="card-price-now">{{ number_format($offer->asking_price, 0, '', ' ') }} ₽</span></span>@endif
             @elseif ($gallery)
                 <span class="text-sm text-accent-text">Скоро в продаже</span>
             @else

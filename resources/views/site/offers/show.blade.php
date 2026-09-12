@@ -40,7 +40,7 @@
         <div class="lg:col-start-1 lg:row-start-2">
             @if ($prices && $offer->asking_price)
                 <div class="mb-8 lg:hidden">
-                    <div class="nums text-[26px] leading-none">{{ number_format($offer->asking_price, 0, '', ' ') }} ₽ @if ($offer->prices_include_vat)<span class="text-sm font-normal text-ink-muted">с НДС</span>@endif</div>
+                    <div class="nums text-[26px] leading-none">@if ($user?->isStaff() && $offer->floor_price)<span class="text-ink-muted">{{ number_format($offer->floor_price, 0, '', ' ') }}</span> → @endif{{ number_format($offer->asking_price, 0, '', ' ') }} ₽ @if ($offer->prices_include_vat)<span class="text-sm font-normal text-ink-muted">с НДС</span>@endif</div>
                 </div>
             @endif
 
