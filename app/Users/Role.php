@@ -30,9 +30,10 @@ enum Role: string
         return $this !== self::Visitor;
     }
 
+    /** Подтверждает предложение своей ценой любой, кроме посетителя: менеджер и сотрудник. */
     public function canBid(): bool
     {
-        return $this === self::Manager;
+        return $this !== self::Visitor;
     }
 
     public function canSeePurchases(): bool

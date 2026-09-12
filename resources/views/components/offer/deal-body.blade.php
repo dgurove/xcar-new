@@ -13,7 +13,7 @@
 @endif
 
 @if ($prices && $offer->asking_price)
-    <div class="nums text-[32px] leading-none">@if (auth()->user()?->isStaff() && $offer->floor_price)<span class="text-[22px] text-ink-muted">{{ number_format($offer->floor_price, 0, '', ' ') }}</span> → @endif{{ number_format($offer->asking_price, 0, '', ' ') }} ₽ @if ($offer->prices_include_vat)<span class="text-sm font-normal text-ink-muted">с НДС</span>@endif</div>
+    <div class="nums text-[32px] leading-none" data-controller="fit">@if ($user?->isStaff() && $offer->floor_price)<span class="text-[.7em] text-ink-muted">{{ number_format($offer->floor_price, 0, '', ' ') }}</span> → @endif{{ number_format($offer->asking_price, 0, '', ' ') }}&nbsp;₽@if ($offer->prices_include_vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
     @if ($offer->minBid() && $offer->minBid() < $offer->asking_price && $canBid)
         <div class="nums mt-1 text-lg font-normal text-ink-muted">от {{ number_format($offer->minBid(), 0, '', ' ') }} ₽</div>
     @endif

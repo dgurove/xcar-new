@@ -3,6 +3,7 @@
     $gallery = $offer->isGallery();
     $prices = !$gallery && ($user?->role->canSeePrices() ?? false);
     $back = $context?->backUrl() ?? ($gallery ? '/galereya' : '/');
+    $dealInSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
     $facts = array_filter([
         'Год' => $offer->year,
         'Пробег' => $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null,
@@ -28,38 +29,40 @@
 
     <div class="-mt-3 mb-6 flex flex-wrap gap-1.5"><x-offer.tags :offer="$offer" :facts="false"/></div>
 
-    <div class="grid gap-8 lg:grid-cols-[1fr_22rem]">
+    {{-- Слева галерея и описание, справа цена и характеристики: всё о машине — в первом экране. --}}
+    <div class="grid gap-6 lg:grid-cols-[1fr_22rem] lg:gap-8">
         <div class="lg:col-start-1 lg:row-start-1">
             <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()"/>
         </div>
 
-        <aside class="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-32 lg:self-start">
+        <aside class="flex flex-col gap-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:gap-8">
             <x-offer.deal-box :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat" :can-chat="$canChat"/>
-        </aside>
 
-        <div class="lg:col-start-1 lg:row-start-2">
-            @if ($prices && $offer->asking_price)
-                <div class="mb-8 lg:hidden">
-                    <div class="nums text-[26px] leading-none">@if ($user?->isStaff() && $offer->floor_price)<span class="text-ink-muted">{{ number_format($offer->floor_price, 0, '', ' ') }}</span> → @endif{{ number_format($offer->asking_price, 0, '', ' ') }} ₽ @if ($offer->prices_include_vat)<span class="text-sm font-normal text-ink-muted">с НДС</span>@endif</div>
-                </div>
+            @if ($dealInSheet && $prices && $offer->asking_price)
+                <div class="nums text-[26px] leading-none lg:hidden" data-controller="fit">{{ number_format($offer->asking_price, 0, '', ' ') }}&nbsp;₽@if ($offer->prices_include_vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
             @endif
 
-            <section>
-                <h2 class="text-xl">Характеристики</h2>
-                <dl class="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3">
-                    @foreach ($facts as $label => $value)
-                        <div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-medium" @if ($label === 'Где сейчас') data-offer-place @endif>{{ $value }}</dd></div>
-                    @endforeach
-                </dl>
-            </section>
-
-            @if ($offer->description)
-                <section class="mt-8">
-                    <h2 class="text-xl">Описание</h2>
-                    <p class="mt-4 whitespace-pre-line text-ink-muted">{{ $offer->description }}</p>
+            @if ($facts)
+                <section class="box">
+                    <h2 class="text-lg">Характеристики</h2>
+                    <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
+                        @foreach ($facts as $label => $value)
+                            <div @class(['min-w-0', 'col-span-2' => in_array($label, ['VIN', 'Осмотр', 'Повреждения'], true)])>
+                                <dt class="text-sm text-ink-dim">{{ $label }}</dt>
+                                <dd @class(['mt-0.5 font-medium', 'nums whitespace-nowrap' => $label === 'VIN', 'break-words' => $label !== 'VIN']) @if ($label === 'Где сейчас') data-offer-place @endif>{{ $value }}</dd>
+                            </div>
+                        @endforeach
+                    </dl>
                 </section>
             @endif
-        </div>
+        </aside>
+
+        @if ($offer->description)
+            <section class="lg:col-start-1 lg:row-start-2">
+                <h2 class="text-xl">Описание</h2>
+                <p class="mt-4 whitespace-pre-line text-ink-muted">{{ $offer->description }}</p>
+            </section>
+        @endif
     </div>
 
     @if ($canChat)

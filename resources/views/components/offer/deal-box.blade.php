@@ -5,9 +5,7 @@
     $user = auth()->user();
     $gallery = $offer->isGallery();
     $prices = !$gallery && ($user?->role->canSeePrices() ?? false);
-    $asSheet = !$user
-        || (($user->role->canBid() ?? false) && $offer->bidsOpen() && $prices)
-        || (!$user->isStaff() && ($gallery || !$prices) && $offer->state->acceptsInterest() && !$myInterest);
+    $asSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
 @endphp
 @if ($asSheet)
     <div data-controller="sheet" data-sheet-inflow-value="(min-width: 1024px)" data-action="deal:open@window->sheet#open" class="contents">

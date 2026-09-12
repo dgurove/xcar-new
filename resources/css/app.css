@@ -652,6 +652,7 @@
   .car-blank svg { width: 42%; max-width: 6rem; max-height: 70%; }
   .card-frames { display: var(--frames-display); }
   .card-marks { position: var(--float-pos); top: .75rem; left: .75rem; right: 3rem; display: flex; flex-wrap: wrap; gap: .375rem; }
+  .mark:empty { display: none; }
   .card-marks .mark-glass { background: var(--glass-bg); color: var(--glass-ink); backdrop-filter: var(--glass-blur); }
   .card--blank {
     --float-pos: static; --glass-bg: var(--color-surface-3); --glass-ink: var(--color-ink); --glass-blur: none;
@@ -680,7 +681,7 @@
   .card-action .btn-round { width: var(--card-btn-h); padding: 0; flex: 0 0 auto; aspect-ratio: 1; }
   .card-action > .btn:not(.btn-round), .card-action > form, .card-action > span:not(.btn-round) { flex: 1 1 auto; min-width: 0; }
   .card-aside { display: flex; flex: none; min-width: 0; align-items: center; gap: .5rem; width: var(--aside-w); justify-content: space-between; margin-left: var(--aside-push); }
-  .card-price { font-size: var(--price-size); line-height: 1.25; text-align: var(--price-align); }
+  .card-price { font-size: var(--price-size); line-height: 1.25; text-align: var(--price-align); white-space: nowrap; display: block; }
   .card-price-from, .card-price-now { white-space: nowrap; }
   .card-price-from { color: var(--color-ink-muted); }
 
