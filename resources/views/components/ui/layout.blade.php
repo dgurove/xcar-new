@@ -1,11 +1,16 @@
 @props(['title' => null])
-@php $surface = \App\Support\Surface::current(); @endphp
+@php
+    $surface = \App\Support\Surface::current();
+    // Тема: cookie на общий домен — одна на три приложения и известна серверу, поэтому
+    // <html class="dark"> и цвет полосы приходят готовыми, без мигания и без подмены мета Turbo.
+    $theme = in_array(request()->cookie('theme'), ['dark', 'light'], true) ? request()->cookie('theme') : null;
+@endphp
 <!doctype html>
-<html lang="ru" class="h-full">
+<html lang="ru" class="h-full{{ $theme === 'dark' ? ' dark' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="{{ $theme === 'dark' ? '#121212' : '#ffffff' }}">
     <meta name="view-transition" content="same-origin">
     <meta name="turbo-refresh-method" content="morph">
     <meta name="turbo-refresh-scroll" content="preserve">
@@ -32,15 +37,18 @@
     @if ($surface !== \App\Support\Surface::Site)
     <meta name="robots" content="noindex, nofollow">
     @endif
-    {{-- Тема до первой отрисовки, иначе тёмная страница мигает белым. --}}
+    @if (!$theme)
+    {{-- Cookie ещё нет: тема по системе до первой отрисовки, иначе тёмная страница мигает белым. --}}
     <script>
         (() => {
-            const saved = localStorage.getItem('theme');
+            let saved = null;
+            try { saved = localStorage.getItem('theme'); } catch {}
             const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
             if (dark) document.documentElement.classList.add('dark');
             document.querySelector('meta[name="theme-color"]').content = dark ? '#121212' : '#ffffff';
         })();
     </script>
+    @endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value]) }}>

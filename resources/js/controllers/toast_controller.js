@@ -20,6 +20,13 @@ export default class extends Controller {
         document.removeEventListener('turbo:render', this.onRender);
     }
 
+    leave(el) {
+        if (!el.isConnected || el.classList.contains('is-leaving')) return;
+        el.classList.add('is-leaving');
+        el.addEventListener('animationend', () => el.remove(), { once: true });
+        setTimeout(() => el.remove(), 400);
+    }
+
     flash() {
         const flash = document.getElementById('flash');
         if (!flash) return;
@@ -40,10 +47,16 @@ export default class extends Controller {
             button.type = 'button';
             button.className = 'toast-action';
             button.textContent = action.label;
-            button.addEventListener('click', () => { el.remove(); action.run(); });
+            button.addEventListener('click', () => { this.leave(el); action.run(); });
             el.append(button);
         }
         this.element.append(el);
-        setTimeout(() => el.remove(), href || action ? 8000 : 4000);
+        // Уходит вверх сам, при удержании ждёт, смахивается вверх.
+        const ttl = href || action ? 8000 : 4000;
+        let timer = setTimeout(() => this.leave(el), ttl);
+        let y = 0;
+        el.addEventListener('touchstart', (e) => { clearTimeout(timer); y = e.touches[0].clientY; }, { passive: true });
+        el.addEventListener('touchmove', (e) => { if (e.touches[0].clientY - y < -30) this.leave(el); }, { passive: true });
+        el.addEventListener('touchend', () => { timer = setTimeout(() => this.leave(el), 2500); });
     }
 }

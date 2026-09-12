@@ -50,7 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/');
         $middleware->alias(['staff' => EnsureStaff::class, 'section' => EnsureSection::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
         $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class]);
-        $middleware->encryptCookies(except: [SubscriberCookie::NAME]);
+        $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

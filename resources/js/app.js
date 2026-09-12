@@ -48,6 +48,7 @@ freshness();
 focusInvalid();
 relaunchScroll();
 keyboardInset();
+systemTheme();
 heroTransition();
 timerDone();
 
@@ -230,4 +231,18 @@ function timerDone() {
             Turbo.visit(location.href, { action: 'replace' });
         }, 3000);
     });
+}
+
+// Пока тема не выбрана руками (cookie нет) — следуем за системой, в том числе на лету;
+// после переходов Turbo сверяем мету цвета полосы с классом на <html>.
+function systemTheme() {
+    const meta = () => document.querySelector('meta[name="theme-color"]');
+    const paint = () => { const dark = document.documentElement.classList.contains('dark'); if (meta()) meta().content = dark ? '#121212' : '#ffffff'; };
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (document.cookie.includes('theme=')) return;
+        document.documentElement.classList.toggle('dark', e.matches);
+        paint();
+    });
+    document.addEventListener('turbo:render', paint);
+    document.addEventListener('turbo:load', paint);
 }

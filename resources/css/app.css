@@ -133,7 +133,7 @@
   html {
     /* Холст под резиновым оверскроллом iOS — цвет полосы, не страницы. */
     background-color: var(--color-bar);
-    scroll-padding-top: 6rem;
+    scroll-padding-top: calc(var(--spacing-header) + env(safe-area-inset-top) + 1rem);
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
   }
@@ -479,7 +479,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
   .toasts { @apply pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4;
     top: calc(.75rem + env(safe-area-inset-top)); }
-  .toast { @apply pointer-events-auto rounded-(--radius-l) bg-chrome px-4 py-3 text-sm text-white shadow-(--shadow-drop); }
+  .toast { @apply pointer-events-auto rounded-(--radius-l) bg-chrome px-4 py-3 text-sm text-white shadow-(--shadow-drop); animation: toast-in var(--dur-slow) var(--ease-spring) both; touch-action: pan-x; }
+  .toast.is-leaving { animation: toast-out var(--dur-fast) var(--ease-in) both; }
+  @keyframes toast-in  { from { translate: 0 -120%; opacity: 0; } }
+  @keyframes toast-out { to { translate: 0 -120%; opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { @keyframes toast-in { from { opacity: 0; } } @keyframes toast-out { to { opacity: 0; } } }
   .toast-danger { @apply bg-danger; }
   .toast:has(.toast-action) { @apply flex items-center gap-4; }
   .toast-action { @apply rounded-full bg-white/15 px-3 py-1 text-sm font-medium; }
@@ -772,6 +776,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   @media (hover: hover) { .card-star:hover { background: var(--star-bg-hover); } }
   .card-star.is-on { color: var(--color-accent); }
+  .card-star::before { content: ''; position: absolute; inset: -6px; }
+  .card-star.is-pop svg, .fav-pop svg { animation: pop .35s var(--ease-spring); }
+  @keyframes pop { 30% { scale: 1.3; } 60% { scale: .9; } }
+  .card-star:disabled { opacity: 1; }
   .card-title { display: flex; align-items: flex-start; gap: .5rem; }
   .card-title > .card-star { margin-top: -.25rem; }
   .card-body { grid-area: body; min-width: 0; display: flex; flex-direction: column; gap: var(--body-gap); flex: var(--body-grow) 1 auto; padding: var(--body-pad); }
@@ -857,6 +865,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 #tabbar { view-transition-name: tabbar; }
 .action-bar { view-transition-name: actionbar; }
 ::view-transition-group(header), ::view-transition-group(tabbar), ::view-transition-group(actionbar) { animation-duration: 0s; }
+
+/* Смена темы: круг от кнопки, шапка и таб-бар в это время — часть круга, а не отдельные группы. */
+html[data-theme-switch]::view-transition-old(root), html[data-theme-switch]::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-name: none; }
 
 /* Кадр карточки летит в галерею и обратно (имя ставит app.js на время перехода). */
 ::view-transition-group(hero) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); z-index: 2; }
