@@ -6,6 +6,7 @@ import { Application } from '@hotwired/stimulus';
 import { touchPrefetch } from './touch-prefetch';
 import { confirmSheet } from './confirm';
 import { netGuards } from './net';
+import { live } from './live';
 
 const application = Application.start();
 window.Stimulus = application;
@@ -40,6 +41,7 @@ touchPrefetch();
 pressFeedback();
 inPageAnchors();
 netGuards();
+live();
 imageFade();
 freshness();
 focusInvalid();

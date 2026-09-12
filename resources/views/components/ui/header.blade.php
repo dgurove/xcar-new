@@ -46,7 +46,8 @@
         @else
             <a href="/" class="flex min-w-0 items-center justify-self-start" aria-label="XCar"><x-ui.brand class="h-10"/></a>
         @endif
-        <div class="flex gap-1">
+        <div class="flex items-center gap-1">
+            <span class="net" aria-live="polite"></span>
             @if ($user)
                 <div class="contents header-sq-wrap" data-controller="sheet notifications">
                     <button type="button" class="header-btn header-sq relative" data-action="sheet#open notifications#refresh" aria-label="Уведомления">

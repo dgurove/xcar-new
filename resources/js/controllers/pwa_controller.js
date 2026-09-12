@@ -10,16 +10,23 @@ export default class extends Controller {
         this.badge();
         this.onLoad = () => this.badge();
         document.addEventListener('turbo:load', this.onLoad);
+        document.addEventListener('badges:updated', this.onLoad);
         this.installHint();
         // Android: Chrome отдаёт событие один раз на полную загрузку, дальше живёт в window
         // (тело страницы Turbo меняет, контроллер подключается заново).
-        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); window.installPrompt = e; this.showInstall(); });
-        window.addEventListener('appinstalled', () => { window.installPrompt = null; this.showInstall(); });
+        if (!window.installListening) {
+            window.installListening = true;
+            window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); window.installPrompt = e; document.dispatchEvent(new CustomEvent('install:changed')); });
+            window.addEventListener('appinstalled', () => { window.installPrompt = null; document.dispatchEvent(new CustomEvent('install:changed')); });
+        }
+        document.addEventListener('install:changed', this.onInstall = () => this.showInstall());
         this.showInstall();
     }
 
     disconnect() {
         document.removeEventListener('turbo:load', this.onLoad);
+        document.removeEventListener('badges:updated', this.onLoad);
+        document.removeEventListener('install:changed', this.onInstall);
     }
 
     // Скрипт воркера всегда из сети; в standalone полных загрузок нет, поэтому
@@ -35,8 +42,10 @@ export default class extends Controller {
         } catch {}
     }
 
+    // Число — из бейджа таб-бара «Уведомления», если он есть (его обновляет /live/badges), иначе из meta.
     badge() {
-        const count = Number(document.querySelector('meta[name="badge-count"]')?.content || 0);
+        const live = document.querySelector('[data-badge="/lk/uvedomleniya"]')?.textContent.trim();
+        const count = live === undefined ? Number(document.querySelector('meta[name="badge-count"]')?.content || 0) : parseInt(live) || 0;
         if (!('setAppBadge' in navigator)) return;
         (count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(() => {});
     }

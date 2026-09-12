@@ -38,7 +38,9 @@ export function netGuards() {
         retry = form ? () => form.requestSubmit(submitters.get(form) ?? undefined) : () => Turbo.visit(request.url.href);
         window.toast?.('Нет связи', { kind: 'danger', action: { label: 'Повторить', run: retry } });
     });
-    window.addEventListener('online', () => { const r = retry; retry = null; r?.(); });
+    window.addEventListener('online', () => { document.documentElement.removeAttribute('data-net'); const r = retry; retry = null; r?.(); });
+    window.addEventListener('offline', () => document.documentElement.setAttribute('data-net', 'offline'));
+    if (navigator.onLine === false) document.documentElement.setAttribute('data-net', 'offline');
 
     // Обрыв уходит в консоль как rejection — страница в порядке, тост уже показан.
     window.addEventListener('unhandledrejection', (event) => {
