@@ -33,7 +33,7 @@ final class Nav
 
         if ($surface === Surface::Park) {
             return [
-                self::item('Заявки', 'flag', '/zayavki'),
+                self::item('Заявки', 'flag', '/', ['/', '/zayavki']),
                 self::item('Машины', 'car', '/mashiny'),
                 self::item('Стоянки', 'park', '/stoyanki'),
                 self::item('Почта', 'mail', '/pochta'),
@@ -217,7 +217,7 @@ final class Nav
         $badges = ['/lk/uvedomleniya' => $user->unreadCount()];
 
         if ($surface === Surface::Park) {
-            $badges['/zayavki'] = Request::where('state', RequestState::New)->count();
+            $badges['/'] = Request::where('state', RequestState::New)->count();
             $badges['/zayavki/iz-pisem'] = Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count();
             $badges['/pochta'] = Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count();
 

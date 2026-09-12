@@ -74,6 +74,6 @@ enum Surface: string
 
     public function home(): string
     {
-        return $this === self::Park ? '/zayavki' : '/';
+        return '/';
     }
 }

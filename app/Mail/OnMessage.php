@@ -31,7 +31,7 @@ final class OnMessage
         }
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;
         $base = $message->account->scope === Scope::Park ? '/pochta' : '/rabota/pochta';
-        $this->publish->refresh($topic, [$base, "{$base}/{$message->thread_id}", '/predlozheniya/iz-pisem', '/zayavki/iz-pisem', '/zayavki']);
+        $this->publish->refresh($topic, [$base, "{$base}/{$message->thread_id}", '/predlozheniya/iz-pisem', '/zayavki/iz-pisem', '/']);
         if ($message->direction === Direction::In && ! $message->is_seen) {
             $this->publish->toast($topic, ($message->from_name ?: $message->from_email).': '.($message->subject ?: 'без темы'), "{$base}/{$message->thread_id}");
             $this->publish->badges($topic);

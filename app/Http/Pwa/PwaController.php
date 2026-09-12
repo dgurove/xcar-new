@@ -19,8 +19,8 @@ class PwaController
             Surface::Crm => ['Предложения, галерея, работа, закупки', '/', [
                 ['name' => 'Предложения', 'url' => '/'], ['name' => 'Галерея', 'url' => '/galereya'], ['name' => 'Работа', 'url' => '/rabota'], ['name' => 'Закупки', 'url' => '/zakupki'],
             ]],
-            Surface::Park => ['Заявки, машины, стоянки', '/zayavki', [
-                ['name' => 'Заявки', 'url' => '/zayavki'], ['name' => 'Машины', 'url' => '/mashiny'],
+            Surface::Park => ['Заявки, машины, стоянки', '/', [
+                ['name' => 'Заявки', 'url' => '/'], ['name' => 'Машины', 'url' => '/mashiny'],
             ]],
         };
 

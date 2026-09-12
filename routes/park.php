@@ -8,26 +8,15 @@ use App\Http\Park\ParkCandidateController;
 use App\Http\Park\RequestController;
 use App\Http\Park\VehicleController;
 use App\Http\Park\YardController;
-use App\Park\Request;
-use App\Park\RequestState;
-use App\Park\Vehicle;
-use App\Park\VehicleState;
 use Illuminate\Support\Facades\Route;
 
 // Стоянка — свой хост того же приложения. Вход общий; пускает раздел «park».
 Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->group(function () {
-    Route::get('/', function () {
-        return view('park.home', [
-            'stored' => Vehicle::where('state', VehicleState::Stored)->count(),
-            'expected' => Vehicle::where('state', VehicleState::Expected)->count(),
-            'requests' => Request::where('state', RequestState::New)->count(),
-            'fresh' => Request::with('vehicle')->where('state', RequestState::New)->orderByRaw('planned_at asc nulls last')->limit(6)->get(),
-        ]);
-    });
+    Route::get('/', [RequestController::class, 'index']);
+    Route::get('/zayavki', fn () => redirect('/'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
     Route::redirect('/eshchyo', '/lk', 301);
     Route::redirect('/kabinet', '/lk', 301);
 
-    Route::get('/zayavki', [RequestController::class, 'index']);
     Route::get('/zayavki/novaya', [RequestController::class, 'create']);
     Route::get('/zayavki/iz-pisem', [ParkCandidateController::class, 'index']);
     Route::post('/zayavki/iz-pisem/{candidate}/zavesti', [ParkCandidateController::class, 'promote']);

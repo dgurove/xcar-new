@@ -3,7 +3,7 @@
 @if ($photos->isEmpty())
     <div class="flex aspect-[4/3] items-center justify-center rounded-(--radius-xl) bg-surface-3 text-ink-dim">Фотографий нет</div>
 @else
-    <div data-controller="gallery">
+    <div data-controller="gallery" data-action="keydown@window->gallery#key">
         <div class="relative overflow-hidden rounded-(--radius-xl) bg-surface-3">
             <div class="flex snap-x snap-mandatory overflow-x-auto" data-gallery-target="strip" style="scrollbar-width:none">
                 @foreach ($photos as $i => $media)
@@ -17,7 +17,7 @@
                 <button type="button" class="absolute right-2 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/80 backdrop-blur hover:bg-surface" data-action="gallery#next" aria-label="Следующее фото"><x-ui.icon name="chevron-right" class="size-5"/></button>
                 <span class="nums absolute bottom-2 right-2 rounded-(--radius-s) bg-surface/80 px-2 py-1 text-sm font-normal backdrop-blur" data-gallery-target="counter">1 / {{ $photos->count() }}</span>
             @endif
-            <button type="button" class="absolute right-2 top-2 flex size-11 items-center justify-center rounded-full bg-surface/80 backdrop-blur hover:bg-surface" data-action="gallery#open" data-index="0" aria-label="Открыть на весь экран"><x-ui.icon name="expand" class="size-4"/></button>
+            <button type="button" class="absolute right-2 top-2 flex size-11 items-center justify-center rounded-full bg-surface/80 backdrop-blur hover:bg-surface" data-action="gallery#open" aria-label="Открыть на весь экран"><x-ui.icon name="expand" class="size-4"/></button>
         </div>
         @if ($photos->count() > 1)
             <div class="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">

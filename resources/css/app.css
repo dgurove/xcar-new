@@ -781,6 +781,15 @@
   .viewer-rotate::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 4v6h-6M19.4 10A8 8 0 1 0 20 14'/%3E%3C/svg%3E"); }
   .viewer-trash::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h16M9 7V4h6v3m-7 0v13h8V7'/%3E%3C/svg%3E"); }
   .viewer-backdrop { background: rgb(18 18 18 / .92); }
+  .viewer-toolbar > ul, .viewer-navbar { background: rgb(0 0 0 / .5); backdrop-filter: blur(6px); }
+  .viewer-toolbar > ul { border-radius: 999px; padding: 4px 6px; }
+  .viewer-toolbar > ul > li { background: transparent; color: rgb(255 255 255 / .85); }
+  .viewer-toolbar > ul > li:hover, .viewer-toolbar > ul > li:focus-visible { background: color-mix(in oklab, var(--color-accent) 35%, transparent); color: #fff; }
+  .viewer-close { background: rgb(0 0 0 / .5); }
+  .viewer-close:hover { background: rgb(255 255 255 / .25); }
+  .viewer-navbar { padding: 2px 0; }
+  .viewer-list > li { opacity: .55; transition: opacity .15s; }
+  .viewer-list > li:hover, .viewer-list > li.viewer-active { opacity: 1; }
   .sortable-ghost { @apply opacity-40; }
 }
 

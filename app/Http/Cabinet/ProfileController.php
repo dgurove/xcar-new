@@ -34,9 +34,9 @@ class ProfileController
             $tiles = [
                 [Vehicle::where('state', VehicleState::Stored)->count(), ['на стоянке', 'на стоянке', 'на стоянке'], '/mashiny'],
                 [Vehicle::where('state', VehicleState::Expected)->count(), ['ожидается', 'ожидается', 'ожидается'], '/mashiny?preset=expected'],
-                [ParkRequest::where('state', RequestState::New)->count(), ['новая заявка', 'новые заявки', 'новых заявок'], '/zayavki'],
+                [ParkRequest::where('state', RequestState::New)->count(), ['новая заявка', 'новые заявки', 'новых заявок'], '/'],
             ];
-            $button = ['/zayavki', 'К заявкам'];
+            $button = ['/', 'К заявкам'];
         } elseif ($surface === Surface::Crm) {
             $badges = Nav::badges($user);
             $tiles = [

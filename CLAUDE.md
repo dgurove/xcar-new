@@ -13,7 +13,8 @@
 письма-кандидаты — «Из писем» рядом с «+ Новый» в предложениях и заявках;
 чистые пути без `/admin`) и `park.xcar.ru` (стоянка). Поверхность — `App\Support\Surface`, по хосту её
 ставит `ResolveSurface`; сотрудник на сайте видит его как менеджер, без кнопок
-«править». `xcar.ru/admin/*` → 301 в CRM (`LegacyAdmin`). Без Filament и
+«править». `xcar.ru/admin/*` → 301 в CRM (`LegacyAdmin`). Главная CRM — предложения,
+главная стоянки — заявки (`/zayavki` → 301 на `/`). Без Filament и
 любого чужого админ-фреймворка — свой UI-кит на одних токенах.
 
 Старый проект `../xcar.ru` — донор, не источник: оттуда берутся проверенные
@@ -72,7 +73,7 @@
 ## Команды
 
 ```bash
-./serve-local.sh                 # http://localhost:8010 (php@8.5 и postgres из brew)
+./serve-local.sh                 # http://xcar.localhost:8010 (php@8.5 и postgres из brew)
 php artisan queue:work database-long --queue=long,mail --stop-when-empty   # почта, фото, закупки
 php artisan queue:work --stop-when-empty                                   # конверсии, уведомления
 php artisan offers:tick | mail:sync | mail:reconcile | notifications:digest | push:keys
@@ -84,9 +85,10 @@ node scripts/icons.mjs           # иконки PWA из favicon.svg
 ```
 
 Локальная база `xcar_new` (роль xcar/xcar, порт 5432). Порт 8010, потому
-что 8000 занят старым проектом. CRM локально — `http://crm.localhost:8010`,
-стоянка — `http://park.localhost:8010` (общего cookie на localhost нет — на
-каждом хосте свой вход; в бою `SESSION_DOMAIN=.xcar.ru` даёт один). Почта локально — IMAP-сервер на Twisted
+что 8000 занят старым проектом. Хосты локально как в бою — три имени под
+одним родителем: `http://xcar.localhost:8010`, `http://crm.xcar.localhost:8010`,
+`http://park.xcar.localhost:8010`; cookie сессии на `.xcar.localhost` (в бою
+`.xcar.ru`) — один вход и один выход на всех трёх. Почта локально — IMAP-сервер на Twisted
 `scripts/imapserver.py (venv с twisted)` (порт 1143, `offer`/`deal` : `parol`, письма
 файлами в `imapdrop/<user>/`) и `mailpit` (SMTP 1025, веб 8025); хаба Mercure
 локально нет — live проверяется на сервере.
@@ -126,5 +128,7 @@ outbox, tmp — не бэкапится, `storage:gc` чистит по срок
 `CONNECT.local.md` вне git. Раскладка `/srv/xcar/{env,releases,current}`, данные на втором диске
 `/srv/xcar/data/{postgres,media,private,cache,storage,backups}`; бэкапы —
 restic в S3 (`deploy/backup.sh`, см. CONNECT.md).
-Пока без домена — по IP и именам nip.io. Прод не трогать без спроса,
-выкладка только `deploy/deploy.sh`.
+Домены боевые: `xcar.ru`, `crm.xcar.ru`, `park.xcar.ru` (Caddy выпускает
+сертификаты сам; `api.xcar.ru` и имена nip.io — 301 на `xcar.ru`). Старый
+сервер (`ssh xcar-new`, 201.24.57.130) заморожен `artisan down` с 12.09.2026.
+Прод не трогать без спроса, выкладка только `deploy/deploy.sh`.

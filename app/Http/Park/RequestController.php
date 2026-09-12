@@ -130,6 +130,6 @@ class RequestController
         $data = $request->validate(['done' => ['required', 'boolean'], 'note' => ['nullable', 'string', 'max:2000']]);
         $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
 
-        return redirect('/zayavki')->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
+        return redirect('/')->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
     }
 }
