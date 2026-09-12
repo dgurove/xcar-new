@@ -1,5 +1,5 @@
 {{-- Главная стоянки: первый экран с числом машин и «Принять машину», ниже — заявки, которые ждут. --}}
-<x-ui.shell :heading="false" over-hero surface="park">
+<x-ui.shell :heading="false" over-hero>
     <x-ui.hero :count="$stored" :label="\App\Support\Plural::of($stored, ['машина на стоянке', 'машины на стоянке', 'машин на стоянке'])" href="/zayavki/novaya?tip=intake" button="Принять машину" cue="#catalog-section"/>
 
     <div id="catalog-section" class="over-hero">

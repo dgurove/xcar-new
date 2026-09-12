@@ -1,5 +1,5 @@
 @php $new = !$account->exists; $enc = ['ssl' => 'SSL', 'tls' => 'STARTTLS', 'none' => 'без шифрования']; @endphp
-<x-ui.shell :title="$new ? 'Новый ящик' : $account->title" :trail="[['Главная', '/'], ['Ящики', '/admin/yashchiki'], [$new ? 'Новый' : $account->title]]" narrow>
+<x-ui.shell :title="$new ? 'Новый ящик' : $account->title" :trail="[['Главная', '/'], ['Настройки', '/nastroyki'], ['Ящики', '/nastroyki/yashchiki'], [$new ? 'Новый' : $account->title]]" narrow>
     @if (session('check'))
         <div class="mb-4 flex flex-col gap-2">
             @foreach (session('check') as $kind => $r)
@@ -7,7 +7,7 @@
             @endforeach
         </div>
     @endif
-    <form method="post" action="{{ $new ? '/admin/yashchiki' : '/admin/yashchiki/'.$account->slug }}" id="account-form" class="flex flex-col gap-4">
+    <form method="post" action="{{ $new ? '/nastroyki/yashchiki' : '/nastroyki/yashchiki/'.$account->slug }}" id="account-form" class="flex flex-col gap-4">
         @csrf @unless ($new) @method('put') @endunless
         <x-ui.card title="Ящик">
             <div class="grid gap-4 sm:grid-cols-2">
@@ -53,9 +53,9 @@
     <x-ui.action-bar>
         <x-ui.button form="account-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @unless ($new)
-            <form method="post" action="/admin/yashchiki/{{ $account->slug }}/proverka">@csrf<x-ui.button variant="secondary">Проверить</x-ui.button></form>
-            <form method="post" action="/admin/yashchiki/{{ $account->slug }}/sinhronizaciya">@csrf<x-ui.button variant="secondary" aria-label="Синхронизировать"><x-ui.icon name="refresh" class="size-5"/></x-ui.button></form>
-            <form method="post" action="/admin/yashchiki/{{ $account->slug }}" data-turbo-confirm="Удалить ящик вместе с письмами?">@csrf @method('delete')<x-ui.button variant="danger"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
+            <form method="post" action="/nastroyki/yashchiki/{{ $account->slug }}/proverka">@csrf<x-ui.button variant="secondary">Проверить</x-ui.button></form>
+            <form method="post" action="/nastroyki/yashchiki/{{ $account->slug }}/sinhronizaciya">@csrf<x-ui.button variant="secondary" aria-label="Синхронизировать"><x-ui.icon name="refresh" class="size-5"/></x-ui.button></form>
+            <form method="post" action="/nastroyki/yashchiki/{{ $account->slug }}" data-turbo-confirm="Удалить ящик вместе с письмами?">@csrf @method('delete')<x-ui.button variant="danger"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
         @endunless
     </x-ui.action-bar>
 </x-ui.shell>

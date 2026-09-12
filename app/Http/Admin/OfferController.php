@@ -3,6 +3,8 @@
 namespace App\Http\Admin;
 
 use App\Cars\Settlement;
+use App\Mail\Jobs\ImportCandidateMedia;
+use App\Mail\Thread;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
@@ -10,6 +12,7 @@ use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Tag;
+use App\Workflow\Insurer;
 use Illuminate\Http\Request;
 
 class OfferController
@@ -64,7 +67,7 @@ class OfferController
     {
         $offer = $create($request->user());
 
-        return redirect("/admin/offers/{$offer->number}");
+        return redirect("/predlozheniya/{$offer->number}");
     }
 
     public function edit(Offer $offer)
@@ -74,9 +77,9 @@ class OfferController
 
         return view('admin.offers.edit', [
             'offer' => $offer,
-            'threads' => \App\Mail\Thread::where('offer_id', $offer->id)->get(),
-            'import' => \App\Mail\Jobs\ImportCandidateMedia::progress($offer->id),
-            'insurers' => \App\Workflow\Insurer::where('is_active', true)->orWhere('id', $offer->insurer_id)->orderBy('name')->pluck('name', 'id'),
+            'threads' => Thread::where('offer_id', $offer->id)->get(),
+            'import' => ImportCandidateMedia::progress($offer->id),
+            'insurers' => Insurer::where('is_active', true)->orWhere('id', $offer->insurer_id)->orderBy('name')->pluck('name', 'id'),
             'stages' => $offer->insurer ? $offer->insurer->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
             'tags' => Tag::orderBy('sort')->get(),
             'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id'),
@@ -87,7 +90,7 @@ class OfferController
     {
         $update($offer, $request->payload(), $request->user());
 
-        return redirect("/admin/offers/{$offer->number}")->with('toast', 'Сохранено');
+        return redirect("/predlozheniya/{$offer->number}")->with('toast', 'Сохранено');
     }
 
     public function state(Request $request, Offer $offer, ChangeOfferState $change)
@@ -95,6 +98,6 @@ class OfferController
         $next = OfferState::from($request->validate(['state' => ['required', 'string']])['state']);
         $change($offer, $next, $request->user());
 
-        return redirect("/admin/offers/{$offer->number}")->with('toast', $next->label());
+        return redirect("/predlozheniya/{$offer->number}")->with('toast', $next->label());
     }
 }

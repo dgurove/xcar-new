@@ -1,7 +1,7 @@
-<x-ui.shell title="Ящики" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Ящики']]" narrow>
+<x-ui.shell title="Ящики" :trail="[['Главная', '/'], ['Настройки', '/nastroyki'], ['Ящики']]" narrow>
     <div class="flex flex-col gap-2">
         @foreach ($accounts as $account)
-            <a href="/admin/yashchiki/{{ $account->slug }}" class="row">
+            <a href="/nastroyki/yashchiki/{{ $account->slug }}" class="row">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2"><span class="font-medium">{{ $account->title }}</span><span class="text-sm text-ink-muted">{{ $account->email }}</span>@unless ($account->is_active)<span class="chip bg-closed-soft text-closed">выключен</span>@endunless</div>
                     <div class="text-sm text-ink-muted">
@@ -13,6 +13,6 @@
                 <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
             </a>
         @endforeach
-        <a href="/admin/yashchiki/novyy" class="btn btn-quiet self-start"><x-ui.icon name="plus" class="size-5"/> Ящик</a>
+        <a href="/nastroyki/yashchiki/novyy" class="btn btn-quiet self-start"><x-ui.icon name="plus" class="size-5"/> Ящик</a>
     </div>
 </x-ui.shell>

@@ -1,20 +1,20 @@
 @php use App\Cars\{Transmission, Fuel}; use App\Purchases\{Kind, OfferState, ImportState}; $n = $purchase->number; @endphp
-<x-ui.shell :title="$car->titleWithYear()" :trail="[['Главная', '/'], ['Закупки', '/admin/zakupki'], ['Закупка '.$n, '/admin/zakupki/'.$n], [$car->dl]]">
+<x-ui.shell :title="$car->titleWithYear()" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], ['Закупка '.$n, '/zakupki/'.$n], [$car->dl]]">
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <span class="chip">{{ str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl }}</span>
         <span class="chip">№ {{ $car->ref }}</span>
         @if ($car->site_url)<a href="{{ $car->site_url }}" target="_blank" class="chip">Сайт поставщика ↗</a>@endif
         @if ($car->cloud_url)<a href="{{ $car->cloud_url }}" target="_blank" class="chip">Облако ↗</a>@endif
-        @if ($purchase->state->isPublic())<a href="/zakupki/{{ $n }}/{{ $car->ref }}" class="chip">На сайте →</a>@endif
+        @if ($purchase->state->isPublic())<a href="{{ \App\Support\Surface::Site->url("/zakupki/$n/{$car->ref}") }}" data-turbo="false" class="chip">На сайте →</a>@endif
         @if ($errors->any())<span class="field-error w-full">{{ $errors->first() }}</span>@endif
     </div>
     <div class="grid items-start gap-4 lg:grid-cols-[1fr_380px]">
-        <form method="post" action="/admin/zakupki/{{ $n }}/{{ $car->ref }}" id="car-form" class="flex flex-col gap-4">
+        <form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}" id="car-form" class="flex flex-col gap-4">
             @csrf @method('put')
             <x-ui.card title="Машина">
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-ui.combobox name="brand_id" label="Марка" url="/admin/spravochnik/marki" create="/admin/spravochnik/marki" :value="$car->brand_id" :text="$car->brand?->name ?? $car->brand_raw" resets="#cb-model_id"/>
-                    <x-ui.combobox name="model_id" label="Модель" url="/admin/spravochnik/modeli" create="/admin/spravochnik/modeli" depends="#f-brand_id" :value="$car->model_id" :text="$car->model?->name ?? $car->model_raw"/>
+                    <x-ui.combobox name="brand_id" label="Марка" url="/spravochnik/marki" create="/spravochnik/marki" :value="$car->brand_id" :text="$car->brand?->name ?? $car->brand_raw" resets="#cb-model_id"/>
+                    <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id" :value="$car->model_id" :text="$car->model?->name ?? $car->model_raw"/>
                     <x-ui.field name="year" label="Год" inputmode="numeric" :value="$car->year"/>
                     <x-ui.field name="mileage" label="Пробег, км" inputmode="numeric" :value="$car->mileage"/>
                     <x-ui.field name="vin" label="VIN" :value="$car->vin" maxlength="17" class="uppercase"/>
@@ -40,12 +40,12 @@
             </x-ui.card>
         </form>
         <div class="flex flex-col gap-4">
-            <x-ui.card title="Фотографии" data-controller="photos" data-photos-url-value="/admin/zakupki/mashiny/{{ $car->id }}/media">
+            <x-ui.card title="Фотографии" data-controller="photos" data-photos-url-value="/zakupki/mashiny/{{ $car->id }}/media">
                 <div class="mb-3 flex flex-wrap items-center gap-2">
                     <input type="file" accept="image/*,.heic" multiple hidden data-photos-target="input" data-action="change->photos#upload">
                     <x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="camera" class="size-4"/> Добавить</x-ui.button>
                     @if ($car->cloud_url)
-                        <form method="post" action="/admin/zakupki/{{ $n }}/{{ $car->ref }}/zabrat">@csrf<input type="hidden" name="what" value="photos"><input type="hidden" name="all" value="1"><x-ui.button size="sm" variant="ghost">Забрать все из облака</x-ui.button></form>
+                        <form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}/zabrat">@csrf<input type="hidden" name="what" value="photos"><input type="hidden" name="all" value="1"><x-ui.button size="sm" variant="ghost">Забрать все из облака</x-ui.button></form>
                     @endif
                     <span class="chip {{ $car->photos_state->needsAttention() ? 'bg-urgent-soft text-urgent' : '' }}">{{ $car->photos_state->label() }}{{ $car->photos_error ? ': '.$car->photos_error : '' }}</span>
                 </div>
@@ -56,7 +56,7 @@
             <x-ui.card title="Характеристики с сайта">
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="chip {{ $car->specs_state->needsAttention() ? 'bg-urgent-soft text-urgent' : '' }}">{{ $car->specs_state->label() }}{{ $car->specs_error ? ': '.$car->specs_error : '' }}</span>
-                    @if ($car->site_url)<form method="post" action="/admin/zakupki/{{ $n }}/{{ $car->ref }}/zabrat">@csrf<input type="hidden" name="what" value="specs"><x-ui.button size="sm" variant="ghost">Перечитать</x-ui.button></form>@endif
+                    @if ($car->site_url)<form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}/zabrat">@csrf<input type="hidden" name="what" value="specs"><x-ui.button size="sm" variant="ghost">Перечитать</x-ui.button></form>@endif
                 </div>
                 @if ($car->locked_fields)<div class="mt-2 text-sm text-ink-muted">Правлено руками: {{ implode(', ', $car->locked_fields) }}</div>@endif
             </x-ui.card>
@@ -70,7 +70,7 @@
                                 <div class="text-sm text-ink-muted">{{ $offer->user->name }} · <a href="tel:+{{ $offer->user->phone }}" class="text-accent-text">{{ $offer->user->phoneFormatted() }}</a> · {{ $offer->created_at->translatedFormat('j M, H:i') }}</div>
                                 @if ($offer->comment)<div class="text-sm">{{ $offer->comment }}</div>@endif
                             </div>
-                            @if ($offer->state === OfferState::Active)<form method="post" action="/admin/zakupki/ceny/{{ $offer->id }}/vybrat">@csrf<x-ui.button size="sm">Выбрать</x-ui.button></form>@endif
+                            @if ($offer->state === OfferState::Active)<form method="post" action="/zakupki/ceny/{{ $offer->id }}/vybrat">@csrf<x-ui.button size="sm">Выбрать</x-ui.button></form>@endif
                         </div>
                     @endforeach
                 </div>

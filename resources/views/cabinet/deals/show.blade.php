@@ -6,7 +6,7 @@
         \App\Workflow\WaitsFor::Manager => 'Ваш ход', \App\Workflow\WaitsFor::Supplier => 'ждём поставщика', \App\Workflow\WaitsFor::Us => 'ждём нас', default => null,
     } : null;
 @endphp
-<x-ui.cabinet :title="$offer->titleWithYear()" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Сделки', '/lk/sdelki'], ['Оффер '.$offer->number]]">
+<x-ui.cabinet :title="$offer->titleWithYear()" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Сделки', '/lk/sdelki'], ['№ '.$offer->number]]">
     <div class="grid gap-6 lg:grid-cols-[1fr_20rem]" data-deal-offer="{{ $offer->number }}">
         <div class="min-w-0 space-y-6">
             @if ($deal->state !== DealState::Active)
@@ -110,7 +110,7 @@
                 </a>
                 <div class="px-6 pb-6">
                     <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
-                        @foreach (['Оффер' => $offer->number, 'Год' => $offer->year, 'VIN' => $offer->vinMasked(), 'Город' => $offer->settlement?->name] as $label => $value)
+                        @foreach (['Предложение' => $offer->number, 'Год' => $offer->year, 'VIN' => $offer->vinMasked(), 'Город' => $offer->settlement?->name] as $label => $value)
                             @if ($value)<div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal">{{ $value }}</dd></div>@endif
                         @endforeach
                     </dl>

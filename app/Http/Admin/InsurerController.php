@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Workflow\Insurer;
+use App\Workflow\Position;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
 
@@ -20,7 +21,7 @@ class InsurerController
         $data = $request->validate(['name' => ['required', 'string', 'max:80', 'unique:insurers,name']]);
         $insurer = Insurer::create($data);
 
-        return redirect("/admin/strahovye/{$insurer->id}");
+        return redirect("/nastroyki/strahovye/{$insurer->id}");
     }
 
     public function show(Request $request, Insurer $insurer)
@@ -34,7 +35,7 @@ class InsurerController
             'track' => $track,
             'workflow' => $workflow,
             'problems' => $workflow->problems(),
-            'occupied' => \App\Workflow\Position::whereIn('stage_id', $workflow->stages()->pluck('workflow_stages.id'))
+            'occupied' => Position::whereIn('stage_id', $workflow->stages()->pluck('workflow_stages.id'))
                 ->selectRaw('stage_id, count(*) as n')->groupBy('stage_id')->pluck('n', 'stage_id'),
         ]);
     }
@@ -56,10 +57,10 @@ class InsurerController
     public function destroy(Insurer $insurer)
     {
         if ($insurer->offers()->exists()) {
-            return back()->withErrors(['insurer' => 'У страховой есть офферы']);
+            return back()->withErrors(['insurer' => 'У страховой есть предложения']);
         }
         $insurer->delete();
 
-        return redirect('/admin/strahovye')->with('toast', 'Удалена');
+        return redirect('/nastroyki/strahovye')->with('toast', 'Удалена');
     }
 }

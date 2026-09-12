@@ -28,21 +28,21 @@ class MailTemplateController
     {
         $template = Template::create($this->data($request));
 
-        return redirect("/admin/shablony/{$template->id}")->with('toast', 'Шаблон сохранён');
+        return redirect("/nastroyki/shablony/{$template->id}")->with('toast', 'Шаблон сохранён');
     }
 
     public function update(Request $request, Template $template)
     {
         $template->update($this->data($request));
 
-        return redirect("/admin/shablony/{$template->id}")->with('toast', 'Сохранено');
+        return redirect("/nastroyki/shablony/{$template->id}")->with('toast', 'Сохранено');
     }
 
     public function destroy(Template $template)
     {
         $template->delete();
 
-        return redirect('/admin/shablony')->with('toast', 'Удалён');
+        return redirect('/nastroyki/shablony')->with('toast', 'Удалён');
     }
 
     private function data(Request $request): array

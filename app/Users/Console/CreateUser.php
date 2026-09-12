@@ -26,7 +26,7 @@ class CreateUser extends Command
         // Разделы: сотруднику — все, остальным — только названные.
         $access = $this->option('access') !== null && $this->option('access') !== ''
             ? array_values(array_filter(explode(',', $this->option('access'))))
-            : ($role->isStaff() ? ['admin', 'park'] : []);
+            : ($role->isStaff() ? ['park'] : []);
 
         $user = User::updateOrCreate(['phone' => $phone], [
             'name' => $this->option('name') ?: $this->ask('Имя', 'Администратор'),

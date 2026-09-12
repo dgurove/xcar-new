@@ -31,7 +31,7 @@ class MailAccountController
     {
         $account = Account::create($this->data($request));
 
-        return redirect("/admin/yashchiki/{$account->slug}")->with('toast', 'Ящик заведён');
+        return redirect("/nastroyki/yashchiki/{$account->slug}")->with('toast', 'Ящик заведён');
     }
 
     public function update(Request $request, Account $account)
@@ -43,7 +43,7 @@ class MailAccountController
             }
         }
 
-        return redirect("/admin/yashchiki/{$account->slug}")->with('toast', 'Сохранено');
+        return redirect("/nastroyki/yashchiki/{$account->slug}")->with('toast', 'Сохранено');
     }
 
     public function test(Account $account, ConnectionTester $tester)
@@ -65,7 +65,7 @@ class MailAccountController
     {
         $account->delete();
 
-        return redirect('/admin/yashchiki')->with('toast', 'Ящик удалён');
+        return redirect('/nastroyki/yashchiki')->with('toast', 'Ящик удалён');
     }
 
     private function data(Request $request, ?Account $account = null): array

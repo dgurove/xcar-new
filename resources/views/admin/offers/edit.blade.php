@@ -4,10 +4,10 @@
     $n = $offer->number;
     $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && $s !== OfferState::Delivered);
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :trail="[['Главная', '/'], ['Офферы', '/admin/offers'], ['Оффер '.$n]]">
+<x-ui.shell :title="$offer->titleWithYear()" :trail="[['Главная', '/'], ['Предложения', '/'], ['№ '.$n]]">
     <x-slot:actions>
         @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" icon/>@endif
-        @if ($offer->state->isPublic())<a href="/offers/{{ $n }}" class="btn btn-s btn-quiet btn-round" aria-label="На сайте" title="На сайте"><x-ui.icon name="car" class="size-5"/></a>@endif
+        @if ($offer->state->isPublic())<a href="{{ \App\Support\Surface::Site->url("/offers/$n") }}" data-turbo="false" class="btn btn-s btn-quiet btn-round" aria-label="На сайте" title="На сайте"><x-ui.icon name="car" class="size-5"/></a>@endif
     </x-slot:actions>
 
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
@@ -15,8 +15,8 @@
         @if ($offer->bids_close_at && $offer->state === OfferState::Open)
             <x-ui.pill tone="plain"><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}"></span></x-ui.pill>
         @endif
-        @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/admin/pochta/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
-        @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/admin/pochta?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
+        @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/perepiski/pochta/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
+        @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/perepiski/pochta?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
         @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>
@@ -28,13 +28,13 @@
         </div>
     @endif
 
-    <form method="post" action="/admin/offers/{{ $n }}" id="offer-form" class="flex flex-col gap-6 lg:col-start-1 lg:row-start-1 lg:row-span-2">
+    <form method="post" action="/predlozheniya/{{ $n }}" id="offer-form" class="flex flex-col gap-6 lg:col-start-1 lg:row-start-1 lg:row-span-2">
         @csrf @method('put')
 
         <x-ui.card title="Машина">
             <div class="grid gap-4 sm:grid-cols-2">
-                <x-ui.combobox name="brand_id" label="Марка" url="/admin/spravochnik/marki" create="/admin/spravochnik/marki" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id"/>
-                <x-ui.combobox name="model_id" label="Модель" url="/admin/spravochnik/modeli" create="/admin/spravochnik/modeli" depends="#f-brand_id" :value="$offer->model_id" :text="$offer->model?->name"/>
+                <x-ui.combobox name="brand_id" label="Марка" url="/spravochnik/marki" create="/spravochnik/marki" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id"/>
+                <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id" :value="$offer->model_id" :text="$offer->model?->name"/>
                 <x-ui.field name="year" label="Год" inputmode="numeric" :value="$offer->year"/>
                 <x-ui.field name="mileage" label="Пробег, км" inputmode="numeric" :value="$offer->mileage"/>
                 <x-ui.field name="vin" label="VIN" :value="$offer->vin" maxlength="17" class="uppercase" autocapitalize="characters"/>
@@ -108,7 +108,7 @@
     </form>
 
     <div class="flex flex-col gap-6 lg:col-start-2 {{ $offer->positions->isNotEmpty() ? 'lg:row-start-2' : 'lg:row-start-1 lg:row-span-2' }}">
-        <x-ui.card title="Фотографии" data-controller="photos" data-photos-url-value="/admin/offers/{{ $n }}/media">
+        <x-ui.card title="Фотографии" data-controller="photos" data-photos-url-value="/predlozheniya/{{ $n }}/media">
             <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             <div class="mb-3 flex gap-2">
                 <x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="camera" class="size-4"/> Добавить фото</x-ui.button>
@@ -120,7 +120,7 @@
             @include('admin.offers.gallery')
         </x-ui.card>
 
-        <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/admin/offers/{{ $n }}/media" data-photos-collection-value="papers">
+        <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/predlozheniya/{{ $n }}/media" data-photos-collection-value="papers">
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             <div class="mb-3"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Добавить документ</x-ui.button></div>
             <div hidden data-photos-target="progress" class="mb-3">
@@ -141,8 +141,8 @@
                             @if ($bid->comment)<div class="text-sm">{{ $bid->comment }}</div>@endif
                         </div>
                         @if ($bid->state === \App\Offers\BidState::Active)
-                            <form method="post" action="/admin/stavki/{{ $bid->id }}/prinyat" data-turbo-confirm="Принять ставку {{ number_format($bid->amount, 0, '', ' ') }} ₽ и открыть сделку?">@csrf<x-ui.button size="sm">Принять</x-ui.button></form>
-                            <form method="post" action="/admin/stavki/{{ $bid->id }}/otklonit">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>
+                            <form method="post" action="/stavki/{{ $bid->id }}/prinyat" data-turbo-confirm="Принять ставку {{ number_format($bid->amount, 0, '', ' ') }} ₽ и открыть сделку?">@csrf<x-ui.button size="sm">Принять</x-ui.button></form>
+                            <form method="post" action="/stavki/{{ $bid->id }}/otklonit">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>
                         @endif
                     </div>
                 @endforeach
@@ -161,9 +161,9 @@
                             @if ($interest->comment)<div class="text-sm">{{ $interest->comment }}</div>@endif
                         </div>
                         @if ($interest->state === \App\Offers\InterestState::New)
-                            <form method="post" action="/admin/interesy/{{ $interest->id }}">@csrf<input type="hidden" name="state" value="contacted"><x-ui.button size="sm" variant="secondary">Связались</x-ui.button></form>
+                            <form method="post" action="/interesy/{{ $interest->id }}">@csrf<input type="hidden" name="state" value="contacted"><x-ui.button size="sm" variant="secondary">Связались</x-ui.button></form>
                         @elseif ($interest->state === \App\Offers\InterestState::Contacted)
-                            <form method="post" action="/admin/interesy/{{ $interest->id }}">@csrf<input type="hidden" name="state" value="closed"><x-ui.button size="sm" variant="ghost">Закрыть</x-ui.button></form>
+                            <form method="post" action="/interesy/{{ $interest->id }}">@csrf<input type="hidden" name="state" value="closed"><x-ui.button size="sm" variant="ghost">Закрыть</x-ui.button></form>
                         @endif
                     </div>
                 @endforeach
@@ -203,10 +203,10 @@
         <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @if ($transitions->isNotEmpty())
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
-            <x-ui.sheet id="offer-actions" title="Оффер № {{ $n }}">
+            <x-ui.sheet id="offer-actions" title="Предложение № {{ $n }}">
                 <div class="flex flex-col gap-2">
                     @foreach ($transitions as $next)
-                        <form method="post" action="/admin/offers/{{ $n }}/sostoyanie" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
+                        <form method="post" action="/predlozheniya/{{ $n }}/sostoyanie" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                             <x-ui.button block :variant="$next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary')">{{ match($next) {
                                 OfferState::Open => $offer->state === OfferState::Closed ? 'Открыть приём снова' : 'Опубликовать',

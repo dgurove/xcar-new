@@ -1,5 +1,5 @@
 @php use App\Mail\CandidateState; @endphp
-<x-ui.shell title="Кандидаты" :count="$candidates->total()" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Кандидаты']]">
+<x-ui.shell title="Кандидаты" :count="$candidates->total()" :trail="[['Главная', '/'], ['Настройки', '/nastroyki'], ['Кандидаты']]">
     <x-ui.toolbar :pills="\App\Http\Admin\CandidateController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" name="candidates"/>
     @if ($candidates->isEmpty())
         <x-ui.empty class="mt-6">Пусто.</x-ui.empty>
@@ -30,12 +30,12 @@
                         <div class="text-sm text-urgent">Пришло ещё письмо — проверьте поля</div>
                     @endif
                     <div class="mt-auto flex flex-wrap gap-2">
-                        <a href="/admin/pochta/{{ $c->thread_id }}" class="btn btn-ghost btn-s">Письмо</a>
+                        <a href="/perepiski/pochta/{{ $c->thread_id }}" class="btn btn-ghost btn-s">Письмо</a>
                         @if ($c->state === CandidateState::Promoted)
-                            <a href="/admin/offers/{{ $c->offer?->number }}" class="btn btn-quiet btn-s ml-auto">№ {{ $c->offer?->number }}</a>
+                            <a href="/predlozheniya/{{ $c->offer?->number }}" class="btn btn-quiet btn-s ml-auto">№ {{ $c->offer?->number }}</a>
                         @else
-                            <form method="post" action="/admin/kandidaty/{{ $c->id }}/otklonit" class="ml-auto">@csrf<x-ui.button size="sm" variant="ghost">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Отклонить' }}</x-ui.button></form>
-                            <form method="post" action="/admin/kandidaty/{{ $c->id }}/zavesti">@csrf<x-ui.button size="sm">Завести черновик</x-ui.button></form>
+                            <form method="post" action="/nastroyki/kandidaty/{{ $c->id }}/otklonit" class="ml-auto">@csrf<x-ui.button size="sm" variant="ghost">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Отклонить' }}</x-ui.button></form>
+                            <form method="post" action="/nastroyki/kandidaty/{{ $c->id }}/zavesti">@csrf<x-ui.button size="sm">Завести черновик</x-ui.button></form>
                         @endif
                     </div>
                 </x-ui.card>

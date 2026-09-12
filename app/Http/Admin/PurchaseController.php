@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Cars\Settlement;
 use App\Purchases\Actions\ChangePurchaseState;
 use App\Purchases\Actions\ChooseOffer;
 use App\Purchases\Actions\CreatePurchase;
@@ -9,8 +10,8 @@ use App\Purchases\Actions\ImportFile;
 use App\Purchases\Actions\UpdateCar;
 use App\Purchases\Car;
 use App\Purchases\Export;
-use App\Purchases\ImportState;
 use App\Purchases\Importer;
+use App\Purchases\ImportState;
 use App\Purchases\Jobs\FetchPhotos;
 use App\Purchases\Jobs\FetchSpecs;
 use App\Purchases\Kind;
@@ -41,7 +42,7 @@ class PurchaseController
     {
         $purchase = $create($request->validate(['title' => ['nullable', 'string', 'max:120'], 'supplier' => ['nullable', 'string', 'max:80'], 'offers_close_at' => ['nullable', 'date']]));
 
-        return redirect("/admin/zakupki/{$purchase->number}");
+        return redirect("/zakupki/{$purchase->number}");
     }
 
     public function show(Request $request, Purchase $purchase)
@@ -112,7 +113,7 @@ class PurchaseController
         $result = $import($purchase, Storage::disk('private')->path($path), $request->user());
         $purchase->update(['source_file' => $path]);
 
-        return redirect("/admin/zakupki/{$purchase->number}")->with('toast', "Новых {$result['created']}, обновлено {$result['updated']}".($result['skipped'] ? ", пропущено {$result['skipped']}" : ''));
+        return redirect("/zakupki/{$purchase->number}")->with('toast', "Новых {$result['created']}, обновлено {$result['updated']}".($result['skipped'] ? ", пропущено {$result['skipped']}" : ''));
     }
 
     public function export(Purchase $purchase, Export $export)
@@ -154,7 +155,7 @@ class PurchaseController
         abort_unless($car->purchase_id === $purchase->id, 404);
         $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
 
-        return view('admin.purchases.car', ['purchase' => $purchase, 'car' => $car, 'settlements' => \App\Cars\Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id')]);
+        return view('admin.purchases.car', ['purchase' => $purchase, 'car' => $car, 'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id')]);
     }
 
     public function updateCar(Request $request, Purchase $purchase, Car $car, UpdateCar $update)

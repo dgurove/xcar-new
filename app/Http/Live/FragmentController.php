@@ -4,6 +4,7 @@ namespace App\Http\Live;
 
 use App\Live\Stream;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Support\Nav;
 use Illuminate\Http\Request;
 
@@ -12,15 +13,13 @@ class FragmentController
 {
     public function badges(Request $request)
     {
-        $surface = \App\Http\Middleware\ParkHost::isPark($request) ? 'park' : 'site';
-
-        return Stream::view('live.badges-stream', ['badges' => Nav::badges($request->user(), $surface), 'surface' => $surface]);
+        return Stream::view('live.badges-stream', ['badges' => Nav::badges($request->user())]);
     }
 
     public function card(Request $request, Offer $offer)
     {
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites']);
-        $visible = $request->query('list') === 'gallery' ? $offer->state === \App\Offers\OfferState::Gallery : $offer->state->isPublic();
+        $visible = $request->query('list') === 'gallery' ? $offer->state === OfferState::Gallery : $offer->state->isPublic();
         $present = $request->boolean('present');
 
         return Stream::view('site.offers.card-stream', ['offer' => $offer, 'visible' => $visible, 'present' => $present]);

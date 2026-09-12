@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Admin\ReferenceController;
 use App\Http\Park\ActController;
 use App\Http\Park\ClientController;
 use App\Http\Park\MailController;
@@ -7,20 +8,24 @@ use App\Http\Park\ParkCandidateController;
 use App\Http\Park\RequestController;
 use App\Http\Park\VehicleController;
 use App\Http\Park\YardController;
+use App\Park\Request;
+use App\Park\RequestState;
+use App\Park\Vehicle;
+use App\Park\VehicleState;
 use Illuminate\Support\Facades\Route;
 
 // Стоянка — свой хост того же приложения. Вход общий; пускает раздел «park».
 Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->group(function () {
     Route::get('/', function () {
         return view('park.home', [
-            'stored' => \App\Park\Vehicle::where('state', \App\Park\VehicleState::Stored)->count(),
-            'expected' => \App\Park\Vehicle::where('state', \App\Park\VehicleState::Expected)->count(),
-            'requests' => \App\Park\Request::where('state', \App\Park\RequestState::New)->count(),
-            'fresh' => \App\Park\Request::with('vehicle')->where('state', \App\Park\RequestState::New)->orderByRaw('planned_at asc nulls last')->limit(6)->get(),
+            'stored' => Vehicle::where('state', VehicleState::Stored)->count(),
+            'expected' => Vehicle::where('state', VehicleState::Expected)->count(),
+            'requests' => Request::where('state', RequestState::New)->count(),
+            'fresh' => Request::with('vehicle')->where('state', RequestState::New)->orderByRaw('planned_at asc nulls last')->limit(6)->get(),
         ]);
     });
-    Route::redirect('/eshchyo', '/kabinet', 301);
-    Route::view('/kabinet', 'park.cabinet');
+    Route::redirect('/eshchyo', '/lk', 301);
+    Route::redirect('/kabinet', '/lk', 301);
 
     Route::get('/zayavki', [RequestController::class, 'index']);
     Route::get('/zayavki/novaya', [RequestController::class, 'create']);
@@ -41,10 +46,10 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/mashiny/{vehicle}/perestanovka', [VehicleController::class, 'move']);
     Route::post('/mashiny/{vehicle}/vydacha', [VehicleController::class, 'release']);
     Route::get('/spravochnik/mashiny', [VehicleController::class, 'suggest']);
-    Route::get('/spravochnik/marki', [\App\Http\Admin\ReferenceController::class, 'brands']);
-    Route::get('/spravochnik/modeli', [\App\Http\Admin\ReferenceController::class, 'models']);
-    Route::post('/spravochnik/marki', [\App\Http\Admin\ReferenceController::class, 'createBrand']);
-    Route::post('/spravochnik/modeli', [\App\Http\Admin\ReferenceController::class, 'createModel']);
+    Route::get('/spravochnik/marki', [ReferenceController::class, 'brands']);
+    Route::get('/spravochnik/modeli', [ReferenceController::class, 'models']);
+    Route::post('/spravochnik/marki', [ReferenceController::class, 'createBrand']);
+    Route::post('/spravochnik/modeli', [ReferenceController::class, 'createModel']);
     Route::get('/akty/{vehicle}/{kind}', [ActController::class, 'show'])->where('kind', 'priem|vydacha');
 
     Route::get('/stoyanki', [YardController::class, 'index']);

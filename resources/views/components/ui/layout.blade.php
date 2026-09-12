@@ -1,4 +1,5 @@
 @props(['title' => null])
+@php $surface = \App\Support\Surface::current(); @endphp
 <!doctype html>
 <html lang="ru" class="h-full">
 <head>
@@ -15,10 +16,10 @@
     @endif
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
-    <title>{{ $title ? "$title — " : '' }}{{ config('app.name') }}</title>
-    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/pwa/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="{{ $surface->short() }}">
+    <title>{{ $title ? "$title — " : '' }}{{ $surface->label() }}</title>
+    <link rel="icon" href="/pwa/{{ $surface->value }}/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/pwa/{{ $surface->value }}/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
     @auth<meta name="badge-count" content="{{ auth()->user()->unreadCount() }}">@endauth
     @if (config('xcar.vapid.public'))<meta name="vapid-key" content="{{ config('xcar.vapid.public') }}">@endif

@@ -2,6 +2,7 @@
 
 namespace App\Http\Site;
 
+use App\Chats\Chat;
 use App\Offers\BidState;
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
@@ -30,8 +31,7 @@ class OfferController
             'position' => $position,
             'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->where('state', BidState::Active)->first() : null,
             'myInterest' => $user ? $offer->interests()->where('user_id', $user->id)->first() : null,
-            'chat' => $user && ! $user->isStaff() ? \App\Chats\Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first() : null,
-            'chatsCount' => $user?->isStaff() ? \App\Chats\Chat::where('offer_id', $offer->id)->count() : 0,
+            'chat' => $user && ! $user->isStaff() ? Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first() : null,
         ]);
     }
 }

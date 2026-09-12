@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Bid;
+use App\Support\Surface;
 
 final class BidPlacedNotice extends Notice
 {
@@ -20,7 +21,7 @@ final class BidPlacedNotice extends Notice
 
     public function href(): string
     {
-        return "/admin/offers/{$this->bid->offer->number}";
+        return Surface::Crm->url("/predlozheniya/{$this->bid->offer->number}");
     }
 
     public function offerNumber(): ?int

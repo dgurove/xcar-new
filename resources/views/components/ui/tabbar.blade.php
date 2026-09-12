@@ -1,12 +1,11 @@
 {{-- Нижний таб-бар телефона: до четырёх разделов и «Кабинет» с аватаром. --}}
-@props(['surface' => 'site'])
 @php
     $user = auth()->user();
     $path = '/'.ltrim(request()->path(), '/');
-    $tabs = \App\Support\Nav::tabs($user, $surface);
-    $badges = \App\Support\Nav::badges($user, $surface);
+    $tabs = \App\Support\Nav::tabs($user);
+    $badges = \App\Support\Nav::badges($user);
     // Активен самый точный пункт: «Сделки» в /lk/sdelki, а не «Кабинет».
-    $current = collect($tabs)->filter(fn ($t) => \App\Support\Nav::isCurrent($t, $path))->sortByDesc(fn ($t) => strlen($t['match']))->first()['href'] ?? null;
+    $current = collect($tabs)->filter(fn ($t) => \App\Support\Nav::isCurrent($t, $path))->sortByDesc(fn ($t) => \App\Support\Nav::matchLength($t, $path))->first()['href'] ?? null;
 @endphp
 <nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-target="bar">
     @foreach ($tabs as $tab)

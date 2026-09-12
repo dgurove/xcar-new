@@ -13,7 +13,7 @@ final class DeleteStage
     public function __invoke(Stage $stage): void
     {
         if (Position::where('stage_id', $stage->id)->exists()) {
-            throw ValidationException::withMessages(['stage' => "На этапе «{$stage->name}» стоят офферы"]);
+            throw ValidationException::withMessages(['stage' => "На этапе «{$stage->name}» стоят предложения"]);
         }
         $workflow = $stage->workflow;
         $stage->delete();

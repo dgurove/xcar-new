@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
+use App\Mail\Scope;
 use Illuminate\Http\Request;
 
 class CandidateController
@@ -15,14 +16,14 @@ class CandidateController
     {
         $preset = $request->query('preset', 'new');
         $candidates = Candidate::with(['message.account', 'message.attachments', 'offer'])
-            ->where('scope', \App\Mail\Scope::Offers)
+            ->where('scope', Scope::Offers)
             ->where('state', CandidateState::tryFrom($preset) ?? CandidateState::New)
             ->latest()->paginate(30)->withQueryString();
 
         return view('admin.mail.candidates', [
             'candidates' => $candidates,
             'preset' => $preset,
-            'counts' => ['new' => Candidate::where('scope', \App\Mail\Scope::Offers)->where('state', CandidateState::New)->count()],
+            'counts' => ['new' => Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->count()],
         ]);
     }
 
@@ -31,7 +32,7 @@ class CandidateController
         abort_if($candidate->state === CandidateState::Promoted, 404);
         $offer = $promote($candidate, $request->user());
 
-        return redirect("/admin/offers/{$offer->number}")->with('toast', 'Черновик заведён, фото подтягиваются');
+        return redirect("/predlozheniya/{$offer->number}")->with('toast', 'Черновик заведён, фото подтягиваются');
     }
 
     public function reject(Candidate $candidate)

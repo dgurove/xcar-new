@@ -6,7 +6,7 @@
     $n = $offer->number;
     $gallery = $offer->isGallery();
     $prices = !$gallery && ($user?->role->canSeePrices() ?? false);
-    $href = $admin ? "/admin/offers/{$n}" : ($context?->offerUrl($offer) ?? "/offers/{$n}");
+    $href = $admin ? "/predlozheniya/{$n}" : ($context?->offerUrl($offer) ?? "/offers/{$n}");
     $main = $offer->mainPhoto();
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $hasMedia = $photos->isNotEmpty();

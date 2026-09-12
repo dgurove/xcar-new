@@ -1,4 +1,4 @@
-<x-ui.shell title="Клиенты" :trail="[['Стоянка', '/'], ['Кабинет', '/kabinet'], ['Клиенты']]" narrow>
+<x-ui.shell title="Клиенты" :trail="[['Стоянка', '/'], ['Кабинет', '/lk'], ['Клиенты']]" narrow>
     <div class="flex flex-col gap-2">
         @foreach ($clients as $client)
             @php $c = $client->contacts[0] ?? []; @endphp

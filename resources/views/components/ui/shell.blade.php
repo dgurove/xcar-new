@@ -1,13 +1,12 @@
 {{-- Оболочка страницы: шапка, содержимое с крошками и заголовком, подвал, таб-бар.
      heading по умолчанию равен title; :heading="false" — без заголовка.
      Слот actions — ряд справа от h1 (поделиться, закладка, стрелки). --}}
-@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'surface' => null, 'wide' => false, 'back' => null, 'narrow' => false])
+@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false])
 @php
-    $surface ??= \App\Http\Middleware\ParkHost::isPark(request()) ? 'park' : 'site';
     $heading = $heading === false ? null : ($heading ?? $title);
 @endphp
 <x-ui.layout :title="$title" data-controller="live" class="min-h-dvh flex flex-col">
-    <x-ui.header :surface="$surface" :over-hero="$overHero"/>
+    <x-ui.header :over-hero="$overHero"/>
 
     <main id="main" class="grow {{ $overHero ? '' : 'relative' }}">
         @if ($overHero)
@@ -26,7 +25,7 @@
         @endif
     </main>
 
-    <x-ui.footer :surface="$surface"/>
-    <x-ui.tabbar :surface="$surface"/>
+    <x-ui.footer/>
+    <x-ui.tabbar/>
     <x-ui.toasts/>
 </x-ui.layout>

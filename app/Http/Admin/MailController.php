@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Chats\Chat;
 use App\Live\Stream;
 use App\Mail\Account;
 use App\Mail\Actions\LinkThread;
@@ -21,14 +22,15 @@ use App\Mail\SendState;
 use App\Mail\Template;
 use App\Mail\Thread;
 use App\Offers\Offer;
+use App\Park\Vehicle;
 use Illuminate\Http\Request;
 
 /** Почта в админке: ветки, письмо, ответ. Ящики — по scope поверхности. */
 class MailController
 {
-    public const PRESETS = ['all' => 'Все', 'unread' => 'Непрочитанные', 'files' => 'С вложениями', 'sent' => 'Отправленные', 'linked' => 'По офферам'];
+    public const PRESETS = ['all' => 'Все', 'unread' => 'Непрочитанные', 'files' => 'С вложениями', 'sent' => 'Отправленные', 'linked' => 'По предложениям'];
 
-    public function __construct(private Scope $scope = Scope::Offers, private string $base = '/admin/pochta') {}
+    public function __construct(private Scope $scope = Scope::Offers, private string $base = '/perepiski/pochta') {}
 
     public function index(Request $request)
     {
@@ -58,7 +60,7 @@ class MailController
             'q' => $q,
             'base' => $this->base,
             'unread' => Thread::whereIn('account_id', $accounts->pluck('id'))->where('unread_count', '>', 0)->count(),
-            'chatsUnread' => \App\Chats\Chat::where('unread_for_staff', '>', 0)->count(),
+            'chatsUnread' => Chat::where('unread_for_staff', '>', 0)->count(),
         ]);
     }
 
@@ -84,7 +86,7 @@ class MailController
         abort_unless($account, 404);
         $template = $request->query('shablon') ? Template::find($request->query('shablon')) : null;
         $offer = $request->query('offer') ? Offer::where('number', $request->query('offer'))->first() : null;
-        $vehicle = $request->query('mashina') ? \App\Park\Vehicle::find($request->query('mashina')) : null;
+        $vehicle = $request->query('mashina') ? Vehicle::find($request->query('mashina')) : null;
         $thread = null;
         $parent = null;
         $values = [];
@@ -199,7 +201,7 @@ class MailController
     {
         $this->guard($thread);
         if ($this->scope === Scope::Park) {
-            $vehicle = $request->input('vehicle_id') ? \App\Park\Vehicle::find($request->input('vehicle_id')) : null;
+            $vehicle = $request->input('vehicle_id') ? Vehicle::find($request->input('vehicle_id')) : null;
             $thread->update(['vehicle_id' => $vehicle?->id]);
 
             return back()->with('toast', $vehicle ? 'Привязано' : 'Отвязано');
@@ -212,7 +214,7 @@ class MailController
         }
         $offer = Offer::where('number', $number)->first();
         if (! $offer) {
-            return back()->withErrors(['number' => 'Нет такого оффера']);
+            return back()->withErrors(['number' => 'Нет такого предложения']);
         }
         $link($thread, $offer);
 
@@ -262,7 +264,7 @@ class MailController
     }
 
     /** Подстановки шаблона из машины на стоянке. */
-    public static function vehiclePlaceholders(\App\Park\Vehicle $vehicle): array
+    public static function vehiclePlaceholders(Vehicle $vehicle): array
     {
         $vehicle->loadMissing(['brand', 'model', 'client', 'yard']);
 

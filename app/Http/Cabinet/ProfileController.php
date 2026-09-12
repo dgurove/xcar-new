@@ -2,38 +2,63 @@
 
 namespace App\Http\Cabinet;
 
+use App\Mail\Candidate;
+use App\Mail\CandidateState;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Favorite;
 use App\Offers\Interest;
+use App\Park\Request as ParkRequest;
+use App\Park\RequestState;
+use App\Park\Vehicle;
+use App\Park\VehicleState;
 use App\Support\Nav;
+use App\Support\Surface;
 use App\Users\Role;
+use App\Users\Section;
 use App\Workflow\Requirement;
 use Illuminate\Http\Request;
 
 class ProfileController
 {
-    /** Сводка кабинета: плитки-счётчики по роли. */
+    /** Сводка кабинета: плитки-счётчики по поверхности и роли. */
     public function show(Request $request)
     {
         $user = $request->user();
-        $tiles = [];
-        if ($user->isStaff()) {
+        $surface = Surface::current();
+        $button = ['/', 'В каталог'];
+
+        if ($surface === Surface::Park) {
+            abort_unless($user->canAccess(Section::Park), 404);
+            $tiles = [
+                [Vehicle::where('state', VehicleState::Stored)->count(), ['на стоянке', 'на стоянке', 'на стоянке'], '/mashiny'],
+                [Vehicle::where('state', VehicleState::Expected)->count(), ['ожидается', 'ожидается', 'ожидается'], '/mashiny?preset=expected'],
+                [ParkRequest::where('state', RequestState::New)->count(), ['новая заявка', 'новые заявки', 'новых заявок'], '/zayavki'],
+            ];
+            $button = ['/zayavki', 'К заявкам'];
+        } elseif ($surface === Surface::Crm) {
             $badges = Nav::badges($user);
             $tiles = [
-                [$badges['/admin/offers'] ?? 0, ['ставка ждёт ответа', 'ставки ждут ответа', 'ставок ждут ответа'], '/admin/offers?preset=bids'],
-                [$badges['/admin/sdelki'] ?? 0, ['сделка требует внимания', 'сделки требуют внимания', 'сделок требуют внимания'], '/admin/sdelki'],
-                [$badges['/admin/pochta'] ?? 0, ['непрочитанный тред', 'непрочитанных треда', 'непрочитанных тредов'], '/admin/pochta'],
-                [\App\Mail\Candidate::where('state', \App\Mail\CandidateState::New)->count(), ['кандидат из писем', 'кандидата из писем', 'кандидатов из писем'], '/admin/kandidaty'],
+                [$badges['/'] ?? 0, ['ставка ждёт ответа', 'ставки ждут ответа', 'ставок ждут ответа'], '/?preset=bids'],
+                [$badges['/sdelki'] ?? 0, ['сделка требует внимания', 'сделки требуют внимания', 'сделок требуют внимания'], '/sdelki'],
+                [$badges['/perepiski/pochta'] ?? 0, ['непрочитанный тред', 'непрочитанных треда', 'непрочитанных тредов'], '/perepiski/pochta?preset=unread'],
+                [$badges['/perepiski/chaty'] ?? 0, ['непрочитанный чат', 'непрочитанных чата', 'непрочитанных чатов'], '/perepiski/chaty?preset=unread'],
+                [Candidate::where('state', CandidateState::New)->count(), ['кандидат из писем', 'кандидата из писем', 'кандидатов из писем'], '/nastroyki/kandidaty'],
             ];
+            $button = ['/', 'К предложениям'];
         } elseif ($user->role === Role::Manager) {
             $tiles = [
                 [Bid::where('user_id', $user->id)->where('state', BidState::Active)->count(), ['заявка на рассмотрении', 'заявки на рассмотрении', 'заявок на рассмотрении'], '/lk/stavki'],
                 [Deal::where('buyer_id', $user->id)->where('state', DealState::Active)->count(), ['принята, идёт сделка', 'приняты, идут сделки', 'принято, идут сделки'], '/lk/sdelki'],
                 [Requirement::where('user_id', $user->id)->whereNull('done_at')->count(), ['действие за Вами', 'действия за Вами', 'действий за Вами'], '/lk/sdelki'],
                 [Favorite::where('user_id', $user->id)->count(), ['в избранном', 'в избранном', 'в избранном'], '/lk/izbrannoe'],
+            ];
+        } elseif ($user->isStaff()) {
+            $tiles = [
+                [Favorite::where('user_id', $user->id)->count(), ['в избранном', 'в избранном', 'в избранном'], '/lk/izbrannoe'],
+                [$user->unreadCount(), ['непрочитанное уведомление', 'непрочитанных уведомления', 'непрочитанных уведомлений'], '/lk/uvedomleniya'],
             ];
         } else {
             $tiles = [
@@ -42,7 +67,7 @@ class ProfileController
             ];
         }
 
-        return view('cabinet.index', ['user' => $user, 'tiles' => $tiles]);
+        return view('cabinet.index', ['user' => $user, 'tiles' => $tiles, 'button' => $button, 'crm' => $surface === Surface::Site && $user->isStaff()]);
     }
 
     public function profile(Request $request)

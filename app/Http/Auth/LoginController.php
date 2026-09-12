@@ -3,6 +3,8 @@
 namespace App\Http\Auth;
 
 use App\Support\Phone;
+use App\Support\Surface;
+use App\Users\Section;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -43,13 +45,17 @@ class LoginController
         return redirect('/');
     }
 
+    /** Куда после входа: на CRM и стоянке чужого уводим на сайт. */
     public static function home(): string
     {
+        $surface = Surface::current();
         $user = Auth::user();
-        if (request()->getHost() === config('xcar.park_host')) {
-            return '/zayavki';
-        }
+        $allowed = match ($surface) {
+            Surface::Crm => $user?->isStaff(),
+            Surface::Park => $user?->canAccess(Section::Park),
+            Surface::Site => true,
+        };
 
-        return $user?->isStaff() ? '/admin/offers' : '/';
+        return $allowed ? $surface->home() : Surface::Site->url();
     }
 }

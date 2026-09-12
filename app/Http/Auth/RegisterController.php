@@ -3,6 +3,7 @@
 namespace App\Http\Auth;
 
 use App\Support\Phone;
+use App\Support\Surface;
 use App\Users\Actions\RegisterUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,6 +34,6 @@ class RegisterController
         Auth::login($register($data), true);
         $request->session()->regenerate();
 
-        return redirect('/');
+        return redirect(Surface::current() === Surface::Site ? '/' : Surface::Site->url());
     }
 }

@@ -4,8 +4,8 @@ namespace App\Workflow\Actions;
 
 use App\Offers\Offer;
 use App\Users\User;
-use App\Workflow\Outcome;
 use App\Workflow\Actor;
+use App\Workflow\Outcome;
 use App\Workflow\Position;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -24,7 +24,7 @@ final class TakeExit
             $position = Position::where('offer_id', $offer->id)->where('track', $track)->first();
 
             if ($position?->stage_id !== $exit->stage_id) {
-                throw ValidationException::withMessages(['exit' => 'Оффер уже не на этом этапе']);
+                throw ValidationException::withMessages(['exit' => 'Предложение уже не на этом этапе']);
             }
             if ($exit->actor !== $as) {
                 throw ValidationException::withMessages(['exit' => 'Эта кнопка не для вас']);

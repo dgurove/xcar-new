@@ -1,5 +1,5 @@
 @php use App\Mail\CandidateState; @endphp
-<x-ui.shell title="Из писем" :count="$candidates->total()" :trail="[['Стоянка', '/'], ['Кабинет', '/kabinet'], ['Из писем']]">
+<x-ui.shell title="Из писем" :count="$candidates->total()" :trail="[['Стоянка', '/'], ['Кабинет', '/lk'], ['Из писем']]">
     <x-ui.toolbar class="mb-6" :pills="\App\Http\Admin\CandidateController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" name="candidates"/>
     @if ($candidates->isEmpty())
         <div class="py-24 text-center text-ink-muted">Пусто</div>

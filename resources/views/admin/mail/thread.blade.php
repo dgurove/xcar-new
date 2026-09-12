@@ -1,20 +1,20 @@
 @php use App\Mail\{Direction, ParseState, SendState}; $park = $base === '/pochta'; @endphp
-<x-ui.shell :title="$thread->subject ?: '(без темы)'" :trail="[['Главная', '/'], ['Почта', $base], [$thread->subject ?: '(без темы)']]">
+<x-ui.shell :title="$thread->subject ?: '(без темы)'" :trail="[['Главная', '/'], ...($base !== '/pochta' ? [['Переписки', '/perepiski']] : []), ['Почта', $base], [$thread->subject ?: '(без темы)']]">
     <div class="mb-4 flex flex-wrap items-center gap-2" data-controller="sheet">
         <span class="chip">{{ $thread->account->title }}</span>
         @if ($park && $thread->vehicle)
             <a href="/mashiny/{{ $thread->vehicle->id }}" class="chip bg-accent-soft text-accent-text">{{ $thread->vehicle->titleWithYear() }}{{ $thread->vehicle->ref ? ' · '.$thread->vehicle->ref : '' }}</a>
         @elseif (!$park && $thread->offer)
-            <a href="/admin/offers/{{ $thread->offer->number }}" class="chip bg-accent-soft text-accent-text">№ {{ $thread->offer->number }} · {{ $thread->offer->title() }}</a>
+            <a href="/predlozheniya/{{ $thread->offer->number }}" class="chip bg-accent-soft text-accent-text">№ {{ $thread->offer->number }} · {{ $thread->offer->title() }}</a>
         @endif
-        <button type="button" class="chip" data-action="sheet#open">{{ ($park ? $thread->vehicle : $thread->offer) ? 'Перепривязать' : ($park ? 'Привязать к машине' : 'Привязать к офферу') }}</button>
-        <x-ui.sheet id="link" :title="$park ? 'Машина' : 'Оффер'" :open="$errors->has('number') || $errors->has('vehicle_id')">
+        <button type="button" class="chip" data-action="sheet#open">{{ ($park ? $thread->vehicle : $thread->offer) ? 'Перепривязать' : ($park ? 'Привязать к машине' : 'Привязать к предложению') }}</button>
+        <x-ui.sheet id="link" :title="$park ? 'Машина' : 'Предложение'" :open="$errors->has('number') || $errors->has('vehicle_id')">
             <form method="post" action="{{ $base }}/{{ $thread->id }}/privyazka" class="flex flex-col gap-3">
                 @csrf
                 @if ($park)
                     <x-ui.combobox name="vehicle_id" label="Машина" url="/spravochnik/mashiny" :value="$thread->vehicle_id" :text="$thread->vehicle?->titleWithYear()"/>
                 @else
-                    <x-ui.field name="number" label="Номер оффера" inputmode="numeric" :value="$thread->offer?->number" autofocus/>
+                    <x-ui.field name="number" label="Номер предложения" inputmode="numeric" :value="$thread->offer?->number" autofocus/>
                 @endif
                 <div class="flex gap-2">
                     <x-ui.button class="flex-1">Привязать</x-ui.button>

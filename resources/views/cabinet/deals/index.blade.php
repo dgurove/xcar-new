@@ -27,7 +27,7 @@
                 <a href="/lk/sdelki/{{ $deal->id }}" class="box flex flex-col gap-3 transition-colors hover:bg-surface-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                     <span class="min-w-0 sm:flex-1">
                         <span class="block">{{ $offer->titleWithYear() }}</span>
-                        <span class="nums mt-1 block text-sm font-normal text-ink-dim">оффер {{ $offer->number }}</span>
+                        <span class="nums mt-1 block text-sm font-normal text-ink-dim">№ {{ $offer->number }}</span>
                     </span>
                     <span class="flex items-center justify-between gap-3 sm:contents">
                         <span class="nums sm:text-right">{{ number_format($deal->amount, 0, '', ' ') }} ₽</span>

@@ -7,5 +7,11 @@
             </a>
         @endforeach
     </div>
-    <a href="{{ $user->isStaff() ? '/admin/offers' : '/' }}" class="btn btn-accent mt-8">{{ $user->isStaff() ? 'К офферам' : 'В каталог' }}</a>
+    <div class="mt-8 flex flex-wrap gap-2">
+        <a href="{{ $button[0] }}" class="btn btn-accent">{{ $button[1] }}</a>
+        @if ($crm)<a href="{{ \App\Support\Surface::Crm->url() }}" class="btn btn-quiet" data-turbo="false">В CRM</a>@endif
+        @if (\App\Support\Surface::current() === \App\Support\Surface::Park)
+            <form method="post" action="/vyhod" class="contents">@csrf<x-ui.button variant="secondary"><x-ui.icon name="exit" class="size-5"/> Выйти</x-ui.button></form>
+        @endif
+    </div>
 </x-ui.cabinet>

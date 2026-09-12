@@ -1,5 +1,5 @@
-<x-ui.shell :title="$chat->user->name" :trail="[['Главная', '/'], ['Чаты', '/admin/chaty'], [$chat->user->name]]" narrow>
-    <a href="/admin/offers/{{ $chat->offer->number }}" class="row mb-3">
+<x-ui.shell :title="$chat->user->name" :trail="[['Главная', '/'], ['Переписки', '/perepiski'], ['Чаты', '/perepiski/chaty'], [$chat->user->name]]" narrow>
+    <a href="/predlozheniya/{{ $chat->offer->number }}" class="row mb-3">
         <div class="row-photo"><x-offer.photo :media="$chat->offer->mainPhoto()" sizes="64px"/></div>
         <div class="min-w-0 flex-1">
             <div class="truncate font-medium">№ {{ $chat->offer->number }} · {{ $chat->offer->titleWithYear() }}</div>

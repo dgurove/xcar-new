@@ -51,7 +51,6 @@
                     @else
                         <p class="mt-4 text-ink-muted">Приём цен закрыт</p>
                     @endif
-                    @if (auth()->user()->isStaff())<a href="/admin/zakupki/{{ $purchase->number }}/{{ $car->ref }}" class="btn btn-quiet mt-4 w-full">Редактировать</a>@endif
                 </{{ $asSheet ? 'dialog' : 'div' }}>
             </div>
         </aside>

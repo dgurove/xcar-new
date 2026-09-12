@@ -2,6 +2,8 @@
 
 namespace App\Http\Admin;
 
+use App\Mail\Scope;
+use App\Mail\Template;
 use App\Offers\CarPlace;
 use App\Offers\OfferState;
 use App\Workflow\Actions\DeleteBlock;
@@ -11,12 +13,11 @@ use App\Workflow\Actions\RevalidateWorkflow;
 use App\Workflow\Actions\SaveBlock;
 use App\Workflow\Actions\SaveStage;
 use App\Workflow\Actions\SeedTypicalRoute;
+use App\Workflow\Actor;
 use App\Workflow\Asks;
 use App\Workflow\Block;
 use App\Workflow\DeadlineSource;
-use App\Workflow\Actor;
 use App\Workflow\Stage;
-use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use App\Workflow\Workflow;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class WorkflowController
 {
     private function back(Workflow $workflow): string
     {
-        return "/admin/strahovye/{$workflow->insurer_id}?vetka={$workflow->track->value}";
+        return "/nastroyki/strahovye/{$workflow->insurer_id}?vetka={$workflow->track->value}";
     }
 
     public function activate(Request $request, Workflow $workflow, RevalidateWorkflow $revalidate)
@@ -121,7 +122,7 @@ class WorkflowController
             'exits' => old('exits', $stage->exists ? $stage->exits->map(fn ($e) => $e->only('id', 'label', 'actor', 'to_stage_id', 'confirm'))->all() : []),
             'fields' => old('fields', $stage->fields ?? []),
             'staffFields' => old('staff_fields', $stage->staff_fields ?? []),
-            'templates' => \App\Mail\Template::where('scope', \App\Mail\Scope::Offers)->orderBy('name')->pluck('name', 'id'),
+            'templates' => Template::where('scope', Scope::Offers)->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 

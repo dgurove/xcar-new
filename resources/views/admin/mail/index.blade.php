@@ -1,8 +1,9 @@
-<x-ui.shell title="Почта" :heading="false" :trail="[['Главная', '/'], ['Почта']]">
+@php $crm = $base !== '/pochta'; @endphp
+<x-ui.shell title="Почта" :heading="false" :trail="$crm ? [['Главная', '/'], ['Переписки', '/perepiski'], ['Почта']] : [['Главная', '/'], ['Почта']]">
     <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-        @if ($base === '/admin/pochta')
-            <x-ui.section-title level="h1" :count="$threads->total()">Письма</x-ui.section-title>
-            <x-ui.section-title href="/admin/chaty" :current="false" :count="$chatsUnread ?: null">Чаты</x-ui.section-title>
+        @if ($crm)
+            <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
+            <x-ui.section-title href="/perepiski/chaty" :current="false" :count="$chatsUnread ?: null">Чаты</x-ui.section-title>
         @else
             <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
         @endif
@@ -24,7 +25,7 @@
     </x-ui.toolbar>
 
     @if ($accounts->isEmpty())
-        <x-ui.empty class="mt-6" href="/admin/yashchiki/novyy" link="Завести ящик">Ящиков ещё нет.</x-ui.empty>
+        <x-ui.empty class="mt-6" href="/nastroyki/yashchiki/novyy" link="Завести ящик">Ящиков ещё нет.</x-ui.empty>
     @elseif ($threads->isEmpty())
         <x-ui.empty class="mt-6">Писем нет.</x-ui.empty>
     @else

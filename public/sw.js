@@ -1,7 +1,7 @@
 // Service worker XCar. HTML — только из сети (страницы живые), при обрыве
 // — /offline. Сборка и картинки — из кэша, картинок не больше ~40 МБ:
 // у iOS потолок около 50.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const STATIC = `static-${VERSION}`;
 const MEDIA = `media-${VERSION}`;
 const MEDIA_LIMIT = 400;
@@ -52,6 +52,9 @@ async function trim(cache, limit) {
 
 // Пуш. Основной формат — Declarative Web Push (iOS 18.4+ показывает без
 // воркера); здесь тот же JSON разбирается для Android.
+// Поверхность по хосту service worker: иконка уведомления — своя у сайта, CRM и стоянки.
+const surface = () => (location.hostname.startsWith('crm.') ? 'crm' : location.hostname.startsWith('park.') ? 'park' : 'site');
+
 self.addEventListener('push', (event) => {
     let data = {};
     try { data = event.data?.json() ?? {}; } catch { data = { notification: { title: event.data?.text() || 'XCar' } }; }
@@ -59,8 +62,8 @@ self.addEventListener('push', (event) => {
     if (n.app_badge !== undefined && navigator.setAppBadge) navigator.setAppBadge(n.app_badge);
     event.waitUntil(self.registration.showNotification(n.title || 'XCar', {
         body: n.body || '',
-        icon: '/pwa/icon-192.png',
-        badge: '/pwa/icon-192.png',
+        icon: `/pwa/${surface()}/icon-192.png`,
+        badge: `/pwa/${surface()}/icon-192.png`,
         tag: n.tag,
         data: { navigate: n.navigate || '/' },
     }));

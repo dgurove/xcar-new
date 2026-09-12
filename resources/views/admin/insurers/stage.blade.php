@@ -2,13 +2,13 @@
     use App\Workflow\{Track, WaitsFor, DeadlineSource, Asks, Actor};
     use App\Offers\{OfferState, CarPlace};
     $w = $workflow;
-    $back = "/admin/strahovye/{$w->insurer_id}?vetka={$w->track->value}";
+    $back = "/nastroyki/strahovye/{$w->insurer_id}?vetka={$w->track->value}";
     $m = $stage->limit_minutes;
     [$limitValue, $limitUnit] = $m === null ? [null, 'hours'] : ($m % 1440 === 0 ? [$m / 1440, 'days'] : ($m % 60 === 0 ? [$m / 60, 'hours'] : [$m, 'minutes']));
     $types = ['text' => 'Строка', 'number' => 'Число', 'date' => 'Дата', 'textarea' => 'Текст'];
 @endphp
-<x-ui.shell :title="$stage->exists ? $stage->name : 'Новый этап'" :trail="[['Главная', '/'], ['Страховые', '/admin/strahovye'], ['Маршрут', $back], [$stage->exists ? $stage->name : 'Новый этап']]" narrow>
-    <form method="post" action="{{ $stage->exists ? '/admin/marshruty/etapy/'.$stage->id : '/admin/marshruty/'.$w->id.'/etapy' }}" id="stage-form" class="flex flex-col gap-4">
+<x-ui.shell :title="$stage->exists ? $stage->name : 'Новый этап'" :trail="[['Главная', '/'], ['Настройки', '/nastroyki'], ['Страховые', '/nastroyki/strahovye'], ['Маршрут', $back], [$stage->exists ? $stage->name : 'Новый этап']]" narrow>
+    <form method="post" action="{{ $stage->exists ? '/nastroyki/marshruty/etapy/'.$stage->id : '/nastroyki/marshruty/'.$w->id.'/etapy' }}" id="stage-form" class="flex flex-col gap-4">
         @csrf @if ($stage->exists) @method('put') @endif
 
         <x-ui.card title="Этап">
@@ -17,7 +17,7 @@
                 <x-ui.field name="block_id" label="Блок" :options="$w->blocks->pluck('name', 'id')" :value="$stage->block_id"/>
                 <x-ui.field name="waits_for" label="Чей ход" :options="WaitsFor::options()" :value="$stage->waits_for?->value"/>
                 @if ($w->track === Track::Sale)
-                    <x-ui.field name="offer_state" label="Что становится с оффером" :options="OfferState::options()" placeholder="Не меняется" :value="$stage->offer_state?->value"/>
+                    <x-ui.field name="offer_state" label="Что становится с предложением" :options="OfferState::options()" placeholder="Не меняется" :value="$stage->offer_state?->value"/>
                 @else
                     <x-ui.field name="car_place" label="Где машина" :options="CarPlace::options()" placeholder="Не меняется" :value="$stage->car_place?->value"/>
                 @endif
@@ -134,7 +134,7 @@
     <x-ui.action-bar>
         <x-ui.button form="stage-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @if ($stage->exists)
-            <form method="post" action="/admin/marshruty/etapy/{{ $stage->id }}" data-turbo-confirm="Удалить этап «{{ $stage->name }}»?">@csrf @method('delete')<x-ui.button variant="danger"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
+            <form method="post" action="/nastroyki/marshruty/etapy/{{ $stage->id }}" data-turbo-confirm="Удалить этап «{{ $stage->name }}»?">@csrf @method('delete')<x-ui.button variant="danger"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
         @endif
     </x-ui.action-bar>
 </x-ui.shell>

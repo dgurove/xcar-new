@@ -1,9 +1,9 @@
 @php
     use App\Workflow\{Track, WaitsFor, Actor};
     $w = $workflow;
-    $base = "/admin/strahovye/{$insurer->id}";
+    $base = "/nastroyki/strahovye/{$insurer->id}";
 @endphp
-<x-ui.shell :title="$insurer->name" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Страховые', '/admin/strahovye'], [$insurer->name]]">
+<x-ui.shell :title="$insurer->name" :trail="[['Главная', '/'], ['Настройки', '/nastroyki'], ['Страховые', '/nastroyki/strahovye'], [$insurer->name]]">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-2" data-controller="sheet">
         @unless ($insurer->is_active)<x-ui.pill tone="closed">выключена</x-ui.pill>@endunless
         <x-ui.button type="button" variant="secondary" size="sm" data-action="sheet#open">Реквизиты</x-ui.button>
@@ -32,10 +32,10 @@
     <div class="mb-4 flex flex-wrap items-center gap-2">
         @if ($w->is_active)
             <x-ui.pill tone="open">Маршрут включён</x-ui.pill>
-            <form method="post" action="/admin/marshruty/{{ $w->id }}/vklyuchit">@csrf<input type="hidden" name="active" value="0"><x-ui.button variant="ghost" size="sm">Выключить</x-ui.button></form>
+            <form method="post" action="/nastroyki/marshruty/{{ $w->id }}/vklyuchit">@csrf<input type="hidden" name="active" value="0"><x-ui.button variant="ghost" size="sm">Выключить</x-ui.button></form>
         @elseif (!$problems)
             <x-ui.pill tone="closed">Маршрут выключен</x-ui.pill>
-            <form method="post" action="/admin/marshruty/{{ $w->id }}/vklyuchit">@csrf<input type="hidden" name="active" value="1"><x-ui.button size="sm">Включить</x-ui.button></form>
+            <form method="post" action="/nastroyki/marshruty/{{ $w->id }}/vklyuchit">@csrf<input type="hidden" name="active" value="1"><x-ui.button size="sm">Включить</x-ui.button></form>
         @endif
         @if ($errors->has('workflow'))<span class="field-error w-full">{{ $errors->first('workflow') }}</span>@endif
         @if ($errors->has('stage'))<span class="field-error w-full">{{ $errors->first('stage') }}</span>@endif
@@ -49,7 +49,7 @@
         </div>
     @endif
 
-    <div data-controller="sortable" data-sortable-url-value="/admin/marshruty/{{ $w->id }}/poryadok">
+    <div data-controller="sortable" data-sortable-url-value="/nastroyki/marshruty/{{ $w->id }}/poryadok">
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-sortable-target="blocks">
             @foreach ($w->blocks as $block)
                 <x-ui.card data-block-id="{{ $block->id }}" class="flex flex-col" data-controller="sheet">
@@ -59,19 +59,19 @@
                         <button type="button" class="btn btn-ghost btn-s px-2" data-action="sheet#open" aria-label="Блок"><x-ui.icon name="edit" class="size-5"/></button>
                     </div>
                     <x-ui.sheet id="block-{{ $block->id }}" title="Блок">
-                        <form method="post" action="/admin/marshruty/bloki/{{ $block->id }}" class="flex flex-col gap-4">
+                        <form method="post" action="/nastroyki/marshruty/bloki/{{ $block->id }}" class="flex flex-col gap-4">
                             @csrf @method('put')
                             <x-ui.field name="name" label="Название для менеджера" :value="$block->name" required/>
                             <x-ui.field name="text" label="Что менеджер читает на этом шаге" type="textarea" :value="$block->text"/>
                             <x-ui.button block>Сохранить</x-ui.button>
                         </form>
                         @if ($block->stages->isEmpty())
-                            <form method="post" action="/admin/marshruty/bloki/{{ $block->id }}" class="mt-3">@csrf @method('delete')<x-ui.button variant="danger" block>Удалить блок</x-ui.button></form>
+                            <form method="post" action="/nastroyki/marshruty/bloki/{{ $block->id }}" class="mt-3">@csrf @method('delete')<x-ui.button variant="danger" block>Удалить блок</x-ui.button></form>
                         @endif
                     </x-ui.sheet>
                     <div class="flex min-h-12 flex-col gap-2" data-sortable-target="stages">
                         @foreach ($block->stages as $stage)
-                            <a href="/admin/marshruty/etapy/{{ $stage->id }}" class="box-nested block" data-stage-id="{{ $stage->id }}">
+                            <a href="/nastroyki/marshruty/etapy/{{ $stage->id }}" class="box-nested block" data-stage-id="{{ $stage->id }}">
                                 <div class="flex items-start gap-2">
                                     <span class="flex-1 font-medium">{{ $stage->name }}</span>
                                     @if ($occupied[$stage->id] ?? 0)<span class="badge">{{ $occupied[$stage->id] }}</span>@endif
@@ -97,7 +97,7 @@
                             </a>
                         @endforeach
                     </div>
-                    <a href="/admin/marshruty/{{ $w->id }}/etapy/novyy?blok={{ $block->id }}" class="btn btn-ghost btn-s mt-2 self-start"><x-ui.icon name="plus" class="size-4"/> Этап</a>
+                    <a href="/nastroyki/marshruty/{{ $w->id }}/etapy/novyy?blok={{ $block->id }}" class="btn btn-ghost btn-s mt-2 self-start"><x-ui.icon name="plus" class="size-4"/> Этап</a>
                 </x-ui.card>
             @endforeach
         </div>
@@ -106,10 +106,10 @@
     <div class="mt-4 flex flex-wrap gap-2" data-controller="sheet">
         <x-ui.button type="button" variant="secondary" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Блок</x-ui.button>
         @if ($w->blocks->isEmpty())
-            <form method="post" action="/admin/marshruty/{{ $w->id }}/tipovoy">@csrf<x-ui.button>Заполнить типовым маршрутом</x-ui.button></form>
+            <form method="post" action="/nastroyki/marshruty/{{ $w->id }}/tipovoy">@csrf<x-ui.button>Заполнить типовым маршрутом</x-ui.button></form>
         @endif
         <x-ui.sheet id="block-new" title="Новый блок">
-            <form method="post" action="/admin/marshruty/{{ $w->id }}/bloki" class="flex flex-col gap-4">
+            <form method="post" action="/nastroyki/marshruty/{{ $w->id }}/bloki" class="flex flex-col gap-4">
                 @csrf
                 <x-ui.field name="name" label="Название для менеджера" required autofocus/>
                 <x-ui.field name="text" label="Что менеджер читает на этом шаге" type="textarea"/>

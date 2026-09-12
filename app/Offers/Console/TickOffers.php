@@ -12,7 +12,7 @@ class TickOffers extends Command
 
     protected $signature = 'offers:tick';
 
-    protected $description = 'Часы офферов: исходы по времени, просрочки, напоминания, закрытие приёма ставок';
+    protected $description = 'Часы предложений: исходы по времени, просрочки, напоминания, закрытие приёма ставок';
 
     public function handle(TickStages $tick): int
     {

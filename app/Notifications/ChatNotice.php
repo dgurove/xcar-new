@@ -3,6 +3,8 @@
 namespace App\Notifications;
 
 use App\Chats\Message;
+use App\Support\Surface;
+use Illuminate\Support\Str;
 
 /** Первое непрочитанное в чате: участнику — на страницу оффера, сотруднику — в чат. */
 final class ChatNotice extends Notice
@@ -18,12 +20,12 @@ final class ChatNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->message->text ? \Illuminate\Support\Str::limit($this->message->text, 120) : 'Файл';
+        return $this->message->text ? Str::limit($this->message->text, 120) : 'Файл';
     }
 
     public function href(): string
     {
-        return $this->forStaff ? "/admin/chaty/{$this->message->chat_id}" : "/offers/{$this->message->chat->offer->number}?chat=1";
+        return $this->forStaff ? Surface::Crm->url("/perepiski/chaty/{$this->message->chat_id}") : "/offers/{$this->message->chat->offer->number}?chat=1";
     }
 
     public function offerNumber(): ?int

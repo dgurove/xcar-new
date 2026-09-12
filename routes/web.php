@@ -15,6 +15,7 @@ use App\Http\Site\InterestController;
 use App\Http\Site\OfferController;
 use App\Http\Site\PurchaseController;
 use App\Http\Site\ShareController;
+use App\Support\LegacyAdmin;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
@@ -73,8 +74,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/zakupki/ceny/{offer}/otozvat', [PurchaseController::class, 'withdraw'])->middleware('purchases');
 });
 
+// Прежняя админка: по привычке идут на xcar.ru/admin/… — уводим в CRM.
+Route::get('/admin/{path?}', fn (string $path = '') => redirect(LegacyAdmin::target($path, request()->getQueryString()), 301))->where('path', '.*');
+
 if (app()->isLocal()) {
-    Route::view('/admin/ui', 'admin.ui');
     // На сервере медиатеку раздаёт Caddy; artisan serve этого не умеет.
     Route::get('/media/{path}', function (string $path) {
         $file = Storage::disk('media')->path($path);

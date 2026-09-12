@@ -36,6 +36,6 @@ export default class extends Controller {
         try { last = Number(localStorage.getItem('install-hint') || 0); } catch {}
         if (Date.now() - last < 7 * 86400 * 1000) return;
         try { localStorage.setItem('install-hint', String(Date.now())); } catch {}
-        setTimeout(() => window.toast?.('Добавьте XCar на экран «Домой»: Поделиться → На экран «Домой»'), 3000);
+        setTimeout(() => window.toast?.(`Добавьте ${document.querySelector('meta[name="apple-mobile-web-app-title"]')?.content ?? 'XCar'} на экран «Домой»: Поделиться → На экран «Домой»`), 3000);
     }
 }

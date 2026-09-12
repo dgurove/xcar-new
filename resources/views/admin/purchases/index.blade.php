@@ -1,9 +1,9 @@
 <x-ui.shell title="Закупки" :trail="[['Главная', '/'], ['Закупки']]">
     <div class="mb-6 flex items-center gap-2" data-controller="sheet">
-        <x-ui.pill tone="plain" href="/admin/zakupki/ogranicheniya">Кому что не показывать{{ $restricted ? ' · '.$restricted : '' }}</x-ui.pill>
+        <x-ui.pill tone="plain" href="/zakupki/ogranicheniya">Кому что не показывать{{ $restricted ? ' · '.$restricted : '' }}</x-ui.pill>
         <button type="button" class="btn btn-s btn-accent ml-auto rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/> Закупка</button>
         <x-ui.sheet id="purchase-new" title="Новая закупка">
-            <form method="post" action="/admin/zakupki" class="flex flex-col gap-4">
+            <form method="post" action="/zakupki" class="flex flex-col gap-4">
                 @csrf
                 <x-ui.field name="title" label="Название для нас" placeholder="Carcade, сентябрь" autofocus/>
                 <x-ui.field name="supplier" label="Поставщик" placeholder="Carcade"/>
@@ -14,7 +14,7 @@
     </div>
     <div class="flex flex-col gap-2">
         @forelse ($purchases as $p)
-            <a href="/admin/zakupki/{{ $p->number }}" class="row items-start">
+            <a href="/zakupki/{{ $p->number }}" class="row items-start">
                 <div class="min-w-0 flex-1">
                     <div class="font-medium">{{ $p->title ?: $p->publicTitle() }} <span class="nums text-sm font-normal text-ink-dim">№ {{ $p->number }}</span></div>
                     <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm">

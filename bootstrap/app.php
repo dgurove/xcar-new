@@ -3,7 +3,7 @@
 use App\Http\Middleware\EnsurePurchases;
 use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\EnsureStaff;
-use App\Http\Middleware\ParkHost;
+use App\Http\Middleware\ResolveSurface;
 use App\Live\SubscriberCookie;
 use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: [__DIR__.'/../routes/park.php', __DIR__.'/../routes/web.php', __DIR__.'/../routes/auth.php', __DIR__.'/../routes/admin.php'],
+        web: [__DIR__.'/../routes/park.php', __DIR__.'/../routes/crm.php', __DIR__.'/../routes/web.php', __DIR__.'/../routes/auth.php'],
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -36,7 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/vhod');
         $middleware->redirectUsersTo('/');
         $middleware->alias(['staff' => EnsureStaff::class, 'section' => EnsureSection::class, 'purchases' => EnsurePurchases::class]);
-        $middleware->web(append: [ParkHost::class, SubscriberCookie::class]);
+        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

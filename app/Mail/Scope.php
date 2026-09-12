@@ -15,7 +15,7 @@ enum Scope: string
     public function label(): string
     {
         return match ($this) {
-            self::Offers => 'Офферы',
+            self::Offers => 'Предложения',
             self::Park => 'Стоянка',
         };
     }

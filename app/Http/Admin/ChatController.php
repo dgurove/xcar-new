@@ -4,6 +4,8 @@ namespace App\Http\Admin;
 
 use App\Chats\Actions\MarkChatRead;
 use App\Chats\Chat;
+use App\Mail\Scope;
+use App\Mail\Thread;
 use Illuminate\Http\Request;
 
 class ChatController
@@ -20,7 +22,11 @@ class ChatController
                 ->orWhereHas('offer', fn ($o) => $o->where('number', (int) $q))))
             ->orderByDesc('last_message_at')->paginate(30)->withQueryString();
 
-        return view('admin.chats.index', ['chats' => $chats, 'preset' => $preset, 'q' => $q, 'unread' => Chat::where('unread_for_staff', '>', 0)->count()]);
+        return view('admin.chats.index', [
+            'chats' => $chats, 'preset' => $preset, 'q' => $q,
+            'unread' => Chat::where('unread_for_staff', '>', 0)->count(),
+            'mailUnread' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
+        ]);
     }
 
     public function show(Request $request, Chat $chat, MarkChatRead $read)

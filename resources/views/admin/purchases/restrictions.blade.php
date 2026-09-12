@@ -1,8 +1,8 @@
-<x-ui.shell title="Кому что не показывать" :trail="[['Главная', '/'], ['Закупки', '/admin/zakupki'], ['Ограничения']]" narrow>
+<x-ui.shell title="Кому что не показывать" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], ['Ограничения']]" narrow>
     <div class="flex flex-col gap-2">
         @foreach ($users as $user)
             @php $hidden = $restrictions[$user->id]->hidden_kinds ?? []; @endphp
-            <form method="post" action="/admin/zakupki/ogranicheniya/{{ $user->id }}" class="row flex-wrap items-center" data-controller="autosubmit">
+            <form method="post" action="/zakupki/ogranicheniya/{{ $user->id }}" class="row flex-wrap items-center" data-controller="autosubmit">
                 @csrf
                 <span class="min-w-40 flex-1">{{ $user->name }} <span class="text-sm text-ink-muted">{{ $user->phoneFormatted() }}</span></span>
                 <div class="flex flex-wrap gap-1.5">

@@ -5,8 +5,8 @@ namespace App\Http\Admin;
 use App\Offers\Offer;
 use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\TakeExit;
-use App\Workflow\Outcome;
 use App\Workflow\Actor;
+use App\Workflow\Outcome;
 use App\Workflow\Stage;
 use Illuminate\Http\Request;
 
@@ -24,7 +24,7 @@ class RouteController
         }
         $take($offer, $exit, Actor::Staff, $request->user(), $payload);
 
-        return redirect("/admin/offers/{$offer->number}")->with('toast', $exit->label);
+        return redirect("/predlozheniya/{$offer->number}")->with('toast', $exit->label);
     }
 
     public function place(Request $request, Offer $offer, PlaceOnStage $place)
@@ -33,6 +33,6 @@ class RouteController
         abort_unless($stage->workflow->insurer_id === $offer->insurer_id, 403);
         $place($offer, $stage, $request->user());
 
-        return redirect("/admin/offers/{$offer->number}")->with('toast', 'Поставлен на «'.$stage->name.'»');
+        return redirect("/predlozheniya/{$offer->number}")->with('toast', 'Поставлен на «'.$stage->name.'»');
     }
 }
