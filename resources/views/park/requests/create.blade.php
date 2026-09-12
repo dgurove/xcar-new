@@ -5,7 +5,7 @@
             <x-ui.pill :href="'/zayavki/novaya?tip='.$t->value.($vehicle ? '&mashina='.$vehicle->id : '')" :current="$type === $t">{{ $t->label() }}</x-ui.pill>
         @endforeach
     </x-ui.pills>
-    <form method="post" action="/zayavki" id="request-form" class="flex flex-col gap-4">
+    <form method="post" action="/zayavki" id="request-form" data-controller="vin" class="flex flex-col gap-4">
         @csrf
         <input type="hidden" name="type" value="{{ $type->value }}">
         @if ($type === RequestType::Intake && !$vehicle)
@@ -16,7 +16,7 @@
                     <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id"/>
                     <x-ui.field name="year" label="Год" inputmode="numeric"/>
                     <x-ui.field name="plate" label="Госномер" autocapitalize="characters"/>
-                    <x-ui.field name="vin" label="VIN" maxlength="17" class="uppercase" autocapitalize="characters"/>
+                    <x-ui.vin/>
                     <x-ui.field name="color" label="Цвет"/>
                     <x-ui.field name="client_id" label="Заказчик" :options="$clients" placeholder="—"/>
                 </div>

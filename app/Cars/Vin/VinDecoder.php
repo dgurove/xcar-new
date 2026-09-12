@@ -69,6 +69,12 @@ class VinDecoder
         return $remainder === 10 ? 'X' : (string) $remainder;
     }
 
+    /** Семнадцать допустимых знаков — без разбора, для памяти и форм. */
+    public static function looksValid(string $vin): bool
+    {
+        return strlen($vin) === self::LENGTH && strspn($vin, self::ALLOWED) === self::LENGTH;
+    }
+
     public function decode(string $raw): VinResult
     {
         $vin = self::normalize($raw);
@@ -129,7 +135,8 @@ class VinDecoder
         $result->put('plant_code', $vin[10], 'iso', 'high');
 
         $this->fillWmi($result, $wmi, $scheme);
-        $this->fillYear($result, $vin[9], $scheme);
+        // Ford Europe держит год в 11-м знаке, остальные — по ISO в 10-м.
+        $this->fillYear($result, $vin[($scheme['year_at'] ?? 10) - 1], $scheme);
         $this->fillBrandByYear($result, $scheme);
         $this->fillVds($result, $vin, $wmi, $scheme);
         $this->fillEngineSpecs($result);
@@ -191,7 +198,8 @@ class VinDecoder
     {
         $rules = $scheme['brand_by_year'] ?? null;
         $year = $result->get('year');
-        if (! is_array($rules) || ! is_int($year)) {
+        // Ненадёжный год марку не выбирает: у Москвича на X7L знак года — мусор.
+        if (! is_array($rules) || ! is_int($year) || $result->confidence('year') === 'low') {
             return;
         }
 

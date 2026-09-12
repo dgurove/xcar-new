@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Cars\Vin\RememberVin;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Users\User;
@@ -15,6 +16,7 @@ final class UpdateVehicle
         $vehicle->save();
         if ($changed) {
             $vehicle->log(EventType::Updated, $by, ['fields' => array_values($changed)]);
+            (new RememberVin)($vehicle);
         }
 
         return $vehicle;

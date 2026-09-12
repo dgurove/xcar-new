@@ -1,5 +1,6 @@
 <?php
 
+use App\Cars\Console\LearnVins;
 use App\Http\Middleware\EnsurePurchases;
 use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\EnsureStaff;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         Gc::class,
         Report::class,
         Poll::class,
+        LearnVins::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/vhod');

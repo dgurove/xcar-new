@@ -73,10 +73,24 @@
       "name": "Kalina",
       "drive": "fwd"
     },
-    "2194": {
-      "name": "Kalina",
-      "drive": "fwd"
-    },
+    "2194": [
+      {
+        "value": "Kalina",
+        "years": [
+          2013,
+          2017
+        ],
+        "drive": "fwd"
+      },
+      {
+        "value": "Granta Cross",
+        "years": [
+          2018,
+          null
+        ],
+        "drive": "fwd"
+      }
+    ],
     "2129": {
       "name": "Niva",
       "drive": "awd"

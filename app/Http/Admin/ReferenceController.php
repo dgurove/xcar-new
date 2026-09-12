@@ -2,9 +2,11 @@
 
 namespace App\Http\Admin;
 
+use App\Cars\Body;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Drive;
+use App\Cars\Fuel;
 use App\Cars\Transmission;
 use App\Cars\Vin\VinAutofill;
 use Illuminate\Http\Request;
@@ -28,6 +30,12 @@ class ReferenceController
         }
         if (isset($values['drive'])) {
             $values['drive_label'] = Drive::from($values['drive'])->label();
+        }
+        if (isset($values['fuel'])) {
+            $values['fuel_label'] = Fuel::from($values['fuel'])->label();
+        }
+        if (isset($values['body'])) {
+            $values['body_label'] = Body::from($values['body'])->label();
         }
 
         return response()->json(['valid' => $guess['result']->valid, 'values' => $values, 'filled' => $guess['filled'], 'skipped' => $guess['skipped']]);

@@ -114,9 +114,9 @@
                 <div class="{{ $grid }}">
                     <x-ui.combobox name="brand_id" label="Марка" url="/spravochnik/marki" create="/spravochnik/marki" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id"/>
                     <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id" :value="$offer->model_id" :text="$offer->model?->name"/>
-                    <x-ui.field name="vin" label="VIN" :value="$offer->vin" data-action="input->vin#fill" maxlength="17" class="uppercase" autocapitalize="characters" span="col-span-2 lg:col-span-1">
+                    <x-ui.vin :value="$offer->vin" span="col-span-2 lg:col-span-1">
                         <x-slot:after-label><x-ui.eye-check name="show_vin" :checked="$offer->show_vin"/></x-slot:after-label>
-                    </x-ui.field>
+                    </x-ui.vin>
                     <x-ui.field name="year" label="Год" inputmode="numeric" :value="$offer->year"/>
                     <x-ui.field name="mileage" label="Пробег, км" inputmode="numeric" :value="$offer->mileage"/>
                     <x-ui.field name="color" label="Цвет" :value="$offer->color"/>

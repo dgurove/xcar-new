@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Cars\Vin\RememberVin;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Users\User;
@@ -23,6 +24,7 @@ final class UpdateOffer
         $offer->save();
         if ($changed) {
             $offer->log(OfferEventType::Updated, $by, ['fields' => $changed]);
+            (new RememberVin)($offer);
         }
         if (in_array('insurer_deadline_at', $changed, true)) {
             // Срок от страховой могли вписать после того, как оффер встал на этап.

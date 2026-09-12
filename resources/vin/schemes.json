@@ -7,7 +7,9 @@
     "year_reliable_since": "год, с которого производитель всё-таки кодирует год по ISO",
     "check_digit_required": "true — контрольный разряд обязателен, несовпадение делает VIN невалидным",
     "vds": "имя разборщика VDS из data/vds/",
-    "region_note": "пояснение, которое попадёт в предупреждения"
+    "region_note": "пояснение, которое попадёт в предупреждения",
+    "year_at": "позиция года в VIN, если не десятая (Ford Europe — одиннадцатая)",
+    "wikibooks_table": "false — страницы книги для этого WMI не применять"
   },
   "schemes": {
     "1": {
@@ -46,11 +48,11 @@
           "Moskvich"
         ]
       ],
-      "region_note": "X7L — московский завод: до 2022 Renault, с 2022 «Москвич». Схема VDS не публиковалась, модель из VIN не выводим"
+      "region_note": "X7L — московский завод: до 2022 Renault, с 2022 «Москвич». Год в 10-м знаке не кодируется, модель выводится только из памяти базы",
+      "year_reliable": false
     },
     "XWE": {
-      "brand": "Hyundai",
-      "region_note": "XWE — «Автотор», крупноузловая сборка Hyundai и Kia; марку проверьте по ПТС"
+      "region_note": "XWE — «Автотор», крупноузловая сборка Hyundai, Kia и других; марку даёт память базы или ПТС"
     },
     "XW8": {
       "brand": "Volkswagen",
@@ -84,7 +86,9 @@
     },
     "VF1": {
       "brand": "Renault",
-      "vds": "renault"
+      "vds": "renault",
+      "year_reliable": false,
+      "region_note": "Renault не кодирует год в 10-м знаке"
     },
     "VF3": {
       "brand": "Peugeot",
@@ -183,6 +187,105 @@
     "1N6": {
       "brand": "Nissan",
       "vds": "nissan"
+    },
+    "UU1": {
+      "brand": "Dacia",
+      "year_reliable": false,
+      "region_note": "Dacia (Renault) не кодирует год в 10-м знаке"
+    },
+    "VF6": {
+      "brand": "Renault Trucks",
+      "year_reliable": false
+    },
+    "XZG": {
+      "brand": "Haval",
+      "region_note": "XZG — завод Haval в Тульской области"
+    },
+    "Z9M": {
+      "brand": "Mercedes-Benz",
+      "year_reliable": false,
+      "vds": "mercedes_eu",
+      "wikibooks_table": false,
+      "region_note": "Z9M — сборка Mercedes-Benz в России (легковые и грузовики): год в 10-м знаке не гарантирован"
+    },
+    "W1T": {
+      "brand": "Mercedes-Benz",
+      "year_reliable": false,
+      "vds": "mercedes_eu",
+      "wikibooks_table": false
+    },
+    "W1X": {
+      "brand": "Mercedes-Benz",
+      "year_reliable": false,
+      "vds": "mercedes_eu",
+      "wikibooks_table": false
+    },
+    "W1Z": {
+      "brand": "Mercedes-Benz",
+      "year_reliable": false,
+      "vds": "mercedes_eu",
+      "wikibooks_table": false
+    },
+    "WDA": {
+      "brand": "Mercedes-Benz",
+      "year_reliable": false,
+      "vds": "mercedes_eu",
+      "wikibooks_table": false
+    },
+    "WF0": {
+      "brand": "Ford",
+      "year_at": 11,
+      "region_note": "Ford Europe: год выпуска — 11-й знак, 12-й — месяц"
+    },
+    "X2F": {
+      "brand": "Ford",
+      "year_at": 11,
+      "region_note": "Ford Europe: год выпуска — 11-й знак, 12-й — месяц"
+    },
+    "X9F": {
+      "brand": "Ford",
+      "year_at": 11,
+      "region_note": "Ford Europe: год выпуска — 11-й знак, 12-й — месяц"
+    },
+    "NM0": {
+      "brand": "Ford",
+      "year_at": 11,
+      "region_note": "Ford Europe: год выпуска — 11-й знак, 12-й — месяц"
+    },
+    "WF1": {
+      "brand": "Ford",
+      "year_at": 11,
+      "region_note": "Ford Europe: год выпуска — 11-й знак, 12-й — месяц"
+    },
+    "Z6F": {
+      "brand": "Ford",
+      "year_at": 11,
+      "region_note": "Ford Europe: год выпуска — 11-й знак, 12-й — месяц"
+    },
+    "WBA": {
+      "brand": "BMW",
+      "year_reliable": false,
+      "region_note": "BMW не кодирует год в 10-м знаке"
+    },
+    "WBS": {
+      "brand": "BMW",
+      "year_reliable": false,
+      "region_note": "BMW не кодирует год в 10-м знаке"
+    },
+    "WBY": {
+      "brand": "BMW",
+      "year_reliable": false,
+      "region_note": "BMW не кодирует год в 10-м знаке"
+    },
+    "X4X": {
+      "brand": "BMW",
+      "year_reliable": false,
+      "region_note": "BMW не кодирует год в 10-м знаке"
+    },
+    "WMW": {
+      "brand": "Mini",
+      "year_reliable": false,
+      "region_note": "BMW не кодирует год в 10-м знаке"
     }
   }
 }

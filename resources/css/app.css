@@ -247,6 +247,47 @@
     .surface-crm .btn-s, .surface-park .btn-s { height: 2.25rem; }
   }
 
+  /* Поле VIN с ✨: квадрат срезает правый угол поля — как квадраты в шапке.
+     На семнадцатом знаке загорается лаймом; пока справочник думает — квадрат
+     чёрный, искра переливается, по полю идёт мягкий перелив; заполненные поля
+     вспыхивают, пустой ответ — квадрат качает головой. */
+  .vin-box { @apply relative; }
+  .vin-box .field-input { padding-right: 3.5rem; }
+  .vin-magic {
+    @apply absolute inset-y-0 right-0 inline-flex items-center justify-center text-ink-dim;
+    width: 3rem; border-radius: 0 var(--radius-m) var(--radius-m) 0;
+    transition: background-color .2s, color .2s;
+  }
+  .vin-magic:disabled { opacity: .6; }
+  .vin-magic:not(:disabled) { color: var(--color-chrome); background: var(--color-accent); cursor: pointer; }
+  @media (hover: hover) { .vin-magic:not(:disabled):hover { background: var(--color-accent-hover); } }
+  .vin-magic.is-busy, .vin-magic.is-busy:hover { color: var(--color-accent); background: var(--color-chrome); }
+  .dark .vin-magic.is-busy, .dark .vin-magic.is-busy:hover { background: #fff; }
+  .vin-magic svg { width: 1.25rem; height: 1.25rem; overflow: visible; }
+  .vin-magic svg path { transform-box: fill-box; transform-origin: center; }
+  .surface-crm .vin-magic, .surface-park .vin-magic { width: 2.5rem; }
+  .surface-crm .vin-box .field-input, .surface-park .vin-box .field-input { padding-right: 3rem; }
+  .vin-box.is-scanning .field-input {
+    background: linear-gradient(90deg, var(--color-surface-3) 0, var(--color-accent-soft) 50%, var(--color-surface-3) 100%) 0 0 / 200% 100%;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .vin-magic.is-ready { animation: vin-knock .5s cubic-bezier(.2,.8,.2,1) 1; }
+    .vin-box.is-scanning .field-input { animation: vin-shimmer 1s linear infinite; }
+    .vin-magic.is-busy .spark-1 { animation: spark-big 1.4s ease-in-out infinite; }
+    .vin-magic.is-busy .spark-2 { animation: spark-small 1.4s ease-in-out infinite .35s; }
+    .vin-magic.is-busy .spark-3 { animation: spark-small 1.4s ease-in-out infinite .7s; }
+    .field-filled .field-input, .field-filled.field-input { animation: field-glow 1.2s ease-out 1; }
+    .vin-magic.is-shaking { animation: vin-shake .4s ease-in-out 1; }
+  }
+  @keyframes vin-knock { 40% { translate: -3px 0; } }
+  @keyframes vin-shimmer { to { background-position: -200% 0; } }
+  /* Искра переливается: большой луч дышит и чуть поворачивается, малые
+     вспыхивают по очереди — как блик, бегущий по граням. */
+  @keyframes spark-big { 0%, 100% { transform: scale(1) rotate(0); opacity: 1; } 35% { transform: scale(.7) rotate(-12deg); opacity: .55; } 70% { transform: scale(1.12) rotate(8deg); opacity: 1; } }
+  @keyframes spark-small { 0%, 100% { transform: scale(0); opacity: 0; } 30% { transform: scale(1.4); opacity: 1; } 60% { transform: scale(.9); opacity: .8; } }
+  @keyframes field-glow { 0% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 55%, transparent); background-color: var(--color-accent-soft); } 100% { box-shadow: 0 0 0 3px transparent; } }
+  @keyframes vin-shake { 25% { translate: -3px 0; } 75% { translate: 3px 0; } }
+
   /* Глазик-переключатель у подписи поля: показывать на сайте или нет. */
   .eye { @apply inline-flex cursor-pointer items-center text-ink-dim; height: 1em; }
   .eye svg { width: .9em; height: .9em; }

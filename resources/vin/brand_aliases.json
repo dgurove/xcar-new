@@ -31,11 +31,45 @@
       "СеАЗ"
     ],
     "Volkswagen": [
-      "VW"
+      "VW",
+      "FAW-Volkswagen"
     ],
     "Mercedes-Benz": [
       "Mercedes"
     ],
-    "Chery": []
+    "Chery": [],
+    "Lixiang": [
+      "Li Auto",
+      "LiXiang"
+    ],
+    "Sitrak": [
+      "Sinotruk"
+    ],
+    "Shacman": [
+      "Shaanxi Automobile Group",
+      "Shaanxi"
+    ],
+    "Tonar": [
+      "Тонар"
+    ],
+    "MAZ": [
+      "МАЗ"
+    ],
+    "PAZ": [
+      "ПАЗ"
+    ],
+    "NefAZ": [
+      "Нефаз",
+      "НЕФАЗ"
+    ],
+    "Kögel": [
+      "Kogel"
+    ],
+    "Scania": [
+      "Scania Brazil"
+    ],
+    "Geely": [
+      "Zhejiang Geely Holding Group"
+    ]
   }
 }

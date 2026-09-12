@@ -4,6 +4,7 @@ namespace App\Park\Actions;
 
 use App\Cars\Brand;
 use App\Cars\CarModel;
+use App\Cars\Vin\RememberVin;
 use App\Park\EventType;
 use App\Park\Request;
 use App\Park\RequestType;
@@ -27,6 +28,7 @@ final class CreateRequest
                     'state' => VehicleState::Expected,
                 ]);
                 $vehicle->log(EventType::Created, $by);
+                (new RememberVin)($vehicle);
             }
 
             return Request::create([

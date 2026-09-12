@@ -17,7 +17,7 @@
                     <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id" :value="$car->model_id" :text="$car->model?->name ?? $car->model_raw"/>
                     <x-ui.field name="year" label="Год" inputmode="numeric" :value="$car->year"/>
                     <x-ui.field name="mileage" label="Пробег, км" inputmode="numeric" :value="$car->mileage"/>
-                    <x-ui.field name="vin" label="VIN" :value="$car->vin" data-action="input->vin#fill" maxlength="17" class="uppercase" span="col-span-2 lg:col-span-1"/>
+                    <x-ui.vin :value="$car->vin" span="col-span-2 lg:col-span-1"/>
                     <x-ui.field name="kind" label="Категория" :options="Kind::options()" :value="$car->kind->value"/>
                     <x-ui.field name="transmission" label="Коробка" :options="Transmission::options()" placeholder="—" :value="$car->transmission?->value"/>
                     <x-ui.field name="fuel" label="Топливо" :options="Fuel::options()" placeholder="—" :value="$car->fuel?->value"/>

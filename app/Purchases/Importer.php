@@ -5,6 +5,7 @@ namespace App\Purchases;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Settlement;
+use App\Cars\Vin\RememberVin;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
@@ -21,6 +22,7 @@ final class Importer
         foreach ($rows as $row) {
             if ($row['dl'] === null || $row['problems']) {
                 $stats['не прочитались']++;
+
                 continue;
             }
             $stats[in_array($row['dl'], $known, true) ? 'уже заведены' : 'новых']++;
@@ -39,6 +41,7 @@ final class Importer
         foreach ($rows as $row) {
             if ($row['dl'] === null || $row['problems']) {
                 $skipped++;
+
                 continue;
             }
             DB::transaction(function () use ($purchase, $row, $known, &$created, &$updated) {
@@ -101,6 +104,7 @@ final class Importer
             }
         }
         $car->save();
+        (new RememberVin)($car);
     }
 
     private function catalog(?string $brand, ?string $model): array

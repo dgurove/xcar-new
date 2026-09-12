@@ -44,7 +44,7 @@
                     <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id" :value="$vehicle->model_id" :text="$vehicle->model?->name"/>
                     <x-ui.field name="year" label="Год" inputmode="numeric" :value="$vehicle->year"/>
                     <x-ui.field name="plate" label="Госномер" :value="$vehicle->plate" autocapitalize="characters"/>
-                    <x-ui.field name="vin" label="VIN" :value="$vehicle->vin" data-action="input->vin#fill" maxlength="17" class="uppercase" autocapitalize="characters" span="col-span-2 lg:col-span-1"/>
+                    <x-ui.vin :value="$vehicle->vin" span="col-span-2 lg:col-span-1"/>
                     <x-ui.field name="color" label="Цвет" :value="$vehicle->color"/>
                 </div>
             </x-ui.card>

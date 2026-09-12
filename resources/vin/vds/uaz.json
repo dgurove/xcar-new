@@ -1,28 +1,102 @@
 {
   "_note": "УАЗ. В позициях 4-9 стоит заводской индекс модели. Если индекс не в таблице — отдаём его как model_code, названия не выдумываем.",
   "model_by_prefix": {
-    "220695": {"name": "СГР (Буханка)", "drive": "awd"},
-    "2206":   {"name": "СГР (Буханка)", "drive": "awd"},
-    "23602":  {"name": "Cargo", "drive": "awd"},
-    "23632":  {"name": "Pickup", "drive": "awd"},
-    "2363":   {"name": "Pickup", "drive": "awd"},
-    "236021": {"name": "Profi", "drive": "rwd"},
-    "236022": {"name": "Profi", "drive": "awd"},
-    "236032": {"name": "Profi", "drive": "awd"},
-    "3151":   {"name": "Hunter", "drive": "awd"},
-    "315195": {"name": "Hunter", "drive": "awd"},
-    "3160":   {"name": "3160", "drive": "awd"},
-    "3162":   {"name": "Simbir", "drive": "awd"},
-    "3163":   {"name": "Patriot", "drive": "awd"},
-    "31631":  {"name": "Patriot", "drive": "awd"},
-    "3303":   {"name": "СГР (Буханка)", "drive": "awd"},
-    "3741":   {"name": "СГР (Буханка)", "drive": "awd"},
-    "3909":   {"name": "СГР (Буханка)", "drive": "awd"},
-    "39094":  {"name": "Фермер", "drive": "awd"},
-    "3962":   {"name": "СГР (Буханка)", "drive": "awd"}
+    "220695": {
+      "name": "СГР (Буханка)",
+      "drive": "awd"
+    },
+    "2206": {
+      "name": "СГР (Буханка)",
+      "drive": "awd"
+    },
+    "23602": {
+      "name": "Cargo",
+      "drive": "awd"
+    },
+    "23632": {
+      "name": "Pickup",
+      "drive": "awd"
+    },
+    "2363": {
+      "name": "Pickup",
+      "drive": "awd"
+    },
+    "236021": {
+      "name": "Profi",
+      "drive": "rwd"
+    },
+    "236022": {
+      "name": "Profi",
+      "drive": "awd"
+    },
+    "236032": {
+      "name": "Profi",
+      "drive": "awd"
+    },
+    "236324": {
+      "name": "Profi",
+      "drive": "awd"
+    },
+    "3151": {
+      "name": "Hunter",
+      "drive": "awd"
+    },
+    "315195": {
+      "name": "Hunter",
+      "drive": "awd"
+    },
+    "3160": {
+      "name": "3160",
+      "drive": "awd"
+    },
+    "3162": {
+      "name": "Simbir",
+      "drive": "awd"
+    },
+    "3163": {
+      "name": "Patriot",
+      "drive": "awd"
+    },
+    "31631": {
+      "name": "Patriot",
+      "drive": "awd"
+    },
+    "3303": {
+      "name": "СГР (Буханка)",
+      "drive": "awd"
+    },
+    "3741": {
+      "name": "СГР (Буханка)",
+      "drive": "awd"
+    },
+    "3909": {
+      "name": "СГР (Буханка)",
+      "drive": "awd"
+    },
+    "39094": {
+      "name": "Фермер",
+      "drive": "awd"
+    },
+    "3962": {
+      "name": "СГР (Буханка)",
+      "drive": "awd"
+    }
   },
   "sections": {
-    "plant":  {"at": ["vis", 1], "map": {"1": "Ульяновск"}},
-    "serial": {"at": ["vis", "2:"]}
+    "plant": {
+      "at": [
+        "vis",
+        1
+      ],
+      "map": {
+        "1": "Ульяновск"
+      }
+    },
+    "serial": {
+      "at": [
+        "vis",
+        "2:"
+      ]
+    }
   }
 }
