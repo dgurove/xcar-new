@@ -96,8 +96,9 @@ http://127.0.0.1:2020 {
 	import app
 }
 
-# Прежние имена уводим на основные. Пусто, пока домена нет.
+# Прежние имена и голый IP уводим на основное имя: на голом IP cookie с
+# SESSION_DOMAIN не принимаются — вход не держится. Схема — http, пока нет домена.
 {$REDIRECT_ADDRESSES:http://redirect.localhost} {
 	import common
-	redir https://{$REDIRECT_TO:localhost}{uri} permanent
+	redir {$REDIRECT_SCHEME:https}://{$REDIRECT_TO:localhost}{uri} permanent
 }

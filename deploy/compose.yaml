@@ -48,6 +48,7 @@ services:
       SITE_ADDRESSES: ${SITE_ADDRESSES:-http://localhost}
       REDIRECT_ADDRESSES: ${REDIRECT_ADDRESSES:-http://redirect.localhost}
       REDIRECT_TO: ${REDIRECT_TO:-localhost}
+      REDIRECT_SCHEME: ${REDIRECT_SCHEME:-https}
       CADDY_GLOBAL_EXTRA: ${CADDY_GLOBAL_EXTRA:-}
     volumes:
       - ${XCAR_DATA:-/srv/xcar/data}/storage:/app/storage

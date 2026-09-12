@@ -114,9 +114,10 @@ if [ ! -s .env ]; then
     cat > .env <<EOE
 TAG=
 ACME_EMAIL=
-SITE_ADDRESSES=http://$IP, http://$IP.nip.io, http://crm.$IP.nip.io, http://park.$IP.nip.io
-REDIRECT_ADDRESSES=http://redirect.localhost
-REDIRECT_TO=xcar.ru
+SITE_ADDRESSES=http://$IP.nip.io, http://crm.$IP.nip.io, http://park.$IP.nip.io
+REDIRECT_ADDRESSES=http://$IP
+REDIRECT_TO=$IP.nip.io
+REDIRECT_SCHEME=http
 CADDY_GLOBAL_EXTRA=
 DB_DATABASE=xcar
 DB_USERNAME=xcar
