@@ -20,7 +20,7 @@
                         <div class="flex items-baseline gap-2">
                             <span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->displayName() }}</span>
                             @unless ($chat->user)<span class="tag">гость</span>@endunless
-                            <span class="ml-auto shrink-0 text-sm text-ink-dim tabular-nums">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span>
+                            <span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span>
                         </div>
                         <div class="truncate text-sm text-ink-muted">{{ $chat->offer ? '№ '.$chat->offer->number.' · '.$chat->offer->titleWithYear() : 'Обращение с сайта' }}</div>
                     </div>

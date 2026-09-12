@@ -14,7 +14,7 @@
                     @endforeach
                 </div>
             @endif
-            @unless ($system)<div class="mt-0.5 text-right text-[11px] text-ink-dim tabular-nums">{{ $m->created_at->translatedFormat($m->created_at->isToday() ? 'H:i' : 'j M H:i') }}</div>@endunless
+            @unless ($system)<div class="mt-0.5 text-right text-[11px] text-ink-dim">{{ $m->created_at->translatedFormat($m->created_at->isToday() ? 'H:i' : 'j M H:i') }}</div>@endunless
         </div>
     </div>
 @endforeach

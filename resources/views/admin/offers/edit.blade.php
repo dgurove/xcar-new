@@ -80,7 +80,7 @@
                 <div class="flex flex-col gap-1.5 text-sm">
                     @foreach ($offer->events->take(30) as $event)
                         <div class="flex gap-3">
-                            <span class="nums shrink-0 font-normal text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
+                            <span class="shrink-0 text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
                             <span class="min-w-0">{{ $event->text() }}</span>
                             @if ($event->user)<span class="ml-auto shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
                         </div>
@@ -89,14 +89,14 @@
             </x-ui.card>
         </div>
 
-        <form method="post" action="/predlozheniya/{{ $n }}" id="offer-form" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+        <form method="post" action="/predlozheniya/{{ $n }}" id="offer-form" data-controller="vin" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @csrf @method('put')
 
             <x-ui.card title="Машина" class="order-2">
                 <div class="{{ $grid }}">
                     <x-ui.combobox name="brand_id" label="Марка" url="/spravochnik/marki" create="/spravochnik/marki" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id"/>
                     <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id" :value="$offer->model_id" :text="$offer->model?->name"/>
-                    <x-ui.field name="vin" label="VIN" :value="$offer->vin" maxlength="17" class="uppercase" autocapitalize="characters" span="col-span-2 lg:col-span-1">
+                    <x-ui.field name="vin" label="VIN" :value="$offer->vin" data-action="input->vin#fill" maxlength="17" class="uppercase" autocapitalize="characters" span="col-span-2 lg:col-span-1">
                         <x-slot:after-label><x-ui.eye-check name="show_vin" :checked="$offer->show_vin"/></x-slot:after-label>
                     </x-ui.field>
                     <x-ui.field name="year" label="Год" inputmode="numeric" :value="$offer->year"/>

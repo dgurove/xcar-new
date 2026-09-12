@@ -34,8 +34,8 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex items-baseline gap-2">
                             <span class="truncate {{ $thread->unread_count ? 'font-medium' : '' }}">{{ $who }}</span>
-                            @if ($thread->messages_count > 1)<span class="text-sm text-ink-dim tabular-nums">{{ $thread->messages_count }}</span>@endif
-                            <span class="ml-auto shrink-0 text-sm text-ink-dim tabular-nums">{{ $thread->last_message_at?->translatedFormat($thread->last_message_at->isToday() ? 'H:i' : 'j M') }}</span>
+                            @if ($thread->messages_count > 1)<span class="text-sm text-ink-dim">{{ $thread->messages_count }}</span>@endif
+                            <span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $thread->last_message_at?->translatedFormat($thread->last_message_at->isToday() ? 'H:i' : 'j M') }}</span>
                         </div>
                         <div class="truncate {{ $thread->unread_count ? '' : 'text-ink-muted' }}">{{ $thread->subject ?: '(без темы)' }}</div>
                         <div class="mt-1 flex items-center gap-2 text-sm text-ink-muted">

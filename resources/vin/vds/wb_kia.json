@@ -1,0 +1,1414 @@
+{
+ "_brand": "KIA",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/KIA/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "3KP",
+  "5XX",
+  "5XY",
+  "8LG",
+  "9UW",
+  "KNA",
+  "KNC",
+  "KND",
+  "KNE",
+  "KNG",
+  "KNL",
+  "LJD",
+  "MZB",
+  "PNA",
+  "TMA",
+  "U5Y",
+  "U6Y",
+  "XWE",
+  "Z94"
+ ],
+ "_market": null,
+ "sections": {
+  "body@6:7": {
+   "field": "body",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "4": [
+     {
+      "value": "4-door sedan"
+     }
+    ],
+    "5": [
+     {
+      "value": "5-door hatchback",
+      "note": "5-door hatchback (Rio 5-door, Forte 5-door, K4 5-door, Stinger)"
+     }
+    ],
+    "6": [
+     {
+      "value": "2-door coupe"
+     }
+    ],
+    "8": [
+     {
+      "value": "5-door wagon",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "5-door wagon (2010-2017 Rondo)"
+     }
+    ]
+   }
+  },
+  "engine@8:9": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "8:9"
+   ],
+   "map": {
+    "1": [
+     {
+      "value": "1.6 Liter DOHC Gamma G4FC I4",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "1.6 Liter DOHC Gamma G4FC I4 (Soul [AM] 2010-2011)"
+     },
+     {
+      "value": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4 (Optima [JF] 2016-2020)"
+     },
+     {
+      "value": "2.4 Liter DOHC Theta-II G4KE I4",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "2.4 Liter DOHC Theta-II G4KE I4 (Sorento [XM] 2011-2013)"
+     },
+     {
+      "value": "2.0 Liter DOHC turbocharged GDI Theta-II G4KH I4",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "2.0 Liter DOHC turbocharged GDI Theta-II G4KH I4 (Sorento [UM] 2016-2018)"
+     },
+     {
+      "value": "3.8 Liter DOHC Lambda G6DA V6",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "3.8 Liter DOHC Lambda G6DA V6 (Borrego [HM] 2010-2011) (Canada)"
+     },
+     {
+      "value": "3.3 Liter DOHC GDI Lambda II G6DH V6",
+      "years": [
+       2015,
+       2021
+      ],
+      "note": "3.3 Liter DOHC GDI Lambda II G6DH V6 (Sedona [YP] 2015-2021)"
+     },
+     {
+      "value": "3.3 Liter DOHC GDI Lambda II G6DH V6",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "3.3 Liter DOHC GDI Lambda II G6DH V6 (Cadenza [YG] 2017-2020)"
+     },
+     {
+      "value": "Electric motor",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "Electric motor (201hp) (64 kWh/180.9Ah Battery) (Soul EV [SK3] 2020-2023) (Canada)"
+     },
+     {
+      "value": "Electric motor",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "Electric motor (201hp) (64.8 kWh/180.9Ah Battery) (Niro EV [SG2] 2023-)"
+     },
+     {
+      "value": "Electric motor",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "Electric motor (201hp) (99.8 kWh/180.9Ah Battery) (EV9 RWD [MV1] 2024-)"
+     }
+    ],
+    "2": [
+     {
+      "value": "2.0 Liter DOHC Beta-II G4GC I4",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "2.0 Liter DOHC Beta-II G4GC I4 (Soul [AM] 2010-2011)"
+     },
+     {
+      "value": "1.6 Liter DOHC GDI Gamma-II G4FD I4",
+      "years": [
+       2014,
+       2019
+      ],
+      "note": "1.6 Liter DOHC GDI Gamma-II G4FD I4 (Soul [PS] 2014-2019)"
+     },
+     {
+      "value": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4 (Seltos [SP2] 2021-2023)"
+     },
+     {
+      "value": "1.6 Liter DOHC turbocharged GDI Smartstream G1.6T G4FP I4",
+      "years": [
+       2021,
+       2024
+      ],
+      "note": "1.6 Liter DOHC turbocharged GDI Smartstream G1.6T G4FP I4 (K5 [DL3] 2021-2024)"
+     },
+     {
+      "value": "2.0 Liter DOHC Theta-II G4KD I4",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "2.0 Liter DOHC Theta-II G4KD I4 (Forte [TD] 2010-2013)"
+     },
+     {
+      "value": "2.0 Liter DOHC Beta-II G4GC Federal emissions I4",
+      "note": "2.0 Liter DOHC Beta-II G4GC Federal emissions I4 (Sportage [KM] 2010)"
+     },
+     {
+      "value": "2.0 Liter DOHC turbocharged GDI Theta-II G4KH I4",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "2.0 Liter DOHC turbocharged GDI Theta-II G4KH I4 (Optima [JF] 2016-2020)"
+     },
+     {
+      "value": "2.4 Liter DOHC Theta-II G4KE I4",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "2.4 Liter DOHC Theta-II G4KE I4 (Sportage [SL] 2011-2013)"
+     },
+     {
+      "value": "3.5 Liter DOHC Lambda II G6DC V6",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "3.5 Liter DOHC Lambda II G6DC V6 (Sorento [XM] 2011-2013)"
+     },
+     {
+      "value": "4.6 Liter DOHC Tau G8BA V8",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "4.6 Liter DOHC Tau G8BA V8 (Borrego [HM] 2010-2011) (Canada)"
+     },
+     {
+      "value": "Electric motor",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "Electric motor (134hp) (39.2 kWh/120Ah Battery) (Soul EV [SK3] 2020-2023) (Canada)"
+     },
+     {
+      "value": "Electric motor",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "Electric motor (215hp) (76.1 kWh/120.6Ah Battery) (EV9 RWD [MV1] 2024-)"
+     }
+    ],
+    "3": [
+     {
+      "value": "1.6 Liter DOHC Alpha-II G4ED I4",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "1.6 Liter DOHC Alpha-II G4ED I4 (Rio [JB] 2010-2011)"
+     },
+     {
+      "value": "1.6 Liter DOHC GDI Gamma-II G4FD I4",
+      "years": [
+       2012,
+       2017
+      ],
+      "note": "1.6 Liter DOHC GDI Gamma-II G4FD I4 (Rio [UB] 2012-2017)"
+     },
+     {
+      "value": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4",
+      "years": [
+       2014,
+       2018
+      ],
+      "note": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4 (Forte [YD] 2014-2018)"
+     },
+     {
+      "value": "2.4 Liter DOHC Theta-II G4KE I4",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "2.4 Liter DOHC Theta-II G4KE I4 (Forte [TD] 2010-2013)"
+     },
+     {
+      "value": "2.4 Liter DOHC GDI Theta-II G4KJ I4",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "2.4 Liter DOHC GDI Theta-II G4KJ I4 (Optima [JF] 2016-2020)"
+     },
+     {
+      "value": "2.4 Liter DOHC GDI Theta-II G4KJ I4",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "2.4 Liter DOHC GDI Theta-II G4KJ I4 (Sorento [UM] 2016-2020)"
+     },
+     {
+      "value": "2.7 Liter DOHC Delta G6BA V6",
+      "note": "2.7 Liter DOHC Delta G6BA V6 (Sportage [KM] 2010)"
+     },
+     {
+      "value": "2.0 Liter DOHC GDI Nu G4NC I4",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "2.0 Liter DOHC GDI Nu G4NC I4 (Rondo [RP] 2014-2017) (Canada)"
+     },
+     {
+      "value": "3.8 Liter DOHC Lambda G6DA V6",
+      "note": "3.8 Liter DOHC Lambda G6DA V6 (Sedona [VQ] 2010)"
+     },
+     {
+      "value": "3.8 Liter DOHC GDI Lambda II RS G6DJ V6",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "3.8 Liter DOHC GDI Lambda II RS G6DJ V6 (K900 [KH] 2015-2018)"
+     },
+     {
+      "value": "3.5 Liter DOHC GDI Smartstream G3.5 Lambda III G6DT V6",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "3.5 Liter DOHC GDI Smartstream G3.5 Lambda III G6DT V6 (Carnival [KA4] 2022-)"
+     }
+    ],
+    "4": [
+     {
+      "value": "2.7 Liter DOHC Mu G6EA V6",
+      "note": "2.7 Liter DOHC Mu G6EA V6 (Optima/Magentis [MG] 2010)"
+     },
+     {
+      "value": "2.0 Liter DOHC Beta-II G4GC California emissions I4",
+      "note": "2.0 Liter DOHC Beta-II G4GC California emissions I4 (Sportage [KM] 2010)"
+     },
+     {
+      "value": "5.0 Liter DOHC GDI Tau G8BE V8",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "5.0 Liter DOHC GDI Tau G8BE V8 (K900 [KH] 2015-2018)"
+     }
+    ],
+    "5": [
+     {
+      "value": "1.6 Liter DOHC GDI Gamma-II G4FD I4",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "1.6 Liter DOHC GDI Gamma-II G4FD I4 (Soul [AM] 2012-2013)"
+     },
+     {
+      "value": "2.0 Liter DOHC GDI Nu G4NC I4",
+      "years": [
+       2014,
+       2019
+      ],
+      "note": "2.0 Liter DOHC GDI Nu G4NC I4 (Soul [PS] 2014-2019)"
+     },
+     {
+      "value": "3.3 Liter DOHC GDI Lambda II G6DH V6",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "3.3 Liter DOHC GDI Lambda II G6DH V6 (Sorento [UM] 2016-2020)"
+     },
+     {
+      "value": "Electric motors",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "Electric motors (379hp) (99.8 kWh/180.9Ah Battery) (EV9 AWD [MV1] 2024-)"
+     }
+    ],
+    "6": [
+     {
+      "value": "1.8 Liter DOHC Nu G4NB I4",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "1.8 Liter DOHC Nu G4NB I4 (Forte [YD] 2014-2016)"
+     },
+     {
+      "value": "2.0 Liter DOHC Nu G4NA I4",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "2.0 Liter DOHC Nu G4NA I4 (Soul [AM] 2012-2013)"
+     },
+     {
+      "value": "2.0 Liter DOHC turbocharged GDI Theta-II G4KH I4",
+      "years": [
+       2011,
+       2015
+      ],
+      "note": "2.0 Liter DOHC turbocharged GDI Theta-II G4KH I4 (Optima [TF/QF] 2011-2015)"
+     },
+     {
+      "value": "2.0 Liter DOHC turbocharged GDI Theta-II G4KH I4",
+      "years": [
+       2011,
+       2016
+      ],
+      "note": "2.0 Liter DOHC turbocharged GDI Theta-II G4KH I4 (Sportage [SL] 2011-2016)"
+     },
+     {
+      "value": "2.0 Liter DOHC turbocharged GDI Theta-II G4KH I4",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "2.0 Liter DOHC turbocharged GDI Theta-II G4KH I4 (Sportage [QL] 2017-2022)"
+     },
+     {
+      "value": "2.4 Liter DOHC GDI Theta-II G4KJ I4",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "2.4 Liter DOHC GDI Theta-II G4KJ I4 (Sorento [XM] 2012-2015)"
+     },
+     {
+      "value": "2.7 Liter DOHC Mu G6EA V6",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "2.7 Liter DOHC Mu G6EA V6 (Rondo [UN] 2010-2012) (Canada)"
+     },
+     {
+      "value": "3.3 Liter DOHC twin-turbocharged GDI Lambda II RS G6DP V6",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "3.3 Liter DOHC twin-turbocharged GDI Lambda II RS G6DP V6 (K900 [RJ] 2019-2020)"
+     }
+    ],
+    "7": [
+     {
+      "value": "1.6 Liter DOHC turbocharged GDI Smartstream G1.6T G4FP I4",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "1.6 Liter DOHC turbocharged GDI Smartstream G1.6T G4FP I4 (Seltos [SP2] 2024-)"
+     },
+     {
+      "value": "2.0 Liter DOHC Nu G4NH I4",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "2.0 Liter DOHC Nu G4NH I4 (Forte [YD] 2017-2018)"
+     },
+     {
+      "value": "2.4 Liter DOHC GDI Theta-II G4KJ I4",
+      "years": [
+       2011,
+       2015
+      ],
+      "note": "2.4 Liter DOHC GDI Theta-II G4KJ I4 (Optima [TF/QF] 2011-2015)"
+     },
+     {
+      "value": "2.5 Liter DOHC DPI Smartstream G2.5 Theta-III G4KN I4",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "2.5 Liter DOHC DPI Smartstream G2.5 Theta-III G4KN I4 (K5 [DL3] 2025-)"
+     },
+     {
+      "value": "3.3 Liter DOHC GDI Lambda II G6DH V6",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "3.3 Liter DOHC GDI Lambda II G6DH V6 (Cadenza [VG] 2014-2016)"
+     },
+     {
+      "value": "3.3 Liter DOHC GDI Lambda II G6DH V6",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "3.3 Liter DOHC GDI Lambda II G6DH V6 (Sorento [XM] 2014-2015)"
+     },
+     {
+      "value": "3.5 Liter DOHC Lambda II G6DC V6",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "3.5 Liter DOHC Lambda II G6DC V6 (Sedona [VQ] 2011-2014)"
+     }
+    ],
+    "8": [
+     {
+      "value": "2.0 Liter DOHC GDI Nu G4NC I4",
+      "years": [
+       2014,
+       2018
+      ],
+      "note": "2.0 Liter DOHC GDI Nu G4NC I4 (Forte [YD] 2014-2018)"
+     },
+     {
+      "value": "2.4 Liter DOHC Theta-II G4KE I4",
+      "note": "2.4 Liter DOHC Theta-II G4KE I4 (Optima/Magentis [MG] 2010)"
+     },
+     {
+      "value": "2.4 Liter DOHC Theta-II G4KE ULEV-certified I4",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "2.4 Liter DOHC Theta-II G4KE ULEV-certified I4 (Rondo [UN] 2010-2012) (Canada)"
+     }
+    ],
+    "9": [
+     {
+      "value": "2.4 Liter DOHC Theta-II G4KE SULEV-certified I4",
+      "note": "2.4 Liter DOHC Theta-II G4KE SULEV-certified I4 (Rondo [UN] 2010) (Canada)"
+     }
+    ],
+    "A": [
+     {
+      "value": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4 (Soul [PS] 2017-2019)"
+     },
+     {
+      "value": "2.0 Liter DOHC Nu G4NH I4",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "2.0 Liter DOHC Nu G4NH I4 (Seltos [SP2] 2021-)"
+     },
+     {
+      "value": "2.0 Liter DOHC turbocharged GDI Theta-II G4KL I4",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "2.0 Liter DOHC turbocharged GDI Theta-II G4KL I4 (Stinger [CK] 2018-2021)"
+     },
+     {
+      "value": "Electric motor",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "Electric motor (225hp) (77.4 kWh Battery) (EV6 RWD [CV] 2022-2024)"
+     },
+     {
+      "value": "Electric motor",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "Electric motor (225hp) (84 kWh Battery) (EV6 RWD [CV] 2025-)"
+     }
+    ],
+    "B": [
+     {
+      "value": "1.6 Liter DOHC GDI Gamma-II G4FD I4",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "1.6 Liter DOHC GDI Gamma-II G4FD I4 (Rio [YB] 2018-2019)"
+     },
+     {
+      "value": "Electric motor",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "Electric motor (167hp) (58 kWh Battery) (EV6 RWD [CV] 2022-2024)"
+     },
+     {
+      "value": "Electric motor",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "Electric motor (167hp) (63 kWh Battery) (EV6 RWD [CV] 2025-)"
+     }
+    ],
+    "C": [
+     {
+      "value": "1.6 Liter DOHC GDI Kappa-II G4LE I4 + Electric",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "1.6 Liter DOHC GDI Kappa-II G4LE I4 + Electric (Niro Hybrid [DE] 2017-2022)"
+     },
+     {
+      "value": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4",
+      "years": [
+       2020,
+       2024
+      ],
+      "note": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4 (Forte [BD] 2020-2024)"
+     },
+     {
+      "value": "1.6 Liter DOHC turbocharged GDI Smartstream G1.6T G4FP I4",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "1.6 Liter DOHC turbocharged GDI Smartstream G1.6T G4FP I4 (K4 [CL4] 2025-)"
+     },
+     {
+      "value": "2.0 Liter DOHC GDI Nu G4NG I4 + Electric",
+      "note": "2.0 Liter DOHC GDI Nu G4NG I4 + Electric (6.0Ah Battery) (Optima Hybrid [JF] 2017)"
+     },
+     {
+      "value": "2.4 Liter DOHC GDI Theta-II G4KJ I4",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "2.4 Liter DOHC GDI Theta-II G4KJ I4 (Sportage [SL] 2014-2016)"
+     },
+     {
+      "value": "2.4 Liter DOHC GDI Theta-II G4KJ I4",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "2.4 Liter DOHC GDI Theta-II G4KJ I4 (Sportage [QL] 2017-2022)"
+     },
+     {
+      "value": "2.5 Liter DOHC DPI Smartstream G2.5 Theta-III G4KN I4",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "2.5 Liter DOHC DPI Smartstream G2.5 Theta-III G4KN I4 (Sorento [MQ4] 2021-)"
+     },
+     {
+      "value": "3.3 Liter DOHC twin-turbocharged GDI Lambda II RS G6DP V6",
+      "years": [
+       2018,
+       2023
+      ],
+      "note": "3.3 Liter DOHC twin-turbocharged GDI Lambda II RS G6DP V6 (Stinger [CK] 2018-2023)"
+     },
+     {
+      "value": "3.8 Liter DOHC GDI Lambda II G6DN V6",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "3.8 Liter DOHC GDI Lambda II G6DN V6 (Telluride [ON] 2020-2025)"
+     },
+     {
+      "value": "Electric motors",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "Electric motors (320hp) (77.4 kWh Battery) (EV6 AWD [CV] 2022-2024)"
+     },
+     {
+      "value": "Electric motors",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "Electric motors (320hp) (84 kWh Battery) (EV6 AWD [CV] 2025-)"
+     }
+    ],
+    "D": [
+     {
+      "value": "1.6 Liter DOHC GDI Kappa-II G4LE I4 + Electric",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "1.6 Liter DOHC GDI Kappa-II G4LE I4 + Electric (Niro Plug-in Hybrid [DE] 2018-2022)"
+     },
+     {
+      "value": "1.6 Liter DOHC Gamma-II G4FG I4",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "1.6 Liter DOHC Gamma-II G4FG I4 (Rio [YB] 2020-)"
+     },
+     {
+      "value": "2.0 Liter DOHC Nu G4NH I4",
+      "years": [
+       2019,
+       2024
+      ],
+      "note": "2.0 Liter DOHC Nu G4NH I4 (Forte [BD] 2019-2024)"
+     },
+     {
+      "value": "2.4 Liter DOHC Theta-II G4KK I4 + Electric",
+      "years": [
+       2011,
+       2016
+      ],
+      "note": "2.4 Liter DOHC Theta-II G4KK I4 + Electric (Optima Hybrid [TF] 2011-2016)"
+     },
+     {
+      "value": "2.0 Liter DOHC GDI Nu G4NG I4 + Electric",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "2.0 Liter DOHC GDI Nu G4NG I4 + Electric (27.2Ah Battery) (Optima Plug-in Hybrid [JF] 2017-2020)"
+     }
+    ],
+    "E": [
+     {
+      "value": "1.6 Liter DOHC GDI Smartstream G1.6 G4LL I4 + Electric",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "1.6 Liter DOHC GDI Smartstream G1.6 G4LL I4 + Electric (Niro Hybrid [SG2] 2023-)"
+     },
+     {
+      "value": "2.0 Liter DOHC GDI Nu G4NG I4 + Electric",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "2.0 Liter DOHC GDI Nu G4NG I4 + Electric (6.5Ah Battery) (Optima Hybrid [JF] 2017-2020)"
+     },
+     {
+      "value": "2.0 Liter DOHC Smartstream G2.0",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "2.0 Liter DOHC Smartstream G2.0 (Nu PE) G4NS I4 (K4 [CL4] 2025-)"
+     },
+     {
+      "value": "Electric motor",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "Electric motor (109hp) (Soul EV [PSEV] 2015-2019)"
+     },
+     {
+      "value": "Electric motors",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "Electric motors (460/576hp) (77.4 kWh Battery) (EV6 GT AWD [CV] 2022-2024)"
+     },
+     {
+      "value": "Electric motors",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "Electric motors (601/641hp) (84 kWh Battery) (EV6 GT AWD [CV] 2025-)"
+     }
+    ],
+    "F": [
+     {
+      "value": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4",
+      "years": [
+       2020,
+       2022
+      ],
+      "note": "1.6 Liter DOHC turbocharged GDI Gamma-II G4FJ I4 (Soul [SK3] 2020-2022)"
+     },
+     {
+      "value": "1.6 Liter DOHC GDI Smartstream G1.6 G4LL I4 + Electric",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "1.6 Liter DOHC GDI Smartstream G1.6 G4LL I4 + Electric (11.1 kWh/30.8Ah Battery) (Niro Plug-in Hybrid [SG2] 2023-2025)"
+     },
+     {
+      "value": "2.5 Liter DOHC DPI Smartstream G2.5 Theta-III G4KN I4",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "2.5 Liter DOHC DPI Smartstream G2.5 Theta-III G4KN I4 (Sportage [NQ5] 2023-)"
+     }
+    ],
+    "G": [
+     {
+      "value": "Electric motor",
+      "years": [
+       2019,
+       2022
+      ],
+      "note": "Electric motor (201hp) (64kWh/180Ah Battery) (Niro EV [DE] 2019-2022)"
+     }
+    ],
+    "U": [
+     {
+      "value": "2.0 Liter DOHC Nu G4NH I4",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "2.0 Liter DOHC Nu G4NH I4 (Soul [SK3] 2020-2025)"
+     }
+    ]
+   }
+  },
+  "model@4:5": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Rio",
+      "years": [
+       2018,
+       2023
+      ],
+      "note": "Rio (2018-2023, Mexican-built)"
+     },
+     {
+      "value": "EV9",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "EV9 (2024-)"
+     }
+    ],
+    "C": [
+     {
+      "value": "Niro",
+      "years": [
+       2017,
+       null
+      ],
+      "note": "Niro (2017-)"
+     },
+     {
+      "value": "EV6",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "EV6 (2022-)"
+     }
+    ],
+    "D": [
+     {
+      "value": "Rio",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "Rio (2010- , Korean-built)"
+     }
+    ],
+    "E": [
+     {
+      "value": "Stinger",
+      "years": [
+       2018,
+       2023
+      ],
+      "note": "Stinger (2018-2023)"
+     },
+     {
+      "value": "Seltos",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Seltos (2021-)"
+     }
+    ],
+    "F": [
+     {
+      "value": "Forte",
+      "years": [
+       2010,
+       2024
+      ],
+      "note": "Forte (2010-2024)"
+     },
+     {
+      "value": "K4",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "K4 (2025-)"
+     }
+    ],
+    "G": [
+     {
+      "value": "Optima",
+      "years": [
+       2010,
+       2020
+      ],
+      "note": "Optima (2010-2020)"
+     },
+     {
+      "value": "Magentis",
+      "note": "Magentis (2010)"
+     },
+     {
+      "value": "K5",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "K5 (2021-)"
+     }
+    ],
+    "H": [
+     {
+      "value": "Rondo",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "Rondo (2010-2017)"
+     }
+    ],
+    "J": [
+     {
+      "value": "Soul",
+      "years": [
+       2010,
+       2025
+      ],
+      "note": "Soul (2010-2025)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Borrego",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "Borrego/Mohave (2010-2011 [Canada])"
+     },
+     {
+      "value": "Sorento",
+      "years": [
+       2011,
+       2015
+      ],
+      "note": "Sorento (2011-2015)"
+     },
+     {
+      "value": "Sportage",
+      "note": "Sportage (2010)"
+     },
+     {
+      "value": "Sportage",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "Sportage (2023- , US-built)"
+     }
+    ],
+    "L": [
+     {
+      "value": "Cadenza",
+      "years": [
+       2014,
+       2020
+      ],
+      "note": "Cadenza (2014-2020)"
+     },
+     {
+      "value": "K900",
+      "years": [
+       2013,
+       2018
+      ],
+      "note": "K900/K9/Quoris (2013-2018)"
+     }
+    ],
+    "M": [
+     {
+      "value": "Sedona",
+      "years": [
+       2010,
+       2021
+      ],
+      "note": "Sedona (2010-2021)"
+     }
+    ],
+    "N": [
+     {
+      "value": "Carnival",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Carnival (2022-)"
+     }
+    ],
+    "P": [
+     {
+      "value": "Sportage",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Sportage (2011- , Korean-built)"
+     },
+     {
+      "value": "Sorento",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "Sorento (2016-2020)"
+     },
+     {
+      "value": "Telluride",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "Telluride (2020-2025, 2027-)"
+     }
+    ],
+    "R": [
+     {
+      "value": "Sorento",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Sorento (2021-)"
+     }
+    ],
+    "S": [
+     {
+      "value": "K900",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "K900/K9/Quoris (2019-2020 [USA])"
+     }
+    ]
+   }
+  },
+  "model@4:6": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:6"
+   ],
+   "map": {
+    "DC": [
+     {
+      "value": "Rio",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "Rio (2001-2005)"
+     }
+    ],
+    "DE": [
+     {
+      "value": "Rio",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Rio (2006-2009)"
+     }
+    ],
+    "FA": [
+     {
+      "value": "Sephia",
+      "years": [
+       1994,
+       1997
+      ],
+      "note": "Sephia (1994-1997)"
+     }
+    ],
+    "FB": [
+     {
+      "value": "Sephia",
+      "years": [
+       1998,
+       2001
+      ],
+      "note": "Sephia (1998-2001)"
+     },
+     {
+      "value": "Spectra",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Spectra (2000 - Mid-2004)"
+     }
+    ],
+    "FE": [
+     {
+      "value": "Spectra",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "Spectra (New Design) (Mid-2004 - 2009)"
+     }
+    ],
+    "FG": [
+     {
+      "value": "Rondo",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "Rondo (2007-2009)"
+     }
+    ],
+    "GD": [
+     {
+      "value": "Optima",
+      "years": [
+       2001,
+       null
+      ],
+      "note": "Optima/Magentis (2001 - Mid-2006)"
+     }
+    ],
+    "GE": [
+     {
+      "value": "Optima",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Optima/Magentis (New Design) (Mid-2006 - 2009)"
+     }
+    ],
+    "LD": [
+     {
+      "value": "Amanti",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "Amanti (2004-2009)"
+     }
+    ],
+    "JA": [
+     {
+      "value": "Sportage 4x4",
+      "years": [
+       1995,
+       2002
+      ],
+      "note": "Sportage 4x4 (1995-2002)"
+     }
+    ],
+    "JB": [
+     {
+      "value": "Sportage 4x2",
+      "years": [
+       1995,
+       2002
+      ],
+      "note": "Sportage 4x2 (1995-2002)"
+     }
+    ],
+    "JC": [
+     {
+      "value": "Sorento 4x4",
+      "years": [
+       2003,
+       2009
+      ],
+      "note": "Sorento 4x4 (2003-2009)"
+     }
+    ],
+    "JD": [
+     {
+      "value": "Sorento 4x2",
+      "years": [
+       2003,
+       2009
+      ],
+      "note": "Sorento 4x2 (2003-2009)"
+     }
+    ],
+    "JE": [
+     {
+      "value": "Sportage 4x4",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "Sportage 4x4 (2005-2009)"
+     }
+    ],
+    "JF": [
+     {
+      "value": "Sportage 4x2",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "Sportage 4x2 (2005-2009)"
+     }
+    ],
+    "JH": [
+     {
+      "value": "Borrego 4x4",
+      "note": "Borrego 4x4 (2009)"
+     }
+    ],
+    "JJ": [
+     {
+      "value": "Borrego 4x2",
+      "note": "Borrego 4x2 (2009)"
+     }
+    ],
+    "MB": [
+     {
+      "value": "Sedona",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Sedona (2006-2009)"
+     }
+    ],
+    "UP": [
+     {
+      "value": "Sedona",
+      "years": [
+       2002,
+       2005
+      ],
+      "note": "Sedona (2002-2005)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Ansan"
+     },
+     {
+      "value": "South Korea",
+      "note": "South Korea (Kia Motech plant)"
+     }
+    ],
+    "E": [
+     {
+      "value": "Pesqueria"
+     },
+     {
+      "value": "Nuevo Leon"
+     },
+     {
+      "value": "Mexico"
+     }
+    ],
+    "G": [
+     {
+      "value": "West Point"
+     },
+     {
+      "value": "Georgia"
+     },
+     {
+      "value": "USA"
+     }
+    ],
+    "H": [
+     {
+      "value": "Gwangju"
+     },
+     {
+      "value": "South Korea"
+     }
+    ],
+    "J": [
+     {
+      "value": "Nošovice"
+     },
+     {
+      "value": "Czech Republic",
+      "note": "Czech Republic (WMI code: TMA) (Hyundai plant)"
+     }
+    ],
+    "L": [
+     {
+      "value": "Žilina"
+     },
+     {
+      "value": "Slovakia"
+     }
+    ],
+    "N": [
+     {
+      "value": "Anantapur"
+     },
+     {
+      "value": "Andhra Pradesh"
+     },
+     {
+      "value": "India"
+     }
+    ],
+    "R": [
+     {
+      "value": "Saint Petersburg"
+     },
+     {
+      "value": "Russia",
+      "note": "Russia (Hyundai plant)"
+     }
+    ],
+    "T": [
+     {
+      "value": "Seosan"
+     },
+     {
+      "value": "South Korea",
+      "note": "South Korea (Donghee Auto Co. Ltd. plant)"
+     }
+    ],
+    "0": [
+     {
+      "value": "Yangcheng"
+     },
+     {
+      "value": "Jiangsu"
+     },
+     {
+      "value": "China",
+      "note": "China (Jiangsu Yueda Kia Motors Co., Ltd. plant)"
+     }
+    ],
+    "5": [
+     {
+      "value": "Osnabrück"
+     },
+     {
+      "value": "Germany",
+      "note": "Germany (Karmann plant, WMI code: KNE)"
+     },
+     {
+      "value": "Hwasung"
+     },
+     {
+      "value": "South Korea"
+     }
+    ],
+    "6": [
+     {
+      "value": "Sohari plant"
+     },
+     {
+      "value": "Gwangmyeong"
+     },
+     {
+      "value": "South Korea"
+     }
+    ],
+    "7": [
+     {
+      "value": "Gwangju"
+     },
+     {
+      "value": "South Korea"
+     }
+    ]
+   }
+  }
+ }
+}

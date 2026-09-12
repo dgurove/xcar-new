@@ -1,0 +1,2344 @@
+{
+ "_brand": "Subaru",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Subaru/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "4S3",
+  "4S4",
+  "JF1",
+  "JF2",
+  "JF3",
+  "JF4",
+  "MMR",
+  "PLP"
+ ],
+ "_market": "north_america",
+ "sections": {
+  "body@5:6": {
+   "field": "body",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "'87-'94 Justy 3-Door",
+      "years": [
+       1987,
+       1994
+      ]
+     },
+     {
+      "value": "'15-'21 WRX",
+      "years": [
+       2015,
+       2021
+      ]
+     },
+     {
+      "value": "WRX STi sedan",
+      "note": "WRX STi sedan (1st gen.)"
+     }
+    ],
+    "B": [
+     {
+      "value": "'81-'84 DL",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "'81-'84 DL/GL 4-door sedan (2nd gen.)"
+     },
+     {
+      "value": "'22- WRX sedan",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "'22- WRX sedan (2nd gen.)"
+     }
+    ],
+    "C": [
+     {
+      "value": "'85-'93 DL",
+      "years": [
+       1985,
+       1993
+      ],
+      "note": "'85-'93 DL/GL/GL-10/RX/Turbo/Loyale sedan (3rd gen.)"
+     },
+     {
+      "value": "'90-'94 Legacy sedan",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "'90-'94 Legacy sedan (1st gen.)"
+     },
+     {
+      "value": "'93-'01 Impreza sedan",
+      "years": [
+       1993,
+       2001
+      ],
+      "note": "'93-'01 Impreza sedan (1st gen.)"
+     },
+     {
+      "value": "'13-'20 BRZ coupe",
+      "years": [
+       2013,
+       2020
+      ],
+      "note": "'13-'20 BRZ coupe (1st gen.)"
+     }
+    ],
+    "D": [
+     {
+      "value": "'90-'94 Justy 5-Door",
+      "years": [
+       1990,
+       1994
+      ]
+     },
+     {
+      "value": "'95-'99 Legacy sedan",
+      "years": [
+       1995,
+       1999
+      ]
+     },
+     {
+      "value": "'97-'99 Legacy SUS",
+      "years": [
+       1997,
+       1999
+      ],
+      "note": "'97-'99 Legacy SUS (2nd gen. Legacy)"
+     },
+     {
+      "value": "'02-'07 Impreza sedan",
+      "years": [
+       2002,
+       2007
+      ]
+     },
+     {
+      "value": "Impreza WRX sedan",
+      "note": "Impreza WRX sedan (2nd gen.)"
+     },
+     {
+      "value": "'22- BRZ coupe",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "'22- BRZ coupe (2nd gen.)"
+     }
+    ],
+    "E": [
+     {
+      "value": "'00-'04 Legacy sedan",
+      "years": [
+       2000,
+       2004
+      ]
+     },
+     {
+      "value": "Outback sedan",
+      "note": "Outback sedan (3rd gen. Legacy)"
+     },
+     {
+      "value": "'08-'11 Impreza sedan",
+      "years": [
+       2008,
+       2011
+      ]
+     },
+     {
+      "value": "'08-'10 Impreza WRX sedan",
+      "years": [
+       2008,
+       2010
+      ],
+      "note": "'08-'10 Impreza WRX sedan (3rd gen.)"
+     }
+    ],
+    "F": [
+     {
+      "value": "'81-'89 STD",
+      "years": [
+       1981,
+       1989
+      ],
+      "note": "'81-'89 STD/DL/GL 3-door hatchback (2nd gen.)"
+     },
+     {
+      "value": "'93-'01 Impreza wagon",
+      "years": [
+       1993,
+       2001
+      ]
+     },
+     {
+      "value": "'95-'01 Impreza Outback Sport",
+      "years": [
+       1995,
+       2001
+      ],
+      "note": "'95-'01 Impreza Outback Sport (1st gen.)"
+     },
+     {
+      "value": "'94 Legacy GT wagon",
+      "note": "'94 Legacy GT wagon [raised-roof] (1st gen.)"
+     },
+     {
+      "value": "Wagon: Forester",
+      "years": [
+       1998,
+       2002
+      ],
+      "note": "Wagon: Forester (1st gen.) '98-'02"
+     }
+    ],
+    "G": [
+     {
+      "value": "'86-'90 DL",
+      "years": [
+       1986,
+       1990
+      ],
+      "note": "'86-'90 DL/GL/RX/Turbo/Loyale 3-door coupe (3rd gen.)"
+     },
+     {
+      "value": "'96-'99 Legacy Outback wagon",
+      "years": [
+       1996,
+       1999
+      ],
+      "note": "'96-'99 Legacy Outback wagon [raised-roof] (2nd gen. Legacy)"
+     },
+     {
+      "value": "'02-'07 Impreza wagon",
+      "years": [
+       2002,
+       2007
+      ]
+     },
+     {
+      "value": "Impreza WRX wagon"
+     },
+     {
+      "value": "Impreza Outback Sport",
+      "note": "Impreza Outback Sport (2nd gen.)"
+     },
+     {
+      "value": "'05-'06 Saab 9-2X",
+      "years": [
+       2005,
+       2006
+      ]
+     },
+     {
+      "value": "Wagon: Forester",
+      "years": [
+       2003,
+       2008
+      ],
+      "note": "Wagon: Forester (2nd gen.) '03-'08"
+     }
+    ],
+    "H": [
+     {
+      "value": "'00-'04 Legacy wagon",
+      "years": [
+       2000,
+       2004
+      ]
+     },
+     {
+      "value": "Outback wagon",
+      "note": "Outback wagon (3rd gen. Legacy)"
+     },
+     {
+      "value": "'08-'11 Impreza 5-door hatchback",
+      "years": [
+       2008,
+       2011
+      ]
+     },
+     {
+      "value": "'08-'11 Impreza Outback Sport",
+      "years": [
+       2008,
+       2011
+      ]
+     },
+     {
+      "value": "'08-'10 Impreza WRX 5-door hatchback",
+      "years": [
+       2008,
+       2010
+      ],
+      "note": "'08-'10 Impreza WRX 5-door hatchback (3rd gen.)"
+     },
+     {
+      "value": "Wagon: Forester",
+      "years": [
+       2009,
+       2013
+      ],
+      "note": "Wagon: Forester (3rd gen.) '09-'13"
+     }
+    ],
+    "J": [
+     {
+      "value": "'90-'94 Legacy wagon",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "'90-'94 Legacy wagon [non-raised-roof] (1st gen.)"
+     },
+     {
+      "value": "'12-'16 Impreza sedan",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "'12-'16 Impreza sedan (4th gen.)"
+     },
+     {
+      "value": "Wagon: Forester",
+      "years": [
+       2014,
+       2018
+      ],
+      "note": "Wagon: Forester (4th gen.) '14-'18"
+     }
+    ],
+    "K": [
+     {
+      "value": "'89-'90 GL",
+      "years": [
+       1989,
+       1990
+      ],
+      "note": "'89-'90 GL/GL-10/Turbo/Loyale Touring wagon [raised roof] (3rd gen.)"
+     },
+     {
+      "value": "'95-'99 Legacy wagon",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "'95-'99 Legacy wagon [non-raised-roof] (2nd gen.)"
+     },
+     {
+      "value": "'17-'23 Impreza sedan",
+      "years": [
+       2017,
+       2023
+      ],
+      "note": "'17-'23 Impreza sedan (5th gen.)"
+     },
+     {
+      "value": "Wagon: Forester",
+      "years": [
+       2019,
+       2024
+      ],
+      "note": "Wagon: Forester (5th gen.) '19-'24"
+     },
+     {
+      "value": "Forester Wilderness '22-'25",
+      "years": [
+       2022,
+       2025
+      ]
+     }
+    ],
+    "L": [
+     {
+      "value": "'05-'09 Legacy sedan",
+      "years": [
+       2005,
+       2009
+      ]
+     },
+     {
+      "value": "'05-'07 Outback sedan",
+      "years": [
+       2005,
+       2007
+      ],
+      "note": "'05-'07 Outback sedan (4th gen. Legacy)"
+     },
+     {
+      "value": "Wagon: Forester",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "Wagon: Forester (6th gen.) '25-"
+     },
+     {
+      "value": "Forester Wilderness '26"
+     }
+    ],
+    "M": [
+     {
+      "value": "'81-'84 DL",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "'81-'84 DL/GL 4-door wagon (2nd gen.)"
+     },
+     {
+      "value": "'95-'01 Impreza coupe",
+      "years": [
+       1995,
+       2001
+      ],
+      "note": "'95-'01 Impreza coupe (1st gen.)"
+     },
+     {
+      "value": "'10-'14 Legacy sedan",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "'10-'14 Legacy sedan (5th gen.)"
+     },
+     {
+      "value": "'19- Ascent",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "'19- Ascent (1st gen.)"
+     },
+     {
+      "value": "Levorg wagon",
+      "note": "Levorg wagon (1st gen.) (Not sold in North America)"
+     }
+    ],
+    "N": [
+     {
+      "value": "'85-'94 DL",
+      "years": [
+       1985,
+       1994
+      ],
+      "note": "'85-'94 DL/GL/GL-10/Turbo/Loyale wagon (3rd gen.)"
+     },
+     {
+      "value": "'13-'16 Scion FR-S",
+      "years": [
+       2013,
+       2016
+      ]
+     },
+     {
+      "value": "'17-'20 Toyota 86",
+      "years": [
+       2017,
+       2020
+      ]
+     },
+     {
+      "value": "'22- Toyota GR86 coupe",
+      "years": [
+       2022,
+       null
+      ]
+     },
+     {
+      "value": "'15-'19 Legacy sedan",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "'15-'19 Legacy sedan (6th gen.)"
+     },
+     {
+      "value": "Levorg wagon",
+      "note": "Levorg wagon (WRX Sportswagon in Australia/WRX wagon in S.E. Asia) (2nd gen.) (Not sold in North America)"
+     }
+    ],
+    "P": [
+     {
+      "value": "'05-'07",
+      "years": [
+       2005,
+       2007
+      ],
+      "note": "'05-'07 (& '08-'09 in Canada) Legacy wagon"
+     },
+     {
+      "value": "'05-'09 Outback wagon",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "'05-'09 Outback wagon (4th gen. Legacy)"
+     },
+     {
+      "value": "'12-'16 Impreza 5-door hatchback",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "'12-'16 Impreza 5-door hatchback (4th gen.)"
+     },
+     {
+      "value": "'13-'15 XV Crosstrek",
+      "years": [
+       2013,
+       2015
+      ]
+     },
+     {
+      "value": "'16-'17 Crosstrek",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "'16-'17 Crosstrek (1st gen.)"
+     }
+    ],
+    "R": [
+     {
+      "value": "Brat",
+      "note": "Brat 1981 (1st gen.)"
+     },
+     {
+      "value": "'08-'14 Impreza WRX STi 5-door hatchback",
+      "years": [
+       2008,
+       2014
+      ],
+      "note": "'08-'14 Impreza WRX STi 5-door hatchback [widebody] (3rd gen.)"
+     },
+     {
+      "value": "'11-'14 Impreza WRX 5-door hatchback",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "'11-'14 Impreza WRX 5-door hatchback [widebody] (3rd gen.)"
+     },
+     {
+      "value": "'10-'14 Outback wagon",
+      "years": [
+       2010,
+       2014
+      ]
+     }
+    ],
+    "S": [
+     {
+      "value": "'15-'19 Outback Wagon",
+      "years": [
+       2015,
+       2019
+      ]
+     }
+    ],
+    "T": [
+     {
+      "value": "Brat",
+      "years": [
+       1982,
+       1985
+      ],
+      "note": "Brat 1982-1985 (2nd gen.)"
+     },
+     {
+      "value": "'03-'06 Baja",
+      "years": [
+       2003,
+       2006
+      ]
+     },
+     {
+      "value": "'17-'23 Impreza 5-door hatchback",
+      "years": [
+       2017,
+       2023
+      ],
+      "note": "'17-'23 Impreza 5-door hatchback (5th gen.)"
+     },
+     {
+      "value": "'18-'23 Crosstrek",
+      "years": [
+       2018,
+       2023
+      ],
+      "note": "'18-'23 Crosstrek (2nd gen.)"
+     },
+     {
+      "value": "'20-'25 Outback Wagon",
+      "years": [
+       2020,
+       2025
+      ]
+     }
+    ],
+    "U": [
+     {
+      "value": "Brat",
+      "years": [
+       1986,
+       1987
+      ],
+      "note": "Brat 1986-1987 (2nd gen.)"
+     },
+     {
+      "value": "'24- Impreza 5-door hatchback",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "'24- Impreza 5-door hatchback (6th gen.)"
+     },
+     {
+      "value": "'24- Crosstrek",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "'24- Crosstrek (3rd gen.)"
+     },
+     {
+      "value": "'26- Outback",
+      "years": [
+       2026,
+       null
+      ]
+     }
+    ],
+    "V": [
+     {
+      "value": "'11-'14 Impreza WRX",
+      "years": [
+       2011,
+       2014
+      ]
+     },
+     {
+      "value": "WRX STi sedan",
+      "note": "WRX STi sedan [widebody] (3rd gen.)"
+     }
+    ],
+    "W": [
+     {
+      "value": "'81-'84 DL",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "'81-'84 DL/GL/GLF 2-door hardtop coupe (2nd gen.)"
+     },
+     {
+      "value": "'20-'25 Legacy sedan",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "'20-'25 Legacy sedan (7th gen.)"
+     }
+    ],
+    "X": [
+     {
+      "value": "'85-'91 XT",
+      "years": [
+       1985,
+       1991
+      ],
+      "note": "'85-'91 XT/XT6 coupe"
+     },
+     {
+      "value": "'92-'97 SVX coupe",
+      "years": [
+       1992,
+       1997
+      ]
+     },
+     {
+      "value": "'06-'07 B9 Tribeca",
+      "years": [
+       2006,
+       2007
+      ]
+     },
+     {
+      "value": "'08-'14 Tribeca",
+      "years": [
+       2008,
+       2014
+      ]
+     }
+    ]
+   }
+  },
+  "engine@6:7": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "2.0L DOHC"
+     },
+     {
+      "value": "16-valve FA20D flat-4",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve FA20D flat-4 (Toyota 4U-GSE). Toyota D-4S Direct/Port injection. Dual VVT"
+     },
+     {
+      "value": "16-valve FB20B flat-4. MPI. Dual VVT",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "16-valve FB20D flat-4. Direct injection. Dual VVT",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "2.5L DOHC"
+     },
+     {
+      "value": "16-valve FB25D flat-4. Direct injection. Dual VVT",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "2.4L DOHC"
+     },
+     {
+      "value": "16-valve turbo",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve turbo/intercooled FA24F flat-4. Direct injection. Dual VVT"
+     }
+    ],
+    "B": [
+     {
+      "value": "2.0L DOHC"
+     },
+     {
+      "value": "2.4L DOHC"
+     },
+     {
+      "value": "16-valve FA24D flat-4. Toyota D-4S Direct",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve FA24D flat-4. Toyota D-4S Direct/Port injection. Dual VVT"
+     }
+    ],
+    "D": [
+     {
+      "value": "2.0L DOHC"
+     },
+     {
+      "value": "2.5L DOHC"
+     },
+     {
+      "value": "16-valve FB25D flat-4. Direct injection. Dual VVT",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "2000cc DOHC Turbo Diesel"
+     }
+    ],
+    "G": [
+     {
+      "value": "2.4L DOHC"
+     },
+     {
+      "value": "16-valve turbo",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve turbo/intercooled FA24F flat-4. Direct injection. Dual VVT"
+     }
+    ],
+    "H": [
+     {
+      "value": "2.5L DOHC"
+     },
+     {
+      "value": "16-valve FB25D flat-4. Direct injection. Dual VVT",
+      "years": [
+       2016,
+       null
+      ]
+     }
+    ],
+    "P": [
+     {
+      "value": "2.5L DOHC"
+     },
+     {
+      "value": "16-valve FB25D flat-4. Direct injection. Dual VVT",
+      "years": [
+       2016,
+       null
+      ]
+     }
+    ],
+    "R": [
+     {
+      "value": "2.4L DOHC"
+     },
+     {
+      "value": "16-valve turbo",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve turbo/intercooled FA24F flat-4. Direct injection. Dual VVT"
+     }
+    ],
+    "S": [
+     {
+      "value": "2.5L DOHC"
+     }
+    ],
+    "1": [
+     {
+      "value": "2.0L DOHC"
+     },
+     {
+      "value": "16-valve turbo",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve turbo/intercooled FA20F flat-4. Direct injection. Dual VVT"
+     }
+    ],
+    "2": [
+     {
+      "value": "1.6L OHV"
+     },
+     {
+      "value": "8-valve EA71 flat-4. 2-bbl. carb. 2WD",
+      "years": [
+       2049,
+       null
+      ],
+      "note": "8-valve EA71 flat-4. 2-bbl. carb. 2WD. (Some 49-state models had 1-bbl. carb. in '83-'84)"
+     },
+     {
+      "value": "1.8L SOHC"
+     },
+     {
+      "value": "16-valve EJ18 flat-4. MPI",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "16-valve EJ18 flat-4. MPI. AWD",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "2.0L DOHC"
+     },
+     {
+      "value": "16-valve turbo",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve turbo/intercooled EJ205 flat-4. MPI"
+     },
+     {
+      "value": "2.5L DOHC"
+     },
+     {
+      "value": "16-valve turbo",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve turbo/intercooled EJ257 flat-4. MPI. Dual VVT"
+     }
+    ],
+    "3": [
+     {
+      "value": "3.3L DOHC"
+     },
+     {
+      "value": "24-valve EG33 flat-6. MPI",
+      "years": [
+       2024,
+       null
+      ]
+     },
+     {
+      "value": "2.2L SOHC"
+     },
+     {
+      "value": "16-valve EJ22 flat-4. MPI. FWD",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "2.5L DOHC"
+     },
+     {
+      "value": "16-valve turbo",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve turbo/intercooled EJ257 flat-4. MPI. Dual VVT"
+     }
+    ],
+    "4": [
+     {
+      "value": "1.8L OHV"
+     },
+     {
+      "value": "8-valve EA81 flat-4. 2-bbl. carb. 2WD",
+      "years": [
+       2049,
+       null
+      ],
+      "note": "8-valve EA81 flat-4. 2-bbl. carb. 2WD. (Some 49-state models had 1-bbl. carb. in '83-'84)"
+     },
+     {
+      "value": "1.8L SOHC"
+     },
+     {
+      "value": "8-valve EA82 flat-4. 2-bbl. carb. 2WD"
+     },
+     {
+      "value": "8-valve EA82 flat-4. TBI. 2WD"
+     },
+     {
+      "value": "8-valve EA82 flat-4. MPI. 2WD"
+     },
+     {
+      "value": "8-valve turbo EA82T flat-4. MPI. 2WD"
+     },
+     {
+      "value": "2.2L SOHC"
+     },
+     {
+      "value": "16-valve EJ22 flat-4. MPI. AWD",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "FB 1600cc DIT AWD 2015+"
+     }
+    ],
+    "5": [
+     {
+      "value": "1.8L OHV"
+     },
+     {
+      "value": "8-valve EA81 flat-4. 2-bbl. carb. 4WD",
+      "note": "8-valve EA81 flat-4. 2-bbl. carb. 4WD. (Some models had 1-bbl. carb. in '82)"
+     },
+     {
+      "value": "8-valve turbo EA81T flat-4. MPI. 4WD"
+     },
+     {
+      "value": "1.8L SOHC"
+     },
+     {
+      "value": "8-valve EA82 flat-4. 2-bbl. carb. 4WD"
+     },
+     {
+      "value": "8-valve EA82 flat-4. TBI. 4WD"
+     },
+     {
+      "value": "8-valve turbo EA82T flat-4. MPI. 4WD"
+     }
+    ],
+    "6": [
+     {
+      "value": "2.2L SOHC"
+     },
+     {
+      "value": "16-valve EJ22 flat-4. MPI",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "16-valve turbo EJ22T flat-4. MPI",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "2.5L DOHC"
+     },
+     {
+      "value": "16-valve EJ25D flat-4",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve EJ25D flat-4 (Phase I). MPI"
+     },
+     {
+      "value": "2.5L SOHC"
+     },
+     {
+      "value": "16-valve EJ253 flat-4",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve EJ253 flat-4 (Phase II). MPI"
+     },
+     {
+      "value": "16-valve EJ253 flat-4. MPI. Intake VVL",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "16-valve turbo",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve turbo/intercooled EJ255 flat-4. MPI. Intake VVT"
+     }
+    ],
+    "7": [
+     {
+      "value": "1.2L SOHC"
+     },
+     {
+      "value": "9-valve EF12 I3. 2-bbl. carb. 2wd"
+     },
+     {
+      "value": "9-valve EF12 I3. MPI. 2wd"
+     },
+     {
+      "value": "1.8L SOHC"
+     },
+     {
+      "value": "8-valve turbo EA82T flat-4. MPI. 4WD w",
+      "note": "8-valve turbo EA82T flat-4. MPI. 4WD w/air suspension"
+     },
+     {
+      "value": "2.5L DOHC"
+     },
+     {
+      "value": "16-valve turbo",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve turbo/intercooled EJ255 flat-4. MPI. Intake VVT"
+     }
+    ],
+    "8": [
+     {
+      "value": "1.2L SOHC"
+     },
+     {
+      "value": "9-valve EF12 I3. 2-bbl. carb. 4wd"
+     },
+     {
+      "value": "9-valve EF12 I3. MPI. 4wd"
+     },
+     {
+      "value": "2.7L SOHC"
+     },
+     {
+      "value": "12-valve ER27 flat-6. MPI. FWD",
+      "years": [
+       2012,
+       null
+      ]
+     },
+     {
+      "value": "3.3L DOHC"
+     },
+     {
+      "value": "24-valve EG33 flat-6. MPI. AWD",
+      "years": [
+       2024,
+       null
+      ]
+     },
+     {
+      "value": "3.0L DOHC"
+     },
+     {
+      "value": "24-valve EZ30D flat-6. MPI. Intake VVT & VVL",
+      "years": [
+       2024,
+       null
+      ]
+     },
+     {
+      "value": "2.5L DOHC"
+     },
+     {
+      "value": "16-valve turbo",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve turbo/intercooled EJ257 flat-4. MPI. Dual VVT"
+     }
+    ],
+    "9": [
+     {
+      "value": "2.7L SOHC"
+     },
+     {
+      "value": "12-valve ER27 flat-6. MPI. AWD",
+      "years": [
+       2012,
+       null
+      ]
+     },
+     {
+      "value": "3.6L DOHC"
+     },
+     {
+      "value": "24-valve EZ36D flat-6. MPI. Dual VVT",
+      "years": [
+       2024,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  "model@7:8": {
+   "field": "model",
+   "at": [
+    "vin",
+    "7:8"
+   ],
+   "map": {
+    "1": [
+     {
+      "value": "Standard model '81-'87",
+      "years": [
+       1981,
+       1987
+      ]
+     },
+     {
+      "value": "Loyale RS 3-door coupe",
+      "note": "Loyale RS 3-door coupe (non-Turbo) '90"
+     },
+     {
+      "value": "Impreza Base model '93-'95",
+      "years": [
+       1993,
+       1995
+      ]
+     },
+     {
+      "value": "2.5i '07"
+     },
+     {
+      "value": "2.5i Special Edition '07"
+     },
+     {
+      "value": "Impreza 2.5i '08-'09",
+      "years": [
+       2008,
+       2009
+      ]
+     },
+     {
+      "value": "Impreza 2.5i Premium '08"
+     },
+     {
+      "value": "Saab 9-2X Linear '05"
+     },
+     {
+      "value": "Saab 9-2X 2.5i '06"
+     },
+     {
+      "value": "Legacy 2.5i '05-'08",
+      "years": [
+       2005,
+       2008
+      ]
+     },
+     {
+      "value": "2.5i Special Edition '06-'09",
+      "years": [
+       2006,
+       2009
+      ]
+     },
+     {
+      "value": "Outback H6-3.0 wagon 35th Anniv. Ed. '04"
+     },
+     {
+      "value": "Outback 2.5i '05-'08",
+      "years": [
+       2005,
+       2008
+      ]
+     },
+     {
+      "value": "2.5i Special Edition '06"
+     },
+     {
+      "value": "'09"
+     },
+     {
+      "value": "2.5i Basic '07"
+     },
+     {
+      "value": "2.5i L.L. Bean Edition '07-'08",
+      "years": [
+       2007,
+       2008
+      ]
+     },
+     {
+      "value": "Forester Base model '98-'99",
+      "years": [
+       1998,
+       1999
+      ]
+     },
+     {
+      "value": "2.5X '09"
+     },
+     {
+      "value": "Tribeca 5-psgr. base model '08-'09",
+      "years": [
+       2008,
+       2009
+      ]
+     },
+     {
+      "value": "Baja Base model '03"
+     }
+    ],
+    "2": [
+     {
+      "value": "DL '81-'89",
+      "years": [
+       1981,
+       1989
+      ]
+     },
+     {
+      "value": "Loyale",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "Loyale (non-Turbo) '90-'94"
+     },
+     {
+      "value": "Brat DL '81-'83",
+      "years": [
+       1981,
+       1983
+      ]
+     },
+     {
+      "value": "Justy DL '87-'94",
+      "years": [
+       1987,
+       1994
+      ]
+     },
+     {
+      "value": "XT coupe DL '85-'88",
+      "years": [
+       1985,
+       1988
+      ]
+     },
+     {
+      "value": "Impreza L fwd sedan w",
+      "note": "Impreza L fwd sedan w/man. trans. [w/o opt. power equipment, A/C, & stereo] '93"
+     },
+     {
+      "value": "Impreza L Early '94",
+      "note": "Impreza L Early '94 (only has driver-side airbag)"
+     },
+     {
+      "value": "Impreza Brighton coupe '96-'97",
+      "years": [
+       1996,
+       1997
+      ]
+     },
+     {
+      "value": "Impreza Brighton wagon - Canada only: '98-'01",
+      "years": [
+       1998,
+       2001
+      ]
+     },
+     {
+      "value": "Impreza Outback Sport '07"
+     },
+     {
+      "value": "Saab 9-2X Aero '05-'06",
+      "years": [
+       2005,
+       2006
+      ]
+     },
+     {
+      "value": "Legacy Base model '90"
+     },
+     {
+      "value": "'95"
+     },
+     {
+      "value": "Legacy Brighton wagon '95-'00",
+      "years": [
+       1995,
+       2000
+      ]
+     },
+     {
+      "value": "Legacy L 35th Anniv. Ed. '04"
+     },
+     {
+      "value": "Legacy 2.5i Limited '05-'09",
+      "years": [
+       2005,
+       2009
+      ]
+     },
+     {
+      "value": "Outback 2.5i Limited wagon '05-'08",
+      "years": [
+       2005,
+       2008
+      ]
+     },
+     {
+      "value": "2.5i Limited sedan '06-'07",
+      "years": [
+       2006,
+       2007
+      ]
+     },
+     {
+      "value": "2.5i Limited L.L. Bean Edition wagon '07-'08",
+      "years": [
+       2007,
+       2008
+      ]
+     },
+     {
+      "value": "SVX L Early '94",
+      "note": "SVX L Early '94 (has motorized seatbelts & driver-side airbag)"
+     },
+     {
+      "value": "B9 Tribeca 5-psgr. '06-'07",
+      "years": [
+       2006,
+       2007
+      ]
+     },
+     {
+      "value": "Tribeca 5-psgr. Limited '08-'09",
+      "years": [
+       2008,
+       2009
+      ]
+     },
+     {
+      "value": "Tribeca 5-psgr. Special Edition '09"
+     },
+     {
+      "value": "Baja Sport '03-'06",
+      "years": [
+       2003,
+       2006
+      ]
+     }
+    ],
+    "3": [
+     {
+      "value": "GL '81-'89",
+      "years": [
+       1981,
+       1989
+      ]
+     },
+     {
+      "value": "Brat GL '81-'87",
+      "years": [
+       1981,
+       1987
+      ]
+     },
+     {
+      "value": "Justy GL '87-'94",
+      "years": [
+       1987,
+       1994
+      ]
+     },
+     {
+      "value": "Justy RS '88-'89",
+      "years": [
+       1988,
+       1989
+      ]
+     },
+     {
+      "value": "XT coupe GL '85-'89",
+      "years": [
+       1985,
+       1989
+      ]
+     },
+     {
+      "value": "'91"
+     },
+     {
+      "value": "Impreza L '94",
+      "note": "Impreza L '94 (has dual airbags)"
+     },
+     {
+      "value": "L '95-'01",
+      "years": [
+       1995,
+       2001
+      ]
+     },
+     {
+      "value": "Outback Sport '95"
+     },
+     {
+      "value": "Impreza Outback Sport Special Edition '07"
+     },
+     {
+      "value": "Impreza Outback Sport '08-'09",
+      "years": [
+       2008,
+       2009
+      ]
+     },
+     {
+      "value": "Legacy L '90-'04",
+      "years": [
+       1990,
+       2004
+      ]
+     },
+     {
+      "value": "Legacy Sun Sport"
+     },
+     {
+      "value": "Alpine Sport"
+     },
+     {
+      "value": "Outdoor"
+     },
+     {
+      "value": "& GT wagons '94"
+     },
+     {
+      "value": "Legacy Outback '95"
+     },
+     {
+      "value": "Legacy L Special Edition '03"
+     },
+     {
+      "value": "Outback 2.5XT Limited '07-'09",
+      "years": [
+       2007,
+       2009
+      ]
+     },
+     {
+      "value": "SVX L '94-'97",
+      "years": [
+       1994,
+       1997
+      ],
+      "note": "SVX L '94-'97 (has manual seatbelts & dual airbags)"
+     },
+     {
+      "value": "Forester L '98-'02",
+      "years": [
+       1998,
+       2002
+      ]
+     },
+     {
+      "value": "2.5X '03-'08",
+      "years": [
+       2003,
+       2008
+      ]
+     },
+     {
+      "value": "Sports 2.5X '07"
+     },
+     {
+      "value": "2.5X Premium '09"
+     },
+     {
+      "value": "B9 Tribeca 5-psgr. '06-'07",
+      "years": [
+       2006,
+       2007
+      ]
+     },
+     {
+      "value": "Tribeca 5-psgr. Limited w",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "Tribeca 5-psgr. Limited w/Navigation '08-'09"
+     },
+     {
+      "value": "Baja Turbo '04-'06",
+      "years": [
+       2004,
+       2006
+      ]
+     }
+    ],
+    "4": [
+     {
+      "value": "GLF '81-'82",
+      "years": [
+       1981,
+       1982
+      ]
+     },
+     {
+      "value": "GL-10 '85-'89",
+      "years": [
+       1985,
+       1989
+      ]
+     },
+     {
+      "value": "XT6 coupe '88-'89",
+      "years": [
+       1988,
+       1989
+      ]
+     },
+     {
+      "value": "'91"
+     },
+     {
+      "value": "Impreza L \"Plus\"",
+      "note": "Impreza L \"Plus\" [L fwd sedan w/man. trans. w/opt. power equipment, A/C, & stereo plus all other Impreza L models] '93"
+     },
+     {
+      "value": "Impreza WRX '07-'08",
+      "years": [
+       2007,
+       2008
+      ]
+     },
+     {
+      "value": "WRX Limited '07"
+     },
+     {
+      "value": "Impreza 2.5GT '09"
+     },
+     {
+      "value": "Legacy LS '90"
+     },
+     {
+      "value": "2.5GT '00-'04",
+      "years": [
+       2000,
+       2004
+      ]
+     },
+     {
+      "value": "3.0R '09"
+     },
+     {
+      "value": "Outback 3.0R sedan '05"
+     },
+     {
+      "value": "3.0R wagon w",
+      "note": "3.0R wagon w/cloth seats '06"
+     },
+     {
+      "value": "SVX LS '92"
+     },
+     {
+      "value": "'94"
+     },
+     {
+      "value": "Forester 2.5X L.L. Bean Edition '09"
+     },
+     {
+      "value": "2.5X Limited '09"
+     }
+    ],
+    "5": [
+     {
+      "value": "GL Turbo",
+      "years": [
+       1983,
+       1987
+      ],
+      "note": "GL Turbo (except '87 4wd wagon) '83-'87"
+     },
+     {
+      "value": "GL-10 Turbo '86-'89",
+      "years": [
+       1986,
+       1989
+      ]
+     },
+     {
+      "value": "Brat GL Turbo '83-'84",
+      "years": [
+       1983,
+       1984
+      ]
+     },
+     {
+      "value": "XT coupe GL-10 Turbo '85-'87",
+      "years": [
+       1985,
+       1987
+      ]
+     },
+     {
+      "value": "Impreza LS '93-'94",
+      "years": [
+       1993,
+       1994
+      ]
+     },
+     {
+      "value": "LX '95-'96",
+      "years": [
+       1995,
+       1996
+      ]
+     },
+     {
+      "value": "2.5TS '02-'04",
+      "years": [
+       2002,
+       2004
+      ]
+     },
+     {
+      "value": "Impreza WRX TR '07"
+     },
+     {
+      "value": "Impreza WRX Premium '08"
+     },
+     {
+      "value": "Legacy LS \"Special\" '90"
+     },
+     {
+      "value": "Legacy LS '91-'96",
+      "years": [
+       1991,
+       1996
+      ]
+     },
+     {
+      "value": "Legacy LSi '91-'95",
+      "years": [
+       1991,
+       1995
+      ]
+     },
+     {
+      "value": "2.5GT Limited '00-'02",
+      "years": [
+       2000,
+       2002
+      ]
+     },
+     {
+      "value": "3.0R Limited '08-'09",
+      "years": [
+       2008,
+       2009
+      ]
+     },
+     {
+      "value": "Outback 3.0R VDC Limited wagon '05-'06",
+      "years": [
+       2005,
+       2006
+      ]
+     },
+     {
+      "value": "3.0R Limited '09"
+     },
+     {
+      "value": "SVX LS-L",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "SVX LS-L (LS w/Touring Package) '92-'93"
+     },
+     {
+      "value": "SVX LSi Awd '94-'95",
+      "years": [
+       1994,
+       1995
+      ]
+     },
+     {
+      "value": "Forester S '98-'02",
+      "years": [
+       1998,
+       2002
+      ]
+     },
+     {
+      "value": "2.5XS '03-'05",
+      "years": [
+       2003,
+       2005
+      ]
+     },
+     {
+      "value": "2.5X Premium '06-'08",
+      "years": [
+       2006,
+       2008
+      ]
+     },
+     {
+      "value": "2.5XT '09"
+     },
+     {
+      "value": "B9 Tribeca 7-psgr. '06-'07",
+      "years": [
+       2006,
+       2007
+      ]
+     }
+    ],
+    "6": [
+     {
+      "value": "RX Turbo '85-'89",
+      "years": [
+       1985,
+       1989
+      ]
+     },
+     {
+      "value": "Impreza WRX STi '07"
+     },
+     {
+      "value": "Impreza WRX '09"
+     },
+     {
+      "value": "WRX Premium '09"
+     },
+     {
+      "value": "Legacy LSi '96-'97",
+      "years": [
+       1996,
+       1997
+      ]
+     },
+     {
+      "value": "Outback base model '00-'02",
+      "years": [
+       2000,
+       2002
+      ]
+     },
+     {
+      "value": "Outback 'Audio Edition'",
+      "note": "Outback 'Audio Edition' (Premium Audio instead of All-Weather Pkg.) wagon '03"
+     },
+     {
+      "value": "Outback 3.0R L.L. Bean Edition wagon '05-'08",
+      "years": [
+       2005,
+       2008
+      ]
+     },
+     {
+      "value": "3.0R L.L. Bean Edition sedan '06-'07",
+      "years": [
+       2006,
+       2007
+      ]
+     },
+     {
+      "value": "2.5i Limited '09"
+     },
+     {
+      "value": "SVX LSi '96-'97",
+      "years": [
+       1996,
+       1997
+      ]
+     },
+     {
+      "value": "Forester Sports 2.5X '08"
+     },
+     {
+      "value": "Sports 2.5XT '08"
+     },
+     {
+      "value": "Forester 2.5XT Limited '09"
+     },
+     {
+      "value": "B9 Tribeca 7-psgr. '06-'07",
+      "years": [
+       2006,
+       2007
+      ]
+     },
+     {
+      "value": "Tribeca 7-psgr. base model '08-'09",
+      "years": [
+       2008,
+       2009
+      ]
+     }
+    ],
+    "7": [
+     {
+      "value": "GL Turbo 4wd wagon '87-'89",
+      "years": [
+       1987,
+       1989
+      ]
+     },
+     {
+      "value": "Loyale Turbo '90"
+     },
+     {
+      "value": "Loyale RS Turbo 3-door coupe '90"
+     },
+     {
+      "value": "Impreza 2.5RS '98-'05",
+      "years": [
+       1998,
+       2005
+      ]
+     },
+     {
+      "value": "2.5i '06"
+     },
+     {
+      "value": "Impreza WRX STi Limited '07"
+     },
+     {
+      "value": "Legacy Sport Sedan '91-'94",
+      "years": [
+       1991,
+       1994
+      ]
+     },
+     {
+      "value": "Legacy",
+      "years": [
+       1992,
+       1994
+      ],
+      "note": "Legacy [LE] Touring Wagon '92-'94"
+     },
+     {
+      "value": "Legacy 2.5GT '96-'99",
+      "years": [
+       1996,
+       1999
+      ]
+     },
+     {
+      "value": "Legacy 2.5GT Limited '98-'99",
+      "years": [
+       1998,
+       1999
+      ]
+     },
+     {
+      "value": "Outback w",
+      "years": [
+       2000,
+       2002
+      ],
+      "note": "Outback w/All-Weather Pkg. '00-'02"
+     },
+     {
+      "value": "Outback base model '03-'04",
+      "years": [
+       2003,
+       2004
+      ]
+     },
+     {
+      "value": "Legacy 2.5GT Limited '05-'09",
+      "years": [
+       2005,
+       2009
+      ]
+     },
+     {
+      "value": "Legacy 2.5GT Limited spec.B '06"
+     },
+     {
+      "value": "Outback 2.5XT Limited '05-'06",
+      "years": [
+       2005,
+       2006
+      ]
+     },
+     {
+      "value": "Forester 2.5XS L.L. Bean Edition '05"
+     },
+     {
+      "value": "2.5X L.L. Bean Edition '06-'08",
+      "years": [
+       2006,
+       2008
+      ]
+     },
+     {
+      "value": "Tribeca 7-psgr. Limited '08-'09",
+      "years": [
+       2008,
+       2009
+      ]
+     },
+     {
+      "value": "Tribeca 7-psgr. Special Edition '09"
+     }
+    ],
+    "8": [
+     {
+      "value": "Impreza Outback Sport '96-'06",
+      "years": [
+       1996,
+       2006
+      ]
+     },
+     {
+      "value": "Impreza Outback Sport Special Edition '05-'06",
+      "years": [
+       2005,
+       2006
+      ]
+     },
+     {
+      "value": "Legacy 2.5GT '05"
+     },
+     {
+      "value": "Legacy Outback '96-'99",
+      "years": [
+       1996,
+       1999
+      ]
+     },
+     {
+      "value": "Legacy Outback Limited '97-'99",
+      "years": [
+       1997,
+       1999
+      ]
+     },
+     {
+      "value": "Legacy SUS '97-'99",
+      "years": [
+       1997,
+       1999
+      ]
+     },
+     {
+      "value": "Outback Limited wagon '00-'04",
+      "years": [
+       2000,
+       2004
+      ]
+     },
+     {
+      "value": "Outback Limited sedan '00-'04",
+      "years": [
+       2000,
+       2004
+      ]
+     },
+     {
+      "value": "Outback 2.5XT '05-'06",
+      "years": [
+       2005,
+       2006
+      ]
+     },
+     {
+      "value": "Tribeca 7-psgr. Limited w",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "Tribeca 7-psgr. Limited w/Navigation '08-'09"
+     }
+    ],
+    "9": [
+     {
+      "value": "Impreza WRX '02-'06",
+      "years": [
+       2002,
+       2006
+      ]
+     },
+     {
+      "value": "WRX TR '06"
+     },
+     {
+      "value": "WRX Limited '06"
+     },
+     {
+      "value": "Impreza WRX STi '08-'09",
+      "years": [
+       2008,
+       2009
+      ]
+     },
+     {
+      "value": "Legacy L Awd wagon rhd Postal Vehicle '95-'99",
+      "years": [
+       1995,
+       1999
+      ]
+     },
+     {
+      "value": "Outback H6-3.0 VDC wagon '01-'04",
+      "years": [
+       2001,
+       2004
+      ]
+     },
+     {
+      "value": "Outback H6-3.0 wagon w",
+      "note": "Outback H6-3.0 wagon w/cloth seats '03"
+     },
+     {
+      "value": "Outback H6-3.0 sedan '02-'04",
+      "years": [
+       2002,
+       2004
+      ]
+     },
+     {
+      "value": "Outback H6-3.0 VDC sedan '02-'04",
+      "years": [
+       2002,
+       2004
+      ]
+     },
+     {
+      "value": "Legacy 2.5GT spec.B '07-'09",
+      "years": [
+       2007,
+       2009
+      ]
+     },
+     {
+      "value": "Forester 2.5XT '04-'05",
+      "years": [
+       2004,
+       2005
+      ]
+     },
+     {
+      "value": "2.5XT Limited '06-'08",
+      "years": [
+       2006,
+       2008
+      ]
+     },
+     {
+      "value": "Sports 2.5XT '07"
+     }
+    ],
+    "0": [
+     {
+      "value": "Impreza WRX STi '04-'06",
+      "years": [
+       2004,
+       2006
+      ]
+     },
+     {
+      "value": "Impreza 2.5i Premium '09"
+     },
+     {
+      "value": "Legacy 2.5i '09"
+     },
+     {
+      "value": "Outback H6-3.0 L.L. Bean Edition wagon '01-'04",
+      "years": [
+       2001,
+       2004
+      ]
+     },
+     {
+      "value": "Outback base model '08"
+     },
+     {
+      "value": "Outback 2.5i '09"
+     },
+     {
+      "value": "Tribeca 7-psgr. Limited w",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "Tribeca 7-psgr. Limited w/Navigation & Rear-seat DVD Entertainment System '08-'09"
+     }
+    ]
+   }
+  },
+  "transmission@11:12": {
+   "field": "transmission",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "SIA": [
+     {
+      "value": "Subaru-Isuzu Automotive",
+      "note": "Subaru-Isuzu Automotive (now known as Subaru of Indiana Automotive)"
+     },
+     {
+      "value": "Lafayette"
+     },
+     {
+      "value": "Indiana"
+     }
+    ],
+    "FHI": [
+     {
+      "value": "Fuji Heavy Industries"
+     },
+     {
+      "value": "Gunma prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "1": [
+     {
+      "value": "SIA"
+     },
+     {
+      "value": "FHI"
+     }
+    ],
+    "2": [
+     {
+      "value": "SIA"
+     },
+     {
+      "value": "FHI"
+     }
+    ],
+    "3": [
+     {
+      "value": "SIA"
+     }
+    ],
+    "4": [
+     {
+      "value": "SIA"
+     }
+    ],
+    "5": [
+     {
+      "value": "SIA"
+     }
+    ],
+    "6": [
+     {
+      "value": "SIA"
+     }
+    ],
+    "7": [
+     {
+      "value": "SIA"
+     }
+    ],
+    "8": [
+     {
+      "value": "SIA"
+     },
+     {
+      "value": "FHI Main plant - Ota"
+     },
+     {
+      "value": "Gunma prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "9": [
+     {
+      "value": "SIA"
+     },
+     {
+      "value": "FHI Main plant - Ota"
+     },
+     {
+      "value": "Gunma prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "A": [
+     {
+      "value": "FHI"
+     }
+    ],
+    "B": [
+     {
+      "value": "FHI"
+     }
+    ],
+    "C": [
+     {
+      "value": "FHI"
+     }
+    ],
+    "D": [
+     {
+      "value": "FHI"
+     }
+    ],
+    "E": [
+     {
+      "value": "FHI"
+     }
+    ],
+    "F": [
+     {
+      "value": "FHI"
+     }
+    ],
+    "G": [
+     {
+      "value": "FHI"
+     },
+     {
+      "value": "FHI Yajima plant - Ota"
+     },
+     {
+      "value": "Gunma prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "H": [
+     {
+      "value": "FHI"
+     },
+     {
+      "value": "FHI Yajima plant - Ota"
+     },
+     {
+      "value": "Gunma prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "K": [
+     {
+      "value": "FHI"
+     }
+    ],
+    "L": [
+     {
+      "value": "FHI"
+     },
+     {
+      "value": "FHI Yajima plant - Ota"
+     },
+     {
+      "value": "Gunma prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "P": [
+     {
+      "value": "FHI"
+     }
+    ],
+    "Y": [
+     {
+      "value": "FHI Yajima plant - Ota"
+     },
+     {
+      "value": "Gunma prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ]
+   }
+  }
+ }
+}

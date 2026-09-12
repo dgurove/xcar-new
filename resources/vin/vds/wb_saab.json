@@ -1,0 +1,912 @@
+{
+ "_brand": "Saab",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Saab/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "3G0",
+  "5S3",
+  "JF4",
+  "YK1",
+  "YS3"
+ ],
+ "_market": null,
+ "sections": {
+  "body@6:7": {
+   "field": "body",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "2": [
+     {
+      "value": "2-dr. sedan",
+      "years": [
+       1985,
+       1986
+      ],
+      "note": "2-dr. sedan ('85-'86 900)"
+     }
+    ],
+    "3": [
+     {
+      "value": "3-dr. hatchback",
+      "years": [
+       1981,
+       1998
+      ],
+      "note": "3-dr. hatchback ('81-'98 900, '99-'02 9-3)"
+     }
+    ],
+    "4": [
+     {
+      "value": "4-dr. sedan",
+      "years": [
+       1981,
+       1993
+      ],
+      "note": "4-dr. sedan ('81-'93 900, '03-'11 9-3, '89-'95 9000, '99-'11 9-5)"
+     }
+    ],
+    "5": [
+     {
+      "value": "5-dr. hatchback",
+      "years": [
+       1994,
+       1998
+      ],
+      "note": "5-dr. hatchback ('94-'98 900, '99-'02 9-3, '86-'92 9000)"
+     },
+     {
+      "value": "5-dr. wagon",
+      "years": [
+       1999,
+       2009
+      ],
+      "note": "5-dr. wagon ('99-'09 9-5 wagon/SportCombi, '06-'11 9-3 SportCombi)"
+     }
+    ],
+    "6": [
+     {
+      "value": "5-dr. hatchback",
+      "years": [
+       1993,
+       1998
+      ],
+      "note": "5-dr. hatchback ('93-'98 9000)"
+     }
+    ],
+    "7": [
+     {
+      "value": "2-dr. convertible",
+      "years": [
+       1986,
+       1998
+      ],
+      "note": "2-dr. convertible ('86-'98 900, '99-'11 9-3)"
+     }
+    ]
+   }
+  },
+  "engine@7:8": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "7:8"
+   ],
+   "map": {
+    "3": [
+     {
+      "value": "2.0L SOHC 8-valve fuel injected Saab H engine B201I I4",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "2.0L SOHC 8-valve fuel injected Saab H engine B201I I4 ('81-'83 900 base model, S)"
+     }
+    ],
+    "4": [
+     {
+      "value": "2.0L turbo SOHC 8-valve fuel injected Saab H engine B201S I4",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "2.0L turbo SOHC 8-valve fuel injected Saab H engine B201S I4 ('81-'83 900 Turbo)"
+     }
+    ]
+   }
+  },
+  "engine@8:9": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "8:9"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "2.3L turbo IC DOHC 16-valve Saab H engine B235L I4",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "2.3L turbo IC DOHC 16-valve Saab H engine B235L I4 ('04-'05 9-5 Arc)"
+     }
+    ],
+    "B": [
+     {
+      "value": "2.3L DOHC 16-valve Saab H engine B234I I4",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "2.3L DOHC 16-valve Saab H engine B234I I4 (Mid '90 9000 S, '91-'92 9000 Base/S/CD, '93-'94 9000 CS/CSE, '93 9000 CD/CDE, '94-'98 900 S 5-d, '94-'97 900 S 3-d, '"
+     }
+    ],
+    "D": [
+     {
+      "value": "2.0L DOHC 16-valve Saab H engine B202I I4",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "2.0L DOHC 16-valve Saab H engine B202I I4 ('89-'90 900 base model, '86-'90 900 S, '87-Early '90 9000 S)"
+     }
+    ],
+    "E": [
+     {
+      "value": "2.1L DOHC 16-valve Saab H engine B212I I4",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "2.1L DOHC 16-valve Saab H engine B212I I4 ('91-'92 900 base model, '91-'93 900 S, '94 900 S Convertible)"
+     }
+    ],
+    "J": [
+     {
+      "value": "2.0L SOHC 8-valve Saab H engine B201I I4",
+      "years": [
+       1984,
+       1988
+      ],
+      "note": "2.0L SOHC 8-valve Saab H engine B201I I4 ('84-'88 900 base model, '84-'85 900 S)"
+     },
+     {
+      "value": "2.8L turbo IC DOHC 24-valve GM High Feature Saab A28NER V6",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "2.8L turbo IC DOHC 24-valve GM High Feature Saab A28NER V6 (RPO code: LAU) ('10-'11 9-5)"
+     }
+    ],
+    "L": [
+     {
+      "value": "2.0L turbo IC DOHC 16-valve Saab H engine B202L I4",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "2.0L turbo IC DOHC 16-valve Saab H engine B202L I4 ('85-'93 900 Turbo, '85-'91 900 Turbo SPG, '91 900 S.E. Turbo convertible, '94 900 Turbo Convertible, '86-'90"
+     }
+    ],
+    "R": [
+     {
+      "value": "2.0L turbo IC Gas",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "2.0L turbo IC Gas/E85 Flex-Fuel (Biopower) DOHC 16-valve Direct injection GM Ecotec Gen II Saab A20NFT I4 (RPO code: LHU) ('11 9-5)"
+     }
+    ],
+    "S": [
+     {
+      "value": "2.0L turbo SOHC 8-valve Saab H engine B201S I4",
+      "years": [
+       1984,
+       2011
+      ],
+      "note": "2.0L turbo SOHC 8-valve Saab H engine B201S I4 ('84 900 Turbo)"
+     }
+    ],
+    "U": [
+     {
+      "value": "2.8L turbo IC DOHC 24-valve GM High Feature Saab B284L V6",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "2.8L turbo IC DOHC 24-valve GM High Feature Saab B284L V6 ('06-'08 9-3 Aero FWD)"
+     }
+    ],
+    "V": [
+     {
+      "value": "2.5L DOHC 24-valve GM",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "2.5L DOHC 24-valve GM/Opel 54° V6 Saab B258I ('94-'97 900 SE V6 5-d, '95-'97 900 SE V6 convertible)"
+     }
+    ],
+    "W": [
+     {
+      "value": "3.0L DOHC 24-valve GM",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "3.0L DOHC 24-valve GM/Opel 54° V6 Saab B308I ('95-'97 9000 CSE V6, '95 9000 CDE V6)"
+     }
+    ],
+    "Z": [
+     {
+      "value": "3.0L turbo IC DOHC 24-valve GM",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "3.0L turbo IC DOHC 24-valve GM/Opel 54° V6 Saab B308E ('99 9-5 V6, '00-'01 9-5 SE, '02-'03 9-5 Arc)"
+     }
+    ]
+   }
+  },
+  "model@4:5": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "900",
+      "years": [
+       1981,
+       1993
+      ],
+      "note": "900 (1st gen. - '81-'93, '94 convertible)"
+     }
+    ],
+    "B": [
+     {
+      "value": "99",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "99 ('81-'84)"
+     },
+     {
+      "value": "90",
+      "years": [
+       1985,
+       1987
+      ],
+      "note": "90 ('85-'87) N/A in N. America"
+     }
+    ],
+    "C": [
+     {
+      "value": "9000",
+      "years": [
+       1986,
+       1998
+      ],
+      "note": "9000 ('86-'98)"
+     }
+    ],
+    "D": [
+     {
+      "value": "900",
+      "years": [
+       1994,
+       1998
+      ],
+      "note": "900 (2nd gen. - '94-'98 3-d/5-d, '95-'98 convertible)"
+     },
+     {
+      "value": "9-3",
+      "years": [
+       1999,
+       2002
+      ],
+      "note": "9-3 (1st gen. - '99-'02, '03 convertible)"
+     }
+    ],
+    "E": [
+     {
+      "value": "9-5",
+      "years": [
+       1999,
+       2009
+      ],
+      "note": "9-5 (1st gen. - '99-'09)"
+     }
+    ],
+    "F": [
+     {
+      "value": "9-3",
+      "years": [
+       2003,
+       2011
+      ],
+      "note": "9-3 (2nd gen. - '03-'11 4-d, '04-'11 convertible, '06-'11 wagon)"
+     }
+    ],
+    "G": [
+     {
+      "value": "9-5",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "9-5 (2nd gen. - '10-'11)"
+     }
+    ]
+   }
+  },
+  "model@5:6": {
+   "field": "model",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "G": [
+     {
+      "value": "Base model",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Base model ('81-'83 900)"
+     }
+    ],
+    "S": [
+     {
+      "value": "S 3-d",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "S 3-d ('81-'83 900)"
+     }
+    ],
+    "E": [
+     {
+      "value": "S 4-d",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "S 4-d ('81-'83 900)"
+     }
+    ],
+    "M": [
+     {
+      "value": "Base model",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "Base model ('84-'85 900)"
+     }
+    ],
+    "H": [
+     {
+      "value": "S",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "S ('84-'85 900)"
+     }
+    ],
+    "T": [
+     {
+      "value": "Turbo",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "Turbo ('81-'85 900)"
+     }
+    ],
+    "B": [
+     {
+      "value": "Base model",
+      "years": [
+       1981,
+       1986
+      ],
+      "note": "Base model ('86 900)"
+     }
+    ],
+    "C": [
+     {
+      "value": "S",
+      "years": [
+       1981,
+       1986
+      ],
+      "note": "S ('86 900)"
+     }
+    ],
+    "D": [
+     {
+      "value": "Turbo",
+      "years": [
+       1981,
+       1986
+      ],
+      "note": "Turbo ('86 900, '86 9000)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "1": [
+     {
+      "value": "Trollhattan"
+     },
+     {
+      "value": "Sweden",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "Sweden (Line 1: '81-'85 900, Line A: '86-'98 9000, '03-'11 9-3)"
+     }
+    ],
+    "2": [
+     {
+      "value": "Trollhattan"
+     },
+     {
+      "value": "Sweden",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "Sweden (Line 2: '81-'85 900, Line B: '86-'98 900, '88-'91 9000)"
+     },
+     {
+      "value": "Sweden",
+      "years": [
+       1999,
+       2002
+      ],
+      "note": "Sweden (Line A: '99-'02 9-3)"
+     },
+     {
+      "value": "Moraine"
+     },
+     {
+      "value": "Ohio"
+     },
+     {
+      "value": "US",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "US [GM plant] ('05-'09 9-7X)"
+     }
+    ],
+    "3": [
+     {
+      "value": "Arlov"
+     },
+     {
+      "value": "Sweden",
+      "years": [
+       1985,
+       1990
+      ],
+      "note": "Sweden ('85-'90 900)"
+     },
+     {
+      "value": "Trollhattan"
+     },
+     {
+      "value": "Sweden",
+      "years": [
+       1999,
+       2009
+      ],
+      "note": "Sweden (Line B: '99-'09 9-5)"
+     }
+    ],
+    "4": [
+     {
+      "value": "Malmo"
+     },
+     {
+      "value": "Sweden",
+      "note": "Sweden (9000)"
+     },
+     {
+      "value": "Trollhattan"
+     },
+     {
+      "value": "Sweden",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "Sweden ('10-'11 9-5)"
+     }
+    ],
+    "5": [
+     {
+      "value": "Malmo"
+     },
+     {
+      "value": "Sweden",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "Sweden ('90-'91 900)"
+     }
+    ],
+    "6": [
+     {
+      "value": "Uusikaupunki"
+     },
+     {
+      "value": "Finland",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "Finland (Valmet plant - '81-'84 99, '85-'87 90) N/A in N. America"
+     },
+     {
+      "value": "Graz"
+     },
+     {
+      "value": "Austria",
+      "years": [
+       2004,
+       2010
+      ],
+      "note": "Austria (Magna Steyr plant: '04-'10 9-3 convertible)"
+     }
+    ],
+    "7": [
+     {
+      "value": "Uusikaupunki"
+     },
+     {
+      "value": "Finland",
+      "years": [
+       1985,
+       1998
+      ],
+      "note": "Finland (Valmet plant - '85-'98 900, '99-'03 9-3)"
+     }
+    ],
+    "8": [
+     {
+      "value": "Uusikaupunki"
+     },
+     {
+      "value": "Finland",
+      "note": "Finland (Valmet plant - 9000)"
+     }
+    ],
+    "9": [
+     {
+      "value": "Trollhattan"
+     },
+     {
+      "value": "Sweden",
+      "note": "Sweden (Prototype/Pre-production Line)"
+     }
+    ],
+    "G": [
+     {
+      "value": "Ota"
+     },
+     {
+      "value": "Gunma prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "Japan [Subaru plant] ('05-'06 Saab 9-2X w/5-spd. man. trans.)"
+     }
+    ],
+    "H": [
+     {
+      "value": "Ota"
+     },
+     {
+      "value": "Gunma prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "Japan [Subaru plant] ('05-'06 Saab 9-2X w/4-spd. auto. trans.)"
+     }
+    ],
+    "S": [
+     {
+      "value": "Ramos Arizpe"
+     },
+     {
+      "value": "Coahuila"
+     },
+     {
+      "value": "Mexico",
+      "note": "Mexico [GM plant] ('11 9-4X)"
+     }
+    ]
+   }
+  },
+  "transmission@7:8": {
+   "field": "transmission",
+   "at": [
+    "vin",
+    "7:8"
+   ],
+   "map": {
+    "5": [
+     {
+      "value": "5-spd. manual",
+      "years": [
+       1984,
+       1993
+      ],
+      "note": "5-spd. manual ('84-'93 900, '94 900 convertible, '86-'98 9000)"
+     },
+     {
+      "value": "5-spd. manual",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "FWD",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "FWD ('08-'09 9-5)"
+     }
+    ],
+    "6": [
+     {
+      "value": "3-spd. automatic",
+      "years": [
+       1984,
+       1993
+      ],
+      "note": "3-spd. automatic ('84-'93 900, '94 900 convertible)"
+     },
+     {
+      "value": "6-spd. manual",
+      "years": [
+       2003,
+       2007
+      ],
+      "note": "6-spd. manual ('03-'07 9-3)"
+     },
+     {
+      "value": "6-spd. manual",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "FWD",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "FWD ('08-'09 9-3)"
+     }
+    ],
+    "8": [
+     {
+      "value": "4-spd. automatic",
+      "years": [
+       1994,
+       1998
+      ],
+      "note": "4-spd. automatic ('94-'98 900, '99-'02 9-3, '03 9-3 convertible, '86-'98 9000, '99-'01 9-5)"
+     }
+    ],
+    "9": [
+     {
+      "value": "5-spd. automatic",
+      "years": [
+       2002,
+       2007
+      ],
+      "note": "5-spd. automatic ('02-'07 9-5)"
+     },
+     {
+      "value": "5-spd. automatic",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "FWD",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "FWD ('08-'09 9-3 2.0T FWD, '08-'09 9-5)"
+     }
+    ],
+    "1": [
+     {
+      "value": "6-spd. automatic",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "6-spd. automatic ('06-'07 9-3 Aero 2.8T)"
+     },
+     {
+      "value": "6-spd. automatic",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "FWD",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "FWD ('08-'09 9-3 Aero 2.8T)"
+     }
+    ],
+    "2": [
+     {
+      "value": "6-spd. automatic",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "AWD",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "AWD ('08-'09 9-3 Aero 2.8T, '08 9-3 Turbo X, '09 9-3 2.0T XWD)"
+     }
+    ],
+    "7": [
+     {
+      "value": "6-spd. manual",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "AWD",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "AWD ('08-'09 9-3 Aero 2.8T, '08 9-3 Turbo X, '09 9-3 2.0T XWD)"
+     }
+    ],
+    "A": [
+     {
+      "value": "6-spd. automatic",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "FWD",
+      "years": [
+       1984,
+       2011
+      ],
+      "note": "FWD ('11 9-5)"
+     }
+    ],
+    "B": [
+     {
+      "value": "6-spd. automatic",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "AWD",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "AWD ('10-'11 9-3, '10-'11 9-5)"
+     }
+    ],
+    "C": [
+     {
+      "value": "5-spd. automatic",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "FWD",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "FWD ('10-'11 9-3)"
+     }
+    ],
+    "M": [
+     {
+      "value": "6-spd. manual",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "FWD",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "FWD ('10-'11 9-3, '11 9-5)"
+     }
+    ],
+    "N": [
+     {
+      "value": "6-spd. manual",
+      "years": [
+       1984,
+       2011
+      ]
+     },
+     {
+      "value": "AWD",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "AWD ('10-'11 9-3)"
+     }
+    ]
+   }
+  }
+ }
+}

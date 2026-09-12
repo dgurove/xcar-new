@@ -1,0 +1,2645 @@
+{
+ "_brand": "Nissan",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Nissan/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "1N4",
+  "1N6",
+  "3N1",
+  "3N6",
+  "3N8",
+  "3PC",
+  "4N2",
+  "5BZ",
+  "5N1",
+  "5N3",
+  "5Z6",
+  "6F4",
+  "7A7",
+  "8AN",
+  "94D",
+  "ADN",
+  "JN1",
+  "JN3",
+  "JN6",
+  "JN8",
+  "JNK",
+  "JNR",
+  "JNX",
+  "KNM",
+  "LGB",
+  "LJN",
+  "MBH",
+  "MDH",
+  "MNT",
+  "PN8",
+  "SJK",
+  "SJN",
+  "VNV",
+  "VSK",
+  "VWA",
+  "Z8N",
+  "ZAR"
+ ],
+ "_market": "north_america",
+ "sections": {
+  "body@7:8": {
+   "field": "body",
+   "at": [
+    "vin",
+    "7:8"
+   ],
+   "map": {
+    "1": [
+     {
+      "value": "4-door sedan"
+     },
+     {
+      "value": "Regular Cab"
+     },
+     {
+      "value": "Short bed pickup truck"
+     }
+    ],
+    "2": [
+     {
+      "value": "2-door sedan"
+     },
+     {
+      "value": "2-door coupe"
+     },
+     {
+      "value": "Regular Cab"
+     },
+     {
+      "value": "Long bed pickup truck"
+     }
+    ],
+    "3": [
+     {
+      "value": "4-door hatchback sedan",
+      "note": "4-door hatchback sedan (5-door hatchback)"
+     }
+    ],
+    "4": [
+     {
+      "value": "2-door hatchback",
+      "note": "2-door hatchback (3-door hatchback)"
+     },
+     {
+      "value": "2-door coupe"
+     },
+     {
+      "value": "2-door coupe",
+      "note": "2-door coupe (2-seater)"
+     },
+     {
+      "value": "2-door wagon classified as a Truck"
+     }
+    ],
+    "5": [
+     {
+      "value": "4-door wagon"
+     },
+     {
+      "value": "Chassis cab pickup truck"
+     }
+    ],
+    "6": [
+     {
+      "value": "2-door hardtop coupe"
+     },
+     {
+      "value": "2-door hatchback or fastback",
+      "note": "2-door hatchback or fastback (3-door hatchback)"
+     },
+     {
+      "value": "2-door coupe",
+      "note": "2-door coupe (4-seater)"
+     },
+     {
+      "value": "2-door coupe w",
+      "note": "2-door coupe w/T-bar roof (T-top)"
+     },
+     {
+      "value": "Incomplete Vehicle",
+      "note": "Incomplete Vehicle (for conversion into a 2-door convertible)"
+     },
+     {
+      "value": "2-door convertible"
+     },
+     {
+      "value": "Van"
+     },
+     {
+      "value": "2-door wagon classified as a Multi-Purpose Passenger Vehicle"
+     },
+     {
+      "value": "King Cab",
+      "note": "King Cab (extended cab) pickup truck"
+     }
+    ],
+    "7": [
+     {
+      "value": "2-door convertible"
+     },
+     {
+      "value": "4-door wagon"
+     },
+     {
+      "value": "Crew Cab"
+     },
+     {
+      "value": "Short bed pickup truck"
+     },
+     {
+      "value": "Crew Cab pickup truck"
+     }
+    ],
+    "9": [
+     {
+      "value": "4-door wagon"
+     },
+     {
+      "value": "Crew Cab"
+     },
+     {
+      "value": "Long bed pickup truck"
+     }
+    ],
+    "A": [
+     {
+      "value": "4-door sedan"
+     },
+     {
+      "value": "Bus",
+      "note": "Bus [Van with more than 3 rows of seats]"
+     }
+    ],
+    "C": [
+     {
+      "value": "4-door hatchback",
+      "note": "4-door hatchback (5-door hatchback)"
+     },
+     {
+      "value": "King Cab",
+      "note": "King Cab (extended cab) pickup truck"
+     }
+    ],
+    "E": [
+     {
+      "value": "2-door coupe"
+     },
+     {
+      "value": "Crew Cab"
+     },
+     {
+      "value": "Short bed pickup truck"
+     },
+     {
+      "value": "Standard wheelbase pickup truck"
+     }
+    ],
+    "F": [
+     {
+      "value": "2-door convertible"
+     },
+     {
+      "value": "Crew Cab"
+     },
+     {
+      "value": "Long bed pickup truck"
+     },
+     {
+      "value": "Long wheelbase pickup truck"
+     }
+    ],
+    "H": [
+     {
+      "value": "4-door wagon"
+     }
+    ],
+    "P": [
+     {
+      "value": "4-door sedan LWB"
+     }
+    ],
+    "R": [
+     {
+      "value": "4-door wagon LWB"
+     },
+     {
+      "value": "Regular Cab pickup truck"
+     }
+    ],
+    "8": [
+     {
+      "value": "4-door wagon"
+     }
+    ],
+    "J": [
+     {
+      "value": "4-door Van",
+      "note": "4-door Van (Taxi)"
+     }
+    ],
+    "K": [
+     {
+      "value": "4-door Van"
+     },
+     {
+      "value": "Van",
+      "note": "Van [3-door]"
+     }
+    ],
+    "L": [
+     {
+      "value": "Van",
+      "note": "Van [3-door] (w/High Roof)"
+     }
+    ],
+    "M": [
+     {
+      "value": "4-door wagon",
+      "note": "4-door wagon (Crossover)"
+     }
+    ],
+    "N": [
+     {
+      "value": "4-door wagon",
+      "note": "4-door wagon (SUV)"
+     }
+    ]
+   }
+  },
+  "model@5:6": {
+   "field": "model",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Nissan Maxima",
+      "years": [
+       1995,
+       2023
+      ],
+      "note": "Nissan Maxima 1995-2023"
+     },
+     {
+      "value": "Infiniti I30",
+      "years": [
+       1996,
+       2001
+      ],
+      "note": "Infiniti I30 1996-2001"
+     },
+     {
+      "value": "I35",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "I35 2002-2004"
+     },
+     {
+      "value": "Nissan Armada",
+      "years": [
+       2004,
+       2015
+      ],
+      "note": "Nissan Armada 2004-2015"
+     },
+     {
+      "value": "Infiniti QX56",
+      "years": [
+       2004,
+       2010
+      ],
+      "note": "Infiniti QX56 2004-2010"
+     },
+     {
+      "value": "Nissan Titan",
+      "years": [
+       2004,
+       2024
+      ],
+      "note": "Nissan Titan 2004-2024"
+     }
+    ],
+    "B": [
+     {
+      "value": "Datsun 210",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "Datsun 210 1981-1982"
+     },
+     {
+      "value": "Nissan Sentra",
+      "years": [
+       1983,
+       2026
+      ],
+      "note": "Nissan Sentra 1983-2026"
+     },
+     {
+      "value": "Nissan NX",
+      "years": [
+       1991,
+       1993
+      ],
+      "note": "Nissan NX 1991-1993"
+     },
+     {
+      "value": "Nissan 200SX",
+      "years": [
+       1995,
+       1998
+      ],
+      "note": "Nissan 200SX 1995-1998"
+     }
+    ],
+    "C": [
+     {
+      "value": "Nissan Versa sedan",
+      "years": [
+       2007,
+       2011
+      ],
+      "note": "Nissan Versa sedan 2007-2011"
+     },
+     {
+      "value": "Versa hatchback",
+      "years": [
+       2007,
+       2012
+      ],
+      "note": "Versa hatchback 2007-2012"
+     },
+     {
+      "value": "Nissan Van",
+      "years": [
+       1987,
+       1988
+      ],
+      "note": "Nissan Van [C22] 1987-1988"
+     },
+     {
+      "value": "1990"
+     }
+    ],
+    "E": [
+     {
+      "value": "Nissan Altra EV"
+     },
+     {
+      "value": "Nissan Versa Note",
+      "years": [
+       2014,
+       2019
+      ],
+      "note": "Nissan Versa Note 2014-2019"
+     },
+     {
+      "value": "Nissan Quest",
+      "years": [
+       2011,
+       2017
+      ],
+      "note": "Nissan Quest 2011-2017"
+     }
+    ],
+    "F": [
+     {
+      "value": "Infiniti M30",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Infiniti M30 1990-1992"
+     },
+     {
+      "value": "Infiniti Q45",
+      "years": [
+       2002,
+       2006
+      ],
+      "note": "Infiniti Q45 2002-2006"
+     },
+     {
+      "value": "Nissan Ariya EV",
+      "years": [
+       2023,
+       2024
+      ],
+      "note": "Nissan Ariya EV 2023-2024"
+     },
+     {
+      "value": "Nissan Juke",
+      "years": [
+       2011,
+       2017
+      ],
+      "note": "Nissan Juke 2011-2017"
+     },
+     {
+      "value": "Nissan NV1500",
+      "years": [
+       2012,
+       2021
+      ],
+      "note": "Nissan NV1500/NV2500/NV3500 2012-2021"
+     },
+     {
+      "value": "Nissan Ariya EV",
+      "note": "Nissan Ariya EV 2025"
+     },
+     {
+      "value": "2026",
+      "note": "2026 (Canada only)"
+     }
+    ],
+    "G": [
+     {
+      "value": "Infiniti Q45",
+      "years": [
+       1990,
+       1996
+      ],
+      "note": "Infiniti Q45 1990-1996"
+     }
+    ],
+    "H": [
+     {
+      "value": "Infiniti QX30",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "Infiniti QX30 2017-2019"
+     }
+    ],
+    "J": [
+     {
+      "value": "Nissan Maxima",
+      "years": [
+       1989,
+       1994
+      ],
+      "note": "Nissan Maxima 1989-1994"
+     },
+     {
+      "value": "Infiniti EX35",
+      "years": [
+       2008,
+       2012
+      ],
+      "note": "Infiniti EX35 2008-2012"
+     },
+     {
+      "value": "EX37",
+      "note": "EX37 2013"
+     },
+     {
+      "value": "QX50",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "QX50 2014-2017"
+     },
+     {
+      "value": "US: Nissan Rogue Sport",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "US: Nissan Rogue Sport 2017-2022"
+     },
+     {
+      "value": "Canada: Nissan Qashqai",
+      "years": [
+       2017,
+       2023
+      ],
+      "note": "Canada: Nissan Qashqai 2017-2023"
+     },
+     {
+      "value": "Infiniti QX50",
+      "years": [
+       2019,
+       2025
+      ],
+      "note": "Infiniti QX50 2019-2025"
+     },
+     {
+      "value": "Infiniti QX55",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "Infiniti QX55 2022-2025"
+     }
+    ],
+    "K": [
+     {
+      "value": "Nissan Micra",
+      "years": [
+       1985,
+       1991
+      ],
+      "note": "Nissan Micra 1985-1991"
+     },
+     {
+      "value": "2015-2019",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "2015-2019 (Canada only)"
+     }
+    ],
+    "L": [
+     {
+      "value": "Nissan Altima",
+      "years": [
+       1998,
+       2026
+      ],
+      "note": "Nissan Altima 1998-2026"
+     },
+     {
+      "value": "Infiniti JX35",
+      "note": "Infiniti JX35 2013"
+     },
+     {
+      "value": "QX60",
+      "years": [
+       2014,
+       2026
+      ],
+      "note": "QX60 2014-2026"
+     }
+    ],
+    "M": [
+     {
+      "value": "Nissan Stanza Wagon 2wd",
+      "years": [
+       1986,
+       1988
+      ],
+      "note": "Nissan Stanza Wagon 2wd 1986-1988"
+     },
+     {
+      "value": "Nissan Axxess",
+      "years": [
+       1990,
+       1995
+      ],
+      "note": "Nissan Axxess (US: 1990, Canada: 1990-1995)"
+     },
+     {
+      "value": "Nissan Stanza Wagon 4wd",
+      "years": [
+       1986,
+       1988
+      ],
+      "note": "Nissan Stanza Wagon 4wd 1986-1988"
+     },
+     {
+      "value": "Nissan NV200",
+      "years": [
+       2013,
+       2021
+      ],
+      "note": "Nissan NV200 2013-2021"
+     },
+     {
+      "value": "Chevrolet City Express",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "Chevrolet City Express 2015-2018"
+     }
+    ],
+    "N": [
+     {
+      "value": "Datsun 310",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "Datsun 310 1981-1982"
+     },
+     {
+      "value": "Nissan Pulsar NX",
+      "years": [
+       1983,
+       1990
+      ],
+      "note": "Nissan Pulsar NX 1983-1990"
+     },
+     {
+      "value": "Pulsar hatchback",
+      "note": "Pulsar hatchback 1983"
+     },
+     {
+      "value": "Nissan Versa sedan",
+      "years": [
+       2012,
+       2025
+      ],
+      "note": "Nissan Versa sedan 2012-2025"
+     },
+     {
+      "value": "Nissan Xterra",
+      "years": [
+       2005,
+       2015
+      ],
+      "note": "Nissan Xterra 2005-2015"
+     }
+    ],
+    "P": [
+     {
+      "value": "Infiniti G20",
+      "years": [
+       1991,
+       1996
+      ],
+      "note": "Infiniti G20 1991-1996"
+     },
+     {
+      "value": "1999-2002",
+      "years": [
+       1999,
+       2002
+      ]
+     },
+     {
+      "value": "Nissan Kicks",
+      "years": [
+       2018,
+       2024
+      ],
+      "note": "Nissan Kicks 2018-2024"
+     },
+     {
+      "value": "Kicks Play",
+      "note": "Kicks Play 2025"
+     },
+     {
+      "value": "Nissan Kicks",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "Nissan Kicks 2025-2026"
+     }
+    ],
+    "R": [
+     {
+      "value": "Nissan GT-R",
+      "years": [
+       2009,
+       2021
+      ],
+      "note": "Nissan GT-R 2009-2021"
+     },
+     {
+      "value": "2023-2024",
+      "years": [
+       2023,
+       2024
+      ]
+     },
+     {
+      "value": "Nissan Pathfinder",
+      "years": [
+       1996,
+       2026
+      ],
+      "note": "Nissan Pathfinder 1996-2026"
+     },
+     {
+      "value": "Infiniti QX4",
+      "years": [
+       1997,
+       2003
+      ],
+      "note": "Infiniti QX4 1997-2003"
+     }
+    ],
+    "S": [
+     {
+      "value": "Datsun 200SX",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Datsun 200SX 1981-1983"
+     },
+     {
+      "value": "Nissan 200SX",
+      "years": [
+       1984,
+       1988
+      ],
+      "note": "Nissan 200SX 1984-1988"
+     },
+     {
+      "value": "Nissan 240SX",
+      "years": [
+       1989,
+       1998
+      ],
+      "note": "Nissan 240SX 1989-1998"
+     },
+     {
+      "value": "Infiniti FX35",
+      "years": [
+       2003,
+       2012
+      ],
+      "note": "Infiniti FX35 2003-2012"
+     },
+     {
+      "value": "FX37",
+      "note": "FX37 2013"
+     },
+     {
+      "value": "FX45",
+      "years": [
+       2003,
+       2008
+      ],
+      "note": "FX45 2003-2008"
+     },
+     {
+      "value": "FX50",
+      "years": [
+       2009,
+       2013
+      ],
+      "note": "FX50 2009-2013"
+     },
+     {
+      "value": "QX70",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "QX70 2014-2017"
+     },
+     {
+      "value": "Nissan Rogue",
+      "years": [
+       2008,
+       2013
+      ],
+      "note": "Nissan Rogue 2008-2013"
+     },
+     {
+      "value": "Rogue Select",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "Rogue Select 2014-2015"
+     }
+    ],
+    "T": [
+     {
+      "value": "Datsun 510",
+      "note": "Datsun 510 1981"
+     },
+     {
+      "value": "Nissan Stanza",
+      "years": [
+       1982,
+       1989
+      ],
+      "note": "Nissan Stanza 1982-1989"
+     },
+     {
+      "value": "Nissan X-Trail",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "Nissan X-Trail 2005-2006 (Canada only)"
+     },
+     {
+      "value": "Nissan Rogue",
+      "years": [
+       2014,
+       2026
+      ],
+      "note": "Nissan Rogue 2014-2026"
+     }
+    ],
+    "U": [
+     {
+      "value": "Datsun 810",
+      "note": "Datsun 810 1981"
+     },
+     {
+      "value": "Datsun Maxima",
+      "years": [
+       1982,
+       1983
+      ],
+      "note": "Datsun Maxima 1982-1983"
+     },
+     {
+      "value": "Nissan Maxima",
+      "years": [
+       1984,
+       1988
+      ],
+      "note": "Nissan Maxima 1984-1988"
+     },
+     {
+      "value": "Nissan Stanza",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Nissan Stanza 1990-1992"
+     },
+     {
+      "value": "Nissan Altima",
+      "years": [
+       1993,
+       1997
+      ],
+      "note": "Nissan Altima 1993-1997"
+     }
+    ],
+    "V": [
+     {
+      "value": "Infiniti G35",
+      "years": [
+       2003,
+       2008
+      ],
+      "note": "Infiniti G35 2003-2008"
+     },
+     {
+      "value": "G37",
+      "years": [
+       2008,
+       2013
+      ],
+      "note": "G37 2008-2013"
+     },
+     {
+      "value": "G25",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "G25 2011-2012"
+     },
+     {
+      "value": "Q40",
+      "note": "Q40 2015"
+     },
+     {
+      "value": "Q60",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "Q60 2014-2015"
+     },
+     {
+      "value": "Infiniti Q50",
+      "years": [
+       2014,
+       2024
+      ],
+      "note": "Infiniti Q50 2014-2024"
+     },
+     {
+      "value": "Q60",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "Q60 2017-2022"
+     },
+     {
+      "value": "Nissan Quest",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "Nissan Quest 2004-2009"
+     }
+    ],
+    "Y": [
+     {
+      "value": "Infiniti J30",
+      "years": [
+       1993,
+       1997
+      ],
+      "note": "Infiniti J30 1993-1997"
+     },
+     {
+      "value": "Infiniti Q45",
+      "years": [
+       1997,
+       2001
+      ],
+      "note": "Infiniti Q45 1997-2001"
+     },
+     {
+      "value": "Infiniti M45",
+      "years": [
+       2003,
+       2004
+      ],
+      "note": "Infiniti M45 2003-2004"
+     },
+     {
+      "value": "Infiniti M35",
+      "years": [
+       2006,
+       2010
+      ],
+      "note": "Infiniti M35/M45 2006-2010"
+     },
+     {
+      "value": "Infiniti M37",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "Infiniti M37/M56 2011-2013"
+     },
+     {
+      "value": "M35h",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "M35h 2012-2013"
+     },
+     {
+      "value": "Q70",
+      "years": [
+       2014,
+       2019
+      ],
+      "note": "Q70 2014-2019"
+     },
+     {
+      "value": "Q70L",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "Q70L 2015-2019"
+     },
+     {
+      "value": "Nissan Armada",
+      "years": [
+       2017,
+       2026
+      ],
+      "note": "Nissan Armada 2017-2026"
+     }
+    ],
+    "Z": [
+     {
+      "value": "Datsun 280ZX",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Datsun 280ZX 1981-1983"
+     },
+     {
+      "value": "Nissan 300ZX",
+      "years": [
+       1984,
+       1996
+      ],
+      "note": "Nissan 300ZX 1984-1996"
+     },
+     {
+      "value": "Nissan 350Z",
+      "years": [
+       2003,
+       2009
+      ],
+      "note": "Nissan 350Z 2003-2009"
+     },
+     {
+      "value": "Nissan 370Z",
+      "years": [
+       2009,
+       2020
+      ],
+      "note": "Nissan 370Z 2009-2020"
+     },
+     {
+      "value": "Nissan Z",
+      "years": [
+       2023,
+       2026
+      ],
+      "note": "Nissan Z 2023-2026"
+     },
+     {
+      "value": "Nissan Leaf EV",
+      "years": [
+       2011,
+       2026
+      ],
+      "note": "Nissan Leaf EV 2011-2026"
+     },
+     {
+      "value": "Nissan Murano",
+      "years": [
+       2003,
+       2026
+      ],
+      "note": "Nissan Murano 2003-2026"
+     },
+     {
+      "value": "Murano CrossCabriolet",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "Murano CrossCabriolet 2011-2014"
+     },
+     {
+      "value": "Nissan Cube",
+      "years": [
+       2009,
+       2014
+      ],
+      "note": "Nissan Cube 2009-2014"
+     },
+     {
+      "value": "Infiniti QX56",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "Infiniti QX56 2011-2013"
+     },
+     {
+      "value": "QX80",
+      "years": [
+       2014,
+       2026
+      ],
+      "note": "QX80 2014-2026"
+     }
+    ],
+    "D": [
+     {
+      "value": "Datsun 720 pickup",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Datsun 720 pickup 1981-1983"
+     },
+     {
+      "value": "Nissan 720 pickup 1983 1",
+      "note": "Nissan 720 pickup 1983 1/2-1986"
+     },
+     {
+      "value": "Nissan Hardbody Pickup",
+      "note": "Nissan Hardbody Pickup [D21] 1986 1/2-1997"
+     },
+     {
+      "value": "Nissan Frontier",
+      "years": [
+       1998,
+       2026
+      ],
+      "note": "Nissan Frontier 1998-2026"
+     },
+     {
+      "value": "Suzuki Equator",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "Suzuki Equator 2009-2012"
+     },
+     {
+      "value": "Nissan Pathfinder",
+      "years": [
+       1987,
+       1995
+      ],
+      "note": "Nissan Pathfinder 1987-1995"
+     },
+     {
+      "value": "Nissan Xterra",
+      "years": [
+       2000,
+       2004
+      ],
+      "note": "Nissan Xterra 2000-2004"
+     }
+    ]
+   }
+  },
+  "model@6:7": {
+   "field": "model",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "0": [
+     {
+      "value": "Nissan Micra",
+      "years": [
+       1985,
+       1991
+      ],
+      "note": "Nissan Micra [K10] 1985-1991 (Canada only)"
+     },
+     {
+      "value": "Datsun 210",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "Datsun 210 [B310] 1981-1982"
+     },
+     {
+      "value": "Datsun 310",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "Datsun 310 [N10] 1981-1982"
+     },
+     {
+      "value": "Datsun 510",
+      "note": "Datsun 510 [A10] 1981"
+     },
+     {
+      "value": "Nissan Altima",
+      "years": [
+       1998,
+       2001
+      ],
+      "note": "Nissan Altima [L30] 1998-2001"
+     },
+     {
+      "value": "Datsun 810",
+      "note": "Datsun 810 [G910] 1981"
+     },
+     {
+      "value": "Datsun Maxima",
+      "years": [
+       1982,
+       1983
+      ],
+      "note": "Datsun Maxima [G910] 1982-1983"
+     },
+     {
+      "value": "Nissan Maxima",
+      "note": "Nissan Maxima [G910] 1984"
+     },
+     {
+      "value": "Nissan Maxima",
+      "years": [
+       1989,
+       1994
+      ],
+      "note": "Nissan Maxima [J30] 1989-1994"
+     },
+     {
+      "value": "Nissan Altra EV",
+      "years": [
+       1998,
+       2002
+      ],
+      "note": "Nissan Altra EV [EVN30] 1998-2002"
+     },
+     {
+      "value": "Nissan Leaf EV",
+      "years": [
+       2011,
+       2017
+      ],
+      "note": "Nissan Leaf EV [ZE0] 2011-2017"
+     },
+     {
+      "value": "Datsun 200SX",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Datsun 200SX [S110] 1981-1983"
+     },
+     {
+      "value": "Datsun 280ZX",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Datsun 280ZX [S130] 1981-1983"
+     },
+     {
+      "value": "Nissan Stanza Wagon",
+      "years": [
+       1986,
+       1988
+      ],
+      "note": "Nissan Stanza Wagon [M10] 1986-1988"
+     },
+     {
+      "value": "Nissan NV200",
+      "years": [
+       2013,
+       2021
+      ],
+      "note": "Nissan NV200 [M20] 2013-2021"
+     },
+     {
+      "value": "Chevrolet City Express",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "Chevrolet City Express [M20] 2015-2018"
+     },
+     {
+      "value": "Nissan NV1500",
+      "years": [
+       2012,
+       2021
+      ],
+      "note": "Nissan NV1500/NV2500/NV3500 [F80] 2012-2021"
+     },
+     {
+      "value": "Nissan X-Trail",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "Nissan X-Trail [T30] 2005-2006 (Canada only)"
+     },
+     {
+      "value": "Nissan Ariya EV",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "Nissan Ariya EV [FE0] 2023-2025"
+     },
+     {
+      "value": "2026",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "2026- (Canada only)"
+     },
+     {
+      "value": "Nissan Xterra",
+      "years": [
+       2005,
+       2015
+      ],
+      "note": "Nissan Xterra [N50] 2005-2015"
+     },
+     {
+      "value": "Nissan Murano",
+      "years": [
+       2003,
+       2007
+      ],
+      "note": "Nissan Murano [Z50] 2003-2007"
+     },
+     {
+      "value": "Nissan Pathfinder",
+      "years": [
+       1996,
+       2004
+      ],
+      "note": "Nissan Pathfinder [R50] 1996-2004"
+     },
+     {
+      "value": "Nissan Armada",
+      "years": [
+       2004,
+       2015
+      ],
+      "note": "Nissan Armada [TA60] 2004-2015"
+     },
+     {
+      "value": "Datsun",
+      "years": [
+       1981,
+       1986
+      ],
+      "note": "Datsun/Nissan 720 pickup 1981-1986"
+     },
+     {
+      "value": "Nissan Frontier",
+      "years": [
+       2005,
+       2021
+      ],
+      "note": "Nissan Frontier [D40] 2005-2021"
+     },
+     {
+      "value": "Suzuki Equator",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "Suzuki Equator [D40] 2009-2012"
+     },
+     {
+      "value": "Nissan Titan",
+      "years": [
+       2004,
+       2015
+      ],
+      "note": "Nissan Titan [A60] 2004-2015"
+     },
+     {
+      "value": "Infiniti G20",
+      "years": [
+       1991,
+       1996
+      ],
+      "note": "Infiniti G20 [P10] 1991-1996"
+     },
+     {
+      "value": "Infiniti G20",
+      "years": [
+       1999,
+       2002
+      ],
+      "note": "Infiniti G20 [P11] 1999-2002"
+     },
+     {
+      "value": "Infiniti M35",
+      "years": [
+       2006,
+       2010
+      ],
+      "note": "Infiniti M35/M45 [Y50] 2006-2010"
+     },
+     {
+      "value": "Infiniti Q45",
+      "years": [
+       1990,
+       1996
+      ],
+      "note": "Infiniti Q45 [G50] 1990-1996"
+     },
+     {
+      "value": "Infiniti Q45",
+      "years": [
+       2002,
+       2006
+      ],
+      "note": "Infiniti Q45 [F50] 2002-2006"
+     },
+     {
+      "value": "Infiniti EX35",
+      "years": [
+       2008,
+       2012
+      ],
+      "note": "Infiniti EX35 [J50] 2008-2012"
+     },
+     {
+      "value": "EX37",
+      "note": "EX37 [J50] 2013"
+     },
+     {
+      "value": "QX50",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "QX50 [J50] 2014-2017"
+     },
+     {
+      "value": "Infiniti QX4",
+      "years": [
+       1997,
+       2003
+      ],
+      "note": "Infiniti QX4 [R50] 1997-2003"
+     },
+     {
+      "value": "Infiniti JX35",
+      "note": "Infiniti JX35 [L50] 2013"
+     },
+     {
+      "value": "QX60",
+      "years": [
+       2014,
+       2020
+      ],
+      "note": "QX60 [L50] 2014-2020"
+     },
+     {
+      "value": "Infiniti FX35",
+      "years": [
+       2003,
+       2008
+      ],
+      "note": "Infiniti FX35/FX45 [S50] 2003-2008"
+     },
+     {
+      "value": "Infiniti QX56",
+      "years": [
+       2004,
+       2010
+      ],
+      "note": "Infiniti QX56 [JA60] 2004-2010"
+     }
+    ],
+    "3": [
+     {
+      "value": "Nissan Micra",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "Nissan Micra [K13] 2015-2019 (Canada only)"
+     },
+     {
+      "value": "Nissan Sentra",
+      "years": [
+       1991,
+       1994
+      ],
+      "note": "Nissan Sentra [B13] 1991-1994"
+     },
+     {
+      "value": "Nissan Pulsar NX",
+      "years": [
+       1987,
+       1990
+      ],
+      "note": "Nissan Pulsar NX [N13] 1987-1990"
+     },
+     {
+      "value": "Nissan NX",
+      "years": [
+       1991,
+       1993
+      ],
+      "note": "Nissan NX [B13] 1991-1993"
+     },
+     {
+      "value": "Nissan Altima",
+      "years": [
+       1993,
+       1997
+      ],
+      "note": "Nissan Altima [U13] 1993-1997"
+     },
+     {
+      "value": "Nissan Altima sedan",
+      "years": [
+       2013,
+       2018
+      ],
+      "note": "Nissan Altima sedan [L33] 2013-2018"
+     },
+     {
+      "value": "Nissan Maxima",
+      "years": [
+       2000,
+       2003
+      ],
+      "note": "Nissan Maxima [A33] 2000-2003"
+     },
+     {
+      "value": "Nissan 240SX",
+      "years": [
+       1989,
+       1994
+      ],
+      "note": "Nissan 240SX [S13] 1989-1994"
+     },
+     {
+      "value": "Nissan 350Z",
+      "years": [
+       2003,
+       2009
+      ],
+      "note": "Nissan 350Z [Z33] 2003–2009"
+     },
+     {
+      "value": "Nissan Rogue",
+      "note": "Nissan Rogue [T33] 2021"
+     },
+     {
+      "value": "Nissan Murano",
+      "note": "Nissan Murano [Z53] 2025"
+     },
+     {
+      "value": "Nissan Pathfinder",
+      "note": "Nissan Pathfinder [R53] 2022"
+     },
+     {
+      "value": "Nissan Armada",
+      "note": "Nissan Armada [Y63] 2025"
+     },
+     {
+      "value": "Infiniti I30",
+      "years": [
+       2000,
+       2001
+      ],
+      "note": "Infiniti I30 [A33] 2000-2001"
+     },
+     {
+      "value": "Infiniti I35",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "Infiniti I35 [A33] 2002-2004"
+     },
+     {
+      "value": "Infiniti Q45",
+      "years": [
+       1997,
+       2001
+      ],
+      "note": "Infiniti Q45 [Y33] 1997-2001"
+     },
+     {
+      "value": "Infiniti QX80",
+      "note": "Infiniti QX80 [Z63] 2025"
+     }
+    ],
+    "1": [
+     {
+      "value": "Nissan Versa sedan",
+      "years": [
+       2007,
+       2011
+      ],
+      "note": "Nissan Versa sedan [C11] 2007-2011"
+     },
+     {
+      "value": "Versa hatchback",
+      "years": [
+       2007,
+       2012
+      ],
+      "note": "Versa hatchback [C11] 2007-2012"
+     },
+     {
+      "value": "Nissan Sentra",
+      "years": [
+       1982,
+       1986
+      ],
+      "note": "Nissan Sentra [B11] 1982-1986"
+     },
+     {
+      "value": "Nissan Stanza",
+      "years": [
+       1982,
+       1986
+      ],
+      "note": "Nissan Stanza [T11] 1982-1986"
+     },
+     {
+      "value": "Nissan Altima",
+      "years": [
+       2002,
+       2006
+      ],
+      "note": "Nissan Altima [L31] 2002-2006"
+     },
+     {
+      "value": "Nissan Maxima",
+      "years": [
+       1985,
+       1988
+      ],
+      "note": "Nissan Maxima [PU11] 1985-1988"
+     },
+     {
+      "value": "Nissan Leaf EV",
+      "years": [
+       2018,
+       2025
+      ],
+      "note": "Nissan Leaf EV [ZE1] 2018-2025"
+     },
+     {
+      "value": "Nissan 300ZX",
+      "years": [
+       1984,
+       1989
+      ],
+      "note": "Nissan 300ZX [Z31] 1984-1989"
+     },
+     {
+      "value": "Nissan Axxess",
+      "note": "Nissan Axxess [M11] 1990 (US)"
+     },
+     {
+      "value": "1990-1995",
+      "years": [
+       1990,
+       1995
+      ],
+      "note": "1990-1995 (Canada)"
+     },
+     {
+      "value": "Nissan Rogue Sport",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "Nissan Rogue Sport [J11] 2017-2022 (US)"
+     },
+     {
+      "value": "Nissan Qashqai",
+      "years": [
+       2017,
+       2023
+      ],
+      "note": "Nissan Qashqai [J11] 2017-2023 (Canada)"
+     },
+     {
+      "value": "Nissan Murano",
+      "years": [
+       2009,
+       2014
+      ],
+      "note": "Nissan Murano [Z51] 2009-2014"
+     },
+     {
+      "value": "Murano CrossCabriolet",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "Murano CrossCabriolet 2011-2014"
+     },
+     {
+      "value": "Nissan Pathfinder",
+      "years": [
+       1987,
+       1995
+      ],
+      "note": "Nissan Pathfinder [WD21] 1987-1995"
+     },
+     {
+      "value": "Nissan Pathfinder",
+      "years": [
+       2005,
+       2012
+      ],
+      "note": "Nissan Pathfinder [R51] 2005-2012"
+     },
+     {
+      "value": "Nissan Hardbody Pickup",
+      "note": "Nissan Hardbody Pickup [D21] 1986 1/2-1997"
+     },
+     {
+      "value": "Nissan Frontier",
+      "note": "Nissan Frontier [D41] 2022"
+     },
+     {
+      "value": "Nissan Titan",
+      "years": [
+       2016,
+       2024
+      ],
+      "note": "Nissan Titan [A61] 2016-2024"
+     },
+     {
+      "value": "Infiniti M30",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Infiniti M30 [F31] 1990-1992"
+     },
+     {
+      "value": "Infiniti M37",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "Infiniti M37/M56 [Y51] 2011-2013"
+     },
+     {
+      "value": "M35h",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "M35h [Y51] 2012-2013"
+     },
+     {
+      "value": "Q70",
+      "years": [
+       2014,
+       2019
+      ],
+      "note": "Q70 [Y51] 2014-2019"
+     },
+     {
+      "value": "Q70L",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "Q70L [Y51] 2015-2019"
+     },
+     {
+      "value": "Infiniti QX60",
+      "note": "Infiniti QX60 [L51] 2022"
+     },
+     {
+      "value": "Infiniti FX35",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "Infiniti FX35/FX50 [S51] 2009-2012"
+     },
+     {
+      "value": "FX37",
+      "note": "FX37/FX50 [S51] 2013"
+     },
+     {
+      "value": "QX70",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "QX70 [S51] 2014-2017"
+     }
+    ],
+    "7": [
+     {
+      "value": "Nissan Versa sedan",
+      "years": [
+       2012,
+       2019
+      ],
+      "note": "Nissan Versa sedan [N17] 2012-2019"
+     },
+     {
+      "value": "Nissan Sentra",
+      "years": [
+       2013,
+       2019
+      ],
+      "note": "Nissan Sentra [B17] 2013-2019"
+     },
+     {
+      "value": "Infiniti Q50",
+      "years": [
+       2014,
+       2024
+      ],
+      "note": "Infiniti Q50 [V37] 2014-2024"
+     },
+     {
+      "value": "Infiniti Q60",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "Infiniti Q60 [V37] 2017-2022"
+     }
+    ],
+    "2": [
+     {
+      "value": "Nissan Versa Note hatchback",
+      "years": [
+       2014,
+       2019
+      ],
+      "note": "Nissan Versa Note hatchback [E12] 2014-2019"
+     },
+     {
+      "value": "Nissan Sentra",
+      "years": [
+       1987,
+       1990
+      ],
+      "note": "Nissan Sentra [B12] 1987-1990"
+     },
+     {
+      "value": "Sentra Classic",
+      "years": [
+       1991,
+       1993
+      ],
+      "note": "Sentra Classic [B12] (Canada only: 1991-1993)"
+     },
+     {
+      "value": "Nissan Pulsar hatchback",
+      "note": "Nissan Pulsar hatchback [N12] 1983"
+     },
+     {
+      "value": "Pulsar NX",
+      "years": [
+       1983,
+       1986
+      ],
+      "note": "Pulsar NX [N12] 1983-1986"
+     },
+     {
+      "value": "Nissan Stanza",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Nissan Stanza [T12] 1987-1989"
+     },
+     {
+      "value": "Nissan Stanza",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Nissan Stanza [U12] 1990-1992"
+     },
+     {
+      "value": "Nissan Altima sedan",
+      "years": [
+       2007,
+       2012
+      ],
+      "note": "Nissan Altima sedan [L32] 2007-2012"
+     },
+     {
+      "value": "Altima coupe",
+      "years": [
+       2008,
+       2013
+      ],
+      "note": "Altima coupe [D32] 2008-2013"
+     },
+     {
+      "value": "Nissan Maxima",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "Nissan Maxima [A32] 1995-1999"
+     },
+     {
+      "value": "Nissan Leaf EV",
+      "note": "Nissan Leaf EV [ZE2] 2026"
+     },
+     {
+      "value": "Nissan 200SX",
+      "years": [
+       1984,
+       1988
+      ],
+      "note": "Nissan 200SX [S12] 1984-1988"
+     },
+     {
+      "value": "Nissan 300ZX",
+      "years": [
+       1990,
+       1996
+      ],
+      "note": "Nissan 300ZX [Z32] 1990–1996"
+     },
+     {
+      "value": "Nissan Cube",
+      "years": [
+       2009,
+       2014
+      ],
+      "note": "Nissan Cube [Z12] 2009-2014"
+     },
+     {
+      "value": "Nissan Van",
+      "years": [
+       1987,
+       1988
+      ],
+      "note": "Nissan Van [C22] 1987-1988"
+     },
+     {
+      "value": "1990"
+     },
+     {
+      "value": "Nissan Quest",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "Nissan Quest [V42] 2004-2009"
+     },
+     {
+      "value": "Nissan Quest",
+      "years": [
+       2011,
+       2017
+      ],
+      "note": "Nissan Quest [RE52] 2011-2017"
+     },
+     {
+      "value": "Nissan Rogue",
+      "years": [
+       2014,
+       2020
+      ],
+      "note": "Nissan Rogue [T32] 2014-2020"
+     },
+     {
+      "value": "Nissan Xterra",
+      "years": [
+       2000,
+       2004
+      ],
+      "note": "Nissan Xterra [WD22] 2000-2004"
+     },
+     {
+      "value": "Nissan Murano",
+      "years": [
+       2015,
+       2024
+      ],
+      "note": "Nissan Murano [Z52] 2015-2024"
+     },
+     {
+      "value": "Nissan Pathfinder",
+      "years": [
+       2013,
+       2020
+      ],
+      "note": "Nissan Pathfinder [R52] 2013-2020"
+     },
+     {
+      "value": "Nissan Armada",
+      "years": [
+       2017,
+       2024
+      ],
+      "note": "Nissan Armada [Y62] 2017-2024"
+     },
+     {
+      "value": "Nissan Frontier",
+      "years": [
+       1998,
+       2004
+      ],
+      "note": "Nissan Frontier [D22] 1998-2004"
+     },
+     {
+      "value": "Infiniti I30",
+      "years": [
+       1996,
+       1999
+      ],
+      "note": "Infiniti I30 [A32] 1996-1999"
+     },
+     {
+      "value": "Infiniti J30",
+      "years": [
+       1993,
+       1997
+      ],
+      "note": "Infiniti J30 [Y32] 1993-1997"
+     },
+     {
+      "value": "Infiniti QX56",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "Infiniti QX56 [Z62] 2011-2013"
+     },
+     {
+      "value": "QX80",
+      "years": [
+       2014,
+       2024
+      ],
+      "note": "QX80 [Z62] 2014-2024"
+     }
+    ],
+    "8": [
+     {
+      "value": "Nissan Versa sedan",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "Nissan Versa sedan [N18] 2020-2025"
+     },
+     {
+      "value": "Nissan Sentra",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "Nissan Sentra [B18] 2020-2025"
+     }
+    ],
+    "4": [
+     {
+      "value": "Nissan Sentra",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "Nissan Sentra [B14] 1995-1999"
+     },
+     {
+      "value": "Nissan 200SX",
+      "years": [
+       1995,
+       1998
+      ],
+      "note": "Nissan 200SX [B14] 1995-1998"
+     },
+     {
+      "value": "Nissan Altima",
+      "note": "Nissan Altima [L34] 2019"
+     },
+     {
+      "value": "Nissan Maxima",
+      "years": [
+       2004,
+       2008
+      ],
+      "note": "Nissan Maxima [A34] 2004-2008"
+     },
+     {
+      "value": "Nissan 240SX",
+      "years": [
+       1995,
+       1998
+      ],
+      "note": "Nissan 240SX [S14] 1995-1998"
+     },
+     {
+      "value": "Nissan 370Z",
+      "years": [
+       2009,
+       2020
+      ],
+      "note": "Nissan 370Z [Z34] 2009-2020"
+     },
+     {
+      "value": "Nissan Z",
+      "note": "Nissan Z [RZ34] 2023"
+     },
+     {
+      "value": "Infiniti M45",
+      "years": [
+       2003,
+       2004
+      ],
+      "note": "Infiniti M45 [Y34] 2003-2004"
+     }
+    ],
+    "5": [
+     {
+      "value": "Nissan Sentra",
+      "years": [
+       2000,
+       2006
+      ],
+      "note": "Nissan Sentra [B15] 2000-2006"
+     },
+     {
+      "value": "Nissan Maxima",
+      "years": [
+       2009,
+       2014
+      ],
+      "note": "Nissan Maxima [A35] 2009-2014"
+     },
+     {
+      "value": "Nissan GT-R",
+      "years": [
+       2009,
+       2021
+      ],
+      "note": "Nissan GT-R [R35] 2009-2021"
+     },
+     {
+      "value": "2023-2024",
+      "years": [
+       2023,
+       2024
+      ]
+     },
+     {
+      "value": "Nissan Juke",
+      "years": [
+       2011,
+       2017
+      ],
+      "note": "Nissan Juke [F15] 2011-2017"
+     },
+     {
+      "value": "Nissan Kicks",
+      "years": [
+       2018,
+       2024
+      ],
+      "note": "Nissan Kicks [P15] 2018-2024"
+     },
+     {
+      "value": "Kicks Play",
+      "note": "Kicks Play [P15] 2025"
+     },
+     {
+      "value": "Nissan Rogue",
+      "years": [
+       2008,
+       2013
+      ],
+      "note": "Nissan Rogue [S35] 2008-2013"
+     },
+     {
+      "value": "Rogue Select",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "Rogue Select [S35] 2014-2015"
+     },
+     {
+      "value": "Infiniti QX30",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "Infiniti QX30 [H15] 2017-2019"
+     },
+     {
+      "value": "Infiniti G35 sedan",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "Infiniti G35 sedan [V35] 2003-2006"
+     },
+     {
+      "value": "Infiniti G35 coupe",
+      "years": [
+       2003,
+       2007
+      ],
+      "note": "Infiniti G35 coupe [V35] 2003-2007"
+     },
+     {
+      "value": "Infiniti QX50",
+      "years": [
+       2019,
+       2025
+      ],
+      "note": "Infiniti QX50 [J55] 2019-2025"
+     },
+     {
+      "value": "Infiniti QX55",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "Infiniti QX55 [J55] 2022-2025"
+     }
+    ],
+    "6": [
+     {
+      "value": "Nissan Sentra",
+      "years": [
+       2007,
+       2012
+      ],
+      "note": "Nissan Sentra [B16] 2007-2012"
+     },
+     {
+      "value": "Nissan Maxima",
+      "years": [
+       2016,
+       2023
+      ],
+      "note": "Nissan Maxima [A36] 2016-2023"
+     },
+     {
+      "value": "Nissan Kicks",
+      "note": "Nissan Kicks [P16] 2025"
+     },
+     {
+      "value": "Infiniti G35 sedan",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "Infiniti G35 sedan [V36] 2007-2008"
+     },
+     {
+      "value": "G37 sedan",
+      "years": [
+       2009,
+       2013
+      ],
+      "note": "G37 sedan [V36] 2009-2013"
+     },
+     {
+      "value": "G25 sedan",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "G25 sedan [V36] 2011-2012"
+     },
+     {
+      "value": "Q40 sedan",
+      "note": "Q40 sedan [V36] 2015"
+     },
+     {
+      "value": "Infiniti G37 coupe",
+      "years": [
+       2008,
+       2013
+      ],
+      "note": "Infiniti G37 coupe [V36] 2008-2013"
+     },
+     {
+      "value": "G37 convertible",
+      "years": [
+       2009,
+       2013
+      ],
+      "note": "G37 convertible [V36] 2009-2013"
+     },
+     {
+      "value": "Q60 coupe",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "Q60 coupe/convertible [V36] 2014-2015"
+     }
+    ],
+    "9": [
+     {
+      "value": "Nissan Sentra",
+      "note": "Nissan Sentra [B19] 2026"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Nissan Motor Manufacturing UK",
+      "note": "Nissan Motor Manufacturing UK (NMUK) plant"
+     },
+     {
+      "value": "Sunderland"
+     },
+     {
+      "value": "Tyne and Wear"
+     },
+     {
+      "value": "England"
+     },
+     {
+      "value": "United Kingdom"
+     }
+    ],
+    "B": [
+     {
+      "value": "Nissan do Brasil Automoveis plant"
+     },
+     {
+      "value": "Resende"
+     },
+     {
+      "value": "Rio de Janeiro state"
+     },
+     {
+      "value": "Brazil"
+     }
+    ],
+    "C": [
+     {
+      "value": "Nissan North America Smyrna plant"
+     },
+     {
+      "value": "Smyrna"
+     },
+     {
+      "value": "TN"
+     },
+     {
+      "value": "USA"
+     }
+    ],
+    "D": [
+     {
+      "value": "Ford Ohio Assembly Plant"
+     },
+     {
+      "value": "Avon Lake"
+     },
+     {
+      "value": "OH"
+     },
+     {
+      "value": "USA",
+      "years": [
+       1993,
+       2002
+      ],
+      "note": "USA (1993-2002 Quest)"
+     }
+    ],
+    "F": [
+     {
+      "value": "COMPAS plant"
+     },
+     {
+      "value": "Aguascalientes city"
+     },
+     {
+      "value": "Aguascalientes state"
+     },
+     {
+      "value": "Mexico",
+      "note": "Mexico ('19+ QX50, '22+ QX55)"
+     }
+    ],
+    "G": [
+     {
+      "value": "Oragadam"
+     },
+     {
+      "value": "Tamil Nadu"
+     },
+     {
+      "value": "India",
+      "note": "India (Mexican market Magnite)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Nissan Mexicana plant"
+     },
+     {
+      "value": "Cuernavaca"
+     },
+     {
+      "value": "Morelos"
+     },
+     {
+      "value": "Mexico"
+     }
+    ],
+    "L": [
+     {
+      "value": "Nissan Mexicana plant"
+     },
+     {
+      "value": "Aguascalientes city"
+     },
+     {
+      "value": "Aguascalientes state"
+     },
+     {
+      "value": "Mexico",
+      "note": "Mexico (A1 plant)"
+     }
+    ],
+    "M": [
+     {
+      "value": "Tochigi plant"
+     },
+     {
+      "value": "Kaminokawa"
+     },
+     {
+      "value": "Tochigi prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "N": [
+     {
+      "value": "Nissan North America Canton plant"
+     },
+     {
+      "value": "Canton"
+     },
+     {
+      "value": "MS"
+     },
+     {
+      "value": "USA"
+     }
+    ],
+    "P": [
+     {
+      "value": "Renault Samsung plant"
+     },
+     {
+      "value": "Pusan"
+     },
+     {
+      "value": "South Korea",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "South Korea (2015-2020 Rogue)"
+     }
+    ],
+    "T": [
+     {
+      "value": "Oppama plant"
+     },
+     {
+      "value": "Yokosuka"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "U": [
+     {
+      "value": "Zama plant"
+     },
+     {
+      "value": "Zama"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "W": [
+     {
+      "value": "Nissan Motor Kyushu plant"
+     },
+     {
+      "value": "Kanda"
+     },
+     {
+      "value": "Fukuoka prefecture"
+     },
+     {
+      "value": "Japan"
+     },
+     {
+      "value": "Takada Kogyo Co",
+      "note": "Takada Kogyo Co."
+     },
+     {
+      "value": "Ltd. Honmoku plant"
+     },
+     {
+      "value": "Yokohama"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Japan (Only for '93-'94 240SX convertible)"
+     }
+    ],
+    "X": [
+     {
+      "value": "Nissan Shatai Co",
+      "note": "Nissan Shatai Co."
+     },
+     {
+      "value": "Ltd. Shonan plant"
+     },
+     {
+      "value": "Hiratsuka"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "Y": [
+     {
+      "value": "Nissan Mexicana plant"
+     },
+     {
+      "value": "Aguascalientes city"
+     },
+     {
+      "value": "Aguascalientes state"
+     },
+     {
+      "value": "Mexico",
+      "note": "Mexico (A2 plant)"
+     }
+    ],
+    "4": [
+     {
+      "value": "Aichi Machine Industry Co",
+      "note": "Aichi Machine Industry Co."
+     },
+     {
+      "value": "Ltd. plant"
+     },
+     {
+      "value": "Nagoya"
+     },
+     {
+      "value": "Aichi prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "6": [
+     {
+      "value": "Bang Sao Thong District"
+     },
+     {
+      "value": "Samut Prakan province"
+     },
+     {
+      "value": "Thailand",
+      "note": "Thailand (Mexican market Kicks e-Power, Kicks Play e-Power)"
+     }
+    ],
+    "9": [
+     {
+      "value": "Gunma"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (1980's)"
+     },
+     {
+      "value": "Nissan Shatai Co",
+      "note": "Nissan Shatai Co."
+     },
+     {
+      "value": "Ltd. Kyushu plant"
+     },
+     {
+      "value": "Kanda"
+     },
+     {
+      "value": "Fukuoka prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (21st century)"
+     }
+    ]
+   }
+  }
+ }
+}

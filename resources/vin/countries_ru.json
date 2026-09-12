@@ -1,0 +1,39 @@
+{
+  "_note": "Русские названия стран для вывода в админку. Ключи — значения из data/countries.json (ISO 3780, через vininfo).",
+  "names": {
+    "Algeria": "Алжир", "Andorra": "Андорра", "Angola": "Ангола", "Argentina": "Аргентина",
+    "Armenia": "Армения", "Australia": "Австралия", "Austria": "Австрия", "Azerbaijan": "Азербайджан",
+    "Bangladesh": "Бангладеш", "Belarus": "Беларусь", "Belgium": "Бельгия", "Bolivia": "Боливия",
+    "Bosnia & Herzogovina": "Босния и Герцеговина", "Botswana": "Ботсвана", "Brazil": "Бразилия",
+    "Bulgaria": "Болгария", "Canada": "Канада", "Chile": "Чили", "China": "Китай",
+    "Colombia": "Колумбия", "Croatia": "Хорватия", "Cyprus": "Кипр", "Czech Republic": "Чехия",
+    "Denmark": "Дания", "Dom. Republic": "Доминиканская Республика", "Ecuador": "Эквадор",
+    "Egypt": "Египет", "Estonia": "Эстония", "Finland": "Финляндия", "France": "Франция",
+    "Germany": "Германия", "Greece": "Греция", "Honduras": "Гондурас", "Hong Kong": "Гонконг",
+    "Hungary": "Венгрия", "India": "Индия", "Indonesia": "Индонезия", "Iran": "Иран",
+    "Iraq": "Ирак", "Ireland": "Ирландия", "Israel": "Израиль", "Italy": "Италия",
+    "Ivory Coast": "Кот-д’Ивуар", "Japan": "Япония", "Jordan": "Иордания", "Kazakhstan": "Казахстан",
+    "Kenya": "Кения", "Laos": "Лаос", "Latvia": "Латвия", "Lesotho": "Лесото", "Libya": "Ливия",
+    "Lithuania": "Литва", "Luxembourg": "Люксембург", "Macedonia": "Северная Македония",
+    "Madagascar": "Мадагаскар", "Malaysia": "Малайзия", "Malta": "Мальта", "Mauritius": "Маврикий",
+    "Mexico": "Мексика", "Mongolia": "Монголия", "Morocco": "Марокко", "Mozambique": "Мозамбик",
+    "Myanmar": "Мьянма", "Namibia": "Намибия", "Netherlands": "Нидерланды",
+    "New Zealand": "Новая Зеландия", "Nigeria": "Нигерия", "Norway": "Норвегия",
+    "Pakistan": "Пакистан", "Panama": "Панама", "Peru": "Перу", "Philippines": "Филиппины",
+    "Poland": "Польша", "Portugal": "Португалия", "Puerto Rico": "Пуэрто-Рико",
+    "Romania": "Румыния", "Russia": "Россия", "San Marino": "Сан-Марино",
+    "Saudi Arabia": "Саудовская Аравия", "Serbia": "Сербия",
+    "Serbia & Montenegro": "Сербия и Черногория", "Singapore": "Сингапур", "Slovakia": "Словакия",
+    "Slovenia": "Словения", "South Africa": "ЮАР", "South Korea": "Южная Корея",
+    "South Ossetia": "Южная Осетия", "Spain": "Испания", "Sweden": "Швеция",
+    "Switzerland": "Швейцария", "Taiwan": "Тайвань", "Thailand": "Таиланд", "Tunisia": "Тунис",
+    "Turkey": "Турция", "Ukraine": "Украина", "United Arab Emirates": "ОАЭ",
+    "United Kingdom": "Великобритания", "United States": "США", "Uruguay": "Уругвай",
+    "Uzbekistan": "Узбекистан", "Venezuela": "Венесуэла", "Vietnam": "Вьетнам",
+    "Zambia": "Замбия", "Zimbabwe": "Зимбабве"
+  },
+  "regions": {
+    "Africa": "Африка", "Asia": "Азия", "Europe": "Европа",
+    "North America": "Северная Америка", "Oceania": "Океания", "South America": "Южная Америка"
+  }
+}

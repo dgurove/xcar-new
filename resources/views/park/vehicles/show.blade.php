@@ -2,7 +2,7 @@
 <x-ui.shell :title="$vehicle->titleWithYear()">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-park.state :vehicle="$vehicle"/>
-        @if ($vehicle->ref)<span class="chip nums font-normal">{{ $vehicle->ref }}</span>@endif
+        @if ($vehicle->ref)<span class="chip">{{ $vehicle->ref }}</span>@endif
         @if ($threads->count())<x-ui.pill tone="plain" :href="$threads->count() === 1 ? '/pochta/'.$threads->first()->id : '/pochta?preset=linked&q='.urlencode($vehicle->ref ?? '')" class="!min-h-0 !py-1 text-xs"><x-ui.icon name="mail" class="size-4"/> {{ $threads->count() === 1 ? 'Письмо' : 'Писем: '.$threads->count() }}</x-ui.pill>@endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <x-ui.sheet id="vehicle-actions" title="Машина">
@@ -34,7 +34,7 @@
     </div>
 
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <form method="post" action="/mashiny/{{ $vehicle->id }}" id="vehicle-form" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+        <form method="post" action="/mashiny/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @csrf @method('put')
             <x-ui.card title="Машина" class="order-1">
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
@@ -44,7 +44,7 @@
                     <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id" :value="$vehicle->model_id" :text="$vehicle->model?->name"/>
                     <x-ui.field name="year" label="Год" inputmode="numeric" :value="$vehicle->year"/>
                     <x-ui.field name="plate" label="Госномер" :value="$vehicle->plate" autocapitalize="characters"/>
-                    <x-ui.field name="vin" label="VIN" :value="$vehicle->vin" maxlength="17" class="uppercase" autocapitalize="characters" span="col-span-2 lg:col-span-1"/>
+                    <x-ui.field name="vin" label="VIN" :value="$vehicle->vin" data-action="input->vin#fill" maxlength="17" class="uppercase" autocapitalize="characters" span="col-span-2 lg:col-span-1"/>
                     <x-ui.field name="color" label="Цвет" :value="$vehicle->color"/>
                 </div>
             </x-ui.card>
@@ -105,7 +105,7 @@
                 <div class="flex flex-col gap-2 text-sm">
                     @foreach ($vehicle->events as $event)
                         <div class="flex gap-3">
-                            <span class="shrink-0 tabular-nums text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
+                            <span class="shrink-0 text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
                             <span class="min-w-0">{{ $event->text() }}</span>
                             @if ($event->user)<span class="ml-auto shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
                         </div>

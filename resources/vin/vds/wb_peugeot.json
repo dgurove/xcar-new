@@ -1,0 +1,969 @@
+{
+ "_brand": "Peugeot",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Peugeot/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "8AD",
+  "8AE",
+  "8GD",
+  "936",
+  "9V8",
+  "LDC",
+  "NAA",
+  "PNA",
+  "SDB",
+  "VF3",
+  "VGA",
+  "VR3",
+  "VS8"
+ ],
+ "_market": null,
+ "sections": {
+  "body@5:6": {
+   "field": "body",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "4-door sedan",
+      "years": [
+       1981,
+       1989
+      ]
+     }
+    ],
+    "D": [
+     {
+      "value": "Station wagon",
+      "years": [
+       1981,
+       1989
+      ]
+     }
+    ],
+    "F": [
+     {
+      "value": "Station wagon 3-row",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Station wagon 3-row ('88-'89 SW8)"
+     }
+    ],
+    "Y": [
+     {
+      "value": "Station wagon Taxi",
+      "years": [
+       1981,
+       1989
+      ]
+     }
+    ],
+    "Z": [
+     {
+      "value": "4-door sedan Taxi",
+      "years": [
+       1981,
+       1989
+      ]
+     }
+    ]
+   }
+  },
+  "body@6:7": {
+   "field": "body",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "B": [
+     {
+      "value": "505 w",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "505 w/5-spd. manual"
+     }
+    ],
+    "C": [
+     {
+      "value": "505 w",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "505 w/4-spd. automatic"
+     }
+    ],
+    "D": [
+     {
+      "value": "405 w",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "405 w/5-spd. manual"
+     }
+    ],
+    "E": [
+     {
+      "value": "405 w",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "405 w/4-spd. automatic"
+     }
+    ]
+   }
+  },
+  "engine@5:6": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "XU9J2 1.9-liter SOHC 8v gas 4-cyl",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "XU9J2 1.9-liter SOHC 8v gas 4-cyl. ('90-'92 405 DL, S) Federal emissions"
+     }
+    ],
+    "B": [
+     {
+      "value": "XU9J4 1.9-liter DOHC 16v gas 4-cyl",
+      "years": [
+       1991,
+       1992
+      ],
+      "note": "XU9J4 1.9-liter DOHC 16v gas 4-cyl. ('91-'92 405 Mi16) Federal emissions"
+     }
+    ],
+    "C": [
+     {
+      "value": "XU9J2 1.9-liter SOHC 8v gas 4-cyl",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "XU9J2 1.9-liter SOHC 8v gas 4-cyl. ('90-'92 405 DL, S) California emissions"
+     }
+    ],
+    "D": [
+     {
+      "value": "XU9J4 1.9-liter DOHC 16v gas 4-cyl",
+      "years": [
+       1991,
+       1992
+      ],
+      "note": "XU9J4 1.9-liter DOHC 16v gas 4-cyl. ('91-'92 405 Mi16) California emissions"
+     }
+    ],
+    "E": [
+     {
+      "value": "N9TEA 2.2-liter",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "N9TEA 2.2-liter (2155cc) OHC turbo intercooled gas 4-cyl. w/electronically controlled wastegate ('91 505)"
+     }
+    ],
+    "F": [
+     {
+      "value": "ZDJL 2.2-liter",
+      "years": [
+       1991,
+       1992
+      ],
+      "note": "ZDJL 2.2-liter (2165cc) OHC gas 4-cyl. ('91-'92 505)"
+     }
+    ]
+   }
+  },
+  "engine@6:7": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "1": [
+     {
+      "value": "XN6 2.0-liter OHV gas 4-cyl",
+      "years": [
+       1981,
+       1987
+      ],
+      "note": "XN6 2.0-liter OHV gas 4-cyl. ('81-'87 505)"
+     },
+     {
+      "value": "XU9J2 1.9-liter SOHC 8v gas 4-cyl",
+      "years": [
+       1981,
+       1989
+      ],
+      "note": "XU9J2 1.9-liter SOHC 8v gas 4-cyl. ('89 405 DL, S)"
+     }
+    ],
+    "2": [
+     {
+      "value": "XD2 2.3-liter OHV diesel 4-cyl",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "XD2 2.3-liter OHV diesel 4-cyl. ('81-'83 505, '81-'82 504)"
+     },
+     {
+      "value": "XU9J4 1.9-liter DOHC 16v gas 4-cyl",
+      "years": [
+       1981,
+       1989
+      ],
+      "note": "XU9J4 1.9-liter DOHC 16v gas 4-cyl. ('89 405 Mi16)"
+     }
+    ],
+    "4": [
+     {
+      "value": "XD2S 2.3-liter OHV turbodiesel 4-cyl",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "XD2S 2.3-liter OHV turbodiesel 4-cyl. ('81-'85 505, '82-'84 604)"
+     }
+    ],
+    "5": [
+     {
+      "value": "N9T 2.2-liter",
+      "years": [
+       1981,
+       1989
+      ],
+      "note": "N9T 2.2-liter (2155cc) OHC turbo gas 4-cyl. ('85 505)"
+     }
+    ],
+    "6": [
+     {
+      "value": "XD3T 2.5-liter OHV turbodiesel 4-cyl",
+      "years": [
+       1985,
+       1987
+      ],
+      "note": "XD3T 2.5-liter OHV turbodiesel 4-cyl. ('85-'87 505)"
+     }
+    ],
+    "7": [
+     {
+      "value": "N9TE 2.2-liter",
+      "years": [
+       1986,
+       1987
+      ],
+      "note": "N9TE 2.2-liter (2155cc) OHC turbo intercooled gas 4-cyl. ('86-'87 505)"
+     },
+     {
+      "value": "N9TEA 2.2-liter",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "N9TEA 2.2-liter (2155cc) OHC turbo intercooled gas 4-cyl. w/electronically controlled wastegate ('88-'89 505)"
+     }
+    ],
+    "8": [
+     {
+      "value": "ZDJL 2.2-liter",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "ZDJL 2.2-liter (2165cc) OHC gas 4-cyl. ('87-'89 505)"
+     }
+    ],
+    "9": [
+     {
+      "value": "ZN3J 2.8-liter OHC gas 90° PRV V6",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "ZN3J 2.8-liter OHC gas 90° PRV V6 ('87-'89 505)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "S": [
+     {
+      "value": "Sochaux"
+     },
+     {
+      "value": "France",
+      "note": "France (All US market Peugeots were made in Sochaux)"
+     }
+    ],
+    "B": [
+     {
+      "value": "Porto Real"
+     },
+     {
+      "value": "Rio de Janeiro state"
+     },
+     {
+      "value": "Brazil"
+     }
+    ],
+    "E": [
+     {
+      "value": "Madrid-Villaverde"
+     },
+     {
+      "value": "Spain"
+     }
+    ],
+    "G": [
+     {
+      "value": "El Palomar"
+     },
+     {
+      "value": "Buenos Aires province"
+     },
+     {
+      "value": "Argentina"
+     },
+     {
+      "value": "Gliwice"
+     },
+     {
+      "value": "Poland",
+      "note": "Poland (Opel plant) (Boxer)"
+     },
+     {
+      "value": "Gurun"
+     },
+     {
+      "value": "Kedah state"
+     },
+     {
+      "value": "Malaysia"
+     }
+    ],
+    "J": [
+     {
+      "value": "Vigo"
+     },
+     {
+      "value": "Spain"
+     }
+    ],
+    "L": [
+     {
+      "value": "Rennes"
+     },
+     {
+      "value": "France"
+     }
+    ],
+    "N": [
+     {
+      "value": "Mangualde"
+     },
+     {
+      "value": "Portugal"
+     }
+    ],
+    "P": [
+     {
+      "value": "Graz"
+     },
+     {
+      "value": "Austria",
+      "note": "Austria (Magna Steyr plant) (RCZ)"
+     }
+    ],
+    "R": [
+     {
+      "value": "Kolin"
+     },
+     {
+      "value": "Czech Republic",
+      "note": "Czech Republic (TPCA plant) (107, 108)"
+     }
+    ],
+    "T": [
+     {
+      "value": "Trnava"
+     },
+     {
+      "value": "Slovakia"
+     }
+    ],
+    "U": [
+     {
+      "value": "Mizushima plant"
+     },
+     {
+      "value": "Kurashiki"
+     },
+     {
+      "value": "Okayama prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (Mitsubishi Motors plant) (4007, iOn)"
+     },
+     {
+      "value": "Bursa"
+     },
+     {
+      "value": "Turkey",
+      "note": "Turkey (Tofaş plant) (Expert)"
+     }
+    ],
+    "W": [
+     {
+      "value": "Poissy"
+     },
+     {
+      "value": "France"
+     }
+    ],
+    "Y": [
+     {
+      "value": "Mulhouse"
+     },
+     {
+      "value": "France"
+     }
+    ],
+    "Z": [
+     {
+      "value": "Sevel Nord plant"
+     },
+     {
+      "value": "Lieu-Saint-Amand"
+     },
+     {
+      "value": "France",
+      "note": "France (Expert/Traveller)"
+     },
+     {
+      "value": "Okazaki plant"
+     },
+     {
+      "value": "Okazaki"
+     },
+     {
+      "value": "Aichi prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (Mitsubishi Motors plant) (4007, 4008)"
+     }
+    ],
+    "2": [
+     {
+      "value": "Sevel Sud plant"
+     },
+     {
+      "value": "Atessa"
+     },
+     {
+      "value": "Italy",
+      "note": "Italy (Boxer)"
+     }
+    ],
+    "3": [
+     {
+      "value": "Shenzhen"
+     },
+     {
+      "value": "Guangdong province"
+     },
+     {
+      "value": "China",
+      "note": "China (Shenzhen Baoneng Motor Co., Ltd. plant) (Landtrek)"
+     }
+    ],
+    "4": [
+     {
+      "value": "Zaragoza plant"
+     },
+     {
+      "value": "Figueruelas"
+     },
+     {
+      "value": "Zaragoza province"
+     },
+     {
+      "value": "Spain",
+      "note": "Spain (Opel plant) (208)"
+     }
+    ],
+    "5": [
+     {
+      "value": "Kenitra"
+     },
+     {
+      "value": "Morocco",
+      "note": "Morocco (208)"
+     }
+    ],
+    "7": [
+     {
+      "value": "Luton"
+     },
+     {
+      "value": "England"
+     },
+     {
+      "value": "UK",
+      "note": "UK (Vauxhall plant) (Expert/Traveller)"
+     }
+    ],
+    "8": [
+     {
+      "value": "Bursa"
+     },
+     {
+      "value": "Turkey",
+      "note": "Turkey (Tofaş plant) (Bipper)"
+     },
+     {
+      "value": "Ellesmere Port"
+     },
+     {
+      "value": "England"
+     },
+     {
+      "value": "UK",
+      "note": "UK (Vauxhall plant) (Partner)"
+     }
+    ],
+    "9": [
+     {
+      "value": "Betim"
+     },
+     {
+      "value": "Minas Gerais state"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Fiat plant) (Partner Rapid)"
+     }
+    ]
+   }
+  },
+  "transmission@4:5": {
+   "field": "transmission",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Peugeot 604",
+      "years": [
+       1990,
+       1992
+      ]
+     }
+    ],
+    "B": [
+     {
+      "value": "Peugeot 505",
+      "years": [
+       1981,
+       1989
+      ],
+      "note": "Peugeot 505 ('81-'89)"
+     },
+     {
+      "value": "Peugeot 505 w",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Peugeot 505 w/5-spd. manual ('90-'92)"
+     },
+     {
+      "value": "Peugeot Expert",
+      "years": [
+       1990,
+       1992
+      ]
+     }
+    ],
+    "C": [
+     {
+      "value": "Peugeot 504",
+      "years": [
+       1990,
+       1992
+      ]
+     },
+     {
+      "value": "Peugeot 505 w",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Peugeot 505 w/4-spd. automatic ('90-'92)"
+     },
+     {
+      "value": "Peugeot 208",
+      "years": [
+       1990,
+       1992
+      ]
+     }
+    ],
+    "D": [
+     {
+      "value": "Peugeot 405",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Peugeot 405 ('89)"
+     },
+     {
+      "value": "Peugeot 405 w",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Peugeot 405 w/5-spd. manual ('90-'92)"
+     },
+     {
+      "value": "Peugeot 301",
+      "years": [
+       1990,
+       1992
+      ]
+     }
+    ],
+    "E": [
+     {
+      "value": "Peugeot 405 w",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Peugeot 405 w/4-spd. automatic ('90-'92)"
+     }
+    ],
+    "2": [
+     {
+      "value": "Peugeot 206",
+      "years": [
+       1990,
+       1992
+      ]
+     }
+    ],
+    "8": [
+     {
+      "value": "Peugeot 406",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Peugeot 406/508"
+     }
+    ],
+    "6": [
+     {
+      "value": "Peugeot 407",
+      "years": [
+       1990,
+       1992
+      ]
+     }
+    ],
+    "9": [
+     {
+      "value": "Peugeot 308",
+      "years": [
+       1990,
+       1992
+      ]
+     }
+    ],
+    "4": [
+     {
+      "value": "Peugeot 308",
+      "years": [
+       1990,
+       1992
+      ]
+     }
+    ],
+    "3": [
+     {
+      "value": "Peugeot 307",
+      "years": [
+       1990,
+       1992
+      ]
+     }
+    ],
+    "7": [
+     {
+      "value": "Peugeot 306",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Peugeot 306 / Partner"
+     }
+    ],
+    "U": [
+     {
+      "value": "Peugeot",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Peugeot 2008"
+     }
+    ],
+    "M": [
+     {
+      "value": "Peugeot 3008",
+      "years": [
+       1990,
+       1992
+      ]
+     }
+    ]
+   }
+  },
+  "transmission@8:9": {
+   "field": "transmission",
+   "at": [
+    "vin",
+    "8:9"
+   ],
+   "map": {
+    "2": [
+     {
+      "value": "604 turbodiesel w",
+      "years": [
+       1981,
+       1989
+      ],
+      "note": "604 turbodiesel w/manual trans. ('84)"
+     },
+     {
+      "value": "505 S",
+      "years": [
+       1981,
+       1989
+      ],
+      "note": "505 S ('90)"
+     },
+     {
+      "value": "405 S",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "405 S ('90-'92)"
+     }
+    ],
+    "5": [
+     {
+      "value": "504 w",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "504 w/manual trans. ('81-'82)"
+     },
+     {
+      "value": "505",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "505 (base model) w/manual trans. ('81-'83)"
+     },
+     {
+      "value": "505 GL w",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "505 GL w/manual trans. ('84-'85)"
+     },
+     {
+      "value": "505 Turbo",
+      "years": [
+       1981,
+       1989
+      ],
+      "note": "505 Turbo ('90)"
+     }
+    ],
+    "6": [
+     {
+      "value": "505 S",
+      "years": [
+       1981,
+       1989
+      ]
+     },
+     {
+      "value": "STI w",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "STI w/manual trans. ('81-'85)"
+     }
+    ],
+    "A": [
+     {
+      "value": "505 GL wagon turbodiesel w",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "505 GL wagon turbodiesel w/auto. trans. ('84-'85)"
+     }
+    ],
+    "B": [
+     {
+      "value": "505 S wagon turbodiesel w",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "505 S wagon turbodiesel w/auto. trans. ('84-'85)"
+     }
+    ],
+    "E": [
+     {
+      "value": "504 w",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "504 w/auto. trans. ('81-'82)"
+     },
+     {
+      "value": "505",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "505 (base model) w/auto. trans. ('81-'83)"
+     },
+     {
+      "value": "505 GL w",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "505 GL w/auto. trans. ('84-'85)"
+     }
+    ],
+    "F": [
+     {
+      "value": "505 S",
+      "years": [
+       1981,
+       1989
+      ]
+     },
+     {
+      "value": "STI w",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "STI w/auto. trans. ('81-'85)"
+     },
+     {
+      "value": "604 turbodiesel w",
+      "years": [
+       1981,
+       1989
+      ],
+      "note": "604 turbodiesel w/auto. trans. ('84)"
+     }
+    ],
+    "1": [
+     {
+      "value": "505 DL",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "505 DL ('90-'92)"
+     },
+     {
+      "value": "405 DL",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "405 DL ('90-'92)"
+     }
+    ],
+    "7": [
+     {
+      "value": "505 SW8",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "505 SW8 ('90-'92)"
+     }
+    ],
+    "8": [
+     {
+      "value": "505 SW8 Turbo",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "505 SW8 Turbo ('90-'91)"
+     }
+    ],
+    "3": [
+     {
+      "value": "405 Mi16",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "405 Mi16 ('90-'92)"
+     }
+    ]
+   }
+  }
+ }
+}

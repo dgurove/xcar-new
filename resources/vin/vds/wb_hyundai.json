@@ -1,0 +1,2354 @@
+{
+ "_brand": "Hyundai",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Hyundai/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "2HM",
+  "3KM",
+  "3KP",
+  "5NM",
+  "5NP",
+  "5NT",
+  "5XY",
+  "7YA",
+  "8LG",
+  "95P",
+  "9BH",
+  "AC5",
+  "KM8",
+  "KMC",
+  "KME",
+  "KMF",
+  "KMH",
+  "KMJ",
+  "KMT",
+  "KMU",
+  "KMX",
+  "KMZ",
+  "KND",
+  "KPH",
+  "LBE",
+  "MAL",
+  "MB2",
+  "MF3",
+  "NLH",
+  "NLJ",
+  "PFD",
+  "TMA",
+  "TMC",
+  "U5Y",
+  "X7M",
+  "XWE",
+  "Y6L",
+  "Z94"
+ ],
+ "_market": "north_america",
+ "sections": {
+  "engine@8:9": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "8:9"
+   ],
+   "map": {
+    "1": [
+     {
+      "value": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl. + 51 hp electric motor",
+      "note": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl. + 51 hp electric motor (6Ah/1.62 kWh Battery)"
+     },
+     {
+      "value": "Sonata Hybrid 16-17",
+      "years": [
+       2016,
+       2017
+      ]
+     },
+     {
+      "value": "Santa Fe Hybrid 21",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Santa Fe Hybrid 21-"
+     },
+     {
+      "value": "Tucson Hybrid 22-24",
+      "years": [
+       2022,
+       2024
+      ]
+     },
+     {
+      "value": "Tucson Hybrid 25"
+     },
+     {
+      "value": "Electric motors"
+     },
+     {
+      "value": "365 hp"
+     },
+     {
+      "value": "Genesis Electrified G80 AWD 23-25",
+      "years": [
+       2023,
+       2025
+      ]
+     },
+     {
+      "value": "429 hp"
+     },
+     {
+      "value": "Genesis Electrified GV70 AWD 23-25",
+      "years": [
+       2023,
+       2025
+      ]
+     },
+     {
+      "value": "Genesis Electrified GV70 AWD 26"
+     },
+     {
+      "value": "Electric motor"
+     },
+     {
+      "value": "215 hp"
+     },
+     {
+      "value": "Ioniq 9 RWD 26"
+     }
+    ],
+    "2": [
+     {
+      "value": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl",
+      "note": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Tucson 16-18",
+      "years": [
+       2016,
+       2018
+      ]
+     },
+     {
+      "value": "1598 cc 1.6 Liter DOHC Smartstream G1.6T GDI turbo 4-cyl",
+      "note": "1598 cc 1.6 Liter DOHC Smartstream G1.6T GDI turbo 4-cyl."
+     },
+     {
+      "value": "Sonata 20-23",
+      "years": [
+       2020,
+       2023
+      ]
+     },
+     {
+      "value": "Santa Fe Plug-in Hybrid 22-23",
+      "years": [
+       2022,
+       2023
+      ]
+     },
+     {
+      "value": "Tucson Plug-in Hybrid 22-24",
+      "years": [
+       2022,
+       2024
+      ]
+     },
+     {
+      "value": "Tucson Plug-in Hybrid 25"
+     },
+     {
+      "value": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl. + 67 hp electric motor",
+      "note": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl. + 67 hp electric motor (27.2Ah/9.8 kWh Battery)"
+     },
+     {
+      "value": "Sonata Plug-in Hybrid 16-19",
+      "years": [
+       2016,
+       2019
+      ]
+     },
+     {
+      "value": "3470 cc 3.5 Liter DOHC Smartstream G3.5 Lambda III DPI V6"
+     },
+     {
+      "value": "Palisade 26"
+     }
+    ],
+    "3": [
+     {
+      "value": "1591 cc 1.6 Liter DOHC Gamma II GDI 4-cyl",
+      "note": "1591 cc 1.6 Liter DOHC Gamma II GDI 4-cyl."
+     },
+     {
+      "value": "Accent 18-19",
+      "years": [
+       2018,
+       2019
+      ]
+     },
+     {
+      "value": "1598 cc 1.6 Liter DOHC Smartstream G1.6 DPI 4-cyl",
+      "note": "1598 cc 1.6 Liter DOHC Smartstream G1.6 DPI 4-cyl."
+     },
+     {
+      "value": "Venue 20"
+     },
+     {
+      "value": "1598 cc 1.6 Liter DOHC Smartstream G1.6T GDI turbo 4-cyl",
+      "note": "1598 cc 1.6 Liter DOHC Smartstream G1.6T GDI turbo 4-cyl."
+     },
+     {
+      "value": "Kona 22"
+     },
+     {
+      "value": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl. + 51 hp electric motor",
+      "note": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl. + 51 hp electric motor (6.5Ah/1.76 kWh Battery)"
+     },
+     {
+      "value": "Sonata Hybrid 17-19",
+      "years": [
+       2017,
+       2019
+      ]
+     },
+     {
+      "value": "3778 cc 3.8 Liter DOHC Lambda V6"
+     },
+     {
+      "value": "Entourage 07-09",
+      "years": [
+       2007,
+       2009
+      ]
+     },
+     {
+      "value": "Electric motors"
+     },
+     {
+      "value": "303 hp"
+     },
+     {
+      "value": "Ioniq 9 AWD 26"
+     }
+    ],
+    "4": [
+     {
+      "value": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl",
+      "note": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl."
+     },
+     {
+      "value": "Tucson 16-21",
+      "years": [
+       2016,
+       2021
+      ]
+     },
+     {
+      "value": "Sonata Hybrid 11-12",
+      "years": [
+       2011,
+       2012
+      ]
+     },
+     {
+      "value": "Sonata Hybrid 13-15",
+      "years": [
+       2013,
+       2015
+      ]
+     }
+    ],
+    "5": [
+     {
+      "value": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl",
+      "note": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Kona 18-21",
+      "years": [
+       2018,
+       2021
+      ]
+     },
+     {
+      "value": "Electric motors"
+     },
+     {
+      "value": "422 hp"
+     },
+     {
+      "value": "Ioniq 9 Performance AWD 26"
+     }
+    ],
+    "6": [
+     {
+      "value": "1598 cc 1.6 Liter DOHC Smartstream G1.6 DPI 4-cyl",
+      "note": "1598 cc 1.6 Liter DOHC Smartstream G1.6 DPI 4-cyl."
+     },
+     {
+      "value": "Accent 20-22",
+      "years": [
+       2020,
+       2022
+      ]
+     },
+     {
+      "value": "Electric motor"
+     },
+     {
+      "value": "201 hp"
+     },
+     {
+      "value": "Kona Electric SEL",
+      "years": [
+       2024,
+       2025
+      ],
+      "note": "Kona Electric SEL/Limited 24-25"
+     },
+     {
+      "value": "N Line 25"
+     },
+     {
+      "value": "Hydrogen Fuel cell"
+     },
+     {
+      "value": "134 hp motor"
+     },
+     {
+      "value": "Tucson Fuel Cell 15-17",
+      "years": [
+       2015,
+       2017
+      ]
+     },
+     {
+      "value": "161 hp motor"
+     },
+     {
+      "value": "Nexo 19-23",
+      "years": [
+       2019,
+       2023
+      ]
+     }
+    ],
+    "7": [
+     {
+      "value": "Electric motor"
+     },
+     {
+      "value": "133 hp"
+     },
+     {
+      "value": "Kona Electric SE 24"
+     },
+     {
+      "value": "Hydrogen Fuel cell"
+     },
+     {
+      "value": "201 hp motor"
+     },
+     {
+      "value": "Nexo 26"
+     }
+    ],
+    "8": [
+     {
+      "value": "Electric motors"
+     },
+     {
+      "value": "601 hp"
+     },
+     {
+      "value": "Ioniq 5 N AWD 25"
+     }
+    ],
+    "A": [
+     {
+      "value": "1353 cc 1.4 Liter DOHC Kappa II GDI turbo 4-cyl",
+      "note": "1353 cc 1.4 Liter DOHC Kappa II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Elantra 17-20",
+      "years": [
+       2017,
+       2020
+      ]
+     },
+     {
+      "value": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl",
+      "note": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Sonata 15-19",
+      "years": [
+       2015,
+       2019
+      ]
+     },
+     {
+      "value": "1999 cc 2.0 Liter DOHC Nu 4-cyl",
+      "note": "1999 cc 2.0 Liter DOHC Nu 4-cyl."
+     },
+     {
+      "value": "Kona 18-21",
+      "years": [
+       2018,
+       2021
+      ]
+     },
+     {
+      "value": "1998 cc 2.0 Liter DOHC Theta II GDI turbo 4-cyl",
+      "note": "1998 cc 2.0 Liter DOHC Theta II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Santa Fe Sport 13-18",
+      "years": [
+       2013,
+       2018
+      ]
+     },
+     {
+      "value": "Santa Fe 19-20",
+      "years": [
+       2019,
+       2020
+      ]
+     },
+     {
+      "value": "1998 cc 2.0 Liter DOHC Theta II FR GDI turbo 4-cyl",
+      "note": "1998 cc 2.0 Liter DOHC Theta II FR GDI turbo 4-cyl."
+     },
+     {
+      "value": "Genesis G70 19-23",
+      "years": [
+       2019,
+       2023
+      ]
+     },
+     {
+      "value": "2497 cc 2.5 Liter DOHC Smartstream G2.5 Theta III DPI 4-cyl",
+      "note": "2497 cc 2.5 Liter DOHC Smartstream G2.5 Theta III DPI 4-cyl."
+     },
+     {
+      "value": "Sonata 20"
+     },
+     {
+      "value": "3342 cc 3.3 Liter DOHC Lambda II RS GDI twin turbo V6"
+     },
+     {
+      "value": "Genesis G90 17-22",
+      "years": [
+       2017,
+       2022
+      ]
+     },
+     {
+      "value": "Palisade Hybrid 26"
+     },
+     {
+      "value": "Electric motor"
+     },
+     {
+      "value": "225 hp"
+     },
+     {
+      "value": "Ioniq 6 RWD 23-25",
+      "years": [
+       2023,
+       2025
+      ]
+     },
+     {
+      "value": "Ioniq 5 RWD 25"
+     },
+     {
+      "value": "Genesis GV60 Standard RWD 24-25",
+      "years": [
+       2024,
+       2025
+      ]
+     },
+     {
+      "value": "Genesis GV60 Standard RWD 26"
+     }
+    ],
+    "B": [
+     {
+      "value": "1.2L Kappa"
+     },
+     {
+      "value": "2.5L L4 SOHC 8V",
+      "note": "2.5L L4 SOHC 8V; 1591 cc DOHC 4 cyl. FFV (E22/E100) HB20 12"
+     },
+     {
+      "value": "2351 cc 2.4 Liter DOHC 4-cyl",
+      "note": "2351 cc 2.4 Liter DOHC 4-cyl."
+     },
+     {
+      "value": "Santa Fe 01-04",
+      "years": [
+       2001,
+       2004
+      ]
+     },
+     {
+      "value": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl",
+      "note": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Elantra 17-20",
+      "years": [
+       2017,
+       2020
+      ]
+     },
+     {
+      "value": "Veloster 19-21",
+      "years": [
+       2019,
+       2021
+      ]
+     },
+     {
+      "value": "1975 cc 2.0 Liter DOHC Beta II 4-cyl",
+      "note": "1975 cc 2.0 Liter DOHC Beta II 4-cyl."
+     },
+     {
+      "value": "Tucson 05-09",
+      "years": [
+       2005,
+       2009
+      ]
+     },
+     {
+      "value": "1975 cc 2.0 Liter DOHC Theta II 4-cyl",
+      "note": "1975 cc 2.0 Liter DOHC Theta II 4-cyl."
+     },
+     {
+      "value": "Tucson 11-13",
+      "years": [
+       2011,
+       2013
+      ]
+     },
+     {
+      "value": "1998 cc 2.0 Liter DOHC Theta II GDI turbo 4-cyl",
+      "note": "1998 cc 2.0 Liter DOHC Theta II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Sonata 11-19",
+      "years": [
+       2011,
+       2019
+      ]
+     },
+     {
+      "value": "1999 cc 2.0 Liter DOHC Smartstream G2.0",
+      "note": "1999 cc 2.0 Liter DOHC Smartstream G2.0 (Nu PE) 4-cyl."
+     },
+     {
+      "value": "Kona 22"
+     },
+     {
+      "value": "2359 cc 2.4 Liter DOHC Theta II 4-cyl",
+      "note": "2359 cc 2.4 Liter DOHC Theta II 4-cyl."
+     },
+     {
+      "value": "Santa Fe 10-12",
+      "years": [
+       2010,
+       2012
+      ]
+     },
+     {
+      "value": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl",
+      "note": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl."
+     },
+     {
+      "value": "Santa Fe Sport 13-18",
+      "years": [
+       2013,
+       2018
+      ]
+     },
+     {
+      "value": "Genesis GV80 21",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Genesis GV80 21-"
+     },
+     {
+      "value": "Genesis GV70 22"
+     },
+     {
+      "value": "3342 cc 3.3 Liter DOHC Lambda II RS GDI twin turbo V6"
+     },
+     {
+      "value": "Genesis G80 18-20",
+      "years": [
+       2018,
+       2020
+      ]
+     },
+     {
+      "value": "Electric motor"
+     },
+     {
+      "value": "168 hp"
+     },
+     {
+      "value": "Ioniq 5 RWD 22-24",
+      "years": [
+       2022,
+       2024
+      ]
+     },
+     {
+      "value": "Ioniq 5 RWD 25"
+     },
+     {
+      "value": "149 hp"
+     },
+     {
+      "value": "Ioniq 6 RWD 23-25",
+      "years": [
+       2023,
+       2025
+      ]
+     },
+     {
+      "value": "Electric motors"
+     },
+     {
+      "value": "429 hp"
+     },
+     {
+      "value": "Genesis GV60 Performance AWD 23-25",
+      "years": [
+       2023,
+       2025
+      ]
+     },
+     {
+      "value": "Genesis GV60 Performance AWD 26"
+     }
+    ],
+    "C": [
+     {
+      "value": "1599 cc 1.6 Liter DOHC Alpha II 4-cyl",
+      "note": "1599 cc 1.6 Liter DOHC Alpha II 4-cyl."
+     },
+     {
+      "value": "Accent 01-11",
+      "years": [
+       2001,
+       2011
+      ]
+     },
+     {
+      "value": "Ioniq Hybrid 17-22",
+      "years": [
+       2017,
+       2022
+      ]
+     },
+     {
+      "value": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl",
+      "note": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Elantra GT 18-20",
+      "years": [
+       2018,
+       2020
+      ]
+     },
+     {
+      "value": "1998 cc 2.0 Liter DOHC Theta II GDI turbo 4-cyl",
+      "note": "1998 cc 2.0 Liter DOHC Theta II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Kona N 22-23",
+      "years": [
+       2022,
+       2023
+      ]
+     },
+     {
+      "value": "2359 cc 2.4 Liter DOHC Theta 4-cyl",
+      "note": "2359 cc 2.4 Liter DOHC Theta 4-cyl."
+     },
+     {
+      "value": "Sonata 06-08",
+      "years": [
+       2006,
+       2008
+      ]
+     },
+     {
+      "value": "2359 cc 2.4 Liter DOHC Theta II 4-cyl",
+      "note": "2359 cc 2.4 Liter DOHC Theta II 4-cyl."
+     },
+     {
+      "value": "Sonata 09-10",
+      "years": [
+       2009,
+       2010
+      ]
+     },
+     {
+      "value": "Tucson 10-13",
+      "years": [
+       2010,
+       2013
+      ]
+     },
+     {
+      "value": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl",
+      "note": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl."
+     },
+     {
+      "value": "Sonata 11-14",
+      "years": [
+       2011,
+       2014
+      ]
+     },
+     {
+      "value": "Sonata N Line 21"
+     },
+     {
+      "value": "Genesis G80 21",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Genesis G80 21-"
+     },
+     {
+      "value": "Genesis G70 24"
+     },
+     {
+      "value": "Genesis GV80 21",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Genesis GV80 21-"
+     },
+     {
+      "value": "Genesis GV70 22",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Genesis GV70 22-"
+     },
+     {
+      "value": "Genesis GV80 Coupe 25"
+     },
+     {
+      "value": "3470 cc 3.5 Liter DOHC Smartstream FR G3.5T e-S",
+      "note": "3470 cc 3.5 Liter DOHC Smartstream FR G3.5T e-S/C Lambda III DPI twin turbo V6 with electric supercharger & 48V mild hybrid"
+     },
+     {
+      "value": "16 hp electric motor",
+      "note": "16 hp electric motor (9.8Ah Battery)"
+     },
+     {
+      "value": "3778 cc 3.8 Liter DOHC Lambda V6"
+     },
+     {
+      "value": "Veracruz 07-12",
+      "years": [
+       2007,
+       2012
+      ]
+     },
+     {
+      "value": "Electric motors"
+     },
+     {
+      "value": "320 hp"
+     },
+     {
+      "value": "Ioniq 6 AWD 23-25",
+      "years": [
+       2023,
+       2025
+      ]
+     },
+     {
+      "value": "Ioniq 5 AWD 25"
+     },
+     {
+      "value": "314 hp"
+     },
+     {
+      "value": "Genesis GV60 AWD",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "Genesis GV60 AWD/Advanced AWD 23-25"
+     },
+     {
+      "value": "Genesis GV60 AWD",
+      "note": "Genesis GV60 AWD/Advanced AWD 26"
+     }
+    ],
+    "D": [
+     {
+      "value": "Ioniq Plug-in Hybrid 18-22",
+      "years": [
+       2018,
+       2022
+      ]
+     },
+     {
+      "value": "1591 cc 1.6 Liter DOHC Gamma II GDI 4-cyl",
+      "note": "1591 cc 1.6 Liter DOHC Gamma II GDI 4-cyl."
+     },
+     {
+      "value": "Veloster 12-17",
+      "years": [
+       2012,
+       2017
+      ]
+     },
+     {
+      "value": "1975 cc 2.0 Liter DOHC Beta II 4-cyl",
+      "note": "1975 cc 2.0 Liter DOHC Beta II 4-cyl."
+     },
+     {
+      "value": "Elantra 01-10",
+      "years": [
+       2001,
+       2010
+      ]
+     },
+     {
+      "value": "Tiburon 03–08",
+      "years": [
+       2003,
+       2008
+      ]
+     },
+     {
+      "value": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl",
+      "note": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl."
+     },
+     {
+      "value": "Santa Fe 19-20",
+      "years": [
+       2019,
+       2020
+      ]
+     },
+     {
+      "value": "2656 cc 2.7 Liter DOHC Delta V6"
+     },
+     {
+      "value": "Santa Fe 01-09",
+      "years": [
+       2001,
+       2009
+      ]
+     },
+     {
+      "value": "Tucson 05-09",
+      "years": [
+       2005,
+       2009
+      ]
+     },
+     {
+      "value": "2972 cc 3.0 Liter DOHC V6"
+     },
+     {
+      "value": "XG300",
+      "note": "XG300 2001"
+     },
+     {
+      "value": "3342 cc 3.3 Liter DOHC Lambda V6"
+     },
+     {
+      "value": "Azera 07-10",
+      "years": [
+       2007,
+       2010
+      ]
+     },
+     {
+      "value": "3342 cc 3.3 Liter DOHC Lambda II V6"
+     },
+     {
+      "value": "Azera 11"
+     },
+     {
+      "value": "1998 cc 2.0 Liter DOHC Theta II FR turbo 4-cyl",
+      "note": "1998 cc 2.0 Liter DOHC Theta II FR turbo 4-cyl."
+     },
+     {
+      "value": "Genesis Coupe 10-14",
+      "years": [
+       2010,
+       2014
+      ]
+     },
+     {
+      "value": "Genesis G80 21",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Genesis G80 21-"
+     },
+     {
+      "value": "Genesis G90 23"
+     },
+     {
+      "value": "3470 cc 3.5 Liter DOHC Smartstream FR G3.5T e-S",
+      "note": "3470 cc 3.5 Liter DOHC Smartstream FR G3.5T e-S/C Lambda III DPI twin turbo V6 with electric supercharger & 48V mild hybrid"
+     },
+     {
+      "value": "16 hp electric motor",
+      "note": "16 hp electric motor (9.8Ah Battery)"
+     },
+     {
+      "value": "1998 cc 2.0 Liter DOHC 4 cyl. FFV",
+      "note": "1998 cc 2.0 Liter DOHC 4 cyl. FFV (E22/E100) Tucson/IX35 12"
+     }
+    ],
+    "E": [
+     {
+      "value": "1591 cc 1.6 Liter DOHC Gamma II GDI 4-cyl",
+      "note": "1591 cc 1.6 Liter DOHC Gamma II GDI 4-cyl."
+     },
+     {
+      "value": "Accent 12-17",
+      "years": [
+       2012,
+       2017
+      ]
+     },
+     {
+      "value": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl",
+      "note": "1591 cc 1.6 Liter DOHC Gamma II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Veloster 13-17",
+      "years": [
+       2013,
+       2017
+      ]
+     },
+     {
+      "value": "1975 cc 2.0 Liter DOHC Beta II 4-cyl",
+      "note": "1975 cc 2.0 Liter DOHC Beta II 4-cyl."
+     },
+     {
+      "value": "Elantra Touring 09-12",
+      "years": [
+       2009,
+       2012
+      ]
+     },
+     {
+      "value": "1797 cc 1.8 Liter DOHC Nu 4-cyl",
+      "note": "1797 cc 1.8 Liter DOHC Nu 4-cyl."
+     },
+     {
+      "value": "Elantra 11-16",
+      "years": [
+       2011,
+       2016
+      ]
+     },
+     {
+      "value": "Elantra GT 13"
+     },
+     {
+      "value": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl",
+      "note": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl."
+     },
+     {
+      "value": "Elantra GT 18-20",
+      "years": [
+       2018,
+       2020
+      ]
+     },
+     {
+      "value": "2497 cc 2.5 Liter DOHC Smartstream G2.5 Theta III DPI 4-cyl",
+      "note": "2497 cc 2.5 Liter DOHC Smartstream G2.5 Theta III DPI 4-cyl."
+     },
+     {
+      "value": "Tucson 22",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Tucson 22-"
+     },
+     {
+      "value": "Santa Cruz 22"
+     },
+     {
+      "value": "3497 cc 3.5 Liter DOHC V6"
+     },
+     {
+      "value": "XG350 02-05",
+      "years": [
+       2002,
+       2005
+      ]
+     },
+     {
+      "value": "Santa Fe 03-06",
+      "years": [
+       2003,
+       2006
+      ]
+     },
+     {
+      "value": "3342 cc 3.3 Liter DOHC Lambda V6 Santa Fe 07-09",
+      "years": [
+       2007,
+       2009
+      ]
+     },
+     {
+      "value": "3342 cc 3.3 Liter DOHC Lambda II RS GDI twin turbo V6"
+     },
+     {
+      "value": "Genesis G70 19"
+     },
+     {
+      "value": "3778 cc 3.8 Liter DOHC Lambda II RS V6 Genesis sedan 09–11",
+      "years": [
+       2009,
+       2011
+      ]
+     },
+     {
+      "value": "Genesis G80 17-20",
+      "years": [
+       2017,
+       2020
+      ]
+     },
+     {
+      "value": "3778 cc 3.8 Liter DOHC Lambda II GDI V6 Palisade 20-25",
+      "years": [
+       2020,
+       2025
+      ]
+     },
+     {
+      "value": "Electric motor"
+     },
+     {
+      "value": "225 hp"
+     },
+     {
+      "value": "Ioniq 5 RWD 22-24",
+      "years": [
+       2022,
+       2024
+      ]
+     },
+     {
+      "value": "Electric motors"
+     },
+     {
+      "value": "601 hp"
+     },
+     {
+      "value": "Ioniq 6 N AWD 26"
+     }
+    ],
+    "F": [
+     {
+      "value": "1997 cc 2.0 Liter DOHC 4-cyl",
+      "note": "1997 cc 2.0 Liter DOHC 4-cyl."
+     },
+     {
+      "value": "Sonata"
+     },
+     {
+      "value": "92-98",
+      "years": [
+       1992,
+       1998
+      ]
+     },
+     {
+      "value": "1975 cc 2.0 Liter DOHC Beta 4-cyl",
+      "note": "1975 cc 2.0 Liter DOHC Beta 4-cyl."
+     },
+     {
+      "value": "Tiburon 97-01",
+      "years": [
+       1997,
+       2001
+      ]
+     },
+     {
+      "value": "Elantra 99-00",
+      "years": [
+       1999,
+       2000
+      ]
+     },
+     {
+      "value": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl",
+      "note": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl."
+     },
+     {
+      "value": "Tucson 14-15",
+      "years": [
+       2014,
+       2015
+      ]
+     },
+     {
+      "value": "1999 cc 2.0 Liter DOHC Nu 4-cyl",
+      "note": "1999 cc 2.0 Liter DOHC Nu 4-cyl."
+     },
+     {
+      "value": "Elantra 17-20",
+      "years": [
+       2017,
+       2020
+      ]
+     },
+     {
+      "value": "Veloster 19-21",
+      "years": [
+       2019,
+       2021
+      ]
+     },
+     {
+      "value": "1598 cc 1.6 Liter DOHC Smartstream G1.6T GDI turbo 4-cyl",
+      "note": "1598 cc 1.6 Liter DOHC Smartstream G1.6T GDI turbo 4-cyl."
+     },
+     {
+      "value": "Elantra N Line 21"
+     },
+     {
+      "value": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl",
+      "note": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl."
+     },
+     {
+      "value": "Sonata 15-19",
+      "years": [
+       2015,
+       2019
+      ]
+     },
+     {
+      "value": "Santa Cruz 22"
+     },
+     {
+      "value": "2656 cc 2.7 Liter DOHC Delta V6"
+     },
+     {
+      "value": "Tiburon 03-08",
+      "years": [
+       2003,
+       2008
+      ]
+     },
+     {
+      "value": "3342 cc 3.3 Liter DOHC Lambda V6"
+     },
+     {
+      "value": "Sonata 06-10",
+      "years": [
+       2006,
+       2010
+      ]
+     },
+     {
+      "value": "3342 cc 3.3 Liter DOHC Lambda II GDI V6"
+     },
+     {
+      "value": "Santa Fe LWB",
+      "years": [
+       2013,
+       2019
+      ],
+      "note": "Santa Fe LWB/Santa Fe XL 13-19"
+     },
+     {
+      "value": "3778 cc 3.8 Liter DOHC Lambda V6"
+     },
+     {
+      "value": "Azera 06-10",
+      "years": [
+       2006,
+       2010
+      ]
+     },
+     {
+      "value": "3778 cc 3.8 Liter DOHC Lambda II V6"
+     },
+     {
+      "value": "Azera 11"
+     },
+     {
+      "value": "4627 cc 4.6 Liter DOHC Tau V8"
+     },
+     {
+      "value": "Genesis sedan 09-12",
+      "years": [
+       2009,
+       2012
+      ]
+     },
+     {
+      "value": "Equus 11"
+     },
+     {
+      "value": "5038 cc 5.0 Liter DOHC Tau GDI V8"
+     },
+     {
+      "value": "Genesis sedan 15-16",
+      "years": [
+       2015,
+       2016
+      ]
+     },
+     {
+      "value": "Genesis G80 17-20",
+      "years": [
+       2017,
+       2020
+      ]
+     },
+     {
+      "value": "Electric motors"
+     },
+     {
+      "value": "320 hp"
+     },
+     {
+      "value": "Ioniq 5 AWD 22-24",
+      "years": [
+       2022,
+       2024
+      ]
+     }
+    ],
+    "G": [
+     {
+      "value": "1495 cc 1.5 Liter SOHC Alpha 4-cyl",
+      "note": "1495 cc 1.5 Liter SOHC Alpha 4-cyl."
+     },
+     {
+      "value": "Accent 00-02",
+      "years": [
+       2000,
+       2002
+      ]
+     },
+     {
+      "value": "1999 cc 2.0 Liter DOHC Smartstream G2.0",
+      "note": "1999 cc 2.0 Liter DOHC Smartstream G2.0 (Nu PE) 4-cyl."
+     },
+     {
+      "value": "Elantra 21"
+     },
+     {
+      "value": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl",
+      "note": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl."
+     },
+     {
+      "value": "Tucson 14-15",
+      "years": [
+       2014,
+       2015
+      ]
+     },
+     {
+      "value": "3470 cc 3.5 Liter DOHC Lambda II V6"
+     },
+     {
+      "value": "Santa Fe 10-12",
+      "years": [
+       2010,
+       2012
+      ]
+     },
+     {
+      "value": "3342 cc 3.3 Liter DOHC Lambda II GDI V6"
+     },
+     {
+      "value": "Azera 12-17",
+      "years": [
+       2012,
+       2017
+      ]
+     },
+     {
+      "value": "Electric motor"
+     },
+     {
+      "value": "201 hp"
+     },
+     {
+      "value": "Kona Electric 19-23",
+      "years": [
+       2019,
+       2023
+      ]
+     }
+    ],
+    "H": [
+     {
+      "value": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl",
+      "note": "1999 cc 2.0 Liter DOHC Nu GDI 4-cyl."
+     },
+     {
+      "value": "Elantra 14-16",
+      "years": [
+       2014,
+       2016
+      ]
+     },
+     {
+      "value": "Elantra GT 14-17",
+      "years": [
+       2014,
+       2017
+      ]
+     },
+     {
+      "value": "1998 cc 2.0 Liter DOHC Theta II GDI turbo 4-cyl",
+      "note": "1998 cc 2.0 Liter DOHC Theta II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Veloster N 19-22",
+      "years": [
+       2019,
+       2022
+      ]
+     },
+     {
+      "value": "2656 cc 2.7 Liter DOHC Delta V6"
+     },
+     {
+      "value": "Sonata 02-05",
+      "years": [
+       2002,
+       2005
+      ]
+     },
+     {
+      "value": "3778 cc 3.8 Liter DOHC Lambda II RS V6"
+     },
+     {
+      "value": "Genesis Coupe 10-12",
+      "years": [
+       2010,
+       2012
+      ]
+     },
+     {
+      "value": "5038 cc 5.0 Liter DOHC Tau GDI V8"
+     },
+     {
+      "value": "Genesis sedan 12-14",
+      "years": [
+       2012,
+       2014
+      ]
+     },
+     {
+      "value": "Equus 12-16",
+      "years": [
+       2012,
+       2016
+      ]
+     },
+     {
+      "value": "Genesis G90 17-22",
+      "years": [
+       2017,
+       2022
+      ]
+     },
+     {
+      "value": "Electric motor"
+     },
+     {
+      "value": "118 hp"
+     },
+     {
+      "value": "Ioniq Electric 17-19",
+      "years": [
+       2017,
+       2019
+      ]
+     }
+    ],
+    "J": [
+     {
+      "value": "1468 cc 1.5 Liter SOHC 4-cyl",
+      "note": "1468 cc 1.5 Liter SOHC 4-cyl."
+     },
+     {
+      "value": "Excel 86-94",
+      "years": [
+       1986,
+       1994
+      ]
+     },
+     {
+      "value": "Mitsubishi Precis 87-94",
+      "years": [
+       1987,
+       1994
+      ]
+     },
+     {
+      "value": "Scoupe 91-92",
+      "years": [
+       1991,
+       1992
+      ]
+     },
+     {
+      "value": "Elantra Hybrid 21"
+     },
+     {
+      "value": "1999 cc 2.0 Liter DOHC Smartstream G2.0 Hybrid",
+      "note": "1999 cc 2.0 Liter DOHC Smartstream G2.0 Hybrid (Nu PE) GDI 4-cyl. + 51 hp electric motor (5.5Ah/1.62 kWh Battery)"
+     },
+     {
+      "value": "Sonata Hybrid 20"
+     },
+     {
+      "value": "2497 cc 2.5 Liter DOHC Smartstream G2.5 Theta III DPI 4-cyl",
+      "note": "2497 cc 2.5 Liter DOHC Smartstream G2.5 Theta III DPI 4-cyl."
+     },
+     {
+      "value": "Santa Fe 21-23",
+      "years": [
+       2021,
+       2023
+      ]
+     },
+     {
+      "value": "3778 cc 3.8 Liter DOHC Lambda II RS GDI V6"
+     },
+     {
+      "value": "Genesis Coupe 13-16",
+      "years": [
+       2013,
+       2016
+      ]
+     },
+     {
+      "value": "Electric motor"
+     },
+     {
+      "value": "134 hp"
+     },
+     {
+      "value": "Ioniq Electric 20-21",
+      "years": [
+       2020,
+       2021
+      ]
+     }
+    ],
+    "K": [
+     {
+      "value": "1998 cc 2.0 Liter DOHC Theta II GDI turbo 4-cyl",
+      "note": "1998 cc 2.0 Liter DOHC Theta II GDI turbo 4-cyl."
+     },
+     {
+      "value": "Elantra N 22"
+     }
+    ],
+    "L": [
+     {
+      "value": "1341 cc 1.3 Liter SOHC Alpha 4-cyl",
+      "note": "1341 cc 1.3 Liter SOHC Alpha 4-cyl."
+     },
+     {
+      "value": "Accent 95-99",
+      "years": [
+       1995,
+       1999
+      ]
+     },
+     {
+      "value": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl",
+      "note": "2359 cc 2.4 Liter DOHC Theta II GDI 4-cyl."
+     },
+     {
+      "value": "Tucson 18-21",
+      "years": [
+       2018,
+       2021
+      ]
+     },
+     {
+      "value": "Santa Fe 21"
+     }
+    ],
+    "M": [
+     {
+      "value": "1836 cc 1.8 Liter DOHC 4-cyl",
+      "note": "1836 cc 1.8 Liter DOHC 4-cyl."
+     },
+     {
+      "value": "Elantra 93-95",
+      "years": [
+       1993,
+       1995
+      ]
+     },
+     {
+      "value": "1795 cc 1.8 Liter DOHC Beta 4-cyl",
+      "note": "1795 cc 1.8 Liter DOHC Beta 4-cyl."
+     },
+     {
+      "value": "Elantra 96-98",
+      "years": [
+       1996,
+       1998
+      ]
+     },
+     {
+      "value": "Tiburon 97"
+     }
+    ],
+    "N": [
+     {
+      "value": "1495 cc 1.5 Liter SOHC Alpha 4-cyl",
+      "note": "1495 cc 1.5 Liter SOHC Alpha 4-cyl."
+     },
+     {
+      "value": "Scoupe 93-95",
+      "years": [
+       1993,
+       1995
+      ]
+     },
+     {
+      "value": "Accent 95-99",
+      "years": [
+       1995,
+       1999
+      ]
+     },
+     {
+      "value": "1495 cc 1.5 Liter DOHC Alpha II 4-cyl",
+      "note": "1495 cc 1.5 Liter DOHC Alpha II 4-cyl."
+     },
+     {
+      "value": "Accent GT 96-97",
+      "years": [
+       1996,
+       1997
+      ]
+     }
+    ],
+    "R": [
+     {
+      "value": "1595 cc 1.6 Liter DOHC 4-cyl",
+      "note": "1595 cc 1.6 Liter DOHC 4-cyl."
+     },
+     {
+      "value": "Elantra 92-95",
+      "years": [
+       1992,
+       1995
+      ]
+     }
+    ],
+    "S": [
+     {
+      "value": "2351 cc 2.4 Liter SOHC 4-cyl",
+      "note": "2351 cc 2.4 Liter SOHC 4-cyl."
+     },
+     {
+      "value": "Sonata 89-91",
+      "years": [
+       1989,
+       1991
+      ]
+     },
+     {
+      "value": "2351 cc 2.4 Liter DOHC 4-cyl",
+      "note": "2351 cc 2.4 Liter DOHC 4-cyl."
+     },
+     {
+      "value": "Sonata 99-05",
+      "years": [
+       1999,
+       2005
+      ]
+     }
+    ],
+    "T": [
+     {
+      "value": "2972 cc 3.0 Liter SOHC V6"
+     },
+     {
+      "value": "Sonata 90-98",
+      "years": [
+       1990,
+       1998
+      ]
+     }
+    ],
+    "V": [
+     {
+      "value": "2493 cc 2.4 Liter DOHC Delta V6"
+     },
+     {
+      "value": "Sonata 99-01",
+      "years": [
+       1999,
+       2001
+      ]
+     },
+     {
+      "value": "1991 cc 2.0 Liter Diesel TCI 4-cyl. Sonata NF 06-10",
+      "years": [
+       2006,
+       2010
+      ]
+     },
+     {
+      "value": "Tucson 05-09",
+      "years": [
+       2005,
+       2009
+      ]
+     }
+    ]
+   }
+  },
+  "model@4:5": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "i10"
+     },
+     {
+      "value": "Grand i10"
+     },
+     {
+      "value": "Xcent"
+     }
+    ],
+    "B": [
+     {
+      "value": "Sonata",
+      "years": [
+       1989,
+       1994
+      ],
+      "note": "Sonata 1989-1994"
+     },
+     {
+      "value": "Grand i10"
+     },
+     {
+      "value": "Aura"
+     },
+     {
+      "value": "i20"
+     },
+     {
+      "value": "Casper"
+     },
+     {
+      "value": "Bayon"
+     }
+    ],
+    "C": [
+     {
+      "value": "Sonata",
+      "years": [
+       1995,
+       1998
+      ],
+      "note": "Sonata 1995-1998"
+     },
+     {
+      "value": "Accent",
+      "years": [
+       2000,
+       2022
+      ],
+      "note": "Accent 2000-2022"
+     },
+     {
+      "value": "Ioniq",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "Ioniq 2017-2022"
+     },
+     {
+      "value": "HB20"
+     },
+     {
+      "value": "Creta"
+     }
+    ],
+    "D": [
+     {
+      "value": "Elantra",
+      "years": [
+       2001,
+       2020
+      ],
+      "note": "Elantra 2001-2020"
+     },
+     {
+      "value": "Elantra Touring",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "Elantra Touring 2009-2012"
+     },
+     {
+      "value": "Elantra GT",
+      "years": [
+       2013,
+       2017
+      ],
+      "note": "Elantra GT 2013-2017"
+     },
+     {
+      "value": "i30",
+      "note": "i30 (FD & GD)"
+     }
+    ],
+    "E": [
+     {
+      "value": "Sonata",
+      "years": [
+       2006,
+       2022
+      ],
+      "note": "Sonata 2006-2022 (US built)"
+     },
+     {
+      "value": "Sonata",
+      "years": [
+       2006,
+       2019
+      ],
+      "note": "Sonata 2006-2019 (Korean built)"
+     }
+    ],
+    "F": [
+     {
+      "value": "XG300"
+     },
+     {
+      "value": "XG350"
+     },
+     {
+      "value": "Azera",
+      "years": [
+       2006,
+       2017
+      ],
+      "note": "Azera 2006-2017"
+     },
+     {
+      "value": "Genesis G80",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "Genesis G80 2019-2020 (KMT)"
+     },
+     {
+      "value": "Genesis G90",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Genesis G90 2019- (KMT)"
+     },
+     {
+      "value": "H100"
+     }
+    ],
+    "G": [
+     {
+      "value": "Genesis sedan",
+      "years": [
+       2009,
+       2016
+      ],
+      "note": "Genesis sedan 2009–2016"
+     },
+     {
+      "value": "Equus",
+      "years": [
+       2011,
+       2016
+      ],
+      "note": "Equus 2011-2016"
+     },
+     {
+      "value": "Genesis G80",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "Genesis G80 2017-2019 (KMH)"
+     },
+     {
+      "value": "Genesis G90",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "Genesis G90 2017-2019 (KMH)"
+     },
+     {
+      "value": "Genesis G70",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Genesis G70 2019-"
+     },
+     {
+      "value": "Genesis G80",
+      "note": "Genesis G80 2021"
+     }
+    ],
+    "H": [
+     {
+      "value": "Tiburon",
+      "years": [
+       2003,
+       2008
+      ],
+      "note": "Tiburon 2003-2008"
+     },
+     {
+      "value": "Genesis Coupe",
+      "years": [
+       2010,
+       2016
+      ],
+      "note": "Genesis Coupe 2010-2016"
+     },
+     {
+      "value": "i30",
+      "note": "i30 (PD)"
+     },
+     {
+      "value": "Elantra GT",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "Elantra GT 2018-2020"
+     },
+     {
+      "value": "Kona",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "Kona 2024-"
+     },
+     {
+      "value": "Genesis GV80",
+      "note": "Genesis GV80 2021"
+     }
+    ],
+    "J": [
+     {
+      "value": "Elantra",
+      "years": [
+       1992,
+       2000
+      ],
+      "note": "Elantra 1992-2000"
+     },
+     {
+      "value": "Tiburon",
+      "years": [
+       1997,
+       2001
+      ],
+      "note": "Tiburon 1997-2001"
+     },
+     {
+      "value": "Tucson",
+      "years": [
+       2005,
+       null
+      ],
+      "note": "Tucson 2005-"
+     },
+     {
+      "value": "Santa Cruz",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Santa Cruz 2022-"
+     },
+     {
+      "value": "Nexo",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "Nexo 2019-2023"
+     },
+     {
+      "value": "Genesis GV80 Coupe",
+      "note": "Genesis GV80 Coupe 2025"
+     }
+    ],
+    "K": [
+     {
+      "value": "Kona",
+      "years": [
+       2018,
+       2023
+      ],
+      "note": "Kona 2018-2023"
+     },
+     {
+      "value": "Ioniq 5",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Ioniq 5 2022-"
+     },
+     {
+      "value": "Genesis GV60"
+     }
+    ],
+    "L": [
+     {
+      "value": "Excel",
+      "years": [
+       1986,
+       1989
+      ],
+      "note": "Excel 1986-1989"
+     },
+     {
+      "value": "Mitsubishi Precis",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Mitsubishi Precis 1987-1989"
+     },
+     {
+      "value": "Sonata",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "Sonata 2020- (Korean built)"
+     },
+     {
+      "value": "i40"
+     },
+     {
+      "value": "Elantra",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Elantra 2021-"
+     },
+     {
+      "value": "Cantus 16"
+     }
+    ],
+    "M": [
+     {
+      "value": "Entourage"
+     },
+     {
+      "value": "Ioniq 6"
+     },
+     {
+      "value": "Ioniq 9"
+     },
+     {
+      "value": "Genesis GV70"
+     }
+    ],
+    "N": [
+     {
+      "value": "Veracruz",
+      "years": [
+       2007,
+       2012
+      ],
+      "note": "Veracruz 2007–2012"
+     }
+    ],
+    "P": [
+     {
+      "value": "Pony"
+     },
+     {
+      "value": "Matrix"
+     },
+     {
+      "value": "ix20"
+     },
+     {
+      "value": "Creta"
+     },
+     {
+      "value": "Grand Creta"
+     },
+     {
+      "value": "Santa Fe",
+      "note": "Santa Fe 2024"
+     }
+    ],
+    "R": [
+     {
+      "value": "Venue"
+     },
+     {
+      "value": "Palisade"
+     }
+    ],
+    "S": [
+     {
+      "value": "Santa Fe",
+      "years": [
+       2001,
+       2010
+      ],
+      "note": "Santa Fe 2001-2010"
+     },
+     {
+      "value": "Santa Fe LWB",
+      "years": [
+       2013,
+       2019
+      ],
+      "note": "Santa Fe LWB (XL) 2013-2019"
+     },
+     {
+      "value": "Santa Fe",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "Santa Fe 2019-2023"
+     }
+    ],
+    "T": [
+     {
+      "value": "Veloster",
+      "years": [
+       2012,
+       2022
+      ],
+      "note": "Veloster 2012-2022"
+     },
+     {
+      "value": "Nexo",
+      "note": "Nexo 2026"
+     }
+    ],
+    "V": [
+     {
+      "value": "Excel"
+     },
+     {
+      "value": "Mitsubishi Precis",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "Mitsubishi Precis 1990-1994"
+     },
+     {
+      "value": "Accent",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "Accent 1995-1999"
+     },
+     {
+      "value": "Scoupe"
+     }
+    ],
+    "W": [
+     {
+      "value": "Sonata",
+      "years": [
+       1999,
+       2005
+      ],
+      "note": "Sonata 1999-2005"
+     }
+    ],
+    "Z": [
+     {
+      "value": "Santa Fe",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "Santa Fe 2011–2012"
+     },
+     {
+      "value": "Santa Fe Sport",
+      "years": [
+       2013,
+       2018
+      ],
+      "note": "Santa Fe Sport 2013-2018"
+     },
+     {
+      "value": "HR truck"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Asan"
+     },
+     {
+      "value": "South Korea"
+     }
+    ],
+    "B": [
+     {
+      "value": "Bromont"
+     },
+     {
+      "value": "Quebec"
+     },
+     {
+      "value": "Canada",
+      "note": "Canada (2HM) / Gabarone"
+     },
+     {
+      "value": "Botswana",
+      "note": "Botswana (KMH)"
+     },
+     {
+      "value": "Anapolis"
+     },
+     {
+      "value": "Goiás"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Caoa Montadora plant) (95P)"
+     }
+    ],
+    "C": [
+     {
+      "value": "Cheonju"
+     },
+     {
+      "value": "South Korea"
+     }
+    ],
+    "E": [
+     {
+      "value": "Pesqueria"
+     },
+     {
+      "value": "Nuevo Leon"
+     },
+     {
+      "value": "Mexico",
+      "note": "Mexico (Kia plant)"
+     }
+    ],
+    "F": [
+     {
+      "value": "Jurong"
+     },
+     {
+      "value": "Singapore",
+      "note": "Singapore (PFD)"
+     }
+    ],
+    "G": [
+     {
+      "value": "West Point"
+     },
+     {
+      "value": "Georgia"
+     },
+     {
+      "value": "USA",
+      "note": "USA (Kia plant)"
+     }
+    ],
+    "H": [
+     {
+      "value": "Montgomery"
+     },
+     {
+      "value": "Alabama"
+     },
+     {
+      "value": "USA"
+     }
+    ],
+    "J": [
+     {
+      "value": "Nošovice"
+     },
+     {
+      "value": "Czech Republic",
+      "note": "Czech Republic (TMA) /Benoni"
+     },
+     {
+      "value": "South Africa",
+      "note": "South Africa (AC5)"
+     },
+     {
+      "value": "Cikarang"
+     },
+     {
+      "value": "Indonesia",
+      "note": "Indonesia (MF3)"
+     }
+    ],
+    "L": [
+     {
+      "value": "Žilina"
+     },
+     {
+      "value": "Slovakia",
+      "note": "Slovakia (Kia plant)"
+     }
+    ],
+    "M": [
+     {
+      "value": "Chennai"
+     },
+     {
+      "value": "Tamil Nadu"
+     },
+     {
+      "value": "India"
+     }
+    ],
+    "P": [
+     {
+      "value": "Piracicaba"
+     },
+     {
+      "value": "São Paulo state"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Hyundai Motor Brasil plant) (9BH)"
+     }
+    ],
+    "R": [
+     {
+      "value": "Saint Petersburg"
+     },
+     {
+      "value": "Russia"
+     }
+    ],
+    "U": [
+     {
+      "value": "Ulsan"
+     },
+     {
+      "value": "South Korea"
+     }
+    ],
+    "W": [
+     {
+      "value": "Gwangju"
+     },
+     {
+      "value": "South Korea",
+      "note": "South Korea (Gwangju Global Motors Co. Ltd. plant)"
+     }
+    ],
+    "Y": [
+     {
+      "value": "Ellabell"
+     },
+     {
+      "value": "Georgia"
+     },
+     {
+      "value": "USA",
+      "note": "USA (Hyundai Motor Group Metaplant America) (HMGMA)"
+     }
+    ],
+    "Z": [
+     {
+      "value": "İzmit"
+     },
+     {
+      "value": "Turkey",
+      "note": "Turkey (Hyundai Assan)"
+     }
+    ],
+    "6": [
+     {
+      "value": "Sohari plant"
+     },
+     {
+      "value": "Gwangmyeong"
+     },
+     {
+      "value": "South Korea",
+      "note": "South Korea (Kia plant)"
+     }
+    ]
+   }
+  }
+ }
+}

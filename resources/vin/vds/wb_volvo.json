@@ -1,0 +1,3126 @@
+{
+ "_brand": "Volvo",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Volvo/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "7JD",
+  "7JR",
+  "LVY",
+  "LYV",
+  "MHA",
+  "PNV",
+  "XLB",
+  "YV1",
+  "YV2",
+  "YV3",
+  "YV4",
+  "YV5"
+ ],
+ "_market": "north_america",
+ "sections": {
+  "engine@4:6": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "4:6"
+   ],
+   "map": {
+    "26": [
+     {
+      "value": "B4204T12 '15-'18 S60 T5 Drive-E FWD",
+      "years": [
+       2015,
+       2018
+      ]
+     },
+     {
+      "value": "'15 V60",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "'15 V60/S80/XC60 2.0 T5 Drive-E FWD (SULEV emissions, PZEV certified)"
+     }
+    ],
+    "27": [
+     {
+      "value": "B4204T10 '15 S60",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "B4204T10 '15 S60/XC60 2.0 T6 Drive-E FWD (SULEV emissions, PZEV certified) 2.0L twincharged I4 (302 hp)"
+     }
+    ],
+    "38": [
+     {
+      "value": "B5244S4 '10 S40",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "B5244S4 '10 S40/V50 2.4i FWD Man. trans.: All 50 states"
+     },
+     {
+      "value": "Auto. trans.: States except those listed in note 1 below",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "Auto. trans.: States except those listed in note 1 below (ULEV emissions)"
+     },
+     {
+      "value": "'10 C30 2.4i",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "'10 C30 2.4i (Canada only)"
+     }
+    ],
+    "39": [
+     {
+      "value": "B5244S7 '10 S40",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "B5244S7 '10 S40/V50 2.4i FWD Auto. trans.: States listed in note 1 below (SULEV emissions, PZEV certified)"
+     }
+    ],
+    "40": [
+     {
+      "value": "B4204T11 '15-'16 S80",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "B4204T11 '15-'16 S80/XC70 2.0 T5 Drive-E FWD"
+     },
+     {
+      "value": "'15-'18 S60",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "'15-'18 S60/V60 2.0 T5 Drive-E FWD"
+     },
+     {
+      "value": "'17 S60 2.0 T5 Drive-E AWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "'17-'18 V60 2.0 T5 Drive-E AWD",
+      "years": [
+       2017,
+       2018
+      ]
+     },
+     {
+      "value": "'16-'18 S60 Inscription 2.0 T5 Drive-E FWD",
+      "years": [
+       2016,
+       2018
+      ]
+     },
+     {
+      "value": "'17-'18 S60 Cross Country",
+      "years": [
+       2017,
+       2018
+      ]
+     },
+     {
+      "value": "S60 Inscription",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "V60 Cross Country 2.0 T5 Drive-E AWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "'15-'17 XC60 2.0 T5 Drive-E FWD",
+      "years": [
+       2015,
+       2017
+      ]
+     },
+     {
+      "value": "'17 XC60 2.0 T5 Drive-E AWD",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "'17 XC60 2.0 T5 Drive-E AWD (ULEV emissions)"
+     }
+    ],
+    "49": [
+     {
+      "value": "B4204T9 '15-'16 S60",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "B4204T9 '15-'16 S60/XC60 2.0 T6 Drive-E FWD"
+     },
+     {
+      "value": "'16-'18 S60",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "'16-'18 S60/V60 2.0 T6 Drive-E AWD"
+     },
+     {
+      "value": "'16-'17 XC60 2.0 T6 Drive-E AWD",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "'16-'17 XC60 2.0 T6 Drive-E AWD (ULEV emissions) 2.0L twincharged I4 (302 hp)"
+     }
+    ],
+    "61": [
+     {
+      "value": "B5254T12 '13-'14 S60 T5 FWD",
+      "years": [
+       2013,
+       2014
+      ]
+     },
+     {
+      "value": "'13-'16 S60 T5 AWD",
+      "years": [
+       2013,
+       2016
+      ]
+     },
+     {
+      "value": "'15-'16 V60 T5 AWD",
+      "years": [
+       2015,
+       2016
+      ]
+     },
+     {
+      "value": "V60 Cross Country T5 AWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "'15.5-'16 XC60 T5 AWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "'16 S60 Inscription T5 AWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "S60 Cross Country T5 AWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "XC70 T5 AWD",
+      "years": [
+       2010,
+       null
+      ]
+     }
+    ],
+    "62": [
+     {
+      "value": "B5254T5 '11-'12 S60 T5",
+      "years": [
+       2011,
+       2012
+      ]
+     }
+    ],
+    "67": [
+     {
+      "value": "B5254T7 '10-'13 C30 T5",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "B5254T7 '10-'13 C30 T5/C70 T5"
+     },
+     {
+      "value": "'10-'11 S40",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "'10-'11 S40/V50 T5 FWD"
+     },
+     {
+      "value": "'10 S40",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "'10 S40/V50 T5 AWD"
+     }
+    ],
+    "85": [
+     {
+      "value": "B8444S '10-'11 XC90 V8 AWD",
+      "years": [
+       2010,
+       2011
+      ]
+     },
+     {
+      "value": "'10 S80 V8 AWD",
+      "years": [
+       2010,
+       null
+      ]
+     }
+    ],
+    "90": [
+     {
+      "value": "B6304T4 '11-'15 S80",
+      "years": [
+       2011,
+       2015
+      ],
+      "note": "B6304T4 '11-'15 S80/XC70 T6 AWD"
+     },
+     {
+      "value": "'11-'16 S60",
+      "years": [
+       2011,
+       2016
+      ],
+      "note": "'11-'16 S60/XC60 T6 AWD"
+     },
+     {
+      "value": "'15-'16 V60 T6 AWD",
+      "years": [
+       2015,
+       2016
+      ]
+     }
+    ],
+    "94": [
+     {
+      "value": "B6324S4 '11-'14 XC60",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "B6324S4 '11-'14 XC60/S80/XC70 3.2 FWD"
+     },
+     {
+      "value": "'11-'15 XC60",
+      "years": [
+       2011,
+       2015
+      ],
+      "note": "'11-'15 XC60/XC70 3.2 AWD (SULEV emissions, PZEV certified)"
+     }
+    ],
+    "95": [
+     {
+      "value": "B6324S5 '11-'14 XC60",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "B6324S5 '11-'14 XC60/XC90/S80/XC70 3.2 FWD"
+     },
+     {
+      "value": "'11-'15 XC60",
+      "years": [
+       2011,
+       2015
+      ],
+      "note": "'11-'15 XC60/XC70 3.2 AWD"
+     },
+     {
+      "value": "'11-'14 XC90 3.2 AWD",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "'11-'14 XC90 3.2 AWD (ULEV emissions)"
+     }
+    ],
+    "96": [
+     {
+      "value": "B6324S2 '10 XC60",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "B6324S2 '10 XC60/S80/V70 3.2 FWD"
+     },
+     {
+      "value": "'10 XC60",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "'10 XC60/XC70 3.2 AWD (SULEV emissions, PZEV certified)"
+     }
+    ],
+    "98": [
+     {
+      "value": "B6324S '10 XC60",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "B6324S '10 XC60/XC90/S80/V70 3.2 FWD"
+     },
+     {
+      "value": "'10 XC60",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "'10 XC60/XC70/XC90 3.2 AWD (ULEV emissions)"
+     },
+     {
+      "value": "B4204T23 '18 S90 T5",
+      "years": [
+       2010,
+       null
+      ]
+     }
+    ],
+    "99": [
+     {
+      "value": "B6304T2 '10 S80",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "B6304T2 '10 S80/XC70/XC60 T6 AWD"
+     },
+     {
+      "value": "B4204T27 '18 S90 T6",
+      "years": [
+       2010,
+       null
+      ]
+     }
+    ],
+    "A0": [
+     {
+      "value": "B4204T43 '17-'18 S60",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "B4204T43 '17-'18 S60/V60 Polestar Edition 2.0L twincharged I4 (362 hp)"
+     }
+    ],
+    "A9": [
+     {
+      "value": "B6304T5 '15-'16 S60",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "B6304T5 '15-'16 S60/V60 Polestar Edition 3.0L turbo I6 (345 hp)"
+     }
+    ],
+    "06": [
+     {
+      "value": "B420T",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "B420T/B4204TE '22-'25 S90 B6 Mild hybrid"
+     },
+     {
+      "value": "'22-'26 V90 Cross Country B6 Mild hybrid",
+      "years": [
+       2022,
+       2026
+      ]
+     },
+     {
+      "value": "'22-'23 XC60 B6 Mild hybrid",
+      "years": [
+       2022,
+       2023
+      ]
+     },
+     {
+      "value": "'23- XC90 B6 Mild hybrid",
+      "years": [
+       2023,
+       null
+      ]
+     },
+     {
+      "value": "'23 V60 B6 Mild hybrid",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "'23 V60 B6 Mild hybrid (Canada only)"
+     }
+    ],
+    "10": [
+     {
+      "value": "B4204T23",
+      "years": [
+       2016,
+       2022
+      ],
+      "note": "B4204T23 (MP) '16-'22 XC90 T5"
+     },
+     {
+      "value": "'17-'19 S90 T5",
+      "years": [
+       2017,
+       2019
+      ]
+     },
+     {
+      "value": "'18-'21 V90 T5",
+      "years": [
+       2018,
+       2021
+      ]
+     },
+     {
+      "value": "'18-'19 V90 Cross Country T5",
+      "years": [
+       2018,
+       2019
+      ]
+     },
+     {
+      "value": "'18-'21 XC60 T5",
+      "years": [
+       2018,
+       2021
+      ]
+     },
+     {
+      "value": "'19-'21 S60 T5",
+      "years": [
+       2019,
+       2021
+      ]
+     },
+     {
+      "value": "'19-'21 V60 T5",
+      "years": [
+       2019,
+       2021
+      ]
+     },
+     {
+      "value": "'19-'22 V60 Cross Country T5",
+      "years": [
+       2019,
+       2022
+      ]
+     }
+    ],
+    "16": [
+     {
+      "value": "B4204T18",
+      "years": [
+       2019,
+       2022
+      ],
+      "note": "B4204T18 (MP) '19-'22 XC40 T5"
+     }
+    ],
+    "A2": [
+     {
+      "value": "B4204T27",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "B4204T27/B4204TS (HP) '19-'21 S60 T6"
+     },
+     {
+      "value": "'19 V60 T6",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "'20-'22 V60 T6",
+      "years": [
+       2020,
+       2022
+      ],
+      "note": "'20-'22 V60 T6 (Canada only)"
+     },
+     {
+      "value": "'18-'21 XC60 T6",
+      "years": [
+       2018,
+       2021
+      ]
+     },
+     {
+      "value": "'17-'21 S90 T6",
+      "years": [
+       2017,
+       2021
+      ]
+     },
+     {
+      "value": "'17 V90 T6",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "'17 V90 T6 (Canada only)"
+     },
+     {
+      "value": "'18-'21 V90 T6",
+      "years": [
+       2018,
+       2021
+      ]
+     },
+     {
+      "value": "'17-'21 V90 Cross Country T6",
+      "years": [
+       2017,
+       2021
+      ]
+     },
+     {
+      "value": "'16-'22 XC90 T6. 2.0L twincharged I4",
+      "years": [
+       2016,
+       2022
+      ],
+      "note": "'16-'22 XC90 T6. 2.0L twincharged I4 (316 hp)"
+     }
+    ],
+    "AC": [
+     {
+      "value": "B4204T47 '19-'22 XC40 T4",
+      "years": [
+       2019,
+       2022
+      ]
+     }
+    ],
+    "BC": [
+     {
+      "value": "B4204T28",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "B4204T28 (B1BPHEV)/B4204TSH (HP) '16-'17 XC90 T8"
+     },
+     {
+      "value": "'18 S90 T8",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "'18 S90 T8. (313 hp [gas] + 87 hp [electric])"
+     }
+    ],
+    "BR": [
+     {
+      "value": "B4204T28",
+      "years": [
+       2019,
+       2022
+      ],
+      "note": "B4204T28 (B1FPHEV)/B4204TSH (HP) '19-'22 S60 T8"
+     },
+     {
+      "value": "'20-'22 V60 T8",
+      "years": [
+       2020,
+       2022
+      ],
+      "note": "'20-'22 V60 T8 (Canada only)"
+     },
+     {
+      "value": "'18-'22 S90 T8",
+      "years": [
+       2018,
+       2022
+      ]
+     },
+     {
+      "value": "'18-'22 XC60 T8",
+      "years": [
+       2018,
+       2022
+      ]
+     },
+     {
+      "value": "'18-'22 XC90 T8",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "'18-'22 XC90 T8. (313 hp [gas] + 87 hp [electric])"
+     }
+    ],
+    "BK": [
+     {
+      "value": "B4204T39",
+      "years": [
+       2020,
+       2022
+      ],
+      "note": "B4204T39 (B1LPHEV)/B4204TSH (HP) '20-'22 S60/V60/XC60 T8 Polestar Engineered. (328 hp [gas] + 87 hp [electric])"
+     }
+    ],
+    "H6": [
+     {
+      "value": "B4204T57",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "B4204T57/B4204TSH (HP) '22-'25 S60 T8 (Extended Range)"
+     },
+     {
+      "value": "S90 T8",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "S90 T8 (Extended Range)"
+     },
+     {
+      "value": "'22- XC60 T8",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "'22- XC60 T8 (Extended Range)"
+     },
+     {
+      "value": "XC90 T8",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "XC90 T8 (Extended Range)"
+     },
+     {
+      "value": "'22-'23 S60 T8 Polestar Engineered",
+      "years": [
+       2022,
+       2023
+      ]
+     },
+     {
+      "value": "'22-'25 V60 T8 Polestar Engineered",
+      "years": [
+       2022,
+       2025
+      ]
+     },
+     {
+      "value": "'22- XC60 T8 Polestar Engineered",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "'22- XC60 T8 Polestar Engineered. (312 hp [gas] + 143 hp [electric])"
+     }
+    ],
+    "K9": [
+     {
+      "value": "B420T6",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "B420T6/B4204T (MP) '23 & '26- XC40 B4 Mild hybrid"
+     }
+    ],
+    "L1": [
+     {
+      "value": "B420T2",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "B420T2/B4204T '22-'25 S60 B5 Mild hybrid"
+     },
+     {
+      "value": "'22-24 XC60 B5 Mild hybrid",
+      "years": [
+       2022,
+       2024
+      ]
+     },
+     {
+      "value": "'23-'26 V60 Cross Country B5 Mild hybrid",
+      "years": [
+       2023,
+       2026
+      ]
+     },
+     {
+      "value": "'23- XC40 B5 Mild hybrid",
+      "years": [
+       2023,
+       null
+      ]
+     },
+     {
+      "value": "'23-'24 XC90 B5 Mild hybrid",
+      "years": [
+       2023,
+       2024
+      ]
+     }
+    ],
+    "M1": [
+     {
+      "value": "B420T11",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "B420T11/B4204T '25- XC60 B5 Mild hybrid"
+     },
+     {
+      "value": "'25- XC90 B5 Mild hybrid",
+      "years": [
+       2025,
+       null
+      ]
+     }
+    ],
+    "ED": [
+     {
+      "value": "E400V6 '21-'23 XC40 Recharge AWD",
+      "years": [
+       2021,
+       2023
+      ]
+     },
+     {
+      "value": "'22-'23 C40 Recharge AWD",
+      "years": [
+       2022,
+       2023
+      ]
+     }
+    ],
+    "EH": [
+     {
+      "value": "E400V8 '24 XC40 Recharge RWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "'25- EX40 Recharge RWD",
+      "years": [
+       2025,
+       null
+      ]
+     },
+     {
+      "value": "'24 C40 Recharge RWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "'25 EC40 Recharge RWD",
+      "years": [
+       2010,
+       null
+      ]
+     }
+    ],
+    "EK": [
+     {
+      "value": "E400V14 '25- EX30 AWD",
+      "years": [
+       2025,
+       null
+      ]
+     },
+     {
+      "value": "'26- EX30 Cross Country AWD",
+      "years": [
+       2026,
+       null
+      ]
+     }
+    ],
+    "EL": [
+     {
+      "value": "E400V18 '25- EX30 RWD",
+      "years": [
+       2025,
+       null
+      ]
+     }
+    ],
+    "ER": [
+     {
+      "value": "E400V12 '24 XC40 Recharge AWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "'25- EX40 Recharge AWD",
+      "years": [
+       2025,
+       null
+      ]
+     },
+     {
+      "value": "'24 C40 Recharge AWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "'25 EC40 Recharge AWD",
+      "years": [
+       2010,
+       null
+      ]
+     },
+     {
+      "value": "'26 EC40 Recharge AWD",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "'26 EC40 Recharge AWD (Canada only)"
+     }
+    ],
+    "EV": [
+     {
+      "value": "E400V3 '25 EX90 AWD",
+      "years": [
+       2010,
+       null
+      ]
+     }
+    ],
+    "E2": [
+     {
+      "value": "E400V13 '25 EX90 AWD Performance",
+      "years": [
+       2010,
+       null
+      ]
+     }
+    ],
+    "DD": [
+     {
+      "value": "E800V35 '26- EX90 RWD",
+      "years": [
+       2026,
+       null
+      ]
+     }
+    ],
+    "DB": [
+     {
+      "value": "E800V33 '26- EX90 AWD",
+      "years": [
+       2026,
+       null
+      ]
+     }
+    ],
+    "DA": [
+     {
+      "value": "E800V32 '26- EX90 AWD Performance",
+      "years": [
+       2026,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  "engine@6:8": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "6:8"
+   ],
+   "map": {
+    "25": [
+     {
+      "value": "B4204T2",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B4204T2 (2000 S40/V40) 1.9-liter light-pressure Turbo I4 160 hp"
+     },
+     {
+      "value": "170 lb-ft",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B204FT",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B4204T2 2.0T 1999-2000 160HK",
+      "years": [
+       1999,
+       2000
+      ]
+     }
+    ],
+    "27": [
+     {
+      "value": "B4204T4",
+      "years": [
+       2003,
+       2004
+      ],
+      "note": "B4204T4 (2003-2004 S40/V40) 1.9-liter light-pressure Turbo I4 170 hp"
+     },
+     {
+      "value": "177 lb-ft",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B200F",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B4204T4",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "29": [
+     {
+      "value": "B4204T3",
+      "years": [
+       2001,
+       2003
+      ],
+      "note": "B4204T3 (2001-2003 S40/V40) 1.9-liter light-pressure Turbo I4 160 hp"
+     },
+     {
+      "value": "177 lb-ft",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B4204T3 2.0T 2001-2004 160HK",
+      "years": [
+       2001,
+       2004
+      ]
+     }
+    ],
+    "38": [
+     {
+      "value": "B5244S4",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5244S4 (2004 1/2 S40 2.4i"
+     },
+     {
+      "value": "2005-2008 S40",
+      "years": [
+       2005,
+       2008
+      ],
+      "note": "2005-2008 S40/V50 2.4i Man. trans.: All 50 states"
+     },
+     {
+      "value": "2005-2009 S40",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "2005-2009 S40/V50 2.4i Auto. trans.: States except those listed in note 1 below (ULEV emissions)"
+     },
+     {
+      "value": "2007-2009 C30 2.4i",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "2007-2009 C30 2.4i [Canada only]) 2.4-liter 20v I5 FWD"
+     },
+     {
+      "value": "B5244S4 C30",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5244S4 C30/S40/V50 2.4i FWD"
+     }
+    ],
+    "39": [
+     {
+      "value": "B5244S7",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "B5244S7 (2005-2009 S40/V50 2.4i Auto. trans.: States listed in note 1 below (SULEV emissions, PZEV certified)) 2.4-liter 20v I5 FWD"
+     },
+     {
+      "value": "B5244S7 S40",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5244S7 S40/V50 2.4i FWD"
+     }
+    ],
+    "41": [
+     {
+      "value": "B21A",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "B21A (carburetor) (Canada only: 1981-1984 240 series)"
+     },
+     {
+      "value": "B21A",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B5202S 850",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5202S 850/V70 2.0i FWD"
+     }
+    ],
+    "45": [
+     {
+      "value": "B21F",
+      "years": [
+       1976,
+       1981
+      ],
+      "note": "B21F (240 series: 1976-81 US, 1976-80 Canada) [1976-1980: Position 6 (Engine type): 4 = B21"
+     },
+     {
+      "value": "Position 7",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "Position 7 (Engine version): 5 = F (Fuel injection, US emissions)]"
+     },
+     {
+      "value": "B21F",
+      "years": [
+       1976,
+       1981
+      ],
+      "note": "B21F (1976-81 US, 1976-80 CDN, 1976-84 JAPAN)"
+     }
+    ],
+    "47": [
+     {
+      "value": "B21FT",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "B21FT (1981-1985 240 series Turbo)"
+     },
+     {
+      "value": "B21FT",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B5204T 850",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5204T 850/V70 2.0 T5 FWD"
+     }
+    ],
+    "48": [
+     {
+      "value": "B21F-LH",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B21F-LH (Bosch LH-Jetronic 1.0) (1982 240 series)"
+     },
+     {
+      "value": "B21F-LH",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B21F-LH (LH-Jet 1.0)"
+     }
+    ],
+    "49": [
+     {
+      "value": "B21F-MPG",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "B21F-MPG (CI system = Continuous Injection) (1981-1982 240 series)"
+     },
+     {
+      "value": "B21F-MPG",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "B21F-MPG (1981-82)"
+     }
+    ],
+    "50": [
+     {
+      "value": "B5234T4",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "B5234T4 (Canada only: 1996-1997 850 R w/manual transmission only)"
+     },
+     {
+      "value": "B5234T4 V70 R AWD",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "51": [
+     {
+      "value": "B5252S",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "B5252S (Canada only: 1995-1996 850 GLE) 2.4-liter 10v I5 FWD"
+     },
+     {
+      "value": "B5252S 850",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5252S 850/V70 2.5i FWD or D5204T6 V40/V40CC D3/D4"
+     }
+    ],
+    "52": [
+     {
+      "value": "B5234T6",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5234T6 (1998 V70 R AWD w/auto. trans.) 2.3-liter 20v high-pressure Turbo I5 236 hp"
+     },
+     {
+      "value": "B5254T4",
+      "years": [
+       2004,
+       2007
+      ],
+      "note": "B5254T4 (2004-2007 S60 R AWD/V70 R AWD) 2.5-liter 20v high-pressure Turbo I5 300 hp"
+     },
+     {
+      "value": "B5254T4 S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5254T4 S60/V70 R AWD"
+     }
+    ],
+    "53": [
+     {
+      "value": "B5234T3",
+      "years": [
+       1998,
+       2000
+      ],
+      "note": "B5234T3 (1998-2000 S70 T5/1998-1999 V70 T5, 1998-2002 C70 HT, 2001-2004 S60 T5/V70 T5) 2.3-liter 20v high-pressure Turbo I5. '98-'00: 236 hp"
+     },
+     {
+      "value": "'01-'02 C70: 236 hp",
+      "years": [
+       2001,
+       2002
+      ]
+     },
+     {
+      "value": "'01-'04 S60",
+      "years": [
+       2001,
+       2004
+      ],
+      "note": "'01-'04 S60/V70: 247 hp"
+     },
+     {
+      "value": "B5234T3 S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5234T3 S60/V70 T5 FWD"
+     }
+    ],
+    "54": [
+     {
+      "value": "B5244T5",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "B5244T5 (2005-2009 S60 T5 FWD, 2005 V70 T5 FWD) 2.4-liter 20v high-pressure Turbo I5 257 hp"
+     },
+     {
+      "value": "B5244T5 S60 T5 FWD",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "55": [
+     {
+      "value": "B5254F",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "B5254F (1993-1994 850); B5254S (1995-1997 850, 1998-1999 S70/V70) 2.4-liter 20v I5 FWD"
+     },
+     {
+      "value": "B5254S",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5254S; B5254FS 850/V70/S70 FWD"
+     }
+    ],
+    "56": [
+     {
+      "value": "B5254T",
+      "years": [
+       1998,
+       1999
+      ],
+      "note": "B5254T (1997 850 GLT, 1998-1999 C70 LT, S70/V70 GLT FWD, V70 AWD, V70 XC AWD, 1999 S70 AWD) 2.4-liter 20v light-pressure Turbo I5 190 hp"
+     },
+     {
+      "value": "B5244T",
+      "years": [
+       2000,
+       2002
+      ],
+      "note": "B5244T (2000 S70/V70 GLT FWD, S70 AWD, V70 XC AWD, 2000-2002 C70 LT) 2.4-liter 20v light-pressure Turbo I5 190 hp"
+     },
+     {
+      "value": "B5254T S70",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5254T S70/V70 GLT FWD V70 XC AWD - 1999"
+     },
+     {
+      "value": "B5244T",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5244T 2000"
+     }
+    ],
+    "57": [
+     {
+      "value": "B5234FT",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "B5234FT (1994 850 Turbo); B5234T (1995-1996 850 Turbo, 1997 850 T-5) 2.3-liter 20v high-pressure Turbo I5 222 hp"
+     },
+     {
+      "value": "B5234T 850",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5234T 850/V70 2.3T FWD Turbo"
+     }
+    ],
+    "58": [
+     {
+      "value": "B5234T5",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "B5234T5 (1995 850 T-5R/1996-1997 850 R) 2.3-liter 20v high-output high-pressure Turbo I5 240 hp"
+     },
+     {
+      "value": "B5244T3",
+      "years": [
+       2001,
+       2003
+      ],
+      "note": "B5244T3 (2001-2003 S60 2.4T FWD/V70 2.4T FWD, 2002 S60 2.4T AWD/V70 2.4T AWD, 2001-2002 V70 XC AWD) 2.4-liter light-pressure Turbo I5 197 hp"
+     },
+     {
+      "value": "B5234T5 1995-1997 850 T-5R",
+      "years": [
+       1995,
+       1997
+      ],
+      "note": "B5234T5 1995-1997 850 T-5R/R ; B5244T3 S60/V70/S80/XC70 2000"
+     }
+    ],
+    "59": [
+     {
+      "value": "B5254T2",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "B5254T2 (2004-2009 S60 2.5T FWD, 2003-2009 S60 2.5T AWD, 2003-2006 XC90 2.5T FWD/AWD, 2004-2007 V70 2.5T FWD, 2003-2004 V70 2.5T AWD, 2003-2007 XC70 AWD, 2004-2"
+     },
+     {
+      "value": "B5254T2 S80",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5254T2 S80/S60/XC90 2.5T FWD/AWD"
+     },
+     {
+      "value": "V70 2.5T FWD",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "XC70 AWD",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "60": [
+     {
+      "value": "B5244T2",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5244T2 (2000 V70 R AWD w/auto. trans.) 2.3-liter 20v high-output high-pressure Turbo I5 261 hp"
+     },
+     {
+      "value": "B5254T10 V70",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5254T10 V70/S80 2.5t FWD/AWD"
+     }
+    ],
+    "61": [
+     {
+      "value": "B5244S",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "B5244S (2000 S70/V70, 2001-2002 S60 2.4, V70 2.4) 2.4-liter 20v I5 FWD"
+     },
+     {
+      "value": "B5244S",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "B5244S (2003-2005 S60 2.4, 2003-2006 V70 2.4) 2.4-liter 20v I5 FWD. Man. trans.: All 50 states"
+     },
+     {
+      "value": "Auto. trans.: States except those listed in note 1 below",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "Auto. trans.: States except those listed in note 1 below. (ULEV emissions)"
+     },
+     {
+      "value": "B5244S",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5244S (2007 V70 2.4) 2.4-liter 20v I5 FWD. (ULEV emissions)"
+     },
+     {
+      "value": "B27A",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B5244S S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5244S S60/V70 2.4 FWD"
+     }
+    ],
+    "62": [
+     {
+      "value": "B5234T8",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5234T8 (1999 V70 R AWD w/auto. trans.) 2.3-liter 20v high-output high-pressure Turbo I5 247 hp"
+     },
+     {
+      "value": "B5234T9",
+      "years": [
+       2003,
+       2004
+      ],
+      "note": "B5234T9 (2003-2004 C70 HT/HPT) 2.3-liter 20v high-pressure Turbo I5 242 hp"
+     },
+     {
+      "value": "B28A",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "63": [
+     {
+      "value": "B5244T7",
+      "years": [
+       2003,
+       2004
+      ],
+      "note": "B5244T7 (2003-2004 C70 LT/LPT) 2.4-liter 20v light-pressure Turbo I5 197 hp"
+     }
+    ],
+    "64": [
+     {
+      "value": "B5244S6",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "B5244S6 (2003-2005 S60, 2003-2006 V70 2.4) 2.4-liter 20v I5 FWD. Auto. trans.: States listed in note 1 below. (SULEV emissions, PZEV certified)"
+     },
+     {
+      "value": "B27E",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B5244S6 S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5244S6 S60/V70 2.4 FWD"
+     }
+    ],
+    "67": [
+     {
+      "value": "B5254T7",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "B5254T7 (2008-2009 S40/V50 T5 FWD/AWD, 2008-2009 C30 T5, C70 T5) 2.5-liter 20v high-pressure Turbo I5 227 hp"
+     },
+     {
+      "value": "B5254T7 C30",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5254T7 C30/C70/V50 T5 FWD/AWD"
+     }
+    ],
+    "68": [
+     {
+      "value": "B5254T3",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5254T3 (2004 1/2 S40 T5 FWD"
+     },
+     {
+      "value": "2005-2007 S40",
+      "years": [
+       2005,
+       2007
+      ],
+      "note": "2005-2007 S40/V50 T5 FWD/AWD"
+     },
+     {
+      "value": "2006-2007 C70 T5",
+      "years": [
+       2006,
+       2007
+      ]
+     },
+     {
+      "value": "2007 C30 T5",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "2007 C30 T5 [Canada only]) 2.5-liter 20v high-pressure Turbo I5 218 hp"
+     },
+     {
+      "value": "B28E",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B280E",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B5254T3 S40",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5254T3 S40/V50 T5 FWD/AWD"
+     }
+    ],
+    "69": [
+     {
+      "value": "B28F",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B280F",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "B280F (1981-1982 GLE"
+     },
+     {
+      "value": "1981 Coupe Bertone",
+      "years": [
+       1983,
+       1990
+      ],
+      "note": "1981 Coupe Bertone (262C) [260 series], 1983-1990 760, 1987-1990 780) [PRV 2.8-liter V6 engine]"
+     },
+     {
+      "value": "B280F",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B280F [PRV V6 engine]"
+     },
+     {
+      "value": "D5244T5 S80",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D5244T5 S80/V70 2.4D FWD"
+     }
+    ],
+    "76": [
+     {
+      "value": "D24T",
+      "years": [
+       1983,
+       1985
+      ],
+      "note": "D24T (turbo, not intercooled) with EGR (1983-1985 760 Turbo Diesel, 1985-1986 740 Turbo Diesel) [VW 2.4-liter diesel I6 engine]"
+     },
+     {
+      "value": "D24T",
+      "years": [
+       1983,
+       1985
+      ],
+      "note": "D24T (turbo, not intercooled) with EGR (1983-1985 760, 1985-1986 740) [VW diesel I6 engine]"
+     },
+     {
+      "value": "D4164T V50",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "1.6D",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "1.6D (PSA-Ford Engine)"
+     }
+    ],
+    "77": [
+     {
+      "value": "D24",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "D24 (1981-1984 240 series Diesel) [VW 2.4-liter diesel I6 engine]"
+     },
+     {
+      "value": "D24",
+      "years": [
+       1980,
+       1984
+      ],
+      "note": "D24 (1980-1984) [VW diesel I6 engine]"
+     },
+     {
+      "value": "D5244T8 S40 D5 AT",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "82": [
+     {
+      "value": "B230FS3",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "B230FS3 (Bosch LH-Jetronic 3.1) (1990-1992 240)"
+     },
+     {
+      "value": "B230GT",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B230FD",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B230FD (LH 3.1)"
+     },
+     {
+      "value": "D5244T15 XC60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D5244T15 XC60/V60 AWD D5(215)"
+     }
+    ],
+    "83": [
+     {
+      "value": "B230FD w",
+      "years": [
+       1993,
+       1995
+      ],
+      "note": "B230FD w/EGR & Pulsair air injection system (Bosch LH-Jetronic 2.4) (1993 240, 1993-1995 940)"
+     },
+     {
+      "value": "B230FD w",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B230FD w/pulsair (LH 2.4)"
+     }
+    ],
+    "84": [
+     {
+      "value": "B23E",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "B23E (Canada only: 1981-1983)"
+     },
+     {
+      "value": "B23E",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B230E",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B230GK",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "D4162T C30",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "V50",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "V70",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "S60 1.6D",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "S60 1.6D/DRIVe (PSA-Ford Engine)"
+     }
+    ],
+    "85": [
+     {
+      "value": "B8444S",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "B8444S (2005-2009 XC90 V8 AWD, 2007-2009 S80 V8 AWD) 4.4-liter Volvo/Yamaha V8"
+     },
+     {
+      "value": "B230FB",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B8444S XC90",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B8444S XC90/S80 V8 AWD"
+     }
+    ],
+    "86": [
+     {
+      "value": "B230FT - w",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "B230FT - w/EGR (1994-1995 940 Turbo)"
+     },
+     {
+      "value": "B23ET",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B230ET",
+      "years": [
+       1983,
+       1988
+      ],
+      "note": "B230ET (1983-88)"
+     },
+     {
+      "value": "B230FT - EGR",
+      "years": [
+       1994,
+       1998
+      ],
+      "note": "B230FT - EGR (1994-98?)"
+     }
+    ],
+    "87": [
+     {
+      "value": "B23FT",
+      "years": [
+       1984,
+       null
+      ],
+      "note": "B23FT (1984 - LH 2.1) 1984 760 Turbo"
+     },
+     {
+      "value": "B230FT",
+      "years": [
+       1985,
+       1994
+      ],
+      "note": "B230FT (Bosch LH Jetronic 2.2, 2.4) - non EGR (1985-1994) 1985-1992 740 Turbo"
+     },
+     {
+      "value": "1985-1990 760 Turbo",
+      "years": [
+       1985,
+       1990
+      ]
+     },
+     {
+      "value": "1989-1991 780 Turbo Coupe",
+      "years": [
+       1989,
+       1991
+      ]
+     },
+     {
+      "value": "1991-1994 940 Turbo",
+      "years": [
+       1991,
+       1994
+      ]
+     },
+     {
+      "value": "1991 940 SE",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B23FT",
+      "years": [
+       1983,
+       1984
+      ],
+      "note": "B23FT (1983-1984 - LH 2.1)"
+     },
+     {
+      "value": "B230FT",
+      "years": [
+       1985,
+       1998
+      ],
+      "note": "B230FT (LH Jetronic 2.2, 2.4) - non EGR (1985-98)"
+     },
+     {
+      "value": "D5244T17 XC60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D5244T17 XC60/XC70/V70"
+     }
+    ],
+    "88": [
+     {
+      "value": "B23F",
+      "years": [
+       1983,
+       1984
+      ],
+      "note": "B23F (1983-1984 - Bosch LH Jetronic 2.0) 1983-1984 240 series"
+     },
+     {
+      "value": "B230F",
+      "years": [
+       1985,
+       1994
+      ],
+      "note": "B230F/FS (1985-1994 - Bosch LH Jetronic 2.2, 2.4) 1985-1993 240 series"
+     },
+     {
+      "value": "1985-1992 740",
+      "years": [
+       1985,
+       1992
+      ]
+     },
+     {
+      "value": "1992-1994 940",
+      "years": [
+       1992,
+       1994
+      ]
+     },
+     {
+      "value": "B23F",
+      "years": [
+       1983,
+       1984
+      ],
+      "note": "B23F (1983-1984 - LH 2.0)"
+     },
+     {
+      "value": "B230F",
+      "years": [
+       1985,
+       1995
+      ],
+      "note": "B230F/FS (1985-95 - LH Jetronic 2.2, 2.4)"
+     },
+     {
+      "value": "D5204T3 XC60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D5204T3 XC60/V60/XC70/V70"
+     }
+    ],
+    "89": [
+     {
+      "value": "B234F",
+      "years": [
+       1989,
+       1990
+      ],
+      "note": "B234F (1989-1990 740 GLE, 1991 940 GLE) 16-valve"
+     },
+     {
+      "value": "B234F",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "90": [
+     {
+      "value": "B6284T",
+      "years": [
+       1999,
+       2001
+      ],
+      "note": "B6284T (1999-2001 S80 T6) 2.8-liter twin-turbo I6"
+     },
+     {
+      "value": "B6284T S80 2.8 T6",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "91": [
+     {
+      "value": "B6294T",
+      "years": [
+       2002,
+       2005
+      ],
+      "note": "B6294T (2002-2005 S80 T6, 2003-2005 XC90 T6) 2.8-liter twin-turbo I6"
+     },
+     {
+      "value": "B6294T S80",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B6294T S80/XC90 2.9 T6"
+     }
+    ],
+    "92": [
+     {
+      "value": "B6294S2",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "B6294S2 (2002-2004 S80 2.9 FWD) 2.9-liter I6"
+     },
+     {
+      "value": "B6244F",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "94": [
+     {
+      "value": "B6294S",
+      "years": [
+       2000,
+       2001
+      ],
+      "note": "B6294S (2000-2001 S80 2.9 FWD) 2.9-liter I6"
+     },
+     {
+      "value": "B6294S S80 2.9 FWD",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "95": [
+     {
+      "value": "B6304F",
+      "years": [
+       1992,
+       1994
+      ],
+      "note": "B6304F/S (1992-94 960) 2.9-liter I6"
+     },
+     {
+      "value": "B6304F",
+      "years": [
+       1992,
+       1994
+      ],
+      "note": "B6304F/S 1992-94"
+     }
+    ],
+    "96": [
+     {
+      "value": "B63042S",
+      "years": [
+       1995,
+       1997
+      ],
+      "note": "B63042S (1995-1997 960, 1997 1/2 -1998 S90/V90) 2.9-liter I6"
+     },
+     {
+      "value": "B6304S",
+      "years": [
+       1995,
+       1998
+      ],
+      "note": "B6304S 1995-98"
+     }
+    ],
+    "97": [
+     {
+      "value": "B6304S",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B6304S (1999 S80 2.9 FWD) 2.9-liter I6"
+     },
+     {
+      "value": "B6304S S80 2.9 FWD",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "98": [
+     {
+      "value": "B6324S",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "B6324S (2007-2009 XC90 3.2 FWD/AWD"
+     },
+     {
+      "value": "S80 3.2 FWD",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "2008-2009 V70 3.2 FWD",
+      "years": [
+       2008,
+       2009
+      ]
+     },
+     {
+      "value": "XC70 3.2 AWD 3.2-liter I6",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "N6304G",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B6324S XC90",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B6324S XC90/S80/V70 3.2 FWD/XC70 AWD"
+     }
+    ],
+    "99": [
+     {
+      "value": "B6304T2",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "B6304T2 (2008-2009 S80 T6 AWD"
+     },
+     {
+      "value": "2009 XC70 T6 AWD 3.0-liter turbo I6",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B6254G",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B6304T4 S80 3.0 T6 AWD",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "11": [
+     {
+      "value": "B17A",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "15": [
+     {
+      "value": "B20F",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B4184S3",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "16": [
+     {
+      "value": "B4204S",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B4204S 2.0 1995-2004 137HK",
+      "years": [
+       1995,
+       2004
+      ]
+     }
+    ],
+    "20": [
+     {
+      "value": "B200G",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B4164S3 C30 1.6 FWD",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "21": [
+     {
+      "value": "B19A",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B200FT",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B4184S11 V50",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B4184S11 V50/S40 1.8"
+     }
+    ],
+    "22": [
+     {
+      "value": "B200GT",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "24": [
+     {
+      "value": "B19E",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B19E/B200E"
+     },
+     {
+      "value": "B4194T2 2000 200HK",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "26": [
+     {
+      "value": "B19ET",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B4184SJ 1.8i 1995-2004 125HK",
+      "years": [
+       1995,
+       2004
+      ]
+     }
+    ],
+    "37": [
+     {
+      "value": "D20",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B4204T5 2001-2004 200HK",
+      "years": [
+       2001,
+       2004
+      ]
+     }
+    ],
+    "44": [
+     {
+      "value": "B21E",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "46": [
+     {
+      "value": "B21ET",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "65": [
+     {
+      "value": "B27F",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B5244S2 S80",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5244S2 S80/V70/S60 2.4 FWD"
+     }
+    ],
+    "74": [
+     {
+      "value": "D24TIC",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D24TIC (turbo & intercooled) with EGR [VW diesel I6 engine]"
+     },
+     {
+      "value": "D5244T2",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "75": [
+     {
+      "value": "D24TIC",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D24TIC (turbo & intercooled) without EGR [VW diesel I6 engine]"
+     },
+     {
+      "value": "D4204T C30",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "S40 2.0D",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "80": [
+     {
+      "value": "B230G",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "81": [
+     {
+      "value": "B23A",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B230A",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "B230FK",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "D5244T7 V70 2.4 D5 93kW",
+      "years": [
+       2005,
+       2007
+      ],
+      "note": "D5244T7 V70 2.4 D5 93kW (2005-2007)"
+     }
+    ],
+    "93": [
+     {
+      "value": "B6254F",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "10": [
+     {
+      "value": "B4164S2 2000-2004 109HK",
+      "years": [
+       2000,
+       2004
+      ]
+     }
+    ],
+    "13": [
+     {
+      "value": "B4184SM 1998-2000 125HK",
+      "years": [
+       1998,
+       2000
+      ]
+     }
+    ],
+    "12": [
+     {
+      "value": "B4184S 1.8 1995-1999 115HK",
+      "years": [
+       1995,
+       1999
+      ]
+     }
+    ],
+    "14": [
+     {
+      "value": "B4184S2 1.8 2000-2004 122HK",
+      "years": [
+       2000,
+       2004
+      ]
+     }
+    ],
+    "28": [
+     {
+      "value": "B4184S10",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "30": [
+     {
+      "value": "B4184S9",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "D5244T18 XC90 2.4 AWD",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "17": [
+     {
+      "value": "B4204S2 2.0 1995-2004 136HK",
+      "years": [
+       1995,
+       2004
+      ]
+     },
+     {
+      "value": "B4204S2 V40 2.0L FWD",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "19": [
+     {
+      "value": "B4204T 2.0T 1998 160HK",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "18": [
+     {
+      "value": "B4194T T4 1998-1999 200HK",
+      "years": [
+       1998,
+       1999
+      ]
+     },
+     {
+      "value": "B4194T V40 1.9L Turbo FWD",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "73": [
+     {
+      "value": "D4192T2 1.9d 1999-2001 95HK",
+      "years": [
+       1999,
+       2001
+      ]
+     },
+     {
+      "value": "D4204T5 S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D4204T5 S60/V60"
+     },
+     {
+      "value": "D4192T2 S40",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D4192T2 S40/V40"
+     }
+    ],
+    "78": [
+     {
+      "value": "D4192T4 D 2001-2004 102HK",
+      "years": [
+       2001,
+       2004
+      ]
+     },
+     {
+      "value": "D4192T4 S40",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D4192T4 S40/V40"
+     }
+    ],
+    "70": [
+     {
+      "value": "D4192T3 1.9D 2001-2004 115HK",
+      "years": [
+       2001,
+       2004
+      ]
+     },
+     {
+      "value": "D4192T3 S40",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D4192T3 S40/V40"
+     },
+     {
+      "value": "D5244T10 XC60 AWD D5",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D5244T10 XC60 AWD D5(205)"
+     }
+    ],
+    "04": [
+     {
+      "value": "B4204S4 C30",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B4204S4 C30/S40/V50/V70 2.0 Flexifuel FWD"
+     }
+    ],
+    "08": [
+     {
+      "value": "B4184S8 C30",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B4184S8 C30/S40/V50/V70 1.8 Flexifuel FWD"
+     }
+    ],
+    "31": [
+     {
+      "value": "D5204T7 XC60",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "40": [
+     {
+      "value": "B4204T11 S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B4204T11 S60/V60 2.0 T5 FWD"
+     }
+    ],
+    "43": [
+     {
+      "value": "B5204T3 850",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5204T3 850/V70/S80 2.0 T5 FWD"
+     },
+     {
+      "value": "or B4204S3 S80",
+      "years": [
+       2007,
+       2010
+      ],
+      "note": "or B4204S3 S80(2.0F 2007-2010)"
+     }
+    ],
+    "66": [
+     {
+      "value": "B5244S5 S40",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B5244S5 S40/V50 2.4 FWD"
+     }
+    ],
+    "71": [
+     {
+      "value": "D5244T4 V70 AWD D5",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D5244T4 V70 AWD D5(185)"
+     },
+     {
+      "value": "XC90 AWD D5",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "XC90 AWD D5(185)"
+     }
+    ],
+    "72": [
+     {
+      "value": "D5252T S70",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D5252T S70/S80 2.5TDi FWD"
+     },
+     {
+      "value": "D5244T14 XC60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D5244T14 XC60/XC70/S80"
+     }
+    ],
+    "79": [
+     {
+      "value": "D5244T D5",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D5244T D5(163)"
+     }
+    ],
+    "A0": [
+     {
+      "value": "B4204T43 S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B4204T43 S60/V60 Polestar 2.0L (362 hp)"
+     }
+    ],
+    "A2": [
+     {
+      "value": "B4204T27 S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B4204T27 S60/V60"
+     },
+     {
+      "value": "XC60",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "S90",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "S90/V90"
+     },
+     {
+      "value": "XC90 2.0 T6",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "XC90 2.0 T6 (320 hp)"
+     }
+    ],
+    "A3": [
+     {
+      "value": "B4204T29 S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B4204T29 S60/V60"
+     },
+     {
+      "value": "XC60",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "S90",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "S90/V90"
+     },
+     {
+      "value": "XC90 2.0 T6",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "XC90 2.0 T6 (310 hp)"
+     }
+    ],
+    "A4": [
+     {
+      "value": "D4204T11 S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D4204T11 S60/V60"
+     },
+     {
+      "value": "XC90 D5",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "A5": [
+     {
+      "value": "D5244T21 V60 2.4 D4",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "A6": [
+     {
+      "value": "D4204T12 XC40 D4",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "A8": [
+     {
+      "value": "D4204T14 V40",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "V60",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "2.0 D4",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "A9": [
+     {
+      "value": "B6304T5 S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B6304T5 S60/V60 Polestar 3.0L (350 hp)"
+     }
+    ],
+    "AA": [
+     {
+      "value": "D82PHEV V60 Plug-In Hybrid",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "AC": [
+     {
+      "value": "B4204T47 XC40 T4",
+      "years": [
+       1981,
+       2009
+      ]
+     }
+    ],
+    "AJ": [
+     {
+      "value": "D5244T22",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "D5244T22 (220 hp)"
+     }
+    ],
+    "BR": [
+     {
+      "value": "B4204TSH S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B4204TSH S60/V60 T8"
+     },
+     {
+      "value": "S90",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "S90/V90 T8"
+     },
+     {
+      "value": "XC60 T8",
+      "years": [
+       1981,
+       2009
+      ]
+     },
+     {
+      "value": "XC90 T8",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "XC90 T8 (313hp+87hp)"
+     }
+    ],
+    "BK": [
+     {
+      "value": "B4204TSH S60",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "B4204TSH S60/V60/XC60 T8 Polestar Engineered (328hp+87hp)"
+     }
+    ],
+    "H5": [
+     {
+      "value": "XC90 T8",
+      "years": [
+       1981,
+       2009
+      ],
+      "note": "XC90 T8 (313hp+87hp)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "3": [
+     {
+      "value": "Nova Scotia Plant"
+     }
+    ],
+    "6": [
+     {
+      "value": "Victoria",
+      "note": "Victoria (Motor Producers Ltd./Nissan Motor Australia)"
+     }
+    ],
+    "B": [
+     {
+      "value": "Sichuan Province"
+     }
+    ],
+    "D": [
+     {
+      "value": "780"
+     }
+    ],
+    "G": [
+     {
+      "value": "South Carolina",
+      "note": "South Carolina (Volvo Car US Operations)"
+     }
+    ],
+    "L": [
+     {
+      "value": "Taizhou"
+     },
+     {
+      "value": "Zhejiang Province",
+      "note": "Zhejiang Province (AELQ plant)"
+     }
+    ],
+    "P": [
+     {
+      "value": "Heilongjiang Province"
+     }
+    ],
+    "S": [
+     {
+      "value": "Hebei Province",
+      "note": "Hebei Province (Volvo EX30)"
+     }
+    ]
+   }
+  }
+ }
+}

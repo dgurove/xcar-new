@@ -1,0 +1,269 @@
+{
+ "_brand": "Ford",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Ford/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "1F1",
+  "1F6",
+  "1F7",
+  "1FA",
+  "1FB",
+  "1FC",
+  "1FD",
+  "1FM",
+  "1FT",
+  "1L1",
+  "1LJ",
+  "1LN",
+  "1ME",
+  "1MH",
+  "1MR",
+  "1YV",
+  "1ZV",
+  "1ZW",
+  "2FA",
+  "2FD",
+  "2FM",
+  "2FT",
+  "2L1",
+  "2LJ",
+  "2LM",
+  "2LN",
+  "2ME",
+  "2MH",
+  "2MR",
+  "3FA",
+  "3FC",
+  "3FD",
+  "3FE",
+  "3FM",
+  "3FN",
+  "3FR",
+  "3FT",
+  "3LN",
+  "3MA",
+  "3ME",
+  "4F2",
+  "4F4",
+  "4M2",
+  "4N2",
+  "5L1",
+  "5LD",
+  "5LM",
+  "5LT",
+  "6FP",
+  "6MP",
+  "7A5",
+  "8AF",
+  "8XD",
+  "94T",
+  "9BF",
+  "AFA",
+  "JC0",
+  "JC2",
+  "KNJ",
+  "LFA",
+  "LJX",
+  "LVS",
+  "MAJ",
+  "MPB",
+  "NM0",
+  "PE1",
+  "PE3",
+  "PR8",
+  "PV3",
+  "RHA",
+  "RL0",
+  "SFA",
+  "TW2",
+  "VS6",
+  "WF0",
+  "WF1",
+  "X9F",
+  "XLC",
+  "Y4F",
+  "Z6F"
+ ],
+ "_market": null,
+ "sections": {
+  "body@4:5": {
+   "field": "body",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "3": [
+     {
+      "value": "van high roof"
+     }
+    ],
+    "5": [
+     {
+      "value": "combi high roof"
+     }
+    ],
+    "A": [
+     {
+      "value": "3-door"
+     }
+    ],
+    "B": [
+     {
+      "value": "5-door"
+     }
+    ],
+    "C": [
+     {
+      "value": "2-door coupe and 3-door hatchback",
+      "note": "2-door coupe and 3-door hatchback (Ford Fiesta ST Mk. 7+?)"
+     }
+    ],
+    "D": [
+     {
+      "value": "5-door hatchback",
+      "note": "5-door hatchback (Focus RS Mk. 3+?)"
+     }
+    ],
+    "E": [
+     {
+      "value": "3-door hatchback"
+     }
+    ],
+    "F": [
+     {
+      "value": "4-door Saloon"
+     }
+    ],
+    "G": [
+     {
+      "value": "5-door multi purpose vehicle"
+     }
+    ],
+    "J": [
+     {
+      "value": "5-door SAV",
+      "note": "5-door SAV (Sports Activity Vehicle)"
+     }
+    ],
+    "K": [
+     {
+      "value": "5-door LMV",
+      "note": "5-door LMV (Luxury Multipurpose Vehicle)"
+     }
+    ],
+    "L": [
+     {
+      "value": "2-door cabriolet"
+     }
+    ],
+    "N": [
+     {
+      "value": "5-door estate",
+      "note": "5-door estate/wagon/clipper"
+     }
+    ],
+    "P": [
+     {
+      "value": "5-Door Hatchback"
+     }
+    ],
+    "S": [
+     {
+      "value": "5-door Estate"
+     }
+    ],
+    "T": [
+     {
+      "value": "2-door saloon"
+     }
+    ],
+    "U": [
+     {
+      "value": "5-door van"
+     }
+    ],
+    "V": [
+     {
+      "value": "2-door van"
+     }
+    ],
+    "W": [
+     {
+      "value": "3-door van"
+     }
+    ]
+   }
+  },
+  "model@9:10": {
+   "field": "model",
+   "at": [
+    "vin",
+    "9:10"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Ford Escort Ford Orion"
+     }
+    ],
+    "C": [
+     {
+      "value": "Ford S-Max Ford Transit Courier"
+     }
+    ],
+    "E": [
+     {
+      "value": "Ford Puma Ford Capri Ford C-Max"
+     }
+    ],
+    "F": [
+     {
+      "value": "Ford Fiesta Ford Transit"
+     }
+    ],
+    "H": [
+     {
+      "value": "Ford Fiesta"
+     }
+    ],
+    "J": [
+     {
+      "value": "Ford Fiesta Ford Fusion Ford B-Max"
+     }
+    ],
+    "K": [
+     {
+      "value": "Ford Fiesta Ford EcoSport Ford Puma"
+     }
+    ],
+    "M": [
+     {
+      "value": "Ford Kuga"
+     }
+    ],
+    "P": [
+     {
+      "value": "Ford Transit Connect"
+     }
+    ],
+    "R": [
+     {
+      "value": "Ford Ka Ford Transit"
+     }
+    ],
+    "S": [
+     {
+      "value": "rowspan=2|Ford Galaxy Ford Escort Ford S-Max"
+     }
+    ],
+    "U": [
+     {
+      "value": "Ford Maverick"
+     }
+    ]
+   }
+  }
+ }
+}

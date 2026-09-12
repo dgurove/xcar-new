@@ -9,7 +9,7 @@
         @if ($errors->any())<span class="field-error w-full">{{ $errors->first() }}</span>@endif
     </div>
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}" id="car-form" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+        <form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}" id="car-form" data-controller="vin" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @csrf @method('put')
             <x-ui.card title="Машина" class="order-1">
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
@@ -17,7 +17,7 @@
                     <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id" :value="$car->model_id" :text="$car->model?->name ?? $car->model_raw"/>
                     <x-ui.field name="year" label="Год" inputmode="numeric" :value="$car->year"/>
                     <x-ui.field name="mileage" label="Пробег, км" inputmode="numeric" :value="$car->mileage"/>
-                    <x-ui.field name="vin" label="VIN" :value="$car->vin" maxlength="17" class="uppercase" span="col-span-2 lg:col-span-1"/>
+                    <x-ui.field name="vin" label="VIN" :value="$car->vin" data-action="input->vin#fill" maxlength="17" class="uppercase" span="col-span-2 lg:col-span-1"/>
                     <x-ui.field name="kind" label="Категория" :options="Kind::options()" :value="$car->kind->value"/>
                     <x-ui.field name="transmission" label="Коробка" :options="Transmission::options()" placeholder="—" :value="$car->transmission?->value"/>
                     <x-ui.field name="fuel" label="Топливо" :options="Fuel::options()" placeholder="—" :value="$car->fuel?->value"/>

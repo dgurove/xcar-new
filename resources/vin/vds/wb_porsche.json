@@ -1,0 +1,2557 @@
+{
+ "_brand": "Porsche",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Porsche/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "WP0",
+  "WP1"
+ ],
+ "_market": null,
+ "sections": {
+  "body@4:5": {
+   "field": "body",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Coupe"
+     },
+     {
+      "value": "Coupe",
+      "years": [
+       1991,
+       1995
+      ],
+      "note": "Coupe (1991-1995)"
+     },
+     {
+      "value": "Coupe",
+      "note": "Coupe (Except Type 930 Turbo coupe)"
+     },
+     {
+      "value": "sedan",
+      "note": "sedan (SWB)"
+     },
+     {
+      "value": "SUV",
+      "note": "SUV (wagon)"
+     }
+    ],
+    "B": [
+     {
+      "value": "Cabriolet",
+      "note": "Cabriolet (1989 only)"
+     },
+     {
+      "value": "Targa",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Targa (911 - Type 964/996/997/991/992)"
+     },
+     {
+      "value": "LWB sedan",
+      "note": "LWB sedan (Panamera Executive) or Cross Turismo (Taycan)"
+     },
+     {
+      "value": "Coupe-styled SUV",
+      "note": "Coupe-styled SUV (Cayenne Coupe or Cayenne Electric Coupe)"
+     }
+    ],
+    "C": [
+     {
+      "value": "Cabriolet",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "Cabriolet (1990-1991)"
+     },
+     {
+      "value": "Cabriolet"
+     },
+     {
+      "value": "Cabriolet",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Cabriolet (911 - Type 964/993/996/997/991/992) or Speedster  or Roadster"
+     },
+     {
+      "value": "Sport Turismo"
+     }
+    ],
+    "J": [
+     {
+      "value": "Coupe",
+      "years": [
+       1981,
+       1990
+      ],
+      "note": "Coupe (1981-1990)"
+     },
+     {
+      "value": "Turbo Coupe",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Turbo Coupe (911 - Type 930 [US: 1986-1989, Canada: 1981-1989])"
+     }
+    ],
+    "964": [
+     {
+      "value": "Cabriolet",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Cabriolet (911 - Type 964/993/996/997/991/992) or Speedster  or Roadster"
+     }
+    ],
+    "997": [
+     {
+      "value": "Cabriolet",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Cabriolet (911 - Type 964/993/996/997/991/992) or Speedster  or Roadster"
+     }
+    ],
+    "991": [
+     {
+      "value": "Cabriolet",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Cabriolet (911 - Type 964/993/996/997/991/992) or Speedster  or Roadster"
+     }
+    ],
+    "D": [
+     {
+      "value": "Targa",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Targa (911 - Type 993)"
+     }
+    ],
+    "E": [
+     {
+      "value": "Targa or Cabriolet",
+      "years": [
+       1981,
+       1989
+      ],
+      "note": "Targa or Cabriolet (911 [1981-1989] or 911 Turbo - Type 930 [1987-1989]) or Speedster (911 - 1989)"
+     }
+    ]
+   }
+  },
+  "engine@5:6": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "2.0L SOHC 8-valve Audi EA831 I4"
+     },
+     {
+      "value": "110 hp",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "110 hp (924 '81-'82)"
+     },
+     {
+      "value": "2.0L turbo SOHC 8-valve Audi EA831 I4"
+     },
+     {
+      "value": "154 hp",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "154 hp (924 Turbo '81-'82)"
+     },
+     {
+      "value": "2.5L SOHC 8-valve Porsche M44 I4"
+     },
+     {
+      "value": "147 hp",
+      "note": "147 hp (924S '87)"
+     },
+     {
+      "value": "158 hp",
+      "note": "158 hp (924S '88)"
+     },
+     {
+      "value": "143 hp",
+      "years": [
+       1983,
+       1986
+      ],
+      "note": "143 hp (944 [base model] '83-'86)"
+     },
+     {
+      "value": "2.5L DOHC 16-valve Porsche M44 I4",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "188 hp",
+      "years": [
+       1987,
+       1988
+      ],
+      "note": "188 hp (944S '87-'88)"
+     },
+     {
+      "value": "2.7L SOHC 8-valve Porsche M44 I4"
+     },
+     {
+      "value": "163 hp",
+      "note": "163 hp (944 [base model] '89)"
+     },
+     {
+      "value": "3.0L DOHC 16-valve Porsche M44 I4",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "208 hp",
+      "note": "208 hp (944 S2 '89 [cabriolet only])"
+     },
+     {
+      "value": "2.5L turbo IC SOHC 8-valve Porsche M44.51 I4"
+     },
+     {
+      "value": "217 hp",
+      "years": [
+       1986,
+       1988
+      ],
+      "note": "217 hp (944 Turbo '86-'88)"
+     },
+     {
+      "value": "2.5L turbo IC SOHC 8-valve Porsche M44.52 I4"
+     },
+     {
+      "value": "247 hp",
+      "note": "247 hp (944 Turbo S '88, Turbo '89)"
+     },
+     {
+      "value": "236 hp",
+      "years": [
+       1992,
+       1995
+      ],
+      "note": "236 hp ('92-'95)"
+     },
+     {
+      "value": "4.5L SOHC 16-valve Porsche M28 V8",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "220 hp",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "220 hp (928 '81-'82)"
+     },
+     {
+      "value": "5.0L DOHC 32-valve Porsche M28 V8",
+      "years": [
+       2032,
+       null
+      ]
+     },
+     {
+      "value": "316 hp",
+      "note": "316 hp (928 S4 '91)"
+     },
+     {
+      "value": "326 hp",
+      "note": "326 hp (928 GT '91)"
+     },
+     {
+      "value": "5.4L DOHC 32-valve Porsche M28 V8",
+      "years": [
+       2032,
+       null
+      ]
+     },
+     {
+      "value": "345 hp",
+      "years": [
+       1993,
+       1995
+      ],
+      "note": "345 hp (928 GTS '93-'95)"
+     },
+     {
+      "value": "2.5L flat-6"
+     },
+     {
+      "value": "201 hp",
+      "years": [
+       1997,
+       1999
+      ],
+      "note": "201 hp (Boxster '97-'99)"
+     },
+     {
+      "value": "2.7L flat-6"
+     },
+     {
+      "value": "217 hp",
+      "years": [
+       2000,
+       2002
+      ],
+      "note": "217 hp (Boxster '00-'02)"
+     },
+     {
+      "value": "225 hp",
+      "years": [
+       2003,
+       2004
+      ],
+      "note": "225 hp (Boxster '03-'04)"
+     },
+     {
+      "value": "240 hp",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "240 hp (Boxster '05-'06)"
+     },
+     {
+      "value": "245 hp",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "245 hp (Boxster '07-'08, Limited Edition '08)"
+     },
+     {
+      "value": "245 hp",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "245 hp (Cayman '07-'08)"
+     },
+     {
+      "value": "2.9L flat-6"
+     },
+     {
+      "value": "255 hp",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "255 hp (Boxster '09-'12)"
+     },
+     {
+      "value": "265 hp",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "265 hp (Cayman '09-'12)"
+     },
+     {
+      "value": "265 hp",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "265 hp (Boxster '13-'16, Boxster Black Edition '16)"
+     },
+     {
+      "value": "275 hp",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "275 hp (Cayman '14-'16)"
+     },
+     {
+      "value": "2.0L turbo IC flat-4"
+     },
+     {
+      "value": "300 hp",
+      "years": [
+       2017,
+       2025
+      ],
+      "note": "300 hp (718 Boxster '17-'25, 718 Boxster T '20-'23, 718 Boxster Style Edition '24-'25, 718 Cayman '17-'25, 718 Cayman T '20-'23, 718 Cayman Style Edition '24-'2"
+     },
+     {
+      "value": "3.3L turbo IC SOHC 12-valve air-cooled flat-6",
+      "years": [
+       2012,
+       null
+      ],
+      "note": "3.3L turbo IC SOHC 12-valve air-cooled flat-6 (Engine ID: 930/60 ['81-'82]"
+     },
+     {
+      "value": "930",
+      "years": [
+       1983,
+       1987
+      ],
+      "note": "930/66 ['83-'87])"
+     },
+     {
+      "value": "296 hp",
+      "years": [
+       1981,
+       1987
+      ],
+      "note": "296 hp (911 Turbo Canada: '81-'87) (Coupe: '81-'87, Targa/Cabriolet: '87) regular or slant-nose ('87 coupe & cabriolet)"
+     },
+     {
+      "value": "3.3L turbo IC SOHC 12-valve air-cooled M30 flat-6",
+      "years": [
+       2012,
+       null
+      ]
+     },
+     {
+      "value": "315 hp",
+      "years": [
+       1991,
+       1992
+      ],
+      "note": "315 hp (911 Turbo '91-'92) coupe"
+     },
+     {
+      "value": "3.6L SOHC 12-valve air-cooled M64 flat-6",
+      "years": [
+       2012,
+       null
+      ]
+     },
+     {
+      "value": "270 hp",
+      "note": "270 hp (911 Carrera '95, Carrera 4 '95)"
+     },
+     {
+      "value": "282 hp",
+      "years": [
+       1996,
+       1998
+      ],
+      "note": "282 hp (911 Carrera '96-'98, Targa '96-'98, Carrera S '97-'98, Carrera 4 '96-'98, Carrera 4S '96-'98)"
+     },
+     {
+      "value": "3.4L DOHC 24-valve water-cooled flat-6",
+      "years": [
+       2024,
+       null
+      ]
+     },
+     {
+      "value": "296 hp",
+      "note": "296 hp (911 Carrera '99, Carrera 4 '99)"
+     },
+     {
+      "value": "3.4L flat-6"
+     },
+     {
+      "value": "300 hp",
+      "years": [
+       2000,
+       2001
+      ],
+      "note": "300 hp (911 Carrera '00-'01, Carrera 4 '00-'01)"
+     },
+     {
+      "value": "3.6L flat-6"
+     },
+     {
+      "value": "320 hp",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "320 hp (911 Carrera '02-'04, Carrera Cabriolet '05, Targa '02-'05, Carrera 4 '02-'04, Carrera 4S '03-'05)"
+     },
+     {
+      "value": "345 hp",
+      "note": "345 hp (911 Carrera 40th Anniversary Edition '04) coupe"
+     },
+     {
+      "value": "325 hp",
+      "years": [
+       2005,
+       2008
+      ],
+      "note": "325 hp (911 Carrera '05-'08, Carrera 4 '06-'08, Targa 4 '07-'08)"
+     },
+     {
+      "value": "345 hp",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "345 hp (911 Carrera '09-'12, Carrera Black Edition coupe/cabriolet '12, Carrera 4 '09-'12, Targa 4 '09-'12)"
+     },
+     {
+      "value": "350 hp",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "350 hp (911 Carrera '12-'16, Carrera 4 '13-'16, Targa 4 '14-'16)"
+     },
+     {
+      "value": "3.0L twin-turbo IC flat-6"
+     },
+     {
+      "value": "370 hp",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "370 hp (911 Carrera '17-'19, Carrera T '18-'19, Carrera 4 '17-'19, Targa 4 '17-'19)"
+     },
+     {
+      "value": "379 hp",
+      "years": [
+       2020,
+       2024
+      ],
+      "note": "379 hp (911 Carrera '20-'24, Carrera T '23-'24, Carrera 4 '20-'24, Targa 4 '21-'24)"
+     },
+     {
+      "value": "388 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "388 hp (911 Carrera, Carrera T '25-, Carrera T Club Coupe '26)"
+     },
+     {
+      "value": "5.7L Porsche M80.01 68° V10"
+     },
+     {
+      "value": "605 hp",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "605 hp (Carrera GT '04-'05)"
+     },
+     {
+      "value": "Lithium-ion battery"
+     },
+     {
+      "value": "887 total system hp",
+      "note": "887 total system hp (918 Spyder '15)"
+     },
+     {
+      "value": "3.6L Porsche M46.20",
+      "note": "3.6L Porsche M46.20 (2wd)/M46.40 (4wd) 90° V6"
+     },
+     {
+      "value": "300 hp",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "300 hp (Panamera, Panamera 4 '11-'13)"
+     },
+     {
+      "value": "310 hp",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "310 hp (Panamera, Panamera 4 '14-'16)"
+     },
+     {
+      "value": "3.0L turbo IC Audi-Porsche EA839T 90° V6"
+     },
+     {
+      "value": "330 hp",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "330 hp (Panamera, Panamera 4 '17-'20)"
+     },
+     {
+      "value": "2.9L twin-turbo IC Audi-Porsche EA839TT 90° V6"
+     },
+     {
+      "value": "348 hp",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "348 hp (Panamera, Panamera 4 '24-)"
+     },
+     {
+      "value": "battery-electric"
+     },
+     {
+      "value": "1 rear motor"
+     },
+     {
+      "value": "Rwd"
+     },
+     {
+      "value": "321 hp",
+      "years": [
+       2021,
+       2024
+      ],
+      "note": "321 hp (402 hp on overboost) (71 Kwh battery) or 375 hp (469 hp on overboost) (83.7 Kwh battery) (Taycan '21-'24)"
+     },
+     {
+      "value": "402 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "402 hp (82.3 Kwh battery) or 429 hp (97 Kwh battery) (Taycan '25-)"
+     },
+     {
+      "value": "2 motors"
+     },
+     {
+      "value": "4wd"
+     },
+     {
+      "value": "402 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "402 hp (82.3 Kwh battery) or 429 hp (97 Kwh battery) (Taycan 4 '25-)"
+     },
+     {
+      "value": "2.0L turbo IC Audi EA888T I4"
+     },
+     {
+      "value": "248 hp",
+      "years": [
+       2017,
+       2021
+      ],
+      "note": "248 hp (Macan '17-'21)"
+     },
+     {
+      "value": "261 hp",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "261 hp (Macan '22-, Macan T '23-)"
+     },
+     {
+      "value": "382 hp",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "382 hp (402 hp on overboost) (95 Kwh battery) (Macan Electric 4 '24-)"
+     },
+     {
+      "value": "3.2L",
+      "note": "3.2L (3189cc) VW EA390 15° VR6"
+     },
+     {
+      "value": "247 hp",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "247 hp (Cayenne '04-'06)"
+     },
+     {
+      "value": "3.6L",
+      "note": "3.6L (3598cc) VW EA390 10.6° FSI VR6"
+     },
+     {
+      "value": "290 hp",
+      "years": [
+       2008,
+       2010
+      ],
+      "note": "290 hp (Cayenne '08-'10)"
+     },
+     {
+      "value": "3.6L",
+      "note": "3.6L (3598cc) VW EA390 10.6° VR6"
+     },
+     {
+      "value": "300 hp",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "300 hp (Cayenne '11-'14, '16-'18)"
+     },
+     {
+      "value": "335 hp",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "335 hp (Cayenne '19-'23, Cayenne Coupe '20-'23)"
+     },
+     {
+      "value": "348 hp",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "348 hp (Cayenne '24-, Cayenne Coupe '24-)"
+     },
+     {
+      "value": "402 hp",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "402 hp (435 hp on overboost) (108 Kwh battery) (Cayenne Electric '26-, Cayenne Electric Coupe '26-)"
+     }
+    ],
+    "B": [
+     {
+      "value": "2.5L SOHC 8-valve Porsche M44 I4"
+     },
+     {
+      "value": "147 hp",
+      "note": "147 hp (944 [base model] '87)"
+     },
+     {
+      "value": "158 hp",
+      "note": "158 hp (944 [base model] '88)"
+     },
+     {
+      "value": "3.0L DOHC 16-valve Porsche M44 I4",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "208 hp",
+      "note": "208 hp (944 S2 '89 [coupe only]"
+     },
+     {
+      "value": "'90-'91",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "'90-'91 [coupe & cabriolet])"
+     },
+     {
+      "value": "4.7L SOHC 16-valve Porsche M28 V8",
+      "years": [
+       2016,
+       null
+      ]
+     },
+     {
+      "value": "234 hp",
+      "years": [
+       1983,
+       1984
+      ],
+      "note": "234 hp (928 S '83-'84)"
+     },
+     {
+      "value": "5.0L DOHC 32-valve Porsche M28 V8",
+      "years": [
+       2032,
+       null
+      ]
+     },
+     {
+      "value": "288 hp",
+      "years": [
+       1985,
+       1986
+      ],
+      "note": "288 hp (928 S '85-'86)"
+     },
+     {
+      "value": "316 hp",
+      "years": [
+       1987,
+       1990
+      ],
+      "note": "316 hp (928 S4 '87-'90)"
+     },
+     {
+      "value": "326 hp",
+      "years": [
+       1989,
+       1990
+      ],
+      "note": "326 hp (928 GT '89-'90)"
+     },
+     {
+      "value": "3.2L flat-6"
+     },
+     {
+      "value": "250 hp",
+      "years": [
+       2000,
+       2002
+      ],
+      "note": "250 hp (Boxster S '00-'02)"
+     },
+     {
+      "value": "258 hp",
+      "years": [
+       2003,
+       2004
+      ],
+      "note": "258 hp (Boxster S '03-'04)"
+     },
+     {
+      "value": "264 hp",
+      "note": "264 hp (Boxster S 50 Years of the 550 Spyder Anniversary Edition '04)"
+     },
+     {
+      "value": "280 hp",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "280 hp (Boxster S '05-'06)"
+     },
+     {
+      "value": "3.4L flat-6"
+     },
+     {
+      "value": "295 hp",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "295 hp (Boxster S '07-'08, S Limited Edition '08)"
+     },
+     {
+      "value": "295 hp",
+      "years": [
+       2006,
+       2008
+      ],
+      "note": "295 hp (Cayman S '06-'08)"
+     },
+     {
+      "value": "310 hp",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "310 hp (Boxster S '09-'12)"
+     },
+     {
+      "value": "320 hp",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "320 hp (Cayman S '09-'12)"
+     },
+     {
+      "value": "303 hp",
+      "note": "303 hp (Boxster S Porsche Design Edition 2 '08, RS 60 Spyder '08)"
+     },
+     {
+      "value": "303 hp",
+      "note": "303 hp (Cayman S Sport '08)"
+     },
+     {
+      "value": "320 hp",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "320 hp (Boxster S Black Edition '12, Spyder '11-'12)"
+     },
+     {
+      "value": "330 hp",
+      "note": "330 hp (Cayman S Black Edition '12, Cayman R '12)"
+     },
+     {
+      "value": "315 hp",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "315 hp (Boxster S '13-'16)"
+     },
+     {
+      "value": "325 hp",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "325 hp (Cayman S '14-'16)"
+     },
+     {
+      "value": "330 hp",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "330 hp (Boxster GTS '15-'16)"
+     },
+     {
+      "value": "340 hp",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "340 hp (Cayman GTS '15-'16)"
+     },
+     {
+      "value": "2.5L turbo IC flat-4"
+     },
+     {
+      "value": "350 hp",
+      "years": [
+       2017,
+       2025
+      ],
+      "note": "350 hp (718 Boxster S, 718 Cayman S '17-'25)"
+     },
+     {
+      "value": "365 hp",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "365 hp (718 Boxster GTS, 718 Cayman GTS '18-'19)"
+     },
+     {
+      "value": "3.0L SOHC 12-valve air-cooled flat-6",
+      "years": [
+       2012,
+       null
+      ],
+      "note": "3.0L SOHC 12-valve air-cooled flat-6 (Engine ID: 930/16)"
+     },
+     {
+      "value": "172 hp",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "172 hp (911 SC Coupe/Targa '81-'83, Cabriolet '83)"
+     },
+     {
+      "value": "3.2L SOHC 12-valve air-cooled flat-6",
+      "years": [
+       2012,
+       null
+      ],
+      "note": "3.2L SOHC 12-valve air-cooled flat-6 (Engine ID: 930/21)"
+     },
+     {
+      "value": "200 hp",
+      "years": [
+       1984,
+       1986
+      ],
+      "note": "200 hp (911 Carrera '84-'86)"
+     },
+     {
+      "value": "3.2L SOHC 12-valve air-cooled flat-6",
+      "years": [
+       2012,
+       null
+      ],
+      "note": "3.2L SOHC 12-valve air-cooled flat-6 (Engine ID: 930/25)"
+     },
+     {
+      "value": "214 hp",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "214 hp (911 Carrera '87-'89, Club Sport '88-'89, Speedster '89)"
+     },
+     {
+      "value": "3.3L turbo IC SOHC 12-valve air-cooled flat-6",
+      "years": [
+       2012,
+       null
+      ],
+      "note": "3.3L turbo IC SOHC 12-valve air-cooled flat-6 (Engine ID: 930/68)"
+     },
+     {
+      "value": "282 hp",
+      "years": [
+       1986,
+       1989
+      ],
+      "note": "282 hp (911 Turbo US: '86-'89, Canada '88-'89) (Coupe: '86-'89, Targa/Cabriolet: '87-'89) regular or slant-nose"
+     },
+     {
+      "value": "3.6L SOHC 12-valve air-cooled M64 flat-6",
+      "years": [
+       2012,
+       null
+      ]
+     },
+     {
+      "value": "247 hp",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "247 hp (911 Carrera 2 '90-'94, Targa '90-'94, 911 America Roadster '92-'93, RS America '93-'94, Speedster '94, Carrera 4 '89-'94, Carrera 4 Widebody Coupe '94, "
+     },
+     {
+      "value": "256 hp",
+      "note": "256 hp (911 Carrera Cup USA Edition '92) coupe"
+     },
+     {
+      "value": "3.6L twin-turbo IC flat-6"
+     },
+     {
+      "value": "415 hp",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "415 hp (911 Turbo '01-'05) (Coupe: '01-'05, Cabriolet: '04-'05)"
+     },
+     {
+      "value": "444 hp",
+      "note": "444 hp (911 Turbo S '05) (Coupe/Cabriolet)"
+     },
+     {
+      "value": "456 hp",
+      "years": [
+       2002,
+       2003
+      ],
+      "note": "456 hp (911 GT2 '02-'03) coupe"
+     },
+     {
+      "value": "477 hp",
+      "note": "477 hp (911 GT2 '04) coupe"
+     },
+     {
+      "value": "3.8L flat-6"
+     },
+     {
+      "value": "355 hp",
+      "years": [
+       2005,
+       2008
+      ],
+      "note": "355 hp (911 Carrera S '05-'08, Carrera 4S '06-'08, Targa 4S '07-'08)"
+     },
+     {
+      "value": "385 hp",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "385 hp (911 Carrera S '09-'12, Carrera 4S '09-'12, Targa 4S '09-'12)"
+     },
+     {
+      "value": "381 hp",
+      "note": "381 hp (911 Carrera S Club Coupe '06)"
+     },
+     {
+      "value": "408 hp",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "408 hp (911 Carrera GTS '11-'12, Carrera 4 GTS '12, Speedster '11)"
+     },
+     {
+      "value": "400 hp",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "400 hp (911 Carrera S '12-'16, Carrera 4S '13-'16, Targa 4S '14-'16, 911 50th Anniversary Edition coupe '14)"
+     },
+     {
+      "value": "430 hp",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "430 hp (911 Carrera GTS '15-'16, Carrera 4 GTS '15-'16, Targa 4 GTS '16)"
+     },
+     {
+      "value": "3.0L twin-turbo IC flat-6"
+     },
+     {
+      "value": "420 hp",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "420 hp (911 Carrera S '17-'19, Carrera 4S '17-'19, Targa 4S '17-'19)"
+     },
+     {
+      "value": "450 hp",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "450 hp (911 Carrera GTS '17-'19, Carrera 4 GTS '17-'19, Targa 4 GTS '17-'19)"
+     },
+     {
+      "value": "443 hp",
+      "years": [
+       2020,
+       2024
+      ],
+      "note": "443 hp (911 Carrera S '20-'24, Carrera 4S '20-'24, Targa 4S '21-'24)"
+     },
+     {
+      "value": "473 hp",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "473 hp (911 Carrera GTS '22-'24, Carrera 4 GTS '22-'24, Targa 4 GTS '22-'24, Dakar coupe '23-'24)"
+     },
+     {
+      "value": "Hybrid: 3.6L turbo IC flat-6 + electric motor"
+     },
+     {
+      "value": "Lithium-ion battery"
+     },
+     {
+      "value": "532 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "532 hp (911 Carrera GTS, Carrera 4 GTS, Targa 4 GTS '25-, 911 Spirit 70 cabriolet '26)"
+     },
+     {
+      "value": "4.8L Porsche M48 V8"
+     },
+     {
+      "value": "400 hp",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "400 hp (Panamera S, 4S '10-'13)"
+     },
+     {
+      "value": "3.0L twin-turbo IC Porsche M46.60 90° V6"
+     },
+     {
+      "value": "420 hp",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "420 hp (Panamera S, 4S '14-'16)"
+     },
+     {
+      "value": "2.9L twin-turbo IC Audi-Porsche EA839TT 90° V6"
+     },
+     {
+      "value": "440 hp",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "440 hp (Panamera 4S '17-'20)"
+     },
+     {
+      "value": "443 hp",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "443 hp (Panamera 4S '21-'23)"
+     },
+     {
+      "value": "battery-electric"
+     },
+     {
+      "value": "2 motors"
+     },
+     {
+      "value": "4wd"
+     },
+     {
+      "value": "429 hp",
+      "years": [
+       2020,
+       2024
+      ],
+      "note": "429 hp (522 hp on overboost) (71 Kwh battery) or 482 hp (562 hp on overboost) (83.7 Kwh battery) (Taycan 4S '20-'24)"
+     },
+     {
+      "value": "455 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "455 hp (536 hp on overboost) (82.3 Kwh battery) or 509 hp (590 hp on overboost) (97 Kwh battery) (Taycan 4S '25-)"
+     },
+     {
+      "value": "3.0L twin-turbo IC Porsche M46.30 90° V6"
+     },
+     {
+      "value": "340 hp",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "340 hp (Macan S '15-'18)"
+     },
+     {
+      "value": "3.0L turbo IC Audi-Porsche EA839T 90° V6"
+     },
+     {
+      "value": "348 hp",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "348 hp (Macan S '19-'21)"
+     },
+     {
+      "value": "442 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "442 hp (509 hp on overboost) (95 Kwh battery) (Macan Electric 4S '25-)"
+     },
+     {
+      "value": "4.5L Porsche M48 V8"
+     },
+     {
+      "value": "340 hp",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "340 hp (Cayenne S '03-'06, S Titanium Edition '06)"
+     },
+     {
+      "value": "385 hp",
+      "years": [
+       2008,
+       2010
+      ],
+      "note": "385 hp (Cayenne S '08-'10)"
+     },
+     {
+      "value": "400 hp",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "400 hp (Cayenne S '11-'14)"
+     },
+     {
+      "value": "3.6L",
+      "note": "3.6L (3604cc) twin-turbo IC Porsche M46.35 90° V6"
+     },
+     {
+      "value": "420 hp",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "420 hp (Cayenne S '15-'18)"
+     },
+     {
+      "value": "434 hp",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "434 hp (Cayenne S '19-'23, Cayenne S Coupe '20-'23)"
+     },
+     {
+      "value": "536 hp",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "536 hp (657 hp on overboost) (108 Kwh battery) (Cayenne Electric S '26-, Cayenne Electric Coupe S '26-)"
+     }
+    ],
+    "C": [
+     {
+      "value": "2.5L turbo IC SOHC 8-valve Porsche M44.52 I4"
+     },
+     {
+      "value": "247 hp",
+      "note": "247 hp (944 Turbo '90 [Canada only])"
+     },
+     {
+      "value": "3.8L flat-6"
+     },
+     {
+      "value": "375 hp",
+      "note": "375 hp (Boxster Spyder '16)"
+     },
+     {
+      "value": "385 hp",
+      "note": "385 hp (Cayman GT4 '16)"
+     },
+     {
+      "value": "4.0L flat-6"
+     },
+     {
+      "value": "414 hp",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "414 hp (718 Spyder, 718 Cayman GT4 '20-'23)"
+     },
+     {
+      "value": "3.6L turbo IC SOHC 12-valve air-cooled M64 flat-6",
+      "years": [
+       2012,
+       null
+      ]
+     },
+     {
+      "value": "355 hp",
+      "note": "355 hp (911 Turbo 3.6 '94) coupe"
+     },
+     {
+      "value": "380 hp",
+      "note": "380 hp (911 Turbo S 3.6 '94) coupe"
+     },
+     {
+      "value": "flat-nose",
+      "note": "flat-nose (slant-nose) coupe"
+     },
+     {
+      "value": "3.6L twin-turbo IC SOHC 12-valve air-cooled M64 flat-6",
+      "years": [
+       2012,
+       null
+      ]
+     },
+     {
+      "value": "400 hp",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "400 hp (911 Turbo '96-'97) coupe"
+     },
+     {
+      "value": "424 hp",
+      "note": "424 hp (911 Turbo S '97) coupe"
+     },
+     {
+      "value": "3.6L flat-6"
+     },
+     {
+      "value": "381 hp",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "381 hp (911 GT3 '04-'05) coupe"
+     },
+     {
+      "value": "415 hp",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "415 hp (911 GT3 '07-'08) coupe"
+     },
+     {
+      "value": "435 hp",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "435 hp (911 GT3 '10-'11) coupe"
+     },
+     {
+      "value": "415 hp",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "415 hp (911 GT3 RS '07-'08) coupe"
+     },
+     {
+      "value": "450 hp",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "450 hp (911 GT3 RS '10-'11) coupe"
+     },
+     {
+      "value": "475 hp",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "475 hp (911 GT3 '14-'15) coupe"
+     },
+     {
+      "value": "500 hp",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "500 hp (911 GT3, GT3 Touring '18-'19) coupe"
+     },
+     {
+      "value": "502 hp",
+      "years": [
+       2022,
+       2026
+      ],
+      "note": "502 hp (911 GT3, GT3 Touring '22-'26) coupe"
+     },
+     {
+      "value": "4.8L twin-turbo IC Porsche M48 V8"
+     },
+     {
+      "value": "500 hp",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "500 hp (Panamera Turbo '10-'13)"
+     },
+     {
+      "value": "520 hp",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "520 hp (Panamera Turbo '14-'16)"
+     },
+     {
+      "value": "550 hp",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "550 hp (Panamera Turbo S '12-'13)"
+     },
+     {
+      "value": "570 hp",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "570 hp (Panamera Turbo S '15-'16)"
+     },
+     {
+      "value": "Lithium-ion battery"
+     },
+     {
+      "value": "536 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "536 hp (Panamera 4S E-Hybrid '25-)"
+     },
+     {
+      "value": "battery-electric"
+     },
+     {
+      "value": "2 motors"
+     },
+     {
+      "value": "4wd"
+     },
+     {
+      "value": "616 hp",
+      "years": [
+       2020,
+       2024
+      ],
+      "note": "616 hp (670 hp on overboost) (83.7 Kwh battery) (Taycan Turbo '20-'24)"
+     },
+     {
+      "value": "616 hp",
+      "years": [
+       2020,
+       2024
+      ],
+      "note": "616 hp (750 hp on overboost) (83.7 Kwh battery) (Taycan Turbo S '20-'24)"
+     },
+     {
+      "value": "697 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "697 hp (871 hp on overboost) (97 Kwh battery) (Taycan Turbo '25-)"
+     },
+     {
+      "value": "764 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "764 hp (938 hp on overboost) (97 Kwh battery) (Taycan Turbo S '25-)"
+     },
+     {
+      "value": "576 hp",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "576 hp (630 hp on overboost) (95 Kwh battery) (Macan Electric Turbo '24-)"
+     },
+     {
+      "value": "4.5L twin-turbo IC Porsche M48 V8"
+     },
+     {
+      "value": "450 hp",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "450 hp (Cayenne Turbo '03-'06)"
+     },
+     {
+      "value": "500 hp",
+      "years": [
+       2008,
+       2010
+      ],
+      "note": "500 hp (Cayenne Turbo '08-'10)"
+     },
+     {
+      "value": "520 hp",
+      "note": "520 hp (Cayenne Turbo S '06)"
+     },
+     {
+      "value": "550 hp",
+      "years": [
+       2009,
+       2010
+      ],
+      "note": "550 hp (Cayenne Turbo S '09-'10)"
+     },
+     {
+      "value": "500 hp",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "500 hp (Cayenne Turbo '11-'14)"
+     },
+     {
+      "value": "520 hp",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "520 hp (Cayenne Turbo '15-'18)"
+     },
+     {
+      "value": "550 hp",
+      "note": "550 hp (Cayenne Turbo S '14)"
+     },
+     {
+      "value": "570 hp",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "570 hp (Cayenne Turbo S '16-'18)"
+     }
+    ],
+    "D": [
+     {
+      "value": "4.0L flat-6"
+     },
+     {
+      "value": "394 hp",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "394 hp (718 Boxster GTS 4.0 '21-'25, 718 Boxster 25 Years '21, 718 Cayman GTS 4.0 '21-'25)"
+     },
+     {
+      "value": "3.6L twin-turbo IC flat-6"
+     },
+     {
+      "value": "480 hp",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "480 hp (911 Turbo '07-'09) (Coupe: '07-'09, Cabriolet: '08-'09)"
+     },
+     {
+      "value": "3.8L twin-turbo IC flat-6"
+     },
+     {
+      "value": "500 hp",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "500 hp (911 Turbo '10-'13) (Coupe/Cabriolet)"
+     },
+     {
+      "value": "530 hp",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "530 hp (911 Turbo S '11-'13) (Coupe/Cabriolet)"
+     },
+     {
+      "value": "530 hp",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "530 hp (911 GT2 '08-'09) coupe"
+     },
+     {
+      "value": "520 hp",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "520 hp (911 Turbo '14-'16) (Coupe/Cabriolet)"
+     },
+     {
+      "value": "560 hp",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "560 hp (911 Turbo S '14-'16) (Coupe/Cabriolet)"
+     },
+     {
+      "value": "540 hp",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "540 hp (911 Turbo '17-'19) (Coupe/Cabriolet)"
+     },
+     {
+      "value": "580 hp",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "580 hp (911 Turbo S '17-'19) (Coupe/Cabriolet)"
+     },
+     {
+      "value": "607 hp",
+      "note": "607 hp (911 Turbo S Exclusive Series - Coupe '18, Cabriolet '19)"
+     },
+     {
+      "value": "3.7L twin-turbo IC flat-6"
+     },
+     {
+      "value": "572 hp",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "572 hp (911 Turbo '21-'25) (Coupe/Cabriolet)"
+     },
+     {
+      "value": "640 hp",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "640 hp (911 Turbo S '21-'25) (Coupe/Cabriolet)"
+     },
+     {
+      "value": "Hybrid: 3.6L twin-turbo IC flat-6 + electric motor"
+     },
+     {
+      "value": "Lithium-ion battery"
+     },
+     {
+      "value": "701 hp",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "701 hp (911 Turbo S '26-) (Coupe/Cabriolet)"
+     },
+     {
+      "value": "HEV: 3.0L supercharged IC Audi EA837 90° V6 + electric motor"
+     },
+     {
+      "value": "Nickel-metal hydride battery"
+     },
+     {
+      "value": "380 hp",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "380 hp (Panamera S Hybrid '12-'13)"
+     },
+     {
+      "value": "416 hp",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "416 hp (Panamera S E-Hybrid '14-'16)"
+     },
+     {
+      "value": "battery-electric"
+     },
+     {
+      "value": "2 motors"
+     },
+     {
+      "value": "4wd"
+     },
+     {
+      "value": "509 hp",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "509 hp (590 hp on overboost) (83.7 Kwh battery) (Taycan GTS '22-'24)"
+     },
+     {
+      "value": "596 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "596 hp (690 hp on overboost) (97 Kwh battery) (Taycan GTS '25-)"
+     },
+     {
+      "value": "1 rear motor"
+     },
+     {
+      "value": "Rwd"
+     },
+     {
+      "value": "335 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "335 hp (355 hp on overboost) (95 Kwh battery) (Macan Electric '25-)"
+     },
+     {
+      "value": "4.8L Porsche M48 V8"
+     },
+     {
+      "value": "405 hp",
+      "years": [
+       2008,
+       2010
+      ],
+      "note": "405 hp (Cayenne GTS '08-'10, S Transsyberia '10)"
+     },
+     {
+      "value": "420 hp",
+      "years": [
+       2013,
+       2014
+      ],
+      "note": "420 hp (Cayenne GTS '13-'14)"
+     },
+     {
+      "value": "3.6L",
+      "note": "3.6L (3604cc) twin-turbo IC Porsche M46.35 90° V6"
+     },
+     {
+      "value": "440 hp",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "440 hp (Cayenne GTS '16-'18)"
+     },
+     {
+      "value": "844 hp",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "844 hp (1139 hp on overboost) (108 Kwh battery) (Cayenne Electric Turbo '26-, Cayenne Electric Coupe Turbo '26-)"
+     }
+    ],
+    "E": [
+     {
+      "value": "4.0L flat-6"
+     },
+     {
+      "value": "493 hp",
+      "years": [
+       2024,
+       2025
+      ],
+      "note": "493 hp (718 Spyder RS '24-'25, 718 Cayman GT4 RS '23-'25)"
+     },
+     {
+      "value": "3.8L twin-turbo IC flat-6"
+     },
+     {
+      "value": "620 hp",
+      "note": "620 hp (911 GT2 RS '11) coupe"
+     },
+     {
+      "value": "690 hp",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "690 hp (911 GT2 RS '18-'19) coupe"
+     },
+     {
+      "value": "Lithium-ion battery"
+     },
+     {
+      "value": "455 hp",
+      "years": [
+       2018,
+       2023
+      ],
+      "note": "455 hp (Panamera 4 E-Hybrid '18-'23)"
+     },
+     {
+      "value": "463 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "463 hp (Panamera 4 E-Hybrid '25-)"
+     },
+     {
+      "value": "battery-electric"
+     },
+     {
+      "value": "2 motors"
+     },
+     {
+      "value": "4wd"
+     },
+     {
+      "value": "777 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "777 hp (1019 hp on overboost) (97 Kwh battery) (Taycan Turbo GT '25-)"
+     },
+     {
+      "value": "509 hp",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "509 hp (563 hp on overboost) (95 Kwh battery) (Macan Electric GTS '26-)"
+     },
+     {
+      "value": "HEV: 3.0L supercharged IC Audi EA837 90° V6 + electric motor"
+     },
+     {
+      "value": "Nickel-metal hydride battery"
+     },
+     {
+      "value": "380 hp",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "380 hp (Cayenne S Hybrid '11-'14)"
+     },
+     {
+      "value": "416 hp",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "416 hp (Cayenne S E-Hybrid '15-'18)"
+     },
+     {
+      "value": "455 hp",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "455 hp (Cayenne E-Hybrid '19-'23, Cayenne Coupe E-Hybrid '20-'23)"
+     },
+     {
+      "value": "463 hp",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "463 hp (Cayenne E-Hybrid '24-, Cayenne Coupe E-Hybrid '24-)"
+     }
+    ],
+    "F": [
+     {
+      "value": "4.0L flat-6"
+     },
+     {
+      "value": "500 hp",
+      "note": "500 hp (911 GT3 RS 4.0 '11) coupe"
+     },
+     {
+      "value": "500 hp",
+      "note": "500 hp (911 GT3 RS '16, 911 R '16) coupe"
+     },
+     {
+      "value": "502 hp",
+      "note": "502 hp (911 Speedster '19)"
+     },
+     {
+      "value": "520 hp",
+      "note": "520 hp (911 GT3 RS '19) coupe"
+     },
+     {
+      "value": "518 hp",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "518 hp (911 GT3 RS '23-'25, 911 S/T '24) coupe"
+     },
+     {
+      "value": "4.8L Porsche M48 V8"
+     },
+     {
+      "value": "430 hp",
+      "note": "430 hp (Panamera GTS '13)"
+     },
+     {
+      "value": "440 hp",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "440 hp (Panamera GTS '14-'16)"
+     },
+     {
+      "value": "4.0L twin-turbo IC Porsche-Audi EA825TT V8"
+     },
+     {
+      "value": "550 hp",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "550 hp (Panamera Turbo '17-'20)"
+     },
+     {
+      "value": "620 hp",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "620 hp (Panamera Turbo S '21-'23)"
+     },
+     {
+      "value": "Lithium-ion battery"
+     },
+     {
+      "value": "670 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "670 hp (Panamera Turbo E-Hybrid '25-)"
+     },
+     {
+      "value": "2.9L twin-turbo IC Audi-Porsche EA839TT 90° V6"
+     },
+     {
+      "value": "434 hp",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "434 hp (Macan GTS '22-)"
+     },
+     {
+      "value": "3.6L twin-turbo IC Porsche M46.35 90° V6"
+     },
+     {
+      "value": "400 hp",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "400 hp (Macan Turbo '15-'18)"
+     },
+     {
+      "value": "440 hp",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "440 hp (Macan Turbo w/Performance Package '17-'18)"
+     },
+     {
+      "value": "434 hp",
+      "years": [
+       2020,
+       2021
+      ],
+      "note": "434 hp (Macan Turbo '20-'21)"
+     },
+     {
+      "value": "3.0L turbo IC Audi EA897 90° Diesel V6"
+     },
+     {
+      "value": "240 hp",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "240 hp (Cayenne Diesel '13-'16)"
+     },
+     {
+      "value": "541 hp",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "541 hp (Cayenne Turbo '19-'23, Cayenne Coupe Turbo '20-'23)"
+     }
+    ],
+    "H": [
+     {
+      "value": "3.0L twin-turbo IC flat-6"
+     },
+     {
+      "value": "473 hp",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "473 hp (911 Carrera S '26-, Carrera 4S '26-, Targa 4S '26-)"
+     },
+     {
+      "value": "Lithium-ion battery"
+     },
+     {
+      "value": "680 hp",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "680 hp (Panamera Turbo S E-Hybrid '18-'20)"
+     },
+     {
+      "value": "690 hp",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "690 hp (Panamera Turbo S E-Hybrid '21-'23)"
+     },
+     {
+      "value": "771 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "771 hp (Panamera Turbo S E-Hybrid '25-)"
+     },
+     {
+      "value": "670 hp",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "670 hp (Cayenne Turbo S E-Hybrid '20-'23, Cayenne Coupe Turbo S E-Hybrid '20-'23)"
+     }
+    ],
+    "G": [
+     {
+      "value": "3.7L twin-turbo IC flat-6"
+     },
+     {
+      "value": "543 hp",
+      "note": "543 hp (911 Sport Classic '23) coupe"
+     },
+     {
+      "value": "4.0L twin-turbo IC Porsche-Audi EA825TT V8"
+     },
+     {
+      "value": "453 hp",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "453 hp (Panamera GTS '19-'20)"
+     },
+     {
+      "value": "473 hp",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "473 hp (Panamera GTS '21-'23)"
+     },
+     {
+      "value": "493 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "493 hp (Panamera GTS '25-)"
+     },
+     {
+      "value": "2.9L twin-turbo IC Audi-Porsche EA839TT 90° V6"
+     },
+     {
+      "value": "375 hp",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "375 hp (Macan S '22-)"
+     },
+     {
+      "value": "3.0L twin-turbo IC Porsche M46.30 90° V6"
+     },
+     {
+      "value": "360 hp",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "360 hp (Macan GTS '17-'18)"
+     },
+     {
+      "value": "375 hp",
+      "years": [
+       2020,
+       2021
+      ],
+      "note": "375 hp (Macan GTS '20-'21)"
+     },
+     {
+      "value": "453 hp",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "453 hp (Cayenne GTS '21-'23, Cayenne Coupe GTS '21-'23)"
+     },
+     {
+      "value": "493 hp",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "493 hp (Cayenne GTS '25-, Cayenne Coupe GTS '25-)"
+     }
+    ],
+    "J": [
+     {
+      "value": "2.9L twin-turbo IC Audi-Porsche EA839TT 90° V6"
+     },
+     {
+      "value": "325 hp",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "325 hp (Panamera, Panamera 4 '21-'23)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Lithium-ion battery"
+     },
+     {
+      "value": "552 hp",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "552 hp (Panamera 4S E-Hybrid '21-'23)"
+     },
+     {
+      "value": "4.0L twin-turbo IC Porsche-Audi EA825TT V8"
+     },
+     {
+      "value": "631 hp",
+      "years": [
+       2022,
+       2023
+      ],
+      "note": "631 hp (Cayenne Coupe Turbo GT '22-'23)"
+     },
+     {
+      "value": "650 hp",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "650 hp (Cayenne Coupe Turbo GT '24-)"
+     }
+    ],
+    "L": [
+     {
+      "value": "4.0L twin-turbo IC Porsche-Audi EA825TT V8"
+     },
+     {
+      "value": "468 hp",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "468 hp (Cayenne S '24-, Cayenne S Coupe '24-)"
+     }
+    ],
+    "N": [
+     {
+      "value": "Lithium-ion battery"
+     },
+     {
+      "value": "512 hp",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "512 hp (Cayenne S E-Hybrid '24-, Cayenne Coupe S E-Hybrid '24-)"
+     }
+    ],
+    "M": [
+     {
+      "value": "Lithium-ion battery"
+     },
+     {
+      "value": "729 hp",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "729 hp (Cayenne Turbo E-Hybrid '24-, Cayenne Coupe Turbo E-Hybrid '24-)"
+     }
+    ]
+   }
+  },
+  "model@7:9": {
+   "field": "model",
+   "at": [
+    "vin",
+    "7:9"
+   ],
+   "map": {
+    "92": [
+     {
+      "value": "Cayenne",
+      "years": [
+       2010,
+       2018
+      ],
+      "note": "тип 92A; проверено на WP1ZZZ92ZHKA28833 (2017)"
+     },
+     {
+      "value": "924",
+      "years": [
+       1976,
+       1988
+      ],
+      "note": "924 — только WP0, купе"
+     },
+     {
+      "value": "928",
+      "years": [
+       1977,
+       1995
+      ],
+      "note": "928 — только WP0, купе"
+     }
+    ],
+    "93": [
+     {
+      "value": "931"
+     },
+     {
+      "value": "930"
+     }
+    ],
+    "94": [
+     {
+      "value": "944"
+     }
+    ],
+    "95": [
+     {
+      "value": "Macan",
+      "years": [
+       2014,
+       null
+      ],
+      "note": "тип 95B; проверено на WP1ZZZ95ZNLB08049 (2022) из боевой базы"
+     },
+     {
+      "value": "951",
+      "years": [
+       1985,
+       1991
+      ],
+      "note": "951 — 944 Turbo, только WP0"
+     }
+    ],
+    "96": [
+     {
+      "value": "968"
+     },
+     {
+      "value": "964"
+     }
+    ],
+    "98": [
+     {
+      "value": "986"
+     },
+     {
+      "value": "987"
+     },
+     {
+      "value": "980"
+     }
+    ],
+    "A8": [
+     {
+      "value": "A87"
+     },
+     {
+      "value": "A81"
+     },
+     {
+      "value": "A82"
+     }
+    ],
+    "91": [
+     {
+      "value": "911"
+     }
+    ],
+    "99": [
+     {
+      "value": "993"
+     },
+     {
+      "value": "996"
+     },
+     {
+      "value": "997"
+     }
+    ],
+    "A9": [
+     {
+      "value": "A97"
+     },
+     {
+      "value": "A91"
+     },
+     {
+      "value": "A92"
+     }
+    ],
+    "A1": [
+     {
+      "value": "A18"
+     }
+    ],
+    "A7": [
+     {
+      "value": "A70"
+     },
+     {
+      "value": "A71"
+     }
+    ],
+    "Y1": [
+     {
+      "value": "Y1A"
+     }
+    ],
+    "A5": [
+     {
+      "value": "A5B"
+     }
+    ],
+    "9P": [
+     {
+      "value": "9PA"
+     }
+    ],
+    "AP": [
+     {
+      "value": "APA"
+     }
+    ],
+    "A2": [
+     {
+      "value": "A2A"
+     }
+    ],
+    "AY": [
+     {
+      "value": "AYA"
+     }
+    ],
+    "9Y": [
+     {
+      "value": "Cayenne",
+      "years": [
+       2018,
+       null
+      ],
+      "note": "тип 9YA/9YB; проверено на WP1ZZZ9YZLDA64601 (2020) из боевой базы"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "S": [
+     {
+      "value": "Stuttgart-Zuffenhausen"
+     },
+     {
+      "value": "Germany",
+      "years": [
+       1997,
+       2006
+      ],
+      "note": "Germany (All 911, 968, 928, 918 Spyder, and Taycan. Boxster '97-'06, '09-'16, 718 Boxster '17-'24, Cayman '12, 718 Cayman '17-'24) (Also: Type 937 - 924 Carrera"
+     },
+     {
+      "value": "a few late '91 944 S2 coupe & cabriolet",
+      "note": "a few late '91 944 S2 coupe & cabriolet [RoW-spec])"
+     },
+     {
+      "value": "959",
+      "note": "959 [N/A in US/Canada]"
+     }
+    ],
+    "L": [
+     {
+      "value": "Leipzig"
+     },
+     {
+      "value": "Germany",
+      "years": [
+       2003,
+       2018
+      ],
+      "note": "Germany (Cayenne '03-'18, Carrera GT '04-'05, Panamera '10-, Macan '15-'26, Macan Electric '24-)"
+     }
+    ],
+    "D": [
+     {
+      "value": "Bratislava"
+     },
+     {
+      "value": "Slovakia",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Slovakia (VW plant - Cayenne '19-, Cayenne Coupe '20-, Cayenne Electric '26-, Cayenne Electric Coupe '26-)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Osnabrueck"
+     },
+     {
+      "value": "Germany",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "Germany (ex-Karmann VW plant - Cayenne '16-'18, Boxster '13-15, Cayman '14-'16, 718 Boxster '24-'25, 718 Cayman '17-'18, '20-'21, '23-'25)"
+     }
+    ],
+    "N": [
+     {
+      "value": "Neckarsulm"
+     },
+     {
+      "value": "Germany",
+      "years": [
+       2037,
+       1992
+      ],
+      "note": "Germany (Audi plant - 924, 944) (includes Type 937 - 924 Carrera GT [N/A in US/Canada])"
+     }
+    ],
+    "U": [
+     {
+      "value": "Uusikaupunki"
+     },
+     {
+      "value": "Finland",
+      "years": [
+       1998,
+       2011
+      ],
+      "note": "Finland (Valmet plant - Boxster '98-'11, Cayman '06-'12)"
+     }
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,6091 @@
+{
+ "_brand": "Mercedes-Benz",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Mercedes-Benz/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "4JG",
+  "55S",
+  "9BM",
+  "W1K",
+  "W1N",
+  "WDB",
+  "WDC",
+  "WDD",
+  "WMX"
+ ],
+ "_market": "north_america",
+ "sections": {
+  "body@5:6": {
+   "field": "body",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "B": [
+     {
+      "value": "Long Body"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       1998,
+       2011
+      ],
+      "note": "4-door MPV ('98-'11 M-Class)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "4-door MPV ('20-' GLE-Class wagon)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2006,
+       2012
+      ],
+      "note": "4-door MPV ('06-'12 & '13 in Canada R-Class)"
+     },
+     {
+      "value": "Diesel",
+      "years": [
+       1984,
+       1989
+      ],
+      "note": "Diesel (190 Class '84-'89, 300 Class '81-'85, '87, '90-'93, E-Class '95, S-Class '81-'87, '90-'95)"
+     }
+    ],
+    "F": [
+     {
+      "value": "Sedan",
+      "note": "Sedan ('96+ E-Class"
+     },
+     {
+      "value": "'01+ C-Class"
+     },
+     {
+      "value": "'06 S-Class",
+      "note": "'06 S-Class [S350], Maybach 57)"
+     },
+     {
+      "value": "5-door hatchback",
+      "years": [
+       2019,
+       2022
+      ],
+      "note": "5-door hatchback (Canada only: '19-'22 A-Class)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2007,
+       2016
+      ],
+      "note": "4-door MPV ('07-'16 GL-Class, '17- GLS-Class)"
+     }
+    ],
+    "G": [
+     {
+      "value": "Sedan Long Wheelbase",
+      "note": "Sedan Long Wheelbase ('00+ S-Class, Maybach 62)"
+     },
+     {
+      "value": "Sedan",
+      "years": [
+       2019,
+       2022
+      ],
+      "note": "Sedan ('19-'22 A-Class sedan)"
+     },
+     {
+      "value": "Electric Sedan",
+      "note": "Electric Sedan ('23+ EQE sedan)"
+     },
+     {
+      "value": "Electric hatchback Sedan",
+      "note": "Electric hatchback Sedan ('22+ EQS sedan)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "4-door MPV ('10-'15 GLK-Class, '16-'22 GLC-Class wagon)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "4-door MPV ('15-'20 GLA-Class)"
+     }
+    ],
+    "H": [
+     {
+      "value": "Wagon",
+      "years": [
+       1998,
+       2009
+      ],
+      "note": "Wagon ('98-'09, '11- E-Class wagon, '02-'05 C-Class wagon, Canada only: '19-'21 C-Class wagon)"
+     },
+     {
+      "value": "\"Sedan\"",
+      "years": [
+       2006,
+       2011
+      ],
+      "note": "\"Sedan\" [5-door hatchback/compact minivan] ('06-'11"
+     },
+     {
+      "value": "'13-'19 B-Class",
+      "years": [
+       2013,
+       2019
+      ],
+      "note": "'13-'19 B-Class [gas engine] - Canada only)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "4-door MPV ('25- G550, G63 AMG)"
+     }
+    ],
+    "J": [
+     {
+      "value": "2-door Coupe",
+      "years": [
+       1998,
+       2009
+      ],
+      "note": "2-door Coupe ('98-'09 CLK-Class Coupe, '12-'15, '17-'23 C-Class coupe, '10-'23 E-Class coupe, '24- CLE-Class coupe, '00-'14 CL-Class, '15-'21 S-Class coupe, '05"
+     },
+     {
+      "value": "4-door Coupe",
+      "years": [
+       2006,
+       2023
+      ],
+      "note": "4-door Coupe ('06-'23 CLS-Class, '14- CLA-Class)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2017,
+       null
+      ],
+      "note": "4-door MPV ('17- GLC-Class Coupe)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Cabriolet",
+      "years": [
+       1999,
+       2009
+      ],
+      "note": "Cabriolet/Roadster ('99-'09 CLK-Class Cabriolet, '17-'23 C-Class Cabriolet, '11-'23 E-Class Cabriolet, '24- CLE-Class Cabriolet, '17-'21 S-Class Cabriolet, '98-"
+     }
+    ],
+    "N": [
+     {
+      "value": "\"Coupe\"",
+      "years": [
+       2002,
+       2005
+      ],
+      "note": "\"Coupe\" [3-door hatchback] ('02-'05 C-Class Sport Coupe)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "4-door MPV ('21- GLA-Class)"
+     }
+    ],
+    "P": [
+     {
+      "value": "\"Sedan\"",
+      "note": "\"Sedan\" [5-door hatchback/compact minivan] (B-Class Electric)"
+     }
+    ],
+    "X": [
+     {
+      "value": "4-door Sedan Extra-Long Wheelbase",
+      "note": "4-door Sedan Extra-Long Wheelbase ('16+ Maybach S-Class)"
+     },
+     {
+      "value": "4-door Coupe",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "4-door Coupe [5-door hatchback] ('19- AMG GT 4-door Coupe)"
+     },
+     {
+      "value": "Cabriolet",
+      "note": "Cabriolet/Roadster ('26+ Maybach SL680)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "4-door MPV ('24- Maybach EQS680 SUV)"
+     }
+    ],
+    "A": [
+     {
+      "value": "4-door MPV",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "4-door MPV ('12-'15 M-Class, '16-'19 GLE-Class wagon)"
+     },
+     {
+      "value": "Gasoline",
+      "years": [
+       1984,
+       1993
+      ],
+      "note": "Gasoline (190 Class '84-'93, C-Class '94-'00, 300 Class '81, '86-'93, E-Class '94-'95, S-Class '81-'99, CL-Class '98-'99, SL-Class '81-'02, SLC '81)"
+     }
+    ],
+    "C": [
+     {
+      "value": "4-door MPV",
+      "years": [
+       2010,
+       2024
+      ],
+      "note": "4-door MPV ('10-'24 G-Class)"
+     }
+    ],
+    "D": [
+     {
+      "value": "4-door MPV",
+      "years": [
+       2016,
+       2019
+      ],
+      "note": "4-door MPV ('16-'19, '21- GLE-Class Coupe)"
+     },
+     {
+      "value": "4Matic Gasoline",
+      "years": [
+       1990,
+       1993
+      ],
+      "note": "4Matic Gasoline ('90-'93 300E 4Matic, 300TE 4Matic)"
+     }
+    ],
+    "M": [
+     {
+      "value": "4-door MPV",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "4-door MPV ('20- GLB-Class, '22- EQB-Class)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "4-door MPV ('23- GLC-Class wagon)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "4-door MPV ('23- EQE-Class SUV)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "4-door MPV ('23- EQS-Class SUV)"
+     },
+     {
+      "value": "4-door MPV",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "4-door MPV ('25- G580 EQ [EV])"
+     },
+     {
+      "value": "AMG Gasoline",
+      "years": [
+       1995,
+       1997
+      ],
+      "note": "AMG Gasoline ('95-'97 C36 AMG only)"
+     }
+    ],
+    "R": [
+     {
+      "value": "4-door MPV",
+      "years": [
+       2002,
+       2009
+      ],
+      "note": "4-door MPV ('02-'09 G-Class)"
+     }
+    ]
+   }
+  },
+  "model@4:5": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "W123 300-Class",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "C199",
+      "note": "C199/R199/Z199 SLR McLaren"
+     },
+     {
+      "value": "W206 C-Class"
+     },
+     {
+      "value": "W163 M-Class"
+     }
+    ],
+    "B": [
+     {
+      "value": "R107 SL-Class"
+     },
+     {
+      "value": "C107 SLC-Class"
+     },
+     {
+      "value": "W164 M-Class"
+     },
+     {
+      "value": "X164 GL-Class"
+     }
+    ],
+    "C": [
+     {
+      "value": "W126",
+      "note": "W126/C126 S-Class"
+     },
+     {
+      "value": "V297 EQS-Class sedan"
+     },
+     {
+      "value": "W251 R-Class"
+     }
+    ],
+    "D": [
+     {
+      "value": "W201 190-Class",
+      "years": [
+       1990,
+       null
+      ]
+     },
+     {
+      "value": "C219 CLS-Class"
+     },
+     {
+      "value": "W166 M-Class",
+      "note": "W166 M-Class/GLE-Class"
+     },
+     {
+      "value": "X166 GL-Class",
+      "note": "X166 GL-Class/GLS-Class"
+     },
+     {
+      "value": "X296 EQS-Class SUV"
+     }
+    ],
+    "E": [
+     {
+      "value": "W124 300-Class",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "W124 300-Class/E-Class"
+     },
+     {
+      "value": "C216 CL-Class"
+     },
+     {
+      "value": "V295 EQE-Class sedan"
+     },
+     {
+      "value": "C292 GLE-Class Coupe"
+     }
+    ],
+    "F": [
+     {
+      "value": "R129 SL-Class"
+     },
+     {
+      "value": "W245 B-Class",
+      "note": "W245 B-Class (Canada only)"
+     },
+     {
+      "value": "C174 CLA-Class sedan EV"
+     },
+     {
+      "value": "W167",
+      "note": "W167/C167 GLE-Class"
+     },
+     {
+      "value": "X167 GLS-Class"
+     }
+    ],
+    "G": [
+     {
+      "value": "W140",
+      "note": "W140/C140 S-Class"
+     },
+     {
+      "value": "C140 CL-Class"
+     },
+     {
+      "value": "W204 C-Class"
+     },
+     {
+      "value": "X204 GLK-Class"
+     },
+     {
+      "value": "X294 EQE-Class SUV"
+     }
+    ],
+    "H": [
+     {
+      "value": "W202 C-Class"
+     },
+     {
+      "value": "W212",
+      "note": "W212/S212 E-Class sedan/wagon"
+     }
+    ],
+    "J": [
+     {
+      "value": "W210 E-Class"
+     },
+     {
+      "value": "R231 SL-Class"
+     }
+    ],
+    "K": [
+     {
+      "value": "R170 SLK-Class"
+     },
+     {
+      "value": "C207",
+      "note": "C207/A207 E-Class coupe/convertible"
+     },
+     {
+      "value": "X254",
+      "note": "X254/C254 GLC-Class"
+     }
+    ],
+    "L": [
+     {
+      "value": "C208",
+      "note": "C208/A208 CLK-Class"
+     },
+     {
+      "value": "C218 CLS-Class"
+     },
+     {
+      "value": "W214",
+      "note": "W214/X214 E-Class sedan/All-Terrain wagon"
+     }
+    ],
+    "N": [
+     {
+      "value": "W220 S-Class"
+     },
+     {
+      "value": "W221 S-Class"
+     }
+    ],
+    "P": [
+     {
+      "value": "C215 CL-Class"
+     },
+     {
+      "value": "R172 SLK-Class",
+      "note": "R172 SLK-Class/SLC-Class"
+     }
+    ],
+    "R": [
+     {
+      "value": "W203 C-Class"
+     },
+     {
+      "value": "C197",
+      "note": "C197/R197 SLS AMG"
+     },
+     {
+      "value": "C192 AMG GT coupe"
+     }
+    ],
+    "S": [
+     {
+      "value": "R230 SL-Class"
+     },
+     {
+      "value": "C117 CLA-Class"
+     }
+    ],
+    "T": [
+     {
+      "value": "C209",
+      "note": "C209/A209 CLK-Class"
+     },
+     {
+      "value": "X156 GLA-Class"
+     }
+    ],
+    "U": [
+     {
+      "value": "W211 E-Class"
+     },
+     {
+      "value": "W222 S-Class sedan"
+     }
+    ],
+    "W": [
+     {
+      "value": "R171 SLK-Class"
+     },
+     {
+      "value": "W205 C-Class"
+     },
+     {
+      "value": "W465 G-Class"
+     }
+    ],
+    "M": [
+     {
+      "value": "W246 B-Class",
+      "note": "W246 B-Class (Canada only)"
+     },
+     {
+      "value": "C236",
+      "note": "C236/A236 CLE-Class coupe/convertible"
+     }
+    ],
+    "V": [
+     {
+      "value": "W240 Maybach 57",
+      "note": "W240 Maybach 57/62"
+     },
+     {
+      "value": "N242 B-Class Electric"
+     },
+     {
+      "value": "R232 SL-Class"
+     }
+    ],
+    "X": [
+     {
+      "value": "C217",
+      "note": "C217/A217 S-Class coupe/convertible"
+     }
+    ],
+    "Y": [
+     {
+      "value": "C190",
+      "note": "C190/R190 AMG GT coupe/roadster"
+     },
+     {
+      "value": "W463 G-Class"
+     }
+    ],
+    "Z": [
+     {
+      "value": "W213",
+      "note": "W213/S213/X213 E-Class sedan/wagon/All-Terrain wagon"
+     }
+    ],
+    "1": [
+     {
+      "value": "C238",
+      "note": "C238/A238 E-Class coupe/convertible"
+     }
+    ],
+    "2": [
+     {
+      "value": "C257 CLS-Class"
+     }
+    ],
+    "3": [
+     {
+      "value": "V177 A-Class sedan"
+     },
+     {
+      "value": "W177 A-Class hatchback",
+      "note": "W177 A-Class hatchback (Canada only)"
+     }
+    ],
+    "5": [
+     {
+      "value": "C118 CLA-Class"
+     }
+    ],
+    "6": [
+     {
+      "value": "W223 S-Class sedan"
+     }
+    ],
+    "7": [
+     {
+      "value": "X290 AMG GT 4-door coupe"
+     }
+    ],
+    "0": [
+     {
+      "value": "X253",
+      "note": "X253/C253 GLC-Class"
+     }
+    ],
+    "4": [
+     {
+      "value": "H247 GLA-Class"
+     },
+     {
+      "value": "X247 GLB-Class"
+     }
+    ],
+    "9": [
+     {
+      "value": "X243 EQB-Class"
+     }
+    ]
+   }
+  },
+  "model@6:8": {
+   "field": "model",
+   "at": [
+    "vin",
+    "6:8"
+   ],
+   "map": {
+    "4E": [
+     {
+      "value": "A220 sedan",
+      "years": [
+       2019,
+       2022
+      ],
+      "note": "A220 sedan ['19-'22] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "B250",
+      "years": [
+       2013,
+       2019
+      ],
+      "note": "B250 [Canada only: '13-'19] 2.0-liter DOHC 16-valve turbo M270 I4"
+     },
+     {
+      "value": "CLA250 sedan",
+      "years": [
+       2014,
+       2019
+      ],
+      "note": "CLA250 sedan ['14-'19] (2.0-liter turbocharged GDI M270 I4)"
+     },
+     {
+      "value": "CLA350 4Matic EV",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "CLA350 4Matic EV ['26-] (battery-electric, 2 motors, 4wd, 349 hp)"
+     },
+     {
+      "value": "EQS580 4Matic sedan",
+      "years": [
+       2022,
+       2023
+      ],
+      "note": "EQS580 4Matic sedan ['22-'23] (battery-electric, 2 motors, 4wd, 516 hp)"
+     },
+     {
+      "value": "EQS580 4Matic sedan",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "EQS580 4Matic sedan ['24-] (battery-electric, 2 motors, 4wd, 536 hp)"
+     },
+     {
+      "value": "GLA250",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "GLA250 ['15-'20] (2.0-liter turbocharged GDI M270 I4)"
+     },
+     {
+      "value": "GLE350 2wd",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "GLE350 2wd ['25-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "EQS580 4Matic SUV",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "EQS580 4Matic SUV ['23-'25] (battery-electric, 2 motors, 4wd, 536 hp)"
+     },
+     {
+      "value": "EQS550 4Matic SUV",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "EQS550 4Matic SUV ['26-] (battery-electric, 2 motors, 4wd, 536 hp)"
+     }
+    ],
+    "4F": [
+     {
+      "value": "A220 4Matic sedan",
+      "years": [
+       2019,
+       2022
+      ],
+      "note": "A220 4Matic sedan ['19-'22] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "GLE350 4Matic",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "GLE350 4Matic ['24-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "5B": [
+     {
+      "value": "AMG A35 4Matic sedan",
+      "years": [
+       2020,
+       2021
+      ],
+      "note": "AMG A35 4Matic sedan ['20-'21 & in Canada: '22] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "AMG A35 4Matic hatchback",
+      "years": [
+       2020,
+       2022
+      ],
+      "note": "AMG A35 4Matic hatchback [Canada only: '20-'22] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "AMG CLA35 4Matic sedan",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "AMG CLA35 4Matic sedan ['20-'23] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "AMG CLA35 4Matic sedan",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "AMG CLA35 4Matic sedan ['24-'26] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M260 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GLA35 4Matic",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "AMG GLA35 4Matic ['21-'23] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "AMG GLA35 4Matic",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "AMG GLA35 4Matic ['24-'26] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M260 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GLB35 4Matic",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "AMG GLB35 4Matic ['21-'23] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "AMG GLB35 4Matic",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "AMG GLB35 4Matic ['24-'26] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M260 I4 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "4G": [
+     {
+      "value": "A250 hatchback",
+      "note": "A250 hatchback [Canada only: '19] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "B250 4Matic",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "B250 4Matic [Canada only: '15-'19] 2.0-liter DOHC 16-valve turbo M270 I4"
+     },
+     {
+      "value": "CLA250 4Matic sedan",
+      "years": [
+       2014,
+       2019
+      ],
+      "note": "CLA250 4Matic sedan ['14-'19] (2.0-liter turbocharged GDI M270 I4)"
+     },
+     {
+      "value": "CLA250 sedan",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "CLA250 sedan ['20-'23] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "CLA250 sedan",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "CLA250 sedan ['24-'26] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M260 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "C300 sedan",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "C300 sedan ['22-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "E350 sedan",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "E350 sedan ['25-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLA250 4Matic",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "GLA250 4Matic ['15-'20] (2.0-liter turbocharged GDI M270 I4)"
+     },
+     {
+      "value": "GLA250",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "GLA250 ['21-'23] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "GLA250",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "GLA250 ['24-'26] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M260 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLB250",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "GLB250 ['20-'23] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "GLB250",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "GLB250 ['24-'26] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M260 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLC300 2wd",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "GLC300 2wd ['23-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLE450e 4Matic",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "GLE450e 4Matic ['24-] (PHEV: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "4H": [
+     {
+      "value": "A250 4Matic hatchback",
+      "years": [
+       2019,
+       2022
+      ],
+      "note": "A250 4Matic hatchback [Canada only: '19-'22] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "CLA250 4Matic sedan",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "CLA250 4Matic sedan ['20-'23] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "CLA250 4Matic sedan",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "CLA250 4Matic sedan ['24-'26] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M260 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "C250 sedan",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "C250 sedan ['12-'14] (1.8-liter turbocharged GDI M271 I4)"
+     },
+     {
+      "value": "C250 coupe",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "C250 coupe ['12-'15] (1.8-liter turbocharged GDI M271 I4)"
+     },
+     {
+      "value": "C350e sedan",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "C350e sedan ['16-'18] (PHEV: 2.0-liter turbocharged GDI M274 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "C300 4Matic sedan",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "C300 4Matic sedan ['22-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "E350 4Matic sedan",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "E350 4Matic sedan ['24-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "CLE300 4Matic coupe",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "CLE300 4Matic coupe ['24-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "CLE300 4Matic convertible",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "CLE300 4Matic convertible ['24-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "SLK250",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "SLK250 ['12-'15] (1.8-liter turbocharged GDI M271 I4)"
+     },
+     {
+      "value": "GLA250 4Matic",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "GLA250 4Matic ['21-'23] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "GLA250 4Matic",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "GLA250 4Matic ['24-'26] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M260 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLB250 4Matic",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "GLB250 4Matic ['20-'23] (2.0-liter turbocharged GDI M260 I4)"
+     },
+     {
+      "value": "GLB250 4Matic",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "GLB250 4Matic ['24-'26] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M260 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLC300 4Matic",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "GLC300 4Matic ['23-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLC300 4Matic Coupe",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "GLC300 4Matic Coupe ['24-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "33": [
+     {
+      "value": "B200",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "B200 [Canada only: '06-'09] 2.0-liter SOHC 8-valve M266.980 I4"
+     },
+     {
+      "value": "C43 AMG",
+      "years": [
+       1998,
+       2000
+      ],
+      "note": "C43 AMG ['98-'00] (4.3-liter SOHC, 24-valve M113.944 V8)"
+     },
+     {
+      "value": "280E",
+      "years": [
+       2012,
+       null
+      ],
+      "note": "280E ['81] (2.7-liter DOHC, 12-valve M110.984 I6)"
+     },
+     {
+      "value": "300D Turbodiesel",
+      "years": [
+       1982,
+       1985
+      ],
+      "note": "300D Turbodiesel ['82-'85] (3.0-liter OM617 turbodiesel I5)"
+     },
+     {
+      "value": "300D Turbo",
+      "note": "300D Turbo ['87] (3.0-liter OM603 turbodiesel I6)"
+     },
+     {
+      "value": "380SEL",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "380SEL ['81-'83] (3.8-liter M116 V8)"
+     },
+     {
+      "value": "S320 sedan LWB",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "S320 sedan LWB ['95-'99] (3.2-liter M104 I6)"
+     }
+    ],
+    "3D": [
+     {
+      "value": "B200",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "B200 [Canada only: '10-'11] 2.0-liter SOHC 8-valve M266.980 I4"
+     }
+    ],
+    "34": [
+     {
+      "value": "B200 Turbo",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "B200 Turbo [Canada only: '06-'09] 2.0-liter SOHC 8-valve turbo M266.980 I4"
+     },
+     {
+      "value": "190E 2.3-16",
+      "years": [
+       1986,
+       1987
+      ],
+      "note": "190E 2.3-16 ['86-'87] (2.3-liter DOHC, 16 valve M102 I4)"
+     },
+     {
+      "value": "400E",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "400E ['92-'93]"
+     },
+     {
+      "value": "E420 sedan",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "E420 sedan ['94-'95] (4.2-liter M119 V8)"
+     },
+     {
+      "value": "350SD Turbodiesel",
+      "note": "350SD Turbodiesel ['91] (3.4-liter OM603 turbodiesel I6)"
+     },
+     {
+      "value": "300SD Turbodiesel",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "300SD Turbodiesel ['92-'93]"
+     },
+     {
+      "value": "S350 Turbodiesel",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "S350 Turbodiesel ['94-'95] (3.4-liter OM603 turbodiesel I6)"
+     }
+    ],
+    "3E": [
+     {
+      "value": "B200 Turbo",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "B200 Turbo [Canada only: '10-'11] 2.0-liter SOHC 8-valve turbo M266.980 I4"
+     }
+    ],
+    "8G": [
+     {
+      "value": "B-Class F-Cell",
+      "note": "B-Class F-Cell (hydrogen fuel cell)"
+     },
+     {
+      "value": "AMG C63 sedan",
+      "years": [
+       2015,
+       2021
+      ],
+      "note": "AMG C63 sedan ['15-'21] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG C63 coupe",
+      "years": [
+       2017,
+       2021
+      ],
+      "note": "AMG C63 coupe ['17-'21] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG C63 convertible",
+      "years": [
+       2017,
+       2021
+      ],
+      "note": "AMG C63 convertible ['17-'21] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "S550 4Matic",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "S550 4Matic ['10-'11] (5.5-liter DOHC, 32-valve M273 V8)"
+     },
+     {
+      "value": "CL550 4Matic",
+      "years": [
+       2032,
+       null
+      ],
+      "note": "CL550 4Matic ['10] (5.5-liter DOHC, 32-valve M273 V8)"
+     },
+     {
+      "value": "S560 4Matic sedan",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "S560 4Matic sedan ['18-'20] (4.0-liter twin turbo M176 GDI V8)"
+     },
+     {
+      "value": "Mercedes-Maybach S560 4Matic sedan",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "Mercedes-Maybach S560 4Matic sedan ['18-'20] (4.0-liter twin turbo M176 GDI V8)"
+     },
+     {
+      "value": "S560 4Matic coupe",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "S560 4Matic coupe ['18-'21] (4.0-liter twin turbo M176 GDI V8)"
+     },
+     {
+      "value": "ML350 4Matic",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "ML350 4Matic ['10-'11] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "GLE580",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "GLE580 ['20-'23] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M176 GDI V8 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GL550",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "GL550 ['10-'12] (5.5-liter M273 V8)"
+     },
+     {
+      "value": "GLS580",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "GLS580 ['20-'23] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M176 GDI V8 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "9A": [
+     {
+      "value": "B-Class Electric Drive",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "B-Class Electric Drive ['14-'15]"
+     },
+     {
+      "value": "B250e",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "B250e ['16-'17] (Tesla front electric motor, Lithium-ion battery pack, fwd, 177 hp)"
+     },
+     {
+      "value": "E550 4Matic sedan",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "E550 4Matic sedan ['10-'11] (5.5-liter M273 V8)"
+     }
+    ],
+    "5C": [
+     {
+      "value": "CLA45 AMG 4Matic sedan",
+      "years": [
+       2014,
+       2019
+      ],
+      "note": "CLA45 AMG 4Matic sedan ['14-'19] (2.0-liter turbocharged GDI AMG M133 I4)"
+     },
+     {
+      "value": "GLA45 AMG 4Matic",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "GLA45 AMG 4Matic ['15-'19] (2.0-liter turbocharged GDI AMG M133 I4)"
+     }
+    ],
+    "5D": [
+     {
+      "value": "AMG CLA45 4Matic sedan",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "AMG CLA45 4Matic sedan ['20-'23] (2.0-liter turbocharged port/direct injection AMG M139 I4)"
+     },
+     {
+      "value": "AMG EQE 4Matic+ sedan",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "AMG EQE 4Matic+ sedan ['23-] (battery-electric, 2 motors, 4wd, 617 hp)"
+     },
+     {
+      "value": "AMG GLA45 4Matic",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "AMG GLA45 4Matic ['21-'23] (2.0-liter turbocharged port/direct injection AMG M139 I4)"
+     },
+     {
+      "value": "GLC350e 4Matic",
+      "note": "GLC350e 4Matic ['20] (PHEV: 2.0-liter turbocharged GDI M274 I4 + 121 hp electric motor, 13.5 kWh lithium-ion battery)"
+     },
+     {
+      "value": "AMG EQE 4Matic+ SUV",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "AMG EQE 4Matic+ SUV ['24-] (battery-electric, 2 motors, 4wd, 617 hp)"
+     }
+    ],
+    "5E": [
+     {
+      "value": "AMG CLA45 S 4Matic sedan",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "AMG CLA45 S 4Matic sedan ['24-'26] (2.0-liter turbocharged port/direct injection AMG M139 I4)"
+     },
+     {
+      "value": "C300 sedan",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "C300 sedan ['10-'11] (3.0-liter M272 90° V6)"
+     },
+     {
+      "value": "SLK300",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "SLK300 ['10-'11] (3.0-liter M272 90° V6)"
+     },
+     {
+      "value": "GLC350e 4Matic",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "GLC350e 4Matic ['18-'19] (PHEV: 2.0-liter turbocharged GDI M274 I4 + 114 hp electric motor, 8.7 kWh lithium-ion battery)"
+     }
+    ],
+    "1D": [
+     {
+      "value": "CLA250+ EV",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "CLA250+ EV ['26-] (battery-electric, 1 rear motor, Rwd, 268 hp)"
+     },
+     {
+      "value": "EQB350 4Matic",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "EQB350 4Matic ['22-'25] (battery-electric, 2 motors, 4wd, 288 hp)"
+     }
+    ],
+    "24": [
+     {
+      "value": "190E 2.3",
+      "years": [
+       1984,
+       1986
+      ],
+      "note": "190E 2.3 ['84-'86] (2.3-liter SOHC, 8 valve M102 I4)"
+     },
+     {
+      "value": "C230 Kompressor",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "C230 Kompressor ['99-'00] (2.3-liter supercharged M111 I4)"
+     },
+     {
+      "value": "300SE",
+      "years": [
+       1988,
+       1991
+      ],
+      "note": "300SE ['88-'91] (3.0-liter M103 I6)"
+     }
+    ],
+    "28": [
+     {
+      "value": "190E 2.3",
+      "years": [
+       1987,
+       1988
+      ],
+      "note": "190E 2.3 ['87-'88, '91-'93] (2.3-liter SOHC, 8 valve M102 I4)"
+     },
+     {
+      "value": "190D 2.5 Turbo",
+      "note": "190D 2.5 Turbo ['87] (2.5-liter OM602 turbodiesel I5)"
+     },
+     {
+      "value": "C280",
+      "years": [
+       1994,
+       1997
+      ],
+      "note": "C280 ['94-'97] (2.8-liter M104 I6)"
+     },
+     {
+      "value": "300E 2.8",
+      "note": "300E 2.8 ['93] (2.8-liter M104 I6)"
+     },
+     {
+      "value": "300D 2.5 Turbo",
+      "years": [
+       1990,
+       1993
+      ],
+      "note": "300D 2.5 Turbo ['90-'93] (2.5-liter OM602 turbodiesel I5)"
+     }
+    ],
+    "29": [
+     {
+      "value": "190E 2.6",
+      "years": [
+       1987,
+       1993
+      ],
+      "note": "190E 2.6 ['87-'93] (2.6-liter M103 I6)"
+     },
+     {
+      "value": "C280",
+      "years": [
+       1998,
+       2000
+      ],
+      "note": "C280 ['98-'00] (2.8-liter SOHC, 18-valve M112 90° V6)"
+     }
+    ],
+    "22": [
+     {
+      "value": "190D 2.2",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "190D 2.2 ['84-'85] (2.2-liter OM601 diesel I4)"
+     },
+     {
+      "value": "C220",
+      "years": [
+       1994,
+       1996
+      ],
+      "note": "C220 ['94-'96] (2.2-liter M111 I4)"
+     },
+     {
+      "value": "E320 Bluetec sedan",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "E320 Bluetec sedan ['07-'09] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "ML320 CDI",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "ML320 CDI ['07-'08] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "R320 CDI",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "R320 CDI ['07-'08] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "GL320 CDI",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "GL320 CDI ['07-'08] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     }
+    ],
+    "26": [
+     {
+      "value": "190D 2.5",
+      "years": [
+       1986,
+       1989
+      ],
+      "note": "190D 2.5 ['86-'89] (2.5-liter OM602 diesel I5)"
+     },
+     {
+      "value": "260E",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "260E ['87-'89]"
+     },
+     {
+      "value": "300E 2.6",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "300E 2.6 ['90-'92] (2.6-liter M103 I6)"
+     },
+     {
+      "value": "E320 CDI sedan",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "E320 CDI sedan ['05-'06] (3.2-liter DOHC, 24 valve OM648 turbodiesel I6)"
+     }
+    ],
+    "23": [
+     {
+      "value": "C230",
+      "years": [
+       1997,
+       1998
+      ],
+      "note": "C230 ['97-'98] (2.3-liter M111 I4)"
+     },
+     {
+      "value": "240D",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "240D ['81-'83] (2.4-liter OM616 diesel I4)"
+     }
+    ],
+    "36": [
+     {
+      "value": "C36 AMG",
+      "years": [
+       1995,
+       1997
+      ],
+      "note": "C36 AMG ['95-'97] (3.6-liter M104 AMG I6)"
+     },
+     {
+      "value": "500E",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "500E ['92-'93]"
+     },
+     {
+      "value": "E500 sedan",
+      "note": "E500 sedan ['94] (5.0-liter M119 V8)"
+     }
+    ],
+    "40": [
+     {
+      "value": "C230 Kompressor Sport Sedan",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "C230 Kompressor Sport Sedan ['03-'05] (1.8-liter supercharged M271 I4)"
+     },
+     {
+      "value": "C230 Kompressor Sport Coupe",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "C230 Kompressor Sport Coupe ['03-'05] (1.8-liter supercharged M271 I4)"
+     }
+    ],
+    "52": [
+     {
+      "value": "C230 Sport Sedan",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "C230 Sport Sedan ['06-'07] (2.5-liter M272 90° V6)"
+     },
+     {
+      "value": "300CE coupe",
+      "note": "300CE coupe ['93]"
+     },
+     {
+      "value": "E320 coupe",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "E320 coupe ['94-'95] (3.2-liter M104 I6)"
+     }
+    ],
+    "54": [
+     {
+      "value": "C280 sedan",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "C280 sedan ['06-'07] (3.0-liter M272 90° V6)"
+     },
+     {
+      "value": "C300 sedan",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "C300 sedan ['08-'09] (3.0-liter M272 90° V6)"
+     },
+     {
+      "value": "SLK280",
+      "years": [
+       2006,
+       2008
+      ],
+      "note": "SLK280 ['06-'08]"
+     },
+     {
+      "value": "SLK300",
+      "note": "SLK300 ['09] (3.0-liter M272 90° V6)"
+     },
+     {
+      "value": "ML320",
+      "years": [
+       1998,
+       2003
+      ],
+      "note": "ML320 ['98-'03] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     }
+    ],
+    "56": [
+     {
+      "value": "C350 sedan",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "C350 sedan ['06-'07] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "C350 sedan",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "C350 sedan ['08-'09] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "E350 sedan",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "E350 sedan ['06-'09] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "E350 wagon",
+      "note": "E350 wagon ['06] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "CLK350",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "CLK350 ['06-'09 coupe] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "CLK350",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "CLK350 ['06-'09 convertible] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "SLK350",
+      "years": [
+       2005,
+       2008
+      ],
+      "note": "SLK350 ['05-'08] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "ML350 2wd",
+      "note": "ML350 2wd ['09] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "R350 2wd",
+      "note": "R350 2wd ['08] (3.5-liter M272 90° V6)"
+     }
+    ],
+    "61": [
+     {
+      "value": "C240 sedan",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "C240 sedan ['01-'05] (2.6-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "C240 wagon",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "C240 wagon ['03-'05] (2.6-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "300SL",
+      "years": [
+       1990,
+       1993
+      ],
+      "note": "300SL ['90-'93] (3.0-liter DOHC, 24 valve M104 I6)"
+     }
+    ],
+    "64": [
+     {
+      "value": "C320 sedan",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "C320 sedan ['01-'05] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "C320 wagon",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "C320 wagon ['02-'04] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "C320 Sport Coupe",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "C320 Sport Coupe ['03-'05] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     }
+    ],
+    "65": [
+     {
+      "value": "C32 AMG sedan",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "C32 AMG sedan ['02-'04] (3.2-liter SOHC, 18-valve supercharged M112 90° V6)"
+     },
+     {
+      "value": "E320 sedan",
+      "years": [
+       1998,
+       2002
+      ],
+      "note": "E320 sedan ['98-'02] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "E320 wagon",
+      "years": [
+       1998,
+       2003
+      ],
+      "note": "E320 wagon ['98-'03] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "E320 sedan",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "E320 sedan ['03-'05] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "E320 wagon",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "E320 wagon ['04-'05] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "CLK320",
+      "years": [
+       1998,
+       2002
+      ],
+      "note": "CLK320 ['98-'02 coupe] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "CLK320",
+      "years": [
+       1999,
+       2003
+      ],
+      "note": "CLK320 ['99-'03 convertible] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "CLK320",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "CLK320 ['03-'05 coupe] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "CLK320",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "CLK320 ['04-'05 convertible] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "SLK320",
+      "years": [
+       2001,
+       2004
+      ],
+      "note": "SLK320 ['01-'04] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "R350 4Matic",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "R350 4Matic ['06-'09] (3.5-liter M272 90° V6)"
+     }
+    ],
+    "76": [
+     {
+      "value": "C55 AMG",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "C55 AMG ['05-'06] (5.4-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "E55 AMG sedan",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "E55 AMG sedan ['03-'06] (5.4-liter SOHC, 24-valve supercharged M113K V8)"
+     },
+     {
+      "value": "E55 AMG wagon",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "E55 AMG wagon ['05-'06] (5.4-liter SOHC, 24-valve supercharged M113K V8)"
+     },
+     {
+      "value": "CLS55 AMG sedan",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "CLS55 AMG sedan ['06] (5.4-liter SOHC, 24-valve supercharged M113K V8)"
+     },
+     {
+      "value": "600SEC",
+      "note": "600SEC ['93]"
+     },
+     {
+      "value": "S600 coupe",
+      "years": [
+       1994,
+       1997
+      ],
+      "note": "S600 coupe ['94-'97]"
+     },
+     {
+      "value": "CL600",
+      "years": [
+       1998,
+       1999
+      ],
+      "note": "CL600 ['98-'99] (6.0-liter DOHC, 48-valve M120 V12)"
+     },
+     {
+      "value": "S600",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "S600 ['03-'06] (5.5-liter SOHC, 36-valve twin turbo M275 V12)"
+     },
+     {
+      "value": "CL600",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "CL600 ['03-'06] (5.5-liter SOHC, 36-valve twin turbo M275 V12)"
+     },
+     {
+      "value": "S600",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "S600 ['07-'09] (5.5-liter SOHC, 36-valve twin turbo M275 V12)"
+     },
+     {
+      "value": "CL600",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "CL600 ['07-'09] (5.5-liter SOHC, 36-valve twin turbo M275 V12)"
+     },
+     {
+      "value": "CLK55 AMG",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "CLK55 AMG ['03-'05 coupe] (5.4-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "CLK55 AMG",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "CLK55 AMG ['04-'06 convertible] (5.4-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "600SL",
+      "note": "600SL ['93]"
+     },
+     {
+      "value": "SL600",
+      "years": [
+       1994,
+       2002
+      ],
+      "note": "SL600 ['94-'02] (6.0-liter DOHC, 48-valve M120 V12)"
+     },
+     {
+      "value": "SL600",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "SL600 ['04-'06] (5.5-liter SOHC, 36-valve twin turbo M275 V12)"
+     },
+     {
+      "value": "SLR McLaren coupe",
+      "years": [
+       2005,
+       2007
+      ],
+      "note": "SLR McLaren coupe ['05-'07] (5.4-liter SOHC, 24-valve supercharged M155 V8)"
+     },
+     {
+      "value": "SLR McLaren roadster",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "SLR McLaren roadster ['08-'09] (5.4-liter SOHC, 24-valve supercharged M155 V8)"
+     }
+    ],
+    "81": [
+     {
+      "value": "C240 4Matic sedan",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "C240 4Matic sedan ['03-'05] (2.6-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "C240 4Matic wagon",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "C240 4Matic wagon ['03-'05] (2.6-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "C300 4Matic sedan",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "C300 4Matic sedan ['08-'09] (3.0-liter M272 90° V6)"
+     }
+    ],
+    "84": [
+     {
+      "value": "C320 4Matic sedan",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "C320 4Matic sedan ['03-'05] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "C320 4Matic wagon",
+      "years": [
+       2003,
+       2004
+      ],
+      "note": "C320 4Matic wagon ['03-'04] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "S500 4Matic",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "S500 4Matic ['03-'06] (5.0-liter SOHC, 24-valve M113 V8)"
+     }
+    ],
+    "87": [
+     {
+      "value": "C350 4Matic sedan",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "C350 4Matic sedan ['06-'07] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "E350 4Matic sedan",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "E350 4Matic sedan ['06-'09] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "E350 4Matic wagon",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "E350 4Matic wagon ['06-'09] (3.5-liter M272 90° V6)"
+     }
+    ],
+    "92": [
+     {
+      "value": "C280 4Matic sedan",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "C280 4Matic sedan ['06-'07] (3.0-liter M272 90° V6)"
+     },
+     {
+      "value": "300TE",
+      "note": "300TE ['93]"
+     },
+     {
+      "value": "E320 wagon",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "E320 wagon ['94-'95] (3.2-liter M104 I6)"
+     }
+    ],
+    "47": [
+     {
+      "value": "C230 Kompressor Sport Coupe",
+      "note": "C230 Kompressor Sport Coupe ['02] (2.3-liter supercharged M111 I4)"
+     },
+     {
+      "value": "SLK230 Kompressor",
+      "years": [
+       1998,
+       2000
+      ],
+      "note": "SLK230 Kompressor ['98-'00] (2.3-liter M111.973 supercharged I4)"
+     }
+    ],
+    "5G": [
+     {
+      "value": "C350 sedan",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "C350 sedan ['10-'11] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "E350 sedan",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "E350 sedan ['10-'11] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "E350 coupe",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "E350 coupe ['10-'11] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "E350 convertible",
+      "note": "E350 convertible ['11] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "GLK350 2wd",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "GLK350 2wd ['10-'12] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "GLC350e 4Matic",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "GLC350e 4Matic ['25-] (PHEV: 2.0-liter turbocharged GDI M254 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "ML350 2wd",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "ML350 2wd ['10-'11] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "ML400 4Matic",
+      "note": "ML400 4Matic ['15]"
+     },
+     {
+      "value": "GLE400 4Matic",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "GLE400 4Matic ['16-'17 & '19, Canada only: '18] (3.0-liter twin turbo M276 60° GDI V6)"
+     }
+    ],
+    "5H": [
+     {
+      "value": "C350 sedan",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "C350 sedan ['12-'14] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "C350 coupe",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "C350 coupe ['12-'15] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "SLK350",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "SLK350 ['12-'16] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "GLK350 2wd",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "GLK350 2wd ['13-'15] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "ML350 4Matic",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "ML350 4Matic ['12-'15]"
+     },
+     {
+      "value": "GLE350 4Matic",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "GLE350 4Matic ['16-'18] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "R350 4Matic",
+      "note": "R350 4Matic ['12 & '13 in Canada] (3.5-liter M276 60° GDI V6)"
+     }
+    ],
+    "77": [
+     {
+      "value": "C63 AMG sedan",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "C63 AMG sedan ['08-'09] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "E63 AMG sedan",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "E63 AMG sedan ['07-'09] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "E63 AMG wagon",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "E63 AMG wagon ['07-'09] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "CLS63 AMG sedan",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "CLS63 AMG sedan ['07-'09] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "S63 AMG",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "S63 AMG ['08-09] (6.2-liter DOHC, 32-valve M156 V8)"
+     },
+     {
+      "value": "CL63 AMG",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "CL63 AMG ['08-'09] (6.2-liter DOHC, 32-valve M156 V8)"
+     },
+     {
+      "value": "CLK63 AMG Black Series",
+      "note": "CLK63 AMG Black Series ['08 coupe] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "CLK63 AMG",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "CLK63 AMG ['07-'08 convertible] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "SL600",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "SL600 ['07-'09] (5.5-liter SOHC, 36-valve twin turbo M275 V12)"
+     },
+     {
+      "value": "ML63 AMG",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "ML63 AMG ['07-'09] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "R63 AMG",
+      "note": "R63 AMG ['07] (6.2-liter M156 V8)"
+     }
+    ],
+    "7H": [
+     {
+      "value": "C63 AMG sedan",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "C63 AMG sedan ['10-'14]"
+     },
+     {
+      "value": "C63 AMG Edition 507",
+      "note": "C63 AMG Edition 507 ['14] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "C63 AMG coupe",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "C63 AMG coupe ['12-'15]"
+     },
+     {
+      "value": "C63 AMG Black Series coupe",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "C63 AMG Black Series coupe ['12-'13]"
+     },
+     {
+      "value": "C63 AMG Edition 507",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "C63 AMG Edition 507 ['14-'15] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "E63 AMG sedan",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "E63 AMG sedan ['10-'11] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "CLS63 AMG sedan",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "CLS63 AMG sedan ['10-'11] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "S63 AMG",
+      "years": [
+       2032,
+       null
+      ],
+      "note": "S63 AMG ['10] (6.2-liter DOHC, 32-valve M156 V8)"
+     },
+     {
+      "value": "CL63 AMG",
+      "years": [
+       2032,
+       null
+      ],
+      "note": "CL63 AMG ['10] (6.2-liter DOHC, 32-valve M156 V8)"
+     },
+     {
+      "value": "Maybach 57S Zeppelin",
+      "years": [
+       2036,
+       null
+      ],
+      "note": "Maybach 57S Zeppelin ['10] (6.0-liter SOHC, 36-valve twin turbo M285.980 V12)"
+     },
+     {
+      "value": "Maybach 57S",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "Maybach 57S ['11-'12] (6.0-liter SOHC, 36-valve twin turbo M285.980 V12)"
+     },
+     {
+      "value": "Maybach 62S Zeppelin",
+      "years": [
+       2036,
+       null
+      ],
+      "note": "Maybach 62S Zeppelin ['10] (6.0-liter SOHC, 36-valve twin turbo M285.980 V12)"
+     },
+     {
+      "value": "Maybach 62S",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "Maybach 62S ['11-'12]"
+     },
+     {
+      "value": "62S Landaulet",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "62S Landaulet ('11-'12) (6.0-liter SOHC, 36-valve twin turbo M285.980 V12)"
+     },
+     {
+      "value": "SLS AMG coupe",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "SLS AMG coupe ['11-'12] (6.2-liter M159 V8)"
+     },
+     {
+      "value": "SLS AMG Black Series coupe",
+      "note": "SLS AMG Black Series coupe ['14] (6.2-liter M159 V8)"
+     },
+     {
+      "value": "SLS AMG roadster",
+      "note": "SLS AMG roadster ['12] (6.2-liter M159 V8)"
+     },
+     {
+      "value": "AMG GT 2-d coupe",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "AMG GT 2-d coupe (base model) ['17-'20] (4.0-liter twin turbo M178 GDI V8)"
+     },
+     {
+      "value": "AMG GT roadster",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "AMG GT roadster (base model) ['17-'20] (4.0-liter twin turbo M178 GDI V8)"
+     },
+     {
+      "value": "ML63 AMG",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "ML63 AMG ['10-'11] (6.2-liter M156 V8)"
+     },
+     {
+      "value": "AMG G63",
+      "years": [
+       2019,
+       2024
+      ],
+      "note": "AMG G63 ['19-'24] (4.0-liter twin turbo M177 GDI V8)"
+     }
+    ],
+    "8B": [
+     {
+      "value": "C300 4Matic sedan",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "C300 4Matic sedan ['10-'12] (3.0-liter M272 90° V6)"
+     },
+     {
+      "value": "E300 4Matic sedan",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "E300 4Matic sedan [Canada only: '12-'16] (3.5-liter M276 60° GDI V6 - detuned version)"
+     },
+     {
+      "value": "AMG SL63 4Matic+",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "AMG SL63 4Matic+ ['22-] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "Maybach SL680 4Matic",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "Maybach SL680 4Matic ['26-] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG GT 2-d coupe Black Series",
+      "note": "AMG GT 2-d coupe Black Series ['21] (4.0-liter twin turbo M178 LS2 GDI flat-plane crank V8)"
+     }
+    ],
+    "8A": [
+     {
+      "value": "C300 4Matic sedan",
+      "years": [
+       2013,
+       2014
+      ],
+      "note": "C300 4Matic sedan ['13-'14] (3.5-liter M276 60° GDI V6 - detuned version)"
+     },
+     {
+      "value": "AMG C63 S E Performance 4Matic sedan",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "AMG C63 S E Performance 4Matic sedan ['24-] (PHEV: 2.0-liter turbocharged port/direct injection M139 I4 + 3 electric motors, lithium-ion battery)"
+     },
+     {
+      "value": "Mercedes-Maybach S650 sedan",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "Mercedes-Maybach S650 sedan ['18-'20] (6.0-liter SOHC, 36-valve twin turbo M279 V12)"
+     },
+     {
+      "value": "AMG SL55 4Matic+",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "AMG SL55 4Matic+ ['22-] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG GT 2-d coupe C",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "AMG GT 2-d coupe C ['18-'21] (4.0-liter twin turbo M178 GDI V8)"
+     },
+     {
+      "value": "AMG GT roadster C",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "AMG GT roadster C ['18-'21] (4.0-liter twin turbo M178 GDI V8)"
+     },
+     {
+      "value": "AMG GT55 4Matic+ coupe",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "AMG GT55 4Matic+ coupe ['24-] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG GLC63 S E Performance 4Matic",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "AMG GLC63 S E Performance 4Matic ['25-] (PHEV: 2.0-liter turbocharged port/direct injection M139 I4 + 3 electric motors, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GLC63 S E Performance 4Matic Coupe",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "AMG GLC63 S E Performance 4Matic Coupe ['25-] (PHEV: 2.0-liter turbocharged port/direct injection M139 I4 + 3 electric motors, lithium-ion battery)"
+     },
+     {
+      "value": "AMG G63 4x4²",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "AMG G63 4x4² ['22-'24] (4.0-liter twin turbo M177 GDI V8)"
+     }
+    ],
+    "8J": [
+     {
+      "value": "C350 4Matic coupe",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "C350 4Matic coupe ['12-'15] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "E350 4Matic sedan",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "E350 4Matic sedan ['12-'16] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "E350 4Matic wagon",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "E350 4Matic wagon ['12-'16] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "AMG GT63 4Matic+ 4-Door Coupe",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "AMG GT63 4Matic+ 4-Door Coupe ['19-'21, '23-] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "S63 AMG 4Matic sedan",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "S63 AMG 4Matic sedan ['18-'20] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "S63 AMG 4Matic coupe",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "S63 AMG 4Matic coupe ['18-'21] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "S63 AMG 4Matic convertible",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "S63 AMG 4Matic convertible ['18-'21] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "E350 4Matic coupe",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "E350 4Matic coupe ['12-'14] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "AMG GT63 Pro 4Matic+ coupe",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "AMG GT63 Pro 4Matic+ coupe ['25-] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "GLK350 4Matic",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "GLK350 4Matic ['13-'15] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "AMG GLC63 4Matic",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "AMG GLC63 4Matic ['18-'21] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG GLC63 4Matic Coupe",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "AMG GLC63 4Matic Coupe ['18-'21] (4.0-liter twin turbo M177 GDI V8)"
+     }
+    ],
+    "4J": [
+     {
+      "value": "C300 sedan",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "C300 sedan ['15-'18] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "C300 coupe",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "C300 coupe ['17-'18] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "C300 convertible",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "C300 convertible ['17-'18] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "E300 sedan",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "E300 sedan ['17-'19] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "GLC300 2wd",
+      "years": [
+       2016,
+       2019
+      ],
+      "note": "GLC300 2wd ['16-'19] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "GLE350 2wd",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "GLE350 2wd ['20-'23] (2.0-liter turbocharged GDI M264 I4)"
+     }
+    ],
+    "4K": [
+     {
+      "value": "C300 4Matic sedan",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "C300 4Matic sedan ['15-'18] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "C300 4Matic wagon",
+      "note": "C300 4Matic wagon [Canada: '18] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "C300 4Matic coupe",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "C300 4Matic coupe ['17-'18] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "C300 4Matic convertible",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "C300 4Matic convertible ['17-'18] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "E300 4Matic sedan",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "E300 4Matic sedan ['17-'19] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "GLC300 4Matic",
+      "years": [
+       2016,
+       2019
+      ],
+      "note": "GLC300 4Matic ['16-'19] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "GLC300 4Matic Coupe",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "GLC300 4Matic Coupe ['17-'19] (2.0-liter turbocharged GDI M274 I4)"
+     },
+     {
+      "value": "GLE350 4Matic",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "GLE350 4Matic ['20-'23] (2.0-liter turbocharged GDI M264 I4)"
+     }
+    ],
+    "8D": [
+     {
+      "value": "C300 sedan",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "C300 sedan ['19-'21] (2.0-liter turbocharged GDI M264 I4)"
+     },
+     {
+      "value": "C300 coupe",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "C300 coupe ['19-'23] (2.0-liter turbocharged GDI M264 I4)"
+     },
+     {
+      "value": "C300 convertible",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "C300 convertible ['19-'23] (2.0-liter turbocharged GDI M264 I4)"
+     },
+     {
+      "value": "E350 sedan",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "E350 sedan ['20-'23] (2.0-liter turbocharged GDI M264 I4)"
+     },
+     {
+      "value": "S350 Bluetec 4Matic",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "S350 Bluetec 4Matic ['12-'13] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "S560 sedan",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "S560 sedan ['18-'20] (4.0-liter twin turbo M176 GDI V8)"
+     },
+     {
+      "value": "S560 convertible",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "S560 convertible ['18-'21] (4.0-liter twin turbo M176 GDI V8)"
+     },
+     {
+      "value": "GLC300 2wd",
+      "years": [
+       2020,
+       2022
+      ],
+      "note": "GLC300 2wd ['20-'22] (2.0-liter turbocharged GDI M264 I4)"
+     }
+    ],
+    "8E": [
+     {
+      "value": "C300 4Matic sedan",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "C300 4Matic sedan ['19-'21] (2.0-liter turbocharged GDI M264 I4)"
+     },
+     {
+      "value": "C300 4Matic wagon",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "C300 4Matic wagon [Canada: '19-'21] (2.0-liter turbocharged GDI M264 I4)"
+     },
+     {
+      "value": "C300 4Matic coupe",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "C300 4Matic coupe ['19-'23] (2.0-liter turbocharged GDI M264 I4)"
+     },
+     {
+      "value": "C300 4Matic convertible",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "C300 4Matic convertible ['19-'23] (2.0-liter turbocharged GDI M264 I4)"
+     },
+     {
+      "value": "E350 4Matic sedan",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "E350 4Matic sedan ['20-'23] (2.0-liter turbocharged GDI M264 I4)"
+     },
+     {
+      "value": "GLC300 4Matic",
+      "years": [
+       2020,
+       2022
+      ],
+      "note": "GLC300 4Matic ['20-'22] (2.0-liter turbocharged GDI M264 I4)"
+     },
+     {
+      "value": "GLC300 4Matic Coupe",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "GLC300 4Matic Coupe ['20-'23] (2.0-liter turbocharged GDI M264 I4)"
+     }
+    ],
+    "6G": [
+     {
+      "value": "C400 4Matic sedan",
+      "note": "C400 4Matic sedan ['15] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E400 4Matic sedan",
+      "note": "E400 4Matic sedan ['18] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E400 4Matic wagon",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "E400 4Matic wagon ['17-'18] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "S450 sedan",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "S450 sedan ['18-'20] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E400 4Matic coupe",
+      "note": "E400 4Matic coupe ['18] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E400 4Matic convertible",
+      "note": "E400 4Matic convertible ['18] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "SLC43 AMG",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "SLC43 AMG ['17-'20] (3.0-liter twin-turbocharged M276 60° GDI V6)"
+     },
+     {
+      "value": "SL450",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "SL450 ['17-'20] (3.0-liter twin turbo M276 60° GDI V6)"
+     }
+    ],
+    "6E": [
+     {
+      "value": "C450 AMG Sport 4Matic sedan",
+      "note": "C450 AMG Sport 4Matic sedan ['16]"
+     },
+     {
+      "value": "AMG C43 4Matic sedan",
+      "years": [
+       2017,
+       2021
+      ],
+      "note": "AMG C43 4Matic sedan ['17-'21] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "AMG C43 4Matic wagon",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "AMG C43 4Matic wagon [Canada: '19-'21] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "AMG C43 4Matic coupe",
+      "years": [
+       2017,
+       2023
+      ],
+      "note": "AMG C43 4Matic coupe ['17-'23] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "AMG C43 4Matic convertible",
+      "years": [
+       2017,
+       2023
+      ],
+      "note": "AMG C43 4Matic convertible ['17-'23] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "AMG E43 4Matic sedan",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "AMG E43 4Matic sedan ['17-'18] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "S450 4Matic sedan",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "S450 4Matic sedan ['18-'20] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "AMG GLC43 4Matic",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "AMG GLC43 4Matic ['17-'22] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "AMG GLC43 4Matic Coupe",
+      "years": [
+       2017,
+       2023
+      ],
+      "note": "AMG GLC43 4Matic Coupe ['17-'23] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "GLE450 AMG Sport 4Matic",
+      "note": "GLE450 AMG Sport 4Matic [Canada only: '16]"
+     },
+     {
+      "value": "AMG GLE43 4Matic",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "AMG GLE43 4Matic ['17-'19] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "GLE450 AMG Sport 4Matic Coupe",
+      "note": "GLE450 AMG Sport 4Matic Coupe ['16]"
+     },
+     {
+      "value": "AMG GLE43 4Matic Coupe",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "AMG GLE43 4Matic Coupe ['17-'19] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "GL450",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "GL450 ['15-'16]"
+     },
+     {
+      "value": "GLS450",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "GLS450 ['17-'19] (3.0-liter twin turbo M276 60° GDI V6)"
+     }
+    ],
+    "8H": [
+     {
+      "value": "AMG C63 S sedan",
+      "years": [
+       2015,
+       2021
+      ],
+      "note": "AMG C63 S sedan ['15-'21] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG C63 S coupe",
+      "years": [
+       2017,
+       2021
+      ],
+      "note": "AMG C63 S coupe ['17-'21, '23] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG C63 S convertible",
+      "years": [
+       2017,
+       2021
+      ],
+      "note": "AMG C63 S convertible ['17-'21, '23] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG C43 4Matic+ sedan",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "AMG C43 4Matic+ sedan ['23-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged port/direct injection M139 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "E350 4Matic sedan",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "E350 4Matic sedan ['10-'11] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "E350 4Matic wagon",
+      "note": "E350 4Matic wagon ['11] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "GLK350 4Matic",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "GLK350 4Matic ['10-'12] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "AMG GLC43 4Matic",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "AMG GLC43 4Matic ['24-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged port/direct injection M139 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GLC43 4Matic Coupe",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "AMG GLC43 4Matic Coupe ['24-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged port/direct injection M139 I4 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "Mercedes-Maybach GLS600",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Mercedes-Maybach GLS600 ['21-] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "53": [
+     {
+      "value": "280CE",
+      "years": [
+       2012,
+       null
+      ],
+      "note": "280CE ['81] (2.7-liter DOHC, 12-valve M110.984 I6)"
+     },
+     {
+      "value": "300CD Turbodiesel",
+      "years": [
+       1982,
+       1985
+      ],
+      "note": "300CD Turbodiesel ['82-'85] (3.0-liter OM617 turbodiesel I5)"
+     }
+    ],
+    "30": [
+     {
+      "value": "300D",
+      "note": "300D ['81] (3.0-liter OM617 diesel I5)"
+     },
+     {
+      "value": "300E",
+      "years": [
+       1986,
+       1992
+      ],
+      "note": "300E ['86-'92] (3.0-liter M103 I6)"
+     },
+     {
+      "value": "300E 4Matic",
+      "years": [
+       1990,
+       1993
+      ],
+      "note": "300E 4Matic ['90-'93] (3.0-liter M103 I6)"
+     }
+    ],
+    "50": [
+     {
+      "value": "300CD",
+      "note": "300CD ['81] (3.0-liter OM617 diesel I5)"
+     },
+     {
+      "value": "300CE",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "300CE ['88-'89] (3.0-liter SOHC, 12 valve M103 I6)"
+     }
+    ],
+    "93": [
+     {
+      "value": "300TD Turbodiesel",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "300TD Turbodiesel ['81-'85] (3.0-liter OM617 turbodiesel I5)"
+     },
+     {
+      "value": "300TD Turbo",
+      "note": "300TD Turbo ['87] (3.0-liter OM603 turbodiesel I6)"
+     }
+    ],
+    "32": [
+     {
+      "value": "300E",
+      "note": "300E ['93]"
+     },
+     {
+      "value": "E320 sedan",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "E320 sedan ['94-'95] (3.2-liter M104 I6)"
+     },
+     {
+      "value": "380SE",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "380SE ['84-'85] (3.8-liter M116 V8)"
+     },
+     {
+      "value": "300SE",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "300SE ['92-'93]"
+     },
+     {
+      "value": "S320 sedan SWB",
+      "years": [
+       1994,
+       1999
+      ],
+      "note": "S320 sedan SWB ['94-'99] (3.2-liter M104 I6)"
+     }
+    ],
+    "51": [
+     {
+      "value": "300CE",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "300CE ['90-'92] (3.0-liter DOHC, 24 valve M104 I6)"
+     },
+     {
+      "value": "500SEL",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "500SEL ['92-'93]"
+     },
+     {
+      "value": "S500 sedan",
+      "years": [
+       1994,
+       1999
+      ],
+      "note": "S500 sedan ['94-'99] (5.0-liter M119 V8)"
+     }
+    ],
+    "66": [
+     {
+      "value": "300CE convertible",
+      "note": "300CE convertible ['93]"
+     },
+     {
+      "value": "E320 convertible",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "E320 convertible ['94-'95] (3.2-liter M104 I6)"
+     },
+     {
+      "value": "SLK32 AMG",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "SLK32 AMG ['02-'04] (3.2-liter SOHC, 18-valve M112 supercharged 90° V6)"
+     },
+     {
+      "value": "500SL",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "500SL ['90-'92] (5.0-liter DOHC, 32-valve M119 V8)"
+     }
+    ],
+    "90": [
+     {
+      "value": "300TE",
+      "years": [
+       1988,
+       1992
+      ],
+      "note": "300TE ['88-'92] (3.0-liter M103 I6)"
+     },
+     {
+      "value": "300TE 4Matic",
+      "years": [
+       1990,
+       1993
+      ],
+      "note": "300TE 4Matic ['90-'93] (3.0-liter M103 I6)"
+     },
+     {
+      "value": "E550 4Matic sedan",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "E550 4Matic sedan ['07-'09] (5.5-liter M273 V8)"
+     }
+    ],
+    "31": [
+     {
+      "value": "E300 Diesel",
+      "note": "E300 Diesel ['95] (3.0-liter DOHC, 24 valve OM606 diesel I6)"
+     }
+    ],
+    "20": [
+     {
+      "value": "E300 Diesel",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "E300 Diesel ['96-'97] (3.0-liter DOHC, 24 valve OM606 diesel I6)"
+     },
+     {
+      "value": "300SD Turbodiesel",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "300SD Turbodiesel ['81-'85] (3.0-liter OM617 turbodiesel I5)"
+     }
+    ],
+    "25": [
+     {
+      "value": "E300 Turbodiesel",
+      "years": [
+       1998,
+       1999
+      ],
+      "note": "E300 Turbodiesel ['98-'99] (3.0-liter DOHC, 24 valve OM606 turbodiesel I6)"
+     },
+     {
+      "value": "300SEL",
+      "years": [
+       1988,
+       1991
+      ],
+      "note": "300SEL ['88-'91] (3.0-liter M103 I6)"
+     },
+     {
+      "value": "300SDL Turbodiesel",
+      "years": [
+       1986,
+       1987
+      ],
+      "note": "300SDL Turbodiesel ['86-'87] (3.0-liter OM603 turbodiesel I6)"
+     },
+     {
+      "value": "380SLC",
+      "note": "380SLC ['81] (3.8-liter M116 V8)"
+     },
+     {
+      "value": "ML320 Bluetec",
+      "note": "ML320 Bluetec ['09] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "R320 Bluetec",
+      "note": "R320 Bluetec ['09] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "GL320 Bluetec",
+      "note": "GL320 Bluetec ['09] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     }
+    ],
+    "55": [
+     {
+      "value": "E320",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "E320 ['96-'97] (3.2-liter M104 I6)"
+     }
+    ],
+    "72": [
+     {
+      "value": "E420",
+      "note": "E420 ['97] (4.2-liter M119 V8)"
+     },
+     {
+      "value": "E550 sedan",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "E550 sedan ['07-'09] (5.5-liter M273 V8)"
+     },
+     {
+      "value": "CLS550 sedan",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "CLS550 sedan ['07-'09] (5.5-liter M273 V8)"
+     },
+     {
+      "value": "CLK550",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "CLK550 ['07-'09 coupe] (5.5-liter M273 V8)"
+     },
+     {
+      "value": "CLK550",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "CLK550 ['07-'09 convertible] (5.5-liter M273 V8)"
+     },
+     {
+      "value": "SL55 AMG",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "SL55 AMG ['07-'08] (5.4-liter SOHC, 24-valve supercharged M113K V8)"
+     },
+     {
+      "value": "ML430",
+      "years": [
+       1999,
+       2001
+      ],
+      "note": "ML430 ['99-'01] (4.3-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "ML550",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "ML550 ['08-'09] (5.5-liter M273 V8)"
+     }
+    ],
+    "70": [
+     {
+      "value": "E430",
+      "years": [
+       1998,
+       2002
+      ],
+      "note": "E430 ['98-'02] (4.3-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "E500 sedan",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "E500 sedan ['03-'06] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "500SEC",
+      "note": "500SEC ['93]"
+     },
+     {
+      "value": "S500 coupe",
+      "years": [
+       1994,
+       1997
+      ],
+      "note": "S500 coupe ['94-'97]"
+     },
+     {
+      "value": "CL500",
+      "years": [
+       1998,
+       1999
+      ],
+      "note": "CL500 ['98-'99] (5.0-liter M119 V8)"
+     },
+     {
+      "value": "S430",
+      "years": [
+       2000,
+       2006
+      ],
+      "note": "S430 ['00-'06] (4.3-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "CLK430",
+      "years": [
+       1999,
+       2002
+      ],
+      "note": "CLK430 ['99-'02 coupe] (4.3-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "CLK430",
+      "years": [
+       2000,
+       2003
+      ],
+      "note": "CLK430 ['00-'03 convertible] (4.3-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "SL63 AMG",
+      "years": [
+       2032,
+       null
+      ],
+      "note": "SL63 AMG ['09] (6.2-liter DOHC, 32-valve M156 V8)"
+     }
+    ],
+    "74": [
+     {
+      "value": "E55 AMG",
+      "years": [
+       1999,
+       2002
+      ],
+      "note": "E55 AMG ['99-'02] (5.4-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "S55 AMG",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "S55 AMG ['03-'06] (5.4-liter SOHC, 24-valve supercharged M113K V8)"
+     },
+     {
+      "value": "CL55 AMG",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "CL55 AMG ['03-'06] (5.4-liter SOHC, 24-valve supercharged M113K V8)"
+     },
+     {
+      "value": "CLK55 AMG",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "CLK55 AMG ['01-'02 coupe] (5.4-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "CLK55 AMG",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "CLK55 AMG ['02 convertible] (5.4-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "SL55 AMG",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "SL55 AMG ['03-'06] (5.4-liter SOHC, 24-valve supercharged M113K V8)"
+     },
+     {
+      "value": "ML55 AMG",
+      "years": [
+       2000,
+       2003
+      ],
+      "note": "ML55 AMG ['00-'03] (5.4-liter SOHC, 24-valve M113 V8)"
+     }
+    ],
+    "82": [
+     {
+      "value": "E320 4Matic sedan",
+      "years": [
+       1998,
+       2002
+      ],
+      "note": "E320 4Matic sedan ['98-'02] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "E320 4Matic wagon",
+      "years": [
+       1998,
+       2003
+      ],
+      "note": "E320 4Matic wagon ['98-'03] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "E320 4Matic sedan",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "E320 4Matic sedan ['04-'05] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "E320 4Matic wagon",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "E320 4Matic wagon ['04-'05] (3.2-liter SOHC, 18-valve M112 90° V6)"
+     }
+    ],
+    "83": [
+     {
+      "value": "E430 4Matic",
+      "years": [
+       2000,
+       2002
+      ],
+      "note": "E430 4Matic ['00-'02] (4.3-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "E500 4Matic sedan",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "E500 4Matic sedan ['04-'06] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "E500 4Matic wagon",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "E500 4Matic wagon ['04-'06] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "S430 4Matic",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "S430 4Matic ['03-'06] (4.3-liter SOHC, 24-valve M113 V8)"
+     }
+    ],
+    "2E": [
+     {
+      "value": "E350 Bluetec sedan",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "E350 Bluetec sedan ['11-'13] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "EQS450 4Matic sedan",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "EQS450 4Matic sedan ['23-] (battery-electric, 2 motors, 4wd, 355 hp)"
+     },
+     {
+      "value": "ML350 Bluetec",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "ML350 Bluetec ['12-'14 & '15 in Canada]"
+     },
+     {
+      "value": "GLE350d",
+      "note": "GLE350d [Canada only: '16] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "GLE350d Coupe",
+      "note": "GLE350d Coupe [Canada only: '16] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "GL350 Bluetec",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "GL350 Bluetec ['13-'16] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "EQS450 4Matic SUV",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "EQS450 4Matic SUV ['23-'25] (battery-electric, 2 motors, 4wd, 355 hp)"
+     },
+     {
+      "value": "EQS400 4Matic SUV",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "EQS400 4Matic SUV ['26-] (battery-electric, 2 motors, 4wd, 355 hp)"
+     }
+    ],
+    "0E": [
+     {
+      "value": "E250 Bluetec sedan",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "E250 Bluetec sedan ['14-'16] (2.1-liter DOHC, 16 valve OM651 turbodiesel I4)"
+     },
+     {
+      "value": "GLK250 Bluetec 4Matic",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "GLK250 Bluetec 4Matic ['13-'15] (2.1-liter DOHC, 16 valve OM651 turbodiesel I4)"
+     },
+     {
+      "value": "ML250 Bluetec",
+      "note": "ML250 Bluetec ['15]"
+     },
+     {
+      "value": "GLE300d",
+      "note": "GLE300d ['16] (2.1-liter DOHC, 16 valve OM651 turbodiesel I4)"
+     }
+    ],
+    "5K": [
+     {
+      "value": "E350 sedan",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "E350 sedan ['12-'16] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "E450 4Matic sedan",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "E450 4Matic sedan ['21-'23] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "CLS450 4Matic sedan",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "CLS450 4Matic sedan ['19-'23] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GT43 4Matic+ 4-Door Coupe",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "AMG GT43 4Matic+ 4-Door Coupe ['21-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "E350 coupe",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "E350 coupe ['12-'14] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "E350 convertible",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "E350 convertible ['12-'14] (3.5-liter M276 60° GDI V6)"
+     },
+     {
+      "value": "E450 4Matic coupe",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "E450 4Matic coupe ['21-'23] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "E450 4Matic convertible",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "E450 4Matic convertible ['21-'23] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLE450",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "GLE450 ['20-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLE450 Coupe",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "GLE450 Coupe [Canada only: '22-'24, US & Canada: '25-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLS450",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "GLS450 ['20-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "6F": [
+     {
+      "value": "E400 sedan",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "E400 sedan ['15-'16] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E450 4Matic All-Terrain wagon",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "E450 4Matic All-Terrain wagon ['24-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "CLS400 sedan",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "CLS400 sedan ['15-'16] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E400 coupe",
+      "years": [
+       2015,
+       2017
+      ],
+      "note": "E400 coupe ['15-'17] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E400 convertible",
+      "years": [
+       2015,
+       2017
+      ],
+      "note": "E400 convertible ['15-'17] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E400 coupe",
+      "note": "E400 coupe ['18] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E400 convertible",
+      "note": "E400 convertible ['18] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "SL400",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "SL400 ['15-'16] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "R350 4Matic",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "R350 4Matic ['10-'11] (3.5-liter M272 90° V6)"
+     }
+    ],
+    "6H": [
+     {
+      "value": "E400 4Matic sedan",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "E400 4Matic sedan ['15-'16] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E400 4Matic wagon",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "E400 4Matic wagon [Canada only: '15-'16] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "CLS400 4Matic sedan",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "CLS400 4Matic sedan ['15-'16] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E400 4Matic coupe",
+      "years": [
+       2015,
+       2017
+      ],
+      "note": "E400 4Matic coupe ['15-'17] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E450 coupe",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "E450 coupe ['19-'20] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E450 convertible",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "E450 convertible ['19-'20] (3.0-liter twin turbo M276 60° GDI V6)"
+     }
+    ],
+    "7C": [
+     {
+      "value": "E550 sedan",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "E550 sedan ['10-'11] (5.5-liter M273 V8)"
+     },
+     {
+      "value": "CLS550 sedan",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "CLS550 sedan ['10-'11] (5.5-liter M273 V8)"
+     },
+     {
+      "value": "E550 coupe",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "E550 coupe ['10-'11] (5.5-liter M273 V8)"
+     },
+     {
+      "value": "E550 convertible",
+      "note": "E550 convertible ['11] (5.5-liter M273 V8)"
+     },
+     {
+      "value": "ML550",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "ML550 ['10-'11] (5.5-liter M273 V8)"
+     },
+     {
+      "value": "GL450",
+      "years": [
+       2013,
+       2014
+      ],
+      "note": "GL450 ['13-'14] (4.7-liter twin turbo M278 GDI V8 - detuned version)"
+     }
+    ],
+    "7E": [
+     {
+      "value": "E63 AMG sedan",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "E63 AMG sedan ['12-'13] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "E63 AMG wagon",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "E63 AMG wagon ['12-'13] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "CLS63 AMG sedan",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "CLS63 AMG sedan ['12-'13] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "S63 AMG",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "S63 AMG ['11-'13] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "CL63 AMG",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "CL63 AMG ['11-'14] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "SL63 AMG",
+      "years": [
+       2013,
+       2019
+      ],
+      "note": "SL63 AMG ['13-'19] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "ML63 AMG",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "ML63 AMG ['12-'15]"
+     },
+     {
+      "value": "AMG GLE63",
+      "years": [
+       2016,
+       2019
+      ],
+      "note": "AMG GLE63 ['16-'19] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "GL63 AMG",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "GL63 AMG ['13-'16] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "Mercedes-Maybach G650 Landaulet",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Mercedes-Maybach G650 Landaulet ['17-'18] (6.0-liter SOHC, 36-valve twin turbo M279 V12) [Middle East market, Not sold in US/Canada]"
+     }
+    ],
+    "7G": [
+     {
+      "value": "E63 AMG S 4Matic sedan",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "E63 AMG S 4Matic sedan ['14-'16] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "E63 AMG S 4Matic wagon",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "E63 AMG S 4Matic wagon ['14-'16] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "CLS63 AMG S 4Matic sedan",
+      "years": [
+       2014,
+       2018
+      ],
+      "note": "CLS63 AMG S 4Matic sedan ['14-'18] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "S600",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "S600 ['10-'13] (5.5-liter SOHC, 36-valve twin turbo M275 V12)"
+     },
+     {
+      "value": "CL600",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "CL600 ['10-'14] (5.5-liter SOHC, 36-valve twin turbo M275 V12)"
+     },
+     {
+      "value": "S600 sedan",
+      "years": [
+       2015,
+       2017
+      ],
+      "note": "S600 sedan ['15-'17] (6.0-liter SOHC, 36-valve twin turbo M277 V12)"
+     },
+     {
+      "value": "Mercedes-Maybach S600 sedan",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "Mercedes-Maybach S600 sedan ['16-'17] (6.0-liter SOHC, 36-valve twin turbo M277 V12)"
+     },
+     {
+      "value": "S580 4Matic sedan",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "S580 4Matic sedan ['21-] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M176 GDI V8 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "Mercedes-Maybach S580 4Matic sedan",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Mercedes-Maybach S580 4Matic sedan ['21-] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M176 GDI V8 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "9B": [
+     {
+      "value": "E550 4Matic sedan",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "E550 4Matic sedan ['12-'14, Canada only: '15-'16] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "CLS550 4Matic sedan",
+      "years": [
+       2012,
+       2018
+      ],
+      "note": "CLS550 4Matic sedan ['12-'18] (4.7-liter twin turbo M278 GDI V8)"
+     }
+    ],
+    "9C": [
+     {
+      "value": "E63 AMG 4Matic sedan",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "E63 AMG 4Matic sedan ['14-'15] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "CLS63 AMG 4Matic sedan",
+      "note": "CLS63 AMG 4Matic sedan ['14] (5.5-liter twin turbo M157 GDI V8)"
+     }
+    ],
+    "9F": [
+     {
+      "value": "E400 Hybrid sedan",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "E400 Hybrid sedan ['13-'15] (Mild Hybrid: 3.5-liter M276 60° GDI V6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "S400 Hybrid",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "S400 Hybrid ['10-'13] (Mild Hybrid: 3.5-liter M272 90° Atkinson-cycle V6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "ML450 Hybrid 4Matic",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "ML450 Hybrid 4Matic ['10-'11] (2-Mode Hybrid: 3.5-liter Atkinson-cycle M272 90° V6 + 2 electric motors, Nickel–metal hydride battery)"
+     }
+    ],
+    "9H": [
+     {
+      "value": "E250 Bluetec 4Matic sedan",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "E250 Bluetec 4Matic sedan ['14-'16] (2.1-liter DOHC, 16 valve turbodiesel I4)"
+     }
+    ],
+    "6J": [
+     {
+      "value": "E450 4Matic sedan",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "E450 4Matic sedan ['19-'20] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E450 4Matic wagon",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "E450 4Matic wagon ['19-'20] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E450 4Matic coupe",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "E450 4Matic coupe ['19-'20] (3.0-liter twin turbo M276 60° GDI V6)"
+     },
+     {
+      "value": "E450 4Matic convertible",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "E450 4Matic convertible ['19-'20] (3.0-liter twin turbo M276 60° GDI V6)"
+     }
+    ],
+    "6B": [
+     {
+      "value": "AMG E53 4Matic sedan",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "AMG E53 4Matic sedan ['19-'23] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "E450 4Matic sedan",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "E450 4Matic sedan ['24-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG CLS53 4Matic sedan",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "AMG CLS53 4Matic sedan ['19-'21] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GT53 4Matic+ 4-Door Coupe",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "AMG GT53 4Matic+ 4-Door Coupe ['19-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG E53 4Matic coupe",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "AMG E53 4Matic coupe ['19-'23] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG E53 4Matic convertible",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "AMG E53 4Matic convertible ['19-'23] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "CLE450 4Matic coupe",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "CLE450 4Matic coupe ['24-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "CLE450 4Matic convertible",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "CLE450 4Matic convertible ['24-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GLE53",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "AMG GLE53 ['21-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GLE53 Coupe",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "AMG GLE53 Coupe ['21-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "G550",
+      "years": [
+       2019,
+       2024
+      ],
+      "note": "G550 ['19-'24] (4.0-liter twin turbo M176 GDI V8)"
+     }
+    ],
+    "8K": [
+     {
+      "value": "AMG E63 S 4Matic sedan",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "AMG E63 S 4Matic sedan ['18-'21, '23] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG E63 S 4Matic wagon",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "AMG E63 S 4Matic wagon ['18-'21, '23] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG GT63 S 4Matic+ 4-Door Coupe",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "AMG GT63 S 4Matic+ 4-Door Coupe ['19-'21, '23] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG GLC63 S 4Matic Coupe",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "AMG GLC63 S 4Matic Coupe ['18-'21] (4.0-liter twin turbo M177 GDI V8)"
+     },
+     {
+      "value": "AMG GLE63 S",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "AMG GLE63 S ['21-] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GLE63 S Coupe",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "AMG GLE63 S Coupe ['21-] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GLS63 4MATIC+",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "AMG GLS63 4MATIC+ ['21-] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "6A": [
+     {
+      "value": "E450 4Matic All-Terrain wagon",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "E450 4Matic All-Terrain wagon ['21-'23] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "6D": [
+     {
+      "value": "AMG E53e 4Matic+ sedan",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "AMG E53e 4Matic+ sedan ['25-] (PHEV: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG E53e 4Matic+ wagon",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "AMG E53e 4Matic+ wagon ['26-] (PHEV: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "S550 Plug-in Hybrid",
+      "note": "S550 Plug-in Hybrid ['15]"
+     },
+     {
+      "value": "S550e",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "S550e ['16-'17] (PHEV: 3.0-liter twin turbo M276 60° GDI V6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "S500 4Matic sedan",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "S500 4Matic sedan ['21-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLE550e 4Matic",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "GLE550e 4Matic ['16-'18] (PHEV: 3.0-liter twin turbo M276 60° GDI V6 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "75": [
+     {
+      "value": "CLS500 sedan",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "CLS500 sedan ['06] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "S500",
+      "years": [
+       2000,
+       2006
+      ],
+      "note": "S500 ['00-'06] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "CL500",
+      "years": [
+       2000,
+       2006
+      ],
+      "note": "CL500 ['00-'06] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "CLK500",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "CLK500 ['03-'06 coupe] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "CLK500",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "CLK500 ['04-'06 convertible] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "SL500",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "SL500 ['03-'06] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "ML500",
+      "years": [
+       2002,
+       2005
+      ],
+      "note": "ML500 ['02-'05] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "ML500",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "ML500 ['06-'07] (5.0-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "R500",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "R500 ['06-'07] (5.0-liter SOHC, 24-valve M113 V8)"
+     }
+    ],
+    "7D": [
+     {
+      "value": "CLS550 sedan",
+      "years": [
+       2012,
+       2018
+      ],
+      "note": "CLS550 sedan ['12-'18] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "S550",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "S550 ['12-'13] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "S560e",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "S560e ['19-'20] (PHEV: 3.0-liter twin turbo M276 60° GDI V6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "E550 coupe",
+      "years": [
+       2012,
+       2017
+      ],
+      "note": "E550 coupe ['12-'17] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "E550 convertible",
+      "years": [
+       2012,
+       2017
+      ],
+      "note": "E550 convertible ['12-'17] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "SLK55 AMG",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "SLK55 AMG ['10] (5.4-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "SL550",
+      "years": [
+       2013,
+       2020
+      ],
+      "note": "SL550 ['13-'20] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "ML550",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "ML550 ['12-'14 & '15 in Canada]"
+     },
+     {
+      "value": "GLE550",
+      "years": [
+       2016,
+       2019
+      ],
+      "note": "GLE550 [Canada only: '16-'19] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "GL550",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "GL550 ['13-'16]"
+     },
+     {
+      "value": "GLS550",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "GLS550 ['17-'19] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "G63 AMG",
+      "years": [
+       2013,
+       2018
+      ],
+      "note": "G63 AMG ['13-'18] (5.5-liter twin turbo M157 GDI V8)"
+     }
+    ],
+    "5J": [
+     {
+      "value": "CLS450 sedan",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "CLS450 sedan ['19-'21] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "E450 coupe",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "E450 coupe ['21-'23] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "E450 convertible",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "E450 convertible ['21-'23] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "SLK350",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "SLK350 ['10-'11] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "ML350 2wd",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "ML350 2wd ['13-'15]"
+     },
+     {
+      "value": "GLE350 2wd",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "GLE350 2wd ['16-'18] (3.5-liter M276 60° GDI V6)"
+     }
+    ],
+    "7K": [
+     {
+      "value": "AMG GT63 S E Performance 4Matic+ 4-Door Coupe",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "AMG GT63 S E Performance 4Matic+ 4-Door Coupe ['24-] (PHEV: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "S65 AMG",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "S65 AMG ['10-'13] (6.0-liter SOHC, 36-valve twin turbo M275 AMG V12)"
+     },
+     {
+      "value": "CL65 AMG",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "CL65 AMG ['10-'14] (6.0-liter SOHC, 36-valve twin turbo M275 AMG V12)"
+     },
+     {
+      "value": "S65 AMG sedan",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "S65 AMG sedan ['15-'20] (6.0-liter SOHC, 36-valve twin turbo M279 AMG V12)"
+     },
+     {
+      "value": "S65 AMG coupe",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "S65 AMG coupe ['15-'20] (6.0-liter SOHC, 36-valve twin turbo M279 AMG V12)"
+     },
+     {
+      "value": "S65 AMG convertible",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "S65 AMG convertible ['17-'20] (6.0-liter SOHC, 36-valve twin turbo M279 AMG V12)"
+     },
+     {
+      "value": "Mercedes-Maybach S650 convertible",
+      "years": [
+       2036,
+       null
+      ],
+      "note": "Mercedes-Maybach S650 convertible ['17] (6.0-liter SOHC, 36-valve twin turbo M279 AMG V12)"
+     },
+     {
+      "value": "Mercedes-Maybach S680 4Matic sedan",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Mercedes-Maybach S680 4Matic sedan ['22-] (6.0-liter SOHC, 36-valve twin turbo M279 V12)"
+     },
+     {
+      "value": "Maybach 57S",
+      "years": [
+       2036,
+       null
+      ],
+      "note": "Maybach 57S ['10] (6.0-liter SOHC, 36-valve twin turbo M285.980 V12)"
+     },
+     {
+      "value": "Maybach 62S",
+      "note": "Maybach 62S ['10]"
+     },
+     {
+      "value": "62S Landaulet",
+      "years": [
+       2036,
+       null
+      ],
+      "note": "62S Landaulet ('10) (6.0-liter SOHC, 36-valve twin turbo M285.980 V12)"
+     },
+     {
+      "value": "SL65 AMG",
+      "years": [
+       2036,
+       null
+      ],
+      "note": "SL65 AMG ['11] (6.0-liter SOHC, 36-valve twin turbo M275 AMG V12)"
+     },
+     {
+      "value": "SL65 AMG",
+      "years": [
+       2013,
+       2018
+      ],
+      "note": "SL65 AMG ['13-'18] (6.0-liter SOHC, 36-valve twin turbo M279 V12)"
+     },
+     {
+      "value": "AMG GT 2-d coupe R",
+      "years": [
+       2018,
+       2021
+      ],
+      "note": "AMG GT 2-d coupe R ['18-'21] (4.0-liter twin turbo M178 GDI V8)"
+     },
+     {
+      "value": "AMG GT 2-d coupe R Pro",
+      "note": "AMG GT 2-d coupe R Pro ['20] (4.0-liter twin turbo M178 GDI V8)"
+     },
+     {
+      "value": "AMG GT 2-d roadster R",
+      "note": "AMG GT 2-d roadster R ['20] (4.0-liter twin turbo M178 GDI V8)"
+     }
+    ],
+    "2B": [
+     {
+      "value": "EQE350+ sedan",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "EQE350+ sedan ['23-'25] (battery-electric, 1 rear motor, Rwd, 288 hp)"
+     },
+     {
+      "value": "EQE320+ sedan",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "EQE320+ sedan ['26-] (battery-electric, 1 rear motor, Rwd, 315 hp)"
+     },
+     {
+      "value": "EQE350+ SUV",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "EQE350+ SUV ['23-'25] (battery-electric, 1 rear motor, Rwd, 288 hp)"
+     },
+     {
+      "value": "EQE320+ SUV",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "EQE320+ SUV ['26-] (battery-electric, 1 rear motor, Rwd, 315 hp)"
+     }
+    ],
+    "1C": [
+     {
+      "value": "EQE350 4Matic sedan",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "EQE350 4Matic sedan ['23-'25] (battery-electric, 2 motors, 4wd, 288 hp)"
+     },
+     {
+      "value": "EQE320 4Matic sedan",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "EQE320 4Matic sedan ['26-] (battery-electric, 2 motors, 4wd, 315 hp)"
+     },
+     {
+      "value": "EQE350 4Matic SUV",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "EQE350 4Matic SUV ['23-'25] (battery-electric, 2 motors, 4wd, 288 hp)"
+     },
+     {
+      "value": "EQE320 4Matic SUV",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "EQE320 4Matic SUV ['26-] (battery-electric, 2 motors, 4wd, 315 hp)"
+     }
+    ],
+    "2C": [
+     {
+      "value": "EQE500 4Matic sedan",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "EQE500 4Matic sedan ['23-'25] (battery-electric, 2 motors, 4wd, 402 hp)"
+     },
+     {
+      "value": "EQE500 4Matic SUV",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "EQE500 4Matic SUV ['23-'25] (battery-electric, 2 motors, 4wd, 402 hp)"
+     }
+    ],
+    "35": [
+     {
+      "value": "420SEL",
+      "years": [
+       1986,
+       1991
+      ],
+      "note": "420SEL ['86-'91] (4.2-liter M116 V8)"
+     },
+     {
+      "value": "350SDL Turbodiesel",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "350SDL Turbodiesel ['90-'91] (3.4-liter OM603 turbodiesel I6)"
+     }
+    ],
+    "37": [
+     {
+      "value": "500SEL",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "500SEL ['84-'85] (5.0-liter M117 V8)"
+     },
+     {
+      "value": "G550",
+      "note": "G550 ['09] (5.5-liter M273 V8)"
+     }
+    ],
+    "39": [
+     {
+      "value": "560SEL",
+      "years": [
+       1986,
+       1991
+      ],
+      "note": "560SEL ['86-'91] (5.5-liter M117 V8)"
+     }
+    ],
+    "43": [
+     {
+      "value": "380SEC",
+      "years": [
+       1982,
+       1983
+      ],
+      "note": "380SEC ['82-'83] (3.8-liter M116 V8)"
+     },
+     {
+      "value": "400SEL",
+      "note": "400SEL ['93]"
+     },
+     {
+      "value": "S420",
+      "years": [
+       1994,
+       1999
+      ],
+      "note": "S420 ['94-'99] (4.2-liter M119 V8)"
+     }
+    ],
+    "44": [
+     {
+      "value": "500SEC",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "500SEC ['84-'85] (5.0-liter M117 V8)"
+     }
+    ],
+    "45": [
+     {
+      "value": "560SEC",
+      "years": [
+       1986,
+       1991
+      ],
+      "note": "560SEC ['86-'91] (5.5-liter M117 V8)"
+     },
+     {
+      "value": "380SL",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "380SL ['81-'85] (3.8-liter M116 V8)"
+     }
+    ],
+    "42": [
+     {
+      "value": "400SE",
+      "note": "400SE ['92] (4.2-liter M119 V8)"
+     }
+    ],
+    "57": [
+     {
+      "value": "600SEL",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "600SEL ['92-'93]"
+     },
+     {
+      "value": "S600 sedan",
+      "years": [
+       1994,
+       1999
+      ],
+      "note": "S600 sedan ['94-'99] (6.0-liter DOHC, 48-valve M120 V12)"
+     },
+     {
+      "value": "ML350",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "ML350 ['03-'05] (3.7-liter SOHC, 18-valve M112 90° V6)"
+     }
+    ],
+    "73": [
+     {
+      "value": "S55 AMG",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "S55 AMG ['01-'02] (5.4-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "CL55 AMG",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "CL55 AMG ['01-'02] (5.4-liter SOHC, 24-valve M113 V8)"
+     },
+     {
+      "value": "SLK55 AMG",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "SLK55 AMG ['05-'09] (5.4-liter SOHC, 24-valve M113 V8)"
+     }
+    ],
+    "78": [
+     {
+      "value": "S600",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "S600 ['01-'02] (5.8-liter SOHC, 36-valve M137 V12)"
+     },
+     {
+      "value": "CL600",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "CL600 ['01-'02] (5.8-liter SOHC, 36-valve M137 V12)"
+     },
+     {
+      "value": "Maybach 57",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "Maybach 57 ['04-'09] (5.5-liter SOHC, 36-valve twin turbo M285.950 V12)"
+     },
+     {
+      "value": "Maybach 62",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "Maybach 62 ['04-'09] (5.5-liter SOHC, 36-valve twin turbo M285.950 V12)"
+     }
+    ],
+    "79": [
+     {
+      "value": "S65 AMG",
+      "years": [
+       2036,
+       null
+      ],
+      "note": "S65 AMG ['06] (6.0-liter SOHC, 36-valve twin turbo M275 AMG V12)"
+     },
+     {
+      "value": "CL65 AMG",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "CL65 AMG ['05-'06] (6.0-liter SOHC, 36-valve twin turbo M275 AMG V12)"
+     },
+     {
+      "value": "S65 AMG",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "S65 AMG ['07-09] (6.0-liter SOHC, 36-valve twin turbo M275 AMG V12)"
+     },
+     {
+      "value": "CL65 AMG",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "CL65 AMG ['08-'09] (6.0-liter SOHC, 36-valve twin turbo M275 AMG V12)"
+     },
+     {
+      "value": "Maybach 57S",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Maybach 57S ['06-'09] (6.0-liter SOHC, 36-valve twin turbo M285.980 V12)"
+     },
+     {
+      "value": "Maybach 62S",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "Maybach 62S ['07-'09]"
+     },
+     {
+      "value": "62S Landaulet",
+      "years": [
+       2036,
+       null
+      ],
+      "note": "62S Landaulet ('09) (6.0-liter SOHC, 36-valve twin turbo M285.980 V12)"
+     },
+     {
+      "value": "SL65 AMG",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "SL65 AMG ['05-'09]"
+     },
+     {
+      "value": "SL65 AMG Black Series",
+      "years": [
+       2036,
+       null
+      ],
+      "note": "SL65 AMG Black Series ['09] (6.0-liter SOHC, 36-valve twin turbo M275 AMG V12)"
+     }
+    ],
+    "67": [
+     {
+      "value": "S350",
+      "years": [
+       2018,
+       null
+      ],
+      "note": "S350 ['06] (3.7-liter SOHC, 18-valve M112 90° V6)"
+     },
+     {
+      "value": "500SL",
+      "note": "500SL ['93]"
+     },
+     {
+      "value": "SL500",
+      "years": [
+       1994,
+       1998
+      ],
+      "note": "SL500 ['94-'98] (5.0-liter DOHC, 32-valve M119 V8)"
+     }
+    ],
+    "71": [
+     {
+      "value": "S550",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "S550 ['07-'09] (5.5-liter DOHC, 32-valve M273 V8)"
+     },
+     {
+      "value": "CL550",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "CL550 ['07-'08] (5.5-liter DOHC, 32-valve M273 V8)"
+     },
+     {
+      "value": "SL550",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "SL550 ['07-'09] (5.5-liter DOHC, 32-valve M273 V8)"
+     },
+     {
+      "value": "GL450",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "GL450 ['07-'09] (4.7-liter M273 V8)"
+     },
+     {
+      "value": "G55 AMG",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "G55 AMG ['05-'09] (5.4-liter SOHC, 24-valve supercharged M113K V8)"
+     }
+    ],
+    "7B": [
+     {
+      "value": "S550",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "S550 ['10-'11] (5.5-liter DOHC, 32-valve M273 V8)"
+     },
+     {
+      "value": "SL550",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "SL550 ['11-'12] (5.5-liter DOHC, 32-valve M273 V8)"
+     },
+     {
+      "value": "GL450",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "GL450 ['10-'12] (4.7-liter M273 V8)"
+     },
+     {
+      "value": "G55 AMG",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "G55 AMG ['10-'11] (5.4-liter SOHC, 24-valve supercharged M113K V8)"
+     }
+    ],
+    "86": [
+     {
+      "value": "S550 4Matic",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "S550 4Matic ['07-'09] (5.5-liter DOHC, 32-valve M273 V8)"
+     },
+     {
+      "value": "CL550 4Matic",
+      "years": [
+       2032,
+       null
+      ],
+      "note": "CL550 4Matic ['09] (5.5-liter DOHC, 32-valve M273 V8)"
+     },
+     {
+      "value": "ML350 4Matic",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "ML350 4Matic ['06-'09] (3.5-liter M272 90° V6)"
+     },
+     {
+      "value": "GL550",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "GL550 ['08-'09] (5.5-liter M273 V8)"
+     }
+    ],
+    "9E": [
+     {
+      "value": "S550 4Matic",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "S550 4Matic ['12-'13] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "CL550 4Matic",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "CL550 4Matic ['11-'14] (4.7-liter twin turbo M278 GDI V8)"
+     }
+    ],
+    "8C": [
+     {
+      "value": "S550 sedan",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "S550 sedan ['14-'17] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "S550 convertible",
+      "note": "S550 convertible ['17] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "AMG S63 E Performance 4Matic+",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "AMG S63 E Performance 4Matic+ ['24-] (PHEV: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG SL63 S E Performance 4Matic+",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "AMG SL63 S E Performance 4Matic+ ['24-] (PHEV: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG GT 2-d coupe",
+      "note": "AMG GT 2-d coupe (base model) ['21] (4.0-liter twin turbo M178 GDI V8)"
+     },
+     {
+      "value": "AMG GT roadster",
+      "note": "AMG GT roadster (base model) ['21] (4.0-liter twin turbo M178 GDI V8)"
+     },
+     {
+      "value": "AMG GT63 S E Performance 4Matic+ coupe",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "AMG GT63 S E Performance 4Matic+ coupe ['25-] (PHEV: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "8F": [
+     {
+      "value": "S550 4Matic sedan",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "S550 4Matic sedan ['14-'17] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "Mercedes-Maybach S550 4Matic sedan",
+      "note": "Mercedes-Maybach S550 4Matic sedan ['17] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "S550 4Matic coupe",
+      "years": [
+       2015,
+       2017
+      ],
+      "note": "S550 4Matic coupe ['15-'17] (4.7-liter twin turbo M278 GDI V8)"
+     },
+     {
+      "value": "GLE580",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "GLE580 ['24-] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "GLS580",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "GLS580 ['24-] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "7J": [
+     {
+      "value": "S63 AMG 4Matic sedan",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "S63 AMG 4Matic sedan ['14-'17] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "S63 AMG 4Matic coupe",
+      "years": [
+       2015,
+       2017
+      ],
+      "note": "S63 AMG 4Matic coupe ['15-'17] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "S63 AMG 4Matic convertible",
+      "note": "S63 AMG 4Matic convertible ['17] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "Maybach 57",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "Maybach 57 ['10-'12] (5.5-liter SOHC, 36-valve twin turbo M285.950 V12)"
+     },
+     {
+      "value": "Maybach 62",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "Maybach 62 ['10-'12] (5.5-liter SOHC, 36-valve twin turbo M285.950 V12)"
+     },
+     {
+      "value": "SLS AMG GT coupe",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "SLS AMG GT coupe ['13-'15] (6.2-liter M159 V8)"
+     },
+     {
+      "value": "SLS AMG GT roadster",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "SLS AMG GT roadster ['13-'15] (6.2-liter M159 V8)"
+     },
+     {
+      "value": "AMG GT 2-d coupe S",
+      "years": [
+       2016,
+       2019
+      ],
+      "note": "AMG GT 2-d coupe S ['16-'19] (4.0-liter twin turbo M178 GDI V8)"
+     },
+     {
+      "value": "AMG GT63 4Matic+ coupe",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "AMG GT63 4Matic+ coupe ['24-] (4.0-liter twin turbo M177 GDI V8)"
+     }
+    ],
+    "6K": [
+     {
+      "value": "S580e 4Matic sedan",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "S580e 4Matic sedan ['23-] (PHEV: 3.0-liter turbo M256 GDI I6 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "2D": [
+     {
+      "value": "EQS450+ sedan",
+      "years": [
+       2022,
+       2023
+      ],
+      "note": "EQS450+ sedan ['22-'23] (battery-electric, 1 rear motor, Rwd, 329 hp)"
+     },
+     {
+      "value": "EQS450+ sedan",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "EQS450+ sedan ['24-] (battery-electric, 1 rear motor, Rwd, 355 hp)"
+     },
+     {
+      "value": "EQS450+ SUV",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "EQS450+ SUV ['23-'25] (battery-electric, 1 rear motor, Rwd, 355 hp)"
+     }
+    ],
+    "5F": [
+     {
+      "value": "AMG EQS 4Matic+ sedan",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "AMG EQS 4Matic+ sedan ['22-'25] (battery-electric, 2 motors, 4wd, 649 hp)"
+     },
+     {
+      "value": "Mercedes-Maybach EQS680 4Matic SUV",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "Mercedes-Maybach EQS680 4Matic SUV ['24-] (battery-electric, 2 motors, 4wd, 649 hp)"
+     },
+     {
+      "value": "G550 4x4²",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "G550 4x4² ['17-'18] (4.0-liter twin turbo M176 GDI V8)"
+     }
+    ],
+    "6C": [
+     {
+      "value": "AMG CLE53 4Matic coupe",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "AMG CLE53 4Matic coupe ['24-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     },
+     {
+      "value": "AMG CLE53 4Matic convertible",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "AMG CLE53 4Matic convertible ['25-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "49": [
+     {
+      "value": "SLK230 Kompressor",
+      "years": [
+       2001,
+       2004
+      ],
+      "note": "SLK230 Kompressor ['01-'04] (2.3-liter M111.983 supercharged I4)"
+     },
+     {
+      "value": "G500",
+      "years": [
+       2002,
+       2008
+      ],
+      "note": "G500 ['02-'08] (5.0-liter SOHC, 24-valve M113 V8)"
+     }
+    ],
+    "58": [
+     {
+      "value": "SLK350",
+      "note": "SLK350 ['09] (3.5-liter M272 90° V6)"
+     }
+    ],
+    "3J": [
+     {
+      "value": "SLK300",
+      "note": "SLK300 ['16]"
+     },
+     {
+      "value": "SLC300",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "SLC300 ['17-'20] (2.0-liter turbocharged GDI M274 I4)"
+     }
+    ],
+    "7F": [
+     {
+      "value": "SLK55 AMG",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "SLK55 AMG ['12-'16] (5.5-liter M152 GDI V8)"
+     },
+     {
+      "value": "AMG GLE63 S",
+      "years": [
+       2016,
+       2019
+      ],
+      "note": "AMG GLE63 S ['16-'19] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "AMG GLE63 S Coupe",
+      "years": [
+       2016,
+       2019
+      ],
+      "note": "AMG GLE63 S Coupe ['16-'19] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "AMG GLS63",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "AMG GLS63 ['17-'19] (5.5-liter twin turbo M157 GDI V8)"
+     },
+     {
+      "value": "G65 AMG",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "G65 AMG ['16-'18] (6.0-liter SOHC, 36-valve twin turbo M279 V12)"
+     }
+    ],
+    "48": [
+     {
+      "value": "560SL",
+      "years": [
+       1986,
+       1989
+      ],
+      "note": "560SL ['86-'89] (5.5-liter M117 V8)"
+     }
+    ],
+    "63": [
+     {
+      "value": "SL320",
+      "years": [
+       1994,
+       1997
+      ],
+      "note": "SL320 ['94-'97] (3.2-liter DOHC, 24 valve M104 I6)"
+     }
+    ],
+    "68": [
+     {
+      "value": "SL500",
+      "years": [
+       1999,
+       2002
+      ],
+      "note": "SL500 ['99-'02] (5.0-liter SOHC, 24-valve M113 V8)"
+     }
+    ],
+    "7A": [
+     {
+      "value": "SL63 AMG",
+      "years": [
+       2011,
+       2012
+      ],
+      "note": "SL63 AMG ['11-'12] (6.2-liter DOHC, 32-valve M156 V8)"
+     }
+    ],
+    "5A": [
+     {
+      "value": "AMG SL43",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "AMG SL43 ['23-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged port/direct injection M139 I4 + 2 electric motors, lithium-ion battery)"
+     },
+     {
+      "value": "AMG G63",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "AMG G63 ['25-] (EQ Boost 48v Mild Hybrid: 4.0-liter twin turbo M177 GDI V8 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "AJ": [
+     {
+      "value": "AMG GT 2-d coupe S",
+      "note": "AMG GT 2-d coupe S ['16] (4.0-liter twin turbo M178 GDI V8)"
+     }
+    ],
+    "4C": [
+     {
+      "value": "AMG GT43 coupe",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "AMG GT43 coupe ['25-] (EQ Boost 48v Mild Hybrid: 2.0-liter turbocharged port/direct injection M139 I4 + 2 electric motors, lithium-ion battery)"
+     }
+    ],
+    "0C": [
+     {
+      "value": "EQB250+",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "EQB250+ ['23-'25] (battery-electric, 1 front motor, Fwd, 188 hp)"
+     }
+    ],
+    "0K": [
+     {
+      "value": "EQB300 4Matic",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "EQB300 4Matic ['22-'25] (battery-electric, 2 motors, 4wd, 225 hp)"
+     }
+    ],
+    "2F": [
+     {
+      "value": "ML350 Bluetec",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "ML350 Bluetec ['10-'11] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "R350 Bluetec",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "R350 Bluetec ['10-'12 & '13 in Canada] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     },
+     {
+      "value": "GL350 Bluetec",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "GL350 Bluetec ['10-'12] (3.0-liter DOHC, 24 valve OM642 72° turbodiesel V6)"
+     }
+    ],
+    "3H": [
+     {
+      "value": "G550",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "G550 ['10-'15] (5.5-liter M273 V8)"
+     }
+    ],
+    "3K": [
+     {
+      "value": "G550",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "G550 ['16-'18] (4.0-liter twin turbo M176 GDI V8)"
+     }
+    ],
+    "46": [
+     {
+      "value": "G55 AMG",
+      "years": [
+       2003,
+       2004
+      ],
+      "note": "G55 AMG ['03-'04] (5.4-liter SOHC, 24-valve M113 V8)"
+     }
+    ],
+    "1A": [
+     {
+      "value": "G550",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "G550 ['25-] (EQ Boost 48v Mild Hybrid: 3.0-liter turbo/e-supercharged M256 GDI I6 + electric motor, lithium-ion battery)"
+     }
+    ],
+    "0A": [
+     {
+      "value": "G580 with EQ Technology",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "G580 with EQ Technology ['25-] (battery-electric, 4 motors, 4wd, 579 hp)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Sindelfingen"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "B": [
+     {
+      "value": "Sindelfingen"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "C": [
+     {
+      "value": "Sindelfingen"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "D": [
+     {
+      "value": "Sindelfingen"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "E": [
+     {
+      "value": "Sindelfingen"
+     },
+     {
+      "value": "Germany",
+      "note": "Germany (through 2000)"
+     },
+     {
+      "value": "Juiz de Fora"
+     },
+     {
+      "value": "Minas Gerais"
+     },
+     {
+      "value": "Brazil",
+      "years": [
+       2001,
+       2011
+      ],
+      "note": "Brazil (from 2001-2011)"
+     },
+     {
+      "value": "Mishawaka"
+     },
+     {
+      "value": "Indiana"
+     },
+     {
+      "value": "US",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "US (AM General plant) ('16-'17 R-Class for China)"
+     }
+    ],
+    "F": [
+     {
+      "value": "Bremen"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "G": [
+     {
+      "value": "Bremen"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "H": [
+     {
+      "value": "Bremen"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "L": [
+     {
+      "value": "Pekan"
+     },
+     {
+      "value": "Pahang"
+     },
+     {
+      "value": "Malaysia",
+      "note": "Malaysia (HICOM Automotive Manufacturers plant)"
+     }
+    ],
+    "M": [
+     {
+      "value": "Woking"
+     },
+     {
+      "value": "England"
+     },
+     {
+      "value": "UK",
+      "note": "UK (SLR McLaren) (McLaren Automotive plant)"
+     }
+    ],
+    "T": [
+     {
+      "value": "Osnabrück"
+     },
+     {
+      "value": "Germany",
+      "note": "Germany (Karmann plant)"
+     }
+    ],
+    "U": [
+     {
+      "value": "Sindelfingen"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "V": [
+     {
+      "value": "Uusikaupunki"
+     },
+     {
+      "value": "Finland",
+      "note": "Finland (Valmet Automotive plant)"
+     }
+    ],
+    "W": [
+     {
+      "value": "Aguascalientes"
+     },
+     {
+      "value": "Mexico",
+      "note": "Mexico (COMPAS plant)"
+     }
+    ],
+    "X": [
+     {
+      "value": "Graz"
+     },
+     {
+      "value": "Austria",
+      "note": "Austria (Magna Steyr plant)"
+     }
+    ],
+    "1": [
+     {
+      "value": "Pune"
+     },
+     {
+      "value": "Maharashtra"
+     },
+     {
+      "value": "India"
+     }
+    ]
+   }
+  }
+ }
+}

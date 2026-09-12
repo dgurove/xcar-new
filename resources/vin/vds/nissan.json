@@ -1,0 +1,22 @@
+{
+  "_note": "Nissan. Таблицы из vininfo (BSD-3, https://github.com/idlesign/vininfo).",
+  "sections": {
+    "engine": {"at": ["vds", 0], "map": {
+      "A": "VG30D / VK45DE / VQ35DE / VK56DE / VQ40DE / QR25DE",
+      "B": "KA24DE / SR20DE / VQ35HR / MR18DE / QR25DE",
+      "C": "SR20DE / VG30DETT / QG18DE", "D": "KA24DE / QG18DE / VQ35DE",
+      "E": "VE30DE / GA16DE / VG33E", "F": "KA24E", "H": "VG30E",
+      "M": "KA24DE / VG33ER", "N": "VH45DE", "R": "VG30DE", "S": "KA24E", "T": "VG33E"}},
+    "model": {"at": ["vds", 1], "map": {
+      "A": "Armada / Titan / Maxima", "B": "Sentra", "C": "Versa", "D": "Truck / Xterra / Frontier",
+      "J": "Maxima", "N": "Xterra", "R": "Pathfinder", "S": "240SX / Rogue", "U": "Altima",
+      "Z": "300Z / 350Z / Murano"}},
+    "body": {"at": ["vds", 3], "map": {
+      "1": "Sedan, 4-Door", "4": "Coupe, 2-Door", "5": "Station Wagon, 5-Door",
+      "6": "Cabriolet, 2-Door", "7": "Crew Cab Truck", "8": "Station Wagon, 8-Door"}},
+    "plant": {"at": ["vis", 1], "map": {
+      "C": "Смирна", "L": "Агуаскальентес", "M": "Тотиги", "N": "Кантон",
+      "T": "Тотиги / Оппама", "W": "Кюсю"}},
+    "serial": {"at": ["vis", "2:"]}
+  }
+}

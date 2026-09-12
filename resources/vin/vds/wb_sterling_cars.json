@@ -1,0 +1,152 @@
+{
+ "_brand": "Sterling Cars",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Sterling_Cars/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "SAX"
+ ],
+ "_market": null,
+ "sections": {
+  "model@4:6": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:6"
+   ],
+   "map": {
+    "XS": [
+     {
+      "value": "Sterling 800 series",
+      "note": "Sterling 800 series (825, 827)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "M": [
+     {
+      "value": "Cowley"
+     },
+     {
+      "value": "England"
+     },
+     {
+      "value": "UK"
+     }
+    ]
+   }
+  },
+  "transmission@8:9": {
+   "field": "transmission",
+   "at": [
+    "vin",
+    "8:9"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Honda C25A 2.5L SOHC"
+     },
+     {
+      "value": "24-valve 90° V6. 49-state emissions. Honda 5-speed manual",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "24-valve 90° V6. 49-state emissions. Honda 5-speed manual. ('87-'88 825)"
+     }
+    ],
+    "B": [
+     {
+      "value": "Honda C25A 2.5L SOHC"
+     },
+     {
+      "value": "24-valve 90° V6. 49-state emissions. Honda 4-speed automatic",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "24-valve 90° V6. 49-state emissions. Honda 4-speed automatic. ('87-'88 825)"
+     }
+    ],
+    "C": [
+     {
+      "value": "Honda C25A 2.5L SOHC"
+     },
+     {
+      "value": "24-valve 90° V6. California emissions. Honda 5-speed manual",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "24-valve 90° V6. California emissions. Honda 5-speed manual. ('87-'88 825)"
+     }
+    ],
+    "D": [
+     {
+      "value": "Honda C25A 2.5L SOHC"
+     }
+    ],
+    "G": [
+     {
+      "value": "Honda C27A 2.7L SOHC"
+     },
+     {
+      "value": "24-valve 90° V6 w",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "24-valve 90° V6 w/variable intake manifold. 49-state emissions. Honda 5-speed manual. ('89-'91 827)"
+     }
+    ],
+    "H": [
+     {
+      "value": "Honda C27A 2.7L SOHC"
+     },
+     {
+      "value": "24-valve 90° V6 w",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "24-valve 90° V6 w/variable intake manifold. 49-state emissions. Honda 4-speed automatic. ('89-'91 827)"
+     }
+    ],
+    "J": [
+     {
+      "value": "Honda C27A 2.7L SOHC"
+     },
+     {
+      "value": "24-valve 90° V6 w",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "24-valve 90° V6 w/variable intake manifold. California emissions. Honda 5-speed manual. ('89-'91 827)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Honda C27A 2.7L SOHC"
+     },
+     {
+      "value": "24-valve 90° V6 w",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "24-valve 90° V6 w/variable intake manifold. California emissions. Honda 4-speed automatic. ('89-'91 827)"
+     }
+    ]
+   }
+  }
+ }
+}

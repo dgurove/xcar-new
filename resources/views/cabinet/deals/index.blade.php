@@ -24,7 +24,7 @@
         <div class="space-y-3">
             @foreach ($deals as $deal)
                 @php $offer = $deal->offer; $position = $offer->position(); $alarm = $position?->isOverdue() ?? false; @endphp
-                <a href="/lk/sdelki/{{ $deal->id }}" class="box flex flex-col gap-3 transition-colors hover:bg-surface-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+                <a href="/lk/sdelki/{{ $deal->id }}" class="box flex flex-col gap-3 transition-colors hover:bg-hover sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                     <span class="min-w-0 sm:flex-1">
                         <span class="block">{{ $offer->titleWithYear() }}</span>
                         <span class="nums mt-1 block text-sm font-normal text-ink-dim">№ {{ $offer->number }}</span>

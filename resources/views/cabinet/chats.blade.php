@@ -12,7 +12,7 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex items-baseline gap-2">
                             <span class="truncate {{ $chat->unread_for_user ? 'font-medium' : '' }}">{{ $chat->offer ? $chat->offer->titleWithYear() : 'Обращение' }}</span>
-                            <span class="ml-auto shrink-0 text-sm text-ink-dim tabular-nums">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span>
+                            <span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span>
                         </div>
                         <div class="truncate text-sm {{ $chat->unread_for_user ? '' : 'text-ink-muted' }}">{{ $chat->last_text ? \Illuminate\Support\Str::limit($chat->last_text, 90) : 'Файл' }}</div>
                     </div>

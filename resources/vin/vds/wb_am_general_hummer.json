@@ -1,0 +1,400 @@
+{
+ "_brand": "AM General Hummer",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/AM_General_Hummer/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [],
+ "_market": null,
+ "sections": {
+  "body@6:7": {
+   "field": "body",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "55": [
+     {
+      "value": "KSC2: 2-Passenger"
+     },
+     {
+      "value": "2-Door Hard Top w",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "2-Door Hard Top w/Enlarged (Extended) Cab - K-series (Commercial/Fleet only model) ('02-'04, '06)"
+     }
+    ],
+    "56": [
+     {
+      "value": "KSC4: 4-Passenger"
+     },
+     {
+      "value": "4-Door Hard Top - K-series",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "4-Door Hard Top - K-series (Commercial/Fleet only model) ('02-'04, '06)"
+     }
+    ],
+    "57": [
+     {
+      "value": "KSCS: 4-Passenger"
+     },
+     {
+      "value": "4-Door Enclosed Wagon - K-series",
+      "note": "4-Door Enclosed Wagon - K-series (Commercial/Fleet only model) ('03, '06)"
+     }
+    ],
+    "82": [
+     {
+      "value": "HMC2: 2-Passenger"
+     },
+     {
+      "value": "2-Door Hard Top",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "2-Door Hard Top ('92-'93)"
+     },
+     {
+      "value": "VLC2: 2-Passenger"
+     },
+     {
+      "value": "2-Door Hard Top - Value Leader",
+      "years": [
+       1994,
+       1996
+      ],
+      "note": "2-Door Hard Top - Value Leader (Recruit Series) ('94-'96)"
+     }
+    ],
+    "83": [
+     {
+      "value": "HMC4: 4-Passenger"
+     },
+     {
+      "value": "4-Door Hard Top",
+      "years": [
+       1992,
+       2001
+      ],
+      "note": "4-Door Hard Top ('92-'01 & a single '02 model)"
+     }
+    ],
+    "84": [
+     {
+      "value": "HMCS: 4-Passenger"
+     },
+     {
+      "value": "4-Door Enclosed Wagon",
+      "years": [
+       1992,
+       2004
+      ],
+      "note": "4-Door Enclosed Wagon ('92-'04)"
+     },
+     {
+      "value": "HMDS: 4-Passenger"
+     },
+     {
+      "value": "4-Door Enclosed Wagon",
+      "note": "4-Door Enclosed Wagon ('06 H1 Alpha)"
+     }
+    ],
+    "85": [
+     {
+      "value": "HMCO: 4-Passenger"
+     },
+     {
+      "value": "4-Door Open Top w",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "4-Door Open Top w/half doors & plastic windows ('92-'93)"
+     },
+     {
+      "value": "VLCO: 4-Passenger"
+     },
+     {
+      "value": "4-Door Open Top w",
+      "note": "4-Door Open Top w/half doors & plastic windows or optional full-height hard doors & glass windows - Value Leader (Recruit Series) ('94)"
+     },
+     {
+      "value": "4-Door Open Top w",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "4-Door Open Top w/half doors & plastic windows - Value Leader (Recruit Series) ('95-'96)"
+     }
+    ],
+    "86": [
+     {
+      "value": "HMCF: 2-Passenger"
+     },
+     {
+      "value": "2-Door Hard Top - Fleet",
+      "note": "2-Door Hard Top - Fleet/Industrial ('93)"
+     }
+    ],
+    "87": [
+     {
+      "value": "HMR2",
+      "note": "HMR2 (VLC2): 2-Passenger"
+     },
+     {
+      "value": "2-Door Hard Top - Value Leader",
+      "note": "2-Door Hard Top - Value Leader (Recruit Series) ('93)"
+     }
+    ],
+    "88": [
+     {
+      "value": "HMRO",
+      "note": "HMRO (VLCO): 4-Passenger"
+     },
+     {
+      "value": "4-Door Open Top w",
+      "note": "4-Door Open Top w/half doors & plastic windows - Value Leader (Recruit Series) ('93)"
+     }
+    ],
+    "89": [
+     {
+      "value": "XLC2: 2-Passenger"
+     },
+     {
+      "value": "2-Door Hard Top w",
+      "years": [
+       1994,
+       2001
+      ],
+      "note": "2-Door Hard Top w/Enlarged (Extended) Cab ('94-'01)"
+     }
+    ],
+    "90": [
+     {
+      "value": "HMCO: 4-Passenger"
+     },
+     {
+      "value": "4-Door Open Top w",
+      "years": [
+       1995,
+       2004
+      ],
+      "note": "4-Door Open Top w/full-height hard doors & glass windows ('95-'04)"
+     },
+     {
+      "value": "HMDO: 4-Passenger"
+     },
+     {
+      "value": "4-Door Open Top w",
+      "note": "4-Door Open Top w/full-height hard doors & glass windows ('06 H1 Alpha)"
+     }
+    ],
+    "91": [
+     {
+      "value": "HMSB: 4-Passenger"
+     },
+     {
+      "value": "4-Door Slant Back",
+      "note": "4-Door Slant Back ('00)"
+     }
+    ]
+   }
+  },
+  "engine@4:5": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "X": [
+     {
+      "value": "6.2L"
+     },
+     {
+      "value": "V8"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "OHV"
+     },
+     {
+      "value": "Indirect injection. GM Detroit Diesel V8",
+      "note": "Indirect injection. GM Detroit Diesel V8 (GM RPO code LL4). Version for vehicles over-8"
+     },
+     {
+      "value": "500 lb. GVWR",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "500 lb. GVWR. ('92-'93)"
+     }
+    ],
+    "Y": [
+     {
+      "value": "6.5L"
+     },
+     {
+      "value": "V8"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "OHV"
+     },
+     {
+      "value": "Indirect injection. GM Detroit Diesel V8",
+      "note": "Indirect injection. GM Detroit Diesel V8 (GM RPO code L57). Version for vehicles over-8"
+     },
+     {
+      "value": "500 lb. GVWR",
+      "years": [
+       1994,
+       1998
+      ],
+      "note": "500 lb. GVWR. ('94-'98)"
+     }
+    ],
+    "D": [
+     {
+      "value": "5.7L"
+     },
+     {
+      "value": "V8"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "OHV"
+     },
+     {
+      "value": "TBI. GM Gen I Chevrolet Small-Block V8",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "TBI. GM Gen I Chevrolet Small-Block V8 (GM RPO code L05). (Optional: '95-'96)"
+     }
+    ],
+    "Z": [
+     {
+      "value": "6.5L"
+     },
+     {
+      "value": "V8 Turbo"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "OHV"
+     },
+     {
+      "value": "Indirect injection. GM Detroit Diesel V8",
+      "note": "Indirect injection. GM Detroit Diesel V8 (GM RPO code L65). Version for vehicles over-8"
+     },
+     {
+      "value": "500 lb. GVWR",
+      "years": [
+       1996,
+       1998
+      ],
+      "note": "500 lb. GVWR. (Optional: '96-'98, Standard: '99 - Mid '01)"
+     }
+    ],
+    "F": [
+     {
+      "value": "6.5L"
+     },
+     {
+      "value": "V8 Turbo"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "OHV"
+     }
+    ],
+    "P": [
+     {
+      "value": "6.6L"
+     },
+     {
+      "value": "V8 Turbo"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "OHV"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "Common-rail Direct injection. Duramax 6600 V8 engine",
+      "note": "Common-rail Direct injection. Duramax 6600 V8 engine (GM RPO code LLY). '06 H1 Alpha"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "E": [
+     {
+      "value": "Mishawaka"
+     },
+     {
+      "value": "Indiana"
+     }
+    ]
+   }
+  },
+  "transmission@5:6": {
+   "field": "transmission",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "E": [
+     {
+      "value": "GM 3L80 3-speed automatic",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "GM 3L80 3-speed automatic. ('92-'93)"
+     }
+    ],
+    "A": [
+     {
+      "value": "GM 4L80-E 4-speed automatic - electronically controlled",
+      "years": [
+       1980,
+       null
+      ],
+      "note": "GM 4L80-E 4-speed automatic - electronically controlled. ('94-'04 & '06 Fleet models)"
+     }
+    ]
+   }
+  }
+ }
+}

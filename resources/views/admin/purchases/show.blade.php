@@ -2,7 +2,7 @@
 <x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-2" data-controller="sheet">
         <x-ui.pill :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}</x-ui.pill>
-        @if ($purchase->offers_close_at)<x-ui.pill tone="plain"><span class="nums font-normal">до {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span></x-ui.pill>@endif
+        @if ($purchase->offers_close_at)<x-ui.pill tone="plain"><span>до {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span></x-ui.pill>@endif
         @if ($purchase->state->isPublic())<x-ui.pill tone="plain" :href="\App\Support\Surface::Site->url('/zakupki/'.$n)" data-turbo="false">На сайте</x-ui.pill>@endif
         @if ($stats['pending'])<x-ui.pill tone="urgent">выкачка: {{ $stats['pending'] }}</x-ui.pill>@endif
         @if ($errors->any())<x-ui.flash tone="danger" class="w-full">{{ $errors->first() }}</x-ui.flash>@endif

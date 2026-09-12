@@ -1,0 +1,178 @@
+{
+ "_brand": "Smart",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Smart/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "WME"
+ ],
+ "_market": "north_america",
+ "sections": {
+  "body@5:6": {
+   "field": "body",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "J": [
+     {
+      "value": "2-door Coupe",
+      "years": [
+       2008,
+       2019
+      ],
+      "note": "2-door Coupe (Smart ForTwo coupe 2008-2019)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Cabriolet",
+      "years": [
+       2008,
+       2015
+      ],
+      "note": "Cabriolet (Smart ForTwo convertible 2008-2015, 2017-2019)"
+     }
+    ]
+   }
+  },
+  "model@4:5": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "C450",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "C450/A450 (Canada only: Smart ForTwo 2005-2006)"
+     }
+    ],
+    "E": [
+     {
+      "value": "C451",
+      "years": [
+       2008,
+       2015
+      ],
+      "note": "C451/A451 (Smart ForTwo 2008-2015, ForTwo Electric Drive 2013-2016)"
+     }
+    ],
+    "F": [
+     {
+      "value": "C453",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "C453/A453 (Smart ForTwo 2016-2017, ForTwo Electric Drive 2017-2018, EQ ForTwo 2019)"
+     }
+    ]
+   }
+  },
+  "model@6:8": {
+   "field": "model",
+   "at": [
+    "vin",
+    "6:8"
+   ],
+   "map": {
+    "31": [
+     {
+      "value": "ForTwo",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "ForTwo ['08-'09] (1.0-liter Mercedes M132.910/M132 E10 [Mitsubishi 3B21] I3)"
+     }
+    ],
+    "3B": [
+     {
+      "value": "ForTwo",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "ForTwo ['10-'15] (1.0-liter Mercedes M132.910/M132 E10 [Mitsubishi 3B21] I3)"
+     }
+    ],
+    "9A": [
+     {
+      "value": "ForTwo Electric Drive",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "ForTwo Electric Drive ['13-'16] (battery-electric, 17.6-kWh Deutsche Accumotive lithium-ion battery pack, 1 rear motor made by EM-motive GmbH, Rwd, 74 hp)"
+     }
+    ],
+    "5D": [
+     {
+      "value": "ForTwo",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "ForTwo ['16-'17] (0.9-liter turbo Mercedes M281 E09 LA [Renault H4Bt] I3)"
+     }
+    ],
+    "9B": [
+     {
+      "value": "ForTwo Electric Drive",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "ForTwo Electric Drive ['17-'18]"
+     },
+     {
+      "value": "EQ ForTwo",
+      "note": "EQ ForTwo ['19] (battery-electric, 17.6-kWh Deutsche Accumotive lithium-ion battery pack, 1 rear motor made by Renault, Rwd, 81 hp)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "J": [
+     {
+      "value": "Hambach"
+     },
+     {
+      "value": "France",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "France (Canada only: '05-'06)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Hambach"
+     },
+     {
+      "value": "France",
+      "years": [
+       2008,
+       2019
+      ],
+      "note": "France ('08-'19)"
+     }
+    ]
+   }
+  }
+ }
+}

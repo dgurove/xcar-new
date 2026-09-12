@@ -1,0 +1,680 @@
+{
+ "_brand": "Alfa Romeo",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Alfa_Romeo/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "ZAA",
+  "ZAR",
+  "ZAS"
+ ],
+ "_market": null,
+ "sections": {
+  "body@7:8": {
+   "field": "body",
+   "at": [
+    "vin",
+    "7:8"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Alfa Romeo 4C Coupe '15-'18",
+      "years": [
+       2015,
+       2018
+      ]
+     },
+     {
+      "value": "Giulia Quadrifoglio '17-'18",
+      "years": [
+       2017,
+       2018
+      ]
+     },
+     {
+      "value": "Giulia",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "Giulia (base model) '19-'20"
+     },
+     {
+      "value": "Giulia Sprint '21-'24",
+      "years": [
+       2021,
+       2024
+      ]
+     },
+     {
+      "value": "Giulia",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "Giulia (base model) '25-'26"
+     },
+     {
+      "value": "Giulia Intensa '25"
+     },
+     {
+      "value": "Giulia Tributo Italiano '25"
+     },
+     {
+      "value": "Alfa Romeo Stelvio",
+      "note": "Alfa Romeo Stelvio (base model) Q4 Awd '18"
+     },
+     {
+      "value": "Stelvio",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "Stelvio (base model) '19-'20"
+     },
+     {
+      "value": "Stelvio Sport '19-'20",
+      "years": [
+       2019,
+       2020
+      ]
+     },
+     {
+      "value": "Stelvio Sprint '21-'24",
+      "years": [
+       2021,
+       2024
+      ]
+     },
+     {
+      "value": "Stelvio",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "Stelvio (base model) '25-'26"
+     },
+     {
+      "value": "Stelvio Intensa '25"
+     },
+     {
+      "value": "Tonale Sprint '24"
+     },
+     {
+      "value": "'26"
+     },
+     {
+      "value": "Tonale",
+      "note": "Tonale (base model) '25"
+     },
+     {
+      "value": "Tonale Intensa '25"
+     },
+     {
+      "value": "Tonale Veloce '26"
+     },
+     {
+      "value": "Tonale Sport Speciale '26"
+     }
+    ],
+    "B": [
+     {
+      "value": "Alfa Romeo 4C Spider '15-'20",
+      "years": [
+       2015,
+       2020
+      ]
+     },
+     {
+      "value": "4C Spider 33 Stradale Tributo '20"
+     },
+     {
+      "value": "Giulia",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Giulia (base model) Rwd '17-'18"
+     },
+     {
+      "value": "Giulia Ti '19-'24",
+      "years": [
+       2019,
+       2024
+      ]
+     },
+     {
+      "value": "Giulia Veloce '22-'24",
+      "years": [
+       2022,
+       2024
+      ]
+     },
+     {
+      "value": "Giulia Estrema '23"
+     },
+     {
+      "value": "Giulia Lusso '23"
+     },
+     {
+      "value": "Giulia Competizione '24"
+     },
+     {
+      "value": "Alfa Romeo Stelvio Ti Q4 Awd '18-'24",
+      "years": [
+       2018,
+       2024
+      ]
+     },
+     {
+      "value": "Stelvio Ti Lusso Q4 Awd '19-'20",
+      "years": [
+       2019,
+       2020
+      ]
+     },
+     {
+      "value": "Stelvio Ti Sport Q4 Awd '19-'21",
+      "years": [
+       2019,
+       2021
+      ]
+     },
+     {
+      "value": "Stelvio Veloce Q4 Awd '22-'24",
+      "years": [
+       2022,
+       2024
+      ]
+     },
+     {
+      "value": "Stelvio Estrema '23"
+     },
+     {
+      "value": "Stelvio Lusso '23"
+     },
+     {
+      "value": "Stelvio Competizione '24"
+     },
+     {
+      "value": "Stelvio Tributo Italiano '25"
+     }
+    ],
+    "C": [
+     {
+      "value": "Alfa Romeo 4C Coupe Launch Edition '15"
+     },
+     {
+      "value": "Giulia Ti Rwd '17-'18",
+      "years": [
+       2017,
+       2018
+      ]
+     },
+     {
+      "value": "Alfa Romeo Tonale Ti '24"
+     }
+    ],
+    "D": [
+     {
+      "value": "Alfa Romeo Giulia",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Alfa Romeo Giulia (base model) Q4 Awd '17-'18"
+     },
+     {
+      "value": "Alfa Romeo Tonale Veloce '24"
+     }
+    ],
+    "E": [
+     {
+      "value": "Alfa Romeo Giulia Ti Q4 Awd '17-'18",
+      "years": [
+       2017,
+       2018
+      ]
+     },
+     {
+      "value": "Giulia Quadrifoglio '19-'24",
+      "years": [
+       2019,
+       2024
+      ]
+     },
+     {
+      "value": "Giulia Quadrifoglio 100th Anniversary Edition '24"
+     },
+     {
+      "value": "Alfa Romeo Stelvio Quadrifoglio Q4 Awd '18-'24",
+      "years": [
+       2018,
+       2024
+      ]
+     },
+     {
+      "value": "Stelvio Quadrifoglio 100th Anniversary Edition Q4 Awd '24"
+     }
+    ],
+    "N": [
+     {
+      "value": "Alfa Romeo Stelvio Ti Sport Q4 Awd '18"
+     }
+    ],
+    "P": [
+     {
+      "value": "Alfa Romeo Stelvio Sport Q4 Awd '18"
+     }
+    ],
+    "R": [
+     {
+      "value": "Alfa Romeo Stelvio Ti Lusso Q4 Awd '18"
+     }
+    ],
+    "S": [
+     {
+      "value": "Alfa Romeo Tonale Speciale '24"
+     }
+    ],
+    "T": [
+     {
+      "value": "Alfa Romeo Tonale Tributo Italiano '25"
+     }
+    ]
+   }
+  },
+  "drive@6:7": {
+   "field": "drive",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Alfa Romeo 4C",
+      "years": [
+       2015,
+       null
+      ],
+      "note": "Alfa Romeo 4C ('15-)"
+     }
+    ],
+    "E": [
+     {
+      "value": "Alfa Romeo Giulia Rwd",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Alfa Romeo Giulia Rwd/Awd ('17-'18)"
+     }
+    ],
+    "M": [
+     {
+      "value": "Alfa Romeo Giulia Rwd",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Alfa Romeo Giulia Rwd ('19-)"
+     }
+    ],
+    "N": [
+     {
+      "value": "Alfa Romeo Giulia Awd",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Alfa Romeo Giulia Awd ('19-)"
+     }
+    ],
+    "J": [
+     {
+      "value": "Alfa Romeo Stelvio Rwd",
+      "years": [
+       2019,
+       2024
+      ],
+      "note": "Alfa Romeo Stelvio Rwd ('19-'24)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Alfa Romeo Stelvio Awd",
+      "years": [
+       2018,
+       null
+      ],
+      "note": "Alfa Romeo Stelvio Awd ('18-)"
+     }
+    ],
+    "T": [
+     {
+      "value": "Alfa Romeo Tonale Awd",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "Alfa Romeo Tonale Awd ('24-)"
+     }
+    ]
+   }
+  },
+  "engine@8:9": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "8:9"
+   ],
+   "map": {
+    "N": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Direct injection. MultiAir2. GME T4 engine",
+      "years": [
+       2017,
+       2026
+      ],
+      "note": "Direct injection. MultiAir2. GME T4 engine (EC2). Alfa Romeo Giulia ('17-'26)"
+     },
+     {
+      "value": "Direct injection. MultiAir2. GME T4 engine",
+      "years": [
+       2018,
+       2026
+      ],
+      "note": "Direct injection. MultiAir2. GME T4 engine (EC2). Alfa Romeo Stelvio ('18-'26)"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "Direct injection. MultiAir2. GME T4 engine",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "Direct injection. MultiAir2. GME T4 engine (EC1). Alfa Romeo Tonale ('25-'26)"
+     }
+    ],
+    "V": [
+     {
+      "value": "2.9L"
+     },
+     {
+      "value": "90° V6 Twin Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. VVT. Alfa Romeo 690T engine",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "Direct injection. VVT. Alfa Romeo 690T engine (Derived from Ferrari F154 V8) (EED). Alfa Romeo Giulia Quadrifoglio ('17-'19)"
+     },
+     {
+      "value": "Port",
+      "years": [
+       2020,
+       2024
+      ],
+      "note": "Port/Direct injection. VVT. Alfa Romeo 690T engine (Derived from Ferrari F154 V8) (EEC). Alfa Romeo Giulia Quadrifoglio ('20-'24)"
+     },
+     {
+      "value": "Direct injection. VVT. Alfa Romeo 690T engine",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "Direct injection. VVT. Alfa Romeo 690T engine (Derived from Ferrari F154 V8) (EED). Alfa Romeo Stelvio Quadrifoglio ('18-'19)"
+     },
+     {
+      "value": "Port",
+      "years": [
+       2020,
+       2024
+      ],
+      "note": "Port/Direct injection. VVT. Alfa Romeo 690T engine (Derived from Ferrari F154 V8) (EEC). Alfa Romeo Stelvio Quadrifoglio ('20-'24)"
+     }
+    ],
+    "4": [
+     {
+      "value": "1.7L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Direct injection. VVT. 1750 TBi 4-cylinder",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "Direct injection. VVT. 1750 TBi 4-cylinder (EBC). Alfa Romeo 4C ('15-'20)"
+     }
+    ],
+    "W": [
+     {
+      "value": "1.3L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas-Electric PHEV"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Direct injection. MultiAir3. Fiat Firefly",
+      "note": "Direct injection. MultiAir3. Fiat Firefly/GSE engine (EYG) + 1 Front motor + 1 Rear motor. 15.5 kWh Lithium-ion Battery Pack. Engine made in Bielsko-Biala"
+     },
+     {
+      "value": "Poland. Alfa Romeo Tonale",
+      "years": [
+       2024,
+       2025
+      ],
+      "note": "Poland. Alfa Romeo Tonale ('24-'25)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "J": [
+     {
+      "value": "FCA Poland plant"
+     },
+     {
+      "value": "Tychy"
+     },
+     {
+      "value": "Poland",
+      "note": "Poland (Junior)"
+     }
+    ],
+    "M": [
+     {
+      "value": "Maserati Modena plant"
+     },
+     {
+      "value": "Modena"
+     },
+     {
+      "value": "Italy",
+      "note": "Italy (4C)"
+     }
+    ],
+    "X": [
+     {
+      "value": "Fiat Mirafiori plant"
+     },
+     {
+      "value": "Mirafiori district"
+     },
+     {
+      "value": "Turin"
+     },
+     {
+      "value": "Italy",
+      "years": [
+       2014,
+       2018
+      ],
+      "note": "Italy ('14-'18 Mito)"
+     }
+    ],
+    "0": [
+     {
+      "value": "Maserati Modena plant"
+     },
+     {
+      "value": "Modena"
+     },
+     {
+      "value": "Italy",
+      "note": "Italy (8C)"
+     }
+    ],
+    "1": [
+     {
+      "value": "Alfa Romeo Arese plant"
+     },
+     {
+      "value": "Arese"
+     },
+     {
+      "value": "Milan"
+     },
+     {
+      "value": "Lombardy"
+     },
+     {
+      "value": "Italy",
+      "years": [
+       1981,
+       1988
+      ],
+      "note": "Italy (GTV6, Milano, '81-'88 Spider)"
+     }
+    ],
+    "3": [
+     {
+      "value": "Fiat Pomigliano d'Arco plant"
+     },
+     {
+      "value": "Pomigliano d'Arco"
+     },
+     {
+      "value": "Italy",
+      "years": [
+       2004,
+       2010
+      ],
+      "note": "Italy (Tonale, '04-'10 147, '09-'10 GT)"
+     }
+    ],
+    "6": [
+     {
+      "value": "Alfa Romeo Arese plant"
+     },
+     {
+      "value": "Arese"
+     },
+     {
+      "value": "Milan"
+     },
+     {
+      "value": "Lombardy"
+     },
+     {
+      "value": "Italy",
+      "years": [
+       1988,
+       1991
+      ],
+      "note": "Italy (164, '88-'91 Spider)"
+     }
+    ],
+    "7": [
+     {
+      "value": "Alfa Romeo Arese plant"
+     },
+     {
+      "value": "Arese"
+     },
+     {
+      "value": "Milan"
+     },
+     {
+      "value": "Lombardy"
+     },
+     {
+      "value": "Italy",
+      "years": [
+       1992,
+       1994
+      ],
+      "note": "Italy ('92-'94 Spider)"
+     },
+     {
+      "value": "Fiat Cassino plant"
+     },
+     {
+      "value": "Piedimonte San Germano"
+     },
+     {
+      "value": "Italy",
+      "note": "Italy (Giulietta, Giulia, Stelvio)"
+     }
+    ]
+   }
+  }
+ }
+}

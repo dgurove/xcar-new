@@ -1,0 +1,34 @@
+{
+  "_note": "Renault (VF1, французская сборка). Таблицы из vininfo (BSD-3, https://github.com/idlesign/vininfo). На X7L (Москва) эта схема не распространяется.",
+  "sections": {
+    "body":  {"at": ["vds", 0], "map": {
+      "2": "Sedan, 2-Door", "3": "Hatchback, 3-Door", "4": "Sedan, 4-Door", "5": "Hatchback, 5-Door",
+      "6": "Station Wagon, 5-Door", "7": "Cabriolet, 2-Door", "8": "Coupe, 2-Door",
+      "A": "Station Wagon, 3-Door", "B": "Hatchback, 5-Door", "C": "Hatchback, 3-Door",
+      "D": "Coupe, 2-Door", "E": "Cabriolet, 2-Door", "F": "Van", "G": "Minivan, 3-Door",
+      "H": "Pickup, 2-Door", "J": "Minivan, 5-Door", "K": "Station Wagon, 3-Door",
+      "L": "Sedan, 4-Door", "M": "Sedan, 2-Door", "N": "Minivan, 5-Door",
+      "S": "Station Wagon, 5-Door", "U": "Pickup, 2-Door"}},
+    "model": {"at": ["vds", 1], "map": {
+      "0": "Twingo", "1": "R4", "2": "R25", "3": "R4", "4": "R21 / Express",
+      "5": "Clio I / Laguna / R19 / Safrane", "A": "Megane I / Master", "B": "Clio II",
+      "C": "Kangoo", "D": "Master", "E": "Espace III / Avantime", "G": "Laguna II",
+      "H": "Master Propulsion", "J": "Vel Satis / Trafic", "K": "Espace IV", "L": "Trafic",
+      "M": "Megane II", "P": "Modus", "S": "Logan / Sandero / Duster / Dokker / Lodgy",
+      "Y": "Koleos"}},
+    "plant": {"at": ["vds", 4], "map": {
+      "A": "Португалия", "B": "Батийи", "C": "Крей", "D": "Дуэ", "E": "Испания", "V": "Испания",
+      "F": "Флен", "G": "Гран-Курон / Ново-Место", "H": "Харен", "J": "Бийанкур", "K": "Дьеп",
+      "N": "Мексика", "P": "Мексика", "R": "Бурса / Москва", "S": "Сандувиль", "T": "Роморантен",
+      "U": "Мобёж", "W": "Вальядолид", "X": "Элиёз", "Z": "США"}},
+    "transmission": {"at": ["vds", 5], "map": {
+      "1": {"name": "АКПП 3 ст.", "type": "automatic"},
+      "2": {"name": "АКПП 4 ст.", "type": "automatic"},
+      "4": {"name": "МКПП 5 ст.", "type": "manual"},
+      "5": {"name": "МКПП 5 ст.", "type": "manual"},
+      "8": {"name": "МКПП 5 ст., 4x4", "type": "manual", "drive": "awd"},
+      "C": {"name": "МКПП 5 ст.", "type": "manual"},
+      "D": {"name": "МКПП 5 ст.", "type": "manual"}}},
+    "serial": {"at": ["vis", "1:"]}
+  }
+}

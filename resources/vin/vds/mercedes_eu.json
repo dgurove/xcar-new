@@ -1,0 +1,875 @@
+{
+ "_note": "Европейские Mercedes-Benz: на позициях 4-9 стоит шестизначный заводской индекс (Baumuster), например 166873 — это W166. Первые три цифры — серия кузова, по ней и выводим модельный ряд; сам индекс всё равно отдаём в справочный блок. Американская таблица из Wikibooks здесь не применима: там на позиции 4 буква.",
+ "_source": "Обозначения серий кузова Mercedes-Benz по статьям Википедии о моделях (W124, W166, X253 и так далее)",
+ "_evidence": "Проверено на WDC1668731A419504 — серия 166, M-Class. Остальные строки — соответствие серии и модельного ряда по статьям, живого вина под каждую нет.",
+ "model_code_only": true,
+ "sections": {
+  "model@4:7": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:7"
+   ],
+   "map": {
+    "107": [
+     {
+      "value": "SL-Class",
+      "years": [
+       1971,
+       1989
+      ],
+      "note": "Baumuster SL-Class (1971-1989)"
+     }
+    ],
+    "117": [
+     {
+      "value": "CLA",
+      "years": [
+       2013,
+       2019
+      ],
+      "note": "Baumuster CLA (2013-2019)"
+     }
+    ],
+    "118": [
+     {
+      "value": "CLA",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Baumuster CLA (2019-)"
+     }
+    ],
+    "124": [
+     {
+      "value": "E-Class",
+      "years": [
+       1984,
+       1997
+      ],
+      "note": "Baumuster E-Class (1984-1997)"
+     }
+    ],
+    "126": [
+     {
+      "value": "S-Class",
+      "years": [
+       1979,
+       1992
+      ],
+      "note": "Baumuster S-Class (1979-1992)"
+     }
+    ],
+    "129": [
+     {
+      "value": "SL-Class",
+      "years": [
+       1989,
+       2001
+      ],
+      "note": "Baumuster SL-Class (1989-2001)"
+     }
+    ],
+    "140": [
+     {
+      "value": "S-Class",
+      "years": [
+       1991,
+       1999
+      ],
+      "note": "Baumuster S-Class (1991-1999)"
+     }
+    ],
+    "156": [
+     {
+      "value": "GLA",
+      "years": [
+       2013,
+       2020
+      ],
+      "note": "Baumuster GLA (2013-2020)"
+     }
+    ],
+    "163": [
+     {
+      "value": "M-Class",
+      "years": [
+       1997,
+       2005
+      ],
+      "note": "Baumuster M-Class (1997-2005)"
+     }
+    ],
+    "164": [
+     {
+      "value": "M-Class",
+      "years": [
+       2005,
+       2011
+      ],
+      "note": "Baumuster M-Class (2005-2011)"
+     },
+     {
+      "value": "GL-Class",
+      "years": [
+       2006,
+       2012
+      ],
+      "note": "Baumuster GL-Class (2006-2012)"
+     }
+    ],
+    "166": [
+     {
+      "value": "M-Class",
+      "years": [
+       2011,
+       2015
+      ],
+      "note": "Baumuster M-Class (2011-2015)"
+     },
+     {
+      "value": "GLE",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "Baumuster GLE (2015-2019)"
+     },
+     {
+      "value": "GLS",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "Baumuster GLS (2015-2019)"
+     },
+     {
+      "value": "GL-Class",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "Baumuster GL-Class (2012-2016)"
+     }
+    ],
+    "167": [
+     {
+      "value": "GLE",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Baumuster GLE (2019-)"
+     },
+     {
+      "value": "GLS",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Baumuster GLS (2019-)"
+     }
+    ],
+    "168": [
+     {
+      "value": "A-Class",
+      "years": [
+       1997,
+       2005
+      ],
+      "note": "Baumuster A-Class (1997-2005)"
+     }
+    ],
+    "169": [
+     {
+      "value": "A-Class",
+      "years": [
+       2004,
+       2013
+      ],
+      "note": "Baumuster A-Class (2004-2013)"
+     }
+    ],
+    "170": [
+     {
+      "value": "SLK-Class",
+      "years": [
+       1996,
+       2004
+      ],
+      "note": "Baumuster SLK-Class (1996-2004)"
+     }
+    ],
+    "171": [
+     {
+      "value": "SLK-Class",
+      "years": [
+       2004,
+       2011
+      ],
+      "note": "Baumuster SLK-Class (2004-2011)"
+     }
+    ],
+    "172": [
+     {
+      "value": "SLK-Class",
+      "years": [
+       2011,
+       2016
+      ],
+      "note": "Baumuster SLK-Class (2011-2016)"
+     },
+     {
+      "value": "SLC",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "Baumuster SLC (2016-2020)"
+     }
+    ],
+    "176": [
+     {
+      "value": "A-Class",
+      "years": [
+       2012,
+       2018
+      ],
+      "note": "Baumuster A-Class (2012-2018)"
+     }
+    ],
+    "177": [
+     {
+      "value": "A-Class",
+      "years": [
+       2018,
+       null
+      ],
+      "note": "Baumuster A-Class (2018-)"
+     }
+    ],
+    "190": [
+     {
+      "value": "AMG GT",
+      "years": [
+       2014,
+       2021
+      ],
+      "note": "Baumuster AMG GT (2014-2021)"
+     }
+    ],
+    "192": [
+     {
+      "value": "AMG GT",
+      "years": [
+       2018,
+       2023
+      ],
+      "note": "Baumuster AMG GT (2018-2023)"
+     }
+    ],
+    "197": [
+     {
+      "value": "SLS AMG",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "Baumuster SLS AMG (2010-2015)"
+     }
+    ],
+    "199": [
+     {
+      "value": "SLR McLaren",
+      "years": [
+       2003,
+       2010
+      ],
+      "note": "Baumuster SLR McLaren (2003-2010)"
+     }
+    ],
+    "201": [
+     {
+      "value": "190",
+      "years": [
+       1982,
+       1993
+      ],
+      "note": "Baumuster 190 (1982-1993)"
+     }
+    ],
+    "202": [
+     {
+      "value": "C-Class",
+      "years": [
+       1993,
+       2001
+      ],
+      "note": "Baumuster C-Class (1993-2001)"
+     }
+    ],
+    "203": [
+     {
+      "value": "C-Class",
+      "years": [
+       2000,
+       2008
+      ],
+      "note": "Baumuster C-Class (2000-2008)"
+     }
+    ],
+    "204": [
+     {
+      "value": "C-Class",
+      "years": [
+       2007,
+       2015
+      ],
+      "note": "Baumuster C-Class (2007-2015)"
+     },
+     {
+      "value": "GLK-Class",
+      "years": [
+       2008,
+       2015
+      ],
+      "note": "Baumuster GLK-Class (2008-2015)"
+     }
+    ],
+    "205": [
+     {
+      "value": "C-Class",
+      "years": [
+       2014,
+       2021
+      ],
+      "note": "Baumuster C-Class (2014-2021)"
+     }
+    ],
+    "206": [
+     {
+      "value": "C-Class",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Baumuster C-Class (2021-)"
+     }
+    ],
+    "207": [
+     {
+      "value": "E-Class",
+      "years": [
+       2009,
+       2017
+      ],
+      "note": "Baumuster E-Class (2009-2017)"
+     }
+    ],
+    "208": [
+     {
+      "value": "CLK-Class",
+      "years": [
+       1997,
+       2003
+      ],
+      "note": "Baumuster CLK-Class (1997-2003)"
+     }
+    ],
+    "209": [
+     {
+      "value": "CLK-Class",
+      "years": [
+       2002,
+       2010
+      ],
+      "note": "Baumuster CLK-Class (2002-2010)"
+     }
+    ],
+    "210": [
+     {
+      "value": "E-Class",
+      "years": [
+       1995,
+       2003
+      ],
+      "note": "Baumuster E-Class (1995-2003)"
+     }
+    ],
+    "211": [
+     {
+      "value": "E-Class",
+      "years": [
+       2002,
+       2009
+      ],
+      "note": "Baumuster E-Class (2002-2009)"
+     }
+    ],
+    "212": [
+     {
+      "value": "E-Class",
+      "years": [
+       2009,
+       2016
+      ],
+      "note": "Baumuster E-Class (2009-2016)"
+     }
+    ],
+    "213": [
+     {
+      "value": "E-Class",
+      "years": [
+       2016,
+       2023
+      ],
+      "note": "Baumuster E-Class (2016-2023)"
+     }
+    ],
+    "214": [
+     {
+      "value": "E-Class",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "Baumuster E-Class (2023-)"
+     }
+    ],
+    "215": [
+     {
+      "value": "CL-Class",
+      "years": [
+       1999,
+       2006
+      ],
+      "note": "Baumuster CL-Class (1999-2006)"
+     }
+    ],
+    "216": [
+     {
+      "value": "CL-Class",
+      "years": [
+       2006,
+       2014
+      ],
+      "note": "Baumuster CL-Class (2006-2014)"
+     }
+    ],
+    "217": [
+     {
+      "value": "S-Class",
+      "years": [
+       2014,
+       2021
+      ],
+      "note": "Baumuster S-Class (2014-2021)"
+     }
+    ],
+    "218": [
+     {
+      "value": "CLS",
+      "years": [
+       2011,
+       2018
+      ],
+      "note": "Baumuster CLS (2011-2018)"
+     }
+    ],
+    "219": [
+     {
+      "value": "CLS",
+      "years": [
+       2004,
+       2011
+      ],
+      "note": "Baumuster CLS (2004-2011)"
+     }
+    ],
+    "220": [
+     {
+      "value": "S-Class",
+      "years": [
+       1998,
+       2006
+      ],
+      "note": "Baumuster S-Class (1998-2006)"
+     }
+    ],
+    "221": [
+     {
+      "value": "S-Class",
+      "years": [
+       2005,
+       2013
+      ],
+      "note": "Baumuster S-Class (2005-2013)"
+     }
+    ],
+    "222": [
+     {
+      "value": "S-Class",
+      "years": [
+       2013,
+       2020
+      ],
+      "note": "Baumuster S-Class (2013-2020)"
+     }
+    ],
+    "223": [
+     {
+      "value": "S-Class",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "Baumuster S-Class (2020-)"
+     }
+    ],
+    "230": [
+     {
+      "value": "SL-Class",
+      "years": [
+       2001,
+       2012
+      ],
+      "note": "Baumuster SL-Class (2001-2012)"
+     }
+    ],
+    "231": [
+     {
+      "value": "SL-Class",
+      "years": [
+       2012,
+       2020
+      ],
+      "note": "Baumuster SL-Class (2012-2020)"
+     }
+    ],
+    "232": [
+     {
+      "value": "SL-Class",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Baumuster SL-Class (2021-)"
+     }
+    ],
+    "236": [
+     {
+      "value": "CLE",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "Baumuster CLE (2023-)"
+     }
+    ],
+    "238": [
+     {
+      "value": "E-Class",
+      "years": [
+       2017,
+       2023
+      ],
+      "note": "Baumuster E-Class (2017-2023)"
+     }
+    ],
+    "243": [
+     {
+      "value": "EQA",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Baumuster EQA (2021-)"
+     }
+    ],
+    "245": [
+     {
+      "value": "B-Class",
+      "years": [
+       2005,
+       2012
+      ],
+      "note": "Baumuster B-Class (2005-2012)"
+     }
+    ],
+    "246": [
+     {
+      "value": "B-Class",
+      "years": [
+       2011,
+       2019
+      ],
+      "note": "Baumuster B-Class (2011-2019)"
+     }
+    ],
+    "247": [
+     {
+      "value": "B-Class",
+      "years": [
+       2018,
+       null
+      ],
+      "note": "Baumuster B-Class (2018-)"
+     },
+     {
+      "value": "GLA",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "Baumuster GLA (2020-)"
+     },
+     {
+      "value": "GLB",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Baumuster GLB (2019-)"
+     }
+    ],
+    "251": [
+     {
+      "value": "R-Class",
+      "years": [
+       2005,
+       2017
+      ],
+      "note": "Baumuster R-Class (2005-2017)"
+     }
+    ],
+    "253": [
+     {
+      "value": "GLC",
+      "years": [
+       2015,
+       2022
+      ],
+      "note": "Baumuster GLC (2015-2022)"
+     }
+    ],
+    "254": [
+     {
+      "value": "GLC",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Baumuster GLC (2022-)"
+     }
+    ],
+    "257": [
+     {
+      "value": "CLS",
+      "years": [
+       2018,
+       2023
+      ],
+      "note": "Baumuster CLS (2018-2023)"
+     }
+    ],
+    "290": [
+     {
+      "value": "AMG GT",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "Baumuster AMG GT (2023-)"
+     }
+    ],
+    "292": [
+     {
+      "value": "GLE Coupe",
+      "years": [
+       2015,
+       2019
+      ],
+      "note": "Baumuster GLE Coupe (2015-2019)"
+     }
+    ],
+    "293": [
+     {
+      "value": "EQC",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "Baumuster EQC (2019-2023)"
+     }
+    ],
+    "294": [
+     {
+      "value": "EQE SUV",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Baumuster EQE SUV (2022-)"
+     }
+    ],
+    "295": [
+     {
+      "value": "EQE",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Baumuster EQE (2022-)"
+     }
+    ],
+    "296": [
+     {
+      "value": "EQS SUV",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Baumuster EQS SUV (2022-)"
+     }
+    ],
+    "297": [
+     {
+      "value": "EQS",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "Baumuster EQS (2021-)"
+     }
+    ],
+    "414": [
+     {
+      "value": "Vaneo",
+      "years": [
+       2002,
+       2005
+      ],
+      "note": "Baumuster Vaneo (2002-2005)"
+     }
+    ],
+    "415": [
+     {
+      "value": "Citan",
+      "years": [
+       2012,
+       null
+      ],
+      "note": "Baumuster Citan (2012-)"
+     }
+    ],
+    "447": [
+     {
+      "value": "V-Класс",
+      "years": [
+       2014,
+       null
+      ],
+      "note": "Baumuster V-Класс (2014-)"
+     },
+     {
+      "value": "Vito",
+      "years": [
+       2014,
+       null
+      ],
+      "note": "Baumuster Vito (2014-)"
+     }
+    ],
+    "460": [
+     {
+      "value": "G-Class",
+      "years": [
+       1979,
+       1992
+      ],
+      "note": "Baumuster G-Class (1979-1992)"
+     }
+    ],
+    "461": [
+     {
+      "value": "G-Class",
+      "years": [
+       1992,
+       2001
+      ],
+      "note": "Baumuster G-Class (1992-2001)"
+     }
+    ],
+    "463": [
+     {
+      "value": "G-Class",
+      "years": [
+       1989,
+       null
+      ],
+      "note": "Baumuster G-Class (1989-)"
+     }
+    ],
+    "638": [
+     {
+      "value": "Vito",
+      "years": [
+       1996,
+       2003
+      ],
+      "note": "Baumuster Vito (1996-2003)"
+     }
+    ],
+    "639": [
+     {
+      "value": "Viano",
+      "years": [
+       2003,
+       2014
+      ],
+      "note": "Baumuster Viano (2003-2014)"
+     },
+     {
+      "value": "Vito",
+      "years": [
+       2003,
+       2014
+      ],
+      "note": "Baumuster Vito (2003-2014)"
+     }
+    ],
+    "906": [
+     {
+      "value": "Sprinter",
+      "years": [
+       2006,
+       2018
+      ],
+      "note": "Baumuster Sprinter (2006-2018)"
+     }
+    ],
+    "907": [
+     {
+      "value": "Sprinter",
+      "years": [
+       2018,
+       null
+      ],
+      "note": "Baumuster Sprinter (2018-)"
+     }
+    ],
+    "910": [
+     {
+      "value": "Sprinter",
+      "years": [
+       2018,
+       null
+      ],
+      "note": "Baumuster Sprinter (2018-)"
+     }
+    ]
+   }
+  }
+ }
+}

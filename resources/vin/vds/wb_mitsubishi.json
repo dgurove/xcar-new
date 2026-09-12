@@ -1,0 +1,2823 @@
+{
+ "_brand": "Mitsubishi",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Mitsubishi/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "4A3",
+  "4A4",
+  "4P3",
+  "6MM",
+  "7A1",
+  "93X",
+  "ABJ",
+  "JA3",
+  "JA4",
+  "JA7",
+  "JE3",
+  "JE4",
+  "JMA",
+  "JMB",
+  "JMF",
+  "JMP",
+  "JMR",
+  "JMY",
+  "KPH",
+  "LDN",
+  "LE4",
+  "LL6",
+  "MA7",
+  "MK2",
+  "ML3",
+  "MMA",
+  "MMT",
+  "RLA",
+  "VF1",
+  "XMC",
+  "XMD",
+  "XNB",
+  "XNC"
+ ],
+ "_market": null,
+ "sections": {
+  "body@7:8": {
+   "field": "body",
+   "at": [
+    "vin",
+    "7:8"
+   ],
+   "map": {
+    "0": [
+     {
+      "value": "4-door wagon",
+      "note": "4-door wagon (Expo LRV)"
+     }
+    ],
+    "1": [
+     {
+      "value": "2-door sedan",
+      "years": [
+       1993,
+       2002
+      ],
+      "note": "2-door sedan ('93-'02 Mirage Coupe)"
+     },
+     {
+      "value": "MPV: 5-door wagon",
+      "years": [
+       1989,
+       2009
+      ],
+      "note": "MPV: 5-door wagon (SUV) ('89-'09)"
+     },
+     {
+      "value": "Truck: Regular Cab"
+     },
+     {
+      "value": "Short Bed Pickup",
+      "years": [
+       1993,
+       1996
+      ],
+      "note": "Short Bed Pickup ('93-'96 Mighty Max)"
+     }
+    ],
+    "4": [
+     {
+      "value": "3-door hatchback",
+      "years": [
+       1983,
+       2009
+      ],
+      "note": "3-door hatchback ('83-'09)"
+     },
+     {
+      "value": "MPV: 4-door wagon",
+      "years": [
+       1987,
+       1990
+      ],
+      "note": "MPV: 4-door wagon ('87-'90 Wagon)"
+     },
+     {
+      "value": "Truck: Regular Cab"
+     },
+     {
+      "value": "Short Bed Pickup",
+      "years": [
+       1983,
+       1992
+      ],
+      "note": "Short Bed Pickup ('83-'92 Mighty Max)"
+     }
+    ],
+    "5": [
+     {
+      "value": "2-door convertible",
+      "years": [
+       1995,
+       2009
+      ],
+      "note": "2-door convertible ('95-'09)"
+     },
+     {
+      "value": "Truck: Extended Cab Pickup",
+      "years": [
+       1988,
+       1992
+      ],
+      "note": "Truck: Extended Cab Pickup ('88-'92 Mighty Max Macrocab)"
+     }
+    ],
+    "6": [
+     {
+      "value": "4-door sedan",
+      "years": [
+       1983,
+       2009
+      ],
+      "note": "4-door sedan ('83-'09)"
+     }
+    ],
+    "7": [
+     {
+      "value": "4-door pillared hardtop",
+      "years": [
+       1989,
+       1990
+      ],
+      "note": "4-door pillared hardtop ('88 Galant Sigma, '89-'90 Sigma, '92-'04 Diamante sedan)"
+     }
+    ],
+    "8": [
+     {
+      "value": "5-door hatchback",
+      "note": "5-door hatchback ('09 Lancer Sportback - Canadian market)"
+     },
+     {
+      "value": "Truck: Crew Cab Pickup",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Truck: Crew Cab Pickup ('06-'09 Raider Double Cab)"
+     }
+    ],
+    "9": [
+     {
+      "value": "5-door wagon",
+      "note": "5-door wagon (Expo"
+     },
+     {
+      "value": "Diamante wagon"
+     },
+     {
+      "value": "Lancer Sportback wagon",
+      "note": "Lancer Sportback wagon ['04 in USA, '04 & '06 in Canada])"
+     },
+     {
+      "value": "Truck: Regular Cab"
+     },
+     {
+      "value": "Long Bed Pickup",
+      "years": [
+       1987,
+       1992
+      ],
+      "note": "Long Bed Pickup ('87-'92 Mighty Max)"
+     }
+    ],
+    "D": [
+     {
+      "value": "3-door hatchback",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "3-door hatchback ('10-'12)"
+     }
+    ],
+    "E": [
+     {
+      "value": "2-door convertible",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "2-door convertible ('10-'12)"
+     }
+    ],
+    "F": [
+     {
+      "value": "4-door sedan",
+      "years": [
+       2010,
+       2024
+      ],
+      "note": "4-door sedan ('10-'24)"
+     }
+    ],
+    "H": [
+     {
+      "value": "5-door hatchback",
+      "years": [
+       2010,
+       2024
+      ],
+      "note": "5-door hatchback ('10-'24)"
+     }
+    ],
+    "2": [
+     {
+      "value": "Truck: Extended Cab Pickup",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Truck: Extended Cab Pickup ('06-'09 Raider Extended Cab)"
+     }
+    ],
+    "3": [
+     {
+      "value": "MPV: 3-door metal top SUV",
+      "years": [
+       1983,
+       1990
+      ],
+      "note": "MPV: 3-door metal top SUV ('83-'90 Montero 2-door)"
+     },
+     {
+      "value": "Truck: Van",
+      "years": [
+       1987,
+       1990
+      ],
+      "note": "Truck: Van ('87-'90 Van)"
+     },
+     {
+      "value": "Truck: Extended Cab Pickup",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Truck: Extended Cab Pickup ('93-'94 Mighty Max Macrocab)"
+     }
+    ],
+    "A": [
+     {
+      "value": "MPV: 5-door wagon",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "MPV: 5-door wagon (SUV) ('10-)"
+     }
+    ]
+   }
+  },
+  "engine@8:9": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "8:9"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "1.5L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Orion engine 4G15. '91-'02 Mitsubishi Mirage",
+      "years": [
+       1991,
+       2002
+      ]
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     }
+    ],
+    "B": [
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "'92 Diamante LS"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Saturn engine 4G37. Mitsubishi Eclipse",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "MPI. Mitsubishi Saturn engine 4G37. Mitsubishi Eclipse (Base/GS 1.8) ('93-'94)"
+     },
+     {
+      "value": "1.6L"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Orion engine 4G18. Mitsubishi Lancer",
+      "years": [
+       2002,
+       2003
+      ],
+      "note": "MPI. Mitsubishi Orion engine 4G18. Mitsubishi Lancer (Sold in Puerto Rico) ('02-'03)"
+     },
+     {
+      "value": "1.5L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     }
+    ],
+    "C": [
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "V6 Twin Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi 4G93 engine. Mitsubishi Mirage",
+      "years": [
+       1993,
+       2002
+      ],
+      "note": "MPI. Mitsubishi 4G93 engine. Mitsubishi Mirage ('93-'02)"
+     },
+     {
+      "value": "Expo LRV",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Expo LRV ('93-'94)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     }
+    ],
+    "D": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "2-bbl carb. Mitsubishi Sirius engine 4G63. Mitsubishi Cordia"
+     },
+     {
+      "value": "Tredia",
+      "years": [
+       1984,
+       1988
+      ],
+      "note": "Tredia ('84-'88)"
+     },
+     {
+      "value": "Mighty Max",
+      "years": [
+       1984,
+       1989
+      ],
+      "note": "Mighty Max ('84-'89)"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi 4G93 engine. Mitsubishi Expo LRV",
+      "note": "MPI. Mitsubishi 4G93 engine. Mitsubishi Expo LRV ('92)"
+     },
+     {
+      "value": "MPI. Mitsubishi Sirius engine 4G63. Mitsubishi Galant",
+      "note": "MPI. Mitsubishi Sirius engine 4G63. Mitsubishi Galant ('93)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "DOHC"
+     }
+    ],
+    "E": [
+     {
+      "value": "2.6L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Mighty Max"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi 4G94 engine. Mitsubishi Lancer",
+      "years": [
+       2002,
+       2006
+      ],
+      "note": "MPI. Mitsubishi 4G94 engine. Mitsubishi Lancer ('02-'06)"
+     }
+    ],
+    "F": [
+     {
+      "value": "1.6L"
+     },
+     {
+      "value": "I4 Turbo"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "TBI. Mitsubishi Saturn engine 4G32T. Mitsubishi Mirage Turbo",
+      "years": [
+       1985,
+       1988
+      ],
+      "note": "TBI. Mitsubishi Saturn engine 4G32T. Mitsubishi Mirage Turbo ('85-'88)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Eclipse Spyder GS Turbo",
+      "years": [
+       1996,
+       1999
+      ],
+      "note": "Eclipse Spyder GS Turbo ('96-'99)"
+     },
+     {
+      "value": "Lancer Evolution",
+      "note": "Lancer Evolution ('03)"
+     },
+     {
+      "value": "2.4L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "MPI. MIVEC. Mitsubishi Sirius engine 4G69. Mitsubishi Galant",
+      "years": [
+       2004,
+       2012
+      ],
+      "note": "MPI. MIVEC. Mitsubishi Sirius engine 4G69. Mitsubishi Galant ('04-'12)"
+     },
+     {
+      "value": "Lancer Ralliart sedan"
+     },
+     {
+      "value": "Outlander",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "Outlander ('04-'06)"
+     },
+     {
+      "value": "Lancer Sportback wagon",
+      "note": "Lancer Sportback wagon ('04 [& '06 in Canada])"
+     },
+     {
+      "value": "Eclipse",
+      "years": [
+       2006,
+       2012
+      ],
+      "note": "Eclipse ('06-'12)"
+     },
+     {
+      "value": "Eclipse Spyder",
+      "years": [
+       2007,
+       2012
+      ],
+      "note": "Eclipse Spyder ('07-'12)"
+     }
+    ],
+    "G": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "TBI. Mitsubishi Sirius engine 4G62T. Mitsubishi Cordia Turbo"
+     },
+     {
+      "value": "Tredia Turbo",
+      "years": [
+       1984,
+       1988
+      ],
+      "note": "Tredia Turbo ('84-'88)"
+     },
+     {
+      "value": "2.4L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "MPI. Mitsubishi Sirius engine 4G64. Mitsubishi Mighty Max",
+      "years": [
+       1993,
+       1996
+      ],
+      "note": "MPI. Mitsubishi Sirius engine 4G64. Mitsubishi Mighty Max ('93-'96)"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Sirius engine 4G64. Mitsubishi Expo",
+      "years": [
+       1993,
+       1996
+      ],
+      "note": "MPI. Mitsubishi Sirius engine 4G64. Mitsubishi Expo ('93-'96)"
+     },
+     {
+      "value": "Expo LRV",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Expo LRV ('93-'94)"
+     },
+     {
+      "value": "Galant",
+      "years": [
+       1994,
+       2003
+      ],
+      "note": "Galant ('94-'03)"
+     },
+     {
+      "value": "Eclipse Spyder GS",
+      "years": [
+       1996,
+       1999
+      ],
+      "note": "Eclipse Spyder GS ('96-'99, '01-'05)"
+     },
+     {
+      "value": "Eclipse coupe RS",
+      "years": [
+       2000,
+       2005
+      ],
+      "note": "Eclipse coupe RS/GS ('00-'05)"
+     },
+     {
+      "value": "Montero Sport ES",
+      "years": [
+       1997,
+       1999
+      ],
+      "note": "Montero Sport ES ('97-'99)"
+     },
+     {
+      "value": "Outlander",
+      "note": "Outlander ('03)"
+     }
+    ],
+    "H": [
+     {
+      "value": "2.6L"
+     },
+     {
+      "value": "I4 Turbo"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "Diamante wagon",
+      "note": "Diamante wagon ('95)"
+     },
+     {
+      "value": "Mitsubishi 3000GT",
+      "years": [
+       1997,
+       1999
+      ],
+      "note": "Mitsubishi 3000GT (Base) ('97-'99)"
+     },
+     {
+      "value": "Montero"
+     },
+     {
+      "value": "Mighty Max",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Mighty Max ('93-'94)"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Cyclone engine 6G72. Mitsubishi Montero LS",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "MPI. Mitsubishi Cyclone engine 6G72. Mitsubishi Montero LS ('95-'96)"
+     },
+     {
+      "value": "Montero Sport LS",
+      "years": [
+       1999,
+       2003
+      ],
+      "note": "Montero Sport LS ('99-'03)"
+     },
+     {
+      "value": "XLS",
+      "years": [
+       1999,
+       2001
+      ],
+      "note": "XLS ('99-'01)"
+     },
+     {
+      "value": "ES",
+      "years": [
+       2000,
+       2003
+      ],
+      "note": "ES ('00-'03)"
+     },
+     {
+      "value": "Galant",
+      "years": [
+       2001,
+       2003
+      ],
+      "note": "Galant ('01-'03)"
+     },
+     {
+      "value": "Eclipse",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "Eclipse/Eclipse Spyder (GT/GTS) ('01-'05)"
+     }
+    ],
+    "J": [
+     {
+      "value": "2.3L"
+     },
+     {
+      "value": "I4 Turbo"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "'93-'99 Mitsubishi 3000GT SL",
+      "years": [
+       1993,
+       1999
+      ]
+     },
+     {
+      "value": "Diamante LS",
+      "years": [
+       1993,
+       1995
+      ],
+      "note": "Diamante LS ('93-'95)"
+     },
+     {
+      "value": "1.2L"
+     },
+     {
+      "value": "I3"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. MIVEC. Mitsubishi 3A92 engine. Mitsubishi Mirage",
+      "years": [
+       2014,
+       2024
+      ],
+      "note": "MPI. MIVEC. Mitsubishi 3A92 engine. Mitsubishi Mirage ('14-'24)"
+     },
+     {
+      "value": "Mirage G4",
+      "years": [
+       2017,
+       2024
+      ],
+      "note": "Mirage G4 ('17-'24)"
+     }
+    ],
+    "K": [
+     {
+      "value": "1.5L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "2-bbl carb. Mitsubishi Orion engine 4G15. Mitsubishi Mirage",
+      "years": [
+       1985,
+       1988
+      ],
+      "note": "2-bbl carb. Mitsubishi Orion engine 4G15. Mitsubishi Mirage ('85-'88)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "V6 Twin Turbo IC"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "3.7L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "Sequential MPI. Chrysler PowerTech engine",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Sequential MPI. Chrysler PowerTech engine (EKG). '06-'09 Mitsubishi Raider"
+     }
+    ],
+    "L": [
+     {
+      "value": "2.4L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Sirius engine 4G64. Mitsubishi Galant",
+      "years": [
+       1985,
+       1987
+      ],
+      "note": "MPI. Mitsubishi Sirius engine 4G64. Mitsubishi Galant ('85-'87)"
+     },
+     {
+      "value": "Van",
+      "years": [
+       1987,
+       1988
+      ],
+      "note": "Van/Wagon ('87-'88)"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Sirius engine 4G64. Mitsubishi Galant GS",
+      "note": "MPI. Mitsubishi Sirius engine 4G64. Mitsubishi Galant GS ('94)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Cyclone engine 6G72. Mitsubishi Galant",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "MPI. Mitsubishi Cyclone engine 6G72. Mitsubishi Galant ('99-'00)"
+     },
+     {
+      "value": "Eclipse",
+      "note": "Eclipse ('00)"
+     }
+    ],
+    "M": [
+     {
+      "value": "3.5L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Cyclone engine 6G74. Mitsubishi Montero SR",
+      "years": [
+       1994,
+       1996
+      ],
+      "note": "MPI. Mitsubishi Cyclone engine 6G74. Mitsubishi Montero SR ('94-'96)"
+     }
+    ],
+    "N": [
+     {
+      "value": "2.6L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "TBI. Mitsubishi Astron engine 4G54T. Mitsubishi Starion ESI",
+      "years": [
+       1985,
+       1986
+      ],
+      "note": "TBI. Mitsubishi Astron engine 4G54T. Mitsubishi Starion ESI ('85-'86, '88)"
+     },
+     {
+      "value": "ESI-R",
+      "years": [
+       1986,
+       1989
+      ],
+      "note": "ESI-R ('86-'89)"
+     },
+     {
+      "value": "4.7L"
+     },
+     {
+      "value": "V8"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Sequential MPI. Chrysler PowerTech engine",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "Sequential MPI. Chrysler PowerTech engine (EVA). '06-'07 Mitsubishi Raider. ('07: CA emissions)"
+     }
+    ],
+    "P": [
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "3.5L"
+     },
+     {
+      "value": "MPI. Mitsubishi Cyclone engine 6G74. Mitsubishi Diamante",
+      "years": [
+       1997,
+       2004
+      ],
+      "note": "MPI. Mitsubishi Cyclone engine 6G74. Mitsubishi Diamante ('97-'04)"
+     },
+     {
+      "value": "4.7L"
+     },
+     {
+      "value": "V8"
+     },
+     {
+      "value": "Gas",
+      "note": "Gas/E85"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Sequential MPI. Chrysler PowerTech engine",
+      "note": "Sequential MPI. Chrysler PowerTech engine (EVD). '07 Mitsubishi Raider. (Federal emissions)"
+     }
+    ],
+    "R": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Sirius engine 4G63. Mitsubishi Galant",
+      "years": [
+       1989,
+       1992
+      ],
+      "note": "MPI. Mitsubishi Sirius engine 4G63. Mitsubishi Galant (GS/GSX/GSR) ('89-'92)"
+     },
+     {
+      "value": "Eclipse GS 2.0",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Eclipse GS 2.0 ('90-'92)"
+     },
+     {
+      "value": "3.5L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Cyclone engine 6G74. Mitsubishi Montero",
+      "years": [
+       1997,
+       2002
+      ],
+      "note": "MPI. Mitsubishi Cyclone engine 6G74. Mitsubishi Montero ('97-'02)"
+     },
+     {
+      "value": "Montero Sport Limited",
+      "years": [
+       1999,
+       2003
+      ],
+      "note": "Montero Sport Limited ('99-'03)"
+     },
+     {
+      "value": "XS",
+      "note": "XS ('01)"
+     },
+     {
+      "value": "XLS",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "XLS ('02-'04)"
+     },
+     {
+      "value": "LS",
+      "note": "LS ('04)"
+     }
+    ],
+    "S": [
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Cyclone engine 6G72. Mitsubishi Galant Sigma",
+      "note": "MPI. Mitsubishi Cyclone engine 6G72. Mitsubishi Galant Sigma ('88)"
+     },
+     {
+      "value": "Sigma",
+      "years": [
+       1989,
+       1990
+      ],
+      "note": "Sigma ('89-'90)"
+     },
+     {
+      "value": "Diamante",
+      "note": "Diamante ('92)"
+     },
+     {
+      "value": "Diamante wagon",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Diamante wagon ('93-'94)"
+     },
+     {
+      "value": "Montero",
+      "years": [
+       1989,
+       1992
+      ],
+      "note": "Montero ('89-'92)"
+     },
+     {
+      "value": "Mighty Max",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Mighty Max ('90-'92)"
+     },
+     {
+      "value": "3.8L"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Cyclone engine 6G75. Mitsubishi Montero",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "MPI. Mitsubishi Cyclone engine 6G75. Mitsubishi Montero ('03-'06)"
+     },
+     {
+      "value": "Galant",
+      "years": [
+       2004,
+       2007
+      ],
+      "note": "Galant ('04-'07, '09)"
+     },
+     {
+      "value": "Endeavor",
+      "years": [
+       2004,
+       2011
+      ],
+      "note": "Endeavor ('04-'11)"
+     }
+    ],
+    "T": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Saturn engine 4G37. Mitsubishi Eclipse",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "MPI. Mitsubishi Saturn engine 4G37. Mitsubishi Eclipse (Base/GS 1.8) ('90-'92)"
+     },
+     {
+      "value": "3.8L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Eclipse Spyder",
+      "years": [
+       2007,
+       2012
+      ],
+      "note": "Eclipse Spyder ('07-'12)"
+     },
+     {
+      "value": "Galant Ralliart",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "Galant Ralliart ('07-'09)"
+     }
+    ],
+    "U": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Sirius engine 4G63T. Mitsubishi Galant VR4",
+      "years": [
+       1991,
+       1992
+      ],
+      "note": "MPI. Mitsubishi Sirius engine 4G63T. Mitsubishi Galant VR4 ('91-'92)"
+     },
+     {
+      "value": "Eclipse GS Turbo",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Eclipse GS Turbo/GSX ('90-'92)"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "MPI. MIVEC",
+      "years": [
+       2008,
+       2017
+      ],
+      "note": "MPI. MIVEC (intake & exhaust). Mitsubishi 4B1 World engine 4B11. Mitsubishi Lancer ('08-'17)"
+     },
+     {
+      "value": "Outlander Sport",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Outlander Sport ('11-)"
+     }
+    ],
+    "V": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Sirius engine 4G63. Mitsubishi Galant",
+      "years": [
+       1989,
+       1992
+      ],
+      "note": "MPI. Mitsubishi Sirius engine 4G63. Mitsubishi Galant (Base/LS) ('89-'92)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. MIVEC",
+      "years": [
+       2008,
+       2015
+      ],
+      "note": "MPI. MIVEC (intake & exhaust). Mitsubishi 4B1 World engine 4B11T. Mitsubishi Lancer Evolution ('08-'15)"
+     },
+     {
+      "value": "Lancer Ralliart",
+      "years": [
+       2009,
+       2015
+      ],
+      "note": "Lancer Ralliart ('09-'15)"
+     }
+    ],
+    "W": [
+     {
+      "value": "2.4L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Sirius engine 4G64. Mitsubishi Van",
+      "years": [
+       1989,
+       1990
+      ],
+      "note": "MPI. Mitsubishi Sirius engine 4G64. Mitsubishi Van/Wagon ('89-'90)"
+     },
+     {
+      "value": "Mighty Max",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Mighty Max ('90-'92)"
+     },
+     {
+      "value": "Expo",
+      "note": "Expo ('92)"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. MIVEC",
+      "years": [
+       2009,
+       2011
+      ],
+      "note": "MPI. MIVEC (intake & exhaust). Mitsubishi 4B1 World engine 4B12. Mitsubishi Lancer GTS ('09-'11)"
+     },
+     {
+      "value": "GT",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "GT ('12-'16)"
+     },
+     {
+      "value": "SE",
+      "years": [
+       2012,
+       2017
+      ],
+      "note": "SE ('12-'17)"
+     },
+     {
+      "value": "ES AWD"
+     },
+     {
+      "value": "SEL",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "SEL ('16-'17)"
+     },
+     {
+      "value": "Outlander",
+      "years": [
+       2008,
+       2013
+      ],
+      "note": "Outlander ('08-'13)"
+     },
+     {
+      "value": "Outlander Sport",
+      "years": [
+       2015,
+       null
+      ],
+      "note": "Outlander Sport ('15-)"
+     }
+    ],
+    "X": [
+     {
+      "value": "1.5L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. Mitsubishi Orion engine 4G15. '89-'90 Mitsubishi Mirage",
+      "years": [
+       1989,
+       1990
+      ]
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "V6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. MIVEC. Mitsubishi 6B31 engine. Mitsubishi Outlander",
+      "years": [
+       2007,
+       2020
+      ],
+      "note": "MPI. MIVEC. Mitsubishi 6B31 engine. Mitsubishi Outlander ('07-'20)"
+     }
+    ],
+    "Y": [
+     {
+      "value": "1.6L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "Sequential MPI. Chrysler \"Neon engine\"",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "Sequential MPI. Chrysler \"Neon engine\" (420A). '95-'99 Mitsubishi Eclipse Base/RS/GS coupe"
+     }
+    ],
+    "Z": [
+     {
+      "value": "1.6L"
+     },
+     {
+      "value": "I4 Turbo"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     }
+    ],
+    "3": [
+     {
+      "value": "2.4L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. MIVEC w",
+      "years": [
+       2014,
+       2020
+      ],
+      "note": "MPI. MIVEC w/VVL. Mitsubishi 4J1 engine 4J12. Mitsubishi Outlander ('14-'20)"
+     }
+    ],
+    "4": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "2-bbl carb. Mitsubishi Sirius engine 4G62. Mitsubishi Cordia"
+     },
+     {
+      "value": "Tredia",
+      "note": "Tredia ('83)"
+     }
+    ],
+    "5": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Gasoline-Electric PHEV"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. MIVEC",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "MPI. MIVEC (intake only). Mitsubishi 4B1 World engine 4B11 + S61 Front motor + Y61 Rear motor. 12.0 kWh Lithium-ion Battery Pack. Mitsubishi Outlander PHEV ('18"
+     }
+    ],
+    "7": [
+     {
+      "value": "2.6L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Mighty Max",
+      "note": "Mighty Max ('83)"
+     },
+     {
+      "value": "I4 Turbo"
+     },
+     {
+      "value": "TBI. Mitsubishi Astron engine 4G54T. Mitsubishi Starion",
+      "note": "TBI. Mitsubishi Astron engine 4G54T. Mitsubishi Starion ('83)"
+     },
+     {
+      "value": "2.4L"
+     },
+     {
+      "value": "Gasoline-Electric PHEV"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. MIVEC",
+      "years": [
+       2021,
+       2022
+      ],
+      "note": "MPI. MIVEC (intake only). Mitsubishi 4B1 World engine 4B12 + S61 Front motor + Y61 Rear motor. 13.8 kWh Lithium-ion Battery Pack. Mitsubishi Outlander PHEV ('21"
+     }
+    ],
+    "8": [
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Direct injection. Intake e-VTC",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "Direct injection. Intake e-VTC/Exhaust VTC. Nissan PR25DD engine. Mitsubishi Outlander ('22-'25)"
+     }
+    ],
+    "9": [
+     {
+      "value": "2.3L"
+     },
+     {
+      "value": "I4 Turbo"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "2.4L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gasoline-Electric PHEV"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. MIVEC",
+      "years": [
+       2023,
+       2025
+      ],
+      "note": "MPI. MIVEC (intake only). Mitsubishi 4B1 World engine 4B12 + S91 Front motor + YA1 Rear motor. 20.0 kWh Lithium-ion Battery Pack. Mitsubishi Outlander PHEV ('23"
+     },
+     {
+      "value": "Nissan Rogue PHEV",
+      "note": "Nissan Rogue PHEV ('26)"
+     },
+     {
+      "value": "MPI. MIVEC",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "MPI. MIVEC (intake only). Mitsubishi 4B1 World engine 4B12 + S91 Front motor + YA1 Rear motor. 22.7 kWh Lithium-ion Battery Pack. Mitsubishi Outlander PHEV ('26"
+     }
+    ]
+   }
+  },
+  "model@5:6": {
+   "field": "model",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Mitsubishi Mirage",
+      "years": [
+       1985,
+       1988
+      ],
+      "note": "Mitsubishi Mirage ('85-'88)"
+     },
+     {
+      "value": "Mitsubishi Galant",
+      "years": [
+       1999,
+       2003
+      ],
+      "note": "Mitsubishi Galant ('99-'03)"
+     },
+     {
+      "value": "Mitsubishi Mirage",
+      "years": [
+       2014,
+       2024
+      ],
+      "note": "Mitsubishi Mirage ('14-'24)"
+     }
+    ],
+    "B": [
+     {
+      "value": "Mitsubishi Galant",
+      "years": [
+       1985,
+       1987
+      ],
+      "note": "Mitsubishi Galant ('85-'87)"
+     },
+     {
+      "value": "Galant Sigma",
+      "note": "Galant Sigma ('88)"
+     },
+     {
+      "value": "Sigma",
+      "years": [
+       1989,
+       1990
+      ],
+      "note": "Sigma ('89-'90)"
+     },
+     {
+      "value": "Mitsubishi Expo LRV 2wd",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Mitsubishi Expo LRV 2wd ('93-'94)"
+     },
+     {
+      "value": "Mitsubishi Galant",
+      "years": [
+       2004,
+       2012
+      ],
+      "note": "Mitsubishi Galant ('04-'12)"
+     }
+    ],
+    "C": [
+     {
+      "value": "Mitsubishi Starion",
+      "years": [
+       1983,
+       1989
+      ],
+      "note": "Mitsubishi Starion ('83-'89)"
+     },
+     {
+      "value": "Mitsubishi Diamante sedan",
+      "note": "Mitsubishi Diamante sedan ('92)"
+     },
+     {
+      "value": "Diamante wagon",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Diamante wagon ('93-'94)"
+     },
+     {
+      "value": "Mitsubishi Expo LRV Awd",
+      "note": "Mitsubishi Expo LRV Awd ('93)"
+     },
+     {
+      "value": "Mitsubishi Eclipse coupe",
+      "years": [
+       2000,
+       2005
+      ],
+      "note": "Mitsubishi Eclipse coupe ('00-'05)"
+     },
+     {
+      "value": "Mitsubishi Raider 2wd",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Mitsubishi Raider 2wd ('06-'09)"
+     }
+    ],
+    "D": [
+     {
+      "value": "Mitsubishi 3000GT 2wd",
+      "years": [
+       1991,
+       1992
+      ],
+      "note": "Mitsubishi 3000GT 2wd ('91-'92)"
+     },
+     {
+      "value": "Mitsubishi Expo 2wd",
+      "years": [
+       1993,
+       1996
+      ],
+      "note": "Mitsubishi Expo 2wd ('93-'96)"
+     },
+     {
+      "value": "Mitsubishi Lancer Sportback wagon",
+      "note": "Mitsubishi Lancer Sportback wagon ('04 in USA)"
+     },
+     {
+      "value": "Mitsubishi Outlander 2wd",
+      "years": [
+       2014,
+       2020
+      ],
+      "note": "Mitsubishi Outlander 2wd ('14-'20)"
+     }
+    ],
+    "E": [
+     {
+      "value": "Mitsubishi 3000GT Awd",
+      "years": [
+       1991,
+       1992
+      ],
+      "note": "Mitsubishi 3000GT Awd ('91-'92)"
+     },
+     {
+      "value": "Mitsubishi Expo Awd",
+      "years": [
+       1993,
+       1995
+      ],
+      "note": "Mitsubishi Expo Awd ('93-'95)"
+     },
+     {
+      "value": "Mitsubishi Eclipse Spyder",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "Mitsubishi Eclipse Spyder ('01-'05)"
+     }
+    ],
+    "F": [
+     {
+      "value": "Mitsubishi Cordia"
+     },
+     {
+      "value": "Tredia",
+      "years": [
+       1983,
+       1988
+      ],
+      "note": "Tredia ('83-'88)"
+     },
+     {
+      "value": "Mitsubishi Eclipse 2wd",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Mitsubishi Eclipse 2wd ('93-'94)"
+     },
+     {
+      "value": "Mitsubishi Mirage G4",
+      "years": [
+       2017,
+       2024
+      ],
+      "note": "Mitsubishi Mirage G4 ('17-'24)"
+     }
+    ],
+    "G": [
+     {
+      "value": "Mitsubishi Eclipse Awd",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Mitsubishi Eclipse Awd ('93-'94)"
+     }
+    ],
+    "H": [
+     {
+      "value": "Mitsubishi Galant Fwd",
+      "note": "Mitsubishi Galant Fwd ('93)"
+     },
+     {
+      "value": "Mitsubishi Lancer Evolution",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "Mitsubishi Lancer Evolution ('03-'06)"
+     },
+     {
+      "value": "Mitsubishi RVR 2wd",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Mitsubishi RVR 2wd ('11-') (Canadian market version of Outlander Sport)"
+     }
+    ],
+    "J": [
+     {
+      "value": "Mitsubishi Montero",
+      "years": [
+       1983,
+       1991
+      ],
+      "note": "Mitsubishi Montero ('83-'91)"
+     },
+     {
+      "value": "Mitsubishi Galant",
+      "years": [
+       1994,
+       1998
+      ],
+      "note": "Mitsubishi Galant ('94-'98)"
+     },
+     {
+      "value": "Mitsubishi Lancer sedan",
+      "years": [
+       2002,
+       2006
+      ],
+      "note": "Mitsubishi Lancer sedan ('02-'06)"
+     },
+     {
+      "value": "Mitsubishi RVR Awd",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Mitsubishi RVR Awd ('11-') (Canadian market version of Outlander Sport)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Mitsubishi Mighty Max 4wd",
+      "years": [
+       1983,
+       1986
+      ],
+      "note": "Mitsubishi Mighty Max 4wd ('83-'86)"
+     },
+     {
+      "value": "Mitsubishi Montero",
+      "note": "Mitsubishi Montero ('92)"
+     },
+     {
+      "value": "Mitsubishi Eclipse coupe 2wd",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "Mitsubishi Eclipse coupe 2wd ('95-'99)"
+     },
+     {
+      "value": "Mitsubishi Eclipse coupe",
+      "years": [
+       2006,
+       2012
+      ],
+      "note": "Mitsubishi Eclipse coupe ('06-'12)"
+     }
+    ],
+    "L": [
+     {
+      "value": "Mitsubishi Mighty Max 2wd",
+      "years": [
+       1987,
+       1992
+      ],
+      "note": "Mitsubishi Mighty Max 2wd ('87-'92)"
+     },
+     {
+      "value": "Mitsubishi Eclipse coupe Awd",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "Mitsubishi Eclipse coupe Awd ('95-'99)"
+     },
+     {
+      "value": "Mitsubishi Eclipse Spyder",
+      "years": [
+       2007,
+       2012
+      ],
+      "note": "Mitsubishi Eclipse Spyder ('07-'12)"
+     }
+    ],
+    "M": [
+     {
+      "value": "Mitsubishi Mighty Max 4wd",
+      "years": [
+       1987,
+       1992
+      ],
+      "note": "Mitsubishi Mighty Max 4wd ('87-'92)"
+     },
+     {
+      "value": "Mitsubishi 3000GT coupe 2wd",
+      "years": [
+       1993,
+       1999
+      ],
+      "note": "Mitsubishi 3000GT coupe 2wd ('93-'99)"
+     },
+     {
+      "value": "Mitsubishi Endeavor 2wd",
+      "years": [
+       2004,
+       2011
+      ],
+      "note": "Mitsubishi Endeavor 2wd ('04-'11)"
+     }
+    ],
+    "N": [
+     {
+      "value": "Mitsubishi Van",
+      "years": [
+       1987,
+       1990
+      ],
+      "note": "Mitsubishi Van/Wagon ('87-'90)"
+     },
+     {
+      "value": "Mitsubishi 3000GT coupe Awd",
+      "years": [
+       1993,
+       1999
+      ],
+      "note": "Mitsubishi 3000GT coupe Awd ('93-'99)"
+     },
+     {
+      "value": "Mitsubishi Endeavor Awd",
+      "years": [
+       2004,
+       2011
+      ],
+      "note": "Mitsubishi Endeavor Awd ('04-'11)"
+     }
+    ],
+    "P": [
+     {
+      "value": "Mitsubishi Mighty Max 2wd",
+      "years": [
+       1983,
+       1986
+      ],
+      "note": "Mitsubishi Mighty Max 2wd ('83-'86)"
+     },
+     {
+      "value": "Mitsubishi Diamante sedan",
+      "years": [
+       1993,
+       2004
+      ],
+      "note": "Mitsubishi Diamante sedan ('93-'04)"
+     },
+     {
+      "value": "Diamante wagon",
+      "note": "Diamante wagon ('95)"
+     },
+     {
+      "value": "Mitsubishi Outlander Sport 2wd",
+      "years": [
+       2011,
+       2022
+      ],
+      "note": "Mitsubishi Outlander Sport 2wd ('11-'22) (ASX in Puerto Rico '11-'12)"
+     }
+    ],
+    "R": [
+     {
+      "value": "Mitsubishi Galant Fwd",
+      "years": [
+       1989,
+       1992
+      ],
+      "note": "Mitsubishi Galant Fwd ('89-'92)"
+     },
+     {
+      "value": "Mitsubishi Montero",
+      "years": [
+       1993,
+       2000
+      ],
+      "note": "Mitsubishi Montero ('93-'00)"
+     },
+     {
+      "value": "Mitsubishi Outlander Sport Awd",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Mitsubishi Outlander Sport Awd ('11-') (ASX in Puerto Rico '11-'12)"
+     }
+    ],
+    "S": [
+     {
+      "value": "Mitsubishi Eclipse 2wd",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Mitsubishi Eclipse 2wd ('90-'92)"
+     },
+     {
+      "value": "Mitsubishi Mighty Max 2wd",
+      "years": [
+       1993,
+       1996
+      ],
+      "note": "Mitsubishi Mighty Max 2wd ('93-'96)"
+     },
+     {
+      "value": "Mitsubishi Montero Sport 2wd",
+      "years": [
+       1997,
+       2004
+      ],
+      "note": "Mitsubishi Montero Sport 2wd ('97-'04) (Nativa in Puerto Rico)"
+     },
+     {
+      "value": "Mitsubishi Outlander 2wd",
+      "years": [
+       2007,
+       2013
+      ],
+      "note": "Mitsubishi Outlander 2wd ('07-'13)"
+     },
+     {
+      "value": "Mitsubishi Eclipse Cross 2wd",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "Mitsubishi Eclipse Cross 2wd ('18-'22)"
+     }
+    ],
+    "T": [
+     {
+      "value": "Mitsubishi Eclipse Awd",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Mitsubishi Eclipse Awd ('90-'92)"
+     },
+     {
+      "value": "Mitsubishi Mighty Max 4wd",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Mitsubishi Mighty Max 4wd ('93-'94)"
+     },
+     {
+      "value": "Mitsubishi Montero Sport 4wd",
+      "years": [
+       1997,
+       2004
+      ],
+      "note": "Mitsubishi Montero Sport 4wd ('97-'04) (Nativa in Puerto Rico)"
+     },
+     {
+      "value": "Mitsubishi Raider 4wd",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Mitsubishi Raider 4wd ('06-'09)"
+     },
+     {
+      "value": "Mitsubishi Outlander Awd",
+      "years": [
+       2007,
+       2013
+      ],
+      "note": "Mitsubishi Outlander Awd ('07-'13)"
+     },
+     {
+      "value": "Mitsubishi Eclipse Cross Awd",
+      "years": [
+       2018,
+       null
+      ],
+      "note": "Mitsubishi Eclipse Cross Awd ('18-)"
+     }
+    ],
+    "U": [
+     {
+      "value": "Mitsubishi Mirage",
+      "years": [
+       1989,
+       1992
+      ],
+      "note": "Mitsubishi Mirage ('89-'92)"
+     },
+     {
+      "value": "Mitsubishi Lancer sedan Fwd",
+      "years": [
+       2008,
+       2017
+      ],
+      "note": "Mitsubishi Lancer sedan Fwd ('08-'17)"
+     }
+    ],
+    "V": [
+     {
+      "value": "Mitsubishi Expo LRV 2wd",
+      "note": "Mitsubishi Expo LRV 2wd ('92)"
+     },
+     {
+      "value": "Mitsubishi 3000GT Spyder 2wd",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "Mitsubishi 3000GT Spyder 2wd ('95-'96)"
+     },
+     {
+      "value": "Mitsubishi Lancer sedan Awd: Ralliart",
+      "years": [
+       2009,
+       2015
+      ],
+      "note": "Mitsubishi Lancer sedan Awd: Ralliart ('09-'15)"
+     },
+     {
+      "value": "SE",
+      "years": [
+       2012,
+       2017
+      ],
+      "note": "SE ('12-'17)"
+     },
+     {
+      "value": "ES AWD"
+     },
+     {
+      "value": "SEL",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "SEL ('16-'17)"
+     }
+    ],
+    "W": [
+     {
+      "value": "Mitsubishi Expo LRV Awd",
+      "note": "Mitsubishi Expo LRV Awd ('92)"
+     },
+     {
+      "value": "Mitsubishi 3000GT Spyder Awd",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "Mitsubishi 3000GT Spyder Awd ('95-'96)"
+     },
+     {
+      "value": "Mitsubishi Montero",
+      "years": [
+       2001,
+       2006
+      ],
+      "note": "Mitsubishi Montero ('01-'06)"
+     },
+     {
+      "value": "Mitsubishi Lancer Evolution Awd",
+      "years": [
+       2008,
+       2015
+      ],
+      "note": "Mitsubishi Lancer Evolution Awd ('08-'15)"
+     }
+    ],
+    "X": [
+     {
+      "value": "Mitsubishi Galant Awd",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Mitsubishi Galant Awd ('90-'92)"
+     },
+     {
+      "value": "Mitsubishi Eclipse Spyder 2wd",
+      "years": [
+       1996,
+       1999
+      ],
+      "note": "Mitsubishi Eclipse Spyder 2wd ('96-'99)"
+     },
+     {
+      "value": "Mitsubishi Outlander 2wd",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "Mitsubishi Outlander 2wd ('03-'06)"
+     },
+     {
+      "value": "Mitsubishi Lancer Sportback",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "Mitsubishi Lancer Sportback (5-d hatchback) Fwd ('10-'14) ('09-'17 in Canada)"
+     }
+    ],
+    "Y": [
+     {
+      "value": "Mitsubishi Expo 2wd",
+      "note": "Mitsubishi Expo 2wd ('92)"
+     },
+     {
+      "value": "Mitsubishi Mirage",
+      "years": [
+       1997,
+       2002
+      ],
+      "note": "Mitsubishi Mirage ('97-'02)"
+     },
+     {
+      "value": "Mitsubishi Lancer Sportback",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "Mitsubishi Lancer Sportback (5-d hatchback) Awd Ralliart ('10-'11) ('09-'11 in Canada)"
+     }
+    ],
+    "Z": [
+     {
+      "value": "Mitsubishi Expo Awd",
+      "note": "Mitsubishi Expo Awd ('92)"
+     },
+     {
+      "value": "Mitsubishi Outlander Awd",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "Mitsubishi Outlander Awd ('03-'06)"
+     },
+     {
+      "value": "Mitsubishi Outlander Awd",
+      "years": [
+       2014,
+       2020
+      ],
+      "note": "Mitsubishi Outlander Awd ('14-'20)"
+     }
+    ],
+    "1": [
+     {
+      "value": "Mitsubishi i-MiEV",
+      "years": [
+       2012,
+       2017
+      ],
+      "note": "Mitsubishi i-MiEV ('12-'17)"
+     }
+    ],
+    "2": [
+     {
+      "value": "Mitsubishi Outlander PHEV Awd",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "Mitsubishi Outlander PHEV Awd ('18-'22)"
+     }
+    ],
+    "3": [
+     {
+      "value": "Mitsubishi Outlander 2wd",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Mitsubishi Outlander 2wd ('22-)"
+     }
+    ],
+    "4": [
+     {
+      "value": "Mitsubishi Outlander Awd",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Mitsubishi Outlander Awd ('22-)"
+     }
+    ],
+    "5": [
+     {
+      "value": "Mitsubishi Outlander PHEV Awd",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "Mitsubishi Outlander PHEV Awd ('23-)"
+     }
+    ],
+    "0": [
+     {
+      "value": "Nissan Rogue PHEV Awd",
+      "note": "Nissan Rogue PHEV Awd ('26)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Mitsubishi Motors Mizushima",
+      "note": "Mitsubishi Motors Mizushima (#2) plant"
+     },
+     {
+      "value": "Kurashiki"
+     },
+     {
+      "value": "Okayama prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "E": [
+     {
+      "value": "Diamond-Star Motors",
+      "note": "Diamond-Star Motors/Mitsubishi Motor Manufacturing of America"
+     },
+     {
+      "value": "Normal"
+     },
+     {
+      "value": "IL"
+     },
+     {
+      "value": "USA",
+      "note": "USA (closed 2015)"
+     }
+    ],
+    "F": [
+     {
+      "value": "NEDCAR plant"
+     },
+     {
+      "value": "Born"
+     },
+     {
+      "value": "The Netherlands",
+      "note": "The Netherlands (closed 2012)"
+     }
+    ],
+    "H": [
+     {
+      "value": "Mitsubishi Motors Thailand plant"
+     },
+     {
+      "value": "Laem Chabang"
+     },
+     {
+      "value": "Chonburi Province"
+     },
+     {
+      "value": "Thailand"
+     }
+    ],
+    "J": [
+     {
+      "value": "Mitsubishi Motors - Pajero Manufacturing Co",
+      "note": "Mitsubishi Motors - Pajero Manufacturing Co."
+     },
+     {
+      "value": "Ltd. plant"
+     },
+     {
+      "value": "Sakahogi"
+     },
+     {
+      "value": "Gifu prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (closed 2021)"
+     }
+    ],
+    "N": [
+     {
+      "value": "PT Mitsubishi Motors Krama Yudha Indonesia plant"
+     },
+     {
+      "value": "Cikarang"
+     },
+     {
+      "value": "Bekasi Regency"
+     },
+     {
+      "value": "West Java Province"
+     },
+     {
+      "value": "Indonesia"
+     }
+    ],
+    "P": [
+     {
+      "value": "Mitsubishi Motors Ooe",
+      "note": "Mitsubishi Motors Ooe (Nagoya #2) plant"
+     },
+     {
+      "value": "Nagoya"
+     },
+     {
+      "value": "Aichi prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (closed 2001)"
+     }
+    ],
+    "S": [
+     {
+      "value": "Chrysler Warren Truck Assembly"
+     },
+     {
+      "value": "Warren"
+     },
+     {
+      "value": "MI"
+     },
+     {
+      "value": "US",
+      "note": "US (also known as Dodge City) (Mitsubishi Raider pickup)"
+     },
+     {
+      "value": "Renault Sandouville Factory"
+     },
+     {
+      "value": "Sandouville"
+     },
+     {
+      "value": "France",
+      "years": [
+       2020,
+       2022
+      ],
+      "note": "France (2020-2022 Mitsubishi Express van - Australia/New Zealand)"
+     }
+    ],
+    "T": [
+     {
+      "value": "Mitsubishi Motors Australia plant"
+     },
+     {
+      "value": "Tonsley Park"
+     },
+     {
+      "value": "Adelaide"
+     },
+     {
+      "value": "South Australia"
+     },
+     {
+      "value": "Australia",
+      "note": "Australia (closed 2008)"
+     }
+    ],
+    "U": [
+     {
+      "value": "Mitsubishi Motors Mizushima",
+      "note": "Mitsubishi Motors Mizushima (#1) plant"
+     },
+     {
+      "value": "Kurashiki"
+     },
+     {
+      "value": "Okayama prefecture"
+     },
+     {
+      "value": "Japan"
+     },
+     {
+      "value": "Hyundai Motor Ulsan plant"
+     },
+     {
+      "value": "Ulsan"
+     },
+     {
+      "value": "South Korea",
+      "note": "South Korea (Mitsubishi Precis)"
+     }
+    ],
+    "W": [
+     {
+      "value": "Renault Valladolid Factory"
+     },
+     {
+      "value": "Valladolid"
+     },
+     {
+      "value": "Spain",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "Spain (2025- Mitsubishi ASX - Australia)"
+     }
+    ],
+    "X": [
+     {
+      "value": "Pininfarina Bairo plant"
+     },
+     {
+      "value": "Bairo Canavese"
+     },
+     {
+      "value": "Italy",
+      "note": "Italy (Mitsubishi Pajero Pinin/Shogun Pinin, Colt CZC)"
+     }
+    ],
+    "Y": [
+     {
+      "value": "Mitsubishi Motors Ooe",
+      "note": "Mitsubishi Motors Ooe (Nagoya #1) plant"
+     },
+     {
+      "value": "Nagoya"
+     },
+     {
+      "value": "Aichi prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (closed 2001)"
+     }
+    ],
+    "Z": [
+     {
+      "value": "Mitsubishi Motors Okazaki plant"
+     },
+     {
+      "value": "Okazaki"
+     },
+     {
+      "value": "Aichi prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ]
+   }
+  }
+ }
+}

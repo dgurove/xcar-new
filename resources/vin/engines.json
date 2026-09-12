@@ -1,0 +1,35 @@
+{
+  "_note": "Индекс двигателя → характеристики. Заполняется только там, где индекс однозначно вытаскивается из VIN. Источник — заводские обозначения АвтоВАЗа и Renault-Nissan.",
+  "engines": {
+    "11189": {
+      "displacement": 1.6,
+      "power_hp": 87,
+      "name": "ВАЗ-11189 1.6 8V",
+      "fuel_type": "petrol"
+    },
+    "21129": {
+      "displacement": 1.6,
+      "power_hp": 106,
+      "name": "ВАЗ-21129 1.6 16V",
+      "fuel_type": "petrol"
+    },
+    "21129 CNG": {
+      "displacement": 1.6,
+      "power_hp": 106,
+      "name": "ВАЗ-21129 1.6 16V CNG",
+      "fuel_type": "cng"
+    },
+    "21179": {
+      "displacement": 1.8,
+      "power_hp": 122,
+      "name": "ВАЗ-21179 1.8 16V",
+      "fuel_type": "petrol"
+    },
+    "H4M": {
+      "displacement": 1.6,
+      "power_hp": 113,
+      "name": "H4M (HR16DE) 1.6 16V",
+      "fuel_type": "petrol"
+    }
+  }
+}

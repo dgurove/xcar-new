@@ -1,0 +1,150 @@
+{
+ "_brand": "Polestar",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Polestar/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "7SY",
+  "LPS",
+  "YSM",
+  "YSR"
+ ],
+ "_market": "north_america",
+ "sections": {
+  "engine@4:6": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "4:6"
+   ],
+   "map": {
+    "BE": [
+     {
+      "value": "B4204T25",
+      "years": [
+       2020,
+       2021
+      ],
+      "note": "B4204T25/B4204TSH (HP) '20-'21 Polestar 1. (322 hp [gas] + 299 hp [electric])"
+     }
+    ],
+    "EJ": [
+     {
+      "value": "E400V1 '25 Polestar 3 RWD"
+     }
+    ],
+    "EA": [
+     {
+      "value": "E400V30 '25 Polestar 3 AWD"
+     }
+    ],
+    "EE": [
+     {
+      "value": "E400V11 '25 Polestar 3 AWD Performance"
+     }
+    ],
+    "ED": [
+     {
+      "value": "E400V6 '21-'23 Polestar 2 AWD",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "E400V6 '21-'23 Polestar 2 AWD (long range)"
+     }
+    ],
+    "EG": [
+     {
+      "value": "E400V9 '22-'23 Polestar 2 FWD",
+      "years": [
+       2022,
+       2023
+      ],
+      "note": "E400V9 '22-'23 Polestar 2 FWD (long range)"
+     }
+    ],
+    "ET": [
+     {
+      "value": "E400V35 '23 Polestar 2 AWD",
+      "note": "E400V35 '23 Polestar 2 AWD (long range) w/Performance Pack"
+     },
+     {
+      "value": "BST Edition 270"
+     },
+     {
+      "value": "BST Edition 230"
+     }
+    ],
+    "FD": [
+     {
+      "value": "E400V26 '24 Polestar 2 AWD",
+      "note": "E400V26 '24 Polestar 2 AWD (long range)"
+     }
+    ],
+    "FE": [
+     {
+      "value": "E400V20 '24 Polestar 2 RWD",
+      "note": "E400V20 '24 Polestar 2 RWD (long range)"
+     }
+    ],
+    "FF": [
+     {
+      "value": "E400V36 '25 Polestar 2 AWD",
+      "note": "E400V36 '25 Polestar 2 AWD (long range) w/standard Performance Pack"
+     }
+    ],
+    "FG": [
+     {
+      "value": "E400V36 '24 Polestar 2 AWD",
+      "note": "E400V36 '24 Polestar 2 AWD (long range) w/Performance Pack"
+     }
+    ],
+    "PB": [
+     {
+      "value": "E400P02 '26 Polestar 4 RWD"
+     }
+    ],
+    "PA": [
+     {
+      "value": "E400P01 '26 Polestar 4 AWD"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "B": [
+     {
+      "value": "Sichuan Province",
+      "note": "Sichuan Province (PSCD - Polestar Chengdu Plant)"
+     }
+    ],
+    "F": [
+     {
+      "value": "Zhejiang Province"
+     }
+    ],
+    "G": [
+     {
+      "value": "South Carolina",
+      "note": "South Carolina (Volvo Car US Operations)"
+     }
+    ],
+    "L": [
+     {
+      "value": "Taizhou"
+     },
+     {
+      "value": "Zhejiang Province",
+      "note": "Zhejiang Province (Volvo AELQ plant)"
+     }
+    ]
+   }
+  }
+ }
+}

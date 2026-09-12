@@ -50,6 +50,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/mashiny/{vehicle}/perestanovka', [VehicleController::class, 'move']);
     Route::post('/mashiny/{vehicle}/vydacha', [VehicleController::class, 'release']);
     Route::get('/spravochnik/mashiny', [VehicleController::class, 'suggest']);
+    Route::get('/spravochnik/vin', [ReferenceController::class, 'vin']);
     Route::get('/spravochnik/marki', [ReferenceController::class, 'brands']);
     Route::get('/spravochnik/modeli', [ReferenceController::class, 'models']);
     Route::post('/spravochnik/marki', [ReferenceController::class, 'createBrand']);

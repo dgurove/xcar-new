@@ -38,8 +38,8 @@
         </div>
     </div>
     <div class="card-extra">
-        @if ($vehicle->ref)<span class="tag nums font-normal">{{ $vehicle->ref }}</span>@endif
-        @if ($vehicle->vin)<span class="tag nums font-normal">{{ $vehicle->vin }}</span>@endif
+        @if ($vehicle->ref)<span class="tag">{{ $vehicle->ref }}</span>@endif
+        @if ($vehicle->vin)<span class="tag">{{ $vehicle->vin }}</span>@endif
         @if ($vehicle->client)<span class="tag">{{ $vehicle->client->name }}</span>@endif
         @if ($state === \App\Park\VehicleState::Stored && $vehicle->yard)<span class="text-sm text-ink-dim">{{ $vehicle->yard->name }}</span>@endif
         @if ($state === \App\Park\VehicleState::Released && $vehicle->released_at)<span class="nums text-sm font-normal text-ink-dim">выдана {{ $vehicle->released_at->translatedFormat('j M Y') }}</span>@endif

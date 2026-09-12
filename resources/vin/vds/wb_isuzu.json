@@ -1,0 +1,236 @@
+{
+ "_brand": "Isuzu",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Isuzu/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "1GG",
+  "4NU",
+  "4S1",
+  "4S2",
+  "4S6",
+  "JAA",
+  "JAB",
+  "JAC",
+  "JAE",
+  "JR2",
+  "LES",
+  "LM5"
+ ],
+ "_market": null,
+ "sections": {
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "0": [
+     {
+      "value": "Fujisawa"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       1981,
+       null
+      ],
+      "note": "Japan (I-Mark [Rwd] '81-Early '85, Impulse '83-'87, P'up '81-'87)"
+     }
+    ],
+    "4": [
+     {
+      "value": "Fujisawa"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       1985,
+       1987
+      ],
+      "note": "Japan (I-Mark [Fwd] Mid '85-'87, Impulse '83-'87)"
+     },
+     {
+      "value": "Lafayette"
+     },
+     {
+      "value": "Indiana"
+     },
+     {
+      "value": "USA",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "USA (SIA plant) (Isuzu Pickup '90-'94, Rodeo '91-'04, Amigo '98-'00, Rodeo Sport '01-'03, Axiom '02-04, Honda Passport '94-'02)"
+     }
+    ],
+    "5": [
+     {
+      "value": "Fujisawa"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       1984,
+       1987
+      ],
+      "note": "Japan (Trooper '84-'87)"
+     },
+     {
+      "value": "Yokohama"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       1989,
+       1990
+      ],
+      "note": "Japan [Takada Kogyo Co., Ltd.] (Amigo '89-'90)"
+     }
+    ],
+    "6": [
+     {
+      "value": "Fujisawa"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (I-Mark [Rwd] Early '85)"
+     },
+     {
+      "value": "Taichung"
+     },
+     {
+      "value": "Taiwan",
+      "years": [
+       1987,
+       1991
+      ],
+      "note": "Taiwan (Sanfu Motor Industrial Co., Ltd. plant) (Trooper '87-'91)"
+     },
+     {
+      "value": "Oklahoma City"
+     },
+     {
+      "value": "Oklahoma"
+     },
+     {
+      "value": "USA",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "USA (GM plant) ('03-'06 Ascender LWB 7-psgr.)"
+     }
+    ],
+    "7": [
+     {
+      "value": "Fujisawa"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Japan (I-Mark '88-'89, Impulse '88-'92, Stylus '91-'93, Trooper '86-'02, Pickup '88-'95, VehiCross '99-'01, Acura SLX '96-'99)"
+     }
+    ],
+    "8": [
+     {
+      "value": "Fujisawa"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       1989,
+       1991
+      ],
+      "note": "Japan [Press Kogyo Co., Ltd.] (Trooper '89-'91)"
+     },
+     {
+      "value": "Shreveport"
+     },
+     {
+      "value": "Louisiana"
+     },
+     {
+      "value": "USA",
+      "years": [
+       1996,
+       2000
+      ],
+      "note": "USA (GM plant) ('96-'00 Hombre, '06-'08 i-Series)"
+     }
+    ],
+    "9": [
+     {
+      "value": "Fujisawa"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "Japan [SKR Co., Ltd.] (Amigo '90-'94)"
+     }
+    ],
+    "C": [
+     {
+      "value": "Sayama"
+     },
+     {
+      "value": "Saitama prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       1996,
+       1999
+      ],
+      "note": "Japan (Honda plant) ('96-'99 Oasis)"
+     }
+    ],
+    "2": [
+     {
+      "value": "Moraine"
+     },
+     {
+      "value": "Ohio"
+     },
+     {
+      "value": "USA",
+      "years": [
+       2004,
+       2008
+      ],
+      "note": "USA (GM plant) ('03 Ascender LWB 7-psgr., '04-'08 Ascender SWB 5-psgr.)"
+     }
+    ]
+   }
+  }
+ }
+}

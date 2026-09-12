@@ -1,0 +1,176 @@
+{
+  "_note": "АвтоВАЗ. Буквенная схема (Vesta, XRAY) взята из vininfo (BSD-3, https://github.com/idlesign/vininfo), числовая — заводской индекс модели, он лежит в VIN как есть.",
+  "model_by_prefix": {
+    "1118": {
+      "name": "Kalina",
+      "drive": "fwd"
+    },
+    "1119": {
+      "name": "Kalina",
+      "drive": "fwd"
+    },
+    "2105": {
+      "name": "2105",
+      "drive": "rwd"
+    },
+    "2107": {
+      "name": "2107",
+      "drive": "rwd"
+    },
+    "2110": {
+      "name": "2110",
+      "drive": "fwd"
+    },
+    "2111": {
+      "name": "2111",
+      "drive": "fwd"
+    },
+    "2112": {
+      "name": "2112",
+      "drive": "fwd"
+    },
+    "2114": {
+      "name": "2114",
+      "drive": "fwd"
+    },
+    "2115": {
+      "name": "2115",
+      "drive": "fwd"
+    },
+    "2121": {
+      "name": "Niva",
+      "drive": "awd"
+    },
+    "2123": {
+      "name": "Niva (2123)",
+      "drive": "awd"
+    },
+    "2131": {
+      "name": "Niva (2131)",
+      "drive": "awd"
+    },
+    "2170": {
+      "name": "Priora",
+      "drive": "fwd"
+    },
+    "2171": {
+      "name": "Priora",
+      "drive": "fwd"
+    },
+    "2172": {
+      "name": "Priora",
+      "drive": "fwd"
+    },
+    "2190": {
+      "name": "Granta",
+      "drive": "fwd"
+    },
+    "2191": {
+      "name": "Granta",
+      "drive": "fwd"
+    },
+    "2192": {
+      "name": "Kalina",
+      "drive": "fwd"
+    },
+    "2194": {
+      "name": "Kalina",
+      "drive": "fwd"
+    },
+    "2129": {
+      "name": "Niva",
+      "drive": "awd"
+    },
+    "2140": {
+      "name": "Largus",
+      "drive": "fwd"
+    },
+    "2180": {
+      "name": "Vesta",
+      "drive": "fwd"
+    },
+    "2181": {
+      "name": "Vesta",
+      "drive": "fwd"
+    }
+  },
+  "sections": {
+    "model": {
+      "at": [
+        "vds",
+        1
+      ],
+      "map": {
+        "A": {
+          "name": "XRAY",
+          "drive": "fwd"
+        },
+        "F": {
+          "name": "Vesta",
+          "drive": "fwd"
+        }
+      }
+    },
+    "body": {
+      "at": [
+        "vds",
+        2
+      ],
+      "map": {
+        "B": "Hatchback, 5-Door",
+        "K": "Station Wagon, 5-Door",
+        "L": "Sedan, 4-Door"
+      }
+    },
+    "engine": {
+      "at": [
+        "vds",
+        3
+      ],
+      "map": {
+        "1": "21129",
+        "2": "11189",
+        "3": "21179",
+        "4": "H4M",
+        "A": "21129 CNG"
+      }
+    },
+    "transmission": {
+      "at": [
+        "vds",
+        4
+      ],
+      "map": {
+        "1": {
+          "name": "МКПП 5 ст. (ВАЗ-21807)",
+          "type": "manual"
+        },
+        "2": {
+          "name": "АМТ 5 ст. (ВАЗ-21827)",
+          "type": "dual_clutch"
+        },
+        "3": {
+          "name": "МКПП 5 ст. (Renault JH3 514)",
+          "type": "manual"
+        }
+      }
+    },
+    "plant": {
+      "at": [
+        "vis",
+        1
+      ],
+      "map": {
+        "0": "Тольятти",
+        "Y": "Ижевск",
+        "1": "Тольятти"
+      }
+    },
+    "serial": {
+      "at": [
+        "vis",
+        "2:"
+      ]
+    }
+  }
+}

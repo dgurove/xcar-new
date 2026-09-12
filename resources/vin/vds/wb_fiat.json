@@ -1,0 +1,907 @@
+{
+ "_brand": "Fiat",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Fiat/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "3C3",
+  "3C4",
+  "3C6",
+  "3E4",
+  "8AP",
+  "93W",
+  "988",
+  "9BD",
+  "9VC",
+  "JC1",
+  "LNP",
+  "LWV",
+  "MCA",
+  "TSM",
+  "VXF",
+  "VYF",
+  "ZFA",
+  "ZFB",
+  "ZFC"
+ ],
+ "_market": null,
+ "sections": {
+  "body@7:8": {
+   "field": "body",
+   "at": [
+    "vin",
+    "7:8"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Fiat 500 Pop '12-'16",
+      "years": [
+       2012,
+       2016
+      ]
+     },
+     {
+      "value": "Fiat 500 Pop '17",
+      "note": "Fiat 500 Pop '17 (Canada)"
+     },
+     {
+      "value": "Fiat 500e Inspi",
+      "years": [
+       2024,
+       2025
+      ],
+      "note": "Fiat 500e Inspi(Red) Edition '24-'25"
+     },
+     {
+      "value": "Fiat 500L Pop '14-'20",
+      "years": [
+       2014,
+       2020
+      ]
+     },
+     {
+      "value": "500X Pop '16-'22",
+      "years": [
+       2016,
+       2022
+      ]
+     },
+     {
+      "value": "500X Pop Blue Sky Edition '18-'19",
+      "years": [
+       2018,
+       2019
+      ]
+     },
+     {
+      "value": "500X 120th Anniversary Edition '19"
+     }
+    ],
+    "B": [
+     {
+      "value": "Fiat 500 Sport '12-'16",
+      "years": [
+       2012,
+       2016
+      ]
+     },
+     {
+      "value": "Fiat 500e",
+      "note": "Fiat 500e (base model) '26"
+     },
+     {
+      "value": "Fiat 500L Easy '14-'16",
+      "years": [
+       2014,
+       2016
+      ]
+     },
+     {
+      "value": "500X Easy '16"
+     },
+     {
+      "value": "500X Sport '16-'18",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "500X Sport '16-'18 (Canada)"
+     },
+     {
+      "value": "500X Trekking '19-'22",
+      "years": [
+       2019,
+       2022
+      ]
+     },
+     {
+      "value": "500X Trekking Urbana Edition '19"
+     },
+     {
+      "value": "500X Pop '23"
+     },
+     {
+      "value": "500X Sport '23"
+     }
+    ],
+    "C": [
+     {
+      "value": "Fiat 500 Lounge '12-'19",
+      "years": [
+       2012,
+       2019
+      ]
+     },
+     {
+      "value": "Fiat 500e Inspired By Music Edition '24"
+     },
+     {
+      "value": "Fiat 500e Inspired By Beauty Edition '24"
+     },
+     {
+      "value": "Fiat 500e Inspired by Los Angeles Edition '24"
+     },
+     {
+      "value": "Fiat 500e Giorgio Armani Edition '25"
+     },
+     {
+      "value": "Fiat 500e Icona Edition '25-'26",
+      "years": [
+       2025,
+       2026
+      ]
+     },
+     {
+      "value": "Fiat 500L Lounge '14-'20",
+      "years": [
+       2014,
+       2020
+      ]
+     },
+     {
+      "value": "500X Trekking '16-'18",
+      "years": [
+       2016,
+       2018
+      ]
+     },
+     {
+      "value": "500X Trekking Urbana Edition '17-'18",
+      "years": [
+       2017,
+       2018
+      ]
+     },
+     {
+      "value": "500X Sport '20-'22",
+      "years": [
+       2020,
+       2022
+      ]
+     }
+    ],
+    "D": [
+     {
+      "value": "Fiat 500c Pop '12-'16",
+      "years": [
+       2012,
+       2016
+      ]
+     },
+     {
+      "value": "Fiat 500c Pop '17",
+      "note": "Fiat 500c Pop '17 (Canada)"
+     },
+     {
+      "value": "Fiat 500L Trekking '14-'20",
+      "years": [
+       2014,
+       2020
+      ]
+     },
+     {
+      "value": "500L Urbana Trekking Limited Edition '15-'16",
+      "years": [
+       2015,
+       2016
+      ]
+     },
+     {
+      "value": "500X Lounge '16-'18",
+      "years": [
+       2016,
+       2018
+      ]
+     },
+     {
+      "value": "500X Trekking Plus '19-Early '22",
+      "years": [
+       2019,
+       null
+      ]
+     }
+    ],
+    "E": [
+     {
+      "value": "Fiat 500c Lounge '12-'19",
+      "years": [
+       2012,
+       2019
+      ]
+     },
+     {
+      "value": "Fiat 500X Trekking Plus '16"
+     }
+    ],
+    "F": [
+     {
+      "value": "Fiat 500 Abarth '12-'19",
+      "years": [
+       2012,
+       2019
+      ]
+     }
+    ],
+    "G": [
+     {
+      "value": "Fiat 500e '13-'19",
+      "years": [
+       2013,
+       2019
+      ]
+     }
+    ],
+    "H": [
+     {
+      "value": "Fiat 500 Turbo '13-16",
+      "years": [
+       2013,
+       2016
+      ]
+     }
+    ],
+    "J": [
+     {
+      "value": "Fiat 500c Abarth '13-'19",
+      "years": [
+       2013,
+       2019
+      ]
+     }
+    ],
+    "K": [
+     {
+      "value": "Fiat 500 Easy '16"
+     },
+     {
+      "value": "Fiat 500 Pop '17-'19",
+      "years": [
+       2017,
+       2019
+      ]
+     }
+    ],
+    "L": [
+     {
+      "value": "Fiat 500c Easy '16"
+     },
+     {
+      "value": "Fiat 500c Pop '17-'19",
+      "years": [
+       2017,
+       2019
+      ]
+     }
+    ]
+   }
+  },
+  "drive@6:7": {
+   "field": "drive",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Fiat 500L",
+      "years": [
+       2014,
+       2020
+      ],
+      "note": "Fiat 500L ('14-'20)"
+     }
+    ],
+    "X": [
+     {
+      "value": "Fiat 500X Fwd",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "Fiat 500X Fwd ('16-'18)"
+     }
+    ],
+    "Y": [
+     {
+      "value": "Fiat 500X Awd",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "Fiat 500X Awd ('16-'20)"
+     }
+    ],
+    "3": [
+     {
+      "value": "Fiat 500X Awd",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "Fiat 500X Awd ('21-'23)"
+     }
+    ]
+   }
+  },
+  "engine@8:9": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "8:9"
+   ],
+   "map": {
+    "H": [
+     {
+      "value": "1.4L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "500 Turbo",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "500 Turbo ('13-'16)"
+     },
+     {
+      "value": "500 GQ Edition",
+      "note": "500 GQ Edition ('14)"
+     },
+     {
+      "value": "EAM: Fiat 500"
+     },
+     {
+      "value": "500 Abarth",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "500 Abarth ('18-'19)"
+     },
+     {
+      "value": "Sequential MPI. MultiAir. Fiat FIRE engine",
+      "years": [
+       2014,
+       2020
+      ],
+      "note": "Sequential MPI. MultiAir. Fiat FIRE engine (EAM). Fiat 500L ('14-'20)"
+     },
+     {
+      "value": "Fiat 500X",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Fiat 500X ('17-'18)"
+     }
+    ],
+    "R": [
+     {
+      "value": "1.4L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Sequential MPI. MultiAir. Fiat FIRE engine",
+      "years": [
+       2012,
+       2017
+      ],
+      "note": "Sequential MPI. MultiAir. Fiat FIRE engine (EAB). Fiat 500 ('12-'17)"
+     }
+    ],
+    "B": [
+     {
+      "value": "2.4L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Sequential MPI. MultiAir2. Chrysler Tigershark Engine",
+      "note": "Sequential MPI. MultiAir2. Chrysler Tigershark Engine (ED6). Fiat 500X ('17)"
+     },
+     {
+      "value": "Sequential MPI. MultiAir2. Chrysler Tigershark Engine - PZEV",
+      "note": "Sequential MPI. MultiAir2. Chrysler Tigershark Engine - PZEV (ED8). Fiat 500X ('18)"
+     }
+    ],
+    "T": [
+     {
+      "value": "2.4L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Sequential MPI. MultiAir2. Chrysler Tigershark Engine",
+      "note": "Sequential MPI. MultiAir2. Chrysler Tigershark Engine (ED6). Fiat 500X ('16)"
+     }
+    ],
+    "W": [
+     {
+      "value": "1.4L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Sequential MPI. MultiAir. Fiat FIRE engine",
+      "note": "Sequential MPI. MultiAir. Fiat FIRE engine (EAM). Fiat 500X ('16)"
+     }
+    ],
+    "1": [
+     {
+      "value": "1.3L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Direct injection. MultiAir3. Fiat Firefly",
+      "note": "Direct injection. MultiAir3. Fiat Firefly/GSE engine (EYF). Made in Bielsko-Biala"
+     },
+     {
+      "value": "Poland. Fiat 500X",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "Poland. Fiat 500X ('19-'23)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "GAC-FCA Changsha plant"
+     },
+     {
+      "value": "Changsha"
+     },
+     {
+      "value": "Hunan province"
+     },
+     {
+      "value": "China",
+      "note": "China (Viaggio, Ottimo)"
+     }
+    ],
+    "E": [
+     {
+      "value": "Chrysler Saltillo Van Assembly plant"
+     },
+     {
+      "value": "Saltillo"
+     },
+     {
+      "value": "Coahuila"
+     },
+     {
+      "value": "Mexico",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "Mexico ('18-'22 Fiat Ducato for South America)"
+     }
+    ],
+    "F": [
+     {
+      "value": "FCA India Automobiles plant"
+     },
+     {
+      "value": "Ranjangaon"
+     },
+     {
+      "value": "Maharashtra"
+     },
+     {
+      "value": "India",
+      "note": "India (Fiat production ended in 2018)"
+     }
+    ],
+    "G": [
+     {
+      "value": "Stellantis Gliwice plant"
+     },
+     {
+      "value": "Gliwice"
+     },
+     {
+      "value": "Poland"
+     }
+    ],
+    "J": [
+     {
+      "value": "FCA Poland plant"
+     },
+     {
+      "value": "Tychy"
+     },
+     {
+      "value": "Poland"
+     },
+     {
+      "value": "Stellantis Vigo plant"
+     },
+     {
+      "value": "Vigo"
+     },
+     {
+      "value": "Spain",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "Spain (Fiat Doblo '23-) (Uses WMI code VYF)"
+     }
+    ],
+    "K": [
+     {
+      "value": "FCA Brazil Goiana plant"
+     },
+     {
+      "value": "Goiana"
+     },
+     {
+      "value": "Pernambuco"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Fiat Toro)"
+     }
+    ],
+    "N": [
+     {
+      "value": "Stellantis Mangualde plant"
+     },
+     {
+      "value": "Mangualde"
+     },
+     {
+      "value": "Portugal",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "Portugal (Fiat Doblo '23-) (Uses WMI code VYF)"
+     }
+    ],
+    "P": [
+     {
+      "value": "Fiat Melfi",
+      "note": "Fiat Melfi (SATA) plant"
+     },
+     {
+      "value": "Melfi"
+     },
+     {
+      "value": "Italy"
+     }
+    ],
+    "T": [
+     {
+      "value": "Chrysler Toluca Assembly plant"
+     },
+     {
+      "value": "Toluca"
+     },
+     {
+      "value": "Mexico state"
+     },
+     {
+      "value": "Mexico",
+      "years": [
+       2012,
+       2019
+      ],
+      "note": "Mexico (Fiat 500 '12-'19, Freemont)"
+     }
+    ],
+    "U": [
+     {
+      "value": "FCA Argentina plant"
+     },
+     {
+      "value": "Cordoba"
+     },
+     {
+      "value": "Cordoba province"
+     },
+     {
+      "value": "Argentina"
+     },
+     {
+      "value": "Fiat Tofaş plant"
+     },
+     {
+      "value": "Bursa"
+     },
+     {
+      "value": "Turkey",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "Turkey ('23-)"
+     }
+    ],
+    "X": [
+     {
+      "value": "Fiat Mirafiori plant"
+     },
+     {
+      "value": "Mirafiori district"
+     },
+     {
+      "value": "Turin"
+     },
+     {
+      "value": "Italy"
+     }
+    ],
+    "Y": [
+     {
+      "value": "FCA Brazil Betim plant"
+     },
+     {
+      "value": "Betim"
+     },
+     {
+      "value": "Minas Gerais"
+     },
+     {
+      "value": "Brazil"
+     }
+    ],
+    "Z": [
+     {
+      "value": "FCA Serbia plant"
+     },
+     {
+      "value": "Kragujevac"
+     },
+     {
+      "value": "Serbia",
+      "note": "Serbia (Fiat 500L, Grande Panda)"
+     },
+     {
+      "value": "Stellantis Sevel Nord plant"
+     },
+     {
+      "value": "Lieu-Saint-Amand"
+     },
+     {
+      "value": "France",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "France (Fiat Scudo, Ulysse '22-) (Uses WMI code VXF)"
+     }
+    ],
+    "2": [
+     {
+      "value": "Fiat Sevel Sud plant"
+     },
+     {
+      "value": "Atessa"
+     },
+     {
+      "value": "Italy"
+     }
+    ],
+    "3": [
+     {
+      "value": "Fiat Pomigliano d'Arco plant"
+     },
+     {
+      "value": "Pomigliano d'Arco"
+     },
+     {
+      "value": "Italy"
+     }
+    ],
+    "5": [
+     {
+      "value": "Stellantis Kenitra plant"
+     },
+     {
+      "value": "Ameur Seflia"
+     },
+     {
+      "value": "Kenitra Province"
+     },
+     {
+      "value": "Morocco",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "Morocco (Fiat Topolino '23-) (Uses WMI code VYF)"
+     }
+    ],
+    "6": [
+     {
+      "value": "Fiat Tofaş plant"
+     },
+     {
+      "value": "Bursa"
+     },
+     {
+      "value": "Turkey"
+     }
+    ],
+    "7": [
+     {
+      "value": "Stellantis Luton plant"
+     },
+     {
+      "value": "Luton"
+     },
+     {
+      "value": "England"
+     },
+     {
+      "value": "U.K",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "U.K. (Fiat Scudo, Ulysse '22-'25) (Uses WMI code VXF)"
+     }
+    ],
+    "8": [
+     {
+      "value": "Stellantis Ellesmere Port plant"
+     },
+     {
+      "value": "Ellesmere Port"
+     },
+     {
+      "value": "England"
+     },
+     {
+      "value": "U.K",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "U.K. (Fiat Doblo '25-) (Uses WMI code VYF)"
+     }
+    ],
+    "9": [
+     {
+      "value": "FCA Brazil Betim plant"
+     },
+     {
+      "value": "Betim"
+     },
+     {
+      "value": "Minas Gerais"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Brazilian-built Fiat Fiorino)"
+     },
+     {
+      "value": "Mitsubishi Motors Thailand plant"
+     },
+     {
+      "value": "Laem Chabang"
+     },
+     {
+      "value": "Chonburi Province"
+     },
+     {
+      "value": "Thailand",
+      "note": "Thailand (Fiat Fullback)"
+     }
+    ],
+    "0": [
+     {
+      "value": "Mazda plant"
+     },
+     {
+      "value": "Hiroshima"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "Japan (Fiat 124 Spider '17-'20)"
+     }
+    ]
+   }
+  }
+ }
+}

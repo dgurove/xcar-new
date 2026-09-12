@@ -1,0 +1,4156 @@
+{
+ "_brand": "Volkswagen",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Volkswagen/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "1V1",
+  "1V2",
+  "1VW",
+  "1WV",
+  "2C4",
+  "2V4",
+  "2V8",
+  "3VV",
+  "3VW",
+  "8AW",
+  "9BW",
+  "WV1",
+  "WV2",
+  "WV3",
+  "WV4",
+  "WV5",
+  "WVG",
+  "WVW"
+ ],
+ "_market": null,
+ "sections": {
+  "engine@5:6": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "1.7L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Rabbit hatchback L",
+      "years": [
+       2049,
+       null
+      ],
+      "note": "Rabbit hatchback L [49-state] ('83-'84)"
+     },
+     {
+      "value": "Rabbit hatchback GL",
+      "years": [
+       2049,
+       null
+      ],
+      "note": "Rabbit hatchback GL [49-state] ('84)"
+     },
+     {
+      "value": "Jetta",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "Jetta ('81-'84)"
+     },
+     {
+      "value": "Scirocco",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "Scirocco ('81-'82, Early '83)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "Flat-4"
+     },
+     {
+      "value": "OHV"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Longitudinally mounted. VW Quantum",
+      "years": [
+       1982,
+       1983
+      ],
+      "note": "MPI. VW EA827 engine. Longitudinally mounted. VW Quantum ('82-'83)"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "California Edition",
+      "note": "California Edition ('83)"
+     },
+     {
+      "value": "Scirocco 8V",
+      "years": [
+       1984,
+       1988
+      ],
+      "note": "Scirocco 8V ('84-'88)"
+     },
+     {
+      "value": "Rabbit Convertible",
+      "note": "Rabbit Convertible ('84)"
+     },
+     {
+      "value": "Cabriolet",
+      "years": [
+       1985,
+       1989
+      ],
+      "note": "Cabriolet ('85-'89)"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Fox",
+      "years": [
+       1987,
+       1993
+      ],
+      "note": "Fox ('87-'93)"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Transversely mounted. VW Golf",
+      "years": [
+       1985,
+       1988
+      ],
+      "note": "MPI. VW EA827 engine. Transversely mounted. VW Golf ('85-'88)"
+     },
+     {
+      "value": "Golf w",
+      "note": "Golf w/Fed. emissions ('89)"
+     },
+     {
+      "value": "Golf",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Golf ('90-'92)"
+     },
+     {
+      "value": "Jetta",
+      "years": [
+       1985,
+       1988
+      ],
+      "note": "Jetta ('85-'88)"
+     },
+     {
+      "value": "Jetta base model w",
+      "note": "Jetta base model w/Fed. emissions ('89)"
+     },
+     {
+      "value": "Jetta",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Jetta ('90-'92)"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf Mk3",
+      "years": [
+       1994,
+       1999
+      ],
+      "note": "MPI. VW EA827 engine. VW Golf Mk3 [1H] ('94-'99)"
+     },
+     {
+      "value": "GTI",
+      "years": [
+       1996,
+       1998
+      ],
+      "note": "GTI [base model] Mk3 [1H] ('96-'98)"
+     },
+     {
+      "value": "Golf Mk4",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "Golf Mk4 [1J] ('99-'00)"
+     },
+     {
+      "value": "GTI GLS Mk4",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "GTI GLS Mk4 [1J] ('99-'00)"
+     },
+     {
+      "value": "Jetta Mk3",
+      "years": [
+       1994,
+       1999
+      ],
+      "note": "Jetta Mk3 [1H] ('94-'99)"
+     },
+     {
+      "value": "Jetta Mk4",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "Jetta Mk4 [9M] ('99-'00)"
+     },
+     {
+      "value": "Cabrio",
+      "years": [
+       1996,
+       1998
+      ],
+      "note": "Cabrio ('96-'98)"
+     },
+     {
+      "value": "New Beetle",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "New Beetle ('99-'00)"
+     },
+     {
+      "value": "MPI. VW EA827 engine - SULEV. VW Jetta Mk4",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "MPI. VW EA827 engine - SULEV. VW Jetta Mk4 [9M] ('03-'05)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "years": [
+       1998,
+       2000
+      ],
+      "note": "MPI. Audi EA827/EA113 engine. 150 hp. VW Passat ('98-'00)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "MPI. VW I5 engine - ULEV",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "MPI. VW I5 engine - ULEV/Federal emissions. 170 hp. VW Rabbit Mk5 [1K] ('08-'09)"
+     },
+     {
+      "value": "Golf Mk6",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "Golf Mk6 ('10-'12 & '13 in Canada)"
+     },
+     {
+      "value": "GLI",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "GLI ('08-'09, '12-'13)"
+     },
+     {
+      "value": "Jetta Sportwagen SEL",
+      "note": "Jetta Sportwagen SEL ('09)"
+     },
+     {
+      "value": "Beetle 2.0T Turbo",
+      "years": [
+       2012,
+       null
+      ],
+      "note": "Beetle 2.0T Turbo ('12-Mid '13)"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "Golf SportWagen TDI",
+      "note": "Golf SportWagen TDI ('15)"
+     },
+     {
+      "value": "Jetta sedan Mk6 TDI",
+      "note": "Jetta sedan Mk6 TDI ('15)"
+     },
+     {
+      "value": "Beetle TDI",
+      "note": "Beetle TDI ('15)"
+     },
+     {
+      "value": "Direct injection. Miller Cycle",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "Direct injection. Miller Cycle (B-Cycle). Intake AVS. Audi EA888 Gen3B engine - SULEV. TSI. Timing chain. Detuned version: 174 hp. VW Passat ('18-'22)"
+     }
+    ],
+    "B": [
+     {
+      "value": "1.7L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Rabbit Pickup",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Rabbit Pickup ('81-'83)"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Jetta GLI",
+      "note": "MPI. VW EA827 engine. VW Jetta GLI ('84)"
+     },
+     {
+      "value": "1.9L"
+     },
+     {
+      "value": "Flat-4"
+     },
+     {
+      "value": "OHV"
+     },
+     {
+      "value": "Water-cooled. Digijet",
+      "years": [
+       1983,
+       1985
+      ],
+      "note": "Water-cooled. Digijet (Digital-Jetronic) MPI. VW Wasserboxer engine. VW Vanagon (Mid '83-'85)"
+     },
+     {
+      "value": "2.1L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. VW Quantum GL5",
+      "years": [
+       1983,
+       1984
+      ],
+      "note": "MPI. Audi EA828 I5 engine. VW Quantum GL5 ('83-'84)"
+     },
+     {
+      "value": "2.2L"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. VW Quantum GL5 sedan",
+      "years": [
+       1985,
+       1988
+      ],
+      "note": "MPI. Audi EA828 I5 engine. VW Quantum GL5 sedan ('85-'88)"
+     },
+     {
+      "value": "Quantum GL5 wagon",
+      "years": [
+       1986,
+       1988
+      ],
+      "note": "Quantum GL5 wagon ('86-'88)"
+     },
+     {
+      "value": "Golf GT",
+      "years": [
+       1987,
+       1988
+      ],
+      "note": "Golf GT ('87-'88)"
+     },
+     {
+      "value": "GTI 8V",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "GTI 8V ('87, '90-'92)"
+     },
+     {
+      "value": "Golf w",
+      "note": "Golf w/CA emissions ('89)"
+     },
+     {
+      "value": "Jetta GLI",
+      "years": [
+       1985,
+       1986
+      ],
+      "note": "Jetta GLI ('85-'86)"
+     },
+     {
+      "value": "Jetta GLI 8V",
+      "note": "Jetta GLI 8V ('87)"
+     },
+     {
+      "value": "Jetta",
+      "note": "Jetta ('88)"
+     },
+     {
+      "value": "Jetta base model w",
+      "note": "Jetta base model w/CA emissions ('89)"
+     },
+     {
+      "value": "Jetta GL",
+      "note": "Jetta GL ('89)"
+     },
+     {
+      "value": "Jetta Carat",
+      "years": [
+       1989,
+       1990
+      ],
+      "note": "Jetta Carat ('89-'90, Early '91)"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Transversely mounted. VW Scirocco 16V",
+      "years": [
+       1987,
+       1988
+      ],
+      "note": "MPI. VW EA827 engine. Transversely mounted. VW Scirocco 16V ('87-'88 & '89 in Canada)"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Longitudinally mounted. VW Fox",
+      "years": [
+       1990,
+       1993
+      ],
+      "note": "MPI. VW EA827 engine. Longitudinally mounted. VW Fox ('90-'93)"
+     },
+     {
+      "value": "I4 supercharged IC"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Corrado G60",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "MPI. VW EA827 engine. VW Corrado G60 ('90-'92)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Passat",
+      "years": [
+       1990,
+       1993
+      ],
+      "note": "MPI. VW EA827 engine. VW Passat ('90-'93)"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf Mk3",
+      "years": [
+       1994,
+       1999
+      ],
+      "note": "MPI. VW EA827 engine. VW Golf Mk3 [1H] ('94-'99)"
+     },
+     {
+      "value": "GTI",
+      "years": [
+       1996,
+       1998
+      ],
+      "note": "GTI [base model] Mk3 [1H] ('96-'98)"
+     },
+     {
+      "value": "Golf Mk4",
+      "note": "Golf Mk4 [1J] ('02)"
+     },
+     {
+      "value": "Jetta Mk3",
+      "years": [
+       1994,
+       1999
+      ],
+      "note": "Jetta Mk3 [1H] ('94-'99)"
+     },
+     {
+      "value": "Jetta sedan Mk4",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "Jetta sedan Mk4 [9M] ('01-'02)"
+     },
+     {
+      "value": "Jetta wagon",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "Jetta wagon ('01-'02)"
+     },
+     {
+      "value": "Cabrio",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "Cabrio ('95-'96, '98-'99)"
+     },
+     {
+      "value": "New Beetle",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "New Beetle ('98, '01-'02)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "15° VR6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. VW VR6 engine. VW Eurovan",
+      "years": [
+       2001,
+       2003
+      ],
+      "note": "MPI. VW VR6 engine. VW Eurovan ('01-'03)"
+     },
+     {
+      "value": "Winnebago Rialta",
+      "years": [
+       2001,
+       2004
+      ],
+      "note": "Winnebago Rialta ('01-'04)"
+     },
+     {
+      "value": "Winnebago Vista",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "Winnebago Vista ('02-'04)"
+     },
+     {
+      "value": "Itasca Sunstar",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "Itasca Sunstar ('02-'04)"
+     },
+     {
+      "value": "3.2L"
+     },
+     {
+      "value": "MPI. VW EA390 engine. VW Eos",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "MPI. VW EA390 engine. VW Eos ('07-'08)"
+     },
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. VW I5 engine - PZEV. 170 hp. VW Rabbit Mk5",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "MPI. VW I5 engine - PZEV. 170 hp. VW Rabbit Mk5 [1K] ('08-'09)"
+     },
+     {
+      "value": "Golf Mk6",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "Golf Mk6 ('10-'14)"
+     },
+     {
+      "value": "1.4L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Direct injection. Miller Cycle",
+      "years": [
+       2018,
+       2024
+      ],
+      "note": "Direct injection. Miller Cycle (B-Cycle). Intake AVS. Audi EA888 Gen3B engine - SULEV. TSI. Timing chain. Detuned version: 184 hp. VW Tiguan Mk2 ('18-'24)"
+     }
+    ],
+    "C": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Rabbit GTI",
+      "years": [
+       1983,
+       1984
+      ],
+      "note": "MPI. VW EA827 engine. VW Rabbit GTI ('83-'84)"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf GTI 16V",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "MPI. VW EA827 engine. VW Golf GTI 16V ('87-'89)"
+     },
+     {
+      "value": "Jetta GLI 16V",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Jetta GLI 16V ('87-'89)"
+     },
+     {
+      "value": "I4 supercharged IC"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Corrado G60",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "MPI. VW EA827 engine. VW Corrado G60 ('90-'92)"
+     },
+     {
+      "value": "MPI. VW EA827 engine. 94hp. VW Cabriolet",
+      "years": [
+       1991,
+       1993
+      ],
+      "note": "MPI. VW EA827 engine. 94hp. VW Cabriolet ('91-'93)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Passat",
+      "years": [
+       1991,
+       1993
+      ],
+      "note": "MPI. VW EA827 engine. VW Passat ('91-'93)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "MPI. VW Eurovan",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "MPI. VW Eurovan (US: '93, Canada: '92-'93)"
+     },
+     {
+      "value": "Transporter",
+      "note": "Transporter (Canada: '92)"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf Mk3",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "MPI. VW EA827 engine. VW Golf Mk3 [1H] ('94-'95)"
+     },
+     {
+      "value": "Golf Mk4",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "Golf Mk4 [1J] ('99-'00)"
+     },
+     {
+      "value": "GTI GLS Mk4",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "GTI GLS Mk4 [1J] ('99-'00)"
+     },
+     {
+      "value": "Jetta Mk3",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "Jetta Mk3 [1H] ('94-'95)"
+     },
+     {
+      "value": "Jetta Mk4",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "Jetta Mk4 [9M] ('99-'00)"
+     },
+     {
+      "value": "Cabrio",
+      "years": [
+       2000,
+       2002
+      ],
+      "note": "Cabrio ('95, '00-'02)"
+     },
+     {
+      "value": "Passat",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "Passat ('95-'96)"
+     },
+     {
+      "value": "New Beetle",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "New Beetle ('99-'00)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "note": "MPI. Audi EA827/EA113 engine. 150 hp. VW GTI GLS 1.8T (Mk4) [1J] ('01)"
+     },
+     {
+      "value": "Jetta sedan 1.8T",
+      "note": "Jetta sedan 1.8T ('01)"
+     },
+     {
+      "value": "New Beetle 1.8T",
+      "note": "New Beetle 1.8T ('01)"
+     },
+     {
+      "value": "Passat",
+      "years": [
+       2001,
+       null
+      ],
+      "note": "Passat (B5) ('01 - 1st 1/2)"
+     },
+     {
+      "value": "3.2L"
+     },
+     {
+      "value": "15° VR6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. VW EA390 engine. 220hp. VW Touareg V6",
+      "note": "MPI. VW EA390 engine. 220hp. VW Touareg V6 ('04) (when C follows B or Z in the 4th pos. of VIN)"
+     },
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "40 valve"
+     },
+     {
+      "value": "MPI. Audi EA824 engine. 4172cc. Timing belt. VW Touareg V8",
+      "note": "MPI. Audi EA824 engine. 4172cc. Timing belt. VW Touareg V8 (Early prod. '04) (when C follows C in the 4th pos. of VIN)"
+     },
+     {
+      "value": "MPI. VW EA390 engine. 250 hp. VW R32",
+      "note": "MPI. VW EA390 engine. 250 hp. VW R32 ('08)"
+     },
+     {
+      "value": "1.5L"
+     }
+    ],
+    "D": [
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "MPI. VW Eurovan",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "MPI. VW Eurovan (US: '93, Canada: '93-'94)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "15° VR6"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. VW VR6 engine. VW Corrado SLC",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "MPI. VW VR6 engine. VW Corrado SLC ('92-'93)"
+     },
+     {
+      "value": "Passat GLX VR6",
+      "note": "Passat GLX VR6 ('93)"
+     },
+     {
+      "value": "GTI VR6",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "GTI VR6 (Gen 3) [1H] ('95-'99)"
+     },
+     {
+      "value": "Jetta GLX VR6",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "Jetta GLX VR6 (Gen 3) [1H] ('95-'99)"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "30 valve"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 2. Iron Block. VW Passat",
+      "years": [
+       1998,
+       2000
+      ],
+      "note": "MPI. Audi EA835 engine - Gen 2. Iron Block. VW Passat ('98-'00)"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "years": [
+       1999,
+       2005
+      ],
+      "note": "MPI. Audi EA827/EA113 engine. 150 hp. Transversely mounted. VW New Beetle 1.8T ('99-'05)"
+     },
+     {
+      "value": "GTI GLS 1.8T",
+      "note": "GTI GLS 1.8T (Mk4) [1J] ('01)"
+     },
+     {
+      "value": "Jetta sedan 1.8T",
+      "years": [
+       2000,
+       2001
+      ],
+      "note": "Jetta sedan 1.8T ('00-'01)"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "MPI. Audi EA827/EA113 engine. 170 hp. Longitudinally mounted. VW Passat (B5.5) (Mid '01-'05)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "GTI Mk6",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "GTI Mk6 ('10-'14)"
+     },
+     {
+      "value": "Direct injection. Miller Cycle",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "Direct injection. Miller Cycle (B-Cycle). Intake AVS. Audi EA888 Gen3B engine - SULEV. TSI. Timing chain. Detuned version: 174 hp. VW Beetle ('18-'19)"
+     }
+    ],
+    "E": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf GTI 16V",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "MPI. VW EA827 engine. VW Golf GTI 16V ('90-'92)"
+     },
+     {
+      "value": "Jetta GLI 16V",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Jetta GLI 16V ('90-'92)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "15° VR6"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. VW VR6 engine. VW Corrado SLC",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "MPI. VW VR6 engine. VW Corrado SLC ('92-'93)"
+     },
+     {
+      "value": "Passat GLX VR6",
+      "years": [
+       1995,
+       1997
+      ],
+      "note": "Passat GLX VR6 ('93, '95-'97)"
+     },
+     {
+      "value": "GTI VR6",
+      "note": "GTI VR6 (Gen 3) [1H] ('95)"
+     },
+     {
+      "value": "Jetta GLX VR6",
+      "note": "Jetta GLX VR6 (Gen 3) [1H] ('95)"
+     },
+     {
+      "value": "GTI GLX VR6",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "GTI GLX VR6 (Gen 4) [1J] ('99-'00)"
+     },
+     {
+      "value": "Jetta VR6",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "Jetta VR6 (Gen 4) [9M] ('99-'00)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "MPI. VW Eurovan",
+      "years": [
+       1994,
+       1996
+      ],
+      "note": "MPI. VW Eurovan (US: '95, Canada: '94-'96)"
+     },
+     {
+      "value": "Winnebago Rialta",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "Winnebago Rialta ('95-'96)"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "MPI. Audi EA827/EA113 engine. 180 hp. VW New Beetle Turbo S ('02-'04)"
+     },
+     {
+      "value": "GTI 1.8T",
+      "years": [
+       2002,
+       null
+      ],
+      "note": "GTI 1.8T (Mk4) [1J] ('02-Mid '06)"
+     },
+     {
+      "value": "Jetta sedan 1.8T",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "Jetta sedan 1.8T ('02-'04)"
+     },
+     {
+      "value": "Jetta sedan GLI 1.8T",
+      "years": [
+       2004,
+       null
+      ],
+      "note": "Jetta sedan GLI 1.8T (Mk4) [9M] (Mid '04-Mid '05)"
+     },
+     {
+      "value": "Jetta wagon 1.8T",
+      "years": [
+       2002,
+       2005
+      ],
+      "note": "Jetta wagon 1.8T (Mk4) [1J] ('02-'05)"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Direct injection. Pumpe Düse",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "Direct injection. Pumpe Düse (Pump Injection). VW EA188 engine. VW Passat TDI ('04-'05)"
+     },
+     {
+      "value": "3.6L"
+     },
+     {
+      "value": "10.6° VR6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. VW EA390 engine. VW Touareg",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "Direct injection. VW EA390 engine. VW Touareg ('07-'09)"
+     },
+     {
+      "value": "Direct injection. VW EA390 engine. VW Atlas Cross Sport",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "Direct injection. VW EA390 engine. VW Atlas Cross Sport ('20-'23)"
+     }
+    ],
+    "F": [
+     {
+      "value": "1.6L"
+     },
+     {
+      "value": "I4 Turbo"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Indirect injection. VW EA827 engine. VW Jetta EcoDiesel",
+      "years": [
+       1991,
+       1992
+      ],
+      "note": "Indirect injection. VW EA827 engine. VW Jetta EcoDiesel ('91-'92)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "15° VR6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. VW VR6 engine. VW Passat GLX VR6",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "MPI. VW VR6 engine. VW Passat GLX VR6 ('93-'94)"
+     },
+     {
+      "value": "Corrado SLC",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "Corrado SLC ('93-'94 & '95 in Canada)"
+     },
+     {
+      "value": "1.9L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Direct injection. VW EA827 engine. VW Golf TDI",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "Direct injection. VW EA827 engine. VW Golf TDI ('99-'00)"
+     },
+     {
+      "value": "Jetta TDI",
+      "years": [
+       1997,
+       2000
+      ],
+      "note": "Jetta TDI ('97-'00)"
+     },
+     {
+      "value": "New Beetle TDI",
+      "years": [
+       1998,
+       2000
+      ],
+      "note": "New Beetle TDI ('98-'00)"
+     },
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "40 valve"
+     },
+     {
+      "value": "MPI. Audi EA824 engine. 4172cc. Timing belt. VW Phaeton",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "MPI. Audi EA824 engine. 4172cc. Timing belt. VW Phaeton ('04-'06)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. VW I5 engine - ULEV. 150 hp. VW Jetta Mk5",
+      "years": [
+       2005,
+       2007
+      ],
+      "note": "MPI. VW I5 engine - ULEV. 150 hp. VW Jetta Mk5 [1K] (Mid '05-'07)"
+     },
+     {
+      "value": "New Beetle convertible",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "New Beetle convertible [1Y] ('06-'09)"
+     },
+     {
+      "value": "3.6L"
+     },
+     {
+      "value": "10.6° VR6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. VW EA390 engine. VW Touareg",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "Direct injection. VW EA390 engine. VW Touareg ('10-'17)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "16 valve"
+     }
+    ],
+    "G": [
+     {
+      "value": "1.6L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Rabbit Pickup",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Rabbit Pickup ('81-'83)"
+     },
+     {
+      "value": "Golf",
+      "years": [
+       1985,
+       1987
+      ],
+      "note": "Golf ('85-'87)"
+     },
+     {
+      "value": "Jetta",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "Jetta ('81-'82, '84-'86, '89-'91)"
+     },
+     {
+      "value": "2.4L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "Indirect injection. VW Eurovan",
+      "years": [
+       1993,
+       1997
+      ],
+      "note": "Indirect injection. VW Eurovan (Canada only: '93-'97)"
+     },
+     {
+      "value": "Transporter",
+      "note": "Transporter (Canada only: '95)"
+     },
+     {
+      "value": "1.9L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Direct injection. VW EA827 engine. VW Passat TDI",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "Direct injection. VW EA827 engine. VW Passat TDI ('96-'97)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "15° VR6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. VW VR6 engine. VW GTI VR6",
+      "years": [
+       2001,
+       null
+      ],
+      "note": "MPI. VW VR6 engine. VW GTI VR6 ('01-Mid '02)"
+     },
+     {
+      "value": "Jetta sedan VR6",
+      "years": [
+       2001,
+       null
+      ],
+      "note": "Jetta sedan VR6 ('01-Mid '02)"
+     },
+     {
+      "value": "Jetta wagon VR6",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "Jetta wagon VR6 ('01-'02)"
+     },
+     {
+      "value": "3.2L"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. VW EA390 engine. 240 hp. VW R32",
+      "note": "MPI. VW EA390 engine. 240 hp. VW R32 ('04)"
+     },
+     {
+      "value": "Touareg",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "Touareg ('05-'06)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. VW I5 engine - PZEV. 150 hp. VW Jetta Mk5",
+      "years": [
+       2005,
+       2007
+      ],
+      "note": "MPI. VW I5 engine - PZEV. 150 hp. VW Jetta Mk5 [1K] (Mid '05-'07)"
+     },
+     {
+      "value": "New Beetle coupe",
+      "years": [
+       2006,
+       2010
+      ],
+      "note": "New Beetle coupe/convertible ('06-'10)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 supercharged IC"
+     },
+     {
+      "value": "Gas-Electric Hybrid"
+     }
+    ],
+    "H": [
+     {
+      "value": "1.6L"
+     },
+     {
+      "value": "I4 Turbo"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Jetta Turbodiesel",
+      "years": [
+       1983,
+       1986
+      ],
+      "note": "Jetta Turbodiesel ('83-'86)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "15° VR6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. VW VR6 engine. VW Eurovan",
+      "years": [
+       1999,
+       2000
+      ],
+      "note": "MPI. VW VR6 engine. VW Eurovan ('97, '99-'00)"
+     },
+     {
+      "value": "Winnebago Rialta",
+      "years": [
+       1997,
+       2000
+      ],
+      "note": "Winnebago Rialta ('97-'00)"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "note": "MPI. Audi EA827/EA113 engine. 150 hp. VW GTI GLS 1.8T (Mk4) [1J] ('00)"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "30 valve"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 2. Iron Block. VW Passat",
+      "years": [
+       2000,
+       2004
+      ],
+      "note": "MPI. Audi EA835 engine - Gen 2. Iron Block. VW Passat ('00-'04, '05: Early prod.)"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. VW VR6 engine. VW GTI VR6",
+      "years": [
+       2002,
+       2005
+      ],
+      "note": "MPI. VW VR6 engine. VW GTI VR6 (Mid '02-'05)"
+     },
+     {
+      "value": "Jetta sedan GLX VR6",
+      "years": [
+       2002,
+       2003
+      ],
+      "note": "Jetta sedan GLX VR6 (Mid '02-'03)"
+     },
+     {
+      "value": "Jetta sedan GLI VR6",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "Jetta sedan GLI VR6 (Mid '02-'04)"
+     },
+     {
+      "value": "6.0L"
+     },
+     {
+      "value": "72° W12"
+     },
+     {
+      "value": "48 valve"
+     },
+     {
+      "value": "MPI. VW W12 engine. 414 hp. VW Phaeton",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "MPI. VW W12 engine. 414 hp. VW Phaeton ('04-'05)"
+     },
+     {
+      "value": "4.9L"
+     },
+     {
+      "value": "90° V10 Twin Turbo IC"
+     },
+     {
+      "value": "Direct injection. Pumpe Düse",
+      "note": "Direct injection. Pumpe Düse (Pump Injection). VW V10 TDI engine. VW Touareg V10 TDI ('04) (when H follows G or H in the 4th pos. of VIN)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "MPI. VW I5 engine - Federal emissions. 170 hp. VW Passat",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "MPI. VW I5 engine - Federal emissions. 170 hp. VW Passat ('12-'14)"
+     }
+    ],
+    "J": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf GTI 16V",
+      "years": [
+       1991,
+       1992
+      ],
+      "note": "MPI. VW EA827 engine. VW Golf GTI 16V ('91-'92)"
+     },
+     {
+      "value": "Jetta GLI 16V",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Jetta GLI 16V ('90-'92)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Wolfsburg Edition",
+      "note": "Wolfsburg Edition ('08)"
+     },
+     {
+      "value": "GLI",
+      "years": [
+       2006,
+       2008
+      ],
+      "note": "GLI ('06-'08)"
+     },
+     {
+      "value": "Jetta sedan Wolfsburg Edition",
+      "years": [
+       2009,
+       2010
+      ],
+      "note": "Jetta sedan Wolfsburg Edition ('09-'10)"
+     },
+     {
+      "value": "GLI",
+      "note": "GLI ('09)"
+     },
+     {
+      "value": "Jetta Sportwagen SEL",
+      "note": "Jetta Sportwagen SEL ('09)"
+     }
+    ],
+    "K": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Transversely mounted. VW Golf",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "MPI. VW EA827 engine. Transversely mounted. VW Golf ('90-'92)"
+     },
+     {
+      "value": "GTI 8V",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "GTI 8V ('90-'92)"
+     },
+     {
+      "value": "Jetta",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "Jetta ('90-'92)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf",
+      "years": [
+       2002,
+       2003
+      ],
+      "note": "MPI. VW EA827 engine. VW Golf ('02-'03)"
+     },
+     {
+      "value": "Jetta sedan Mk4",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "Jetta sedan Mk4 [9M] ('01-'05)"
+     },
+     {
+      "value": "Jetta wagon",
+      "years": [
+       2001,
+       2003
+      ],
+      "note": "Jetta wagon ('01-'03)"
+     },
+     {
+      "value": "New Beetle",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "New Beetle ('01-'05)"
+     },
+     {
+      "value": "Jetta City",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "Jetta City (Canada only: '07-'09)"
+     },
+     {
+      "value": "Jetta sedan Mk6",
+      "years": [
+       2011,
+       2015
+      ],
+      "note": "Jetta sedan Mk6 ('11-'15)"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "72° W8"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "MPI. VW W8 engine. VW Passat W8",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "MPI. VW W8 engine. VW Passat W8 ('02-'04)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA888 engine - ULEV",
+      "years": [
+       2009,
+       2010
+      ],
+      "note": "Direct injection. Audi EA888 engine - ULEV/Federal emissions. TSI. Timing chain. Engine Code: CCTA. VW Passat ('09-'10)"
+     },
+     {
+      "value": "6.0L"
+     },
+     {
+      "value": "72° W12"
+     },
+     {
+      "value": "48 valve"
+     },
+     {
+      "value": "MPI. VW W12 engine. 444 hp. VW Phaeton",
+      "note": "MPI. VW W12 engine. 444 hp. VW Phaeton ('06)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA897 engine. 225 hp. VW Touareg TDI",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "Direct injection. Audi EA897 engine. 225 hp. VW Touareg TDI ('10-'12)"
+     }
+    ],
+    "L": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "MPI. VW EA827 engine. VW Golf ('93, '96-'97, '04-'06)"
+     },
+     {
+      "value": "GTI",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "GTI [base model] Mk3 [1H] ('96-'97)"
+     },
+     {
+      "value": "Jetta",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "Jetta ('93, '96-'97)"
+     },
+     {
+      "value": "Jetta wagon",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "Jetta wagon ('04-'05)"
+     },
+     {
+      "value": "Golf City",
+      "years": [
+       2007,
+       2010
+      ],
+      "note": "Golf City (Canada only: '07-'10)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Jetta sedan TDI Cup Edition",
+      "note": "Jetta sedan TDI Cup Edition ('10)"
+     },
+     {
+      "value": "Jetta Sportwagen",
+      "years": [
+       2009,
+       2014
+      ],
+      "note": "Jetta Sportwagen ('09-'14)"
+     },
+     {
+      "value": "Jetta sedan Mk6 TDI",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "Jetta sedan Mk6 TDI ('11-'14)"
+     },
+     {
+      "value": "Beetle TDI",
+      "years": [
+       2013,
+       2014
+      ],
+      "note": "Beetle TDI ('13-'14)"
+     }
+    ],
+    "M": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW New Beetle",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "MPI. VW EA827 engine. VW New Beetle ('04-'05)"
+     },
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "40 valve"
+     },
+     {
+      "value": "MPI. Audi EA824 engine. 4172cc. Timing belt. VW Touareg V8",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "MPI. Audi EA824 engine. 4172cc. Timing belt. VW Touareg V8 ('04-'06)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. VW I5 engine - ULEV. 170 hp. VW Jetta sedan Mk5",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "MPI. VW I5 engine - ULEV. 170 hp. VW Jetta sedan Mk5 [1K] ('08-'09)"
+     },
+     {
+      "value": "Jetta Sportwagen",
+      "note": "Jetta Sportwagen ('09)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA897 engine. 225 hp. VW Touareg",
+      "note": "Direct injection. Audi EA897 engine. 225 hp. VW Touareg ('09)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Common-Rail Direct injection. VW EA189 engine. VW Golf TDI",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "Common-Rail Direct injection. VW EA189 engine. VW Golf TDI ('10-'14)"
+     },
+     {
+      "value": "3.6L"
+     },
+     {
+      "value": "10.6° VR6"
+     },
+     {
+      "value": "Direct injection. VW EA390 engine. VW Passat",
+      "years": [
+       2012,
+       2018
+      ],
+      "note": "Direct injection. VW EA390 engine. VW Passat ('12-'18)"
+     },
+     {
+      "value": "1.5L"
+     }
+    ],
+    "N": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Diesel"
+     }
+    ],
+    "P": [
+     {
+      "value": "1.9L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Direct injection. VW EA827 engine. 90 hp. VW Golf TDI",
+      "years": [
+       2001,
+       2003
+      ],
+      "note": "Direct injection. VW EA827 engine. 90 hp. VW Golf TDI ('01-'03)"
+     },
+     {
+      "value": "Jetta sedan TDI",
+      "years": [
+       2001,
+       2003
+      ],
+      "note": "Jetta sedan TDI ('01-'03)"
+     },
+     {
+      "value": "Jetta wagon TDI",
+      "years": [
+       2002,
+       2003
+      ],
+      "note": "Jetta wagon TDI ('02-'03)"
+     },
+     {
+      "value": "New Beetle TDI",
+      "years": [
+       2001,
+       2003
+      ],
+      "note": "New Beetle TDI ('01-'03)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. VW I5 engine - PZEV. 170 hp. VW Jetta sedan Mk6",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "MPI. VW I5 engine - PZEV. 170 hp. VW Jetta sedan Mk6 ('12-'13)"
+     },
+     {
+      "value": "Jetta Sportwagen",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "Jetta Sportwagen ('12-'14)"
+     },
+     {
+      "value": "Passat",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "Passat ('12-'14)"
+     },
+     {
+      "value": "Beetle",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "Beetle ('12-'14)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA897 engine. 240 hp. VW Touareg TDI",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "Direct injection. Audi EA897 engine. 240 hp. VW Touareg TDI ('13-'16)"
+     }
+    ],
+    "R": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf",
+      "note": "MPI. VW EA827 engine. VW Golf ('93)"
+     },
+     {
+      "value": "Jetta",
+      "note": "Jetta ('93)"
+     },
+     {
+      "value": "1.9L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "Direct injection. Pumpe Düse",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "Direct injection. Pumpe Düse (Pump Injection). VW EA827 engine. 100 hp. VW Golf Mk4 [1J] TDI ('04-'06)"
+     },
+     {
+      "value": "Jetta sedan Mk4",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "Jetta sedan Mk4 [9M] TDI ('04-'05)"
+     },
+     {
+      "value": "Jetta wagon Mk4",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "Jetta wagon Mk4 [1J] TDI ('04-'05 & '06 in Canada)"
+     },
+     {
+      "value": "New Beetle TDI",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "New Beetle TDI ('04-'06)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. VW I5 engine - ULEV. 150 hp. VW Rabbit Mk5",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "MPI. VW I5 engine - ULEV. 150 hp. VW Rabbit Mk5 [1K] (Mid '06-'07)"
+     },
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "3.6L"
+     },
+     {
+      "value": "10.6° VR6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. VW EA390 engine. VW Atlas",
+      "years": [
+       2018,
+       2023
+      ],
+      "note": "Direct injection. VW EA390 engine. VW Atlas ('18-'23)"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Direct injection. Miller Cycle",
+      "note": "Direct injection. Miller Cycle (B-Cycle). Audi EA888 Evo5 engine - SULEV. TSI. Timing chain. 201 hp. VW Tiguan S"
+     },
+     {
+      "value": "SE"
+     },
+     {
+      "value": "SE R-Line Black",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "SE R-Line Black [Mk3] ('25-'26)"
+     },
+     {
+      "value": "Tiguan SEL R-Line",
+      "note": "Tiguan SEL R-Line [Mk3] ('25)"
+     }
+    ],
+    "S": [
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "15° VR6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. VW VR6 engine. VW Jetta GLX VR6",
+      "note": "MPI. VW VR6 engine. VW Jetta GLX VR6 ('94)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf",
+      "note": "MPI. VW EA827 engine. VW Golf ('01)"
+     },
+     {
+      "value": "Jetta sedan Mk4",
+      "note": "Jetta sedan Mk4 [9M] ('01)"
+     },
+     {
+      "value": "New Beetle",
+      "note": "New Beetle ('01)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. VW I5 engine - PZEV. 150 hp. VW Rabbit Mk5",
+      "years": [
+       2006,
+       2007
+      ],
+      "note": "MPI. VW I5 engine - PZEV. 150 hp. VW Rabbit Mk5 [1K] (Mid '06-'07)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Beetle 2.0T Turbo",
+      "note": "Beetle 2.0T Turbo (Mid '13)"
+     },
+     {
+      "value": "R-Line",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "R-Line (Mid '13-'16)"
+     },
+     {
+      "value": "GSR",
+      "note": "GSR ('14)"
+     },
+     {
+      "value": "1.8L"
+     }
+    ],
+    "T": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. VW Golf",
+      "note": "MPI. VW EA827 engine. VW Golf ('01)"
+     },
+     {
+      "value": "Jetta sedan Mk4",
+      "note": "Jetta sedan Mk4 [9M] ('01)"
+     },
+     {
+      "value": "New Beetle",
+      "note": "New Beetle ('01)"
+     },
+     {
+      "value": "1.9L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "Direct injection. VW EA827 engine. VW Jetta Mk5",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "Direct injection. VW EA827 engine. VW Jetta Mk5 [1K] TDI (Mid '05-'06)"
+     },
+     {
+      "value": "4.9L"
+     },
+     {
+      "value": "90° V10 Twin Turbo IC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "Direct injection. Pumpe Düse",
+      "years": [
+       2006,
+       2008
+      ],
+      "note": "Direct injection. Pumpe Düse (Pump Injection). VW V10 TDI engine. VW Touareg V10 TDI ('06-'08)"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Beetle 2.0T Turbo",
+      "note": "Beetle 2.0T Turbo (Mid '13)"
+     },
+     {
+      "value": "R-Line",
+      "years": [
+       2013,
+       2017
+      ],
+      "note": "R-Line (Mid '13-'17)"
+     },
+     {
+      "value": "GSR",
+      "note": "GSR ('14)"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "GTI S",
+      "note": "GTI S [Mk7] ('17)"
+     },
+     {
+      "value": "Jetta GLI",
+      "years": [
+       2019,
+       2025
+      ],
+      "note": "Jetta GLI [Mk7] ('19-'25)"
+     }
+    ],
+    "U": [
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "30 valve"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 2. Iron Block. VW Passat",
+      "note": "MPI. Audi EA835 engine - Gen 2. Iron Block. VW Passat ('05)"
+     },
+     {
+      "value": "3.6L"
+     },
+     {
+      "value": "10.6° VR6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. VW EA390 engine. VW Passat",
+      "years": [
+       2006,
+       2008
+      ],
+      "note": "Direct injection. VW EA390 engine. VW Passat ('06-'08 & '09-'10 in Canada [4wd wagon only])"
+     },
+     {
+      "value": "VW CC",
+      "years": [
+       2009,
+       2016
+      ],
+      "note": "VW CC (US: '09-'16, Canada: '09-'15, '17)"
+     }
+    ],
+    "V": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA888 engine - ULEV",
+      "note": "Direct injection. Audi EA888 engine - ULEV/Federal emissions. TSI. Timing chain. Engine Code: CCTA. VW GTI Mk5 [1K] ('09)"
+     },
+     {
+      "value": "GTI Mk6",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "GTI Mk6 ('10-'13)"
+     },
+     {
+      "value": "Tiguan Mk1",
+      "years": [
+       2009,
+       2017
+      ],
+      "note": "Tiguan Mk1 ('09-'17)"
+     },
+     {
+      "value": "Tiguan Limited",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Tiguan Limited [Mk1] ('17-'18)"
+     },
+     {
+      "value": "Diesel"
+     }
+    ],
+    "W": [
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. VW I5 engine - ULEV",
+      "years": [
+       2006,
+       2010
+      ],
+      "note": "MPI. VW I5 engine - ULEV/Federal emissions. 150 hp. VW New Beetle coupe [1C/AG] ('06-'10)"
+     },
+     {
+      "value": "New Beetle convertible",
+      "note": "New Beetle convertible [1Y/AL] ('10)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "1.5L"
+     },
+     {
+      "value": "Direct injection. Exhaust AVS. Miller Cycle",
+      "note": "Direct injection. Exhaust AVS. Miller Cycle (B-Cycle). Audi EA888 Evo5 engine - SULEV. TSI. Timing chain. Higher Output: 268 hp. VW Tiguan SEL R-Line Turbo [Mk3"
+     }
+    ],
+    "X": [
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "Jetta Sportwagen",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "Jetta Sportwagen ('10-'14)"
+     },
+     {
+      "value": "Jetta sedan Mk6",
+      "years": [
+       2011,
+       2013
+      ],
+      "note": "Jetta sedan Mk6 ('11-'13)"
+     },
+     {
+      "value": "Beetle",
+      "years": [
+       2012,
+       2014
+      ],
+      "note": "Beetle ('12-'14)"
+     },
+     {
+      "value": "1.5L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     }
+    ],
+    "Z": [
+     {
+      "value": "4.9L"
+     },
+     {
+      "value": "90° V10 Twin Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "Direct injection. Pumpe Düse",
+      "note": "Direct injection. Pumpe Düse (Pump Injection). VW V10 TDI engine. VW Touareg V10 TDI ('04) (when Z follows P in the 4th pos. of VIN)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "MPI. VW I5 engine - PZEV. 170 hp. VW Jetta sedan Mk5",
+      "years": [
+       2008,
+       2010
+      ],
+      "note": "MPI. VW I5 engine - PZEV. 170 hp. VW Jetta sedan Mk5 [1K] ('08-'10)"
+     },
+     {
+      "value": "Jetta Sportwagen",
+      "years": [
+       2009,
+       2011
+      ],
+      "note": "Jetta Sportwagen ('09-'11)"
+     },
+     {
+      "value": "Jetta sedan Mk6",
+      "note": "Jetta sedan Mk6 ('11)"
+     }
+    ],
+    "0": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Beetle",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "Beetle (Mid '14-'16)"
+     }
+    ],
+    "1": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Beetle",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "Beetle (Mid '14-'17)"
+     },
+     {
+      "value": "Golf Mk7",
+      "years": [
+       2015,
+       2017
+      ],
+      "note": "Golf Mk7 ('15-'17)"
+     },
+     {
+      "value": "Golf Sportwagen Fwd",
+      "years": [
+       2015,
+       2017
+      ],
+      "note": "Golf Sportwagen Fwd ('15-'17)"
+     },
+     {
+      "value": "Golf Sportwagen 4Motion Awd",
+      "note": "Golf Sportwagen 4Motion Awd ('17)"
+     },
+     {
+      "value": "Golf Alltrack 4Motion Awd",
+      "note": "Golf Alltrack 4Motion Awd ('17)"
+     },
+     {
+      "value": "Golf Mk7",
+      "note": "Golf Mk7 ('18)"
+     },
+     {
+      "value": "Golf Sportwagen Fwd",
+      "note": "Golf Sportwagen Fwd ('18)"
+     },
+     {
+      "value": "Golf Sportwagen 4Motion Awd",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "Golf Sportwagen 4Motion Awd ('18-'19)"
+     },
+     {
+      "value": "Golf Alltrack 4Motion Awd",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "Golf Alltrack 4Motion Awd ('18-'19)"
+     }
+    ],
+    "3": [
+     {
+      "value": "1.4L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas-Electric Hybrid"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     }
+    ],
+    "4": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "GTI Sport"
+     },
+     {
+      "value": "SE"
+     },
+     {
+      "value": "Autobahn",
+      "note": "Autobahn [Mk7] ('17)"
+     }
+    ],
+    "5": [
+     {
+      "value": "1.4L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Golf Sportwagen Fwd",
+      "note": "Golf Sportwagen Fwd ('19)"
+     },
+     {
+      "value": "Jetta 1.4T",
+      "years": [
+       2019,
+       2021
+      ],
+      "note": "Jetta 1.4T [Mk7] ('19-'21)"
+     }
+    ],
+    "6": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Beetle 2.0T Turbo",
+      "years": [
+       2012,
+       null
+      ],
+      "note": "Beetle 2.0T Turbo ('12-Mid '13)"
+     },
+     {
+      "value": "1.4L"
+     }
+    ],
+    "8": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     }
+    ]
+   }
+  },
+  "model@7:9": {
+   "field": "model",
+   "at": [
+    "vin",
+    "7:9"
+   ],
+   "map": {
+    "30": [
+     {
+      "value": "Fox",
+      "years": [
+       1987,
+       1993
+      ],
+      "note": "Fox ('87-'93)"
+     }
+    ],
+    "15": [
+     {
+      "value": "Rabbit Convertible",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "Rabbit Convertible ('81-'84)"
+     },
+     {
+      "value": "Cabriolet",
+      "years": [
+       1985,
+       1993
+      ],
+      "note": "Cabriolet ('85-'93)"
+     }
+    ],
+    "16": [
+     {
+      "value": "Jetta",
+      "years": [
+       1981,
+       1988
+      ],
+      "note": "Jetta ('81-'88)"
+     },
+     {
+      "value": "Jetta sedan",
+      "years": [
+       2011,
+       2018
+      ],
+      "note": "Jetta sedan ('11-'18 - Mark VI)"
+     }
+    ],
+    "17": [
+     {
+      "value": "Rabbit",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "Rabbit ('81-'84)"
+     },
+     {
+      "value": "Rabbit Truck",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Rabbit Truck ('81-'83)"
+     },
+     {
+      "value": "Golf",
+      "years": [
+       1985,
+       1989
+      ],
+      "note": "Golf (US built: '85-'89)"
+     }
+    ],
+    "1G": [
+     {
+      "value": "Golf",
+      "years": [
+       1989,
+       1992
+      ],
+      "note": "Golf (Mexican built: '89-'92)"
+     },
+     {
+      "value": "Jetta",
+      "years": [
+       1989,
+       1992
+      ],
+      "note": "Jetta ('89-'92)"
+     }
+    ],
+    "1H": [
+     {
+      "value": "Golf",
+      "years": [
+       1993,
+       1999
+      ],
+      "note": "Golf/GTI ('93-'99 - Mark III)"
+     },
+     {
+      "value": "Jetta",
+      "years": [
+       1993,
+       1999
+      ],
+      "note": "Jetta ('93-'99 - Mark III)"
+     }
+    ],
+    "1E": [
+     {
+      "value": "Cabrio",
+      "years": [
+       1995,
+       1999
+      ],
+      "note": "Cabrio ('95-'99)"
+     }
+    ],
+    "1V": [
+     {
+      "value": "Cabrio",
+      "years": [
+       2000,
+       2002
+      ],
+      "note": "Cabrio ('00-'02)"
+     }
+    ],
+    "1J": [
+     {
+      "value": "Golf",
+      "years": [
+       1999,
+       2006
+      ],
+      "note": "Golf/GTI ('99-'06 - Mark IV)"
+     },
+     {
+      "value": "R32",
+      "note": "R32 ('04)"
+     },
+     {
+      "value": "City Golf",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "City Golf (Canada only: '07-'09)"
+     },
+     {
+      "value": "Jetta wagon",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "Jetta wagon ('01-'05 & '06 in Canada - Mark IV)"
+     },
+     {
+      "value": "City Golf",
+      "note": "City Golf (Canada only: '10)"
+     }
+    ],
+    "9M": [
+     {
+      "value": "Jetta sedan",
+      "years": [
+       1999,
+       2005
+      ],
+      "note": "Jetta sedan ('99-'05 - Mark IV)"
+     },
+     {
+      "value": "City Jetta",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "City Jetta (Canada only: '07-'09)"
+     }
+    ],
+    "1K": [
+     {
+      "value": "Rabbit",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Rabbit/GTI ('06-'09 - Mark V)"
+     },
+     {
+      "value": "R32",
+      "note": "R32 ('08)"
+     },
+     {
+      "value": "Jetta sedan",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "Jetta sedan ('05-'09 - Mark V)"
+     },
+     {
+      "value": "Jetta Sportwagen",
+      "years": [
+       2009,
+       null
+      ],
+      "note": "Jetta Sportwagen ('09 - Mark V)"
+     },
+     {
+      "value": "Jetta sedan",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "Jetta sedan ('10 - Mark V)"
+     },
+     {
+      "value": "Jetta Sportwagen",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "Jetta Sportwagen ('10-'14 - Mark V)"
+     }
+    ],
+    "32": [
+     {
+      "value": "Dasher hatchback",
+      "note": "Dasher hatchback ('81)"
+     },
+     {
+      "value": "Quantum hatchback",
+      "years": [
+       1982,
+       1983
+      ],
+      "note": "Quantum hatchback ('82-'83)/sedan ('82-'88)"
+     }
+    ],
+    "33": [
+     {
+      "value": "Dasher wagon",
+      "note": "Dasher wagon ('81)"
+     },
+     {
+      "value": "Quantum wagon",
+      "years": [
+       1982,
+       1988
+      ],
+      "note": "Quantum wagon ('82-'88)"
+     }
+    ],
+    "31": [
+     {
+      "value": "Passat",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "Passat ('90-'94)"
+     }
+    ],
+    "3A": [
+     {
+      "value": "Passat",
+      "years": [
+       1995,
+       1997
+      ],
+      "note": "Passat ('95-'97)"
+     }
+    ],
+    "3B": [
+     {
+      "value": "Passat",
+      "years": [
+       1998,
+       2005
+      ],
+      "note": "Passat ('98-'05)"
+     }
+    ],
+    "3C": [
+     {
+      "value": "Passat",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "Passat ('06-'09)"
+     },
+     {
+      "value": "CC",
+      "note": "CC ('09)"
+     },
+     {
+      "value": "Passat",
+      "note": "Passat ('10)"
+     },
+     {
+      "value": "CC",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "CC ('10-'17)"
+     }
+    ],
+    "3D": [
+     {
+      "value": "Phaeton",
+      "years": [
+       2004,
+       2006
+      ],
+      "note": "Phaeton ('04-'06)"
+     }
+    ],
+    "53": [
+     {
+      "value": "Scirocco",
+      "years": [
+       1981,
+       1988
+      ],
+      "note": "Scirocco ('81-'88 & '89 in Canada)"
+     }
+    ],
+    "50": [
+     {
+      "value": "Corrado",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "Corrado ('90-'94 & '95 in Canada)"
+     }
+    ],
+    "1C": [
+     {
+      "value": "New Beetle coupe",
+      "years": [
+       1998,
+       2009
+      ],
+      "note": "New Beetle coupe ('98-'09)"
+     },
+     {
+      "value": "New Beetle coupe",
+      "note": "New Beetle coupe ('10)"
+     }
+    ],
+    "1Y": [
+     {
+      "value": "New Beetle convertible",
+      "years": [
+       2003,
+       2009
+      ],
+      "note": "New Beetle convertible ('03-'09)"
+     },
+     {
+      "value": "New Beetle convertible",
+      "note": "New Beetle convertible ('10)"
+     }
+    ],
+    "1F": [
+     {
+      "value": "Eos",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "Eos ('07-'09)"
+     },
+     {
+      "value": "Eos",
+      "years": [
+       2010,
+       2016
+      ],
+      "note": "Eos ('10-'16)"
+     }
+    ],
+    "25": [
+     {
+      "value": "Vanagon",
+      "years": [
+       1981,
+       1991
+      ],
+      "note": "Vanagon ('81-'91)"
+     }
+    ],
+    "70": [
+     {
+      "value": "Eurovan",
+      "years": [
+       1993,
+       2003
+      ],
+      "note": "Eurovan ('93-'03 & '92 in Canada)"
+     },
+     {
+      "value": "Eurovan-based Winnebago Rialta"
+     },
+     {
+      "value": "Winnebago Vista"
+     },
+     {
+      "value": "Itasca Sunstar Class C motorhomes"
+     }
+    ],
+    "5N": [
+     {
+      "value": "Tiguan",
+      "note": "Tiguan ('09)"
+     },
+     {
+      "value": "Tiguan",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "Tiguan ('10-'17)"
+     },
+     {
+      "value": "Tiguan Limited",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Tiguan Limited ('17-'18)"
+     }
+    ],
+    "7L": [
+     {
+      "value": "Touareg",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "Touareg ('04-'09)"
+     },
+     {
+      "value": "Touareg",
+      "note": "Touareg ('10)"
+     }
+    ],
+    "BE": [
+     {
+      "value": "City Golf",
+      "note": "City Golf (Canada only: '10)"
+     }
+    ],
+    "AJ": [
+     {
+      "value": "Golf",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "Golf/GTI ('10-'14 - Mark 6)"
+     },
+     {
+      "value": "Golf R",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "Golf R ('12-'13)"
+     },
+     {
+      "value": "Jetta sedan",
+      "years": [
+       2010,
+       null
+      ],
+      "note": "Jetta sedan ('10 - Mark V)"
+     },
+     {
+      "value": "Jetta Sportwagen",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "Jetta Sportwagen ('10-'14 - Mark V)"
+     },
+     {
+      "value": "Jetta sedan",
+      "years": [
+       2011,
+       2018
+      ],
+      "note": "Jetta sedan ('11-'18 - Mark VI)"
+     }
+    ],
+    "5K": [
+     {
+      "value": "Golf",
+      "years": [
+       2010,
+       2014
+      ],
+      "note": "Golf/GTI ('10-'14 - Mark 6)"
+     },
+     {
+      "value": "Golf R",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "Golf R ('12-'13)"
+     }
+    ],
+    "AU": [
+     {
+      "value": "Golf",
+      "years": [
+       2012,
+       2021
+      ],
+      "note": "Typ AU, https://de.wikipedia.org/wiki/VW_Golf_VII"
+     }
+    ],
+    "CD": [
+     {
+      "value": "Golf GTI",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "Golf GTI/Golf R ('22-24 - Mark 8)"
+     },
+     {
+      "value": "Golf GTI",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "Golf GTI/Golf R ('25-present - Mark 8.5)"
+     }
+    ],
+    "DA": [
+     {
+      "value": "Golf GTI",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "Golf GTI/Golf R ('25-present - Mark 8.5)"
+     }
+    ],
+    "BU": [
+     {
+      "value": "Jetta sedan",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Jetta sedan ('19-present - Mark VII)"
+     }
+    ],
+    "AN": [
+     {
+      "value": "Passat",
+      "note": "Passat ('10)"
+     },
+     {
+      "value": "CC",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "CC ('10-'17)"
+     },
+     {
+      "value": "Arteon",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "Arteon ('19-'23)"
+     }
+    ],
+    "3H": [
+     {
+      "value": "Arteon",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "Arteon ('19-'23)"
+     }
+    ],
+    "AG": [
+     {
+      "value": "New Beetle coupe",
+      "note": "New Beetle coupe ('10)"
+     }
+    ],
+    "AL": [
+     {
+      "value": "New Beetle convertible",
+      "note": "New Beetle convertible ('10)"
+     }
+    ],
+    "AT": [
+     {
+      "value": "Beetle",
+      "years": [
+       2012,
+       2019
+      ],
+      "note": "Beetle ('12-'19)"
+     }
+    ],
+    "5C": [
+     {
+      "value": "Beetle",
+      "years": [
+       2012,
+       2019
+      ],
+      "note": "Beetle ('12-'19)"
+     }
+    ],
+    "AH": [
+     {
+      "value": "Eos",
+      "years": [
+       2010,
+       2016
+      ],
+      "note": "Eos ('10-'16)"
+     }
+    ],
+    "EB": [
+     {
+      "value": "ID Buzz",
+      "note": "ID Buzz ('25)"
+     }
+    ],
+    "B2": [
+     {
+      "value": "Taos",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Taos ('22-)"
+     }
+    ],
+    "CL": [
+     {
+      "value": "Taos",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Taos ('22-)"
+     }
+    ],
+    "AX": [
+     {
+      "value": "Tiguan",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "Tiguan ('10-'17)"
+     },
+     {
+      "value": "Tiguan Limited",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Tiguan Limited ('17-'18)"
+     },
+     {
+      "value": "Tiguan",
+      "years": [
+       2018,
+       2024
+      ],
+      "note": "Tiguan ('18-'24)"
+     }
+    ],
+    "BW": [
+     {
+      "value": "Tiguan",
+      "years": [
+       2018,
+       2024
+      ],
+      "note": "Tiguan ('18-'24)"
+     }
+    ],
+    "RM": [
+     {
+      "value": "Tiguan",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "Tiguan ('25-)"
+     }
+    ],
+    "A9": [
+     {
+      "value": "Touareg",
+      "note": "Touareg ('10)"
+     }
+    ],
+    "BP": [
+     {
+      "value": "Touareg",
+      "years": [
+       2011,
+       2017
+      ],
+      "note": "Touareg ('11-'17)"
+     }
+    ],
+    "7P": [
+     {
+      "value": "Touareg",
+      "years": [
+       2011,
+       2017
+      ],
+      "note": "Touareg ('11-'17)"
+     }
+    ],
+    "CA": [
+     {
+      "value": "Atlas",
+      "years": [
+       2018,
+       2026
+      ],
+      "note": "Atlas ('18-'26)"
+     },
+     {
+      "value": "Atlas Cross Sport",
+      "years": [
+       2020,
+       2026
+      ],
+      "note": "Atlas Cross Sport ('20-'26)"
+     }
+    ],
+    "DH": [
+     {
+      "value": "Atlas",
+      "note": "Atlas ('27)"
+     }
+    ],
+    "E2": [
+     {
+      "value": "ID.4",
+      "years": [
+       2021,
+       2022
+      ],
+      "note": "ID.4 (German built: '21-'22)"
+     }
+    ],
+    "E8": [
+     {
+      "value": "ID.4",
+      "years": [
+       2023,
+       2026
+      ],
+      "note": "ID.4 (US built: '23-'26)"
+     }
+    ],
+    "3G": [
+     {
+      "value": "Passat",
+      "years": [
+       2014,
+       2023
+      ],
+      "note": "Typ 3G, https://de.wikipedia.org/wiki/VW_Passat_B8"
+     }
+    ],
+    "6C": [
+     {
+      "value": "Polo",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "Typ 6C, https://de.wikipedia.org/wiki/VW_Polo_V"
+     }
+    ],
+    "6R": [
+     {
+      "value": "Polo",
+      "years": [
+       2009,
+       2014
+      ],
+      "note": "Typ 6R, https://de.wikipedia.org/wiki/VW_Polo_V"
+     }
+    ],
+    "7E": [
+     {
+      "value": "Transporter",
+      "years": [
+       2003,
+       2015
+      ],
+      "note": "Typ 7E, https://de.wikipedia.org/wiki/VW_T6"
+     }
+    ],
+    "7H": [
+     {
+      "value": "Transporter",
+      "years": [
+       2003,
+       2015
+      ],
+      "note": "Typ 7H, https://de.wikipedia.org/wiki/VW_T6"
+     }
+    ],
+    "AD": [
+     {
+      "value": "Tiguan",
+      "years": [
+       2016,
+       2025
+      ],
+      "note": "Typ AD, https://de.wikipedia.org/wiki/VW_Tiguan_II"
+     }
+    ],
+    "AW": [
+     {
+      "value": "Polo",
+      "years": [
+       2017,
+       null
+      ],
+      "note": "Typ AW, https://de.wikipedia.org/wiki/VW_Polo_VI"
+     }
+    ],
+    "CR": [
+     {
+      "value": "Touareg",
+      "years": [
+       2018,
+       null
+      ],
+      "note": "Typ CR, https://de.wikipedia.org/wiki/VW_Touareg_III"
+     }
+    ],
+    "SG": [
+     {
+      "value": "Transporter",
+      "years": [
+       2015,
+       null
+      ],
+      "note": "Typ SG, https://de.wikipedia.org/wiki/VW_T6"
+     }
+    ],
+    "SH": [
+     {
+      "value": "Transporter",
+      "years": [
+       2015,
+       null
+      ],
+      "note": "Typ SH, https://de.wikipedia.org/wiki/VW_T6"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "B": [
+     {
+      "value": "Brussels"
+     },
+     {
+      "value": "Belgium"
+     }
+    ],
+    "C": [
+     {
+      "value": "Chattanooga"
+     },
+     {
+      "value": "TN"
+     },
+     {
+      "value": "USA"
+     }
+    ],
+    "D": [
+     {
+      "value": "Bratislava"
+     },
+     {
+      "value": "Slovakia"
+     }
+    ],
+    "E": [
+     {
+      "value": "Emden"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "G": [
+     {
+      "value": "Graz"
+     },
+     {
+      "value": "Austria",
+      "years": [
+       1986,
+       1987
+      ],
+      "note": "Austria (Steyr-Daimler-Puch plant: Vanagon Syncro 4wd [US: '86-'87, '89-'91, Canada: '86-'91])"
+     }
+    ],
+    "H": [
+     {
+      "value": "Hanover"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "K": [
+     {
+      "value": "Osnabrueck"
+     },
+     {
+      "value": "Germany",
+      "years": [
+       1981,
+       1988
+      ],
+      "note": "Germany (Karmann plant: Scirocco ['81-'88 & '89 in Canada]"
+     },
+     {
+      "value": "Corrado",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "Corrado ['90-'94 & '95 in Canada]"
+     },
+     {
+      "value": "Rabbit Convertible",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "Rabbit Convertible ['81-'84]"
+     },
+     {
+      "value": "Cabriolet",
+      "years": [
+       1985,
+       1993
+      ],
+      "note": "Cabriolet ['85-'93]"
+     },
+     {
+      "value": "Cabrio",
+      "years": [
+       1995,
+       1996
+      ],
+      "note": "Cabrio ['95-'96])"
+     },
+     {
+      "value": "Germany",
+      "note": "Germany (ex-Karmann VW Osnabrueck GmbH plant: Tiguan ['17]"
+     },
+     {
+      "value": "Tiguan Limited",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Tiguan Limited ['17-'18])"
+     }
+    ],
+    "M": [
+     {
+      "value": "Puebla"
+     },
+     {
+      "value": "Mexico"
+     }
+    ],
+    "P": [
+     {
+      "value": "Zwickau"
+     },
+     {
+      "value": "Germany",
+      "note": "Germany [For WMI: WVW or WVG]"
+     },
+     {
+      "value": "Sao Bernardo do Campo"
+     },
+     {
+      "value": "Sao Paulo state"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Anchieta plant) [For WMI: 9BW]"
+     }
+    ],
+    "R": [
+     {
+      "value": "Windsor Assembly - Windsor"
+     },
+     {
+      "value": "ON"
+     },
+     {
+      "value": "Canada",
+      "note": "Canada (Chrysler plant)"
+     }
+    ],
+    "V": [
+     {
+      "value": "Westmoreland Assembly - East Huntingdon"
+     },
+     {
+      "value": "Westmoreland County"
+     },
+     {
+      "value": "PA"
+     },
+     {
+      "value": "USA",
+      "note": "USA [For WMI: 1VW or 1V1]"
+     },
+     {
+      "value": "Portugal",
+      "note": "Portugal [For WMI: WVW]"
+     }
+    ],
+    "W": [
+     {
+      "value": "Wolfsburg"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "4": [
+     {
+      "value": "Sao Jose dos Pinhais"
+     },
+     {
+      "value": "Parana state"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Curitiba plant)"
+     }
+    ],
+    "8": [
+     {
+      "value": "Dresden"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "X9A": [
+     {
+      "value": "Equipment Options for USA market"
+     }
+    ],
+    "X9B": [
+     {
+      "value": "Equipment Options for Canadian market"
+     }
+    ]
+   }
+  }
+ }
+}

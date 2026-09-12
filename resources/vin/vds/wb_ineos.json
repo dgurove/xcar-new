@@ -1,0 +1,97 @@
+{
+ "_brand": "Ineos",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Ineos/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [],
+ "_market": "north_america",
+ "sections": {
+  "body@6:7": {
+   "field": "body",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "1": [
+     {
+      "value": "4 door Wagon"
+     }
+    ]
+   }
+  },
+  "engine@7:8": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "7:8"
+   ],
+   "map": {
+    "C": [
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "I6 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Dual VVT",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "Direct injection. Dual VVT (Double VANOS). Valvetronic (Intake VVL). BMW B58B30C I6. Ineos Grenadier ('24-)"
+     },
+     {
+      "value": "Grenadier Quartermaster pickup",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "Grenadier Quartermaster pickup ('24-)"
+     }
+    ]
+   }
+  },
+  "model@4:5": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "G": [
+     {
+      "value": "Ineos Grenadier"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "F": [
+     {
+      "value": "Hambach"
+     },
+     {
+      "value": "France"
+     }
+    ]
+   }
+  }
+ }
+}

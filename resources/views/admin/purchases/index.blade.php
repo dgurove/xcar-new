@@ -19,8 +19,8 @@
                     <div class="font-medium">{{ $p->title ?: $p->publicTitle() }} <span class="nums text-sm font-normal text-ink-dim">№ {{ $p->number }}</span></div>
                     <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm">
                         <x-ui.pill :tone="$p->state->tone() === 'open' ? 'open' : ($p->state->tone() === 'plain' ? 'plain' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $p->state->label() }}</x-ui.pill>
-                        <span class="chip nums font-normal">{{ $p->cars_count }} машин</span>
-                        @if ($p->offers_close_at)<span class="chip nums font-normal">до {{ $p->offers_close_at->translatedFormat('j M, H:i') }}</span>@endif
+                        <span class="chip">{{ $p->cars_count }} машин</span>
+                        @if ($p->offers_close_at)<span class="chip">до {{ $p->offers_close_at->translatedFormat('j M, H:i') }}</span>@endif
                     </div>
                 </div>
                 <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>

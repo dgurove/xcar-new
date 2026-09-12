@@ -5,5 +5,5 @@
     <span class="chip">{{ $vehicle->yard?->name }}</span>
     <span class="chip nums font-normal">{{ $vehicle->daysStored() }} дн.</span>
 @elseif ($vehicle->state === \App\Park\VehicleState::Released)
-    <span class="chip nums font-normal">{{ $vehicle->released_at?->translatedFormat('j M Y') }}</span>
+    <span class="chip">{{ $vehicle->released_at?->translatedFormat('j M Y') }}</span>
 @endif

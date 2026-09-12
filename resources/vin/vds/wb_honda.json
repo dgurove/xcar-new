@@ -1,0 +1,2930 @@
+{
+ "_brand": "Honda",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Honda/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [],
+ "_market": null,
+ "sections": {
+  "body@4:5": {
+   "field": "body",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "AB": [
+     {
+      "value": "Prelude",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Prelude 1983"
+     },
+     {
+      "value": "Prelude 1.8 liter",
+      "years": [
+       1984,
+       1986
+      ],
+      "note": "Prelude 1.8 liter 1984-1986"
+     }
+    ],
+    "SL": [
+     {
+      "value": "Civic 1300 1.3 liter 3-door hatchback",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Civic 1300 1.3 liter 3-door hatchback 1981-1983"
+     }
+    ],
+    "SM": [
+     {
+      "value": "Accord",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Accord 1981"
+     }
+    ],
+    "SN": [
+     {
+      "value": "Prelude",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "Prelude 1981-1982"
+     }
+    ],
+    "SR": [
+     {
+      "value": "Civic 1500 1.5 liter 3-door hatchback",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Civic 1500 1.5 liter 3-door hatchback 1981-1983"
+     }
+    ],
+    "ST": [
+     {
+      "value": "Civic 1500 1.5 liter 4-door sedan",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Civic 1500 1.5 liter 4-door sedan 1981-1983"
+     }
+    ],
+    "SZ": [
+     {
+      "value": "Accord",
+      "years": [
+       1982,
+       1983
+      ],
+      "note": "Accord 1982-1983"
+     }
+    ],
+    "WD": [
+     {
+      "value": "Civic station wagon 1500 1.5 liter",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Civic station wagon 1500 1.5 liter 1981-1983"
+     }
+    ],
+    "AD": [
+     {
+      "value": "Accord",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "Accord 1984-1985"
+     }
+    ],
+    "AE": [
+     {
+      "value": "Civic CRX 1.3 liter",
+      "years": [
+       1984,
+       1986
+      ]
+     }
+    ],
+    "AF": [
+     {
+      "value": "Civic CRX 1.5 liter",
+      "years": [
+       1984,
+       1986
+      ]
+     }
+    ],
+    "AG": [
+     {
+      "value": "Civic 1300 1.3 liter 3 door",
+      "years": [
+       1984,
+       1986
+      ]
+     }
+    ],
+    "AH": [
+     {
+      "value": "Civic 1500 1.5 liter 3 door",
+      "years": [
+       1984,
+       1986
+      ]
+     }
+    ],
+    "AK": [
+     {
+      "value": "Civic 1500 1.5 liter 4 door",
+      "years": [
+       1984,
+       1986
+      ]
+     }
+    ],
+    "AN": [
+     {
+      "value": "Civic wagon 1500 1.5 liter",
+      "years": [
+       1984,
+       1986
+      ]
+     }
+    ],
+    "AR": [
+     {
+      "value": "Civic wagon 4x4 1500 1.5 liter",
+      "years": [
+       1984,
+       1986
+      ]
+     }
+    ],
+    "BA": [
+     {
+      "value": "Accord",
+      "years": [
+       1984,
+       1986
+      ],
+      "note": "Accord 1986"
+     }
+    ],
+    "BB": [
+     {
+      "value": "Prelude Si 2.0 liter",
+      "years": [
+       1985,
+       1986
+      ],
+      "note": "Prelude Si 2.0 liter 1985-1986"
+     }
+    ],
+    "VN": [
+     {
+      "value": "Civic Wagovan 1500 1.5 liter",
+      "years": [
+       1984,
+       1986
+      ]
+     }
+    ]
+   }
+  },
+  "model@4:5": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:7"
+   ],
+   "map": {
+    "BA3": [
+     {
+      "value": "Prelude",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Prelude Si A20 Engine 1987"
+     }
+    ],
+    "BA4": [
+     {
+      "value": "Prelude B20 Engine",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Prelude B20 Engine 1988-1989"
+     },
+     {
+      "value": "Prelude",
+      "years": [
+       1990,
+       1999
+      ]
+     }
+    ],
+    "BA6": [
+     {
+      "value": "Prelude A18 Engine",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Prelude A18 Engine 1987"
+     }
+    ],
+    "CA5": [
+     {
+      "value": "Accord 3-door hatchback & 4-door sedan",
+      "years": [
+       1987,
+       1989
+      ]
+     }
+    ],
+    "CA6": [
+     {
+      "value": "Accord coupe",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Accord coupe 1988-1989"
+     }
+    ],
+    "EC1": [
+     {
+      "value": "Civic CRX",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Civic CRX 1987"
+     }
+    ],
+    "EC2": [
+     {
+      "value": "Civic 1300 3-door hatchback",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Civic 1300 3-door hatchback 1987"
+     }
+    ],
+    "EC3": [
+     {
+      "value": "Civic 1500 3-door hatchback",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Civic 1500 3-door hatchback 1987"
+     }
+    ],
+    "EC4": [
+     {
+      "value": "Civic 1500",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Civic 1500 4 Door Sedan 1987"
+     }
+    ],
+    "EC5": [
+     {
+      "value": "Civic",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Civic Wagon 1500 1987"
+     }
+    ],
+    "EC6": [
+     {
+      "value": "Civic",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Civic Wagon 4X4 1500 1987"
+     }
+    ],
+    "ED3": [
+     {
+      "value": "Civic",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Civic Sedan 1.5L (1988-1989)"
+     }
+    ],
+    "ED6": [
+     {
+      "value": "Civic",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Civic Hatchback 1.5L (1988-1989)"
+     }
+    ],
+    "ED7": [
+     {
+      "value": "Civic",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Civic Si Hatchback 1.6L (1989)"
+     }
+    ],
+    "ED8": [
+     {
+      "value": "Civic CRX",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Civic CRX 1.5L (1988-1989)"
+     }
+    ],
+    "ED9": [
+     {
+      "value": "Civic CRX",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Civic CRX Si 1.6L (1988-1989)"
+     }
+    ],
+    "EE2": [
+     {
+      "value": "Civic",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Civic Wagon 1.5L (1988-1989)"
+     }
+    ],
+    "EE4": [
+     {
+      "value": "Civic",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Civic Wagon 1.6L 4WD (1988-1989)"
+     }
+    ],
+    "EY1": [
+     {
+      "value": "Civic Wagovan 1500",
+      "years": [
+       1987,
+       1989
+      ],
+      "note": "Civic Wagovan 1500 1987"
+     }
+    ],
+    "EY3": [
+     {
+      "value": "Civic Wagovan",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "Civic Wagovan 1.5L (1988-1989)"
+     }
+    ],
+    "BA8": [
+     {
+      "value": "Prelude S",
+      "years": [
+       1990,
+       1999
+      ]
+     }
+    ],
+    "BB1": [
+     {
+      "value": "Prelude",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Prelude VTEC"
+     }
+    ],
+    "BB2": [
+     {
+      "value": "Prelude",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Prelude Si"
+     }
+    ],
+    "BB5": [
+     {
+      "value": "Prelude",
+      "years": [
+       1990,
+       1999
+      ]
+     },
+     {
+      "value": "2.2L F22 engine",
+      "years": [
+       1997,
+       2000
+      ],
+      "note": "2.2L F22 engine 1997-2000 (Japanese & Australian market)"
+     }
+    ],
+    "BB6": [
+     {
+      "value": "Prelude",
+      "years": [
+       1990,
+       1999
+      ]
+     }
+    ],
+    "BB8": [
+     {
+      "value": "Prelude",
+      "years": [
+       1990,
+       1999
+      ]
+     }
+    ],
+    "CB7": [
+     {
+      "value": "Accord coupe & sedan",
+      "years": [
+       1990,
+       1999
+      ]
+     }
+    ],
+    "CB9": [
+     {
+      "value": "Accord",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Accord Wagon"
+     }
+    ],
+    "CD5": [
+     {
+      "value": "Accord",
+      "years": [
+       1994,
+       1997
+      ],
+      "note": "Accord 4 Door 2.2L SOHC 1994-1997"
+     }
+    ],
+    "CD7": [
+     {
+      "value": "Accord",
+      "years": [
+       1994,
+       1997
+      ],
+      "note": "Accord 2 Door 2.2L SOHC 1994-1997"
+     }
+    ],
+    "CE1": [
+     {
+      "value": "Accord",
+      "years": [
+       1994,
+       1997
+      ],
+      "note": "Accord Wagon 2.2L SOHC 1994-1997"
+     }
+    ],
+    "CE6": [
+     {
+      "value": "Accord",
+      "years": [
+       1995,
+       1997
+      ],
+      "note": "Accord V6 4 Door 2.7L SOHC V6 1995-1997"
+     }
+    ],
+    "CF8": [
+     {
+      "value": "Accord",
+      "years": [
+       1998,
+       1999
+      ],
+      "note": "Accord DX 4 Door 2.3L SOHC 1998-1999"
+     }
+    ],
+    "CG1": [
+     {
+      "value": "Accord",
+      "years": [
+       1998,
+       1999
+      ],
+      "note": "Accord 4 Door V6 3.0L SOHC VTEC V6 1998-1999"
+     }
+    ],
+    "CG2": [
+     {
+      "value": "Accord",
+      "years": [
+       1998,
+       1999
+      ],
+      "note": "Accord 2 Door V6 3.0L SOHC VTEC V6 1998-1999"
+     }
+    ],
+    "CG3": [
+     {
+      "value": "Accord",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Accord LX"
+     }
+    ],
+    "CG5": [
+     {
+      "value": "Accord",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Accord LX"
+     }
+    ],
+    "CG6": [
+     {
+      "value": "Accord",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Accord LX 4 Door 2.3L SOHC VTEC ULEV 1999"
+     }
+    ],
+    "CF4": [
+     {
+      "value": "Accord",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Accord 4 Door SiR"
+     },
+     {
+      "value": "SiR-T",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "SiR-T 2.0L DOHC VTEC (Japanese market)"
+     }
+    ],
+    "CH9": [
+     {
+      "value": "Accord",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Accord Wagon SiR 2.3L DOHC VTEC (Japanese market)"
+     }
+    ],
+    "ED4": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic EX 4 Door"
+     }
+    ],
+    "EF8": [
+     {
+      "value": "CR-X SiR",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "CR-X SiR 1.6L VTEC (Japanese market)"
+     }
+    ],
+    "EG1": [
+     {
+      "value": "Civic del Sol S",
+      "years": [
+       1990,
+       1999
+      ]
+     }
+    ],
+    "EG2": [
+     {
+      "value": "Civic del Sol",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "Civic del Sol VTEC 1.6L DOHC B16A3 1994-1995"
+     }
+    ],
+    "EG6": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 3 door hatchback 1.6L DOHC VTEC (European/Japanese market VTi/SiR)"
+     }
+    ],
+    "EG8": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 4 Door"
+     }
+    ],
+    "EG9": [
+     {
+      "value": "Civic SiR",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic SiR 4 Door"
+     }
+    ],
+    "EH2": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 3 Door"
+     },
+     {
+      "value": "Civic VX",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic VX 3 Door"
+     }
+    ],
+    "EH3": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic Si 3 Door"
+     }
+    ],
+    "EH6": [
+     {
+      "value": "Civic del Sol",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic del Sol Si"
+     },
+     {
+      "value": "Civic del Sol S",
+      "years": [
+       1990,
+       1999
+      ]
+     }
+    ],
+    "EH9": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic EX 4 Door"
+     }
+    ],
+    "EJ1": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic EX 2 Door"
+     }
+    ],
+    "EJ2": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 2 Door"
+     }
+    ],
+    "EJ6": [
+     {
+      "value": "Civic 2",
+      "years": [
+       1996,
+       1999
+      ],
+      "note": "Civic 2/3/4 Door 1.6L SOHC 1996-1999"
+     }
+    ],
+    "EJ7": [
+     {
+      "value": "Civic HX",
+      "years": [
+       1996,
+       1999
+      ],
+      "note": "Civic HX 2 Door 1.6L SOHC VTEC-E 1996-1999"
+     }
+    ],
+    "EJ8": [
+     {
+      "value": "Civic",
+      "years": [
+       1996,
+       1999
+      ],
+      "note": "Civic EX 2/4 Door 1.6L SOHC VTEC 1996-1999"
+     }
+    ],
+    "EM1": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic Si 2 Door"
+     }
+    ],
+    "EN1": [
+     {
+      "value": "Civic GX",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic GX 4 Door"
+     }
+    ],
+    "EL1": [
+     {
+      "value": "Orthia",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Orthia 1.8L 5 Door Wagon (Japanese market)"
+     }
+    ],
+    "EL2": [
+     {
+      "value": "Orthia",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Orthia 2.0L 5 Door Wagon (Japanese market)"
+     }
+    ],
+    "EL3": [
+     {
+      "value": "Orthia",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Orthia 2.0L 5 Door Wagon 4WD (Japanese market)"
+     }
+    ],
+    "MA4": [
+     {
+      "value": "Domani",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Domani 4 door 1.6 (Japanese market)"
+     }
+    ],
+    "MA5": [
+     {
+      "value": "Domani",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Domani 4 door 1.8 (Japanese market)"
+     }
+    ],
+    "MA8": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.4L Fastback (European market)"
+     }
+    ],
+    "MA9": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.5L Fastback (European market)"
+     }
+    ],
+    "MB1": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.6L Fastback (European market)"
+     }
+    ],
+    "MB2": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.4L Fastback (FL) (European market)"
+     }
+    ],
+    "MB3": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.5L Fastback (FL) (European market)"
+     }
+    ],
+    "MB4": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.6L Fastback (FL) (European market)"
+     }
+    ],
+    "MB6": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.8L VTi Fastback (FL) (European market)"
+     }
+    ],
+    "MB7": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 2.0L direct injection Turbodiesel Fastback (FL) (European market)"
+     }
+    ],
+    "MB8": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.4L Aerodeck (Wagon) (FL) (European market)"
+     }
+    ],
+    "MB9": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.5L Aerodeck (Wagon) (FL) (European market)"
+     }
+    ],
+    "MC1": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.6L Aerodeck (Wagon) (FL) (European market)"
+     }
+    ],
+    "MC2": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 1.8L VTi Aerodeck (Wagon) (FL) (European market)"
+     }
+    ],
+    "MC3": [
+     {
+      "value": "Civic",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Civic 5 door 2.0L direct injection Turbodiesel Aerodeck (Wagon) (FL) (European market)"
+     }
+    ],
+    "RA1": [
+     {
+      "value": "Odyssey",
+      "years": [
+       1995,
+       1997
+      ],
+      "note": "Odyssey 2.2L 1995-1997"
+     }
+    ],
+    "RA3": [
+     {
+      "value": "Odyssey",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Odyssey 2.3L 1998"
+     }
+    ],
+    "RD1": [
+     {
+      "value": "CR-V",
+      "years": [
+       1997,
+       1999
+      ],
+      "note": "CR-V (4 Wheel drive) 1997-1999"
+     }
+    ],
+    "RD2": [
+     {
+      "value": "CR-V",
+      "years": [
+       1998,
+       1999
+      ],
+      "note": "CR-V (2 Wheel drive) 1998-1999"
+     }
+    ],
+    "RL1": [
+     {
+      "value": "Odyssey",
+      "years": [
+       1990,
+       1999
+      ],
+      "note": "Odyssey 3.5L SOHC VTEC V6 1999"
+     }
+    ],
+    "ZA1": [
+     {
+      "value": "EV Plus electric 66 hp",
+      "years": [
+       1990,
+       1999
+      ]
+     },
+     {
+      "value": "28.7 kWh battery",
+      "years": [
+       1997,
+       1999
+      ],
+      "note": "28.7 kWh battery 1997-1999"
+     }
+    ],
+    "AP1": [
+     {
+      "value": "S2000",
+      "years": [
+       2000,
+       null
+      ]
+     }
+    ],
+    "AP2": [
+     {
+      "value": "S2000",
+      "years": [
+       2000,
+       null
+      ]
+     }
+    ],
+    "BF1": [
+     {
+      "value": "Prelude",
+      "years": [
+       2000,
+       null
+      ]
+     }
+    ],
+    "CM5": [
+     {
+      "value": "Accord",
+      "years": [
+       2003,
+       2007
+      ],
+      "note": "Accord 4 Door 2.4L DOHC i-VTEC 2003-2007"
+     }
+    ],
+    "CM6": [
+     {
+      "value": "Accord",
+      "years": [
+       2003,
+       2007
+      ],
+      "note": "Accord 4 Door V6 3.0L SOHC VTEC V6 2003-2007"
+     }
+    ],
+    "CM7": [
+     {
+      "value": "Accord",
+      "years": [
+       2003,
+       2007
+      ],
+      "note": "Accord 2 Door 2.4L DOHC i-VTEC 2003-2007"
+     }
+    ],
+    "CM8": [
+     {
+      "value": "Accord",
+      "years": [
+       2003,
+       2007
+      ],
+      "note": "Accord 2 Door V6 3.0L SOHC VTEC V6 2003-2007"
+     }
+    ],
+    "CN3": [
+     {
+      "value": "Accord",
+      "years": [
+       2005,
+       2007
+      ],
+      "note": "Accord Hybrid 4 Door 3.0L SOHC VTEC V6 + electric 2005-2007"
+     }
+    ],
+    "CP2": [
+     {
+      "value": "Accord",
+      "years": [
+       2008,
+       2012
+      ],
+      "note": "Accord 4 Door 2.4L DOHC i-VTEC 2008-2012"
+     }
+    ],
+    "CP3": [
+     {
+      "value": "Accord",
+      "years": [
+       2008,
+       2012
+      ],
+      "note": "Accord 4 Door V6 3.5L SOHC i-VTEC V6 2008-2012"
+     }
+    ],
+    "CR2": [
+     {
+      "value": "Accord",
+      "years": [
+       2013,
+       2017
+      ],
+      "note": "Accord 4 Door 2.4L DOHC i-VTEC 2013-2017"
+     }
+    ],
+    "CR3": [
+     {
+      "value": "Accord",
+      "years": [
+       2013,
+       2017
+      ],
+      "note": "Accord 4 Door V6 3.5L SOHC i-VTEC V6 2013-2017"
+     }
+    ],
+    "CR5": [
+     {
+      "value": "Accord Plug-in",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Accord Plug-in Hybrid 4 Door 2.0L DOHC i-VTEC + electric 2014"
+     }
+    ],
+    "CR6": [
+     {
+      "value": "Accord",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "Accord Hybrid 4 Door 2.0L DOHC i-VTEC + electric 2014-2015"
+     }
+    ],
+    "CS1": [
+     {
+      "value": "Accord",
+      "years": [
+       2008,
+       2012
+      ],
+      "note": "Accord 2 Door 2.4L DOHC i-VTEC 2008-2012"
+     }
+    ],
+    "CS2": [
+     {
+      "value": "Accord",
+      "years": [
+       2008,
+       2012
+      ],
+      "note": "Accord 2 Door V6 3.5L SOHC i-VTEC V6 2008-2012"
+     }
+    ],
+    "CT1": [
+     {
+      "value": "Accord",
+      "years": [
+       2013,
+       2017
+      ],
+      "note": "Accord 2 Door 2.4L DOHC i-VTEC 2013-2017"
+     }
+    ],
+    "CT2": [
+     {
+      "value": "Accord",
+      "years": [
+       2013,
+       2017
+      ],
+      "note": "Accord 2 Door V6 3.5L SOHC i-VTEC V6 2013-2017"
+     }
+    ],
+    "CV1": [
+     {
+      "value": "Accord",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "Accord 4 Door 1.5L DOHC VTEC turbo 2018-2022"
+     }
+    ],
+    "CV2": [
+     {
+      "value": "Accord",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "Accord 4 Door 2.0L DOHC VTEC turbo 2018-2022"
+     }
+    ],
+    "CV3": [
+     {
+      "value": "Accord",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "Accord Hybrid 4 Door 2.0L DOHC i-VTEC + electric 2018-2022"
+     }
+    ],
+    "CY1": [
+     {
+      "value": "Accord",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Accord 4 Door 1.5L DOHC VTEC turbo 2023"
+     }
+    ],
+    "CY2": [
+     {
+      "value": "Accord",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Accord Hybrid 4 Door 2.0L DOHC i-VTEC + electric 2023"
+     }
+    ],
+    "DG1": [
+     {
+      "value": "BR-V",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "BR-V 1.5L SOHC i-VTEC 2018-2022 (Mexico)"
+     }
+    ],
+    "DG3": [
+     {
+      "value": "BR-V",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "BR-V 1.5L DOHC i-VTEC 2024- (Mexico)"
+     }
+    ],
+    "EM2": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic 2 Door"
+     },
+     {
+      "value": "Civic HX",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic HX 2 Door"
+     }
+    ],
+    "EN2": [
+     {
+      "value": "Civic GX",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic GX 4 Door"
+     }
+    ],
+    "EP3": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic Si 3 Door"
+     }
+    ],
+    "ES1": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic 4 Door"
+     }
+    ],
+    "ES2": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic EX 4 Door"
+     }
+    ],
+    "ES9": [
+     {
+      "value": "Civic",
+      "years": [
+       2003,
+       2005
+      ],
+      "note": "Civic Hybrid 4 Door 1.3L SOHC VTEC + electric 2003-2005"
+     }
+    ],
+    "FA1": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic 4 Door"
+     }
+    ],
+    "FA3": [
+     {
+      "value": "Civic",
+      "years": [
+       2006,
+       2011
+      ],
+      "note": "Civic Hybrid 4 Door 1.3L SOHC i-VTEC + electric 2006-2011"
+     }
+    ],
+    "FA4": [
+     {
+      "value": "Civic GX",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic GX 4 Door"
+     }
+    ],
+    "FA5": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic Si 4 Door"
+     },
+     {
+      "value": "Civic Mugen",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic Mugen Si 4 Door"
+     }
+    ],
+    "FB2": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic 4 Door"
+     }
+    ],
+    "FB4": [
+     {
+      "value": "Civic",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "Civic Hybrid 4 Door 1.5L SOHC i-VTEC + electric 2012-2015"
+     }
+    ],
+    "FB5": [
+     {
+      "value": "Civic NGV",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic NGV (GX) 4 Door"
+     }
+    ],
+    "FB6": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic Si 4 Door"
+     }
+    ],
+    "FC1": [
+     {
+      "value": "Civic",
+      "years": [
+       2016,
+       2021
+      ],
+      "note": "Civic 4 Door 1.5L DOHC VTC turbo 2016-2021"
+     }
+    ],
+    "FC2": [
+     {
+      "value": "Civic",
+      "years": [
+       2016,
+       2021
+      ],
+      "note": "Civic 4 Door 2.0L DOHC i-VTEC 2016-2021"
+     }
+    ],
+    "FC3": [
+     {
+      "value": "Civic",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "Civic 2 Door 1.5L DOHC VTC turbo 2016-2020"
+     }
+    ],
+    "FC4": [
+     {
+      "value": "Civic",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "Civic 2 Door 2.0L DOHC i-VTEC 2016-2020"
+     }
+    ],
+    "FE1": [
+     {
+      "value": "Civic",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "Civic 4 Door 1.5L DOHC VTEC turbo 2022-2024"
+     }
+    ],
+    "FE2": [
+     {
+      "value": "Civic",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "Civic 4 Door 2.0L DOHC i-VTEC 2022-2024"
+     }
+    ],
+    "FE4": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic Hybrid 4 Door 2.0L DOHC VTC + electric 2025"
+     }
+    ],
+    "FG1": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic 2 Door"
+     }
+    ],
+    "FG2": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic Si 2 Door"
+     }
+    ],
+    "FG3": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic 2 Door"
+     }
+    ],
+    "FG4": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic Si 2 Door"
+     }
+    ],
+    "FK7": [
+     {
+      "value": "Civic",
+      "years": [
+       2017,
+       2021
+      ],
+      "note": "Civic 5 Door 1.5L DOHC VTC turbo 2017-2021"
+     }
+    ],
+    "FK8": [
+     {
+      "value": "Civic Type R",
+      "years": [
+       2017,
+       2021
+      ],
+      "note": "Civic Type R 5 Door 2.0L DOHC i-VTEC turbo 2017-2021"
+     }
+    ],
+    "FL1": [
+     {
+      "value": "Civic",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "Civic 5 Door 1.5L DOHC VTEC turbo 2022-2024"
+     }
+    ],
+    "FL2": [
+     {
+      "value": "Civic",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "Civic 5 Door 2.0L DOHC i-VTEC 2022-2024"
+     }
+    ],
+    "FL4": [
+     {
+      "value": "Civic",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic Hybrid 5 Door 2.0L DOHC VTC + electric 2025"
+     }
+    ],
+    "FL5": [
+     {
+      "value": "Civic Type R",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Civic Type R 5 Door 2.0L DOHC i-VTEC turbo 2023"
+     }
+    ],
+    "GD3": [
+     {
+      "value": "Fit",
+      "years": [
+       2000,
+       null
+      ]
+     }
+    ],
+    "GE8": [
+     {
+      "value": "Fit",
+      "years": [
+       2000,
+       null
+      ]
+     }
+    ],
+    "GK5": [
+     {
+      "value": "Fit",
+      "years": [
+       2000,
+       null
+      ]
+     }
+    ],
+    "GM2": [
+     {
+      "value": "City",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "City 1.5L SOHC i-VTEC 2010-2013 (Mexico)"
+     }
+    ],
+    "GM6": [
+     {
+      "value": "City",
+      "years": [
+       2016,
+       2020
+      ],
+      "note": "City 1.5L SOHC i-VTEC 2016-2020 (Mexico)"
+     }
+    ],
+    "GN2": [
+     {
+      "value": "City",
+      "years": [
+       2021,
+       null
+      ],
+      "note": "City 1.5L DOHC i-VTEC 2021- (Mexico)"
+     }
+    ],
+    "RD6": [
+     {
+      "value": "CR-V",
+      "years": [
+       2002,
+       2006
+      ],
+      "note": "CR-V (2 Wheel drive) 2002-2006"
+     }
+    ],
+    "RD7": [
+     {
+      "value": "CR-V",
+      "years": [
+       2002,
+       2006
+      ],
+      "note": "CR-V (4 Wheel drive) 2002-2006"
+     }
+    ],
+    "RE3": [
+     {
+      "value": "CR-V",
+      "years": [
+       2007,
+       2011
+      ],
+      "note": "CR-V (2 Wheel drive) 2007-2011"
+     }
+    ],
+    "RE4": [
+     {
+      "value": "CR-V",
+      "years": [
+       2007,
+       2011
+      ],
+      "note": "CR-V (4 Wheel drive) 2007-2011"
+     }
+    ],
+    "RL3": [
+     {
+      "value": "Odyssey",
+      "years": [
+       2005,
+       2010
+      ],
+      "note": "Odyssey 3.5L SOHC VTEC or i-VTEC V6 2005-2010"
+     }
+    ],
+    "RL5": [
+     {
+      "value": "Odyssey",
+      "years": [
+       2011,
+       2017
+      ],
+      "note": "Odyssey 3.5L SOHC i-VTEC V6 2011-2017"
+     }
+    ],
+    "RL6": [
+     {
+      "value": "Odyssey",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Odyssey 3.5L SOHC i-VTEC V6 2018"
+     }
+    ],
+    "RM3": [
+     {
+      "value": "CR-V",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "CR-V (2 Wheel drive) 2012-2016"
+     }
+    ],
+    "RM4": [
+     {
+      "value": "CR-V",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "CR-V (4 Wheel drive) 2012-2016"
+     }
+    ],
+    "RS3": [
+     {
+      "value": "CR-V",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "CR-V (2 Wheel drive) 1.5L DOHC VTEC turbo 2023"
+     }
+    ],
+    "RS4": [
+     {
+      "value": "CR-V",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "CR-V (4 Wheel drive) 1.5L DOHC VTEC turbo 2023"
+     }
+    ],
+    "RS5": [
+     {
+      "value": "CR-V",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "CR-V Hybrid (2 Wheel drive) 2.0L DOHC i-VTEC + electric 2023"
+     }
+    ],
+    "RS6": [
+     {
+      "value": "CR-V",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "CR-V Hybrid (4 Wheel drive) 2.0L DOHC i-VTEC + electric 2023"
+     }
+    ],
+    "RT6": [
+     {
+      "value": "CR-V",
+      "years": [
+       2020,
+       2022
+      ],
+      "note": "CR-V Hybrid (4 Wheel drive) 2.0L DOHC i-VTEC + electric 2020-2022"
+     }
+    ],
+    "RU5": [
+     {
+      "value": "HR-V",
+      "years": [
+       2016,
+       2022
+      ],
+      "note": "HR-V (2 Wheel drive) 2016-2022"
+     }
+    ],
+    "RU6": [
+     {
+      "value": "HR-V",
+      "years": [
+       2016,
+       2022
+      ],
+      "note": "HR-V (4 Wheel drive) 2016-2022"
+     }
+    ],
+    "RW1": [
+     {
+      "value": "CR-V",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "CR-V (2 Wheel drive) 1.5L DOHC VTC turbo 2017-2022"
+     }
+    ],
+    "RW2": [
+     {
+      "value": "CR-V",
+      "years": [
+       2017,
+       2022
+      ],
+      "note": "CR-V (4 Wheel drive) 1.5L DOHC VTC turbo 2017-2022"
+     }
+    ],
+    "RW5": [
+     {
+      "value": "CR-V",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "CR-V (2 Wheel drive) 2.4L DOHC i-VTEC 2017-2019"
+     }
+    ],
+    "RW6": [
+     {
+      "value": "CR-V",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "CR-V (4 Wheel drive) 2.4L DOHC i-VTEC 2017-2019"
+     }
+    ],
+    "RZ1": [
+     {
+      "value": "HR-V",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "HR-V (2 Wheel drive) 2023"
+     }
+    ],
+    "RZ2": [
+     {
+      "value": "HR-V",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "HR-V (4 Wheel drive) 2023"
+     }
+    ],
+    "TF1": [
+     {
+      "value": "Accord Crosstour",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "Accord Crosstour (2 Wheel drive) 3.5L SOHC i-VTEC V6 2010-2011"
+     },
+     {
+      "value": "Crosstour",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "Crosstour (2 Wheel drive) 3.5L SOHC i-VTEC V6 2012-2015"
+     }
+    ],
+    "TF2": [
+     {
+      "value": "Accord Crosstour",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "Accord Crosstour (4 Wheel drive) 3.5L SOHC i-VTEC V6 2010-2011"
+     },
+     {
+      "value": "Crosstour",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "Crosstour (4 Wheel drive) 3.5L SOHC i-VTEC V6 2012-2015"
+     }
+    ],
+    "TF3": [
+     {
+      "value": "Crosstour",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "Crosstour (2 Wheel drive) 2.4L DOHC i-VTEC 2012-2015"
+     }
+    ],
+    "YF1": [
+     {
+      "value": "Pilot",
+      "years": [
+       2003,
+       2008
+      ],
+      "note": "Pilot (4 Wheel drive) 2003-2008"
+     }
+    ],
+    "YF2": [
+     {
+      "value": "Pilot",
+      "years": [
+       2003,
+       2008
+      ],
+      "note": "Pilot (2 Wheel drive) 2003-2008"
+     }
+    ],
+    "YF3": [
+     {
+      "value": "Pilot",
+      "years": [
+       2009,
+       2015
+      ],
+      "note": "Pilot (2 Wheel drive) 2009-2015"
+     }
+    ],
+    "YF4": [
+     {
+      "value": "Pilot",
+      "years": [
+       2009,
+       2015
+      ],
+      "note": "Pilot (4 Wheel drive) 2009-2015"
+     }
+    ],
+    "YF5": [
+     {
+      "value": "Pilot",
+      "years": [
+       2016,
+       2022
+      ],
+      "note": "Pilot (2 Wheel drive) 2016-2022"
+     }
+    ],
+    "YF6": [
+     {
+      "value": "Pilot",
+      "years": [
+       2016,
+       2022
+      ],
+      "note": "Pilot (4 Wheel drive) 2016-2022"
+     }
+    ],
+    "YF7": [
+     {
+      "value": "Passport",
+      "years": [
+       2019,
+       2022
+      ],
+      "note": "Passport (2 Wheel drive) 2019-2022"
+     }
+    ],
+    "YF8": [
+     {
+      "value": "Passport",
+      "years": [
+       2019,
+       2025
+      ],
+      "note": "Passport (4 Wheel drive) 2019-2025"
+     }
+    ],
+    "YF9": [
+     {
+      "value": "Passport",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Passport (4 Wheel drive) 2026"
+     }
+    ],
+    "YG1": [
+     {
+      "value": "Pilot",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Pilot (4 Wheel drive) 3.5L DOHC VTC V6 2023"
+     }
+    ],
+    "YG2": [
+     {
+      "value": "Pilot",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Pilot (2 Wheel drive) 3.5L DOHC VTC V6 2023"
+     }
+    ],
+    "YH1": [
+     {
+      "value": "Element",
+      "years": [
+       2003,
+       2011
+      ],
+      "note": "Element (2 Wheel drive) 2003-2011"
+     }
+    ],
+    "YH2": [
+     {
+      "value": "Element",
+      "years": [
+       2003,
+       2011
+      ],
+      "note": "Element (4 Wheel drive) 2003-2011"
+     }
+    ],
+    "YK1": [
+     {
+      "value": "Ridgeline",
+      "years": [
+       2006,
+       2014
+      ],
+      "note": "Ridgeline (4 Wheel drive) 2006-2014"
+     }
+    ],
+    "YK2": [
+     {
+      "value": "Ridgeline",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "Ridgeline (2 Wheel drive) 2017-2020"
+     }
+    ],
+    "YK3": [
+     {
+      "value": "Ridgeline",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Ridgeline (4 Wheel drive) 2017"
+     }
+    ],
+    "ZA2": [
+     {
+      "value": "Fit EV",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "electric",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "123 hp",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "20 kWh battery",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "2013-2014",
+      "years": [
+       2013,
+       2014
+      ]
+     }
+    ],
+    "ZC1": [
+     {
+      "value": "FCX",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "Hydrogen fuel cell",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "81 hp",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "2003-2004",
+      "years": [
+       2003,
+       2004
+      ]
+     }
+    ],
+    "ZC2": [
+     {
+      "value": "FCX",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "Hydrogen fuel cell",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "107 hp",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "2005-2007",
+      "years": [
+       2005,
+       2007
+      ]
+     }
+    ],
+    "ZC3": [
+     {
+      "value": "FCX Clarity",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "Hydrogen fuel cell",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "134 hp",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "2008-2014",
+      "years": [
+       2008,
+       2014
+      ]
+     }
+    ],
+    "ZC4": [
+     {
+      "value": "Clarity Fuel Cell",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "Hydrogen fuel cell",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "174 hp",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "2017-2021",
+      "years": [
+       2017,
+       2021
+      ]
+     }
+    ],
+    "ZC5": [
+     {
+      "value": "Clarity Plug-in",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "Clarity Plug-in Hybrid"
+     },
+     {
+      "value": "2018-2021",
+      "years": [
+       2018,
+       2021
+      ]
+     }
+    ],
+    "ZC6": [
+     {
+      "value": "Clarity Electric",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "161 hp",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "25.5 kWh battery",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "2017-2019",
+      "years": [
+       2017,
+       2019
+      ]
+     }
+    ],
+    "ZC8": [
+     {
+      "value": "CR-V e:FCEV",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "Hydrogen fuel cell",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "17.7 kWh battery",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "174 hp",
+      "years": [
+       2000,
+       null
+      ]
+     }
+    ],
+    "ZE1": [
+     {
+      "value": "Insight",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "2000-2006",
+      "years": [
+       2000,
+       2006
+      ]
+     }
+    ],
+    "ZE2": [
+     {
+      "value": "Insight",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "2010-2014",
+      "years": [
+       2010,
+       2014
+      ]
+     }
+    ],
+    "ZE4": [
+     {
+      "value": "Insight",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "2019-2022",
+      "years": [
+       2019,
+       2022
+      ]
+     }
+    ],
+    "ZF1": [
+     {
+      "value": "CR-Z",
+      "years": [
+       2000,
+       null
+      ]
+     },
+     {
+      "value": "2011-2016",
+      "years": [
+       2011,
+       2016
+      ]
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Marysville"
+     },
+     {
+      "value": "Ohio"
+     },
+     {
+      "value": "USA",
+      "note": "USA (Marysville Auto/Motorcycle Plants) (Motorcycle plant closed 2009, last model year built: 2010)"
+     }
+    ],
+    "B": [
+     {
+      "value": "Lincoln"
+     },
+     {
+      "value": "Alabama"
+     },
+     {
+      "value": "USA"
+     },
+     {
+      "value": "Aalst"
+     },
+     {
+      "value": "Flanders"
+     },
+     {
+      "value": "Belgium",
+      "note": "Belgium (Motorcycle Plant) (Vehicle production ended 1995)"
+     }
+    ],
+    "C": [
+     {
+      "value": "Sayama"
+     },
+     {
+      "value": "Saitama prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (Vehicle production ended 2022)"
+     }
+    ],
+    "D": [
+     {
+      "value": "El Salto"
+     },
+     {
+      "value": "Jalisco"
+     },
+     {
+      "value": "Mexico",
+      "note": "Mexico (Motorcycle Plant)"
+     }
+    ],
+    "E": [
+     {
+      "value": "Greensburg"
+     },
+     {
+      "value": "Indiana"
+     },
+     {
+      "value": "USA"
+     },
+     {
+      "value": "Barcelona"
+     },
+     {
+      "value": "Spain",
+      "note": "Spain (Montesa Honda Motorcycle Plant)"
+     }
+    ],
+    "F": [
+     {
+      "value": "Atessa"
+     },
+     {
+      "value": "Italy",
+      "note": "Italy (Motorcycle Plant)"
+     },
+     {
+      "value": "Pingtung"
+     },
+     {
+      "value": "Taiwan"
+     }
+    ],
+    "G": [
+     {
+      "value": "El Salto"
+     },
+     {
+      "value": "Jalisco"
+     },
+     {
+      "value": "Mexico",
+      "note": "Mexico (Auto Plant) (Auto production ended 2020)"
+     }
+    ],
+    "H": [
+     {
+      "value": "Alliston"
+     },
+     {
+      "value": "Ontario"
+     },
+     {
+      "value": "Canada"
+     }
+    ],
+    "J": [
+     {
+      "value": "Karawang"
+     },
+     {
+      "value": "West Java"
+     },
+     {
+      "value": "Indonesia",
+      "note": "Indonesia (Auto Plant)"
+     },
+     {
+      "value": "Swepsonville"
+     },
+     {
+      "value": "North Carolina"
+     },
+     {
+      "value": "USA",
+      "note": "USA (ATV plant)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Ozu"
+     },
+     {
+      "value": "Kikuchi district"
+     },
+     {
+      "value": "Kumamoto prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (Motorcycle Plant)"
+     },
+     {
+      "value": "Itirapina"
+     },
+     {
+      "value": "Sao Paulo state"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Auto Plant)"
+     }
+    ],
+    "L": [
+     {
+      "value": "East Liberty"
+     },
+     {
+      "value": "Ohio"
+     },
+     {
+      "value": "USA"
+     }
+    ],
+    "M": [
+     {
+      "value": "Celaya"
+     },
+     {
+      "value": "Guanajuato"
+     },
+     {
+      "value": "Mexico"
+     },
+     {
+      "value": "Hamamatsu"
+     },
+     {
+      "value": "Shizuoka prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (Motorcycle Plant) (Vehicle production ended 2008)"
+     }
+    ],
+    "N": [
+     {
+      "value": "Nelson"
+     },
+     {
+      "value": "New Zealand",
+      "note": "New Zealand (closed 1998)"
+     },
+     {
+      "value": "Greater Noida"
+     },
+     {
+      "value": "Uttar Pradesh"
+     },
+     {
+      "value": "India",
+      "note": "India (Honda Cars India) (closed 2020)"
+     }
+    ],
+    "P": [
+     {
+      "value": "Ayutthaya"
+     },
+     {
+      "value": "Thailand",
+      "note": "Thailand (Auto Plant) (Vehicle production ending 2025)"
+     }
+    ],
+    "R": [
+     {
+      "value": "Manaus"
+     },
+     {
+      "value": "Amazonas"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Motorcycle Plant)"
+     }
+    ],
+    "S": [
+     {
+      "value": "Suzuka"
+     },
+     {
+      "value": "Mie prefecture"
+     },
+     {
+      "value": "Japan"
+     },
+     {
+      "value": "Ramos Arizpe"
+     },
+     {
+      "value": "Coahuila"
+     },
+     {
+      "value": "Mexico",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "Mexico (GM plant) ('24-'26 Honda Prologue EV)"
+     }
+    ],
+    "T": [
+     {
+      "value": "Takanezawa"
+     },
+     {
+      "value": "Tochigi prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (closed 2004, reopened 2008, closed 2018)"
+     },
+     {
+      "value": "Prachinburi"
+     },
+     {
+      "value": "Thailand",
+      "note": "Thailand (Auto Plant)"
+     }
+    ],
+    "U": [
+     {
+      "value": "Swindon"
+     },
+     {
+      "value": "Wiltshire"
+     },
+     {
+      "value": "U.K",
+      "note": "U.K. (closed 2021)"
+     }
+    ],
+    "W": [
+     {
+      "value": "Gebze"
+     },
+     {
+      "value": "Kocaeli province"
+     },
+     {
+      "value": "Turkey",
+      "note": "Turkey (closed 2021)"
+     }
+    ],
+    "X": [
+     {
+      "value": "Yorii"
+     },
+     {
+      "value": "Saitama prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "Y": [
+     {
+      "value": "Marysville"
+     },
+     {
+      "value": "Ohio"
+     },
+     {
+      "value": "USA",
+      "note": "USA (Performance Manufacturing Center)"
+     },
+     {
+      "value": "Phuc Thang"
+     },
+     {
+      "value": "Vinh Phuc province"
+     },
+     {
+      "value": "Vietnam",
+      "note": "Vietnam (Motorcycle Plant)"
+     }
+    ],
+    "Z": [
+     {
+      "value": "Sumaré"
+     },
+     {
+      "value": "Sao Paulo state"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Auto Plant) (Vehicle production ended 2021)"
+     },
+     {
+      "value": "Spring Hill"
+     },
+     {
+      "value": "Tennessee"
+     },
+     {
+      "value": "USA",
+      "note": "USA (GM plant) ('24 Acura ZDX EV)"
+     }
+    ],
+    "1": [
+     {
+      "value": "Guangzhou"
+     },
+     {
+      "value": "Guangdong"
+     },
+     {
+      "value": "China",
+      "note": "China (Wuyang-Honda Motorcycle Plant)"
+     }
+    ],
+    "2": [
+     {
+      "value": "Guangzhou"
+     },
+     {
+      "value": "Guangdong"
+     },
+     {
+      "value": "China",
+      "note": "China (GAC-Honda Automobile Co."
+     },
+     {
+      "value": "Ltd. Huangpu",
+      "note": "Ltd. Huangpu [No. 1] Auto Plant)"
+     }
+    ],
+    "3": [
+     {
+      "value": "Guangzhou Development District"
+     },
+     {
+      "value": "Guangzhou"
+     },
+     {
+      "value": "Guangdong"
+     },
+     {
+      "value": "China",
+      "note": "China (GAC-Honda No. 4 Auto Plant) (formerly Honda Automobile (China) Co., Ltd.)"
+     },
+     {
+      "value": "China",
+      "note": "China (Sundiro-Honda Motorcycle Plant)"
+     }
+    ],
+    "4": [
+     {
+      "value": "Lafayette"
+     },
+     {
+      "value": "Indiana"
+     },
+     {
+      "value": "USA",
+      "years": [
+       1994,
+       2002
+      ],
+      "note": "USA (SIA plant) (1994-2002 Passport)"
+     },
+     {
+      "value": "Timmonsville"
+     },
+     {
+      "value": "South Carolina"
+     },
+     {
+      "value": "USA",
+      "note": "USA (ATV/UTV plant)"
+     },
+     {
+      "value": "Tapukara"
+     },
+     {
+      "value": "Rajasthan"
+     },
+     {
+      "value": "India",
+      "note": "India (Honda Cars India)"
+     }
+    ],
+    "5": [
+     {
+      "value": "Bangkok"
+     },
+     {
+      "value": "Thailand",
+      "note": "Thailand (Motorcycle Plant)"
+     },
+     {
+      "value": "Wuhan"
+     },
+     {
+      "value": "Hubei"
+     },
+     {
+      "value": "China",
+      "note": "China (Dongfeng-Honda Automobile Co."
+     },
+     {
+      "value": "Ltd",
+      "note": "Ltd. [No. 1] Auto Plant)"
+     }
+    ],
+    "7": [
+     {
+      "value": "Fujisawa"
+     },
+     {
+      "value": "Kanagawa prefecture"
+     },
+     {
+      "value": "Japan",
+      "years": [
+       1996,
+       1999
+      ],
+      "note": "Japan (Isuzu plant) (1996-1999 Acura SLX)"
+     },
+     {
+      "value": "Wuhan"
+     },
+     {
+      "value": "Hubei"
+     },
+     {
+      "value": "China",
+      "note": "China (Dongfeng-Honda Automobile Co."
+     },
+     {
+      "value": "Ltd",
+      "note": "Ltd. [No. 3] Auto Plant)"
+     }
+    ]
+   }
+  }
+ }
+}

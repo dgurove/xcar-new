@@ -9,7 +9,7 @@
     <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
         @if ($deal->state !== DealState::Active)
             <x-ui.pill :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.pill>
-            @if ($deal->closed_at)<x-ui.pill tone="plain"><span class="nums font-normal">{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span></x-ui.pill>@endif
+            @if ($deal->closed_at)<x-ui.pill tone="plain"><span>{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span></x-ui.pill>@endif
         @elseif ($position)
             <x-route.status :position="$position"/>
         @else
@@ -98,7 +98,7 @@
                 <div class="flex flex-col gap-1.5 text-sm">
                     @forelse ($events->take(40) as $event)
                         <div class="flex gap-3">
-                            <span class="nums shrink-0 font-normal text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
+                            <span class="shrink-0 text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
                             <span class="min-w-0">{{ $event->text() }}</span>
                             @if ($event->user)<span class="ml-auto shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
                         </div>

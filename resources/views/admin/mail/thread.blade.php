@@ -38,7 +38,7 @@
                         <div class="text-sm text-ink-muted">Кому: {{ $message->to_preview ?: '—' }}</div>
                     </div>
                     <div class="flex shrink-0 items-center gap-1">
-                        <span class="text-sm text-ink-dim tabular-nums">{{ $message->date_at?->translatedFormat('j M, H:i') }}</span>
+                        <span class="text-sm text-ink-dim">{{ $message->date_at?->translatedFormat('j M, H:i') }}</span>
                         <form method="post" action="{{ $base }}/pisma/{{ $message->id }}/flag">@csrf<button class="btn btn-ghost btn-s px-1.5 {{ $message->is_flagged ? 'text-urgent' : 'text-ink-dim' }}" aria-label="Отметить"><x-ui.icon name="flag" class="size-5"/></button></form>
                     </div>
                 </div>

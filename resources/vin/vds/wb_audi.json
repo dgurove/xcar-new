@@ -1,0 +1,4735 @@
+{
+ "_brand": "Audi",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Audi/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "3U5",
+  "TRU",
+  "WA1",
+  "WAU",
+  "WU1",
+  "WUA"
+ ],
+ "_market": null,
+ "sections": {
+  "engine@5:6": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "5:6"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "1.7L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Audi 4000 4E",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "MPI. VW EA827 engine. Audi 4000 4E/4000S 4E ('81-'83)"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Audi 4000S",
+      "note": "MPI. VW EA827 engine. Audi 4000S ('84)"
+     },
+     {
+      "value": "2.1L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi Coupe GT",
+      "note": "MPI. Audi EA828 I5 engine. Audi Coupe GT ('84)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Audi 80",
+      "note": "MPI. VW EA827 engine. Audi 80 ('90)"
+     },
+     {
+      "value": "2.2L"
+     },
+     {
+      "value": "I5 Turbo IC"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi S6",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi S6 ('95 & '96-'97 in Canada)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 1. Iron Block. Audi 90",
+      "note": "MPI. Audi EA835 engine - Gen 1. Iron Block. Audi 90 ('95)"
+     },
+     {
+      "value": "Cabriolet",
+      "years": [
+       1995,
+       1998
+      ],
+      "note": "Cabriolet ('95-'98)"
+     },
+     {
+      "value": "A4 2.8",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "A4 2.8 ('96-'97)"
+     },
+     {
+      "value": "A6 sedan",
+      "years": [
+       1995,
+       1997
+      ],
+      "note": "A6 sedan ('95-'97)"
+     },
+     {
+      "value": "A6 wagon",
+      "years": [
+       1995,
+       1998
+      ],
+      "note": "A6 wagon ('95-'98)"
+     },
+     {
+      "value": "30 valve"
+     },
+     {
+      "value": "A6 Avant 2.8",
+      "note": "A6 Avant 2.8 ('99)"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "5.2L"
+     },
+     {
+      "value": "90° V10"
+     },
+     {
+      "value": "40 valve"
+     },
+     {
+      "value": "R8 V10 RWS",
+      "note": "R8 V10 RWS ('18)"
+     },
+     {
+      "value": "R8 Rwd",
+      "note": "R8 Rwd ('21)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 supercharged IC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA837 engine. Audi Q7 3.0T",
+      "years": [
+       2017,
+       2019
+      ],
+      "note": "Direct injection. Audi EA837 engine. Audi Q7 3.0T ('17-'19)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "A4 Allroad 45 TFSI",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "A4 Allroad 45 TFSI ('21-'25)"
+     },
+     {
+      "value": "A5 Coupe",
+      "years": [
+       2021,
+       2024
+      ],
+      "note": "A5 Coupe/Cabriolet 45 TFSI ('21-'24)"
+     },
+     {
+      "value": "A5 Sportback 45 TFSI",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "A5 Sportback 45 TFSI ('21-'25)"
+     },
+     {
+      "value": "Q5 45 TFSI",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "Q5 45 TFSI [FY] ('21-'25)"
+     },
+     {
+      "value": "Q5 Sportback 45 TFSI",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "Q5 Sportback 45 TFSI [FY] ('21-'25)"
+     },
+     {
+      "value": "Q5 Sportback",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "Q5 Sportback [GU] (Mid '25-'26)"
+     },
+     {
+      "value": "A5",
+      "note": "A5 [B10] ('26)"
+     }
+    ],
+    "B": [
+     {
+      "value": "2.1L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 4000",
+      "note": "MPI. Audi EA828 I5 engine. Audi 4000 ('81)"
+     },
+     {
+      "value": "Coupe",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Coupe ('81-'83)"
+     },
+     {
+      "value": "5000",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "5000/5000S ('81-'84)"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Audi 4000S",
+      "years": [
+       1985,
+       1987
+      ],
+      "note": "MPI. VW EA827 engine. Audi 4000S ('85-'87) [Pos. 7-8 of VIN is 81]"
+     },
+     {
+      "value": "2.2L"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 4000S Quattro",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi 4000S Quattro ('84-'85)"
+     },
+     {
+      "value": "4000CS Quattro",
+      "years": [
+       1986,
+       1987
+      ],
+      "note": "4000CS Quattro ('86-'87) [Pos. 7-8 of VIN is 85]"
+     },
+     {
+      "value": "5000S",
+      "years": [
+       1985,
+       1986
+      ],
+      "note": "5000S ('85-'86)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Audi 80",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "MPI. VW EA827 engine. Audi 80 ('88-'89)"
+     },
+     {
+      "value": "90",
+      "note": "90 ('88)"
+     },
+     {
+      "value": "2.3L"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 100",
+      "note": "MPI. Audi EA828 I5 engine. Audi 100 ('89)"
+     },
+     {
+      "value": "100 Quattro",
+      "note": "100 Quattro ('89)"
+     },
+     {
+      "value": "MPI. VW EA827 engine. Audi 80",
+      "note": "MPI. VW EA827 engine. Audi 80 ('90)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "years": [
+       1997,
+       1999
+      ],
+      "note": "MPI. Audi EA827/EA113 engine. Audi A4 1.8T ('97-'99)"
+     },
+     {
+      "value": "5.2L"
+     },
+     {
+      "value": "90° V10"
+     },
+     {
+      "value": "40 valve"
+     },
+     {
+      "value": "R8 V10 Performance Quattro",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "R8 V10 Performance Quattro ('20-'23)"
+     },
+     {
+      "value": "R8 GT Rwd",
+      "note": "R8 GT Rwd ('23)"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "12v Mild Hybrid. Direct injection. Miller Cycle",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "12v Mild Hybrid. Direct injection. Miller Cycle (B-Cycle). Intake AVS. Audi EA888 Gen3B engine - ULEV. TSI. Timing chain. Detuned version: 201 hp. Audi A4 40 TF"
+     },
+     {
+      "value": "A5 Sportback 40 TFSI",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "A5 Sportback 40 TFSI ('21-'25)"
+     },
+     {
+      "value": "Q5 40 TFSI",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "Q5 40 TFSI [FY] ('22-'25)"
+     }
+    ],
+    "C": [
+     {
+      "value": "2.1L"
+     },
+     {
+      "value": "I5 Turbo"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 5000 Turbo",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi 5000 Turbo ('81-'83)"
+     },
+     {
+      "value": "I5 Turbo IC"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi Quattro Coupe",
+      "years": [
+       1983,
+       1985
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi Quattro Coupe ('82‡ & '83-'85)"
+     },
+     {
+      "value": "5000S Turbo",
+      "years": [
+       1984,
+       1985
+      ],
+      "note": "5000S Turbo ('84-'85)"
+     },
+     {
+      "value": "2.3L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 80",
+      "years": [
+       1991,
+       1992
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi 80 ('91-'92)"
+     },
+     {
+      "value": "80 Quattro",
+      "years": [
+       1988,
+       1992
+      ],
+      "note": "80 Quattro ('88-'92)"
+     },
+     {
+      "value": "90",
+      "years": [
+       1988,
+       1991
+      ],
+      "note": "90 ('88-'91)"
+     },
+     {
+      "value": "90 Quattro",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "90 Quattro ('88-'89)"
+     },
+     {
+      "value": "5000S",
+      "years": [
+       1987,
+       1988
+      ],
+      "note": "5000S ('87-'88)"
+     },
+     {
+      "value": "5000S Quattro",
+      "note": "5000S Quattro ('88)"
+     },
+     {
+      "value": "100",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "100 ('90-'91)"
+     },
+     {
+      "value": "100 Quattro",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "100 Quattro ('90-'91)"
+     },
+     {
+      "value": "2.2L"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 200 Turbo",
+      "note": "MPI. Audi EA828 I5 engine. Audi 200 Turbo ('89)"
+     },
+     {
+      "value": "200 Turbo Quattro",
+      "note": "200 Turbo Quattro ('89)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "A6 wagon",
+      "years": [
+       1996,
+       1998
+      ],
+      "note": "A6 wagon ('96-'98)"
+     },
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "years": [
+       2000,
+       null
+      ],
+      "note": "MPI. Audi EA827/EA113 engine. Audi A4 sedan/Avant 1.8T ('00-Mid '05)"
+     },
+     {
+      "value": "A4 Cabriolet 1.8T",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "A4 Cabriolet 1.8T ('03-'06)"
+     },
+     {
+      "value": "TT",
+      "years": [
+       2000,
+       2006
+      ],
+      "note": "TT [180 hp] ('00-'06)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "Gas-Electric Hybrid"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 supercharged IC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA837 engine. Audi SQ5",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "Direct injection. Audi EA837 engine. Audi SQ5 ('16-'17)"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "RS7",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "RS7 ('21-'23)"
+     }
+    ],
+    "D": [
+     {
+      "value": "2.1L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi Coupe GT",
+      "note": "MPI. Audi EA828 I5 engine. Audi Coupe GT ('84)"
+     },
+     {
+      "value": "2.2L"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi Coupe GT",
+      "years": [
+       1985,
+       1987
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi Coupe GT ('85-'87)"
+     },
+     {
+      "value": "2.3L"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 80",
+      "note": "MPI. Audi EA828 I5 engine. Audi 80 ('91)"
+     },
+     {
+      "value": "80 Quattro",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "80 Quattro ('90-'91)"
+     },
+     {
+      "value": "90",
+      "note": "90 ('90)"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi Coupe Quattro 20V",
+      "note": "MPI. Audi EA828 I5 engine. Audi Coupe Quattro 20V ('90)"
+     },
+     {
+      "value": "I5 Turbo IC"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 5000CS Turbo",
+      "years": [
+       1986,
+       1988
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi 5000CS Turbo ('86-'88)"
+     },
+     {
+      "value": "200 Turbo",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "200 Turbo ('90-'91)"
+     },
+     {
+      "value": "200 Turbo Quattro",
+      "note": "200 Turbo Quattro ('90)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "30 valve"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 2. Iron Block. Audi A4 2.8",
+      "years": [
+       1998,
+       1999
+      ],
+      "note": "MPI. Audi EA835 engine - Gen 2. Iron Block. Audi A4 2.8 ('98-'99)"
+     },
+     {
+      "value": "2.7L"
+     },
+     {
+      "value": "90° V6 Twin Turbo IC"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 2. Iron Block. Audi S4",
+      "years": [
+       2000,
+       2002
+      ],
+      "note": "MPI. Audi EA835 engine - Gen 2. Iron Block. Audi S4 ('00-'02)"
+     },
+     {
+      "value": "A6 2.7T",
+      "years": [
+       2000,
+       2004
+      ],
+      "note": "A6 2.7T ('00-'04)"
+     },
+     {
+      "value": "Allroad Quattro 2.7T",
+      "years": [
+       2002,
+       2005
+      ],
+      "note": "Allroad Quattro 2.7T ('02-'05)"
+     },
+     {
+      "value": "3.2L"
+     },
+     {
+      "value": "15° VR6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. VW EA390 engine. Audi A3 3.2",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "MPI. VW EA390 engine. Audi A3 3.2 ('06-'09)"
+     },
+     {
+      "value": "TT 3.2",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "TT 3.2 ('05-'06, '08-'09)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "RS7 performance",
+      "years": [
+       2024,
+       2026
+      ],
+      "note": "RS7 performance ('24-'26)"
+     }
+    ],
+    "E": [
+     {
+      "value": "2.3L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi Coupe GT 2.3 \"Special Build\"",
+      "note": "MPI. Audi EA828 I5 engine. Audi Coupe GT 2.3 \"Special Build\" (Late '87)"
+     },
+     {
+      "value": "2.2L"
+     },
+     {
+      "value": "I5 Turbo IC"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 5000CS Turbo Quattro",
+      "years": [
+       1986,
+       1988
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi 5000CS Turbo Quattro ('86-'88)"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 90 Quattro 20V",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi 90 Quattro 20V ('90-'91)"
+     },
+     {
+      "value": "Coupe Quattro 20V",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "Coupe Quattro 20V ('90-'91)"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 200 Turbo Quattro 20V",
+      "note": "MPI. Audi EA828 I5 engine. Audi 200 Turbo Quattro 20V ('91)"
+     },
+     {
+      "value": "3.6L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "MPI. Audi V8 engine. Timing belt. Audi V8 Quattro",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "MPI. Audi V8 engine. Timing belt. Audi V8 Quattro ('90-'91)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 1. Iron Block. Audi 90",
+      "note": "MPI. Audi EA835 engine - Gen 1. Iron Block. Audi 90 ('95)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "TT",
+      "years": [
+       2019,
+       2023
+      ],
+      "note": "TT ('19-'23)"
+     },
+     {
+      "value": "Q3 2.0T",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "Q3 2.0T/45 TFSI ('19-'20)"
+     },
+     {
+      "value": "Q3 S Line 45 TFSI",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "Q3 S Line 45 TFSI ('21-'25)"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "5.2L"
+     },
+     {
+      "value": "90° V10"
+     },
+     {
+      "value": "40 valve"
+     },
+     {
+      "value": "R8 V10 Performance Rwd",
+      "years": [
+       2022,
+       2023
+      ],
+      "note": "R8 V10 Performance Rwd ('22-'23)"
+     }
+    ],
+    "F": [
+     {
+      "value": "2.3L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi 90 Quattro 20V",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi 90 Quattro 20V ('90-'91)"
+     },
+     {
+      "value": "Coupe Quattro 20V",
+      "note": "Coupe Quattro 20V ('91)"
+     },
+     {
+      "value": "3.7L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "MPI. Audi V8 engine. Timing belt. Audi A8 3.7",
+      "years": [
+       1997,
+       1999
+      ],
+      "note": "MPI. Audi V8 engine. Timing belt. Audi A8 3.7 ('97-'99)"
+     },
+     {
+      "value": "3.2L"
+     },
+     {
+      "value": "15° VR6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "MPI. VW EA390 engine. Audi TT 3.2",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "MPI. VW EA390 engine. Audi TT 3.2 ('04-'05)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "A4 sedan 2.0T",
+      "years": [
+       2005,
+       2008
+      ],
+      "note": "A4 sedan 2.0T (Mid '05-'08)"
+     },
+     {
+      "value": "A4 Avant 2.0T",
+      "years": [
+       2005,
+       2008
+      ],
+      "note": "A4 Avant 2.0T (Mid '05-'08)"
+     },
+     {
+      "value": "A4 Cabriolet 2.0T",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "A4 Cabriolet 2.0T ('07-'09)"
+     },
+     {
+      "value": "TT",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "TT ('08-'09)"
+     },
+     {
+      "value": "TTS",
+      "note": "TTS ('09)"
+     },
+     {
+      "value": "A3 2.0T Quattro",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "A3 2.0T Quattro ('12-'13)"
+     },
+     {
+      "value": "A4 sedan 2.0T",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "A4 sedan 2.0T ('09-'12)"
+     },
+     {
+      "value": "A4 sedan 2.0T Fwd",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "A4 sedan 2.0T Fwd ('13-'16)"
+     },
+     {
+      "value": "A4 sedan 2.0T Quattro w",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "A4 sedan 2.0T Quattro w/man. trans. ('13-'16)"
+     },
+     {
+      "value": "A4 sedan 2.0T Quattro w",
+      "note": "A4 sedan 2.0T Quattro w/auto. trans. (Early '13)"
+     },
+     {
+      "value": "A4 Avant 2.0T",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "A4 Avant 2.0T ('09-'12)"
+     },
+     {
+      "value": "Allroad 2.0T",
+      "note": "Allroad 2.0T (Early '13)"
+     },
+     {
+      "value": "A5 2.0T",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "A5 2.0T ('10-'12)"
+     },
+     {
+      "value": "A5 Coupe 2.0T Quattro w",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "A5 Coupe 2.0T Quattro w/man. trans. ('13-'15)"
+     },
+     {
+      "value": "A5 Cabriolet 2.0T Fwd",
+      "years": [
+       2013,
+       2014
+      ],
+      "note": "A5 Cabriolet 2.0T Fwd ('13-'14)"
+     },
+     {
+      "value": "A5 2.0T Quattro w",
+      "note": "A5 2.0T Quattro w/auto. trans. (Early '13)"
+     },
+     {
+      "value": "A6 2.0T",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "A6 2.0T ('12-'16)"
+     },
+     {
+      "value": "TT",
+      "years": [
+       2009,
+       2015
+      ],
+      "note": "TT ('09-'15)"
+     },
+     {
+      "value": "Q3",
+      "years": [
+       2015,
+       2016
+      ],
+      "note": "Q3 ('15-'16)"
+     },
+     {
+      "value": "Q5 2.0T",
+      "years": [
+       2011,
+       null
+      ],
+      "note": "Q5 2.0T ('11-Early '13)"
+     },
+     {
+      "value": "Gas",
+      "note": "Gas/E85"
+     },
+     {
+      "value": "Allroad 2.0T",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "Allroad 2.0T ('13-'16)"
+     },
+     {
+      "value": "A5 2.0T Quattro w",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "A5 2.0T Quattro w/auto. trans. ('13-'15)"
+     },
+     {
+      "value": "Q5 2.0T",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "Q5 2.0T ('13-'15)"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "S7",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "S7 ('17-'18)"
+     },
+     {
+      "value": "2.9L"
+     },
+     {
+      "value": "90° V6 Twin Turbo IC"
+     },
+     {
+      "value": "S7",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "S7 ('20-'25)"
+     }
+    ],
+    "G": [
+     {
+      "value": "1.6L"
+     },
+     {
+      "value": "I4"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Indirect injection. VW EA827 engine. Audi 4000 Diesel",
+      "note": "Indirect injection. VW EA827 engine. Audi 4000 Diesel ('82)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "Indirect injection. Audi 5000 Diesel",
+      "note": "Indirect injection. Audi 5000 Diesel ('81)"
+     },
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi A8 4.2",
+      "years": [
+       1997,
+       1999
+      ],
+      "note": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi A8 4.2 ('97-'99)"
+     },
+     {
+      "value": "\"3.2L\""
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "A6 3.2",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "A6 3.2 ('05-'06)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 supercharged IC"
+     },
+     {
+      "value": "Direct injection. Audi EA837 engine. Audi S4",
+      "years": [
+       2010,
+       2016
+      ],
+      "note": "Direct injection. Audi EA837 engine. Audi S4 ('10-'16)"
+     },
+     {
+      "value": "S5 Cabriolet",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "S5 Cabriolet ('10-'15, Early '16)"
+     },
+     {
+      "value": "S5 coupe",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "S5 coupe ('13-'15)"
+     },
+     {
+      "value": "A6 3.0T",
+      "years": [
+       2009,
+       2016
+      ],
+      "note": "A6 3.0T ('09-'16)"
+     },
+     {
+      "value": "A7 3.0T",
+      "years": [
+       2012,
+       2016
+      ],
+      "note": "A7 3.0T ('12-'16)"
+     },
+     {
+      "value": "A8 3.0T",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "A8 3.0T ('13-'15)"
+     },
+     {
+      "value": "Q5 3.0T",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "Q5 3.0T ('13-'15)"
+     },
+     {
+      "value": "SQ5",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "SQ5 ('14-'15)"
+     },
+     {
+      "value": "Q7 3.0T",
+      "years": [
+       2011,
+       2015
+      ],
+      "note": "Q7 3.0T ('11-'15)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "6.3L"
+     },
+     {
+      "value": "72° W12"
+     },
+     {
+      "value": "48 valve"
+     },
+     {
+      "value": "Direct injection. VW W12 engine. Audi A8 W12",
+      "note": "Direct injection. VW W12 engine. Audi A8 W12 ('16)"
+     },
+     {
+      "value": "Gas-Electric Hybrid"
+     }
+    ],
+    "H": [
+     {
+      "value": "1.6L"
+     },
+     {
+      "value": "I4 Turbo"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "8 valve"
+     },
+     {
+      "value": "Indirect injection. VW EA827 engine. Audi 4000 Turbo Diesel",
+      "note": "Indirect injection. VW EA827 engine. Audi 4000 Turbo Diesel ('83)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I5"
+     },
+     {
+      "value": "10 valve"
+     },
+     {
+      "value": "Indirect injection. Audi 5000 Diesel",
+      "note": "Indirect injection. Audi 5000 Diesel ('82)"
+     },
+     {
+      "value": "I5 Turbo"
+     },
+     {
+      "value": "Indirect injection. Audi 5000 Turbo Diesel",
+      "note": "Indirect injection. Audi 5000 Turbo Diesel ('83)"
+     },
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "30 valve"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 2. Iron Block. Audi A4 2.8",
+      "years": [
+       2000,
+       2001
+      ],
+      "note": "MPI. Audi EA835 engine - Gen 2. Iron Block. Audi A4 2.8 ('00-'01)"
+     },
+     {
+      "value": "A6 2.8",
+      "years": [
+       2000,
+       2001
+      ],
+      "note": "A6 2.8 ('00-'01)"
+     },
+     {
+      "value": "\"3.2L\""
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "A4 Cabriolet 3.2",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "A4 Cabriolet 3.2 ('07-'09)"
+     },
+     {
+      "value": "A6 3.2",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "A6 3.2 ('06-'09)"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "Gas-Electric PHEV"
+     }
+    ],
+    "J": [
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 1. Iron Block. Audi 90",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "MPI. Audi EA835 engine - Gen 1. Iron Block. Audi 90 ('93-'94)"
+     },
+     {
+      "value": "100",
+      "years": [
+       1992,
+       1994
+      ],
+      "note": "100 ('92-'94)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Common-Rail Direct injection. VW EA189 engine. Audi A3 TDI",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "Common-Rail Direct injection. VW EA189 engine. Audi A3 TDI ('10-'13)"
+     }
+    ],
+    "K": [
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 1. Iron Block. Audi 90",
+      "years": [
+       1993,
+       1995
+      ],
+      "note": "MPI. Audi EA835 engine - Gen 1. Iron Block. Audi 90 ('93-'95)"
+     },
+     {
+      "value": "100",
+      "years": [
+       1992,
+       1994
+      ],
+      "note": "100 ('92-'94)"
+     },
+     {
+      "value": "3.2L"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "A5 3.2",
+      "years": [
+       2008,
+       2010
+      ],
+      "note": "A5 3.2 ('08-'10)"
+     },
+     {
+      "value": "A6 3.2",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "A6 3.2 ('10-'11)"
+     },
+     {
+      "value": "Q5 3.2",
+      "years": [
+       2009,
+       2012
+      ],
+      "note": "Q5 3.2 ('09-'12)"
+     }
+    ],
+    "L": [
+     {
+      "value": "2.8L"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "SOHC"
+     },
+     {
+      "value": "12 valve"
+     },
+     {
+      "value": "MPI. Audi EA835 engine - Gen 1. Iron Block. Audi Cabriolet",
+      "years": [
+       1994,
+       1995
+      ],
+      "note": "MPI. Audi EA835 engine - Gen 1. Iron Block. Audi Cabriolet ('94-'95)"
+     },
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "40 valve"
+     },
+     {
+      "value": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi A6 4.2",
+      "years": [
+       2000,
+       2004
+      ],
+      "note": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi A6 4.2 ('00-'04)"
+     },
+     {
+      "value": "A8 4.2",
+      "years": [
+       2000,
+       2006
+      ],
+      "note": "A8 4.2 ('00-'06)"
+     },
+     {
+      "value": "MPI. Audi EA824 engine. 4163cc. Timing chain. Audi S4 sedan",
+      "years": [
+       2004,
+       2008
+      ],
+      "note": "MPI. Audi EA824 engine. 4163cc. Timing chain. Audi S4 sedan/Avant ('04-'08)"
+     },
+     {
+      "value": "S4 Cabriolet",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "S4 Cabriolet ('04-'09)"
+     },
+     {
+      "value": "A6 4.2",
+      "years": [
+       2005,
+       2006
+      ],
+      "note": "A6 4.2 ('05-'06)"
+     },
+     {
+      "value": "Allroad Quattro 4.2",
+      "years": [
+       2004,
+       2005
+      ],
+      "note": "Allroad Quattro 4.2 ('04-'05)"
+     }
+    ],
+    "M": [
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA897 engine. Audi A6 TDI",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "Direct injection. Audi EA897 engine. Audi A6 TDI ('14-'16)"
+     },
+     {
+      "value": "A7 TDI",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "A7 TDI ('14-'16)"
+     },
+     {
+      "value": "A8 TDI",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "A8 TDI ('14-'15)"
+     },
+     {
+      "value": "Q5 TDI",
+      "years": [
+       2014,
+       2015
+      ],
+      "note": "Q5 TDI ('14-'15)"
+     },
+     {
+      "value": "Q7 TDI",
+      "years": [
+       2009,
+       2015
+      ],
+      "note": "Q7 TDI ('09-'15)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Direct injection. Miller Cycle",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Direct injection. Miller Cycle (B-Cycle). Intake AVS. Audi EA888 Gen3B engine - ULEV. TSI. Timing chain. Detuned version: 188 hp. Audi A4 Ultra 2.0T Fwd ('17-'1"
+     },
+     {
+      "value": "A4 2.0T Fwd",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "A4 2.0T Fwd ('19-'20)"
+     }
+    ],
+    "N": [
+     {
+      "value": "5.2L"
+     },
+     {
+      "value": "90° V10"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "40 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA824 V10 engine. Audi S6",
+      "years": [
+       2007,
+       2011
+      ],
+      "note": "Direct injection. Audi EA824 V10 engine. Audi S6 ('07-'11)"
+     },
+     {
+      "value": "S8",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "S8 ('07-'09)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "A4 2.0T Quattro",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "A4 2.0T Quattro ('19-'20)"
+     },
+     {
+      "value": "A4 Allroad Quattro",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "A4 Allroad Quattro ('17-'20)"
+     },
+     {
+      "value": "A5 Coupe",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "A5 Coupe/Cabriolet 2.0T Quattro ('18-'20)"
+     },
+     {
+      "value": "A5 Sportback 2.0T Quattro",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "A5 Sportback 2.0T Quattro ('18-'20)"
+     },
+     {
+      "value": "Q5 2.0T Quattro",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "Q5 2.0T Quattro ('18-'20)"
+     }
+    ],
+    "P": [
+     {
+      "value": "2.2L"
+     },
+     {
+      "value": "I5 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi S4",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi S4 [C4 (4A)] ('92-'93)"
+     },
+     {
+      "value": "2.7L"
+     },
+     {
+      "value": "90° V6 Twin Turbo IC"
+     },
+     {
+      "value": "30 valve"
+     },
+     {
+      "value": "1.4L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas-Electric PHEV"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "2.0L"
+     }
+    ],
+    "R": [
+     {
+      "value": "2.2L"
+     },
+     {
+      "value": "I5 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA828 I5 engine. Audi S4",
+      "years": [
+       1993,
+       1994
+      ],
+      "note": "MPI. Audi EA828 I5 engine. Audi S4 [C4 (4A)] ('93-'94)"
+     },
+     {
+      "value": "6.0L"
+     },
+     {
+      "value": "72° W12"
+     },
+     {
+      "value": "48 valve"
+     },
+     {
+      "value": "MPI. VW W12 engine. Audi A8 W12",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "MPI. VW W12 engine. Audi A8 W12 ('05-'09)"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA897 engine. Audi A8 TDI",
+      "note": "Direct injection. Audi EA897 engine. Audi A8 TDI ('16)"
+     }
+    ],
+    "S": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "note": "MPI. Audi EA827/EA113 engine. 180 hp. Audi TT (Early '00)"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "Direct injection. Audi-Bentley EA824 engine. 3993cc. Audi S8",
+      "note": "Direct injection. Audi-Bentley EA824 engine. 3993cc. Audi S8 ('16)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5 Turbo IC"
+     },
+     {
+      "value": "Direct",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "Direct/Port injection. Audi EA855 Evo engine. Audi TT RS ('18-'22)"
+     }
+    ],
+    "T": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo Twin IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "note": "MPI. Audi EA827/EA113 engine. High Output - 225 hp. Single Turbo"
+     },
+     {
+      "value": "Twin Intercoolers. Audi TT",
+      "years": [
+       2001,
+       2006
+      ],
+      "note": "Twin Intercoolers. Audi TT ('01-'06)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6"
+     },
+     {
+      "value": "30 valve"
+     },
+     {
+      "value": "A4 Cabriolet 3.0",
+      "years": [
+       2003,
+       2006
+      ],
+      "note": "A4 Cabriolet 3.0 ('03-'06)"
+     },
+     {
+      "value": "A6 3.0",
+      "years": [
+       2002,
+       2004
+      ],
+      "note": "A6 3.0 ('02-'04)"
+     },
+     {
+      "value": "\"3.2L\""
+     },
+     {
+      "value": "24 valve"
+     }
+    ],
+    "U": [
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "40 valve"
+     },
+     {
+      "value": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi S6 Avant",
+      "years": [
+       2002,
+       2003
+      ],
+      "note": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi S6 Avant ('02-'03)"
+     },
+     {
+      "value": "S8",
+      "years": [
+       2001,
+       2003
+      ],
+      "note": "S8 ('01-'03)"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "RS4 Cabriolet",
+      "note": "RS4 Cabriolet ('08)"
+     },
+     {
+      "value": "5.2L"
+     },
+     {
+      "value": "90° V10"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Direct injection. Miller Cycle",
+      "note": "Direct injection. Miller Cycle (B-Cycle). Intake AVS. Audi EA888 Gen3B engine - PZEV. TSI. Timing chain. Detuned version: 184 hp. Audi A3 2.0T Fwd ('17)"
+     },
+     {
+      "value": "Direct injection. Miller Cycle",
+      "years": [
+       2018,
+       2020
+      ],
+      "note": "Direct injection. Miller Cycle (B-Cycle). Intake AVS. Audi EA888 Gen3B engine - SULEV. TSI. Timing chain. Detuned version: 184 hp. Audi A3 2.0T Fwd ('18-'20)"
+     },
+     {
+      "value": "Q3 40 TFSI",
+      "years": [
+       2021,
+       2022
+      ],
+      "note": "Q3 40 TFSI ('21-'22)"
+     },
+     {
+      "value": "Direct injection. Miller Cycle",
+      "years": [
+       2023,
+       2024
+      ],
+      "note": "Direct injection. Miller Cycle (B-Cycle). Intake AVS. Audi EA888 Gen3B engine - ULEV. TSI. Timing chain. Detuned version: 184 hp. Audi Q3 40 TFSI ('23-'24 & '25"
+     },
+     {
+      "value": "48v Mild Hybrid. Direct injection. Miller Cycle",
+      "years": [
+       2022,
+       2026
+      ],
+      "note": "48v Mild Hybrid. Direct injection. Miller Cycle (B-Cycle). Intake AVS. Audi EA888 Gen3B engine - SULEV. TSI. Timing chain. 201 hp. Audi A3 40 TFSI ('22-'26)"
+     }
+    ],
+    "V": [
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi V8 Quattro",
+      "years": [
+       1992,
+       1993
+      ],
+      "note": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi V8 Quattro ('92-'93)"
+     },
+     {
+      "value": "90° V8 Twin Turbo IC"
+     },
+     {
+      "value": "40 valve"
+     },
+     {
+      "value": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi RS6",
+      "note": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi RS6 (US: '03, Canada: '04)"
+     },
+     {
+      "value": "A6 4.2",
+      "years": [
+       2007,
+       2011
+      ],
+      "note": "A6 4.2 ('07-'11)"
+     },
+     {
+      "value": "A8 4.2",
+      "years": [
+       2007,
+       2012
+      ],
+      "note": "A8 4.2 ('07-'12)"
+     },
+     {
+      "value": "Q7 4.2",
+      "years": [
+       2007,
+       2010
+      ],
+      "note": "Q7 4.2 ('07-'10)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "Diesel"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA897 engine. Audi Q5 TDI",
+      "note": "Direct injection. Audi EA897 engine. Audi Q5 TDI ('16)"
+     },
+     {
+      "value": "Q7 55 TFSI",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "Q7 55 TFSI ('25-'26)"
+     }
+    ],
+    "W": [
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi V8 Quattro",
+      "years": [
+       1992,
+       1994
+      ],
+      "note": "MPI. Audi V8 engine. 4172cc. Timing belt. Audi V8 Quattro ('92-'94)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5 Turbo IC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "Direct",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "Direct/Port injection. Audi EA855 Evo engine. Audi RS3 ('17-'20)"
+     },
+     {
+      "value": "2.9L"
+     },
+     {
+      "value": "90° V6 Twin Turbo IC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi-Porsche EA839 engine. Audi RS5 coupe",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "Direct injection. Audi-Porsche EA839 engine. Audi RS5 coupe ('18-'19, '21-'24)"
+     },
+     {
+      "value": "RS5 Sportback",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "RS5 Sportback ('19, '21-'25)"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "SQ8",
+      "years": [
+       2020,
+       2026
+      ],
+      "note": "SQ8 ('20-'26)"
+     },
+     {
+      "value": "Direct",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "Direct/Port injection. Audi EA855 Evo engine. 394 hp. Audi RS3 ('25-'26)"
+     }
+    ],
+    "X": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "MPI. Audi EA827",
+      "years": [
+       2001,
+       2002
+      ],
+      "note": "MPI. Audi EA827/EA113 engine. 180 hp. Audi TT ('01-'02)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "24 valve"
+     }
+    ],
+    "Y": [
+     {
+      "value": "3.6L"
+     },
+     {
+      "value": "10.6° VR6"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. VW EA390 engine. Audi Q7 3.6",
+      "years": [
+       2007,
+       2010
+      ],
+      "note": "Direct injection. VW EA390 engine. Audi Q7 3.6 ('07-'10)"
+     }
+    ],
+    "1": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "TTS",
+      "years": [
+       2016,
+       2023
+      ],
+      "note": "TTS ('16-'23)"
+     }
+    ],
+    "2": [
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "Direct injection. Audi-Bentley EA824 engine. 3993cc. Audi S6",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "Direct injection. Audi-Bentley EA824 engine. 3993cc. Audi S6 ('13-'16)"
+     },
+     {
+      "value": "S7",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "S7 ('13-'16)"
+     },
+     {
+      "value": "RS7",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "RS7 ('14-'16)"
+     },
+     {
+      "value": "A8 4.0T",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "A8 4.0T ('13-'15)"
+     },
+     {
+      "value": "S8",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "S8 ('13-'15)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas",
+      "note": "Gas/E85"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Q5 2.0T",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "Q5 2.0T ('16-'17)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 supercharged IC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA837 engine. Audi A6 3.0T",
+      "note": "Direct injection. Audi EA837 engine. Audi A6 3.0T ('17)"
+     },
+     {
+      "value": "A7 3.0T",
+      "note": "A7 3.0T ('17)"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "A6 Allroad",
+      "years": [
+       2020,
+       2026
+      ],
+      "note": "A6 Allroad ('20-'26)"
+     },
+     {
+      "value": "A7 3.0T",
+      "years": [
+       2019,
+       2025
+      ],
+      "note": "A7 3.0T/55 TFSI ('19-'25)"
+     },
+     {
+      "value": "Gas-Electric PHEV"
+     }
+    ],
+    "3": [
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA855 engine. Audi TT RS",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "Direct injection. Audi EA855 engine. Audi TT RS ('12-'13)"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 supercharged IC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "A6 3.0T",
+      "note": "A6 3.0T ('18)"
+     },
+     {
+      "value": "A7 3.0T Competition",
+      "note": "A7 3.0T Competition ('17)"
+     },
+     {
+      "value": "A7 3.0T",
+      "note": "A7 3.0T ('18)"
+     },
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "A6 45 TFSI",
+      "years": [
+       2022,
+       2025
+      ],
+      "note": "A6 45 TFSI ('22-'25)"
+     }
+    ],
+    "4": [
+     {
+      "value": "6.3L"
+     },
+     {
+      "value": "72° W12"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "48 valve"
+     },
+     {
+      "value": "Direct injection. VW W12 engine. Audi A8 W12",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "Direct injection. VW W12 engine. Audi A8 W12 ('12-'15)"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 supercharged IC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA837 engine. Audi S5 coupe",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "Direct injection. Audi EA837 engine. Audi S5 coupe ('16-'17)"
+     },
+     {
+      "value": "S5 Cabriolet",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "S5 Cabriolet ('16-'17)"
+     },
+     {
+      "value": "A8 3.0T",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "A8 3.0T ('16-'18)"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "Direct injection. Audi-Porsche EA839 engine. Audi S4",
+      "years": [
+       2018,
+       2025
+      ],
+      "note": "Direct injection. Audi-Porsche EA839 engine. Audi S4 ('18-'25)"
+     },
+     {
+      "value": "S5 coupe",
+      "years": [
+       2018,
+       2024
+      ],
+      "note": "S5 coupe/cabriolet ('18-'24)"
+     },
+     {
+      "value": "S5 Sportback",
+      "years": [
+       2018,
+       2025
+      ],
+      "note": "S5 Sportback ('18-'25)"
+     },
+     {
+      "value": "SQ5",
+      "years": [
+       2018,
+       2025
+      ],
+      "note": "SQ5 [FY] ('18-'25)"
+     },
+     {
+      "value": "SQ5 Sportback",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "SQ5 Sportback [FY] ('21-'25)"
+     },
+     {
+      "value": "2.5L"
+     },
+     {
+      "value": "I5 Turbo IC"
+     },
+     {
+      "value": "20 valve"
+     },
+     {
+      "value": "Direct",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "Direct/Port injection. Audi EA855 Evo engine. 401 hp. Audi RS3 ('22-'24)"
+     }
+    ],
+    "5": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "4.0L"
+     },
+     {
+      "value": "V8 Twin Turbo IC"
+     },
+     {
+      "value": "32 valve"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 Turbo IC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi-Porsche EA839 engine. Audi S5",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "Direct injection. Audi-Porsche EA839 engine. Audi S5 [B10] (Mid '25-'26)"
+     },
+     {
+      "value": "SQ5",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "SQ5 [GU] (Mid '25-'26)"
+     },
+     {
+      "value": "SQ5 Sportback",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "SQ5 Sportback [GU] (Mid '25-'26)"
+     },
+     {
+      "value": "A6",
+      "note": "A6 [C9] ('26)"
+     }
+    ],
+    "6": [
+     {
+      "value": "4.2L"
+     },
+     {
+      "value": "90° V8"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "32 valve"
+     }
+    ],
+    "7": [
+     {
+      "value": "1.8L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "3.0L"
+     },
+     {
+      "value": "90° V6 supercharged IC"
+     },
+     {
+      "value": "24 valve"
+     },
+     {
+      "value": "Direct injection. Audi EA837 engine. Audi Q5 3.0T",
+      "years": [
+       2016,
+       2017
+      ],
+      "note": "Direct injection. Audi EA837 engine. Audi Q5 3.0T ('16-'17)"
+     }
+    ],
+    "8": [
+     {
+      "value": "2.0L"
+     },
+     {
+      "value": "I4 Turbo IC"
+     },
+     {
+      "value": "Gas-Electric Hybrid"
+     },
+     {
+      "value": "DOHC"
+     },
+     {
+      "value": "16 valve"
+     },
+     {
+      "value": "Gas"
+     }
+    ]
+   }
+  },
+  "model@7:9": {
+   "field": "model",
+   "at": [
+    "vin",
+    "7:9"
+   ],
+   "map": {
+    "8P": [
+     {
+      "value": "A3",
+      "years": [
+       2006,
+       2009
+      ],
+      "note": "A3 ('06-'09)"
+     },
+     {
+      "value": "A3",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "A3 ('10-'13)"
+     }
+    ],
+    "81": [
+     {
+      "value": "4000 Fwd",
+      "years": [
+       1981,
+       1987
+      ],
+      "note": "4000 Fwd ('81-'87)"
+     }
+    ],
+    "85": [
+     {
+      "value": "4000 Quattro",
+      "years": [
+       1984,
+       1987
+      ],
+      "note": "4000 Quattro ('84-'87)"
+     },
+     {
+      "value": "Coupe",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "Coupe ('81-'83)"
+     },
+     {
+      "value": "Coupe GT",
+      "years": [
+       1984,
+       1987
+      ],
+      "note": "Coupe GT ('84-'87)"
+     },
+     {
+      "value": "Quattro",
+      "years": [
+       1983,
+       1985
+      ],
+      "note": "Quattro ('82‡ & '83-'85)"
+     }
+    ],
+    "89": [
+     {
+      "value": "80",
+      "years": [
+       1988,
+       1989
+      ],
+      "note": "80/90 ('88-'89)"
+     }
+    ],
+    "8A": [
+     {
+      "value": "80",
+      "years": [
+       1990,
+       1992
+      ],
+      "note": "80 ('90-'92)"
+     },
+     {
+      "value": "90",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "90 ('90-'91)"
+     }
+    ],
+    "8C": [
+     {
+      "value": "90",
+      "years": [
+       1993,
+       1995
+      ],
+      "note": "90 ('93-'95)"
+     }
+    ],
+    "8B": [
+     {
+      "value": "Coupe Quattro",
+      "years": [
+       1990,
+       1991
+      ],
+      "note": "Coupe Quattro ('90-'91)"
+     }
+    ],
+    "8G": [
+     {
+      "value": "Cabriolet",
+      "years": [
+       1994,
+       1998
+      ],
+      "note": "Cabriolet ('94-'98)"
+     }
+    ],
+    "8D": [
+     {
+      "value": "A4",
+      "years": [
+       1996,
+       2001
+      ],
+      "note": "A4 ('96-'01)"
+     },
+     {
+      "value": "S4",
+      "years": [
+       2000,
+       2002
+      ],
+      "note": "S4 ('00-'02)"
+     }
+    ],
+    "8E": [
+     {
+      "value": "A4",
+      "years": [
+       2002,
+       2008
+      ],
+      "note": "A4 ('02-'08)"
+     },
+     {
+      "value": "S4",
+      "years": [
+       2004,
+       2008
+      ],
+      "note": "S4 ('04-'08)"
+     },
+     {
+      "value": "RS4",
+      "years": [
+       2007,
+       2008
+      ],
+      "note": "RS4 ('07-'08)"
+     }
+    ],
+    "8H": [
+     {
+      "value": "A4 Cabriolet",
+      "years": [
+       2003,
+       2009
+      ],
+      "note": "A4 Cabriolet ('03-'09)"
+     },
+     {
+      "value": "S4 Cabriolet",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "S4 Cabriolet ('04-'09)"
+     },
+     {
+      "value": "RS4 Cabriolet",
+      "note": "RS4 Cabriolet ('08)"
+     }
+    ],
+    "8K": [
+     {
+      "value": "A4",
+      "note": "A4 ('09)"
+     },
+     {
+      "value": "A4",
+      "years": [
+       2010,
+       2016
+      ],
+      "note": "A4 ('10-'16)"
+     },
+     {
+      "value": "Allroad",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "Allroad ('13-'16)"
+     },
+     {
+      "value": "S4",
+      "years": [
+       2010,
+       2016
+      ],
+      "note": "S4 ('10-'16)"
+     }
+    ],
+    "8T": [
+     {
+      "value": "A5 coupe",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "A5 coupe ('08-'09)"
+     },
+     {
+      "value": "S5 coupe",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "S5 coupe ('08-'09)"
+     },
+     {
+      "value": "A5 Coupe",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "A5 Coupe ('10-'17)"
+     },
+     {
+      "value": "S5 Coupe",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "S5 Coupe ('10-'17)"
+     },
+     {
+      "value": "RS5 Coupe",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "RS5 Coupe ('13-'15)"
+     }
+    ],
+    "43": [
+     {
+      "value": "5000",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "5000 ('81-'83)"
+     }
+    ],
+    "44": [
+     {
+      "value": "5000",
+      "years": [
+       1984,
+       1988
+      ],
+      "note": "5000 ('84-'88)"
+     },
+     {
+      "value": "100",
+      "years": [
+       1989,
+       1991
+      ],
+      "note": "100/200 ('89-'91)"
+     },
+     {
+      "value": "V8 Quattro",
+      "note": "V8 Quattro ('90)"
+     }
+    ],
+    "4A": [
+     {
+      "value": "100",
+      "years": [
+       1992,
+       1994
+      ],
+      "note": "100/S4 ('92-'94)"
+     },
+     {
+      "value": "A6 sedan",
+      "years": [
+       1995,
+       1997
+      ],
+      "note": "A6 sedan ('95-'97)"
+     },
+     {
+      "value": "A6 wagon",
+      "years": [
+       1995,
+       1998
+      ],
+      "note": "A6 wagon ('95-'98)"
+     },
+     {
+      "value": "S6",
+      "years": [
+       1996,
+       1997
+      ],
+      "note": "S6 ('95 & '96-'97 in Canada)"
+     },
+     {
+      "value": "V8 Quattro",
+      "years": [
+       1991,
+       1994
+      ],
+      "note": "V8 Quattro ('91-'94)"
+     },
+     {
+      "value": "A6",
+      "years": [
+       2019,
+       2025
+      ],
+      "note": "A6 ('19-'25)"
+     },
+     {
+      "value": "S6",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "S6 ('20-'25)"
+     },
+     {
+      "value": "RS6 Avant",
+      "years": [
+       2021,
+       2026
+      ],
+      "note": "RS6 Avant ('21-'26)"
+     },
+     {
+      "value": "A6 Allroad",
+      "years": [
+       2020,
+       2026
+      ],
+      "note": "A6 Allroad ('20-'26)"
+     }
+    ],
+    "4B": [
+     {
+      "value": "A6 sedan",
+      "years": [
+       1998,
+       2004
+      ],
+      "note": "A6 sedan ('98-'04)"
+     },
+     {
+      "value": "A6 Avant wagon",
+      "years": [
+       1999,
+       2004
+      ],
+      "note": "A6 Avant wagon ('99-'04)"
+     },
+     {
+      "value": "Allroad",
+      "years": [
+       2001,
+       2005
+      ],
+      "note": "Allroad ('01-'05)"
+     },
+     {
+      "value": "S6",
+      "years": [
+       2002,
+       2003
+      ],
+      "note": "S6 ('02-'03)"
+     },
+     {
+      "value": "RS6",
+      "note": "RS6 (US: '03, Canada: '04)"
+     }
+    ],
+    "4F": [
+     {
+      "value": "A6",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "A6 ('05-'09)"
+     },
+     {
+      "value": "S6",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "S6 ('07-'09)"
+     },
+     {
+      "value": "A6",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "A6 ('10-'11)"
+     },
+     {
+      "value": "S6",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "S6 ('10-'11)"
+     }
+    ],
+    "4D": [
+     {
+      "value": "A8",
+      "years": [
+       1997,
+       2003
+      ],
+      "note": "A8 ('97-'03)"
+     },
+     {
+      "value": "S8",
+      "years": [
+       2001,
+       2003
+      ],
+      "note": "S8 ('01-'03)"
+     }
+    ],
+    "4E": [
+     {
+      "value": "A8",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "A8 ('04-'09)"
+     },
+     {
+      "value": "S8",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "S8 ('07-'09)"
+     },
+     {
+      "value": "A8",
+      "note": "A8 ('10)"
+     }
+    ],
+    "8N": [
+     {
+      "value": "TT",
+      "years": [
+       2000,
+       2006
+      ],
+      "note": "TT ('00-'06)"
+     }
+    ],
+    "8J": [
+     {
+      "value": "TT",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "TT ('08-'09)"
+     },
+     {
+      "value": "TTS",
+      "note": "TTS ('09)"
+     },
+     {
+      "value": "TT",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "TT ('10-'15)"
+     },
+     {
+      "value": "TTS",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "TTS ('10-'15)"
+     },
+     {
+      "value": "TT RS",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "TT RS ('12-'13)"
+     }
+    ],
+    "42": [
+     {
+      "value": "R8",
+      "years": [
+       2008,
+       2009
+      ],
+      "note": "R8 ('08-'09)"
+     },
+     {
+      "value": "R8",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "R8 ('10-'12, '14-'15)"
+     }
+    ],
+    "8R": [
+     {
+      "value": "Q5",
+      "note": "Q5 ('09)"
+     },
+     {
+      "value": "Q5",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "Q5 ('10-'17)"
+     },
+     {
+      "value": "SQ5",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "SQ5 ('14-'17)"
+     }
+    ],
+    "4L": [
+     {
+      "value": "Q7",
+      "years": [
+       2007,
+       2009
+      ],
+      "note": "Q7 ('07-'09)"
+     },
+     {
+      "value": "Q7",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "Q7 ('10-'15)"
+     }
+    ],
+    "FM": [
+     {
+      "value": "A3",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "A3 ('10-'13)"
+     }
+    ],
+    "FF": [
+     {
+      "value": "A3",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "A3 ('15-'20)"
+     },
+     {
+      "value": "S3",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "S3 ('15-'20)"
+     },
+     {
+      "value": "RS3",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "RS3 ('17-'20)"
+     },
+     {
+      "value": "A3 Sportback e-tron",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "A3 Sportback e-tron [PHEV] '16-'18"
+     }
+    ],
+    "8V": [
+     {
+      "value": "A3",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "A3 ('15-'20)"
+     },
+     {
+      "value": "S3",
+      "years": [
+       2015,
+       2020
+      ],
+      "note": "S3 ('15-'20)"
+     },
+     {
+      "value": "RS3",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "RS3 ('17-'20)"
+     },
+     {
+      "value": "A3 Sportback e-tron",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "A3 Sportback e-tron [PHEV] '16-'18"
+     }
+    ],
+    "GY": [
+     {
+      "value": "A3",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "A3/S3/RS3 ('22-)"
+     }
+    ],
+    "8Y": [
+     {
+      "value": "A3",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "A3/S3/RS3 ('22-)"
+     }
+    ],
+    "FL": [
+     {
+      "value": "A4",
+      "years": [
+       2010,
+       2016
+      ],
+      "note": "A4 ('10-'16)"
+     },
+     {
+      "value": "Allroad",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "Allroad ('13-'16)"
+     },
+     {
+      "value": "S4",
+      "years": [
+       2010,
+       2016
+      ],
+      "note": "S4 ('10-'16)"
+     }
+    ],
+    "F4": [
+     {
+      "value": "A4",
+      "years": [
+       2017,
+       2025
+      ],
+      "note": "A4 ('17-'25)"
+     },
+     {
+      "value": "A4 Allroad",
+      "years": [
+       2017,
+       2025
+      ],
+      "note": "A4 Allroad ('17-'25)"
+     },
+     {
+      "value": "S4",
+      "years": [
+       2018,
+       2025
+      ],
+      "note": "S4 ('18-'25)"
+     },
+     {
+      "value": "Q4 e-tron"
+     },
+     {
+      "value": "Q4 e-tron Sportback",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Q4 e-tron Sportback ('22-)"
+     }
+    ],
+    "8W": [
+     {
+      "value": "A4",
+      "years": [
+       2017,
+       2025
+      ],
+      "note": "A4 ('17-'25)"
+     },
+     {
+      "value": "A4 Allroad",
+      "years": [
+       2017,
+       2025
+      ],
+      "note": "A4 Allroad ('17-'25)"
+     },
+     {
+      "value": "S4",
+      "years": [
+       2018,
+       2025
+      ],
+      "note": "S4 ('18-'25)"
+     }
+    ],
+    "FR": [
+     {
+      "value": "A5 Coupe",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "A5 Coupe ('10-'17)"
+     },
+     {
+      "value": "S5 Coupe",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "S5 Coupe ('10-'17)"
+     },
+     {
+      "value": "RS5 Coupe",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "RS5 Coupe ('13-'15)"
+     }
+    ],
+    "FH": [
+     {
+      "value": "A5 Cabriolet",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "A5 Cabriolet ('10-'17)"
+     },
+     {
+      "value": "S5 Cabriolet",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "S5 Cabriolet ('10-'17)"
+     },
+     {
+      "value": "RS5 Cabriolet",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "RS5 Cabriolet ('13-'15)"
+     }
+    ],
+    "8F": [
+     {
+      "value": "A5 Cabriolet",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "A5 Cabriolet ('10-'17)"
+     },
+     {
+      "value": "S5 Cabriolet",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "S5 Cabriolet ('10-'17)"
+     },
+     {
+      "value": "RS5 Cabriolet",
+      "years": [
+       2013,
+       2015
+      ],
+      "note": "RS5 Cabriolet ('13-'15)"
+     }
+    ],
+    "F5": [
+     {
+      "value": "A5",
+      "years": [
+       2018,
+       2025
+      ],
+      "note": "A5 ('18-'25)"
+     },
+     {
+      "value": "S5",
+      "years": [
+       2018,
+       2025
+      ],
+      "note": "S5 ('18-'25)"
+     },
+     {
+      "value": "RS5",
+      "years": [
+       2018,
+       2019
+      ],
+      "note": "RS5 ('18-'19, '21-'25) [Coupe/Cabriolet: '18-'24, Sportback: '18-'25]"
+     }
+    ],
+    "FU": [
+     {
+      "value": "A5",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "A5/S5 ('25-)"
+     }
+    ],
+    "FB": [
+     {
+      "value": "A6",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "A6 ('10-'11)"
+     },
+     {
+      "value": "S6",
+      "years": [
+       2010,
+       2011
+      ],
+      "note": "S6 ('10-'11)"
+     }
+    ],
+    "FC": [
+     {
+      "value": "A6",
+      "years": [
+       2012,
+       2018
+      ],
+      "note": "A6 ('12-'18)"
+     },
+     {
+      "value": "S6",
+      "years": [
+       2013,
+       2018
+      ],
+      "note": "S6 ('13-'18)"
+     },
+     {
+      "value": "A7",
+      "years": [
+       2012,
+       2018
+      ],
+      "note": "A7 ('12-'18)"
+     },
+     {
+      "value": "S7",
+      "years": [
+       2013,
+       2018
+      ],
+      "note": "S7 ('13-'18)"
+     },
+     {
+      "value": "RS7",
+      "years": [
+       2014,
+       2018
+      ],
+      "note": "RS7 ('14-'18)"
+     }
+    ],
+    "4G": [
+     {
+      "value": "A6",
+      "years": [
+       2012,
+       2018
+      ],
+      "note": "A6 ('12-'18)"
+     },
+     {
+      "value": "S6",
+      "years": [
+       2013,
+       2018
+      ],
+      "note": "S6 ('13-'18)"
+     },
+     {
+      "value": "A7",
+      "years": [
+       2012,
+       2018
+      ],
+      "note": "A7 ('12-'18)"
+     },
+     {
+      "value": "S7",
+      "years": [
+       2013,
+       2018
+      ],
+      "note": "S7 ('13-'18)"
+     },
+     {
+      "value": "RS7",
+      "years": [
+       2014,
+       2018
+      ],
+      "note": "RS7 ('14-'18)"
+     }
+    ],
+    "F2": [
+     {
+      "value": "A6",
+      "years": [
+       2019,
+       2025
+      ],
+      "note": "A6 ('19-'25)"
+     },
+     {
+      "value": "S6",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "S6 ('20-'25)"
+     },
+     {
+      "value": "RS6 Avant",
+      "years": [
+       2021,
+       2026
+      ],
+      "note": "RS6 Avant ('21-'26)"
+     },
+     {
+      "value": "A6 Allroad",
+      "years": [
+       2020,
+       2026
+      ],
+      "note": "A6 Allroad ('20-'26)"
+     },
+     {
+      "value": "A7",
+      "years": [
+       2019,
+       2025
+      ],
+      "note": "A7 ('19-'25)"
+     },
+     {
+      "value": "S7",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "S7 ('20-'25)"
+     },
+     {
+      "value": "RS7",
+      "years": [
+       2021,
+       2026
+      ],
+      "note": "RS7 ('21-'26)"
+     }
+    ],
+    "4K": [
+     {
+      "value": "A7",
+      "years": [
+       2019,
+       2025
+      ],
+      "note": "A7 ('19-'25)"
+     },
+     {
+      "value": "S7",
+      "years": [
+       2020,
+       2025
+      ],
+      "note": "S7 ('20-'25)"
+     },
+     {
+      "value": "RS7",
+      "years": [
+       2021,
+       2026
+      ],
+      "note": "RS7 ('21-'26)"
+     }
+    ],
+    "FN": [
+     {
+      "value": "A6",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "A6 ('26-)"
+     }
+    ],
+    "GH": [
+     {
+      "value": "A6 e-tron"
+     },
+     {
+      "value": "S6 e-tron",
+      "note": "S6 e-tron ('25, '27)"
+     }
+    ],
+    "FA": [
+     {
+      "value": "A8",
+      "note": "A8 ('10)"
+     }
+    ],
+    "FD": [
+     {
+      "value": "A8",
+      "years": [
+       2011,
+       2018
+      ],
+      "note": "A8 ('11-'18)"
+     },
+     {
+      "value": "S8",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "S8 ('13-'16)"
+     },
+     {
+      "value": "S8 plus",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "S8 plus ('16-'18)"
+     }
+    ],
+    "4H": [
+     {
+      "value": "A8",
+      "years": [
+       2011,
+       2018
+      ],
+      "note": "A8 ('11-'18)"
+     },
+     {
+      "value": "S8",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "S8 ('13-'16)"
+     },
+     {
+      "value": "S8 plus",
+      "years": [
+       2016,
+       2018
+      ],
+      "note": "S8 plus ('16-'18)"
+     }
+    ],
+    "F8": [
+     {
+      "value": "A8",
+      "years": [
+       2019,
+       2026
+      ],
+      "note": "A8 ('19-'26)"
+     },
+     {
+      "value": "S8",
+      "years": [
+       2020,
+       2026
+      ],
+      "note": "S8 ('20-'26)"
+     },
+     {
+      "value": "e-tron GT",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "e-tron GT ('22-'24)"
+     },
+     {
+      "value": "RS e-tron GT",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "RS e-tron GT ('22-'24)"
+     },
+     {
+      "value": "S e-tron GT",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "S e-tron GT ('25-)"
+     },
+     {
+      "value": "RS e-tron GT performance",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "RS e-tron GT performance ('25-)"
+     }
+    ],
+    "4N": [
+     {
+      "value": "A8",
+      "years": [
+       2019,
+       2026
+      ],
+      "note": "A8 ('19-'26)"
+     },
+     {
+      "value": "S8",
+      "years": [
+       2020,
+       2026
+      ],
+      "note": "S8 ('20-'26)"
+     }
+    ],
+    "FW": [
+     {
+      "value": "e-tron GT",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "e-tron GT ('22-'24)"
+     },
+     {
+      "value": "RS e-tron GT",
+      "years": [
+       2022,
+       2024
+      ],
+      "note": "RS e-tron GT ('22-'24)"
+     },
+     {
+      "value": "S e-tron GT",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "S e-tron GT ('25-)"
+     },
+     {
+      "value": "RS e-tron GT performance",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "RS e-tron GT performance ('25-)"
+     }
+    ],
+    "FK": [
+     {
+      "value": "TT",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "TT ('10-'15)"
+     },
+     {
+      "value": "TTS",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "TTS ('10-'15)"
+     },
+     {
+      "value": "TT RS",
+      "years": [
+       2012,
+       2013
+      ],
+      "note": "TT RS ('12-'13)"
+     }
+    ],
+    "FV": [
+     {
+      "value": "TT",
+      "years": [
+       2016,
+       2023
+      ],
+      "note": "TT ('16-'23)"
+     },
+     {
+      "value": "TTS",
+      "years": [
+       2016,
+       2023
+      ],
+      "note": "TTS ('16-'23)"
+     },
+     {
+      "value": "TT RS",
+      "years": [
+       2018,
+       2022
+      ],
+      "note": "TT RS ('18-'22)"
+     }
+    ],
+    "FG": [
+     {
+      "value": "R8",
+      "years": [
+       2010,
+       2012
+      ],
+      "note": "R8 ('10-'12, '14-'15)"
+     }
+    ],
+    "FX": [
+     {
+      "value": "R8",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "R8 ('17-'18, '20-'23)"
+     }
+    ],
+    "4S": [
+     {
+      "value": "R8",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "R8 ('17-'18, '20-'23)"
+     }
+    ],
+    "FS": [
+     {
+      "value": "Q3",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "Q3 ('15-'18)"
+     }
+    ],
+    "8U": [
+     {
+      "value": "Q3",
+      "years": [
+       2015,
+       2018
+      ],
+      "note": "Q3 ('15-'18)"
+     }
+    ],
+    "F3": [
+     {
+      "value": "Q3",
+      "years": [
+       2019,
+       2025
+      ],
+      "note": "Q3 ('19-'25)"
+     }
+    ],
+    "FJ": [
+     {
+      "value": "Q3",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "Q3 ('26-)"
+     }
+    ],
+    "FZ": [
+     {
+      "value": "Q4 e-tron"
+     },
+     {
+      "value": "Q4 e-tron Sportback",
+      "years": [
+       2022,
+       null
+      ],
+      "note": "Q4 e-tron Sportback ('22-)"
+     }
+    ],
+    "FP": [
+     {
+      "value": "Q5",
+      "years": [
+       2010,
+       2017
+      ],
+      "note": "Q5 ('10-'17)"
+     },
+     {
+      "value": "SQ5",
+      "years": [
+       2014,
+       2017
+      ],
+      "note": "SQ5 ('14-'17)"
+     }
+    ],
+    "FY": [
+     {
+      "value": "Q5",
+      "years": [
+       2018,
+       2025
+      ],
+      "note": "Q5 ('18-'25)"
+     },
+     {
+      "value": "SQ5",
+      "years": [
+       2018,
+       2025
+      ],
+      "note": "SQ5 ('18-'25)"
+     },
+     {
+      "value": "Q5 Sportback",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "Q5 Sportback ('21-'25)"
+     },
+     {
+      "value": "SQ5 Sportback",
+      "years": [
+       2021,
+       2025
+      ],
+      "note": "SQ5 Sportback ('21-'25)"
+     }
+    ],
+    "GU": [
+     {
+      "value": "Q5",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "Q5 ('25-'26)"
+     },
+     {
+      "value": "SQ5",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "SQ5 ('25-'26)"
+     },
+     {
+      "value": "Q5 Sportback",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "Q5 Sportback ('25-'26)"
+     },
+     {
+      "value": "SQ5 Sportback",
+      "years": [
+       2025,
+       2026
+      ],
+      "note": "SQ5 Sportback ('25-'26)"
+     }
+    ],
+    "GF": [
+     {
+      "value": "Q6 e-tron"
+     },
+     {
+      "value": "SQ6 e-tron"
+     },
+     {
+      "value": "Q6 e-tron Sportback"
+     },
+     {
+      "value": "SQ6 e-tron Sportback",
+      "note": "SQ6 e-tron Sportback ('25, '27)"
+     }
+    ],
+    "FE": [
+     {
+      "value": "Q7",
+      "years": [
+       2010,
+       2015
+      ],
+      "note": "Q7 ('10-'15)"
+     }
+    ],
+    "F7": [
+     {
+      "value": "Q7",
+      "years": [
+       2017,
+       null
+      ],
+      "note": "Q7 ('17-)"
+     },
+     {
+      "value": "SQ7",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "SQ7 ('20-)"
+     }
+    ],
+    "4M": [
+     {
+      "value": "Q7",
+      "years": [
+       2017,
+       null
+      ],
+      "note": "Q7 ('17-)"
+     },
+     {
+      "value": "SQ7",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "SQ7 ('20-)"
+     },
+     {
+      "value": "Q8",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Q8 ('19-)"
+     },
+     {
+      "value": "SQ8",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "SQ8 ('20-)"
+     },
+     {
+      "value": "RS Q8",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "RS Q8 ('20-)"
+     }
+    ],
+    "F1": [
+     {
+      "value": "Q8",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Q8 ('19-)"
+     },
+     {
+      "value": "SQ8",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "SQ8 ('20-)"
+     },
+     {
+      "value": "RS Q8",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "RS Q8 ('20-)"
+     }
+    ],
+    "GE": [
+     {
+      "value": "e-tron",
+      "years": [
+       2021,
+       2023
+      ],
+      "note": "e-tron ('19, '21-'23)"
+     },
+     {
+      "value": "e-tron S",
+      "years": [
+       2022,
+       2023
+      ],
+      "note": "e-tron S ('22-'23)"
+     },
+     {
+      "value": "e-tron Sportback",
+      "years": [
+       2020,
+       2023
+      ],
+      "note": "e-tron Sportback ('20-'23)"
+     },
+     {
+      "value": "e-tron S Sportback",
+      "years": [
+       2022,
+       2023
+      ],
+      "note": "e-tron S Sportback ('22-'23)"
+     },
+     {
+      "value": "Q8 e-tron",
+      "note": "Q8 e-tron ('24)"
+     },
+     {
+      "value": "SQ8 e-tron",
+      "note": "SQ8 e-tron ('24)"
+     },
+     {
+      "value": "Q8 e-tron Sportback",
+      "note": "Q8 e-tron Sportback ('24)"
+     },
+     {
+      "value": "SQ8 e-tron Sportback",
+      "note": "SQ8 e-tron Sportback ('24)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Ingolstadt"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "B": [
+     {
+      "value": "Brussels"
+     },
+     {
+      "value": "Belgium"
+     }
+    ],
+    "D": [
+     {
+      "value": "Bratislava"
+     },
+     {
+      "value": "Slovakia"
+     }
+    ],
+    "E": [
+     {
+      "value": "Emden"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "K": [
+     {
+      "value": "Rheine"
+     },
+     {
+      "value": "Germany",
+      "note": "Germany (Karmann plant: Cabriolet ['98]"
+     },
+     {
+      "value": "A4 Cabriolet",
+      "years": [
+       2003,
+       2009
+      ],
+      "note": "A4 Cabriolet ['03-'09]"
+     },
+     {
+      "value": "S4 Cabriolet",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "S4 Cabriolet ['04-'09]"
+     },
+     {
+      "value": "RS4 Cabriolet",
+      "note": "RS4 Cabriolet ['08]"
+     }
+    ],
+    "N": [
+     {
+      "value": "Neckarsulm"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "P": [
+     {
+      "value": "Zwickau"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "R": [
+     {
+      "value": "Martorell"
+     },
+     {
+      "value": "Spain"
+     }
+    ],
+    "1": [
+     {
+      "value": "Gyor"
+     },
+     {
+      "value": "Hungary"
+     }
+    ],
+    "2": [
+     {
+      "value": "San Jose Chiapa"
+     },
+     {
+      "value": "Puebla state"
+     },
+     {
+      "value": "Mexico"
+     }
+    ],
+    "7": [
+     {
+      "value": "Heilbronn"
+     },
+     {
+      "value": "Germany"
+     }
+    ],
+    "G": [
+     {
+      "value": "Graz"
+     },
+     {
+      "value": "Austria",
+      "note": "Austria (Steyr-Daimler-Puch plant: V8L)"
+     }
+    ],
+    "U": [
+     {
+      "value": "Uitenhage"
+     },
+     {
+      "value": "South Africa"
+     }
+    ],
+    "X": [
+     {
+      "value": "Poznan"
+     },
+     {
+      "value": "Poland"
+     }
+    ],
+    "Z": [
+     {
+      "value": "Zuffenhausen"
+     },
+     {
+      "value": "Germany",
+      "note": "Germany (Porsche plant: RS2 Avant)"
+     }
+    ],
+    "3": [
+     {
+      "value": "Changchun"
+     },
+     {
+      "value": "China",
+      "note": "China (FAW-VW plant)"
+     }
+    ],
+    "4": [
+     {
+      "value": "Sao Jose dos Pinhais"
+     },
+     {
+      "value": "Parana state"
+     },
+     {
+      "value": "Brazil",
+      "note": "Brazil (Curitiba plant)"
+     }
+    ],
+    "9": [
+     {
+      "value": "Sarajevo"
+     },
+     {
+      "value": "Bosnia and Herzegovina",
+      "note": "Bosnia and Herzegovina (Volkswagen Sarajevo d.o.o. plant)"
+     }
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,46 @@
+{
+ "_brand": "Daihatsu",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Daihatsu/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "JD1",
+  "JD2"
+ ],
+ "_market": null,
+ "sections": {
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "4": [
+     {
+      "value": "Oyamazaki"
+     },
+     {
+      "value": "Kyoto prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (Charade)"
+     }
+    ],
+    "6": [
+     {
+      "value": "Ikeda #2 Plant - Ikeda"
+     },
+     {
+      "value": "Osaka prefecture"
+     },
+     {
+      "value": "Japan",
+      "note": "Japan (Rocky)"
+     }
+    ]
+   }
+  }
+ }
+}

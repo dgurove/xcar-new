@@ -17,7 +17,7 @@
                         @foreach ($fresh as $r)
                             <x-park.vehicle-row :vehicle="$r->vehicle" :href="'/zayavki/'.$r->id">
                                 <x-ui.pill :tone="$r->isOverdue() ? 'danger' : 'soft'" class="!min-h-0 !py-1 text-xs">{{ $r->type->label() }}{{ $r->type === \App\Park\RequestType::Move && $r->yard ? ' → '.$r->yard->name : '' }}</x-ui.pill>
-                                @if ($r->planned_at)<span class="chip nums font-normal {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
+                                @if ($r->planned_at)<span class="chip {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
                             </x-park.vehicle-row>
                         @endforeach
                     </div>

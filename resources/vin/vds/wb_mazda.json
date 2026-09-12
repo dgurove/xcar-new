@@ -1,0 +1,1063 @@
+{
+ "_brand": "Mazda",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Mazda/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "1YV",
+  "3MD",
+  "3MJ",
+  "3MV",
+  "3MY",
+  "3MZ",
+  "4F2",
+  "4F4",
+  "7MM",
+  "8LF",
+  "9FC",
+  "AFB",
+  "JC0",
+  "JC1",
+  "JC2",
+  "JM0",
+  "JM1",
+  "JM2",
+  "JM3",
+  "JM4",
+  "JM6",
+  "JM7",
+  "JMZ",
+  "LFB",
+  "LFP",
+  "LVR",
+  "LVS",
+  "MM0",
+  "MM6",
+  "MM7",
+  "MM8",
+  "MP2",
+  "PE3",
+  "PP1",
+  "YCM"
+ ],
+ "_market": "north_america",
+ "sections": {
+  "body@6:8": {
+   "field": "body",
+   "at": [
+    "vin",
+    "6:8"
+   ],
+   "map": {
+    "14": [
+     {
+      "value": "4-dr. sedan"
+     }
+    ],
+    "22": [
+     {
+      "value": "4-dr. sedan"
+     },
+     {
+      "value": "Long Bed"
+     },
+     {
+      "value": "Regular Cab"
+     },
+     {
+      "value": "2wd"
+     }
+    ],
+    "23": [
+     {
+      "value": "3-dr. hatchback"
+     }
+    ],
+    "24": [
+     {
+      "value": "5-dr. hatchback"
+     }
+    ],
+    "31": [
+     {
+      "value": "2-dr. coupe"
+     },
+     {
+      "value": "Extended Cab",
+      "note": "Extended Cab (Cab Plus)"
+     },
+     {
+      "value": "Short Bed"
+     },
+     {
+      "value": "2wd"
+     }
+    ],
+    "33": [
+     {
+      "value": "2-dr. coupe"
+     }
+    ],
+    "35": [
+     {
+      "value": "2-dr. convertible"
+     }
+    ],
+    "41": [
+     {
+      "value": "2-dr. coupe"
+     },
+     {
+      "value": "Regular Cab"
+     },
+     {
+      "value": "Short Bed"
+     },
+     {
+      "value": "4wd"
+     }
+    ],
+    "43": [
+     {
+      "value": "2-dr. coupe"
+     }
+    ],
+    "46": [
+     {
+      "value": "4-dr. sedan"
+     }
+    ],
+    "52": [
+     {
+      "value": "4-dr. station wagon"
+     },
+     {
+      "value": "4-dr. wagon"
+     }
+    ],
+    "62": [
+     {
+      "value": "4-dr. station wagon"
+     }
+    ],
+    "28": [
+     {
+      "value": "4-dr. wagon"
+     }
+    ],
+    "12": [
+     {
+      "value": "Short Bed"
+     },
+     {
+      "value": "Regular Cab"
+     },
+     {
+      "value": "2wd"
+     }
+    ],
+    "11": [
+     {
+      "value": "Regular Cab"
+     },
+     {
+      "value": "Short Bed"
+     },
+     {
+      "value": "2wd"
+     }
+    ],
+    "21": [
+     {
+      "value": "Regular Cab"
+     },
+     {
+      "value": "Long Bed"
+     },
+     {
+      "value": "2wd"
+     }
+    ],
+    "32": [
+     {
+      "value": "Extended Cab",
+      "note": "Extended Cab (Cab Plus)"
+     },
+     {
+      "value": "Short Bed"
+     },
+     {
+      "value": "2wd"
+     }
+    ],
+    "51": [
+     {
+      "value": "Regular Cab"
+     },
+     {
+      "value": "Long Bed"
+     },
+     {
+      "value": "4wd"
+     }
+    ],
+    "61": [
+     {
+      "value": "Extended Cab",
+      "note": "Extended Cab (Cab Plus)"
+     },
+     {
+      "value": "Short Bed"
+     },
+     {
+      "value": "4wd"
+     }
+    ]
+   }
+  },
+  "body@7:8": {
+   "field": "body",
+   "at": [
+    "vin",
+    "7:8"
+   ],
+   "map": {
+    "2": [
+     {
+      "value": "4-dr. sedan"
+     }
+    ],
+    "S": [
+     {
+      "value": "4-dr. sedan"
+     }
+    ],
+    "4": [
+     {
+      "value": "5-dr. hatchback"
+     }
+    ],
+    "H": [
+     {
+      "value": "5-dr. hatchback"
+     }
+    ],
+    "Z": [
+     {
+      "value": "4-dr. sedan"
+     }
+    ],
+    "Y": [
+     {
+      "value": "4-dr. sedan"
+     }
+    ],
+    "J": [
+     {
+      "value": "5-dr. hatchback"
+     }
+    ],
+    "5": [
+     {
+      "value": "2-dr. convertible"
+     }
+    ],
+    "E": [
+     {
+      "value": "2-dr. convertible"
+     }
+    ],
+    "6": [
+     {
+      "value": "2-dr. hardtop convertible"
+     }
+    ],
+    "F": [
+     {
+      "value": "2-dr. hardtop convertible"
+     }
+    ],
+    "7": [
+     {
+      "value": "4-dr. coupe"
+     }
+    ],
+    "C": [
+     {
+      "value": "4-dr. coupe"
+     }
+    ],
+    "9": [
+     {
+      "value": "4-dr. wagon"
+     }
+    ],
+    "W": [
+     {
+      "value": "4-dr. wagon"
+     }
+    ],
+    "8": [
+     {
+      "value": "4-dr. wagon"
+     }
+    ],
+    "M": [
+     {
+      "value": "4-dr. wagon"
+     }
+    ]
+   }
+  },
+  "model@4:6": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:6"
+   ],
+   "map": {
+    "BD": [
+     {
+      "value": "GLC hatchback",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "GLC hatchback/sedan fwd ('81-'85)"
+     },
+     {
+      "value": "GLC wagon rwd",
+      "years": [
+       1981,
+       1983
+      ],
+      "note": "GLC wagon rwd ('81-'83)"
+     }
+    ],
+    "BF": [
+     {
+      "value": "323",
+      "years": [
+       1986,
+       1989
+      ],
+      "note": "323 ('86-'89)"
+     }
+    ],
+    "BW": [
+     {
+      "value": "323 wagon",
+      "years": [
+       1987,
+       1988
+      ],
+      "note": "323 wagon ('87-'88)"
+     }
+    ],
+    "BG": [
+     {
+      "value": "323"
+     },
+     {
+      "value": "Protege",
+      "years": [
+       1990,
+       1994
+      ],
+      "note": "Protege ('90-'94 & '95 323 S in Canada)"
+     }
+    ],
+    "BA": [
+     {
+      "value": "Protege",
+      "note": "Protege ('95)"
+     },
+     {
+      "value": "323 Neo",
+      "note": "323 Neo (Canada only: '95)"
+     }
+    ],
+    "BB": [
+     {
+      "value": "Protege",
+      "note": "Protege ('96)"
+     }
+    ],
+    "BC": [
+     {
+      "value": "Protege",
+      "years": [
+       1997,
+       1998
+      ],
+      "note": "Protege ('97-'98)"
+     }
+    ],
+    "BJ": [
+     {
+      "value": "Protege",
+      "years": [
+       1999,
+       2003
+      ],
+      "note": "Protege ('99-'03)"
+     },
+     {
+      "value": "Protege5",
+      "years": [
+       2002,
+       2003
+      ],
+      "note": "Protege5 ('02-'03)"
+     }
+    ],
+    "BK": [
+     {
+      "value": "Mazda 3",
+      "years": [
+       2004,
+       2009
+      ],
+      "note": "Mazda 3 ('04-'09)"
+     }
+    ],
+    "BL": [
+     {
+      "value": "Mazda 3",
+      "years": [
+       2010,
+       2013
+      ],
+      "note": "Mazda 3 ('10-'13)"
+     }
+    ],
+    "BM": [
+     {
+      "value": "Mazda 3",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "Mazda 3 ('14-'16)"
+     }
+    ],
+    "BN": [
+     {
+      "value": "Mazda 3",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Mazda 3 ('17-'18)"
+     }
+    ],
+    "BP": [
+     {
+      "value": "Mazda 3",
+      "years": [
+       2019,
+       null
+      ],
+      "note": "Mazda 3 ('19-)"
+     }
+    ],
+    "CR": [
+     {
+      "value": "Mazda 5",
+      "years": [
+       2006,
+       2010
+      ],
+      "note": "Mazda 5 ('06-'10)"
+     }
+    ],
+    "CW": [
+     {
+      "value": "Mazda 5",
+      "years": [
+       2012,
+       2015
+      ],
+      "note": "Mazda 5 ('12-'15 & '16-'17 in Canada)"
+     }
+    ],
+    "DE": [
+     {
+      "value": "Mazda 2",
+      "years": [
+       2011,
+       2014
+      ],
+      "note": "Mazda 2 ('11-'14)"
+     }
+    ],
+    "DK": [
+     {
+      "value": "CX-3",
+      "years": [
+       2016,
+       2021
+      ],
+      "note": "CX-3 ('16-'21 & '22 in Canada)"
+     }
+    ],
+    "DL": [
+     {
+      "value": "Scion iA",
+      "note": "Scion iA ('16)"
+     },
+     {
+      "value": "Toyota Yaris iA",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Toyota Yaris iA ('17-'18)"
+     },
+     {
+      "value": "Toyota Yaris sedan",
+      "years": [
+       2019,
+       2020
+      ],
+      "note": "Toyota Yaris sedan ('19-'20)"
+     },
+     {
+      "value": "Toyota Yaris hatchback",
+      "note": "Toyota Yaris hatchback ('20)"
+     }
+    ],
+    "DM": [
+     {
+      "value": "CX-30",
+      "years": [
+       2020,
+       null
+      ],
+      "note": "CX-30 ('20-)"
+     }
+    ],
+    "DR": [
+     {
+      "value": "MX-30",
+      "years": [
+       2022,
+       2023
+      ],
+      "note": "MX-30 ('22-'23)"
+     }
+    ],
+    "EC": [
+     {
+      "value": "MX-3",
+      "years": [
+       1992,
+       1995
+      ],
+      "note": "MX-3 ('92-'95)"
+     }
+    ],
+    "ER": [
+     {
+      "value": "CX-7",
+      "years": [
+       2007,
+       2012
+      ],
+      "note": "CX-7 ('07-'12)"
+     }
+    ],
+    "GB": [
+     {
+      "value": "626",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "626 ('81-'82)"
+     }
+    ],
+    "GC": [
+     {
+      "value": "626",
+      "years": [
+       1983,
+       1987
+      ],
+      "note": "626 ('83-'87)"
+     }
+    ],
+    "GD": [
+     {
+      "value": "626"
+     },
+     {
+      "value": "MX-6",
+      "years": [
+       1988,
+       1992
+      ],
+      "note": "MX-6 ('88-'92)"
+     }
+    ],
+    "GE": [
+     {
+      "value": "626"
+     },
+     {
+      "value": "MX-6",
+      "years": [
+       1993,
+       1997
+      ],
+      "note": "MX-6 ('93-'97)"
+     }
+    ],
+    "GF": [
+     {
+      "value": "626",
+      "years": [
+       1998,
+       2002
+      ],
+      "note": "626 ('98-'02)"
+     }
+    ],
+    "GG": [
+     {
+      "value": "Mazda 6",
+      "years": [
+       2002,
+       2008
+      ],
+      "note": "GG — Mazda 6 первого поколения, сюда же Mazdaspeed 6 (GG3P); проверено на JMZGG12F671680639 (2007)"
+     }
+    ],
+    "GJ": [
+     {
+      "value": "Mazda 6",
+      "years": [
+       2014,
+       2016
+      ],
+      "note": "Mazda 6 ('14-'16)"
+     }
+    ],
+    "GL": [
+     {
+      "value": "Mazda 6",
+      "years": [
+       2017,
+       2021
+      ],
+      "note": "Mazda 6 ('17-'21)"
+     }
+    ],
+    "FB": [
+     {
+      "value": "RX-7",
+      "years": [
+       1981,
+       1985
+      ],
+      "note": "RX-7 ('81-'85)"
+     }
+    ],
+    "FC": [
+     {
+      "value": "RX-7",
+      "years": [
+       1986,
+       1991
+      ],
+      "note": "RX-7 ('86-'91)"
+     }
+    ],
+    "FD": [
+     {
+      "value": "RX-7",
+      "years": [
+       1993,
+       1995
+      ],
+      "note": "RX-7 ('93-'95)"
+     }
+    ],
+    "FE": [
+     {
+      "value": "RX-8",
+      "years": [
+       2004,
+       2011
+      ],
+      "note": "RX-8 ('04-'11)"
+     }
+    ],
+    "HC": [
+     {
+      "value": "929",
+      "years": [
+       1988,
+       1991
+      ],
+      "note": "929 ('88-'91)"
+     }
+    ],
+    "HD": [
+     {
+      "value": "929",
+      "years": [
+       1992,
+       1995
+      ],
+      "note": "929 ('92-'95)"
+     }
+    ],
+    "KE": [
+     {
+      "value": "CX-5",
+      "years": [
+       2013,
+       2016
+      ],
+      "note": "CX-5 ('13-'16)"
+     }
+    ],
+    "KF": [
+     {
+      "value": "CX-5",
+      "years": [
+       2017,
+       2025
+      ],
+      "note": "CX-5 ('17-'25)"
+     }
+    ],
+    "KM": [
+     {
+      "value": "CX-5",
+      "years": [
+       2026,
+       null
+      ],
+      "note": "CX-5 ('26-)"
+     }
+    ],
+    "KJ": [
+     {
+      "value": "CX-70",
+      "years": [
+       2025,
+       null
+      ],
+      "note": "CX-70 ('25-)"
+     }
+    ],
+    "KK": [
+     {
+      "value": "CX-90",
+      "years": [
+       2024,
+       null
+      ],
+      "note": "CX-90 ('24-)"
+     }
+    ],
+    "LV": [
+     {
+      "value": "MPV",
+      "years": [
+       1989,
+       1998
+      ],
+      "note": "MPV ('89-'98)"
+     }
+    ],
+    "LW": [
+     {
+      "value": "MPV",
+      "years": [
+       2000,
+       2006
+      ],
+      "note": "MPV ('00-'06)"
+     }
+    ],
+    "NA": [
+     {
+      "value": "MX-5 Miata",
+      "years": [
+       1990,
+       1997
+      ],
+      "note": "MX-5 Miata ('90-'97)"
+     }
+    ],
+    "NB": [
+     {
+      "value": "MX-5 Miata",
+      "years": [
+       1999,
+       2005
+      ],
+      "note": "MX-5 Miata ('99-'05)"
+     }
+    ],
+    "NC": [
+     {
+      "value": "MX-5 Miata",
+      "years": [
+       2006,
+       2015
+      ],
+      "note": "MX-5 Miata ('06-'15)"
+     }
+    ],
+    "ND": [
+     {
+      "value": "MX-5 Miata",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "MX-5 Miata ('16-)"
+     }
+    ],
+    "NF": [
+     {
+      "value": "Fiat 124 Spider",
+      "years": [
+       2017,
+       2020
+      ],
+      "note": "Fiat 124 Spider ('17-'20)"
+     }
+    ],
+    "TA": [
+     {
+      "value": "Millenia",
+      "years": [
+       1995,
+       2002
+      ],
+      "note": "Millenia ('95-'02)"
+     }
+    ],
+    "TB": [
+     {
+      "value": "CX-9",
+      "years": [
+       2007,
+       2015
+      ],
+      "note": "CX-9 ('07-'15)"
+     }
+    ],
+    "TC": [
+     {
+      "value": "CX-9",
+      "years": [
+       2016,
+       2023
+      ],
+      "note": "CX-9 ('16-'23)"
+     }
+    ],
+    "UA": [
+     {
+      "value": "Ford Courier pickup",
+      "years": [
+       1981,
+       1982
+      ],
+      "note": "Ford Courier pickup ('81-'82)"
+     }
+    ],
+    "UC": [
+     {
+      "value": "B-series pickup",
+      "years": [
+       1981,
+       1984
+      ],
+      "note": "B-series pickup ('81-'84 B2000)"
+     }
+    ],
+    "UD": [
+     {
+      "value": "B-series pickup",
+      "years": [
+       1982,
+       1984
+      ],
+      "note": "B-series pickup ('82-'84 B2200 diesel)"
+     }
+    ],
+    "UF": [
+     {
+      "value": "B-series pickup",
+      "years": [
+       1986,
+       1993
+      ],
+      "note": "B-series pickup ('86-'93)"
+     }
+    ],
+    "VA": [
+     {
+      "value": "CX-50",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "CX-50 ('23-)"
+     }
+    ],
+    "GY": [
+     {
+      "value": "Mazda 6",
+      "years": [
+       2002,
+       2008
+      ],
+      "note": "GY — универсал Mazda 6 первого поколения"
+     }
+    ],
+    "GH": [
+     {
+      "value": "Mazda 6",
+      "years": [
+       2007,
+       2013
+      ],
+      "note": "GH — Mazda 6 второго поколения; проверено на JMZGH12F701503529"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "0": [
+     {
+      "value": "Hiroshima"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "1": [
+     {
+      "value": "Hofu"
+     },
+     {
+      "value": "Yamaguchi prefecture"
+     },
+     {
+      "value": "Japan"
+     }
+    ],
+    "5": [
+     {
+      "value": "Flat Rock"
+     },
+     {
+      "value": "Michigan"
+     },
+     {
+      "value": "US",
+      "note": "US (Mazda Motor Manufacturing USA/AutoAlliance International)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Ford Kansas City Assembly",
+      "years": [
+       2001,
+       2011
+      ],
+      "note": "Ford Kansas City Assembly (Claycomo, Missouri) (Tribute '01-'11)"
+     }
+    ],
+    "M": [
+     {
+      "value": "Salamanca"
+     },
+     {
+      "value": "Guanajuato"
+     },
+     {
+      "value": "Mexico",
+      "note": "Mexico (Mazda de Mexico Vehicle Operation) (Mazda models)"
+     }
+    ],
+    "N": [
+     {
+      "value": "Huntsville"
+     },
+     {
+      "value": "Alabama"
+     },
+     {
+      "value": "US",
+      "years": [
+       2023,
+       null
+      ],
+      "note": "US (Mazda Toyota Manufacturing USA) (CX-50 '23-)"
+     }
+    ],
+    "P": [
+     {
+      "value": "Ford Twin Cities Assembly",
+      "years": [
+       2005,
+       2009
+      ],
+      "note": "Ford Twin Cities Assembly (St. Paul, Minnesota) (B-series pickup '05-'09 & '10 in Canada)"
+     }
+    ],
+    "T": [
+     {
+      "value": "Ford Edison Assembly",
+      "years": [
+       1994,
+       2004
+      ],
+      "note": "Ford Edison Assembly (Edison, New Jersey) (B-series pickup '94-'04)"
+     }
+    ],
+    "U": [
+     {
+      "value": "Ford Louisville Assembly",
+      "years": [
+       1991,
+       1994
+      ],
+      "note": "Ford Louisville Assembly (Louisville, Kentucky) (Navajo '91-'94)"
+     }
+    ],
+    "Y": [
+     {
+      "value": "Salamanca"
+     },
+     {
+      "value": "Guanajuato"
+     },
+     {
+      "value": "Mexico",
+      "years": [
+       2017,
+       2018
+      ],
+      "note": "Mexico (Mazda de Mexico Vehicle Operation) (Scion iA '16, Yaris iA '17-'18, Yaris sedan '19-'20, Yaris hatch '20)"
+     }
+    ]
+   }
+  }
+ }
+}

@@ -148,6 +148,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::delete('/shablony/{template}', [MailTemplateController::class, 'destroy']);
     });
 
+    Route::get('/spravochnik/vin', [ReferenceController::class, 'vin']);
     Route::get('/spravochnik/marki', [ReferenceController::class, 'brands']);
     Route::get('/spravochnik/modeli', [ReferenceController::class, 'models']);
     Route::post('/spravochnik/marki', [ReferenceController::class, 'createBrand']);

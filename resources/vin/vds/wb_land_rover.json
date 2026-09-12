@@ -1,0 +1,59 @@
+{
+ "_brand": "Land Rover",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Land_Rover/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "99J",
+  "L2C",
+  "SAL"
+ ],
+ "_market": null,
+ "sections": {
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "A": [
+     {
+      "value": "Solihull"
+     },
+     {
+      "value": "West Midlands"
+     },
+     {
+      "value": "England"
+     },
+     {
+      "value": "UK"
+     }
+    ],
+    "H": [
+     {
+      "value": "Halewood"
+     },
+     {
+      "value": "Merseyside"
+     },
+     {
+      "value": "England"
+     },
+     {
+      "value": "UK"
+     }
+    ],
+    "2": [
+     {
+      "value": "Nitra"
+     },
+     {
+      "value": "Slovakia"
+     }
+    ]
+   }
+  }
+ }
+}

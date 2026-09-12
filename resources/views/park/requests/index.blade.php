@@ -14,7 +14,7 @@
             @foreach ($requests as $r)
                 <x-park.vehicle-row :vehicle="$r->vehicle" :href="'/zayavki/'.$r->id">
                     <x-ui.pill :tone="$r->isOverdue() ? 'danger' : ($r->isOpen() ? 'soft' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $r->type->label() }}{{ $r->type === RequestType::Move && $r->yard ? ' → '.$r->yard->name : '' }}</x-ui.pill>
-                    @if ($r->planned_at)<span class="chip nums font-normal {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
+                    @if ($r->planned_at)<span class="chip {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
                     @if (!$r->isOpen())<span class="chip">{{ $r->state->label() }}</span>@endif
                     @if ($r->contact)<span class="text-sm text-ink-muted">{{ $r->contact }}</span>@endif
                 </x-park.vehicle-row>

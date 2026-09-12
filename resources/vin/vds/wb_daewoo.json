@@ -1,0 +1,138 @@
+{
+ "_brand": "Daewoo",
+ "_source": "https://en.wikibooks.org/wiki/Vehicle_Identification_Numbers_(VIN_codes)/Daewoo/VIN_Codes",
+ "_license": "CC BY-SA 4.0",
+ "_fetched": "2026-08-24",
+ "_wmi": [
+  "KLA"
+ ],
+ "_market": null,
+ "sections": {
+  "body@6:7": {
+   "field": "body",
+   "at": [
+    "vin",
+    "6:7"
+   ],
+   "map": {
+    "2": [
+     {
+      "value": "dr. hatchback"
+     }
+    ],
+    "3": [
+     {
+      "value": "dr. hatchback"
+     }
+    ],
+    "5 - 4": [
+     {
+      "value": "dr. sedan"
+     }
+    ],
+    "6 - 5": [
+     {
+      "value": "dr. hatchback",
+      "note": "dr. hatchback ('99 only)"
+     }
+    ],
+    "8 - 4": [
+     {
+      "value": "dr. station wagon"
+     }
+    ],
+    "6 - 4": [
+     {
+      "value": "dr. sedan"
+     }
+    ]
+   }
+  },
+  "engine@8:9": {
+   "field": "engine",
+   "at": [
+    "vin",
+    "8:9"
+   ],
+   "map": {
+    "6": [
+     {
+      "value": "1.6L DOHC"
+     },
+     {
+      "value": "16-valve GM Family I E-TEC I4",
+      "years": [
+       2016,
+       null
+      ],
+      "note": "16-valve GM Family I E-TEC I4 (Lanos)"
+     }
+    ],
+    "Z": [
+     {
+      "value": "2.0L DOHC"
+     }
+    ],
+    "2": [
+     {
+      "value": "2.2L DOHC"
+     }
+    ]
+   }
+  },
+  "model@4:5": {
+   "field": "model",
+   "at": [
+    "vin",
+    "4:5"
+   ],
+   "map": {
+    "T": [
+     {
+      "value": "Lanos",
+      "note": "Lanos (T100 platform)"
+     }
+    ],
+    "J": [
+     {
+      "value": "Nubira",
+      "note": "Nubira (J100 platform)"
+     }
+    ],
+    "V": [
+     {
+      "value": "Leganza",
+      "note": "Leganza (V100 platform)"
+     }
+    ]
+   }
+  },
+  "plant@11:12": {
+   "field": "plant",
+   "at": [
+    "vin",
+    "11:12"
+   ],
+   "map": {
+    "B": [
+     {
+      "value": "Bupyeong"
+     },
+     {
+      "value": "South Korea",
+      "note": "South Korea (Lanos, Leganza)"
+     }
+    ],
+    "K": [
+     {
+      "value": "Kunsan"
+     },
+     {
+      "value": "South Korea",
+      "note": "South Korea (Nubira)"
+     }
+    ]
+   }
+  }
+ }
+}
