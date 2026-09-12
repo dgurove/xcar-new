@@ -79,16 +79,33 @@ node scripts/icons.mjs           # иконки PWA из favicon.svg
 маршруты — заготовки `Presets/*`, ими же `InsurerSeeder` заводит три
 страховые; маршрут вывоза запускается с каждым предложением или по кнопке —
 `workflows.auto_start`),
-`app/Mail` (ящики, синк, треды, кандидаты, шаблоны), `app/Chats` (чаты по
+`app/Mail` (ящики, синк, треды, кандидаты, шаблоны; письмо целиком не
+скачивается — по `BODYSTRUCTURE` берутся заголовки и текст, вложения остаются
+в ящике описью с секцией и подтягиваются по клику через `Parts`; ветка,
+привязанная к машине, закрепляет файлы в `private/blobs` по sha256 —
+`PinThread`), `app/Chats` (чаты по
 предложениям и обращения с `/kontakty` — у гостя по cookie), `app/Park`
 (стоянка), `app/Purchases` (закупки Carcade), `app/Notifications`
 (`Notice` — база, канал database+mail+push), `app/Push`, `app/Live` (Mercure:
-`card/refresh/toast/badges`), `app/Media`, `app/Cars`, `app/Users`.
+`card/refresh/toast/badges`), `app/Media` (`PhotoIngest` — всё входящее в
+1600 px webp, конверсии только вниз; `papers` на закрытом диске, наружу через
+`/fayly/{media}`; холодный слой `CoolPhotos`/`WarmPhotos`), `app/Storage`
+(`storage:gc` ежедневно, `storage:report`), `app/Cars`, `app/Users`.
 Заметки по этапам — `notes/etap-*.md`.
+
+## Диски
+
+Три диска Laravel: `media` (публичное, Caddy отдаёт `/media/*` сам),
+`private` (письма-blobs, документы, чаты, файлы просьб — только через
+контроллеры), `cache` (воспроизводимое: PDF шеринга, части писем из ящика,
+outbox, tmp — не бэкапится, `storage:gc` чистит по срокам). Правило: что
+можно пересчитать — в `cache`, что нельзя — в `private` или `media`.
 
 ## Сервер
 
 `ssh xcar-next` (root@200.169.180.17), см. `CONNECT.md`; пароли — в
-`CONNECT.local.md` вне git. Раскладка `/srv/xcar/{env,releases,current}`.
+`CONNECT.local.md` вне git. Раскладка `/srv/xcar/{env,releases,current}`, данные на втором диске
+`/srv/xcar/data/{postgres,media,private,cache,storage,backups}`; бэкапы —
+restic в S3 (`deploy/backup.sh`, см. CONNECT.md).
 Пока без домена — по IP и именам nip.io. Прод не трогать без спроса,
 выкладка только `deploy/deploy.sh`.

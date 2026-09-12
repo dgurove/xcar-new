@@ -8,10 +8,12 @@ use App\Live\SubscriberCookie;
 use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
 use App\Mail\Console\WatchMail;
+use App\Media\Console\MovePapers;
 use App\Notifications\Console\SendDigest;
 use App\Offers\Console\TickOffers;
-use App\Media\Console\MovePapers;
 use App\Push\Console\MakeKeys;
+use App\Storage\Console\Gc;
+use App\Storage\Console\Report;
 use App\Users\Console\CreateUser;
 use App\Workflow\Console\RefillInsurers;
 use Illuminate\Foundation\Application;
@@ -35,6 +37,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ReconcileMail::class,
         MakeKeys::class,
         MovePapers::class,
+        Gc::class,
+        Report::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/vhod');

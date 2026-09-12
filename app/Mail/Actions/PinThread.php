@@ -40,6 +40,7 @@ final class PinThread
                         $contents = $this->parts->fetch($attachment, $imap);
                         if ($contents === null) {
                             Log::warning('Почта: вложение не закрепилось', ['attachment' => $attachment->id]);
+
                             continue;
                         }
                         $attachment->forceFill(['blob_sha' => Blobs::put($contents), 'pinned_at' => now(), 'size' => strlen($contents)])->save();

@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Cars\Settlement;
 use App\Mail\Jobs\ImportCandidateMedia;
 use App\Mail\Thread;
+use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
@@ -74,6 +75,10 @@ class OfferController
     {
         $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user', 'events.user', 'insurer.workflows',
             'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer']);
+        // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
+        if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
+            app(WarmPhotos::class)($offer);
+        }
 
         return view('admin.offers.edit', [
             'offer' => $offer,

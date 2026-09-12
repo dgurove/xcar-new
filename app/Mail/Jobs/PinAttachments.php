@@ -9,7 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /** Закрепить файлы ветки в фоне: письма страховых — по 30 фотографий, из ящика это минуты. */
-final class PinAttachments implements ShouldQueue, ShouldBeUnique
+final class PinAttachments implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 

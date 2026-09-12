@@ -3,9 +3,11 @@
 namespace App\Http\Site;
 
 use App\Chats\Chat;
+use App\Media\Actions\WarmPhotos;
 use App\Offers\BidState;
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Support\ListContext;
 use Illuminate\Http\Request;
 
@@ -17,6 +19,9 @@ class OfferController
         abort_unless($offer->state->isPublic() || $offer->state->acceptsInterest() || $user?->isStaff(), 404);
 
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites']);
+        if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
+            app(WarmPhotos::class)($offer); // холодный слой: конверсии досчитаются в очереди
+        }
 
         // Откуда пришли: стрелки листают ровно тот список, что человек видел.
         $context = ListContext::fromRequest($request);
