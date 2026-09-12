@@ -93,7 +93,8 @@ class ProfileController
             $user->clearMediaCollection('avatar');
         }
         if ($request->hasFile('avatar')) {
-            $user->addMediaFromRequest('avatar')->toMediaCollection('avatar');
+            // Исходник с телефона до 8 МБ не нужен: аватар живёт в 128 px.
+            app(\App\Media\PhotoIngest::class)->fromUpload($user, 'avatar', $request->file('avatar'), max: 512);
         }
 
         return back()->with('toast', 'Сохранено');

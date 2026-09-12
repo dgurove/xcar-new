@@ -8,9 +8,10 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * Фотографии и документы у машины: коллекции `photos` и `papers`, конверсии
- * под srcset. Скрытый кадр — custom property `hidden`, главный — первый по
- * порядку.
+ * Фотографии и документы у машины: коллекции `photos` (публичный диск, Caddy
+ * отдаёт сам) и `papers` (закрытый диск: ПТС и договоры наружу только через
+ * /fayly с проверкой прав), конверсии под srcset. Скрытый кадр — custom
+ * property `hidden`, главный — первый по порядку.
  */
 trait HasPhotos
 {
@@ -19,7 +20,7 @@ trait HasPhotos
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('photos')->useDisk('media');
-        $this->addMediaCollection('papers')->useDisk('media');
+        $this->addMediaCollection('papers')->useDisk('private');
     }
 
     public function registerMediaConversions(?Media $media = null): void

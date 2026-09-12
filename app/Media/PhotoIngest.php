@@ -21,9 +21,9 @@ final class PhotoIngest
     public const QUALITY = 80;
     public const MAX_SOURCE_PIXELS = 40_000_000;
 
-    public function fromUpload(HasMedia $model, string $collection, UploadedFile $file, array $properties = []): Media
+    public function fromUpload(HasMedia $model, string $collection, UploadedFile $file, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
-        return $this->add($model, $collection, $file->getRealPath(), $file->getClientOriginalName(), $properties);
+        return $this->add($model, $collection, $file->getRealPath(), $file->getClientOriginalName(), $properties, $max);
     }
 
     public function fromString(HasMedia $model, string $collection, string $contents, string $name, array $properties = []): Media
@@ -34,12 +34,12 @@ final class PhotoIngest
         return $this->add($model, $collection, $temp, $name, $properties);
     }
 
-    public function add(HasMedia $model, string $collection, string $path, string $name, array $properties = []): Media
+    public function add(HasMedia $model, string $collection, string $path, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
         $webp = null;
         try {
             $this->checkSize($path);
-            $webp = $this->shrink($path);
+            $webp = $this->shrink($path, $max);
 
             return $model->addMedia($webp)
                 ->usingFileName($this->fileName($name))
@@ -65,11 +65,11 @@ final class PhotoIngest
         }
     }
 
-    private function shrink(string $path): string
+    private function shrink(string $path, int $max): string
     {
         $webp = $path.'.webp';
         try {
-            Image::load($path)->fit(Fit::Max, self::MAX_DIMENSION, self::MAX_DIMENSION)->format('webp')->quality(self::QUALITY)->save($webp);
+            Image::load($path)->fit(Fit::Max, $max, $max)->format('webp')->quality(self::QUALITY)->save($webp);
         } catch (Throwable $e) {
             throw new RuntimeException('Кадр не пережался: '.$e->getMessage(), previous: $e);
         }

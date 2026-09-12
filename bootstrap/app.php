@@ -10,6 +10,7 @@ use App\Mail\Console\SyncMail;
 use App\Mail\Console\WatchMail;
 use App\Notifications\Console\SendDigest;
 use App\Offers\Console\TickOffers;
+use App\Media\Console\MovePapers;
 use App\Push\Console\MakeKeys;
 use App\Users\Console\CreateUser;
 use App\Workflow\Console\RefillInsurers;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         WatchMail::class,
         ReconcileMail::class,
         MakeKeys::class,
+        MovePapers::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/vhod');

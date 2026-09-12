@@ -13,6 +13,7 @@ use App\Http\Site\CatalogController;
 use App\Http\Site\ChatController;
 use App\Http\Site\EnquiryController;
 use App\Http\Site\FavoriteController;
+use App\Http\Site\FileController;
 use App\Http\Site\InterestController;
 use App\Http\Site\OfferController;
 use App\Http\Site\PurchaseController;
@@ -63,7 +64,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/lk/sdelki/{deal}/otvet', [DealController::class, 'answer']);
     Route::post('/lk/sdelki/{deal}/fayly', [DealController::class, 'upload']);
     Route::delete('/lk/sdelki/{deal}/fayly/{media}', [DealController::class, 'removeFile']);
-    Route::get('/sdelki/fayly/{media}', [DealController::class, 'file']);
+    // Документы и файлы с закрытого диска — на любом хосте.
+    Route::get('/fayly/{media}', [FileController::class, 'show']);
 
     Route::get('/lk/uvedomleniya', [NotificationController::class, 'index']);
     Route::get('/lk/uvedomleniya/svezhie', [NotificationController::class, 'latest']);
