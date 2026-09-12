@@ -6,6 +6,7 @@
         </div>
     </dl>
 
+    @unless ($staff)
     <section class="mt-10">
         <h2 class="text-xl">Написать нам</h2>
         <div class="box mt-4">
@@ -29,4 +30,5 @@
             @endif
         </div>
     </section>
+    @endunless
 </x-ui.shell>

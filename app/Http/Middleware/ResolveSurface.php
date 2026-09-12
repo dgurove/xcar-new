@@ -7,13 +7,13 @@ use App\Users\Section;
 use Closure;
 use Illuminate\Http\Request;
 
-/** Поверхность по хосту. На CRM и стоянке отвечают только их маршруты и общие пути: вход, кабинет, чаты, live, PWA. */
+/** Поверхность по хосту. На CRM и стоянке отвечают только их маршруты и общие пути: вход, кабинет, чаты, live, PWA, редирект со старого /admin. */
 class ResolveSurface
 {
-    private const SHARED = ['vhod', 'vyhod', 'registraciya', 'parol', 'passkey', 'up', 'media', 'live', 'chaty', 'lk', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'sdelki'];
+    private const SHARED = ['vhod', 'vyhod', 'registraciya', 'parol', 'passkey', 'up', 'media', 'live', 'chaty', 'lk', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'sdelki', 'admin'];
 
     /** Что открыто на CRM и стоянке тому, кому туда нельзя: выйти и служебное. */
-    private const ANYONE = ['vhod', 'vyhod', 'parol', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js'];
+    private const ANYONE = ['vhod', 'vyhod', 'parol', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'admin'];
 
     public function handle(Request $request, Closure $next)
     {

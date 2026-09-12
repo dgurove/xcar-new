@@ -77,6 +77,9 @@ final class PublishLiveUpdates
         $topics = [Topics::STAFF, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
         ($this->publish)($topics, 'chat', $data);
         $this->publish->badges(Topics::STAFF);
+        if ($chat->user_id) {
+            $this->publish->badges(Topics::user($chat->user_id));
+        }
         $this->publish->refresh(Topics::STAFF, ['/perepiski/chaty']);
     }
 

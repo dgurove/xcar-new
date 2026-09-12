@@ -18,6 +18,9 @@ class EnquiryController
     public function show(Request $request, GuestEnquiry $guest, MarkChatRead $read)
     {
         $user = $request->user();
+        if ($user?->isStaff()) {
+            return view('site.pages.kontakty', ['chat' => null, 'messages' => null, 'user' => $user, 'staff' => true]);
+        }
         $chat = $user
             ? Chat::whereNull('offer_id')->where('user_id', $user->id)->latest('last_message_at')->first()
             : $guest->chat($request);
@@ -29,6 +32,7 @@ class EnquiryController
             'chat' => $chat,
             'messages' => $chat?->messages()->with(['author', 'files'])->get(),
             'user' => $user,
+            'staff' => false,
         ]);
     }
 
@@ -40,6 +44,7 @@ class EnquiryController
         }
 
         $user = $request->user();
+        abort_if($user?->isStaff(), 404);
         $data = $request->validate([
             'name' => [$user ? 'nullable' : 'required', 'string', 'max:100'],
             'text' => ['required', 'string', 'max:4000'],
