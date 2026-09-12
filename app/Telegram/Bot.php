@@ -77,9 +77,10 @@ class Bot
         return $payload;
     }
 
+    /** Путь до Telegram по IPv6 моргает: три попытки с паузой. */
     private function call(string $method, array $payload)
     {
-        return $this->client(20)->asForm()->post($method, $payload);
+        return $this->client(20)->retry(3, 1500)->asForm()->post($method, $payload);
     }
 
     private function client(int $timeout): PendingRequest
