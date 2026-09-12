@@ -802,11 +802,18 @@
   .photo-cell { @apply relative h-28 min-w-16 shrink-0 snap-start overflow-hidden rounded-(--radius-m) bg-surface-3 sm:h-36; touch-action: pan-x; }
   .photo-cell img { @apply h-full w-auto max-w-[16rem] cursor-zoom-in object-contain; }
   .photo-cell.is-hidden img { @apply opacity-40 grayscale; }
-  .photo-add { @apply flex aspect-[4/3] h-28 shrink-0 cursor-pointer items-center justify-center rounded-(--radius-m) bg-surface-3 text-ink-muted transition-colors hover:bg-line hover:text-ink sm:h-36; }
-  .photo-cell .photo-actions { @apply absolute inset-x-0 bottom-0 flex justify-between text-white; background: rgb(18 18 18 / .55); backdrop-filter: blur(10px); }
+  /* Плитка «добавить» липнет к левому краю: прокрутка со snap иначе уводила её
+     за кадр. Справа — полоска цвета карточки, чтобы кадры уходили под неё чисто. */
+  .photo-add { @apply sticky left-0 z-10 flex aspect-[4/3] h-28 shrink-0 cursor-pointer items-center justify-center rounded-(--radius-m) bg-surface-3 text-ink-muted transition-colors hover:bg-line hover:text-ink sm:h-36; }
+  .photo-add::after { content: ''; position: absolute; left: 100%; top: 0; bottom: 0; width: .5rem; background: var(--color-surface); }
+  /* На телефоне полоса выходит за поля карточки: слева прикрыть и поле. */
+  .photo-add::before { content: ''; position: absolute; right: 100%; top: 0; bottom: 0; width: 1rem; background: var(--color-surface); }
+  @media (min-width: 640px) { .photo-add::before { display: none; } }
+  .is-dropping .photo-add { @apply bg-accent-soft text-accent-text; box-shadow: inset 0 0 0 2px var(--color-accent); }
+  /* Плашка действий без размытия фона: на полосе в полсотни кадров backdrop-filter клал телефон. */
+  .photo-cell .photo-actions { @apply absolute inset-x-0 bottom-0 flex justify-between text-white; background: rgb(18 18 18 / .65); }
   .photo-cell .photo-actions button { @apply flex flex-1 items-center justify-center py-1.5 hover:bg-white/15; }
   .photo-main { @apply absolute left-1 top-1; }
-  .photo-off { @apply absolute right-1 top-1 rounded-(--radius-s) p-1 text-white; background: rgb(18 18 18 / .55); }
 
   /* Свои кнопки в тулбаре Viewer.js: глаз · поворот · корзина. */
   .viewer-eye::before, .viewer-rotate::before, .viewer-trash::before { content: ''; display: block; width: 24px; height: 24px; margin: 3px; background: center / contain no-repeat; }

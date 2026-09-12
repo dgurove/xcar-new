@@ -1,7 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import Sortable from 'sortablejs';
 
-// Фотографии: загрузка по одному файлу с прогрессом, перестановка перетаскиванием,
+// Фотографии: загрузка по одному файлу с прогрессом (выбор или drop на карточку), перестановка перетаскиванием,
 // действия глаз · поворот · корзина на плитке и в просмотрщике.
 // Сервер на каждое действие возвращает turbo-stream с новой полосой; полоса
 // подменяется сразу (не через Turbo), чтобы просмотрщик и Sortable пересобрались
@@ -9,6 +9,18 @@ import Sortable from 'sortablejs';
 export default class extends Controller {
     static targets = ['input', 'progress', 'grid'];
     static values = { url: String, collection: { type: String, default: 'photos' } };
+
+    connect() {
+        // Файлы можно бросить на всю карточку — не целясь в плитку.
+        this.element.addEventListener('dragover', this.over = (e) => { if (hasFiles(e)) { e.preventDefault(); this.element.classList.add('is-dropping'); } });
+        this.element.addEventListener('dragleave', this.leave = (e) => { if (!this.element.contains(e.relatedTarget)) this.element.classList.remove('is-dropping'); });
+        this.element.addEventListener('drop', this.drop = (e) => {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            this.element.classList.remove('is-dropping');
+            this.uploadFiles([...e.dataTransfer.files]);
+        });
+    }
 
     gridTargetConnected(grid) {
         this.sortable?.destroy();
@@ -24,15 +36,24 @@ export default class extends Controller {
     }
 
     disconnect() {
+        this.element.removeEventListener('dragover', this.over);
+        this.element.removeEventListener('dragleave', this.leave);
+        this.element.removeEventListener('drop', this.drop);
         this.sortable?.destroy();
         this.viewer?.destroy();
     }
 
     pick() { this.inputTarget.click(); }
 
-    async upload() {
+    upload() {
         const files = [...this.inputTarget.files];
         this.inputTarget.value = '';
+        return this.uploadFiles(files);
+    }
+
+    async uploadFiles(files) {
+        if (this.uploading || !files.length) return;
+        this.uploading = true;
         let n = 0;
         for (const file of files) {
             n++;
@@ -44,6 +65,7 @@ export default class extends Controller {
             }
         }
         this.hideProgress();
+        this.uploading = false;
     }
 
     send(file, onProgress) {
@@ -185,3 +207,5 @@ export default class extends Controller {
 
     get token() { return document.querySelector('meta[name=csrf-token]').content; }
 }
+
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
