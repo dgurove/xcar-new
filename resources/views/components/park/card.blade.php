@@ -7,7 +7,7 @@
     $hasMedia = $photos->isNotEmpty();
     $state = $vehicle->state;
 @endphp
-<article id="vehicle-{{ $vehicle->id }}" class="card rise group{{ $hasMedia ? '' : ' card--blank' }}">
+<article id="vehicle-{{ $vehicle->id }}" class="card rise group">
     @if ($hasMedia)
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop touchstart->frames#start:passive touchend->frames#end:passive">
             <a href="{{ $href }}" class="block h-full w-full" data-action="frames#click">
@@ -25,12 +25,14 @@
                 </div>
             @endif
         </div>
+    @else
+        <a href="{{ $href }}" class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
     @endif
     <div class="card-body">
         <div class="card-title">
             <a href="{{ $href }}" class="block min-w-0 flex-1 text-[17px] leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $vehicle->titleWithYear() }}@if ($vehicle->plate) <span class="nums font-normal text-ink-muted">{{ $vehicle->plate }}</span>@endif</span></a>
         </div>
-        <div class="card-marks{{ $hasMedia ? '' : ' card-marks--flow' }}">
+        <div class="card-marks">
             <span class="mark {{ match ($state->tone()) { 'open' => 'mark-accent', 'urgent' => 'mark-urgent', default => 'mark-glass' } }}">{{ $state->label() }}</span>
             @if ($state === \App\Park\VehicleState::Stored)<span class="mark mark-glass nums">{{ $vehicle->daysStored() }} дн.</span>@endif
         </div>
@@ -44,6 +46,6 @@
         {{ $slot }}
     </div>
     <div class="card-action">
-        <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">{{ $state === \App\Park\VehicleState::Expected ? 'Принять' : ($state === \App\Park\VehicleState::Stored ? 'Открыть' : 'Открыть') }}</a>
+        <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">{{ $state === \App\Park\VehicleState::Expected ? 'Принять' : ($state === \App\Park\VehicleState::Stored ? 'Открыть' : 'Карточка') }}</a>
     </div>
 </article>

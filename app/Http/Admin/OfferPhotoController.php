@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Offers\Offer;
 use Illuminate\Http\Request;
@@ -31,32 +32,39 @@ class OfferPhotoController
 
     public function reorder(Request $request, Offer $offer)
     {
-        Media::setNewOrder($request->validate(['order' => ['required', 'array'], 'order.*' => ['integer']])['order']);
+        $order = $request->validate(['order' => ['required', 'array'], 'order.*' => ['integer']])['order'];
+        Media::setNewOrder(array_values(array_intersect($order, $offer->photos()->pluck('id')->all())));
 
         return $this->gallery($offer->refresh());
     }
 
     public function toggle(Offer $offer, Media $media)
     {
+        $this->own($offer, $media);
         $media->setCustomProperty('hidden', ! $media->getCustomProperty('hidden', false))->save();
 
         return $this->gallery($offer->refresh());
     }
 
-    public function main(Offer $offer, Media $media)
+    public function rotate(Offer $offer, Media $media, RotatePhoto $rotate)
     {
-        $ids = $offer->photos()->pluck('id')->reject(fn ($id) => $id === $media->id)->prepend($media->id)->all();
-        Media::setNewOrder($ids);
-        $media->setCustomProperty('hidden', false)->save();
+        $this->own($offer, $media);
+        $rotate($media);
 
         return $this->gallery($offer->refresh());
     }
 
     public function destroy(Offer $offer, Media $media)
     {
+        $this->own($offer, $media);
         $media->delete();
 
         return $this->gallery($offer->refresh());
+    }
+
+    private function own(Offer $offer, Media $media): void
+    {
+        abort_unless($media->model_id === $offer->id && $media->model_type === $offer::class, 404);
     }
 
     private function gallery(Offer $offer)

@@ -17,6 +17,8 @@ use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RouteController;
 use App\Http\Admin\SettingsController;
+use App\Http\Admin\TagController;
+use App\Http\Admin\UserController;
 use App\Http\Admin\WorkflowController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,7 +42,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/predlozheniya/{offer}/media', [OfferPhotoController::class, 'store']);
     Route::post('/predlozheniya/{offer}/media/poryadok', [OfferPhotoController::class, 'reorder']);
     Route::post('/predlozheniya/{offer}/media/{media}/skryt', [OfferPhotoController::class, 'toggle']);
-    Route::post('/predlozheniya/{offer}/media/{media}/glavnoe', [OfferPhotoController::class, 'main']);
+    Route::post('/predlozheniya/{offer}/media/{media}/povernut', [OfferPhotoController::class, 'rotate']);
     Route::delete('/predlozheniya/{offer}/media/{media}', [OfferPhotoController::class, 'destroy']);
 
     Route::post('/stavki/{bid}/prinyat', [BidController::class, 'accept']);
@@ -50,6 +52,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     // Работа: сделки, почта и чаты под одним заголовком.
     Route::redirect('/rabota', '/rabota/sdelki');
     Route::get('/rabota/sdelki', [DealController::class, 'index']);
+    Route::get('/rabota/sdelki/{deal}', [DealController::class, 'show']);
     Route::post('/rabota/sdelki/{deal}/zametka', [DealController::class, 'note']);
     Route::prefix('rabota/pochta')->group(function () {
         Route::get('/', [MailController::class, 'index']);
@@ -93,12 +96,22 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/zakupki/mashiny/{car}/media', [PurchaseCarPhotoController::class, 'store']);
     Route::post('/zakupki/mashiny/{car}/media/poryadok', [PurchaseCarPhotoController::class, 'reorder']);
     Route::post('/zakupki/mashiny/{car}/media/{media}/skryt', [PurchaseCarPhotoController::class, 'toggle']);
-    Route::post('/zakupki/mashiny/{car}/media/{media}/glavnoe', [PurchaseCarPhotoController::class, 'main']);
+    Route::post('/zakupki/mashiny/{car}/media/{media}/povernut', [PurchaseCarPhotoController::class, 'rotate']);
     Route::delete('/zakupki/mashiny/{car}/media/{media}', [PurchaseCarPhotoController::class, 'destroy']);
 
     // Настройки: справочное, что меняется редко.
     Route::get('/nastroyki', [SettingsController::class, 'index']);
     Route::prefix('nastroyki')->group(function () {
+        Route::get('/polzovateli', [UserController::class, 'index']);
+        Route::post('/polzovateli', [UserController::class, 'store']);
+        Route::put('/polzovateli/{user}', [UserController::class, 'update']);
+
+        Route::get('/tegi', [TagController::class, 'index']);
+        Route::post('/tegi', [TagController::class, 'store']);
+        Route::post('/tegi/poryadok', [TagController::class, 'reorder']);
+        Route::put('/tegi/{tag}', [TagController::class, 'update']);
+        Route::delete('/tegi/{tag}', [TagController::class, 'destroy']);
+
         Route::get('/strahovye', [InsurerController::class, 'index']);
         Route::post('/strahovye', [InsurerController::class, 'store']);
         Route::get('/strahovye/{insurer}', [InsurerController::class, 'show']);

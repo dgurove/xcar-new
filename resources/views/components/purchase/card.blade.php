@@ -8,7 +8,7 @@
     $hasMedia = $photos->isNotEmpty();
     $facts = array_filter([$car->year, $car->mileage !== null ? number_format($car->mileage, 0, '', ' ').' км' : null, $car->transmission?->label(), $car->fuel?->label()]);
 @endphp
-<article id="car-{{ $car->id }}" class="card rise group{{ $hasMedia ? '' : ' card--blank' }}">
+<article id="car-{{ $car->id }}" class="card rise group">
     @if ($hasMedia)
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop touchstart->frames#start:passive touchend->frames#end:passive">
             <a href="{{ $href }}" class="block h-full w-full" data-action="frames#click">
@@ -26,13 +26,15 @@
                 </div>
             @endif
         </div>
+    @else
+        <a href="{{ $href }}" class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
     @endif
     <div class="card-body">
         <div class="card-title">
             <a href="{{ $href }}" class="block min-w-0 flex-1 text-[17px] leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $car->titleWithYear() }}</span></a>
         </div>
         @if ($car->fssp)
-            <div class="card-marks{{ $hasMedia ? '' : ' card-marks--flow' }}"><span class="mark mark-glass">Ограничения ФССП</span></div>
+            <div class="card-marks"><span class="mark mark-glass">Ограничения ФССП</span></div>
         @endif
     </div>
     <div class="card-extra">

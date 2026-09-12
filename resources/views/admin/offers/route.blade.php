@@ -1,5 +1,5 @@
 @php use App\Workflow\{Track, Actor}; @endphp
-<x-ui.card title="Маршрут" data-controller="sheet">
+<x-ui.card title="Маршрут" class="order-1" data-controller="sheet">
     <div class="flex flex-col gap-4">
         @foreach ($offer->positions as $position)
             @php $stage = $position->stage; $staffExits = $stage->exitsFor(Actor::Staff); @endphp
@@ -14,8 +14,8 @@
                 @endif
                 @php $answered = $offer->requirements()->whereNotNull('done_at')->with('media')->get()->filter(fn ($r) => $r->media->isNotEmpty()); @endphp
                 @foreach ($answered as $r)
-                    <div class="flex flex-wrap gap-1.5 text-sm">
-                        @foreach ($r->getMedia('files') as $f)<a href="/sdelki/fayly/{{ $f->id }}" target="_blank" class="chip"><x-ui.icon name="file" class="size-3.5"/> {{ \Illuminate\Support\Str::limit($f->file_name, 28) }}</a>@endforeach
+                    <div class="flex flex-col">
+                        @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/fayly/{{ $f->id }}" class="py-1"/>@endforeach
                     </div>
                 @endforeach
                 @if ($stage->template_id)
@@ -75,8 +75,8 @@
     </div>
 </x-ui.card>
 
-@if ($offer->deal)
-<x-ui.card title="Сделка" id="deal-note">
+@if ($offer->deal && ($dealCard ?? true))
+<x-ui.card title="Сделка" id="deal-note" class="order-1">
     <div class="mb-3 text-sm text-ink-muted">{{ $offer->deal->buyer?->name }} · <a href="tel:+{{ $offer->deal->buyer?->phone }}" class="text-accent-text">{{ $offer->deal->buyer?->phoneFormatted() }}</a> · <span class="font-semibold text-ink tabular-nums">{{ number_format($offer->deal->amount, 0, '', ' ') }} ₽</span></div>
     <form method="post" action="/rabota/sdelki/{{ $offer->deal->id }}/zametka" class="flex flex-col gap-2">
         @csrf

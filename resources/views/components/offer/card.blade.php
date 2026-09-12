@@ -13,7 +13,7 @@
     $canBid = !$admin && ($user?->role->canBid() ?? false) && $offer->bidsOpen();
     $hasMarks = $admin || $offer->car_place || (!$gallery && ($offer->isFresh() || $offer->isEndingSoon() || !$offer->state->acceptsBids() || $offer->secondsLeft()));
 @endphp
-<article id="{{ $admin ? 'admin-offer-' : 'offer-' }}{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card rise group'.($hasMedia ? '' : ' card--blank')]) }}>
+<article id="{{ $admin ? 'admin-offer-' : 'offer-' }}{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card rise group']) }}>
     @if ($hasMedia)
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop touchstart->frames#start:passive touchend->frames#end:passive">
             <a href="{{ $href }}" class="block h-full w-full" data-action="frames#click">
@@ -31,6 +31,8 @@
                 </div>
             @endif
         </div>
+    @else
+        <a href="{{ $href }}" class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
     @endif
 
     <div class="card-body">
@@ -39,7 +41,12 @@
             @if ($user && !$admin)<x-offer.favorite :offer="$offer"/>@endif
         </div>
         @if ($hasMarks)
-            <div class="card-marks{{ $hasMedia ? '' : ' card-marks--flow' }}"><x-offer.marks :offer="$offer" :admin="$admin"/></div>
+            <div class="card-marks"><x-offer.marks :offer="$offer" :admin="$admin"/></div>
+        @endif
+        @if ($admin && $gallery && ($offer->interests_count ?? 0))
+            <div class="mt-1 text-sm text-accent-text">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</div>
+        @elseif ($admin && !$gallery && ($offer->active_bids_count ?? 0))
+            <div class="mt-1 text-sm text-urgent">{{ $offer->active_bids_count }} {{ \App\Support\Plural::of($offer->active_bids_count, ['подтверждение', 'подтверждения', 'подтверждений']) }}@if ($offer->top_bid) · до <span class="nums">{{ number_format($offer->top_bid, 0, '', ' ') }} ₽</span>@endif</div>
         @endif
     </div>
 
@@ -57,19 +64,18 @@
         </span>
     </div>
 
+    @unless ($admin)
     <div class="card-action">
-        @if ($admin)
-            <x-ui.pill :tone="$offer->state->tone()" class="w-full">{{ $offer->state->label() }}</x-ui.pill>
-            @if ($gallery ? ($offer->interests_count ?? 0) : ($offer->active_bids_count ?? 0))<span class="badge">{{ $gallery ? $offer->interests_count : $offer->active_bids_count }}</span>@endif
-        @elseif ($gallery || !$prices)
+        @if ($gallery || !$prices)
             <a href="{{ $href }}" class="btn btn-s {{ $offer->state->acceptsInterest() ? 'btn-accent' : 'btn-quiet' }} w-full whitespace-nowrap">{{ $gallery ? 'Проявить интерес' : 'Узнать цену' }}</a>
         @elseif ($canBid)
             <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Подтвердить</a>
         @else
             <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Открыть</a>
         @endif
-        @if (!$gallery && !$admin && $user && $offer->chat_enabled)
+        @if (!$gallery && $user && $offer->chat_enabled)
             <a href="{{ $href }}{{ str_contains($href, '?') ? '&' : '?' }}chat=1" class="btn btn-s btn-quiet btn-round" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-5"/></a>
         @endif
     </div>
+    @endunless
 </article>

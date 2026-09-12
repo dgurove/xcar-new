@@ -5,7 +5,7 @@
     $tone = $position->isOverdue() ? 'danger' : ($stage->waits_for->tone() === 'plain' ? 'plain' : $stage->waits_for->tone());
 @endphp
 <span {{ $attributes->merge(['class' => 'inline-flex flex-wrap items-center gap-1.5']) }}>
-    @if ($block)<x-ui.pill tone="plain">{{ $stage->block?->name }}@if ($stage->block && $stage->block->name !== $stage->name) <span class="text-ink-dim">› {{ $stage->name }}</span>@endif</x-ui.pill>@endif
+    @if ($block)<x-ui.pill tone="plain" class="shrink whitespace-normal text-left">{{ $stage->block?->name }}@if ($stage->block && $stage->block->name !== $stage->name) <span class="text-ink-dim">› {{ $stage->name }}</span>@endif</x-ui.pill>@endif
     <x-ui.pill :tone="$tone">
         {{ $position->isOverdue() ? 'Срок вышел' : $stage->waits_for->label() }}
         @if ($position->deadline_at)

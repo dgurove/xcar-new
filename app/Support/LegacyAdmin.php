@@ -21,6 +21,8 @@ final class LegacyAdmin
         'shablony' => '/nastroyki/shablony',
         'spravochnik' => '/spravochnik',
         'eshchyo' => '/lk',
+        'polzovateli' => '/nastroyki/polzovateli',
+        'tegi' => '/nastroyki/tegi',
         'ui' => '/ui',
     ];
 

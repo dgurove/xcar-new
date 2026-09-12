@@ -8,7 +8,7 @@
         <div class="mt-6 flex flex-col gap-2">
             @foreach ($deals as $deal)
                 @php $offer = $deal->offer; $position = $offer->position(); @endphp
-                <a href="/predlozheniya/{{ $offer->number }}" class="row items-start">
+                <a href="/rabota/sdelki/{{ $deal->id }}" class="row items-start">
                     <div class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="64px"/></div>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-baseline gap-2">

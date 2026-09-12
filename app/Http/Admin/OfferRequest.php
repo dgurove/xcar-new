@@ -17,7 +17,7 @@ class OfferRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         // Числа приходят с пробелами и знаком рубля — чистим до цифр.
-        $this->merge(collect($this->only(['mileage', 'floor_price', 'repair_estimate', 'asking_price', 'min_bid_price', 'engine_volume', 'engine_power']))
+        $this->merge(collect($this->only(['mileage', 'floor_price', 'asking_price', 'min_bid_price', 'engine_volume', 'engine_power']))
             ->map(fn ($v) => $v === null || $v === '' ? null : (int) preg_replace('/\D+/', '', (string) $v))
             ->all());
     }
@@ -49,7 +49,6 @@ class OfferRequest extends FormRequest
             'settlement_id' => ['nullable', 'exists:settlements,id'],
             'inspection_address' => ['nullable', 'string', 'max:255'],
             'floor_price' => ['nullable', 'integer', 'max:100000000'],
-            'repair_estimate' => ['nullable', 'integer', 'max:100000000'],
             'asking_price' => ['nullable', 'integer', 'max:100000000'],
             'min_bid_price' => ['nullable', 'integer', 'max:100000000'],
             'min_bid_share' => ['nullable', 'numeric', 'between:0,1'],
@@ -76,7 +75,8 @@ class OfferRequest extends FormRequest
         $data['chat_enabled'] = $this->boolean('chat_enabled');
         $data['damage_zones'] = $data['damage_zones'] ?? [];
         $data['tags'] = array_values(array_filter($data['tags'] ?? []));
-        foreach (['is_runnable', 'has_keys', 'prices_include_vat'] as $tri) {
+        $data['prices_include_vat'] = $this->boolean('prices_include_vat');
+        foreach (['is_runnable', 'has_keys'] as $tri) {
             $data[$tri] = $this->filled($tri) ? $this->boolean($tri) : null;
         }
 

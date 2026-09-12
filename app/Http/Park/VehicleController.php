@@ -4,6 +4,10 @@ namespace App\Http\Park;
 
 use App\Cars\DamageZone;
 use App\Live\Stream;
+use App\Mail\Scope;
+use App\Mail\Template;
+use App\Mail\Thread;
+use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Park\Actions\Move;
 use App\Park\Actions\Release;
@@ -53,8 +57,8 @@ class VehicleController
             'vehicle' => $vehicle,
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'clients' => Client::orderBy('name')->pluck('name', 'id'),
-            'threads' => \App\Mail\Thread::where('vehicle_id', $vehicle->id)->get(),
-            'templates' => \App\Mail\Template::where('scope', \App\Mail\Scope::Park)->orderBy('name')->get(),
+            'threads' => Thread::where('vehicle_id', $vehicle->id)->get(),
+            'templates' => Template::where('scope', Scope::Park)->orderBy('name')->get(),
             'zones' => DamageZone::cases(),
         ]);
     }
@@ -92,7 +96,16 @@ class VehicleController
 
     public function reorder(Request $request, Vehicle $vehicle)
     {
-        Media::setNewOrder($request->validate(['order' => ['required', 'array'], 'order.*' => ['integer']])['order']);
+        $order = $request->validate(['order' => ['required', 'array'], 'order.*' => ['integer']])['order'];
+        Media::setNewOrder(array_values(array_intersect($order, $vehicle->photos()->pluck('id')->all())));
+
+        return $this->gallery($vehicle);
+    }
+
+    public function rotateMedia(Vehicle $vehicle, Media $media, RotatePhoto $rotate)
+    {
+        abort_unless($media->model_id === $vehicle->id && $media->model_type === $vehicle::class, 404);
+        $rotate($media);
 
         return $this->gallery($vehicle);
     }

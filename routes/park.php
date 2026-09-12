@@ -44,6 +44,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::put('/mashiny/{vehicle}', [VehicleController::class, 'update']);
     Route::post('/mashiny/{vehicle}/media', [VehicleController::class, 'upload']);
     Route::post('/mashiny/{vehicle}/media/poryadok', [VehicleController::class, 'reorder']);
+    Route::post('/mashiny/{vehicle}/media/{media}/povernut', [VehicleController::class, 'rotateMedia']);
     Route::delete('/mashiny/{vehicle}/media/{media}', [VehicleController::class, 'destroyMedia']);
     Route::post('/mashiny/{vehicle}/zametka', [VehicleController::class, 'note']);
     Route::post('/mashiny/{vehicle}/perestanovka', [VehicleController::class, 'move']);

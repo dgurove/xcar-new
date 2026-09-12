@@ -35,7 +35,7 @@
                             <span class="font-medium">{{ $out ? ($message->author?->name ?? $message->from_name ?? 'Мы') : ($message->from_name ?: $message->from_email) }}</span>
                             @if (!$out && $message->from_name)<span class="text-sm text-ink-muted">{{ $message->from_email }}</span>@endif
                         </div>
-                        <div class="text-sm text-ink-muted">{{ $out ? 'Кому' : 'Кому' }}: {{ $message->to_preview ?: '—' }}</div>
+                        <div class="text-sm text-ink-muted">Кому: {{ $message->to_preview ?: '—' }}</div>
                     </div>
                     <div class="flex shrink-0 items-center gap-1">
                         <span class="text-sm text-ink-dim tabular-nums">{{ $message->date_at?->translatedFormat('j M, H:i') }}</span>
@@ -73,15 +73,9 @@
                 @if ($message->files()->isNotEmpty())
                     <div class="mt-3 flex flex-wrap gap-2">
                         @foreach ($message->files() as $file)
+                            {{-- Миниатюра — только у закреплённого файла: незакреплённый лежит в ящике, за ним ходят по клику. --}}
                             <a href="{{ $base }}/vlozheniya/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3">
-                                {{-- Миниатюра — только у закреплённого файла: незакреплённый лежит в ящике, за ним ходят по клику. --}}
-                                @if ($file->isImage() && $file->isPinned())
-                                    <img src="{{ $base }}/vlozheniya/{{ $file->id }}" alt="" class="size-12 shrink-0 rounded-(--radius-s) object-cover" loading="lazy">
-                                @elseif ($file->isImage())
-                                    <span class="flex size-12 shrink-0 items-center justify-center rounded-(--radius-s) bg-surface-3"><x-ui.icon name="photo" class="size-6 text-ink-muted"/></span>
-                                @else
-                                    <span class="flex size-12 shrink-0 items-center justify-center rounded-(--radius-s) bg-surface-3"><x-ui.icon name="file" class="size-6 text-ink-muted"/></span>
-                                @endif
+                                <x-ui.file-icon :name="$file->filename" :mime="$file->mime" :thumb="$file->isImage() && $file->isPinned() ? $base.'/vlozheniya/'.$file->id : null"/>
                                 <span class="min-w-0"><span class="block truncate text-sm">{{ $file->filename }}</span><span class="text-xs text-ink-muted">{{ $file->humanSize() }}</span></span>
                             </a>
                         @endforeach

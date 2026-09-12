@@ -37,10 +37,6 @@ final class Caption
 
     public static function vatMark(Offer $offer): string
     {
-        return match ($offer->prices_include_vat) {
-            true => ' с НДС',
-            false => ' без НДС',
-            default => '',
-        };
+        return $offer->prices_include_vat ? ' с НДС' : ' без НДС';
     }
 }

@@ -20,17 +20,17 @@ class OfferController
 {
     public const PRESETS = [
         'all' => 'Все', 'draft' => 'Черновики', 'open' => 'В продаже',
-        'bids' => 'С подтверждениями', 'sold' => 'В сделке', 'archive' => 'Архив',
+        'bids' => 'Ждут ответа', 'sold' => 'В сделке', 'archive' => 'Архив',
     ];
 
-    public const SORTS = ['fresh' => 'Сначала новые', 'closing' => 'Скоро закроются', 'number' => 'По номеру'];
+    public const SORTS = ['fresh' => 'Сначала новые', 'bids' => 'По подтверждениям', 'closing' => 'Скоро закроются', 'number' => 'По номеру'];
 
     public function index(Request $request)
     {
         $preset = $request->query('preset', 'all');
         $sort = $request->query('sort', 'fresh');
 
-        $q = Offer::query()->with(['brand', 'model', 'media'])->withCount(['activeBids', 'interests']);
+        $q = Offer::query()->with(['brand', 'model', 'media'])->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
         match ($preset) {
             'draft' => $q->where('state', OfferState::Draft),
@@ -45,6 +45,7 @@ class OfferController
             $q->search($term);
         }
         match ($sort) {
+            'bids' => $q->orderByDesc('active_bids_count')->orderByRaw('top_bid desc nulls last')->orderByDesc('updated_at'),
             'closing' => $q->orderByRaw('bids_close_at asc nulls last'),
             'number' => $q->orderByDesc('number'),
             default => $q->orderByDesc('updated_at'),

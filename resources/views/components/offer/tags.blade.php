@@ -20,6 +20,6 @@
 @foreach ($offer->tags ?? [] as $name)
     <span class="tag" style="{{ $style($colors[$name] ?? 'grey') }}">{{ $name }}</span>
 @endforeach
-@if ($vat && $offer->prices_include_vat !== null)
+@if ($vat)
     <span class="tag" style="{{ $style($offer->prices_include_vat ? 'amber' : 'grey') }}">{{ $offer->prices_include_vat ? 'С НДС' : 'Без НДС' }}</span>
 @endif

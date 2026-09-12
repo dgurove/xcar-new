@@ -6,18 +6,18 @@
         @if ($offer)<input type="hidden" name="offer" value="{{ $offer->id }}">@endif
         @if ($vehicle ?? null)<input type="hidden" name="vehicle" value="{{ $vehicle->id }}">@endif
         <x-ui.card>
-            <div class="flex flex-col gap-4">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 @if ($accounts->count() > 1)
-                    <x-ui.field name="account" label="От кого" :options="$accounts->pluck('title', 'slug')" :value="$account->slug"/>
+                    <x-ui.field name="account" label="От кого" :options="$accounts->pluck('title', 'slug')" :value="$account->slug" span="sm:col-span-2"/>
                 @else
                     <input type="hidden" name="account" value="{{ $account->slug }}">
-                    <div class="text-sm text-ink-muted">От: {{ $account->fromName() }} &lt;{{ $account->email }}&gt;</div>
+                    <div class="text-sm text-ink-muted sm:col-span-2">От: {{ $account->fromName() }} &lt;{{ $account->email }}&gt;</div>
                 @endif
                 <x-ui.field name="to" label="Кому" type="email" multiple :value="$defaults['to']" autocomplete="off" required/>
                 <x-ui.field name="cc" label="Копия" :value="$defaults['cc']" autocomplete="off"/>
-                <x-ui.field name="subject" label="Тема" :value="$defaults['subject']"/>
+                <x-ui.field name="subject" label="Тема" :value="$defaults['subject']" span="sm:col-span-2"/>
                 @if ($templates->isNotEmpty() && $mode === 'new')
-                    <div class="field">
+                    <div class="field sm:col-span-2">
                         <span class="field-label">Шаблон</span>
                         <div class="flex flex-wrap gap-2">
                             @foreach ($templates as $t)
@@ -26,7 +26,7 @@
                         </div>
                     </div>
                 @endif
-                <x-ui.editor name="body" label="Письмо" :value="$defaults['body']"/>
+                <div class="sm:col-span-2"><x-ui.editor name="body" label="Письмо" :value="$defaults['body']"/></div>
             </div>
         </x-ui.card>
 

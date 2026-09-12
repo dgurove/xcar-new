@@ -1,9 +1,7 @@
 <x-ui.shell :title="'Файл для закупки № '.$purchase->number" narrow>
-    <x-ui.card>
-        <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-            @foreach ($stats as $label => $value)<div><dt class="text-ink-muted">{{ $label }}</dt><dd class="text-lg font-semibold tabular-nums">{{ $value }}</dd></div>@endforeach
-        </dl>
-    </x-ui.card>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        @foreach ($stats as $label => $value)<x-ui.stat :value="$value" :label="$label"/>@endforeach
+    </div>
     @php $bad = array_filter($rows, fn ($r) => $r['dl'] === null || $r['problems']); @endphp
     @if ($bad)
         <x-ui.card title="Не прочитаются" class="mt-4">

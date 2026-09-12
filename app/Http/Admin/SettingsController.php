@@ -5,17 +5,27 @@ namespace App\Http\Admin;
 use App\Mail\Account;
 use App\Mail\Scope;
 use App\Mail\Template;
+use App\Offers\Tag;
+use App\Users\Role;
+use App\Users\User;
 use App\Workflow\Insurer;
+use Illuminate\Http\Request;
 
 /** Хаб настроек: справочное, что меняется редко, — плитками со счётчиками. */
 class SettingsController
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('admin.settings.index', ['tiles' => [
-            ['Страховые', Insurer::count(), ['страховая', 'страховые', 'страховых'], '/nastroyki/strahovye'],
-            ['Ящики', Account::where('scope', Scope::Offers)->count(), ['ящик', 'ящика', 'ящиков'], '/nastroyki/yashchiki'],
-            ['Шаблоны', Template::where('scope', Scope::Offers)->count(), ['шаблон писем', 'шаблона писем', 'шаблонов писем'], '/nastroyki/shablony'],
-        ]]);
+        $tiles = [
+            ['Страховые', Insurer::count(), '/nastroyki/strahovye'],
+            ['Ящики', Account::where('scope', Scope::Offers)->count(), '/nastroyki/yashchiki'],
+            ['Шаблоны', Template::where('scope', Scope::Offers)->count(), '/nastroyki/shablony'],
+            ['Метки', Tag::count(), '/nastroyki/tegi'],
+        ];
+        if ($request->user()->isAdmin()) {
+            $tiles[] = ['Пользователи', User::whereIn('role', [Role::Admin, Role::Moderator, Role::Manager])->count(), '/nastroyki/polzovateli'];
+        }
+
+        return view('admin.settings.index', ['tiles' => $tiles]);
     }
 }

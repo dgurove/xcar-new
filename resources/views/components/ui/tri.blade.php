@@ -1,7 +1,7 @@
 {{-- Да / нет / неизвестно одним рядом кнопок. --}}
-@props(['name', 'label', 'value' => null])
+@props(['name', 'label', 'value' => null, 'span' => null])
 @php $v = old($name, $value === null ? '' : ($value ? '1' : '0')); @endphp
-<div class="field">
+<div class="field {{ $span }}">
     <span class="field-label">{{ $label }}</span>
     <div class="flex rounded-(--radius-m) bg-surface-3 p-1">
         @foreach (['1' => 'Да', '0' => 'Нет', '' => '—'] as $opt => $text)

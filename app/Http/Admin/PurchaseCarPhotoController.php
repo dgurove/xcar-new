@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Live\Stream;
+use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Purchases\Car;
 use Illuminate\Http\Request;
@@ -25,33 +26,40 @@ class PurchaseCarPhotoController
 
     public function reorder(Request $request, Car $car)
     {
-        Media::setNewOrder($request->validate(['order' => ['required', 'array']])['order']);
+        $order = $request->validate(['order' => ['required', 'array'], 'order.*' => ['integer']])['order'];
+        Media::setNewOrder(array_values(array_intersect($order, $car->photos()->pluck('id')->all())));
 
         return $this->gallery($car->refresh());
     }
 
     public function toggle(Car $car, Media $media)
     {
+        $this->own($car, $media);
         $media->setCustomProperty('hidden', ! $media->getCustomProperty('hidden', false))->save();
 
         return $this->gallery($car->refresh());
     }
 
-    public function main(Car $car, Media $media)
+    public function rotate(Car $car, Media $media, RotatePhoto $rotate)
     {
-        Media::setNewOrder($car->photos()->pluck('id')->reject(fn ($id) => $id === $media->id)->prepend($media->id)->all());
-        $media->setCustomProperty('hidden', false)->save();
+        $this->own($car, $media);
+        $rotate($media);
 
         return $this->gallery($car->refresh());
     }
 
     public function destroy(Car $car, Media $media)
     {
-        abort_unless($media->model_id === $car->id && $media->model_type === $car::class, 404);
+        $this->own($car, $media);
         $media->delete();
         $car->update(['photos_count' => $car->photos()->count()]);
 
         return $this->gallery($car->refresh());
+    }
+
+    private function own(Car $car, Media $media): void
+    {
+        abort_unless($media->model_id === $car->id && $media->model_type === $car::class, 404);
     }
 
     private function gallery(Car $car)

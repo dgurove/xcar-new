@@ -1,0 +1,112 @@
+@php
+    use App\Offers\DealState;
+    use App\Workflow\Asks;
+    $position = $offer->position();
+    $open = $deal->requirements->whereNull('done_at');
+    $answered = $deal->requirements->whereNotNull('done_at')->sortByDesc('done_at');
+@endphp
+<x-ui.shell :title="$offer->titleWithYear()">
+    <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
+        @if ($deal->state !== DealState::Active)
+            <x-ui.pill :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.pill>
+            @if ($deal->closed_at)<x-ui.pill tone="plain"><span class="nums font-normal">{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span></x-ui.pill>@endif
+        @elseif ($position)
+            <x-route.status :position="$position"/>
+        @else
+            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
+        @endif
+        <x-ui.pill tone="plain" href="/predlozheniya/{{ $offer->number }}"><x-ui.icon name="car" class="size-4"/> Предложение № {{ $offer->number }}</x-ui.pill>
+        @if ($errors->has('exit'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('exit') }}</x-ui.flash>@endif
+    </div>
+
+    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+            @if ($offer->positions->isNotEmpty())
+                @include('admin.offers.route')
+            @endif
+
+            @if ($open->isNotEmpty())
+            <x-ui.card title="Ждём от менеджера" class="order-2 box-urgent">
+                <div class="flex flex-col gap-2">
+                    @foreach ($open as $r)
+                        <div class="box-nested">
+                            <div class="font-medium">{{ $r->title }}</div>
+                            @if ($r->text)<div class="mt-1 whitespace-pre-line text-sm text-ink-muted">{{ $r->text }}</div>@endif
+                            <div class="mt-1 text-sm {{ $r->due_at?->isPast() ? 'text-urgent' : 'text-ink-muted' }}">{{ $r->stage?->block?->name }}{{ $r->due_at ? ' · до '.$r->due_at->translatedFormat('j M, H:i') : '' }}</div>
+                            @if ($r->media->isNotEmpty())
+                                <div class="mt-2 flex flex-col">
+                                    @foreach ($r->media as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/fayly/{{ $f->id }}" class="py-1"/>@endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </x-ui.card>
+            @endif
+
+            @if ($answered->isNotEmpty())
+            <x-ui.card title="Ответы менеджера" class="order-3">
+                <div class="flex flex-col gap-2">
+                    @foreach ($answered as $r)
+                        <div class="box-nested">
+                            <div class="flex flex-wrap items-baseline gap-x-2">
+                                <span class="font-medium">{{ $r->title }}</span>
+                                <span class="text-sm text-ink-muted">{{ $r->done_at->translatedFormat('j M, H:i') }}</span>
+                            </div>
+                            @if ($r->answer['exit'] ?? null)<div class="mt-1 text-sm">«{{ $r->answer['exit'] }}»</div>@endif
+                            @if (!empty($r->answer['fields']))
+                                <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+                                    @foreach ($r->answer['fields'] as $k => $v)
+                                        <div class="min-w-0"><dt class="text-ink-dim">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}</dt><dd class="break-words">{{ is_array($v) ? implode(', ', $v) : $v }}</dd></div>
+                                    @endforeach
+                                </dl>
+                            @endif
+                            @if ($r->media->isNotEmpty())
+                                <div class="mt-2 flex flex-col">
+                                    @foreach ($r->media as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/fayly/{{ $f->id }}" class="py-1"/>@endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </x-ui.card>
+            @endif
+
+            <x-ui.card title="Заметка" class="order-4" id="deal-note">
+                <form method="post" action="/rabota/sdelki/{{ $deal->id }}/zametka" class="flex flex-col gap-2">
+                    @csrf
+                    <textarea name="notes" class="field-input" placeholder="Что важно помнить по этой сделке">{{ old('notes', $deal->notes) }}</textarea>
+                    <x-ui.button size="sm" variant="secondary" class="self-end">Сохранить</x-ui.button>
+                </form>
+            </x-ui.card>
+        </div>
+
+        <div class="contents lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+            <x-ui.card class="order-1 overflow-hidden !p-0">
+                <a href="/predlozheniya/{{ $offer->number }}" class="block aspect-[4/3] bg-surface-3"><x-offer.photo :media="$offer->mainPhoto()" sizes="(min-width: 1024px) 352px, 100vw" class="size-full object-cover"/></a>
+                <div class="p-4">
+                    <div class="nums text-2xl leading-none">{{ number_format($deal->amount, 0, '', ' ') }} ₽</div>
+                    <div class="mt-1 text-sm text-ink-muted">{{ $offer->asking_price ? 'цена продажи '.number_format($offer->asking_price, 0, '', ' ').' ₽ · ' : '' }}{{ $deal->created_at->translatedFormat('j M Y') }}</div>
+                    <div class="mt-3 font-medium">{{ $deal->buyer?->name }}</div>
+                    @if ($deal->buyer?->phone)<a href="tel:+{{ $deal->buyer->phone }}" class="text-accent-text">{{ $deal->buyer->phoneFormatted() }}</a>@endif
+                    @if ($deal->buyer?->email)<div class="text-sm text-ink-muted">{{ $deal->buyer->email }}</div>@endif
+                    @if ($deal->bid?->comment)<div class="mt-2 text-sm">{{ $deal->bid->comment }}</div>@endif
+                </div>
+            </x-ui.card>
+
+            <x-ui.card title="История" class="order-5">
+                <div class="flex flex-col gap-1.5 text-sm">
+                    @forelse ($events->take(40) as $event)
+                        <div class="flex gap-3">
+                            <span class="nums shrink-0 font-normal text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
+                            <span class="min-w-0">{{ $event->text() }}</span>
+                            @if ($event->user)<span class="ml-auto shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
+                        </div>
+                    @empty
+                        <div class="text-ink-muted">Пока ничего.</div>
+                    @endforelse
+                </div>
+            </x-ui.card>
+        </div>
+    </div>
+</x-ui.shell>

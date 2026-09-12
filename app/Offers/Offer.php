@@ -30,7 +30,7 @@ use Spatie\MediaLibrary\HasMedia;
 #[Fillable([
     'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'body', 'transmission', 'drive', 'fuel',
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
-    'incident_date', 'description', 'settlement_id', 'inspection_address', 'floor_price', 'repair_estimate',
+    'incident_date', 'description', 'settlement_id', 'inspection_address', 'floor_price',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'insurer_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
 ])]
@@ -63,7 +63,6 @@ class Offer extends Model implements HasMedia
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
             'floor_price' => 'int',
-            'repair_estimate' => 'int',
             'asking_price' => 'int',
             'min_bid_price' => 'int',
             'min_bid_share' => 'float',

@@ -156,6 +156,8 @@ final class Nav
                     self::link('Страховые', '/nastroyki/strahovye'),
                     self::link('Ящики', '/nastroyki/yashchiki'),
                     self::link('Шаблоны', '/nastroyki/shablony'),
+                    self::link('Метки', '/nastroyki/tegi'),
+                    ...($user->isAdmin() ? [self::link('Пользователи', '/nastroyki/polzovateli')] : []),
                 ],
                 'Личное' => [
                     self::link('Уведомления', '/lk/uvedomleniya'),

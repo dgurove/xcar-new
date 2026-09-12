@@ -233,6 +233,35 @@
   .choice-danger input:checked + span { @apply bg-danger-soft text-danger; }
   .tri input:checked + span { @apply bg-surface text-ink; }
 
+
+  /* ------------------------------------------------- плотность CRM и стоянки */
+
+  /* Витрина и кабинет остаются крупными — под палец. В CRM и на стоянке форм
+     много и полей десятки: поле 44/40 px, подпись 13 px, карточка теснее. */
+  .surface-crm .field, .surface-park .field { gap: .25rem; }
+  .surface-crm .field-label, .surface-park .field-label { font-size: 13px; line-height: 1.25; }
+  .surface-crm .field-input, .surface-park .field-input { padding-block: .5rem; padding-inline: .75rem; min-height: 2.75rem; }
+  .surface-crm select.field-input, .surface-park select.field-input { padding-right: 2rem; background-position: right 10px center; }
+  .surface-crm textarea.field-input, .surface-park textarea.field-input { min-height: 5rem; }
+  .surface-crm .tri span, .surface-park .tri span { padding-block: .375rem; }
+  .surface-crm .choice span, .surface-park .choice span { padding: .375rem .75rem; }
+  .surface-crm .box, .surface-park .box { padding: 1rem; }
+  .surface-crm .box > h2:first-child, .surface-park .box > h2:first-child { font-size: 1.125rem; margin-bottom: .75rem; }
+  .surface-crm .box-nested, .surface-park .box-nested { padding: .75rem; }
+  @media (min-width: 640px) {
+    .surface-crm .field-input, .surface-park .field-input { font-size: 14px; min-height: 2.5rem; }
+    .surface-crm .box, .surface-park .box { padding: 1.25rem; }
+    .surface-crm .btn-s, .surface-park .btn-s { height: 2.25rem; }
+  }
+
+  /* Глазик-переключатель у подписи поля: показывать на сайте или нет. */
+  .eye { @apply inline-flex cursor-pointer items-center text-ink-dim; }
+  .eye input { @apply sr-only; }
+  .eye .eye-on { display: none; }
+  .eye input:checked ~ .eye-on { display: block; color: var(--color-ink); }
+  .eye input:checked ~ .eye-off { display: none; }
+  .eye input:focus-visible ~ svg { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+
   /* ------------------------------------------------------------- метки */
 
   /* Серый чип в потоке: факт, таймер, ссылка-справка. */
@@ -314,6 +343,21 @@
   /* Аватар: фото или инициалы. */
   .avatar { @apply inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-3 text-ink-muted font-semibold select-none; }
   .avatar img { @apply size-full object-cover; }
+
+  /* Файл строкой: квадрат с расширением, имя, размер, действия. */
+  .file-row { @apply flex items-center gap-3 py-1.5; }
+  .file-icon { @apply flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-(--radius-s) bg-surface-3 text-[10px] font-bold uppercase leading-none tracking-wide text-ink-muted; }
+  .file-icon img { @apply size-full object-cover; }
+  .file-icon-pdf { @apply bg-danger-soft text-danger; }
+  .file-icon-sheet { @apply bg-open-soft text-open; }
+  .file-icon-doc { @apply bg-accent-soft text-accent-text; }
+  .file-icon-zip { @apply bg-closed-soft text-closed; }
+
+  /* Плитка-число: сколько чего, ссылкой в раздел. */
+  .stat { @apply flex flex-col gap-1 rounded-(--radius-xl) bg-surface p-4; }
+  .stat-value { @apply text-2xl font-bold leading-none tabular-nums; }
+  .stat-label { @apply text-sm text-ink-muted; }
+  a.stat:hover { @apply bg-surface-2; }
 }
 
 /* ------------------------------------------------------------- шторки */
@@ -557,7 +601,7 @@
     display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem;
     --card-display: flex; --card-cols: none; --card-areas: none; --card-align: stretch; --card-gap: 0; --card-pad: 0;
     --card-radius: var(--radius-xl);
-    --media-w: 100%; --media-h: auto; --media-ratio: 4 / 3; --media-radius: 0; --blank-display: none;
+    --media-w: 100%; --media-h: auto; --media-ratio: 4 / 3; --media-radius: 0; --blank-display: block; --blank-h: auto;
     --body-pad: 1.25rem 1.25rem 0; --body-pad-end: 1.25rem; --body-gap: .5rem; --body-grow: 0; --extra-pad: 0 1.25rem;
     --float-pos: absolute; --frames-display: contents;
     --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
@@ -571,7 +615,7 @@
       display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem;
       --card-display: flex; --card-cols: none; --card-areas: none; --card-align: stretch; --card-gap: 0; --card-pad: 0;
       --card-radius: var(--radius-xl);
-      --media-w: 100%; --media-h: auto; --media-ratio: 4 / 3; --media-radius: 0; --blank-display: none;
+      --media-w: 100%; --media-h: auto; --media-ratio: 4 / 3; --media-radius: 0; --blank-display: block; --blank-h: auto;
       --body-pad: 1.25rem 1.25rem 0; --body-pad-end: 1.25rem; --body-gap: .5rem; --body-grow: 0; --extra-pad: 0 1.25rem;
       --float-pos: absolute; --frames-display: contents;
       --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
@@ -596,7 +640,11 @@
   }
   .card-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .5s; }
   .card:hover .card-media img { transform: scale(1.05); }
-  .card-media--blank { display: var(--blank-display); height: var(--blank-h); aspect-ratio: auto; }
+  .card-media--blank { display: var(--blank-display); height: var(--blank-h); }
+  /* Заглушка вместо фото: силуэт на мягком фоне, цвет окон — фон. */
+  .car-blank { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; color: var(--color-ink-dim); opacity: .7;
+    background: radial-gradient(ellipse 80% 70% at 50% 110%, var(--color-line), var(--color-surface-3) 75%); }
+  .car-blank svg { width: 42%; max-width: 6rem; max-height: 70%; }
   .card-frames { display: var(--frames-display); }
   .card-marks { position: var(--float-pos); top: .75rem; left: .75rem; right: 3rem; display: flex; flex-wrap: wrap; gap: .375rem; }
   .card-marks .mark-glass { background: var(--glass-bg); color: var(--glass-ink); backdrop-filter: var(--glass-blur); }
@@ -644,6 +692,56 @@
   .card-arrow:focus-visible { opacity: 1; }
 }
 
+/* Карточки в CRM и на стоянке — плотнее: в плитке фото сверху, но на треть
+   высоты, а не 4:3; строка тоньше — факты справа от фото, а не под ним.
+   Вне слоёв — переменные должны перебить и .cards, и утилиты в разметке. */
+.surface-crm .cards, .surface-park .cards {
+  gap: .375rem;
+  --card-pad: .5rem .75rem .5rem .5rem; --card-gap: .25rem .75rem;
+  --media-w: 5rem; --media-h: 3.5rem; --blank-h: 3.5rem;
+  --card-btn-h: 2rem; --price-size: 1rem;
+}
+@media (min-width: 640px) {
+  .surface-crm .cards, .surface-park .cards {
+    --card-areas: "media body action" "media extra action";
+    --card-pad: .5rem .75rem .5rem .5rem; --card-gap: .125rem .75rem;
+    --media-w: 5.5rem; --media-h: 3.75rem; --blank-h: 3.75rem; --action-w: 11rem;
+  }
+}
+.surface-crm .cards--grid, .surface-park .cards--grid {
+  --card-display: flex; --card-cols: none; --card-areas: none; --card-align: stretch; --card-gap: 0; --card-pad: 0;
+  --card-radius: var(--radius-l);
+  --media-w: 100%; --media-h: auto; --media-ratio: 5 / 2; --media-radius: 0; --blank-display: block; --blank-h: auto;
+  --body-pad: .625rem .75rem 0; --body-pad-end: .75rem; --body-gap: .25rem; --body-grow: 0; --extra-pad: 0 .75rem;
+  --float-pos: absolute; --frames-display: contents;
+  --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
+  --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
+  --action-pad: .5rem .75rem .75rem; --action-w: auto; --action-self: stretch; --action-mt: auto;
+  --card-btn-pad: .75rem; --card-btn-size: .8125rem; --card-btn-h: 2rem;
+  --price-size: 1rem; --price-align: left; --aside-w: 100%; --aside-push: 0;
+}
+@media (min-width: 640px) {
+  .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) {
+  --card-display: flex; --card-cols: none; --card-areas: none; --card-align: stretch; --card-gap: 0; --card-pad: 0;
+  --card-radius: var(--radius-l);
+  --media-w: 100%; --media-h: auto; --media-ratio: 5 / 2; --media-radius: 0; --blank-display: block; --blank-h: auto;
+  --body-pad: .625rem .75rem 0; --body-pad-end: .75rem; --body-gap: .25rem; --body-grow: 0; --extra-pad: 0 .75rem;
+  --float-pos: absolute; --frames-display: contents;
+  --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
+  --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
+  --action-pad: .5rem .75rem .75rem; --action-w: auto; --action-self: stretch; --action-mt: auto;
+  --card-btn-pad: .75rem; --card-btn-size: .8125rem; --card-btn-h: 2rem;
+  --price-size: 1rem; --price-align: left; --aside-w: 100%; --aside-push: 0;
+}
+}
+/* Плитки чуть уже и без зазора в 1.25rem — их помещается заметно больше. */
+.surface-crm .cards--grid, .surface-park .cards--grid { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; }
+@media (min-width: 640px) { .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; } }
+.surface-crm .card-title > a, .surface-park .card-title > a { font-size: .9375rem; }
+.surface-crm .card-marks, .surface-park .card-marks { top: .5rem; left: .5rem; gap: .25rem; }
+.surface-crm .card-marks .mark, .surface-park .card-marks .mark { font-size: 11px; padding-block: 2px; padding-inline: .375rem; }
+.surface-crm .card-star, .surface-park .card-star { top: .5rem; right: .5rem; }
+
 /* Шапка, таб-бар и полоса действий при переходе стоят на месте, едет только содержимое. */
 #header { view-transition-name: header; }
 #tabbar { view-transition-name: tabbar; }
@@ -658,13 +756,26 @@
   .combobox-option { @apply flex w-full items-baseline justify-between gap-3 rounded-(--radius-s) px-3 py-2 text-left hover:bg-surface-3; min-height: 44px; }
   .combobox-create { @apply text-accent-text; }
 
-  .photo-grid { @apply grid grid-cols-3 gap-2 sm:grid-cols-4; }
-  .photo-cell { @apply relative aspect-[4/3] overflow-hidden rounded-(--radius-m) bg-surface-3; touch-action: pan-y; }
-  .photo-cell img { @apply size-full object-cover; }
-  .photo-cell.is-hidden img { @apply opacity-40; }
-  .photo-cell .photo-actions { @apply absolute inset-x-0 bottom-0 flex justify-between bg-chrome/70 px-1 py-0.5 text-white; }
-  .photo-cell .photo-actions button { @apply rounded-(--radius-s) p-1.5; }
-  .photo-main { @apply absolute left-1 top-1 rounded-(--radius-s) bg-accent px-1.5 py-0.5 text-xs text-white; }
+  /* Полоса фото: прокрутка вбок, плитка фиксированной высоты, первая — «добавить».
+     Действия снизу на стекле: глаз · поворот · корзина. */
+  .photo-strip { @apply -mx-4 flex snap-x gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0 sm:pb-1; scrollbar-width: none; }
+  @media (hover: hover) { .photo-strip { scrollbar-width: thin; } }
+  .photo-cell { @apply relative aspect-[4/3] h-28 shrink-0 snap-start overflow-hidden rounded-(--radius-m) bg-surface-3 sm:h-36; touch-action: pan-x; }
+  .photo-cell img { @apply size-full cursor-zoom-in object-cover; }
+  .photo-cell.is-hidden img { @apply opacity-40 grayscale; }
+  .photo-add { @apply flex aspect-[4/3] h-28 shrink-0 cursor-pointer items-center justify-center rounded-(--radius-m) bg-surface-3 text-ink-muted transition-colors hover:bg-line hover:text-ink sm:h-36; }
+  .photo-cell .photo-actions { @apply absolute inset-x-0 bottom-0 flex justify-between text-white; background: rgb(18 18 18 / .55); backdrop-filter: blur(10px); }
+  .photo-cell .photo-actions button { @apply flex flex-1 items-center justify-center py-1.5 hover:bg-white/15; }
+  .photo-main { @apply absolute left-1 top-1; }
+  .photo-off { @apply absolute right-1 top-1 rounded-(--radius-s) p-1 text-white; background: rgb(18 18 18 / .55); }
+
+  /* Свои кнопки в тулбаре Viewer.js: глаз · поворот · корзина. */
+  .viewer-eye::before, .viewer-rotate::before, .viewer-trash::before { content: ''; display: block; width: 24px; height: 24px; margin: 3px; background: center / contain no-repeat; }
+  .viewer-eye::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Zm9.5 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z'/%3E%3C/svg%3E"); }
+  .viewer-eye.is-off::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3l18 18M10.6 5.8A10.5 10.5 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.6 6.6C4 8.5 2.5 12 2.5 12s3.5 6.5 9.5 6.5c1.6 0 3-.4 4.2-1M9.9 9.9a3 3 0 0 0 4.2 4.2'/%3E%3C/svg%3E"); }
+  .viewer-rotate::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 4v6h-6M19.4 10A8 8 0 1 0 20 14'/%3E%3C/svg%3E"); }
+  .viewer-trash::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h16M9 7V4h6v3m-7 0v13h8V7'/%3E%3C/svg%3E"); }
+  .viewer-backdrop { background: rgb(18 18 18 / .92); }
   .sortable-ghost { @apply opacity-40; }
 }
 

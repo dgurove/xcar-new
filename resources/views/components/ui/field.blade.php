@@ -1,11 +1,11 @@
-@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null])
+@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null])
 @php
     $id = $attributes->get('id', 'f-'.str_replace(['[', ']'], ['-', ''], $name));
     $error = $errors->first($name);
     $bound = old($name, $value);
 @endphp
-<div class="field {{ $error ? 'field-invalid' : '' }}">
-    @if ($label)<label for="{{ $id }}" class="field-label">{{ $label }}</label>@endif
+<div class="field {{ $span }} {{ $error ? 'field-invalid' : '' }}">
+    @if ($label)<label for="{{ $id }}" class="field-label {{ $afterLabel ? 'flex items-center gap-1.5' : '' }}">{{ $label }}@if ($afterLabel) {{ $afterLabel }}@endif</label>@endif
     @if ($options !== null)
         <select id="{{ $id }}" name="{{ $name }}" {{ $attributes->except('id')->merge(['class' => 'field-input']) }}>
             @if ($placeholder)<option value="">{{ $placeholder }}</option>@endif
