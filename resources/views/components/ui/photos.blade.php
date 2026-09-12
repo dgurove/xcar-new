@@ -1,11 +1,12 @@
-{{-- Полоса фотографий: плитка «добавить» прилипает слева и не уезжает при
-     прокрутке, дальше кадры с действиями глаз · поворот · корзина; скрытый
-     кадр — серый; главное — первый видимый, порядок перетаскиванием, клик по
+{{-- Ряд фотографий: плитка «добавить» стоит вне прокрутки, справа лента
+     кадров со snap; на кадре действия глаз · поворот · корзина, скрытый —
+     серый, главное — первый видимый, порядок перетаскиванием, клик по
      кадру — просмотрщик, файлы можно бросить на карточку. Живёт внутри
-     data-controller="photos". --}}
+     data-controller="photos"; turbo-stream подменяет ряд целиком. --}}
 @props(['photos', 'hide' => true, 'main' => true])
-<div id="gallery" class="photo-strip" data-photos-target="grid">
+<div id="gallery" class="photo-row">
     <button type="button" class="photo-add" data-action="photos#pick" aria-label="Добавить фото"><x-ui.icon name="camera" class="size-7"/></button>
+    <div class="photo-strip" data-photos-target="grid">
     @php $mainShown = false; @endphp
     @foreach ($photos as $media)
         @php $hidden = $hide && $media->getCustomProperty('hidden', false); @endphp
@@ -19,4 +20,5 @@
             </div>
         </div>
     @endforeach
+    </div>
 </div>

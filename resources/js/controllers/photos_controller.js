@@ -29,7 +29,7 @@ export default class extends Controller {
             delay: 150,
             delayOnTouchOnly: true,
             direction: 'horizontal',
-            filter: '.photo-add, .photo-actions',
+            filter: '.photo-actions',
             preventOnFilter: false,
             onEnd: () => this.reorder(),
         });
