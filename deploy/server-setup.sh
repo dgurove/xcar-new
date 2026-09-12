@@ -73,7 +73,13 @@ EOP
 if [ -e /run/xcar-docker-changed ]; then
     rm -f /run/xcar-docker-changed
     # Кривой daemon.json = демон не поднимется вместе с сайтом: сперва проверка.
-    dockerd --validate --config-file /etc/docker/daemon.json.new >/dev/null && mv /etc/docker/daemon.json.new /etc/docker/daemon.json && systemctl restart docker
+    if dockerd --validate --config-file /etc/docker/daemon.json.new >/dev/null; then
+        mv /etc/docker/daemon.json.new /etc/docker/daemon.json && systemctl restart docker
+    else
+        rm -f /etc/docker/daemon.json.new
+        echo "daemon.json не прошёл проверку — настройки docker не изменены" >&2
+        exit 1
+    fi
 fi
 
 echo "==> диск данных $DATA"

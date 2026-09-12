@@ -32,26 +32,22 @@ final class PinThread
         foreach ($pending->groupBy(fn (Attachment $a) => $a->message->account_id) as $accountId => $group) {
             /** @var Message $first */
             $first = $group->first()->message;
-            $pinned += Cache::lock("imap-parts:{$accountId}", 600)->block(120, function () use ($first, $group) {
-                $imap = new Imap($first->account, 120);
-                $done = 0;
-                try {
-                    foreach ($group as $attachment) {
-                        $contents = $this->parts->fetch($attachment, $imap);
-                        if ($contents === null) {
-                            Log::warning('Почта: вложение не закрепилось', ['attachment' => $attachment->id]);
+            $imap = new Imap($first->account, 120);
+            try {
+                foreach ($group as $attachment) {
+                    // Замок ящика — на одно вложение: между ними успевает пройти клик сотрудника по другому файлу.
+                    $contents = Cache::lock("imap-parts:{$accountId}", 120)->block(120, fn () => $this->parts->fetch($attachment, $imap));
+                    if ($contents === null) {
+                        Log::warning('Почта: вложение не закрепилось', ['attachment' => $attachment->id]);
 
-                            continue;
-                        }
-                        $attachment->forceFill(['blob_sha' => Blobs::put($contents), 'pinned_at' => now(), 'size' => strlen($contents)])->save();
-                        $done++;
+                        continue;
                     }
-                } finally {
-                    $imap->disconnect();
+                    $attachment->forceFill(['blob_sha' => Blobs::put($contents), 'pinned_at' => now(), 'size' => strlen($contents)])->save();
+                    $pinned++;
                 }
-
-                return $done;
-            });
+            } finally {
+                $imap->disconnect();
+            }
         }
 
         return $pinned;

@@ -40,7 +40,11 @@ final class PostMessage
                 $mime = (string) $file->getMimeType();
                 if (str_starts_with($mime, 'image/')) {
                     // Кадр с телефона — 1600 px webp, как и везде; исходник в чате не нужен.
-                    $webp = app(PhotoIngest::class)->shrink($file->getRealPath());
+                    try {
+                        $webp = app(PhotoIngest::class)->shrink($file->getRealPath());
+                    } catch (\RuntimeException) {
+                        throw ValidationException::withMessages(['files' => 'Файл '.$file->getClientOriginalName().' не читается как изображение']);
+                    }
                     $path = 'chats/'.$chat->id.'/'.Str::uuid().'.webp';
                     Storage::disk('private')->put($path, file_get_contents($webp));
                     @unlink($webp);

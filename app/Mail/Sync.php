@@ -70,22 +70,30 @@ final class Sync
 
         $uids = $imap->uids($folder->path, $folder->last_uid + 1, $account->sync_from);
         $stored = 0;
+        $halted = false;
         foreach (array_chunk($uids, self::BATCH) as $chunk) {
-            foreach ($imap->structures($folder->path, $chunk) as $uid => $row) {
-                try {
-                    $stored += (int) $this->store($account, $folder, $snapshot, $imap, $uid, $row);
-                } catch (Throwable $e) {
-                    // Одно непринятое письмо не останавливает папку: UID снова попадёт в диапазон.
-                    Log::error('Почта: письмо не записалось', ['account' => $account->email, 'folder' => $folder->path, 'uid' => $uid, 'error' => $e->getMessage()]);
+            $rows = $imap->structures($folder->path, $chunk);
+            foreach ($chunk as $uid) {
+                if (! isset($rows[$uid])) {
+                    continue; // письмо исчезло между SEARCH и FETCH
                 }
+                try {
+                    $stored += (int) $this->store($account, $folder, $snapshot, $imap, $uid, $rows[$uid]);
+                } catch (Throwable $e) {
+                    // Непринятое письмо не пропадает: last_uid остаётся перед ним, uid_next не
+                    // запоминается — следующий синк увидит папку изменившейся и заберёт его снова.
+                    Log::error('Почта: письмо не записалось', ['account' => $account->email, 'folder' => $folder->path, 'uid' => $uid, 'error' => $e->getMessage()]);
+                    $halted = true;
+                    break 2;
+                }
+                $folder->forceFill(['last_uid' => max($folder->last_uid, $uid)])->save();
             }
-            $folder->forceFill(['last_uid' => max($folder->last_uid, max($chunk))])->save();
         }
 
         $this->refreshFlags($account, $folder, $imap);
         $folder->forceFill([
             'uid_validity' => $snapshot['uid_validity'],
-            'uid_next' => $snapshot['uid_next'],
+            'uid_next' => $halted ? $folder->uid_next : $snapshot['uid_next'],
             'messages_count' => $snapshot['messages'] ?? $folder->messages_count,
             'unseen_count' => $snapshot['unseen'] ?? $folder->unseen_count,
             'synced_at' => now(),
@@ -116,7 +124,16 @@ final class Sync
 
             return false;
         }
-        $parsed = $this->receiver->receive($imap, $folder->path, $uid, $row['structure']);
+        try {
+            $parsed = $this->receiver->receive($imap, $folder->path, $uid, $row['structure']);
+        } catch (Throwable $e) {
+            // Письмо не прочиталось (обрыв, кривой MIME) — строка всё равно заводится, «ждёт разбора»:
+            // mail:reconcile перезапустит ParseMessage, который заберёт его по UID заново.
+            Log::warning('Почта: письмо принято без разбора', ['account' => $account->email, 'folder' => $folder->path, 'uid' => $uid, 'error' => $e->getMessage()]);
+            Message::create(array_merge($this->skeleton($account, $folder, $snapshot, $uid, $row), ['parse_error' => mb_substr($e->getMessage(), 0, 2000)]));
+
+            return true;
+        }
         $adopted = $parsed['message_id'] ? Message::where('account_id', $account->id)->where('message_id', $parsed['message_id'])->orderByRaw('imap_uid is null desc')->first() : null;
         if ($adopted) {
             $adopted->forceFill([
@@ -133,18 +150,30 @@ final class Sync
             return false;
         }
 
-        $message = Message::create([
-            'account_id' => $account->id,
-            'folder_id' => $folder->id,
+        $message = Message::create(array_merge($this->skeleton($account, $folder, $snapshot, $uid, $row), [
             'direction' => $folder->kind === FolderKind::Sent || ($parsed['from_email'] && $parsed['from_email'] === mb_strtolower($account->email)) ? Direction::Out : Direction::In,
-            'imap_uid' => $uid,
-            'uid_validity' => $snapshot['uid_validity'],
             'message_id' => $parsed['message_id'],
             'subject' => $parsed['subject'],
             'from_email' => $parsed['from_email'],
             'from_name' => $parsed['from_name'],
             'date_at' => $parsed['date'],
+        ]));
+        $this->ingest->apply($message, $parsed);
+
+        return true;
+    }
+
+    /** Поля письма, известные ещё до чтения: место в ящике, флаги, размер. */
+    private function skeleton(Account $account, Folder $folder, array $snapshot, int $uid, array $row): array
+    {
+        return [
+            'account_id' => $account->id,
+            'folder_id' => $folder->id,
+            'direction' => $folder->kind === FolderKind::Sent ? Direction::Out : Direction::In,
+            'imap_uid' => $uid,
+            'uid_validity' => $snapshot['uid_validity'],
             'internal_at' => $row['internal_at'],
+            'date_at' => $row['internal_at'],
             'size' => $row['size'],
             'is_seen' => $this->flag($row['flags'], 'seen'),
             'is_answered' => $this->flag($row['flags'], 'answered'),
@@ -152,10 +181,7 @@ final class Sync
             'is_draft' => $this->flag($row['flags'], 'draft'),
             'is_deleted' => $this->flag($row['flags'], 'deleted'),
             'parse_state' => ParseState::Pending,
-        ]);
-        $this->ingest->apply($message, $parsed);
-
-        return true;
+        ];
     }
 
     private function refreshFlags(Account $account, Folder $folder, Imap $imap): void

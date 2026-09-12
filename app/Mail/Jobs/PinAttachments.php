@@ -4,12 +4,16 @@ namespace App\Mail\Jobs;
 
 use App\Mail\Actions\PinThread;
 use App\Mail\Thread;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-/** Закрепить файлы ветки в фоне: письма страховых — по 30 фотографий, из ящика это минуты. */
-final class PinAttachments implements ShouldBeUnique, ShouldQueue
+/**
+ * Закрепить файлы ветки в фоне: письма страховых — по 30 фотографий, из ящика это
+ * минуты. Уникальна до начала обработки: письмо, пришедшее во время закрепления,
+ * ставит свою задачу, а не теряется.
+ */
+final class PinAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
 

@@ -2,6 +2,7 @@
 
 namespace App\Media\Actions;
 
+use Illuminate\Support\Facades\Cache;
 use Spatie\MediaLibrary\Conversions\FileManipulator;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -15,7 +16,10 @@ final class WarmPhotos
     {
         $cold = $model->getMedia('photos')->filter(fn (Media $m) => ! array_filter((array) $m->generated_conversions));
         foreach ($cold as $media) {
-            $this->files->createDerivedFiles($media, onlyMissing: true);
+            // Пока очередь считает, повторные показы карточки задач не добавляют.
+            if (Cache::add("warm:{$media->id}", 1, 300)) {
+                $this->files->createDerivedFiles($media, onlyMissing: true);
+            }
         }
 
         return $cold->count();
