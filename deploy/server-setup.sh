@@ -62,14 +62,19 @@ cfg = json.load(open(p)) if os.path.exists(p) and os.path.getsize(p) else {}
 want = {
     "log-driver": "json-file", "log-opts": {"max-size": "20m", "max-file": "5"},
     "registry-mirrors": ["https://mirror.gcr.io"],
-    "builder": {"gc": {"enabled": True, "defaultKeepStorage": "3GB"}},
+    # Docker 28+: reservedSpace/maxUsedSpace вместо keepStorage.
+    "builder": {"gc": {"enabled": True, "policy": [{"maxUsedSpace": "3GB", "all": True}]}},
 }
 new = {**cfg, **want}
 if new != cfg:
-    json.dump(new, open(p, 'w'), indent=2, ensure_ascii=False)
+    json.dump(new, open(p + '.new', 'w'), indent=2, ensure_ascii=False)
     open('/run/xcar-docker-changed', 'w').close()
 EOP
-if [ -e /run/xcar-docker-changed ]; then rm -f /run/xcar-docker-changed; systemctl restart docker; fi
+if [ -e /run/xcar-docker-changed ]; then
+    rm -f /run/xcar-docker-changed
+    # Кривой daemon.json = демон не поднимется вместе с сайтом: сперва проверка.
+    dockerd --validate --config-file /etc/docker/daemon.json.new >/dev/null && mv /etc/docker/daemon.json.new /etc/docker/daemon.json && systemctl restart docker
+fi
 
 echo "==> диск данных $DATA"
 # Второй диск целиком, без таблицы разделов. Размечается только пустой.
@@ -85,7 +90,7 @@ else
 fi
 # Владельцы — по UID внутри контейнеров: www-data 33, postgres 999.
 cd "$DATA"
-mkdir -p storage media private cache postgres backups
+mkdir -p storage media private cache postgres backups restic-cache
 chown 33:33 storage media private cache backups
 chown 999:999 postgres
 chmod 750 postgres

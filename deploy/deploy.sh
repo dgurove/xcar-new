@@ -36,8 +36,10 @@ current_dir() { remote "readlink -f $ROOT/current"; }
 
 build() {
     echo "==> сборка образа"
-    # Кэш сборки подрезает сам демон (builder.gc в daemon.json, server-setup.sh).
     compose_in "$(release_dir)" build app
+    # Кэш, которого эта сборка не коснулась двое суток, — после сборки, не до:
+    # снимок контекста выкладки нужен ей самой (обжигались 08.09). --max-used-space в Docker 29 ничего не снимает.
+    remote "docker builder prune -f --filter until=48h >/dev/null 2>&1 || true"
 }
 
 migrate() {

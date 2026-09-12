@@ -30,12 +30,12 @@ test -n "$DB_DATABASE" -a -n "$DB_USERNAME" || { echo "в .env.app нет DB_DAT
 for k in RESTIC_REPOSITORY RESTIC_PASSWORD AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION S3_ENDPOINT S3_BUCKET; do
     export "$k=$(env_value $k .env)"
 done
-mkdir -p "$BACKUPS" "$DATA/cache/restic"
+mkdir -p "$BACKUPS" "$DATA/restic-cache"
 
 restic() {
     docker run --rm -i --cpu-shares 256 --hostname xcar \
         -e RESTIC_REPOSITORY -e RESTIC_PASSWORD -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION \
-        -v "$DATA/cache/restic:/root/.cache/restic" \
+        -v "$DATA/restic-cache:/root/.cache/restic" \
         -v "$DATA/media:/data/media:ro" -v "$DATA/private:/data/private:ro" \
         "$RESTIC_IMAGE" -o "s3.region=$AWS_DEFAULT_REGION" --quiet "$@"
 }

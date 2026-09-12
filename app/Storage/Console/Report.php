@@ -61,8 +61,13 @@ final class Report extends Command
             return 0;
         }
         $bytes = 0;
-        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS)) as $file) {
-            $bytes += $file->getSize();
+        try {
+            $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::LEAVES_ONLY, \RecursiveIteratorIterator::CATCH_GET_CHILD);
+            foreach ($it as $file) {
+                $bytes += (int) $file->getSize();
+            }
+        } catch (\Throwable) {
+            // Чужой каталог без прав — считаем, что смогли.
         }
 
         return $bytes;

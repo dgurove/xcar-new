@@ -21,7 +21,7 @@ restic() { # $1 — каталог хоста, куда restic пишет (/out 
     local out="$1"; shift
     docker run --rm -i --hostname xcar \
         -e RESTIC_REPOSITORY -e RESTIC_PASSWORD -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION \
-        -v "$DATA/cache/restic:/root/.cache/restic" -v "$out:/out" \
+        -v "$DATA/restic-cache:/root/.cache/restic" -v "$out:/out" \
         "$RESTIC_IMAGE" -o "s3.region=$AWS_DEFAULT_REGION" "$@"
 }
 
