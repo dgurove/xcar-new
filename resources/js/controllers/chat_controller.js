@@ -42,17 +42,56 @@ export default class extends Controller {
         box.innerHTML = html;
         // Первое сообщение завело чат: приветствие-заглушка уходит, лента дальше живёт по seq.
         if (!this.lastValue) this.listTarget.replaceChildren();
+        const atBottom = this.atBottom();
+        let mine = false;
         for (const el of [...box.children]) {
             const seq = Number(el.dataset.seq);
             if (!seq || seq <= this.lastValue) continue;
+            this.listTarget.querySelector('[data-pending]')?.remove();
             this.listTarget.append(el);
             this.lastValue = seq;
+            if (el.classList.contains('justify-end')) mine = true;
         }
-        this.scroll();
+        // Вниз — если и так были внизу или это своё; иначе читающего не дёргать, показать «↓».
+        if (atBottom || mine) this.scroll();
+        else this.unseen(1);
+    }
+
+    atBottom() {
+        const l = this.listTarget;
+        return l.scrollHeight - l.scrollTop - l.clientHeight < 80;
     }
 
     scroll() {
         this.listTarget.scrollTop = this.listTarget.scrollHeight;
+        this.unseen(0);
+    }
+
+    unseen(add) {
+        let pill = this.element.querySelector('.chat-down');
+        if (!add) { pill?.remove(); return; }
+        if (!pill) {
+            pill = document.createElement('button');
+            pill.type = 'button';
+            pill.className = 'chat-down';
+            pill.dataset.count = '0';
+            pill.addEventListener('click', () => this.scroll());
+            this.listTarget.after(pill);
+        }
+        pill.dataset.count = String(Number(pill.dataset.count) + add);
+        pill.textContent = `↓ ${pill.dataset.count}`;
+    }
+
+    // Пузырь появляется в момент отправки; ответ сервера его заменяет, ошибка красит — тап повторяет.
+    pending(text, files) {
+        const el = document.createElement('div');
+        el.className = 'flex justify-end';
+        el.dataset.pending = '1';
+        el.innerHTML = '<div class="max-w-[85%] rounded-(--radius-l) bg-accent-soft px-3.5 py-2.5 opacity-70"><div class="whitespace-pre-line break-words"></div></div>';
+        el.querySelector('div > div').textContent = text || (files.length ? `Файлов: ${files.length}` : '');
+        this.listTarget.append(el);
+        this.scroll();
+        return el;
     }
 
     keydown(event) {
@@ -73,32 +112,39 @@ export default class extends Controller {
     }
 
     async send(event) {
-        event.preventDefault();
+        event?.preventDefault();
         const text = this.inputTarget.value.trim();
         const files = [...this.filesTarget.files];
         if (!text && !files.length) return;
+        this.inputTarget.value = '';
+        this.formTarget.dispatchEvent(new CustomEvent('draft:clear'));
+        this.filesTarget.value = '';
+        this.filesPicked();
+        this.inputTarget.focus();
+        await this.deliver(text, files);
+    }
+
+    async deliver(text, files) {
+        this.listTarget.querySelector('[data-pending]')?.remove();
+        const bubble = this.pending(text, files);
         const form = new FormData();
         form.append('text', text);
         form.append('after', this.lastValue);
         files.forEach((f) => form.append('files[]', f));
-        this.formTarget.querySelector('button[type=submit], button:not([type])').disabled = true;
         try {
             // Чата ещё нет — первое сообщение уходит на open, ответ приносит адрес ленты.
             const r = await fetch(this.urlValue || this.openValue, { method: 'POST', body: form, headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest' } });
             if (!r.ok) {
                 const d = await r.json().catch(() => ({}));
-                window.toast?.(d.message || (r.status === 401 || r.status === 419 ? 'Войдите заново' : 'Не отправилось'), 'danger');
-                return;
+                throw new Error(d.message || (r.status === 401 || r.status === 419 ? 'Войдите заново' : 'Не отправилось'));
             }
             if (!this.urlValue) { this.urlValue = r.headers.get('X-Chat-Url') || ''; this.idValue = Number(r.headers.get('X-Chat-Id') || 0); }
             this.append(await r.text());
-            this.inputTarget.value = '';
-            this.formTarget.dispatchEvent(new CustomEvent('draft:clear'));
-            this.filesTarget.value = '';
-            this.filesPicked();
-        } finally {
-            this.formTarget.querySelector('button[type=submit], button:not([type])').disabled = false;
-            this.inputTarget.focus();
+            bubble.remove();
+        } catch (e) {
+            bubble.classList.add('is-failed');
+            bubble.title = e.message;
+            bubble.addEventListener('click', () => { bubble.remove(); this.deliver(text, files); }, { once: true });
         }
     }
 }
