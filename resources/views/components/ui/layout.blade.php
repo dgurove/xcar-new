@@ -18,6 +18,7 @@
     <meta name="turbo-refresh-method" content="morph">
     <meta name="turbo-refresh-scroll" content="preserve">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="rendered-at" content="{{ now()->timestamp }}">
     @if (config('xcar.mercure.subscriber_key'))
     <meta name="mercure-hub" content="/.well-known/mercure">
     <meta name="mercure-topics" content="{{ implode(',', \App\Live\Topics::for(auth()->user(), app(\App\Chats\GuestEnquiry::class)->chat(request())?->id)) }}">

@@ -6,7 +6,11 @@
 const VERSION = '__VERSION__';
 const STATIC = `static-${VERSION}`;
 const MEDIA = `media-${VERSION}`;
+const PAGES = `pages-${VERSION}`;
 const MEDIA_LIMIT = 400;
+const PAGES_LIMIT = 30;
+// Экраны, которые нельзя показывать из кэша: вход, выход, служебное.
+const NO_PAGE_CACHE = /^\/(vhod|vyhod|registraciya|parol|passkey|offline|dev|live|up)(\/|$)/;
 
 self.addEventListener('install', (event) => {
     event.waitUntil((async () => {
@@ -24,7 +28,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     event.waitUntil((async () => {
         const keys = await caches.keys();
-        await Promise.all(keys.filter((k) => ![STATIC, MEDIA].includes(k)).map((k) => caches.delete(k)));
+        await Promise.all(keys.filter((k) => ![STATIC, MEDIA, PAGES].includes(k)).map((k) => caches.delete(k)));
         await self.registration.navigationPreload?.enable();
         await self.clients.claim();
     })());
@@ -44,9 +48,24 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(cacheFirst(MEDIA, request, MEDIA_LIMIT));
         return;
     }
+    // Запуск с иконки: последний экран из кэша сразу, свежий — следом (страница сама
+    // перечитывает себя морфом, если старше 15 с — app.js, meta rendered-at).
     if (request.mode === 'navigate') {
         event.respondWith((async () => {
-            try { return (await event.preloadResponse) || (await fetch(request)); } catch { return caches.match('/offline'); }
+            const cacheable = !NO_PAGE_CACHE.test(url.pathname);
+            const network = (async () => {
+                const response = (await event.preloadResponse) || (await fetch(request));
+                if (response.redirected && /\/vhod(\/|$|\?)/.test(new URL(response.url).pathname)) await caches.delete(PAGES);
+                else if (cacheable && response.ok && (response.headers.get('Content-Type') || '').includes('text/html')) {
+                    const cache = await caches.open(PAGES);
+                    await cache.put(request, response.clone());
+                    await trim(cache, PAGES_LIMIT);
+                }
+                return response;
+            })();
+            const cached = cacheable && await caches.match(request);
+            if (cached) { event.waitUntil(network.catch(() => {})); return cached; }
+            try { return await network; } catch { return caches.match('/offline'); }
         })());
     }
 });
@@ -72,6 +91,11 @@ async function trim(cache, limit) {
 // воркера); здесь тот же JSON разбирается для Android.
 // Поверхность по хосту service worker: иконка уведомления — своя у сайта, CRM и стоянки.
 const surface = () => (location.hostname.startsWith('crm.') ? 'crm' : location.hostname.startsWith('park.') ? 'park' : 'site');
+
+// Страница просит забыть экраны: выход.
+self.addEventListener('message', (event) => {
+    if (event.data?.forgetPages) event.waitUntil(caches.delete(PAGES));
+});
 
 self.addEventListener('push', (event) => {
     let data = {};

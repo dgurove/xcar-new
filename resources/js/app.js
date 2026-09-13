@@ -47,6 +47,7 @@ imageFade();
 freshness();
 focusInvalid();
 relaunchScroll();
+stalePage();
 keyboardInset();
 systemTheme();
 headerState();
@@ -240,6 +241,9 @@ function timerDone() {
 function systemTheme() {
     const meta = () => document.querySelector('meta[name="theme-color"]');
     const paint = () => { const dark = document.documentElement.classList.contains('dark'); if (meta()) meta().content = dark ? '#121212' : '#ffffff'; };
+    // Экран мог прийти из кэша воркера с прежней темой — cookie важнее.
+    const chosen = document.cookie.match(/(?:^|; )theme=(dark|light)/)?.[1];
+    if (chosen) { document.documentElement.classList.toggle('dark', chosen === 'dark'); paint(); }
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         if (document.cookie.includes('theme=')) return;
         document.documentElement.classList.toggle('dark', e.matches);
@@ -278,4 +282,19 @@ function activePillIntoView() {
         if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = el.offsetLeft - row.offsetLeft - (row.clientWidth - el.offsetWidth) / 2;
     });
     document.addEventListener('turbo:load', show);
+}
+
+// Экран из кэша воркера (запуск с иконки) старше 15 с — тихий replace-morph:
+// свежие карточки, csrf-token, темы live; выход — воркер забывает экраны.
+function stalePage() {
+    const nav = performance.getEntriesByType('navigation')[0];
+    if (['navigate', 'reload'].includes(nav?.type)) {
+        const at = Number(document.querySelector('meta[name="rendered-at"]')?.content || 0) * 1000;
+        if (at && Date.now() - at > 15_000 && navigator.onLine !== false) {
+            setTimeout(() => Turbo.visit(location.href, { action: 'replace' }), 300);
+        }
+    }
+    document.addEventListener('turbo:submit-start', (event) => {
+        if (new URL(event.target.action, location.href).pathname === '/vyhod') navigator.serviceWorker?.controller?.postMessage({ forgetPages: true });
+    });
 }
