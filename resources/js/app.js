@@ -274,7 +274,8 @@ function headerState() {
 // Активная пилюля ленты — в кадре, а не за краем экрана.
 function activePillIntoView() {
     const show = () => document.querySelectorAll('.pills [aria-current], .toolbar-pills [aria-current], .cabinet-pills [aria-current]').forEach((el) => {
-        el.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' });
+        const row = el.closest('.pills, .toolbar-pills, .cabinet-pills');
+        if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = el.offsetLeft - row.offsetLeft - (row.clientWidth - el.offsetWidth) / 2;
     });
     document.addEventListener('turbo:load', show);
 }
