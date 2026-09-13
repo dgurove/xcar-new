@@ -22,11 +22,9 @@
             </div>
         </div>
     </div>
-    <div class="mt-2.5 flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:mt-0 sm:justify-end">
-        @forelse ($offers as $offer)
+    <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 mt-2.5 empty:mt-0 sm:mt-0 sm:justify-end">
+        @foreach ($offers as $offer)
             <x-purchase.offer-chip :offer="$offer" :car="$car" :highlight="$highlight"/>
-        @empty
-            <span class="text-sm text-ink-dim">нет предложений</span>
-        @endforelse
+        @endforeach
     </div>
 </div>

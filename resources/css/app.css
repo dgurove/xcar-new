@@ -370,8 +370,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Предложение менеджера — чип-кнопка; выбранное — акцентом с галочкой. */
   .offer-chip { @apply cursor-pointer transition-colors; }
   .offer-chip .nums { font-weight: 500; }
-  .offer-chip-chosen, .dark .offer-chip-chosen { @apply bg-accent text-white; }
-  @media (hover: hover) { .offer-chip:hover { @apply bg-hover; } .offer-chip-chosen:hover { @apply bg-accent-hover; } }
+  .offer-chip-chosen { @apply bg-accent-soft text-accent-text; box-shadow: inset 0 0 0 1.5px var(--color-accent); }
+  @media (hover: hover) { .offer-chip:hover { @apply bg-hover; } .offer-chip-chosen:hover { @apply bg-accent-soft; filter: brightness(1.05); } }
   .offer-chip:active { scale: .97; }
 
   /* Метка на кадре: белый текст на цветной подложке. */
