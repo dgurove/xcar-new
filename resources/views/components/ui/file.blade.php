@@ -11,6 +11,6 @@
         <span class="min-w-0 flex-1 truncate">{{ $name }}</span>
     @endif
     @if ($size)<span class="shrink-0 text-sm text-ink-muted">{{ $size }}</span>@endif
-    @if ($download && $href)<a href="{{ $href }}" download class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Скачать" data-controller="file" data-file-name-value="{{ $name }}" data-action="file#share"><x-ui.icon name="download" class="size-5"/></a>@endif
+    @if ($download && $href)<a href="{{ $href }}" download class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Скачать" data-controller="file" data-action="file#share"><x-ui.icon name="download" class="size-5"/></a>@endif
     {{ $slot }}
 </div>

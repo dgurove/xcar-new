@@ -193,28 +193,39 @@ class PurchaseController
         return redirect("/zakupki/{$purchase->number}")->with('toast', "Новых {$result['created']}, обновлено {$result['updated']}".($result['skipped'] ? ", пропущено {$result['skipped']}" : ''));
     }
 
-    public function export(Purchase $purchase, Export $export)
+    public function export(Request $request, Purchase $purchase, Export $export)
     {
         $path = storage_path("app/private/purchases/{$purchase->id}/itog-".now()->format('Ymd-His').'.xlsx');
         @mkdir(dirname($path), 0775, true);
         $export->write($purchase, $path);
 
-        return response()->download($path, "zakupka-{$purchase->number}.xlsx")->deleteFileAfterSend();
+        return $this->file($request, $path, "zakupka-{$purchase->number}.xlsx");
     }
 
     public function offersExport(Request $request, Purchase $purchase, OffersExport $export)
     {
         $data = $request->validate([
-            'sheets' => 'required|array|min:1',
-            'sheets.*' => Rule::in(array_keys(OffersExport::SHEETS)),
+            'parts' => 'required|array|min:1',
+            'parts.*' => Rule::in(array_keys(OffersExport::PARTS)),
             'format' => 'required|in:xlsx,pdf',
         ]);
         $path = storage_path("app/private/purchases/{$purchase->id}/predlozheniya-".now()->format('Ymd-His').'.'.$data['format']);
         @mkdir(dirname($path), 0775, true);
-        $tables = $export->tables($purchase, $data['sheets']);
-        $data['format'] === 'pdf' ? $export->pdf($tables, $purchase, $path) : $export->xlsx($tables, $path);
+        try {
+            $data['format'] === 'pdf'
+                ? $export->pdf($export->tables($purchase, $data['parts']), $purchase, $path)
+                : $export->xlsx($purchase, $data['parts'], $path);
+        } catch (\RuntimeException $e) {
+            return $request->expectsJson() ? response()->json(['message' => $e->getMessage()], 422) : back()->withErrors(['file' => $e->getMessage()]);
+        }
 
-        return response()->download($path, "zakupka-{$purchase->number}-predlozheniya.{$data['format']}")->deleteFileAfterSend();
+        return $this->file($request, $path, "zakupka-{$purchase->number}-predlozheniya.{$data['format']}");
+    }
+
+    /** В приложении на телефоне файл открывается во встроенном браузере — там нужен inline, иначе Quick Look без выхода. */
+    private function file(Request $request, string $path, string $name)
+    {
+        return response()->download($path, $name, [], $request->boolean('inline') ? 'inline' : 'attachment')->deleteFileAfterSend();
     }
 
     public function refetch(Request $request, Purchase $purchase, ImportFile $import)

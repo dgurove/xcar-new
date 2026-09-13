@@ -4,26 +4,153 @@ namespace App\Purchases;
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use OpenSpout\Common\Entity\Row;
-use OpenSpout\Common\Entity\Style\Style;
-use OpenSpout\Writer\XLSX\Options as XlsxOptions;
-use OpenSpout\Writer\XLSX\Writer;
+use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use RuntimeException;
 
 /**
- * Предложения менеджеров файлом: листы по выбору — сводка по людям, матрица
- * «машина × менеджер» (все машины или только с ценами) и машины без цен.
- * Одни таблицы, два писателя: xlsx и pdf.
+ * Предложения менеджеров файлом. Excel — тот самый файл Carcade с диска
+ * (`source_file`, все листы и колонки как есть, включая пустую «Предложение
+ * клиента» под финальную цену владельца), на листе с машинами справа —
+ * «Максимальная», «Минимальная» и колонка на менеджера. PDF — компактная
+ * матрица. Галки одни: лист «Сводка», строки с предложениями, строки без.
  */
 final class OffersExport
 {
-    public const SHEETS = ['summary' => 'Сводка', 'all' => 'Все', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений'];
-
-    public const DEFAULT = ['summary', 'all', 'unpriced'];
+    public const PARTS = ['summary' => 'Сводка', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений'];
 
     private const CAR = ['ДЛ', 'Марка', 'Модель', 'Год', 'Тип', 'Город', 'Наша цена'];
 
-    /** @return list<array{name:string, head:list<string>, rows:list<list<mixed>>}> */
-    public function tables(Purchase $purchase, array $sheets): array
+    private const FILL = 'F0F7D8';
+
+    private const SUMMARY_HEAD = ['Менеджер', 'Телефон', 'Видно машин', 'Предложил', 'Без цены', 'Выбрано'];
+
+    /** @param list<string> $parts */
+    public function xlsx(Purchase $purchase, array $parts, string $path): string
+    {
+        $file = $purchase->source_file ? Storage::disk('private')->path($purchase->source_file) : null;
+        if (! $file || ! is_file($file)) {
+            throw new RuntimeException('Файла поставщика нет — загрузите его в шторке');
+        }
+        $s = new OffersSummary($purchase);
+        $cars = $s->cars->keyBy(fn (Car $c) => mb_strtolower(trim($c->dl)));
+        $book = IOFactory::load($file);
+        [$sheet, $headerRow, $dlCol, $lastCol] = $this->carsSheet($book);
+
+        // Умная таблица после удаления строк не сходится с диапазоном — Excel просит «восстановить». Вместо неё автофильтр.
+        foreach ($sheet->getTableCollection() as $table) {
+            $sheet->removeTableByName($table->getName());
+        }
+        $keepPriced = in_array('priced', $parts, true);
+        $keepUnpriced = in_array('unpriced', $parts, true);
+        $highest = $sheet->getHighestDataRow();
+        for ($r = $highest; $r > $headerRow; $r--) {
+            $dl = mb_strtolower(trim((string) $sheet->getCell([$dlCol, $r])->getValue()));
+            if ($dl === '') {
+                continue;
+            }
+            $priced = isset($cars[$dl]) && $cars[$dl]->activeOfferList()->isNotEmpty();
+            if ($priced ? ! $keepPriced : ! $keepUnpriced) {
+                $sheet->removeRow($r);
+            }
+        }
+
+        $head = ['Максимальная', 'Минимальная', ...$s->managers->map->name->all()];
+        $headStyle = $sheet->getStyle([$dlCol, $headerRow]);
+        foreach ($head as $i => $title) {
+            $col = $lastCol + 1 + $i;
+            $cell = $sheet->getCell([$col, $headerRow]);
+            $cell->setValue($title);
+            $cell->getStyle()->applyFromArray($headStyle->exportArray());
+            $cell->getStyle()->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(self::FILL);
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($col))->setWidth(14);
+        }
+        $last = $sheet->getHighestDataRow();
+        for ($r = $headerRow + 1; $r <= $last; $r++) {
+            $car = $cars[mb_strtolower(trim((string) $sheet->getCell([$dlCol, $r])->getValue()))] ?? null;
+            $offers = $car?->activeOfferList();
+            $values = $offers && $offers->isNotEmpty()
+                ? [$offers->max('amount'), $offers->min('amount'), ...$s->managers->map(fn ($u) => $offers->firstWhere('user_id', $u->id)?->amount)->all()]
+                : [];
+            foreach ($values as $i => $v) {
+                if ($v !== null) {
+                    $sheet->getCell([$lastCol + 1 + $i, $r])->setValue($v)->getStyle()->getNumberFormat()->setFormatCode('#,##0');
+                }
+            }
+        }
+        $end = Coordinate::stringFromColumnIndex($lastCol + count($head));
+        $sheet->setAutoFilter('A'.$headerRow.':'.$end.max($last, $headerRow));
+        $sheet->freezePane('A'.($headerRow + 1));
+
+        if (in_array('summary', $parts, true)) {
+            $this->summarySheet($book, $s);
+        }
+        $book->setActiveSheetIndex($book->getIndex($sheet));
+        (new Xlsx($book))->save($path);
+        $book->disconnectWorksheets();
+
+        return $path;
+    }
+
+    /** Первый видимый лист с колонкой «ДЛ» в первых десяти строках: [лист, строка заголовка, колонка ДЛ, последняя колонка]. */
+    private function carsSheet(Spreadsheet $book): array
+    {
+        foreach ($book->getAllSheets() as $sheet) {
+            if ($sheet->getSheetState() !== Worksheet::SHEETSTATE_VISIBLE) {
+                continue;
+            }
+            $lastCol = Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
+            for ($r = 1; $r <= min(10, $sheet->getHighestDataRow()); $r++) {
+                for ($c = 1; $c <= $lastCol; $c++) {
+                    $title = mb_strtolower(str_replace('ё', 'е', preg_replace('/\s+/u', ' ', (string) $sheet->getCell([$c, $r])->getValue()) ?? ''));
+                    if (trim($title) === 'дл') {
+                        $end = $lastCol;
+                        while ($end > $c && trim((string) $sheet->getCell([$end, $r])->getValue()) === '') {
+                            $end--;
+                        }
+
+                        return [$sheet, $r, $c, $end];
+                    }
+                }
+            }
+        }
+        throw new RuntimeException('В файле поставщика нет колонки «ДЛ»');
+    }
+
+    private function summarySheet(Spreadsheet $book, OffersSummary $s): void
+    {
+        $sheet = $book->createSheet();
+        $sheet->setTitle('Сводка');
+        $sheet->fromArray(self::SUMMARY_HEAD, null, 'A1');
+        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
+        $sheet->fromArray($this->summaryRows($s), null, 'A2');
+        foreach (['A' => 28, 'B' => 18, 'C' => 13, 'D' => 12, 'E' => 11, 'F' => 10] as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+    }
+
+    private function summaryRows(OffersSummary $s): array
+    {
+        return [
+            ...$s->managers->map(fn ($u) => [$u->name, $u->phoneFormatted(), ...array_values($s->stats[$u->id])])->all(),
+            [],
+            ['Машин в закупке', $s->cars->count()],
+            ['С предложениями', $s->priced()],
+            ['Без предложений', $s->unpriced()->count()],
+        ];
+    }
+
+    /**
+     * Таблицы для PDF: «Сводка» и машины по тем же галкам.
+     *
+     * @return list<array{name:string, head:list<string>, rows:list<list<mixed>>}>
+     */
+    public function tables(Purchase $purchase, array $parts): array
     {
         $s = new OffersSummary($purchase);
         $s->cars->load(['brand', 'model', 'settlement']);
@@ -33,46 +160,21 @@ final class OffersExport
             ...$s->managers->map(fn ($u) => $c->activeOfferList()->firstWhere('user_id', $u->id)?->amount ?? '')->all(),
         ];
         $matrixHead = [...self::CAR, 'Максимальная', 'Минимальная', ...$s->managers->map->shortName()->all()];
+        $priced = in_array('priced', $parts, true);
+        $unpriced = in_array('unpriced', $parts, true);
         $tables = [];
-        foreach (array_keys(self::SHEETS) as $key) {
-            if (! in_array($key, $sheets, true)) {
-                continue;
-            }
-            $tables[] = ['name' => self::SHEETS[$key]] + match ($key) {
-                'summary' => [
-                    'head' => ['Менеджер', 'Телефон', 'Видно машин', 'Предложил', 'Без цены', 'Выбрано'],
-                    'rows' => [
-                        ...$s->managers->map(fn ($u) => [$u->name, $u->phoneFormatted(), ...array_values($s->stats[$u->id])])->all(),
-                        [],
-                        ['Машин в закупке', $s->cars->count()],
-                        ['С предложениями', $s->priced()],
-                        ['Без предложений', $s->unpriced()->count()],
-                    ],
-                ],
-                'all' => ['head' => $matrixHead, 'rows' => $s->cars->map($matrix)->all()],
-                'priced' => ['head' => $matrixHead, 'rows' => $s->cars->filter(fn (Car $c) => $c->activeOfferList()->isNotEmpty())->map($matrix)->values()->all()],
-                'unpriced' => ['head' => self::CAR, 'rows' => $s->unpriced()->map($car)->all()],
-            };
+        if (in_array('summary', $parts, true)) {
+            $tables[] = ['name' => 'Сводка', 'head' => self::SUMMARY_HEAD, 'rows' => $this->summaryRows($s)];
+        }
+        if ($priced && $unpriced) {
+            $tables[] = ['name' => 'Все', 'head' => $matrixHead, 'rows' => $s->cars->map($matrix)->all()];
+        } elseif ($priced) {
+            $tables[] = ['name' => 'С предложениями', 'head' => $matrixHead, 'rows' => $s->cars->filter(fn (Car $c) => $c->activeOfferList()->isNotEmpty())->map($matrix)->values()->all()];
+        } elseif ($unpriced) {
+            $tables[] = ['name' => 'Без предложений', 'head' => self::CAR, 'rows' => $s->unpriced()->map($car)->all()];
         }
 
         return $tables;
-    }
-
-    public function xlsx(array $tables, string $path): string
-    {
-        $writer = new Writer(new XlsxOptions);
-        $writer->openToFile($path);
-        $bold = (new Style)->withFontBold(true);
-        foreach ($tables as $i => $t) {
-            ($i ? $writer->addNewSheetAndMakeItCurrent() : $writer->getCurrentSheet())->setName($t['name']);
-            $writer->addRow(Row::fromValuesWithStyles($t['head'], array_fill(0, count($t['head']), $bold)));
-            foreach ($t['rows'] as $row) {
-                $writer->addRow(Row::fromValues($row));
-            }
-        }
-        $writer->close();
-
-        return $path;
     }
 
     public function pdf(array $tables, Purchase $purchase, string $path): string

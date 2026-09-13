@@ -35,12 +35,12 @@
                 </form>
                 @if ($counts['all'] ?? $summary?->cars->count() ?? 0)
                     {{-- Файлы — через file: в установленном приложении download открывает Quick Look без выхода, системный лист закрывается. --}}
-                    <a href="/zakupki/{{ $n }}/xlsx" class="btn btn-quiet w-full" data-turbo="false" data-controller="file" data-file-name-value="zakupka-{{ $n }}.xlsx" data-action="file#share"><x-ui.icon name="file" class="size-5"/> Выгрузить xlsx поставщику</a>
-                    <form method="get" action="/zakupki/{{ $n }}/predlozheniya/fayl" class="flex flex-col gap-3 rounded-(--radius-m) bg-surface-2 p-3" data-turbo="false" data-controller="file" data-file-name-value="zakupka-{{ $n }}-predlozheniya" data-action="submit->file#share">
+                    <a href="/zakupki/{{ $n }}/xlsx" class="btn btn-quiet w-full" data-turbo="false" data-controller="file" data-action="file#share"><x-ui.icon name="file" class="size-5"/> Выгрузить xlsx поставщику</a>
+                    <form method="get" action="/zakupki/{{ $n }}/predlozheniya/fayl" class="flex flex-col gap-3 rounded-(--radius-m) bg-surface-2 p-3" data-turbo="false" data-controller="file" data-action="submit->file#share">
                         <span class="text-sm text-ink-dim">Предложения</span>
                         <div class="flex flex-col gap-2 text-sm">
-                            @foreach (\App\Purchases\OffersExport::SHEETS as $key => $label)
-                                <x-ui.check name="sheets[]" :value="$key" :checked="in_array($key, \App\Purchases\OffersExport::DEFAULT, true)">{{ $label }}</x-ui.check>
+                            @foreach (\App\Purchases\OffersExport::PARTS as $key => $label)
+                                <x-ui.check name="parts[]" :value="$key" :checked="true">{{ $label }}</x-ui.check>
                             @endforeach
                         </div>
                         <div class="flex gap-2">
