@@ -1122,7 +1122,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
 
   .pill, .header-btn, .sheet-close, .combobox-option, .card-star, .choice span, .row, .stat { transition: background-color var(--dur-fast), color var(--dur-fast); }
   .pill:active, .header-btn:active, .sheet-close:active, .combobox-option:active, .card-star:active, .choice:active span,
-  a.row:active, .row:has(> a:active), a.stat:active,
+  a.row:active, button.row:active, .row:has(> a:active), a.stat:active,
   .pill.is-pending, .header-btn.is-pending, .row.is-pending, .stat.is-pending { background: var(--color-hover); transition: background-color 0s 60ms; }
   .dark .header-btn:active, .dark .header-btn.is-pending { background: rgb(255 255 255 / .2); }
   .pill[aria-current]:active, .pill-accent:active, .header-btn[aria-current="page"]:active, .header-btn-cta:active,

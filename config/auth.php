@@ -62,9 +62,13 @@ return [
     */
 
     'providers' => [
+        // Свой провайдер поверх eloquent-webauthn: вход по ключу — через
+        // проверку ассерции, пароль — как обычно; причина отказа ключа
+        // пишется в лог (`passkey:`), пакет молчит без APP_DEBUG.
         'users' => [
-            'driver' => 'eloquent',
+            'driver' => 'xcar-webauthn',
             'model' => env('AUTH_MODEL', User::class),
+            'password_fallback' => true,
         ],
 
         // 'users' => [

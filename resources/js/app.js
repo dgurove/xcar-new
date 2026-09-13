@@ -33,6 +33,8 @@ document.addEventListener('turbo:before-morph-attribute', (event) => {
     if (el instanceof HTMLDialogElement && attributeName === 'open') event.preventDefault();
     if (el.matches('[data-frames-target="frame"]') && attributeName === 'loading') event.preventDefault();
     if (el.matches('.card-dot') && attributeName === 'class') event.preventDefault();
+    // Блок ключа открывает JS; серверный `hidden` при морфе его бы снова спрятал.
+    if (el.matches('[data-controller~="passkey"]') && attributeName === 'hidden') event.preventDefault();
 });
 document.addEventListener('turbo:before-morph-element', (event) => {
     const el = event.target;

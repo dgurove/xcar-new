@@ -160,7 +160,6 @@ SESSION_DOMAIN=.$HOST
 CRM_HOST=crm.$HOST
 PARK_HOST=park.$HOST
 WEBAUTHN_ID=$HOST
-WEBAUTHN_ORIGINS=http://$HOST,http://crm.$HOST,http://park.$HOST
 EOE
 fi
 chmod 600 .env .env.app

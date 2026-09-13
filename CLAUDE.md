@@ -183,7 +183,15 @@ node scripts/icons.mjs           # иконки трёх приложений и
 `card/refresh/toast/badges`), `app/Media` (`PhotoIngest` — всё входящее в
 1600 px webp, конверсии только вниз; `papers` на закрытом диске, наружу через
 `/fayly/{media}`; холодный слой `CoolPhotos`/`WarmPhotos`), `app/Storage`
-(`storage:gc` ежедневно, `storage:report`), `app/Cars`, `app/Users`.
+(`storage:gc` ежедневно, `storage:report`), `app/Cars`, `app/Users` (вход по ключу — Face ID / Touch ID:
+`laragear/webauthn`, провайдер `xcar-webauthn` (`Users\Auth\WebAuthnProvider`
+поверх пакетного — без него `Auth::attempt` с ответом ключа уходит в
+обычный Eloquent и падает SQL-ошибкой; причина отказа пишется в лог
+`passkey:`), клиент — `passkey_controller.js` на `@simplewebauthn/browser`
+напрямую (`@laragear/webpass` ломал conditional UI), ошибки браузера
+шлются в `POST /passkey/oshibka`; `WEBAUTHN_ID` — родительский домен;
+ключ из iCloud уже стоит на всех устройствах Apple — «уже добавлен» не ошибка;
+слушатель `Users\Passkeys` пишет `last_used_at` и название хранилища по aaguid).
 Заметки по этапам — `notes/etap-*.md`.
 
 ## Диски

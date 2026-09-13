@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
 use Laragear\WebAuthn\WebAuthnAuthentication;
+use Laragear\WebAuthn\WebAuthnData;
 use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -82,6 +83,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function unreadCount(): int
     {
         return $this->unreadNotifications()->count();
+    }
+
+    /** Подпись ключа в связке устройства: почта или телефон и имя. Пакет ждёт строки, а почты может не быть. */
+    public function webAuthnData(): WebAuthnData
+    {
+        return WebAuthnData::make($this->email ?: $this->phoneFormatted(), $this->name ?: $this->phoneFormatted());
     }
 
     public function phoneFormatted(): string

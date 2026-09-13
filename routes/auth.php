@@ -16,14 +16,17 @@ Route::middleware('guest')->group(function () {
     Route::get('/parol/{token}', [PasswordController::class, 'reset'])->name('password.reset');
     Route::post('/parol/novyj', [PasswordController::class, 'update']);
 
-    Route::post('/passkey/login/options', [PasskeyController::class, 'loginOptions']);
+    Route::post('/passkey/login/options', [PasskeyController::class, 'loginOptions'])->middleware('throttle:20,1');
     Route::post('/passkey/login', [PasskeyController::class, 'login'])->middleware('throttle:10,1');
 });
 
 Route::middleware('auth')->group(function () {
     Route::post('/vyhod', [LoginController::class, 'logout'])->name('logout');
     Route::post('/registraciya/zanovo', [RegisterController::class, 'again']);
-    Route::post('/passkey/register/options', [PasskeyController::class, 'registerOptions']);
-    Route::post('/passkey/register', [PasskeyController::class, 'register']);
+    Route::post('/passkey/register/options', [PasskeyController::class, 'registerOptions'])->middleware('throttle:10,1');
+    Route::post('/passkey/register', [PasskeyController::class, 'register'])->middleware('throttle:10,1');
     Route::delete('/passkey/{id}', [PasskeyController::class, 'destroy']);
 });
+
+// Ошибка ключа в браузере — гостем и вошедшим, чтобы её было видно в логе.
+Route::post('/passkey/oshibka', [PasskeyController::class, 'report'])->middleware('throttle:30,1');

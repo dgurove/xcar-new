@@ -28,14 +28,29 @@
     </form>
 
     <section class="box mt-4">
-        <h2 class="text-xl">Вход по Face ID</h2>
+        <h2 class="text-xl">Вход по ключу</h2>
         <div class="mt-4 flex flex-col gap-2">
             @foreach ($passkeys as $key)
-                <form method="post" action="/passkey/{{ $key->id }}" class="flex items-center gap-3 rounded-(--radius-l) bg-surface-2 px-4 py-3">
+                {{-- Строка ключа и есть кнопка удаления: одно действие — сам элемент, с подтверждением. --}}
+                <form method="post" action="/passkey/{{ $key->id }}"
+                    data-turbo-confirm="Удалить ключ?" data-turbo-confirm-label="Удалить"
+                    data-turbo-confirm-text="{{ $key->alias ?: 'Ключ' }}, добавлен {{ $key->created_at->translatedFormat('j M Y') }}. Вход по паролю останется">
                     @csrf @method('delete')
-                    <x-ui.icon name="key" class="size-5 text-ink-muted"/>
-                    <span class="flex-1">{{ $key->alias ?: 'Ключ' }}<span class="nums ml-2 text-sm font-normal text-ink-dim">{{ $key->created_at->translatedFormat('j M Y') }}</span></span>
-                    <button class="sheet-close" aria-label="Удалить"><x-ui.icon name="trash" class="size-5"/></button>
+                    <button class="row w-full bg-surface-2 text-left">
+                        <x-ui.icon name="key" class="size-5 shrink-0 text-ink-muted"/>
+                        <span class="min-w-0 flex-1">{{ $key->alias ?: 'Ключ' }}</span>
+                        <span class="flex shrink-0 flex-wrap justify-end gap-1.5">
+                            @if ($vault = \App\Users\Passkeys::vault($key))<span class="tag">{{ $vault }}</span>@endif
+                            @if ($key->disabled_at)
+                                <span class="tag" style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d">отключён</span>
+                            @elseif ($key->last_used_at)
+                                <span class="tag">вход {{ \Illuminate\Support\Carbon::parse($key->last_used_at)->translatedFormat('j M') }}</span>
+                            @else
+                                <span class="tag">{{ $key->created_at->translatedFormat('j M') }}</span>
+                            @endif
+                        </span>
+                        <x-ui.icon name="trash" class="size-5 shrink-0 text-ink-muted"/>
+                    </button>
                 </form>
             @endforeach
         </div>
