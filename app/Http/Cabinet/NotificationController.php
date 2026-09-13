@@ -31,6 +31,14 @@ class NotificationController
         return redirect($item->data['href'] ?? '/lk/uvedomleniya');
     }
 
+    /** Тап по строке ведёт сразу на объект; прочитанность отмечается маячком с клиента. */
+    public function seen(Request $request, string $id)
+    {
+        $request->user()->notifications()->whereKey($id)->first()?->markAsRead();
+
+        return response()->noContent();
+    }
+
     /** Смахнули строку: прочитано ↔ не прочитано, ответ — та же строка стримом. */
     public function toggleRead(Request $request, string $id)
     {

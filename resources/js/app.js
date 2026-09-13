@@ -56,6 +56,8 @@ activePillIntoView();
 infiniteLists();
 nativeBackGesture();
 haptics();
+neighbourDirection();
+noticeSeen();
 longPressMenu();
 heroTransition();
 timerDone();
@@ -374,5 +376,28 @@ function haptics() {
         input.checked = false;
         const host = input.parentElement;
         host?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    }, true);
+}
+
+// Соседи по списку: «предыдущее» уезжает вправо (как назад), «следующее» — влево;
+// data-nav-dir читает CSS переходов, снимается после рендера.
+function neighbourDirection() {
+    document.addEventListener('turbo:click', (event) => {
+        const rel = event.target.closest('a[rel="prev"], a[rel="next"]')?.rel;
+        if (rel) document.documentElement.dataset.navDir = rel;
+    });
+    document.addEventListener('turbo:load', () => delete document.documentElement.dataset.navDir);
+}
+
+// Уведомление открывает объект сразу (без промежуточной страницы); прочитанность
+// уходит маячком, чтобы переход не ждал.
+function noticeSeen() {
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest('a[data-notice]');
+        if (!link) return;
+        const body = new FormData();
+        body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+        navigator.sendBeacon(`/lk/uvedomleniya/${link.dataset.notice}/otkryto`, body);
+        link.closest('.swipe, .block')?.querySelector('.rounded-full.bg-accent-soft')?.remove();
     }, true);
 }

@@ -194,6 +194,9 @@
   html[data-turbo-visit-direction="none"]::view-transition-old(root),
   html[data-turbo-visit-direction="none"]::view-transition-new(root) { animation: none; }
   html[data-turbo-visit-direction="none"]::view-transition-group(root) { animation-duration: 0s; }
+  /* Сосед по списку «назад» — движение вправо, как pop. */
+  html[data-nav-dir="prev"][data-turbo-visit-direction="forward"]::view-transition-old(root) { animation-name: pop-out; z-index: 1; box-shadow: -8px 0 24px rgb(0 0 0 / .18); }
+  html[data-nav-dir="prev"][data-turbo-visit-direction="forward"]::view-transition-new(root) { animation-name: pop-under; z-index: auto; box-shadow: none; }
   /* После системного жеста «назад» страница уже на месте — без второго движения. */
   html[data-native-back]::view-transition-old(root), html[data-native-back]::view-transition-new(root) { animation: none; }
   html[data-native-back]::view-transition-group(root), html[data-native-back]::view-transition-group(hero) { animation-duration: 0s; }

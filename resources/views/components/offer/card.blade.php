@@ -12,6 +12,10 @@
     $hasMedia = $photos->isNotEmpty();
     $canBid = !$admin && ($user?->role->canBid() ?? false) && $offer->bidsOpen();
     $sizes = \App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request()));
+    // Первые две карточки страницы — кадр с высоким приоритетом (счётчик на запросе).
+    $nth = request()->attributes->get('card.nth', 0);
+    request()->attributes->set('card.nth', $nth + 1);
+    $eager = $nth < 2;
     $hasMarks = $admin || $offer->car_place || (!$gallery && ($offer->isFresh() || $offer->isEndingSoon() || !$offer->state->acceptsBids() || $offer->secondsLeft()));
 @endphp
 <article id="{{ $admin ? 'admin-offer-' : 'offer-' }}{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card rise group']) }}>
@@ -19,7 +23,7 @@
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
             <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
                 @foreach ($photos as $i => $frame)
-                    <x-offer.photo :media="$frame" :sizes="$sizes" :eager="false" data-frames-target="frame"/>
+                    <x-offer.photo :media="$frame" :sizes="$sizes" :eager="$eager && $i === 0" data-frames-target="frame"/>
                 @endforeach
             </a>
             @if ($photos->count() > 1)

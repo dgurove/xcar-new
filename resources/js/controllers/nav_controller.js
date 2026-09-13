@@ -11,6 +11,7 @@ export default class extends Controller {
             if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
             const target = e.key === 'ArrowLeft' ? 'prev' : e.key === 'ArrowRight' ? 'next' : null;
             if (!target || !this[`has${target[0].toUpperCase()}${target.slice(1)}Target`]) return;
+            document.documentElement.dataset.navDir = target;
             Turbo.visit(this[`${target}Target`].href);
         };
         window.addEventListener('keydown', this.onKey);
