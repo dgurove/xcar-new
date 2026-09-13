@@ -35,8 +35,22 @@
   font-display: swap;
 }
 
+/* Запасные начертания с метриками Onest: пока woff2 едет при холодной загрузке,
+   системный шрифт занимает те же строки, и текст не перекладывается (посчитано
+   по ширине строки в fontTools: Helvetica Neue ×1.027, Arial/Roboto ×1.007). */
+@font-face {
+  font-family: "Onest Fallback";
+  src: local("Helvetica Neue"), local("HelveticaNeue");
+  size-adjust: 102.7%; ascent-override: 94.4%; descent-override: 29.7%; line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Onest Fallback Roboto";
+  src: local("Roboto"), local("Arial");
+  size-adjust: 100.7%; ascent-override: 96.4%; descent-override: 30.3%; line-gap-override: 0%;
+}
+
 @theme {
-  --font-sans: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-sans: "Onest", "Onest Fallback", "Onest Fallback Roboto", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 
   --color-chrome: #121212;
   --color-chrome-light: #1d1d1b;
