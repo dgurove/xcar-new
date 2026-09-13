@@ -990,6 +990,21 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   @media (max-width: 767.98px) { .cards { --glass-blur: none; } .card-star { backdrop-filter: none; } }
 }
 
+/* ------------------------------------------------------------- смахиваемые строки */
+
+@layer components {
+  /* Строка едет влево за пальцем, под ней кнопки; snap держит открытой или закрытой. */
+  .swipe { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; border-radius: var(--radius-l); }
+  .swipe::-webkit-scrollbar { display: none; }
+  .swipe-body { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
+  .swipe-actions { display: flex; flex: 0 0 auto; margin-left: .25rem; scroll-snap-align: end; }
+  .swipe-actions form { display: contents; }
+  .swipe-btn { display: flex; width: 4.5rem; align-items: center; justify-content: center; border-radius: var(--radius-l); background: var(--color-surface-3); color: var(--color-ink); }
+  .swipe-btn-accent { background: var(--color-accent); color: #fff; }
+  .swipe-btn-danger { background: var(--color-danger); color: #fff; }
+  @media (hover: hover) and (pointer: fine) { .swipe { overflow: visible; } .swipe-actions { display: none; } }
+}
+
 /* ------------------------------------------------------------- фреймы и скелетоны */
 
 @layer components {

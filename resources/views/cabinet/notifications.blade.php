@@ -25,14 +25,7 @@
     @else
         <div class="space-y-3">
             @foreach ($items as $item)
-                <a href="/lk/uvedomleniya/{{ $item->id }}" class="box block transition-colors hover:bg-hover" data-turbo-prefetch="false">
-                    <div class="flex items-start justify-between gap-3">
-                        <p class="font-medium">{{ $item->data['title'] }}</p>
-                        <p class="nums shrink-0 text-sm font-normal text-ink-dim">{{ $item->created_at->translatedFormat($item->created_at->isToday() ? 'H:i' : 'j M, H:i') }}</p>
-                    </div>
-                    @if (!empty($item->data['text']))<p class="mt-1 whitespace-pre-line text-ink-muted">{{ $item->data['text'] }}</p>@endif
-                    @unless ($item->read_at)<span class="mt-3 inline-block rounded-full bg-accent-soft px-3 py-1 text-xs text-accent-text">Не прочитано</span>@endunless
-                </a>
+                @include('cabinet.notification-row')
             @endforeach
         </div>
         <div class="mt-8">{{ $items->links() }}</div>

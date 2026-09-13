@@ -76,6 +76,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/lk/uvedomleniya', [NotificationController::class, 'index']);
     Route::get('/lk/uvedomleniya/svezhie', [NotificationController::class, 'latest']);
     Route::post('/lk/uvedomleniya/prochitano', [NotificationController::class, 'readAll']);
+    Route::post('/lk/uvedomleniya/{id}/prochitano', [NotificationController::class, 'toggleRead']);
     Route::put('/lk/uvedomleniya/nastroyki', [NotificationController::class, 'settings']);
     Route::get('/lk/uvedomleniya/{id}', [NotificationController::class, 'open']);
 

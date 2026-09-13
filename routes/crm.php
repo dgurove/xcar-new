@@ -67,6 +67,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::get('/{thread}', [MailController::class, 'show']);
         Route::get('/{thread}/otvet/{message}', [MailController::class, 'reply']);
         Route::post('/{thread}/neprochitano', [MailController::class, 'unread']);
+        Route::post('/{thread}/prochitano', [MailController::class, 'toggleRead']);
         Route::post('/{thread}/privyazka', [MailController::class, 'link']);
     });
     Route::get('/rabota/chaty', [ChatController::class, 'index']);

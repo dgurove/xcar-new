@@ -31,6 +31,17 @@ class NotificationController
         return redirect($item->data['href'] ?? '/lk/uvedomleniya');
     }
 
+    /** Смахнули строку: прочитано ↔ не прочитано, ответ — та же строка стримом. */
+    public function toggleRead(Request $request, string $id)
+    {
+        $item = $request->user()->notifications()->findOrFail($id);
+        $item->read_at ? $item->markAsUnread() : $item->markAsRead();
+
+        return response()
+            ->view('cabinet.notification-row-stream', ['item' => $item->fresh()])
+            ->header('Content-Type', 'text/vnd.turbo-stream.html');
+    }
+
     public function readAll(Request $request)
     {
         $request->user()->unreadNotifications()->update(['read_at' => now()]);

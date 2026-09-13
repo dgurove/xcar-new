@@ -191,6 +191,18 @@ class MailController
         return redirect($this->base)->with('toast', 'Не прочитано');
     }
 
+    /** Смахнули строку: прочитано ↔ не прочитано, ответ — та же строка стримом. */
+    public function toggleRead(Request $request, Thread $thread, MarkThreadRead $markRead)
+    {
+        $this->guard($thread);
+        $markRead($thread, (bool) $thread->unread_count);
+        $thread->refresh()->load(['account', 'offer', 'vehicle']);
+
+        return response()
+            ->view('admin.mail.thread-row-stream', ['thread' => $thread, 'base' => $this->base, 'accounts' => null, 'slug' => null])
+            ->header('Content-Type', 'text/vnd.turbo-stream.html');
+    }
+
     public function flag(Message $message)
     {
         $message->forceFill(['is_flagged' => ! $message->is_flagged])->save();
