@@ -1,13 +1,10 @@
 @php use App\Purchases\PurchaseState; $n = $purchase->number; $ctl = \App\Http\Admin\PurchaseController::class; @endphp
-<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :back="['Закупки', '/zakupki']">
-    <div class="-mt-3 mb-5 flex items-center gap-2" data-controller="sheet">
-        <div class="flex min-w-0 flex-1 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <x-ui.pill :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')" class="shrink-0">{{ $purchase->state->label() }}</x-ui.pill>
-            @if ($purchase->offers_close_at)<x-ui.pill tone="plain" class="shrink-0"><span>до {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span></x-ui.pill>@endif
-            @if ($purchase->state->isPublic())<x-ui.pill tone="plain" class="shrink-0" :href="\App\Support\Surface::Site->url('/zakupki/'.$n)" data-turbo="false">На сайте</x-ui.pill>@endif
-            @if ($pending)<x-ui.pill tone="urgent" class="shrink-0">выкачка: {{ $pending }}</x-ui.pill>@endif
-        </div>
-        <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
+<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/zakupki']">
+    <div class="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
+        <h1 class="text-[28px] sm:text-[34px]">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
+        <x-ui.pill :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}{{ $purchase->state === PurchaseState::Open && $purchase->offers_close_at ? ' до '.$purchase->offers_close_at->translatedFormat('j M, H:i') : '' }}</x-ui.pill>
+        @if ($pending)<x-ui.pill tone="urgent">выкачка: {{ $pending }}</x-ui.pill>@endif
+        <button type="button" class="btn btn-s btn-quiet btn-round ml-auto shrink-0" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <x-ui.sheet id="purchase-actions" title="Закупка № {{ $n }}">
             <form method="post" action="/zakupki/{{ $n }}" class="flex flex-col gap-3">
                 @csrf @method('put')

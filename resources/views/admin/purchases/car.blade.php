@@ -5,7 +5,6 @@
         <span class="chip">№ {{ $car->ref }}</span>
         @if ($car->site_url)<a href="{{ $car->site_url }}" target="_blank" class="chip">Сайт поставщика ↗</a>@endif
         @if ($car->cloud_url)<a href="{{ $car->cloud_url }}" target="_blank" class="chip">Облако ↗</a>@endif
-        @if ($purchase->state->isPublic())<a href="{{ \App\Support\Surface::Site->url("/zakupki/$n/{$car->ref}") }}" data-turbo="false" class="chip">На сайте →</a>@endif
         @if ($errors->any())<span class="field-error w-full">{{ $errors->first() }}</span>@endif
     </div>
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">

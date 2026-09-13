@@ -13,7 +13,6 @@
     <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
         <span class="order-last ml-auto flex items-center gap-1">
             @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" icon/>@endif
-            @if ($offer->state->isPublic())<a href="{{ \App\Support\Surface::Site->url("/offers/$n") }}" data-turbo="false" class="btn btn-s btn-quiet btn-round" aria-label="На сайте" title="На сайте"><x-ui.icon name="car" class="size-5"/></a>@endif
         </span>
         <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
         @if ($offer->bids_close_at && $offer->state === OfferState::Open)
