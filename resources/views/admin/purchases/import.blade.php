@@ -1,4 +1,4 @@
-<x-ui.shell :title="'Файл для закупки № '.$purchase->number" narrow>
+<x-ui.shell :title="'Файл для закупки № '.$purchase->number" :back="['Закупка', '/zakupki/'.$purchase->number]" narrow>
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
         @foreach ($stats as $label => $value)<x-ui.stat :value="$value" :label="$label"/>@endforeach
     </div>

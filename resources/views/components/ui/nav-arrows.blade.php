@@ -1,6 +1,6 @@
 {{-- Стрелки к соседям по списку и счётчик «2/20». Соседа нет — стрелка гаснет,
      а не исчезает. Назад к списку — «‹ Раздел» в шапке (x-ui.shell back). --}}
-@props(['prev' => null, 'next' => null, 'back' => null, 'index' => null, 'total' => 0, 'lg' => false])
+@props(['prev' => null, 'next' => null, 'index' => null, 'total' => 0, 'lg' => false])
 <div {{ $attributes->merge(['class' => 'flex items-center gap-0.5 sm:gap-1']) }} data-controller="nav">
     @if ($index !== null)
         <span class="nums mr-1 shrink-0 text-xs font-normal text-ink-dim sm:mr-2">{{ $index }}/{{ $total }}</span>

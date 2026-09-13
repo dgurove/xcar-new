@@ -4,13 +4,16 @@
      heading по умолчанию равен title; :heading="false" — без заголовка.
      Слот actions — ряд справа от h1 (поделиться, закладка, стрелки).
      back — ['Предложения', '/']: на телефоне слева в шапке «‹ Предложения»,
-     как у экрана в глубине нативного приложения. --}}
+     на десктопе квадрат «‹» слева в шапке — как у экрана в глубине нативного
+     приложения. Вложенному экрану шелл ставит его сам (Nav::backFor);
+     :back — уточнить, :back="false" — убрать. --}}
 @props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null, 'cache' => 'no-preview'])
 @php
     $heading = $heading === false ? null : ($heading ?? $title);
     $site = \App\Support\Surface::current() === \App\Support\Surface::Site;
     // Подвал и крошки — веб-мебель: в установленном приложении их нет (документы — в кабинете).
     $installed = \App\Http\Middleware\MarkInstalled::installed(request());
+    $back = $back === false ? null : ($back ?? \App\Support\Nav::backFor('/'.ltrim(request()->path(), '/'), auth()->user()));
 @endphp
 <x-ui.layout :title="$title" :cache="$cache" class="min-h-dvh flex flex-col">
     <x-ui.header :over-hero="$overHero" :back="$back" :heading="$overHero ? null : $heading"/>

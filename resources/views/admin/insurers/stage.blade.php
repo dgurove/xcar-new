@@ -7,7 +7,7 @@
     [$limitValue, $limitUnit] = $m === null ? [null, 'hours'] : ($m % 1440 === 0 ? [$m / 1440, 'days'] : ($m % 60 === 0 ? [$m / 60, 'hours'] : [$m, 'minutes']));
     $types = ['text' => 'Строка', 'number' => 'Число', 'date' => 'Дата', 'textarea' => 'Текст'];
 @endphp
-<x-ui.shell :title="$stage->exists ? $stage->name : 'Новый этап'" narrow>
+<x-ui.shell :title="$stage->exists ? $stage->name : 'Новый этап'" :back="[$w->insurer->name, $back]" narrow>
     <form method="post" action="{{ $stage->exists ? '/nastroyki/marshruty/etapy/'.$stage->id : '/nastroyki/marshruty/'.$w->id.'/etapy' }}" id="stage-form" class="flex flex-col gap-4">
         @csrf @if ($stage->exists) @method('put') @endif
 

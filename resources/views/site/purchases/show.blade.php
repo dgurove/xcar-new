@@ -2,7 +2,7 @@
     $qs = http_build_query(array_filter($filters + [\App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)], fn ($v) => $v !== null && $v !== ''));
     $view = \App\Support\ListView::fromRequest(request());
 @endphp
-<x-ui.shell :title="$purchase->publicTitle($group)" :heading="false" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], [$purchase->publicTitle($group)]]">
+<x-ui.shell :title="$purchase->publicTitle($group)" :heading="false" :back="['Закупки', '/zakupki']" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], [$purchase->publicTitle($group)]]">
     <div class="box">
         <h1 class="text-[26px] sm:text-[32px]">{{ $purchase->publicTitle($group) }}</h1>
         <div class="mt-4 flex flex-wrap items-center gap-2">

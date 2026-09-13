@@ -2,9 +2,8 @@
 
 namespace App\Support;
 
-use App\Http\Middleware\MarkInstalled;
-use Illuminate\Support\Facades\Cache;
 use App\Chats\Chat;
+use App\Http\Middleware\MarkInstalled;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Scope;
@@ -20,6 +19,7 @@ use App\Users\User;
 use App\Workflow\Position;
 use App\Workflow\Requirement;
 use App\Workflow\WaitsFor;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Навигация одним списком на роль и поверхность: из него строятся капсулы
@@ -299,6 +299,60 @@ final class Nav
         }
 
         return array_values(array_unique($paths));
+    }
+
+    /**
+     * «‹ Раздел» для вложенного экрана: самый длинный раздел или пункт кабинета,
+     * чей путь — собственный префикс текущего; корни разделов — без «назад».
+     */
+    public static function backFor(string $path, ?User $user, ?Surface $surface = null): ?array
+    {
+        $surface ??= Surface::current();
+        $path = rtrim($path, '/') ?: '/';
+        if ($path === '/') {
+            return null;
+        }
+
+        $items = self::sections($user, $surface);
+        // Пилюли кабинета и заголовки «Работы» — корни своих экранов, а не глубина.
+        if ($user) {
+            foreach (self::cabinet($user, $surface) as $links) {
+                array_push($items, ...array_filter($links, fn ($l) => ! str_starts_with($l['match'], '=')));
+            }
+        }
+        if ($surface === Surface::Crm) {
+            array_push($items, self::link('Сделки', '/rabota/sdelki'), self::link('Почта', '/rabota/pochta'), self::link('Чаты', '/rabota/chaty'));
+        }
+
+        // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен;
+        // страницы настроек CRM — обычные экраны в глубине «Настроек».
+        $roots = array_filter(array_column($items, 'href'), fn ($h) => ! str_starts_with($h, '/nastroyki/'));
+        if (in_array($path, $roots, true)) {
+            return null;
+        }
+
+        $best = null;
+        foreach ($items as $item) {
+            $href = $item['href'];
+            if ($href === '/' || str_starts_with($href, 'http')) {
+                continue;
+            }
+            if (str_starts_with($path, $href.'/') && strlen($href) > strlen($best['href'] ?? '')) {
+                $best = $item;
+            }
+        }
+        if ($best) {
+            return [$best['label'], $best['href']];
+        }
+
+        // Путь под псевдонимом раздела (/predlozheniya/123 → «Предложения», /).
+        foreach (self::sections($user, $surface) as $item) {
+            if (self::isCurrent($item, $path) && $item['href'] !== $path) {
+                return [$item['label'], $item['href']];
+            }
+        }
+
+        return null;
     }
 
     public static function badgeId(string $href): string

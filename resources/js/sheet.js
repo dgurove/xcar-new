@@ -11,6 +11,7 @@
 export const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 let inHistory = null; // id шторки, чья запись сверху истории
 let settle = null;    // ждёт popstate после history.back() из closeSheet
+let pageTurbo;        // снятый у записи страницы ключ turbo — вернуть после шторки
 
 window.addEventListener('popstate', (event) => {
     const forward = event.state?.sheet && event.state.sheet !== inHistory;
@@ -19,6 +20,8 @@ window.addEventListener('popstate', (event) => {
     const d = document.getElementById(inHistory);
     inHistory = null;
     if (d?.open) closeSheet(d, 0, true);
+    // Страница снова сверху — ключ turbo на месте, «‹ Раздел» пойдёт шагом по истории.
+    if (pageTurbo !== undefined) history.replaceState({ ...(history.state || {}), turbo: pageTurbo }, '');
     settle?.();
     settle = null;
 });
@@ -40,6 +43,7 @@ export function openSheet(d, { history: withHistory = true } = {}) {
     }
     if (withHistory && d.id && inHistory !== d.id) {
         const { turbo, ...rest } = history.state || {};
+        pageTurbo = turbo;
         history.replaceState(rest, '');
         history.pushState({ ...rest, sheet: d.id }, '');
         inHistory = d.id;

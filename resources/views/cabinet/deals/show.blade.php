@@ -6,7 +6,7 @@
         \App\Workflow\WaitsFor::Manager => 'Ваш ход', \App\Workflow\WaitsFor::Supplier => 'ждём поставщика', \App\Workflow\WaitsFor::Us => 'ждём нас', default => null,
     } : null;
 @endphp
-<x-ui.cabinet :title="$offer->titleWithYear()" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Сделки', '/lk/sdelki'], ['№ '.$offer->number]]">
+<x-ui.cabinet :title="$offer->titleWithYear()" :back="['Сделки', '/lk/sdelki']" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Сделки', '/lk/sdelki'], ['№ '.$offer->number]]">
     <div class="grid gap-6 lg:grid-cols-[1fr_20rem]" data-deal-offer="{{ $offer->number }}">
         <div class="min-w-0 space-y-6">
             @if ($deal->state !== DealState::Active)

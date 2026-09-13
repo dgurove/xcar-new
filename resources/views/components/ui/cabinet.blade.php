@@ -1,11 +1,11 @@
 {{-- Кабинет: пилюли разделов (лента на телефоне, колонка от lg) и содержимое. --}}
-@props(['title', 'heading' => null, 'trail' => []])
+@props(['title', 'heading' => null, 'trail' => [], 'back' => null])
 @php
     $user = auth()->user();
     $path = '/'.ltrim(request()->path(), '/');
     $groups = \App\Support\Nav::cabinet($user);
 @endphp
-<x-ui.shell :title="$title" :heading="$heading ?? $title" :trail="$trail">
+<x-ui.shell :title="$title" :heading="$heading ?? $title" :trail="$trail" :back="$back">
     <div class="grid gap-6 lg:grid-cols-[15rem_1fr]">
         {{-- min-w-0 обязателен: иначе лента шире экрана растягивает колонку сетки. --}}
         <nav class="min-w-0 lg:sticky lg:top-32 lg:self-start" aria-label="Разделы кабинета">

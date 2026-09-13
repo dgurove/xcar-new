@@ -1,4 +1,4 @@
-<x-ui.shell title="Контакты" :trail="[['Главная', '/'], ['Контакты']]" narrow>
+<x-ui.shell title="Контакты" :back="false" :trail="[['Главная', '/'], ['Контакты']]" narrow>
     <dl>
         <div>
             <dt class="text-sm text-ink-dim">Почта</dt>
