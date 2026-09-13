@@ -54,7 +54,9 @@
                         <x-ui.icon name="bell" class="size-[18px]"/><x-ui.badge href="/lk/uvedomleniya" :badges="$badges"/>
                     </button>
                     <x-ui.sheet id="notifications-sheet" title="Уведомления">
-                        <turbo-frame id="notifications-latest" src="/lk/uvedomleniya/svezhie" loading="lazy" data-notifications-target="frame" class="block min-h-32"></turbo-frame>
+                        <turbo-frame id="notifications-latest" src="/lk/uvedomleniya/svezhie" loading="lazy" data-notifications-target="frame" class="block min-h-32">
+                            <x-ui.skeleton :rows="3"/>
+                        </turbo-frame>
                         <div class="mt-4 flex gap-2">
                             <a href="/lk/uvedomleniya" class="btn btn-s btn-quiet flex-1">Все уведомления</a>
                         </div>

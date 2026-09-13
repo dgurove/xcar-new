@@ -47,4 +47,19 @@ class OfferController
             'canChat' => $user && ! $user->isStaff() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest()),
         ]);
     }
+
+    /** Лента чата для шторки — отдельным фреймом, по открытию. */
+    public function chat(Request $request, Offer $offer)
+    {
+        $user = $request->user();
+        abort_unless($user && ! $user->isStaff() && $offer->chat_enabled, 404);
+        $chat = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first();
+
+        return view('site.offers.chat', [
+            'offer' => $offer,
+            'chat' => $chat,
+            'messages' => $chat?->messages()->with(['author', 'files'])->get() ?? collect(),
+            'user' => $user,
+        ]);
+    }
 }

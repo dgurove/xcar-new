@@ -42,6 +42,14 @@ export function netGuards() {
     window.addEventListener('offline', () => document.documentElement.setAttribute('data-net', 'offline'));
     if (navigator.onLine === false) document.documentElement.setAttribute('data-net', 'offline');
 
+    // Фрейм пришёл без фрейма: редирект на вход — идём на вход целиком, иначе тост.
+    document.addEventListener('turbo:frame-missing', (event) => {
+        event.preventDefault();
+        const { response } = event.detail;
+        if (response.redirected && /\/vhod/.test(response.url)) { Turbo.visit('/vhod'); return; }
+        window.toast?.('Не получилось', 'danger');
+    });
+
     // Обрыв уходит в консоль как rejection — страница в порядке, тост уже показан.
     window.addEventListener('unhandledrejection', (event) => {
         if (event.reason instanceof TypeError && /load failed|failed to fetch|networkerror/i.test(event.reason.message)) event.preventDefault();

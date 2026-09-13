@@ -54,6 +54,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/offers/{offer}/interes', [InterestController::class, 'store']);
     Route::post('/offers/{offer}/izbrannoe', [FavoriteController::class, 'toggle']);
     Route::post('/offers/{offer}/pdf', [ShareController::class, 'pdf']);
+    Route::get('/offers/{offer}/chat', [OfferController::class, 'chat']);
     Route::post('/offers/{offer}/chat', [ChatController::class, 'open']);
 
     Route::get('/lk', [ProfileController::class, 'show'])->name('cabinet');
