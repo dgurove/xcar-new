@@ -17,6 +17,7 @@ use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
+use App\Support\ListPrefs;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -30,6 +31,7 @@ class VehicleController
 
     public function index(Request $request)
     {
+        ListPrefs::sync($request, 'park-vehicles');
         $preset = $request->query('preset', 'stored');
         $q = trim((string) $request->query('q'));
         $vehicles = Vehicle::query()->with(['brand', 'model', 'client', 'yard', 'media'])

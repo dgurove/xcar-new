@@ -16,6 +16,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Tag;
 use App\Workflow\Insurer;
+use App\Support\ListPrefs;
 use Illuminate\Http\Request;
 
 class OfferController
@@ -30,6 +31,7 @@ class OfferController
     public function index(Request $request)
     {
         $preset = $request->query('preset', 'all');
+        ListPrefs::sync($request, 'crm-offers');
         $sort = $request->query('sort', 'fresh');
 
         $q = Offer::query()->with(['brand', 'model', 'media'])->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');

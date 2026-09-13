@@ -31,6 +31,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'role' => Role::class,
             'access' => 'array',
             'notification_settings' => 'array',
+            'list_prefs' => 'array',
             'email_verified_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',

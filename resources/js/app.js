@@ -50,6 +50,7 @@ relaunchScroll();
 keyboardInset();
 systemTheme();
 headerState();
+activePillIntoView();
 heroTransition();
 timerDone();
 
@@ -268,4 +269,12 @@ function headerState() {
     };
     document.addEventListener('turbo:load', watch);
     document.addEventListener('turbo:render', watch);
+}
+
+// Активная пилюля ленты — в кадре, а не за краем экрана.
+function activePillIntoView() {
+    const show = () => document.querySelectorAll('.pills [aria-current], .toolbar-pills [aria-current], .cabinet-pills [aria-current]').forEach((el) => {
+        el.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' });
+    });
+    document.addEventListener('turbo:load', show);
 }
