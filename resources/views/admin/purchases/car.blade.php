@@ -66,21 +66,15 @@
                 </div>
                 @if ($car->locked_fields)<div class="mt-2 text-sm text-ink-muted">Правлено руками: {{ implode(', ', $car->locked_fields) }}</div>@endif
             </x-ui.card>
-            @if ($car->offers->isNotEmpty())
+            @php $live = $car->activeOfferList(); $chosen = $live->firstWhere('state', OfferState::Chosen); @endphp
+            @if ($live->isNotEmpty())
             <x-ui.card title="Предложения менеджеров" class="order-3">
-                <div class="flex flex-col gap-2">
-                    @foreach ($car->offers as $offer)
-                        <div class="box-nested">
-                            <div>
-                                <div class="flex flex-wrap items-baseline gap-2"><span class="nums whitespace-nowrap">{{ number_format($offer->amount, 0, '', ' ') }} ₽</span><span class="text-sm {{ $offer->state === OfferState::Chosen ? 'text-accent-text' : 'text-ink-muted' }}">{{ $offer->state->label() }}</span>@if ($car->price_listing)<span class="text-sm text-ink-dim tabular-nums">{{ $offer->amount >= $car->price_listing ? '+' : '−' }}{{ number_format(abs($offer->amount - $car->price_listing), 0, '', ' ') }}</span>@endif</div>
-                                <div class="mt-1 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$offer->user" full/><a href="tel:+{{ $offer->user->phone }}" class="tag nums">{{ $offer->user->phoneFormatted() }}</a><span class="tag nums">{{ $offer->created_at->translatedFormat('j M, H:i') }}</span></div>
-                                @if ($offer->comment)<div class="text-sm">{{ $offer->comment }}</div>@endif
-                            </div>
-                            @if ($offer->state === OfferState::Active)<form method="post" action="/zakupki/ceny/{{ $offer->id }}/vybrat" class="mt-2">@csrf<x-ui.button size="sm">Выбрать</x-ui.button></form>@endif
-                            @if ($offer->state === OfferState::Chosen)<form method="post" action="/zakupki/ceny/{{ $offer->id }}/otmenit" class="mt-2" data-turbo-confirm="Отменить выбор? Остальные цены по машине снова будут ждать">@csrf<x-ui.button size="sm" variant="ghost">Отменить выбор</x-ui.button></form>@endif
-                        </div>
-                    @endforeach
+                <div class="flex flex-wrap items-center gap-1.5">
+                    @foreach ($live as $offer)<x-purchase.offer-chip :offer="$offer" :car="$car"/>@endforeach
                 </div>
+                @if ($chosen)
+                    <div class="mt-3 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$chosen->user" full current/><a href="tel:+{{ $chosen->user->phone }}" class="tag nums">{{ $chosen->user->phoneFormatted() }}</a></div>
+                @endif
             </x-ui.card>
             @endif
         </div>

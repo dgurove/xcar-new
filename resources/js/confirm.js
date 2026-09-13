@@ -2,7 +2,8 @@ import { openSheet, closeSheet } from './sheet';
 
 // Подтверждение своей шторкой вместо window.confirm («crm.xcar.ru says»):
 // вопрос заголовком, кнопка с глаголом («Удалить», «Отклонить», «Выдать») и
-// «Отмена». Глагол — data-turbo-confirm-label у формы, иначе подпись нажатой
+// «Отмена»; data-turbo-confirm-text у формы — абзац под вопросом (комментарий).
+// Глагол — data-turbo-confirm-label у формы, иначе подпись нажатой
 // кнопки, иначе первое слово вопроса. Опасное — btn-danger, если кнопка была
 // опасной или вопрос начинается с «Удалить»/«Отклонить»/«Отменить»/«Снять».
 // Turbo зовёт confirmSheet через Turbo.config.forms.confirm, контроллеры — сами.
@@ -19,12 +20,15 @@ export function confirmSheet(message, options = {}) {
         d.dataset.turboTemporary = '';
         d.innerHTML = `
             <h2 class="mb-5 text-lg"></h2>
+            <p class="-mt-3 mb-5 text-ink-muted" data-text hidden></p>
             <div class="flex flex-col gap-2 sm:flex-row-reverse">
                 <button type="button" class="btn btn-block sm:flex-1 ${danger ? 'btn-danger' : 'btn-accent'}" data-ok></button>
                 <button type="button" class="btn btn-quiet btn-block sm:flex-1" data-cancel>Отмена</button>
             </div>`;
         d.querySelector('h2').textContent = message;
         d.querySelector('[data-ok]').textContent = label;
+        const text = form?.dataset.turboConfirmText;
+        if (text) { const p = d.querySelector('[data-text]'); p.textContent = text; p.hidden = false; }
         document.body.append(d);
 
         let answer = false;

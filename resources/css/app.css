@@ -367,6 +367,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Человек чипом: аватар слева, имя. */
   .chip.person { @apply max-w-full gap-1.5 rounded-full py-0.5 pr-2.5 pl-0.5; }
   .chip.person-current { @apply bg-accent-soft text-accent-text; }
+  /* Предложение менеджера — чип-кнопка; выбранное — акцентом с галочкой. */
+  .offer-chip { @apply cursor-pointer transition-colors; }
+  .offer-chip .nums { font-weight: 500; }
+  .offer-chip-chosen, .dark .offer-chip-chosen { @apply bg-accent text-white; }
+  @media (hover: hover) { .offer-chip:hover { @apply bg-hover; } .offer-chip-chosen:hover { @apply bg-accent-hover; } }
+  .offer-chip:active { scale: .97; }
 
   /* Метка на кадре: белый текст на цветной подложке. */
   .mark { @apply inline-flex items-center rounded-(--radius-s) px-2 text-xs font-medium text-white; padding-block: 3px; background: var(--color-closed); }
