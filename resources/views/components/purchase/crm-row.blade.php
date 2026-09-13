@@ -7,8 +7,8 @@
     $offers = $car->activeOfferList()->sortBy([fn ($a, $b) => ($b->user_id === $highlight) <=> ($a->user_id === $highlight), fn ($a, $b) => $b->amount <=> $a->amount])->values();
     $amber = '--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d';
 @endphp
-<div class="row flex-col items-stretch sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-x-6">
-    <div class="flex min-w-0 items-start gap-3">
+<div class="row flex-col items-stretch sm:flex-row sm:items-center sm:gap-x-6">
+    <div class="flex min-w-0 items-start gap-3 sm:w-[24rem] sm:shrink-0">
         <a href="/zakupki/{{ $n }}/{{ $car->ref }}" class="row-photo"><x-offer.photo :media="$car->mainPhoto()" sizes="64px"/></a>
         <div class="min-w-0 flex-1">
             <a href="/zakupki/{{ $n }}/{{ $car->ref }}" class="flex items-baseline gap-2"><span class="truncate font-medium">{{ $car->titleWithYear() }}</span><span class="nums shrink-0 text-sm text-ink-dim">{{ $car->dl }}</span></a>
@@ -22,7 +22,7 @@
             </div>
         </div>
     </div>
-    <div class="mt-2.5 flex min-w-0 flex-wrap items-center gap-1.5 sm:mt-0 sm:self-center">
+    <div class="mt-2.5 flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:mt-0">
         @forelse ($offers as $offer)
             <x-purchase.offer-chip :offer="$offer" :car="$car" :highlight="$highlight"/>
         @empty
