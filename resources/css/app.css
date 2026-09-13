@@ -190,12 +190,16 @@
   html[data-turbo-visit-direction="none"]::view-transition-old(root),
   html[data-turbo-visit-direction="none"]::view-transition-new(root) { animation: none; }
   html[data-turbo-visit-direction="none"]::view-transition-group(root) { animation-duration: 0s; }
+  /* После системного жеста «назад» страница уже на месте — без второго движения. */
+  html[data-native-back]::view-transition-old(root), html[data-native-back]::view-transition-new(root) { animation: none; }
+  html[data-native-back]::view-transition-group(root), html[data-native-back]::view-transition-group(hero) { animation-duration: 0s; }
   @keyframes push-in    { from { transform: translateX(100%); } }
   @keyframes push-under { to   { transform: translateX(-30%); filter: brightness(.9); } }
   @keyframes pop-out    { to   { transform: translateX(100%); } }
   @keyframes pop-under  { from { transform: translateX(-30%); filter: brightness(.9); } }
   @media (prefers-reduced-motion: reduce) {
     ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+    .sheet, .sheet::backdrop, .tabbar, .toast, .card-media img, .card-dot, .card-star, .card-arrow, .btn, .card, .header-title, .confirm { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   }
 
 }

@@ -35,6 +35,9 @@ export function touchPrefetch() {
     document.addEventListener('touchstart', (event) => {
         const link = event.target.closest?.('a[href]');
         if (!link || !prefetchable(link)) return;
+        // Касание у самого края — это жест «назад» iOS, а не тап по карточке.
+        const x = event.touches[0].clientX;
+        if (x < 24 || x > innerWidth - 24) return;
         const entry = prefetch(link.href);
         const t = event.touches[0];
         touch = entry ? { entry, x: t.clientX, y: t.clientY, at: Date.now(), fresh: Date.now() - entry.at < 50 } : null;
