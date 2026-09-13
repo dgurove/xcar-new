@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Support\Nav;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Vin\RememberVin;
@@ -18,6 +19,7 @@ final class CreateRequest
 {
     public function __invoke(User $by, RequestType $type, ?Vehicle $vehicle, array $data): Request
     {
+        Nav::forgetStaffCounts();
         return DB::transaction(function () use ($by, $type, $vehicle, $data) {
             if (! $vehicle) {
                 $brand = ! empty($data['brand']) ? Brand::resolve($data['brand']) : (! empty($data['brand_id']) ? Brand::find($data['brand_id']) : null);

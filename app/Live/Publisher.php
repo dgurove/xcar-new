@@ -2,6 +2,7 @@
 
 namespace App\Live;
 
+use App\Support\Nav;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -15,6 +16,10 @@ final class Publisher
 {
     public function __invoke(array|string $topics, string $type, array $data = []): void
     {
+        // Событие для сотрудников — счётчики Nav::staffCounts пересчитываются (и без хаба тоже).
+        if (in_array($type, ['badges', 'refresh'], true) && array_intersect([Topics::STAFF, Topics::PARK], (array) $topics)) {
+            Nav::forgetStaffCounts();
+        }
         $hub = (string) config('xcar.mercure.hub');
         if ($hub === '' || ! config('xcar.mercure.publisher_key')) {
             return;

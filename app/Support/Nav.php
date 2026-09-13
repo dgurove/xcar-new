@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Http\Middleware\MarkInstalled;
+use Illuminate\Support\Facades\Cache;
 use App\Chats\Chat;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
@@ -226,26 +227,8 @@ final class Nav
     {
         $badges = ['/lk/uvedomleniya' => $user->unreadCount()];
 
-        if ($surface === Surface::Park) {
-            $badges['/'] = Request::where('state', RequestState::New)->count();
-            $badges['/zayavki/iz-pisem'] = Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count();
-            $badges['/pochta'] = Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count();
-
-            return array_filter($badges);
-        }
-
-        if ($surface === Surface::Crm) {
-            $badges['/'] = Bid::where('state', BidState::Active)->count();
-            $badges['/predlozheniya/iz-pisem'] = Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->count();
-            $badges['/rabota/pochta'] = Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count();
-            $badges['/rabota/chaty'] = Chat::where('unread_for_staff', '>', 0)->count();
-            $badges['/rabota/sdelki'] = Position::where('track', 'sale')
-                ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
-                ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))
-                ->count();
-            $badges['/rabota'] = $badges['/rabota/sdelki'] + $badges['/rabota/pochta'] + $badges['/rabota/chaty'];
-
-            return array_filter($badges);
+        if ($surface === Surface::Park || $surface === Surface::Crm) {
+            return array_filter($badges + self::staffCounts($surface));
         }
 
         if (! $user->isStaff()) {
@@ -255,6 +238,43 @@ final class Nav
         $badges['/lk/izbrannoe'] = Favorite::where('user_id', $user->id)->count();
 
         return array_filter($badges);
+    }
+
+    /**
+     * Общие для всех сотрудников счётчики — до шести запросов на каждую страницу CRM,
+     * поэтому полминуты в кэше; события, которые их меняют (подтверждение, письмо,
+     * сообщение, прочитано), сбрасывают кэш через forgetStaffCounts.
+     */
+    public static function staffCounts(Surface $surface): array
+    {
+        return Cache::remember("nav.staff:{$surface->value}", 30, function () use ($surface) {
+            if ($surface === Surface::Park) {
+                return [
+                    '/' => Request::where('state', RequestState::New)->count(),
+                    '/zayavki/iz-pisem' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count(),
+                    '/pochta' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
+                ];
+            }
+            $badges = [
+                '/' => Bid::where('state', BidState::Active)->count(),
+                '/predlozheniya/iz-pisem' => Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->count(),
+                '/rabota/pochta' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
+                '/rabota/chaty' => Chat::where('unread_for_staff', '>', 0)->count(),
+                '/rabota/sdelki' => Position::where('track', 'sale')
+                    ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
+                    ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))
+                    ->count(),
+            ];
+            $badges['/rabota'] = $badges['/rabota/sdelki'] + $badges['/rabota/pochta'] + $badges['/rabota/chaty'];
+
+            return $badges;
+        });
+    }
+
+    public static function forgetStaffCounts(): void
+    {
+        Cache::forget('nav.staff:crm');
+        Cache::forget('nav.staff:park');
     }
 
     /** Все пути, у которых бывает счётчик — для стрима бейджей. */

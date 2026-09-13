@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Support\Nav;
 use App\Park\EventType;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -18,6 +19,7 @@ final class Move
 {
     public function __invoke(Vehicle $vehicle, User $by, Yard $to): Vehicle
     {
+        Nav::forgetStaffCounts();
         return DB::transaction(function () use ($vehicle, $by, $to) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             if ($vehicle->state !== VehicleState::Stored) {

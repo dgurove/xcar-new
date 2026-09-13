@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Support\Nav;
 use App\Park\EventType;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -19,6 +20,7 @@ final class Intake
 {
     public function __invoke(Vehicle $vehicle, User $by, Yard $yard, ?Carbon $at, array $damageZones = [], ?string $damageNote = null): Vehicle
     {
+        Nav::forgetStaffCounts();
         return DB::transaction(function () use ($vehicle, $by, $yard, $at, $damageZones, $damageNote) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             if ($vehicle->state !== VehicleState::Expected) {

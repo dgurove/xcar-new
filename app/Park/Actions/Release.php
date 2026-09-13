@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Support\Nav;
 use App\Park\EventType;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -18,6 +19,7 @@ final class Release
 {
     public function __invoke(Vehicle $vehicle, User $by, ?Carbon $at, ?string $note = null): Vehicle
     {
+        Nav::forgetStaffCounts();
         return DB::transaction(function () use ($vehicle, $by, $at, $note) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             if ($vehicle->state !== VehicleState::Stored) {
