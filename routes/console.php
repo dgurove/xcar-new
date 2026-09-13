@@ -9,3 +9,4 @@ Schedule::command('telegram:poll')->everyMinute()->withoutOverlapping(10)->runIn
 Schedule::command('mail:reconcile')->dailyAt('04:10');
 Schedule::command('queue:prune-batches')->daily();
 Schedule::command('storage:gc')->dailyAt('04:30');
+Schedule::command('purchases:recheck-photos')->dailyAt('05:10');

@@ -3,11 +3,12 @@
 namespace App\Purchases\Actions;
 
 use App\Purchases\Car;
-use App\Purchases\ImportState;
 use App\Purchases\Importer;
+use App\Purchases\ImportState;
 use App\Purchases\Jobs\FetchPhotos;
 use App\Purchases\Jobs\FetchSpecs;
 use App\Purchases\Purchase;
+use App\Purchases\PurchaseState;
 use App\Users\User;
 
 /** Импорт подтверждённого файла и запуск выкачки: машины видны сразу, характеристики и фото едут фоном. */
@@ -45,5 +46,18 @@ final class ImportFile
         }
 
         return $n;
+    }
+
+    /** Пустые в прошлый раз папки облака — по живым закупкам, папки с 404 не трогаем: шара удалена. */
+    public function recheckEmpty(): int
+    {
+        $cars = Car::whereNotNull('cloud_url')->where('photos_count', 0)->where('photos_state', ImportState::Skipped)
+            ->whereHas('purchase', fn ($q) => $q->whereIn('state', [PurchaseState::Draft, PurchaseState::Open]))->get();
+        foreach ($cars as $car) {
+            $car->update(['photos_state' => ImportState::Pending]);
+            FetchPhotos::dispatch($car->id);
+        }
+
+        return $cars->count();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Media;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Spatie\Image\Enums\Fit;
@@ -50,6 +51,7 @@ final class PhotoIngest
     {
         $webp = null;
         try {
+            $path = $this->fromHeic($path);
             $this->checkSize($path);
             // Отпечаток исходника — чтобы тот же файл (из письма, с телефона, из архива) не лёг второй раз.
             $properties += ['sha' => hash_file('sha256', $path)];
@@ -66,6 +68,30 @@ final class PhotoIngest
                 @unlink($webp);
             }
         }
+    }
+
+    /**
+     * HEIC с айфона (папки Carcade полны ими): GD его не читает, перегоняем
+     * в JPEG бинарём heif-convert (libheif-examples). Узнаём по сигнатуре
+     * ftyp…, не по имени — из архивов и с телефона имя бывает любым.
+     */
+    private function fromHeic(string $path): string
+    {
+        $head = (string) @file_get_contents($path, false, null, 4, 8);
+        if (! preg_match('/^ftyp(heic|heix|hevc|hevx|heim|heis|mif1|msf1)/', $head)) {
+            return $path;
+        }
+        $base = tempnam(sys_get_temp_dir(), 'heic-');
+        $jpg = $base.'.jpg';
+        $result = Process::run(['heif-convert', '-q', '92', $path, $jpg]);
+        @unlink($base);
+        if (! $result->successful() || ! is_file($jpg) || filesize($jpg) === 0) {
+            @unlink($jpg);
+            throw new RuntimeException('HEIC не перекодировался: '.trim($result->errorOutput() ?: $result->output()) ?: 'нет heif-convert');
+        }
+        @unlink($path);
+
+        return $jpg;
     }
 
     private function checkSize(string $path): void
