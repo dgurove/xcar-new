@@ -9,7 +9,7 @@
     $best = $waiting->sortByDesc('amount')->first();
     $grid = 'grid grid-cols-2 gap-3 lg:grid-cols-3';
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']">
+<x-ui.shell :title="$offer- cache="no-cache">titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
     <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
         <span class="order-last ml-auto flex items-center gap-1">
             @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" icon/>@endif

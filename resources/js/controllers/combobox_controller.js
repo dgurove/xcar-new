@@ -14,6 +14,7 @@ export default class extends Controller {
     }
 
     disconnect() {
+        this.close();
         document.removeEventListener('click', this.onDocumentClick);
         clearTimeout(this.timer);
     }
@@ -44,7 +45,7 @@ export default class extends Controller {
         if (q && !exact && this.createValue) {
             this.listTarget.append(this.option(`Добавить «${q}»`, null, () => this.createNew(q), true));
         }
-        this.listTarget.hidden = this.listTarget.childElementCount === 0;
+        if (this.listTarget.childElementCount === 0) this.close(); else this.show();
     }
 
     option(label, hint, onPick, isCreate = false) {
@@ -83,11 +84,38 @@ export default class extends Controller {
 
     open() {
         if (this.listTarget.childElementCount === 0) this.load();
-        else this.listTarget.hidden = false;
+        else this.show();
+    }
+
+    // Список — в top layer (popover): поверх открытой шторки и любых overflow, под полем;
+    // под клавиатурой места нет — переворачивается над полем.
+    show() {
+        const list = this.listTarget;
+        list.hidden = false;
+        if (!list.showPopover) return;
+        this.place();
+        if (!list.matches(':popover-open')) list.showPopover();
+        this.onMove ??= () => this.place();
+        addEventListener('scroll', this.onMove, { capture: true, passive: true });
+        visualViewport?.addEventListener('resize', this.onMove);
+    }
+
+    place() {
+        const list = this.listTarget, r = this.inputTarget.getBoundingClientRect();
+        const below = (visualViewport?.height ?? innerHeight) - r.bottom - 8;
+        const max = Math.max(120, Math.min(260, below >= 160 ? below : r.top - 8));
+        list.style.left = `${r.left}px`;
+        list.style.width = `${r.width}px`;
+        list.style.maxHeight = `${max}px`;
+        if (below >= 160) { list.style.top = `${r.bottom + 4}px`; list.style.bottom = ''; }
+        else { list.style.top = ''; list.style.bottom = `${(visualViewport?.height ?? innerHeight) - r.top + 4}px`; }
     }
 
     close() {
-        this.listTarget.hidden = true;
+        const list = this.listTarget;
+        list.hidden = true;
+        if (list.matches?.(':popover-open')) list.hidePopover();
+        if (this.onMove) { removeEventListener('scroll', this.onMove, { capture: true }); visualViewport?.removeEventListener('resize', this.onMove); }
     }
 
     // Марка сменилась — модель сбрасывается.

@@ -8,6 +8,6 @@
     <input id="{{ $id }}" type="text" class="field-input" value="{{ $text }}" autocomplete="off" autocorrect="off" autocapitalize="words" data-combobox-target="input"
            data-action="input->combobox#search focus->combobox#open" {{ $attributes }}>
     <input type="hidden" name="{{ $name }}" value="{{ old($name, $value) }}" data-combobox-target="hidden">
-    <div class="combobox-list" data-combobox-target="list" hidden></div>
+    <div class="combobox-list" data-combobox-target="list" popover="manual" hidden></div>
     @if ($error)<p class="field-error">{{ $error }}</p>@endif
 </div>

@@ -902,7 +902,9 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
 
 @layer components {
   .combobox { @apply relative; }
-  .combobox-list { @apply absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-auto rounded-(--radius-m) bg-surface p-1 shadow-(--shadow-drop); }
+  .combobox-list { @apply absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-auto rounded-(--radius-m) bg-surface p-1 shadow-(--shadow-drop); overscroll-behavior: contain; }
+  /* В top layer: геометрию под полем считает контроллер (place). */
+  .combobox-list:popover-open { position: fixed; inset: auto; margin: 0; border: 0; color: inherit; }
   .combobox-option { @apply flex w-full items-baseline justify-between gap-3 rounded-(--radius-s) px-3 py-2 text-left hover:bg-surface-3; min-height: 44px; }
   .combobox-create { @apply text-accent-text; }
 

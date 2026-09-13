@@ -1,4 +1,4 @@
-@props(['title' => null])
+@props(['title' => null, 'cache' => 'no-preview'])
 @php
     $surface = \App\Support\Surface::current();
     // Тема: cookie на общий домен — одна на три приложения и известна серверу, поэтому
@@ -12,6 +12,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="theme-color" content="{{ $theme === 'dark' ? '#121212' : '#ffffff' }}">
     <meta name="view-transition" content="same-origin">
+    {{-- Без превью из кэша: иначе advance на виденный адрес рисует снимок, а через миг молча
+         подменяет свежим — скачок после анимации. Ответ обычно уже в руках (префетч). --}}
+    <meta name="turbo-cache-control" content="{{ $cache }}">
     <meta name="turbo-refresh-method" content="morph">
     <meta name="turbo-refresh-scroll" content="preserve">
     <meta name="csrf-token" content="{{ csrf_token() }}">

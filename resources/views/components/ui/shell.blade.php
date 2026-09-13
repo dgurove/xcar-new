@@ -5,12 +5,12 @@
      Слот actions — ряд справа от h1 (поделиться, закладка, стрелки).
      back — ['Предложения', '/']: на телефоне слева в шапке «‹ Предложения»,
      как у экрана в глубине нативного приложения. --}}
-@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null])
+@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null, 'cache' => 'no-preview'])
 @php
     $heading = $heading === false ? null : ($heading ?? $title);
     $site = \App\Support\Surface::current() === \App\Support\Surface::Site;
 @endphp
-<x-ui.layout :title="$title" class="min-h-dvh flex flex-col">
+<x-ui.layout :title="$title" :cache="$cache" class="min-h-dvh flex flex-col">
     <x-ui.header :over-hero="$overHero" :back="$back" :heading="$overHero ? null : $heading"/>
 
     <main id="main" class="grow {{ $overHero ? '' : 'relative' }}{{ $site ? '' : ' pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom))] md:pb-0' }}">
