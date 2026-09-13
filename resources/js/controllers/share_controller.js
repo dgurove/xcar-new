@@ -11,6 +11,8 @@ export default class extends Controller {
 
     connect() {
         this.compose();
+        // Где системный лист умеет файлы (iPhone, Android), «Скачать PDF» лишняя — PDF уходит через «Поделиться».
+        if (this.hasDownloadTarget && navigator.canShare?.({ files: [new File([''], 'a.pdf', { type: 'application/pdf' })] })) this.downloadTarget.hidden = true;
     }
 
     open() {
