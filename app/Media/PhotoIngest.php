@@ -23,7 +23,8 @@ final class PhotoIngest
 
     public const QUALITY = 80;
 
-    public const MAX_SOURCE_PIXELS = 40_000_000;
+    /** 48 МП с телефонов Samsung проходят; GD держит ~4 байта на пиксель, лимит памяти 512M. */
+    public const MAX_SOURCE_PIXELS = 64_000_000;
 
     public function fromUpload(HasMedia $model, string $collection, UploadedFile $file, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
@@ -72,7 +73,7 @@ final class PhotoIngest
 
     /**
      * HEIC с айфона (папки Carcade полны ими): GD его не читает, перегоняем
-     * в JPEG бинарём heif-convert (libheif-examples). Узнаём по сигнатуре
+     * в JPEG скриптом heic2jpg из образа (deploy/bin). Узнаём по сигнатуре
      * ftyp…, не по имени — из архивов и с телефона имя бывает любым.
      */
     private function fromHeic(string $path): string
@@ -83,11 +84,11 @@ final class PhotoIngest
         }
         $base = tempnam(sys_get_temp_dir(), 'heic-');
         $jpg = $base.'.jpg';
-        $result = Process::run(['heif-convert', '-q', '92', $path, $jpg]);
+        $result = Process::timeout(120)->run(['heic2jpg', $path, $jpg]);
         @unlink($base);
         if (! $result->successful() || ! is_file($jpg) || filesize($jpg) === 0) {
             @unlink($jpg);
-            throw new RuntimeException('HEIC не перекодировался: '.trim($result->errorOutput() ?: $result->output()) ?: 'нет heif-convert');
+            throw new RuntimeException('HEIC не перекодировался: '.trim($result->errorOutput() ?: $result->output()) ?: 'нет heic2jpg');
         }
         @unlink($path);
 

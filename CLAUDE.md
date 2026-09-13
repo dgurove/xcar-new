@@ -195,7 +195,7 @@ Excel и PDF (`OffersExport::tables/xlsx/pdf`, PDF рисует dompdf по
 никогда — только галка «Показывать покупателям» в карточке), `app/Notifications`
 (`Notice` — база, канал database+mail+push), `app/Push`, `app/Live` (Mercure:
 `card/refresh/toast/badges`), `app/Media` (`PhotoIngest` — всё входящее в
-1600 px webp, HEIC с айфонов через `heif-convert` из образа, конверсии только вниз; `papers` на закрытом диске, наружу через
+1600 px webp, HEIC с айфонов через `heic2jpg` (pillow-heif) из образа, конверсии только вниз; `papers` на закрытом диске, наружу через
 `/fayly/{media}`; холодный слой `CoolPhotos`/`WarmPhotos`), `app/Storage`
 (`storage:gc` ежедневно, `storage:report`), `app/Cars`, `app/Users` (вход по ключу — Face ID / Touch ID:
 `laragear/webauthn`, провайдер `xcar-webauthn` (`Users\Auth\WebAuthnProvider`
