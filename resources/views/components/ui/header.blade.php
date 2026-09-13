@@ -30,10 +30,12 @@
                     <button type="button" class="header-btn header-sq" data-action="sheet#open" aria-label="Поиск">
                         <x-ui.icon name="search" class="size-[18px]"/>
                     </button>
-                    <x-ui.sheet id="search-sheet" title="Поиск">
-                        <form method="get" action="/" data-turbo-action="replace">
-                            <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" class="field-input" placeholder="Марка, модель, VIN" enterkeyhint="search" autofocus>
+                    <x-ui.sheet id="search-sheet" title="Поиск" data-controller="search" data-search-url-value="/poisk">
+                        <form method="get" action="/" data-turbo-action="replace" data-action="submit->search#submit">
+                            <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" class="field-input" placeholder="Марка, модель, VIN" enterkeyhint="search" autocomplete="off" autofocus data-search-target="input" data-action="input->search#input">
                         </form>
+                        <div class="pills mt-3" data-search-target="recent" hidden></div>
+                        <turbo-frame id="search-results" target="_top" class="mt-3 block" data-search-target="frame"></turbo-frame>
                     </x-ui.sheet>
                 </div>
                 @if ($user)

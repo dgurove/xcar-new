@@ -22,6 +22,17 @@ class CatalogController
     }
 
     /** Галерея «скоро в продаже»: без цены, принимаем интерес. */
+    /** Живой поиск в шторке: до восьми строк по мере ввода, фреймом. */
+    public function search(Request $request)
+    {
+        $q = trim((string) $request->query('q'));
+        $offers = mb_strlen($q) >= 2
+            ? CatalogQuery::for($request->user(), ['q' => $q, 'sort' => CatalogQuery::DEFAULT_SORT])->limit(8)->get()
+            : collect();
+
+        return view('site.search', ['offers' => $offers, 'q' => $q]);
+    }
+
     public function gallery(Request $request)
     {
         return $this->list($request, gallery: true);

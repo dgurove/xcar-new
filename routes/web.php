@@ -42,6 +42,7 @@ Route::get('/chaty/{chat}/fayly/{file}', [ChatController::class, 'file']);
 // Сайт закрыт: дальше только с открытым доступом (SiteWall).
 Route::middleware('wall')->group(function () {
     Route::get('/', [CatalogController::class, 'index'])->name('home');
+    Route::get('/poisk', [CatalogController::class, 'search']);
     Route::view('/voprosy', 'site.pages.voprosy');
     Route::get('/galereya', [CatalogController::class, 'gallery']);
     Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
