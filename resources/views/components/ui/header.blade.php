@@ -21,7 +21,7 @@
         @if ($back)
             {{-- В глубине раздела: слева «‹ Раздел», на сайте знак остаётся по центру. --}}
             <a href="{{ $back[1] }}" class="header-btn header-back {{ $site ? '' : 'justify-self-start' }}" data-controller="back" data-action="back#go" data-turbo-action="replace">
-                <x-ui.icon name="chevron-left" class="-ml-1 size-5 shrink-0"/><span class="truncate">{{ $back[0] }}</span>
+                <x-ui.icon name="chevron-left" class="-ml-1 size-5 shrink-0"/><span class="truncate">Назад</span>
             </a>
             @if ($site)<a href="/" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>@endif
         @elseif ($site)
@@ -81,7 +81,7 @@
         <div class="header-row">
             @if ($back)
                 {{-- В глубине раздела: квадрат «‹» в углу, подпись раздела — в подсказке. --}}
-                <a href="{{ $back[1] }}" class="header-btn header-btn-square header-h w-[1.875rem]" aria-label="Назад: {{ $back[0] }}" title="{{ $back[0] }}" data-controller="back" data-action="back#go" data-turbo-action="replace"><x-ui.icon name="chevron-left" class="-ml-px size-4"/></a>
+                <a href="{{ $back[1] }}" class="header-btn header-btn-square header-h w-[1.875rem]" aria-label="Назад" title="Назад" data-controller="back" data-action="back#go" data-turbo-action="replace"><x-ui.icon name="chevron-left" class="-ml-px size-4"/></a>
             @endif
             <form method="get" action="{{ $searchAction }}" class="header-btn header-h header-search relative justify-start px-3" role="search" data-turbo-action="replace">
                 <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>

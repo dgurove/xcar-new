@@ -21,7 +21,7 @@ final class OffersSummary
     /** @var Collection<int, User> */
     public readonly Collection $managers;
 
-    /** @var array<int, array{visible:int, offered:int, missing:int, sum:int, chosen:int}> по id пользователя */
+    /** @var array<int, array{visible:int, offered:int, missing:int, chosen:int}> по id пользователя */
     public readonly array $stats;
 
     public function __construct(public readonly Purchase $purchase)
@@ -39,7 +39,6 @@ final class OffersSummary
                 'visible' => $visible,
                 'offered' => $mine->count(),
                 'missing' => max(0, $visible - $mine->count()),
-                'sum' => $mine->sum('amount'),
                 'chosen' => $mine->where('state', OfferState::Chosen)->count(),
             ];
         }
