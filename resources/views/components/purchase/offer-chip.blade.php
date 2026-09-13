@@ -17,6 +17,6 @@
         <span class="truncate">{{ $who }}</span>
         <span class="nums whitespace-nowrap">{{ $sum }}</span>
         @if ($offer->comment)<x-ui.icon name="chat" class="size-3.5 opacity-60"/>@endif
-        @if ($chosen)<x-ui.icon name="check" class="size-3.5"/>@endif
+        @if ($chosen)<x-ui.icon name="check" class="!size-3.5"/>@endif
     </button>
 </form>
