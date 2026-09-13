@@ -154,7 +154,13 @@ node scripts/icons.mjs           # иконки трёх приложений и
 недостижим, длинный опрос `telegram:poll` каждую минуту из планировщика,
 сообщения `Messages/*` с кнопками, нажатия — `UpdateHandler`, только из чата
 владельца; `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_CHAT_ID`), `app/Park`
-(стоянка), `app/Purchases` (закупки Carcade), `app/Notifications`
+(стоянка), `app/Purchases` (закупки Carcade: на витрине одна закупка
+показывается двумя карточками — «легковые» и «грузовые» (`Group`,
+`Purchase::cardsFor`, `?group=`), в CRM она одна; `/zakupki/{n}/predlozheniya` —
+кто из менеджеров по скольким машинам назвал цену (`OffersSummary`,
+`OffersExport` — сводка, матрица машина × менеджер, машины без цен);
+выкачка фото и характеристик — джобы с тремя попытками и `failed()`, в
+«идёт» машина не застревает), `app/Notifications`
 (`Notice` — база, канал database+mail+push), `app/Push`, `app/Live` (Mercure:
 `card/refresh/toast/badges`), `app/Media` (`PhotoIngest` — всё входящее в
 1600 px webp, конверсии только вниз; `papers` на закрытом диске, наружу через

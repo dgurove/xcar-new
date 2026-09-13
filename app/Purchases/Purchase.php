@@ -31,10 +31,49 @@ class Purchase extends Model
         return $this->belongsTo(User::class, 'imported_by');
     }
 
-    /** Наружу — номер и месяц: по названию с именем лизинговой компании покупатель уйдёт искать те же машины у неё. */
-    public function publicTitle(): string
+    /** Наружу — номер, группа и месяц: по названию с именем лизинговой компании покупатель уйдёт искать те же машины у неё. */
+    public function publicTitle(?Group $group = null): string
     {
-        return "Закупка № {$this->number}, ".mb_strtolower($this->created_at->translatedFormat('F Y'));
+        return "Закупка № {$this->number}".($group ? ' '.$group->label() : '').', '.mb_strtolower($this->created_at->translatedFormat('F Y'));
+    }
+
+    /** Категории закупки, открытые этому человеку: без запрещённых ему и без пустых. */
+    public function kindsFor(?User $user): array
+    {
+        $hidden = Restriction::hiddenFor($user);
+        $present = $this->cars()->where('is_published', true)->distinct()->pluck('kind')->map(fn ($k) => $k instanceof Kind ? $k : Kind::from($k))->all();
+
+        return array_values(array_filter($present, fn (Kind $k) => ! in_array($k->value, $hidden, true)));
+    }
+
+    /**
+     * Карточки закупки на витрине — по одной на группу, в которой человеку что-то открыто.
+     * Названо — его собственными ценами: закупка у каждого своя.
+     *
+     * @return list<PurchaseCard>
+     */
+    public function cardsFor(?User $user): array
+    {
+        $kinds = $this->kindsFor($user);
+        $cards = [];
+        foreach (Group::cases() as $group) {
+            $in = array_values(array_filter($kinds, fn (Kind $k) => Group::of($k) === $group));
+            if (! $in) {
+                continue;
+            }
+            $cars = $this->cars()->where('is_published', true)->whereIn('kind', $in);
+            $rated = $user ? (clone $cars)->whereHas('offers', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [OfferState::Active, OfferState::Chosen]))->count() : 0;
+            $cards[] = new PurchaseCard($this, $group, $cars->count(), $rated);
+        }
+
+        return $cards;
+    }
+
+    /** @return list<PurchaseCard> */
+    public static function showcase(?User $user): array
+    {
+        return self::whereIn('state', [PurchaseState::Open, PurchaseState::Closed])->orderByDesc('number')->get()
+            ->flatMap(fn (self $p) => $p->cardsFor($user))->values()->all();
     }
 
     public function acceptsOffers(): bool

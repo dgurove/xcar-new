@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\HasMedia;
 
@@ -104,6 +105,12 @@ class Car extends Model implements HasMedia
     public function offerOf(?User $user): ?Offer
     {
         return $user ? $this->offers->first(fn (Offer $o) => $o->user_id === $user->id && in_array($o->state, [OfferState::Active, OfferState::Chosen], true)) : null;
+    }
+
+    /** Активные и выбранные цены из уже загруженной связи, без запроса. */
+    public function activeOfferList(): Collection
+    {
+        return $this->offers->whereIn('state', [OfferState::Active, OfferState::Chosen])->values();
     }
 
     public function bestOffer(): ?Offer

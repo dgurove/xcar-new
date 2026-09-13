@@ -4,6 +4,7 @@
         <x-ui.pill :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}</x-ui.pill>
         @if ($purchase->offers_close_at)<x-ui.pill tone="plain"><span>до {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span></x-ui.pill>@endif
         @if ($purchase->state->isPublic())<x-ui.pill tone="plain" :href="\App\Support\Surface::Site->url('/zakupki/'.$n)" data-turbo="false">На сайте</x-ui.pill>@endif
+        @if ($stats['priced'])<x-ui.pill tone="plain" :href="'/zakupki/'.$n.'/predlozheniya'">Менеджеры</x-ui.pill>@endif
         @if ($stats['pending'])<x-ui.pill tone="urgent">выкачка: {{ $stats['pending'] }}</x-ui.pill>@endif
         @if ($errors->any())<x-ui.flash tone="danger" class="w-full">{{ $errors->first() }}</x-ui.flash>@endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>

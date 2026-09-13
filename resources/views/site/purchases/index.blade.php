@@ -1,9 +1,9 @@
 <x-ui.shell title="Совместные закупки" :trail="[['Главная', '/'], ['Закупки']]">
-    @if ($purchases->isEmpty())
+    @if (! $cards)
         <x-ui.empty>Пока ни одной закупки нет.</x-ui.empty>
     @else
         <div class="flex flex-col gap-3">
-            @foreach ($purchases as $p)<x-purchase.row :purchase="$p" :rated="$mine[$p->id] ?? 0"/>@endforeach
+            @foreach ($cards as $card)<x-purchase.row :card="$card"/>@endforeach
         </div>
     @endif
 </x-ui.shell>

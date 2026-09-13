@@ -425,6 +425,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 4.5rem; height: 3.25rem; }
   .row-photo img { @apply size-full object-cover; }
   @media (hover: hover) { a.row:hover, .row:has(> a:hover) { @apply bg-hover; } }
+  .row[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--color-accent); }
 
   .legal { @apply text-ink-muted; max-width: 62ch; }
   .legal h2 { @apply mt-10 text-xl text-ink; }

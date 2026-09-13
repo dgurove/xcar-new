@@ -7,7 +7,6 @@ use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Purchases\Purchase;
-use App\Purchases\PurchaseState;
 use App\Support\ListContext;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -53,7 +52,8 @@ class CatalogController
         $counts = Cache::remember('catalog.counts', 30, fn () => [
             'offers' => Offer::whereIn('state', [OfferState::Open, OfferState::Closed])->count(),
             'gallery' => Offer::where('state', OfferState::Gallery)->count(),
-            'purchases' => Purchase::whereIn('state', [PurchaseState::Open, PurchaseState::Closed])->count(),
+            // Закупок на витрине столько, сколько карточек: одна присланная — две (легковые и грузовые).
+            'purchases' => count(Purchase::showcase(null)),
         ]);
         $counts['purchases'] = $user?->role->canSeePurchases() ? $counts['purchases'] : 0;
 

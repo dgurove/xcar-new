@@ -1,9 +1,9 @@
-{{-- Закупка в списке: название, сколько машин оценено, шкала, срок. --}}
-@props(['purchase', 'rated' => 0])
-@php $cars = $purchase->cars_count ?? 0; @endphp
-<a href="/zakupki/{{ $purchase->number }}" class="box rise flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-x-4">
+{{-- Закупка в списке — одна группа: название, сколько машин оценено, шкала, срок. --}}
+@props(['card'])
+@php $purchase = $card->purchase; $cars = $card->cars; $rated = $card->rated; @endphp
+<a href="{{ $card->url() }}" class="box rise flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-x-4">
     <span class="block min-w-0">
-        <h3 class="text-[19px] leading-snug sm:text-[22px]">{{ $purchase->publicTitle() }}</h3>
+        <h3 class="text-[19px] leading-snug sm:text-[22px]">{{ $card->title() }}</h3>
         @if ($cars > 0)
             <span class="mt-2 block max-w-sm">
                 @if ($rated >= $cars)

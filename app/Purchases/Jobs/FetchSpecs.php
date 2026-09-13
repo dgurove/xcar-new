@@ -13,6 +13,7 @@ use App\Purchases\Gone;
 use App\Purchases\ImportState;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -23,11 +24,20 @@ final class FetchSpecs implements ShouldQueue
 
     public int $timeout = 120;
 
-    public int $tries = 1;
+    public int $tries = 3;
+
+    public array $backoff = [60, 300];
 
     public function __construct(public int $carId)
     {
         $this->onConnection('database-long')->onQueue('long');
+    }
+
+    public function failed(?Throwable $e): void
+    {
+        $why = $e instanceof MaxAttemptsExceededException ? 'воркер останавливался посреди работы три раза' : ($e?->getMessage() ?: 'воркер остановлен');
+        Car::where('id', $this->carId)->where('specs_state', ImportState::Running)
+            ->update(['specs_state' => ImportState::Failed, 'specs_error' => Str::limit('Прервано: '.$why, 280), 'specs_at' => now()]);
     }
 
     public function handle(Carcade $carcade): void

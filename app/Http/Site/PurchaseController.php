@@ -5,11 +5,11 @@ namespace App\Http\Site;
 use App\Purchases\Actions\PlaceOffer;
 use App\Purchases\Actions\WithdrawOffer;
 use App\Purchases\Car;
+use App\Purchases\Group;
 use App\Purchases\Kind;
 use App\Purchases\Offer;
 use App\Purchases\OfferState;
 use App\Purchases\Purchase;
-use App\Purchases\PurchaseState;
 use App\Purchases\Restriction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -23,24 +23,23 @@ class PurchaseController
 
     public function index(Request $request)
     {
-        $purchases = Purchase::whereIn('state', [PurchaseState::Open, PurchaseState::Closed])->withCount('cars')->orderByDesc('number')->get();
-        $mine = Offer::where('user_id', $request->user()->id)->whereIn('state', [OfferState::Active, OfferState::Chosen])
-            ->join('purchase_cars', 'purchase_cars.id', '=', 'purchase_offers.car_id')->selectRaw('purchase_id, count(*) as n')->groupBy('purchase_id')->pluck('n', 'purchase_id');
-
-        return view('site.purchases.index', ['purchases' => $purchases, 'mine' => $mine]);
+        return view('site.purchases.index', ['cards' => Purchase::showcase($request->user())]);
     }
 
     public function show(Request $request, Purchase $purchase)
     {
         abort_unless($purchase->state->isPublic(), 404);
-        $filters = $request->only(['preset', 'q', 'kind', 'sort']);
+        $filters = $request->only(['preset', 'q', 'kind', 'sort', 'group']);
+        $group = $this->group($filters);
+        // Категории считаются без фильтра по категории: пилюли должны остаться, когда одна выбрана.
+        $kinds = $this->visible($purchase, $request, $group)->select('kind')->distinct()->pluck('kind')->map(fn ($k) => Kind::from($k->value ?? $k))->all();
+        abort_if($group && ! $kinds, 404);
         $cars = $this->cars($purchase, $request, $filters)->paginate(40)->withQueryString();
-        $total = $this->visible($purchase, $request)->count();
-        $done = $this->visible($purchase, $request)->whereHas('offers', fn ($o) => $o->where('user_id', $request->user()->id)->whereIn('state', [OfferState::Active, OfferState::Chosen]))->count();
+        $total = $this->visible($purchase, $request, $group)->count();
+        $done = $this->visible($purchase, $request, $group)->whereHas('offers', fn ($o) => $o->where('user_id', $request->user()->id)->whereIn('state', [OfferState::Active, OfferState::Chosen]))->count();
 
         return view('site.purchases.show', [
-            'purchase' => $purchase, 'cars' => $cars, 'filters' => $filters, 'total' => $total, 'done' => $done,
-            'kinds' => $this->visible($purchase, $request)->select('kind')->distinct()->pluck('kind')->map(fn ($k) => Kind::from($k->value ?? $k))->all(),
+            'purchase' => $purchase, 'cars' => $cars, 'filters' => $filters, 'total' => $total, 'done' => $done, 'kinds' => $kinds, 'group' => $group,
         ]);
     }
 
@@ -49,7 +48,8 @@ class PurchaseController
         abort_unless($purchase->state->isPublic() && $car->purchase_id === $purchase->id && $car->is_published, 404);
         abort_if(in_array($car->kind->value, Restriction::hiddenFor($request->user()), true), 404);
         $car->load(['brand', 'model', 'settlement', 'media', 'offers']);
-        $filters = $request->only(['preset', 'q', 'kind', 'sort']);
+        $filters = $request->only(['preset', 'q', 'kind', 'sort', 'group']);
+        $group = $this->group($filters) ?? Group::of($car->kind);
         // Соседи по тому же отбору; сама машина из отбора не выпадает.
         $ids = $this->cars($purchase, $request, $filters)->pluck('id')->all();
         if (! in_array($car->id, $ids, true)) {
@@ -59,7 +59,7 @@ class PurchaseController
         $prev = $pos > 0 ? Car::find($ids[$pos - 1]) : null;
         $next = $pos < count($ids) - 1 ? Car::find($ids[$pos + 1]) : null;
 
-        return view('site.purchases.car', ['purchase' => $purchase, 'car' => $car, 'mine' => $car->offerOf($request->user()), 'prev' => $prev, 'next' => $next, 'filters' => $filters, 'photos' => $car->visiblePhotos()]);
+        return view('site.purchases.car', ['purchase' => $purchase, 'car' => $car, 'mine' => $car->offerOf($request->user()), 'prev' => $prev, 'next' => $next, 'filters' => $filters, 'group' => $group, 'photos' => $car->visiblePhotos()]);
     }
 
     public function offer(Request $request, Purchase $purchase, Car $car, PlaceOffer $place)
@@ -79,15 +79,21 @@ class PurchaseController
         return back()->with('toast', 'Цена отозвана');
     }
 
-    private function visible(Purchase $purchase, Request $request): Builder
+    private function group(array $filters): ?Group
     {
-        return Car::where('purchase_id', $purchase->id)->where('is_published', true)->whereNotIn('kind', Restriction::hiddenFor($request->user()) ?: ['']);
+        return ! empty($filters['group']) ? Group::tryFrom($filters['group']) : null;
+    }
+
+    private function visible(Purchase $purchase, Request $request, ?Group $group = null): Builder
+    {
+        return Car::where('purchase_id', $purchase->id)->where('is_published', true)->whereNotIn('kind', Restriction::hiddenFor($request->user()) ?: [''])
+            ->when($group, fn ($q) => $q->whereIn('kind', $group->kindValues()));
     }
 
     private function cars(Purchase $purchase, Request $request, array $filters): Builder
     {
         $user = $request->user();
-        $q = $this->visible($purchase, $request)->with(['brand', 'model', 'settlement', 'media', 'offers' => fn ($o) => $o->where('user_id', $user->id)]);
+        $q = $this->visible($purchase, $request, $this->group($filters))->with(['brand', 'model', 'settlement', 'media', 'offers' => fn ($o) => $o->where('user_id', $user->id)]);
         match ($filters['preset'] ?? 'all') {
             'mine' => $q->whereHas('offers', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [OfferState::Active, OfferState::Chosen])),
             'none' => $q->whereDoesntHave('offers', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [OfferState::Active, OfferState::Chosen])),

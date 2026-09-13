@@ -10,6 +10,8 @@ use App\Purchases\Gone;
 use App\Purchases\ImportState;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\MaxAttemptsExceededException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -17,6 +19,11 @@ use Throwable;
  * Фото из облака поставщика: поштучно (архивом папку качать нельзя), до
  * потолка 40 кадров, каждый ужимается до 1600 webp и оригинал не хранится.
  * На диске одновременно лежит один оригинал.
+ *
+ * Выкачка идёт до получаса, и перезапуск воркера на выкладке убивает её
+ * посреди папки. Поэтому попыток три: уже забранные кадры пропускаются по
+ * имени, и повтор просто продолжает с места обрыва. Если и третья не
+ * дошла до конца — `failed()` пишет это на машину, в «идёт» она не остаётся.
  */
 final class FetchPhotos implements ShouldQueue
 {
@@ -26,7 +33,9 @@ final class FetchPhotos implements ShouldQueue
 
     public int $timeout = 1800;
 
-    public int $tries = 1;
+    public int $tries = 3;
+
+    public array $backoff = [120, 600];
 
     public function __construct(public int $carId, public bool $all = false, public array $pictures = [])
     {
@@ -90,8 +99,9 @@ final class FetchPhotos implements ShouldQueue
                 $ingest->add($car, 'photos', $temp, $file['name']);
                 $already[] = $stem;
                 $have++;
-            } catch (Throwable) {
+            } catch (Throwable $e) {
                 $failed++;
+                Log::warning("Закупка: кадр {$file['name']} машины {$car->ref} не забран: ".$e->getMessage());
             } finally {
                 @unlink($temp);
             }
@@ -120,9 +130,10 @@ final class FetchPhotos implements ShouldQueue
                     }
                 });
                 $unpacked[] = $file['name'];
-            } catch (Throwable) {
+            } catch (Throwable $e) {
                 $failed++;
                 $leftovers[] = ['name' => $file['name'], 'bytes' => $file['bytes']];
+                Log::warning("Закупка: архив {$file['name']} машины {$car->ref} не разобран: ".$e->getMessage());
             } finally {
                 @unlink($temp);
             }
@@ -137,6 +148,13 @@ final class FetchPhotos implements ShouldQueue
             'photos_error' => $count === 0 ? 'В папке нет фотографий' : ($failed ? "Не забрано кадров: {$failed}" : null),
             'photos_at' => now(),
         ])->save();
+    }
+
+    public function failed(?Throwable $e): void
+    {
+        $why = $e instanceof MaxAttemptsExceededException ? 'воркер останавливался посреди работы три раза' : ($e?->getMessage() ?: 'воркер остановлен');
+        Car::where('id', $this->carId)->where('photos_state', ImportState::Running)
+            ->update(['photos_state' => ImportState::Failed, 'photos_error' => Str::limit('Прервано: '.$why, 280), 'photos_at' => now()]);
     }
 
     private function fromSite(Car $car, Carcade $carcade, PhotoIngest $ingest): void

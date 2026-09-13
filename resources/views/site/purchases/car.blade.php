@@ -10,7 +10,7 @@
         'Состояние' => $car->condition, 'VIN' => $car->vin, 'Номер' => $car->dl, 'Где' => $car->settlement?->name ?? $car->city ?? $car->address, 'Обременения' => $car->encumbrance,
     ], fn ($v) => $v !== null && $v !== '');
 @endphp
-<x-ui.shell :title="$car->titleWithYear()" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], [$purchase->publicTitle(), $back], [$car->dl]]">
+<x-ui.shell :title="$car->titleWithYear()" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], [$purchase->publicTitle($group), $back], [$car->dl]]">
     <x-slot:actions>
         <x-ui.nav-arrows class="ml-auto sm:ml-0"
             :prev="$prev ? '/zakupki/'.$purchase->number.'/'.$prev->ref.$suffix : null"

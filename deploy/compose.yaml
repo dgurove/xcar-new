@@ -70,6 +70,8 @@ services:
   queue-long:
     <<: *app
     command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=long,mail
+    # Минута на SIGTERM: короткие задачи дочитываются, длинную выкачку добирает повтор джобы.
+    stop_grace_period: 60s
     healthcheck:
       disable: true
 

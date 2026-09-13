@@ -16,6 +16,8 @@ use App\Purchases\Jobs\FetchPhotos;
 use App\Purchases\Jobs\FetchSpecs;
 use App\Purchases\Kind;
 use App\Purchases\Offer;
+use App\Purchases\OffersExport;
+use App\Purchases\OffersSummary;
 use App\Purchases\OfferState;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
@@ -135,6 +137,28 @@ class PurchaseController
         $export->write($purchase, $path);
 
         return response()->download($path, "zakupka-{$purchase->number}.xlsx")->deleteFileAfterSend();
+    }
+
+    /** Предложения по менеджерам: кто по скольким назвал цену; `?user=` раскрывает его цены, `?user=none` — машины без цен. */
+    public function offers(Request $request, Purchase $purchase)
+    {
+        $summary = new OffersSummary($purchase);
+        $pick = $request->query('user');
+        $user = $pick && $pick !== 'none' ? $summary->managers->firstWhere('id', (int) $pick) : null;
+
+        return view('admin.purchases.offers', [
+            'purchase' => $purchase, 'summary' => $summary, 'user' => $user, 'none' => $pick === 'none',
+            'rows' => $user ? $summary->offersOf($user) : ($pick === 'none' ? $summary->unpriced() : collect()),
+        ]);
+    }
+
+    public function offersExport(Purchase $purchase, OffersExport $export)
+    {
+        $path = storage_path("app/private/purchases/{$purchase->id}/predlozheniya-".now()->format('Ymd-His').'.xlsx');
+        @mkdir(dirname($path), 0775, true);
+        $export->write($purchase, $path);
+
+        return response()->download($path, "zakupka-{$purchase->number}-predlozheniya.xlsx")->deleteFileAfterSend();
     }
 
     public function refetch(Request $request, Purchase $purchase, ImportFile $import)
