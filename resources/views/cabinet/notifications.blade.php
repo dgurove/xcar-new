@@ -25,7 +25,7 @@
     @else
         <div class="space-y-3">
             @foreach ($items as $item)
-                <a href="/lk/uvedomleniya/{{ $item->id }}" class="box block transition-colors hover:bg-hover">
+                <a href="/lk/uvedomleniya/{{ $item->id }}" class="box block transition-colors hover:bg-hover" data-turbo-prefetch="false">
                     <div class="flex items-start justify-between gap-3">
                         <p class="font-medium">{{ $item->data['title'] }}</p>
                         <p class="nums shrink-0 text-sm font-normal text-ink-dim">{{ $item->created_at->translatedFormat($item->created_at->isToday() ? 'H:i' : 'j M, H:i') }}</p>

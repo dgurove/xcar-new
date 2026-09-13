@@ -66,7 +66,10 @@ class MailController
     {
         $this->guard($thread);
         $thread->load(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'messages.attachments', 'messages.addresses', 'messages.author']);
-        $markRead($thread);
+        // Касание строки — ещё не чтение: префетч Turbo идёт с Sec-Purpose: prefetch.
+        if (! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
+            $markRead($thread);
+        }
 
         return view('admin.mail.thread', [
             'thread' => $thread,
