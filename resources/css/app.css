@@ -933,10 +933,7 @@ html[data-theme-switch]::view-transition-old(root) { animation: none; mix-blend-
 html[data-theme-switch]::view-transition-new(root) { animation: theme-circle .4s ease-in both; mix-blend-mode: normal; }
 html[data-theme-switch]::view-transition-group(root) { animation-duration: .4s; }
 html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-name: none; }
-@keyframes theme-circle {
-  from { clip-path: circle(0 at var(--theme-x, 50%) var(--theme-y, 0)); }
-  to   { clip-path: circle(var(--theme-r, 150vmax) at var(--theme-x, 50%) var(--theme-y, 0)); }
-}
+/* keyframes theme-circle с координатами кнопки пишет theme_controller в <style id="theme-circle">. */
 
 /* Кадр карточки летит в галерею и обратно (имя ставит app.js на время перехода). */
 ::view-transition-group(hero) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); z-index: 2; }
