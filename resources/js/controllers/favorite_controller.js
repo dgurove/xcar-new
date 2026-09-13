@@ -13,6 +13,8 @@ export default class extends Controller {
 
     settle(event) {
         if (event.detail.success) return;
+        // Сети нет, действие ушло в очередь (net.js) — оставляем как нажали.
+        if (!event.detail.fetchResponse && this.element.hasAttribute('data-queue')) return;
         this.paint(this.element.querySelector('button'), this.was);
         window.toast?.('Не получилось', 'danger');
     }

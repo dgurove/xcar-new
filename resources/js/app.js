@@ -291,13 +291,13 @@ function activePillIntoView() {
     document.addEventListener('turbo:load', show);
 }
 
-// Экран из кэша воркера (запуск с иконки) старше 15 с — тихий replace-morph:
+// Экран из кэша воркера (запуск с иконки) старше 5 с — тихий replace-morph:
 // свежие карточки, csrf-token, темы live; выход — воркер забывает экраны.
 function stalePage() {
     const nav = performance.getEntriesByType('navigation')[0];
     if (['navigate', 'reload'].includes(nav?.type)) {
         const at = Number(document.querySelector('meta[name="rendered-at"]')?.content || 0) * 1000;
-        if (at && Date.now() - at > 15_000 && navigator.onLine !== false) {
+        if (at && Date.now() - at > 5_000 && navigator.onLine !== false) {
             setTimeout(() => Turbo.visit(location.href, { action: 'replace' }), 300);
         }
     }

@@ -35,10 +35,13 @@ export function netGuards() {
         const { request } = event.detail;
         const form = event.target instanceof HTMLFormElement ? event.target : null;
         if (!form) Turbo.navigator.stop();
+        // Мелкие действия (закладка, прочитано) — в очередь: уйдут сами, когда появится сеть.
+        if (form?.hasAttribute('data-queue')) { enqueue(form); window.toast?.('Нет связи — отправим, когда появится'); return; }
         retry = form ? () => form.requestSubmit(submitters.get(form) ?? undefined) : () => Turbo.visit(request.url.href);
         window.toast?.('Нет связи', { kind: 'danger', action: { label: 'Повторить', run: retry } });
     });
-    window.addEventListener('online', () => { document.documentElement.removeAttribute('data-net'); const r = retry; retry = null; r?.(); });
+    window.addEventListener('online', () => { document.documentElement.removeAttribute('data-net'); const r = retry; retry = null; r?.(); flush(); });
+    document.addEventListener('turbo:load', () => navigator.onLine !== false && flush());
     window.addEventListener('offline', () => document.documentElement.setAttribute('data-net', 'offline'));
     if (navigator.onLine === false) document.documentElement.setAttribute('data-net', 'offline');
 
@@ -75,4 +78,43 @@ export async function refreshCsrf() {
     } catch {
         return null;
     }
+}
+
+// Очередь действий без сети: форма с data-queue (закладка, прочитано) запоминается
+// в localStorage и отправляется при возврате сети или на следующей загрузке; ответ-стрим
+// применяется, если строка ещё на экране. 4xx — выбросить, обрыв — оставить.
+const QUEUE = 'net:queue';
+function enqueue(form) {
+    const body = [...new FormData(form)].filter(([k, v]) => k !== '_token' && !(v instanceof File));
+    try {
+        const list = JSON.parse(localStorage.getItem(QUEUE) || '[]');
+        list.push({ url: new URL(form.action, location.href).href, method: (form.method || 'post').toUpperCase(), body, at: Date.now() });
+        localStorage.setItem(QUEUE, JSON.stringify(list.slice(-50)));
+    } catch {}
+}
+
+let flushing = false;
+export async function flush() {
+    if (flushing) return;
+    let list;
+    try { list = JSON.parse(localStorage.getItem(QUEUE) || '[]'); } catch { return; }
+    if (!list.length) return;
+    flushing = true;
+    const keep = [];
+    for (const item of list) {
+        if (Date.now() - item.at > 24 * 3600 * 1000) continue;
+        const body = new FormData();
+        body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+        item.body.forEach(([k, v]) => body.append(k, v));
+        try {
+            const r = await fetch(item.url, { method: item.method, body, credentials: 'same-origin', headers: { Accept: 'text/vnd.turbo-stream.html, text/html' } });
+            if (r.status === 419) { await refreshCsrf(); keep.push(item); continue; }
+            if (r.ok && (r.headers.get('Content-Type') || '').includes('turbo-stream')) Turbo.renderStreamMessage(await r.text());
+        } catch {
+            keep.push(item);
+        }
+    }
+    try { localStorage.setItem(QUEUE, JSON.stringify(keep)); } catch {}
+    flushing = false;
+    if (keep.length < list.length) window.toast?.('Отправлено');
 }

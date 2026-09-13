@@ -10,6 +10,6 @@
         @unless ($item->read_at)<span class="mt-3 inline-block rounded-full bg-accent-soft px-3 py-1 text-xs text-accent-text">Не прочитано</span>@endunless
     </a>
     <x-slot:actions>
-        <form method="post" action="/lk/uvedomleniya/{{ $item->id }}/prochitano">@csrf<button type="submit" class="swipe-btn swipe-btn-accent" aria-label="{{ $item->read_at ? 'Не прочитано' : 'Прочитано' }}"><x-ui.icon :name="$item->read_at ? 'eye-off' : 'eye'" class="size-5"/></button></form>
+        <form method="post" action="/lk/uvedomleniya/{{ $item->id }}/prochitano" data-queue>@csrf<button type="submit" class="swipe-btn swipe-btn-accent" aria-label="{{ $item->read_at ? 'Не прочитано' : 'Прочитано' }}"><x-ui.icon :name="$item->read_at ? 'eye-off' : 'eye'" class="size-5"/></button></form>
     </x-slot:actions>
 </x-ui.swipe>

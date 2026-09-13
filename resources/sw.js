@@ -49,7 +49,7 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     // Запуск с иконки: последний экран из кэша сразу, свежий — следом (страница сама
-    // перечитывает себя морфом, если старше 15 с — app.js, meta rendered-at).
+    // перечитывает себя морфом, если старше 5 с — app.js, meta rendered-at).
     if (request.mode === 'navigate') {
         event.respondWith((async () => {
             const cacheable = !NO_PAGE_CACHE.test(url.pathname);
