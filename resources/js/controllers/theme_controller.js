@@ -13,15 +13,19 @@ export default class extends Controller {
         if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return apply();
         // Круг идёт из самой кнопки, а не из точки события: тап, клавиатура и .click() — одинаково.
         const r0 = this.element.getBoundingClientRect();
-        const x = r0.left + r0.width / 2, y = r0.top + r0.height / 2;
-        const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+        // Центр — в процентах от окна: при масштабе страницы в Chrome пиксели clip-path у
+        // псевдоэлемента перехода не совпадают с CSS-пикселями кнопки, и круг съезжал к
+        // середине; проценты считаются от бокса самого псевдоэлемента. Радиус 145 % —
+        // процент у circle() берётся от √(w²+h²)/√2, из угла до угла нужно √2.
+        const x = ((r0.left + r0.width / 2) / innerWidth * 100).toFixed(2);
+        const y = ((r0.top + r0.height / 2) / innerHeight * 100).toFixed(2);
         // Keyframes с литеральными числами: псевдоэлементы перехода в Safari не
         // наследуют custom properties с <html>, а animate() с pseudoElement там же
         // даёт обычный кроссфейд. Правило animation — в app.css (html[data-theme-switch]).
         const html = document.documentElement;
         let style = document.getElementById('theme-circle');
         if (!style) { style = document.createElement('style'); style.id = 'theme-circle'; document.head.append(style); }
-        style.textContent = `@keyframes theme-circle { from { clip-path: circle(0 at ${x}px ${y}px); } to { clip-path: circle(${r}px at ${x}px ${y}px); } }`;
+        style.textContent = `@keyframes theme-circle { from { clip-path: circle(0 at ${x}% ${y}%); } to { clip-path: circle(145% at ${x}% ${y}%); } }`;
         html.dataset.themeSwitch = '1';
         const t = document.startViewTransition(apply);
         t.finished.finally(() => { delete html.dataset.themeSwitch; });
