@@ -1013,6 +1013,9 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .dark .chat-down { background: #fff; color: var(--color-chrome); }
 }
 
+/* На телефоне полоса страниц не нужна — лента дотягивается сама (app.js). */
+@media (max-width: 767px) { [data-pages] { visibility: hidden; height: 1px; margin: 0; padding: 0; overflow: hidden; } }
+
 /* ------------------------------------------------------------- хром под пальцем */
 
 /* Долгое нажатие по хрому приложения не выделяет текст и не открывает лист Safari

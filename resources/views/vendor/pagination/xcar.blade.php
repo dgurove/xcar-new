@@ -1,6 +1,8 @@
-{{-- Постраничная навигация: «Назад · n / m · Вперёд», без ряда номеров. --}}
+{{-- Постраничная навигация: «Назад · n / m · Вперёд», без ряда номеров. На телефоне
+     лента дотягивается сама (app.js, data-pages): следующая страница подшивается
+     к списку, когда эта полоса подходит к экрану; сама полоса там спрятана. --}}
 @if ($paginator->hasPages())
-    <nav role="navigation" aria-label="Постраничная навигация" class="flex items-center justify-between gap-3">
+    <nav role="navigation" aria-label="Постраничная навигация" class="flex items-center justify-between gap-3" data-pages>
         @if ($paginator->onFirstPage())
             <span class="btn btn-s btn-quiet pointer-events-none opacity-40" aria-disabled="true"><x-ui.icon name="chevron-left" class="size-[18px]"/> Назад</span>
         @else

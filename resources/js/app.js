@@ -3,7 +3,7 @@
 // и подключаются по имени файла: photos_controller.js → data-controller="photos".
 import * as Turbo from '@hotwired/turbo';
 import { Application } from '@hotwired/stimulus';
-import { touchPrefetch } from './touch-prefetch';
+import { touchPrefetch, prefetch } from './touch-prefetch';
 import { confirmSheet } from './confirm';
 import { closeSheet } from './sheet';
 import { netGuards } from './net';
@@ -52,6 +52,7 @@ keyboardInset();
 systemTheme();
 headerState();
 activePillIntoView();
+infiniteLists();
 heroTransition();
 timerDone();
 
@@ -297,4 +298,42 @@ function stalePage() {
     document.addEventListener('turbo:submit-start', (event) => {
         if (new URL(event.target.action, location.href).pathname === '/vyhod') navigator.serviceWorker?.controller?.postMessage({ forgetPages: true });
     });
+}
+
+// Лента дотягивается сама (телефон): когда полоса «Назад · n/m · Вперёд» подходит
+// к экрану, следующая страница подгружается (ответ обычно уже в руках — префетч),
+// её карточки подшиваются к списку перед полосой, полоса заменяется на новую.
+// Адрес не меняется; снимок «назад» уносит подшитое с собой.
+function infiniteLists() {
+    const phone = matchMedia('(max-width: 767px)');
+    let observer = null;
+    let busy = false;
+    const arm = () => {
+        observer?.disconnect();
+        if (!phone.matches) return;
+        const nav = document.querySelector('[data-pages]');
+        const next = nav?.querySelector('a[rel="next"]');
+        if (!next) return;
+        observer = new IntersectionObserver(async ([entry]) => {
+            if (!entry.isIntersecting || busy) return;
+            busy = true;
+            try {
+                const entryHit = prefetch(next.href, 60_000);
+                const response = await (entryHit?.response ?? fetch(next.href, { headers: { Accept: 'text/html' } }));
+                const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+                // Список — сосед перед полосой (или перед её обёрткой), и в ответе так же.
+                const listBefore = (n) => { let h = n; while (h.parentElement && h.parentElement.children.length === 1) h = h.parentElement; return h.previousElementSibling; };
+                const freshNav = doc.querySelector('[data-pages]');
+                const list = listBefore(nav);
+                const fresh = freshNav ? listBefore(freshNav) : doc.querySelector('.cards');
+                if (!list || !fresh) return;
+                list.append(...fresh.children);
+                if (freshNav) nav.replaceWith(freshNav); else nav.remove();
+                busy = false;
+                arm();
+            } catch { busy = false; }
+        }, { rootMargin: '600px 0px' });
+        observer.observe(nav);
+    };
+    document.addEventListener('turbo:load', arm);
 }
