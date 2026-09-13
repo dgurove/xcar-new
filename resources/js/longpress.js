@@ -21,7 +21,7 @@ export function longPressMenu() {
         const t = e.touches[0];
         if (Math.hypot(t.clientX - start.x, t.clientY - start.y) > 8) cancel();
     }, { passive: true });
-    document.addEventListener('touchend', cancel, { passive: true });
+    document.addEventListener('touchend', () => { cancel(); setTimeout(() => { fired = false; }, 700); }, { passive: true });
     document.addEventListener('touchcancel', cancel, { passive: true });
     addEventListener('scroll', cancel, { passive: true });
     // Тап после сработавшего долгого нажатия — не переход.
@@ -65,7 +65,9 @@ function open(card) {
         b.addEventListener('click', () => closeSheet(d).then(run));
         list.append(b);
     }
-    d.addEventListener('click', (e) => { if (e.target === d) closeSheet(d); });
+    // Палец ещё на экране: клик от его отпускания приходит уже в шторку — не закрывать.
+    const openedAt = Date.now();
+    d.addEventListener('click', (e) => { if (e.target === d && Date.now() - openedAt > 600) closeSheet(d); });
     d.addEventListener('close', () => d.remove());
     document.body.append(d);
     openSheet(d, { history: false });

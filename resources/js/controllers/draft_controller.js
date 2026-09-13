@@ -52,12 +52,17 @@ export default class extends Controller {
         return [el.value, el.defaultValue];
     }
 
+    // Ключ поля: радио и чекбоксы одного имени различаются значением.
+    key(el) {
+        return el.type === 'checkbox' || el.type === 'radio' ? `${el.name}=${el.value}` : el.name;
+    }
+
     save() {
         const data = {};
         let touched = false;
         for (const el of this.fields()) {
             const [value, base] = this.read(el);
-            data[el.name] = [value, base];
+            data[this.key(el)] = [value, base];
             if (value !== base) touched = true;
         }
         try {
@@ -73,7 +78,7 @@ export default class extends Controller {
         if (Date.now() - saved.at > TTL || this.element.querySelector('.field-invalid')) { this.clear(); return; }
         let restored = false;
         for (const el of this.fields()) {
-            const entry = saved.data[el.name];
+            const entry = saved.data[this.key(el)];
             if (!entry) continue;
             const [value, base] = entry;
             const [current, serverBase] = this.read(el);

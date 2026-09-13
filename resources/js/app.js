@@ -88,11 +88,19 @@ function pressFeedback() {
     });
     for (const name of ['turbo:before-render', 'turbo:load', 'turbo:fetch-request-error', 'turbo:before-cache']) document.addEventListener(name, clear);
     document.addEventListener('turbo:submit-start', (event) => {
-        const { formSubmission } = event.detail;
-        formSubmission.submitter?.setAttribute('aria-busy', 'true');
-        const dialog = event.target.closest('dialog[open]');
-        if (formSubmission.method === 'get' && dialog?.matches(':modal')) dialog.close();
+        event.detail.formSubmission.submitter?.setAttribute('aria-busy', 'true');
     });
+    // GET-форма (фильтры, поиск) из открытой шторки: запись шторки снимается из истории
+    // до отправки, иначе «назад» после фильтра вернёт адрес без содержимого.
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        const dialog = form.closest?.('dialog[open]');
+        if (!dialog?.matches(':modal') || (form.method || 'get').toLowerCase() !== 'get') return;
+        event.preventDefault();
+        event.stopPropagation();
+        const submitter = event.submitter;
+        closeSheet(dialog).then(() => form.requestSubmit(submitter ?? undefined));
+    }, true);
     document.addEventListener('turbo:submit-end', (event) => event.detail.formSubmission.submitter?.removeAttribute('aria-busy'));
 }
 
@@ -185,7 +193,7 @@ function keyboardInset() {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-        const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
+        const kb = vv.scale > 1.01 ? 0 : Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
         document.documentElement.style.setProperty('--kb', `${kb}px`);
         document.documentElement.classList.toggle('kb-open', kb > 100);
     };
@@ -325,7 +333,7 @@ function infiniteLists() {
             busy = true;
             try {
                 const entryHit = prefetch(next.href, 60_000);
-                const response = await (entryHit?.response ?? fetch(next.href, { headers: { Accept: 'text/html' } }));
+                const response = (await (entryHit?.response ?? fetch(next.href, { headers: { Accept: 'text/html' } }))).clone();
                 const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
                 // Список — сосед перед полосой (или перед её обёрткой), и в ответе так же.
                 const listBefore = (n) => { let h = n; while (h.parentElement && h.parentElement.children.length === 1) h = h.parentElement; return h.previousElementSibling; };

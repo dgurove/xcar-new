@@ -11,6 +11,8 @@ export default class extends Controller {
         this.i = 0;
         this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
         this.onScroll = () => {
+            // Лента поехала не от show() — человек листает сам: автолистание на странице гаснет.
+            if (!this.programmatic) this.stopAll();
             const i = Math.round(this.stripTarget.scrollLeft / Math.max(1, this.stripTarget.clientWidth));
             if (i === this.i) return;
             this.i = i;
@@ -22,6 +24,7 @@ export default class extends Controller {
 
     disconnect() {
         this.stripTarget.removeEventListener('scroll', this.onScroll);
+        clearTimeout(this.programmaticTimer);
     }
 
     show(i) {
@@ -29,6 +32,9 @@ export default class extends Controller {
         if (n < 2) return;
         this.i = (i + n) % n;
         this.preload();
+        this.programmatic = true;
+        clearTimeout(this.programmaticTimer);
+        this.programmaticTimer = setTimeout(() => { this.programmatic = false; }, 700);
         this.stripTarget.scrollTo({ left: this.i * this.stripTarget.clientWidth, behavior: this.reduce.matches ? 'auto' : 'smooth' });
         this.dots();
     }
@@ -61,7 +67,6 @@ export default class extends Controller {
     stopAll() { window.dispatchEvent(new CustomEvent('cards:stop')); }
 
     touch() {
-        this.stopAll();
         this.left = this.stripTarget.scrollLeft;
     }
 
