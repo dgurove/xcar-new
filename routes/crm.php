@@ -84,6 +84,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::get('/zakupki/ogranicheniya', [PurchaseController::class, 'restrictions']);
     Route::post('/zakupki/ogranicheniya/{user}', [PurchaseController::class, 'restrict']);
     Route::post('/zakupki/ceny/{offer}/vybrat', [PurchaseController::class, 'choose']);
+    Route::post('/zakupki/ceny/{offer}/otmenit', [PurchaseController::class, 'unchoose']);
     Route::get('/zakupki/{purchase}', [PurchaseController::class, 'show']);
     Route::put('/zakupki/{purchase}', [PurchaseController::class, 'update']);
     Route::post('/zakupki/{purchase}/sostoyanie', [PurchaseController::class, 'state']);

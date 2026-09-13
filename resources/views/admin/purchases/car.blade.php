@@ -76,6 +76,7 @@
                                 @if ($offer->comment)<div class="text-sm">{{ $offer->comment }}</div>@endif
                             </div>
                             @if ($offer->state === OfferState::Active)<form method="post" action="/zakupki/ceny/{{ $offer->id }}/vybrat" class="mt-2">@csrf<x-ui.button size="sm">Выбрать</x-ui.button></form>@endif
+                            @if ($offer->state === OfferState::Chosen)<form method="post" action="/zakupki/ceny/{{ $offer->id }}/otmenit" class="mt-2" data-turbo-confirm="Отменить выбор? Остальные цены по машине снова будут ждать">@csrf<x-ui.button size="sm" variant="ghost">Отменить выбор</x-ui.button></form>@endif
                         </div>
                     @endforeach
                 </div>

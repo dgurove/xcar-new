@@ -7,6 +7,7 @@ use App\Purchases\Actions\ChangePurchaseState;
 use App\Purchases\Actions\ChooseOffer;
 use App\Purchases\Actions\CreatePurchase;
 use App\Purchases\Actions\ImportFile;
+use App\Purchases\Actions\UnchooseOffer;
 use App\Purchases\Actions\UpdateCar;
 use App\Purchases\Car;
 use App\Purchases\Export;
@@ -233,5 +234,13 @@ class PurchaseController
         $choose($offer, $request->user());
 
         return back()->with('toast', 'Выбрана');
+    }
+
+    public function unchoose(Request $request, Offer $offer, UnchooseOffer $unchoose)
+    {
+        abort_unless($offer->state === OfferState::Chosen, 404);
+        $unchoose($offer, $request->user());
+
+        return back()->with('toast', 'Выбор отменён');
     }
 }
