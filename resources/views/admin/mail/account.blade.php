@@ -44,7 +44,7 @@
             <x-ui.card title="Папки">
                 <div class="flex flex-col gap-2">
                     @foreach ($folders as $folder)
-                        <label class="check"><input type="checkbox" name="folders[]" value="{{ $folder->id }}" @checked($folder->is_syncable)><span>{{ $folder->name }} <span class="text-sm text-ink-muted">{{ $folder->kind->label() }} · {{ $folder->messages_count }}</span></span></label>
+                        <label class="check"><input type="checkbox" name="folders[]" value="{{ $folder->id }}" @checked($folder->is_syncable)><span>{{ $folder->name }} <span class="tag">{{ $folder->kind->label() }}</span> <span class="tag nums">{{ $folder->messages_count }}</span></span></label>
                     @endforeach
                 </div>
             </x-ui.card>

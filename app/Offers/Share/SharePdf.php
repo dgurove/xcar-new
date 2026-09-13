@@ -54,7 +54,7 @@ final class SharePdf
                     Log::warning('Фотография не попала в PDF', ['media' => $m->id, 'error' => $e->getMessage()]);
                 }
             }
-            $stamp = $watermark ? implode(' · ', array_filter([(string) $offer->number, ($offer->published_at ?? $offer->created_at)?->format('d.m.Y'), 'xcar.ru'])) : null;
+            $stamp = $watermark ? implode('   ', array_filter([(string) $offer->number, ($offer->published_at ?? $offer->created_at)?->format('d.m.Y'), 'xcar.ru'])) : null;
             $disk->put($path, $this->writer->write($photos, $stamp));
         } finally {
             foreach ((array) glob("{$work}/*") as $f) {

@@ -3,9 +3,9 @@
     <div class="mb-4 flex flex-wrap items-center gap-2" data-controller="sheet">
         <span class="chip">{{ $thread->account->title }}</span>
         @if ($park && $thread->vehicle)
-            <a href="/mashiny/{{ $thread->vehicle->id }}" class="chip bg-accent-soft text-accent-text">{{ $thread->vehicle->titleWithYear() }}{{ $thread->vehicle->ref ? ' · '.$thread->vehicle->ref : '' }}</a>
+            <a href="/mashiny/{{ $thread->vehicle->id }}" class="chip bg-accent-soft text-accent-text">{{ $thread->vehicle->titleWithYear() }}@if ($thread->vehicle->ref) <span class="nums opacity-70">{{ $thread->vehicle->ref }}</span>@endif</a>
         @elseif (!$park && $thread->offer)
-            <a href="/predlozheniya/{{ $thread->offer->number }}" class="chip bg-accent-soft text-accent-text">№ {{ $thread->offer->number }} · {{ $thread->offer->title() }}</a>
+            <a href="/predlozheniya/{{ $thread->offer->number }}" class="chip bg-accent-soft text-accent-text">{{ $thread->offer->title() }} <span class="nums opacity-70">№ {{ $thread->offer->number }}</span></a>
         @endif
         <button type="button" class="chip" data-action="sheet#open">{{ ($park ? $thread->vehicle : $thread->offer) ? 'Перепривязать' : ($park ? 'Привязать к машине' : 'Привязать к предложению') }}</button>
         <x-ui.sheet id="link" :title="$park ? 'Машина' : 'Предложение'" :open="$errors->has('number') || $errors->has('vehicle_id')">

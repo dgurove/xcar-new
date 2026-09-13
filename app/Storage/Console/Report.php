@@ -20,7 +20,7 @@ final class Report extends Command
         $rows = [];
         $originals = 0;
         foreach (Media::query()->selectRaw('model_type, collection_name, count(*) as n, sum(size) as bytes')->groupBy('model_type', 'collection_name')->orderByDesc('bytes')->get() as $r) {
-            $rows[] = ['медиа '.class_basename($r->model_type).' · '.$r->collection_name, $r->n.' шт.', Gc::human((int) $r->bytes)];
+            $rows[] = ['медиа '.class_basename($r->model_type).'/'.$r->collection_name, $r->n.' шт.', Gc::human((int) $r->bytes)];
             $originals += (int) $r->bytes;
         }
         $mediaDisk = $this->diskBytes('media');

@@ -12,7 +12,10 @@
                     <div class="flex items-start gap-3">
                         <div class="min-w-0 flex-1">
                             <div class="text-lg leading-snug">{{ $c->title() }}@if ($v('year')), {{ $v('year') }}@endif</div>
-                            <div class="mt-0.5 text-sm text-ink-muted">{{ implode(' · ', array_filter([$v('insurer') ?? $v('sender'), $c->created_at->translatedFormat('j M, H:i')])) }}</div>
+                            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                @if ($v('insurer') ?? $v('sender'))<span class="tag">{{ $v('insurer') ?? $v('sender') }}</span>@endif
+                                <span class="tag nums">{{ $c->created_at->translatedFormat('j M, H:i') }}</span>
+                            </div>
                         </div>
                         @if ($v('floor_price'))<span class="nums shrink-0 text-lg">{{ number_format($v('floor_price'), 0, '', ' ') }} ₽</span>@endif
                     </div>

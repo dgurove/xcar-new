@@ -18,7 +18,7 @@ final class StageDueNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->offer->titleWithYear().' · до '.$this->position->deadline_at?->translatedFormat('j M, H:i');
+        return $this->offer->titleWithYear().', срок '.$this->position->deadline_at?->translatedFormat('j M, H:i');
     }
 
     public function href(): string

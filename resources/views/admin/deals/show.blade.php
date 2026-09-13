@@ -32,7 +32,10 @@
                         <div class="box-nested">
                             <div class="font-medium">{{ $r->title }}</div>
                             @if ($r->text)<div class="mt-1 whitespace-pre-line text-sm text-ink-muted">{{ $r->text }}</div>@endif
-                            <div class="mt-1 text-sm {{ $r->due_at?->isPast() ? 'text-urgent' : 'text-ink-muted' }}">{{ $r->stage?->block?->name }}{{ $r->due_at ? ' · до '.$r->due_at->translatedFormat('j M, H:i') : '' }}</div>
+                            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                @if ($r->stage?->block?->name)<span class="tag">{{ $r->stage->block->name }}</span>@endif
+                                @if ($r->due_at)<span class="tag nums" @if ($r->due_at->isPast()) style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d" @endif>до {{ $r->due_at->translatedFormat('j M, H:i') }}</span>@endif
+                            </div>
                             @if ($r->media->isNotEmpty())
                                 <div class="mt-2 flex flex-col">
                                     @foreach ($r->media as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/fayly/{{ $f->id }}" class="py-1"/>@endforeach
@@ -86,7 +89,10 @@
                 <a href="/predlozheniya/{{ $offer->number }}" class="block aspect-[4/3] bg-surface-3"><x-offer.photo :media="$offer->mainPhoto()" sizes="(min-width: 1024px) 352px, 100vw" class="size-full object-cover"/></a>
                 <div class="p-4">
                     <div class="nums text-2xl leading-none">{{ number_format($deal->amount, 0, '', ' ') }} ₽</div>
-                    <div class="mt-1 text-sm text-ink-muted">{{ $offer->asking_price ? 'цена продажи '.number_format($offer->asking_price, 0, '', ' ').' ₽ · ' : '' }}{{ $deal->created_at->translatedFormat('j M Y') }}</div>
+                    <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                        @if ($offer->asking_price)<span class="tag nums">продажа {{ number_format($offer->asking_price, 0, '', ' ') }} ₽</span>@endif
+                        <span class="tag nums">{{ $deal->created_at->translatedFormat('j M Y') }}</span>
+                    </div>
                     <div class="mt-3 font-medium">{{ $deal->buyer?->name }}</div>
                     @if ($deal->buyer?->phone)<a href="tel:+{{ $deal->buyer->phone }}" class="text-accent-text">{{ $deal->buyer->phoneFormatted() }}</a>@endif
                     @if ($deal->buyer?->email)<div class="text-sm text-ink-muted">{{ $deal->buyer->email }}</div>@endif

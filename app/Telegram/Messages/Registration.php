@@ -42,9 +42,9 @@ final class Registration extends Message
     {
         $user = $this->user->fresh();
         if ($user->isRejected()) {
-            return 'Отклонён · '.self::moment($user->rejected_at);
+            return 'Отклонён '.self::moment($user->rejected_at);
         }
 
-        return 'Роль: '.$user->role->label().' · доступ открыт · '.self::moment($user->approved_at ?? now());
+        return 'Роль: '.$user->role->label().', доступ открыт '.self::moment($user->approved_at ?? now());
     }
 }

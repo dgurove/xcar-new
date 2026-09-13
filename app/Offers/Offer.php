@@ -181,7 +181,7 @@ class Offer extends Model implements HasMedia
         return $this->title().($this->year ? ", {$this->year}" : '');
     }
 
-    /** Строка фактов под названием: год · пробег · коробка · привод. */
+    /** Строка фактов под названием: год, пробег, коробка, привод. */
     public function facts(): array
     {
         return array_values(array_filter([

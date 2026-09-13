@@ -47,7 +47,7 @@
         @if ($admin && $gallery && ($offer->interests_count ?? 0))
             <div class="mt-1 text-sm text-accent-text">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</div>
         @elseif ($admin && !$gallery && ($offer->active_bids_count ?? 0))
-            <div class="mt-1 text-sm text-urgent">{{ $offer->active_bids_count }} {{ \App\Support\Plural::of($offer->active_bids_count, ['подтверждение', 'подтверждения', 'подтверждений']) }}@if ($offer->top_bid) · до <span class="nums">{{ number_format($offer->top_bid, 0, '', ' ') }} ₽</span>@endif</div>
+            <div class="mt-1 text-sm text-urgent">{{ $offer->active_bids_count }} {{ \App\Support\Plural::of($offer->active_bids_count, ['подтверждение', 'подтверждения', 'подтверждений']) }}@if ($offer->top_bid) <span class="tag nums">до {{ number_format($offer->top_bid, 0, '', ' ') }} ₽</span>@endif</div>
         @endif
     </div>
 

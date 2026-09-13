@@ -15,7 +15,7 @@ final class PurchaseOfferUnchosenNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->offer->car->purchase->publicTitle().' · цена снова на рассмотрении';
+        return $this->offer->car->purchase->publicTitle().', цена снова на рассмотрении';
     }
 
     public function href(): string

@@ -39,7 +39,11 @@
                             @if ($user->canAccess(Section::Park) && !$user->isAdmin())<span class="chip text-xs">Стоянка</span>@endif
                             @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
                         </div>
-                        <div class="truncate text-sm text-ink-muted">{{ $user->phoneFormatted() }}{{ $user->email ? ' · '.$user->email : '' }}{{ $user->isPending() ? ' · '.$user->created_at->translatedFormat('j M, H:i') : '' }}</div>
+                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                            <a href="tel:+{{ $user->phone }}" class="tag nums">{{ $user->phoneFormatted() }}</a>
+                            @if ($user->email)<a href="mailto:{{ $user->email }}" class="tag">{{ $user->email }}</a>@endif
+                            @if ($user->isPending())<span class="tag nums">с {{ $user->created_at->translatedFormat('j M, H:i') }}</span>@endif
+                        </div>
                     </div>
                     @if (!$user->isApproved() && !$user->is($me))
                         <form method="post" action="/nastroyki/polzovateli/{{ $user->id }}/dostup" class="flex items-center gap-1.5">

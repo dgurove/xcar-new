@@ -73,7 +73,7 @@ final class UpdateHandler
             $this->bot->answer($press->queryId, 'Отклонён.');
         } elseif ($role = Role::tryFrom($press->action)) {
             $this->decide->approve($user, $role);
-            $this->bot->answer($press->queryId, "Роль: {$role->label()} · доступ открыт");
+            $this->bot->answer($press->queryId, "Роль: {$role->label()}, доступ открыт");
         } else {
             $this->bot->answer($press->queryId, 'Такой роли нет.');
 

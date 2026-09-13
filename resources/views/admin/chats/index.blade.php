@@ -22,7 +22,7 @@
                             @unless ($chat->user)<span class="tag">гость</span>@endunless
                             <span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span>
                         </div>
-                        <div class="truncate text-sm text-ink-muted">{{ $chat->offer ? '№ '.$chat->offer->number.' · '.$chat->offer->titleWithYear() : 'Обращение с сайта' }}</div>
+                        <div class="flex items-baseline gap-2 text-sm text-ink-muted">@if ($chat->offer)<span class="truncate">{{ $chat->offer->titleWithYear() }}</span><span class="nums shrink-0 text-ink-dim">№ {{ $chat->offer->number }}</span>@else<span>Обращение с сайта</span>@endif</div>
                     </div>
                     @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif
                 </a>

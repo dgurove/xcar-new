@@ -200,7 +200,7 @@ final class PdfWriter
             $code = ord($char);
             $index = ($code - 32) * 3;
 
-            // разделитель · в таблицу не входит: он один и по ширине как пробел
+            // точка-разделитель (0xB7) в таблицу не входит: по ширине как пробел
             $sum += $code === 0xB7
                 ? 278
                 : (int)(substr(self::HELVETICA_WIDTHS, $index, 3) ?: '556');

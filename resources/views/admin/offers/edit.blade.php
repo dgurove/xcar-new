@@ -40,7 +40,7 @@
                                 @if ($bid->is($best) && $waiting->count() > 1)<x-ui.pill tone="soft" class="!min-h-0 !py-1 text-xs">Лучшая</x-ui.pill>
                                 @elseif ($bid->state !== BidState::Active)<x-ui.pill :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $bid->state->label() }}</x-ui.pill>@endif
                             </div>
-                            <div class="text-sm text-ink-muted">{{ $bid->user->name }} · <a href="tel:+{{ $bid->user->phone }}" class="whitespace-nowrap text-accent-text">{{ $bid->user->phoneFormatted() }}</a> · {{ $bid->created_at->translatedFormat('j M, H:i') }}</div>
+                            <div class="mt-1 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$bid->user" full/><a href="tel:+{{ $bid->user->phone }}" class="tag nums">{{ $bid->user->phoneFormatted() }}</a><span class="tag nums">{{ $bid->created_at->translatedFormat('j M, H:i') }}</span></div>
                             @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
                             @if ($bid->state === BidState::Active)
                                 <div class="mt-2 flex gap-2">
@@ -80,8 +80,7 @@
                 <div class="flex flex-col gap-2">
                     @foreach ($offer->interests as $interest)
                         <div class="box-nested">
-                            <div>{{ $interest->user->name }} <a href="tel:+{{ $interest->user->phone }}" class="whitespace-nowrap text-accent-text">{{ $interest->user->phoneFormatted() }}</a></div>
-                            <div class="text-sm text-ink-muted">{{ $interest->state->label() }} · {{ $interest->created_at->translatedFormat('j M, H:i') }}</div>
+                            <div class="flex flex-wrap items-center gap-1.5"><x-ui.person :user="$interest->user" full/><a href="tel:+{{ $interest->user->phone }}" class="tag nums">{{ $interest->user->phoneFormatted() }}</a><span class="tag">{{ $interest->state->label() }}</span><span class="tag nums">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span></div>
                             @if ($interest->comment)<div class="mt-1 text-sm">{{ $interest->comment }}</div>@endif
                             @if ($interest->state === InterestState::New)
                                 <form method="post" action="/interesy/{{ $interest->id }}" class="mt-2">@csrf<input type="hidden" name="state" value="contacted"><x-ui.button size="sm" variant="secondary">Связались</x-ui.button></form>

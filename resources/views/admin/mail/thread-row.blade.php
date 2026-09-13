@@ -11,7 +11,7 @@
             <div class="truncate {{ $thread->unread_count ? '' : 'text-ink-muted' }}">{{ $thread->subject ?: '(без темы)' }}</div>
             <div class="mt-1 flex items-center gap-2 text-sm text-ink-muted">
                 @if ($thread->has_attachments)<x-ui.icon name="clip" class="size-4 shrink-0"/>@endif
-                @if ($thread->offer)<span class="chip">№ {{ $thread->offer->number }} · {{ $thread->offer->title() }}</span>@endif
+                @if ($thread->offer)<span class="chip">{{ $thread->offer->title() }} <span class="nums opacity-70">№ {{ $thread->offer->number }}</span></span>@endif
                 @if ($thread->vehicle)<span class="chip">{{ $thread->vehicle->titleWithYear() }}</span>@endif
                 @if (($accounts?->count() ?? 0) > 1 && empty($slug))<span class="chip">{{ $thread->account->title }}</span>@endif
             </div>

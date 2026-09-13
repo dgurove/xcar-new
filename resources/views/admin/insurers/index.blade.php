@@ -4,10 +4,10 @@
             <a href="/nastroyki/strahovye/{{ $insurer->id }}" class="row">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2"><span class="font-medium">{{ $insurer->name }}</span>@unless ($insurer->is_active)<x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">выключена</x-ui.pill>@endunless</div>
-                    <div class="text-sm text-ink-muted">
+                    <div class="mt-1.5 flex flex-wrap gap-1.5">
                         @foreach (\App\Workflow\Track::cases() as $track)
                             @php $w = $insurer->workflow($track); @endphp
-                            {{ $track->label() }}: {{ $w?->is_active ? 'маршрут включён'.($track === \App\Workflow\Track::Service && !$w->auto_start ? ', по кнопке' : '') : ($w ? 'маршрут выключен' : 'нет маршрута') }}{{ $loop->last ? '' : ' · ' }}
+                            <span class="tag" @if ($w?->is_active) style="--tag-bg:#f0f7d8;--tag-text:#669709;--tag-bg-d:#1a2605;--tag-text-d:#a6cf3a" @endif>{{ $track->label() }}: {{ $w?->is_active ? 'включён'.($track === \App\Workflow\Track::Service && !$w->auto_start ? ', по кнопке' : '') : ($w ? 'выключен' : 'нет маршрута') }}</span>
                         @endforeach
                     </div>
                 </div>

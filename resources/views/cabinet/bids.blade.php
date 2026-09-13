@@ -8,7 +8,7 @@
                 <div class="box flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                     <a href="/offers/{{ $offer->number }}" class="min-w-0 sm:flex-1">
                         <div class="hover:text-accent-text">{{ $offer->titleWithYear() }}</div>
-                        <div class="nums mt-1 text-sm font-normal text-ink-dim">№ {{ $offer->number }} · {{ $bid->created_at->translatedFormat('j M') }}</div>
+                        <div class="mt-1.5 flex flex-wrap gap-1.5"><span class="tag nums">№ {{ $offer->number }}</span><span class="tag nums">{{ $bid->created_at->translatedFormat('j M') }}</span></div>
                     </a>
                     <div class="flex items-center justify-between gap-3 sm:contents">
                         <div class="nums sm:text-right">{{ number_format($bid->amount, 0, '', ' ') }} ₽</div>

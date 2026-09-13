@@ -7,8 +7,9 @@
             <span class="truncate font-medium">{{ $vehicle->titleWithYear() }}</span>
             @if ($vehicle->plate)<span class="shrink-0 text-sm text-ink-muted">{{ $vehicle->plate }}</span>@endif
         </div>
-        <div class="truncate text-sm text-ink-muted">{{ implode(' · ', array_filter([$vehicle->ref, $vehicle->client?->name])) }}</div>
         <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+            @if ($vehicle->ref)<span class="tag nums">{{ $vehicle->ref }}</span>@endif
+            @if ($vehicle->client)<span class="tag">{{ $vehicle->client->name }}</span>@endif
             {{ $slot }}
         </div>
     </div>

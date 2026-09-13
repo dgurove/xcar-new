@@ -230,6 +230,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     height: 3.5rem;
   }
   .btn-s { @apply px-[1.125rem] text-sm; height: 2.75rem; }
+  .btn-xs { @apply px-3 text-xs; height: 2rem; }
   @media (min-width: 640px) { .btn-s { height: 2.5rem; } }
   .btn-hero { @apply px-12 text-lg; height: 4rem; }
   @media (min-width: 640px) { .btn-hero { @apply text-xl; height: 4.375rem; } }
@@ -245,6 +246,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .btn-round  { @apply rounded-full px-0; width: 2.75rem; height: 2.75rem; }
   @media (min-width: 640px) { .btn-round { width: 2.25rem; height: 2.25rem; } }
   .btn-round.btn-lg { width: 3.5rem; height: 3.5rem; }
+  .btn-round.btn-xs { width: 2rem; height: 2rem; }
 
   /* ------------------------------------------------------------- поля */
 
@@ -362,6 +364,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
   /* Серый чип в потоке: факт, таймер, ссылка-справка. */
   .chip { @apply inline-flex items-center gap-1 rounded-(--radius-s) bg-surface-3 px-2 py-1 text-sm leading-none; }
+  /* Человек чипом: аватар слева, имя. */
+  .chip.person { @apply max-w-full gap-1.5 rounded-full py-0.5 pr-2.5 pl-0.5; }
+  .chip.person-current { @apply bg-accent-soft text-accent-text; }
 
   /* Метка на кадре: белый текст на цветной подложке. */
   .mark { @apply inline-flex items-center rounded-(--radius-s) px-2 text-xs font-medium text-white; padding-block: 3px; background: var(--color-closed); }

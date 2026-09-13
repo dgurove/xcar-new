@@ -5,7 +5,12 @@
             <div class="row" data-controller="sheet">
                 <div class="min-w-0 flex-1">
                     <div class="font-medium">{{ $client->name }} <span class="text-sm text-ink-muted tabular-nums">{{ $client->vehicles_count }}</span></div>
-                    <div class="truncate text-sm text-ink-muted">{{ implode(' · ', array_filter([$c['name'] ?? null, $c['phone'] ?? null, $c['email'] ?? null, implode(', ', $client->sender_domains ?? [])])) }}</div>
+                    <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        @if ($c['name'] ?? null)<span class="tag">{{ $c['name'] }}</span>@endif
+                        @if ($c['phone'] ?? null)<a href="tel:{{ preg_replace('/\D+/', '', $c['phone']) }}" class="tag nums">{{ $c['phone'] }}</a>@endif
+                        @if ($c['email'] ?? null)<a href="mailto:{{ $c['email'] }}" class="tag">{{ $c['email'] }}</a>@endif
+                        @foreach ($client->sender_domains ?? [] as $domain)<span class="tag">{{ $domain }}</span>@endforeach
+                    </div>
                 </div>
                 <button type="button" class="btn btn-ghost btn-s px-2" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
                 <x-ui.sheet id="client-{{ $client->id }}" title="Клиент">

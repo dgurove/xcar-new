@@ -11,7 +11,10 @@
                 <x-ui.card class="flex flex-col gap-3">
                     <div class="min-w-0">
                         <div class="text-lg leading-snug">{{ $c->code ?: ($c->subject ?: 'Письмо') }}</div>
-                        <div class="mt-0.5 text-sm text-ink-muted">{{ implode(' · ', array_filter([$v('sender'), $c->created_at->translatedFormat('j M, H:i')])) }}</div>
+                        <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            @if ($v('sender'))<span class="tag">{{ $v('sender') }}</span>@endif
+                            <span class="tag nums">{{ $c->created_at->translatedFormat('j M, H:i') }}</span>
+                        </div>
                         @if ($c->code && $c->subject)<div class="mt-1 truncate text-sm">{{ $c->subject }}</div>@endif
                     </div>
                     <div class="flex flex-wrap gap-1.5 text-sm">

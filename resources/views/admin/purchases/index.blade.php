@@ -1,6 +1,6 @@
 <x-ui.shell title="Закупки">
     <div class="mb-6 flex items-center gap-2" data-controller="sheet">
-        <x-ui.pill tone="plain" href="/zakupki/ogranicheniya">Кому что не показывать{{ $restricted ? ' · '.$restricted : '' }}</x-ui.pill>
+        <x-ui.pill tone="plain" href="/zakupki/ogranicheniya">Кому что не показывать@if ($restricted) <span class="badge">{{ $restricted }}</span>@endif</x-ui.pill>
         <button type="button" class="btn btn-s btn-accent ml-auto rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/> Закупка</button>
         <x-ui.sheet id="purchase-new" title="Новая закупка">
             <form method="post" action="/zakupki" class="flex flex-col gap-4">

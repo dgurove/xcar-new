@@ -36,7 +36,8 @@
                     <x-ui.field name="price_listing" label="Для размещения, ₽" inputmode="numeric" :value="$car->price_listing"/>
                     <div class="col-span-full flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
                         <x-ui.check name="is_published" :checked="$car->is_published">Показывать покупателям</x-ui.check>
-                        @if ($car->encumbrance || $car->stage)<span class="text-sm text-ink-muted">{{ $car->encumbrance }}{{ $car->stage ? ' · '.$car->stage : '' }}</span>@endif
+                        @if ($car->encumbrance)<span class="tag">{{ $car->encumbrance }}</span>@endif
+                        @if ($car->stage)<span class="tag">{{ $car->stage }}</span>@endif
                     </div>
                 </div>
             </x-ui.card>
@@ -72,7 +73,7 @@
                         <div class="box-nested">
                             <div>
                                 <div class="flex flex-wrap items-baseline gap-2"><span class="nums whitespace-nowrap">{{ number_format($offer->amount, 0, '', ' ') }} ₽</span><span class="text-sm {{ $offer->state === OfferState::Chosen ? 'text-accent-text' : 'text-ink-muted' }}">{{ $offer->state->label() }}</span>@if ($car->price_listing)<span class="text-sm text-ink-dim tabular-nums">{{ $offer->amount >= $car->price_listing ? '+' : '−' }}{{ number_format(abs($offer->amount - $car->price_listing), 0, '', ' ') }}</span>@endif</div>
-                                <div class="text-sm text-ink-muted">{{ $offer->user->name }} · <a href="tel:+{{ $offer->user->phone }}" class="text-accent-text">{{ $offer->user->phoneFormatted() }}</a> · {{ $offer->created_at->translatedFormat('j M, H:i') }}</div>
+                                <div class="mt-1 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$offer->user" full/><a href="tel:+{{ $offer->user->phone }}" class="tag nums">{{ $offer->user->phoneFormatted() }}</a><span class="tag nums">{{ $offer->created_at->translatedFormat('j M, H:i') }}</span></div>
                                 @if ($offer->comment)<div class="text-sm">{{ $offer->comment }}</div>@endif
                             </div>
                             @if ($offer->state === OfferState::Active)<form method="post" action="/zakupki/ceny/{{ $offer->id }}/vybrat" class="mt-2">@csrf<x-ui.button size="sm">Выбрать</x-ui.button></form>@endif

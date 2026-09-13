@@ -77,7 +77,10 @@
 
 @if ($offer->deal && ($dealCard ?? true))
 <x-ui.card title="Сделка" id="deal-note" class="order-1">
-    <div class="mb-3 text-sm text-ink-muted">{{ $offer->deal->buyer?->name }} · <a href="tel:+{{ $offer->deal->buyer?->phone }}" class="text-accent-text">{{ $offer->deal->buyer?->phoneFormatted() }}</a> · <span class="font-semibold text-ink tabular-nums">{{ number_format($offer->deal->amount, 0, '', ' ') }} ₽</span></div>
+    <div class="mb-3 flex flex-wrap items-center gap-1.5">
+        @if ($offer->deal->buyer)<x-ui.person :user="$offer->deal->buyer" full/><a href="tel:+{{ $offer->deal->buyer->phone }}" class="tag nums">{{ $offer->deal->buyer->phoneFormatted() }}</a>@endif
+        <span class="tag nums font-semibold">{{ number_format($offer->deal->amount, 0, '', ' ') }} ₽</span>
+    </div>
     <form method="post" action="/rabota/sdelki/{{ $offer->deal->id }}/zametka" class="flex flex-col gap-2">
         @csrf
         <textarea name="notes" class="field-input" placeholder="Заметка">{{ old('notes', $offer->deal->notes) }}</textarea>

@@ -7,7 +7,7 @@
                     <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="4.5rem"/></span>
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $offer->titleWithYear() }}</span>
-                        <span class="block truncate text-sm text-ink-muted">№ {{ $offer->number }}@if ($offer->mileage) · {{ number_format($offer->mileage, 0, '', ' ') }} км @endif</span>
+                        <span class="mt-1 flex flex-wrap gap-1.5"><span class="tag nums">№ {{ $offer->number }}</span>@if ($offer->mileage)<span class="tag nums">{{ number_format($offer->mileage, 0, '', ' ') }} км</span>@endif</span>
                     </span>
                     @if (auth()->user()?->role->canSeePrices() && $offer->asking_price)<span class="nums shrink-0 text-sm">{{ number_format($offer->asking_price, 0, '', ' ') }} ₽</span>@endif
                 </a>

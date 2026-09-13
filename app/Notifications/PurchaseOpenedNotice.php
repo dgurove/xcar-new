@@ -15,7 +15,7 @@ final class PurchaseOpenedNotice extends Notice
 
     public function text(): ?string
     {
-        return 'Машин: '.$this->purchase->cars()->count().($this->purchase->offers_close_at ? ' · цены до '.$this->purchase->offers_close_at->translatedFormat('j M, H:i') : '');
+        return 'Машин: '.$this->purchase->cars()->count().($this->purchase->offers_close_at ? ', цены до '.$this->purchase->offers_close_at->translatedFormat('j M, H:i') : '');
     }
 
     public function href(): string

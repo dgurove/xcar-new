@@ -16,7 +16,7 @@ final class BidPlacedNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->bid->user->name.' · '.$this->bid->offer->titleWithYear();
+        return $this->bid->user->name.' — '.$this->bid->offer->titleWithYear();
     }
 
     public function href(): string

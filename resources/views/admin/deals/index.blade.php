@@ -15,8 +15,9 @@
                             <span class="truncate font-medium">{{ $offer->titleWithYear() }}</span>
                             <span class="nums shrink-0 text-sm font-normal text-ink-dim">№ {{ $offer->number }}</span>
                         </div>
-                        <div class="text-sm text-ink-muted">{{ $deal->buyer?->name }} · <span class="nums text-ink">{{ number_format($deal->amount, 0, '', ' ') }} ₽</span></div>
                         <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            @if ($deal->buyer)<x-ui.person :user="$deal->buyer"/>@endif
+                            <span class="tag nums">{{ number_format($deal->amount, 0, '', ' ') }} ₽</span>
                             @if ($deal->state !== \App\Offers\DealState::Active)
                                 <x-ui.pill :tone="$deal->state === \App\Offers\DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.pill>
                             @elseif ($position)

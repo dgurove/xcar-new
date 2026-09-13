@@ -51,7 +51,7 @@
         @php $unpriced = $summary->unpriced()->count(); @endphp
         <x-ui.pills class="mt-3">
             @foreach ($summary->managers as $u)
-                <x-ui.pill :href="request()->fullUrlWithQuery(['user' => $u->id, 'has' => null, 'page' => null])" :current="$user?->id === $u->id" data-turbo-action="replace">{{ $u->shortName() }} <span class="nums opacity-70">{{ $summary->stats[$u->id]['offered'] }}</span></x-ui.pill>
+                <x-ui.pill :href="request()->fullUrlWithQuery(['user' => $u->id, 'has' => null, 'page' => null])" :current="$user?->id === $u->id" class="!pl-1.5 gap-1.5" data-turbo-action="replace"><x-ui.avatar :user="$u" :size="22"/>{{ $u->shortName() }} <span class="nums opacity-70">{{ $summary->stats[$u->id]['offered'] }}</span></x-ui.pill>
             @endforeach
             <x-ui.pill :href="request()->fullUrlWithQuery(['user' => 'none', 'has' => null, 'page' => null])" :current="! $user" data-turbo-action="replace">Ничьи <span class="nums opacity-70">{{ $unpriced }}</span></x-ui.pill>
         </x-ui.pills>

@@ -9,7 +9,7 @@
         default => $req->type->verb(),
     };
 @endphp
-<x-ui.shell :title="$req->type->label().' · '.$vehicle->titleWithYear()" :back="['Заявки', '/']" narrow>
+<x-ui.shell :title="$req->type->label()" :back="['Заявки', '/']" narrow>
     <div class="flex flex-col gap-4">
         <x-park.vehicle-row :vehicle="$vehicle">
             <x-park.state :vehicle="$vehicle"/>
@@ -24,7 +24,7 @@
             </div>
             @if ($req->contact)<div class="mt-3">{{ $req->contact }}</div>@endif
             @if ($req->note)<div class="mt-1 whitespace-pre-line text-ink-muted">{{ $req->note }}</div>@endif
-            @if ($req->done_at)<div class="mt-2 text-sm text-ink-muted">{{ $req->done_at->translatedFormat('j M, H:i') }}{{ $req->assignee ? ' · '.$req->assignee->name : '' }}</div>@endif
+            @if ($req->done_at)<div class="mt-3 flex flex-wrap items-center gap-1.5"><span class="tag nums">{{ $req->done_at->translatedFormat('j M, H:i') }}</span>@if ($req->assignee)<x-ui.person :user="$req->assignee"/>@endif</div>@endif
         </x-ui.card>
 
         @if ($errors->any())<p class="field-error">{{ $errors->first() }}</p>@endif

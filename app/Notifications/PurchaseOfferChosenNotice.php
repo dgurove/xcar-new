@@ -15,7 +15,7 @@ final class PurchaseOfferChosenNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->offer->car->purchase->publicTitle().' · с вами свяжутся';
+        return $this->offer->car->purchase->publicTitle().', с вами свяжутся';
     }
 
     public function href(): string
