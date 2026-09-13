@@ -390,7 +390,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .dark .tag { background: var(--tag-bg-d, var(--color-surface-3)); color: var(--tag-text-d, var(--color-ink-muted)); }
 
   /* Пилюля: пресет, раздел, состояние. Активная — лайм с белым. */
-  .pills { @apply -mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1; scrollbar-width: none; }
+  /* scroll-padding: иначе snap прижимает первую пилюлю к краю экрана, съедая поле. */
+  .pills { @apply -mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1; scrollbar-width: none; scroll-padding-inline: 1rem; }
   .pills::-webkit-scrollbar { display: none; }
   @media (min-width: 768px) { .pills { @apply mx-0 flex-wrap px-0 pb-0; } }
   .pill {
