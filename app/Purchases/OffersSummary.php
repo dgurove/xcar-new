@@ -26,7 +26,8 @@ final class OffersSummary
 
     public function __construct(public readonly Purchase $purchase)
     {
-        $this->cars = $purchase->cars()->where('is_published', true)->with(['brand', 'model', 'settlement', 'offers.user'])->orderBy('dl')->get();
+        // Только цены и люди: сводка считается по всем машинам, связи для показа догружает экран у своей страницы.
+        $this->cars = $purchase->cars()->where('is_published', true)->with('offers.user')->orderBy('dl')->get();
         $offered = $this->cars->flatMap(fn (Car $c) => $c->activeOfferList()->map->user)->unique('id');
         $managers = User::where('role', Role::Manager)->get()->concat($offered)->unique('id')->values();
         $hidden = Restriction::whereIn('user_id', $managers->pluck('id'))->pluck('hidden_kinds', 'user_id');
@@ -52,10 +53,12 @@ final class OffersSummary
         return $this->cars->map(fn (Car $c) => $c->activeOfferList()->firstWhere('user_id', $user->id)?->setRelation('car', $c))->filter()->values();
     }
 
+    private ?Collection $unpriced = null;
+
     /** Машины, по которым цены не назвал никто. */
     public function unpriced(): Collection
     {
-        return $this->cars->filter(fn (Car $c) => $c->activeOfferList()->isEmpty())->values();
+        return $this->unpriced ??= $this->cars->filter(fn (Car $c) => $c->activeOfferList()->isEmpty())->values();
     }
 
     public function priced(): int

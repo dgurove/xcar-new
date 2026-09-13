@@ -37,7 +37,7 @@
     </div>
     @if ($errors->any())<x-ui.flash tone="danger" class="mb-4">{{ $errors->first() }}</x-ui.flash>@endif
 
-    <x-ui.toolbar :sorts="$view === 'cars' ? $ctl::SORTS : []" :sort="$sort ?? ''" :pills="$ctl::VIEWS" :pill="$view" pill-param="view" :hidden="['view' => $view, 'preset' => $preset ?? null, 'user' => $user?->id ?? request('user'), 'has' => isset($has) ? (int) $has : null]" name="purchase">
+    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" sort-side="right" :pills="$ctl::VIEWS" :pill="$view" pill-param="view" :hidden="['view' => $view, 'preset' => $preset ?? null, 'user' => $user?->id ?? request('user'), 'has' => isset($has) ? (int) $has : null]" name="purchase">
         <x-slot:filters><input name="q" value="{{ $q }}" placeholder="ДЛ, VIN, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>
 

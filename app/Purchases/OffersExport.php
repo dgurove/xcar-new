@@ -15,6 +15,7 @@ final class OffersExport
     public function write(Purchase $purchase, string $path): string
     {
         $s = new OffersSummary($purchase);
+        $s->cars->load(['brand', 'model', 'settlement']);
         $writer = new Writer(new Options);
         $writer->openToFile($path);
         $bold = (new Style)->withFontBold(true);

@@ -25,6 +25,7 @@ use App\Purchases\PurchaseState;
 use App\Purchases\Restriction;
 use App\Users\Role;
 use App\Users\User;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
@@ -105,6 +106,7 @@ class PurchaseController
     private function byManagers(Request $request, Purchase $purchase, string $q): array
     {
         $summary = new OffersSummary($purchase);
+        $sort = array_key_exists($request->query('sort', 'dl'), self::SORTS) ? $request->query('sort', 'dl') : 'dl';
         $pick = $request->query('user');
         $user = $pick === 'none' ? null : ($summary->managers->firstWhere('id', (int) $pick) ?? $summary->managers->first());
         $has = $request->boolean('has', true);
@@ -120,10 +122,17 @@ class PurchaseController
             $term = mb_strtolower($q);
             $cars = $cars->filter(fn ($c) => str_contains(mb_strtolower($c->dl.' '.$c->brand_raw.' '.$c->model_raw.' '.$c->vin), $term));
         }
+        $cars = match ($sort) {
+            'best' => $cars->sortByDesc(fn ($c) => $c->bestOffer()?->amount ?? 0),
+            'fresh' => $cars->sortByDesc('id'),
+            default => $cars->sortBy('dl'),
+        };
         $page = max(1, (int) $request->query('page', 1));
-        $cars = new LengthAwarePaginator($cars->values()->forPage($page, 50), $cars->count(), 50, $page, ['path' => $request->url(), 'query' => $request->query()]);
+        // Связи для показа — только у страницы: сводка считается по всем машинам, а рисуются пятьдесят.
+        $slice = (new EloquentCollection($cars->values()->forPage($page, 50)->values()->all()))->load(['brand', 'model', 'settlement', 'media']);
+        $cars = new LengthAwarePaginator($slice, $cars->count(), 50, $page, ['path' => $request->url(), 'query' => $request->query()]);
 
-        return ['cars' => $cars, 'summary' => $summary, 'user' => $user, 'has' => $has];
+        return ['cars' => $cars, 'summary' => $summary, 'user' => $user, 'has' => $has, 'sort' => $sort];
     }
 
     public function update(Request $request, Purchase $purchase)
