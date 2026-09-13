@@ -130,10 +130,8 @@ final class Nav
             self::item('Вопросы', 'file', '/voprosy'),
             self::item('Контакты', 'mail', '/kontakty'),
         ];
-        if ($user?->isStaff()) {
-            $top[] = self::item('CRM', 'settings', Surface::Crm->url());
-        }
 
+        // Ссылок в CRM с сайта нет — владелец: сайт для покупателей, сотрудники ходят по своему адресу.
         return $top;
     }
 
@@ -190,9 +188,6 @@ final class Nav
         $links[] = self::link('Избранное', '/lk/izbrannoe');
         $links[] = self::link('Уведомления', '/lk/uvedomleniya');
         $links[] = self::link('Профиль', '/lk/profil');
-        if ($user->isStaff()) {
-            $links[] = self::link('CRM', Surface::Crm->url());
-        }
         // В установленном приложении подвала нет — документы живут здесь.
         if (MarkInstalled::installed(request())) {
             return ['' => $links, 'Документы' => [self::link('Обработка данных', '/obrabotka-dannyh'), self::link('Соглашение', '/soglashenie')]];

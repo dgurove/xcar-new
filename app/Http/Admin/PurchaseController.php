@@ -142,6 +142,15 @@ class PurchaseController
         return back()->with('toast', 'Сохранено');
     }
 
+    public function extend(Request $request, Purchase $purchase)
+    {
+        $minutes = (int) $request->validate(['minutes' => ['required', 'integer', 'in:15,60']])['minutes'];
+        $from = $purchase->offers_close_at?->isFuture() ? $purchase->offers_close_at : now();
+        $purchase->update(['offers_close_at' => $from->addMinutes($minutes)]);
+
+        return back()->with('toast', 'Приём до '.$purchase->offers_close_at->translatedFormat('j M, H:i'));
+    }
+
     public function state(Request $request, Purchase $purchase, ChangePurchaseState $change)
     {
         $change($purchase, PurchaseState::from($request->validate(['state' => ['required', Rule::enum(PurchaseState::class)]])['state']), $request->user());

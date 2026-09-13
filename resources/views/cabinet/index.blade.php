@@ -9,7 +9,6 @@
     </div>
     <div class="mt-8 flex flex-wrap gap-2">
         <a href="{{ $button[0] }}" class="btn btn-accent">{{ $button[1] }}</a>
-        @if ($crm)<a href="{{ \App\Support\Surface::Crm->url() }}" class="btn btn-quiet" data-turbo="false">В CRM</a>@endif
         <button type="button" class="btn btn-quiet" hidden data-pwa-target="install" data-action="pwa#install">Установить приложение</button>
         @if (\App\Support\Surface::current() === \App\Support\Surface::Park)
             <form method="post" action="/vyhod" class="contents">@csrf<x-ui.button variant="secondary"><x-ui.icon name="exit" class="size-5"/> Выйти</x-ui.button></form>

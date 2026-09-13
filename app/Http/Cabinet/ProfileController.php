@@ -66,7 +66,7 @@ class ProfileController
             ];
         }
 
-        return view('cabinet.index', ['user' => $user, 'tiles' => $tiles, 'button' => $button, 'crm' => $surface === Surface::Site && $user->isStaff()]);
+        return view('cabinet.index', ['user' => $user, 'tiles' => $tiles, 'button' => $button]);
     }
 
     public function profile(Request $request)
