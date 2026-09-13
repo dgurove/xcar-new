@@ -667,7 +667,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* ------------------------------------------------------------- полоса действий */
 
 @layer components {
-  /* На телефоне — над таб-баром, от планшета — липнет к низу окна. */
+  /* Низ экрана CRM и стоянки: место под таб-бар; с полосой действий — ещё и под неё. */
+  .main-app { padding-bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
+  @media (min-width: 768px) { .main-app { padding-bottom: 0; } }
+  body:has(.action-bar) .main-app { padding-bottom: calc(5.5rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
+  @media (max-width: 1023px) { body:has(.action-bar) .footer { padding-bottom: calc(8rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); } }
+  html:has(.action-bar) { scroll-padding-bottom: 6rem; }
+
+  /* На телефоне — плашка над таб-баром с кнопкой во всю ширину. */
   .action-bar {
     position: fixed; inset-inline: 0; z-index: 30;
     bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px));
@@ -676,14 +683,22 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   .dark .action-bar { box-shadow: 0 -8px 24px rgb(0 0 0 / .5); }
   .action-bar-inner { @apply flex items-center gap-3 py-3; width: 100%; max-width: var(--container-site); margin-inline: auto; padding-inline: 1rem; }
-  @media (min-width: 768px)  { .action-bar-inner { padding-inline: 1.5rem; } }
-  @media (min-width: 1280px) { .action-bar-inner { padding-inline: 2rem; } }
-  @media (min-width: 768px) {
-    .action-bar { position: sticky; bottom: 0; }
-  }
-  body:has(.action-bar) main { padding-bottom: 5.5rem; }
   /* Клавиатура: таб-бар спрятан, полоса садится на клавиатуру (--kb ставит app.js). */
-  html.kb-open .action-bar, body:has(.tabbar.is-hidden) .action-bar { bottom: var(--kb, 0px); }
+  @media (max-width: 767px) {
+    html.kb-open .action-bar, body:has(.tabbar.is-hidden) .action-bar { bottom: var(--kb, 0px); }
+  }
+  /* От планшета — парящие кнопки в правом нижнем углу, по правому краю контейнера; плашки нет. */
+  @media (min-width: 768px) {
+    .action-bar, .dark .action-bar {
+      inset-inline: auto; bottom: 1.5rem; right: max(1.5rem, calc((100% - var(--container-site)) / 2 + 1.5rem));
+      background: none; box-shadow: none;
+    }
+    .action-bar-inner { width: auto; max-width: none; padding: 0; gap: .75rem; }
+    .action-bar .btn { flex: 0 0 auto; box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
+    .dark .action-bar .btn { box-shadow: 0 8px 24px rgb(0 0 0 / .5); }
+    body:has(.action-bar) .main-app { padding-bottom: 6rem; }
+  }
+  @media (min-width: 1280px) { .action-bar { right: max(2rem, calc((100% - var(--container-site)) / 2 + 2rem)); } }
 }
 
 /* ------------------------------------------------------------- первый экран */

@@ -18,7 +18,7 @@
 <x-ui.layout :title="$title" :cache="$cache" class="min-h-dvh flex flex-col">
     <x-ui.header :over-hero="$overHero" :back="$back" :heading="$overHero ? null : $heading"/>
 
-    <main id="main" class="grow {{ $overHero ? '' : 'relative' }}{{ $site ? '' : ' pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom))] md:pb-0' }}">
+    <main id="main" class="grow {{ $overHero ? '' : 'relative' }}{{ $site ? '' : ' main-app' }}">
         @if ($overHero)
             {{ $slot }}
         @else
