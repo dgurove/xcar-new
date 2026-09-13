@@ -193,13 +193,19 @@ class PurchaseController
         return response()->download($path, "zakupka-{$purchase->number}.xlsx")->deleteFileAfterSend();
     }
 
-    public function offersExport(Purchase $purchase, OffersExport $export)
+    public function offersExport(Request $request, Purchase $purchase, OffersExport $export)
     {
-        $path = storage_path("app/private/purchases/{$purchase->id}/predlozheniya-".now()->format('Ymd-His').'.xlsx');
+        $data = $request->validate([
+            'sheets' => 'required|array|min:1',
+            'sheets.*' => Rule::in(array_keys(OffersExport::SHEETS)),
+            'format' => 'required|in:xlsx,pdf',
+        ]);
+        $path = storage_path("app/private/purchases/{$purchase->id}/predlozheniya-".now()->format('Ymd-His').'.'.$data['format']);
         @mkdir(dirname($path), 0775, true);
-        $export->write($purchase, $path);
+        $tables = $export->tables($purchase, $data['sheets']);
+        $data['format'] === 'pdf' ? $export->pdf($tables, $purchase, $path) : $export->xlsx($tables, $path);
 
-        return response()->download($path, "zakupka-{$purchase->number}-predlozheniya.xlsx")->deleteFileAfterSend();
+        return response()->download($path, "zakupka-{$purchase->number}-predlozheniya.{$data['format']}")->deleteFileAfterSend();
     }
 
     public function refetch(Request $request, Purchase $purchase, ImportFile $import)
