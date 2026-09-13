@@ -47,7 +47,7 @@ export function confirmSheet(message, options = {}) {
         d.addEventListener('cancel', (e) => { e.preventDefault(); closeSheet(d); });
         d.addEventListener('close', () => { d.remove(); resolve(answer); });
         openSheet(d, { history: false });
-        d.querySelector('[data-cancel]').focus();
+        if (!matchMedia('(hover: none)').matches) d.querySelector('[data-cancel]').focus();
     });
 }
 

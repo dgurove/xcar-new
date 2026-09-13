@@ -9,6 +9,8 @@
 @php
     $heading = $heading === false ? null : ($heading ?? $title);
     $site = \App\Support\Surface::current() === \App\Support\Surface::Site;
+    // Подвал и крошки — веб-мебель: в установленном приложении их нет (документы — в кабинете).
+    $installed = \App\Http\Middleware\MarkInstalled::installed(request());
 @endphp
 <x-ui.layout :title="$title" :cache="$cache" class="min-h-dvh flex flex-col">
     <x-ui.header :over-hero="$overHero" :back="$back" :heading="$overHero ? null : $heading"/>
@@ -18,7 +20,7 @@
             {{ $slot }}
         @else
             <div {{ $attributes->merge(['class' => 'container-site pt-6 pb-10 sm:pt-8 sm:pb-14'.($narrow ? ' max-w-3xl' : '')]) }}>
-                @if ($site)<x-ui.crumbs :trail="$trail"/>@endif
+                @if ($site && !$installed)<x-ui.crumbs :trail="$trail"/>@endif
                 @if ($heading || isset($actions))
                     <div class="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
                         @if ($heading)<h1 class="text-[28px] sm:text-[34px]">{{ $heading }}@if ($count !== null) <span class="nums ml-2 text-lg font-normal text-ink-dim">{{ $count }}</span>@endif</h1>@endif
@@ -30,7 +32,7 @@
         @endif
     </main>
 
-    @if ($site)<x-ui.footer/>@endif
+    @if ($site && !$installed)<x-ui.footer/>@endif
     <x-ui.tabbar/>
     <x-ui.toasts/>
 </x-ui.layout>

@@ -40,7 +40,7 @@
                             <span class="field-label">Повреждения</span>
                             <div class="flex flex-wrap gap-1.5">
                                 @foreach ($zones as $zone)
-                                    <label class="choice"><input type="checkbox" name="damage_zones[]" value="{{ $zone->value }}" @checked(in_array($zone->value, old('damage_zones', [])))><span>{{ $zone->label() }}</span></label>
+                                    <label class="choice"><input type="checkbox" switch name="damage_zones[]" value="{{ $zone->value }}" @checked(in_array($zone->value, old('damage_zones', [])))><span>{{ $zone->label() }}</span></label>
                                 @endforeach
                             </div>
                         </div>

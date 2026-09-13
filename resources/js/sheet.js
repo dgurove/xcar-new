@@ -30,6 +30,8 @@ export function openSheet(d, { history: withHistory = true } = {}) {
     d.classList.remove('is-closing');
     d.style.translate = '';
     d.showModal();
+    // На телефоне showModal ставит фокус на первую кнопку и та рисует кольцо — снимаем.
+    if (matchMedia('(hover: none)').matches && document.activeElement?.matches('button, a')) document.activeElement.blur();
     attachDrag(d);
     if (!d.dataset.cancel) {
         d.dataset.cancel = '1';

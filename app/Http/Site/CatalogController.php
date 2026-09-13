@@ -8,6 +8,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Purchases\Purchase;
 use App\Support\ListContext;
+use App\Http\Middleware\MarkInstalled;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use Illuminate\Http\Request;
@@ -69,7 +70,8 @@ class CatalogController
             'gallery' => $gallery,
             'prices' => $prices,
             'counts' => $counts,
-            'hero' => ! $gallery && $filters === [] && $view === null && ! $request->has('page'),
+            // Установленное приложение открывается сразу в список, первый экран — гостю в браузере.
+            'hero' => ! $gallery && $filters === [] && $view === null && ! $request->has('page') && ! MarkInstalled::installed($request),
         ]);
     }
 }

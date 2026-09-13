@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Http\Middleware\MarkInstalled;
 use App\Chats\Chat;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
@@ -190,6 +191,10 @@ final class Nav
         $links[] = self::link('Профиль', '/lk/profil');
         if ($user->isStaff()) {
             $links[] = self::link('CRM', Surface::Crm->url());
+        }
+        // В установленном приложении подвала нет — документы живут здесь.
+        if (MarkInstalled::installed(request())) {
+            return ['' => $links, 'Документы' => [self::link('Обработка данных', '/obrabotka-dannyh'), self::link('Соглашение', '/soglashenie')]];
         }
 
         return ['' => $links];

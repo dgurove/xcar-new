@@ -51,7 +51,7 @@ export default class extends Controller {
     }
 
     get standalone() {
-        return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+        return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || document.cookie.includes('app=1');
     }
 
     get ios() {

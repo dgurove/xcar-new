@@ -30,7 +30,7 @@ class PwaController
             'name' => $surface->label(),
             'short_name' => $surface->short(),
             'description' => $description,
-            'start_url' => '/',
+            'start_url' => '/?app=1',
             'id' => '/',
             'scope' => '/',
             'display' => 'standalone',

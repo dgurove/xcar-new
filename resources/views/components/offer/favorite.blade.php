@@ -11,6 +11,7 @@
     @else
         <button {{ $attributes->merge(['class' => 'card-star'.($on ? ' is-on' : '')]) }} aria-label="{{ $label }}" title="{{ $label }}">
             <x-ui.icon name="bookmark" class="size-5 {{ $on ? 'fill-current' : '' }}"/>
+            <input type="checkbox" switch class="haptic" tabindex="-1" aria-hidden="true">
         </button>
     @endif
 </form>

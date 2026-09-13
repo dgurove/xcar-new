@@ -25,7 +25,7 @@
                 <x-ui.tri name="demo_tri" label="Да / нет / —"/>
                 <div class="flex items-end pb-3"><x-ui.check name="demo_check" :checked="true">Галочка</x-ui.check></div>
                 <div class="field sm:col-span-2"><span class="field-label">Чипы-переключатели</span><div class="flex flex-wrap gap-2">
-                    @foreach (['Капот', 'Крыло', 'Дверь', 'Крыша'] as $i => $z)<label class="choice"><input type="checkbox" @checked($i === 1)><span>{{ $z }}</span></label>@endforeach
+                    @foreach (['Капот', 'Крыло', 'Дверь', 'Крыша'] as $i => $z)<label class="choice"><input type="checkbox" switch @checked($i === 1)><span>{{ $z }}</span></label>@endforeach
                 </div></div>
                 <input class="field-input field-s sm:col-span-2" placeholder="Компактное поле тулбара">
             </div>

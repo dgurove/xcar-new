@@ -11,7 +11,9 @@ export default class extends Controller {
             document.querySelector('meta[name="theme-color"]').content = dark ? '#121212' : '#ffffff';
         };
         if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return apply();
-        const x = event?.clientX || innerWidth / 2, y = event?.clientY || 0;
+        // Круг идёт из самой кнопки, а не из точки события: тап, клавиатура и .click() — одинаково.
+        const r0 = this.element.getBoundingClientRect();
+        const x = r0.left + r0.width / 2, y = r0.top + r0.height / 2;
         const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
         const html = document.documentElement;
         html.dataset.themeSwitch = '1';

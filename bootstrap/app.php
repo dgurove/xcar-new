@@ -4,6 +4,7 @@ use App\Cars\Console\LearnVins;
 use App\Http\Middleware\EnsurePurchases;
 use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\EnsureStaff;
+use App\Http\Middleware\MarkInstalled;
 use App\Http\Middleware\ResolveSurface;
 use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
@@ -50,8 +51,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/vhod');
         $middleware->redirectUsersTo('/');
         $middleware->alias(['staff' => EnsureStaff::class, 'section' => EnsureSection::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
-        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class]);
-        $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme']);
+        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class]);
+        $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

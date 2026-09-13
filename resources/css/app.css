@@ -51,6 +51,10 @@
 
 @theme {
   --font-sans: "Onest", "Onest Fallback", "Onest Fallback Roboto", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  /* Хром приложения — системным шрифтом (SF на iPhone, Roboto на Android): таб-бар,
+     шапка, поля, кнопки, пилюли, шторки, тосты набраны тем же, чем и сама система.
+     Содержимое — заголовки, названия, цены, тексты — остаётся Onest. */
+  --font-ui: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --color-chrome: #121212;
   --color-chrome-light: #1d1d1b;
@@ -271,9 +275,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       checked:bg-accent focus-visible:ring-2 focus-visible:ring-accent/60; }
   .check input:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5'%3E%3Cpath d='m3.5 8.5 3 3 6-7'/%3E%3C/svg%3E"); }
 
-  /* Чип-переключатель: скрытый чекбокс, видимая капсула. */
-  .choice { @apply inline-flex cursor-pointer select-none; }
-  .choice input { @apply sr-only; }
+  /* Чип-переключатель: чекбокс-switch лежит невидимым поверх капсулы — палец попадает
+     в сам switch, и iOS даёт тактильный тик (Safari 17.4+); вид рисует span. */
+  .choice { @apply relative inline-flex cursor-pointer select-none; }
+  .choice input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
   .choice span { @apply inline-flex items-center rounded-full bg-surface-3 px-3.5 py-2 text-sm text-ink transition-colors; }
   .choice input:checked + span { background: var(--color-chrome); color: #fff; }
   .dark .choice input:checked + span { background: #fff; color: var(--color-chrome); }
@@ -1061,6 +1066,27 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
 
 /* На телефоне полоса страниц не нужна — лента дотягивается сама (app.js). */
 @media (max-width: 767px) { [data-pages] { visibility: hidden; height: 1px; margin: 0; padding: 0; overflow: hidden; } }
+
+/* ------------------------------------------------------------- тактильный отклик */
+
+/* Невидимый switch под пальцем внутри таба и закладки: настоящее касание по нему —
+   тик Taptic Engine на iPhone (Safari 17.4+, с 26.5 только настоящее касание, без
+   appearance: none). Клик по нему не идёт дальше, а change превращается в клик по
+   хозяину (app.js, haptics). */
+.haptic { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.tab, .card-star { position: relative; }
+
+/* ------------------------------------------------------------- системный шрифт хрома */
+
+@layer components {
+  .tabbar, .header-btn, .header-back, .header-title, .btn, .pill, .field-input, .field-label, .field-error, .choice span, .check,
+  .chip, .tag, .mark, .badge, .sheet, .toast, .action-bar, .combobox-list, .swipe-btn, .net, .crumbs, .stat-label, .empty {
+    font-family: var(--font-ui);
+    letter-spacing: normal;
+  }
+  /* Числа и заголовки внутри хрома — по-прежнему Onest. */
+  .sheet h1, .sheet h2, .sheet h3, .sheet .nums, .sheet .price, .btn .nums { font-family: var(--font-sans); }
+}
 
 /* ------------------------------------------------------------- хром под пальцем */
 

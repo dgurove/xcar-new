@@ -21,6 +21,7 @@
             @endif
             <span>{{ $tab['label'] }}</span>
             <x-ui.badge :href="$tab['href']" :badges="$badges"/>
+            <input type="checkbox" switch class="haptic" tabindex="-1" aria-hidden="true">
         </a>
     @endforeach
 </nav>

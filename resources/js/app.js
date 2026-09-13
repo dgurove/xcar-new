@@ -8,6 +8,7 @@ import { confirmSheet } from './confirm';
 import { closeSheet } from './sheet';
 import { netGuards } from './net';
 import { live } from './live';
+import { longPressMenu } from './longpress';
 
 const application = Application.start();
 window.Stimulus = application;
@@ -54,6 +55,8 @@ headerState();
 activePillIntoView();
 infiniteLists();
 nativeBackGesture();
+haptics();
+longPressMenu();
 heroTransition();
 timerDone();
 
@@ -93,7 +96,7 @@ function pressFeedback() {
 
 // Android: долгое нажатие по фото и хрому не открывает меню Chrome «Открыть в новой вкладке».
 document.addEventListener('contextmenu', (event) => {
-    if (event.target.closest('.tabbar, .header, .card-media, .action-bar, .photo-strip, [data-gallery-target="strip"]')) event.preventDefault();
+    if (event.target.closest('.tabbar, .header, .action-bar, .photo-strip, [data-gallery-target="strip"]')) event.preventDefault();
 });
 
 // Якорь на той же странице: плавно и без записи в историю («Смотреть предложения»).
@@ -352,4 +355,24 @@ function nativeBackGesture() {
         if (e.detail.action === 'restore' && Date.now() - edgeAt < 1200) document.documentElement.dataset.nativeBack = '1';
     });
     document.addEventListener('turbo:load', () => delete document.documentElement.dataset.nativeBack);
+}
+
+// Тактильный отклик: настоящее касание по невидимому switch (.haptic) в табе и
+// закладке даёт тик на iPhone; его клик наружу не идёт, а change становится
+// кликом по хозяину — таб-бар и Turbo видят обычный тап. Android — короткая вибрация.
+// Чипы (.choice) и галочки — сами switch, им ничего пробрасывать не надо.
+function haptics() {
+    document.addEventListener('click', (event) => {
+        if (event.target.matches?.('input.haptic')) event.stopPropagation();
+    }, true);
+    document.addEventListener('change', (event) => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement) || !input.hasAttribute('switch')) return;
+        if (!/iphone|ipad/i.test(navigator.userAgent)) navigator.vibrate?.(8);
+        if (!input.classList.contains('haptic')) return;
+        event.stopPropagation();
+        input.checked = false;
+        const host = input.parentElement;
+        host?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    }, true);
 }
