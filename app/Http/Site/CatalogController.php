@@ -12,6 +12,7 @@ use App\Support\ListContext;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class CatalogController
 {
@@ -48,11 +49,13 @@ class CatalogController
         $sort = CatalogQuery::sort($filters, $gallery, $prices);
         $states = $gallery ? [OfferState::Gallery] : [OfferState::Open, OfferState::Closed];
 
-        $counts = [
+        // Три счётчика на каждый запрос списка — полминуты в кэше, слабому серверу легче.
+        $counts = Cache::remember('catalog.counts', 30, fn () => [
             'offers' => Offer::whereIn('state', [OfferState::Open, OfferState::Closed])->count(),
             'gallery' => Offer::where('state', OfferState::Gallery)->count(),
-            'purchases' => $user?->role->canSeePurchases() ? Purchase::whereIn('state', [PurchaseState::Open, PurchaseState::Closed])->count() : 0,
-        ];
+            'purchases' => Purchase::whereIn('state', [PurchaseState::Open, PurchaseState::Closed])->count(),
+        ]);
+        $counts['purchases'] = $user?->role->canSeePurchases() ? $counts['purchases'] : 0;
 
         return view('site.catalog', [
             'offers' => CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery)->paginate(CatalogQuery::PER_PAGE)->withQueryString(),

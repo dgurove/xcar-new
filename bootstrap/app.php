@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsurePurchases;
 use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\ResolveSurface;
+use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
 use App\Live\SubscriberCookie;
 use App\Mail\Console\ReconcileMail;
@@ -49,7 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/vhod');
         $middleware->redirectUsersTo('/');
         $middleware->alias(['staff' => EnsureStaff::class, 'section' => EnsureSection::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
-        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class]);
+        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
