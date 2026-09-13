@@ -49,7 +49,7 @@ final class OffersSummary
     /** Активные и выбранные цены этого человека по машинам закупки, в порядке файла. */
     public function offersOf(User $user): Collection
     {
-        return $this->cars->map(fn (Car $c) => $c->activeOfferList()->firstWhere('user_id', $user->id))->filter()->values();
+        return $this->cars->map(fn (Car $c) => $c->activeOfferList()->firstWhere('user_id', $user->id)?->setRelation('car', $c))->filter()->values();
     }
 
     /** Машины, по которым цены не назвал никто. */
