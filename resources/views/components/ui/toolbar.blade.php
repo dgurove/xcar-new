@@ -3,8 +3,9 @@
      в шторке с GET-формой. Всё состояние — в адресе. sortSide=right — сортировка
      справа, у фильтров: слева остаются одни пилюли.
      sorts: ключ → [подпись, есть ли направление] или ключ → подпись;
-     pills: ключ → подпись; counts: ключ → число; hidden: поля, которые переживают фильтр. --}}
-@props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'sortSide' => 'left', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'counts' => [], 'hidden' => [], 'name' => 'list', 'action' => null])
+     pills: ключ → подпись; counts: ключ → число; hidden: поля, которые переживают фильтр;
+     pillDefault=false — первая пилюля («Все») не выделяется: зелёное только у сужающего фильтра. --}}
+@props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'sortSide' => 'left', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'counts' => [], 'hidden' => [], 'name' => 'list', 'action' => null])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -55,7 +56,7 @@
         <div class="toolbar-pills min-w-0 flex-1 snap-x overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div class="flex flex-nowrap items-center gap-2">
                 @foreach ($pills as $key => $label)
-                    <a href="{{ $url([$pillParam => $key === '' || $key === array_key_first($pills) ? null : $key, 'page' => null]) }}" class="pill" data-turbo-action="replace" @if ((string) $pill === (string) $key) aria-current="true" @endif>
+                    <a href="{{ $url([$pillParam => $key === '' || $key === array_key_first($pills) ? null : $key, 'page' => null]) }}" class="pill" data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
                         {{ $label }}@if (!empty($counts[$key])) <span class="nums opacity-70">{{ $counts[$key] }}</span>@endif
                     </a>
                 @endforeach

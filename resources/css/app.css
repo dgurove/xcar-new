@@ -267,6 +267,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .field-invalid .field-input { @apply ring-2 ring-danger/60; }
   select.field-input { @apply appearance-none bg-no-repeat pr-10; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23808080' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-position: right 14px center; }
   textarea.field-input { @apply min-h-28; field-sizing: content; }
+  /* Выбор-фильтр (x-ui.choose): зелёный, пока сужает список. */
+  select.choose[data-choose-active] { background-color: var(--color-accent) !important; color: #fff; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23fff' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); }
   /* Компактное поле тулбара и шторок фильтра. */
   .field-input.field-s { @apply px-3 py-0 leading-none; min-height: 2.75rem; }
   @media (min-width: 640px) { .field-input.field-s { @apply text-sm; min-height: 2.5rem; } }
