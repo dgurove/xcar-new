@@ -12,7 +12,8 @@ export default class extends Controller {
 
     pick(event) {
         const row = event.currentTarget;
-        this.pillTarget.toggleAttribute('aria-current', row.dataset.default === undefined);
+        if (row.dataset.default === undefined) this.pillTarget.setAttribute('aria-current', 'true');
+        else this.pillTarget.removeAttribute('aria-current');
         this.pillTarget.firstChild.textContent = row.dataset.label;
     }
 }
