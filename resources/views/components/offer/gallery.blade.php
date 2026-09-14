@@ -1,5 +1,6 @@
-{{-- Кадры оффера: лента со snap, стрелки, счётчик, полноэкранный просмотр, миниатюры 4/6 в ряд. --}}
-@props(['photos', 'alt' => ''])
+{{-- Кадры оффера: лента со snap, стрелки, счётчик, полноэкранный просмотр, миниатюры 4/6 в ряд
+     (:thumbs="false" — миниатюры только от lg: экран оценки на телефоне). --}}
+@props(['photos', 'alt' => '', 'thumbs' => true])
 @if ($photos->isEmpty())
     <div class="flex aspect-[4/3] items-center justify-center rounded-(--radius-xl) bg-surface-3 text-ink-dim">Фотографий нет</div>
 @else
@@ -20,7 +21,7 @@
             <button type="button" class="absolute right-2 top-2 flex size-11 items-center justify-center rounded-full bg-surface/80 backdrop-blur hover:bg-surface" data-action="gallery#open" aria-label="Открыть на весь экран"><x-ui.icon name="expand" class="size-4"/></button>
         </div>
         @if ($photos->count() > 1)
-            <div class="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
+            <div class="mt-3 {{ $thumbs ? 'grid' : 'hidden lg:grid' }} grid-cols-4 gap-2 sm:grid-cols-6">
                 @foreach ($photos as $i => $media)
                     <button type="button" class="overflow-hidden rounded-(--radius-s) ring-accent {{ $i === 0 ? 'ring-2' : 'opacity-70 hover:opacity-100' }}" data-gallery-target="thumb" data-action="gallery#to" data-gallery-index-param="{{ $i }}">
                         <img src="{{ \App\Media\MediaUrl::for($media, 'thumb') }}" alt="" width="400" height="300" loading="lazy" class="aspect-[4/3] w-full object-cover">
