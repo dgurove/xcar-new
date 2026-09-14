@@ -203,22 +203,25 @@ class PurchaseController
     public function export(Request $request, Purchase $purchase, Export $export)
     {
         $data = $request->validate([
-            'parts' => 'required|array|min:1',
+            'parts' => 'required_unless:format,dl|array',
             'parts.*' => Rule::in(array_keys(Export::PARTS)),
-            'format' => 'required|in:xlsx,pdf',
+            'format' => 'required|in:xlsx,pdf,dl',
         ]);
-        $parts = $data['parts'];
-        $path = storage_path("app/private/purchases/{$purchase->id}/vygruzka-".now()->format('Ymd-His').'.'.$data['format']);
+        $format = $data['format'];
+        $ext = $format === 'pdf' ? 'pdf' : 'xlsx';
+        $path = storage_path("app/private/purchases/{$purchase->id}/vygruzka-".now()->format('Ymd-His').'.'.$ext);
         @mkdir(dirname($path), 0775, true);
         try {
-            $data['format'] === 'pdf'
-                ? $export->pdf($export->tables($purchase, $parts), $purchase, $path)
-                : $export->xlsx($purchase, $parts, $path);
+            match ($format) {
+                'dl' => $export->short($purchase, $path),
+                'pdf' => $export->pdf($export->tables($purchase, $data['parts']), $purchase, $path),
+                default => $export->xlsx($purchase, $data['parts'], $path),
+            };
         } catch (\RuntimeException $e) {
             return $request->expectsJson() ? response()->json(['message' => $e->getMessage()], 422) : back()->withErrors(['file' => $e->getMessage()]);
         }
 
-        return $this->file($request, $path, "zakupka-{$purchase->number}.{$data['format']}");
+        return $this->file($request, $path, "zakupka-{$purchase->number}".($format === 'dl' ? '-ceny' : '').".{$ext}");
     }
 
     /** В приложении на телефоне файл открывается во встроенном браузере — там нужен inline, иначе Quick Look без выхода. */

@@ -19,6 +19,7 @@ use RuntimeException;
  * наша цена (`price_final`); по галке «Цены менеджеров» на листе с машинами
  * справа «Максимальная», «Минимальная» и колонка на менеджера. PDF — та же
  * таблица компактно. Остальные галки: лист «Сводка», строки с предложениями, строки без.
+ * Упрощённая (`short`) — отдельный файл: только ДЛ и наша цена.
  */
 final class Export
 {
@@ -95,6 +96,28 @@ final class Export
             $this->summarySheet($book, $s);
         }
         $book->setActiveSheetIndex($book->getIndex($sheet));
+        (new Xlsx($book))->save($path);
+        $book->disconnectWorksheets();
+
+        return $path;
+    }
+
+    /** Упрощённая: один лист, две колонки — ДЛ и наша цена, только машины с ценой, по порядку файла. */
+    public function short(Purchase $purchase, string $path): string
+    {
+        $book = new Spreadsheet;
+        $sheet = $book->getActiveSheet();
+        $sheet->setTitle('Цены');
+        $sheet->fromArray(['ДЛ', 'Наша цена'], null, 'A1');
+        $sheet->getStyle('A1:B1')->getFont()->setBold(true);
+        $rows = $purchase->cars()->whereNotNull('price_final')->orderBy('dl')->get(['dl', 'price_final'])->map(fn (Car $c) => [$c->dl, $c->price_final])->all();
+        if ($rows) {
+            $sheet->fromArray($rows, null, 'A2');
+            $sheet->getStyle('B2:B'.(count($rows) + 1))->getNumberFormat()->setFormatCode('#,##0');
+        }
+        $sheet->getColumnDimension('A')->setWidth(16);
+        $sheet->getColumnDimension('B')->setWidth(14);
+        $sheet->freezePane('A2');
         (new Xlsx($book))->save($path);
         $book->disconnectWorksheets();
 

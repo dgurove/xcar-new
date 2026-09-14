@@ -49,6 +49,7 @@
                             <button name="format" value="xlsx" class="btn btn-quiet flex-1"><x-ui.icon name="file" class="size-5"/> Excel</button>
                             <button name="format" value="pdf" class="btn btn-quiet flex-1"><x-ui.icon name="file" class="size-5"/> PDF</button>
                         </div>
+                        <button name="format" value="dl" class="btn btn-quiet w-full" data-file-any><x-ui.icon name="file" class="size-5"/> Упрощённая</button>
                     </form>
                 @endif
                 <form method="post" action="/zakupki/{{ $n }}/zanovo">@csrf<input type="hidden" name="specs" value="1"><x-ui.button block variant="ghost">Перечитать характеристики</x-ui.button></form>

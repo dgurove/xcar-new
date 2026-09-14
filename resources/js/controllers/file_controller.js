@@ -26,7 +26,8 @@ export default class extends Controller {
         if (el.tagName !== 'FORM') return el.href;
         const data = new FormData(el);
         if (submitter?.name) data.append(submitter.name, submitter.value);
-        if (el.querySelector('input[type=checkbox]') && !el.querySelector('input[type=checkbox]:checked')) {
+        // Кнопке с data-file-any галки не нужны (упрощённая выгрузка — ДЛ и наша цена).
+        if (!submitter?.hasAttribute('data-file-any') && el.querySelector('input[type=checkbox]') && !el.querySelector('input[type=checkbox]:checked')) {
             window.toast?.('Выберите, что выгружать', 'danger');
             return null;
         }
