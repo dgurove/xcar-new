@@ -1,6 +1,7 @@
 {{-- Шапка xcar.ru. Телефон: квадраты (поиск, закладка, логотип, колокольчик, тема);
      в CRM и на стоянке поиска нет — слева знак приложения (x-ui.brand).
-     Десктоп: знак и два ряда капсул — справочное и разделы. --}}
+     Десктоп: знак и два ряда капсул — справочное и разделы; «назад» здесь
+     только на телефоне, на десктопе он у заголовка (x-ui.back). --}}
 @props(['overHero' => false, 'back' => null, 'heading' => null])
 @php
     $surface = \App\Support\Surface::current();
@@ -79,10 +80,6 @@
     <div class="container-site hidden grid-cols-[auto_1fr] items-start gap-1 py-2 md:grid">
         <a href="/" class="row-span-2 mr-1 flex shrink-0 items-center self-start" aria-label="XCar"><x-ui.brand class="h-16"/></a>
         <div class="header-row">
-            @if ($back)
-                {{-- В глубине раздела: квадрат «‹» в углу, подпись раздела — в подсказке. --}}
-                <a href="{{ $back[1] }}" class="header-btn header-btn-square header-h w-[1.875rem]" aria-label="Назад" title="Назад" data-controller="back" data-action="back#go" data-turbo-action="replace"><x-ui.icon name="chevron-left" class="-ml-px size-4"/></a>
-            @endif
             <form method="get" action="{{ $searchAction }}" class="header-btn header-h header-search relative justify-start px-3" role="search" data-turbo-action="replace">
                 <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>
                 <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" placeholder="{{ $park ? 'VIN, госномер, марка' : 'Поиск объявления…' }}" class="w-28 sm:w-36 lg:w-52" aria-label="Поиск">

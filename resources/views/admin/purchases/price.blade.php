@@ -4,9 +4,10 @@
      Поле в потоке страницы, не в action-bar: iOS сам подкручивает к нему, а фиксированная полоса внизу
      уходит под клавиатуру. «Дальше» сохраняет и ведёт к следующей без цены заменой записи истории,
      как и стрелки: сколько ни листай, «Назад» один раз — в список. --}}
-@php $n = $purchase->number; $live = $car->activeOfferList()->sortByDesc('amount'); $photos = $car->visiblePhotos(); @endphp
-<x-ui.shell :title="$car->titleWithYear()" :heading="false" :back="['Закупка', '/zakupki/'.$n.'?preset=unfinal']">
-    <div class="mb-4 flex items-center gap-3">
+@php $n = $purchase->number; $back = ['Закупка', '/zakupki/'.$n.'?preset=unfinal']; $live = $car->activeOfferList()->sortByDesc('amount'); $photos = $car->visiblePhotos(); @endphp
+<x-ui.shell :title="$car->titleWithYear()" :heading="false" :back="$back">
+    <div class="has-back mb-4 flex items-center gap-3">
+        <x-ui.back :back="$back"/>
         <h1 class="min-w-0 truncate text-[24px] sm:text-[34px]">{{ $car->titleWithYear() }}</h1>
         <x-ui.nav-arrows class="ml-auto shrink-0" :index="$index" :total="$total"
             :prev="$prev ? '/zakupki/'.$n.'/'.$prev->ref.'/ocenka' : null"

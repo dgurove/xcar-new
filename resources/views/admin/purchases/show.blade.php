@@ -1,6 +1,7 @@
 @php use App\Purchases\PurchaseState; $n = $purchase->number; $ctl = \App\Http\Admin\PurchaseController::class; @endphp
 <x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/zakupki']">
-    <div class="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
+    <div class="has-back mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
+        <x-ui.back :back="['Закупки', '/zakupki']"/>
         <h1 class="text-[28px] sm:text-[34px]">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto shrink-0 sm:order-1" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <span class="flex flex-wrap items-center gap-1.5">

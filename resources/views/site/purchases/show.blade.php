@@ -4,7 +4,10 @@
 @endphp
 <x-ui.shell :title="$purchase->publicTitle($group)" :heading="false" :back="['Закупки', '/zakupki']" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], [$purchase->publicTitle($group)]]">
     <div class="box">
-        <h1 class="text-[26px] sm:text-[32px]">{{ $purchase->publicTitle($group) }}</h1>
+        <div class="has-back flex items-center gap-3">
+            <x-ui.back :back="['Закупки', '/zakupki']"/>
+            <h1 class="min-w-0 text-[26px] sm:text-[32px]">{{ $purchase->publicTitle($group) }}</h1>
+        </div>
         <div class="mt-4 flex flex-wrap items-center gap-2">
             <x-purchase.deadline :purchase="$purchase"/>
             @if (count($kinds) > 1)

@@ -571,6 +571,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* «‹ Раздел» слева на телефоне: капсула под палец, подпись обрезается. */
   .header-back { height: 2.5rem; max-width: 11rem; padding: 0 .875rem 0 .5rem; border-radius: 9999px; font-size: 15px; }
 
+  /* «‹» у заголовка на десктопе: в потоке перед h1, а когда у контейнера есть
+     поля — в левом поле, чтобы заголовок не уходил с линии содержимого. */
+  @media (min-width: 1400px) {
+    .has-back { position: relative; }
+    .back-title { position: absolute; right: 100%; top: 50%; translate: -.75rem -50%; }
+  }
+
   /* Квадрат телефона и квадрат в конце ряда капсул. */
   .header-sq { height: 2.5rem; width: 2.5rem; border-radius: 0; }
   .header-h  { height: 1.875rem; }
