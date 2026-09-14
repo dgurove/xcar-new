@@ -33,9 +33,9 @@ use Illuminate\Validation\Rule;
 
 class PurchaseController
 {
-    public const PRESETS = ['all' => 'Все', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений', 'attention' => 'Требуют внимания', 'nophoto' => 'Без фото', 'hidden' => 'Скрытые'];
+    public const PRESETS = ['all' => 'Все', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений', 'unfinal' => 'Без нашей цены', 'final' => 'С нашей ценой', 'attention' => 'Требуют внимания', 'nophoto' => 'Без фото', 'hidden' => 'Скрытые'];
 
-    public const SORTS = ['dl' => 'По порядку файла', 'best' => 'Лучшая цена', 'fresh' => 'Сначала новые'];
+    public const SORTS = ['dl' => 'По порядку файла', 'best' => 'Лучшая цена', 'final' => 'Наша цена', 'fresh' => 'Сначала новые'];
 
     public const VIEWS = ['cars' => 'По машинам', 'managers' => 'По менеджерам'];
 
@@ -79,6 +79,8 @@ class PurchaseController
         match ($preset) {
             'priced' => $cars->whereHas('offers', $live),
             'unpriced' => $cars->whereDoesntHave('offers', $live),
+            'unfinal' => $cars->whereNull('price_final'),
+            'final' => $cars->whereNotNull('price_final'),
             'attention' => $cars->where(fn ($w) => $w->whereIn('specs_state', ['failed', 'partial', 'gone'])->orWhereIn('photos_state', ['failed', 'partial', 'gone'])),
             'nophoto' => $cars->where('photos_count', 0),
             'hidden' => $cars->where('is_published', false),
@@ -86,6 +88,7 @@ class PurchaseController
         };
         match ($sort) {
             'best' => $cars->withMax(['offers as top_offer' => $live], 'amount')->orderByDesc('top_offer')->orderBy('dl'),
+            'final' => $cars->orderByRaw('price_final desc nulls last')->orderBy('dl'),
             'fresh' => $cars->orderByDesc('id'),
             default => $cars->orderBy('dl'),
         };
@@ -95,6 +98,8 @@ class PurchaseController
             'all' => $all->count(),
             'priced' => $all->filter(fn ($c) => $c->activeOfferList()->isNotEmpty())->count(),
             'unpriced' => $all->filter(fn ($c) => $c->activeOfferList()->isEmpty())->count(),
+            'unfinal' => $all->whereNull('price_final')->count(),
+            'final' => $all->whereNotNull('price_final')->count(),
             'attention' => $all->filter(fn ($c) => $c->specs_state->needsAttention() || $c->photos_state->needsAttention())->count(),
             'nophoto' => $all->where('photos_count', 0)->count(),
             'hidden' => $all->where('is_published', false)->count(),
@@ -124,6 +129,7 @@ class PurchaseController
         }
         $cars = match ($sort) {
             'best' => $cars->sortByDesc(fn ($c) => $c->bestOffer()?->amount ?? 0),
+            'final' => $cars->sortByDesc(fn ($c) => $c->price_final ?? -1),
             'fresh' => $cars->sortByDesc('id'),
             default => $cars->sortBy('dl'),
         };
@@ -268,9 +274,9 @@ class PurchaseController
             'brand_id' => ['nullable', 'exists:brands,id'], 'model_id' => ['nullable', 'exists:car_models,id'], 'year' => ['nullable', 'integer'], 'vin' => ['nullable', 'string', 'max:17'],
             'mileage' => ['nullable', 'string'], 'transmission' => ['nullable', 'string'], 'fuel' => ['nullable', 'string'], 'engine_volume' => ['nullable', 'string'], 'engine_power' => ['nullable', 'string'],
             'color' => ['nullable', 'string', 'max:32'], 'settlement_id' => ['nullable', 'exists:settlements,id'], 'address' => ['nullable', 'string', 'max:255'], 'kind' => ['required', Rule::enum(Kind::class)],
-            'price_revalued' => ['nullable', 'string'], 'price_listing' => ['nullable', 'string'], 'description' => ['nullable', 'string', 'max:5000'], 'condition' => ['nullable', 'string', 'max:120'],
+            'price_revalued' => ['nullable', 'string'], 'price_listing' => ['nullable', 'string'], 'price_final' => ['nullable', 'string'], 'description' => ['nullable', 'string', 'max:5000'], 'condition' => ['nullable', 'string', 'max:120'],
         ]);
-        foreach (['mileage', 'engine_volume', 'engine_power', 'price_revalued', 'price_listing'] as $n) {
+        foreach (['mileage', 'engine_volume', 'engine_power', 'price_revalued', 'price_listing', 'price_final'] as $n) {
             $data[$n] = isset($data[$n]) && $data[$n] !== '' ? (int) preg_replace('/\D+/', '', $data[$n]) : null;
         }
         $data['transmission'] = $data['transmission'] ?: null;
@@ -279,6 +285,16 @@ class PurchaseController
         $update($car, $data);
 
         return back()->with('toast', 'Сохранено');
+    }
+
+    /** Наша цена из строки списка: сохраняется сама, без перезагрузки. */
+    public function price(Request $request, Purchase $purchase, Car $car)
+    {
+        abort_unless($car->purchase_id === $purchase->id, 404);
+        $raw = $request->validate(['price_final' => ['nullable', 'string', 'max:20']])['price_final'] ?? '';
+        $car->update(['price_final' => $raw !== '' ? (int) preg_replace('/\D+/', '', $raw) ?: null : null]);
+
+        return $request->expectsJson() ? response()->noContent() : back()->with('toast', 'Сохранено');
     }
 
     public function fetch(Request $request, Purchase $purchase, Car $car)

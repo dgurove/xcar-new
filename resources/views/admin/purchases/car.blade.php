@@ -30,10 +30,11 @@
                     <x-ui.field name="description" label="Описание" type="textarea" :value="$car->description" span="col-span-full"/>
                 </div>
             </x-ui.card>
-            <x-ui.card title="Цены поставщика" class="order-1">
+            <x-ui.card title="Цены" class="order-1">
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
                     <x-ui.field name="price_revalued" label="С учётом переоценки, ₽" inputmode="numeric" :value="$car->price_revalued"/>
                     <x-ui.field name="price_listing" label="Для размещения, ₽" inputmode="numeric" :value="$car->price_listing"/>
+                    <x-ui.field name="price_final" label="Наша цена, ₽" inputmode="numeric" :value="$car->price_final"/>
                     <div class="col-span-full flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
                         <x-ui.check name="is_published" :checked="$car->is_published">Показывать покупателям</x-ui.check>
                         @if ($car->encumbrance)<span class="tag">{{ $car->encumbrance }}</span>@endif

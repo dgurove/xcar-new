@@ -85,7 +85,7 @@
 
     <div class="mt-4 flex flex-col gap-2">
         @forelse ($cars as $car)
-            <x-purchase.crm-row :car="$car" :purchase="$purchase" :highlight="$view === 'managers' ? $user?->id : null"/>
+            <x-purchase.crm-row :car="$car" :purchase="$purchase" :highlight="$view === 'managers' ? $user?->id : null" :price="$view === 'cars'"/>
         @empty
             <x-ui.empty>Ничего не нашлось.</x-ui.empty>
         @endforelse

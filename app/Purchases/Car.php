@@ -20,7 +20,7 @@ use Spatie\MediaLibrary\HasMedia;
 #[Fillable([
     'purchase_id', 'dl', 'ref', 'brand_id', 'model_id', 'brand_raw', 'model_raw', 'year', 'vin', 'mileage', 'transmission', 'fuel',
     'engine_volume', 'engine_power', 'color', 'steering', 'keys', 'settlement_id', 'address', 'city', 'condition', 'encumbrance',
-    'fssp', 'vehicle_type', 'kind', 'stage', 'price_revalued', 'price_listing', 'site_url', 'cloud_url', 'cloud_leftovers',
+    'fssp', 'vehicle_type', 'kind', 'stage', 'price_revalued', 'price_listing', 'price_final', 'site_url', 'cloud_url', 'cloud_leftovers',
     'specs_state', 'specs_error', 'specs_at', 'photos_state', 'photos_error', 'photos_at', 'photos_count', 'locked_fields',
     'is_published', 'description',
 ])]

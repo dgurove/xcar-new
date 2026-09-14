@@ -7,7 +7,7 @@ use OpenSpout\Common\Entity\Style\Style;
 use OpenSpout\Writer\XLSX\Options;
 use OpenSpout\Writer\XLSX\Writer;
 
-/** Тот же файл поставщика с заполненной колонкой «Предложение клиента», вторым листом — все цены. */
+/** Тот же файл поставщика: в «Предложение клиента» — наша цена (`price_final`), вторым листом — все цены менеджеров. */
 final class Export
 {
     private const HEAD = ['ДЛ', 'Этап ПЛ', 'Марка', 'Модель', 'Год выпуска', 'Тип ПЛ полностью', 'Местонахождение', 'Цена ТС с учетом переоценки с НДС', 'Цена для размещения с НДС', 'Предложение клиента', 'Тяжелые ограничения', 'Обременения', 'Ссылка на сайт', 'Ссылка на облако'];
@@ -23,10 +23,9 @@ final class Export
         $writer->addRow(Row::fromValuesWithStyles(self::HEAD, array_fill(0, count(self::HEAD), $bold)));
         $cars = $purchase->cars()->with(['brand', 'model', 'offers.user'])->orderBy('dl')->get();
         foreach ($cars as $car) {
-            $best = $car->bestOffer();
             $writer->addRow(Row::fromValues([
                 $car->dl, $car->stage, $car->brand?->name ?? $car->brand_raw, $car->model?->name ?? $car->model_raw, $car->year, $car->vehicle_type, $car->address,
-                $car->price_revalued ?? '', $car->price_listing ?? '', $best?->amount ?? '', 'Нет', $car->encumbrance, $car->site_url, $car->cloud_url,
+                $car->price_revalued ?? '', $car->price_listing ?? '', $car->price_final ?? '', 'Нет', $car->encumbrance, $car->site_url, $car->cloud_url,
             ]));
         }
         $sheet = $writer->addNewSheetAndMakeItCurrent();
