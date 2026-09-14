@@ -17,7 +17,6 @@ use App\Purchases\Jobs\FetchPhotos;
 use App\Purchases\Jobs\FetchSpecs;
 use App\Purchases\Kind;
 use App\Purchases\Offer;
-use App\Purchases\OffersExport;
 use App\Purchases\OffersSummary;
 use App\Purchases\OfferState;
 use App\Purchases\Purchase;
@@ -200,33 +199,26 @@ class PurchaseController
         return redirect("/zakupki/{$purchase->number}")->with('toast', "Новых {$result['created']}, обновлено {$result['updated']}".($result['skipped'] ? ", пропущено {$result['skipped']}" : ''));
     }
 
+    /** Единственная выгрузка: файл Carcade с нашей ценой, галки — что ещё в него положить; Excel или PDF. */
     public function export(Request $request, Purchase $purchase, Export $export)
-    {
-        $path = storage_path("app/private/purchases/{$purchase->id}/itog-".now()->format('Ymd-His').'.xlsx');
-        @mkdir(dirname($path), 0775, true);
-        $export->write($purchase, $path);
-
-        return $this->file($request, $path, "zakupka-{$purchase->number}.xlsx");
-    }
-
-    public function offersExport(Request $request, Purchase $purchase, OffersExport $export)
     {
         $data = $request->validate([
             'parts' => 'required|array|min:1',
-            'parts.*' => Rule::in(array_keys(OffersExport::PARTS)),
+            'parts.*' => Rule::in(array_keys(Export::PARTS)),
             'format' => 'required|in:xlsx,pdf',
         ]);
-        $path = storage_path("app/private/purchases/{$purchase->id}/predlozheniya-".now()->format('Ymd-His').'.'.$data['format']);
+        $parts = $data['parts'];
+        $path = storage_path("app/private/purchases/{$purchase->id}/vygruzka-".now()->format('Ymd-His').'.'.$data['format']);
         @mkdir(dirname($path), 0775, true);
         try {
             $data['format'] === 'pdf'
-                ? $export->pdf($export->tables($purchase, $data['parts']), $purchase, $path)
-                : $export->xlsx($purchase, $data['parts'], $path);
+                ? $export->pdf($export->tables($purchase, $parts), $purchase, $path)
+                : $export->xlsx($purchase, $parts, $path);
         } catch (\RuntimeException $e) {
             return $request->expectsJson() ? response()->json(['message' => $e->getMessage()], 422) : back()->withErrors(['file' => $e->getMessage()]);
         }
 
-        return $this->file($request, $path, "zakupka-{$purchase->number}-predlozheniya.{$data['format']}");
+        return $this->file($request, $path, "zakupka-{$purchase->number}.{$data['format']}");
     }
 
     /** В приложении на телефоне файл открывается во встроенном браузере — там нужен inline, иначе Quick Look без выхода. */

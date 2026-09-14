@@ -96,9 +96,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/zakupki/{purchase}/fayl', [PurchaseController::class, 'upload']);
     Route::get('/zakupki/{purchase}/import', [PurchaseController::class, 'preview']);
     Route::post('/zakupki/{purchase}/import', [PurchaseController::class, 'import']);
-    Route::get('/zakupki/{purchase}/xlsx', [PurchaseController::class, 'export']);
+    Route::get('/zakupki/{purchase}/vygruzka', [PurchaseController::class, 'export']);
     Route::redirect('/zakupki/{purchase}/predlozheniya', '/zakupki/{purchase}?view=managers', 301);
-    Route::get('/zakupki/{purchase}/predlozheniya/fayl', [PurchaseController::class, 'offersExport']);
     Route::post('/zakupki/{purchase}/zanovo', [PurchaseController::class, 'refetch']);
     Route::get('/zakupki/{purchase}/{car}', [PurchaseController::class, 'car']);
     Route::match(['get', 'post'], '/zakupki/{purchase}/{car}/pdf', [ShareController::class, 'carPdf']);
