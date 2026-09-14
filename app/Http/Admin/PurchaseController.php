@@ -14,16 +14,13 @@ use App\Purchases\Export;
 use App\Purchases\Importer;
 use App\Purchases\Kind;
 use App\Purchases\Offer;
-use App\Purchases\OffersSummary;
 use App\Purchases\OfferState;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
 use App\Purchases\Restriction;
 use App\Users\Role;
 use App\Users\User;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -35,8 +32,6 @@ class PurchaseController
     public const PRESET_GROUPS = ['' => ['all'], 'Предложения менеджеров' => ['priced', 'unpriced'], 'Наша цена' => ['unfinal', 'final'], 'Служебное' => ['attention', 'nophoto', 'hidden']];
 
     public const SORTS = ['dl' => 'По порядку файла', 'best' => 'Лучшая цена', 'final' => 'Наша цена', 'fresh' => 'Сначала новые'];
-
-    public const VIEWS = ['cars' => 'По машинам', 'managers' => 'По менеджерам'];
 
     public function index()
     {
@@ -53,29 +48,59 @@ class PurchaseController
         return redirect("/zakupki/{$purchase->number}");
     }
 
-    /** Один экран-просмотр: по машинам (все цены у каждой) или по менеджерам (цены одного человека и где их нет). */
+    /**
+     * Один список с фильтрами: тип (пилюли тулбара), состояние и менеджер (выборы), поиск,
+     * сортировка — всё в адресе и сочетается. Менеджер выбран — машины его глазами: без
+     * скрытых для него типов, его чип первый, «С предложениями / Без» — про его цену.
+     */
     public function show(Request $request, Purchase $purchase)
     {
-        $view = $request->query('view') === 'managers' ? 'managers' : 'cars';
         $q = trim((string) $request->query('q'));
-        $pending = $purchase->cars()->where(fn ($w) => $w->whereIn('specs_state', ['pending', 'running'])->orWhereIn('photos_state', ['pending', 'running']))->count();
-        $data = ['purchase' => $purchase, 'view' => $view, 'q' => $q, 'pending' => $pending, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state)];
-
-        return view('admin.purchases.show', $data + ($view === 'cars' ? $this->byCars($request, $purchase, $q) : $this->byManagers($request, $purchase, $q)));
-    }
-
-    private function search(string $q): \Closure
-    {
-        return fn ($c) => $c->where(fn ($w) => $w->whereRaw('lower(dl) like ?', ['%'.mb_strtolower($q).'%'])->orWhereRaw('lower(brand_raw) like ?', ['%'.mb_strtolower($q).'%'])->orWhereRaw('lower(model_raw) like ?', ['%'.mb_strtolower($q).'%'])->orWhere('vin', 'like', '%'.strtoupper($q).'%'));
-    }
-
-    private function byCars(Request $request, Purchase $purchase, string $q): array
-    {
         $preset = array_key_exists($request->query('preset', 'all'), self::PRESETS) ? $request->query('preset', 'all') : 'all';
         $sort = array_key_exists($request->query('sort', 'dl'), self::SORTS) ? $request->query('sort', 'dl') : 'dl';
-        $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen]);
         $kind = Kind::tryFrom((string) $request->query('kind'));
-        $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user'])->when($q !== '', $this->search($q))->when($kind, fn ($c) => $c->where('kind', $kind));
+        $pending = $purchase->cars()->where(fn ($w) => $w->whereIn('specs_state', ['pending', 'running'])->orWhereIn('photos_state', ['pending', 'running']))->count();
+
+        // Числа — один проход по лёгкой выборке всей закупки, без поиска; перекрёстные: на типах —
+        // при выбранном состоянии, в состояниях и у менеджеров — при выбранном типе.
+        $all = $purchase->cars()->with('offers:id,car_id,user_id,state')->get(['id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state']);
+        $managers = User::where('role', Role::Manager)->orWhereIn('id', $all->flatMap(fn ($c) => $c->activeOfferList()->pluck('user_id'))->unique())->get();
+        $user = $managers->firstWhere('id', (int) $request->query('user'));
+        $hidden = Restriction::hiddenFor($user);
+        if ($user) {
+            $all = $all->reject(fn ($c) => in_array($c->kind->value, $hidden, true));
+        }
+        $has = fn ($c) => $user ? $c->activeOfferList()->contains('user_id', $user->id) : $c->activeOfferList()->isNotEmpty();
+        $match = [
+            'all' => fn ($c) => true,
+            'priced' => $has,
+            'unpriced' => fn ($c) => ! $has($c),
+            'unfinal' => fn ($c) => $c->price_final === null,
+            'final' => fn ($c) => $c->price_final !== null,
+            'attention' => fn ($c) => $c->specs_state->needsAttention() || $c->photos_state->needsAttention(),
+            'nophoto' => fn ($c) => $c->photos_count === 0,
+            'hidden' => fn ($c) => ! $c->is_published,
+        ];
+        $ofKind = $kind ? $all->where('kind', $kind) : $all;
+        $counts = array_map(fn ($f) => $ofKind->filter($f)->count(), $match);
+        // Типы — все, что есть в закупке, число — в выбранном состоянии (бывает 0: тип не пропадает, его можно снять).
+        $kinds = $all->groupBy(fn ($c) => $c->kind->value)->map(fn ($g) => $g->filter($match[$preset])->count())->all();
+        $offered = $managers->mapWithKeys(fn ($u) => [$u->id => $ofKind->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $u->id))->count()]);
+        $managers = $managers->sortBy([fn ($a, $b) => $offered[$b->id] <=> $offered[$a->id], fn ($a, $b) => strcmp($a->name, $b->name)])->values();
+
+        $presets = self::PRESETS;
+        $groups = self::PRESET_GROUPS;
+        if ($user) {
+            $presets['priced'] = 'С его ценой';
+            $presets['unpriced'] = 'Без его цены';
+            $groups = array_combine(array_map(fn ($g) => $g === 'Предложения менеджеров' ? $user->shortName() : $g, array_keys($groups)), $groups);
+        }
+
+        $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen])->when($user, fn ($o) => $o->where('user_id', $user->id));
+        $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user'])
+            ->when($q !== '', $this->search($q))
+            ->when($kind, fn ($c) => $c->where('kind', $kind))
+            ->when($hidden, fn ($c) => $c->whereNotIn('kind', $hidden));
         match ($preset) {
             'priced' => $cars->whereHas('offers', $live),
             'unpriced' => $cars->whereDoesntHave('offers', $live),
@@ -92,58 +117,17 @@ class PurchaseController
             'fresh' => $cars->orderByDesc('id'),
             default => $cars->orderBy('dl'),
         };
-        // Числа — одним проходом по закупке, без поиска; перекрёстные: на типах — при
-        // выбранном состоянии, в состояниях — при выбранном типе.
-        $all = $purchase->cars()->with('offers')->get();
-        $match = [
-            'all' => fn ($c) => true,
-            'priced' => fn ($c) => $c->activeOfferList()->isNotEmpty(),
-            'unpriced' => fn ($c) => $c->activeOfferList()->isEmpty(),
-            'unfinal' => fn ($c) => $c->price_final === null,
-            'final' => fn ($c) => $c->price_final !== null,
-            'attention' => fn ($c) => $c->specs_state->needsAttention() || $c->photos_state->needsAttention(),
-            'nophoto' => fn ($c) => $c->photos_count === 0,
-            'hidden' => fn ($c) => ! $c->is_published,
-        ];
-        $ofKind = $kind ? $all->where('kind', $kind) : $all;
-        $counts = array_map(fn ($f) => $ofKind->filter($f)->count(), $match);
-        // Типы — все, что есть в закупке, число — в выбранном состоянии (бывает 0: тип не пропадает, его можно снять).
-        $kinds = $all->groupBy(fn ($c) => $c->kind->value)->map(fn ($g) => $g->filter($match[$preset])->count())->all();
 
-        return ['cars' => $cars->paginate(50)->withQueryString(), 'preset' => $preset, 'sort' => $sort, 'counts' => $counts, 'kind' => $kind, 'kinds' => $kinds];
+        return view('admin.purchases.show', [
+            'purchase' => $purchase, 'q' => $q, 'pending' => $pending, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state),
+            'cars' => $cars->paginate(50)->withQueryString(), 'preset' => $preset, 'presets' => $presets, 'groups' => $groups, 'sort' => $sort,
+            'counts' => $counts, 'kind' => $kind, 'kinds' => $kinds, 'managers' => $managers, 'offered' => $offered, 'user' => $user,
+        ]);
     }
 
-    private function byManagers(Request $request, Purchase $purchase, string $q): array
+    private function search(string $q): \Closure
     {
-        $summary = new OffersSummary($purchase);
-        $sort = array_key_exists($request->query('sort', 'dl'), self::SORTS) ? $request->query('sort', 'dl') : 'dl';
-        $pick = $request->query('user');
-        $user = $pick === 'none' ? null : ($summary->managers->firstWhere('id', (int) $pick) ?? $summary->managers->first());
-        $has = $request->boolean('has', true);
-        if ($user) {
-            $hidden = Restriction::hiddenFor($user);
-            $cars = $has
-                ? $summary->offersOf($user)->map->car
-                : $summary->cars->filter(fn ($c) => ! in_array($c->kind->value, $hidden, true) && ! $c->activeOfferList()->firstWhere('user_id', $user->id));
-        } else {
-            $cars = $summary->unpriced();
-        }
-        if ($q !== '') {
-            $term = mb_strtolower($q);
-            $cars = $cars->filter(fn ($c) => str_contains(mb_strtolower($c->dl.' '.$c->brand_raw.' '.$c->model_raw.' '.$c->vin), $term));
-        }
-        $cars = match ($sort) {
-            'best' => $cars->sortByDesc(fn ($c) => $c->bestOffer()?->amount ?? 0),
-            'final' => $cars->sortByDesc(fn ($c) => $c->price_final ?? -1),
-            'fresh' => $cars->sortByDesc('id'),
-            default => $cars->sortBy('dl'),
-        };
-        $page = max(1, (int) $request->query('page', 1));
-        // Связи для показа — только у страницы: сводка считается по всем машинам, а рисуются пятьдесят.
-        $slice = (new EloquentCollection($cars->values()->forPage($page, 50)->values()->all()))->load(['brand', 'model', 'settlement', 'media']);
-        $cars = new LengthAwarePaginator($slice, $cars->count(), 50, $page, ['path' => $request->url(), 'query' => $request->query()]);
-
-        return ['cars' => $cars, 'summary' => $summary, 'user' => $user, 'has' => $has, 'sort' => $sort];
+        return fn ($c) => $c->where(fn ($w) => $w->whereRaw('lower(dl) like ?', ['%'.mb_strtolower($q).'%'])->orWhereRaw('lower(brand_raw) like ?', ['%'.mb_strtolower($q).'%'])->orWhereRaw('lower(model_raw) like ?', ['%'.mb_strtolower($q).'%'])->orWhere('vin', 'like', '%'.strtoupper($q).'%'));
     }
 
     public function update(Request $request, Purchase $purchase)

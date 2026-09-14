@@ -59,43 +59,22 @@
     </div>
     @if ($errors->any())<x-ui.flash tone="danger" class="mb-4">{{ $errors->first() }}</x-ui.flash>@endif
 
-    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" sort-side="right" :pills="$ctl::VIEWS" :pill="$view" pill-param="view" :hidden="['view' => $view, 'preset' => $preset ?? null, 'kind' => isset($kind) ? $kind?->value : null, 'user' => $user?->id ?? request('user'), 'has' => isset($has) ? (int) $has : null]" name="purchase">
+    @php $kindPills = count($kinds) > 1 ? ['' => 'Все'] + collect(Kind::cases())->filter(fn ($k) => isset($kinds[$k->value]))->mapWithKeys(fn ($k) => [$k->value => $k->label()])->all() : []; @endphp
+    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" sort-side="right" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :counts="['' => array_sum($kinds)] + $kinds" :hidden="['preset' => $preset, 'kind' => $kind?->value, 'user' => $user?->id]" name="purchase">
         <x-slot:filters><input name="q" value="{{ $q }}" placeholder="ДЛ, VIN, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>
 
-    @if ($view === 'cars')
-        {{-- Состояние — один выбор (из каждой группы пресетов берут один ответ), тип техники — пилюли; сочетаются. --}}
-        <div class="mt-3 flex items-center gap-2">
-            <x-ui.choose name="preset" :options="$ctl::PRESETS" :groups="$ctl::PRESET_GROUPS" :value="$preset" default="all" :counts="$counts" title="Какие машины" id="preset-purchase"/>
-            @if (count($kinds) > 1)
-                <x-ui.pills class="min-w-0 flex-1">
-                    <x-ui.pill :href="request()->fullUrlWithQuery(['kind' => null, 'page' => null])" :current="! $kind" data-turbo-action="replace">Все <span class="nums opacity-70">{{ array_sum($kinds) }}</span></x-ui.pill>
-                    @foreach (Kind::cases() as $k)
-                        @if (isset($kinds[$k->value]))<x-ui.pill :href="request()->fullUrlWithQuery(['kind' => $k->value, 'page' => null])" :current="$kind === $k" data-turbo-action="replace">{{ $k->label() }} <span class="nums opacity-70">{{ $kinds[$k->value] }}</span></x-ui.pill>@endif
-                    @endforeach
-                </x-ui.pills>
-            @endif
-        </div>
-    @else
-        @php $unpriced = $summary->unpriced()->count(); @endphp
-        <x-ui.pills class="mt-3">
-            @foreach ($summary->managers as $u)
-                <x-ui.pill :href="request()->fullUrlWithQuery(['user' => $u->id, 'has' => null, 'page' => null])" :current="$user?->id === $u->id" class="!pl-1.5 gap-1.5" data-turbo-action="replace"><x-ui.avatar :user="$u" :size="22"/>{{ $u->shortName() }} <span class="nums opacity-70">{{ $summary->stats[$u->id]['offered'] }}</span></x-ui.pill>
-            @endforeach
-            <x-ui.pill :href="request()->fullUrlWithQuery(['user' => 'none', 'has' => null, 'page' => null])" :current="! $user" data-turbo-action="replace">Ничьи <span class="nums opacity-70">{{ $unpriced }}</span></x-ui.pill>
-        </x-ui.pills>
-        @if ($user)
-            @php $st = $summary->stats[$user->id]; @endphp
-            <x-ui.pills class="mt-2">
-                <x-ui.pill :href="request()->fullUrlWithQuery(['has' => null, 'page' => null])" :current="$has" data-turbo-action="replace">С его ценой <span class="nums opacity-70">{{ $st['offered'] }}</span></x-ui.pill>
-                <x-ui.pill :href="request()->fullUrlWithQuery(['has' => 0, 'page' => null])" :current="! $has" data-turbo-action="replace">Без его цены <span class="nums opacity-70">{{ $st['missing'] }}</span></x-ui.pill>
-            </x-ui.pills>
+    {{-- Состояние и менеджер — по одному выбору, сочетаются с типом и поиском; менеджер выбран — состояния про его цену. --}}
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+        <x-ui.choose name="preset" :options="$presets" :groups="$groups" :value="$preset" default="all" :counts="$counts" title="Какие машины" id="preset-purchase"/>
+        @if ($managers->isNotEmpty())
+            <x-ui.choose name="user" :options="['' => 'Все менеджеры'] + $managers->mapWithKeys(fn ($u) => [$u->id => $u->shortName()])->all()" :value="$user?->id ?? ''" default="" :counts="$offered->all()" title="Менеджер" id="user-purchase"/>
         @endif
-    @endif
+    </div>
 
     <div class="mt-4 flex flex-col gap-2">
         @forelse ($cars as $car)
-            <x-purchase.crm-row :car="$car" :purchase="$purchase" :highlight="$view === 'managers' ? $user?->id : null" :price="$view === 'cars'"/>
+            <x-purchase.crm-row :car="$car" :purchase="$purchase" :highlight="$user?->id" price/>
         @empty
             <x-ui.empty>Ничего не нашлось.</x-ui.empty>
         @endforelse
