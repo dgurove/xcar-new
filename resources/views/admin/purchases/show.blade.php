@@ -43,7 +43,7 @@
                         <span class="text-sm text-ink-dim">Выгрузка поставщику</span>
                         <div class="flex flex-col gap-2 text-sm">
                             @foreach (\App\Purchases\Export::PARTS as $key => $label)
-                                <x-ui.check name="parts[]" :value="$key" :checked="true">{{ $label }}</x-ui.check>
+                                <x-ui.check name="parts[]" :value="$key" :checked="$key !== 'managers'">{{ $label }}</x-ui.check>
                             @endforeach
                         </div>
                         <div class="flex gap-2">
