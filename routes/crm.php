@@ -20,6 +20,7 @@ use App\Http\Admin\SettingsController;
 use App\Http\Admin\TagController;
 use App\Http\Admin\UserController;
 use App\Http\Admin\WorkflowController;
+use App\Http\Site\ShareController;
 use Illuminate\Support\Facades\Route;
 
 // CRM — свой хост того же приложения, только для сотрудников.
@@ -32,6 +33,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/predlozheniya/iz-pisem/{candidate}/zavesti', [CandidateController::class, 'promote']);
     Route::post('/predlozheniya/iz-pisem/{candidate}/otklonit', [CandidateController::class, 'reject']);
     Route::get('/predlozheniya/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
+    // Шеринг PDF: маршруты без домена на хосте CRM отбивает ResolveSurface — свои копии.
+    Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
+    Route::post('/share/oshibka', [ShareController::class, 'report'])->middleware('throttle:30,1');
     Route::put('/predlozheniya/{offer}', [OfferController::class, 'update']);
     Route::post('/predlozheniya/{offer}/sostoyanie', [OfferController::class, 'state']);
     Route::post('/predlozheniya/{offer}/iskhod/{exit}', [RouteController::class, 'exit']);
@@ -97,6 +101,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::get('/zakupki/{purchase}/predlozheniya/fayl', [PurchaseController::class, 'offersExport']);
     Route::post('/zakupki/{purchase}/zanovo', [PurchaseController::class, 'refetch']);
     Route::get('/zakupki/{purchase}/{car}', [PurchaseController::class, 'car']);
+    Route::match(['get', 'post'], '/zakupki/{purchase}/{car}/pdf', [ShareController::class, 'carPdf']);
     Route::put('/zakupki/{purchase}/{car}', [PurchaseController::class, 'updateCar']);
     Route::post('/zakupki/{purchase}/{car}/zabrat', [PurchaseController::class, 'fetch']);
     Route::post('/zakupki/mashiny/{car}/media', [PurchaseCarPhotoController::class, 'store']);

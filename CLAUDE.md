@@ -152,7 +152,15 @@ node scripts/icons.mjs           # иконки трёх приложений и
 
 ## Модули
 
-`app/Offers` (оффер, ставки, сделки, шеринг PDF), `app/Workflow` (страховые
+`app/Offers` (оффер, ставки, сделки, шеринг PDF — `Offers\Share`: `Subject`
+(оффер или машина закупки), `SharePdf` (страница на фото, кэш на диске
+`cache`), `Caption`; компонент `x-ui.share` через обёртки `x-offer.share` и
+`x-purchase.share`; `GET|POST …/pdf` одним обработчиком `ShareController`,
+на хосте CRM свои копии маршрутов — `ResolveSurface` чужие отбивает 404;
+клиент `share_controller`: PDF тянется при открытии шторки, «Отправить»
+выключена до готовности, файл — `navigator.share({files})`, где его нет
+или он упал — `window.open` на тот же адрес в самом жесте («Открыть PDF»),
+сбои — тостом и маяком в `POST /share/oshibka` → лог `share:`), `app/Workflow` (страховые
 и маршруты по этапам, `ChangeOfferState` — одна дверь состояний; боевые
 маршруты — заготовки `Presets/*`, ими же `InsurerSeeder` заводит три
 страховые; маршрут вывоза запускается с каждым предложением или по кнопке —

@@ -2,7 +2,6 @@
 
 namespace App\Offers\Share;
 
-use App\Offers\Offer;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -14,6 +13,7 @@ use Throwable;
 /**
  * PDF для отправки в мессенджер: страница на фотографию, по размеру кадра,
  * базовый JPEG 1280 px. Готовый файл кэшируется на диске по набору фото и знаку.
+ * Объект — оффер или машина закупки (`Subject`).
  */
 final class SharePdf
 {
@@ -26,15 +26,15 @@ final class SharePdf
     public function __construct(private PdfWriter $writer) {}
 
     /** @param  list<int>  $mediaIds */
-    public function build(Offer $offer, array $mediaIds, bool $watermark): string
+    public function build(Subject $subject, array $mediaIds, bool $watermark): string
     {
-        $media = $offer->visiblePhotos()->filter(fn (Media $m) => in_array($m->id, $mediaIds, true))->values();
+        $media = $subject->model->visiblePhotos()->filter(fn (Media $m) => in_array($m->id, $mediaIds, true))->values();
         if ($media->isEmpty()) {
             throw new RuntimeException('Не выбрано ни одной фотографии');
         }
-        $key = substr(sha1($offer->id.':'.$media->pluck('id')->implode(',').':'.(int) $watermark.':'.$media->max('updated_at')), 0, 16);
+        $key = substr(sha1($subject->cacheDir().':'.$media->pluck('id')->implode(',').':'.(int) $watermark.':'.$media->max('updated_at')), 0, 16);
         // Готовый PDF — кэш: пересобирается из фото, storage:gc стирает старые.
-        $path = "share/{$offer->id}/{$key}.pdf";
+        $path = $subject->cacheDir()."/{$key}.pdf";
         $disk = Storage::disk(self::DISK);
         if ($disk->exists($path)) {
             return $disk->path($path);
@@ -54,7 +54,7 @@ final class SharePdf
                     Log::warning('Фотография не попала в PDF', ['media' => $m->id, 'error' => $e->getMessage()]);
                 }
             }
-            $stamp = $watermark ? implode('   ', array_filter([(string) $offer->number, ($offer->published_at ?? $offer->created_at)?->format('d.m.Y'), 'xcar.ru'])) : null;
+            $stamp = $watermark ? implode('   ', array_filter([$subject->label, $subject->date?->format('d.m.Y'), 'xcar.ru'])) : null;
             $disk->put($path, $this->writer->write($photos, $stamp));
         } finally {
             foreach ((array) glob("{$work}/*") as $f) {
@@ -62,22 +62,15 @@ final class SharePdf
             }
             @rmdir($work);
         }
-        $this->prune($offer->id, $path);
+        $this->prune($subject->cacheDir(), $path);
 
         return $disk->path($path);
     }
 
-    public function fileName(Offer $offer): string
-    {
-        $name = trim(preg_replace('~[\\\\/:*?"<>|%\x00-\x1F]+~u', ' ', $offer->number.' '.$offer->titleWithYear()));
-
-        return (preg_replace('~\s+~u', ' ', $name) ?: 'xcar').'.pdf';
-    }
-
-    private function prune(int $offerId, string $keep): void
+    private function prune(string $dir, string $keep): void
     {
         $disk = Storage::disk(self::DISK);
-        $files = collect($disk->files("share/{$offerId}"))->filter(fn ($f) => $f !== $keep)->sortByDesc(fn ($f) => $disk->lastModified($f))->values();
+        $files = collect($disk->files($dir))->filter(fn ($f) => $f !== $keep)->sortByDesc(fn ($f) => $disk->lastModified($f))->values();
         foreach ($files->slice(5) as $f) {
             $disk->delete($f);
         }

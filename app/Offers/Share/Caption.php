@@ -3,6 +3,7 @@
 namespace App\Offers\Share;
 
 use App\Offers\Offer;
+use App\Purchases\Car;
 use App\Users\User;
 
 /**
@@ -31,6 +32,32 @@ final class Caption
             ['until', 'Приём подтверждений до', $offer->bids_close_at?->translatedFormat('d.m.Y H:i'), false],
         ];
 
+        return self::rows($rows);
+    }
+
+    /** Машина закупки: ДЛ и наша цена вместо номера и цены оффера, срок — приём цен по закупке. */
+    public static function car(Car $car, ?User $user): array
+    {
+        $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
+        $prices = $user?->role->canSeePrices() ?? false;
+        $rows = [
+            ['number', 'Номер', str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl, true],
+            ['price', 'Наша цена', $prices ? $money($car->price_listing) : null, true],
+            ['city', 'Город', $car->settlement?->name ?? $car->city, true],
+            ['model', 'Марка, модель, год', $car->titleWithYear(), true],
+            ['specs', 'КПП, топливо', implode(', ', array_filter([$car->transmission?->label(), $car->fuel?->label()])) ?: null, true],
+            ['engine', 'Двигатель', $car->engine_volume ? number_format($car->engine_volume / 1000, 1, ',', '').' л'.($car->engine_power ? ', '.$car->engine_power.' л. с.' : '') : null, false],
+            ['mileage', 'Пробег', $car->mileage !== null ? number_format($car->mileage, 0, '', ' ').' км' : null, false],
+            ['vin', 'VIN', $car->vin ? 'VIN '.$car->vin : null, false],
+            ['encumbrance', 'Обременения', $car->encumbrance, false],
+            ['until', 'Приём цен до', $car->purchase?->offers_close_at?->translatedFormat('d.m.Y H:i'), false],
+        ];
+
+        return self::rows($rows);
+    }
+
+    private static function rows(array $rows): array
+    {
         return array_values(array_map(fn ($r) => ['key' => $r[0], 'label' => $r[1], 'value' => (string) $r[2], 'on' => $r[3]],
             array_filter($rows, fn ($r) => $r[2] !== null && $r[2] !== '')));
     }

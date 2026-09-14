@@ -89,8 +89,9 @@ export default class extends Controller {
         if (name === 'SecurityError') text = 'Ключ не работает на этом адресе';
         else if (e.status && e.body?.message) text = e.body.message;
         window.toast?.(text, 'danger');
+        // Без _token в теле маяк ловит 419 — заголовков у sendBeacon нет.
         navigator.sendBeacon?.('/passkey/oshibka', new Blob([JSON.stringify({
-            stage: `${stage}/${step}`, name, code: e.code ?? (e.status ? `http ${e.status}` : null),
+            _token: document.querySelector('meta[name=csrf-token]')?.content, stage: `${stage}/${step}`, name, code: e.code ?? (e.status ? `http ${e.status}` : null),
             message: String(e.message ?? '').slice(0, 300),
             standalone: matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
         })], { type: 'application/json' }));

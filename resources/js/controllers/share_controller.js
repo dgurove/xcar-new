@@ -1,18 +1,25 @@
 import { Controller } from '@hotwired/stimulus';
 import { openSheet, closeSheet } from '../sheet';
 
-// Поделиться оффером. Текст и файл уходят порознь: вместе мессенджеры теряют
-// файл. Текст кладётся в буфер до первого await — share() требует свежего
-// жеста, а Safari без жеста в буфер не пишет. Переносы — U+2028: в
-// однострочной подписи WhatsApp \n режется, а разделитель строки проходит.
+// Поделиться оффером или машиной закупки. Текст и файл уходят порознь: вместе
+// мессенджеры теряют файл. Текст кладётся в буфер до первого await — share()
+// требует свежего жеста, а Safari без жеста в буфер не пишет.
+//
+// PDF собирается заранее (fetch при открытии шторки), «Отправить» до готовности
+// выключена: иначе в лист уходил один текст. Файл уходит через
+// navigator.share({files}); где его нет или он однажды упал — window.open на
+// тот же адрес в самом жесте: в установленном приложении это встроенный браузер
+// с предпросмотром и системным «Поделиться», на компьютере — вкладка. Каждый
+// сбой — тостом и на сервер (/share/oshibka): иначе с чужого телефона не видно ничего.
+const BROKEN = 'share:open';
+
 export default class extends Controller {
-    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'download'];
+    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label'];
     static values = { url: String, vat: String, name: String };
 
     connect() {
         this.compose();
-        // Где системный лист умеет файлы (iPhone, Android), «Скачать PDF» лишняя — PDF уходит через «Поделиться».
-        if (this.hasDownloadTarget && navigator.canShare?.({ files: [new File([''], 'a.pdf', { type: 'application/pdf' })] })) this.downloadTarget.hidden = true;
+        this.ready(!this.hasPhotoTarget);
     }
 
     open() {
@@ -56,21 +63,44 @@ export default class extends Controller {
         return this.photoTargets.filter((p) => p.checked).map((p) => p.value);
     }
 
+    watermark() {
+        return this.hasWatermarkTarget && !this.watermarkTarget.checked ? '0' : '1';
+    }
+
+    // Тот же адрес, что у fetch, но строкой запроса — для window.open.
+    openUrl() {
+        const params = new URLSearchParams();
+        this.selectedPhotos().forEach((id) => params.append('photos[]', id));
+        params.set('watermark', this.watermark());
+        return `${this.urlValue}?${params}`;
+    }
+
+    ready(on, text = '') {
+        if (this.hasSendTarget) this.sendTarget.disabled = !on;
+        if (this.hasLabelTarget) this.labelTarget.textContent = on ? 'Отправить' : text || 'Отправить';
+    }
+
     async prepare() {
         this.pdf = null;
         const photos = this.selectedPhotos();
-        if (!photos.length) { this.status(''); return; }
-        this.status('Собираем PDF…');
+        if (!photos.length) { this.status(''); this.ready(true); return; }
+        this.ready(false, 'Собираем PDF…');
+        this.status('');
         const form = new FormData();
         photos.forEach((id) => form.append('photos[]', id));
-        if (this.hasWatermarkTarget && !this.watermarkTarget.checked) form.append('watermark', '0'); else form.append('watermark', '1');
+        form.append('watermark', this.watermark());
         try {
             const r = await fetch(this.urlValue, { method: 'POST', body: form, headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, Accept: 'application/pdf' } });
-            if (!r.ok) { const d = await r.json().catch(() => ({})); this.status(d.message || 'PDF не собрался'); return; }
+            if (!r.ok) {
+                const d = await r.json().catch(() => ({}));
+                this.fail('prepare', { name: `http ${r.status}`, message: d.message || '' }, d.message || 'PDF не собрался');
+                return;
+            }
             this.pdf = new File([await r.blob()], this.nameValue, { type: 'application/pdf' });
             this.status(`PDF готов, ${photos.length} фото, ${Math.round(this.pdf.size / 1024)} КБ`);
-        } catch {
-            this.status('Связь с сервером потерялась');
+            this.ready(true);
+        } catch (e) {
+            this.fail('prepare', e, 'Связь с сервером потерялась');
         }
     }
 
@@ -79,7 +109,7 @@ export default class extends Controller {
     }
 
     writeCaption() {
-        const text = this.caption().replace(/\n/g, ' ');
+        const text = this.caption().replace(/\n/g, ' ');
         if (!text) return false;
         try { navigator.clipboard.writeText(text); return true; } catch { return false; }
     }
@@ -88,13 +118,9 @@ export default class extends Controller {
         if (this.writeCaption()) window.toast?.('Текст в буфере');
     }
 
-    download() {
-        if (!this.pdf) return;
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(this.pdf);
-        a.download = this.nameValue;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    openPdf() {
+        if (!this.selectedPhotos().length) { window.toast?.('Отметьте фото'); return; }
+        if (!window.open(this.openUrl(), '_blank')) window.toast?.('Не получилось открыть PDF', 'danger');
     }
 
     async send() {
@@ -105,14 +131,33 @@ export default class extends Controller {
 
     async share() {
         this.writeCaption();
-        if (this.pdf && navigator.canShare?.({ files: [this.pdf] })) {
-            try { await navigator.share({ files: [this.pdf] }); this.close(); } catch {}
+        if (this.pdf) {
+            const files = [this.pdf];
+            if (!navigator.canShare?.({ files }) || sessionStorage.getItem(BROKEN)) { this.openPdf(); return; }
+            try {
+                await navigator.share({ files });
+                this.close();
+            } catch (e) {
+                if (e.name === 'AbortError') return;
+                sessionStorage.setItem(BROKEN, '1');
+                this.fail('share', e, 'Лист не открылся — нажмите «Открыть PDF»');
+            }
             return;
         }
         if (navigator.share) {
             try { await navigator.share({ text: this.caption() }); this.close(); } catch {}
             return;
         }
-        window.toast?.('Текст в буфере, PDF — кнопкой «Скачать»');
+        window.toast?.('Текст в буфере');
+    }
+
+    fail(stage, e, text) {
+        this.status(text);
+        window.toast?.(text, 'danger');
+        // _token в теле: заголовков у sendBeacon нет, без него 419.
+        navigator.sendBeacon?.('/share/oshibka', new Blob([JSON.stringify({
+            _token: document.querySelector('meta[name=csrf-token]')?.content, stage, name: e.name || '?', message: String(e.message ?? '').slice(0, 300),
+            standalone: matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
+        })], { type: 'application/json' }));
     }
 }

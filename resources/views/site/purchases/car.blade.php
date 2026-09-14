@@ -12,6 +12,7 @@
 @endphp
 <x-ui.shell :title="$car->titleWithYear()" :back="[$purchase->publicTitle($group), $back]" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], [$purchase->publicTitle($group), $back], [$car->dl]]">
     <x-slot:actions>
+        @if ($car->visiblePhotos()->isNotEmpty())<x-purchase.share :car="$car" icon/>@endif
         <x-ui.nav-arrows class="ml-auto sm:ml-0"
             :prev="$prev ? '/zakupki/'.$purchase->number.'/'.$prev->ref.$suffix : null"
             :next="$next ? '/zakupki/'.$purchase->number.'/'.$next->ref.$suffix : null"/>

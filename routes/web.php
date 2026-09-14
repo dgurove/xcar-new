@@ -19,6 +19,7 @@ use App\Http\Site\OfferController;
 use App\Http\Site\PurchaseController;
 use App\Http\Site\ShareController;
 use App\Support\LegacyAdmin;
+use App\Users\User;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
@@ -54,7 +55,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/stavki/{bid}/otozvat', [BidController::class, 'withdraw']);
     Route::post('/offers/{offer}/interes', [InterestController::class, 'store']);
     Route::post('/offers/{offer}/izbrannoe', [FavoriteController::class, 'toggle']);
-    Route::post('/offers/{offer}/pdf', [ShareController::class, 'pdf']);
+    Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
+    Route::post('/share/oshibka', [ShareController::class, 'report'])->middleware('throttle:30,1');
     Route::get('/offers/{offer}/chat', [OfferController::class, 'chat']);
     Route::post('/offers/{offer}/chat', [ChatController::class, 'open']);
 
@@ -87,6 +89,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/zakupki', [PurchaseController::class, 'index'])->middleware('purchases');
     Route::get('/zakupki/{purchase}', [PurchaseController::class, 'show'])->middleware('purchases');
     Route::get('/zakupki/{purchase}/{car}', [PurchaseController::class, 'car'])->middleware('purchases');
+    Route::match(['get', 'post'], '/zakupki/{purchase}/{car}/pdf', [ShareController::class, 'carPdf'])->middleware('purchases');
     Route::post('/zakupki/{purchase}/{car}/cena', [PurchaseController::class, 'offer'])->middleware('purchases');
     Route::post('/zakupki/ceny/{offer}/otozvat', [PurchaseController::class, 'withdraw'])->middleware('purchases');
 });
@@ -96,7 +99,7 @@ Route::get('/admin/{path?}', fn (string $path = '') => redirect(LegacyAdmin::tar
 
 if (app()->isLocal()) {
     // Вход без пароля для проверки глазами: /dev/vhod/1 — первый пользователь.
-    Route::get('/dev/vhod/{user}', function (\App\Users\User $user) {
+    Route::get('/dev/vhod/{user}', function (User $user) {
         auth()->login($user, true);
 
         return redirect('/');
