@@ -237,7 +237,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     height: 3.5rem;
   }
   .btn-s { @apply px-[1.125rem] text-sm; height: 2.75rem; }
-  .btn-xs { @apply px-3 text-xs; height: 2rem; }
   @media (min-width: 640px) { .btn-s { height: 2.5rem; } }
   .btn-hero { @apply px-12 text-lg; height: 4rem; }
   @media (min-width: 640px) { .btn-hero { @apply text-xl; height: 4.375rem; } }
@@ -253,7 +252,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .btn-round  { @apply rounded-full px-0; width: 2.75rem; height: 2.75rem; }
   @media (min-width: 640px) { .btn-round { width: 2.25rem; height: 2.25rem; } }
   .btn-round.btn-lg { width: 3.5rem; height: 3.5rem; }
-  .btn-round.btn-xs { width: 2rem; height: 2rem; }
 
   /* ------------------------------------------------------------- поля */
 
@@ -597,13 +595,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .header-row > :is(.header-btn-square, .header-sq-wrap) + *,
   .header-row > :is(.header-btn-square, .header-sq-wrap) + .header-sq-wrap > .header-btn { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 
-  .header-badge {
-    position: absolute; top: -.25rem; inset-inline-end: -.25rem;
-    display: flex; min-width: 1rem; height: 1rem; align-items: center; justify-content: center;
-    padding-inline: .25rem; border-radius: 999px;
-    background: var(--color-accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 1;
-  }
-
   /* Состояние связи в шапке: html[data-net=offline|reconnecting] ставят net.js и live.js. */
   .net { display: none; align-items: center; gap: .375rem; margin-right: .25rem; font-size: 12px; color: var(--color-ink-muted); white-space: nowrap; }
   .net::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--color-urgent); }
@@ -846,11 +837,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card-marks { position: var(--float-pos); top: .75rem; left: .75rem; right: 3rem; display: flex; flex-wrap: wrap; gap: .375rem; }
   .mark:empty { display: none; }
   .card-marks .mark-glass { background: var(--glass-bg); color: var(--glass-ink); backdrop-filter: var(--glass-blur); }
-  .card--blank {
-    --float-pos: static; --glass-bg: var(--color-surface-3); --glass-ink: var(--color-ink); --glass-blur: none;
-    --star-bg: transparent; --star-bg-hover: var(--color-surface-3); --star-ink: var(--color-ink-muted);
-  }
-  .card-marks--flow { position: static; }
   .card-star {
     position: var(--float-pos); top: .75rem; right: .75rem; z-index: 1;
     display: inline-flex; flex: none; align-items: center; justify-content: center;
@@ -861,7 +847,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { .card-star:hover { background: var(--star-bg-hover); } }
   .card-star.is-on { color: var(--color-accent); }
   .card-star::before { content: ''; position: absolute; inset: -6px; }
-  .card-star.is-pop svg, .fav-pop svg { animation: pop .35s var(--ease-spring); }
+  .card-star.is-pop svg { animation: pop .35s var(--ease-spring); }
   @keyframes pop { 30% { scale: 1.3; } 60% { scale: .9; } }
   .card-star:disabled { opacity: 1; }
   .card-title { display: flex; align-items: flex-start; gap: .5rem; }
@@ -1065,7 +1051,6 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .swipe-actions form { display: contents; }
   .swipe-btn { display: flex; width: 4.5rem; align-items: center; justify-content: center; border-radius: var(--radius-l); background: var(--color-surface-3); color: var(--color-ink); }
   .swipe-btn-accent { background: var(--color-accent); color: #fff; }
-  .swipe-btn-danger { background: var(--color-danger); color: #fff; }
   @media (hover: hover) and (pointer: fine) { .swipe { overflow: visible; } .swipe-actions { display: none; } }
 }
 

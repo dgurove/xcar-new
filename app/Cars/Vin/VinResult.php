@@ -70,20 +70,6 @@ class VinResult
         $this->errors[] = ['code' => $code, 'detail' => $detail];
     }
 
-    /** @return array<string, mixed> Значения для полей формы. */
-    public function formValues(): array
-    {
-        $out = [];
-        foreach (self::FORM_FIELDS as $name) {
-            $value = $this->get($name);
-            if ($value !== null) {
-                $out[$name] = $value;
-            }
-        }
-
-        return $out;
-    }
-
     /** @return array<string, mixed> Справочное: показываем, но не сохраняем. */
     public function reference(): array
     {
@@ -91,10 +77,5 @@ class VinResult
             array_map(static fn (array $f) => $f['value'], $this->fields),
             array_flip(self::FORM_FIELDS),
         );
-    }
-
-    public function errorMessages(): string
-    {
-        return implode('; ', array_column($this->errors, 'detail'));
     }
 }

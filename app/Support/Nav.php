@@ -350,11 +350,6 @@ final class Nav
         return null;
     }
 
-    public static function badgeId(string $href): string
-    {
-        return 'badge-'.trim(str_replace('/', '-', $href), '-');
-    }
-
     public static function isCurrent(array $item, string $path): bool
     {
         foreach ((array) $item['match'] as $match) {

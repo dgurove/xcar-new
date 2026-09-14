@@ -59,9 +59,4 @@ class Chat extends Model
 
         return $token !== null && $this->guest_token !== null && hash_equals($this->guest_token, hash('sha256', $token));
     }
-
-    public function unreadFor(?User $user): int
-    {
-        return $user?->isStaff() ? $this->unread_for_staff : $this->unread_for_user;
-    }
 }

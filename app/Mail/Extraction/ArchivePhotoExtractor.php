@@ -1,7 +1,5 @@
 <?php
 
-
-
 namespace App\Mail\Extraction;
 
 use App\Mail\Attachment;
@@ -76,12 +74,12 @@ final class ArchivePhotoExtractor
      */
     public function extractPhotos(Attachment $attachment, int $limit = 0): array
     {
-        return $this->withArchive((string)$attachment->contents(), (string)$attachment->mime, function (ZipArchive|Archive7z $archive) use ($limit): array {
+        return $this->withArchive((string) $attachment->contents(), (string) $attachment->mime, function (ZipArchive|Archive7z $archive) use ($limit): array {
             $photos = [];
             $taken = [];
 
             foreach ($this->safeEntries($archive) as $entry) {
-                if (!$this->isImageName($entry['name'])) {
+                if (! $this->isImageName($entry['name'])) {
                     continue;
                 }
 
@@ -108,102 +106,6 @@ final class ArchivePhotoExtractor
     }
 
     /**
-     * Первый снимок из архива — для превью на плитке кандидата.
-     *
-     * Плитка показывает одну картинку, и ради неё не нужно распаковывать весь
-     * архив: в solid-7z извлечение каждого файла идёт с начала блока.
-     *
-     * @return array{name: string, mime: string, contents: string}|null
-     */
-    public function firstImage(Attachment $attachment): ?array
-    {
-        $photos = $this->extractPhotos($attachment, 1);
-
-        return $photos[0] ?? null;
-    }
-
-    /**
-     * Все безопасные записи архива с их метаданными.
-     *
-     * index — место записи в отфильтрованном списке (0-based), по нему же
-     * позже читается содержимое (entryContents). Сырой zip-индекс наружу
-     * не выходит: он свой у каждого формата.
-     *
-     * @return list<array{index: int, name: string, mime: string, size: int}>
-     */
-    public function listEntries(Attachment $attachment): array
-    {
-        return $this->listEntriesFor((string)$attachment->contents(), (string)$attachment->mime);
-    }
-
-    /**
-     * Список записей архива по содержимому и MIME — для документов оффера,
-     * у которых нет модели вложения письма.
-     *
-     * @return list<array{index: int, name: string, mime: string, size: int}>
-     */
-    public function listEntriesFor(string $contents, string $mime): array
-    {
-        return $this->withArchive($contents, $mime, function (ZipArchive|Archive7z $archive): array {
-            $entries = [];
-
-            foreach ($this->safeEntries($archive) as $index => $entry) {
-                $entries[] = [
-                    'index' => $index,
-                    'name' => $entry['name'],
-                    'mime' => $this->mimeOf($entry['name']),
-                    'size' => $entry['size'],
-                ];
-            }
-
-            return $entries;
-        }) ?? [];
-    }
-
-    /**
-     * Содержимое одной записи архива по её месту в списке безопасных записей.
-     *
-     * Для solid-7z это перечисление всего архива и чтение одного файла с
-     * начала блока — для предпросмотра одной записи это приемлемо.
-     *
-     * @return array{name: string, mime: string, contents: string}|null
-     */
-    public function entryContents(Attachment $attachment, int $index): ?array
-    {
-        return $this->entryContentsFor((string)$attachment->contents(), (string)$attachment->mime, $index);
-    }
-
-    /**
-     * Содержимое одной записи архива по содержимому и MIME — для документов
-     * оффера, у которых нет модели вложения письма.
-     *
-     * @return array{name: string, mime: string, contents: string}|null
-     */
-    public function entryContentsFor(string $contents, string $mime, int $index): ?array
-    {
-        return $this->withArchive($contents, $mime, function (ZipArchive|Archive7z $archive) use ($index): ?array {
-            $entries = $this->safeEntries($archive);
-            $entry = $entries[$index] ?? null;
-
-            if ($entry === null) {
-                return null;
-            }
-
-            $contents = $this->readEntry($archive, $entry);
-
-            if ($contents === null) {
-                return null;
-            }
-
-            return [
-                'name' => $entry['name'],
-                'mime' => $this->mimeOf($entry['name']),
-                'contents' => $contents,
-            ];
-        });
-    }
-
-    /**
      * Кадры из архива на диске — по одному, колбэком, с заходом во вложенные
      * архивы.
      *
@@ -214,7 +116,7 @@ final class ArchivePhotoExtractor
      *
      * Формат — по сигнатуре, а не по mime: у файла на диске mime нет.
      *
-     * @param callable(string $name, string $contents): void $onPhoto
+     * @param  callable(string $name, string $contents): void  $onPhoto
      * @return int сколько кадров отдано
      */
     public function walkFile(string $path, callable $onPhoto, int $limit = 0): int
@@ -230,12 +132,12 @@ final class ArchivePhotoExtractor
     /** Архив по имени файла: то, что мы умеем развернуть. */
     public static function isArchiveName(string $name): bool
     {
-        return (bool)preg_match('/\.(zip|7z|rar)$/i', $name);
+        return (bool) preg_match('/\.(zip|7z|rar)$/i', $name);
     }
 
     /**
-     * @param callable(string, string): void $onPhoto
-     * @param array<string, true> $taken
+     * @param  callable(string, string): void  $onPhoto
+     * @param  array<string, true>  $taken
      */
     private function walk(string $path, callable $onPhoto, int $limit, int $depth, array &$taken, int &$count): void
     {
@@ -258,7 +160,7 @@ final class ArchivePhotoExtractor
                     continue;
                 }
 
-                if (!self::isArchiveName($entry['name']) || $depth >= self::MAX_DEPTH) {
+                if (! self::isArchiveName($entry['name']) || $depth >= self::MAX_DEPTH) {
                     continue;
                 }
 
@@ -284,7 +186,7 @@ final class ArchivePhotoExtractor
     private function withFile(string $path, callable $callback): mixed
     {
         try {
-            $head = (string)@file_get_contents($path, false, null, 0, 2);
+            $head = (string) @file_get_contents($path, false, null, 0, 2);
 
             return $head === 'PK'
                 ? $this->withZip($path, $callback)
@@ -303,7 +205,7 @@ final class ArchivePhotoExtractor
      *
      * Расширение сохраняется: по нему тот же обход решает, что это архив.
      *
-     * @param array{name: string, size: int, packedSize: int, zipIndex: int|null, sevenZipPath: string|null} $entry
+     * @param  array{name: string, size: int, packedSize: int, zipIndex: int|null, sevenZipPath: string|null}  $entry
      */
     private function spill(ZipArchive|Archive7z $archive, array $entry): ?string
     {
@@ -313,7 +215,7 @@ final class ArchivePhotoExtractor
             return null;
         }
 
-        $path = $base . '.' . mb_strtolower(pathinfo($entry['name'], PATHINFO_EXTENSION));
+        $path = $base.'.'.mb_strtolower(pathinfo($entry['name'], PATHINFO_EXTENSION));
         @unlink($base);
 
         try {
@@ -354,7 +256,7 @@ final class ArchivePhotoExtractor
     /** Архив с фотографиями (zip/7z/rar), который мы умеем распаковывать. */
     public static function isArchive(?string $mime): bool
     {
-        $mime = mb_strtolower((string)$mime);
+        $mime = mb_strtolower((string) $mime);
 
         return in_array($mime, self::ZIP_MIMES, true)
             || in_array($mime, self::SEVEN_ZIP_MIMES, true);
@@ -371,7 +273,7 @@ final class ArchivePhotoExtractor
         $mime = mb_strtolower($mime);
         $viaSevenZip = in_array($mime, self::SEVEN_ZIP_MIMES, true);
 
-        if (!in_array($mime, self::ZIP_MIMES, true) && !$viaSevenZip) {
+        if (! in_array($mime, self::ZIP_MIMES, true) && ! $viaSevenZip) {
             return null;
         }
 
@@ -408,7 +310,7 @@ final class ArchivePhotoExtractor
 
     private function withZip(string $tempFile, callable $callback): mixed
     {
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
 
         if ($zip->open($tempFile) !== true) {
             return null;
@@ -432,7 +334,7 @@ final class ArchivePhotoExtractor
         $archive = new Archive7z($tempFile);
 
         // битый архив — не архив, но и не ошибка: промоут не должен падать
-        if (!$archive->isValid()) {
+        if (! $archive->isValid()) {
             return null;
         }
 
@@ -469,7 +371,7 @@ final class ArchivePhotoExtractor
             // Вложенный архив в память целиком не читается — он уходит на
             // диск потоком, — и потолок одного файла к нему не относится.
             // Общий потолок и защита от бомбы действуют на него как на всех.
-            if ($size > self::MAX_FILE_BYTES && !self::isArchiveName($name)) {
+            if ($size > self::MAX_FILE_BYTES && ! self::isArchiveName($name)) {
                 return [];
             }
 
@@ -533,8 +435,8 @@ final class ArchivePhotoExtractor
 
             $entries[] = [
                 $name,
-                (int)($stat['size'] ?? 0),
-                (int)($stat['comp_size'] ?? 0),
+                (int) ($stat['size'] ?? 0),
+                (int) ($stat['comp_size'] ?? 0),
                 $index,
                 null,
             ];
@@ -560,14 +462,14 @@ final class ArchivePhotoExtractor
             // isSafeName() резал именно traversal, а не легитимные пути
             $path = $entry->getUnixPath();
 
-            if (!$this->isSafeName($path)) {
+            if (! $this->isSafeName($path)) {
                 continue;
             }
 
             $entries[] = [
                 $path,
-                (int)$entry->getSize(),
-                (int)$entry->getPackedSize(),
+                (int) $entry->getSize(),
+                (int) $entry->getPackedSize(),
                 null,
                 $entry->getPath(),
             ];
@@ -579,7 +481,7 @@ final class ArchivePhotoExtractor
     /**
      * Содержимое записи: zip читает сам PHP, 7z — бинарь.
      *
-     * @param array{name: string, size: int, packedSize: int, zipIndex: int|null, sevenZipPath: string|null} $entry
+     * @param  array{name: string, size: int, packedSize: int, zipIndex: int|null, sevenZipPath: string|null}  $entry
      */
     private function readEntry(ZipArchive|Archive7z $archive, array $entry): ?string
     {
@@ -621,7 +523,7 @@ final class ArchivePhotoExtractor
             return true;
         }
 
-        return !$this->isSafeName($name);
+        return ! $this->isSafeName($name);
     }
 
     private function isSafeName(string $name): bool
@@ -651,7 +553,7 @@ final class ArchivePhotoExtractor
      */
     private function isImageName(string $name): bool
     {
-        return (bool)preg_match('/\.(jpe?g|png|webp)$/i', $name);
+        return (bool) preg_match('/\.(jpe?g|png|webp)$/i', $name);
     }
 
     private function mimeOf(string $name): string
@@ -672,11 +574,11 @@ final class ArchivePhotoExtractor
      * Два файла из разных каталогов архива могут называться одинаково —
      * в одну коллекцию оба не влезут.
      *
-     * @param array<string, true> $taken
+     * @param  array<string, true>  $taken
      */
     private function uniqueName(string $name, array &$taken): string
     {
-        if (!isset($taken[$name])) {
+        if (! isset($taken[$name])) {
             $taken[$name] = true;
 
             return $name;

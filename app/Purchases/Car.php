@@ -70,11 +70,6 @@ class Car extends Model implements HasMedia
         return $this->hasMany(Offer::class, 'car_id')->orderByDesc('amount');
     }
 
-    public function activeOffers(): HasMany
-    {
-        return $this->offers()->whereIn('state', [OfferState::Active, OfferState::Chosen]);
-    }
-
     public function title(): string
     {
         return trim(($this->brand?->name ?? $this->brand_raw ?? '').' '.($this->model?->name ?? $this->model_raw ?? '')) ?: 'Машина';

@@ -2,6 +2,7 @@
 
 namespace App\Workflow;
 
+use App\Mail\Template;
 use App\Offers\CarPlace;
 use App\Offers\OfferState;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -51,7 +52,7 @@ class Stage extends Model
 
     public function template(): BelongsTo
     {
-        return $this->belongsTo(\App\Mail\Template::class, 'template_id');
+        return $this->belongsTo(Template::class, 'template_id');
     }
 
     public function exits(): HasMany
@@ -68,11 +69,6 @@ class Stage extends Model
     public function awaitsManager(): bool
     {
         return $this->exitsFor(Actor::Manager)->isNotEmpty();
-    }
-
-    public function isTerminal(): bool
-    {
-        return $this->loadedExits()->isEmpty();
     }
 
     /** Наш исход, ведущий на этап с таким состоянием оффера: так кнопка «Опубликовать» догоняет маршрут. */
