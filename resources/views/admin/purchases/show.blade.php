@@ -1,4 +1,4 @@
-@php use App\Purchases\PurchaseState; $n = $purchase->number; $ctl = \App\Http\Admin\PurchaseController::class; @endphp
+@php use App\Purchases\{Kind, PurchaseState}; $n = $purchase->number; $ctl = \App\Http\Admin\PurchaseController::class; @endphp
 <x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/zakupki']">
     <div class="has-back mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
         <x-ui.back :back="['Закупки', '/zakupki']"/>
@@ -38,7 +38,7 @@
                     @csrf
                     <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="plus" class="size-5"/> Загрузить файл поставщика<input type="file" name="file" accept=".xlsx" hidden data-action="change->autosubmit#submit"></label>
                 </form>
-                @if ($counts['all'] ?? $summary?->cars->count() ?? 0)
+                @if ($purchase->cars()->exists())
                     {{-- Файл — через file: в установленном приложении download открывает Quick Look без выхода, системный лист закрывается. --}}
                     <form method="get" action="/zakupki/{{ $n }}/vygruzka" class="flex flex-col gap-3 rounded-(--radius-m) bg-surface-2 p-3" data-turbo="false" data-controller="file" data-action="submit->file#share">
                         <span class="text-sm text-ink-dim">Выгрузка поставщику</span>
@@ -59,16 +59,23 @@
     </div>
     @if ($errors->any())<x-ui.flash tone="danger" class="mb-4">{{ $errors->first() }}</x-ui.flash>@endif
 
-    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" sort-side="right" :pills="$ctl::VIEWS" :pill="$view" pill-param="view" :hidden="['view' => $view, 'preset' => $preset ?? null, 'user' => $user?->id ?? request('user'), 'has' => isset($has) ? (int) $has : null]" name="purchase">
+    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" sort-side="right" :pills="$ctl::VIEWS" :pill="$view" pill-param="view" :hidden="['view' => $view, 'preset' => $preset ?? null, 'kind' => isset($kind) ? $kind?->value : null, 'user' => $user?->id ?? request('user'), 'has' => isset($has) ? (int) $has : null]" name="purchase">
         <x-slot:filters><input name="q" value="{{ $q }}" placeholder="ДЛ, VIN, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>
 
     @if ($view === 'cars')
-        <x-ui.pills class="mt-3">
-            @foreach ($ctl::PRESETS as $key => $label)
-                <x-ui.pill :href="request()->fullUrlWithQuery(['preset' => $key === 'all' ? null : $key, 'page' => null])" :current="$preset === $key" data-turbo-action="replace">{{ $label }} <span class="nums opacity-70">{{ $counts[$key] }}</span></x-ui.pill>
-            @endforeach
-        </x-ui.pills>
+        {{-- Состояние — один выбор (из каждой группы пресетов берут один ответ), тип техники — пилюли; сочетаются. --}}
+        <div class="mt-3 flex items-center gap-2">
+            <x-ui.choose name="preset" :options="$ctl::PRESETS" :groups="$ctl::PRESET_GROUPS" :value="$preset" default="all" :counts="$counts" title="Какие машины" id="preset-purchase"/>
+            @if (count($kinds) > 1)
+                <x-ui.pills class="min-w-0 flex-1">
+                    <x-ui.pill :href="request()->fullUrlWithQuery(['kind' => null, 'page' => null])" :current="! $kind" data-turbo-action="replace">Все <span class="nums opacity-70">{{ array_sum($kinds) }}</span></x-ui.pill>
+                    @foreach (Kind::cases() as $k)
+                        @if (isset($kinds[$k->value]))<x-ui.pill :href="request()->fullUrlWithQuery(['kind' => $k->value, 'page' => null])" :current="$kind === $k" data-turbo-action="replace">{{ $k->label() }} <span class="nums opacity-70">{{ $kinds[$k->value] }}</span></x-ui.pill>@endif
+                    @endforeach
+                </x-ui.pills>
+            @endif
+        </div>
     @else
         @php $unpriced = $summary->unpriced()->count(); @endphp
         <x-ui.pills class="mt-3">

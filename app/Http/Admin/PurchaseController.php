@@ -29,7 +29,10 @@ use Illuminate\Validation\Rule;
 
 class PurchaseController
 {
-    public const PRESETS = ['all' => 'Все', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений', 'unfinal' => 'Без нашей цены', 'final' => 'С нашей ценой', 'attention' => 'Требуют внимания', 'nophoto' => 'Без фото', 'hidden' => 'Скрытые'];
+    public const PRESETS = ['all' => 'Все машины', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений', 'unfinal' => 'Без нашей цены', 'final' => 'С нашей ценой', 'attention' => 'Требуют внимания', 'nophoto' => 'Без фото', 'hidden' => 'Скрытые'];
+
+    /** Пресеты группами в выборе «Все машины ▾»: из каждой группы выбирают один ответ. */
+    public const PRESET_GROUPS = ['' => ['all'], 'Предложения менеджеров' => ['priced', 'unpriced'], 'Наша цена' => ['unfinal', 'final'], 'Служебное' => ['attention', 'nophoto', 'hidden']];
 
     public const SORTS = ['dl' => 'По порядку файла', 'best' => 'Лучшая цена', 'final' => 'Наша цена', 'fresh' => 'Сначала новые'];
 
@@ -71,7 +74,8 @@ class PurchaseController
         $preset = array_key_exists($request->query('preset', 'all'), self::PRESETS) ? $request->query('preset', 'all') : 'all';
         $sort = array_key_exists($request->query('sort', 'dl'), self::SORTS) ? $request->query('sort', 'dl') : 'dl';
         $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen]);
-        $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user'])->when($q !== '', $this->search($q));
+        $kind = Kind::tryFrom((string) $request->query('kind'));
+        $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user'])->when($q !== '', $this->search($q))->when($kind, fn ($c) => $c->where('kind', $kind));
         match ($preset) {
             'priced' => $cars->whereHas('offers', $live),
             'unpriced' => $cars->whereDoesntHave('offers', $live),
@@ -88,20 +92,25 @@ class PurchaseController
             'fresh' => $cars->orderByDesc('id'),
             default => $cars->orderBy('dl'),
         };
-        // Числа на пилюлях — одним проходом, без поиска: пилюля говорит о закупке, а не о выдаче.
+        // Числа — одним проходом по закупке, без поиска; перекрёстные: на типах — при
+        // выбранном состоянии, в состояниях — при выбранном типе.
         $all = $purchase->cars()->with('offers')->get();
-        $counts = [
-            'all' => $all->count(),
-            'priced' => $all->filter(fn ($c) => $c->activeOfferList()->isNotEmpty())->count(),
-            'unpriced' => $all->filter(fn ($c) => $c->activeOfferList()->isEmpty())->count(),
-            'unfinal' => $all->whereNull('price_final')->count(),
-            'final' => $all->whereNotNull('price_final')->count(),
-            'attention' => $all->filter(fn ($c) => $c->specs_state->needsAttention() || $c->photos_state->needsAttention())->count(),
-            'nophoto' => $all->where('photos_count', 0)->count(),
-            'hidden' => $all->where('is_published', false)->count(),
+        $match = [
+            'all' => fn ($c) => true,
+            'priced' => fn ($c) => $c->activeOfferList()->isNotEmpty(),
+            'unpriced' => fn ($c) => $c->activeOfferList()->isEmpty(),
+            'unfinal' => fn ($c) => $c->price_final === null,
+            'final' => fn ($c) => $c->price_final !== null,
+            'attention' => fn ($c) => $c->specs_state->needsAttention() || $c->photos_state->needsAttention(),
+            'nophoto' => fn ($c) => $c->photos_count === 0,
+            'hidden' => fn ($c) => ! $c->is_published,
         ];
+        $ofKind = $kind ? $all->where('kind', $kind) : $all;
+        $counts = array_map(fn ($f) => $ofKind->filter($f)->count(), $match);
+        // Типы — все, что есть в закупке, число — в выбранном состоянии (бывает 0: тип не пропадает, его можно снять).
+        $kinds = $all->groupBy(fn ($c) => $c->kind->value)->map(fn ($g) => $g->filter($match[$preset])->count())->all();
 
-        return ['cars' => $cars->paginate(50)->withQueryString(), 'preset' => $preset, 'sort' => $sort, 'counts' => $counts];
+        return ['cars' => $cars->paginate(50)->withQueryString(), 'preset' => $preset, 'sort' => $sort, 'counts' => $counts, 'kind' => $kind, 'kinds' => $kinds];
     }
 
     private function byManagers(Request $request, Purchase $purchase, string $q): array
