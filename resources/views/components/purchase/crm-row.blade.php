@@ -1,5 +1,5 @@
 {{-- Машина закупки в CRM: слева фото, название и факты чипами (обе цены Carcade), справа — предложения
-     менеджеров чипами-кнопками (x-purchase.offer-chip) и, если price, чип «нам … ₽» / «оценить» — ссылка на
+     менеджеров чипами-кнопками (x-purchase.offer-chip) и, если price, акцентный чип с нашей ценой / «оценить» — ссылка на
      экран оценки. highlight — id менеджера, чей чип идёт первым и ярким. --}}
 @props(['car', 'purchase', 'highlight' => null, 'price' => false])
 @php
@@ -29,7 +29,7 @@
             <x-purchase.offer-chip :offer="$offer" :car="$car" :highlight="$highlight"/>
         @endforeach
         @if ($price)
-            <a href="/zakupki/{{ $n }}/{{ $car->ref }}/ocenka" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? 'нам '.number_format($car->price_final, 0, '', ' ').' ₽' : 'оценить' }}</a>
+            <a href="/zakupki/{{ $n }}/{{ $car->ref }}/ocenka" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? number_format($car->price_final, 0, '', ' ').' ₽' : 'оценить' }}</a>
         @endif
     </div>
 </div>

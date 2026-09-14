@@ -59,8 +59,7 @@ class PurchaseController
         $view = $request->query('view') === 'managers' ? 'managers' : 'cars';
         $q = trim((string) $request->query('q'));
         $pending = $purchase->cars()->where(fn ($w) => $w->whereIn('specs_state', ['pending', 'running'])->orWhereIn('photos_state', ['pending', 'running']))->count();
-        $unpriced = $purchase->cars()->whereNull('price_final')->orderBy('dl')->orderBy('id')->first();
-        $data = ['purchase' => $purchase, 'view' => $view, 'q' => $q, 'pending' => $pending, 'unpriced' => $unpriced, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state)];
+        $data = ['purchase' => $purchase, 'view' => $view, 'q' => $q, 'pending' => $pending, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state)];
 
         return view('admin.purchases.show', $data + ($view === 'cars' ? $this->byCars($request, $purchase, $q) : $this->byManagers($request, $purchase, $q)));
     }
