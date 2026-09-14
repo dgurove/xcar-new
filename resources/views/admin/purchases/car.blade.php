@@ -48,9 +48,6 @@
             <input type="file" accept="image/*,.heic" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             @if ($car->cloud_url || $car->photos_state->needsAttention())
                 <div class="mb-3 flex flex-wrap items-center gap-2">
-                    @if ($car->cloud_url)
-                        <form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}/zabrat">@csrf<input type="hidden" name="what" value="photos"><input type="hidden" name="all" value="1"><x-ui.button size="sm" variant="secondary">Забрать все из облака</x-ui.button></form>
-                    @endif
                     <span class="chip {{ $car->photos_state->needsAttention() ? 'bg-urgent-soft text-urgent' : '' }}">{{ $car->photos_state->label() }}{{ $car->photos_error ? ': '.$car->photos_error : '' }}</span>
                     @if ($car->cloud_leftovers)<span class="text-sm text-ink-muted">В облаке осталось: {{ collect($car->cloud_leftovers)->pluck('name')->implode(', ') }}</span>@endif
                 </div>
@@ -63,7 +60,6 @@
             <x-ui.card title="Характеристики с сайта" class="order-3">
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="chip {{ $car->specs_state->needsAttention() ? 'bg-urgent-soft text-urgent' : '' }}">{{ $car->specs_state->label() }}{{ $car->specs_error ? ': '.$car->specs_error : '' }}</span>
-                    @if ($car->site_url)<form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}/zabrat">@csrf<input type="hidden" name="what" value="specs"><x-ui.button size="sm" variant="ghost">Перечитать</x-ui.button></form>@endif
                 </div>
                 @if ($car->locked_fields)<div class="mt-2 text-sm text-ink-muted">Правлено руками: {{ implode(', ', $car->locked_fields) }}</div>@endif
             </x-ui.card>

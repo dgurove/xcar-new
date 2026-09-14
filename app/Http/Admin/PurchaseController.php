@@ -12,9 +12,6 @@ use App\Purchases\Actions\UpdateCar;
 use App\Purchases\Car;
 use App\Purchases\Export;
 use App\Purchases\Importer;
-use App\Purchases\ImportState;
-use App\Purchases\Jobs\FetchPhotos;
-use App\Purchases\Jobs\FetchSpecs;
 use App\Purchases\Kind;
 use App\Purchases\Offer;
 use App\Purchases\OffersSummary;
@@ -305,20 +302,6 @@ class PurchaseController
         return $next
             ? redirect("/zakupki/{$purchase->number}/{$next->ref}/ocenka")
             : redirect("/zakupki/{$purchase->number}")->with('toast', 'Все оценены');
-    }
-
-    public function fetch(Request $request, Purchase $purchase, Car $car)
-    {
-        abort_unless($car->purchase_id === $purchase->id, 404);
-        if ($request->input('what') === 'specs') {
-            $car->update(['specs_state' => ImportState::Pending]);
-            FetchSpecs::dispatch($car->id);
-        } else {
-            $car->update(['photos_state' => ImportState::Pending]);
-            FetchPhotos::dispatch($car->id, all: $request->boolean('all'));
-        }
-
-        return back()->with('toast', 'В очереди');
     }
 
     public function choose(Request $request, Offer $offer, ChooseOffer $choose)

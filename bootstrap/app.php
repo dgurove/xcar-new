@@ -15,7 +15,6 @@ use App\Mail\Console\WatchMail;
 use App\Media\Console\MovePapers;
 use App\Notifications\Console\SendDigest;
 use App\Offers\Console\TickOffers;
-use App\Purchases\Console\Recheck;
 use App\Push\Console\MakeKeys;
 use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
@@ -44,7 +43,6 @@ return Application::configure(basePath: dirname(__DIR__))
         MakeKeys::class,
         MovePapers::class,
         Gc::class,
-        Recheck::class,
         Report::class,
         Poll::class,
         LearnVins::class,

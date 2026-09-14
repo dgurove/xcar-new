@@ -103,7 +103,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::put('/zakupki/{purchase}/{car}', [PurchaseController::class, 'updateCar']);
     Route::get('/zakupki/{purchase}/{car}/ocenka', [PurchaseController::class, 'price']);
     Route::post('/zakupki/{purchase}/{car}/ocenka', [PurchaseController::class, 'priceStore']);
-    Route::post('/zakupki/{purchase}/{car}/zabrat', [PurchaseController::class, 'fetch']);
     Route::post('/zakupki/mashiny/{car}/media', [PurchaseCarPhotoController::class, 'store']);
     Route::post('/zakupki/mashiny/{car}/media/poryadok', [PurchaseCarPhotoController::class, 'reorder']);
     Route::post('/zakupki/mashiny/{car}/media/{media}/skryt', [PurchaseCarPhotoController::class, 'toggle']);
