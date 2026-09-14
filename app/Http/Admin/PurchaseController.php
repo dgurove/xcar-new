@@ -229,13 +229,6 @@ class PurchaseController
         return response()->download($path, $name, [], $request->boolean('inline') ? 'inline' : 'attachment')->deleteFileAfterSend();
     }
 
-    public function refetch(Request $request, Purchase $purchase, ImportFile $import)
-    {
-        $n = $import->refetch($purchase, $request->boolean('specs'), $request->boolean('photos'));
-
-        return back()->with('toast', "В очереди: {$n}");
-    }
-
     public function restrictions(Request $request)
     {
         return view('admin.purchases.restrictions', [

@@ -72,13 +72,19 @@ class Purchase extends Model
     /** @return list<PurchaseCard> */
     public static function showcase(?User $user): array
     {
-        return self::whereIn('state', [PurchaseState::Open, PurchaseState::Closed])->orderByDesc('number')->get()
+        return self::where('state', PurchaseState::Open)->orderByDesc('number')->get()
             ->flatMap(fn (self $p) => $p->cardsFor($user))->values()->all();
     }
 
     public function acceptsOffers(): bool
     {
         return $this->state === PurchaseState::Open && (! $this->offers_close_at || $this->offers_close_at->isFuture());
+    }
+
+    /** Открыта, но срок прошёл: приём закрыт сам собой, «+15 мин / +1 ч» открывают заново. */
+    public function closed(): bool
+    {
+        return $this->state === PurchaseState::Open && $this->offers_close_at?->isPast() === true;
     }
 
     public static function nextNumber(): int

@@ -4,7 +4,11 @@
         <h1 class="text-[28px] sm:text-[34px]">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto shrink-0 sm:order-1" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <span class="flex flex-wrap items-center gap-1.5">
-            <x-ui.pill :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}{{ $purchase->state === PurchaseState::Open && $purchase->offers_close_at ? ' до '.$purchase->offers_close_at->translatedFormat('j M, H:i') : '' }}</x-ui.pill>
+            @if ($purchase->closed())
+                <x-ui.pill tone="closed">Приём закрыт с {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</x-ui.pill>
+            @else
+                <x-ui.pill :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}{{ $purchase->state === PurchaseState::Open && $purchase->offers_close_at ? ' до '.$purchase->offers_close_at->translatedFormat('j M, H:i') : '' }}</x-ui.pill>
+            @endif
             @if ($purchase->state === PurchaseState::Open && $purchase->offers_close_at)
                 {{-- Продлить приём на ходу: срок считается от текущего, если он ещё не прошёл, иначе от сейчас. --}}
                 <span class="flex shrink-0 items-center gap-1.5">
@@ -25,8 +29,8 @@
             </form>
             <div class="mt-4 flex flex-col gap-2">
                 @foreach ($transitions as $next)
-                    @if (in_array($next, match($purchase->state) { PurchaseState::Draft => [PurchaseState::Open, PurchaseState::Archived], PurchaseState::Open => [PurchaseState::Closed, PurchaseState::Draft], PurchaseState::Closed => [PurchaseState::Open, PurchaseState::Archived], PurchaseState::Archived => [PurchaseState::Draft] }, true))
-                        <form method="post" action="/zakupki/{{ $n }}/sostoyanie">@csrf<input type="hidden" name="state" value="{{ $next->value }}"><x-ui.button block :variant="$next === PurchaseState::Open ? 'primary' : 'secondary'">{{ match($next) { PurchaseState::Open => 'Открыть приём цен', PurchaseState::Closed => 'Закрыть приём', PurchaseState::Draft => 'В черновик', PurchaseState::Archived => 'В архив' } }}</x-ui.button></form>
+                    @if (in_array($next, match($purchase->state) { PurchaseState::Draft => [PurchaseState::Open, PurchaseState::Archived], PurchaseState::Open => [PurchaseState::Draft, PurchaseState::Archived], PurchaseState::Archived => [PurchaseState::Draft] }, true))
+                        <form method="post" action="/zakupki/{{ $n }}/sostoyanie">@csrf<input type="hidden" name="state" value="{{ $next->value }}"><x-ui.button block :variant="$next === PurchaseState::Open ? 'primary' : 'secondary'">{{ match($next) { PurchaseState::Open => 'Открыть приём цен', PurchaseState::Draft => 'В черновик', PurchaseState::Archived => 'В архив' } }}</x-ui.button></form>
                     @endif
                 @endforeach
                 <form method="post" action="/zakupki/{{ $n }}/fayl" enctype="multipart/form-data" data-controller="autosubmit">
@@ -49,8 +53,6 @@
                         <button name="format" value="dl" class="btn btn-quiet w-full" data-file-any><x-ui.icon name="file" class="size-5"/> Упрощённая</button>
                     </form>
                 @endif
-                <form method="post" action="/zakupki/{{ $n }}/zanovo">@csrf<input type="hidden" name="specs" value="1"><x-ui.button block variant="ghost">Перечитать характеристики</x-ui.button></form>
-                <form method="post" action="/zakupki/{{ $n }}/zanovo">@csrf<input type="hidden" name="photos" value="1"><x-ui.button block variant="ghost">Дозабрать фотографии</x-ui.button></form>
             </div>
         </x-ui.sheet>
     </div>

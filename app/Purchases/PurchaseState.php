@@ -4,13 +4,13 @@ namespace App\Purchases;
 
 use App\Cars\HasLabels;
 
+/** Состояний три; «приём закрыт» — не состояние, а прошедший срок `offers_close_at` (Purchase::closed). */
 enum PurchaseState: string
 {
     use HasLabels;
 
     case Draft = 'draft';
     case Open = 'open';
-    case Closed = 'closed';
     case Archived = 'archived';
 
     public function label(): string
@@ -18,7 +18,6 @@ enum PurchaseState: string
         return match ($this) {
             self::Draft => 'Черновик',
             self::Open => 'Приём цен',
-            self::Closed => 'Приём закрыт',
             self::Archived => 'В архиве',
         };
     }
@@ -32,8 +31,9 @@ enum PurchaseState: string
         };
     }
 
+    /** Открытая закупка видна менеджерам и после срока — приём закрыт, но машины и цены на месте. */
     public function isPublic(): bool
     {
-        return in_array($this, [self::Open, self::Closed], true);
+        return $this === self::Open;
     }
 }

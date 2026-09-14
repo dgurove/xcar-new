@@ -119,7 +119,10 @@ final class Gc extends Command
         $this->step('конверсии у машин, закрытых больше '.self::COLD_MONTHS.' мес. назад', function () use ($cool) {
             $since = now()->subMonths(self::COLD_MONTHS);
             $offers = Offer::whereIn('state', [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered])->where('updated_at', '<', $since)->pluck('id');
-            $cars = Car::whereHas('purchase', fn ($q) => $q->whereIn('state', [PurchaseState::Archived, PurchaseState::Closed])->where('updated_at', '<', $since))->pluck('id');
+            // Закрытые — открытые с давно прошедшим сроком: отдельного состояния «закрыта» нет.
+            $cars = Car::whereHas('purchase', fn ($q) => $q->where('updated_at', '<', $since)->where(fn ($w) => $w
+                ->where('state', PurchaseState::Archived)
+                ->orWhere(fn ($o) => $o->where('state', PurchaseState::Open)->where('offers_close_at', '<', $since))))->pluck('id');
             $media = Media::where('collection_name', 'photos')->where(fn ($q) => $q
                 ->where(fn ($q) => $q->where('model_type', Offer::class)->whereIn('model_id', $offers))
                 ->orWhere(fn ($q) => $q->where('model_type', Car::class)->whereIn('model_id', $cars)))

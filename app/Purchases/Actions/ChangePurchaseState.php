@@ -2,10 +2,14 @@
 
 namespace App\Purchases\Actions;
 
+use App\Live\Publisher;
+use App\Live\Topics;
+use App\Notifications\PurchaseOpenedNotice;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
 use App\Users\Role;
 use App\Users\User;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 final class ChangePurchaseState
@@ -14,8 +18,7 @@ final class ChangePurchaseState
     {
         $allowed = match ($purchase->state) {
             PurchaseState::Draft => [PurchaseState::Open, PurchaseState::Archived],
-            PurchaseState::Open => [PurchaseState::Closed, PurchaseState::Draft],
-            PurchaseState::Closed => [PurchaseState::Open, PurchaseState::Archived],
+            PurchaseState::Open => [PurchaseState::Draft, PurchaseState::Archived],
             PurchaseState::Archived => [PurchaseState::Draft],
         };
         if (! in_array($next, $allowed, true)) {
@@ -27,9 +30,9 @@ final class ChangePurchaseState
         $wasPublic = $purchase->state->isPublic();
         $purchase->update(['state' => $next]);
         if ($next === PurchaseState::Open && ! $wasPublic) {
-            \Illuminate\Support\Facades\Notification::send(User::where('role', Role::Manager)->get(), new \App\Notifications\PurchaseOpenedNotice($purchase));
+            Notification::send(User::where('role', Role::Manager)->get(), new PurchaseOpenedNotice($purchase));
         }
-        app(\App\Live\Publisher::class)->refresh(\App\Live\Topics::CATALOG, ['/zakupki', "/zakupki/{$purchase->number}"]);
+        app(Publisher::class)->refresh(Topics::CATALOG, ['/zakupki', "/zakupki/{$purchase->number}"]);
 
         return $purchase;
     }

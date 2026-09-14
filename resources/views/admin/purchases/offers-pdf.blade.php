@@ -10,12 +10,10 @@
     $perSet = 6;
     $parts = [];
     foreach ($tables as $t) {
-        $split = array_search([], $t['rows'], true);
-        $rows = $split === false ? $t['rows'] : array_slice($t['rows'], 0, $split);
-        $totals = $split === false ? [] : array_slice($t['rows'], $split + 1);
+        $rows = $t['rows'];
         $fixed = array_search('Минимальная', $t['head'], true);
         if ($fixed === false) {
-            $parts[] = ['name' => $t['name'], 'head' => $t['head'], 'rows' => $rows, 'totals' => $totals, 'dense' => false];
+            $parts[] = ['name' => $t['name'], 'head' => $t['head'], 'rows' => $rows, 'dense' => false];
             continue;
         }
         // Матрица: машина одной ячейкой (марка, модель, год) и тип с городом — иначе колонки людей не влезают.
@@ -27,7 +25,7 @@
                 'name' => $t['name'].(count($people) > $perSet ? ', менеджеры '.($group[0] - $fixed).'–'.(end($group) - $fixed) : ''),
                 'head' => [...$head, ...array_map(fn ($i) => $t['head'][$i], $group)],
                 'rows' => array_map(fn ($r) => [...$car($r), ...array_map(fn ($i) => $r[$i] ?? '', $group)], $rows),
-                'totals' => [], 'dense' => true,
+                'dense' => true,
             ];
         }
     }
@@ -50,10 +48,6 @@
     section { page-break-before: always; }
     section:first-of-type { page-break-before: auto; }
     h2 { font-size: 12pt; font-weight: 600; margin: 0 0 4mm; }
-    .stats { width: auto; border-collapse: separate; border-spacing: 3mm 0; margin: 0 -3mm 6mm; }
-    .stats td { background: #f7f7f7; border-radius: 3mm; padding: 4mm 5mm; width: 38mm; }
-    .stats .v { display: block; font-size: 17pt; font-weight: 700; line-height: 1.1; }
-    .stats .l { display: block; color: #808080; margin-top: 1mm; }
     table.t { border-collapse: collapse; width: 100%; }
     table.t thead { display: table-header-group; }
     table.t th { background: #f7f7f7; color: #808080; font-weight: 600; text-align: left; padding: 1.8mm 2.2mm; border-bottom: 0.4pt solid #d0d0d0; white-space: nowrap; }
@@ -83,18 +77,13 @@
     @php
         $hi = array_keys(array_intersect($t['head'], ['Максимальная', 'Минимальная']));
         $numeric = array_map(fn ($i) => (bool) array_filter($t['rows'], fn ($r) => isset($r[$i]) && (is_int($r[$i]) || is_float($r[$i]))), array_keys($t['head']));
-        // Страница за раз: первая короче (заголовок документа, плитки), дальше по полной — строка ≈ 7 мм плотная, 8 мм обычная.
+        // Страница за раз: первая короче (заголовок документа), дальше по полной — строка ≈ 7 мм плотная, 8 мм обычная.
         $per = $t['dense'] ? 24 : 21;
         $first = $loop->first ? ($t['dense'] ? 16 : 12) : $per - 2;
         $chunks = [array_slice($t['rows'], 0, $first), ...array_chunk(array_slice($t['rows'], $first), $per)];
     @endphp
     <section>
         <h2>{{ $t['name'] }}</h2>
-        @if ($t['totals'])
-            <table class="stats"><tr>
-                @foreach ($t['totals'] as [$label, $value])<td><span class="v">{{ $fmt($value) }}</span><span class="l">{{ $label }}</span></td>@endforeach
-            </tr></table>
-        @endif
         @foreach ($chunks as $chunk)
             <table @class(['t', 'dense' => $t['dense']]) @if (! $loop->last) style="page-break-after: always" @endif>
                 <thead><tr>@foreach ($t['head'] as $i => $h)<th @class(['n' => $numeric[$i], 'hi' => in_array($i, $hi, true)])>{{ $h }}</th>@endforeach</tr></thead>

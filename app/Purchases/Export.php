@@ -15,21 +15,20 @@ use RuntimeException;
 
 /**
  * Единственная выгрузка закупки. Excel — тот самый файл Carcade с диска
- * (`source_file`, все листы и колонки как есть), в «Предложение клиента» —
- * наша цена (`price_final`); по галке «Цены менеджеров» на листе с машинами
- * справа «Максимальная», «Минимальная» и колонка на менеджера. PDF — та же
- * таблица компактно. Остальные галки: лист «Сводка», строки с предложениями, строки без.
- * Упрощённая (`short`) — отдельный файл: только ДЛ и наша цена.
+ * (`source_file`): только лист с машинами, колонки как есть (их «Свод» и
+ * прочие листы выбрасываются — владельцу не нужны), в «Предложение клиента» —
+ * наша цена (`price_final`); по галке «Цены менеджеров» справа «Максимальная»,
+ * «Минимальная» и колонка на менеджера. PDF — та же таблица компактно.
+ * Остальные галки: строки с предложениями, строки без. Упрощённая (`short`)
+ * — отдельный файл: только ДЛ и наша цена.
  */
 final class Export
 {
-    public const PARTS = ['summary' => 'Сводка', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений', 'managers' => 'Цены менеджеров'];
+    public const PARTS = ['priced' => 'С предложениями', 'unpriced' => 'Без предложений', 'managers' => 'Цены менеджеров'];
 
     private const CAR = ['ДЛ', 'Марка', 'Модель', 'Год', 'Тип', 'Город', 'Размещение', 'Наша цена'];
 
     private const FILL = 'F0F7D8';
-
-    private const SUMMARY_HEAD = ['Менеджер', 'Телефон', 'Видно машин', 'Предложил', 'Без цены', 'Выбрано'];
 
     /** @param list<string> $parts */
     public function xlsx(Purchase $purchase, array $parts, string $path): string
@@ -42,6 +41,17 @@ final class Export
         $cars = $s->cars->keyBy(fn (Car $c) => mb_strtolower(trim($c->dl)));
         $book = IOFactory::load($file);
         [$sheet, $headerRow, $dlCol, $lastCol] = $this->carsSheet($book);
+        // Остальные листы файла (сводная «Свод», срезы, пустые) — вон: сводная после удаления строк всё равно битая.
+        foreach (array_reverse($book->getAllSheets(), true) as $i => $other) {
+            if ($other !== $sheet) {
+                $book->removeSheetByIndex($i);
+            }
+        }
+        foreach ($book->getDefinedNames() as $name) {
+            if ($name->getWorksheet() !== $sheet || ! str_contains($name->getValue(), '!') || ! str_starts_with(ltrim($name->getValue(), "'"), $sheet->getTitle())) {
+                $book->removeDefinedName($name->getName(), $name->getWorksheet());
+            }
+        }
 
         // Умная таблица после удаления строк не сходится с диапазоном — Excel просит «восстановить». Вместо неё автофильтр.
         foreach ($sheet->getTableCollection() as $table) {
@@ -92,10 +102,7 @@ final class Export
         $sheet->setAutoFilter('A'.$headerRow.':'.$end.max($last, $headerRow));
         $sheet->freezePane('A'.($headerRow + 1));
 
-        if (in_array('summary', $parts, true)) {
-            $this->summarySheet($book, $s);
-        }
-        $book->setActiveSheetIndex($book->getIndex($sheet));
+        $book->setActiveSheetIndex(0);
         (new Xlsx($book))->save($path);
         $book->disconnectWorksheets();
 
@@ -162,31 +169,8 @@ final class Export
         throw new RuntimeException('В файле поставщика нет колонки «ДЛ»');
     }
 
-    private function summarySheet(Spreadsheet $book, OffersSummary $s): void
-    {
-        $sheet = $book->createSheet();
-        $sheet->setTitle('Сводка');
-        $sheet->fromArray(self::SUMMARY_HEAD, null, 'A1');
-        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
-        $sheet->fromArray($this->summaryRows($s), null, 'A2');
-        foreach (['A' => 28, 'B' => 18, 'C' => 13, 'D' => 12, 'E' => 11, 'F' => 10] as $col => $w) {
-            $sheet->getColumnDimension($col)->setWidth($w);
-        }
-    }
-
-    private function summaryRows(OffersSummary $s): array
-    {
-        return [
-            ...$s->managers->map(fn ($u) => [$u->name, $u->phoneFormatted(), ...array_values($s->stats[$u->id])])->all(),
-            [],
-            ['Машин в закупке', $s->cars->count()],
-            ['С предложениями', $s->priced()],
-            ['Без предложений', $s->unpriced()->count()],
-        ];
-    }
-
     /**
-     * Таблицы для PDF: «Сводка» и машины по тем же галкам; колонки менеджеров — по галке «managers».
+     * Таблицы для PDF: машины по тем же галкам; колонки менеджеров — по галке «managers».
      *
      * @return list<array{name:string, head:list<string>, rows:list<list<mixed>>}>
      */
@@ -204,9 +188,6 @@ final class Export
         $priced = in_array('priced', $parts, true);
         $unpriced = in_array('unpriced', $parts, true);
         $tables = [];
-        if (in_array('summary', $parts, true)) {
-            $tables[] = ['name' => 'Сводка', 'head' => self::SUMMARY_HEAD, 'rows' => $this->summaryRows($s)];
-        }
         if ($priced && $unpriced) {
             $tables[] = ['name' => 'Все', 'head' => $matrixHead, 'rows' => $s->cars->map($matrix)->all()];
         } elseif ($priced) {
