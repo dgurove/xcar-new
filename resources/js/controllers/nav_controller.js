@@ -1,7 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 
-// Стрелки ←/→ листают соседей по списку; в полях ввода не мешают.
+// Стрелки ←/→ листают соседей по списку; в полях ввода не мешают. Сосед — заменой
+// записи истории, как и ссылки-стрелки: «Назад» ведёт в список, а не на прошлую позицию.
 export default class extends Controller {
     static targets = ['prev', 'next'];
 
@@ -12,7 +13,7 @@ export default class extends Controller {
             const target = e.key === 'ArrowLeft' ? 'prev' : e.key === 'ArrowRight' ? 'next' : null;
             if (!target || !this[`has${target[0].toUpperCase()}${target.slice(1)}Target`]) return;
             document.documentElement.dataset.navDir = target;
-            Turbo.visit(this[`${target}Target`].href);
+            Turbo.visit(this[`${target}Target`].href, { action: 'replace' });
         };
         window.addEventListener('keydown', this.onKey);
     }

@@ -1,7 +1,9 @@
 {{-- Оценка машины, сверху вниз: заголовок со стрелками (соседи среди машин без нашей цены), галерея,
      факты чипами, блок цены (обе цены Carcade табличкой, предложения менеджеров, поле и «Дальше»),
-     характеристики, описание. Поле в потоке страницы, не в action-bar: iOS сам подкручивает к нему,
-     а фиксированная полоса внизу уходит под клавиатуру. «Дальше» сохраняет и ведёт к следующей без цены. --}}
+     характеристики, описание. Пустые цены — тире, без предложений — так и написано: «нет данных» видно.
+     Поле в потоке страницы, не в action-bar: iOS сам подкручивает к нему, а фиксированная полоса внизу
+     уходит под клавиатуру. «Дальше» сохраняет и ведёт к следующей без цены заменой записи истории,
+     как и стрелки: сколько ни листай, «Назад» один раз — в список. --}}
 @php $n = $purchase->number; $live = $car->activeOfferList()->sortByDesc('amount'); $photos = $car->visiblePhotos(); @endphp
 <x-ui.shell :title="$car->titleWithYear()" :heading="false" :back="['Закупка', '/zakupki/'.$n.'?preset=unfinal']">
     <div class="mb-4 flex items-center gap-3">
@@ -24,16 +26,18 @@
 
         <aside class="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:sticky lg:top-32 lg:self-start">
             <div class="box flex flex-col gap-4">
-                @if ($car->price_revalued || $car->price_listing)
-                    <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5">
-                        @if ($car->price_revalued)<dt class="text-sm text-ink-dim">С учётом переоценки</dt><dd class="nums text-right font-medium">{{ number_format($car->price_revalued, 0, '', ' ') }} ₽</dd>@endif
-                        @if ($car->price_listing)<dt class="text-sm text-ink-dim">Для размещения</dt><dd class="nums text-right font-medium">{{ number_format($car->price_listing, 0, '', ' ') }} ₽</dd>@endif
-                    </dl>
-                @endif
+                <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5">
+                    @foreach (['С учётом переоценки' => $car->price_revalued, 'Для размещения' => $car->price_listing] as $label => $value)
+                        <dt class="text-sm text-ink-dim">{{ $label }}</dt>
+                        @if ($value)<dd class="nums text-right font-medium">{{ number_format($value, 0, '', ' ') }} ₽</dd>@else<dd class="nums text-right text-ink-dim">—</dd>@endif
+                    @endforeach
+                </dl>
                 @if ($live->isNotEmpty())
                     <div class="flex flex-wrap items-center gap-1.5">@foreach ($live as $offer)<x-purchase.offer-chip :offer="$offer" :car="$car"/>@endforeach</div>
+                @else
+                    <p class="text-sm text-ink-dim">Менеджеры цены не предложили</p>
                 @endif
-                <form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}/ocenka" class="flex gap-2" data-controller="bid" data-bid-asking-value="0">
+                <form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}/ocenka" class="flex gap-2" data-controller="bid" data-bid-asking-value="0" data-turbo-action="replace">
                     @csrf
                     <input type="hidden" name="price_final" data-bid-target="amount" value="{{ $car->price_final }}">
                     <input type="text" inputmode="numeric" autocomplete="off" class="field-input nums !h-14 min-w-0 flex-1 text-xl" placeholder="Наша цена, ₽" aria-label="Наша цена, ₽"
