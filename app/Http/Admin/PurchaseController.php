@@ -50,8 +50,8 @@ class PurchaseController
 
     /**
      * Один список с фильтрами: тип (пилюли тулбара), состояние и менеджер (выборы), поиск,
-     * сортировка — всё в адресе и сочетается. Менеджер выбран — машины его глазами: без
-     * скрытых для него типов, его чип первый, «С предложениями / Без» — про его цену.
+     * сортировка — всё в адресе и сочетается. Менеджер выбран — только машины с его живой
+     * ценой, его чип первый.
      */
     public function show(Request $request, Purchase $purchase)
     {
@@ -66,15 +66,15 @@ class PurchaseController
         $all = $purchase->cars()->with('offers:id,car_id,user_id,state')->get(['id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state']);
         $managers = User::where('role', Role::Manager)->orWhereIn('id', $all->flatMap(fn ($c) => $c->activeOfferList()->pluck('user_id'))->unique())->get();
         $user = $managers->firstWhere('id', (int) $request->query('user'));
-        $hidden = Restriction::hiddenFor($user);
+        $offered = $managers->mapWithKeys(fn ($u) => [$u->id => ($kind ? $all->where('kind', $kind) : $all)->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $u->id))->count()]);
+        $managers = $managers->sortBy([fn ($a, $b) => $offered[$b->id] <=> $offered[$a->id], fn ($a, $b) => strcmp($a->name, $b->name)])->values();
         if ($user) {
-            $all = $all->reject(fn ($c) => in_array($c->kind->value, $hidden, true));
+            $all = $all->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $user->id));
         }
-        $has = fn ($c) => $user ? $c->activeOfferList()->contains('user_id', $user->id) : $c->activeOfferList()->isNotEmpty();
         $match = [
             'all' => fn ($c) => true,
-            'priced' => $has,
-            'unpriced' => fn ($c) => ! $has($c),
+            'priced' => fn ($c) => $c->activeOfferList()->isNotEmpty(),
+            'unpriced' => fn ($c) => $c->activeOfferList()->isEmpty(),
             'unfinal' => fn ($c) => $c->price_final === null,
             'final' => fn ($c) => $c->price_final !== null,
             'attention' => fn ($c) => $c->specs_state->needsAttention() || $c->photos_state->needsAttention(),
@@ -85,22 +85,12 @@ class PurchaseController
         $counts = array_map(fn ($f) => $ofKind->filter($f)->count(), $match);
         // Типы — все, что есть в закупке, число — в выбранном состоянии (бывает 0: тип не пропадает, его можно снять).
         $kinds = $all->groupBy(fn ($c) => $c->kind->value)->map(fn ($g) => $g->filter($match[$preset])->count())->all();
-        $offered = $managers->mapWithKeys(fn ($u) => [$u->id => $ofKind->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $u->id))->count()]);
-        $managers = $managers->sortBy([fn ($a, $b) => $offered[$b->id] <=> $offered[$a->id], fn ($a, $b) => strcmp($a->name, $b->name)])->values();
 
-        $presets = self::PRESETS;
-        $groups = self::PRESET_GROUPS;
-        if ($user) {
-            $presets['priced'] = 'С его ценой';
-            $presets['unpriced'] = 'Без его цены';
-            $groups = array_combine(array_map(fn ($g) => $g === 'Предложения менеджеров' ? $user->shortName() : $g, array_keys($groups)), $groups);
-        }
-
-        $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen])->when($user, fn ($o) => $o->where('user_id', $user->id));
+        $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen]);
         $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user'])
             ->when($q !== '', $this->search($q))
             ->when($kind, fn ($c) => $c->where('kind', $kind))
-            ->when($hidden, fn ($c) => $c->whereNotIn('kind', $hidden));
+            ->when($user, fn ($c) => $c->whereHas('offers', fn ($o) => $live($o)->where('user_id', $user->id)));
         match ($preset) {
             'priced' => $cars->whereHas('offers', $live),
             'unpriced' => $cars->whereDoesntHave('offers', $live),
@@ -120,7 +110,7 @@ class PurchaseController
 
         return view('admin.purchases.show', [
             'purchase' => $purchase, 'q' => $q, 'pending' => $pending, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state),
-            'cars' => $cars->paginate(50)->withQueryString(), 'preset' => $preset, 'presets' => $presets, 'groups' => $groups, 'sort' => $sort,
+            'cars' => $cars->paginate(50)->withQueryString(), 'preset' => $preset, 'sort' => $sort,
             'counts' => $counts, 'kind' => $kind, 'kinds' => $kinds, 'managers' => $managers, 'offered' => $offered, 'user' => $user,
         ]);
     }

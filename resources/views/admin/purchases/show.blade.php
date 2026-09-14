@@ -64,9 +64,9 @@
         <x-slot:filters><input name="q" value="{{ $q }}" placeholder="ДЛ, VIN, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>
 
-    {{-- Состояние и менеджер — по одному выбору, сочетаются с типом и поиском; менеджер выбран — состояния про его цену. --}}
+    {{-- Состояние и менеджер — по одному выбору, сочетаются с типом и поиском; менеджер выбран — только машины с его ценой. --}}
     <div class="mt-3 flex flex-wrap items-center gap-2">
-        <x-ui.choose name="preset" :options="$presets" :groups="$groups" :value="$preset" default="all" :counts="$counts" title="Какие машины" id="preset-purchase"/>
+        <x-ui.choose name="preset" :options="$ctl::PRESETS" :groups="$ctl::PRESET_GROUPS" :value="$preset" default="all" :counts="$counts" title="Какие машины" id="preset-purchase"/>
         @if ($managers->isNotEmpty())
             <x-ui.choose name="user" :options="['' => 'Все менеджеры'] + $managers->mapWithKeys(fn ($u) => [$u->id => $u->shortName()])->all()" :value="$user?->id ?? ''" default="" :counts="$offered->all()" title="Менеджер" id="user-purchase"/>
         @endif
