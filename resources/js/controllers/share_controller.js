@@ -81,6 +81,8 @@ export default class extends Controller {
     }
 
     async prepare() {
+        // Ответ на прежний набор фото, пришедший после нового, не должен стать «готовым».
+        const seq = (this.seq = (this.seq || 0) + 1);
         this.pdf = null;
         const photos = this.selectedPhotos();
         if (!photos.length) { this.status(''); this.ready(true); return; }
@@ -91,16 +93,19 @@ export default class extends Controller {
         form.append('watermark', this.watermark());
         try {
             const r = await fetch(this.urlValue, { method: 'POST', body: form, headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, Accept: 'application/pdf' } });
+            if (seq !== this.seq) return;
             if (!r.ok) {
                 const d = await r.json().catch(() => ({}));
                 this.fail('prepare', { name: `http ${r.status}`, message: d.message || '' }, d.message || 'PDF не собрался');
                 return;
             }
-            this.pdf = new File([await r.blob()], this.nameValue, { type: 'application/pdf' });
+            const blob = await r.blob();
+            if (seq !== this.seq) return;
+            this.pdf = new File([blob], this.nameValue, { type: 'application/pdf' });
             this.status(`PDF готов, ${photos.length} фото, ${Math.round(this.pdf.size / 1024)} КБ`);
             this.ready(true);
         } catch (e) {
-            this.fail('prepare', e, 'Связь с сервером потерялась');
+            if (seq === this.seq) this.fail('prepare', e, 'Связь с сервером потерялась');
         }
     }
 
