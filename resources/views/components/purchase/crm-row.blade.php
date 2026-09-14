@@ -1,6 +1,6 @@
-{{-- Машина закупки в CRM: слева фото, название и факты чипами (обе цены Carcade), справа — поле
-     «Наша цена» (price — показывать ли; сохраняется само, см. price_controller) и предложения менеджеров
-     чипами-кнопками (x-purchase.offer-chip). highlight — id менеджера, чей чип идёт первым и ярким. --}}
+{{-- Машина закупки в CRM: слева фото, название и факты чипами (обе цены Carcade), справа — предложения
+     менеджеров чипами-кнопками (x-purchase.offer-chip) и, если price, чип «нам … ₽» / «оценить» — ссылка на
+     экран оценки. highlight — id менеджера, чей чип идёт первым и ярким. --}}
 @props(['car', 'purchase', 'highlight' => null, 'price' => false])
 @php
     use App\Purchases\{OfferState, ImportState};
@@ -9,7 +9,7 @@
     $amber = '--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d';
 @endphp
 <div class="row flex-col items-stretch sm:flex-row sm:items-center sm:gap-x-6">
-    <div class="flex min-w-0 items-start gap-3 sm:flex-1">
+    <div class="flex min-w-0 items-start gap-3">
         <a href="/zakupki/{{ $n }}/{{ $car->ref }}" class="row-photo"><x-offer.photo :media="$car->mainPhoto()" sizes="64px"/></a>
         <div class="min-w-0 flex-1">
             <a href="/zakupki/{{ $n }}/{{ $car->ref }}" class="flex items-baseline gap-2"><span class="truncate font-medium">{{ $car->titleWithYear() }}</span><span class="nums shrink-0 text-sm text-ink-dim">{{ $car->dl }}</span></a>
@@ -29,13 +29,7 @@
             <x-purchase.offer-chip :offer="$offer" :car="$car" :highlight="$highlight"/>
         @endforeach
         @if ($price)
-            <form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}/cena" class="relative w-full sm:w-auto" data-controller="price" data-action="submit->price#save:prevent">
-                @csrf @method('put')
-                <input name="price_final" value="{{ $car->price_final ? number_format($car->price_final, 0, '', ' ') : '' }}" placeholder="{{ $offers->isNotEmpty() ? number_format($offers->max('amount'), 0, '', ' ') : 'Наша цена' }}"
-                    class="field-input field-s nums w-full pr-9 sm:w-40" inputmode="numeric" autocomplete="off" enterkeyhint="next" aria-label="Наша цена"
-                    data-price-target="field" data-action="input->price#input change->price#save keydown.enter->price#next">
-                <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-open" data-price-target="mark" hidden><x-ui.icon name="check" class="size-4"/></span>
-            </form>
+            <a href="/zakupki/{{ $n }}/{{ $car->ref }}/ocenka" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? 'нам '.number_format($car->price_final, 0, '', ' ').' ₽' : 'оценить' }}</a>
         @endif
     </div>
 </div>

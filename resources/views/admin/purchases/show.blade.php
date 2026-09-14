@@ -33,6 +33,9 @@
                     @csrf
                     <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="plus" class="size-5"/> Загрузить файл поставщика<input type="file" name="file" accept=".xlsx" hidden data-action="change->autosubmit#submit"></label>
                 </form>
+                @if ($unpriced)
+                    <a href="/zakupki/{{ $n }}/{{ $unpriced->ref }}/ocenka" class="btn btn-quiet w-full"><x-ui.icon name="edit" class="size-5"/> Оценивать без цены</a>
+                @endif
                 @if ($counts['all'] ?? $summary?->cars->count() ?? 0)
                     {{-- Файлы — через file: в установленном приложении download открывает Quick Look без выхода, системный лист закрывается. --}}
                     <a href="/zakupki/{{ $n }}/xlsx" class="btn btn-quiet w-full" data-turbo="false" data-controller="file" data-action="file#share"><x-ui.icon name="file" class="size-5"/> Выгрузить xlsx поставщику</a>

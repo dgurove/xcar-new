@@ -97,6 +97,17 @@ class Car extends Model implements HasMedia
         ]));
     }
 
+    /** Характеристики подписями для страницы машины: только заполненные, порядок как на витрине. */
+    public function factsList(): array
+    {
+        return array_filter([
+            'Тип' => $this->kind->label(), 'Год' => $this->year, 'Пробег' => $this->mileage !== null ? number_format($this->mileage, 0, '', ' ').' км' : null,
+            'Коробка' => $this->transmission?->label(), 'Топливо' => $this->fuel?->label(), 'Объём' => $this->engine_volume ? number_format($this->engine_volume / 1000, 1, ',', '').' л' : null,
+            'Мощность' => $this->engine_power ? $this->engine_power.' л. с.' : null, 'Цвет' => $this->color, 'Руль' => $this->steering, 'Ключи' => $this->keys,
+            'Состояние' => $this->condition, 'VIN' => $this->vin, 'Номер' => $this->dl, 'Где' => $this->settlement?->name ?? $this->city ?? $this->address, 'Обременения' => $this->encumbrance,
+        ], fn ($v) => $v !== null && $v !== '');
+    }
+
     public function isLocked(string $field): bool
     {
         return in_array($field, $this->locked_fields ?? [], true);

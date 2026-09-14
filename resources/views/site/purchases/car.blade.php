@@ -3,12 +3,7 @@
     $suffix = $qs ? '?'.$qs : '';
     $back = '/zakupki/'.$purchase->number.$suffix;
     $asSheet = $purchase->acceptsOffers() && $mine?->state !== \App\Purchases\OfferState::Chosen;
-    $facts = array_filter([
-        'Тип' => $car->kind->label(), 'Год' => $car->year, 'Пробег' => $car->mileage !== null ? number_format($car->mileage, 0, '', ' ').' км' : null,
-        'Коробка' => $car->transmission?->label(), 'Топливо' => $car->fuel?->label(), 'Объём' => $car->engine_volume ? number_format($car->engine_volume / 1000, 1, ',', '').' л' : null,
-        'Мощность' => $car->engine_power ? $car->engine_power.' л. с.' : null, 'Цвет' => $car->color, 'Руль' => $car->steering, 'Ключи' => $car->keys,
-        'Состояние' => $car->condition, 'VIN' => $car->vin, 'Номер' => $car->dl, 'Где' => $car->settlement?->name ?? $car->city ?? $car->address, 'Обременения' => $car->encumbrance,
-    ], fn ($v) => $v !== null && $v !== '');
+    $facts = $car->factsList();
 @endphp
 <x-ui.shell :title="$car->titleWithYear()" :back="[$purchase->publicTitle($group), $back]" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], [$purchase->publicTitle($group), $back], [$car->dl]]">
     <x-slot:actions>

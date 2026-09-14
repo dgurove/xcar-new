@@ -60,7 +60,8 @@ class PurchaseController
         $view = $request->query('view') === 'managers' ? 'managers' : 'cars';
         $q = trim((string) $request->query('q'));
         $pending = $purchase->cars()->where(fn ($w) => $w->whereIn('specs_state', ['pending', 'running'])->orWhereIn('photos_state', ['pending', 'running']))->count();
-        $data = ['purchase' => $purchase, 'view' => $view, 'q' => $q, 'pending' => $pending, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state)];
+        $unpriced = $purchase->cars()->whereNull('price_final')->orderBy('dl')->orderBy('id')->first();
+        $data = ['purchase' => $purchase, 'view' => $view, 'q' => $q, 'pending' => $pending, 'unpriced' => $unpriced, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state)];
 
         return view('admin.purchases.show', $data + ($view === 'cars' ? $this->byCars($request, $purchase, $q) : $this->byManagers($request, $purchase, $q)));
     }
@@ -287,14 +288,36 @@ class PurchaseController
         return back()->with('toast', 'Сохранено');
     }
 
-    /** Наша цена из строки списка: сохраняется сама, без перезагрузки. */
-    public function price(Request $request, Purchase $purchase, Car $car)
+    /** Экран оценки: одна машина, соседи — среди машин без нашей цены по порядку файла (сама машина в наборе, даже если уже оценена). */
+    public function price(Purchase $purchase, Car $car)
+    {
+        abort_unless($car->purchase_id === $purchase->id, 404);
+        $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
+        $ids = $purchase->cars()->where(fn ($w) => $w->whereNull('price_final')->orWhere('id', $car->id))->orderBy('dl')->orderBy('id')->pluck('id')->all();
+        $pos = array_search($car->id, $ids, true);
+
+        return view('admin.purchases.price', [
+            'purchase' => $purchase, 'car' => $car, 'index' => $pos + 1, 'total' => count($ids),
+            'prev' => $pos > 0 ? Car::find($ids[$pos - 1]) : null, 'next' => $pos < count($ids) - 1 ? Car::find($ids[$pos + 1]) : null,
+        ]);
+    }
+
+    /** «Дальше»: сохранить нашу цену (пустое поле ничего не трогает) и перейти к следующей без цены после этой по файлу. */
+    public function priceStore(Request $request, Purchase $purchase, Car $car)
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
         $raw = $request->validate(['price_final' => ['nullable', 'string', 'max:20']])['price_final'] ?? '';
-        $car->update(['price_final' => $raw !== '' ? (int) preg_replace('/\D+/', '', $raw) ?: null : null]);
+        if ($raw !== '') {
+            $car->update(['price_final' => (int) preg_replace('/\D+/', '', $raw) ?: null]);
+        }
+        $next = $purchase->cars()->whereNull('price_final')->where('id', '!=', $car->id)
+            ->where(fn ($w) => $w->where('dl', '>', $car->dl)->orWhere(fn ($x) => $x->where('dl', $car->dl)->where('id', '>', $car->id)))
+            ->orderBy('dl')->orderBy('id')->first()
+            ?? $purchase->cars()->whereNull('price_final')->where('id', '!=', $car->id)->orderBy('dl')->orderBy('id')->first();
 
-        return $request->expectsJson() ? response()->noContent() : back()->with('toast', 'Сохранено');
+        return $next
+            ? redirect("/zakupki/{$purchase->number}/{$next->ref}/ocenka")
+            : redirect("/zakupki/{$purchase->number}")->with('toast', 'Все оценены');
     }
 
     public function fetch(Request $request, Purchase $purchase, Car $car)
