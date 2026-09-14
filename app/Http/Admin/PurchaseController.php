@@ -61,16 +61,11 @@ class PurchaseController
         $kind = Kind::tryFrom((string) $request->query('kind'));
         $pending = $purchase->cars()->where(fn ($w) => $w->whereIn('specs_state', ['pending', 'running'])->orWhereIn('photos_state', ['pending', 'running']))->count();
 
-        // Числа — один проход по лёгкой выборке всей закупки, без поиска; перекрёстные: на типах —
-        // при выбранном состоянии, в состояниях и у менеджеров — при выбранном типе.
+        // Числа — один проход по лёгкой выборке всей закупки, без поиска; перекрёстные: у каждого
+        // фильтра число считается при двух других применённых, так они сходятся между собой.
         $all = $purchase->cars()->with('offers:id,car_id,user_id,state')->get(['id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state']);
         $managers = User::where('role', Role::Manager)->orWhereIn('id', $all->flatMap(fn ($c) => $c->activeOfferList()->pluck('user_id'))->unique())->get();
         $user = $managers->firstWhere('id', (int) $request->query('user'));
-        $offered = $managers->mapWithKeys(fn ($u) => [$u->id => ($kind ? $all->where('kind', $kind) : $all)->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $u->id))->count()]);
-        $managers = $managers->sortBy([fn ($a, $b) => $offered[$b->id] <=> $offered[$a->id], fn ($a, $b) => strcmp($a->name, $b->name)])->values();
-        if ($user) {
-            $all = $all->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $user->id));
-        }
         $match = [
             'all' => fn ($c) => true,
             'priced' => fn ($c) => $c->activeOfferList()->isNotEmpty(),
@@ -81,10 +76,13 @@ class PurchaseController
             'nophoto' => fn ($c) => $c->photos_count === 0,
             'hidden' => fn ($c) => ! $c->is_published,
         ];
-        $ofKind = $kind ? $all->where('kind', $kind) : $all;
-        $counts = array_map(fn ($f) => $ofKind->filter($f)->count(), $match);
-        // Типы — все, что есть в закупке, число — в выбранном состоянии (бывает 0: тип не пропадает, его можно снять).
-        $kinds = $all->groupBy(fn ($c) => $c->kind->value)->map(fn ($g) => $g->filter($match[$preset])->count())->all();
+        $byKind = fn ($c) => ! $kind || $c->kind === $kind;
+        $byUser = fn ($c) => ! $user || $c->activeOfferList()->contains('user_id', $user->id);
+        $counts = array_map(fn ($f) => $all->filter($byKind)->filter($byUser)->filter($f)->count(), $match);
+        // Типы — все, что есть в закупке, число — при выбранных состоянии и менеджере (бывает 0: тип не пропадает, его можно снять).
+        $kinds = $all->groupBy(fn ($c) => $c->kind->value)->map(fn ($g) => $g->filter($match[$preset])->filter($byUser)->count())->all();
+        $offered = $managers->mapWithKeys(fn ($u) => [$u->id => $all->filter($byKind)->filter($match[$preset])->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $u->id))->count()]);
+        $managers = $managers->sortBy([fn ($a, $b) => $offered[$b->id] <=> $offered[$a->id], fn ($a, $b) => strcmp($a->name, $b->name)])->values();
 
         $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen]);
         $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user'])
