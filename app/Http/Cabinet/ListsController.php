@@ -11,8 +11,10 @@ class ListsController
 {
     public function favorites(Request $request)
     {
+        // Избранное — только то, что человеку и сейчас видно: закрытое менеджером покупателю не показываем.
         $offers = Offer::with(['brand', 'model', 'media', 'favorites'])
             ->whereHas('favorites', fn ($f) => $f->where('user_id', $request->user()->id))
+            ->when($request->user()->isBuyer(), fn ($q) => $q->visibleTo($request->user()))
             ->latest()->paginate(24);
 
         return view('cabinet.favorites', ['offers' => $offers]);
@@ -27,8 +29,11 @@ class ListsController
 
     public function interests(Request $request)
     {
-        $interests = Interest::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $request->user()->id)->latest()->paginate(30);
+        $user = $request->user();
+        $interests = Interest::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $user->id)->latest()->paginate(30);
+        // Что из отмеченного всё ещё открыто человеку: проданное и закрытое остаётся в списке с пометкой, но без перехода.
+        $live = Offer::whereIn('id', $interests->pluck('offer_id'))->visibleTo($user)->pluck('id')->all();
 
-        return view('cabinet.interests', ['interests' => $interests]);
+        return view('cabinet.interests', ['interests' => $interests, 'live' => $live, 'manager' => $user->isBuyer() ? $user->manager : null]);
     }
 }

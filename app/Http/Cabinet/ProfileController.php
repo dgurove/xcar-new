@@ -9,6 +9,9 @@ use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Favorite;
 use App\Offers\Interest;
+use App\Offers\InterestState;
+use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Park\Request as ParkRequest;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -49,6 +52,8 @@ class ProfileController
             $button = ['/', 'К предложениям'];
         } elseif ($user->role === Role::Manager) {
             $tiles = [
+                [$user->buyers()->count(), ['покупатель', 'покупателя', 'покупателей'], '/lk/pokupateli'],
+                [Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count(), ['новый интерес', 'новых интереса', 'новых интересов'], '/lk/interes'],
                 [Bid::where('user_id', $user->id)->where('state', BidState::Active)->count(), ['подтверждение на рассмотрении', 'подтверждения на рассмотрении', 'подтверждений на рассмотрении'], '/lk/stavki'],
                 [Deal::where('buyer_id', $user->id)->where('state', DealState::Active)->count(), ['принята, идёт сделка', 'приняты, идут сделки', 'принято, идут сделки'], '/lk/sdelki'],
                 [Requirement::where('user_id', $user->id)->whereNull('done_at')->count(), ['действие за Вами', 'действия за Вами', 'действий за Вами'], '/lk/sdelki'],
@@ -61,12 +66,13 @@ class ProfileController
             ];
         } else {
             $tiles = [
+                ...($user->isBuyer() ? [[Offer::where('state', OfferState::Open)->visibleTo($user)->count(), ['предложение для вас', 'предложения для вас', 'предложений для вас'], '/']] : []),
                 [Interest::where('user_id', $user->id)->count(), ['отмечено в интересе', 'отмечено в интересе', 'отмечено в интересе'], '/lk/interesy'],
                 [Favorite::where('user_id', $user->id)->count(), ['в избранном', 'в избранном', 'в избранном'], '/lk/izbrannoe'],
             ];
         }
 
-        return view('cabinet.index', ['user' => $user, 'tiles' => $tiles, 'button' => $button]);
+        return view('cabinet.index', ['user' => $user, 'tiles' => $tiles, 'button' => $button, 'manager' => $user->isBuyer() ? $user->manager : null]);
     }
 
     public function profile(Request $request)

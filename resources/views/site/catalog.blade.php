@@ -9,7 +9,7 @@
     ]);
 @endphp
 @php $selecting = $user?->isManager() && !$gallery; @endphp
-<x-ui.shell :title="$gallery ? 'Скоро в продаже' : ($hero ? null : ($user?->isBuyer() ? 'Для вас' : 'Предложения'))" :heading="false" :over-hero="$hero" :trail="$trail">
+<x-ui.shell :title="$gallery ? 'Скоро в продаже' : ($hero ? null : 'Предложения')" :heading="false" :over-hero="$hero" :trail="$trail">
     @if ($hero)
         <x-ui.hero :count="$counts['offers']" :label="\App\Support\Plural::of($counts['offers'], ['предложение доступно', 'предложения доступно', 'предложений доступно'])" href="#catalog-section"/>
     @endif

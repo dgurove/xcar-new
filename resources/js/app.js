@@ -331,6 +331,15 @@ function stalePage() {
     document.addEventListener('turbo:submit-start', (event) => {
         if (new URL(event.target.action, location.href).pathname === '/vyhod') navigator.serviceWorker?.controller?.postMessage({ forgetPages: true });
     });
+    // На одном телефоне сменился человек (вошёл другой без явного выхода, истекла
+    // сессия) — экраны прежнего из кэша воркера не должны всплыть первым кадром.
+    const watchUser = () => {
+        const id = document.querySelector('meta[name="user-id"]')?.content || '';
+        let last = null;
+        try { last = localStorage.getItem('xcar.user'); localStorage.setItem('xcar.user', id); } catch { return; }
+        if (last !== null && last !== id) navigator.serviceWorker?.controller?.postMessage({ forgetPages: true });
+    };
+    document.addEventListener('turbo:load', watchUser);
 }
 
 // Лента дотягивается сама (телефон): когда полоса «Назад · n/m · Вперёд» подходит
