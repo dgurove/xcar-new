@@ -46,7 +46,7 @@ export default class extends Controller {
         const price = [];
         for (const f of this.fieldTargets) {
             if (!f.checked || !f.dataset.value) continue;
-            if (f.dataset.key === 'floor_price' || f.dataset.key === 'price') { price.push(f.dataset.value); continue; }
+            if (f.dataset.key === 'floor_price' || f.dataset.key === 'publish_price' || f.dataset.key === 'price') { price.push(f.dataset.value); continue; }
             if (price.length && f.dataset.key !== 'number') { lines.push(price.join(' → ') + this.vatValue); price.length = 0; }
             lines.push(f.dataset.value);
             if (f.dataset.key === 'number' && price.length) { lines.push(price.join(' → ') + this.vatValue); price.length = 0; }

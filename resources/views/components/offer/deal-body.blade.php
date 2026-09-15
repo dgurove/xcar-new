@@ -3,7 +3,8 @@
 @php
     $user = auth()->user();
     $gallery = $offer->isGallery();
-    $prices = !$gallery && ($user?->role->canSeePrices() ?? false);
+    $price = \App\Offers\PriceView::for($offer, $user);
+    $prices = $price->visible;
     $left = $gallery ? null : $offer->secondsLeft();
     $canBid = ($user?->role->canBid() ?? false) && $offer->bidsOpen();
     $wantsInterest = $user && !$user->isStaff() && ($gallery || !$prices) && $offer->state->acceptsInterest();
@@ -12,8 +13,9 @@
     <div class="mb-2 flex justify-end lg:hidden"><button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>
 @endif
 
-@if ($prices && $offer->asking_price)
-    <div class="nums text-[32px] leading-none" data-controller="fit">@if ($user?->isStaff() && $offer->floor_price)<span class="text-[.7em] text-ink-muted">{{ number_format($offer->floor_price, 0, '', ' ') }}</span> → @endif{{ number_format($offer->asking_price, 0, '', ' ') }}&nbsp;₽@if ($offer->prices_include_vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
+@if ($price->shown())
+    <div class="nums text-[32px] leading-none" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}</span> → @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
+    @if ($price->declared)<div class="mt-2"><span class="tag nums">заявлена {{ $price::money($price->declared) }}</span></div>@endif
 @elseif ($gallery)
     <div class="text-lg text-accent-text">Скоро в продаже</div>
 @endif

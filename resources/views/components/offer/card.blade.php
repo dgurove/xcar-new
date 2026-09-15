@@ -5,7 +5,8 @@
     $user = auth()->user();
     $n = $offer->number;
     $gallery = $offer->isGallery();
-    $prices = !$gallery && ($user?->role->canSeePrices() ?? false);
+    $price = \App\Offers\PriceView::for($offer, $user);
+    $prices = $price->visible;
     $href = $admin ? "/predlozheniya/{$n}" : ($context?->offerUrl($offer) ?? "/offers/{$n}");
     $main = $offer->mainPhoto();
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
@@ -60,7 +61,8 @@
         @if ($offer->settlement)<span class="text-sm text-ink-dim">{{ $offer->settlement->name }}</span>@endif
         <span class="card-aside">
             @if ($prices || $admin)
-                @if ($offer->asking_price)<span class="card-price nums" data-controller="fit">@if ($user?->isStaff() && $offer->floor_price)<span class="card-price-from">{{ number_format($offer->floor_price, 0, '', ' ') }}</span> → @endif<span class="card-price-now">{{ number_format($offer->asking_price, 0, '', ' ') }}&nbsp;₽</span></span>@endif
+                @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}</span> → @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@elseif ($admin && $offer->asking_price)<span class="card-price nums" data-controller="fit">@if ($offer->floor_price)<span class="card-price-from">{{ number_format($offer->floor_price, 0, '', ' ') }}</span> → @endif<span class="card-price-now">{{ number_format($offer->asking_price, 0, '', ' ') }}&nbsp;₽</span></span>@endif
+                @if ($price->declared)<span class="tag nums">заявлена {{ $price::money($price->declared) }}</span>@endif
             @elseif ($gallery)
                 <span class="text-sm text-accent-text">Скоро в продаже</span>
             @else

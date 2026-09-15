@@ -1,7 +1,8 @@
 @php
     $user = auth()->user();
     $gallery = $offer->isGallery();
-    $prices = !$gallery && ($user?->role->canSeePrices() ?? false);
+    $price = \App\Offers\PriceView::for($offer, $user);
+    $prices = $price->visible;
     $back = $context?->backUrl() ?? ($gallery ? '/galereya' : '/');
     $dealInSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
     $facts = array_filter([
@@ -38,8 +39,8 @@
         <aside class="flex flex-col gap-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:gap-8">
             <x-offer.deal-box :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat" :can-chat="$canChat"/>
 
-            @if ($dealInSheet && $prices && $offer->asking_price)
-                <div class="nums text-[26px] leading-none lg:hidden" data-controller="fit">{{ number_format($offer->asking_price, 0, '', ' ') }}&nbsp;₽@if ($offer->prices_include_vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
+            @if ($dealInSheet && $price->shown())
+                <div class="nums text-[26px] leading-none lg:hidden" data-controller="fit">{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
             @endif
 
             @if ($facts)

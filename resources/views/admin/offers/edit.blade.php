@@ -161,6 +161,7 @@
             <x-ui.card title="Деньги" class="order-2">
                 <div class="{{ $grid }}">
                     <x-ui.field name="floor_price" label="Закупочная, ₽" inputmode="numeric" :value="$offer->floor_price"/>
+                    <x-ui.field name="publish_price" label="Заявленная, ₽" inputmode="numeric" :value="$offer->publish_price" :placeholder="$offer->floor_price ? number_format($offer->floor_price, 0, '', ' ') : null"/>
                     <x-ui.field name="asking_price" label="Цена продажи, ₽" inputmode="numeric" :value="$offer->asking_price"/>
                     <x-ui.field name="min_bid_price" label="Минимальная, ₽" inputmode="numeric" :value="$offer->min_bid_price" :placeholder="$offer->minBid() ? number_format($offer->minBid(), 0, '', ' ') : null"/>
                     <x-ui.field name="min_bid_share" label="Доля до продажной" inputmode="decimal" :value="$offer->min_bid_share" placeholder="0,6"/>

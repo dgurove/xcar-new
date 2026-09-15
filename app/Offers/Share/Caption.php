@@ -3,6 +3,7 @@
 namespace App\Offers\Share;
 
 use App\Offers\Offer;
+use App\Offers\PriceView;
 use App\Purchases\Car;
 use App\Users\User;
 
@@ -17,11 +18,14 @@ final class Caption
     {
         $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
         $staff = $user?->isStaff() ?? false;
-        $prices = $user?->role->canSeePrices() ?? false;
+        $price = PriceView::for($offer, $user);
         $rows = [
             ['number', 'Номер', (string) $offer->number, true],
-            ['price', 'Цена', $prices ? $money($offer->asking_price) : null, true],
-            ['floor_price', 'Нижняя от страховой', $staff ? $money($offer->floor_price) : null, false],
+            // «От» перед «до» — клиент склеивает отмеченные цены стрелкой в этом порядке.
+            // Менеджеру — заявленная, сотруднику — закупочная и заявленная; по умолчанию выключены: покупателю уходит одна цена.
+            ['floor_price', 'Закупочная', $staff ? $money($offer->floor_price) : null, false],
+            ['publish_price', 'Заявленная', $staff ? $money($offer->declaredPrice()) : ($price->visible ? $money($price->from) : null), false],
+            ['price', 'Цена', $price->visible ? $money($offer->asking_price) : null, true],
             ['city', 'Город', $offer->settlement?->name, true],
             ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
             ['specs', 'КПП, привод, кузов', implode(', ', array_filter([$offer->transmission?->label(), $offer->drive?->label(), $offer->body?->label()])) ?: null, true],

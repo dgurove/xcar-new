@@ -30,7 +30,7 @@ use Spatie\MediaLibrary\HasMedia;
 #[Fillable([
     'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'body', 'transmission', 'drive', 'fuel',
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
-    'incident_date', 'description', 'settlement_id', 'inspection_address', 'floor_price',
+    'incident_date', 'description', 'settlement_id', 'inspection_address', 'floor_price', 'publish_price',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'insurer_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
 ])]
@@ -64,6 +64,7 @@ class Offer extends Model implements HasMedia
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
             'floor_price' => 'int',
+            'publish_price' => 'int',
             'asking_price' => 'int',
             'min_bid_price' => 'int',
             'min_bid_share' => 'float',
@@ -196,16 +197,26 @@ class Offer extends Model implements HasMedia
 
     // -------------------------------------------------------------- деньги
 
-    /** Нижняя граница подтверждения: заданная руками или по доле между закупочной и продажной. */
+    /**
+     * Заявленная цена — та, что менеджер считает закупочной. По умолчанию равна
+     * закупочной; задана отдельно — менеджер видит её, настоящая остаётся у нас.
+     */
+    public function declaredPrice(): ?int
+    {
+        return $this->publish_price ?? $this->floor_price;
+    }
+
+    /** Нижняя граница подтверждения: заданная руками или по доле между заявленной и продажной. */
     public function minBid(): ?int
     {
         if ($this->min_bid_price) {
             return $this->min_bid_price;
         }
-        if ($this->asking_price && $this->floor_price && $this->asking_price > $this->floor_price) {
+        $from = $this->declaredPrice();
+        if ($this->asking_price && $from && $this->asking_price > $from) {
             $share = $this->min_bid_share ?? self::DEFAULT_SHARE;
 
-            return (int) round($this->floor_price + ($this->asking_price - $this->floor_price) * $share, -3);
+            return (int) round($from + ($this->asking_price - $from) * $share, -3);
         }
 
         return $this->asking_price;
