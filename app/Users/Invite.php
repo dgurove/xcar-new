@@ -1,0 +1,80 @@
+<?php
+
+namespace App\Users;
+
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
+
+/**
+ * Пригласительная ссылка менеджера. Многоразовая: одну ссылку можно послать
+ * десяти людям; `fields` — какие контакты покупатель указывает при регистрации.
+ */
+#[Fillable(['manager_id', 'code', 'label', 'fields', 'group_id', 'disabled_at'])]
+class Invite extends Model
+{
+    public const FIELDS = ['phone' => 'Телефон', 'email' => 'Почта'];
+
+    protected function casts(): array
+    {
+        return ['fields' => 'array', 'disabled_at' => 'datetime'];
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'code';
+    }
+
+    public static function freshCode(): string
+    {
+        do {
+            $code = Str::random(8);
+        } while (self::where('code', $code)->exists());
+
+        return $code;
+    }
+
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(BuyerGroup::class, 'group_id');
+    }
+
+    public function buyers(): HasMany
+    {
+        return $this->hasMany(User::class, 'invite_id');
+    }
+
+    public function url(): string
+    {
+        return \App\Support\Surface::Site->url("/i/{$this->code}");
+    }
+
+    public function isActive(): bool
+    {
+        return $this->disabled_at === null;
+    }
+
+    public function allows(string $field): bool
+    {
+        return (bool) ($this->fields[$field] ?? false);
+    }
+
+    /** @return list<string> */
+    public function contactFields(): array
+    {
+        return array_values(array_filter(array_keys(self::FIELDS), fn ($f) => $this->allows($f)));
+    }
+
+    /** Подпись строки: своё название или дата. */
+    public function title(): string
+    {
+        return $this->label ?: 'Ссылка от '.$this->created_at->translatedFormat('j M');
+    }
+}

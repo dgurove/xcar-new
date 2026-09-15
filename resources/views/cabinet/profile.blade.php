@@ -3,12 +3,16 @@
         @csrf @method('put')
         <div class="grid gap-4 sm:grid-cols-2">
             <x-ui.field name="name" label="Имя" :value="$user->name" autocomplete="name" required/>
-            <x-ui.field name="email" label="Почта" type="email" :value="$user->email" autocomplete="email"/>
+            @if ($user->mayHave('email'))<x-ui.field name="email" label="Почта" type="email" :value="$user->email" autocomplete="email"/>@endif
         </div>
-        <div class="mt-4">
-            {{-- Телефон — ключ входа, менять его здесь нельзя. --}}
-            <span class="block text-sm text-ink-dim">Телефон</span>
-            <p class="nums mt-1.5 font-normal">{{ $user->phoneFormatted() }}</p>
+        {{-- Чем входит: телефон и логин не меняются, у покупателя контакты — только разрешённые менеджером. --}}
+        <div class="mt-4 flex flex-wrap gap-6">
+            @if ($user->login)
+                <div><span class="block text-sm text-ink-dim">Логин</span><p class="nums mt-1.5 font-normal">{{ $user->login }}</p></div>
+            @endif
+            @if ($user->phone)
+                <div><span class="block text-sm text-ink-dim">Телефон</span><p class="nums mt-1.5 font-normal">{{ $user->phoneFormatted() }}</p></div>
+            @endif
         </div>
         <div class="mt-4">
             <span class="block text-sm text-ink-dim">Аватар</span>
@@ -26,6 +30,20 @@
             <x-ui.button>Сохранить</x-ui.button>
         </div>
     </form>
+
+    <section class="box mt-4" data-controller="sheet">
+        <h2 class="text-xl">Пароль</h2>
+        <x-ui.button type="button" variant="secondary" class="mt-4" data-action="sheet#open"><x-ui.icon name="key" class="size-5"/> Сменить пароль</x-ui.button>
+        <x-ui.sheet id="password" title="Новый пароль" :open="$errors->has('current') || $errors->has('password')">
+            <form method="post" action="/lk/parol" class="flex flex-col gap-3">
+                @csrf
+                <x-ui.field name="current" label="Текущий пароль" type="password" autocomplete="current-password" required/>
+                <x-ui.field name="password" label="Новый пароль" type="password" autocomplete="new-password" required/>
+                <x-ui.field name="password_confirmation" label="Ещё раз" type="password" autocomplete="new-password" required/>
+                <x-ui.button class="mt-2">Сохранить</x-ui.button>
+            </form>
+        </x-ui.sheet>
+    </section>
 
     <section class="box mt-4">
         <h2 class="text-xl">Вход по ключу</h2>

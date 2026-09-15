@@ -8,6 +8,9 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
@@ -18,7 +21,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'phone', 'email', 'password', 'role', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at'])]
+#[Fillable(['name', 'phone', 'login', 'email', 'password', 'role', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -33,6 +36,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'access' => 'array',
             'notification_settings' => 'array',
             'list_prefs' => 'array',
+            'contact_fields' => 'array',
             'email_verified_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
@@ -41,7 +45,73 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     public function setPhoneAttribute(?string $value): void
     {
-        $this->attributes['phone'] = Phone::normalize($value) ?? $value;
+        $this->attributes['phone'] = $value === null || $value === '' ? null : (Phone::normalize($value) ?? $value);
+    }
+
+    /** Логин хранится строчными: вход и уникальность без оглядки на регистр. */
+    public function setLoginAttribute(?string $value): void
+    {
+        $this->attributes['login'] = $value === null || trim($value) === '' ? null : mb_strtolower(trim($value));
+    }
+
+    // -------------------------------------------------------------- покупатели и менеджер
+
+    public function isBuyer(): bool
+    {
+        return $this->role === Role::Buyer;
+    }
+
+    public function isManager(): bool
+    {
+        return $this->role === Role::Manager;
+    }
+
+    /** Менеджер покупателя — тот, чью пригласительную ссылку он открыл. */
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function buyers(): HasMany
+    {
+        return $this->hasMany(User::class, 'manager_id')->where('role', Role::Buyer);
+    }
+
+    /** Группы, в которых состоит покупатель. */
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(BuyerGroup::class, 'buyer_group_user', 'user_id', 'group_id')->withPivot('created_at');
+    }
+
+    /** Группы, которые завёл менеджер. */
+    public function ownGroups(): HasMany
+    {
+        return $this->hasMany(BuyerGroup::class, 'manager_id')->orderBy('position')->orderBy('id');
+    }
+
+    public function invites(): HasMany
+    {
+        return $this->hasMany(Invite::class, 'manager_id');
+    }
+
+    public function invite(): BelongsTo
+    {
+        return $this->belongsTo(Invite::class);
+    }
+
+    /**
+     * Может ли покупатель указывать этот контакт. Менеджер решает при создании
+     * ссылки; у всех остальных ролей ограничений нет.
+     */
+    public function mayHave(string $field): bool
+    {
+        return ! $this->isBuyer() || in_array($field, $this->contact_fields ?? [], true);
+    }
+
+    /** Чем человек входит: логин, телефон или почта — первое, что есть. */
+    public function loginLabel(): string
+    {
+        return $this->login ?: ($this->phone ? $this->phoneFormatted() : (string) $this->email);
     }
 
     public function isStaff(): bool
@@ -85,15 +155,17 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->unreadNotifications()->count();
     }
 
-    /** Подпись ключа в связке устройства: почта или телефон и имя. Пакет ждёт строки, а почты может не быть. */
+    /** Подпись ключа в связке устройства: почта, телефон или логин и имя. Пакет ждёт строки, а почты может не быть. */
     public function webAuthnData(): WebAuthnData
     {
-        return WebAuthnData::make($this->email ?: $this->phoneFormatted(), $this->name ?: $this->phoneFormatted());
+        $handle = $this->email ?: ($this->phone ? $this->phoneFormatted() : (string) $this->login);
+
+        return WebAuthnData::make($handle, $this->name ?: $handle);
     }
 
     public function phoneFormatted(): string
     {
-        return Phone::format($this->phone);
+        return $this->phone ? Phone::format($this->phone) : '';
     }
 
     // -------------------------------------------------------------- имя и аватар

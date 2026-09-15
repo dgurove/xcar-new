@@ -8,6 +8,7 @@
             @error('email')<p class="text-sm text-danger">{{ $message }}</p>@enderror
             <button type="submit" class="btn btn-accent w-full">Прислать ссылку</button>
         </form>
+        <p class="mt-5 text-sm text-ink-muted">Входите без почты — попросите менеджера прислать ссылку для нового пароля.</p>
     @endif
     <a href="/vhod" class="mt-5 inline-block text-sm text-ink-muted hover:text-accent-text">Вернуться ко входу</a>
 </x-ui.auth>

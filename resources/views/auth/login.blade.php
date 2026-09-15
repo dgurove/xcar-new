@@ -2,7 +2,7 @@
     @if (session('status'))<x-ui.flash class="mt-5">{{ session('status') }}</x-ui.flash>@endif
     <form method="post" action="/vhod" class="mt-6 space-y-3">
         @csrf
-        <input name="login" type="text" required autocomplete="username webauthn" inputmode="email" class="field-input" placeholder="Телефон или почта" value="{{ old('login') }}" autofocus>
+        <input name="login" type="text" required autocomplete="username webauthn" inputmode="email" class="field-input" placeholder="Логин, телефон или почта" value="{{ old('login') }}" autofocus>
         <input name="password" type="password" required autocomplete="current-password" class="field-input" placeholder="Пароль">
         @error('login')<p class="text-sm text-danger">{{ $message }}</p>@enderror
         @error('password')<p class="text-sm text-danger">{{ $message }}</p>@enderror
@@ -15,6 +15,6 @@
     </div>
     <div class="mt-5 flex justify-between text-sm">
         <a href="/parol" class="text-ink-muted hover:text-accent-text">Забыли пароль?</a>
-        <a href="/registraciya" class="text-accent-text hover:underline">Регистрация</a>
+        <a href="/registraciya" class="text-ink-muted hover:text-accent-text">Нет аккаунта?</a>
     </div>
 </x-ui.auth>

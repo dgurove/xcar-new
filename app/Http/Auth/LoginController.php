@@ -23,12 +23,10 @@ class LoginController
             'password' => ['required', 'string'],
         ]);
 
-        $login = trim($data['login']);
-        $field = Phone::looksLikePhone($login) ? 'phone' : 'email';
-        $value = $field === 'phone' ? (Phone::normalize($login) ?? $login) : mb_strtolower($login);
+        [$field, $value] = self::identify(trim($data['login']));
 
         if (! Auth::attempt([$field => $value, 'password' => $data['password']], $request->boolean('remember', true))) {
-            throw ValidationException::withMessages(['login' => 'Не подходит телефон, почта или пароль']);
+            throw ValidationException::withMessages(['login' => 'Не подходит логин, телефон, почта или пароль']);
         }
 
         $request->session()->regenerate();
@@ -43,6 +41,24 @@ class LoginController
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    /**
+     * Чем человек назвался: похоже на телефон — телефон, есть @ — почта,
+     * иначе логин (покупатели без телефона и почты входят им).
+     *
+     * @return array{0: string, 1: string}
+     */
+    public static function identify(string $login): array
+    {
+        if (Phone::looksLikePhone($login)) {
+            return ['phone', Phone::normalize($login) ?? $login];
+        }
+        if (str_contains($login, '@')) {
+            return ['email', mb_strtolower($login)];
+        }
+
+        return ['login', mb_strtolower($login)];
     }
 
     /** Куда после входа: на CRM и стоянке чужого уводим на сайт. */

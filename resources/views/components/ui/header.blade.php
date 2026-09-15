@@ -95,8 +95,7 @@
                     <button type="submit" class="header-btn header-btn-square header-h w-[1.875rem]" aria-label="Выйти"><x-ui.icon name="exit" class="size-4"/></button>
                 </form>
             @else
-                <a href="/vhod" class="header-btn header-h ml-auto px-5 text-sm">Войти</a>
-                @if ($site)<a href="/registraciya" class="header-btn header-btn-cta header-h px-5 text-sm">Регистрация</a>@endif
+                <a href="/vhod" class="header-btn header-btn-cta header-h ml-auto px-5 text-sm">Войти</a>
             @endif
             <button type="button" class="header-btn header-btn-square header-h w-[1.875rem]" data-controller="theme" data-action="theme#toggle" aria-label="Тема">
                 <x-ui.icon name="sun" class="on-light size-4"/><x-ui.icon name="moon" class="on-dark size-4"/>

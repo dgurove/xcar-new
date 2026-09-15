@@ -87,7 +87,8 @@ class ProfileController
         ]);
 
         $user = $request->user();
-        $user->update(['name' => $data['name'], 'email' => $data['email'] ?: null]);
+        // Почту покупатель меняет, только если менеджер разрешил её в приглашении.
+        $user->update(['name' => $data['name']] + ($user->mayHave('email') ? ['email' => $data['email'] ?: null] : []));
         if ($request->boolean('remove_avatar')) {
             $user->clearMediaCollection('avatar');
         }

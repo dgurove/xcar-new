@@ -10,7 +10,9 @@ use App\Offers\Events\BidPlaced;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Telegram\Jobs\NotifyOwner;
+use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\Registration;
+use App\Users\Events\BuyerJoined;
 use App\Users\Events\AccessDecided;
 use App\Users\Events\UserRegistered;
 use App\Users\Role;
@@ -38,6 +40,7 @@ final class Notify
             StageDue::class => 'stageDue',
             ChatMessagePosted::class => 'chat',
             UserRegistered::class => 'registered',
+            BuyerJoined::class => 'buyerJoined',
             AccessDecided::class => 'accessDecided',
         ];
     }
@@ -46,6 +49,13 @@ final class Notify
     public function registered(UserRegistered $e): void
     {
         NotifyOwner::dispatch(new Registration($e->user));
+    }
+
+    /** Покупатель прошёл по ссылке: менеджеру — в ленту и push, владельцу — строка в Telegram. */
+    public function buyerJoined(BuyerJoined $e): void
+    {
+        $e->user->manager?->notify(new BuyerJoinedNotice($e->user));
+        NotifyOwner::dispatch(new BuyerJoinedMessage($e->user->load('manager')));
     }
 
     public function accessDecided(AccessDecided $e): void
