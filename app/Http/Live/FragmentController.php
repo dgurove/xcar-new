@@ -19,7 +19,9 @@ class FragmentController
     public function card(Request $request, Offer $offer)
     {
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites']);
-        $visible = $request->query('list') === 'gallery' ? $offer->state === OfferState::Gallery : $offer->state->isPublic();
+        // Карточка живёт в ленте, только если человеку положено её видеть: чужому — remove.
+        $visible = ($request->query('list') === 'gallery' ? $offer->state === OfferState::Gallery : $offer->state->isPublic())
+            && $offer->isVisibleTo($request->user());
         $present = $request->boolean('present');
 
         return Stream::view('site.offers.card-stream', ['offer' => $offer, 'visible' => $visible, 'present' => $present]);

@@ -43,9 +43,10 @@ final class Publisher
         $this($topics, 'refresh', ['paths' => $paths]);
     }
 
-    public function card(int $number): void
+    /** Карточка в ленте: по умолчанию всем в каталоге; покупателям — в их личные темы, каталог они не слушают. */
+    public function card(int $number, array|string $topics = Topics::CATALOG): void
     {
-        $this(Topics::CATALOG, 'card', ['number' => $number]);
+        $this($topics, 'card', ['number' => $number]);
     }
 
     public function badges(array|string $topics): void

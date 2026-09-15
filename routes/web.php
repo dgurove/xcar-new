@@ -53,7 +53,8 @@ Route::middleware('wall')->group(function () {
 Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/offers/{offer}/stavka', [BidController::class, 'store']);
     Route::post('/stavki/{bid}/otozvat', [BidController::class, 'withdraw']);
-    Route::post('/offers/{offer}/interes', [InterestController::class, 'store']);
+    Route::post('/offers/{offer}/interes', [InterestController::class, 'store'])->middleware('throttle:30,1');
+    Route::delete('/offers/{offer}/interes', [InterestController::class, 'destroy']);
     Route::post('/offers/{offer}/izbrannoe', [FavoriteController::class, 'toggle']);
     Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
     Route::post('/share/oshibka', [ShareController::class, 'report'])->middleware('throttle:30,1');

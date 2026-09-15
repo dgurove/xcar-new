@@ -18,6 +18,9 @@ final class PlaceBid
         if (! $by->role->canBid()) {
             throw ValidationException::withMessages(['amount' => 'Подтверждать могут только менеджеры']);
         }
+        if (! $offer->isVisibleTo($by)) {
+            throw ValidationException::withMessages(['amount' => 'Это предложение вам не открыто']);
+        }
 
         return DB::transaction(function () use ($offer, $by, $amount, $comment) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();

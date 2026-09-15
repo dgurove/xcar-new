@@ -6,6 +6,7 @@ use App\Cars\Brand;
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Showing;
 use App\Purchases\Purchase;
 use App\Support\ListContext;
 use App\Http\Middleware\MarkInstalled;
@@ -36,6 +37,8 @@ class CatalogController
 
     public function gallery(Request $request)
     {
+        abort_unless($request->user()?->role->canSeeGallery() ?? true, 404);
+
         return $this->list($request, gallery: true);
     }
 
@@ -46,32 +49,44 @@ class CatalogController
         $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
         $view = ListView::fromRequest($request);
         $prices = ! $gallery && ($user?->role->canSeePrices() ?? false);
-        $sort = CatalogQuery::sort($filters, $gallery, $prices);
+        $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
         $states = $gallery ? [OfferState::Gallery] : [OfferState::Open];
 
         // Три счётчика на каждый запрос списка — полминуты в кэше, слабому серверу легче.
-        $counts = Cache::remember('catalog.counts', 30, fn () => [
-            'offers' => Offer::where('state', OfferState::Open)->count(),
-            'gallery' => Offer::where('state', OfferState::Gallery)->count(),
-            // Закупок на витрине столько, сколько карточек: одна присланная — две (легковые и грузовые).
-            'purchases' => count(Purchase::showcase(null)),
-        ]);
+        // Сотруднику — общие; менеджеру и покупателю выдача своя, считаем по ней и без кэша: после «Показать…» число должно сойтись сразу.
+        $counts = $user?->isStaff()
+            ? Cache::remember('catalog.counts', 30, fn () => [
+                'offers' => Offer::where('state', OfferState::Open)->count(),
+                'gallery' => Offer::where('state', OfferState::Gallery)->count(),
+                // Закупок на витрине столько, сколько карточек: одна присланная — две (легковые и грузовые).
+                'purchases' => count(Purchase::showcase(null)),
+            ])
+            : [
+                'offers' => Offer::visibleTo($user)->where('state', OfferState::Open)->count(),
+                'gallery' => $user?->role->canSeeGallery() ? Offer::visibleTo($user)->where('state', OfferState::Gallery)->count() : 0,
+                'purchases' => $user?->role->canSeePurchases() ? count(Purchase::showcase($user)) : 0,
+            ];
         $counts['purchases'] = $user?->role->canSeePurchases() ? $counts['purchases'] : 0;
 
+        $offers = CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery)->paginate(CatalogQuery::PER_PAGE)->withQueryString();
+        Showing::remember($user, $offers->pluck('id')->all());
+
         return view('site.catalog', [
-            'offers' => CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery)->paginate(CatalogQuery::PER_PAGE)->withQueryString(),
+            'offers' => $offers,
             'filters' => $filters,
             'sort' => $sort,
-            'sorts' => CatalogQuery::allowedSorts($gallery, $prices),
+            'sorts' => CatalogQuery::allowedSorts($gallery, $prices, $user),
             'views' => CatalogQuery::allowedViews($user, $gallery),
             'view' => $view,
             'context' => ListContext::forList($gallery, $filters + ['sort' => $sort], $view),
-            'brands' => Brand::whereHas('offers', fn ($o) => $o->whereIn('state', $states))->orderBy('name')->get(),
+            'brands' => Brand::whereHas('offers', fn ($o) => $o->visibleTo($user)->whereIn('state', $states))->orderBy('name')->get(),
             'gallery' => $gallery,
             'prices' => $prices,
             'counts' => $counts,
             // Установленное приложение открывается сразу в список, первый экран — гостю в браузере.
-            'hero' => ! $gallery && $filters === [] && $view === null && ! $request->has('page') && ! MarkInstalled::installed($request),
+            // Покупателю первый экран ни к чему: у него не витрина, а то, что открыл менеджер.
+            'hero' => ! $gallery && $filters === [] && $view === null && ! $request->has('page') && ! MarkInstalled::installed($request) && ! $user?->isBuyer(),
+            'manager' => $user?->isBuyer() ? $user->manager : null,
         ]);
     }
 }

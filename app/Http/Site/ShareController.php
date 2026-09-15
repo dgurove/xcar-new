@@ -22,7 +22,7 @@ class ShareController
     public function pdf(Request $request, Offer $offer, SharePdf $pdf)
     {
         $user = $request->user();
-        abort_unless($offer->state->isPublic() || $offer->state->acceptsInterest() || $user->isStaff(), 404);
+        abort_unless($user->role->canShare() && $offer->isVisibleTo($user), 404);
         if ($offer->share_locked) {
             return response()->json(['message' => Subject::LOCKED], 422);
         }

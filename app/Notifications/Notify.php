@@ -9,6 +9,7 @@ use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
+use App\Offers\Events\OffersShown;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\Registration;
@@ -36,6 +37,7 @@ final class Notify
             BidAccepted::class => 'bidAccepted',
             BidDeclined::class => 'bidDeclined',
             InterestRegistered::class => 'interest',
+            OffersShown::class => 'offersShown',
             StageEntered::class => 'stageEntered',
             StageDue::class => 'stageDue',
             ChatMessagePosted::class => 'chat',
@@ -67,7 +69,15 @@ final class Notify
 
     public function offerPublished(OfferPublished $e): void
     {
-        Notification::send(User::where('role', Role::Manager)->get(), new OfferPublishedNotice($e->offer));
+        Notification::send($e->offer->allowedManagers(), new OfferPublishedNotice($e->offer));
+    }
+
+    /** Покупателям — одно уведомление на пачку: «открыл вам 3 автомобиля». */
+    public function offersShown(OffersShown $e): void
+    {
+        foreach ($e->fresh as $buyerId => $offerIds) {
+            User::find($buyerId)?->notify(new OffersShownNotice($e->manager, $offerIds));
+        }
     }
 
     public function bidPlaced(BidPlaced $e): void
@@ -88,9 +98,16 @@ final class Notify
         $e->bid->user->notify(new BidDeclinedNotice($e->bid->load('offer')));
     }
 
+    /** Интерес покупателя — его менеджеру; интерес посетителя — сотрудникам, как раньше. */
     public function interest(InterestRegistered $e): void
     {
-        Notification::send($this->staff(), new InterestNotice($e->interest->load('offer', 'user')));
+        $interest = $e->interest->load('offer', 'user');
+        if ($interest->user->isBuyer()) {
+            $interest->user->manager?->notify(new BuyerInterestNotice($interest));
+
+            return;
+        }
+        Notification::send($this->staff(), new InterestNotice($interest));
     }
 
     public function stageEntered(StageEntered $e): void

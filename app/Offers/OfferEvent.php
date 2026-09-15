@@ -36,7 +36,7 @@ class OfferEvent extends Model
             OfferEventType::BidAccepted => 'Подтверждение принято',
             OfferEventType::BidDeclined => 'Подтверждение отклонено',
             OfferEventType::BidWithdrawn => 'Подтверждение отозвано',
-            OfferEventType::Interest => 'Интерес',
+            OfferEventType::Interest => ! empty($p['withdrawn']) ? 'Интерес снят' : 'Интерес',
             OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['exit']) ? ' («'.$p['exit'].'»)' : ''),
             OfferEventType::StageOverdue => 'Срок вышел: '.($p['stage'] ?? ''),
             OfferEventType::StageReminded => 'Срок подходит: '.($p['stage'] ?? ''),

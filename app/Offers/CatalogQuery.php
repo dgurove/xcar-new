@@ -33,7 +33,12 @@ final class CatalogQuery
 
         $q = Offer::query()
             ->with(['brand', 'model', 'settlement', 'media', 'favorites'])
+            ->visibleTo($user)
             ->whereIn('state', $gallery ? [OfferState::Gallery] : [OfferState::Open]);
+        if ($user?->isBuyer()) {
+            // Покупателю на карточке нужен его собственный интерес — грузим одним запросом на список.
+            $q->with(['interests' => fn ($i) => $i->where('user_id', $user->id)]);
+        }
 
         if (! empty($filters['brand'])) {
             $q->whereHas('brand', fn ($b) => $b->where('slug', $filters['brand']));
@@ -66,7 +71,7 @@ final class CatalogQuery
             default => null,
         };
 
-        $sort = self::sort($filters, $gallery, $prices);
+        $sort = self::sort($filters, $gallery, $prices, $user);
         $desc = str_starts_with($sort, '-');
         $dir = $desc ? 'desc' : 'asc';
         match (ltrim($sort, '-')) {
@@ -80,29 +85,29 @@ final class CatalogQuery
     }
 
     /** Действующая сортировка: то, что в адресе, если она разрешена, иначе по умолчанию. */
-    public static function sort(array $filters, bool $gallery = false, bool $prices = true): string
+    public static function sort(array $filters, bool $gallery = false, bool $prices = true, ?User $user = null): string
     {
         $sort = $filters['sort'] ?? self::DEFAULT_SORT;
         $key = ltrim($sort, '-');
 
-        return isset(self::allowedSorts($gallery, $prices)[$key]) ? $sort : self::DEFAULT_SORT;
+        return isset(self::allowedSorts($gallery, $prices, $user)[$key]) ? $sort : self::DEFAULT_SORT;
     }
 
-    /** Сортировки для тулбара: в галерее ни цены, ни срока. */
-    public static function allowedSorts(bool $gallery, bool $prices): array
+    /** Сортировки для тулбара: в галерее ни цены, ни срока; покупатель не торгуется — срока у него нет. */
+    public static function allowedSorts(bool $gallery, bool $prices, ?User $user = null): array
     {
         return array_filter(self::SORTS, fn ($_, $key) => match ($key) {
             'price' => $prices,
-            'closing' => ! $gallery,
+            'closing' => ! $gallery && ! $user?->isBuyer(),
             default => true,
         }, ARRAY_FILTER_USE_BOTH);
     }
 
-    /** Пилюли для тулбара: «Горящие» только в каталоге, «Избранное» только вошедшему. */
+    /** Пилюли для тулбара: «Горящие» только в каталоге и не покупателю, «Избранное» только вошедшему. */
     public static function allowedViews(?User $user, bool $gallery): array
     {
         return array_filter(self::VIEWS, fn ($_, $key) => match ($key) {
-            'ending' => ! $gallery,
+            'ending' => ! $gallery && ! $user?->isBuyer(),
             'favorite' => $user !== null,
             default => true,
         }, ARRAY_FILTER_USE_BOTH);

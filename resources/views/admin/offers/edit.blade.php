@@ -89,7 +89,7 @@
                 <div class="flex flex-col gap-2">
                     @foreach ($offer->interests as $interest)
                         <div class="box-nested">
-                            <div class="flex flex-wrap items-center gap-1.5"><x-ui.person :user="$interest->user" full/><a href="tel:+{{ $interest->user->phone }}" class="tag nums">{{ $interest->user->phoneFormatted() }}</a><span class="tag">{{ $interest->state->label() }}</span><span class="tag nums">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span></div>
+                            <div class="flex flex-wrap items-center gap-1.5"><x-ui.person :user="$interest->user" full/>@if ($interest->user->manager)<span class="text-sm text-ink-muted">покупатель</span><x-ui.person :user="$interest->user->manager"/>@endif @if ($interest->user->phone)<a href="tel:+{{ $interest->user->phone }}" class="tag nums">{{ $interest->user->phoneFormatted() }}</a>@endif<span class="tag">{{ $interest->state->label() }}</span><span class="tag nums">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span></div>
                             @if ($interest->comment)<div class="mt-1 text-sm">{{ $interest->comment }}</div>@endif
                             @if ($interest->state === InterestState::New)
                                 <form method="post" action="/interesy/{{ $interest->id }}" class="mt-2">@csrf<input type="hidden" name="state" value="contacted"><x-ui.button size="sm" variant="secondary">Связались</x-ui.button></form>
@@ -101,6 +101,24 @@
                 </div>
             </x-ui.card>
             @endif
+
+            {{-- Круг менеджеров: по умолчанию все; сняли «Все» — выбирайте. Поля живут в форме оффера через form=. --}}
+            <x-ui.card title="Менеджеры" class="order-5" data-controller="managers">
+                <input type="hidden" name="managers_limited" value="{{ old('managers_limited', $offer->managers_limited ? 1 : 0) }}" form="offer-form" data-managers-target="limited">
+                <div class="flex flex-wrap gap-1.5">
+                    <label class="choice"><input type="checkbox" @checked(! old('managers_limited', $offer->managers_limited)) data-managers-target="all" data-action="managers#toggleAll"><span>Все</span></label>
+                    @foreach ($managers as $m)
+                        <label class="choice"><input type="checkbox" name="managers[]" value="{{ $m->id }}" form="offer-form" @checked(in_array($m->id, old('managers', $offerManagers))) @disabled(! old('managers_limited', $offer->managers_limited)) data-managers-target="chip" data-action="managers#pick"><span class="gap-1.5"><x-ui.avatar :user="$m" :size="20"/>{{ $m->shortName() }}</span></label>
+                    @endforeach
+                </div>
+                @if ($showingSummary->isNotEmpty())
+                    <div class="mt-4 flex flex-col gap-1.5 text-sm">
+                        @foreach ($showingSummary as $row)
+                            <div class="flex items-center gap-2"><x-ui.person :user="$row['manager']"/><span class="text-ink-muted">открыл {{ $row['buyers'] }} {{ \App\Support\Plural::of($row['buyers'], ['покупателю', 'покупателям', 'покупателям']) }}</span></div>
+                        @endforeach
+                    </div>
+                @endif
+            </x-ui.card>
 
             <x-ui.card title="История" class="order-6">
                 <div class="flex flex-col gap-1.5 text-sm">

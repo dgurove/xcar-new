@@ -17,7 +17,7 @@ class OfferController
     public function show(Request $request, Offer $offer)
     {
         $user = $request->user();
-        abort_unless($offer->state->isPublic() || $offer->state->acceptsInterest() || $user?->isStaff(), 404);
+        abort_unless($offer->isVisibleTo($user), 404);
 
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites']);
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
@@ -31,7 +31,8 @@ class OfferController
             : ['prev' => null, 'next' => null, 'index' => null, 'total' => 0];
 
         // Открыли шторку — непрочитанное прочитано, бейдж гаснет сразу.
-        if ($request->boolean('chat') && $user && ! $user->isStaff() && ($existing = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first())) {
+        $canChat = $user && $user->role->canChat() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest());
+        if ($request->boolean('chat') && $canChat && ($existing = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first())) {
             app(MarkChatRead::class)($existing, $user);
         }
 
@@ -42,9 +43,12 @@ class OfferController
             'position' => $position,
             'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->where('state', BidState::Active)->first() : null,
             'myInterest' => $user ? $offer->interests()->where('user_id', $user->id)->first() : null,
-            'chat' => $chat = $user && ! $user->isStaff() ? Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first() : null,
-            // Шторка чата есть у покупателя всегда; сам чат заведётся первым сообщением.
-            'canChat' => $user && ! $user->isStaff() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest()),
+            'chat' => $canChat ? Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first() : null,
+            // Шторка чата есть у менеджера всегда; сам чат заведётся первым сообщением. Покупатель говорит со своим менеджером вне сайта.
+            'canChat' => $canChat,
+            'manager' => $user?->isBuyer() ? $user->manager : null,
+            'showings' => $user?->isManager() ? $offer->showings()->where('manager_id', $user->id)->with(['user', 'group'])->get() : collect(),
+            'buyerInterests' => $user?->isManager() ? $offer->interests()->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->with('user')->get() : collect(),
         ]);
     }
 
@@ -52,7 +56,7 @@ class OfferController
     public function chat(Request $request, Offer $offer)
     {
         $user = $request->user();
-        abort_unless($user && ! $user->isStaff() && $offer->chat_enabled, 404);
+        abort_unless($user && $user->role->canChat() && $offer->chat_enabled, 404);
         $chat = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first();
 
         return view('site.offers.chat', [

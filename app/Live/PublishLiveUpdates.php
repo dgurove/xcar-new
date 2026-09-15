@@ -9,6 +9,9 @@ use App\Offers\Events\BidPlaced;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
+use App\Offers\Events\OffersHidden;
+use App\Offers\Events\OffersShown;
+use App\Offers\Showing;
 use App\Users\User;
 use App\Workflow\Events\StageEntered;
 use Illuminate\Events\Dispatcher;
@@ -28,6 +31,8 @@ final class PublishLiveUpdates
             BidAccepted::class => 'bidDecided',
             BidDeclined::class => 'bidDecided',
             InterestRegistered::class => 'interest',
+            OffersShown::class => 'shown',
+            OffersHidden::class => 'hidden',
             StageEntered::class => 'stage',
             NotificationSent::class => 'notification',
             ChatMessagePosted::class => 'chat',
@@ -37,9 +42,30 @@ final class PublishLiveUpdates
     public function offer(OfferPublished|OfferStateChanged $e): void
     {
         $n = $e->offer->number;
-        $this->publish->card($n);
-        $this->publish->refresh(Topics::CATALOG, ["/offers/{$n}"]);
+        // Покупатели каталог не слушают — карточка и страница едут им в личные темы: продажа снимает её и у них.
+        $buyers = Showing::buyerIdsOf($e->offer)->map(fn ($id) => Topics::user($id))->all();
+        $this->publish->card($n, [Topics::CATALOG, ...$buyers]);
+        $this->publish->refresh([Topics::CATALOG, ...$buyers], ["/offers/{$n}"]);
         $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/', '/rabota/sdelki']);
+    }
+
+    /** Покупателю открыли предложения: его лента и сводка перечитываются, у менеджера — карточки с числом «видят». */
+    public function shown(OffersShown $e): void
+    {
+        foreach (array_keys($e->fresh) as $buyerId) {
+            $this->publish->refresh(Topics::user($buyerId), ['/', '/lk']);
+        }
+        $this->publish->refresh(Topics::user($e->manager), ['/', '/lk/pokupateli']);
+    }
+
+    public function hidden(OffersHidden $e): void
+    {
+        foreach ($e->gone as $buyerId => $numbers) {
+            foreach ($numbers as $n) {
+                $this->publish->card($n, Topics::user($buyerId));
+            }
+            $this->publish->refresh(Topics::user($buyerId), array_map(fn ($n) => "/offers/{$n}", $numbers));
+        }
     }
 
     public function bid(BidPlaced $e): void
@@ -58,7 +84,13 @@ final class PublishLiveUpdates
 
     public function interest(InterestRegistered $e): void
     {
-        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$e->interest->offer->number}"]);
+        $n = $e->interest->offer->number;
+        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}"]);
+        // Интерес покупателя — менеджеру: страница оффера и его список интересов.
+        if ($manager = $e->interest->user->manager_id) {
+            $this->publish->refresh(Topics::user($manager), ["/offers/{$n}", '/lk/pokupateli/interes', "/lk/pokupateli/{$e->interest->user_id}"]);
+            $this->publish->badges(Topics::user($manager));
+        }
     }
 
     public function stage(StageEntered $e): void

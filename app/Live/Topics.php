@@ -27,7 +27,8 @@ final class Topics
     /** Что человек вправе слушать. */
     public static function for(?User $user, ?int $guestChat = null): array
     {
-        $topics = [self::CATALOG];
+        // Покупатель общий каталог не слушает: его лента приходит в личную тему.
+        $topics = $user?->isBuyer() ? [] : [self::CATALOG];
         if ($guestChat) {
             $topics[] = self::chat($guestChat);
         }

@@ -59,6 +59,9 @@ class OfferRequest extends FormRequest
             'bids_close_at' => ['nullable', 'date'],
             'chat_enabled' => ['boolean'],
             'share_locked' => ['boolean'],
+            'managers_limited' => ['boolean'],
+            'managers' => ['nullable', 'array'],
+            'managers.*' => ['integer', Rule::exists('users', 'id')->where('role', 'manager')],
             'insurer_id' => ['nullable', 'exists:insurers,id'],
             'claim_ref' => ['nullable', 'string', 'max:60'],
             'insurer_deadline_at' => ['nullable', 'date'],
@@ -76,6 +79,8 @@ class OfferRequest extends FormRequest
         $data['show_vin'] = $this->boolean('show_vin');
         $data['chat_enabled'] = $this->boolean('chat_enabled');
         $data['share_locked'] = $this->boolean('share_locked');
+        $data['managers_limited'] = $this->boolean('managers_limited');
+        $data['managers'] = array_values(array_map('intval', $data['managers'] ?? []));
         $data['damage_zones'] = $data['damage_zones'] ?? [];
         $data['tags'] = array_values(array_filter($data['tags'] ?? []));
         $data['prices_include_vat'] = $this->boolean('prices_include_vat');

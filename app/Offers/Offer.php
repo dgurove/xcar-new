@@ -13,6 +13,7 @@ use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Mail\Extraction\Code;
 use App\Media\HasPhotos;
+use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Insurer;
 use App\Workflow\Position;
@@ -23,8 +24,10 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\HasMedia;
 
 #[Fillable([
@@ -32,7 +35,7 @@ use Spatie\MediaLibrary\HasMedia;
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
     'incident_date', 'description', 'settlement_id', 'inspection_address', 'floor_price', 'publish_price',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'bids_close_at', 'sort_weight',
-    'chat_enabled', 'share_locked', 'insurer_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
+    'chat_enabled', 'share_locked', 'managers_limited', 'insurer_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
 ])]
 class Offer extends Model implements HasMedia
 {
@@ -60,6 +63,7 @@ class Offer extends Model implements HasMedia
             'prices_include_vat' => 'bool',
             'chat_enabled' => 'bool',
             'share_locked' => 'bool',
+            'managers_limited' => 'bool',
             'incident_date' => 'date',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
@@ -159,6 +163,68 @@ class Offer extends Model implements HasMedia
     public function favorites(): HasMany
     {
         return $this->hasMany(Favorite::class);
+    }
+
+    // ------------------------------------------------------------ кто видит
+
+    /** Менеджеры, которым предложение открыто, когда круг сужен (`managers_limited`). */
+    public function managers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'offer_managers')->orderBy('name');
+    }
+
+    public function showings(): HasMany
+    {
+        return $this->hasMany(Showing::class);
+    }
+
+    /** Все менеджеры, которым предложение доступно: весь круг или выбранные. */
+    public function allowedManagers(): Collection
+    {
+        return $this->managers_limited ? $this->managers()->get() : User::where('role', Role::Manager)->orderBy('name')->get();
+    }
+
+    public function openToManager(User $manager): bool
+    {
+        return ! $this->managers_limited || $this->managers()->whereKey($manager->id)->exists();
+    }
+
+    /**
+     * Одна дверь видимости. Сотрудник видит всё; менеджер — открытые и галерею
+     * из своего круга; покупатель — открытые, которые ему показал его менеджер
+     * (лично или группе) и которые этому менеджеру доступны; посетитель —
+     * галерею; гость — ничего.
+     */
+    public function scopeVisibleTo(Builder $q, ?User $user): Builder
+    {
+        if (! $user) {
+            return $q->whereRaw('false');
+        }
+        if ($user->isStaff()) {
+            return $q;
+        }
+        if ($user->role === Role::Manager) {
+            return $q->whereIn('state', [OfferState::Open, OfferState::Gallery])
+                ->where(fn ($w) => $w->where('managers_limited', false)->orWhereHas('managers', fn ($m) => $m->whereKey($user->id)));
+        }
+        if ($user->role === Role::Buyer) {
+            if (! $user->manager_id) {
+                return $q->whereRaw('false');
+            }
+            $groups = $user->groups()->pluck('buyer_groups.id')->all();
+
+            return $q->where('state', OfferState::Open)
+                ->whereHas('showings', fn ($s) => $s->where('manager_id', $user->manager_id)
+                    ->where(fn ($w) => $w->where('user_id', $user->id)->when($groups, fn ($w) => $w->orWhereIn('group_id', $groups))))
+                ->where(fn ($w) => $w->where('managers_limited', false)->orWhereHas('managers', fn ($m) => $m->whereKey($user->manager_id)));
+        }
+
+        return $q->where('state', OfferState::Gallery);
+    }
+
+    public function isVisibleTo(?User $user): bool
+    {
+        return $user?->isStaff() || self::query()->whereKey($this->id)->visibleTo($user)->exists();
     }
 
     // ------------------------------------------------------------ подписи

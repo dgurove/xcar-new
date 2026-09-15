@@ -11,6 +11,9 @@ use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
+use App\Offers\Showing;
+use App\Users\Role;
+use App\Users\User;
 use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -75,7 +78,7 @@ class OfferController
 
     public function edit(Offer $offer)
     {
-        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user', 'events.user', 'insurer.workflows',
+        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'events.user', 'insurer.workflows',
             'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer']);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
@@ -90,6 +93,9 @@ class OfferController
             'insurers' => Insurer::where('is_active', true)->orWhere('id', $offer->insurer_id)->orderBy('name')->pluck('name', 'id'),
             'stages' => $offer->insurer ? $offer->insurer->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
             'tags' => Tag::orderBy('sort')->get(),
+            'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
+            'offerManagers' => $offer->managers()->pluck('users.id')->all(),
+            'showingSummary' => Showing::summary($offer),
             'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id'),
         ]);
     }

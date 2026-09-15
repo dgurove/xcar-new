@@ -10,6 +10,7 @@ class FavoriteController
 {
     public function toggle(Request $request, Offer $offer, ToggleFavorite $toggle)
     {
+        abort_unless($offer->isVisibleTo($request->user()), 404);
         $on = $toggle($offer, $request->user());
 
         return response()->view('components.offer.favorite-stream', ['offer' => $offer->refresh()->load('favorites'), 'on' => $on])
