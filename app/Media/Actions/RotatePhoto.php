@@ -24,7 +24,7 @@ final class RotatePhoto
         foreach (array_keys(array_filter((array) $media->generated_conversions)) as $conversion) {
             $this->turn($media->getPath((string) $conversion), $clockwise);
         }
-        $this->turn(Watermark::cleanPath($media->id), $clockwise);
+        $this->turn(Watermark::cleanPath($media), $clockwise);
         $media->size = (int) filesize($media->getPath());
         $media->touch();
     }

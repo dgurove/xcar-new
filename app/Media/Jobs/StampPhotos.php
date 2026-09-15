@@ -8,13 +8,15 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Spatie\MediaLibrary\HasMedia;
+use Throwable;
 
 /**
  * Тумблер «Запретить шеринг» переключили у оффера или машины закупки: все
  * кадры (и скрытые тоже) под знак или обратно. Берётся текущее значение
  * тумблера, а не то, с которым задачу ставили: переключили дважды подряд —
- * выиграет последнее.
+ * выиграет последнее. Один нечитаемый кадр не останавливает остальные.
  */
 final class StampPhotos implements ShouldQueue
 {
@@ -36,7 +38,11 @@ final class StampPhotos implements ShouldQueue
             return;
         }
         foreach ($model->photos() as $media) {
-            $model->share_locked ? $stamp($media) : $unstamp($media);
+            try {
+                $model->share_locked ? $stamp($media) : $unstamp($media);
+            } catch (Throwable $e) {
+                Log::warning('Водяной знак: кадр пропущен', ['media' => $media->id, 'error' => $e->getMessage()]);
+            }
         }
     }
 }

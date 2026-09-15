@@ -22,7 +22,7 @@ final class StampPhoto
         if ($media->getCustomProperty('watermarked', false) || ! is_file($media->getPath())) {
             return;
         }
-        $clean = Watermark::cleanPath($media->id);
+        $clean = Watermark::cleanPath($media);
         if (! is_file($clean)) {
             @mkdir(dirname($clean), 0775, true);
             copy($media->getPath(), $clean);

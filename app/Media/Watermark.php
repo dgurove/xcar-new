@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Storage;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
 use RuntimeException;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * Водяной знак на кадре оффера с запретом шеринга: горизонтальный логотип
@@ -32,14 +33,15 @@ final class Watermark
 
     public const QUALITY = 80;
 
-    public static function cleanPath(int $mediaId): string
+    /** Чистая копия — с родным расширением: кроме webp из PhotoIngest на проде есть jpg со старого сайта. */
+    public static function cleanPath(Media $media): string
     {
-        return Storage::disk('private')->path("clean/{$mediaId}.webp");
+        return Storage::disk('private')->path("clean/{$media->id}.".strtolower(pathinfo($media->file_name, PATHINFO_EXTENSION) ?: 'webp'));
     }
 
     public static function apply(string $path, int $seed): void
     {
-        $photo = @imagecreatefromwebp($path);
+        $photo = @imagecreatefromstring((string) file_get_contents($path));
         if ($photo === false) {
             throw new RuntimeException("Кадр не читается: {$path}");
         }
@@ -86,7 +88,11 @@ final class Watermark
         imagealphablending($photo, true);
         imagecopy($photo, $rotated, 0, 0, intdiv(imagesx($rotated) - $w, 2), intdiv(imagesy($rotated) - $h, 2), $w, $h);
 
-        $ok = imagewebp($photo, $path, self::QUALITY);
+        $ok = match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'png' => imagepng($photo, $path),
+            'jpg', 'jpeg' => imagejpeg($photo, $path, 92),
+            default => imagewebp($photo, $path, self::QUALITY),
+        };
         if (! $ok) {
             throw new RuntimeException("Кадр не записался: {$path}");
         }

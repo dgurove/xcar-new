@@ -13,7 +13,7 @@ final class UnstampPhoto
 
     public function __invoke(Media $media): void
     {
-        $clean = Watermark::cleanPath($media->id);
+        $clean = Watermark::cleanPath($media);
         if (! $media->getCustomProperty('watermarked', false) || ! is_file($clean)) {
             return;
         }
