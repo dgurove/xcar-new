@@ -43,37 +43,34 @@
             <x-offer.deal-box :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat" :can-chat="$canChat"/>
 
             @if ($user?->isManager() && $offer->state->isPublic())
-                {{-- Менеджер: кому из его покупателей открыто и кто проявил интерес; «Показать…» — шторка с чипами. --}}
-                <section class="box" data-controller="sheet" data-action="show:open@window->sheet#open">
-                    <div class="flex items-center justify-between gap-3">
-                        <h2 class="text-lg">Покупатели</h2>
-                        <button type="button" class="btn btn-s btn-accent rounded-full" data-action="sheet#open"><x-ui.icon name="users" class="size-4"/> Показать…</button>
-                    </div>
+                {{-- Менеджер: кому из его покупателей открыто (чип — и есть кнопка «закрыть», с подтверждением)
+                     и кто проявил интерес. На телефоне — после цены и характеристик, в правой колонке — вторым. --}}
+                <section class="box order-3 lg:order-2" data-controller="sheet" data-action="show:open@window->sheet#open">
+                    <h2 class="text-lg">Покупатели</h2>
                     @if ($showings->isEmpty())
-                        <p class="mt-3 text-sm text-ink-muted">Никому из ваших покупателей пока не открыто.</p>
+                        <button type="button" class="btn btn-accent mt-4 w-full" data-action="sheet#open"><x-ui.icon name="users" class="size-5"/> Показать покупателям</button>
                     @else
                         <div class="mt-3 flex flex-wrap gap-1.5">
                             @foreach ($showings as $s)
-                                @if ($s->group)<span class="chip"><x-ui.icon name="users" class="size-4"/>{{ $s->group->name }}</span>
-                                @elseif ($s->user)<x-ui.person :user="$s->user"/>@endif
+                                @php $who = $s->group ? 'группы «'.$s->group->name.'»' : $s->user?->shortName(); @endphp
+                                <form method="post" action="/lk/pokazy" class="contents" data-turbo-confirm="Закрыть для {{ $who }}?" data-turbo-confirm-label="Закрыть" data-turbo-confirm-text="{{ $offer->titleWithYear() }} пропадёт из ленты.">
+                                    @csrf @method('delete')
+                                    <input type="hidden" name="offer" value="{{ $offer->id }}">
+                                    <input type="hidden" name="{{ $s->group ? 'group' : 'user' }}" value="{{ $s->group_id ?? $s->user_id }}">
+                                    @if ($s->group)
+                                        <button type="submit" class="chip"><x-ui.icon name="users" class="size-4"/>{{ $s->group->name }}<x-ui.icon name="x" class="size-3.5 text-ink-dim"/></button>
+                                    @elseif ($s->user)
+                                        <button type="submit" class="chip person"><x-ui.avatar :user="$s->user" :size="20"/><span class="truncate">{{ $s->user->shortName() }}</span><x-ui.icon name="x" class="size-3.5 text-ink-dim"/></button>
+                                    @endif
+                                </form>
                             @endforeach
+                            <button type="button" class="chip rounded-full !py-0.5 text-accent-text" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/> Показать…</button>
                         </div>
                     @endif
                     @if ($buyerInterests->isNotEmpty())
                         <div class="mt-4 flex flex-col gap-2">
                             @foreach ($buyerInterests as $interest)
-                                <div class="box-nested">
-                                    <div class="flex flex-wrap items-center gap-1.5">
-                                        <x-ui.person :user="$interest->user" full/>
-                                        @if ($interest->user->phone)<a href="tel:+{{ $interest->user->phone }}" class="tag nums">{{ $interest->user->phoneFormatted() }}</a>@endif
-                                        <span class="tag">{{ $interest->state === \App\Offers\InterestState::New ? 'интерес' : $interest->state->label() }}</span>
-                                        <span class="tag nums">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span>
-                                    </div>
-                                    @if ($interest->comment)<p class="mt-1.5 text-sm">{{ $interest->comment }}</p>@endif
-                                    @if ($interest->state === \App\Offers\InterestState::New)
-                                        <form method="post" action="/lk/interes/{{ $interest->id }}" class="mt-2">@csrf<input type="hidden" name="state" value="contacted"><x-ui.button size="sm" variant="secondary">Связались</x-ui.button></form>
-                                    @endif
-                                </div>
+                                @include('cabinet.buyers.interest-row', ['interest' => $interest, 'person' => true, 'car' => false])
                             @endforeach
                         </div>
                     @endif
@@ -86,11 +83,11 @@
             @endif
 
             @if ($dealInSheet && $price->shown())
-                <div class="nums text-[26px] leading-none lg:hidden" data-controller="fit">{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
+                <div class="nums order-1 text-[26px] leading-none lg:hidden" data-controller="fit">{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
             @endif
 
             @if ($facts)
-                <section class="box">
+                <section class="box order-2 lg:order-3">
                     <h2 class="text-lg">Характеристики</h2>
                     <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
                         @foreach ($facts as $label => $value)

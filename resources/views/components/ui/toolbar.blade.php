@@ -4,7 +4,8 @@
      справа, у фильтров: слева остаются одни пилюли.
      sorts: ключ → [подпись, есть ли направление] или ключ → подпись;
      pills: ключ → подпись; counts: ключ → число; hidden: поля, которые переживают фильтр;
-     pillDefault=false — первая пилюля («Все») не выделяется: зелёное только у сужающего фильтра. --}}
+     pillDefault=false — первая пилюля («Все») не выделяется: зелёное только у сужающего фильтра;
+     слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»). --}}
 @props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'sortSide' => 'left', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'counts' => [], 'hidden' => [], 'name' => 'list', 'action' => null])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
@@ -60,6 +61,7 @@
                         {{ $label }}@if (!empty($counts[$key])) <span class="nums opacity-70">{{ $counts[$key] }}</span>@endif
                     </a>
                 @endforeach
+                {{ $pillsExtra ?? '' }}
             </div>
         </div>
     @else

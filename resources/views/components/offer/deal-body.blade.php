@@ -53,11 +53,16 @@
             </form>
         @endif
         @if ($manager)
-            {{-- Покупатель видит своего менеджера: имя и телефон под рукой. --}}
-            <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4">
-                <x-ui.person :user="$manager" full/>
-                @if ($manager->phone)<a href="tel:+{{ $manager->phone }}" class="tag nums">{{ $manager->phoneFormatted() }}</a>@endif
-            </div>
+            {{-- Покупатель видит своего менеджера: строка-контакт, с телефоном — вся строка звонит. --}}
+            @php $tag = $manager->phone ? 'a' : 'div'; @endphp
+            <{{ $tag }} @if ($manager->phone) href="tel:+{{ $manager->phone }}" @endif class="row mt-5 bg-surface-2">
+                <x-ui.avatar :user="$manager" :size="40"/>
+                <span class="min-w-0 flex-1">
+                    <span class="block truncate">{{ $manager->name }}</span>
+                    @if ($manager->phone)<span class="row-sub"><span class="nums">{{ $manager->phoneFormatted() }}</span></span>@endif
+                </span>
+                @if ($manager->phone)<span class="btn btn-s btn-quiet btn-round"><x-ui.icon name="phone" class="size-5"/></span>@endif
+            </{{ $tag }}>
         @endif
     @endif
 

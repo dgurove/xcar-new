@@ -8,15 +8,19 @@
         @endforeach
     </div>
     @if ($manager ?? null)
-        {{-- Покупатель: кто его менеджер и как позвонить. --}}
-        <div class="box mt-4 flex flex-wrap items-center gap-4">
-            <x-ui.avatar :user="$manager" :size="48" class="text-lg"/>
-            <div class="min-w-0 flex-1">
-                <div class="font-medium">{{ $manager->name }}</div>
-                <div class="text-sm text-ink-muted">ваш менеджер</div>
-            </div>
-            @if ($manager->phone)<a href="tel:+{{ $manager->phone }}" class="btn btn-s btn-quiet rounded-full">{{ $manager->phoneFormatted() }}</a>@endif
-        </div>
+        {{-- Покупатель: его менеджер строкой-контактом; с телефоном вся строка звонит. --}}
+        <section class="mt-8">
+            <h2 class="text-xl">Менеджер</h2>
+            @php $tag = $manager->phone ? 'a' : 'div'; @endphp
+            <{{ $tag }} @if ($manager->phone) href="tel:+{{ $manager->phone }}" @endif class="row mt-4 transition-colors hover:bg-hover">
+                <x-ui.avatar :user="$manager" :size="48" class="text-lg"/>
+                <span class="min-w-0 flex-1">
+                    <span class="block truncate font-medium">{{ $manager->name }}</span>
+                    @if ($manager->phone)<span class="row-sub"><span class="nums">{{ $manager->phoneFormatted() }}</span></span>@endif
+                </span>
+                @if ($manager->phone)<span class="btn btn-s btn-quiet btn-round"><x-ui.icon name="phone" class="size-5"/></span>@endif
+            </{{ $tag }}>
+        </section>
     @endif
     <div class="mt-8 flex flex-wrap gap-2">
         <a href="{{ $button[0] }}" class="btn btn-accent">{{ $button[1] }}</a>

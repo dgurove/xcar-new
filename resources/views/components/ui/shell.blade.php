@@ -25,8 +25,9 @@
         @else
             <div {{ $attributes->merge(['class' => 'container-site pt-6 pb-10 sm:pt-8 sm:pb-14'.($narrow ? ' max-w-3xl' : '')]) }}>
                 @if ($site && !$installed)<x-ui.crumbs :trail="$trail"/>@endif
-                @if ($heading || isset($actions))
-                    <div class="has-back mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+                @if ($heading || isset($actions) || $back)
+                    {{-- Без заголовка и действий ряд нужен только ради круглой «‹» на десктопе: на телефоне она в шапке. --}}
+                    <div @class(['has-back mb-6 flex-wrap items-center gap-x-4 gap-y-2', 'flex' => $heading || isset($actions), 'hidden sm:flex' => !$heading && !isset($actions)])>
                         @if ($back)<x-ui.back :back="$back"/>@endif
                         @if ($heading)<h1 class="text-[28px] sm:text-[34px]">{{ $heading }}@if ($count !== null) <span class="nums ml-2 text-lg font-normal text-ink-dim">{{ $count }}</span>@endif</h1>@endif
                         @isset($actions)<div class="flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2">{{ $actions }}</div>@endisset

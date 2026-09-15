@@ -20,7 +20,7 @@ class ShowingController
     {
         $me = $request->user();
         $ids = collect($request->input('offers', []))->map(fn ($v) => (int) $v)->filter()->unique()->take(100)->all();
-        $offers = Offer::with(['brand', 'model'])->whereIn('id', $ids)->where('state', OfferState::Open)->visibleTo($me)->get();
+        $offers = Offer::with(['brand', 'model', 'media'])->whereIn('id', $ids)->where('state', OfferState::Open)->visibleTo($me)->get();
         abort_if($offers->isEmpty(), 404);
         $single = $offers->count() === 1 ? $offers->first() : null;
         $current = $single ? Showing::where('offer_id', $single->id)->where('manager_id', $me->id)->get() : collect();

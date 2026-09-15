@@ -66,7 +66,7 @@
 
     <div class="card-extra">
         <x-offer.tags :offer="$offer"/>
-        @if ($seen !== null)<span class="tag {{ $seen ? '' : 'opacity-60' }}">{{ $seen ? 'видят '.$seen : 'никому не открыто' }}</span>@endif
+        @if ($seen)<span class="tag nums">видят {{ $seen }}</span>@endif
         @if ($offer->settlement)<span class="text-sm text-ink-dim">{{ $offer->settlement->name }}</span>@endif
         <span class="card-aside">
             @if ($prices || $admin)
@@ -83,7 +83,8 @@
     @unless ($admin)
     <div class="card-action">
         @if ($user?->isBuyer())
-            <a href="{{ $href }}" class="btn btn-s {{ $myInterest ? 'btn-quiet' : 'btn-accent' }} w-full whitespace-nowrap">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
+            {{-- Кнопка ведёт на страницу и сразу открывает форму интереса (?interes=1). --}}
+            <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-s {{ $myInterest ? 'btn-quiet' : 'btn-accent' }} w-full whitespace-nowrap">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
         @elseif ($gallery || !$prices)
             <a href="{{ $href }}" class="btn btn-s {{ $offer->state->acceptsInterest() ? 'btn-accent' : 'btn-quiet' }} w-full whitespace-nowrap">{{ $gallery ? 'Проявить интерес' : 'Узнать цену' }}</a>
         @elseif ($canBid)

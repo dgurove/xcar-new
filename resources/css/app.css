@@ -304,6 +304,23 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .pick-card--done { @apply opacity-60; }
   .pick-card--done input { cursor: default; }
 
+  /* Ряд круглых действий с подписью (страница человека: позвонить, написать, пароль) —
+     подпись у кнопки, как у таб-бара. Лайм — у одной. */
+  .acts { @apply flex flex-wrap justify-center gap-5 sm:justify-start; }
+  .act { @apply flex flex-col items-center gap-1.5 text-xs text-ink-muted; }
+  .act .btn { width: 3rem; height: 3rem; padding: 0; }
+  .act .btn svg { @apply size-[22px]; }
+
+  /* В шторке и в карточке строки лежат на белом — берут второй фон. */
+  .sheet .row, .box .row { @apply bg-surface-2; }
+
+  /* Строка-выбор: вся строка — цель, галка справа, отмеченная — светлый лайм. */
+  .row-check { @apply cursor-pointer; }
+  .row-check .check { @apply ml-auto shrink-0; }
+  .row-check:has(input:checked) { @apply bg-accent-soft; }
+  .row-check:has(input:disabled) { @apply cursor-default opacity-60; }
+  .row-sub { @apply mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted; }
+
   /* Режим выбора в ленте менеджера: кружок на каждой карточке, отмеченная — с обводкой.
      Чекбокс живёт в карточке всегда (живая замена карточки его не теряет), виден только в режиме. */
   .card-check { display: none; position: absolute; left: .75rem; top: .75rem; z-index: 2; }

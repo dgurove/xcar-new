@@ -45,6 +45,7 @@ class BuyerController
             'counts' => ['' => $me->buyers()->count()] + $groups->mapWithKeys(fn ($g) => [(string) $g->id => $g->members_count])->all(),
             'seen' => $seen,
             'interests' => $interests,
+            'invites' => $me->invites()->count(),
         ]);
     }
 

@@ -14,19 +14,17 @@
                 <div><span class="block text-sm text-ink-dim">Телефон</span><p class="nums mt-1.5 font-normal">{{ $user->phoneFormatted() }}</p></div>
             @endif
         </div>
-        <div class="mt-4">
-            <span class="block text-sm text-ink-dim">Аватар</span>
-            <div class="mt-1.5 flex items-center gap-4">
-                <x-ui.avatar :user="$user" :size="64" class="text-xl"/>
-                <div class="flex flex-col gap-2">
-                    <input type="file" name="avatar" accept="image/*" class="block w-full text-sm text-ink-dim file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-surface-3 file:px-4 file:py-2 file:text-sm file:text-ink hover:file:bg-line">
-                    @if ($user->avatarUrl())<x-ui.check name="remove_avatar" value="1">Удалить аватар</x-ui.check>@endif
-                </div>
-            </div>
-            @error('avatar')<p class="field-error mt-1">{{ $message }}</p>@enderror
+        {{-- Аватар — кружок с камерой: нажатие открывает выбор файла, фото сразу встаёт в кружок. --}}
+        <div class="mt-5 flex flex-wrap items-center gap-4" data-controller="avatar">
+            <button type="button" class="relative shrink-0" data-action="avatar#pick" aria-label="Сменить фото">
+                <x-ui.avatar :user="$user" :size="72" class="text-2xl" data-avatar-target="circle"/>
+                <span class="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full bg-accent text-white ring-2 ring-surface"><x-ui.icon name="camera" class="size-4"/></span>
+            </button>
+            <input type="file" name="avatar" accept="image/*" class="sr-only" tabindex="-1" data-avatar-target="input" data-action="change->avatar#preview">
+            @if ($user->avatarUrl())<x-ui.check name="remove_avatar" value="1">Удалить фото</x-ui.check>@endif
+            @error('avatar')<p class="field-error w-full">{{ $message }}</p>@enderror
         </div>
-        <div class="mt-6 flex items-center justify-between gap-3">
-            <x-ui.pill tone="plain">{{ $user->role->label() }}</x-ui.pill>
+        <div class="mt-6 flex justify-end">
             <x-ui.button>Сохранить</x-ui.button>
         </div>
     </form>

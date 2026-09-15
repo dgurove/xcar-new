@@ -8,20 +8,35 @@
         $counts['purchases'] ? ['Закупки', $counts['purchases'], '/zakupki', false] : null,
     ]);
 @endphp
-@php $selecting = $user?->isManager() && !$gallery; @endphp
+@php
+    $selecting = $user?->isManager() && !$gallery;
+    // Покупателю — лента без каталожной обвязки: один заголовок, тулбар (поиск и сортировка)
+    // только когда предложений больше дюжины, ничего лишнего.
+    $buyer = $user?->isBuyer() ?? false;
+    $simple = $buyer && $counts['offers'] <= 12 && !$filters;
+@endphp
 <x-ui.shell :title="$gallery ? 'Скоро в продаже' : ($hero ? null : 'Предложения')" :heading="false" :over-hero="$hero" :trail="$trail">
     @if ($hero)
         <x-ui.hero :count="$counts['offers']" :label="\App\Support\Plural::of($counts['offers'], ['предложение доступно', 'предложения доступно', 'предложений доступно'])" href="#catalog-section"/>
     @endif
 
     <div id="catalog-section" @class(['over-hero' => $hero]) @if ($selecting) data-controller="selection" data-selection-url-value="/lk/pokazy/novyy" @endif>
-        <div @class(['container-site pb-10 sm:pb-14', 'pt-10 sm:pt-14' => $hero])>
+        {{-- Без первого экрана контейнер уже даёт шелл — второй удваивал поля. --}}
+        <div @class(['container-site pt-10 pb-10 sm:pt-14 sm:pb-14' => $hero])>
             <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
                 @foreach ($sections as [$label, $count, $href, $current])
                     <x-ui.section-title :count="$count" :href="$current ? null : $href" :current="$current" :level="$current ? 'h1' : 'h2'">{{ $label }}</x-ui.section-title>
                 @endforeach
             </div>
 
+            @if ($simple)
+            @elseif ($buyer)
+            <x-ui.toolbar class="mt-5" :sorts="$sorts" :sort="$sort" sort-side="right" :hidden="[\App\Support\ListView::PARAM => $view]" name="catalog">
+                <x-slot:filters>
+                    <input name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Марка, модель" class="field-input field-s">
+                </x-slot:filters>
+            </x-ui.toolbar>
+            @else
             <x-ui.toolbar class="mt-5" :sorts="$sorts" :sort="$sort" :pills="$views" :pill="$filters['view'] ?? ''" :hidden="[\App\Support\ListView::PARAM => $view]" :name="$gallery ? 'gallery' : 'catalog'">
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty())<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
@@ -45,18 +60,24 @@
                     @endif
                 </x-slot:filters>
             </x-ui.toolbar>
+            @endif
 
             <div class="mt-6">
                 @if ($offers->isEmpty())
-                    @if ($manager && !$filters)
-                        {{-- Покупателю пока ничего не открыли: кто его менеджер и как с ним связаться. --}}
-                        <div class="empty" id="catalog-empty">
-                            <p>{{ $manager->shortName() }} пока ничего вам не открыл. Как только откроет — предложения появятся здесь, а вам придёт уведомление.</p>
-                            <div class="mt-5 flex flex-wrap items-center justify-center gap-2">
-                                <x-ui.person :user="$manager" full/>
-                                @if ($manager->phone)<a href="tel:+{{ $manager->phone }}" class="btn btn-s btn-quiet rounded-full">Позвонить</a>@endif
-                            </div>
-                        </div>
+                    @if ($buyer && !$filters)
+                        {{-- Покупателю пока ничего не открыли: одна фраза и контакт менеджера строкой. --}}
+                        <x-ui.empty id="catalog-empty" class="!py-16">{{ $manager ? $manager->shortName().' пока ничего вам не открыл.' : 'Вам пока ничего не открыли.' }}</x-ui.empty>
+                        @if ($manager)
+                            @php $tag = $manager->phone ? 'a' : 'div'; @endphp
+                            <{{ $tag }} @if ($manager->phone) href="tel:+{{ $manager->phone }}" @endif class="row mx-auto mt-4 max-w-sm">
+                                <x-ui.avatar :user="$manager" :size="44"/>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate">{{ $manager->name }}</span>
+                                    @if ($manager->phone)<span class="row-sub"><span class="nums">{{ $manager->phoneFormatted() }}</span></span>@endif
+                                </span>
+                                @if ($manager->phone)<span class="btn btn-s btn-quiet btn-round"><x-ui.icon name="phone" class="size-5"/></span>@endif
+                            </{{ $tag }}>
+                        @endif
                     @else
                     <x-ui.empty :href="$gallery ? '/galereya' : '/'" :link="$filters ? 'Сбросить фильтры' : null" id="catalog-empty">
                         @if ($filters) По этим условиям ничего нет. @elseif ($gallery) Пока пусто. @else Предложений пока нет. @endif

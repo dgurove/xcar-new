@@ -3,5 +3,5 @@
 @props(['id' => null])
 <div {{ $attributes->merge(['class' => 'swipe']) }} @if ($id) id="{{ $id }}" @endif data-controller="swipe" data-action="scroll->swipe#scrolled turbo:submit-end->swipe#close">
     <div class="swipe-body">{{ $slot }}</div>
-    @isset($actions)<div class="swipe-actions">{{ $actions }}</div>@endisset
+    @if (isset($actions) && !$actions->isEmpty())<div class="swipe-actions">{{ $actions }}</div>@endif
 </div>
