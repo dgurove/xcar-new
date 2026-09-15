@@ -9,6 +9,7 @@ use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Регистрация по пригласительной ссылке — единственная на сайте. Покупатель
@@ -45,8 +46,12 @@ final class AcceptInvite
         });
 
         if ($avatar) {
-            // Аватар живёт в 128 px: исходник с телефона не нужен.
-            $this->photos->fromUpload($user, 'avatar', $avatar, max: 512);
+            // Аватар живёт в 128 px: исходник с телефона не нужен. Не вышло — человек уже в xcar, фото добавит в профиле.
+            try {
+                $this->photos->fromUpload($user, 'avatar', $avatar, max: 512);
+            } catch (\Throwable $e) {
+                Log::warning('Аватар при регистрации не принят', ['user' => $user->id, 'error' => $e->getMessage()]);
+            }
         }
 
         BuyerJoined::dispatch($user, $invite);

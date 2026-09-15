@@ -13,9 +13,6 @@ Route::middleware('guest')->group(function () {
     Route::view('/registraciya', 'auth.invite-only')->name('register');
     Route::get('/parol', [PasswordController::class, 'forgot'])->name('password.request');
     Route::post('/parol', [PasswordController::class, 'send'])->middleware('throttle:5,1');
-    // Ссылка на новый пароль от менеджера или админа — до почтовой, иначе {token} её съест.
-    Route::get('/parol/ssylka/{token}', [PasswordController::class, 'link']);
-    Route::post('/parol/ssylka/{token}', [PasswordController::class, 'setByLink'])->middleware('throttle:5,1');
     Route::get('/parol/{token}', [PasswordController::class, 'reset'])->name('password.reset');
     Route::post('/parol/novyj', [PasswordController::class, 'update']);
 
@@ -29,6 +26,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/passkey/register', [PasskeyController::class, 'register'])->middleware('throttle:10,1');
     Route::delete('/passkey/{id}', [PasskeyController::class, 'destroy']);
 });
+
+// Ссылка на новый пароль от менеджера или админа: вошедшего контроллер сам выводит — ссылка должна сработать с любого телефона.
+Route::get('/parol/ssylka/{token}', [PasswordController::class, 'link'])->middleware('throttle:30,1');
+Route::post('/parol/ssylka/{token}', [PasswordController::class, 'setByLink'])->middleware('throttle:5,1');
 
 // Пригласительная ссылка: и гостю, и вошедшему — контроллер сам решает, что показать.
 Route::get('/i/{invite}', [InviteController::class, 'show'])->middleware('throttle:30,1');

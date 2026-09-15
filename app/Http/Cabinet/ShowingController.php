@@ -66,7 +66,6 @@ class ShowingController
             'groups' => ['nullable', 'array'],
             'groups.*' => ['integer'],
             'sync' => ['nullable', 'boolean'],
-            'back' => ['nullable', 'string', 'max:300'],
         ]);
         $users = array_map('intval', $data['users'] ?? []);
         $groups = array_map('intval', $data['groups'] ?? []);
@@ -77,9 +76,11 @@ class ShowingController
             : ($result['buyers']
                 ? 'Открыто '.$result['buyers'].' '.Plural::of($result['buyers'], ['покупателю', 'покупателям', 'покупателям'])
                 : 'Уже было открыто');
-        $back = $data['back'] ?? null;
+        // Назад — только на свой путь: с одним слэшем в начале (не `//host`) и разумной длины, иначе обычный back().
+        $back = (string) $request->input('back', '');
+        $own = $back !== '' && strlen($back) <= 2000 && preg_match('#^/(?!/)#', $back) === 1;
 
-        return ($back && str_starts_with($back, '/') ? redirect($back) : back())->with('toast', $toast);
+        return ($own ? redirect($back) : back())->with('toast', $toast);
     }
 
     public function destroy(Request $request, HideOffers $hide)

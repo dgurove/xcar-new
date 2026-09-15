@@ -3,6 +3,9 @@
 namespace App\Users\Actions;
 
 use App\Notifications\BuyerJoinedNotice;
+use App\Offers\Events\OffersHidden;
+use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
@@ -20,11 +23,16 @@ final class TransferBuyer
             return $buyer;
         }
 
+        // Что человек видел до передачи — эти карточки должны уйти из его открытой ленты.
+        $seen = Offer::where('state', OfferState::Open)->visibleTo($buyer)->pluck('number')->all();
         DB::transaction(function () use ($buyer, $to) {
             Showing::where('user_id', $buyer->id)->delete();
             $buyer->groups()->detach();
             $buyer->forceFill(['manager_id' => $to->id, 'invite_id' => null])->save();
         });
+        if ($seen) {
+            OffersHidden::dispatch($to, [$buyer->id => $seen]);
+        }
 
         $to->notify(new BuyerJoinedNotice($buyer));
 

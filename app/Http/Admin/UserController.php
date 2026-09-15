@@ -122,7 +122,11 @@ class UserController
 
     private function data(Request $request, ?User $user = null): array
     {
-        $request->merge(['phone' => $request->filled('phone') ? Phone::normalize($request->input('phone')) : null]);
+        // Логин хранится и проверяется на уникальность строчными — приводим до валидации.
+        $request->merge([
+            'phone' => $request->filled('phone') ? Phone::normalize($request->input('phone')) : null,
+            'login' => mb_strtolower(trim((string) $request->input('login'))) ?: null,
+        ]);
         // У себя роль не меняется — селект отключён и в запрос не попадает.
         $self = $user?->is($request->user()) ?? false;
         $data = $request->validate([
@@ -139,7 +143,7 @@ class UserController
         }
         $data['email'] = $data['email'] ?: null;
         $data['phone'] = $data['phone'] ?: null;
-        $data['login'] = mb_strtolower(trim((string) ($data['login'] ?? ''))) ?: null;
+        $data['login'] = $data['login'] ?? null;
         $data['role'] = $self ? Role::Admin : Role::from($data['role']);
         $data['access'] = $request->boolean('park') ? [Section::Park->value] : [];
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);

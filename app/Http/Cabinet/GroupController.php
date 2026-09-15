@@ -2,6 +2,7 @@
 
 namespace App\Http\Cabinet;
 
+use App\Offers\Actions\HideOffers;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
@@ -54,9 +55,12 @@ class GroupController
         return back()->with('toast', 'Состав сохранён');
     }
 
-    public function destroy(Request $request, BuyerGroup $group)
+    public function destroy(Request $request, BuyerGroup $group, HideOffers $hide)
     {
-        abort_unless($group->manager_id === $request->user()->id, 404);
+        $me = $request->user();
+        abort_unless($group->manager_id === $me->id, 404);
+        // Сначала снимаем показы группы действием — покупатели получат «карточка ушла», потом саму группу.
+        $hide($me, Showing::where('group_id', $group->id)->pluck('offer_id')->all(), null, $group);
         $group->delete();
 
         return redirect('/lk/pokupateli')->with('toast', 'Группа удалена');

@@ -54,9 +54,15 @@ class PasswordController
     // -------------------------------------------------------------- ссылка от менеджера или админа
 
     /** Экран нового пароля по ссылке, которую выдал человек; сгоревшая — та же страница без формы. */
-    public function link(string $token)
+    public function link(Request $request, string $token)
     {
         $link = PasswordLink::byToken($token);
+        // Открыли под чужой (или своей старой) сессией — выходим: ссылка про новый вход.
+        if ($request->user() && $link?->isLive()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return view('auth.password-link', ['token' => $token, 'live' => $link?->isLive() ?? false, 'user' => $link?->user]);
     }

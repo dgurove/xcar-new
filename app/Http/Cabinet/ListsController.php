@@ -14,7 +14,7 @@ class ListsController
         // Избранное — только то, что человеку и сейчас видно: закрытое менеджером покупателю не показываем.
         $offers = Offer::with(['brand', 'model', 'media', 'favorites'])
             ->whereHas('favorites', fn ($f) => $f->where('user_id', $request->user()->id))
-            ->when($request->user()->isBuyer(), fn ($q) => $q->visibleTo($request->user()))
+            ->when($request->user()->isBuyer(), fn ($q) => $q->visibleTo($request->user())->with(['interests' => fn ($i) => $i->where('user_id', $request->user()->id)]))
             ->latest()->paginate(24);
 
         return view('cabinet.favorites', ['offers' => $offers]);
