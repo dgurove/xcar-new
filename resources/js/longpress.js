@@ -38,6 +38,7 @@ function open(card) {
     const link = card.querySelector('.card-title a, a.card-media, .card-strip');
     const favorite = card.querySelector('form[action$="/izbrannoe"] button');
     const chat = card.querySelector('a[aria-label="Написать в чат"]');
+    const select = card.querySelector('.card-check');
     const title = card.querySelector('.card-title')?.textContent.trim() || '';
     if (!link) return;
     document.getElementById('card-menu')?.remove();
@@ -53,6 +54,7 @@ function open(card) {
             () => navigator.share({ title, url: new URL(link.href, location.href).href }).catch(() => {}),
         ],
         chat && ['Написать в чат', () => window.Turbo.visit(chat.href)],
+        select && ['Выбрать несколько', () => { window.dispatchEvent(new CustomEvent('selection:start', { detail: { card } })); }],
     ].filter(Boolean);
     d.innerHTML = `<h2 class="mb-4 text-lg"></h2><div class="flex flex-col gap-2"></div>`;
     d.querySelector('h2').textContent = title;

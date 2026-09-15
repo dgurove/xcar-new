@@ -12,6 +12,9 @@
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $hasMedia = $photos->isNotEmpty();
     $canBid = !$admin && ($user?->role->canBid() ?? false) && $offer->bidsOpen();
+    // Покупатель: интерес уже отмечен? Каталог грузит его интерес одним запросом, иначе — точечно.
+    $myInterest = !$admin && $user?->isBuyer() ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
+    $seen = !$admin && $user?->isManager() && !$gallery ? \App\Offers\Showing::remembered($offer->id) : null;
     $sizes = \App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request()));
     // Первые две карточки страницы — кадр с высоким приоритетом (счётчик на запросе).
     $nth = request()->attributes->get('card.nth', 0);
@@ -40,6 +43,10 @@
     @else
         <a href="{{ $href }}" class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
     @endif
+    @if (!$admin && !$gallery && $user?->isManager())
+        {{-- Кружок режима выбора: в разметке всегда, виден только когда лента в режиме (selection). --}}
+        <label class="card-check"><input type="checkbox" value="{{ $offer->id }}" aria-label="Выбрать"><span><x-ui.icon name="check" class="size-4"/></span></label>
+    @endif
 
     <div class="card-body">
         <div class="card-title">
@@ -58,6 +65,7 @@
 
     <div class="card-extra">
         <x-offer.tags :offer="$offer"/>
+        @if ($seen !== null)<span class="tag {{ $seen ? '' : 'opacity-60' }}">{{ $seen ? 'видят '.$seen : 'никому не открыто' }}</span>@endif
         @if ($offer->settlement)<span class="text-sm text-ink-dim">{{ $offer->settlement->name }}</span>@endif
         <span class="card-aside">
             @if ($prices || $admin)
@@ -73,14 +81,16 @@
 
     @unless ($admin)
     <div class="card-action">
-        @if ($gallery || !$prices)
+        @if ($user?->isBuyer())
+            <a href="{{ $href }}" class="btn btn-s {{ $myInterest ? 'btn-quiet' : 'btn-accent' }} w-full whitespace-nowrap">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
+        @elseif ($gallery || !$prices)
             <a href="{{ $href }}" class="btn btn-s {{ $offer->state->acceptsInterest() ? 'btn-accent' : 'btn-quiet' }} w-full whitespace-nowrap">{{ $gallery ? 'Проявить интерес' : 'Узнать цену' }}</a>
         @elseif ($canBid)
             <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Подтвердить</a>
         @else
             <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Открыть</a>
         @endif
-        @if (!$gallery && $user && !$user->isStaff() && $offer->chat_enabled)
+        @if (!$gallery && $user?->role->canChat() && $offer->chat_enabled)
             <a href="{{ $href }}{{ str_contains($href, '?') ? '&' : '?' }}chat=1" class="btn btn-s btn-quiet btn-round" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-5"/></a>
         @endif
     </div>

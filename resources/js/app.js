@@ -104,6 +104,23 @@ function pressFeedback() {
         closeSheet(dialog).then(() => form.requestSubmit(submitter ?? undefined));
     }, true);
     document.addEventListener('turbo:submit-end', (event) => event.detail.formSubmission.submitter?.removeAttribute('aria-busy'));
+
+    // POST из шторки: ответ — редирект на тот же адрес, Turbo делает morph, а
+    // open у диалога морф бережёт — шторка оставалась висеть. Успешная отправка
+    // закрывает её, кроме случая, когда сервер снова просит её открыть (ошибки формы).
+    let submittedSheet = null;
+    document.addEventListener('turbo:submit-end', (event) => {
+        const form = event.target;
+        const dialog = form.closest?.('dialog[open]');
+        if (event.detail.success && dialog?.matches(':modal') && (form.method || 'get').toLowerCase() !== 'get') submittedSheet = dialog;
+    });
+    document.addEventListener('turbo:before-render', (event) => {
+        const dialog = submittedSheet;
+        submittedSheet = null;
+        if (!dialog?.open) return;
+        const fresh = dialog.id ? event.detail.newBody?.querySelector(`#${CSS.escape(dialog.id)}`) : null;
+        if (fresh?.dataset.sheetOpenValue !== 'true') closeSheet(dialog);
+    });
 }
 
 // Android: долгое нажатие по фото и хрому не открывает меню Chrome «Открыть в новой вкладке».

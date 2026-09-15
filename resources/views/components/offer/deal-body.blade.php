@@ -5,9 +5,11 @@
     $gallery = $offer->isGallery();
     $price = \App\Offers\PriceView::for($offer, $user);
     $prices = $price->visible;
-    $left = $gallery ? null : $offer->secondsLeft();
+    // Срок приёма — тем, кто подтверждает; покупателю таймер ни о чём.
+    $left = $gallery || !($user?->role->canBid() ?? false) ? null : $offer->secondsLeft();
     $canBid = ($user?->role->canBid() ?? false) && $offer->bidsOpen();
-    $wantsInterest = $user && !$user->isStaff() && ($gallery || !$prices) && $offer->state->acceptsInterest();
+    $wantsInterest = ($user?->role->canInterest() ?? false) && $offer->state->acceptsInterest();
+    $manager = $user?->isBuyer() ? $user->manager : null;
 @endphp
 @if ($inSheet)
     <div class="mb-2 flex justify-end lg:hidden"><button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>
@@ -26,7 +28,7 @@
         <span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт"></span>
     </div>
     <div class="mt-5 rounded-(--radius-l) bg-surface-2 px-4 py-3 text-sm text-ink-muted" hidden data-shows-when-closed>Приём подтверждений закрыт</div>
-@elseif (!$gallery && !$offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft)
+@elseif (!$gallery && ($user?->role->canBid() ?? false) && !$offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft)
     <div class="mt-5 rounded-(--radius-l) bg-surface-2 px-4 py-3 text-sm text-ink-muted">Приём подтверждений закрыт</div>
 @endif
 
@@ -37,13 +39,25 @@
         <div data-closes-with-timer><x-offer.bid-form :offer="$offer" :my-bid="$myBid"/></div>
     @elseif ($wantsInterest)
         @if ($myInterest)
-            <p class="flash flash-accent mt-6">{{ $gallery ? 'Сообщим, когда откроется приём' : ($myInterest->state === \App\Offers\InterestState::New ? 'Менеджер свяжется с Вами' : 'С Вами связались') }}</p>
+            <p class="flash flash-accent mt-6">{{ $gallery ? 'Сообщим, когда откроется приём' : ($myInterest->state === \App\Offers\InterestState::New ? ($manager ? $manager->shortName().' свяжется с вами' : 'Менеджер свяжется с Вами') : 'С Вами связались') }}</p>
+            @if ($myInterest->comment)<p class="mt-2 text-sm text-ink-muted">{{ $myInterest->comment }}</p>@endif
+            <form method="post" action="/offers/{{ $offer->number }}/interes" class="mt-3" data-turbo-confirm="Снять интерес?" data-turbo-confirm-label="Снять" data-turbo-confirm-text="{{ $manager?->shortName() ?? 'Менеджер' }} увидит, что вы передумали.">
+                @csrf @method('delete')
+                <button type="submit" class="btn btn-s btn-ghost w-full">Передумал</button>
+            </form>
         @else
             <form method="post" action="/offers/{{ $offer->number }}/interes" class="mt-6 flex flex-col gap-3">
                 @csrf
-                <textarea name="comment" rows="2" class="field-input !min-h-0 text-sm" placeholder="Что важно уточнить">{{ old('comment') }}</textarea>
-                <button type="submit" class="btn btn-accent w-full">{{ $gallery ? 'Проявить интерес' : 'Узнать цену' }}</button>
+                <textarea name="comment" rows="2" class="field-input !min-h-0 text-sm" placeholder="{{ $user->isBuyer() ? 'Пара слов менеджеру — необязательно' : 'Что важно уточнить' }}">{{ old('comment') }}</textarea>
+                <button type="submit" class="btn btn-accent w-full">{{ $gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену' }}</button>
             </form>
+        @endif
+        @if ($manager)
+            {{-- Покупатель видит своего менеджера: имя и телефон под рукой. --}}
+            <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4">
+                <x-ui.person :user="$manager" full/>
+                @if ($manager->phone)<a href="tel:+{{ $manager->phone }}" class="tag nums">{{ $manager->phoneFormatted() }}</a>@endif
+            </div>
         @endif
     @endif
 

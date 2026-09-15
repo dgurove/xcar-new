@@ -9,6 +9,8 @@
 @props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null, 'cache' => 'no-preview'])
 @php
     $heading = $heading === false ? null : ($heading ?? $title);
+    // Пустой слот (кабинет передаёт его всегда) — всё равно что нет.
+    if (isset($actions) && $actions->isEmpty()) { unset($actions); }
     $site = \App\Support\Surface::current() === \App\Support\Surface::Site;
     // Подвал и крошки — веб-мебель: в установленном приложении их нет (документы — в кабинете).
     $installed = \App\Http\Middleware\MarkInstalled::installed(request());

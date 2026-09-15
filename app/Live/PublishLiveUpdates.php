@@ -88,7 +88,7 @@ final class PublishLiveUpdates
         $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}"]);
         // Интерес покупателя — менеджеру: страница оффера и его список интересов.
         if ($manager = $e->interest->user->manager_id) {
-            $this->publish->refresh(Topics::user($manager), ["/offers/{$n}", '/lk/pokupateli/interes', "/lk/pokupateli/{$e->interest->user_id}"]);
+            $this->publish->refresh(Topics::user($manager), ["/offers/{$n}", '/lk/interes', "/lk/pokupateli/{$e->interest->user_id}"]);
             $this->publish->badges(Topics::user($manager));
         }
     }

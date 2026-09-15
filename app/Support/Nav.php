@@ -12,6 +12,8 @@ use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\DealState;
 use App\Offers\Favorite;
+use App\Offers\Interest;
+use App\Offers\InterestState;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Users\Role;
@@ -67,7 +69,17 @@ final class Nav
                 self::item('Предложения', 'car', '/', ['/', '/offers']),
                 self::item('Галерея', 'photo', '/galereya', tab: false),
                 self::item('Закупки', 'cart', '/zakupki'),
-                self::item('Сделки', 'deal', '/lk/sdelki'),
+                self::item('Покупатели', 'users', '/lk/pokupateli'),
+                self::item('Сделки', 'deal', '/lk/sdelki', tab: false),
+                self::item('Уведомления', 'bell', '/lk/uvedomleniya', capsule: false),
+            ];
+        }
+
+        // Покупатель: только то, что открыл менеджер, его интерес и уведомления.
+        if ($user?->isBuyer()) {
+            return [
+                self::item('Предложения', 'car', '/', ['/', '/offers']),
+                self::item('Интерес', 'flag', '/lk/interesy'),
                 self::item('Уведомления', 'bell', '/lk/uvedomleniya', capsule: false),
             ];
         }
@@ -177,12 +189,14 @@ final class Nav
 
         $links = [self::link('Сводка', '/lk', exact: true)];
         if ($user->role === Role::Manager) {
+            $links[] = self::link('Покупатели', '/lk/pokupateli');
+            $links[] = self::link('Интерес', '/lk/interes');
             $links[] = self::link('Подтверждения', '/lk/stavki');
             $links[] = self::link('Сделки', '/lk/sdelki');
         } elseif (! $user->isStaff()) {
             $links[] = self::link('Интерес', '/lk/interesy');
         }
-        if (! $user->isStaff()) {
+        if ($user->role->canChat()) {
             $links[] = self::link('Чаты', '/lk/chaty');
         }
         $links[] = self::link('Избранное', '/lk/izbrannoe');
@@ -226,8 +240,11 @@ final class Nav
             return array_filter($badges + self::staffCounts($surface));
         }
 
-        if (! $user->isStaff()) {
+        if ($user->isManager()) {
             $badges['/lk/sdelki'] = Requirement::where('user_id', $user->id)->whereNull('done_at')->count();
+            $badges['/lk/interes'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
+        }
+        if ($user->role->canChat()) {
             $badges['/lk/chaty'] = (int) Chat::where('user_id', $user->id)->sum('unread_for_user');
         }
         $badges['/lk/izbrannoe'] = Favorite::where('user_id', $user->id)->count();

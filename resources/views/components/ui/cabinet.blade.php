@@ -6,6 +6,7 @@
     $groups = \App\Support\Nav::cabinet($user);
 @endphp
 <x-ui.shell :title="$title" :heading="$heading ?? $title" :trail="$trail" :back="$back">
+    <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
     <div class="grid gap-6 lg:grid-cols-[15rem_1fr]">
         {{-- min-w-0 обязателен: иначе лента шире экрана растягивает колонку сетки. --}}
         <nav class="min-w-0 lg:sticky lg:top-32 lg:self-start" aria-label="Разделы кабинета">

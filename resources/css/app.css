@@ -291,6 +291,29 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .choice-danger input:checked + span { @apply bg-danger-soft text-danger; }
   .tri input:checked + span { @apply bg-surface text-ink; }
 
+  /* Мини-карточка выбора предложений (шторка «Открыть…»): фото, название, цена, галка в углу.
+     Уже открытое — приглушено и не переключается. */
+  .pick-card { @apply relative flex cursor-pointer select-none flex-col overflow-hidden rounded-(--radius-m) bg-surface-2; }
+  .pick-card input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+  .pick-card-media { @apply relative block aspect-[4/3] w-full overflow-hidden bg-surface-3; }
+  .pick-card-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .pick-card-body { @apply flex flex-col gap-0.5 p-2.5; }
+  .pick-card-check { @apply absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-white/80 text-transparent transition-colors; }
+  .pick-card input:checked ~ .pick-card-check { @apply bg-accent text-white; }
+  .pick-card input:checked ~ .pick-card-media { box-shadow: inset 0 0 0 3px var(--color-accent); }
+  .pick-card--done { @apply opacity-60; }
+  .pick-card--done input { cursor: default; }
+
+  /* Режим выбора в ленте менеджера: кружок на каждой карточке, отмеченная — с обводкой.
+     Чекбокс живёт в карточке всегда (живая замена карточки его не теряет), виден только в режиме. */
+  .card-check { display: none; position: absolute; left: .75rem; top: .75rem; z-index: 2; }
+  .card-check input { position: absolute; inset: 0; margin: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+  .card-check span { @apply flex size-7 items-center justify-center rounded-full bg-white/85 text-transparent shadow-(--shadow-drop) transition-colors; }
+  .card-check input:checked + span { @apply bg-accent text-white; }
+  [data-selecting] .card-check { display: block; }
+  [data-selecting] .card:has(.card-check input:checked) { box-shadow: inset 0 0 0 3px var(--color-accent); }
+  [data-selecting] .card-action, [data-selecting] .card-star { pointer-events: none; opacity: .5; }
+
 
   /* ------------------------------------------------- плотность CRM и стоянки */
 

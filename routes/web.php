@@ -1,6 +1,11 @@
 <?php
 
+use App\Http\Cabinet\BuyerController;
+use App\Http\Cabinet\BuyerInterestController;
 use App\Http\Cabinet\ChatController as CabinetChatController;
+use App\Http\Cabinet\GroupController;
+use App\Http\Cabinet\InviteController;
+use App\Http\Cabinet\ShowingController;
 use App\Http\Cabinet\DealController;
 use App\Http\Cabinet\ListsController;
 use App\Http\Cabinet\NotificationController;
@@ -86,6 +91,29 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/lk/uvedomleniya/{id}', [NotificationController::class, 'open']);
 
     Route::get('/live/badges', [FragmentController::class, 'badges']);
+
+    // Кабинет менеджера: покупатели, группы, приглашения, показы. Конкретные пути раньше {user}.
+    Route::middleware('manager')->group(function () {
+        Route::get('/lk/pokupateli', [BuyerController::class, 'index']);
+        Route::get('/lk/pokupateli/priglasheniya', [InviteController::class, 'index']);
+        Route::post('/lk/pokupateli/priglasheniya', [InviteController::class, 'store']);
+        Route::post('/lk/pokupateli/priglasheniya/{invite}/vykl', [InviteController::class, 'disable']);
+        Route::post('/lk/pokupateli/priglasheniya/{invite}/vkl', [InviteController::class, 'enable']);
+        Route::get('/lk/interes', [BuyerInterestController::class, 'index']);
+        Route::post('/lk/interes/{interest}', [BuyerInterestController::class, 'update']);
+        Route::post('/lk/pokupateli/gruppy', [GroupController::class, 'store']);
+        Route::get('/lk/pokupateli/gruppy/{group}', [GroupController::class, 'show']);
+        Route::put('/lk/pokupateli/gruppy/{group}', [GroupController::class, 'update']);
+        Route::put('/lk/pokupateli/gruppy/{group}/sostav', [GroupController::class, 'members']);
+        Route::delete('/lk/pokupateli/gruppy/{group}', [GroupController::class, 'destroy']);
+        Route::get('/lk/pokupateli/{user}', [BuyerController::class, 'show']);
+        Route::put('/lk/pokupateli/{user}/gruppy', [BuyerController::class, 'groups']);
+        Route::post('/lk/pokupateli/{user}/parol', [BuyerController::class, 'passwordLink']);
+        Route::get('/lk/pokazy/novyy', [ShowingController::class, 'create']);
+        Route::get('/lk/pokazy/vybor', [ShowingController::class, 'pick']);
+        Route::post('/lk/pokazy', [ShowingController::class, 'store']);
+        Route::delete('/lk/pokazy', [ShowingController::class, 'destroy']);
+    });
 
     Route::get('/zakupki', [PurchaseController::class, 'index'])->middleware('purchases');
     Route::get('/zakupki/{purchase}', [PurchaseController::class, 'show'])->middleware('purchases');

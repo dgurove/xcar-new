@@ -16,10 +16,9 @@ final class DealPlacement
         if (! $user) {
             return true;
         }
-        $gallery = $offer->isGallery();
         $prices = PriceView::for($offer, $user)->visible;
 
         return ($user->role->canBid() && $offer->bidsOpen() && $prices)
-            || (! $user->isStaff() && ($gallery || ! $prices) && $offer->state->acceptsInterest() && ! $myInterest);
+            || ($user->role->canInterest() && $offer->state->acceptsInterest() && ! $myInterest);
     }
 }

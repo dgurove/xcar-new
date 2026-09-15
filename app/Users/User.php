@@ -99,6 +99,11 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->belongsTo(Invite::class);
     }
 
+    public function interests(): HasMany
+    {
+        return $this->hasMany(\App\Offers\Interest::class);
+    }
+
     /**
      * Может ли покупатель указывать этот контакт. Менеджер решает при создании
      * ссылки; у всех остальных ролей ограничений нет.

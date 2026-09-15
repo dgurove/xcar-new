@@ -28,7 +28,7 @@ final class UpdateOffer
         $offer->save();
         if (array_key_exists('managers_limited', $data)) {
             $before = $offer->managers()->pluck('users.id')->sort()->values()->all();
-            $after = $offer->managers_limited ? collect($managers ?? [])->map('intval')->unique()->sort()->values()->all() : [];
+            $after = $offer->managers_limited ? collect($managers ?? [])->map(fn ($v) => (int) $v)->unique()->sort()->values()->all() : [];
             if ($before !== $after) {
                 $offer->managers()->sync($after);
                 $changed[] = 'managers';
