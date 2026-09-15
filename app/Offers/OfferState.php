@@ -10,8 +10,7 @@ enum OfferState: string
 
     case Draft = 'draft';
     case Gallery = 'gallery';       // «скоро в продаже»: без цены, принимаем интерес
-    case Open = 'open';             // в каталоге, принимаем подтверждения
-    case Closed = 'closed';         // приём подтверждений закрыт, машина ещё видна
+    case Open = 'open';             // в каталоге; подтверждения принимаются, пока не прошёл bids_close_at
     case Sold = 'sold';             // идёт сделка
     case Delivered = 'delivered';
     case Cancelled = 'cancelled';
@@ -23,7 +22,6 @@ enum OfferState: string
             self::Draft => 'Черновик',
             self::Gallery => 'В галерее',
             self::Open => 'Приём подтверждений',
-            self::Closed => 'Приём закрыт',
             self::Sold => 'Идёт сделка',
             self::Delivered => 'Выдан',
             self::Cancelled => 'Снят',
@@ -45,7 +43,7 @@ enum OfferState: string
 
     public function isPublic(): bool
     {
-        return in_array($this, [self::Open, self::Closed], true);
+        return $this === self::Open;
     }
 
     public function acceptsBids(): bool
@@ -55,7 +53,7 @@ enum OfferState: string
 
     public function acceptsInterest(): bool
     {
-        return in_array($this, [self::Open, self::Closed, self::Gallery], true);
+        return in_array($this, [self::Open, self::Gallery], true);
     }
 
     public function allows(self $next): bool
@@ -63,9 +61,8 @@ enum OfferState: string
         return in_array($next, match ($this) {
             self::Draft => [self::Gallery, self::Open, self::Sold, self::Cancelled, self::Archived],
             self::Gallery => [self::Draft, self::Open, self::Sold, self::Cancelled, self::Archived],
-            self::Open => [self::Draft, self::Closed, self::Sold, self::Cancelled, self::Archived],
-            self::Closed => [self::Draft, self::Open, self::Sold, self::Cancelled, self::Archived],
-            self::Sold => [self::Delivered, self::Cancelled, self::Open, self::Closed],
+            self::Open => [self::Draft, self::Sold, self::Cancelled, self::Archived],
+            self::Sold => [self::Delivered, self::Cancelled, self::Open],
             self::Archived => [self::Draft],
             self::Delivered, self::Cancelled => [self::Archived],
         }, true);

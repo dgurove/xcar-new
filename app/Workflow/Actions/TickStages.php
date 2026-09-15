@@ -2,10 +2,7 @@
 
 namespace App\Workflow\Actions;
 
-use App\Offers\Actions\ChangeOfferState;
-use App\Offers\Offer;
 use App\Offers\OfferEventType;
-use App\Offers\OfferState;
 use App\Workflow\Actor;
 use App\Workflow\Events\StageDue;
 use App\Workflow\Position;
@@ -13,14 +10,14 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-/** Раз в минуту: исходы по времени, просрочки, напоминания, закрытие приёма подтверждений. */
+/** Раз в минуту: исходы по времени, просрочки, напоминания. Приём подтверждений часы не закрывают — он закрывается сам по bids_close_at. */
 final class TickStages
 {
-    public function __construct(private TakeExit $takeExit, private ChangeOfferState $changeState) {}
+    public function __construct(private TakeExit $takeExit) {}
 
     public function __invoke(): array
     {
-        $counts = ['advanced' => 0, 'overdue' => 0, 'reminded' => 0, 'closed' => 0];
+        $counts = ['advanced' => 0, 'overdue' => 0, 'reminded' => 0];
         $now = Carbon::now();
 
         // Обход по id, а не страницами: обработанная строка выпадает из фильтра и
@@ -59,15 +56,6 @@ final class TickStages
                 } catch (Throwable $e) {
                     Log::warning('Часы: напоминание не ушло', ['offer' => $position->offer_id, 'error' => $e->getMessage()]);
                 }
-            }
-        }
-
-        foreach (Offer::where('state', OfferState::Open)->whereNotNull('bids_close_at')->where('bids_close_at', '<=', $now)->lazyById() as $offer) {
-            try {
-                ($this->changeState)($offer, OfferState::Closed, null);
-                $counts['closed']++;
-            } catch (Throwable $e) {
-                Log::warning('Часы: приём подтверждений не закрылся', ['offer' => $offer->number, 'error' => $e->getMessage()]);
             }
         }
 

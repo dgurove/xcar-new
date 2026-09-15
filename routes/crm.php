@@ -37,6 +37,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
     Route::post('/share/oshibka', [ShareController::class, 'report'])->middleware('throttle:30,1');
     Route::put('/predlozheniya/{offer}', [OfferController::class, 'update']);
+    Route::post('/predlozheniya/{offer}/prodlit', [OfferController::class, 'extend']);
     Route::post('/predlozheniya/{offer}/sostoyanie', [OfferController::class, 'state']);
     Route::post('/predlozheniya/{offer}/iskhod/{exit}', [RouteController::class, 'exit']);
     Route::post('/predlozheniya/{offer}/etap', [RouteController::class, 'place']);

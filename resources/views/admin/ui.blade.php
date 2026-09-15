@@ -48,7 +48,7 @@
         </x-ui.card>
 
         <x-ui.card title="Карточки списка">
-            @php $offers = \App\Offers\Offer::with(['brand', 'model', 'media'])->whereIn('state', [\App\Offers\OfferState::Open, \App\Offers\OfferState::Closed])->limit(3)->get(); @endphp
+            @php $offers = \App\Offers\Offer::with(['brand', 'model', 'media'])->where('state', \App\Offers\OfferState::Open)->limit(3)->get(); @endphp
             <p class="mb-3 text-sm text-ink-muted">Плитки</p>
             <div class="cards cards--grid" data-controller="ticker">@foreach ($offers as $o)<x-offer.card :offer="$o"/>@endforeach</div>
             <p class="mb-3 mt-6 text-sm text-ink-muted">Строки</p>

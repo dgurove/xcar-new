@@ -100,7 +100,7 @@ abstract class Route
                 'exits' => [['Подтверждение принято', 'staff', 'claimed'], ['Срок приёма истёк', 'timer', 'choosing']],
             ],
             'choosing' => [
-                'name' => 'Выбор подтверждения', 'block' => 'sale', 'waits_for' => 'us', 'limit_minutes' => self::DAY, 'offer_state' => 'closed',
+                'name' => 'Выбор подтверждения', 'block' => 'sale', 'waits_for' => 'us', 'limit_minutes' => self::DAY,
                 'exits' => [['Подтверждение принято', 'staff', 'claimed'], ['Подтверждений нет', 'staff', $nobody], ['Возобновить приём', 'staff', 'bidding']],
             ],
             'claimed' => [

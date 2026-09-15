@@ -236,7 +236,7 @@ function heroTransition() {
 
 // Таймер дошёл до нуля: всё, что помечено data-closes-with-timer, гаснет сразу
 // (форма цены, кнопка «Подтвердить»), а через три секунды страница перечитывается
-// морфом — сервер к этому времени закрыл приём (CloseBids).
+// морфом — сервер решает по времени (bidsOpen), состояния «закрыт» нет.
 function timerDone() {
     let planned = null;
     document.addEventListener('timer:done', () => {

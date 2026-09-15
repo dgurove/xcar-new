@@ -47,11 +47,11 @@ class CatalogController
         $view = ListView::fromRequest($request);
         $prices = ! $gallery && ($user?->role->canSeePrices() ?? false);
         $sort = CatalogQuery::sort($filters, $gallery, $prices);
-        $states = $gallery ? [OfferState::Gallery] : [OfferState::Open, OfferState::Closed];
+        $states = $gallery ? [OfferState::Gallery] : [OfferState::Open];
 
         // Три счётчика на каждый запрос списка — полминуты в кэше, слабому серверу легче.
         $counts = Cache::remember('catalog.counts', 30, fn () => [
-            'offers' => Offer::whereIn('state', [OfferState::Open, OfferState::Closed])->count(),
+            'offers' => Offer::where('state', OfferState::Open)->count(),
             'gallery' => Offer::where('state', OfferState::Gallery)->count(),
             // Закупок на витрине столько, сколько карточек: одна присланная — две (легковые и грузовые).
             'purchases' => count(Purchase::showcase(null)),

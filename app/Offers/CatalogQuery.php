@@ -33,7 +33,7 @@ final class CatalogQuery
 
         $q = Offer::query()
             ->with(['brand', 'model', 'settlement', 'media', 'favorites'])
-            ->whereIn('state', $gallery ? [OfferState::Gallery] : [OfferState::Open, OfferState::Closed]);
+            ->whereIn('state', $gallery ? [OfferState::Gallery] : [OfferState::Open]);
 
         if (! empty($filters['brand'])) {
             $q->whereHas('brand', fn ($b) => $b->where('slug', $filters['brand']));

@@ -15,8 +15,8 @@ use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Tag;
-use App\Workflow\Insurer;
 use App\Support\ListPrefs;
+use App\Workflow\Insurer;
 use Illuminate\Http\Request;
 
 class OfferController
@@ -38,7 +38,7 @@ class OfferController
 
         match ($preset) {
             'draft' => $q->where('state', OfferState::Draft),
-            'open' => $q->whereIn('state', [OfferState::Open, OfferState::Closed]),
+            'open' => $q->where('state', OfferState::Open),
             'bids' => $q->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
             'sold' => $q->whereIn('state', [OfferState::Sold, OfferState::Delivered]),
             'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
@@ -99,6 +99,16 @@ class OfferController
         $update($offer, $request->payload(), $request->user());
 
         return redirect("/predlozheniya/{$offer->number}")->with('toast', 'Сохранено');
+    }
+
+    /** Продлить приём на ходу: от текущего срока, если он ещё не прошёл, иначе от сейчас. */
+    public function extend(Request $request, Offer $offer, UpdateOffer $update)
+    {
+        $minutes = (int) $request->validate(['minutes' => ['required', 'integer', 'in:15,60']])['minutes'];
+        $from = $offer->bids_close_at?->isFuture() ? $offer->bids_close_at : now();
+        $offer = $update($offer, ['bids_close_at' => $from->copy()->addMinutes($minutes)], $request->user());
+
+        return back()->with('toast', 'Приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'));
     }
 
     public function state(Request $request, Offer $offer, ChangeOfferState $change)

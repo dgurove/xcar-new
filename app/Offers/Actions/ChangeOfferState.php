@@ -53,7 +53,7 @@ final class ChangeOfferState
             $this->settleDeal($offer, $next);
 
             OfferStateChanged::dispatch($offer, $by);
-            if ($next === OfferState::Open && $from !== OfferState::Closed) {
+            if ($next === OfferState::Open) {
                 OfferPublished::dispatch($offer, $by);
             }
 

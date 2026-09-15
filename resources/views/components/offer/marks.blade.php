@@ -8,7 +8,7 @@
 @unless ($gallery)
     @if (!$admin && $offer->isFresh())<span class="mark mark-accent">Новый</span>@endif
     @if ($offer->isEndingSoon() && !$admin)<span class="mark mark-urgent">Заканчивается</span>@endif
-    @if (!$offer->state->acceptsBids() && $offer->state !== \App\Offers\OfferState::Draft && !$admin)<span class="mark mark-glass">Приём закрыт</span>@endif
+    @if (!$offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft && !$admin)<span class="mark mark-glass">Приём закрыт</span>@endif
     @if ($left !== null && $left > 0)<span class="mark {{ $admin && $offer->isEndingSoon() ? 'mark-urgent' : 'mark-glass' }} nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>@endif
 @endunless
 @if ($offer->car_place)<span class="mark mark-glass">{{ $offer->car_place->label() }}</span>@endif

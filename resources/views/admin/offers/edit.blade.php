@@ -15,8 +15,18 @@
             @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" icon/>@endif
         </span>
         <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
-        @if ($offer->bids_close_at && $offer->state === OfferState::Open)
+        @if ($offer->closed())
+            <x-ui.pill tone="closed">Приём закрыт с {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</x-ui.pill>
+        @elseif ($offer->bids_close_at && $offer->state === OfferState::Open)
             <x-ui.pill tone="plain"><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}"></span></x-ui.pill>
+        @endif
+        @if ($offer->state === OfferState::Open && $offer->bids_close_at)
+            {{-- Продлить приём на ходу, как в закупке: от текущего срока, если он не прошёл, иначе от сейчас. --}}
+            <span class="flex shrink-0 items-center gap-1.5">
+                @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
+                    <form method="post" action="/predlozheniya/{{ $n }}/prodlit" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
+                @endforeach
+            </span>
         @endif
         @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/rabota/pochta/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
         @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/rabota/pochta?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
@@ -212,8 +222,8 @@
                         <form method="post" action="/predlozheniya/{{ $n }}/sostoyanie" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                             <x-ui.button block :variant="$next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary')">{{ match($next) {
-                                OfferState::Open => $offer->state === OfferState::Closed ? 'Открыть приём снова' : 'Опубликовать',
-                                OfferState::Gallery => 'В галерею «скоро»', OfferState::Draft => 'В черновик', OfferState::Closed => 'Закрыть приём подтверждений',
+                                OfferState::Open => 'Опубликовать',
+                                OfferState::Gallery => 'В галерею «скоро»', OfferState::Draft => 'В черновик',
                                 OfferState::Sold => 'В сделку', OfferState::Cancelled => 'Снять с продажи', OfferState::Archived => 'В архив', default => $next->label() } }}</x-ui.button>
                         </form>
                     @endforeach

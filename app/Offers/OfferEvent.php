@@ -30,7 +30,8 @@ class OfferEvent extends Model
         return match ($this->type) {
             OfferEventType::Created => 'Создан',
             OfferEventType::Updated => 'Изменён: '.implode(', ', $p['fields'] ?? []),
-            OfferEventType::StateChanged => OfferState::from($p['to'])->label(),
+            // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
+            OfferEventType::StateChanged => OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),
             OfferEventType::BidPlaced => 'Подтверждение '.number_format($p['amount'] ?? 0, 0, '', ' ').' ₽',
             OfferEventType::BidAccepted => 'Подтверждение принято',
             OfferEventType::BidDeclined => 'Подтверждение отклонено',

@@ -40,16 +40,6 @@ class Offer extends Model implements HasMedia
 
     public const DEFAULT_SHARE = 0.6;
 
-    protected static function booted(): void
-    {
-        // Срок приёма задан или сдвинут — закрытие ставится в очередь точно на срок.
-        static::saved(function (Offer $offer) {
-            if (($offer->wasChanged('bids_close_at') || $offer->wasChanged('state')) && $offer->bids_close_at?->isFuture() && $offer->state === OfferState::Open) {
-                Jobs\CloseBids::dispatch($offer->id, $offer->bids_close_at->toIso8601String())->delay($offer->bids_close_at);
-            }
-        });
-    }
-
     protected function casts(): array
     {
         return [
@@ -221,9 +211,16 @@ class Offer extends Model implements HasMedia
         return $this->asking_price;
     }
 
+    /** Приём подтверждений — не состояние, а срок: открыт, пока не прошёл bids_close_at (пустой — бессрочно). */
     public function bidsOpen(): bool
     {
         return $this->state->acceptsBids() && (! $this->bids_close_at || $this->bids_close_at->isFuture());
+    }
+
+    /** Открыт, но срок прошёл: приём закрыт сам собой, сдвиг срока вперёд открывает заново. */
+    public function closed(): bool
+    {
+        return $this->state->acceptsBids() && $this->bids_close_at?->isPast() === true;
     }
 
     /** Поиск в списках CRM: номер, VIN, марка, модель. */

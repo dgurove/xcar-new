@@ -6,7 +6,6 @@ use App\Cars\Vin\RememberVin;
 use App\Media\Jobs\StampPhotos;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
-use App\Offers\OfferState;
 use App\Users\User;
 use App\Workflow\Actions\StartRoute;
 use App\Workflow\DeadlineSource;
@@ -14,7 +13,7 @@ use App\Workflow\Position;
 
 final class UpdateOffer
 {
-    public function __construct(private StartRoute $startRoute, private ChangeOfferState $changeState) {}
+    public function __construct(private StartRoute $startRoute) {}
 
     public function __invoke(Offer $offer, array $data, User $by): Offer
     {
@@ -27,10 +26,6 @@ final class UpdateOffer
         if ($changed) {
             $offer->log(OfferEventType::Updated, $by, ['fields' => $changed]);
             (new RememberVin)($offer);
-        }
-        // Срок сдвинули вперёд у закрытого приёма — открыть снова, отдельной кнопки владелец не ждёт.
-        if (in_array('bids_close_at', $changed, true) && $offer->state === OfferState::Closed && $offer->bids_close_at?->isFuture()) {
-            $offer = ($this->changeState)($offer, OfferState::Open, $by);
         }
         if (in_array('share_locked', $changed, true)) {
             StampPhotos::dispatch($offer);

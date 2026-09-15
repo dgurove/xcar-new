@@ -16,7 +16,7 @@
     $nth = request()->attributes->get('card.nth', 0);
     request()->attributes->set('card.nth', $nth + 1);
     $eager = $nth < 2;
-    $hasMarks = $admin || $offer->car_place || (!$gallery && ($offer->isFresh() || $offer->isEndingSoon() || !$offer->state->acceptsBids() || $offer->secondsLeft()));
+    $hasMarks = $admin || $offer->car_place || (!$gallery && ($offer->isFresh() || $offer->isEndingSoon() || !$offer->bidsOpen() || $offer->secondsLeft()));
 @endphp
 <article id="{{ $admin ? 'admin-offer-' : 'offer-' }}{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card rise group']) }}>
     @if ($hasMedia)
