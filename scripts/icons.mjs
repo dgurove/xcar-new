@@ -109,4 +109,21 @@ for (const [w, h, r] of SCREENS) {
             .composite([{ input: logo, gravity: 'centre' }]).png({ compressionLevel: 9 }).toFile(`${splashDir}splash-${W}x${H}${suffix}.png`);
     }
 }
-console.log('иконки и экраны запуска готовы');
+// Водяной знак для фото оффера с запретом шеринга (App\Media\Watermark кладёт его решёткой через GD,
+// а GD не читает SVG). Двухтональный: светло-серое тело поверх тёмного размытого ореола — читается
+// и на светлом, и на тёмном кузове, и его нельзя «вычесть» как один шаблон. Прозрачность здесь.
+const WM = { width: 1200, pad: 16, body: '#DCDCDC', bodyAlpha: 0.5, haloBlur: 3, haloAlpha: 0.4 };
+{
+    const src = readFileSync(at('../public/images/xcar.svg'), 'utf8').replace(/width="\d+" height="\d+"/, `width="${WM.width}" height="${Math.round(WM.width * 512 / 2054)}"`);
+    const shape = (fill, alpha) => src.replace(/fill="(black|#97BF0D)"/g, `fill="${fill}" fill-opacity="${alpha}"`);
+    const size = { width: WM.width + WM.pad * 2, height: Math.round(WM.width * 512 / 2054) + WM.pad * 2 };
+    const halo = await sharp(Buffer.from(shape('black', 1))).extend({ top: WM.pad, bottom: WM.pad, left: WM.pad, right: WM.pad, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .blur(WM.haloBlur).ensureAlpha().linear([1, 1, 1, WM.haloAlpha], [0, 0, 0, 0]).png().toBuffer();
+    const body = await sharp(Buffer.from(shape(WM.body, WM.bodyAlpha))).png().toBuffer();
+    mkdirSync(at('../resources/images/'), { recursive: true });
+    await sharp({ create: { ...size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+        .composite([{ input: halo, left: 0, top: 0 }, { input: body, left: WM.pad, top: WM.pad }])
+        .png({ compressionLevel: 9 }).toFile(at('../resources/images/watermark.png'));
+}
+
+console.log('иконки, экраны запуска и водяной знак готовы');

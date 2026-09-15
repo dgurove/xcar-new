@@ -248,6 +248,7 @@ class PurchaseController
         $data['transmission'] = $data['transmission'] ?: null;
         $data['fuel'] = $data['fuel'] ?: null;
         $data['is_published'] = $request->boolean('is_published');
+        $data['share_locked'] = $request->boolean('share_locked');
         $update($car, $data);
 
         return back()->with('toast', 'Сохранено');

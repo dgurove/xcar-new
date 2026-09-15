@@ -96,6 +96,23 @@ final class Gc extends Command
             return "{$orphans} шт., ".self::human($bytes);
         });
 
+        $this->step('чистые копии кадров под знаком, у которых кадра уже нет', function () {
+            $disk = Storage::disk('private');
+            $orphans = 0;
+            $bytes = 0;
+            foreach ($disk->files('clean') as $file) {
+                $id = (int) pathinfo($file, PATHINFO_FILENAME);
+                if ($id && Media::whereKey($id)->exists()) {
+                    continue;
+                }
+                $orphans++;
+                $bytes += (int) $disk->size($file);
+                $this->dry || $disk->delete($file);
+            }
+
+            return "{$orphans} шт., ".self::human($bytes);
+        });
+
         $this->step('файлы конверсий, которых в коде больше нет', function () {
             $count = 0;
             $bytes = 0;

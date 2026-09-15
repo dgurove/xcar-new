@@ -163,11 +163,18 @@ node scripts/icons.mjs           # иконки трёх приложений и
 клиент `share_controller`: PDF тянется при открытии шторки, «Отправить»
 выключена до готовности, файл — `navigator.share({files})`, где его нет
 или он упал — `window.open` на тот же адрес в самом жесте («Открыть PDF»),
-сбои — тостом и маяком в `POST /share/oshibka` → лог `share:`), `app/Workflow` (страховые
+сбои — тостом и маяком в `POST /share/oshibka` → лог `share:`; **«Запретить
+шеринг»** — тумблер `share_locked` в карточке «Деньги» редактора (у машины
+закупки — в «Ценах», `UpdateCar`), пока
+администратор не согласовал цену менеджера: кнопка «Поделиться» у всех серая
+(`aria-disabled`, нажатие — тост `Subject::LOCKED`, `disabled` не ставим — у
+`.btn` он режет клики), адрес PDF отвечает 422, а все кадры оффера под водяным
+знаком — см. `app/Media`), `app/Workflow` (страховые
 и маршруты по этапам, `ChangeOfferState` — одна дверь состояний; боевые
 маршруты — заготовки `Presets/*`, ими же `InsurerSeeder` заводит три
 страховые; маршрут вывоза запускается с каждым предложением или по кнопке —
-`workflows.auto_start`),
+`workflows.auto_start`; срок «Приём подтверждений до» сдвинули вперёд у
+закрытого — `UpdateOffer` открывает приём сам),
 `app/Mail` (ящики, синк, треды, кандидаты, шаблоны; письмо целиком не
 скачивается — по `BODYSTRUCTURE` берутся заголовки и текст, вложения остаются
 в ящике описью с секцией и подтягиваются по клику через `Parts`; **ветка
@@ -242,7 +249,14 @@ Excel — **тот самый файл Carcade с диска** (`source_file`), 
 (`Notice` — база, канал database+mail+push), `app/Push`, `app/Live` (Mercure:
 `card/refresh/toast/badges`), `app/Media` (`PhotoIngest` — всё входящее в
 1600 px webp, HEIC с айфонов через `heic2jpg` (pillow-heif) из образа, конверсии только вниз; `papers` на закрытом диске, наружу через
-`/fayly/{media}`; холодный слой `CoolPhotos`/`WarmPhotos`), `app/Storage`
+`/fayly/{media}`; холодный слой `CoolPhotos`/`WarmPhotos`; **водяной знак**
+`Watermark` — решётка горизонтального логотипа (`resources/images/watermark.png`
+из `scripts/icons.mjs`, GD SVG не читает) печётся в сам оригинал на диске
+`media`, чистая копия — `private/clean/{id}.webp`, конверсии заново со знаком;
+`StampPhoto`/`UnstampPhoto`, по тумблеру — джоба `StampPhotos` в очереди
+`long`, новый кадр под запретом клеймит слушатель `StampOnAdd` синхронно —
+событие spatie стреляет до конверсий; `RotatePhoto` крутит и чистую копию,
+осиротевшие копии стирает `storage:gc`), `app/Storage`
 (`storage:gc` ежедневно, `storage:report`), `app/Cars`, `app/Users` (вход по ключу — Face ID / Touch ID:
 `laragear/webauthn`, провайдер `xcar-webauthn` (`Users\Auth\WebAuthnProvider`
 поверх пакетного — без него `Auth::attempt` с ответом ключа уходит в

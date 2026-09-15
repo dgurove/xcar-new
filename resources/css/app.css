@@ -236,6 +236,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       transition-colors select-none disabled:opacity-50 disabled:pointer-events-none;
     height: 3.5rem;
   }
+  /* Неактивная, но нажимаемая — нажатие объясняет, почему нельзя (шеринг под запретом). */
+  .btn[aria-disabled="true"] { @apply opacity-50; }
   .btn-s { @apply px-[1.125rem] text-sm; height: 2.75rem; }
   @media (min-width: 640px) { .btn-s { height: 2.5rem; } }
   .btn-hero { @apply px-12 text-lg; height: 4rem; }

@@ -15,6 +15,8 @@ use Spatie\MediaLibrary\HasMedia;
  */
 final class Subject
 {
+    public const LOCKED = 'Недоступно, пока администратор не согласует цену менеджера';
+
     private function __construct(
         public readonly HasMedia&Model $model,
         public readonly string $label,
@@ -39,6 +41,12 @@ final class Subject
     public function fields(?User $user): array
     {
         return $this->model instanceof Offer ? Caption::fields($this->model, $user) : Caption::car($this->model, $user);
+    }
+
+    /** Шеринг запрещён тумблером в редакторе оффера или машины закупки — до согласования цены менеджера администратором. */
+    public function locked(): bool
+    {
+        return (bool) $this->model->share_locked;
     }
 
     public function vatMark(): string

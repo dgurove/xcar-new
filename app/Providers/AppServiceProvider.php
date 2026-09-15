@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Chats\Listeners\AttachGuestEnquiry;
 use App\Live\PublishLiveUpdates;
 use App\Mail\OnMessage;
+use App\Media\StampOnAdd;
 use App\Notifications\Notify;
 use App\Users\Auth\WebAuthnProvider;
 use App\Users\Passkeys;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laragear\WebAuthn\Assertion\Validator\AssertionValidator;
+use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(OnMessage::class);
         Event::listen(Login::class, AttachGuestEnquiry::class);
         Event::subscribe(Passkeys::class);
+        Event::listen(MediaHasBeenAddedEvent::class, StampOnAdd::class);
         Auth::provider('xcar-webauthn', fn (Application $app, array $config) => new WebAuthnProvider(
             $app->make('hash'),
             $config['model'],

@@ -37,6 +37,7 @@
                     <x-ui.field name="price_final" label="Наша цена, ₽" inputmode="numeric" :value="$car->price_final"/>
                     <div class="col-span-full flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
                         <x-ui.check name="is_published" :checked="$car->is_published">Показывать покупателям</x-ui.check>
+                        <x-ui.check name="share_locked" :checked="$car->share_locked">Запретить шеринг</x-ui.check>
                         @if ($car->encumbrance)<span class="tag">{{ $car->encumbrance }}</span>@endif
                         @if ($car->stage)<span class="tag">{{ $car->stage }}</span>@endif
                     </div>

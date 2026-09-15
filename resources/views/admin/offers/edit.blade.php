@@ -158,6 +158,7 @@
                     <div class="col-span-full flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
                         <x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat">С НДС</x-ui.check>
                         <x-ui.check name="chat_enabled" :checked="$offer->chat_enabled">Чат с покупателями</x-ui.check>
+                        <x-ui.check name="share_locked" :checked="$offer->share_locked">Запретить шеринг</x-ui.check>
                     </div>
                 </div>
             </x-ui.card>

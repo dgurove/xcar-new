@@ -2,6 +2,7 @@
 
 namespace App\Media\Actions;
 
+use App\Media\Watermark;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -10,7 +11,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * в галерее висел бы прежний кадр; thumb 400×300 после поворота становится
  * 300×400 — плитка режет его под свою рамку, а следующая пересборка
  * (WarmPhotos) вернёт правильный. `touch()` двигает updated_at, MediaUrl
- * подставляет его в `?v=` — браузер берёт новый файл.
+ * подставляет его в `?v=` — браузер берёт новый файл. Чистая копия кадра под
+ * водяным знаком (Watermark::cleanPath) крутится вместе с ним.
  */
 final class RotatePhoto
 {
@@ -22,6 +24,7 @@ final class RotatePhoto
         foreach (array_keys(array_filter((array) $media->generated_conversions)) as $conversion) {
             $this->turn($media->getPath((string) $conversion), $clockwise);
         }
+        $this->turn(Watermark::cleanPath($media->id), $clockwise);
         $media->size = (int) filesize($media->getPath());
         $media->touch();
     }

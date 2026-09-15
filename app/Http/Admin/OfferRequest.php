@@ -57,6 +57,7 @@ class OfferRequest extends FormRequest
             'tags.*' => ['string', 'max:40'],
             'bids_close_at' => ['nullable', 'date'],
             'chat_enabled' => ['boolean'],
+            'share_locked' => ['boolean'],
             'insurer_id' => ['nullable', 'exists:insurers,id'],
             'claim_ref' => ['nullable', 'string', 'max:60'],
             'insurer_deadline_at' => ['nullable', 'date'],
@@ -73,6 +74,7 @@ class OfferRequest extends FormRequest
         $data = $this->validated();
         $data['show_vin'] = $this->boolean('show_vin');
         $data['chat_enabled'] = $this->boolean('chat_enabled');
+        $data['share_locked'] = $this->boolean('share_locked');
         $data['damage_zones'] = $data['damage_zones'] ?? [];
         $data['tags'] = array_values(array_filter($data['tags'] ?? []));
         $data['prices_include_vat'] = $this->boolean('prices_include_vat');

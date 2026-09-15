@@ -23,6 +23,9 @@ class ShareController
     {
         $user = $request->user();
         abort_unless($offer->state->isPublic() || $offer->state->acceptsInterest() || $user->isStaff(), 404);
+        if ($offer->share_locked) {
+            return response()->json(['message' => Subject::LOCKED], 422);
+        }
 
         return $this->respond($request, Subject::offer($offer), $pdf);
     }
@@ -33,6 +36,9 @@ class ShareController
         if (Surface::current() !== Surface::Crm) {
             abort_unless($purchase->state->isPublic() && $car->is_published, 404);
             abort_if(in_array($car->kind->value, Restriction::hiddenFor($request->user()), true), 404);
+        }
+        if ($car->share_locked) {
+            return response()->json(['message' => Subject::LOCKED], 422);
         }
 
         return $this->respond($request, Subject::car($car), $pdf);

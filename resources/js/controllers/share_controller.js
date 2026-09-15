@@ -15,11 +15,16 @@ const BROKEN = 'share:open';
 
 export default class extends Controller {
     static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label'];
-    static values = { url: String, vat: String, name: String };
+    static values = { url: String, vat: String, name: String, locked: String };
 
     connect() {
         this.compose();
         this.ready(!this.hasPhotoTarget);
+    }
+
+    // Шеринг запрещён в редакторе оффера: кнопка серая, нажатие объясняет почему.
+    locked() {
+        window.toast?.(this.lockedValue);
     }
 
     open() {

@@ -6,6 +6,16 @@
     $photos = $subject->model->visiblePhotos();
     $id = 'share-'.$subject->model->getTable().'-'.$subject->model->getKey();
 @endphp
+@if ($subject->locked())
+    {{-- Запрет шеринга: кнопка на месте, но серая; нажатие — тост с причиной. Не disabled — у .btn он режет клики. --}}
+    <div data-controller="share" data-share-locked-value="{{ \App\Offers\Share\Subject::LOCKED }}" class="contents">
+        @if ($icon)
+            <button type="button" class="btn btn-s btn-quiet btn-round" aria-disabled="true" data-action="share#locked" aria-label="Поделиться" title="Поделиться" {{ $attributes }}><x-ui.icon name="share" class="size-5"/></button>
+        @else
+            <x-ui.button type="button" :variant="$variant" :size="$size" aria-disabled="true" data-action="share#locked" {{ $attributes }}><x-ui.icon name="share" class="size-5"/> Поделиться</x-ui.button>
+        @endif
+    </div>
+@else
 <div data-controller="share" data-share-url-value="{{ $subject->url }}" data-share-vat-value="{{ $subject->vatMark() }}" data-share-name-value="{{ $subject->fileName() }}" class="contents">
     @if ($icon)
         <button type="button" class="btn btn-s btn-quiet btn-round" data-action="share#open" aria-label="Поделиться" title="Поделиться" {{ $attributes }}><x-ui.icon name="share" class="size-5"/></button>
@@ -49,3 +59,4 @@
         </div>
     </dialog>
 </div>
+@endif
