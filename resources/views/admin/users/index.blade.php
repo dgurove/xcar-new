@@ -41,6 +41,8 @@
                             @if ($user->email)<a href="mailto:{{ $user->email }}" class="tag">{{ $user->email }}</a>@endif
                             @if ($user->isManager() && isset($user->buyers_count))<a href="/settings/users?preset=buyers&manager={{ $user->id }}" class="tag">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
                             @if ($user->isPending() || $user->isBuyer())<span class="tag nums">с {{ $user->created_at->translatedFormat('j M') }}</span>@endif
+                            {{-- Сотрудник или менеджер пришёл по одноразовой ссылке — чьей: без этого непонятно, кто его позвал. --}}
+                            @if (! $user->isBuyer() && $user->invite?->creator)<x-ui.person :user="$user->invite->creator" full prefix="по ссылке"/>@endif
                         </div>
                     </div>
                     @if (!$user->isApproved() && !$user->is($me))

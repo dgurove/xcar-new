@@ -26,7 +26,7 @@ class UserController
     {
         abort_unless($request->user()->isAdmin(), 404);
         $preset = $request->query('preset', 'staff');
-        $q = User::query()->with('manager')->orderBy('name');
+        $q = User::query()->with(['manager', 'invite.creator'])->orderBy('name');
         match ($preset) {
             'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->reorder('created_at', 'desc'),
             'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
