@@ -28,21 +28,21 @@ final class AcceptInvite
     public function __invoke(Invite $invite, array $data, ?UploadedFile $avatar = null): User
     {
         $user = DB::transaction(function () use ($invite, $data) {
-            $manager = $invite->forManager();
+            $buyer = $invite->forBuyer();
             $user = User::create([
                 'name' => trim($data['name']),
                 'login' => $data['login'],
                 'password' => $data['password'],
                 'phone' => $invite->allows('phone') ? ($data['phone'] ?? null) : null,
                 'email' => $invite->allows('email') ? ($data['email'] ?? null) : null,
-                'role' => $manager ? Role::Manager : Role::Buyer,
-                'manager_id' => $manager ? null : $invite->manager_id,
+                'role' => $invite->role,
+                'manager_id' => $buyer ? $invite->manager_id : null,
                 'invite_id' => $invite->id,
-                'contact_fields' => $manager ? [] : $invite->contactFields(),
+                'contact_fields' => $buyer ? $invite->contactFields() : [],
                 'approved_at' => now(),
                 'approved_by' => $invite->created_by,
             ]);
-            if (! $manager && $invite->group_id) {
+            if ($buyer && $invite->group_id) {
                 $user->groups()->attach($invite->group_id, ['created_at' => now()]);
             }
             $invite->increment('uses_count');
@@ -59,7 +59,7 @@ final class AcceptInvite
             }
         }
 
-        $invite->forManager() ? ManagerJoined::dispatch($user, $invite) : BuyerJoined::dispatch($user, $invite);
+        $invite->forBuyer() ? BuyerJoined::dispatch($user, $invite) : ManagerJoined::dispatch($user, $invite);
 
         return $user;
     }

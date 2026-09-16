@@ -10,12 +10,15 @@ use Illuminate\Validation\Rule;
 /**
  * Одна дверь для пригласительных ссылок — из кабинета на сайте и из CRM.
  * Менеджер зовёт покупателей: многоразовая, сразу в группу, что покупатель укажет.
- * Админ зовёт менеджера — одноразовая и со сроком, без названия: пришедший сразу
- * менеджер — или покупателя
- * от имени выбранного менеджера, как если бы тот сделал ссылку сам.
+ * Админ зовёт менеджера или сотрудника — одноразовая и со сроком, без названия: пришедший
+ * сразу в роли — или покупателя от имени выбранного менеджера, как если бы тот сделал
+ * ссылку сам. Другого способа завести человека нет: руками в CRM никто не создаётся.
  */
 final class IssueInvite
 {
+    /** Кем может стать пришедший по ссылке админа. */
+    public const ROLES = [Role::Manager, Role::Moderator, Role::Admin, Role::Buyer];
+
     public function __invoke(User $by, array $data): Invite
     {
         $fields = ['phone' => (bool) ($data['phone'] ?? false), 'email' => (bool) ($data['email'] ?? false)];
@@ -33,17 +36,18 @@ final class IssueInvite
             ]);
         }
 
-        $manager = ($data['role'] ?? null) === Role::Manager->value;
+        $role = Role::from($data['role']);
+        $once = $role !== Role::Buyer;
 
         return Invite::create([
             'code' => Invite::freshCode(),
-            'role' => $manager ? Role::Manager : Role::Buyer,
-            'manager_id' => $manager ? null : (int) $data['manager_id'],
+            'role' => $role,
+            'manager_id' => $once ? null : (int) $data['manager_id'],
             'created_by' => $by->id,
-            'label' => $manager ? null : $label,
-            'max_uses' => $manager ? 1 : null,
-            'expires_at' => $manager ? ($data['expires_at'] ?? null) : null,
-            'fields' => $manager ? ['phone' => true, 'email' => true] : $fields,
+            'label' => $once ? null : $label,
+            'max_uses' => $once ? 1 : null,
+            'expires_at' => $once ? ($data['expires_at'] ?? null) : null,
+            'fields' => $once ? ['phone' => true, 'email' => true] : $fields,
         ]);
     }
 
@@ -52,9 +56,9 @@ final class IssueInvite
     {
         $rules = ['label' => ['nullable', 'string', 'max:60']];
         if ($by->isAdmin()) {
-            $rules['role'] = ['required', Rule::in([Role::Manager->value, Role::Buyer->value])];
+            $rules['role'] = ['required', Rule::in(array_map(fn ($r) => $r->value, self::ROLES))];
             $rules['manager_id'] = ['required_if:role,buyer', 'nullable', Rule::exists('users', 'id')->where('role', Role::Manager->value)];
-            $rules['expires_at'] = ['required_if:role,manager', 'nullable', 'date', 'after:now'];
+            $rules['expires_at'] = ['exclude_if:role,buyer', 'required', 'date', 'after:now'];
         } else {
             $rules['group_id'] = ['nullable', Rule::exists('buyer_groups', 'id')->where('manager_id', $by->id)];
         }

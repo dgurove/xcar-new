@@ -4,24 +4,8 @@
 <x-ui.shell title="Пользователи" :count="$preset === 'invites' ? $invites->count() : $users->total()">
     <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" name="users">
         <x-slot:extra>
-            <div data-controller="sheet" class="contents">
-                <button type="button" class="btn btn-s btn-accent shrink-0 rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Пользователь</span></button>
-                <x-ui.sheet id="user-new" title="Новый пользователь">
-                    <form method="post" action="/settings/users" class="flex flex-col gap-4">
-                        @csrf
-                        <x-ui.field name="name" label="Имя" required autofocus/>
-                        <x-ui.field name="phone" label="Телефон" type="tel"/>
-                        <x-ui.field name="email" label="Почта" type="email"/>
-                        <x-ui.field name="login" label="Логин" autocapitalize="none" placeholder="если нет телефона и почты"/>
-                        <x-ui.field name="role" label="Роль" :options="collect(UserController::CREATABLE)->mapWithKeys(fn ($r) => [$r->value => $r->label()])" value="moderator"/>
-                        <div class="flex flex-wrap gap-x-6 gap-y-2">
-                            <x-ui.check name="park">Стоянка</x-ui.check>
-                            <x-ui.check name="mail" checked>Письма о событиях</x-ui.check>
-                        </div>
-                        <x-ui.button block>Добавить</x-ui.button>
-                    </form>
-                </x-ui.sheet>
-            </div>
+            {{-- Руками людей не заводят: только пригласительной ссылкой — кнопка ведёт к ним. --}}
+            @if ($preset !== 'invites')<a href="/settings/users?preset=invites" class="btn btn-s btn-accent shrink-0 rounded-full" data-turbo-action="replace"><x-ui.icon name="link" class="size-4"/><span class="hidden sm:inline">Пригласить</span></a>@endif
         </x-slot:extra>
         <x-slot:filters>
             <input name="q" value="{{ request('q') }}" placeholder="Имя, логин, телефон, почта" class="field-input field-s">
@@ -62,7 +46,7 @@
                     @if (!$user->isApproved() && !$user->is($me))
                         <form method="post" action="/settings/users/{{ $user->id }}/access" class="flex items-center gap-1.5">
                             @csrf
-                            <select name="role" class="field-input field-s !w-auto" aria-label="Роль">@foreach (UserController::CREATABLE as $r)<option value="{{ $r->value }}" @selected($r === Role::Manager)>{{ $r->label() }}</option>@endforeach</select>
+                            <select name="role" class="field-input field-s !w-auto" aria-label="Роль">@foreach (UserController::ROLES as $r)<option value="{{ $r->value }}" @selected($r === Role::Manager)>{{ $r->label() }}</option>@endforeach</select>
                             <x-ui.button size="sm">Открыть</x-ui.button>
                             @unless ($user->isRejected())<x-ui.button size="sm" variant="ghost" name="reject" value="1" data-turbo-confirm="Отклонить {{ $user->name }}?">Отклонить</x-ui.button>@endunless
                         </form>
@@ -88,7 +72,7 @@
                                 <x-ui.field name="phone" label="Телефон" type="tel" :value="$user->phoneFormatted()"/>
                                 <x-ui.field name="email" label="Почта" type="email" :value="$user->email"/>
                                 <x-ui.field name="login" label="Логин" :value="$user->login" autocapitalize="none"/>
-                                <x-ui.field name="role" label="Роль" :options="collect(UserController::CREATABLE)->mapWithKeys(fn ($r) => [$r->value => $r->label()])" :value="$user->role->value" :disabled="$user->is($me)"/>
+                                <x-ui.field name="role" label="Роль" :options="collect(UserController::ROLES)->mapWithKeys(fn ($r) => [$r->value => $r->label()])" :value="$user->role->value" :disabled="$user->is($me)"/>
                                 <div class="flex flex-wrap gap-x-6 gap-y-2">
                                     <x-ui.check name="park" :checked="in_array(Section::Park->value, $user->access ?? [], true)">Стоянка</x-ui.check>
                                     <x-ui.check name="mail" :checked="$user->wantsMail()">Письма о событиях</x-ui.check>

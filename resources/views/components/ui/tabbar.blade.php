@@ -1,5 +1,5 @@
-{{-- Нижний таб-бар телефона: до четырёх разделов и «Кабинет» с аватаром. Иконок нет — у раздела
-     точка, у текущего она вытягивается в лаймовую черту (.tab-mark): картинка не подсказывает лишнего. --}}
+{{-- Нижний таб-бар телефона: до четырёх разделов и «Кабинет». Иконок и аватара нет — у каждого
+     пункта точка, у текущего она вытягивается в лаймовую черту (.tab-mark): картинка не подсказывает лишнего. --}}
 @php
     $user = auth()->user();
     $path = '/'.ltrim(request()->path(), '/');
@@ -15,11 +15,7 @@
             @continue
         @endif
         <a href="{{ $tab['href'] }}" class="tab" data-turbo-action="replace" data-action="tabbar#tap" @if ($tab['href'] === $current) aria-current="page" @endif>
-            @if ($loop->last && $user)
-                <x-ui.avatar :user="$user" :size="25"/>
-            @else
-                <span class="tab-mark"></span>
-            @endif
+            <span class="tab-mark"></span>
             <span>{{ $tab['label'] }}</span>
             <x-ui.badge :href="$tab['href']" :badges="$badges"/>
             <input type="checkbox" switch class="haptic" tabindex="-1" aria-hidden="true">

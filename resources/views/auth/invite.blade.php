@@ -1,6 +1,6 @@
 {{-- Регистрация по приглашению: покупателю — сверху его менеджер и только те поля, что тот разрешил;
      менеджеру (ссылка админа, одноразовая) — имя, логин, пароль, телефон, почта. --}}
-@php($manager = $invite->forManager() ? null : $invite->manager)
+@php($manager = $invite->forBuyer() ? $invite->manager : null)
 <x-ui.auth :title="! $invite->isActive() ? 'Ссылка не действует' : ($manager ? $manager->shortName().' приглашает вас в xcar' : 'Вас приглашают в xcar')">
     @if (! $invite->isActive())
         <p class="mt-4 text-ink-muted">{{ $invite->isUsedUp() ? 'По этой ссылке уже зарегистрировались.' : ($invite->isExpired() ? 'Срок ссылки вышел — попросите новую.' : 'Попросите новую ссылку'.($manager ? ' у '.$manager->shortName() : '').'.') }}</p>
@@ -38,7 +38,7 @@
                 <input name="phone" type="tel" required inputmode="tel" autocomplete="tel" class="field-input" placeholder="Телефон" value="{{ old('phone') }}">
             @endif
             @if ($invite->allows('email'))
-                <input name="email" type="email" @unless ($invite->forManager()) required @endunless inputmode="email" autocomplete="email" class="field-input" placeholder="{{ $invite->forManager() ? 'Почта, если есть' : 'Почта' }}" value="{{ old('email') }}">
+                <input name="email" type="email" @if ($invite->forBuyer()) required @endif inputmode="email" autocomplete="email" class="field-input" placeholder="{{ $invite->forBuyer() ? 'Почта' : 'Почта, если есть' }}" value="{{ old('email') }}">
             @endif
             @foreach (['name', 'login', 'password', 'phone', 'email', 'avatar', 'consent'] as $field)
                 @error($field)<p class="text-sm text-danger">{{ $message }}</p>@enderror

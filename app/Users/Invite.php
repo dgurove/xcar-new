@@ -73,7 +73,13 @@ class Invite extends Model
     /** Кому ссылка: короткое слово для чипа. */
     public function kind(): string
     {
-        return $this->forManager() ? 'менеджеру' : 'покупателю';
+        return match ($this->role) {
+            Role::Buyer => 'покупателю',
+            Role::Manager => 'менеджеру',
+            Role::Moderator => 'модератору',
+            Role::Admin => 'администратору',
+            default => $this->role->label(),
+        };
     }
 
     public function url(): string
@@ -97,9 +103,10 @@ class Invite extends Model
         return $this->max_uses !== null && $this->uses_count >= $this->max_uses;
     }
 
-    public function forManager(): bool
+    /** Покупателю — многоразовая от имени менеджера; всем остальным — одноразовая со сроком. */
+    public function forBuyer(): bool
     {
-        return $this->role === Role::Manager;
+        return $this->role === Role::Buyer;
     }
 
     public function allows(string $field): bool
@@ -116,6 +123,6 @@ class Invite extends Model
     /** Подпись строки: своё название или дата. */
     public function title(): string
     {
-        return $this->label ?: ($this->forManager() ? 'Менеджеру' : 'Покупателю');
+        return $this->label ?: mb_ucfirst($this->kind());
     }
 }

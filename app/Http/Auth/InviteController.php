@@ -54,7 +54,7 @@ class InviteController
         }
         if ($invite->allows('email')) {
             // Менеджеру почта не обязательна: покупатели видят его телефон.
-            $rules['email'] = [$invite->forManager() ? 'nullable' : 'required', 'email', 'max:190', Rule::unique('users', 'email')];
+            $rules['email'] = [$invite->forBuyer() ? 'required' : 'nullable', 'email', 'max:190', Rule::unique('users', 'email')];
         }
         $data = $request->validate($rules, [
             'login.regex' => 'Логин — латиницей, от трёх знаков: буквы, цифры, точка',

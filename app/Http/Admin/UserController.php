@@ -11,7 +11,6 @@ use App\Users\Role;
 use App\Users\Section;
 use App\Users\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /** Пользователи: роль, доступ к стоянке, почта. Только для администратора. */
@@ -20,7 +19,8 @@ class UserController
     public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
 
     /** Роли, которые заводит админ: покупатели приходят только по ссылке менеджера, посетителей больше нет. */
-    public const CREATABLE = [Role::Moderator, Role::Admin, Role::Manager];
+    /** Роли, которые админ выставляет в списке; заводят людей только пригласительной ссылкой. */
+    public const ROLES = [Role::Moderator, Role::Admin, Role::Manager];
 
     public function index(Request $request)
     {
@@ -74,17 +74,6 @@ class UserController
         abort_unless($request->user()->isAdmin(), 404);
 
         return back()->with('password_link', ['user' => $user->id, 'url' => $issue($user, $request->user())]);
-    }
-
-    public function store(Request $request)
-    {
-        abort_unless($request->user()->isAdmin(), 404);
-        $data = $this->data($request);
-        // Пароль случайный: человек входит по коду из письма или заводит ключ доступа.
-        $data['password'] = Str::random(32);
-        User::create($data + ['approved_at' => now(), 'approved_by' => $request->user()->id]);
-
-        return redirect('/settings/users?preset='.$this->presetOf($data['role']))->with('toast', 'Добавлен');
     }
 
     /** Решение по ждущему: открыть с выбранной ролью или отклонить. */

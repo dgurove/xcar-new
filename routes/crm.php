@@ -114,7 +114,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::get('/settings', [SettingsController::class, 'index']);
     Route::prefix('settings')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
-        Route::post('/users', [UserController::class, 'store']);
         Route::put('/users/{user}', [UserController::class, 'update']);
         Route::post('/users/{user}/access', [UserController::class, 'decide']);
         Route::post('/users/{user}/password', [UserController::class, 'passwordLink']);
