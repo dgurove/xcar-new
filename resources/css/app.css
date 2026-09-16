@@ -738,13 +738,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   .tab:active { opacity: .6; }
   .tab[aria-current="page"] { color: var(--color-accent-text); }
-  .tab svg { width: 25px; height: 25px; }
-  .tab .icon-fill { display: none; }
-  .tab[aria-current="page"] .icon-line { display: none; }
-  .tab[aria-current="page"] .icon-fill { display: block; }
+  /* Знак раздела: точка 8px в покое, у текущего — лаймовая черта 22px; та же высота, что у аватара, чтобы подписи стояли в линию. */
+  .tab-mark { display: flex; align-items: center; justify-content: center; width: 25px; height: 25px; }
+  .tab-mark::before { content: ''; width: 8px; height: 8px; border-radius: 4px; background: var(--color-ink-dim); transition: width var(--dur) var(--ease-out), background-color var(--dur-fast); }
+  .tab[aria-current="page"] .tab-mark::before { width: 22px; background: var(--color-accent); }
   .tab .avatar { width: 25px; height: 25px; font-size: 10px; }
   .tab[aria-current="page"] .avatar { box-shadow: 0 0 0 2px var(--color-accent); }
   .tab .badge { position: absolute; top: 2px; left: calc(50% + 6px); }
+  .tab { font-size: 11px; }
 }
 
 /* ------------------------------------------------------------- полоса действий */

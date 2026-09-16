@@ -29,7 +29,7 @@
   Cars,Media,Live,Chats,Telegram,Workflow,Notifications,Push,Storage}`, HTTP по
   поверхностям `app/Http/{Site,Cabinet,Admin,Park,Auth}`, маршруты
   `routes/{web,crm,park,auth}.php`.
-- Телефон — основное устройство: таб-бар, шторки `<dialog>` (`sheet.js`),
+- Телефон — основное устройство: таб-бар (без иконок: точка у раздела, лаймовая черта у текущего — `.tab-mark`), шторки `<dialog>` (`sheet.js`),
   safe-area, 16px в полях, системные `<select>`/`<input type=date>`.
   Проверка — глазами, с телефона (Browser pane 375 px), тесты во время
   разработки не пишем — только когда ошибка молчалива и дорога.

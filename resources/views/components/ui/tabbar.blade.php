@@ -1,4 +1,5 @@
-{{-- Нижний таб-бар телефона: до четырёх разделов и «Кабинет» с аватаром. --}}
+{{-- Нижний таб-бар телефона: до четырёх разделов и «Кабинет» с аватаром. Иконок нет — у раздела
+     точка, у текущего она вытягивается в лаймовую черту (.tab-mark): картинка не подсказывает лишнего. --}}
 @php
     $user = auth()->user();
     $path = '/'.ltrim(request()->path(), '/');
@@ -10,14 +11,14 @@
 <nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-target="bar">
     @foreach ($tabs as $tab)
         @if ($tab['logout'] ?? false)
-            <form method="post" action="/vyhod" class="contents">@csrf<button type="submit" class="tab"><x-ui.icon name="exit" class="icon-line"/><x-ui.icon name="exit" fill class="icon-fill"/><span>{{ $tab['label'] }}</span></button></form>
+            <form method="post" action="/vyhod" class="contents">@csrf<button type="submit" class="tab"><span class="tab-mark"></span><span>{{ $tab['label'] }}</span></button></form>
             @continue
         @endif
         <a href="{{ $tab['href'] }}" class="tab" data-turbo-action="replace" data-action="tabbar#tap" @if ($tab['href'] === $current) aria-current="page" @endif>
             @if ($loop->last && $user)
                 <x-ui.avatar :user="$user" :size="25"/>
             @else
-                <x-ui.icon :name="$tab['icon']" class="icon-line"/><x-ui.icon :name="$tab['icon']" fill class="icon-fill"/>
+                <span class="tab-mark"></span>
             @endif
             <span>{{ $tab['label'] }}</span>
             <x-ui.badge :href="$tab['href']" :badges="$badges"/>
