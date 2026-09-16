@@ -47,7 +47,7 @@
 
         @if ($invite->isActive())
             <x-ui.copy-link :url="$invite->url()" title="Приглашение в xcar" class="mt-5">
-                @if ($invite->forManager())<p class="text-sm text-ink-muted">Сработает один раз: первый, кто откроет и зарегистрируется, станет менеджером, дальше ссылка мертва.</p>@endif
+                @if ($invite->forManager())<p class="text-sm text-ink-muted">Ссылка одноразовая: после регистрации менеджера перестанет действовать.</p>@endif
             </x-ui.copy-link>
         @elseif ($invite->isUsedUp())
             <p class="mt-5 text-ink-muted">Ссылка сработала и больше не действует.</p>
