@@ -5,7 +5,7 @@ namespace App\Http\Cabinet;
 use App\Media\PhotoIngest;
 use Illuminate\Http\Request;
 
-/** Профиль — корень кабинета `/lk`: карточка человека и список действий. */
+/** Профиль — корень кабинета `/account`: карточка человека и список действий. */
 class ProfileController
 {
     public function profile(Request $request)

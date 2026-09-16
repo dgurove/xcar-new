@@ -32,7 +32,7 @@
                     @if ($mine?->state === \App\Purchases\OfferState::Chosen)
                         <p class="flash flash-accent mt-4">Ваша цена {{ \App\Support\Money::rub($mine->amount) }} выбрана — с Вами свяжутся</p>
                     @elseif ($purchase->acceptsOffers())
-                        <form method="post" action="/purchases/{{ $purchase->number }}/{{ $car->ref }}/cena{{ $suffix }}" class="mt-4 flex flex-col gap-3" data-controller="bid" data-bid-asking-value="0" data-bid-min-value="0">
+                        <form method="post" action="/purchases/{{ $purchase->number }}/{{ $car->ref }}/price{{ $suffix }}" class="mt-4 flex flex-col gap-3" data-controller="bid" data-bid-asking-value="0" data-bid-min-value="0">
                             @csrf
                             <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $mine?->amount) }}">
                             <input type="text" inputmode="numeric" required class="field-input nums text-lg" placeholder="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? \App\Support\Money::nums($mine->amount) : '') }}" autocomplete="off">

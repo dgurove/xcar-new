@@ -71,7 +71,7 @@ class InviteController
         return Surface::current() === Surface::Crm ? '/settings/users?preset=invites' : '/account/invites';
     }
 
-    /** Путь для vykl/on на текущем хосте. */
+    /** Путь для off/on на текущем хосте. */
     public static function base(): string
     {
         return Surface::current() === Surface::Crm ? '/settings/users/invites' : '/account/invites';

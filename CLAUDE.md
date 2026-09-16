@@ -6,7 +6,7 @@
 
 **xcar-new** — xcar.ru заново: оптовая площадка автомобилей как веб-приложение
 для телефона. Один Laravel на три хоста — три PWA одного вида: `xcar.ru`
-(витрина, кабинет `/lk`, вход), `crm.xcar.ru` (сотрудники: предложения,
+(витрина, кабинет `/account`, вход), `crm.xcar.ru` (сотрудники: предложения,
 галерея, работа — сделки · почта · чаты, закупки, настройки; пути без
 `/admin`, старые `xcar.ru/admin/*` → 301), `park.xcar.ru` (стоянка).
 Поверхность — `App\Support\Surface`, ставит `ResolveSurface` по хосту; чужие
@@ -44,7 +44,7 @@
   тон поверх), глухих полос и теней у них нет. Тёмная тема —
   `.dark` в CSS, утилит `dark:` нет. CRM и стоянка плотнее (`surface-crm|park`).
 - Оболочка: `x-ui.shell` (шапка, `h1` + `actions`, «назад» ставит сам по
-  `Nav::backFor`), `x-ui.cabinet` (пилюли разделов — не липкие, одна сетка `15rem + 56rem`, без h1 и крошек, корень `/lk` — профиль, «Сводки» нет; разделы — списки `.row`), `x-ui.toolbar`
+  `Nav::backFor`), `x-ui.cabinet` (пилюли разделов — не липкие, одна сетка `15rem + 56rem`, без h1 и крошек, корень `/account` — профиль, «Сводки» нет; разделы — списки `.row`), `x-ui.toolbar`
   (сортировка, пилюли, `extra`, фильтры в шторке; всё состояние — в адресе,
   `data-turbo-action="replace"`), `x-offer.card` в `.cards`, страница объекта
   с правой колонкой 22rem и `x-ui.action-bar` (телефон — плашка над
@@ -101,14 +101,14 @@
 покупателей (многоразовая, `fields`, группа), админ — менеджера (`role`
 manager, `max_uses` 1, `expires_at`, без названия, `ManagerJoined`) или покупателя
 от имени менеджера. Одна дверь `IssueInvite`, один экран `x-invites.list`
-(`/account/priglasheniya` и CRM «Пользователи → Ссылки»), доступ
+(`/account/invites` и CRM «Пользователи → Ссылки»), доступ
 `Invite::manageableBy` — менеджер видит и сделанные для него админом. Новая
 ссылка — первая строка списка. В кабинете `h1` нет: раздел называет пилюля.
 `AcceptInvite` даёт `approved_at` сразу.
 Группы `BuyerGroup`; показы `Offers\Showing` (ровно одно из user/group),
 `ShowOffers`/`HideOffers`, покупателю одно уведомление на пачку, live —
 `refresh` в `user/{id}` (тему `catalog` покупатель не слушает). Интерес
-покупателя — `BuyerInterestNotice` его менеджеру. Настройки уведомлений — `Notifications\Categories` (что можно выключить по роли), `Notice::category/critical`, `User::wants/quietHours`, экран `/account/notifications/nastroyki`, отписка из письма подписанной ссылкой. Ссылка на новый пароль —
+покупателя — `BuyerInterestNotice` его менеджеру. Настройки уведомлений — `Notifications\Categories` (что можно выключить по роли), `Notice::category/critical`, `User::wants/quietHours`, экран `/account/notifications/settings`, отписка из письма подписанной ссылкой. Ссылка на новый пароль —
 `IssuePasswordLink` (`/password/link/{token}`, сутки, одноразовая) — менеджер
 покупателю, админ кому угодно. Админ передаёт покупателя `TransferBuyer`.
 Форма в шторке после успешного POST закрывается сама (`app.js`).
@@ -125,7 +125,7 @@ manager, `max_uses` 1, `expires_at`, без названия, `ManagerJoined`) �
 - Почта: письмо целиком не скачивается (`BODYSTRUCTURE`), ветка → машина
   одной дверью `LinkThread`, файлы — `ImportThreadFiles`.
 - Закупки Carcade: витрина — две карточки на закупку (легковые/грузовые), CRM
-  — один список с фильтрами в адресе, оценка `…/{car}/ocenka`, выгрузка — тот
+  — один список с фильтрами в адресе, оценка `…/{car}/estimate`, выгрузка — тот
   самый файл Carcade (`Purchases\Export`); повторной выкачки фото нет нигде.
 - Telegram-бот владельца без SDK (`Telegram\Bot`, IPv6, `telegram:poll`).
 - Медиа: `PhotoIngest` — всё входящее в 1600 px webp, `sha` исходника у

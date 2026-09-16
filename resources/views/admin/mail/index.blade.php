@@ -8,7 +8,7 @@
 
     <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\MailController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" :hidden="['yashchik' => $slug]" name="mail">
         <x-slot:extra>
-            <a href="{{ $base }}/novoe{{ $slug ? '?yashchik='.$slug : '' }}" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">Написать</span></a>
+            <a href="{{ $base }}/new{{ $slug ? '?yashchik='.$slug : '' }}" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">Написать</span></a>
         </x-slot:extra>
         <x-slot:filters>
             <input name="q" value="{{ $q }}" placeholder="Тема, отправитель" class="field-input field-s">

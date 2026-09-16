@@ -5,7 +5,7 @@
     $path = '/'.ltrim(request()->path(), '/');
     $tabs = \App\Support\Nav::tabs($user);
     $badges = \App\Support\Nav::badges($user);
-    // Активен самый точный пункт: «Сделки» в /account/sdelki, а не «Кабинет».
+    // Активен самый точный пункт: «Сделки» в /account/deals, а не «Кабинет».
     $current = collect($tabs)->filter(fn ($t) => \App\Support\Nav::isCurrent($t, $path))->sortByDesc(fn ($t) => \App\Support\Nav::matchLength($t, $path))->first()['href'] ?? null;
 @endphp
 <nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-target="bar">

@@ -439,7 +439,7 @@ function noticeSeen() {
         if (!link) return;
         const body = new FormData();
         body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
-        navigator.sendBeacon(`/account/notifications/${link.dataset.notice}/otkryto`, body);
+        navigator.sendBeacon(`/account/notifications/${link.dataset.notice}/opened`, body);
         link.closest('.swipe, .block')?.querySelector('.rounded-full.bg-accent-soft')?.remove();
     }, true);
 }
