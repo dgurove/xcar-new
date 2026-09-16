@@ -16,6 +16,7 @@ use App\Mail\Console\WatchMail;
 use App\Media\Console\MovePapers;
 use App\Notifications\Console\SendDigest;
 use App\Offers\Console\TickOffers;
+use App\Media\Console\Restamp;
 use App\Push\Console\MakeKeys;
 use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         WatchMail::class,
         ReconcileMail::class,
         MakeKeys::class,
+        Restamp::class,
         MovePapers::class,
         Gc::class,
         Report::class,

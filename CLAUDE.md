@@ -163,7 +163,12 @@ CRM-редакторе, по умолчанию все); покупатель �
 приглашения; телефон и почта необязательны, `User::mayHave`). Приглашение
 `Users\Invite` (`/i/{code}`, многоразовая, `fields` {phone,email}, группа,
 выключатель) → `AcceptInvite` → Buyer с `approved_at`, `BuyerJoined` →
-менеджеру уведомление, владельцу строка в Telegram. Группы `BuyerGroup` +
+менеджеру уведомление, владельцу строка в Telegram. Саморегистрации нет, поэтому
+менеджеров тоже зовут ссылкой: админ в CRM «Пользователи → Ссылка» делает
+ссылку менеджеру (`role` manager, `max_uses` 1 — сработала, и всё: пришедший
+сразу менеджер, `ManagerJoined` → Telegram владельцу) или покупателю от имени
+выбранного менеджера (`manager_id`, `created_by` админ; менеджер видит её у
+себя в «Приглашениях»). Пилюля «Ссылки» — все ссылки, и менеджерские. Группы `BuyerGroup` +
 `buyer_group_user`. Показы `Offers\Showing` (ровно одно из user/group),
 `ShowOffers` (пачка — добавляет, `sync` одного — приводит к списку) и
 `HideOffers`; уведомление покупателю одно на пачку (`OffersShownNotice`),
@@ -328,7 +333,8 @@ Excel — **тот самый файл Carcade с диска** (`source_file`), 
 `StampPhoto`/`UnstampPhoto`, по тумблеру — джоба `StampPhotos` в очереди
 `long`, новый кадр под запретом клеймит слушатель `StampOnAdd` синхронно —
 событие spatie стреляет до конверсий; `RotatePhoto` крутит и чистую копию,
-осиротевшие копии стирает `storage:gc`), `app/Storage`
+осиротевшие копии стирает `storage:gc`; перерисовали знак — `media:restamp`
+перебивает его на всех кадрах с запретом), `app/Storage`
 (`storage:gc` ежедневно, `storage:report`), `app/Cars`, `app/Users` (вход по ключу — Face ID / Touch ID:
 `laragear/webauthn`, провайдер `xcar-webauthn` (`Users\Auth\WebAuthnProvider`
 поверх пакетного — без него `Auth::attempt` с ответом ключа уходит в

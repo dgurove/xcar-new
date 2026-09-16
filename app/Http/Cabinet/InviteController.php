@@ -29,6 +29,7 @@ class InviteController
         ]);
         $invite = $me->invites()->create([
             'code' => Invite::freshCode(),
+            'created_by' => $me->id,
             'label' => trim((string) $data['label']) ?: null,
             'group_id' => $data['group_id'] ?: null,
             'fields' => ['phone' => $request->boolean('phone'), 'email' => $request->boolean('email')],

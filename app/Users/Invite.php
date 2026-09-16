@@ -9,17 +9,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
- * Пригласительная ссылка менеджера. Многоразовая: одну ссылку можно послать
- * десяти людям; `fields` — какие контакты покупатель указывает при регистрации.
+ * Пригласительная ссылка. Менеджер зовёт покупателей (многоразовая: одну ссылку
+ * можно послать десяти людям; `fields` — какие контакты покупатель указывает при
+ * регистрации). Админ зовёт менеджеров — такая ссылка одноразовая (`max_uses` 1):
+ * пришедший сразу становится менеджером — и покупателей от имени менеджера.
  */
-#[Fillable(['manager_id', 'code', 'label', 'fields', 'group_id', 'disabled_at'])]
+#[Fillable(['manager_id', 'role', 'created_by', 'code', 'label', 'fields', 'group_id', 'max_uses', 'disabled_at'])]
 class Invite extends Model
 {
     public const FIELDS = ['phone' => 'Телефон', 'email' => 'Почта'];
 
     protected function casts(): array
     {
-        return ['fields' => 'array', 'disabled_at' => 'datetime'];
+        return ['fields' => 'array', 'disabled_at' => 'datetime', 'role' => Role::class];
     }
 
     public function getRouteKeyName(): string
@@ -41,6 +43,11 @@ class Invite extends Model
         return $this->belongsTo(User::class, 'manager_id');
     }
 
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function group(): BelongsTo
     {
         return $this->belongsTo(BuyerGroup::class, 'group_id');
@@ -58,7 +65,18 @@ class Invite extends Model
 
     public function isActive(): bool
     {
-        return $this->disabled_at === null;
+        return $this->disabled_at === null && ! $this->isUsedUp();
+    }
+
+    /** Одноразовая (или с пределом) ссылка уже сработала. */
+    public function isUsedUp(): bool
+    {
+        return $this->max_uses !== null && $this->uses_count >= $this->max_uses;
+    }
+
+    public function forManager(): bool
+    {
+        return $this->role === Role::Manager;
     }
 
     public function allows(string $field): bool
@@ -75,6 +93,6 @@ class Invite extends Model
     /** Подпись строки: своё название или дата. */
     public function title(): string
     {
-        return $this->label ?: 'Ссылка от '.$this->created_at->translatedFormat('j M');
+        return $this->label ?: ($this->forManager() ? 'Менеджер' : 'Ссылка').' от '.$this->created_at->translatedFormat('j M');
     }
 }

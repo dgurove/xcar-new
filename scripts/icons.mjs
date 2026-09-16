@@ -112,7 +112,7 @@ for (const [w, h, r] of SCREENS) {
 // Водяной знак для фото оффера с запретом шеринга (App\Media\Watermark кладёт его решёткой через GD,
 // а GD не читает SVG). Двухтональный: светло-серое тело поверх тёмного размытого ореола — читается
 // и на светлом, и на тёмном кузове, и его нельзя «вычесть» как один шаблон. Прозрачность здесь.
-const WM = { width: 1200, pad: 16, body: '#DCDCDC', bodyAlpha: 0.5, haloBlur: 3, haloAlpha: 0.4 };
+const WM = { width: 1200, pad: 16, body: '#DCDCDC', bodyAlpha: 0.38, haloBlur: 3, haloAlpha: 0.3 };
 {
     const src = readFileSync(at('../public/images/xcar.svg'), 'utf8').replace(/width="\d+" height="\d+"/, `width="${WM.width}" height="${Math.round(WM.width * 512 / 2054)}"`);
     const shape = (fill, alpha) => src.replace(/fill="(black|#97BF0D)"/g, `fill="${fill}" fill-opacity="${alpha}"`);

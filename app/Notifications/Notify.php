@@ -12,8 +12,10 @@ use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
+use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
 use App\Telegram\Messages\Registration;
 use App\Users\Events\BuyerJoined;
+use App\Users\Events\ManagerJoined;
 use App\Users\Events\AccessDecided;
 use App\Users\Events\UserRegistered;
 use App\Users\Role;
@@ -43,6 +45,7 @@ final class Notify
             ChatMessagePosted::class => 'chat',
             UserRegistered::class => 'registered',
             BuyerJoined::class => 'buyerJoined',
+            ManagerJoined::class => 'managerJoined',
             AccessDecided::class => 'accessDecided',
         ];
     }
@@ -58,6 +61,12 @@ final class Notify
     {
         $e->user->manager?->notify(new BuyerJoinedNotice($e->user));
         NotifyOwner::dispatch(new BuyerJoinedMessage($e->user->load('manager')));
+    }
+
+    /** Менеджер пришёл по ссылке админа — владельцу строка в Telegram. */
+    public function managerJoined(ManagerJoined $e): void
+    {
+        NotifyOwner::dispatch(new ManagerJoinedMessage($e->user));
     }
 
     public function accessDecided(AccessDecided $e): void

@@ -319,6 +319,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row-check .check { @apply ml-auto shrink-0; }
   .row-check:has(input:checked) { @apply bg-accent-soft; }
   .row-check:has(input:disabled) { @apply cursor-default opacity-60; }
+  /* Ссылка админа: блок «для покупателя» виден только при роли «покупателю». */
+  .invite-form:has(input[name="role"][value="manager"]:checked) [data-buyer] { display: none !important; }
   .row-sub { @apply mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted; }
 
   /* Режим выбора в ленте менеджера: кружок на каждой карточке, отмеченная — с обводкой.

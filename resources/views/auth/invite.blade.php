@@ -1,19 +1,24 @@
-{{-- Регистрация по приглашению: сверху менеджер, ниже только те поля, что он разрешил. --}}
-@php($manager = $invite->manager)
-<x-ui.auth :title="$invite->isActive() ? $manager->shortName().' приглашает вас в xcar' : 'Ссылка не действует'">
+{{-- Регистрация по приглашению: покупателю — сверху его менеджер и только те поля, что тот разрешил;
+     менеджеру (ссылка админа, одноразовая) — имя, логин, пароль, телефон, почта. --}}
+@php($manager = $invite->forManager() ? null : $invite->manager)
+<x-ui.auth :title="! $invite->isActive() ? 'Ссылка не действует' : ($manager ? $manager->shortName().' приглашает вас в xcar' : 'Вас приглашают в xcar')">
     @if (! $invite->isActive())
-        <p class="mt-4 text-ink-muted">Попросите у {{ $manager->shortName() }} новую ссылку.</p>
+        <p class="mt-4 text-ink-muted">{{ $invite->isUsedUp() ? 'По этой ссылке уже зарегистрировались.' : 'Попросите новую ссылку'.($manager ? ' у '.$manager->shortName() : '').'.' }}</p>
         <a href="/vhod" class="btn btn-quiet mt-6 w-full">У меня уже есть аккаунт</a>
     @else
-        <div class="mt-5 flex items-center gap-3">
-            <x-ui.avatar :user="$manager" :size="48" class="text-lg"/>
-            <div class="min-w-0">
-                <div class="truncate font-medium">{{ $manager->name }}</div>
-                <div class="text-sm text-ink-muted">ваш менеджер</div>
+        @if ($manager)
+            <div class="mt-5 flex items-center gap-3">
+                <x-ui.avatar :user="$manager" :size="48" class="text-lg"/>
+                <div class="min-w-0">
+                    <div class="truncate font-medium">{{ $manager->name }}</div>
+                    <div class="text-sm text-ink-muted">ваш менеджер</div>
+                </div>
             </div>
-        </div>
+        @else
+            <p class="mt-4 text-ink-muted">Вы будете работать в xcar как менеджер: подтверждать предложения и вести своих покупателей.</p>
+        @endif
         @if ($preview)
-            <p class="mt-5 text-sm text-ink-muted">Так ссылку видит покупатель. Регистрируется он сам — с телефона, по вашей ссылке.</p>
+            <p class="mt-5 text-sm text-ink-muted">Так ссылку видит {{ $manager ? 'покупатель' : 'будущий менеджер' }}. Регистрируется он сам — по вашей ссылке.</p>
         @else
         <form method="post" action="/i/{{ $invite->code }}" enctype="multipart/form-data" class="mt-6 space-y-3" data-controller="login">
             @csrf
@@ -33,7 +38,7 @@
                 <input name="phone" type="tel" required inputmode="tel" autocomplete="tel" class="field-input" placeholder="Телефон" value="{{ old('phone') }}">
             @endif
             @if ($invite->allows('email'))
-                <input name="email" type="email" required inputmode="email" autocomplete="email" class="field-input" placeholder="Почта" value="{{ old('email') }}">
+                <input name="email" type="email" @unless ($invite->forManager()) required @endunless inputmode="email" autocomplete="email" class="field-input" placeholder="{{ $invite->forManager() ? 'Почта, если есть' : 'Почта' }}" value="{{ old('email') }}">
             @endif
             @foreach (['name', 'login', 'password', 'phone', 'email', 'avatar', 'consent'] as $field)
                 @error($field)<p class="text-sm text-danger">{{ $message }}</p>@enderror

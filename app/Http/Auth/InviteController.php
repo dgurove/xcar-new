@@ -24,6 +24,7 @@ class InviteController
             if ($user->isBuyer() && $user->manager_id === $invite->manager_id) {
                 return redirect('/')->with('toast', 'Вы уже в xcar');
             }
+            // Свою ссылку менеджер смотрит глазами покупателя, сотрудник — любую; остальным тут делать нечего.
             if ($user->id !== $invite->manager_id && ! $user->isStaff()) {
                 return redirect('/')->with('toast', 'Вы уже вошли как '.$user->shortName());
             }
@@ -52,7 +53,8 @@ class InviteController
             $rules['phone'] = ['required', 'regex:/^7\d{10}$/', Rule::unique('users', 'phone')];
         }
         if ($invite->allows('email')) {
-            $rules['email'] = ['required', 'email', 'max:190', Rule::unique('users', 'email')];
+            // Менеджеру почта не обязательна: покупатели видят его телефон.
+            $rules['email'] = [$invite->forManager() ? 'nullable' : 'required', 'email', 'max:190', Rule::unique('users', 'email')];
         }
         $data = $request->validate($rules, [
             'login.regex' => 'Логин — латиницей, от трёх знаков: буквы, цифры, точка',
@@ -67,6 +69,6 @@ class InviteController
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect('/')->with('toast', 'Добро пожаловать, '.$user->name);
+        return redirect($user->isManager() ? '/lk' : '/')->with('toast', 'Добро пожаловать, '.$user->name);
     }
 }

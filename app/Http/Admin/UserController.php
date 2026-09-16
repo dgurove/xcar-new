@@ -6,6 +6,7 @@ use App\Support\Phone;
 use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\Actions\TransferBuyer;
+use App\Users\Invite;
 use App\Users\Role;
 use App\Users\Section;
 use App\Users\User;
@@ -16,7 +17,7 @@ use Illuminate\Validation\Rule;
 /** Пользователи: роль, доступ к стоянке, почта. Только для администратора. */
 class UserController
 {
-    public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'buyers' => 'Покупатели', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
+    public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
 
     /** Роли, которые заводит админ: покупатели приходят только по ссылке менеджера, посетителей больше нет. */
     public const CREATABLE = [Role::Moderator, Role::Admin, Role::Manager];
@@ -32,6 +33,7 @@ class UserController
             'managers' => $q->where('role', Role::Manager)->withCount('buyers'),
             'buyers' => $q->where('role', Role::Buyer)->reorder('created_at', 'desc'),
             'visitors' => $q->where('role', Role::Visitor)->whereNotNull('approved_at'),
+            'invites' => $q->whereRaw('false'),
             default => $q->whereIn('role', [Role::Admin, Role::Moderator]),
         };
         if ($manager = (int) $request->query('manager')) {
@@ -46,6 +48,7 @@ class UserController
             'staff' => User::whereIn('role', [Role::Admin, Role::Moderator])->count(),
             'managers' => User::where('role', Role::Manager)->count(),
             'buyers' => User::where('role', Role::Buyer)->count(),
+            'invites' => Invite::whereNull('disabled_at')->where(fn ($w) => $w->whereNull('max_uses')->orWhereColumn('uses_count', '<', 'max_uses'))->count(),
             'waiting' => User::whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->count(),
             'visitors' => User::where('role', Role::Visitor)->whereNotNull('approved_at')->count(),
             'rejected' => User::whereNotNull('rejected_at')->whereNull('approved_at')->count(),
@@ -59,6 +62,9 @@ class UserController
             'pills' => $pills,
             'counts' => $counts,
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
+            // Все ссылки — и админские, и менеджерские: админ видит, кто кого зовёт.
+            'invites' => $preset === 'invites' ? Invite::with(['manager', 'creator', 'group', 'buyers'])->withCount('buyers')->latest()->get() : collect(),
+            'fresh' => session('invite'),
         ]);
     }
 

@@ -4,6 +4,7 @@ namespace App\Users\Actions;
 
 use App\Media\PhotoIngest;
 use App\Users\Events\BuyerJoined;
+use App\Users\Events\ManagerJoined;
 use App\Users\Invite;
 use App\Users\Role;
 use App\Users\User;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Log;
  * Регистрация по пригласительной ссылке — единственная на сайте. Покупатель
  * привязывается к менеджеру насовсем, получает доступ сразу и попадает в группу
  * ссылки. Телефон и почта — только те, что менеджер разрешил в ссылке.
+ * По ссылке админа для менеджера человек становится менеджером; такая ссылка
+ * одноразовая, счётчик закрывает её тут же.
  *
  * @param array{name: string, login: string, password: string, phone?: ?string, email?: ?string} $data
  */
@@ -25,19 +28,21 @@ final class AcceptInvite
     public function __invoke(Invite $invite, array $data, ?UploadedFile $avatar = null): User
     {
         $user = DB::transaction(function () use ($invite, $data) {
+            $manager = $invite->forManager();
             $user = User::create([
                 'name' => trim($data['name']),
                 'login' => $data['login'],
                 'password' => $data['password'],
                 'phone' => $invite->allows('phone') ? ($data['phone'] ?? null) : null,
                 'email' => $invite->allows('email') ? ($data['email'] ?? null) : null,
-                'role' => Role::Buyer,
-                'manager_id' => $invite->manager_id,
+                'role' => $manager ? Role::Manager : Role::Buyer,
+                'manager_id' => $manager ? null : $invite->manager_id,
                 'invite_id' => $invite->id,
-                'contact_fields' => $invite->contactFields(),
+                'contact_fields' => $manager ? [] : $invite->contactFields(),
                 'approved_at' => now(),
+                'approved_by' => $invite->created_by,
             ]);
-            if ($invite->group_id) {
+            if (! $manager && $invite->group_id) {
                 $user->groups()->attach($invite->group_id, ['created_at' => now()]);
             }
             $invite->increment('uses_count');
@@ -54,7 +59,7 @@ final class AcceptInvite
             }
         }
 
-        BuyerJoined::dispatch($user, $invite);
+        $invite->forManager() ? ManagerJoined::dispatch($user, $invite) : BuyerJoined::dispatch($user, $invite);
 
         return $user;
     }
