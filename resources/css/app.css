@@ -61,8 +61,12 @@
   --color-chrome: #121212;
   --color-chrome-light: #1d1d1b;
   --color-bar: #ffffff;
-  /* Плотность стекла хрома: сколько цвета полосы остаётся над размытым содержимым. */
-  --bar-alpha: 72%;
+  /* Стекло хрома: сколько цвета полосы остаётся над содержимым и чем содержимое
+     размывается. Белее белого не бывает, поэтому светлая полоса не глушится, а
+     осветляет подложку (brightness): серый фон и карточки под ней белеют, фото и
+     заголовки просвечивают светлыми пятнами. */
+  --bar-alpha: 78%;
+  --bar-filter: saturate(180%) blur(20px) brightness(1.12);
 
   --color-ground: #f7f7f7;
   --color-surface: #ffffff;
@@ -129,6 +133,7 @@
   color-scheme: dark;
   --color-bar: #121212;
   --bar-alpha: 62%;
+  --bar-filter: saturate(180%) blur(20px);
   --color-ground: #161616;
   --color-surface: #0d0d0d;
   --color-surface-2: #1a1a1a;
@@ -586,7 +591,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
     .header, .tabbar, .action-bar {
       background: color-mix(in srgb, var(--color-bar) var(--bar-alpha), transparent);
-      -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: var(--bar-filter); backdrop-filter: var(--bar-filter);
     }
   }
   @media (prefers-reduced-transparency: reduce) {
@@ -619,9 +624,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      backdrop-filter сквозь родителя не видит), поэтому полупрозрачная в обеих темах. */
   .header-btn {
     @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium text-ink transition-colors;
-    background: rgb(29 29 27 / .06);
+    background: rgb(29 29 27 / .09);
   }
-  @media (hover: hover) { .header-btn:hover { background: rgb(29 29 27 / .11); color: var(--color-ink); } }
+  @media (hover: hover) { .header-btn:hover { background: rgb(29 29 27 / .14); color: var(--color-ink); } }
   .dark .header-btn { background: rgb(255 255 255 / .12); color: rgb(255 255 255 / .80); }
   @media (hover: hover) { .dark .header-btn:hover { background: rgb(255 255 255 / .20); color: #fff; } }
   .header-btn[aria-current="page"], .dark .header-btn[aria-current="page"] { background: var(--color-accent); color: #fff; }
@@ -1185,7 +1190,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .pill:active, .header-btn:active, .sheet-close:active, .combobox-option:active, .card-star:active, .choice:active span,
   a.row:active, button.row:active, .row:has(> a:active), a.stat:active,
   .pill.is-pending, .header-btn.is-pending, .row.is-pending, .stat.is-pending { background: var(--color-hover); transition: background-color 0s 60ms; }
-  .header-btn:active, .header-btn.is-pending { background: rgb(29 29 27 / .14); }
+  .header-btn:active, .header-btn.is-pending { background: rgb(29 29 27 / .18); }
   .dark .header-btn:active, .dark .header-btn.is-pending { background: rgb(255 255 255 / .2); }
   .pill[aria-current]:active, .pill-accent:active, .header-btn[aria-current="page"]:active, .header-btn-cta:active,
   .pill[aria-current].is-pending, .header-btn[aria-current="page"].is-pending { background: var(--color-accent-hover); }
