@@ -95,8 +95,8 @@
 **Покупатели.** `login` (латиница; вход одним полем логин / телефон / почта),
 `manager_id`, `contact_fields` (что покупатель вправе указывать — снимок с
 приглашения). Приглашение `Users\Invite` (`/i/{code}`): менеджер зовёт
-покупателей (многоразовая, `fields`, группа), админ в CRM «Пользователи →
-Ссылка» — менеджера (`role` manager, `max_uses` 1, `ManagerJoined`) или
+покупателей (многоразовая, `fields`, группа), админ — в CRM «Пользователи →
+Ссылка» и в кабинете сайта `/lk/priglasheniya` (`IssueAdminInvite`) — менеджера (`role` manager, `max_uses` 1, `ManagerJoined`) или
 покупателя от имени менеджера. `AcceptInvite` даёт `approved_at` сразу.
 Группы `BuyerGroup`; показы `Offers\Showing` (ровно одно из user/group),
 `ShowOffers`/`HideOffers`, покупателю одно уведомление на пачку, live —

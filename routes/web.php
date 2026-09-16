@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Cabinet\AdminInviteController;
 use App\Http\Cabinet\BuyerController;
 use App\Http\Cabinet\BuyerInterestController;
 use App\Http\Cabinet\ChatController as CabinetChatController;
@@ -91,6 +92,12 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/lk/uvedomleniya/{id}', [NotificationController::class, 'open']);
 
     Route::get('/live/badges', [FragmentController::class, 'badges']);
+
+    // Приглашения админа в кабинете на сайте — то же, что CRM «Пользователи → Ссылки» (чужому 404 в контроллере).
+    Route::get('/lk/priglasheniya', [AdminInviteController::class, 'index']);
+    Route::post('/lk/priglasheniya', [AdminInviteController::class, 'store']);
+    Route::post('/lk/priglasheniya/{invite}/vykl', [AdminInviteController::class, 'disable']);
+    Route::post('/lk/priglasheniya/{invite}/vkl', [AdminInviteController::class, 'enable']);
 
     // Кабинет менеджера: покупатели, группы, приглашения, показы. Конкретные пути раньше {user}.
     Route::middleware('manager')->group(function () {
