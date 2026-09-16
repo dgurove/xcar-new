@@ -14,7 +14,6 @@ use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
 use App\Mail\Console\WatchMail;
 use App\Media\Console\MovePapers;
-use App\Notifications\Console\SendDigest;
 use App\Offers\Console\TickOffers;
 use App\Media\Console\Restamp;
 use App\Push\Console\MakeKeys;
@@ -38,7 +37,6 @@ return Application::configure(basePath: dirname(__DIR__))
         CreateUser::class,
         TickOffers::class,
         RefillInsurers::class,
-        SendDigest::class,
         SyncMail::class,
         WatchMail::class,
         ReconcileMail::class,

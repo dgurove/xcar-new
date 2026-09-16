@@ -106,7 +106,7 @@ manager, `max_uses` 1, `expires_at`, без названия, `ManagerJoined`) �
 Группы `BuyerGroup`; показы `Offers\Showing` (ровно одно из user/group),
 `ShowOffers`/`HideOffers`, покупателю одно уведомление на пачку, live —
 `refresh` в `user/{id}` (тему `catalog` покупатель не слушает). Интерес
-покупателя — `BuyerInterestNotice` его менеджеру. Настройки уведомлений — `Notifications\Categories` (что можно выключить по роли), `Notice::category/critical`, `User::wants/quietHours/wantsDigest`, экран `/lk/uvedomleniya/nastroyki`, отписка из письма подписанной ссылкой. Ссылка на новый пароль —
+покупателя — `BuyerInterestNotice` его менеджеру. Настройки уведомлений — `Notifications\Categories` (что можно выключить по роли), `Notice::category/critical`, `User::wants/quietHours`, экран `/lk/uvedomleniya/nastroyki`, отписка из письма подписанной ссылкой. Ссылка на новый пароль —
 `IssuePasswordLink` (`/parol/ssylka/{token}`, сутки, одноразовая) — менеджер
 покупателю, админ кому угодно. Админ передаёт покупателя `TransferBuyer`.
 Форма в шторке после успешного POST закрывается сама (`app.js`).
@@ -136,7 +136,7 @@ manager, `max_uses` 1, `expires_at`, без названия, `ManagerJoined`) �
 ./serve-local.sh                 # http://xcar.localhost:8010 (php@8.5 и postgres из brew)
 php artisan queue:work database-long --queue=long,mail --stop-when-empty   # почта, фото, закупки
 php artisan queue:work --stop-when-empty                                   # конверсии, уведомления
-php artisan offers:tick | mail:sync | mail:reconcile | notifications:digest | push:keys | media:restamp
+php artisan offers:tick | mail:sync | mail:reconcile | push:keys | media:restamp
 npm run build                    # ассеты; npm run dev — с горячей перезагрузкой
 node scripts/icons.mjs           # иконки, экраны запуска, водяной знак из resources/icons
 ./deploy/deploy.sh               # выкладка: снимок git → сборка → бэкап базы → миграции → up

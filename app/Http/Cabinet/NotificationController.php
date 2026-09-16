@@ -78,7 +78,6 @@ class NotificationController
         $allowed = array_keys(Categories::for($user->role)['on']);
         $user->update(['notification_settings' => [
             'mail' => $request->boolean('mail'),
-            'digest' => $request->boolean('digest'),
             'quiet' => $request->boolean('quiet'),
             // Форма присылает включённые категории — выключенные считаем от разрешённых.
             'off' => array_values(array_diff($allowed, array_map('strval', (array) $request->input('on', [])))),

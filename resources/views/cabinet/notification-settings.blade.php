@@ -31,11 +31,6 @@
                         </span>
                         <input type="checkbox" name="mail" value="1" class="switch" @checked($user->wantsMail()) data-action="change->autosubmit#submit">
                     </label>
-                    <label class="row row-switch">
-                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="sun" class="size-5"/></span>
-                        <span class="min-w-0 flex-1 font-medium">Утренняя сводка непрочитанного</span>
-                        <input type="checkbox" name="digest" value="1" class="switch" @checked($user->wantsDigest()) data-action="change->autosubmit#submit">
-                    </label>
                 @endif
             </div>
         </section>

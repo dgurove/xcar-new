@@ -155,12 +155,6 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return ($this->notification_settings['mail'] ?? true) !== false;
     }
 
-    /** Утренняя сводка непрочитанного — по умолчанию вместе с почтой. */
-    public function wantsDigest(): bool
-    {
-        return ($this->notification_settings['digest'] ?? $this->wantsMail()) !== false;
-    }
-
     /** Категория уведомлений не выключена (Notifications\Categories). */
     public function wants(string $category): bool
     {
