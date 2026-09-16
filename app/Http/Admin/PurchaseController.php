@@ -120,7 +120,7 @@ class PurchaseController
 
     public function update(Request $request, Purchase $purchase)
     {
-        $purchase->update($request->validate(['title' => ['nullable', 'string', 'max:120'], 'supplier' => ['nullable', 'string', 'max:80'], 'offers_close_at' => ['nullable', 'date']]));
+        $purchase->update($request->validate(['title' => ['nullable', 'string', 'max:120'], 'supplier' => ['nullable', 'string', 'max:80'], 'offers_close_at' => ['nullable', 'date'], 'hide_priced' => ['sometimes', 'boolean']]));
 
         return back()->with('toast', 'Сохранено');
     }

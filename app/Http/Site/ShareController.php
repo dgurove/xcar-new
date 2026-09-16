@@ -34,7 +34,7 @@ class ShareController
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
         if (Surface::current() !== Surface::Crm) {
-            abort_unless($purchase->state->isPublic() && $car->is_published, 404);
+            abort_unless($purchase->state->isPublic() && $purchase->showsOnSite($car), 404);
             abort_if(in_array($car->kind->value, Restriction::hiddenFor($request->user()), true), 404);
         }
         if ($car->share_locked) {

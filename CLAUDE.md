@@ -315,7 +315,9 @@ Excel — **тот самый файл Carcade с диска** (`source_file`), 
 «приём закрыт» — не состояние, а прошедший срок «Цены до»
 (`Purchase::closed()`, `acceptsOffers()`), в CRM пилюля «Приём закрыт с …»,
 «+15 мин / +1 ч» открывают заново; машину код не прячет
-никогда — только галка «Показывать покупателям» в карточке), `app/Notifications`
+никогда — только галка «Показывать покупателям» в карточке и переключатель
+закупки «Скрывать на xcar позиции с нашей ценой» (`purchases.hide_priced`,
+по умолчанию включён: машина с `price_final` уходит с витрины — `Purchase::carsOnSite()`/`showsOnSite()`, одна дверь для списка, страницы, PDF и карточек-групп; в CRM всё видно)), `app/Notifications`
 (`Notice` — база, канал database+mail+push), `app/Push`, `app/Live` (Mercure:
 `card/refresh/toast/badges`), `app/Media` (`PhotoIngest` — всё входящее в
 1600 px webp, HEIC с айфонов через `heic2jpg` (pillow-heif) из образа, конверсии только вниз; `papers` на закрытом диске, наружу через

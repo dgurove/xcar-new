@@ -28,6 +28,12 @@
                 <x-ui.field name="offers_close_at" label="Цены до" type="datetime-local" :value="$purchase->offers_close_at?->format('Y-m-d\TH:i')"/>
                 <x-ui.button block variant="secondary">Сохранить</x-ui.button>
             </form>
+            {{-- Машины с нашей ценой на xcar не показываем — переключатель сохраняется сам. --}}
+            <form method="post" action="/zakupki/{{ $n }}" class="mt-4 rounded-(--radius-m) bg-surface-2 px-3 py-2.5" data-controller="autosubmit">
+                @csrf @method('put')
+                <input type="hidden" name="hide_priced" value="0">
+                <x-ui.check name="hide_priced" :checked="$purchase->hide_priced" data-action="change->autosubmit#submit">Скрывать на xcar позиции с нашей ценой</x-ui.check>
+            </form>
             <div class="mt-4 flex flex-col gap-2">
                 @foreach ($transitions as $next)
                     @if (in_array($next, match($purchase->state) { PurchaseState::Draft => [PurchaseState::Open, PurchaseState::Archived], PurchaseState::Open => [PurchaseState::Draft, PurchaseState::Archived], PurchaseState::Archived => [PurchaseState::Draft] }, true))

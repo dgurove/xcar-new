@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['number', 'title', 'supplier', 'state', 'offers_close_at', 'source_file', 'imported_at', 'imported_by'])]
+#[Fillable(['number', 'title', 'supplier', 'state', 'offers_close_at', 'hide_priced', 'source_file', 'imported_at', 'imported_by'])]
 class Purchase extends Model
 {
     protected function casts(): array
     {
-        return ['state' => PurchaseState::class, 'offers_close_at' => 'datetime', 'imported_at' => 'datetime'];
+        return ['state' => PurchaseState::class, 'offers_close_at' => 'datetime', 'imported_at' => 'datetime', 'hide_priced' => 'bool'];
     }
 
     public function getRouteKeyName(): string
@@ -31,6 +31,17 @@ class Purchase extends Model
         return $this->belongsTo(User::class, 'imported_by');
     }
 
+    /** Машины, которые видит витрина: опубликованные и, если так решено в закупке, ещё без нашей цены. */
+    public function carsOnSite(): HasMany
+    {
+        return $this->cars()->where('is_published', true)->when($this->hide_priced, fn ($q) => $q->whereNull('price_final'));
+    }
+
+    public function showsOnSite(Car $car): bool
+    {
+        return $car->is_published && ! ($this->hide_priced && $car->price_final !== null);
+    }
+
     /** Наружу — номер, группа и месяц: по названию с именем лизинговой компании покупатель уйдёт искать те же машины у неё. */
     public function publicTitle(?Group $group = null): string
     {
@@ -41,7 +52,7 @@ class Purchase extends Model
     public function kindsFor(?User $user): array
     {
         $hidden = Restriction::hiddenFor($user);
-        $present = $this->cars()->where('is_published', true)->distinct()->pluck('kind')->map(fn ($k) => $k instanceof Kind ? $k : Kind::from($k))->all();
+        $present = $this->carsOnSite()->distinct()->pluck('kind')->map(fn ($k) => $k instanceof Kind ? $k : Kind::from($k))->all();
 
         return array_values(array_filter($present, fn (Kind $k) => ! in_array($k->value, $hidden, true)));
     }
@@ -61,7 +72,7 @@ class Purchase extends Model
             if (! $in) {
                 continue;
             }
-            $cars = $this->cars()->where('is_published', true)->whereIn('kind', $in);
+            $cars = $this->carsOnSite()->whereIn('kind', $in);
             $rated = $user ? (clone $cars)->whereHas('offers', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [OfferState::Active, OfferState::Chosen]))->count() : 0;
             $cards[] = new PurchaseCard($this, $group, $cars->count(), $rated);
         }

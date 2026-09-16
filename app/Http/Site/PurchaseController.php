@@ -45,7 +45,7 @@ class PurchaseController
 
     public function car(Request $request, Purchase $purchase, Car $car)
     {
-        abort_unless($purchase->state->isPublic() && $car->purchase_id === $purchase->id && $car->is_published, 404);
+        abort_unless($purchase->state->isPublic() && $car->purchase_id === $purchase->id && $purchase->showsOnSite($car), 404);
         abort_if(in_array($car->kind->value, Restriction::hiddenFor($request->user()), true), 404);
         $car->load(['brand', 'model', 'settlement', 'media', 'offers']);
         $filters = $request->only(['preset', 'q', 'kind', 'sort', 'group']);
@@ -86,7 +86,7 @@ class PurchaseController
 
     private function visible(Purchase $purchase, Request $request, ?Group $group = null): Builder
     {
-        return Car::where('purchase_id', $purchase->id)->where('is_published', true)->whereNotIn('kind', Restriction::hiddenFor($request->user()) ?: [''])
+        return $purchase->carsOnSite()->getQuery()->whereNotIn('kind', Restriction::hiddenFor($request->user()) ?: [''])
             ->when($group, fn ($q) => $q->whereIn('kind', $group->kindValues()));
     }
 
