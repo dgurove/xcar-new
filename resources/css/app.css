@@ -730,7 +730,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Низ экрана CRM и стоянки: место под таб-бар; с полосой действий — ещё и под неё. */
   .main-app { padding-bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
   @media (min-width: 768px) { .main-app { padding-bottom: 0; } }
-  body:has(.action-bar) .main-app { padding-bottom: calc(5.5rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
+  body:has(.action-bar) .main-app, body.surface-site:has(.action-bar) #main { padding-bottom: calc(5.5rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
   @media (max-width: 1023px) { body:has(.action-bar) .footer { padding-bottom: calc(8rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); } }
   html:has(.action-bar) { scroll-padding-bottom: 6rem; }
 
@@ -756,7 +756,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .action-bar-inner { width: auto; max-width: none; padding: 0; gap: .75rem; }
     .action-bar .btn { flex: 0 0 auto; box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
     .dark .action-bar .btn { box-shadow: 0 8px 24px rgb(0 0 0 / .5); }
-    body:has(.action-bar) .main-app { padding-bottom: 6rem; }
+    body:has(.action-bar) .main-app, body.surface-site:has(.action-bar) #main { padding-bottom: 6rem; }
   }
   @media (min-width: 1280px) { .action-bar { right: max(2rem, calc((100% - var(--container-site)) / 2 + 2rem)); } }
 }

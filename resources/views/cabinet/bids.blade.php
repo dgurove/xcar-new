@@ -1,22 +1,24 @@
-<x-ui.cabinet title="Подтверждения" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Подтверждения']]">
+{{-- Подтверждения менеджера строками: фото, название, чипы № и дата, справа цена и состояние. --}}
+<x-ui.cabinet title="Подтверждения">
     @if ($bids->isEmpty())
         <x-ui.empty href="/" link="В каталог">Вы ещё не подтверждали предложения.</x-ui.empty>
     @else
-        <div class="space-y-3">
+        <div class="flex flex-col gap-2">
             @foreach ($bids as $bid)
                 @php $offer = $bid->offer; @endphp
-                <div class="box flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-                    <a href="/offers/{{ $offer->number }}" class="min-w-0 sm:flex-1">
-                        <div class="hover:text-accent-text">{{ $offer->titleWithYear() }}</div>
-                        <div class="mt-1.5 flex flex-wrap gap-1.5"><span class="tag nums">№ {{ $offer->number }}</span><span class="tag nums">{{ $bid->created_at->translatedFormat('j M') }}</span></div>
-                    </a>
-                    <div class="flex items-center justify-between gap-3 sm:contents">
-                        <div class="nums sm:text-right">{{ \App\Support\Money::rub($bid->amount) }}</div>
-                        <x-ui.pill :tone="match ($bid->state) { \App\Offers\BidState::Accepted => 'open', \App\Offers\BidState::Active => 'urgent', \App\Offers\BidState::Declined => 'danger', default => 'closed' }">{{ $bid->state->label() }}</x-ui.pill>
-                    </div>
-                </div>
+                <a href="/offers/{{ $offer->number }}" class="row">
+                    <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block truncate font-medium">{{ $offer->titleWithYear() }}</span>
+                        <span class="row-sub"><span class="tag nums">№ {{ $offer->number }}</span><span class="tag nums">{{ $bid->created_at->translatedFormat('j M') }}</span></span>
+                    </span>
+                    <span class="flex shrink-0 flex-col items-end gap-1.5">
+                        <span class="nums font-medium">{{ \App\Support\Money::rub($bid->amount) }}</span>
+                        <x-ui.pill class="!min-h-0 !py-1 text-xs" :tone="match ($bid->state) { \App\Offers\BidState::Accepted => 'open', \App\Offers\BidState::Active => 'urgent', \App\Offers\BidState::Declined => 'danger', default => 'closed' }">{{ $bid->state->label() }}</x-ui.pill>
+                    </span>
+                </a>
             @endforeach
         </div>
-        <div class="mt-8">{{ $bids->links() }}</div>
+        {{ $bids->links() }}
     @endif
 </x-ui.cabinet>

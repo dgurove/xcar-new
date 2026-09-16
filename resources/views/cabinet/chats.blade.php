@@ -1,4 +1,4 @@
-<x-ui.cabinet title="Чаты" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Чаты']]">
+<x-ui.cabinet title="Чаты">
     @if ($chats->isEmpty())
         <x-ui.empty href="/kontakty" link="Написать нам">Чатов пока нет.</x-ui.empty>
     @else
@@ -20,6 +20,6 @@
                 </a>
             @endforeach
         </div>
-        <div class="mt-8">{{ $chats->links() }}</div>
+        {{ $chats->links() }}
     @endif
 </x-ui.cabinet>

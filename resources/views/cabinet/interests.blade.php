@@ -1,5 +1,5 @@
 {{-- Интерес покупателя: строки с фото и ценой; проданное или закрытое — с пометкой, ссылки нет. --}}
-<x-ui.cabinet title="Интерес" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Интерес']]">
+<x-ui.cabinet title="Интерес">
     @if ($interests->isEmpty())
         <x-ui.empty href="/" link="В предложения">Вы ещё ничего не отметили.</x-ui.empty>
     @else
@@ -28,6 +28,6 @@
                 </{{ $open ? 'a' : 'div' }}>
             @endforeach
         </div>
-        <div class="mt-8">{{ $interests->links() }}</div>
+        {{ $interests->links() }}
     @endif
 </x-ui.cabinet>

@@ -158,17 +158,16 @@ final class Nav
 
         if ($surface === Surface::Park) {
             return ['' => [
-                self::link('Сводка', '/lk', exact: true),
+                self::link('Профиль', '/lk', exact: true),
                 self::link('Клиенты', '/klienty'),
                 self::link('Уведомления', '/lk/uvedomleniya'),
-                self::link('Профиль', '/lk/profil'),
                 self::link('Шаблоны', Surface::Crm->url('/nastroyki/shablony')),
             ]];
         }
 
         if ($surface === Surface::Crm) {
             return [
-                '' => [self::link('Сводка', '/lk', exact: true)],
+                '' => [self::link('Профиль', '/lk', exact: true)],
                 'Настройки' => [
                     self::link('Страховые', '/nastroyki/strahovye'),
                     self::link('Ящики', '/nastroyki/yashchiki'),
@@ -178,7 +177,6 @@ final class Nav
                 ],
                 'Личное' => [
                     self::link('Уведомления', '/lk/uvedomleniya'),
-                    self::link('Профиль', '/lk/profil'),
                 ],
                 'Переходы' => [
                     self::link('На сайт', Surface::Site->url()),
@@ -187,7 +185,7 @@ final class Nav
             ];
         }
 
-        $links = [self::link('Сводка', '/lk', exact: true)];
+        $links = [self::link('Профиль', '/lk', exact: true)];
         if ($user->role === Role::Manager) {
             $links[] = self::link('Покупатели', '/lk/pokupateli');
             $links[] = self::link('Приглашения', '/lk/priglasheniya');
@@ -204,7 +202,6 @@ final class Nav
         }
         $links[] = self::link('Избранное', '/lk/izbrannoe');
         $links[] = self::link('Уведомления', '/lk/uvedomleniya');
-        $links[] = self::link('Профиль', '/lk/profil');
         // В установленном приложении подвала нет — документы живут здесь.
         if (MarkInstalled::installed(request())) {
             return ['' => $links, 'Документы' => [self::link('Обработка данных', '/obrabotka-dannyh'), self::link('Соглашение', '/soglashenie')]];

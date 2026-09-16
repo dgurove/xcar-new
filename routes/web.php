@@ -66,9 +66,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/offers/{offer}/chat', [OfferController::class, 'chat']);
     Route::post('/offers/{offer}/chat', [ChatController::class, 'open']);
 
-    Route::get('/lk', [ProfileController::class, 'show'])->name('cabinet');
+    Route::get('/lk', [ProfileController::class, 'profile'])->name('cabinet');
     Route::put('/lk', [ProfileController::class, 'update']);
-    Route::get('/lk/profil', [ProfileController::class, 'profile']);
+    Route::permanentRedirect('/lk/profil', '/lk');
     Route::get('/lk/izbrannoe', [ListsController::class, 'favorites']);
     Route::get('/lk/chaty', [CabinetChatController::class, 'index']);
     Route::get('/lk/stavki', [ListsController::class, 'bids']);

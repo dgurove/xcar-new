@@ -6,8 +6,8 @@
         \App\Workflow\WaitsFor::Manager => 'Ваш ход', \App\Workflow\WaitsFor::Supplier => 'ждём поставщика', \App\Workflow\WaitsFor::Us => 'ждём нас', default => null,
     } : null;
 @endphp
-<x-ui.cabinet :title="$offer->titleWithYear()" :back="['Сделки', '/lk/sdelki']" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Сделки', '/lk/sdelki'], ['№ '.$offer->number]]">
-    <div class="grid gap-6 lg:grid-cols-[1fr_20rem]" data-deal-offer="{{ $offer->number }}">
+<x-ui.cabinet :title="$offer->titleWithYear()" :back="['Сделки', '/lk/sdelki']">
+    <div class="grid gap-6 lg:grid-cols-[1fr_18rem]" data-deal-offer="{{ $offer->number }}">
         <div class="min-w-0 space-y-6">
             @if ($deal->state !== DealState::Active)
                 <div class="box">
@@ -75,14 +75,14 @@
 
             @if ($blocks->isNotEmpty())
                 <div class="box">
-                    <h2 class="text-lg">Путь сделки</h2>
+                    <h2 class="text-xl">Путь сделки</h2>
                     <div class="mt-5"><x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :waiting="$waiting"/></div>
                 </div>
             @endif
 
             @if ($deal->requirements->whereNotNull('done_at')->isNotEmpty())
                 <div class="box">
-                    <h2 class="text-lg">Ваши ответы</h2>
+                    <h2 class="text-xl">Ваши ответы</h2>
                     <div class="mt-4 space-y-2">
                         @foreach ($deal->requirements->whereNotNull('done_at') as $req)
                             @if (!empty($req->answer['exit']))
@@ -98,7 +98,7 @@
         </div>
 
         {{-- Правая колонка: машина, номер, сумма. Зеркало страницы оффера. --}}
-        <aside class="lg:sticky lg:top-32 lg:self-start">
+        <aside class="lg:self-start">
             <div class="box overflow-hidden !p-0">
                 <a href="/offers/{{ $offer->number }}" class="group block">
                     @if ($photo = $offer->mainPhoto())

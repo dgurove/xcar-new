@@ -5,8 +5,8 @@
      Слот actions — ряд справа от h1 (поделиться, закладка, стрелки).
      back — ['Предложения', '/']: на телефоне слева в шапке «‹ Назад», на
      десктопе круглая «‹» слева от заголовка (x-ui.back). Вложенному экрану шелл ставит его сам (Nav::backFor);
-     :back — уточнить, :back="false" — убрать. --}}
-@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null, 'cache' => 'no-preview'])
+     :back — уточнить, :back="false" — убрать; :back-row="false" — «назад» только в шапке телефона, без ряда на десктопе. --}}
+@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null, 'backRow' => true, 'cache' => 'no-preview'])
 @php
     $heading = $heading === false ? null : ($heading ?? $title);
     // Пустой слот (кабинет передаёт его всегда) — всё равно что нет.
@@ -25,7 +25,7 @@
         @else
             <div {{ $attributes->merge(['class' => 'container-site pt-6 pb-10 sm:pt-8 sm:pb-14'.($narrow ? ' max-w-3xl' : '')]) }}>
                 @if ($site && !$installed)<x-ui.crumbs :trail="$trail"/>@endif
-                @if ($heading || isset($actions) || $back)
+                @if ($heading || isset($actions) || ($back && $backRow))
                     {{-- Без заголовка и действий ряд нужен только ради круглой «‹» на десктопе: на телефоне она в шапке. --}}
                     <div @class(['has-back mb-6 flex-wrap items-center gap-x-4 gap-y-2', 'flex' => $heading || isset($actions), 'hidden sm:flex' => !$heading && !isset($actions)])>
                         @if ($back)<x-ui.back :back="$back"/>@endif

@@ -1,16 +1,19 @@
-{{-- Кабинет: пилюли разделов (лента на телефоне, колонка от lg) и содержимое. --}}
-@props(['title', 'heading' => null, 'trail' => [], 'back' => null])
+{{-- Кабинет: пилюли разделов (лента на телефоне, колонка от lg) и содержимое одной ширины.
+     Заголовка-h1 и крошек нет: раздел называет текущая пилюля; в шапке телефона имя экрана
+     появляется при прокрутке. Пилюли не липкие и не зависят от содержимого — стоят на месте
+     на всех разделах. «Назад» — только у вложенных экранов (:back), рисуется в колонке содержимого. --}}
+@props(['title', 'heading' => null, 'back' => null])
 @php
     $user = auth()->user();
     $path = '/'.ltrim(request()->path(), '/');
     $groups = \App\Support\Nav::cabinet($user);
+    $back = $back === false ? null : ($back ?? \App\Support\Nav::backFor($path, $user));
 @endphp
-{{-- Заголовка-h1 нет: разделом называется текущая пилюля, крошки — тоже лишние. В шапке телефона имя экрана появляется при прокрутке. --}}
-<x-ui.shell :title="$title" :heading="$heading ?? false" :back="$back">
-    <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
-    <div class="grid gap-6 lg:grid-cols-[15rem_1fr]">
+{{-- Шеллу «назад» нужен для шапки телефона; свой ряд под него он не рисует — ссылка стоит в колонке содержимого. --}}
+<x-ui.shell :title="$title" :heading="$heading ?? false" :back="$back ?? false" :back-row="false">
+    <div class="grid gap-6 lg:grid-cols-[15rem_minmax(0,56rem)] lg:gap-8" data-title-anchor>
         {{-- min-w-0 обязателен: иначе лента шире экрана растягивает колонку сетки. --}}
-        <nav class="min-w-0 lg:sticky lg:top-32 lg:self-start" aria-label="Разделы кабинета" data-title-anchor>
+        <nav class="min-w-0 lg:self-start" aria-label="Разделы кабинета">
             <div class="cabinet-pills -mx-4 flex snap-x snap-mandatory gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
                 @foreach ($groups as $group => $links)
                     @if ($group !== '' && count($groups) > 1)<span class="hidden pb-1 pl-5 pt-3 text-xs uppercase tracking-wide text-ink-dim first:pt-0 lg:block">{{ $group }}</span>@endif
@@ -20,6 +23,11 @@
                 @endforeach
             </div>
         </nav>
-        <div class="min-w-0">{{ $slot }}</div>
+        <div class="flex min-w-0 flex-col gap-6">
+            @if ($back)
+                <a href="{{ $back[1] }}" class="hidden w-fit items-center gap-1 text-sm text-ink-muted transition-colors hover:text-ink sm:inline-flex" data-controller="back" data-action="back#go" data-turbo-action="replace"><x-ui.icon name="chevron-left" class="size-4"/>{{ $back[0] }}</a>
+            @endif
+            {{ $slot }}
+        </div>
     </div>
 </x-ui.shell>

@@ -1,5 +1,5 @@
-<x-ui.cabinet title="Уведомления" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Уведомления']]">
-    <div class="mb-4 flex items-center gap-2" data-controller="sheet">
+<x-ui.cabinet title="Уведомления">
+    <div class="flex items-center gap-2" data-controller="sheet">
         @if ($unread)
             <form method="post" action="/lk/uvedomleniya/prochitano">@csrf<x-ui.button variant="secondary" size="s">Всё прочитано</x-ui.button></form>
         @endif
@@ -23,11 +23,11 @@
     @if ($items->isEmpty())
         <x-ui.empty>Уведомлений пока нет.</x-ui.empty>
     @else
-        <div class="space-y-3">
+        <div class="flex flex-col gap-2">
             @foreach ($items as $item)
                 @include('cabinet.notification-row')
             @endforeach
         </div>
-        <div class="mt-8">{{ $items->links() }}</div>
+        {{ $items->links() }}
     @endif
 </x-ui.cabinet>

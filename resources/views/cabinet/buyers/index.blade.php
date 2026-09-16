@@ -1,6 +1,6 @@
 {{-- Покупатели менеджера: пилюли — группы, строка — человек-контакт с тем, что о нём важно.
      Главное действие — «Пригласить» — в полосе внизу. --}}
-<x-ui.cabinet title="Покупатели" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Покупатели']]">
+<x-ui.cabinet title="Покупатели">
     <x-ui.toolbar :pills="$pills" :pill="(string) ($group ?? '')" pill-param="group" :counts="$counts" name="buyers" action="/lk/pokupateli">
         <x-slot:pillsExtra>
             <div data-controller="sheet" class="contents">
@@ -22,7 +22,7 @@
 
     @if ($group)
         @php($current = $groups->firstWhere('id', $group))
-        <a href="/lk/pokupateli/gruppy/{{ $group }}" class="mt-6 flex items-center gap-2 text-xl transition-colors hover:text-accent-text">
+        <a href="/lk/pokupateli/gruppy/{{ $group }}" class="flex items-center gap-2 text-xl transition-colors hover:text-accent-text">
             <span class="flex size-9 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="users" class="size-5"/></span>
             {{ $current?->name }}
             <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
@@ -31,12 +31,12 @@
 
     @if ($buyers->isEmpty())
         @if ($group || request('q'))
-            <x-ui.empty class="mt-6" href="/lk/pokupateli" link="Все покупатели">Здесь пока никого.</x-ui.empty>
+            <x-ui.empty href="/lk/pokupateli" link="Все покупатели">Здесь пока никого.</x-ui.empty>
         @else
-            <x-ui.empty class="mt-6">Покупателей пока нет — отправьте им ссылку.</x-ui.empty>
+            <x-ui.empty>Покупателей пока нет — отправьте им ссылку.</x-ui.empty>
         @endif
     @else
-        <div class="mt-6 grid gap-2 xl:grid-cols-2">
+        <div class="flex flex-col gap-2">
             @foreach ($buyers as $buyer)
                 <a href="/lk/pokupateli/{{ $buyer->id }}" class="row transition-colors hover:bg-hover">
                     <x-ui.avatar :user="$buyer" :size="44"/>
@@ -56,7 +56,7 @@
                 </a>
             @endforeach
         </div>
-        <div class="mt-8">{{ $buyers->links() }}</div>
+        {{ $buyers->links() }}
     @endif
 
     <x-ui.action-bar>

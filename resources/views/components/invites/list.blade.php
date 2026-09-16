@@ -8,7 +8,7 @@
     $base = InviteController::base();
     [$live, $past] = $invites->partition(fn ($i) => $i->isActive());
 @endphp
-<div class="grid gap-2 xl:grid-cols-2">
+<div class="flex flex-col gap-2">
     <div data-controller="sheet" class="contents">
         <button type="button" class="row w-full text-left transition-colors hover:bg-hover" data-action="sheet#open">
             <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
@@ -23,10 +23,12 @@
     @endforeach
 </div>
 @if ($past->isNotEmpty())
-    <h2 class="mt-8 mb-3 text-xl">Сработали и выключенные</h2>
-    <div class="grid gap-2 xl:grid-cols-2">
-        @foreach ($past as $invite)
-            @include('invites.row')
-        @endforeach
-    </div>
+    <section>
+        <h2 class="text-xl">Сработали и выключенные</h2>
+        <div class="mt-4 flex flex-col gap-2">
+            @foreach ($past as $invite)
+                @include('invites.row')
+            @endforeach
+        </div>
+    </section>
 @endif

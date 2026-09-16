@@ -2,9 +2,9 @@
      Ниже — что видит (строки, прямой показ снимается смахиванием) и интерес. Группы — действие «Группы» в том же ряду.
      Главное действие — «Открыть предложения» — в полосе внизу. --}}
 @php $me = auth()->user(); $link = ($link['user'] ?? null) === $buyer->id ? $link : null; @endphp
-<x-ui.cabinet :title="$buyer->name" :heading="false" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Покупатели', '/lk/pokupateli'], [$buyer->name]]">
+<x-ui.cabinet :title="$buyer->name">
 
-    <div class="grid gap-8 lg:grid-cols-[1fr_22rem] lg:gap-8">
+    <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">
             <x-ui.contact :name="$buyer->name" :user="$buyer" sidebar>
                 <x-slot:chips>
@@ -55,7 +55,7 @@
                     </turbo-frame>
                 </x-ui.sheet>
                 @if ($offers->isEmpty())
-                    <x-ui.empty class="mt-4 !py-12">Пока ничего не открыто.</x-ui.empty>
+                    <x-ui.empty class="mt-4">Пока ничего не открыто.</x-ui.empty>
                 @else
                     <div class="mt-4 flex flex-col gap-2">
                         @foreach ($offers as $offer)

@@ -1,9 +1,9 @@
 {{-- Группа: шапка-контакт с кружком, состав списком с галками (автосохранение), что видит группа.
      «Изменить» в ряду действий — переименовать или удалить; «Открыть предложения» — в полосе внизу. --}}
 @php $n = $group->members->count(); @endphp
-<x-ui.cabinet :title="$group->name" :heading="false" :trail="[['Главная', '/'], ['Кабинет', '/lk'], ['Покупатели', '/lk/pokupateli'], [$group->name]]">
+<x-ui.cabinet :title="$group->name">
 
-    <div class="grid gap-8 lg:grid-cols-[1fr_22rem] lg:gap-8">
+    <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <div class="lg:col-start-2 lg:row-start-1">
             <x-ui.contact :name="$group->name" sidebar>
                 <x-slot:chips>
@@ -32,7 +32,7 @@
             <section class="mt-8">
                 <h2 class="text-xl">Состав</h2>
                 @if ($buyers->isEmpty())
-                    <x-ui.empty class="mt-4 !py-12" href="/lk/priglasheniya" link="Пригласить">Покупателей пока нет.</x-ui.empty>
+                    <x-ui.empty class="mt-4" href="/lk/priglasheniya" link="Пригласить">Покупателей пока нет.</x-ui.empty>
                 @else
                     <form method="post" action="/lk/pokupateli/gruppy/{{ $group->id }}/sostav" class="mt-4 flex flex-col gap-2" data-controller="autosubmit select">
                         @csrf @method('put')
@@ -61,7 +61,7 @@
                     </turbo-frame>
                 </x-ui.sheet>
                 @if ($offers->isEmpty())
-                    <x-ui.empty class="mt-4 !py-12">Группе пока ничего не открыто.</x-ui.empty>
+                    <x-ui.empty class="mt-4">Группе пока ничего не открыто.</x-ui.empty>
                 @else
                     <div class="mt-4 flex flex-col gap-2">
                         @foreach ($offers as $offer)
