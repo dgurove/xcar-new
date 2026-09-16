@@ -45,12 +45,17 @@
         @if (!$term || $buyers->isNotEmpty())<h2 class="text-xl">Покупатели @if ($buyers->total())<span class="nums text-ink-dim">{{ $buyers->total() }}</span>@endif</h2>@endif
         @if ($buyers->isEmpty())
             @if ($term)
-                <x-ui.empty href="/lk/pokupateli" link="Все покупатели">Никого не нашлось.</x-ui.empty>
+                <x-ui.empty href="/lk/pokupateli" link="Все покупатели">Никого не нашлось</x-ui.empty>
             @else
-                <x-ui.empty class="mt-4">Покупателей пока нет — отправьте им ссылку.</x-ui.empty>
+                <x-ui.empty class="mt-4" href="/lk/priglasheniya" link="Сделать ссылку">Покупатели приходят по вашей ссылке</x-ui.empty>
             @endif
         @else
             <div class="mt-4 flex flex-col gap-2">
+                {{-- «Пригласить» — строкой в списке, как «Новая группа»: на компьютере парящую кнопку не видно. --}}
+                <a href="/lk/priglasheniya" class="row">
+                    <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="link" class="size-5"/></span>
+                    <span class="min-w-0 flex-1 font-medium">Пригласить</span>
+                </a>
                 @foreach ($buyers as $buyer)
                     <div class="row relative">
                         <a href="/lk/pokupateli/{{ $buyer->id }}" class="absolute inset-0 rounded-(--radius-l)" aria-label="{{ $buyer->name }}"></a>
@@ -76,7 +81,10 @@
         @endif
     </section>
 
-    <x-ui.action-bar>
-        <a href="/lk/priglasheniya" class="btn btn-accent min-w-0 flex-1 md:flex-none"><x-ui.icon name="link" class="size-5"/> Пригласить</a>
-    </x-ui.action-bar>
+    {{-- На телефоне — ещё и плашка внизу; на компьютере хватает строки в списке. --}}
+    <div class="contents md:hidden">
+        <x-ui.action-bar>
+            <a href="/lk/priglasheniya" class="btn btn-accent min-w-0 flex-1"><x-ui.icon name="link" class="size-5"/> Пригласить</a>
+        </x-ui.action-bar>
+    </div>
 </x-ui.cabinet>

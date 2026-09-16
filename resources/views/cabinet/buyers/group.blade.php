@@ -32,7 +32,7 @@
             <section class="mt-8">
                 <h2 class="text-xl">Состав</h2>
                 @if ($buyers->isEmpty())
-                    <x-ui.empty class="mt-4" href="/lk/priglasheniya" link="Пригласить">Покупателей пока нет.</x-ui.empty>
+                    <x-ui.empty class="mt-4" href="/lk/priglasheniya" link="Пригласить">Покупателей пока нет</x-ui.empty>
                 @else
                     <form method="post" action="/lk/pokupateli/gruppy/{{ $group->id }}/sostav" class="mt-4 flex flex-col gap-2" data-controller="autosubmit select">
                         @csrf @method('put')
@@ -61,7 +61,7 @@
                     </turbo-frame>
                 </x-ui.sheet>
                 @if ($offers->isEmpty())
-                    <x-ui.empty class="mt-4">Группе пока ничего не открыто.</x-ui.empty>
+                    <x-ui.empty class="mt-4">Группе пока ничего не открыто</x-ui.empty>
                 @else
                     <div class="mt-4 flex flex-col gap-2">
                         @foreach ($offers as $offer)

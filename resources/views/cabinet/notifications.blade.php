@@ -9,7 +9,7 @@
     </div>
 
     @if ($items->isEmpty())
-        <x-ui.empty>Уведомлений пока нет.</x-ui.empty>
+        <x-ui.empty>Уведомлений пока нет</x-ui.empty>
     @else
         <div class="flex flex-col gap-2">
             @foreach ($items as $item)

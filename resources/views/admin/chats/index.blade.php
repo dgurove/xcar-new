@@ -7,7 +7,7 @@
         </x-slot:filters>
     </x-ui.toolbar>
     @if ($chats->isEmpty())
-        <x-ui.empty class="mt-6">Чатов нет.</x-ui.empty>
+        <x-ui.empty class="mt-6">Чатов нет</x-ui.empty>
     @else
         <div class="mt-6 flex flex-col gap-2">
             @foreach ($chats as $chat)

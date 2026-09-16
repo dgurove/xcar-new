@@ -82,7 +82,7 @@
         </x-ui.card>
 
         <x-ui.card title="Пустое и вложенный блок">
-            <x-ui.empty href="#" link="Сбросить фильтры">По этим условиям ничего нет.</x-ui.empty>
+            <x-ui.empty href="#" link="Сбросить фильтры">По этим условиям ничего нет</x-ui.empty>
             <x-ui.card :nested="true" class="mt-4">Вложенный блок. <span class="nums">1 250 000 ₽</span></x-ui.card>
         </x-ui.card>
     </div>

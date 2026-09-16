@@ -21,7 +21,7 @@
     @endif
 
     @if ($deals->isEmpty())
-        <x-ui.empty href="/" link="В каталог">Пока ни одной сделки.</x-ui.empty>
+        <x-ui.empty href="/" link="В каталог">Пока ни одной сделки</x-ui.empty>
     @else
         <div class="flex flex-col gap-2">
             @foreach ($deals as $deal)

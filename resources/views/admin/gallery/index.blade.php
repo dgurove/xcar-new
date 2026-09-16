@@ -11,7 +11,7 @@
 
     <div class="mt-6">
         @if ($offers->isEmpty())
-            <x-ui.empty>В галерее пусто.</x-ui.empty>
+            <x-ui.empty>В галерее пусто</x-ui.empty>
         @else
             <div id="gallery" class="{{ \App\Support\ListView::containerClass(\App\Support\ListView::fromRequest(request())) }}" data-controller="ticker">
                 @foreach ($offers as $offer)<x-offer.card :offer="$offer" admin/>@endforeach

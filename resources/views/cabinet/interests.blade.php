@@ -1,7 +1,7 @@
 {{-- Интерес покупателя: строки с фото и ценой; проданное или закрытое — с пометкой, ссылки нет. --}}
 <x-ui.cabinet title="Интерес">
     @if ($interests->isEmpty())
-        <x-ui.empty href="/" link="В предложения">Вы ещё ничего не отметили.</x-ui.empty>
+        <x-ui.empty href="/" link="В предложения">Вы ещё ничего не отметили</x-ui.empty>
     @else
         <div class="flex flex-col gap-2">
             @foreach ($interests as $interest)

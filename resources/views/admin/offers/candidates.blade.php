@@ -3,7 +3,7 @@
 <x-ui.shell title="Из писем" :count="$candidates->total()">
     <x-ui.toolbar :pills="\App\Http\Admin\CandidateController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" name="candidates"/>
     @if ($candidates->isEmpty())
-        <x-ui.empty class="mt-6">Писем с предложениями нет.</x-ui.empty>
+        <x-ui.empty class="mt-6">Писем с предложениями нет</x-ui.empty>
     @else
         <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             @foreach ($candidates as $c)

@@ -70,7 +70,7 @@
                     @endif
                 </div>
             @else
-                <x-ui.empty>Сделка пока не в работе. Мы напишем, когда что-то изменится.</x-ui.empty>
+                <x-ui.empty>Сделка пока не в работе. Мы напишем, когда что-то изменится</x-ui.empty>
             @endif
 
             @if ($blocks->isNotEmpty())

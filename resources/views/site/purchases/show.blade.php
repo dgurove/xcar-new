@@ -36,7 +36,7 @@
 
     <div class="mt-6">
         @if ($cars->isEmpty())
-            <x-ui.empty :href="'/zakupki/'.$purchase->number.($group ? '?group='.$group->value : '')" link="Сбросить фильтры">По этим условиям ничего не нашлось.</x-ui.empty>
+            <x-ui.empty :href="'/zakupki/'.$purchase->number.($group ? '?group='.$group->value : '')" link="Сбросить фильтры">По этим условиям ничего не нашлось</x-ui.empty>
         @else
             <div class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
                 @foreach ($cars as $car)<x-purchase.card :car="$car" :purchase="$purchase" :query="$qs" :show-kind="count($kinds) > 1"/>@endforeach

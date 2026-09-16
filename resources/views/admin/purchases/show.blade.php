@@ -82,7 +82,7 @@
         @forelse ($cars as $car)
             <x-purchase.crm-row :car="$car" :purchase="$purchase" :highlight="$user?->id" price/>
         @empty
-            <x-ui.empty>Ничего не нашлось.</x-ui.empty>
+            <x-ui.empty>Ничего не нашлось</x-ui.empty>
         @endforelse
     </div>
     <div class="mt-8">{{ $cars->links() }}</div>

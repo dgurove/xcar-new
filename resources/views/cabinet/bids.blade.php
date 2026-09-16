@@ -1,7 +1,7 @@
 {{-- Подтверждения менеджера строками: фото, название, чипы № и дата, справа цена и состояние. --}}
 <x-ui.cabinet title="Подтверждения">
     @if ($bids->isEmpty())
-        <x-ui.empty href="/" link="В каталог">Вы ещё не подтверждали предложения.</x-ui.empty>
+        <x-ui.empty href="/" link="В каталог">Вы ещё не подтверждали предложения</x-ui.empty>
     @else
         <div class="flex flex-col gap-2">
             @foreach ($bids as $bid)

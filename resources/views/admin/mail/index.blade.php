@@ -22,9 +22,9 @@
     </x-ui.toolbar>
 
     @if ($accounts->isEmpty())
-        <x-ui.empty class="mt-6" href="/nastroyki/yashchiki/novyy" link="Завести ящик">Ящиков ещё нет.</x-ui.empty>
+        <x-ui.empty class="mt-6" href="/nastroyki/yashchiki/novyy" link="Завести ящик">Ящиков ещё нет</x-ui.empty>
     @elseif ($threads->isEmpty())
-        <x-ui.empty class="mt-6">Писем нет.</x-ui.empty>
+        <x-ui.empty class="mt-6">Писем нет</x-ui.empty>
     @else
         <div class="mt-6 flex flex-col gap-2" id="threads">
             @foreach ($threads as $thread)

@@ -30,7 +30,7 @@
                 <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
             </a>
         @empty
-            <x-ui.empty>Закупок ещё нет.</x-ui.empty>
+            <x-ui.empty>Закупок ещё нет</x-ui.empty>
         @endforelse
     </div>
 </x-ui.shell>

@@ -55,7 +55,7 @@
                     </turbo-frame>
                 </x-ui.sheet>
                 @if ($offers->isEmpty())
-                    <x-ui.empty class="mt-4">Пока ничего не открыто.</x-ui.empty>
+                    <x-ui.empty class="mt-4">Пока ничего не открыто</x-ui.empty>
                 @else
                     <div class="mt-4 flex flex-col gap-2">
                         @foreach ($offers as $offer)

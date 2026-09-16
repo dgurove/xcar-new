@@ -1,6 +1,6 @@
 <x-ui.cabinet title="Чаты">
     @if ($chats->isEmpty())
-        <x-ui.empty href="/kontakty" link="Написать нам">Чатов пока нет.</x-ui.empty>
+        <x-ui.empty href="/kontakty" link="Написать нам">Чатов пока нет</x-ui.empty>
     @else
         <div class="flex flex-col gap-2">
             @foreach ($chats as $chat)

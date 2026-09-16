@@ -4,7 +4,7 @@
         <x-slot:filters><input name="q" value="{{ $q }}" placeholder="Номер, VIN, госномер, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>
     @if ($vehicles->isEmpty())
-        <x-ui.empty class="mt-6">Машин нет.</x-ui.empty>
+        <x-ui.empty class="mt-6">Машин нет</x-ui.empty>
     @else
         <div class="mt-6 {{ \App\Support\ListView::containerClass(\App\Support\ListView::fromRequest(request())) }}" data-controller="ticker">
             @foreach ($vehicles as $vehicle)<x-park.card :vehicle="$vehicle"/>@endforeach
