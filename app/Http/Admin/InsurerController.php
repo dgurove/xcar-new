@@ -26,7 +26,7 @@ class InsurerController
 
     public function show(Request $request, Insurer $insurer)
     {
-        $track = Track::tryFrom($request->query('vetka', '')) ?? Track::Sale;
+        $track = Track::tryFrom($request->query('track', '')) ?? Track::Sale;
         $workflow = $insurer->workflowOrNew($track);
         $workflow->load(['blocks.stages.exits.to', 'blocks.stages.block']);
 

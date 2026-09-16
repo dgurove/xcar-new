@@ -1,5 +1,9 @@
-<x-ui.shell title="Ящики" narrow>
+<x-ui.cabinet title="Ящики">
     <div class="flex flex-col gap-2">
+        <a href="/settings/mailboxes/new" class="row">
+            <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
+            <span class="min-w-0 flex-1 font-medium">Новый ящик</span>
+        </a>
         @foreach ($accounts as $account)
             <a href="/settings/mailboxes/{{ $account->slug }}" class="row">
                 <div class="min-w-0 flex-1">
@@ -13,6 +17,5 @@
                 <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
             </a>
         @endforeach
-        <a href="/settings/mailboxes/new" class="btn btn-quiet self-start"><x-ui.icon name="plus" class="size-5"/> Ящик</a>
     </div>
-</x-ui.shell>
+</x-ui.cabinet>

@@ -1,7 +1,23 @@
 @php
     $palette = ['lime' => '#97bf0d', 'orange' => '#ff8800', 'red' => '#ff0037', 'blue' => '#2456b3', 'grey' => '#808080'];
 @endphp
-<x-ui.shell title="Метки" :count="$tags->count()" narrow>
+{{-- Метки: первая строка — новая, ниже список, который переставляют за ручку (строка «новая» вне сортируемого). --}}
+<x-ui.cabinet title="Метки">
+    <div class="flex flex-col gap-2">
+        <div data-controller="sheet" class="contents">
+            <button type="button" class="row w-full text-left" data-action="sheet#open">
+                <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
+                <span class="min-w-0 flex-1 font-medium">Новая метка</span>
+            </button>
+            <x-ui.sheet id="tag-new" title="Новая метка">
+                <form method="post" action="/settings/tags" class="flex flex-col gap-4">
+                    @csrf
+                    <x-ui.field name="name" label="Название" required maxlength="40" autofocus/>
+                    <x-ui.field name="color" label="Цвет" :options="\App\Offers\Tag::COLORS" value="grey"/>
+                    <x-ui.button block>Добавить</x-ui.button>
+                </form>
+            </x-ui.sheet>
+        </div>
     <div class="flex flex-col gap-2" data-controller="order" data-order-url-value="/settings/tags/order">
         @foreach ($tags as $tag)
             <div class="row" data-id="{{ $tag->id }}" data-controller="sheet">
@@ -25,15 +41,5 @@
             </div>
         @endforeach
     </div>
-    <div class="mt-4" data-controller="sheet">
-        <x-ui.button type="button" variant="secondary" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Метка</x-ui.button>
-        <x-ui.sheet id="tag-new" title="Новая метка">
-            <form method="post" action="/settings/tags" class="flex flex-col gap-4">
-                @csrf
-                <x-ui.field name="name" label="Название" required maxlength="40" autofocus/>
-                <x-ui.field name="color" label="Цвет" :options="\App\Offers\Tag::COLORS" value="grey"/>
-                <x-ui.button block>Добавить</x-ui.button>
-            </form>
-        </x-ui.sheet>
     </div>
-</x-ui.shell>
+</x-ui.cabinet>

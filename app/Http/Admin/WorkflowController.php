@@ -28,7 +28,7 @@ class WorkflowController
 {
     private function back(Workflow $workflow): string
     {
-        return "/settings/insurers/{$workflow->insurer_id}?vetka={$workflow->track->value}";
+        return "/settings/insurers/{$workflow->insurer_id}?track={$workflow->track->value}";
     }
 
     public function activate(Request $request, Workflow $workflow, RevalidateWorkflow $revalidate)

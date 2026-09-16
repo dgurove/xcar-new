@@ -3,8 +3,9 @@
     $w = $workflow;
     $base = "/settings/insurers/{$insurer->id}";
 @endphp
-<x-ui.shell :title="$insurer->name" :back="['Страховые', '/settings/insurers']">
-    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-2" data-controller="sheet">
+<x-ui.cabinet :title="$insurer->name">
+    <div class="flex flex-wrap items-center gap-2" data-controller="sheet">
+        <h2 class="mr-auto text-xl">{{ $insurer->name }}</h2>
         @unless ($insurer->is_active)<x-ui.pill tone="closed">выключена</x-ui.pill>@endunless
         <x-ui.button type="button" variant="secondary" size="sm" data-action="sheet#open">Реквизиты</x-ui.button>
         <x-ui.sheet id="insurer-form" title="Страховая" :open="$errors->hasAny(['name', 'email', 'phone'])">
@@ -22,14 +23,14 @@
                 <form method="post" action="{{ $base }}" class="mt-3" data-turbo-confirm="Удалить страховую?">@csrf @method('delete')<x-ui.button variant="danger" block>Удалить</x-ui.button></form>
             @endif
         </x-ui.sheet>
-        <div class="ml-auto flex gap-2">
+        <div class="flex w-full gap-2">
             @foreach (Track::cases() as $t)
-                <x-ui.pill :href="$base.'?vetka='.$t->value" :current="$track === $t">{{ $t->label() }}</x-ui.pill>
+                <x-ui.pill :href="$base.'?track='.$t->value" :current="$track === $t">{{ $t->label() }}</x-ui.pill>
             @endforeach
         </div>
     </div>
 
-    <div class="mb-4 flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
         @if ($w->is_active)
             <x-ui.pill tone="open">Маршрут включён</x-ui.pill>
             <form method="post" action="/settings/workflows/{{ $w->id }}/enable">@csrf<input type="hidden" name="active" value="0"><x-ui.button variant="ghost" size="sm">Выключить</x-ui.button></form>
@@ -50,14 +51,14 @@
     </div>
 
     @if ($problems && $w->blocks->isNotEmpty())
-        <div class="box mb-4 border-l-4 border-danger">
+        <div class="box border-l-4 border-danger">
             <div class="mb-2 font-medium text-danger">Маршрут не включится</div>
             <ul class="flex flex-col gap-1 text-sm">@foreach ($problems as $p)<li>{{ $p }}</li>@endforeach</ul>
         </div>
     @endif
 
     <div data-controller="sortable" data-sortable-url-value="/settings/workflows/{{ $w->id }}/order">
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-sortable-target="blocks">
+        <div class="grid gap-4 md:grid-cols-2" data-sortable-target="blocks">
             @foreach ($w->blocks as $block)
                 <x-ui.card data-block-id="{{ $block->id }}" class="flex flex-col" data-controller="sheet">
                     <div class="mb-3 flex items-center gap-2">
@@ -110,7 +111,7 @@
         </div>
     </div>
 
-    <div class="mt-4 flex flex-wrap gap-2" data-controller="sheet">
+    <div class="flex flex-wrap gap-2" data-controller="sheet">
         <x-ui.button type="button" variant="secondary" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Блок</x-ui.button>
         @if ($w->blocks->isEmpty())
             @foreach (\App\Workflow\Preset::forTrack($track) as $preset)
@@ -126,4 +127,4 @@
             </form>
         </x-ui.sheet>
     </div>
-</x-ui.shell>
+</x-ui.cabinet>

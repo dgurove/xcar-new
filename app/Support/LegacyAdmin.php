@@ -20,7 +20,7 @@ final class LegacyAdmin
         'yashchiki' => '/settings/mailboxes',
         'shablony' => '/settings/templates',
         'spravochnik' => '/reference',
-        'eshchyo' => '/account',
+        'eshchyo' => '/settings',
         'polzovateli' => '/settings/users',
         'tegi' => '/settings/tags',
         'ui' => '/ui',

@@ -16,7 +16,6 @@ use App\Http\Admin\PurchaseCarPhotoController;
 use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RouteController;
-use App\Http\Admin\SettingsController;
 use App\Http\Admin\TagController;
 use App\Http\Admin\UserController;
 use App\Http\Admin\WorkflowController;
@@ -111,7 +110,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::delete('/purchases/cars/{car}/media/{media}', [PurchaseCarPhotoController::class, 'destroy']);
 
     // Настройки: справочное, что меняется редко.
-    Route::get('/settings', [SettingsController::class, 'index']);
+    // Кабинет CRM = «Настройки»: корень — профиль (общий экран с сайтом), /account сюда же.
+    Route::get('/settings', [\App\Http\Cabinet\ProfileController::class, 'profile']);
+    Route::permanentRedirect('/account', '/settings');
     Route::prefix('settings')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::put('/users/{user}', [UserController::class, 'update']);

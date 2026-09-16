@@ -51,7 +51,8 @@ final class Nav
                 self::item('Галерея', 'photo', '/gallery'),
                 self::item('Работа', 'deal', '/work'),
                 self::item('Закупки', 'cart', '/purchases'),
-                self::item('Настройки', 'settings', '/settings', tab: false),
+                // Кабинет CRM — это «Настройки»: профиль первой пилюлей, уведомления — под /account.
+                self::item('Настройки', 'settings', '/settings', ['/settings', '/account'], tab: false),
             ];
         }
 
@@ -106,9 +107,11 @@ final class Nav
         if ($surface === Surface::Site && $user && ! $user->isApproved()) {
             return [self::item('Контакты', 'mail', '/contacts'), self::item('Выйти', 'exit', '/logout', capsule: false) + ['logout' => true]];
         }
-        $tabs[] = $user
-            ? self::item('Кабинет', 'user', '/account')
-            : self::item('Войти', 'login', '/login');
+        $tabs[] = match (true) {
+            ! $user => self::item('Войти', 'login', '/login'),
+            $surface === Surface::Crm => self::item('Настройки', 'settings', '/settings', ['/settings', '/account']),
+            default => self::item('Кабинет', 'user', '/account'),
+        };
 
         return $tabs;
     }
@@ -166,16 +169,15 @@ final class Nav
         }
 
         if ($surface === Surface::Crm) {
+            // Один раздел «Настройки»: профиль — его первый пункт, как /account на сайте.
             return [
-                '' => [self::link('Профиль', '/account', exact: true)],
-                'Настройки' => [
+                '' => [
+                    self::link('Профиль', '/settings', exact: true),
+                    ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users')] : []),
                     self::link('Страховые', '/settings/insurers'),
                     self::link('Ящики', '/settings/mailboxes'),
                     self::link('Шаблоны', '/settings/templates'),
                     self::link('Метки', '/settings/tags'),
-                    ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users')] : []),
-                ],
-                'Личное' => [
                     self::link('Уведомления', '/account/notifications'),
                 ],
                 'Переходы' => [
@@ -347,10 +349,8 @@ final class Nav
             array_push($items, self::link('Сделки', '/work/deals'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'));
         }
 
-        // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен;
-        // страницы настроек CRM — обычные экраны в глубине «Настроек».
-        $roots = array_filter(array_column($items, 'href'), fn ($h) => ! str_starts_with($h, '/settings/'));
-        if (in_array($path, $roots, true)) {
+        // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен.
+        if (in_array($path, array_column($items, 'href'), true)) {
             return null;
         }
 

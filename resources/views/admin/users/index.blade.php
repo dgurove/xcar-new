@@ -1,7 +1,7 @@
 @php use App\Users\{Role, Section}; use App\Http\Admin\UserController; $me = auth()->user(); $link = session('password_link'); @endphp
 {{-- Пользователи; пилюля «Ссылки» — все пригласительные ссылки тем же списком, что в кабинете
      (x-invites.list): первая строка — новая, менеджеру или покупателю от имени менеджера. --}}
-<x-ui.shell title="Пользователи" :count="$preset === 'invites' ? $invites->count() : $users->total()">
+<x-ui.cabinet title="Пользователи">
     <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" name="users">
         <x-slot:extra>
             {{-- Руками людей не заводят: только пригласительной ссылкой — кнопка ведёт к ним. --}}
@@ -94,4 +94,4 @@
         </div>
         <div class="mt-8">{{ $users->links() }}</div>
     @endif
-</x-ui.shell>
+</x-ui.cabinet>

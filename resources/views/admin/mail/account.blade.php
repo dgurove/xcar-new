@@ -1,7 +1,8 @@
 @php $new = !$account->exists; $enc = ['ssl' => 'SSL', 'tls' => 'STARTTLS', 'none' => 'без шифрования']; @endphp
-<x-ui.shell :title="$new ? 'Новый ящик' : $account->title" narrow>
+<x-ui.cabinet :title="$new ? 'Новый ящик' : $account->title">
+    <h2 class="text-xl">{{ $new ? 'Новый ящик' : $account->title }}</h2>
     @if (session('check'))
-        <div class="mb-4 flex flex-col gap-2">
+        <div class="flex flex-col gap-2">
             @foreach (session('check') as $kind => $r)
                 <div class="box-nested flex gap-3 text-sm"><span class="shrink-0 font-medium uppercase">{{ $kind }}</span><span class="{{ $r['ok'] ? 'text-open' : 'text-danger' }}">{{ $r['message'] }}</span></div>
             @endforeach
@@ -58,4 +59,4 @@
             <form method="post" action="/settings/mailboxes/{{ $account->slug }}" data-turbo-confirm="Удалить ящик вместе с письмами?">@csrf @method('delete')<x-ui.button variant="danger"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
         @endunless
     </x-ui.action-bar>
-</x-ui.shell>
+</x-ui.cabinet>

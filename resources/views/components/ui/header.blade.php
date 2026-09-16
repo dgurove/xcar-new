@@ -13,7 +13,7 @@
     $top = \App\Support\Nav::top($user);
     $badges = \App\Support\Nav::badges($user);
     $searchAction = $park ? '/cars' : '/';
-    $cabinet = '/account';
+    $cabinet = \App\Support\Surface::current() === \App\Support\Surface::Crm ? '/settings' : '/account';
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
 @endphp
 <header id="header" class="header{{ $overHero ? ' header--over' : '' }}">

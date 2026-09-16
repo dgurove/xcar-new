@@ -1,5 +1,6 @@
 @php $new = !$template->exists; @endphp
-<x-ui.shell :title="$new ? 'Новый шаблон' : $template->name" narrow>
+<x-ui.cabinet :title="$new ? 'Новый шаблон' : $template->name">
+    <h2 class="text-xl">{{ $new ? 'Новый шаблон' : $template->name }}</h2>
     <form method="post" action="{{ $new ? '/settings/templates' : '/settings/templates/'.$template->id }}" id="template-form" class="flex flex-col gap-4">
         @csrf @unless ($new) @method('put') @endunless
         <x-ui.card>
@@ -20,4 +21,4 @@
         <x-ui.button form="template-form" class="flex-1">Сохранить</x-ui.button>
         @unless ($new)<form method="post" action="/settings/templates/{{ $template->id }}" data-turbo-confirm="Удалить шаблон?">@csrf @method('delete')<x-ui.button variant="danger" round class="btn-lg"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>@endunless
     </x-ui.action-bar>
-</x-ui.shell>
+</x-ui.cabinet>

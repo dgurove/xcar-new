@@ -1,5 +1,17 @@
-<x-ui.shell title="Страховые" narrow>
-    <div class="flex flex-col gap-3">
+{{-- Страховые списком; первая строка — новая (как «Новая ссылка»), вместо поля с плюсом внизу. --}}
+<x-ui.cabinet title="Страховые">
+    <div class="flex flex-col gap-2" data-controller="sheet">
+        <button type="button" class="row w-full text-left" data-action="sheet#open">
+            <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
+            <span class="min-w-0 flex-1 font-medium">Новая страховая</span>
+        </button>
+        <x-ui.sheet id="insurer-new" title="Новая страховая" :open="$errors->has('name')">
+            <form method="post" action="/settings/insurers" class="flex flex-col gap-4">
+                @csrf
+                <x-ui.field name="name" label="Название" required autofocus/>
+                <x-ui.button block>Создать</x-ui.button>
+            </form>
+        </x-ui.sheet>
         @foreach ($insurers as $insurer)
             <a href="/settings/insurers/{{ $insurer->id }}" class="row">
                 <div class="min-w-0 flex-1">
@@ -15,10 +27,5 @@
                 <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
             </a>
         @endforeach
-        <form method="post" action="/settings/insurers" class="flex gap-2">
-            @csrf
-            <input name="name" class="field-input flex-1" placeholder="Новая страховая" required>
-            <x-ui.button variant="secondary"><x-ui.icon name="plus" class="size-5"/></x-ui.button>
-        </form>
     </div>
-</x-ui.shell>
+</x-ui.cabinet>
