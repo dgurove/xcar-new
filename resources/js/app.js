@@ -314,7 +314,12 @@ function headerState() {
 function activePillIntoView() {
     const show = () => document.querySelectorAll('.pills [aria-current], .toolbar-pills [aria-current], .cabinet-pills [aria-current]').forEach((el) => {
         const row = el.closest('.pills, .toolbar-pills, .cabinet-pills');
-        if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = el.offsetLeft - row.offsetLeft - (row.clientWidth - el.offsetWidth) / 2;
+        if (!row || row.scrollWidth <= row.clientWidth) return;
+        // Уже целиком в кадре (с полем ленты) — не трогаем: иначе первая пилюля прилипает к краю экрана.
+        const pad = parseFloat(getComputedStyle(row).paddingLeft) || 0;
+        const left = el.offsetLeft - row.offsetLeft, right = left + el.offsetWidth;
+        if (left - pad >= row.scrollLeft && right + pad <= row.scrollLeft + row.clientWidth) return;
+        row.scrollLeft = left - (row.clientWidth - el.offsetWidth) / 2;
     });
     document.addEventListener('turbo:load', show);
 }

@@ -316,10 +316,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
   /* Ряд круглых действий с подписью (страница человека: позвонить, написать, пароль) —
      подпись у кнопки, как у таб-бара. Лайм — у одной. */
-  .acts { @apply flex flex-wrap justify-center gap-5 sm:justify-start; }
-  .act { @apply flex flex-col items-center gap-1.5 text-xs text-ink-muted; }
-  .act .btn { width: 3rem; height: 3rem; padding: 0; }
-  .act .btn svg { @apply size-[22px]; }
+  .acts { @apply flex flex-wrap gap-3; }
+  .act { @apply flex flex-col items-center gap-1 text-[11px] text-ink-muted; }
+  .act .btn { width: 2.75rem; height: 2.75rem; padding: 0; }
+  .act .btn svg { @apply size-5; }
 
   /* В шторке и в карточке строки лежат на белом — берут второй фон. */
   .sheet .row, .box .row { @apply bg-surface-2; }
@@ -1090,6 +1090,8 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
 @layer components {
   /* Лента дотянута до края — страница не едет резинкой; флик в галерее — один кадр. */
   .pills, .photo-strip, .combobox-list, [data-gallery-target="strip"], [data-chat-target="list"], .cabinet-pills, .toolbar-pills { overscroll-behavior: contain; }
+  /* Лента разделов кабинета: как .pills — snap не съедает поле у первой пилюли. */
+  .cabinet-pills, .toolbar-pills { scroll-padding-inline: 1rem; }
   [data-gallery-target="strip"] > * { scroll-snap-stop: always; }
   .photo-cell { touch-action: pan-x pan-y; }
 
