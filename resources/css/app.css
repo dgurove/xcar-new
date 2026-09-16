@@ -6,7 +6,9 @@
    1. Лайм — глагол, а не поверхность: действие, активный пункт, текущий шаг.
       На лайме текст всегда белый.
    2. Тёмное — только хром: первый экран и, в тёмной теме, полосы шапки и
-      таб-бара. Третьего фона нет.
+      таб-бара. Третьего фона нет. Хром — стекло: шапка, таб-бар и плашка
+      действий — одна полоса `--bar-alpha` с размытием, капсулы — тон поверх;
+      глухих полос и теней у них нет.
    3. У карточек тени нет. Тень только у висящего над страницей: шторка,
       меню, сообщение.
    4. Обводок нет. Белое на сером различается заливкой.
@@ -59,6 +61,8 @@
   --color-chrome: #121212;
   --color-chrome-light: #1d1d1b;
   --color-bar: #ffffff;
+  /* Плотность стекла хрома: сколько цвета полосы остаётся над размытым содержимым. */
+  --bar-alpha: 72%;
 
   --color-ground: #f7f7f7;
   --color-surface: #ffffff;
@@ -124,6 +128,7 @@
 .dark {
   color-scheme: dark;
   --color-bar: #121212;
+  --bar-alpha: 62%;
   --color-ground: #161616;
   --color-surface: #0d0d0d;
   --color-surface-2: #1a1a1a;
@@ -575,14 +580,23 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* ------------------------------------------------------------- шапка */
 
 @layer components {
-  /* Шапка — как navigation bar: то же стекло, что у таб-бара, волосяная линия и заголовок
-     экрана по центру появляются, когда содержимое ушло под неё (.is-scrolled / .is-past-title). */
-  .header { @apply sticky top-0 z-40 bg-bar text-ink; padding-top: env(safe-area-inset-top); }
-  .header > div { position: relative; }
+  /* Стекло хрома — одно на шапку, таб-бар и плашку действий: полоса `--bar-alpha`
+     над размытым содержимым, над первым экраном — над фото. Без размытия — глухая полоса. */
+  .header, .tabbar, .action-bar { background: var(--color-bar); }
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-    .header:not(.header--over) { background: color-mix(in srgb, var(--color-bar) 80%, transparent); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
+    .header, .tabbar, .action-bar {
+      background: color-mix(in srgb, var(--color-bar) var(--bar-alpha), transparent);
+      -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+    }
   }
-  @media (prefers-reduced-transparency: reduce) { .header { background: var(--color-bar); backdrop-filter: none; } }
+  @media (prefers-reduced-transparency: reduce) {
+    .header, .tabbar, .action-bar { background: var(--color-bar); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+
+  /* Шапка — как navigation bar: волосяная линия и заголовок экрана по центру
+     появляются, когда содержимое ушло под неё (.is-scrolled / .is-past-title). */
+  .header { @apply sticky top-0 z-40 text-ink; padding-top: env(safe-area-inset-top); }
+  .header > div { position: relative; }
   .header::after { content: ''; position: absolute; inset: auto 0 0 0; height: 1px; background: rgb(60 60 67 / .29); opacity: 0; transition: opacity var(--dur-fast); }
   .dark .header::after { background: rgb(84 84 88 / .6); }
   @media (min-resolution: 2dppx) { .header::after { height: .5px; } }
@@ -601,11 +615,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .header-brand { transition: opacity var(--dur-fast); }
   .header--over { @apply fixed inset-x-0; }
 
+  /* Капсула — тон поверх стекла шапки (своё размытие ей не нужно: вложенный
+     backdrop-filter сквозь родителя не видит), поэтому полупрозрачная в обеих темах. */
   .header-btn {
-    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-surface-3 font-medium text-ink transition-colors;
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium text-ink transition-colors;
+    background: rgb(29 29 27 / .06);
   }
-  @media (hover: hover) { .header-btn:hover { background: var(--color-line); color: var(--color-ink); } }
-  .dark .header-btn { background: rgb(255 255 255 / .10); color: rgb(255 255 255 / .80); }
+  @media (hover: hover) { .header-btn:hover { background: rgb(29 29 27 / .11); color: var(--color-ink); } }
+  .dark .header-btn { background: rgb(255 255 255 / .12); color: rgb(255 255 255 / .80); }
   @media (hover: hover) { .dark .header-btn:hover { background: rgb(255 255 255 / .20); color: #fff; } }
   .header-btn[aria-current="page"], .dark .header-btn[aria-current="page"] { background: var(--color-accent); color: #fff; }
   @media (hover: hover) { .header-btn[aria-current="page"]:hover { background: var(--color-accent-hover); } }
@@ -666,26 +683,17 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* ------------------------------------------------------------- таб-бар */
 
 @layer components {
-  /* Прикреплён к низу, 49px + safe-area, размытый фон, волосяная линия сверху. */
+  /* Прикреплён к низу, 49px + safe-area, стекло (блок у шапки), волосяная линия сверху. */
   .tabbar {
     position: fixed; inset: auto 0 0 0; z-index: 40;
     display: flex; align-items: stretch;
     height: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px));
     padding-bottom: max(env(safe-area-inset-bottom), 0px);
-    background: var(--color-bar);
     border-top: 1px solid rgb(60 60 67 / .29);
     transition: transform .2s ease-out;
   }
   .dark .tabbar { border-top-color: rgb(84 84 88 / .6); }
   @media (min-resolution: 2dppx) { .tabbar { border-top-width: .5px; } }
-  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-    .tabbar {
-      background: color-mix(in srgb, var(--color-bar) 80%, transparent);
-      -webkit-backdrop-filter: saturate(180%) blur(20px);
-      backdrop-filter: saturate(180%) blur(20px);
-    }
-  }
-  @media (prefers-reduced-transparency: reduce) { .tabbar { background: var(--color-bar); backdrop-filter: none; } }
   @media (min-width: 768px) { .tabbar { display: none; } }
   .tabbar.is-hidden { transform: translateY(110%); }
 
@@ -718,14 +726,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (max-width: 1023px) { body:has(.action-bar) .footer { padding-bottom: calc(8rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); } }
   html:has(.action-bar) { scroll-padding-bottom: 6rem; }
 
-  /* На телефоне — плашка над таб-баром с кнопкой во всю ширину. */
+  /* На телефоне — стеклянная плашка над таб-баром с кнопкой во всю ширину, край — волосяная линия. */
   .action-bar {
     position: fixed; inset-inline: 0; z-index: 30;
     bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px));
-    background: var(--color-bar);
-    box-shadow: 0 -8px 24px rgb(0 0 0 / .10);
+    border-top: 1px solid rgb(60 60 67 / .29);
   }
-  .dark .action-bar { box-shadow: 0 -8px 24px rgb(0 0 0 / .5); }
+  .dark .action-bar { border-top-color: rgb(84 84 88 / .6); }
+  @media (min-resolution: 2dppx) { .action-bar { border-top-width: .5px; } }
   .action-bar-inner { @apply flex items-center gap-3 py-3; width: 100%; max-width: var(--container-site); margin-inline: auto; padding-inline: 1rem; }
   /* Клавиатура: таб-бар спрятан, полоса садится на клавиатуру (--kb ставит app.js). */
   @media (max-width: 767px) {
@@ -735,7 +743,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (min-width: 768px) {
     .action-bar, .dark .action-bar {
       inset-inline: auto; bottom: 1.5rem; right: max(1.5rem, calc((100% - var(--container-site)) / 2 + 1.5rem));
-      background: none; box-shadow: none;
+      background: none; border-top: 0; -webkit-backdrop-filter: none; backdrop-filter: none;
     }
     .action-bar-inner { width: auto; max-width: none; padding: 0; gap: .75rem; }
     .action-bar .btn { flex: 0 0 auto; box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
@@ -1177,6 +1185,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .pill:active, .header-btn:active, .sheet-close:active, .combobox-option:active, .card-star:active, .choice:active span,
   a.row:active, button.row:active, .row:has(> a:active), a.stat:active,
   .pill.is-pending, .header-btn.is-pending, .row.is-pending, .stat.is-pending { background: var(--color-hover); transition: background-color 0s 60ms; }
+  .header-btn:active, .header-btn.is-pending { background: rgb(29 29 27 / .14); }
   .dark .header-btn:active, .dark .header-btn.is-pending { background: rgb(255 255 255 / .2); }
   .pill[aria-current]:active, .pill-accent:active, .header-btn[aria-current="page"]:active, .header-btn-cta:active,
   .pill[aria-current].is-pending, .header-btn[aria-current="page"].is-pending { background: var(--color-accent-hover); }
