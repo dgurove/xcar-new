@@ -349,18 +349,19 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
   /* Витрина и кабинет остаются крупными — под палец. В CRM и на стоянке форм
      много и полей десятки: поле 44/40 px, подпись 13 px, карточка теснее. */
-  .surface-crm .field, .surface-park .field { gap: .25rem; }
-  .surface-crm .field-label, .surface-park .field-label { font-size: 13px; line-height: 1.25; }
-  .surface-crm .field-input, .surface-park .field-input { padding-block: .5rem; padding-inline: .75rem; min-height: 2.75rem; }
-  .surface-crm select.field-input, .surface-park select.field-input { padding-right: 2rem; background-position: right 10px center; }
-  .surface-crm textarea.field-input, .surface-park textarea.field-input { min-height: 5rem; }
+  /* .form-dense — та же плотность для формы в кабинете сайта (профиль). */
+  .surface-crm .field, .surface-park .field, .form-dense .field { gap: .25rem; }
+  .surface-crm .field-label, .surface-park .field-label, .form-dense .field-label { font-size: 13px; line-height: 1.25; }
+  .surface-crm .field-input, .surface-park .field-input, .form-dense .field-input { padding-block: .5rem; padding-inline: .75rem; min-height: 2.75rem; }
+  .surface-crm select.field-input, .surface-park select.field-input, .form-dense select.field-input { padding-right: 2rem; background-position: right 10px center; }
+  .surface-crm textarea.field-input, .surface-park textarea.field-input, .form-dense textarea.field-input { min-height: 5rem; }
   .surface-crm .tri span, .surface-park .tri span { padding-block: .375rem; }
   .surface-crm .choice span, .surface-park .choice span { padding: .375rem .75rem; }
   .surface-crm .box, .surface-park .box { padding: 1rem; }
   .surface-crm .box > h2:first-child, .surface-park .box > h2:first-child { font-size: 1.125rem; margin-bottom: .75rem; }
   .surface-crm .box-nested, .surface-park .box-nested { padding: .75rem; }
   @media (min-width: 640px) {
-    .surface-crm .field-input, .surface-park .field-input { font-size: 14px; min-height: 2.5rem; }
+    .surface-crm .field-input, .surface-park .field-input, .form-dense .field-input { font-size: 14px; min-height: 2.5rem; }
     .surface-crm .box, .surface-park .box { padding: 1.25rem; }
     .surface-crm .btn-s, .surface-park .btn-s { height: 2.25rem; }
   }

@@ -2,12 +2,12 @@
      под полями) и список действий строками, как настройки в приложении. Заголовков и коробок под
      каждую кнопку нет. --}}
 <x-ui.cabinet title="Профиль">
-    <form method="post" action="/lk" enctype="multipart/form-data" class="box grid grid-cols-[auto_1fr] gap-4 sm:gap-6" data-controller="avatar">
+    <form method="post" action="/lk" enctype="multipart/form-data" class="box form-dense grid grid-cols-[auto_1fr] gap-4 sm:gap-6" data-controller="avatar">
         @csrf @method('put')
         {{-- Аватар — кружок с камерой: нажатие открывает выбор файла, фото сразу встаёт в кружок. --}}
         <div class="flex flex-col items-center gap-2 self-start">
             <button type="button" class="relative shrink-0" data-action="avatar#pick" aria-label="Сменить фото">
-                <x-ui.avatar :user="$user" :size="88" class="text-3xl" data-avatar-target="circle"/>
+                <x-ui.avatar :user="$user" :size="72" class="text-2xl" data-avatar-target="circle"/>
                 <span class="absolute -bottom-0.5 -right-0.5 flex size-8 items-center justify-center rounded-full bg-accent text-white ring-2 ring-surface"><x-ui.icon name="camera" class="size-4"/></span>
             </button>
             <input type="file" name="avatar" accept="image/*" class="sr-only" tabindex="-1" data-avatar-target="input" data-action="change->avatar#preview">
@@ -15,7 +15,7 @@
                 <button type="submit" name="remove_avatar" value="1" class="btn btn-s btn-ghost text-ink-muted" data-turbo-confirm="Удалить фото?">Удалить</button>
             @endif
         </div>
-        <div class="flex min-w-0 flex-col gap-4">
+        <div class="flex min-w-0 flex-col gap-3">
             <x-ui.field name="name" label="Имя" :value="$user->name" autocomplete="name" required/>
             @if ($user->mayHave('email'))<x-ui.field name="email" label="Почта" type="email" :value="$user->email" autocomplete="email"/>@endif
             {{-- Чем входит: телефон и логин не меняются — фактами. --}}
@@ -26,7 +26,7 @@
                 </div>
             @endif
             @error('avatar')<p class="field-error">{{ $message }}</p>@enderror
-            <x-ui.button class="w-full sm:w-fit">Сохранить</x-ui.button>
+            <x-ui.button size="s" class="w-full sm:w-fit">Сохранить</x-ui.button>
         </div>
     </form>
 
@@ -57,6 +57,28 @@
                     <x-ui.field name="password" label="Новый пароль" type="password" autocomplete="new-password" required/>
                     <x-ui.field name="password_confirmation" label="Ещё раз" type="password" autocomplete="new-password" required/>
                     <x-ui.button class="mt-2">Сохранить</x-ui.button>
+                </form>
+            </x-ui.sheet>
+        </div>
+
+        <div data-controller="sheet" class="contents">
+            <button type="button" class="row w-full text-left" data-action="sheet#open">
+                <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="bell" class="size-5"/></span>
+                <span class="min-w-0 flex-1 font-medium">Уведомления</span>
+                <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+            </button>
+            <x-ui.sheet id="notification-settings" title="Уведомления">
+                @if (config('xcar.vapid.public'))
+                <div class="mb-4 flex flex-col gap-2" data-controller="push">
+                    <x-ui.button type="button" block data-push-target="on" data-action="push#enable"><x-ui.icon name="bell" class="size-5"/> Уведомления на телефон</x-ui.button>
+                    <x-ui.button type="button" variant="secondary" block hidden data-push-target="off" data-action="push#disable">Выключить уведомления на телефоне</x-ui.button>
+                    <div class="text-sm text-danger" data-push-target="state"></div>
+                </div>
+                @endif
+                <form method="post" action="/lk/uvedomleniya/nastroyki" class="flex flex-col gap-4">
+                    @csrf @method('put')
+                    <x-ui.check name="mail" :checked="$user->wantsMail()">Дублировать на почту{{ $user->email ? ' '.$user->email : '' }}</x-ui.check>
+                    <x-ui.button block>Сохранить</x-ui.button>
                 </form>
             </x-ui.sheet>
         </div>
