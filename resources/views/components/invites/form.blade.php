@@ -14,7 +14,7 @@
         {{-- Менеджерская — одноразовая и со сроком: названия у неё нет, только до какого момента действует. --}}
         <div data-manager class="flex flex-col gap-3">
             <x-ui.field name="expires_at" label="Действует до" type="datetime-local" :value="now()->addDays(3)->format('Y-m-d\TH:i')" :min="now()->format('Y-m-d\TH:i')"/>
-            <p class="text-sm text-ink-muted">Ссылка одноразовая: после регистрации менеджера перестанет действовать.</p>
+            <p class="text-sm text-ink-muted">Ссылка одноразовая: после регистрации менеджера перестанет действовать</p>
         </div>
     @endif
     <div @if ($admin) data-buyer @endif class="flex flex-col gap-4">
