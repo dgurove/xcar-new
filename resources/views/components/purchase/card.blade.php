@@ -5,7 +5,7 @@
     $mine = $staff ? null : $car->offerOf(auth()->user());
     $best = $staff ? $car->bestOffer() : null;
     $active = $staff ? $car->offers->whereIn('state', [\App\Purchases\OfferState::Active, \App\Purchases\OfferState::Chosen]) : collect();
-    $href = "/zakupki/{$purchase->number}/{$car->ref}".($query ? '?'.$query : '');
+    $href = "/purchases/{$purchase->number}/{$car->ref}".($query ? '?'.$query : '');
     $main = $car->mainPhoto();
     $photos = $car->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $hasMedia = $photos->isNotEmpty();

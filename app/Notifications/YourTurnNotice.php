@@ -23,7 +23,7 @@ final class YourTurnNotice extends Notice
 
     public function href(): string
     {
-        return "/lk/sdelki/{$this->requirement->deal_id}";
+        return "/account/deals/{$this->requirement->deal_id}";
     }
 
     public function offerNumber(): ?int

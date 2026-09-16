@@ -31,7 +31,7 @@ class MailAccountController
     {
         $account = Account::create($this->data($request));
 
-        return redirect("/nastroyki/yashchiki/{$account->slug}")->with('toast', 'Ящик заведён');
+        return redirect("/settings/mailboxes/{$account->slug}")->with('toast', 'Ящик заведён');
     }
 
     public function update(Request $request, Account $account)
@@ -43,7 +43,7 @@ class MailAccountController
             }
         }
 
-        return redirect("/nastroyki/yashchiki/{$account->slug}")->with('toast', 'Сохранено');
+        return redirect("/settings/mailboxes/{$account->slug}")->with('toast', 'Сохранено');
     }
 
     public function test(Account $account, ConnectionTester $tester)
@@ -68,7 +68,7 @@ class MailAccountController
             ->chunkById(200, fn ($chunk) => $chunk->each->delete());
         $account->delete();
 
-        return redirect('/nastroyki/yashchiki')->with('toast', 'Ящик удалён');
+        return redirect('/settings/mailboxes')->with('toast', 'Ящик удалён');
     }
 
     private function data(Request $request, ?Account $account = null): array

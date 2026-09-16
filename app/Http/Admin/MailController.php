@@ -29,7 +29,7 @@ class MailController
 {
     public const PRESETS = ['all' => 'Все', 'unread' => 'Непрочитанные', 'files' => 'С вложениями', 'sent' => 'Отправленные', 'linked' => 'По предложениям'];
 
-    public function __construct(private Scope $scope = Scope::Offers, private string $base = '/rabota/pochta') {}
+    public function __construct(private Scope $scope = Scope::Offers, private string $base = '/work/mail') {}
 
     public function index(Request $request)
     {

@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 /**
  * Стена вокруг сайта: гостю — вход и регистрация, зарегистрированному без
  * допуска — страница ожидания, отклонённому — «мы вас не узнали». Открыты
- * только обращение (/kontakty), юридические страницы и служебное — они
+ * только обращение (/contacts), юридические страницы и служебное — они
  * не под этой прослойкой. CRM и стоянка чужих отбивают сами (ResolveSurface).
  */
 class SiteWall
@@ -21,7 +21,7 @@ class SiteWall
         }
         $user = $request->user();
         if (! $user) {
-            return $request->expectsJson() ? abort(401) : redirect()->guest('/vhod');
+            return $request->expectsJson() ? abort(401) : redirect()->guest('/login');
         }
         if ($user->isApproved()) {
             return $next($request);

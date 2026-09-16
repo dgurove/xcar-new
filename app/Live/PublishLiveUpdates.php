@@ -46,16 +46,16 @@ final class PublishLiveUpdates
         $buyers = Showing::buyerIdsOf($e->offer)->map(fn ($id) => Topics::user($id))->all();
         $this->publish->card($n, [Topics::CATALOG, ...$buyers]);
         $this->publish->refresh([Topics::CATALOG, ...$buyers], ["/offers/{$n}"]);
-        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/', '/rabota/sdelki']);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/', '/work/deals']);
     }
 
     /** Покупателю открыли предложения: его лента и сводка перечитываются, у менеджера — карточки с числом «видят». */
     public function shown(OffersShown $e): void
     {
         foreach (array_keys($e->fresh) as $buyerId) {
-            $this->publish->refresh(Topics::user($buyerId), ['/', '/lk']);
+            $this->publish->refresh(Topics::user($buyerId), ['/', '/account']);
         }
-        $this->publish->refresh(Topics::user($e->manager), ['/', '/lk/pokupateli']);
+        $this->publish->refresh(Topics::user($e->manager), ['/', '/account/buyers']);
     }
 
     public function hidden(OffersHidden $e): void
@@ -71,24 +71,24 @@ final class PublishLiveUpdates
     public function bid(BidPlaced $e): void
     {
         $n = $e->bid->offer->number;
-        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/']);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/']);
         $this->publish->refresh(Topics::CATALOG, ["/offers/{$n}"]);
     }
 
     public function bidDecided(BidAccepted|BidDeclined $e): void
     {
         $n = $e->bid->offer->number;
-        $this->publish->refresh(Topics::user($e->bid->user_id), ['/lk/stavki', '/lk/sdelki', "/offers/{$n}"]);
-        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/rabota/sdelki']);
+        $this->publish->refresh(Topics::user($e->bid->user_id), ['/account/confirmations', '/account/deals', "/offers/{$n}"]);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals']);
     }
 
     public function interest(InterestRegistered $e): void
     {
         $n = $e->interest->offer->number;
-        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}"]);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
         // Интерес покупателя — менеджеру: страница оффера и его список интересов.
         if ($manager = $e->interest->user->manager_id) {
-            $this->publish->refresh(Topics::user($manager), ["/offers/{$n}", '/lk/interes', "/lk/pokupateli/{$e->interest->user_id}"]);
+            $this->publish->refresh(Topics::user($manager), ["/offers/{$n}", '/account/interest', "/account/buyers/{$e->interest->user_id}"]);
             $this->publish->badges(Topics::user($manager));
         }
     }
@@ -96,9 +96,9 @@ final class PublishLiveUpdates
     public function stage(StageEntered $e): void
     {
         $n = $e->offer->number;
-        $this->publish->refresh(Topics::STAFF, ["/predlozheniya/{$n}", '/rabota/sdelki']);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals']);
         if ($deal = $e->deal ?? $e->offer->deal()->first()) {
-            $this->publish->refresh(Topics::user($deal->buyer_id), ['/lk/sdelki', "/lk/sdelki/{$deal->id}"]);
+            $this->publish->refresh(Topics::user($deal->buyer_id), ['/account/deals', "/account/deals/{$deal->id}"]);
         }
     }
 
@@ -112,7 +112,7 @@ final class PublishLiveUpdates
         if ($chat->user_id) {
             $this->publish->badges(Topics::user($chat->user_id));
         }
-        $this->publish->refresh(Topics::STAFF, ['/rabota/chaty']);
+        $this->publish->refresh(Topics::STAFF, ['/work/chats']);
     }
 
     public function notification(NotificationSent $e): void

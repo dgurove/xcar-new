@@ -6,8 +6,8 @@
             @if ($surface !== \App\Support\Surface::Site)
                 <a href="{{ \App\Support\Surface::Site->url() }}" class="header-btn header-h min-w-0 flex-auto px-4 text-sm sm:px-5" data-turbo="false"><span class="truncate">На сайт xcar.ru</span></a>
             @else
-                <a href="/obrabotka-dannyh" class="header-btn header-h min-w-0 flex-auto px-4 text-sm sm:px-5"><span class="truncate">Обработка данных</span></a>
-                <a href="/soglashenie" class="header-btn header-h min-w-0 flex-auto px-4 text-sm sm:px-5"><span class="truncate">Соглашение</span></a>
+                <a href="/privacy" class="header-btn header-h min-w-0 flex-auto px-4 text-sm sm:px-5"><span class="truncate">Обработка данных</span></a>
+                <a href="/terms" class="header-btn header-h min-w-0 flex-auto px-4 text-sm sm:px-5"><span class="truncate">Соглашение</span></a>
             @endif
             <a href="/" class="header-btn-square flex h-[1.875rem] w-[1.875rem] shrink-0 items-center justify-center sm:w-auto" aria-label="XCar">
                 <x-ui.logo responsive class="h-[1.875rem] w-auto"/>

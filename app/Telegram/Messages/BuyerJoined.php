@@ -34,6 +34,6 @@ final class BuyerJoined extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Покупатели в CRM', 'url' => Surface::Crm->url('/nastroyki/polzovateli?preset=buyers')];
+        return ['text' => 'Покупатели в CRM', 'url' => Surface::Crm->url('/settings/users?preset=buyers')];
     }
 }

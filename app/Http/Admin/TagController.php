@@ -24,7 +24,7 @@ class TagController
         $data['sort'] = (int) Tag::max('sort') + 1;
         Tag::create($data);
 
-        return redirect('/nastroyki/tegi')->with('toast', 'Добавлена');
+        return redirect('/settings/tags')->with('toast', 'Добавлена');
     }
 
     public function update(Request $request, Tag $tag)
@@ -37,7 +37,7 @@ class TagController
             $tag->update($data);
         });
 
-        return redirect('/nastroyki/tegi')->with('toast', 'Сохранено');
+        return redirect('/settings/tags')->with('toast', 'Сохранено');
     }
 
     public function destroy(Tag $tag)
@@ -47,7 +47,7 @@ class TagController
             $tag->delete();
         });
 
-        return redirect('/nastroyki/tegi')->with('toast', 'Удалена');
+        return redirect('/settings/tags')->with('toast', 'Удалена');
     }
 
     public function reorder(Request $request)

@@ -1,5 +1,5 @@
 <x-ui.shell title="Сделки" :heading="false">
-    <x-admin.work-titles current="sdelki" :count="$deals->total()"/>
+    <x-admin.work-titles current="deals" :count="$deals->total()"/>
     <x-ui.toolbar class="mt-5" :sorts="\App\Http\Admin\DealController::SORTS" :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" name="deals"/>
 
     @if ($deals->isEmpty())
@@ -8,7 +8,7 @@
         <div class="mt-6 flex flex-col gap-2">
             @foreach ($deals as $deal)
                 @php $offer = $deal->offer; $position = $offer->position(); @endphp
-                <a href="/rabota/sdelki/{{ $deal->id }}" class="row items-start">
+                <a href="/work/deals/{{ $deal->id }}" class="row items-start">
                     <div class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="64px"/></div>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-baseline gap-2">

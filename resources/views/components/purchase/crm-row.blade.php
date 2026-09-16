@@ -10,9 +10,9 @@
 @endphp
 <div class="row flex-col items-stretch sm:flex-row sm:items-center sm:gap-x-6">
     <div class="flex min-w-0 items-start gap-3">
-        <a href="/zakupki/{{ $n }}/{{ $car->ref }}" class="row-photo"><x-offer.photo :media="$car->mainPhoto()" sizes="64px"/></a>
+        <a href="/purchases/{{ $n }}/{{ $car->ref }}" class="row-photo"><x-offer.photo :media="$car->mainPhoto()" sizes="64px"/></a>
         <div class="min-w-0 flex-1">
-            <a href="/zakupki/{{ $n }}/{{ $car->ref }}" class="flex items-baseline gap-2"><span class="truncate font-medium">{{ $car->titleWithYear() }}</span><span class="nums shrink-0 text-sm text-ink-dim">{{ $car->dl }}</span></a>
+            <a href="/purchases/{{ $n }}/{{ $car->ref }}" class="flex items-baseline gap-2"><span class="truncate font-medium">{{ $car->titleWithYear() }}</span><span class="nums shrink-0 text-sm text-ink-dim">{{ $car->dl }}</span></a>
             <div class="mt-1.5 flex flex-wrap gap-1.5">
                 @if ($car->price_revalued)<span class="tag nums whitespace-nowrap">переоценка {{ \App\Support\Money::rub($car->price_revalued) }}</span>@endif
                 @if ($car->price_listing)<span class="tag nums whitespace-nowrap">размещение {{ \App\Support\Money::rub($car->price_listing) }}</span>@endif
@@ -29,7 +29,7 @@
             <x-purchase.offer-chip :offer="$offer" :car="$car" :highlight="$highlight"/>
         @endforeach
         @if ($price)
-            <a href="/zakupki/{{ $n }}/{{ $car->ref }}/ocenka" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? \App\Support\Money::rub($car->price_final) : 'оценить' }}</a>
+            <a href="/purchases/{{ $n }}/{{ $car->ref }}/estimate" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? \App\Support\Money::rub($car->price_final) : 'оценить' }}</a>
         @endif
     </div>
 </div>

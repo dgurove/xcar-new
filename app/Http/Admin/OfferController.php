@@ -73,7 +73,7 @@ class OfferController
     {
         $offer = $create($request->user());
 
-        return redirect("/predlozheniya/{$offer->number}");
+        return redirect("/offers/{$offer->number}");
     }
 
     public function edit(Offer $offer)
@@ -104,7 +104,7 @@ class OfferController
     {
         $update($offer, $request->payload(), $request->user());
 
-        return redirect("/predlozheniya/{$offer->number}")->with('toast', 'Сохранено');
+        return redirect("/offers/{$offer->number}")->with('toast', 'Сохранено');
     }
 
     /** Продлить приём на ходу: от текущего срока, если он ещё не прошёл, иначе от сейчас. */
@@ -122,6 +122,6 @@ class OfferController
         $next = OfferState::from($request->validate(['state' => ['required', 'string']])['state']);
         $change($offer, $next, $request->user());
 
-        return redirect("/predlozheniya/{$offer->number}")->with('toast', $next->label());
+        return redirect("/offers/{$offer->number}")->with('toast', $next->label());
     }
 }

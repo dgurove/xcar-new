@@ -7,8 +7,8 @@
             @if ($m->files->isNotEmpty())
                 <div class="mt-1.5 flex flex-wrap gap-1.5">
                     @foreach ($m->files as $f)
-                        <a href="/chaty/{{ $m->chat_id }}/fayly/{{ $f->id }}" target="_blank" class="block overflow-hidden rounded-(--radius-s)">
-                            @if ($f->isImage())<img src="/chaty/{{ $m->chat_id }}/fayly/{{ $f->id }}" alt="" class="max-h-48 rounded-(--radius-s)" loading="lazy">
+                        <a href="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" target="_blank" class="block overflow-hidden rounded-(--radius-s)">
+                            @if ($f->isImage())<img src="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" alt="" class="max-h-48 rounded-(--radius-s)" loading="lazy">
                             @else<span class="flex items-center gap-1.5 bg-surface-2 px-2 py-1.5 text-sm"><x-ui.icon name="file" class="size-4"/>{{ $f->name }}</span>@endif
                         </a>
                     @endforeach

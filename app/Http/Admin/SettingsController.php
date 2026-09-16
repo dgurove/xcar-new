@@ -17,14 +17,14 @@ class SettingsController
     public function index(Request $request)
     {
         $tiles = [
-            ['Страховые', Insurer::count(), '/nastroyki/strahovye'],
-            ['Ящики', Account::where('scope', Scope::Offers)->count(), '/nastroyki/yashchiki'],
-            ['Шаблоны', Template::where('scope', Scope::Offers)->count(), '/nastroyki/shablony'],
-            ['Метки', Tag::count(), '/nastroyki/tegi'],
+            ['Страховые', Insurer::count(), '/settings/insurers'],
+            ['Ящики', Account::where('scope', Scope::Offers)->count(), '/settings/mailboxes'],
+            ['Шаблоны', Template::where('scope', Scope::Offers)->count(), '/settings/templates'],
+            ['Метки', Tag::count(), '/settings/tags'],
         ];
         if ($request->user()->isAdmin()) {
-            $tiles[] = ['Пользователи', User::whereIn('role', [Role::Admin, Role::Moderator, Role::Manager])->count(), '/nastroyki/polzovateli'];
-            $tiles[] = ['Покупатели', User::where('role', Role::Buyer)->count(), '/nastroyki/polzovateli?preset=buyers'];
+            $tiles[] = ['Пользователи', User::whereIn('role', [Role::Admin, Role::Moderator, Role::Manager])->count(), '/settings/users'];
+            $tiles[] = ['Покупатели', User::where('role', Role::Buyer)->count(), '/settings/users?preset=buyers'];
         }
 
         return view('admin.settings.index', ['tiles' => $tiles]);

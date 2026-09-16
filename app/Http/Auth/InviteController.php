@@ -69,6 +69,6 @@ class InviteController
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect($user->isManager() ? '/lk' : '/')->with('toast', 'Добро пожаловать, '.$user->name);
+        return redirect($user->isManager() ? '/account' : '/')->with('toast', 'Добро пожаловать, '.$user->name);
     }
 }

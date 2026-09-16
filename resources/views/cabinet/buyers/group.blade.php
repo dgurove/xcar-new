@@ -13,12 +13,12 @@
                     <div data-controller="sheet" class="contents">
                         <button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="edit"/></span>Изменить</button>
                         <x-ui.sheet id="group-edit" :title="$group->name">
-                            <form method="post" action="/lk/pokupateli/gruppy/{{ $group->id }}" class="flex flex-col gap-4">
+                            <form method="post" action="/account/buyers/groups/{{ $group->id }}" class="flex flex-col gap-4">
                                 @csrf @method('put')
                                 <x-ui.field name="name" label="Название" :value="$group->name" required maxlength="60"/>
                                 <x-ui.button block>Сохранить</x-ui.button>
                             </form>
-                            <form method="post" action="/lk/pokupateli/gruppy/{{ $group->id }}" class="mt-2"
+                            <form method="post" action="/account/buyers/groups/{{ $group->id }}" class="mt-2"
                                 data-turbo-confirm="Удалить группу «{{ $group->name }}»?" data-turbo-confirm-label="Удалить"
                                 data-turbo-confirm-text="Покупатели останутся у вас, но то, что было открыто им через группу, закроется.">
                                 @csrf @method('delete')
@@ -32,9 +32,9 @@
             <section class="mt-8">
                 <h2 class="text-xl">Состав</h2>
                 @if ($buyers->isEmpty())
-                    <x-ui.empty class="mt-4" href="/lk/priglasheniya" link="Пригласить">Покупателей пока нет</x-ui.empty>
+                    <x-ui.empty class="mt-4" href="/account/invites" link="Пригласить">Покупателей пока нет</x-ui.empty>
                 @else
-                    <form method="post" action="/lk/pokupateli/gruppy/{{ $group->id }}/sostav" class="mt-4 flex flex-col gap-2" data-controller="autosubmit select">
+                    <form method="post" action="/account/buyers/groups/{{ $group->id }}/members" class="mt-4 flex flex-col gap-2" data-controller="autosubmit select">
                         @csrf @method('put')
                         @if ($buyers->count() > 8)<input type="search" class="field-input field-s mb-1" placeholder="Найти" autocomplete="off" data-action="input->select#filter">@endif
                         @foreach ($buyers as $b)
@@ -56,7 +56,7 @@
             <section data-controller="sheet">
                 <h2 class="text-xl">Видит @if ($offers->isNotEmpty())<span class="nums text-ink-dim">{{ $offers->count() }}</span>@endif</h2>
                 <x-ui.sheet id="pick" title="Открыть группе «{{ $group->name }}»" wide>
-                    <turbo-frame id="pick-frame" src="/lk/pokazy/vybor?group={{ $group->id }}" loading="lazy" class="block min-h-40">
+                    <turbo-frame id="pick-frame" src="/account/showings/pick?group={{ $group->id }}" loading="lazy" class="block min-h-40">
                         <x-ui.skeleton :rows="3"/>
                     </turbo-frame>
                 </x-ui.sheet>

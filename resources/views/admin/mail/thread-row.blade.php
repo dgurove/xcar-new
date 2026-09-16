@@ -18,6 +18,6 @@
         </div>
     </a>
     <x-slot:actions>
-        <form method="post" action="{{ $base }}/{{ $thread->id }}/prochitano" data-queue>@csrf<button type="submit" class="swipe-btn swipe-btn-accent" aria-label="{{ $thread->unread_count ? 'Прочитано' : 'Не прочитано' }}"><x-ui.icon :name="$thread->unread_count ? 'eye' : 'eye-off'" class="size-5"/></button></form>
+        <form method="post" action="{{ $base }}/{{ $thread->id }}/read" data-queue>@csrf<button type="submit" class="swipe-btn swipe-btn-accent" aria-label="{{ $thread->unread_count ? 'Прочитано' : 'Не прочитано' }}"><x-ui.icon :name="$thread->unread_count ? 'eye' : 'eye-off'" class="size-5"/></button></form>
     </x-slot:actions>
 </x-ui.swipe>

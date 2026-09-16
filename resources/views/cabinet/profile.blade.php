@@ -2,7 +2,7 @@
      под полями) и список действий строками, как настройки в приложении. Заголовков и коробок под
      каждую кнопку нет. --}}
 <x-ui.cabinet title="Профиль">
-    <form method="post" action="/lk" enctype="multipart/form-data" class="box form-dense grid grid-cols-[auto_1fr] gap-4 sm:gap-6" data-controller="avatar">
+    <form method="post" action="/account" enctype="multipart/form-data" class="box form-dense grid grid-cols-[auto_1fr] gap-4 sm:gap-6" data-controller="avatar">
         @csrf @method('put')
         {{-- Аватар — кружок с камерой: нажатие открывает выбор файла, фото сразу встаёт в кружок. --}}
         <div class="flex flex-col items-center gap-2 self-start">
@@ -51,7 +51,7 @@
                 <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
             </button>
             <x-ui.sheet id="password" title="Новый пароль" :open="$errors->has('current') || $errors->has('password')">
-                <form method="post" action="/lk/parol" class="flex flex-col gap-3">
+                <form method="post" action="/account/password" class="flex flex-col gap-3">
                     @csrf
                     <x-ui.field name="current" label="Текущий пароль" type="password" autocomplete="current-password" required/>
                     <x-ui.field name="password" label="Новый пароль" type="password" autocomplete="new-password" required/>
@@ -100,7 +100,7 @@
             <span class="min-w-0 flex-1 font-medium">Установить приложение</span>
         </button>
 
-        <form method="post" action="/vyhod" class="contents" data-turbo-confirm="Выйти?">
+        <form method="post" action="/logout" class="contents" data-turbo-confirm="Выйти?">
             @csrf
             <button class="row w-full text-left text-danger">
                 <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-danger-soft"><x-ui.icon name="exit" class="size-5"/></span>

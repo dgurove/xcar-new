@@ -14,7 +14,7 @@
                 </div>
                 <button type="button" class="btn btn-ghost btn-s px-2" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
                 <x-ui.sheet id="client-{{ $client->id }}" title="Клиент">
-                    <form method="post" action="/klienty/{{ $client->id }}" class="flex flex-col gap-4">
+                    <form method="post" action="/clients/{{ $client->id }}" class="flex flex-col gap-4">
                         @csrf @method('put')
                         <x-ui.field name="name" label="Название" :value="$client->name" required/>
                         <x-ui.field name="contact_name" label="Контакт" :value="$c['name'] ?? null"/>
@@ -30,7 +30,7 @@
         <div data-controller="sheet">
             <x-ui.button type="button" variant="secondary" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Клиент</x-ui.button>
             <x-ui.sheet id="client-new" title="Новый клиент">
-                <form method="post" action="/klienty" class="flex flex-col gap-4">
+                <form method="post" action="/clients" class="flex flex-col gap-4">
                     @csrf
                     <x-ui.field name="name" label="Название" required autofocus/>
                     <x-ui.field name="contact_name" label="Контакт"/>

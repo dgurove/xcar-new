@@ -6,7 +6,7 @@
         \App\Workflow\WaitsFor::Manager => 'Ваш ход', \App\Workflow\WaitsFor::Supplier => 'ждём поставщика', \App\Workflow\WaitsFor::Us => 'ждём нас', default => null,
     } : null;
 @endphp
-<x-ui.cabinet :title="$offer->titleWithYear()" :back="['Сделки', '/lk/sdelki']">
+<x-ui.cabinet :title="$offer->titleWithYear()" :back="['Сделки', '/account/deals']">
     <div class="grid gap-6 lg:grid-cols-[1fr_18rem]" data-deal-offer="{{ $offer->number }}">
         <div class="min-w-0 space-y-6">
             @if ($deal->state !== DealState::Active)
@@ -40,7 +40,7 @@
                             @endif
 
                             @if ($requirement->asks === Asks::Document)
-                                <div class="mt-4" data-controller="photos" data-photos-url-value="/lk/sdelki/{{ $deal->id }}/fayly">
+                                <div class="mt-4" data-controller="photos" data-photos-url-value="/account/deals/{{ $deal->id }}/files">
                                     <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-photos-target="input" data-action="change->photos#upload">
                                     @include('cabinet.deals.files', ['requirement' => $requirement])
                                     <div hidden data-photos-target="progress" class="my-2">
@@ -52,7 +52,7 @@
                                 </div>
                             @endif
 
-                            <form method="post" action="/lk/sdelki/{{ $deal->id }}/otvet" class="mt-5 flex flex-col gap-4">
+                            <form method="post" action="/account/deals/{{ $deal->id }}/reply" class="mt-5 flex flex-col gap-4">
                                 @csrf
                                 @if ($requirement->asks === Asks::Fields)
                                     @foreach ($requirement->fields as $field)

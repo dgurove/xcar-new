@@ -10,9 +10,9 @@ class ActController
     public function show(Vehicle $vehicle, string $kind)
     {
         $vehicle->load(['brand', 'model', 'client', 'yard', 'media']);
-        abort_if($kind === 'vydacha' && ! $vehicle->released_at, 404);
-        abort_if($kind === 'priem' && ! $vehicle->accepted_at, 404);
+        abort_if($kind === 'release' && ! $vehicle->released_at, 404);
+        abort_if($kind === 'intake' && ! $vehicle->accepted_at, 404);
 
-        return view('park.act', ['vehicle' => $vehicle, 'intake' => $kind === 'priem']);
+        return view('park.act', ['vehicle' => $vehicle, 'intake' => $kind === 'intake']);
     }
 }

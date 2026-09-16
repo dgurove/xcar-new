@@ -1,7 +1,7 @@
-@php $crm = $base !== '/pochta'; @endphp
+@php $crm = $base !== '/mail'; @endphp
 <x-ui.shell title="Почта" :heading="false">
     @if ($crm)
-        <x-admin.work-titles current="pochta" :count="$threads->total()"/>
+        <x-admin.work-titles current="mail" :count="$threads->total()"/>
     @else
         <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
     @endif
@@ -22,7 +22,7 @@
     </x-ui.toolbar>
 
     @if ($accounts->isEmpty())
-        <x-ui.empty class="mt-6" href="/nastroyki/yashchiki/novyy" link="Завести ящик">Ящиков ещё нет</x-ui.empty>
+        <x-ui.empty class="mt-6" href="/settings/mailboxes/new" link="Завести ящик">Ящиков ещё нет</x-ui.empty>
     @elseif ($threads->isEmpty())
         <x-ui.empty class="mt-6">Писем нет</x-ui.empty>
     @else

@@ -18,7 +18,7 @@ class GroupController
         $me = $request->user();
         $group = $me->ownGroups()->create(['name' => trim($data['name']), 'position' => ($me->ownGroups()->max('position') ?? 0) + 1]);
 
-        return redirect("/lk/pokupateli/gruppy/{$group->id}")->with('toast', 'Группа создана');
+        return redirect("/account/buyers/groups/{$group->id}")->with('toast', 'Группа создана');
     }
 
     public function show(Request $request, BuyerGroup $group)
@@ -64,6 +64,6 @@ class GroupController
         $hide($me, Showing::where('group_id', $group->id)->pluck('offer_id')->all(), null, $group);
         $group->delete();
 
-        return redirect('/lk/pokupateli')->with('toast', 'Группа удалена');
+        return redirect('/account/buyers')->with('toast', 'Группа удалена');
     }
 }

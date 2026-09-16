@@ -22,7 +22,7 @@ final class DealStepNotice extends Notice
 
     public function href(): string
     {
-        return "/lk/sdelki/{$this->deal->id}";
+        return "/account/deals/{$this->deal->id}";
     }
 
     public function offerNumber(): ?int

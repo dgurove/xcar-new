@@ -4,7 +4,7 @@
 <x-ui.auth :title="! $invite->isActive() ? 'Ссылка не действует' : ($manager ? $manager->shortName().' приглашает вас в xcar' : 'Вас приглашают в xcar')">
     @if (! $invite->isActive())
         <p class="mt-4 text-ink-muted">{{ $invite->isUsedUp() ? 'По этой ссылке уже зарегистрировались.' : ($invite->isExpired() ? 'Срок ссылки вышел — попросите новую.' : 'Попросите новую ссылку'.($manager ? ' у '.$manager->shortName() : '').'.') }}</p>
-        <a href="/vhod" class="btn btn-quiet mt-6 w-full">У меня уже есть аккаунт</a>
+        <a href="/login" class="btn btn-quiet mt-6 w-full">У меня уже есть аккаунт</a>
     @else
         @if ($manager)
             <div class="mt-5 flex items-center gap-3">
@@ -45,11 +45,11 @@
             @endforeach
             <label class="flex items-start gap-2.5 px-1 pt-1 text-sm text-ink-muted">
                 <span class="check mt-0.5"><input type="checkbox" name="consent" value="1" required></span>
-                <span>Даю <a href="/soglasie" class="text-accent-text hover:underline">согласие на обработку персональных данных</a> и принимаю <a href="/soglashenie" class="text-accent-text hover:underline">условия</a></span>
+                <span>Даю <a href="/consent" class="text-accent-text hover:underline">согласие на обработку персональных данных</a> и принимаю <a href="/terms" class="text-accent-text hover:underline">условия</a></span>
             </label>
             <button type="submit" class="btn btn-accent w-full">Войти в xcar</button>
         </form>
-        <p class="mt-5 text-center text-sm text-ink-muted">Уже есть аккаунт? <a href="/vhod" class="text-accent-text hover:underline">Войти</a></p>
+        <p class="mt-5 text-center text-sm text-ink-muted">Уже есть аккаунт? <a href="/login" class="text-accent-text hover:underline">Войти</a></p>
         @endif
     @endif
 </x-ui.auth>

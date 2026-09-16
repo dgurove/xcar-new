@@ -34,7 +34,7 @@ final class Registration extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Открыть в CRM', 'url' => Surface::Crm->url('/nastroyki/polzovateli?q='.$this->user->phone)];
+        return ['text' => 'Открыть в CRM', 'url' => Surface::Crm->url('/settings/users?q='.$this->user->phone)];
     }
 
     /** След решения остаётся в чате вместо журнала. */

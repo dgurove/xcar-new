@@ -24,14 +24,14 @@
             {{-- Продлить приём на ходу, как в закупке: от текущего срока, если он не прошёл, иначе от сейчас. --}}
             <span class="flex shrink-0 items-center gap-1.5">
                 @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
-                    <form method="post" action="/predlozheniya/{{ $n }}/prodlit" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
+                    <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
                 @endforeach
             </span>
         @endif
-        @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/rabota/pochta/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
-        @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/rabota/pochta?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
-        @if ($offer->deal)<x-ui.pill tone="open" href="/rabota/sdelki/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
-        @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/rabota/chaty?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
+        @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/work/mail/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
+        @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/work/mail?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
+        @if ($offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
+        @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
         @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>
@@ -53,8 +53,8 @@
                             @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
                             @if ($bid->state === BidState::Active)
                                 <div class="mt-2 flex gap-2">
-                                    <form method="post" action="/stavki/{{ $bid->id }}/prinyat" data-turbo-confirm="Отдать {{ $offer->title() }} менеджеру {{ $bid->user->name }} за {{ \App\Support\Money::rub($bid->amount) }}?{{ $waiting->count() > 1 ? ' Остальные подтверждения будут отклонены.' : '' }}">@csrf<x-ui.button size="sm">Принять</x-ui.button></form>
-                                    <form method="post" action="/stavki/{{ $bid->id }}/otklonit">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>
+                                    <form method="post" action="/confirmations/{{ $bid->id }}/accept" data-turbo-confirm="Отдать {{ $offer->title() }} менеджеру {{ $bid->user->name }} за {{ \App\Support\Money::rub($bid->amount) }}?{{ $waiting->count() > 1 ? ' Остальные подтверждения будут отклонены.' : '' }}">@csrf<x-ui.button size="sm">Принять</x-ui.button></form>
+                                    <form method="post" action="/confirmations/{{ $bid->id }}/decline">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>
                                 </div>
                             @endif
                         </div>
@@ -71,7 +71,7 @@
             <x-ui.card title="Чаты" class="order-5">
                 <div class="flex flex-col divide-y divide-line/40">
                     @foreach ($chats as $chat)
-                        <a href="/rabota/chaty/{{ $chat->id }}" class="flex items-center gap-3 py-2">
+                        <a href="/work/chats/{{ $chat->id }}" class="flex items-center gap-3 py-2">
                             <x-ui.avatar :user="$chat->user" :size="36"/>
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->displayName() }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span></div>
@@ -92,9 +92,9 @@
                             <div class="flex flex-wrap items-center gap-1.5"><x-ui.person :user="$interest->user" full/>@if ($interest->user->manager)<span class="text-sm text-ink-muted">покупатель</span><x-ui.person :user="$interest->user->manager"/>@endif @if ($interest->user->phone)<a href="tel:+{{ $interest->user->phone }}" class="tag nums">{{ $interest->user->phoneFormatted() }}</a>@endif<span class="tag">{{ $interest->state->label() }}</span><span class="tag nums">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span></div>
                             @if ($interest->comment)<div class="mt-1 text-sm">{{ $interest->comment }}</div>@endif
                             @if ($interest->state === InterestState::New)
-                                <form method="post" action="/interesy/{{ $interest->id }}" class="mt-2">@csrf<input type="hidden" name="state" value="contacted"><x-ui.button size="sm" variant="secondary">Связались</x-ui.button></form>
+                                <form method="post" action="/interests/{{ $interest->id }}" class="mt-2">@csrf<input type="hidden" name="state" value="contacted"><x-ui.button size="sm" variant="secondary">Связались</x-ui.button></form>
                             @elseif ($interest->state === InterestState::Contacted)
-                                <form method="post" action="/interesy/{{ $interest->id }}" class="mt-2">@csrf<input type="hidden" name="state" value="closed"><x-ui.button size="sm" variant="ghost">Закрыть</x-ui.button></form>
+                                <form method="post" action="/interests/{{ $interest->id }}" class="mt-2">@csrf<input type="hidden" name="state" value="closed"><x-ui.button size="sm" variant="ghost">Закрыть</x-ui.button></form>
                             @endif
                         </div>
                     @endforeach
@@ -133,13 +133,13 @@
             </x-ui.card>
         </div>
 
-        <form method="post" action="/predlozheniya/{{ $n }}" id="offer-form" data-controller="vin draft" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @csrf @method('put')
 
             <x-ui.card title="Машина" class="order-2">
                 <div class="{{ $grid }}">
-                    <x-ui.combobox name="brand_id" label="Марка" url="/spravochnik/marki" create="/spravochnik/marki" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id"/>
-                    <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id" :value="$offer->model_id" :text="$offer->model?->name"/>
+                    <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id"/>
+                    <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="$offer->model_id" :text="$offer->model?->name"/>
                     <x-ui.vin :value="$offer->vin" span="col-span-2 lg:col-span-1">
                         <x-slot:after-label><x-ui.eye-check name="show_vin" :checked="$offer->show_vin"/></x-slot:after-label>
                     </x-ui.vin>
@@ -211,7 +211,7 @@
             </x-ui.card>
         </form>
 
-        <x-ui.card title="Фотографии" class="order-3 lg:col-span-2" data-controller="photos" data-photos-url-value="/predlozheniya/{{ $n }}/media">
+        <x-ui.card title="Фотографии" class="order-3 lg:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media">
             <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             <div hidden data-photos-target="progress" class="mb-3">
                 <div class="mb-1 text-sm text-ink-muted" data-label></div>
@@ -220,7 +220,7 @@
             @include('admin.offers.gallery')
         </x-ui.card>
 
-        <x-ui.card title="Документы" class="order-4 lg:col-span-2" data-controller="photos" data-photos-url-value="/predlozheniya/{{ $n }}/media" data-photos-collection-value="papers">
+        <x-ui.card title="Документы" class="order-4 lg:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-collection-value="papers">
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             <div class="mb-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Добавить документ</x-ui.button></div>
             <div hidden data-photos-target="progress" class="mb-3">
@@ -238,7 +238,7 @@
             <x-ui.sheet id="offer-actions" title="Предложение № {{ $n }}">
                 <div class="flex flex-col gap-2">
                     @foreach ($transitions as $next)
-                        <form method="post" action="/predlozheniya/{{ $n }}/sostoyanie" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
+                        <form method="post" action="/offers/{{ $n }}/state" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                             <x-ui.button block :variant="$next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary')">{{ match($next) {
                                 OfferState::Open => 'Опубликовать',

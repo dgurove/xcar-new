@@ -9,6 +9,6 @@ class MailController extends \App\Http\Admin\MailController
 {
     public function __construct()
     {
-        parent::__construct(Scope::Park, '/pochta');
+        parent::__construct(Scope::Park, '/mail');
     }
 }

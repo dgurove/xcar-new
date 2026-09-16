@@ -34,7 +34,7 @@
             <button type="submit" form="interest-{{ $interest->id }}-form" class="btn btn-s {{ $new ? 'btn-accent' : 'btn-quiet' }} relative z-10 hidden md:inline-flex">{{ $verb[1] }}</button>
         </span>
     </div>
-    <form id="interest-{{ $interest->id }}-form" method="post" action="/lk/interes/{{ $interest->id }}" hidden data-queue>@csrf<input type="hidden" name="state" value="{{ $verb[0] }}"><input type="hidden" name="row" value="1"></form>
+    <form id="interest-{{ $interest->id }}-form" method="post" action="/account/interest/{{ $interest->id }}" hidden data-queue>@csrf<input type="hidden" name="state" value="{{ $verb[0] }}"><input type="hidden" name="row" value="1"></form>
     <x-slot:actions>
         <button type="submit" form="interest-{{ $interest->id }}-form" class="swipe-btn {{ $verb[3] }}" aria-label="{{ $verb[1] }}"><x-ui.icon :name="$verb[2]" class="size-5"/></button>
     </x-slot:actions>

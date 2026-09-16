@@ -1,5 +1,5 @@
 <x-ui.shell :title="match($mode) { 'reply' => 'Ответ', 'all' => 'Ответ всем', 'forward' => 'Пересылка', default => 'Новое письмо' }" narrow>
-    <form method="post" action="{{ $base }}" id="compose" class="flex flex-col gap-4" data-controller="photos draft" data-photos-url-value="{{ $base }}/fayl">
+    <form method="post" action="{{ $base }}" id="compose" class="flex flex-col gap-4" data-controller="photos draft" data-photos-url-value="{{ $base }}/file">
         @csrf
         @if ($parent)<input type="hidden" name="parent" value="{{ $parent->id }}">@endif
         @if ($thread)<input type="hidden" name="thread" value="{{ $thread->id }}">@endif

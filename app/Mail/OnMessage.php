@@ -30,8 +30,8 @@ final class OnMessage
             ExtractCandidate::dispatch($message->id);
         }
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;
-        $base = $message->account->scope === Scope::Park ? '/pochta' : '/rabota/pochta';
-        $this->publish->refresh($topic, [$base, "{$base}/{$message->thread_id}", '/predlozheniya/iz-pisem', '/zayavki/iz-pisem', '/']);
+        $base = $message->account->scope === Scope::Park ? '/mail' : '/work/mail';
+        $this->publish->refresh($topic, [$base, "{$base}/{$message->thread_id}", '/offers/from-mail', '/requests/from-mail', '/']);
         if ($message->direction === Direction::In && ! $message->is_seen) {
             $this->publish->toast($topic, ($message->from_name ?: $message->from_email).': '.($message->subject ?: 'без темы'), "{$base}/{$message->thread_id}");
             $this->publish->badges($topic);
@@ -40,6 +40,6 @@ final class OnMessage
 
     public function sent(MessageSent $e): void
     {
-        $this->publish->refresh(Topics::STAFF, ["/rabota/pochta/{$e->message->thread_id}"]);
+        $this->publish->refresh(Topics::STAFF, ["/work/mail/{$e->message->thread_id}"]);
     }
 }

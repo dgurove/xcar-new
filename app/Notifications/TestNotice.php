@@ -17,7 +17,7 @@ final class TestNotice extends Notice
 
     public function href(): string
     {
-        return '/lk/uvedomleniya/nastroyki';
+        return '/account/notifications/settings';
     }
 
     public function critical(): bool

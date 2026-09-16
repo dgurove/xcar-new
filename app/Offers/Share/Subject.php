@@ -35,7 +35,7 @@ final class Subject
         $car->loadMissing('purchase');
         $dl = str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl;
 
-        return new self($car, $dl, $car->purchase->offers_close_at, $car->titleWithYear(), "/zakupki/{$car->purchase->number}/{$car->ref}/pdf");
+        return new self($car, $dl, $car->purchase->offers_close_at, $car->titleWithYear(), "/purchases/{$car->purchase->number}/{$car->ref}/pdf");
     }
 
     public function fields(?User $user): array

@@ -30,7 +30,7 @@ final class PlaceOffer
         return DB::transaction(function () use ($car, $by, $amount, $comment) {
             Offer::where('car_id', $car->id)->where('user_id', $by->id)->where('state', OfferState::Active)->update(['state' => OfferState::Withdrawn]);
             $offer = Offer::create(['car_id' => $car->id, 'user_id' => $by->id, 'amount' => $amount, 'comment' => $comment ?: null]);
-            app(Publisher::class)->refresh(Topics::STAFF, ["/zakupki/{$car->purchase->number}", "/zakupki/{$car->purchase->number}/{$car->ref}"]);
+            app(Publisher::class)->refresh(Topics::STAFF, ["/purchases/{$car->purchase->number}", "/purchases/{$car->purchase->number}/{$car->ref}"]);
 
             return $offer;
         });

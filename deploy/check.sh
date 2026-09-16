@@ -14,7 +14,7 @@ code() { curl -sS -m 10 -o /dev/null -w '%{http_code}' -H "Host: $1" "http://127
 first=1
 for addr in ${ADDRESSES//,/ }; do
     host="${addr#*://}"
-    for path in /up /vhod /manifest.webmanifest; do
+    for path in /up /login /manifest.webmanifest; do
         c="$(code "$host" "$path")"
         [ "$c" = 200 ] || problems+=("$host$path → $c")
     done

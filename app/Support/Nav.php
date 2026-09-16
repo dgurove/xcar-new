@@ -37,41 +37,41 @@ final class Nav
 
         if ($surface === Surface::Park) {
             return [
-                self::item('Заявки', 'flag', '/', ['/', '/zayavki']),
-                self::item('Машины', 'car', '/mashiny'),
-                self::item('Стоянки', 'park', '/stoyanki'),
-                self::item('Почта', 'mail', '/pochta'),
-                self::item('Клиенты', 'user', '/klienty', tab: false),
+                self::item('Заявки', 'flag', '/', ['/', '/requests']),
+                self::item('Машины', 'car', '/cars'),
+                self::item('Стоянки', 'park', '/yards'),
+                self::item('Почта', 'mail', '/mail'),
+                self::item('Клиенты', 'user', '/clients', tab: false),
             ];
         }
 
         if ($surface === Surface::Crm) {
             return [
-                self::item('Предложения', 'car', '/', ['/', '/predlozheniya']),
-                self::item('Галерея', 'photo', '/galereya'),
-                self::item('Работа', 'deal', '/rabota'),
-                self::item('Закупки', 'cart', '/zakupki'),
-                self::item('Настройки', 'settings', '/nastroyki', tab: false),
+                self::item('Предложения', 'car', '/', ['/', '/offers']),
+                self::item('Галерея', 'photo', '/gallery'),
+                self::item('Работа', 'deal', '/work'),
+                self::item('Закупки', 'cart', '/purchases'),
+                self::item('Настройки', 'settings', '/settings', tab: false),
             ];
         }
 
         if ($user?->isStaff()) {
             return [
                 self::item('Предложения', 'car', '/', ['/', '/offers']),
-                self::item('Галерея', 'photo', '/galereya'),
-                self::item('Закупки', 'cart', '/zakupki'),
-                self::item('Уведомления', 'bell', '/lk/uvedomleniya', capsule: false),
+                self::item('Галерея', 'photo', '/gallery'),
+                self::item('Закупки', 'cart', '/purchases'),
+                self::item('Уведомления', 'bell', '/account/notifications', capsule: false),
             ];
         }
 
         if ($user?->role === Role::Manager) {
             return [
                 self::item('Предложения', 'car', '/', ['/', '/offers']),
-                self::item('Галерея', 'photo', '/galereya', tab: false),
-                self::item('Закупки', 'cart', '/zakupki'),
-                self::item('Покупатели', 'users', '/lk/pokupateli'),
-                self::item('Сделки', 'deal', '/lk/sdelki', tab: false),
-                self::item('Уведомления', 'bell', '/lk/uvedomleniya', capsule: false),
+                self::item('Галерея', 'photo', '/gallery', tab: false),
+                self::item('Закупки', 'cart', '/purchases'),
+                self::item('Покупатели', 'users', '/account/buyers'),
+                self::item('Сделки', 'deal', '/account/deals', tab: false),
+                self::item('Уведомления', 'bell', '/account/notifications', capsule: false),
             ];
         }
 
@@ -79,17 +79,17 @@ final class Nav
         if ($user?->isBuyer()) {
             return [
                 self::item('Предложения', 'car', '/', ['/', '/offers']),
-                self::item('Интерес', 'flag', '/lk/interesy'),
-                self::item('Уведомления', 'bell', '/lk/uvedomleniya', capsule: false),
+                self::item('Интерес', 'flag', '/account/interests'),
+                self::item('Уведомления', 'bell', '/account/notifications', capsule: false),
             ];
         }
 
         if ($user?->isApproved()) {
             return [
                 self::item('Предложения', 'car', '/', ['/', '/offers']),
-                self::item('Галерея', 'photo', '/galereya'),
-                self::item('Избранное', 'bookmark', '/lk/izbrannoe', capsule: false),
-                self::item('Уведомления', 'bell', '/lk/uvedomleniya', capsule: false),
+                self::item('Галерея', 'photo', '/gallery'),
+                self::item('Избранное', 'bookmark', '/account/favorites', capsule: false),
+                self::item('Уведомления', 'bell', '/account/notifications', capsule: false),
             ];
         }
 
@@ -104,11 +104,11 @@ final class Nav
         $tabs = array_values(array_filter(self::sections($user, $surface), fn ($i) => $i['tab']));
         $tabs = array_slice($tabs, 0, 4);
         if ($surface === Surface::Site && $user && ! $user->isApproved()) {
-            return [self::item('Контакты', 'mail', '/kontakty'), self::item('Выйти', 'exit', '/vyhod', capsule: false) + ['logout' => true]];
+            return [self::item('Контакты', 'mail', '/contacts'), self::item('Выйти', 'exit', '/logout', capsule: false) + ['logout' => true]];
         }
         $tabs[] = $user
-            ? self::item('Кабинет', 'user', '/lk')
-            : self::item('Войти', 'login', '/vhod');
+            ? self::item('Кабинет', 'user', '/account')
+            : self::item('Войти', 'login', '/login');
 
         return $tabs;
     }
@@ -136,11 +136,11 @@ final class Nav
         }
 
         if (! $user?->isApproved()) {
-            return [self::item('Контакты', 'mail', '/kontakty')];
+            return [self::item('Контакты', 'mail', '/contacts')];
         }
         $top = [
-            self::item('Вопросы', 'file', '/voprosy'),
-            self::item('Контакты', 'mail', '/kontakty'),
+            self::item('Вопросы', 'file', '/faq'),
+            self::item('Контакты', 'mail', '/contacts'),
         ];
 
         // Ссылок в CRM с сайта нет — владелец: сайт для покупателей, сотрудники ходят по своему адресу.
@@ -158,25 +158,25 @@ final class Nav
 
         if ($surface === Surface::Park) {
             return ['' => [
-                self::link('Профиль', '/lk', exact: true),
-                self::link('Клиенты', '/klienty'),
-                self::link('Уведомления', '/lk/uvedomleniya'),
-                self::link('Шаблоны', Surface::Crm->url('/nastroyki/shablony')),
+                self::link('Профиль', '/account', exact: true),
+                self::link('Клиенты', '/clients'),
+                self::link('Уведомления', '/account/notifications'),
+                self::link('Шаблоны', Surface::Crm->url('/settings/templates')),
             ]];
         }
 
         if ($surface === Surface::Crm) {
             return [
-                '' => [self::link('Профиль', '/lk', exact: true)],
+                '' => [self::link('Профиль', '/account', exact: true)],
                 'Настройки' => [
-                    self::link('Страховые', '/nastroyki/strahovye'),
-                    self::link('Ящики', '/nastroyki/yashchiki'),
-                    self::link('Шаблоны', '/nastroyki/shablony'),
-                    self::link('Метки', '/nastroyki/tegi'),
-                    ...($user->isAdmin() ? [self::link('Пользователи', '/nastroyki/polzovateli')] : []),
+                    self::link('Страховые', '/settings/insurers'),
+                    self::link('Ящики', '/settings/mailboxes'),
+                    self::link('Шаблоны', '/settings/templates'),
+                    self::link('Метки', '/settings/tags'),
+                    ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users')] : []),
                 ],
                 'Личное' => [
-                    self::link('Уведомления', '/lk/uvedomleniya'),
+                    self::link('Уведомления', '/account/notifications'),
                 ],
                 'Переходы' => [
                     self::link('На сайт', Surface::Site->url()),
@@ -185,26 +185,26 @@ final class Nav
             ];
         }
 
-        $links = [self::link('Профиль', '/lk', exact: true)];
+        $links = [self::link('Профиль', '/account', exact: true)];
         if ($user->role === Role::Manager) {
-            $links[] = self::link('Покупатели', '/lk/pokupateli');
-            $links[] = self::link('Приглашения', '/lk/priglasheniya');
-            $links[] = self::link('Интерес', '/lk/interes');
-            $links[] = self::link('Подтверждения', '/lk/stavki');
-            $links[] = self::link('Сделки', '/lk/sdelki');
+            $links[] = self::link('Покупатели', '/account/buyers');
+            $links[] = self::link('Приглашения', '/account/invites');
+            $links[] = self::link('Интерес', '/account/interest');
+            $links[] = self::link('Подтверждения', '/account/confirmations');
+            $links[] = self::link('Сделки', '/account/deals');
         } elseif ($user->isAdmin()) {
-            $links[] = self::link('Приглашения', '/lk/priglasheniya');
+            $links[] = self::link('Приглашения', '/account/invites');
         } elseif (! $user->isStaff()) {
-            $links[] = self::link('Интерес', '/lk/interesy');
+            $links[] = self::link('Интерес', '/account/interests');
         }
         if ($user->role->canChat()) {
-            $links[] = self::link('Чаты', '/lk/chaty');
+            $links[] = self::link('Чаты', '/account/chats');
         }
-        $links[] = self::link('Избранное', '/lk/izbrannoe');
-        $links[] = self::link('Уведомления', '/lk/uvedomleniya');
+        $links[] = self::link('Избранное', '/account/favorites');
+        $links[] = self::link('Уведомления', '/account/notifications');
         // В установленном приложении подвала нет — документы живут здесь.
         if (MarkInstalled::installed(request())) {
-            return ['' => $links, 'Документы' => [self::link('Обработка данных', '/obrabotka-dannyh'), self::link('Соглашение', '/soglashenie')]];
+            return ['' => $links, 'Документы' => [self::link('Обработка данных', '/privacy'), self::link('Соглашение', '/terms')]];
         }
 
         return ['' => $links];
@@ -234,20 +234,20 @@ final class Nav
 
     private static function count(User $user, Surface $surface): array
     {
-        $badges = ['/lk/uvedomleniya' => $user->unreadCount()];
+        $badges = ['/account/notifications' => $user->unreadCount()];
 
         if ($surface === Surface::Park || $surface === Surface::Crm) {
             return array_filter($badges + self::staffCounts($surface));
         }
 
         if ($user->isManager()) {
-            $badges['/lk/sdelki'] = Requirement::where('user_id', $user->id)->whereNull('done_at')->count();
-            $badges['/lk/interes'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
+            $badges['/account/deals'] = Requirement::where('user_id', $user->id)->whereNull('done_at')->count();
+            $badges['/account/interest'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
         }
         if ($user->role->canChat()) {
-            $badges['/lk/chaty'] = (int) Chat::where('user_id', $user->id)->sum('unread_for_user');
+            $badges['/account/chats'] = (int) Chat::where('user_id', $user->id)->sum('unread_for_user');
         }
-        $badges['/lk/izbrannoe'] = Favorite::where('user_id', $user->id)->count();
+        $badges['/account/favorites'] = Favorite::where('user_id', $user->id)->count();
 
         return array_filter($badges);
     }
@@ -263,21 +263,21 @@ final class Nav
             if ($surface === Surface::Park) {
                 return [
                     '/' => Request::where('state', RequestState::New)->count(),
-                    '/zayavki/iz-pisem' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count(),
-                    '/pochta' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
+                    '/requests/from-mail' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count(),
+                    '/mail' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ];
             }
             $badges = [
                 '/' => Bid::where('state', BidState::Active)->count(),
-                '/predlozheniya/iz-pisem' => Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->count(),
-                '/rabota/pochta' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
-                '/rabota/chaty' => Chat::where('unread_for_staff', '>', 0)->count(),
-                '/rabota/sdelki' => Position::where('track', 'sale')
+                '/offers/from-mail' => Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->count(),
+                '/work/mail' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
+                '/work/chats' => Chat::where('unread_for_staff', '>', 0)->count(),
+                '/work/deals' => Position::where('track', 'sale')
                     ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
                     ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))
                     ->count(),
             ];
-            $badges['/rabota'] = $badges['/rabota/sdelki'] + $badges['/rabota/pochta'] + $badges['/rabota/chaty'];
+            $badges['/work'] = $badges['/work/deals'] + $badges['/work/mail'] + $badges['/work/chats'];
 
             return $badges;
         });
@@ -294,20 +294,20 @@ final class Nav
     {
         $surface ??= Surface::current();
         $paths = array_column(self::sections($user, $surface), 'href');
-        $paths[] = '/lk/uvedomleniya';
+        $paths[] = '/account/notifications';
         if ($surface === Surface::Site) {
-            $paths[] = '/lk/izbrannoe';
-            $paths[] = '/lk/chaty';
-            $paths[] = '/lk/sdelki';
+            $paths[] = '/account/favorites';
+            $paths[] = '/account/chats';
+            $paths[] = '/account/deals';
         }
         if ($surface === Surface::Crm) {
-            $paths[] = '/rabota/sdelki';
-            $paths[] = '/rabota/pochta';
-            $paths[] = '/rabota/chaty';
-            $paths[] = '/predlozheniya/iz-pisem';
+            $paths[] = '/work/deals';
+            $paths[] = '/work/mail';
+            $paths[] = '/work/chats';
+            $paths[] = '/offers/from-mail';
         }
         if ($surface === Surface::Park) {
-            $paths[] = '/zayavki/iz-pisem';
+            $paths[] = '/requests/from-mail';
         }
 
         return array_values(array_unique($paths));
@@ -333,12 +333,12 @@ final class Nav
             }
         }
         if ($surface === Surface::Crm) {
-            array_push($items, self::link('Сделки', '/rabota/sdelki'), self::link('Почта', '/rabota/pochta'), self::link('Чаты', '/rabota/chaty'));
+            array_push($items, self::link('Сделки', '/work/deals'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'));
         }
 
         // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен;
         // страницы настроек CRM — обычные экраны в глубине «Настроек».
-        $roots = array_filter(array_column($items, 'href'), fn ($h) => ! str_starts_with($h, '/nastroyki/'));
+        $roots = array_filter(array_column($items, 'href'), fn ($h) => ! str_starts_with($h, '/settings/'));
         if (in_array($path, $roots, true)) {
             return null;
         }
@@ -357,7 +357,7 @@ final class Nav
             return [$best['label'], $best['href']];
         }
 
-        // Путь под псевдонимом раздела (/predlozheniya/123 → «Предложения», /).
+        // Путь под псевдонимом раздела (/offers/123 → «Предложения», /).
         foreach (self::sections($user, $surface) as $item) {
             if (self::isCurrent($item, $path) && $item['href'] !== $path) {
                 return [$item['label'], $item['href']];

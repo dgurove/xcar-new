@@ -2,7 +2,7 @@
     <x-ui.toolbar :sorts="\App\Http\Admin\GalleryController::SORTS" :sort="$sort" name="gallery">
         <x-slot:extra>
             <x-ui.view-switch/>
-            <form method="post" action="/galereya" class="shrink-0">@csrf<button type="submit" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Новый</span></button></form>
+            <form method="post" action="/gallery" class="shrink-0">@csrf<button type="submit" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Новый</span></button></form>
         </x-slot:extra>
         <x-slot:filters>
             <input name="q" value="{{ request('q') }}" placeholder="Номер, марка, VIN" class="field-input field-s">

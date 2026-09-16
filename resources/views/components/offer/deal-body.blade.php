@@ -33,7 +33,7 @@
 @endif
 
 @guest
-    <a href="/vhod?intended={{ urlencode(request()->getRequestUri()) }}" class="btn btn-accent mt-6 w-full">{{ $gallery ? 'Войти' : 'Войти, чтобы узнать цену' }}</a>
+    <a href="/login?intended={{ urlencode(request()->getRequestUri()) }}" class="btn btn-accent mt-6 w-full">{{ $gallery ? 'Войти' : 'Войти, чтобы узнать цену' }}</a>
 @else
     @if ($canBid && $prices)
         <div data-closes-with-timer><x-offer.bid-form :offer="$offer" :my-bid="$myBid"/></div>
@@ -41,12 +41,12 @@
         @if ($myInterest)
             <p class="flash flash-accent mt-6">{{ $gallery ? 'Сообщим, когда откроется приём' : ($myInterest->state === \App\Offers\InterestState::New ? ($manager ? $manager->shortName().' свяжется с вами' : 'Менеджер свяжется с Вами') : 'С Вами связались') }}</p>
             @if ($myInterest->comment)<p class="mt-2 text-sm text-ink-muted">{{ $myInterest->comment }}</p>@endif
-            <form method="post" action="/offers/{{ $offer->number }}/interes" class="mt-3" data-turbo-confirm="Снять интерес?" data-turbo-confirm-label="Снять" data-turbo-confirm-text="{{ $manager?->shortName() ?? 'Менеджер' }} увидит, что вы передумали.">
+            <form method="post" action="/offers/{{ $offer->number }}/interest" class="mt-3" data-turbo-confirm="Снять интерес?" data-turbo-confirm-label="Снять" data-turbo-confirm-text="{{ $manager?->shortName() ?? 'Менеджер' }} увидит, что вы передумали.">
                 @csrf @method('delete')
                 <button type="submit" class="btn btn-s btn-ghost w-full">Передумал</button>
             </form>
         @else
-            <form method="post" action="/offers/{{ $offer->number }}/interes" class="mt-6 flex flex-col gap-3">
+            <form method="post" action="/offers/{{ $offer->number }}/interest" class="mt-6 flex flex-col gap-3">
                 @csrf
                 <textarea name="comment" rows="2" class="field-input !min-h-0 text-sm" placeholder="{{ $user->isBuyer() ? 'Пара слов менеджеру — необязательно' : 'Что важно уточнить' }}">{{ old('comment') }}</textarea>
                 <button type="submit" class="btn btn-accent w-full">{{ $gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену' }}</button>

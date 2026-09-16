@@ -1,6 +1,6 @@
 {{-- Строка машины: фото, название, номер, где стоит и сколько. --}}
 @props(['vehicle', 'href' => null])
-<a href="{{ $href ?? '/mashiny/'.$vehicle->id }}" class="row items-start">
+<a href="{{ $href ?? '/cars/'.$vehicle->id }}" class="row items-start">
     <div class="row-photo"><x-offer.photo :media="$vehicle->mainPhoto()" sizes="64px"/></div>
     <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">

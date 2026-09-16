@@ -1,7 +1,7 @@
 @php use App\Purchases\{Kind, PurchaseState}; $n = $purchase->number; $ctl = \App\Http\Admin\PurchaseController::class; @endphp
-<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/zakupki']">
+<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/purchases']">
     <div class="has-back mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
-        <x-ui.back :back="['Закупки', '/zakupki']"/>
+        <x-ui.back :back="['Закупки', '/purchases']"/>
         <h1 class="text-[28px] sm:text-[34px]">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto shrink-0 sm:order-1" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <span class="flex flex-wrap items-center gap-1.5">
@@ -14,14 +14,14 @@
                 {{-- Продлить приём на ходу: срок считается от текущего, если он ещё не прошёл, иначе от сейчас. --}}
                 <span class="flex shrink-0 items-center gap-1.5">
                     @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
-                        <form method="post" action="/zakupki/{{ $n }}/prodlit" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
+                        <form method="post" action="/purchases/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
                     @endforeach
                 </span>
             @endif
         </span>
         @if ($pending)<x-ui.pill tone="urgent">выкачка: {{ $pending }}</x-ui.pill>@endif
         <x-ui.sheet id="purchase-actions" title="Закупка № {{ $n }}">
-            <form method="post" action="/zakupki/{{ $n }}" class="flex flex-col gap-3">
+            <form method="post" action="/purchases/{{ $n }}" class="flex flex-col gap-3">
                 @csrf @method('put')
                 <x-ui.field name="title" label="Название для нас" :value="$purchase->title"/>
                 <x-ui.field name="supplier" label="Поставщик" :value="$purchase->supplier"/>
@@ -29,7 +29,7 @@
                 <x-ui.button block variant="secondary">Сохранить</x-ui.button>
             </form>
             {{-- Машины с нашей ценой на xcar не показываем — переключатель сохраняется сам. --}}
-            <form method="post" action="/zakupki/{{ $n }}" class="mt-4 rounded-(--radius-m) bg-surface-2 px-3 py-2.5" data-controller="autosubmit">
+            <form method="post" action="/purchases/{{ $n }}" class="mt-4 rounded-(--radius-m) bg-surface-2 px-3 py-2.5" data-controller="autosubmit">
                 @csrf @method('put')
                 <input type="hidden" name="hide_priced" value="0">
                 <x-ui.check name="hide_priced" :checked="$purchase->hide_priced" data-action="change->autosubmit#submit">Скрывать на xcar позиции с нашей ценой</x-ui.check>
@@ -37,16 +37,16 @@
             <div class="mt-4 flex flex-col gap-2">
                 @foreach ($transitions as $next)
                     @if (in_array($next, match($purchase->state) { PurchaseState::Draft => [PurchaseState::Open, PurchaseState::Archived], PurchaseState::Open => [PurchaseState::Draft, PurchaseState::Archived], PurchaseState::Archived => [PurchaseState::Draft] }, true))
-                        <form method="post" action="/zakupki/{{ $n }}/sostoyanie">@csrf<input type="hidden" name="state" value="{{ $next->value }}"><x-ui.button block :variant="$next === PurchaseState::Open ? 'primary' : 'secondary'">{{ match($next) { PurchaseState::Open => 'Открыть приём цен', PurchaseState::Draft => 'В черновик', PurchaseState::Archived => 'В архив' } }}</x-ui.button></form>
+                        <form method="post" action="/purchases/{{ $n }}/state">@csrf<input type="hidden" name="state" value="{{ $next->value }}"><x-ui.button block :variant="$next === PurchaseState::Open ? 'primary' : 'secondary'">{{ match($next) { PurchaseState::Open => 'Открыть приём цен', PurchaseState::Draft => 'В черновик', PurchaseState::Archived => 'В архив' } }}</x-ui.button></form>
                     @endif
                 @endforeach
-                <form method="post" action="/zakupki/{{ $n }}/fayl" enctype="multipart/form-data" data-controller="autosubmit">
+                <form method="post" action="/purchases/{{ $n }}/file" enctype="multipart/form-data" data-controller="autosubmit">
                     @csrf
                     <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="plus" class="size-5"/> Загрузить файл поставщика<input type="file" name="file" accept=".xlsx" hidden data-action="change->autosubmit#submit"></label>
                 </form>
                 @if ($purchase->cars()->exists())
                     {{-- Файл — через file: в установленном приложении download открывает Quick Look без выхода, системный лист закрывается. --}}
-                    <form method="get" action="/zakupki/{{ $n }}/vygruzka" class="flex flex-col gap-3 rounded-(--radius-m) bg-surface-2 p-3" data-turbo="false" data-controller="file" data-action="submit->file#share">
+                    <form method="get" action="/purchases/{{ $n }}/export" class="flex flex-col gap-3 rounded-(--radius-m) bg-surface-2 p-3" data-turbo="false" data-controller="file" data-action="submit->file#share">
                         <span class="text-sm text-ink-dim">Выгрузка поставщику</span>
                         <div class="flex flex-col gap-2 text-sm">
                             @foreach (\App\Purchases\Export::PARTS as $key => $label)

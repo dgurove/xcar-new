@@ -32,6 +32,6 @@ final class ManagerJoined extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Менеджеры в CRM', 'url' => Surface::Crm->url('/nastroyki/polzovateli?preset=managers')];
+        return ['text' => 'Менеджеры в CRM', 'url' => Surface::Crm->url('/settings/users?preset=managers')];
     }
 }

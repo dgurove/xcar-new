@@ -3,14 +3,14 @@
 @props(['current', 'count' => null])
 @php
     $badges = \App\Support\Nav::badges(auth()->user());
-    $titles = ['sdelki' => 'Сделки', 'pochta' => 'Почта', 'chaty' => 'Чаты'];
+    $titles = ['deals' => 'Сделки', 'mail' => 'Почта', 'chats' => 'Чаты'];
 @endphp
 <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
     @foreach ($titles as $key => $label)
         @if ($key === $current)
             <x-ui.section-title level="h1" :count="$count">{{ $label }}</x-ui.section-title>
         @else
-            <x-ui.section-title :href="'/rabota/'.$key" :current="false" :count="$badges['/rabota/'.$key] ?? null">{{ $label }}</x-ui.section-title>
+            <x-ui.section-title :href="'/work/'.$key" :current="false" :count="$badges['/work/'.$key] ?? null">{{ $label }}</x-ui.section-title>
         @endif
     @endforeach
 </div>

@@ -34,12 +34,12 @@
                         <x-ui.pill tone="urgent" class="self-start">Пришло ещё письмо — проверьте поля</x-ui.pill>
                     @endif
                     <div class="mt-auto flex flex-wrap items-center gap-2">
-                        <a href="/rabota/pochta/{{ $c->thread_id }}" class="btn btn-ghost btn-s">Письмо</a>
+                        <a href="/work/mail/{{ $c->thread_id }}" class="btn btn-ghost btn-s">Письмо</a>
                         @if ($c->state === CandidateState::Promoted)
-                            <x-ui.pill tone="closed" href="/predlozheniya/{{ $c->offer?->number }}" class="ml-auto">№ {{ $c->offer?->number }}</x-ui.pill>
+                            <x-ui.pill tone="closed" href="/offers/{{ $c->offer?->number }}" class="ml-auto">№ {{ $c->offer?->number }}</x-ui.pill>
                         @else
-                            <form method="post" action="/predlozheniya/iz-pisem/{{ $c->id }}/otklonit" class="ml-auto">@csrf<x-ui.button size="sm" variant="ghost">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Отклонить' }}</x-ui.button></form>
-                            <form method="post" action="/predlozheniya/iz-pisem/{{ $c->id }}/zavesti">@csrf<x-ui.button size="sm">Завести</x-ui.button></form>
+                            <form method="post" action="/offers/from-mail/{{ $c->id }}/decline" class="ml-auto">@csrf<x-ui.button size="sm" variant="ghost">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Отклонить' }}</x-ui.button></form>
+                            <form method="post" action="/offers/from-mail/{{ $c->id }}/create">@csrf<x-ui.button size="sm">Завести</x-ui.button></form>
                         @endif
                     </div>
                 </x-ui.card>

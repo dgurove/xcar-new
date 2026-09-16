@@ -67,7 +67,7 @@ class PurchaseController
         abort_unless($car->purchase_id === $purchase->id, 404);
         $data = $request->validate(['amount' => ['required', 'string'], 'comment' => ['nullable', 'string', 'max:500']]);
         $place($car, $request->user(), (int) preg_replace('/\D+/', '', $data['amount']), $data['comment'] ?? null);
-        $back = "/zakupki/{$purchase->number}/{$car->ref}".($request->query() ? '?'.http_build_query($request->query()) : '');
+        $back = "/purchases/{$purchase->number}/{$car->ref}".($request->query() ? '?'.http_build_query($request->query()) : '');
 
         return redirect($back)->with('toast', 'Цена записана');
     }

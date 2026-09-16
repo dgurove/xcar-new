@@ -17,14 +17,14 @@ class ClientController
     {
         Client::create($this->data($request));
 
-        return redirect('/klienty')->with('toast', 'Добавлен');
+        return redirect('/clients')->with('toast', 'Добавлен');
     }
 
     public function update(Request $request, Client $client)
     {
         $client->update($this->data($request, $client));
 
-        return redirect('/klienty')->with('toast', 'Сохранено');
+        return redirect('/clients')->with('toast', 'Сохранено');
     }
 
     private function data(Request $request, ?Client $client = null): array

@@ -76,7 +76,7 @@ class VehicleController
         $data['damage_zones'] = $data['damage_zones'] ?? [];
         $update($vehicle, $data, $request->user());
 
-        return redirect("/mashiny/{$vehicle->id}")->with('toast', 'Сохранено');
+        return redirect("/cars/{$vehicle->id}")->with('toast', 'Сохранено');
     }
 
     public function upload(Request $request, Vehicle $vehicle, PhotoIngest $ingest)

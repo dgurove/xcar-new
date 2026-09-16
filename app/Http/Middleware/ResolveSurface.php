@@ -10,10 +10,10 @@ use Illuminate\Http\Request;
 /** Поверхность по хосту. На CRM и стоянке отвечают только их маршруты и общие пути: вход, кабинет, чаты, live, PWA, редирект со старого /admin. */
 class ResolveSurface
 {
-    private const SHARED = ['vhod', 'vyhod', 'registraciya', 'parol', 'passkey', 'up', 'media', 'live', 'chaty', 'lk', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'sdelki', 'admin'];
+    private const SHARED = ['login', 'logout', 'register', 'password', 'passkey', 'up', 'media', 'live', 'chats', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'deals', 'admin', 'mail'];
 
     /** Что открыто на CRM и стоянке тому, кому туда нельзя: выйти и служебное. */
-    private const ANYONE = ['vhod', 'vyhod', 'parol', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'admin'];
+    private const ANYONE = ['login', 'logout', 'password', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'admin'];
 
     public function handle(Request $request, Closure $next)
     {

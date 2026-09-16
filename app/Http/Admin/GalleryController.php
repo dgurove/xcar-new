@@ -37,6 +37,6 @@ class GalleryController
     {
         $offer = $create($request->user());
 
-        return redirect("/predlozheniya/{$offer->number}");
+        return redirect("/offers/{$offer->number}");
     }
 }

@@ -16,14 +16,14 @@ class YardController
     {
         $yard = Yard::create($this->data($request));
 
-        return redirect('/stoyanki')->with('toast', "«{$yard->name}» добавлена");
+        return redirect('/yards')->with('toast', "«{$yard->name}» добавлена");
     }
 
     public function update(Request $request, Yard $yard)
     {
         $yard->update($this->data($request));
 
-        return redirect('/stoyanki')->with('toast', 'Сохранено');
+        return redirect('/yards')->with('toast', 'Сохранено');
     }
 
     private function data(Request $request): array

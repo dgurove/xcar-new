@@ -45,7 +45,7 @@ class PurchaseController
     {
         $purchase = $create($request->validate(['title' => ['nullable', 'string', 'max:120'], 'supplier' => ['nullable', 'string', 'max:80'], 'offers_close_at' => ['nullable', 'date']]));
 
-        return redirect("/zakupki/{$purchase->number}");
+        return redirect("/purchases/{$purchase->number}");
     }
 
     /**
@@ -154,7 +154,7 @@ class PurchaseController
         }
 
         // POST отвечает редиректом, иначе Turbo молча роняет ответ; предпросмотр — своей страницей.
-        return redirect("/zakupki/{$purchase->number}/import?".http_build_query(['path' => $path]));
+        return redirect("/purchases/{$purchase->number}/import?".http_build_query(['path' => $path]));
     }
 
     public function preview(Request $request, Purchase $purchase, Importer $importer)
@@ -173,7 +173,7 @@ class PurchaseController
         $result = $import($purchase, Storage::disk('private')->path($path), $request->user());
         $purchase->update(['source_file' => $path]);
 
-        return redirect("/zakupki/{$purchase->number}")->with('toast', "Новых {$result['created']}, обновлено {$result['updated']}".($result['skipped'] ? ", пропущено {$result['skipped']}" : ''));
+        return redirect("/purchases/{$purchase->number}")->with('toast', "Новых {$result['created']}, обновлено {$result['updated']}".($result['skipped'] ? ", пропущено {$result['skipped']}" : ''));
     }
 
     /** Единственная выгрузка: файл Carcade с нашей ценой, галки — что ещё в него положить; Excel или PDF. */
@@ -282,8 +282,8 @@ class PurchaseController
             ?? $purchase->cars()->whereNull('price_final')->where('id', '!=', $car->id)->orderBy('dl')->orderBy('id')->first();
 
         return $next
-            ? redirect("/zakupki/{$purchase->number}/{$next->ref}/ocenka")
-            : redirect("/zakupki/{$purchase->number}")->with('toast', 'Все оценены');
+            ? redirect("/purchases/{$purchase->number}/{$next->ref}/estimate")
+            : redirect("/purchases/{$purchase->number}")->with('toast', 'Все оценены');
     }
 
     public function choose(Request $request, Offer $offer, ChooseOffer $choose)

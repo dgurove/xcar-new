@@ -2,10 +2,10 @@
     $qs = http_build_query(array_filter($filters + [\App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)], fn ($v) => $v !== null && $v !== ''));
     $view = \App\Support\ListView::fromRequest(request());
 @endphp
-<x-ui.shell :title="$purchase->publicTitle($group)" :heading="false" :back="['Закупки', '/zakupki']" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], [$purchase->publicTitle($group)]]">
+<x-ui.shell :title="$purchase->publicTitle($group)" :heading="false" :back="['Закупки', '/purchases']" :trail="[['Главная', '/'], ['Закупки', '/purchases'], [$purchase->publicTitle($group)]]">
     <div class="box">
         <div class="has-back flex items-center gap-3">
-            <x-ui.back :back="['Закупки', '/zakupki']"/>
+            <x-ui.back :back="['Закупки', '/purchases']"/>
             <h1 class="min-w-0 text-[26px] sm:text-[32px]">{{ $purchase->publicTitle($group) }}</h1>
         </div>
         <div class="mt-4 flex flex-wrap items-center gap-2">
@@ -36,7 +36,7 @@
 
     <div class="mt-6">
         @if ($cars->isEmpty())
-            <x-ui.empty :href="'/zakupki/'.$purchase->number.($group ? '?group='.$group->value : '')" link="Сбросить фильтры">По этим условиям ничего не нашлось</x-ui.empty>
+            <x-ui.empty :href="'/purchases/'.$purchase->number.($group ? '?group='.$group->value : '')" link="Сбросить фильтры">По этим условиям ничего не нашлось</x-ui.empty>
         @else
             <div class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
                 @foreach ($cars as $car)<x-purchase.card :car="$car" :purchase="$purchase" :query="$qs" :show-kind="count($kinds) > 1"/>@endforeach

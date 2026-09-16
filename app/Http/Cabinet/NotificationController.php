@@ -31,7 +31,7 @@ class NotificationController
         $item = $request->user()->notifications()->findOrFail($id);
         $item->markAsRead();
 
-        return redirect($item->data['href'] ?? '/lk/uvedomleniya');
+        return redirect($item->data['href'] ?? '/account/notifications');
     }
 
     /** Тап по строке ведёт сразу на объект; прочитанность отмечается маячком с клиента. */

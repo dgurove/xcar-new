@@ -7,7 +7,7 @@
             <div class="mt-4 flex flex-col gap-2">
                 @foreach ($debts as $deal)
                     @php $req = $deal->openRequirement; @endphp
-                    <a href="/lk/sdelki/{{ $deal->id }}" class="row bg-urgent-soft">
+                    <a href="/account/deals/{{ $deal->id }}" class="row bg-urgent-soft">
                         <span class="row-photo"><x-offer.photo :media="$deal->offer->mainPhoto()" sizes="72px"/></span>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate font-medium text-urgent">{{ $req->title }}</span>
@@ -26,7 +26,7 @@
         <div class="flex flex-col gap-2">
             @foreach ($deals as $deal)
                 @php $offer = $deal->offer; $position = $offer->position(); $alarm = $position?->isOverdue() ?? false; @endphp
-                <a href="/lk/sdelki/{{ $deal->id }}" class="row">
+                <a href="/account/deals/{{ $deal->id }}" class="row">
                     <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
                     <span class="min-w-0 flex-1">
                         <span class="block truncate font-medium">{{ $offer->titleWithYear() }}</span>

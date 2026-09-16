@@ -81,7 +81,7 @@ class RequestController
         }
         $req = $create($request->user(), $type, $vehicle, $data);
 
-        return redirect("/zayavki/{$req->id}")->with('toast', 'Заявка заведена');
+        return redirect("/requests/{$req->id}")->with('toast', 'Заявка заведена');
     }
 
     public function show(ParkRequest $zayavka)
@@ -103,7 +103,7 @@ class RequestController
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'accepted_at' => ['nullable', 'date'], 'damage_zones' => ['nullable', 'array'], 'damage_note' => ['nullable', 'string', 'max:2000']]);
         $intake($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, $data['damage_zones'] ?? [], $data['damage_note'] ?? null);
 
-        return redirect("/mashiny/{$req->vehicle_id}")->with('toast', 'Принята');
+        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Принята');
     }
 
     public function move(Request $request, ParkRequest $zayavka, Move $move)
@@ -112,7 +112,7 @@ class RequestController
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id']]);
         $move($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']));
 
-        return redirect("/mashiny/{$req->vehicle_id}")->with('toast', 'Переставлена');
+        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Переставлена');
     }
 
     public function release(Request $request, ParkRequest $zayavka, Release $release)
@@ -121,7 +121,7 @@ class RequestController
         $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000']]);
         $release($req->vehicle, $request->user(), isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['note'] ?? null);
 
-        return redirect("/mashiny/{$req->vehicle_id}")->with('toast', 'Выдана');
+        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
     }
 
     public function close(Request $request, ParkRequest $zayavka, CloseRequest $close)

@@ -3,7 +3,7 @@
     $gallery = $offer->isGallery();
     $price = \App\Offers\PriceView::for($offer, $user);
     $prices = $price->visible;
-    $back = $context?->backUrl() ?? ($gallery ? '/galereya' : '/');
+    $back = $context?->backUrl() ?? ($gallery ? '/gallery' : '/');
     $dealInSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
     $facts = array_filter([
         'Год' => $offer->year,
@@ -53,7 +53,7 @@
                         <div class="mt-3 flex flex-wrap gap-1.5">
                             @foreach ($showings as $s)
                                 @php $who = $s->group ? 'группы «'.$s->group->name.'»' : $s->user?->shortName(); @endphp
-                                <form method="post" action="/lk/pokazy" class="contents" data-turbo-confirm="Закрыть для {{ $who }}?" data-turbo-confirm-label="Закрыть" data-turbo-confirm-text="{{ $offer->titleWithYear() }} пропадёт из ленты.">
+                                <form method="post" action="/account/showings" class="contents" data-turbo-confirm="Закрыть для {{ $who }}?" data-turbo-confirm-label="Закрыть" data-turbo-confirm-text="{{ $offer->titleWithYear() }} пропадёт из ленты.">
                                     @csrf @method('delete')
                                     <input type="hidden" name="offer" value="{{ $offer->id }}">
                                     <input type="hidden" name="{{ $s->group ? 'group' : 'user' }}" value="{{ $s->group_id ?? $s->user_id }}">
@@ -75,7 +75,7 @@
                         </div>
                     @endif
                     <x-ui.sheet id="show" title="Показать покупателям" wide>
-                        <turbo-frame id="show-frame" src="/lk/pokazy/novyy?offers[]={{ $offer->id }}&back={{ urlencode(request()->getRequestUri()) }}" loading="lazy" target="_top" class="block min-h-40">
+                        <turbo-frame id="show-frame" src="/account/showings/new?offers[]={{ $offer->id }}&back={{ urlencode(request()->getRequestUri()) }}" loading="lazy" target="_top" class="block min-h-40">
                             <x-ui.skeleton :rows="3"/>
                         </turbo-frame>
                     </x-ui.sheet>

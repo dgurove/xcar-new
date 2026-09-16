@@ -36,7 +36,7 @@ export function longPressMenu() {
 
 function open(card) {
     const link = card.querySelector('.card-title a, a.card-media, .card-strip');
-    const favorite = card.querySelector('form[action$="/izbrannoe"] button');
+    const favorite = card.querySelector('form[action$="/favorites"] button');
     const chat = card.querySelector('a[aria-label="Написать в чат"]');
     const select = card.querySelector('.card-check');
     const title = card.querySelector('.card-title')?.textContent.trim() || '';

@@ -5,9 +5,9 @@
 - `App\Support\Surface` (Site / Crm / Park) — по хосту ставит `ResolveSurface`;
   чужим на CRM и стоянке — 404 (кроме входа и служебного). Оболочка, навигация,
   манифест, иконки и заголовок берут поверхность из `Surface::current()`.
-- CRM `crm.xcar.ru` — `routes/crm.php`: `/` предложения, `/predlozheniya/{n}`,
-  `/perepiski/{pochta,chaty}`, `/sdelki`, `/zakupki`, `/nastroyki` (хаб) и
-  `/nastroyki/{kandidaty,strahovye,marshruty,yashchiki,shablony}`, `/lk`.
+- CRM `crm.xcar.ru` — `routes/crm.php`: `/` предложения, `/offers/{n}`,
+  `/chats/{pochta,chaty}`, `/sdelki`, `/zakupki`, `/nastroyki` (хаб) и
+  `/settings/{kandidaty,strahovye,marshruty,yashchiki,shablony}`, `/lk`.
   `xcar.ru/admin/*` → 301 по карте `LegacyAdmin` (хвост и query сохраняются).
 - Сотрудник на сайте — как менеджер: без «Редактировать», в верхнем ряду и в
   кабинете ссылка «CRM». Кабинет `/lk` на всех хостах, пилюли по поверхности;

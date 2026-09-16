@@ -51,6 +51,6 @@ final class ListContext
     {
         $query = array_diff_key($this->query(), ['list' => 1]);
 
-        return ($this->isGallery() ? '/galereya' : '/').($query ? '?'.http_build_query($query) : '');
+        return ($this->isGallery() ? '/gallery' : '/').($query ? '?'.http_build_query($query) : '');
     }
 }

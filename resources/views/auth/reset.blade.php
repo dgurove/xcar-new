@@ -1,5 +1,5 @@
 <x-ui.auth title="Новый пароль">
-    <form method="post" action="/parol/novyj" class="mt-6 space-y-3">
+    <form method="post" action="/password/new" class="mt-6 space-y-3">
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
         <input name="email" type="email" required autocomplete="email" class="field-input" placeholder="Почта" value="{{ old('email', $email) }}">

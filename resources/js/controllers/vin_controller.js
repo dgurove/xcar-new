@@ -10,7 +10,7 @@ const STEP = 90;
 
 export default class extends Controller {
     static targets = ['input', 'button'];
-    static values = { url: { type: String, default: '/spravochnik/vin' } };
+    static values = { url: { type: String, default: '/reference/vin' } };
 
     connect() {
         if (this.hasInputTarget) this.check();

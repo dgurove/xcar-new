@@ -10,7 +10,7 @@
                 <x-slot:chips>
                     @if ($buyer->login)<span class="tag nums">{{ $buyer->login }}</span>@endif
                     <span class="tag nums">с {{ $buyer->created_at->translatedFormat('j M') }}</span>
-                    @foreach ($buyer->groups as $g)<a href="/lk/pokupateli/gruppy/{{ $g->id }}" class="tag">{{ $g->name }}</a>@endforeach
+                    @foreach ($buyer->groups as $g)<a href="/account/buyers/groups/{{ $g->id }}" class="tag">{{ $g->name }}</a>@endforeach
                 </x-slot:chips>
                 <x-slot:acts>
                     @if ($buyer->phone)<a href="tel:+{{ $buyer->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif
@@ -19,7 +19,7 @@
                         <div data-controller="sheet" class="contents">
                             <button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="users"/></span>Группы</button>
                             <x-ui.sheet id="buyer-groups" title="Группы">
-                                <form method="post" action="/lk/pokupateli/{{ $buyer->id }}/gruppy" class="flex flex-col gap-2" data-controller="autosubmit">
+                                <form method="post" action="/account/buyers/{{ $buyer->id }}/groups" class="flex flex-col gap-2" data-controller="autosubmit">
                                     @csrf @method('put')
                                     <input type="hidden" name="groups[]" value="" disabled>
                                     @foreach ($groups as $g)
@@ -29,7 +29,7 @@
                             </x-ui.sheet>
                         </div>
                     @endif
-                    <form method="post" action="/lk/pokupateli/{{ $buyer->id }}/parol" class="contents"
+                    <form method="post" action="/account/buyers/{{ $buyer->id }}/password" class="contents"
                         data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
                         data-turbo-confirm-text="{{ $buyer->shortName() }} откроет её и придумает новый пароль. Действует сутки, один раз.">
                         @csrf
@@ -50,7 +50,7 @@
             <section data-controller="sheet">
                 <h2 class="text-xl">Видит @if ($offers->isNotEmpty())<span class="nums text-ink-dim">{{ $offers->count() }}</span>@endif</h2>
                 <x-ui.sheet id="pick" title="Открыть {{ $buyer->shortName() }}" wide>
-                    <turbo-frame id="pick-frame" src="/lk/pokazy/vybor?user={{ $buyer->id }}" loading="lazy" class="block min-h-40">
+                    <turbo-frame id="pick-frame" src="/account/showings/pick?user={{ $buyer->id }}" loading="lazy" class="block min-h-40">
                         <x-ui.skeleton :rows="3"/>
                     </turbo-frame>
                 </x-ui.sheet>

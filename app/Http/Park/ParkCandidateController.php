@@ -25,7 +25,7 @@ class ParkCandidateController
         abort_if($candidate->state === CandidateState::Promoted || $candidate->scope !== Scope::Park, 404);
         $req = $promote($candidate, $request->user());
 
-        return redirect("/zayavki/{$req->id}")->with('toast', 'Заявка заведена, фото подтягиваются');
+        return redirect("/requests/{$req->id}")->with('toast', 'Заявка заведена, фото подтягиваются');
     }
 
     public function reject(Candidate $candidate)

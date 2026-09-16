@@ -44,7 +44,7 @@ export default class extends Controller {
 
     // Число — из бейджа таб-бара «Уведомления», если он есть (его обновляет /live/badges), иначе из meta.
     badge() {
-        const live = document.querySelector('[data-badge="/lk/uvedomleniya"]')?.textContent.trim();
+        const live = document.querySelector('[data-badge="/account/notifications"]')?.textContent.trim();
         const count = live === undefined ? Number(document.querySelector('meta[name="badge-count"]')?.content || 0) : parseInt(live) || 0;
         if (!('setAppBadge' in navigator)) return;
         (count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(() => {});

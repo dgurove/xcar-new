@@ -1,16 +1,16 @@
 @php
     $qs = http_build_query(array_filter($filters, fn ($v) => $v !== null && $v !== ''));
     $suffix = $qs ? '?'.$qs : '';
-    $back = '/zakupki/'.$purchase->number.$suffix;
+    $back = '/purchases/'.$purchase->number.$suffix;
     $asSheet = $purchase->acceptsOffers() && $mine?->state !== \App\Purchases\OfferState::Chosen;
     $facts = $car->factsList();
 @endphp
-<x-ui.shell :title="$car->titleWithYear()" :back="[$purchase->publicTitle($group), $back]" :trail="[['Главная', '/'], ['Закупки', '/zakupki'], [$purchase->publicTitle($group), $back], [$car->dl]]">
+<x-ui.shell :title="$car->titleWithYear()" :back="[$purchase->publicTitle($group), $back]" :trail="[['Главная', '/'], ['Закупки', '/purchases'], [$purchase->publicTitle($group), $back], [$car->dl]]">
     <x-slot:actions>
         @if ($car->visiblePhotos()->isNotEmpty())<x-purchase.share :car="$car" icon/>@endif
         <x-ui.nav-arrows class="ml-auto sm:ml-0"
-            :prev="$prev ? '/zakupki/'.$purchase->number.'/'.$prev->ref.$suffix : null"
-            :next="$next ? '/zakupki/'.$purchase->number.'/'.$next->ref.$suffix : null"/>
+            :prev="$prev ? '/purchases/'.$purchase->number.'/'.$prev->ref.$suffix : null"
+            :next="$next ? '/purchases/'.$purchase->number.'/'.$next->ref.$suffix : null"/>
     </x-slot:actions>
 
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
@@ -32,7 +32,7 @@
                     @if ($mine?->state === \App\Purchases\OfferState::Chosen)
                         <p class="flash flash-accent mt-4">Ваша цена {{ \App\Support\Money::rub($mine->amount) }} выбрана — с Вами свяжутся</p>
                     @elseif ($purchase->acceptsOffers())
-                        <form method="post" action="/zakupki/{{ $purchase->number }}/{{ $car->ref }}/cena{{ $suffix }}" class="mt-4 flex flex-col gap-3" data-controller="bid" data-bid-asking-value="0" data-bid-min-value="0">
+                        <form method="post" action="/purchases/{{ $purchase->number }}/{{ $car->ref }}/cena{{ $suffix }}" class="mt-4 flex flex-col gap-3" data-controller="bid" data-bid-asking-value="0" data-bid-min-value="0">
                             @csrf
                             <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $mine?->amount) }}">
                             <input type="text" inputmode="numeric" required class="field-input nums text-lg" placeholder="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? \App\Support\Money::nums($mine->amount) : '') }}" autocomplete="off">
@@ -41,7 +41,7 @@
                             <button type="submit" class="btn btn-accent w-full" data-bid-target="submit">{{ $mine ? 'Изменить' : 'Предложить' }}</button>
                         </form>
                         @if ($mine)
-                            <form method="post" action="/zakupki/ceny/{{ $mine->id }}/otozvat" class="mt-2">@csrf<button type="submit" class="w-full py-2 text-sm text-ink-dim hover:text-danger">Отозвать цену</button></form>
+                            <form method="post" action="/purchases/prices/{{ $mine->id }}/withdraw" class="mt-2">@csrf<button type="submit" class="w-full py-2 text-sm text-ink-dim hover:text-danger">Отозвать цену</button></form>
                         @endif
                     @else
                         <p class="mt-4 text-ink-muted">Приём цен закрыт</p>

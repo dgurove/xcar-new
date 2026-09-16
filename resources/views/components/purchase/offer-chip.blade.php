@@ -8,7 +8,7 @@
     $sum = \App\Support\Money::rub($offer->amount);
     $who = $offer->user->shortName();
 @endphp
-<form method="post" action="/zakupki/ceny/{{ $offer->id }}/{{ $chosen ? 'otmenit' : 'vybrat' }}" class="contents"
+<form method="post" action="/purchases/prices/{{ $offer->id }}/{{ $chosen ? 'cancel' : 'choose' }}" class="contents"
     data-turbo-confirm="{{ $chosen ? 'Отменить выбор?' : 'Выбрать предложение?' }}"
     data-turbo-confirm-text="{{ $offer->user->name }}, {{ $sum }} за {{ $car->titleWithYear() }}{{ $chosen ? '. Остальные цены по машине снова будут ждать' : '' }}"
     data-turbo-confirm-label="{{ $chosen ? 'Отменить выбор' : 'Выбрать' }}"

@@ -10,7 +10,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 /**
  * Фотографии и документы у машины: коллекции `photos` (публичный диск, Caddy
  * отдаёт сам) и `papers` (закрытый диск: ПТС и договоры наружу только через
- * /fayly с проверкой прав), конверсии под srcset. Скрытый кадр — custom
+ * /files с проверкой прав), конверсии под srcset. Скрытый кадр — custom
  * property `hidden`, главный — первый по порядку.
  */
 trait HasPhotos

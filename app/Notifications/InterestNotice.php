@@ -21,7 +21,7 @@ final class InterestNotice extends Notice
 
     public function href(): string
     {
-        return Surface::Crm->url("/predlozheniya/{$this->interest->offer->number}");
+        return Surface::Crm->url("/offers/{$this->interest->offer->number}");
     }
 
     public function offerNumber(): ?int

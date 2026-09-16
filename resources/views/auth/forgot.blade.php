@@ -2,7 +2,7 @@
     @if (session('status'))
         <x-ui.flash class="mt-6">{{ session('status') }}</x-ui.flash>
     @else
-        <form method="post" action="/parol" class="mt-6 space-y-3">
+        <form method="post" action="/password" class="mt-6 space-y-3">
             @csrf
             <input name="email" type="email" required inputmode="email" autocomplete="email" class="field-input" placeholder="Почта" value="{{ old('email') }}" autofocus>
             @error('email')<p class="text-sm text-danger">{{ $message }}</p>@enderror
@@ -10,5 +10,5 @@
         </form>
         <p class="mt-5 text-sm text-ink-muted">Входите без почты — попросите менеджера прислать ссылку для нового пароля.</p>
     @endif
-    <a href="/vhod" class="mt-5 inline-block text-sm text-ink-muted hover:text-accent-text">Вернуться ко входу</a>
+    <a href="/login" class="mt-5 inline-block text-sm text-ink-muted hover:text-accent-text">Вернуться ко входу</a>
 </x-ui.auth>

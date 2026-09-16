@@ -68,12 +68,12 @@ class InviteController
     /** Куда возвращать после создания: на том же хосте, где сделали. */
     public static function home(): string
     {
-        return Surface::current() === Surface::Crm ? '/nastroyki/polzovateli?preset=invites' : '/lk/priglasheniya';
+        return Surface::current() === Surface::Crm ? '/settings/users?preset=invites' : '/account/invites';
     }
 
-    /** Путь для vykl/vkl на текущем хосте. */
+    /** Путь для vykl/on на текущем хосте. */
     public static function base(): string
     {
-        return Surface::current() === Surface::Crm ? '/nastroyki/polzovateli/priglasheniya' : '/lk/priglasheniya';
+        return Surface::current() === Surface::Crm ? '/settings/users/invites' : '/account/invites';
     }
 }

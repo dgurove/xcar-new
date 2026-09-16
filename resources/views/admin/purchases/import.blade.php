@@ -1,4 +1,4 @@
-<x-ui.shell :title="'Файл для закупки № '.$purchase->number" :back="['Закупка', '/zakupki/'.$purchase->number]" narrow>
+<x-ui.shell :title="'Файл для закупки № '.$purchase->number" :back="['Закупка', '/purchases/'.$purchase->number]" narrow>
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
         @foreach ($stats as $label => $value)<x-ui.stat :value="$value" :label="$label"/>@endforeach
     </div>
@@ -13,7 +13,7 @@
             @foreach (array_slice($rows, 0, 15) as $r)<tr><td class="py-1 pr-3 tabular-nums">{{ $r['dl'] }}</td><td class="py-1 pr-3">{{ $r['brand'] }} {{ $r['model'] }}</td><td class="py-1 pr-3">{{ $r['year'] }}</td><td class="py-1 pr-3 tabular-nums">{{ $r['price_listing'] ? \App\Support\Money::nums($r['price_listing']) : '' }}</td><td class="py-1 truncate max-w-48">{{ $r['address'] }}</td></tr>@endforeach
         </tbody></table></div>
     </x-ui.card>
-    <form method="post" action="/zakupki/{{ $purchase->number }}/import" class="action-bar">
+    <form method="post" action="/purchases/{{ $purchase->number }}/import" class="action-bar">
         <div class="action-bar-inner">@csrf<input type="hidden" name="path" value="{{ $path }}">
         <x-ui.button class="min-w-0 flex-1">Завести машины и забрать данные</x-ui.button></div>
     </form>

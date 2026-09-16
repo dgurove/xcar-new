@@ -10,7 +10,9 @@
 галерея, работа — сделки · почта · чаты, закупки, настройки; пути без
 `/admin`, старые `xcar.ru/admin/*` → 301), `park.xcar.ru` (стоянка).
 Поверхность — `App\Support\Surface`, ставит `ResolveSurface` по хосту; чужие
-маршруты на хосте — 404. **Сайт закрыт, саморегистрации нет**: новый человек
+маршруты на хосте — 404. **Адреса только английские** (`/account/confirmations`,
+`/work/mail`); транслита нет, слова «ставки» нет нигде. Старые адреса транслитом —
+301 через `Support\Paths` + `RedirectLegacyPaths` (единственное место со старыми именами). **Сайт закрыт, саморегистрации нет**: новый человек
 приходит только по пригласительной ссылке `/i/{code}`; прежний допуск по
 заявке (`SiteWall`, `DecideAccess`, Telegram `Registration`) в коде остался,
 но не используется. Без Filament и чужих админ-фреймворков — свой UI-кит.
@@ -99,15 +101,15 @@
 покупателей (многоразовая, `fields`, группа), админ — менеджера (`role`
 manager, `max_uses` 1, `expires_at`, без названия, `ManagerJoined`) или покупателя
 от имени менеджера. Одна дверь `IssueInvite`, один экран `x-invites.list`
-(`/lk/priglasheniya` и CRM «Пользователи → Ссылки»), доступ
+(`/account/priglasheniya` и CRM «Пользователи → Ссылки»), доступ
 `Invite::manageableBy` — менеджер видит и сделанные для него админом. Новая
 ссылка — первая строка списка. В кабинете `h1` нет: раздел называет пилюля.
 `AcceptInvite` даёт `approved_at` сразу.
 Группы `BuyerGroup`; показы `Offers\Showing` (ровно одно из user/group),
 `ShowOffers`/`HideOffers`, покупателю одно уведомление на пачку, live —
 `refresh` в `user/{id}` (тему `catalog` покупатель не слушает). Интерес
-покупателя — `BuyerInterestNotice` его менеджеру. Настройки уведомлений — `Notifications\Categories` (что можно выключить по роли), `Notice::category/critical`, `User::wants/quietHours`, экран `/lk/uvedomleniya/nastroyki`, отписка из письма подписанной ссылкой. Ссылка на новый пароль —
-`IssuePasswordLink` (`/parol/ssylka/{token}`, сутки, одноразовая) — менеджер
+покупателя — `BuyerInterestNotice` его менеджеру. Настройки уведомлений — `Notifications\Categories` (что можно выключить по роли), `Notice::category/critical`, `User::wants/quietHours`, экран `/account/notifications/nastroyki`, отписка из письма подписанной ссылкой. Ссылка на новый пароль —
+`IssuePasswordLink` (`/password/link/{token}`, сутки, одноразовая) — менеджер
 покупателю, админ кому угодно. Админ передаёт покупателя `TransferBuyer`.
 Форма в шторке после успешного POST закрывается сама (`app.js`).
 
@@ -143,7 +145,7 @@ node scripts/icons.mjs           # иконки, экраны запуска, в
 ./deploy/deploy.sh backup|check|artisan …|rollback TAG
 ```
 
-Вход глазами без пароля — `/dev/vhod/{id}` (только local). Хосты локально как
+Вход глазами без пароля — `/dev/login/{id}` (только local). Хосты локально как
 в бою: `xcar.localhost`, `crm.xcar.localhost`, `park.xcar.localhost` :8010,
 cookie на `.xcar.localhost`. База `xcar_new` (xcar/xcar). Почта локально —
 `scripts/imapserver.py` (1143) и mailpit (1025/8025); Mercure локально нет.

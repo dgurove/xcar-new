@@ -40,7 +40,7 @@ class EnquiryController
     {
         // Приманка для роботов: людям поле не видно.
         if (filled($request->input('website'))) {
-            return redirect('/kontakty');
+            return redirect('/contacts');
         }
 
         $user = $request->user();
@@ -61,6 +61,6 @@ class EnquiryController
             $guest->issue($chat, $chat->plainToken);
         }
 
-        return redirect('/kontakty');
+        return redirect('/contacts');
     }
 }

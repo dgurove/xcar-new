@@ -7,7 +7,7 @@
     $gallery = $offer->isGallery();
     $price = \App\Offers\PriceView::for($offer, $user);
     $prices = $price->visible;
-    $href = $admin ? "/predlozheniya/{$n}" : ($context?->offerUrl($offer) ?? "/offers/{$n}");
+    $href = $admin ? "/offers/{$n}" : ($context?->offerUrl($offer) ?? "/offers/{$n}");
     $main = $offer->mainPhoto();
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $hasMedia = $photos->isNotEmpty();

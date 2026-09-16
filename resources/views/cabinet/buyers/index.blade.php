@@ -2,7 +2,7 @@
      Сверху поле поиска (при поиске групп нет: ищут людей). Главное действие — «Пригласить» — в полосе внизу. --}}
 <x-ui.cabinet title="Покупатели">
     {{-- Поиск — поле прямо на экране, без тулбара с одной кнопкой фильтра. --}}
-    <form method="get" action="/lk/pokupateli" data-turbo-action="replace" class="header-btn header-search relative h-11 justify-start rounded-full px-4" role="search">
+    <form method="get" action="/account/buyers" data-turbo-action="replace" class="header-btn header-search relative h-11 justify-start rounded-full px-4" role="search">
         <x-ui.icon name="search" class="size-[18px] shrink-0 text-ink-muted"/>
         <input type="search" name="q" value="{{ $term }}" placeholder="Имя, логин, телефон" enterkeyhint="search" autocomplete="off" aria-label="Поиск">
     </form>
@@ -12,7 +12,7 @@
             @if ($groups->isNotEmpty())<h2 class="text-xl">Группы</h2>@endif
             <div class="{{ $groups->isNotEmpty() ? 'mt-4 ' : '' }}flex flex-col gap-2">
                 @foreach ($groups as $g)
-                    <a href="/lk/pokupateli/gruppy/{{ $g->id }}" class="row">
+                    <a href="/account/buyers/groups/{{ $g->id }}" class="row">
                         <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="users" class="size-5"/></span>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate font-medium">{{ $g->name }}</span>
@@ -30,7 +30,7 @@
                         <span class="min-w-0 flex-1 font-medium">Новая группа</span>
                     </button>
                     <x-ui.sheet id="group-new" title="Новая группа" :open="$errors->has('name')">
-                        <form method="post" action="/lk/pokupateli/gruppy" class="flex flex-col gap-4">
+                        <form method="post" action="/account/buyers/groups" class="flex flex-col gap-4">
                             @csrf
                             <x-ui.field name="name" label="Название" required maxlength="60" placeholder="Дилеры, Казань, VIP…"/>
                             <x-ui.button block>Создать</x-ui.button>
@@ -45,27 +45,27 @@
         @if (!$term || $buyers->isNotEmpty())<h2 class="text-xl">Покупатели @if ($buyers->total())<span class="nums text-ink-dim">{{ $buyers->total() }}</span>@endif</h2>@endif
         @if ($buyers->isEmpty())
             @if ($term)
-                <x-ui.empty href="/lk/pokupateli" link="Все покупатели">Никого не нашлось</x-ui.empty>
+                <x-ui.empty href="/account/buyers" link="Все покупатели">Никого не нашлось</x-ui.empty>
             @else
-                <x-ui.empty class="mt-4" href="/lk/priglasheniya" link="Сделать ссылку">Покупатели приходят по вашей ссылке</x-ui.empty>
+                <x-ui.empty class="mt-4" href="/account/invites" link="Сделать ссылку">Покупатели приходят по вашей ссылке</x-ui.empty>
             @endif
         @else
             <div class="mt-4 flex flex-col gap-2">
                 {{-- «Пригласить» — строкой в списке, как «Новая группа»: на компьютере парящую кнопку не видно. --}}
-                <a href="/lk/priglasheniya" class="row">
+                <a href="/account/invites" class="row">
                     <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="link" class="size-5"/></span>
                     <span class="min-w-0 flex-1 font-medium">Пригласить</span>
                 </a>
                 @foreach ($buyers as $buyer)
                     <div class="row relative">
-                        <a href="/lk/pokupateli/{{ $buyer->id }}" class="absolute inset-0 rounded-(--radius-l)" aria-label="{{ $buyer->name }}"></a>
+                        <a href="/account/buyers/{{ $buyer->id }}" class="absolute inset-0 rounded-(--radius-l)" aria-label="{{ $buyer->name }}"></a>
                         <x-ui.avatar :user="$buyer" :size="44"/>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate font-medium">{{ $buyer->name }}</span>
                             <span class="row-sub">
                                 @if ($buyer->login)<span class="tag nums">{{ $buyer->login }}</span>@endif
                                 @if ($buyer->phone)<span class="tag nums">{{ $buyer->phoneFormatted() }}</span>@endif
-                                @foreach ($buyer->groups as $g)<a href="/lk/pokupateli/gruppy/{{ $g->id }}" class="tag relative z-10">{{ $g->name }}</a>@endforeach
+                                @foreach ($buyer->groups as $g)<a href="/account/buyers/groups/{{ $g->id }}" class="tag relative z-10">{{ $g->name }}</a>@endforeach
                             </span>
                         </span>
                         {{-- Числа — столбиком, как цена и состояние в сделках. --}}
@@ -84,7 +84,7 @@
     {{-- На телефоне — ещё и плашка внизу; на компьютере хватает строки в списке. --}}
     <div class="contents md:hidden">
         <x-ui.action-bar>
-            <a href="/lk/priglasheniya" class="btn btn-accent min-w-0 flex-1"><x-ui.icon name="link" class="size-5"/> Пригласить</a>
+            <a href="/account/invites" class="btn btn-accent min-w-0 flex-1"><x-ui.icon name="link" class="size-5"/> Пригласить</a>
         </x-ui.action-bar>
     </div>
 </x-ui.cabinet>

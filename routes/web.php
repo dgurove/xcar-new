@@ -32,110 +32,110 @@ Route::get('/manifest.webmanifest', [PwaController::class, 'manifest']);
 Route::get('/offline', [PwaController::class, 'offline']);
 Route::get('/sw.js', [PwaController::class, 'worker']);
 // «Не присылать на почту» из письма: подписанная ссылка, без входа.
-Route::match(['get', 'post'], '/pochta/otpiska/{user}', [NotificationController::class, 'unsubscribe'])->middleware('signed')->name('mail.unsubscribe');
-Route::post('/push/podpiska', [PushController::class, 'store'])->middleware('auth');
-Route::delete('/push/podpiska', [PushController::class, 'destroy'])->middleware('auth');
+Route::match(['get', 'post'], '/mail/unsubscribe/{user}', [NotificationController::class, 'unsubscribe'])->middleware('signed')->name('mail.unsubscribe');
+Route::post('/push/subscription', [PushController::class, 'store'])->middleware('auth');
+Route::delete('/push/subscription', [PushController::class, 'destroy'])->middleware('auth');
 
 // Без стены: обращение (и гостю по cookie), юридические страницы.
-Route::get('/kontakty', [EnquiryController::class, 'show']);
-Route::post('/kontakty', [EnquiryController::class, 'store'])->middleware('throttle:5,1');
-Route::view('/obrabotka-dannyh', 'site.pages.obrabotka-dannyh');
-Route::view('/soglashenie', 'site.pages.soglashenie');
-Route::view('/soglasie', 'site.pages.soglasie');
+Route::get('/contacts', [EnquiryController::class, 'show']);
+Route::post('/contacts', [EnquiryController::class, 'store'])->middleware('throttle:5,1');
+Route::view('/privacy', 'site.pages.obrabotka-dannyh');
+Route::view('/terms', 'site.pages.soglashenie');
+Route::view('/consent', 'site.pages.soglasie');
 // Лента чата открыта и гостю с обращением — право решает Chat::allows по cookie.
-Route::get('/chaty/{chat}/soobshcheniya', [ChatController::class, 'messages'])->middleware('throttle:120,1');
-Route::post('/chaty/{chat}/soobshcheniya', [ChatController::class, 'post'])->middleware('throttle:30,1');
-Route::get('/chaty/{chat}/fayly/{file}', [ChatController::class, 'file']);
+Route::get('/chats/{chat}/messages', [ChatController::class, 'messages'])->middleware('throttle:120,1');
+Route::post('/chats/{chat}/messages', [ChatController::class, 'post'])->middleware('throttle:30,1');
+Route::get('/chats/{chat}/files/{file}', [ChatController::class, 'file']);
 
 // Сайт закрыт: дальше только с открытым доступом (SiteWall).
 Route::middleware('wall')->group(function () {
     Route::get('/', [CatalogController::class, 'index'])->name('home');
-    Route::get('/poisk', [CatalogController::class, 'search']);
-    Route::view('/voprosy', 'site.pages.voprosy');
-    Route::get('/galereya', [CatalogController::class, 'gallery']);
+    Route::get('/search', [CatalogController::class, 'search']);
+    Route::view('/faq', 'site.pages.voprosy');
+    Route::get('/gallery', [CatalogController::class, 'gallery']);
     Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
     Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
 });
 
 Route::middleware(['auth', 'wall'])->group(function () {
-    Route::post('/offers/{offer}/stavka', [BidController::class, 'store']);
-    Route::post('/stavki/{bid}/otozvat', [BidController::class, 'withdraw']);
-    Route::post('/offers/{offer}/interes', [InterestController::class, 'store'])->middleware('throttle:30,1');
-    Route::delete('/offers/{offer}/interes', [InterestController::class, 'destroy']);
-    Route::post('/offers/{offer}/izbrannoe', [FavoriteController::class, 'toggle']);
+    Route::post('/offers/{offer}/confirm', [BidController::class, 'store']);
+    Route::post('/confirmations/{bid}/withdraw', [BidController::class, 'withdraw']);
+    Route::post('/offers/{offer}/interest', [InterestController::class, 'store'])->middleware('throttle:30,1');
+    Route::delete('/offers/{offer}/interest', [InterestController::class, 'destroy']);
+    Route::post('/offers/{offer}/favorites', [FavoriteController::class, 'toggle']);
     Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
-    Route::post('/share/oshibka', [ShareController::class, 'report'])->middleware('throttle:30,1');
+    Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
     Route::get('/offers/{offer}/chat', [OfferController::class, 'chat']);
     Route::post('/offers/{offer}/chat', [ChatController::class, 'open']);
 
-    Route::get('/lk', [ProfileController::class, 'profile'])->name('cabinet');
-    Route::put('/lk', [ProfileController::class, 'update']);
-    Route::permanentRedirect('/lk/profil', '/lk');
-    Route::get('/lk/izbrannoe', [ListsController::class, 'favorites']);
-    Route::get('/lk/chaty', [CabinetChatController::class, 'index']);
-    Route::get('/lk/stavki', [ListsController::class, 'bids']);
-    Route::get('/lk/interesy', [ListsController::class, 'interests']);
+    Route::get('/account', [ProfileController::class, 'profile'])->name('cabinet');
+    Route::put('/account', [ProfileController::class, 'update']);
+    Route::permanentRedirect('/account/profile', '/account');
+    Route::get('/account/favorites', [ListsController::class, 'favorites']);
+    Route::get('/account/chats', [CabinetChatController::class, 'index']);
+    Route::get('/account/confirmations', [ListsController::class, 'bids']);
+    Route::get('/account/interests', [ListsController::class, 'interests']);
 
-    Route::get('/lk/sdelki', [DealController::class, 'index']);
-    Route::get('/lk/sdelki/{deal}', [DealController::class, 'show']);
-    Route::post('/lk/sdelki/{deal}/otvet', [DealController::class, 'answer']);
-    Route::post('/lk/sdelki/{deal}/fayly', [DealController::class, 'upload']);
-    Route::delete('/lk/sdelki/{deal}/fayly/{media}', [DealController::class, 'removeFile']);
+    Route::get('/account/deals', [DealController::class, 'index']);
+    Route::get('/account/deals/{deal}', [DealController::class, 'show']);
+    Route::post('/account/deals/{deal}/reply', [DealController::class, 'answer']);
+    Route::post('/account/deals/{deal}/files', [DealController::class, 'upload']);
+    Route::delete('/account/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
     // Документы и файлы с закрытого диска — на любом хосте.
-    Route::get('/fayly/{media}', [FileController::class, 'show']);
+    Route::get('/files/{media}', [FileController::class, 'show']);
 
-    Route::get('/lk/uvedomleniya', [NotificationController::class, 'index']);
-    Route::get('/lk/uvedomleniya/svezhie', [NotificationController::class, 'latest']);
-    Route::post('/lk/uvedomleniya/prochitano', [NotificationController::class, 'readAll']);
-    Route::post('/lk/uvedomleniya/{id}/prochitano', [NotificationController::class, 'toggleRead']);
-    Route::post('/lk/uvedomleniya/{id}/otkryto', [NotificationController::class, 'seen']);
-    Route::get('/lk/uvedomleniya/nastroyki', [NotificationController::class, 'settingsPage']);
-    Route::put('/lk/uvedomleniya/nastroyki', [NotificationController::class, 'settings']);
-    Route::post('/lk/uvedomleniya/proverka', [NotificationController::class, 'test'])->middleware('throttle:3,1');
-    Route::get('/lk/uvedomleniya/{id}', [NotificationController::class, 'open']);
+    Route::get('/account/notifications', [NotificationController::class, 'index']);
+    Route::get('/account/notifications/latest', [NotificationController::class, 'latest']);
+    Route::post('/account/notifications/read', [NotificationController::class, 'readAll']);
+    Route::post('/account/notifications/{id}/read', [NotificationController::class, 'toggleRead']);
+    Route::post('/account/notifications/{id}/opened', [NotificationController::class, 'seen']);
+    Route::get('/account/notifications/settings', [NotificationController::class, 'settingsPage']);
+    Route::put('/account/notifications/settings', [NotificationController::class, 'settings']);
+    Route::post('/account/notifications/check', [NotificationController::class, 'test'])->middleware('throttle:3,1');
+    Route::get('/account/notifications/{id}', [NotificationController::class, 'open']);
 
     Route::get('/live/badges', [FragmentController::class, 'badges']);
 
     // Приглашения — менеджеру и админу один экран (чужому 404 в контроллере); прежний адрес — навсегда сюда.
-    Route::get('/lk/priglasheniya', [InviteController::class, 'index']);
-    Route::post('/lk/priglasheniya', [InviteController::class, 'store']);
-    Route::post('/lk/priglasheniya/{invite}/vykl', [InviteController::class, 'disable']);
-    Route::post('/lk/priglasheniya/{invite}/vkl', [InviteController::class, 'enable']);
-    Route::permanentRedirect('/lk/pokupateli/priglasheniya', '/lk/priglasheniya');
+    Route::get('/account/invites', [InviteController::class, 'index']);
+    Route::post('/account/invites', [InviteController::class, 'store']);
+    Route::post('/account/invites/{invite}/off', [InviteController::class, 'disable']);
+    Route::post('/account/invites/{invite}/on', [InviteController::class, 'enable']);
+    Route::permanentRedirect('/account/buyers/invites', '/account/invites');
 
     // Кабинет менеджера: покупатели, группы, приглашения, показы. Конкретные пути раньше {user}.
     Route::middleware('manager')->group(function () {
-        Route::get('/lk/pokupateli', [BuyerController::class, 'index']);
-        Route::get('/lk/interes', [BuyerInterestController::class, 'index']);
-        Route::post('/lk/interes/{interest}', [BuyerInterestController::class, 'update']);
-        Route::post('/lk/pokupateli/gruppy', [GroupController::class, 'store']);
-        Route::get('/lk/pokupateli/gruppy/{group}', [GroupController::class, 'show']);
-        Route::put('/lk/pokupateli/gruppy/{group}', [GroupController::class, 'update']);
-        Route::put('/lk/pokupateli/gruppy/{group}/sostav', [GroupController::class, 'members']);
-        Route::delete('/lk/pokupateli/gruppy/{group}', [GroupController::class, 'destroy']);
-        Route::get('/lk/pokupateli/{user}', [BuyerController::class, 'show']);
-        Route::put('/lk/pokupateli/{user}/gruppy', [BuyerController::class, 'groups']);
-        Route::post('/lk/pokupateli/{user}/parol', [BuyerController::class, 'passwordLink']);
-        Route::get('/lk/pokazy/novyy', [ShowingController::class, 'create']);
-        Route::get('/lk/pokazy/vybor', [ShowingController::class, 'pick']);
-        Route::post('/lk/pokazy', [ShowingController::class, 'store']);
-        Route::delete('/lk/pokazy', [ShowingController::class, 'destroy']);
+        Route::get('/account/buyers', [BuyerController::class, 'index']);
+        Route::get('/account/interest', [BuyerInterestController::class, 'index']);
+        Route::post('/account/interest/{interest}', [BuyerInterestController::class, 'update']);
+        Route::post('/account/buyers/groups', [GroupController::class, 'store']);
+        Route::get('/account/buyers/groups/{group}', [GroupController::class, 'show']);
+        Route::put('/account/buyers/groups/{group}', [GroupController::class, 'update']);
+        Route::put('/account/buyers/groups/{group}/members', [GroupController::class, 'members']);
+        Route::delete('/account/buyers/groups/{group}', [GroupController::class, 'destroy']);
+        Route::get('/account/buyers/{user}', [BuyerController::class, 'show']);
+        Route::put('/account/buyers/{user}/groups', [BuyerController::class, 'groups']);
+        Route::post('/account/buyers/{user}/password', [BuyerController::class, 'passwordLink']);
+        Route::get('/account/showings/new', [ShowingController::class, 'create']);
+        Route::get('/account/showings/pick', [ShowingController::class, 'pick']);
+        Route::post('/account/showings', [ShowingController::class, 'store']);
+        Route::delete('/account/showings', [ShowingController::class, 'destroy']);
     });
 
-    Route::get('/zakupki', [PurchaseController::class, 'index'])->middleware('purchases');
-    Route::get('/zakupki/{purchase}', [PurchaseController::class, 'show'])->middleware('purchases');
-    Route::get('/zakupki/{purchase}/{car}', [PurchaseController::class, 'car'])->middleware('purchases');
-    Route::match(['get', 'post'], '/zakupki/{purchase}/{car}/pdf', [ShareController::class, 'carPdf'])->middleware('purchases');
-    Route::post('/zakupki/{purchase}/{car}/cena', [PurchaseController::class, 'offer'])->middleware('purchases');
-    Route::post('/zakupki/ceny/{offer}/otozvat', [PurchaseController::class, 'withdraw'])->middleware('purchases');
+    Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('purchases');
+    Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->middleware('purchases');
+    Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car'])->middleware('purchases');
+    Route::match(['get', 'post'], '/purchases/{purchase}/{car}/pdf', [ShareController::class, 'carPdf'])->middleware('purchases');
+    Route::post('/purchases/{purchase}/{car}/price', [PurchaseController::class, 'offer'])->middleware('purchases');
+    Route::post('/purchases/prices/{offer}/withdraw', [PurchaseController::class, 'withdraw'])->middleware('purchases');
 });
 
 // Прежняя админка: по привычке идут на xcar.ru/admin/… — уводим в CRM.
 Route::get('/admin/{path?}', fn (string $path = '') => redirect(LegacyAdmin::target($path, request()->getQueryString()), 301))->where('path', '.*');
 
 if (app()->isLocal()) {
-    // Вход без пароля для проверки глазами: /dev/vhod/1 — первый пользователь.
-    Route::get('/dev/vhod/{user}', function (User $user) {
+    // Вход без пароля для проверки глазами: /dev/login/1 — первый пользователь.
+    Route::get('/dev/login/{user}', function (User $user) {
         auth()->login($user, true);
 
         return redirect('/');

@@ -27,7 +27,7 @@ class RouteController
         }
         $take($offer, $exit, Actor::Staff, $request->user(), $payload);
 
-        return redirect("/predlozheniya/{$offer->number}")->with('toast', $exit->label);
+        return redirect("/offers/{$offer->number}")->with('toast', $exit->label);
     }
 
     public function place(Request $request, Offer $offer, PlaceOnStage $place)
@@ -36,7 +36,7 @@ class RouteController
         abort_unless($stage->workflow->insurer_id === $offer->insurer_id, 403);
         $place($offer, $stage, $request->user());
 
-        return redirect("/predlozheniya/{$offer->number}")->with('toast', 'Поставлен на «'.$stage->name.'»');
+        return redirect("/offers/{$offer->number}")->with('toast', 'Поставлен на «'.$stage->name.'»');
     }
 
     /** Вывоз по решению сотрудника — там, где он исключение, а не правило. */
@@ -44,13 +44,13 @@ class RouteController
     {
         $start($offer->load('insurer.workflows'), $request->user(), Track::Service);
 
-        return redirect("/predlozheniya/{$offer->number}")->with('toast', 'Вывоз запущен');
+        return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз запущен');
     }
 
     public function dropPickup(Request $request, Offer $offer, DropRoute $drop)
     {
         $drop($offer, Track::Service, $request->user());
 
-        return redirect("/predlozheniya/{$offer->number}")->with('toast', 'Вывоз отменён');
+        return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз отменён');
     }
 }

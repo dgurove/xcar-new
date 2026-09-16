@@ -4,8 +4,8 @@
     $push = (bool) config('xcar.vapid.public');
     $off = $settings['off'] ?? [];
 @endphp
-<x-ui.cabinet title="Настройки уведомлений" :back="['Уведомления', '/lk/uvedomleniya']">
-    <form method="post" action="/lk/uvedomleniya/nastroyki" class="flex flex-col gap-6" data-controller="autosubmit">
+<x-ui.cabinet title="Настройки уведомлений" :back="['Уведомления', '/account/notifications']">
+    <form method="post" action="/account/notifications/settings" class="flex flex-col gap-6" data-controller="autosubmit">
         @csrf @method('put')
 
         <section>
@@ -68,7 +68,7 @@
         </section>
     </form>
 
-    <form method="post" action="/lk/uvedomleniya/proverka" class="contents">
+    <form method="post" action="/account/notifications/check" class="contents">
         @csrf
         <button class="row w-full text-left">
             <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="send" class="size-5"/></span>

@@ -6,23 +6,23 @@ namespace App\Support;
 final class LegacyAdmin
 {
     private const MAP = [
-        'offers' => '/predlozheniya',
-        'pochta' => '/rabota/pochta',
-        'chaty' => '/rabota/chaty',
-        'sdelki' => '/rabota/sdelki',
-        'zakupki' => '/zakupki',
-        'stavki' => '/stavki',
-        'interesy' => '/interesy',
-        'strahovye' => '/nastroyki/strahovye',
-        'marshruty' => '/nastroyki/marshruty',
-        'kandidaty' => '/predlozheniya/iz-pisem',
-        'galereya' => '/galereya',
-        'yashchiki' => '/nastroyki/yashchiki',
-        'shablony' => '/nastroyki/shablony',
-        'spravochnik' => '/spravochnik',
-        'eshchyo' => '/lk',
-        'polzovateli' => '/nastroyki/polzovateli',
-        'tegi' => '/nastroyki/tegi',
+        'offers' => '/offers',
+        'pochta' => '/work/mail',
+        'chaty' => '/work/chats',
+        'sdelki' => '/work/deals',
+        'zakupki' => '/purchases',
+        'stavki' => '/?preset=bids',
+        'interesy' => '/interests',
+        'strahovye' => '/settings/insurers',
+        'marshruty' => '/settings/workflows',
+        'kandidaty' => '/offers/from-mail',
+        'galereya' => '/gallery',
+        'yashchiki' => '/settings/mailboxes',
+        'shablony' => '/settings/templates',
+        'spravochnik' => '/reference',
+        'eshchyo' => '/account',
+        'polzovateli' => '/settings/users',
+        'tegi' => '/settings/tags',
         'ui' => '/ui',
     ];
 
@@ -31,7 +31,7 @@ final class LegacyAdmin
         $segments = explode('/', trim($path, '/'), 2);
         $head = self::MAP[$segments[0]] ?? '/';
         $tail = isset($segments[1]) ? '/'.$segments[1] : '';
-        if ($head === '/predlozheniya' && $tail === '') {
+        if ($head === '/offers' && $tail === '') {
             $head = '/';
         }
 

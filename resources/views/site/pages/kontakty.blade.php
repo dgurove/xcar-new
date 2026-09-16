@@ -13,7 +13,7 @@
             @if ($chat)
                 <x-chat.box :chat="$chat" :messages="$messages" :user="$user"/>
             @else
-                <form method="post" action="/kontakty" class="flex flex-col gap-3">
+                <form method="post" action="/contacts" class="flex flex-col gap-3">
                     @csrf
                     <input type="text" name="website" tabindex="-1" autocomplete="off" class="absolute left-[-9999px]" aria-hidden="true">
                     @guest<x-ui.field name="name" placeholder="Имя" autocomplete="name"/>@endguest
@@ -21,7 +21,7 @@
                     @guest
                         <label class="flex items-start gap-2.5 px-1 pt-1 text-sm text-ink-muted">
                             <span class="check mt-0.5"><input type="checkbox" name="consent" value="1" required></span>
-                            <span>Даю <a href="/soglasie" class="text-accent-text hover:underline">согласие на обработку персональных данных</a> и принимаю <a href="/soglashenie" class="text-accent-text hover:underline">условия</a></span>
+                            <span>Даю <a href="/consent" class="text-accent-text hover:underline">согласие на обработку персональных данных</a> и принимаю <a href="/terms" class="text-accent-text hover:underline">условия</a></span>
                         </label>
                         @error('consent')<p class="px-1 text-sm text-danger">{{ $message }}</p>@enderror
                     @endguest

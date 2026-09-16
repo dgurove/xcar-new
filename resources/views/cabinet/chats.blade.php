@@ -1,10 +1,10 @@
 <x-ui.cabinet title="Чаты">
     @if ($chats->isEmpty())
-        <x-ui.empty href="/kontakty" link="Написать нам">Чатов пока нет</x-ui.empty>
+        <x-ui.empty href="/contacts" link="Написать нам">Чатов пока нет</x-ui.empty>
     @else
         <div class="flex flex-col gap-2">
             @foreach ($chats as $chat)
-                <a href="{{ $chat->offer ? '/offers/'.$chat->offer->number.'?chat=1' : '/kontakty' }}" class="row items-start">
+                <a href="{{ $chat->offer ? '/offers/'.$chat->offer->number.'?chat=1' : '/contacts' }}" class="row items-start">
                     <div class="row-photo">
                         @if ($chat->offer)<x-offer.photo :media="$chat->offer->mainPhoto()" sizes="64px"/>
                         @else<div class="flex size-full items-center justify-center text-ink-dim"><x-ui.icon name="chat" class="size-7"/></div>@endif

@@ -21,7 +21,7 @@ final class BidPlacedNotice extends Notice
 
     public function href(): string
     {
-        return Surface::Crm->url("/predlozheniya/{$this->bid->offer->number}");
+        return Surface::Crm->url("/offers/{$this->bid->offer->number}");
     }
 
     public function offerNumber(): ?int

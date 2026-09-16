@@ -21,7 +21,7 @@ class InsurerController
         $data = $request->validate(['name' => ['required', 'string', 'max:80', 'unique:insurers,name']]);
         $insurer = Insurer::create($data);
 
-        return redirect("/nastroyki/strahovye/{$insurer->id}");
+        return redirect("/settings/insurers/{$insurer->id}");
     }
 
     public function show(Request $request, Insurer $insurer)
@@ -61,6 +61,6 @@ class InsurerController
         }
         $insurer->delete();
 
-        return redirect('/nastroyki/strahovye')->with('toast', 'Удалена');
+        return redirect('/settings/insurers')->with('toast', 'Удалена');
     }
 }

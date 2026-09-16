@@ -84,7 +84,7 @@ class UserController
         $data['password'] = Str::random(32);
         User::create($data + ['approved_at' => now(), 'approved_by' => $request->user()->id]);
 
-        return redirect('/nastroyki/polzovateli?preset='.$this->presetOf($data['role']))->with('toast', 'Добавлен');
+        return redirect('/settings/users?preset='.$this->presetOf($data['role']))->with('toast', 'Добавлен');
     }
 
     /** Решение по ждущему: открыть с выбранной ролью или отклонить. */

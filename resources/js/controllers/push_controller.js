@@ -31,7 +31,7 @@ export default class extends Controller {
         const reg = await navigator.serviceWorker.ready;
         const key = document.querySelector('meta[name="vapid-key"]')?.content;
         this.sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.key(key) });
-        await fetch('/push/podpiska', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: JSON.stringify(this.sub.toJSON()) });
+        await fetch('/push/subscription', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: JSON.stringify(this.sub.toJSON()) });
         window.toast?.('Уведомления включены');
         this.render();
     }
@@ -40,7 +40,7 @@ export default class extends Controller {
         const endpoint = this.sub?.endpoint;
         await this.sub?.unsubscribe();
         this.sub = null;
-        await fetch('/push/podpiska', { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: JSON.stringify({ endpoint }) });
+        await fetch('/push/subscription', { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: JSON.stringify({ endpoint }) });
         this.render();
     }
 

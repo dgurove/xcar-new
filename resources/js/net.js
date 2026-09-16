@@ -49,7 +49,7 @@ export function netGuards() {
     document.addEventListener('turbo:frame-missing', (event) => {
         event.preventDefault();
         const { response } = event.detail;
-        if (response.redirected && /\/vhod/.test(response.url)) { Turbo.visit('/vhod'); return; }
+        if (response.redirected && /\/login/.test(response.url)) { Turbo.visit('/login'); return; }
         window.toast?.('Не получилось', 'danger');
     });
 

@@ -23,7 +23,7 @@ final class StageDueNotice extends Notice
 
     public function href(): string
     {
-        return $this->dealId ? "/lk/sdelki/{$this->dealId}" : Surface::Crm->url("/predlozheniya/{$this->offer->number}");
+        return $this->dealId ? "/account/deals/{$this->dealId}" : Surface::Crm->url("/offers/{$this->offer->number}");
     }
 
     public function offerNumber(): ?int

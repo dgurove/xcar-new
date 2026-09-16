@@ -19,7 +19,7 @@
         @endif
     </div>
     @if ($hide)
-        <form id="hide-{{ $offer->id }}" method="post" action="/lk/pokazy" hidden data-turbo-confirm="Закрыть {{ $offer->titleWithYear() }}?" data-turbo-confirm-label="Закрыть" data-turbo-confirm-text="{{ $hideText ?? '' }}">
+        <form id="hide-{{ $offer->id }}" method="post" action="/account/showings" hidden data-turbo-confirm="Закрыть {{ $offer->titleWithYear() }}?" data-turbo-confirm-label="Закрыть" data-turbo-confirm-text="{{ $hideText ?? '' }}">
             @csrf @method('delete')
             <input type="hidden" name="offer" value="{{ $offer->id }}">
             @foreach ($hide as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach

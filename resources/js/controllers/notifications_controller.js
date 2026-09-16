@@ -16,9 +16,9 @@ export default class extends Controller {
         const token = document.querySelector('meta[name="csrf-token"]')?.content;
         const base = this.frameTarget.src.replace(/\/lk\/uvedomleniya\/svezhie.*$/, '');
         try {
-            await fetch(`${base}/lk/uvedomleniya/prochitano`, { method: 'POST', headers: { 'X-CSRF-TOKEN': token, 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' }, credentials: 'include' });
+            await fetch(`${base}/account/notifications/prochitano`, { method: 'POST', headers: { 'X-CSRF-TOKEN': token, 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' }, credentials: 'include' });
         } catch { return; }
-        document.querySelectorAll('[data-badge="/lk/uvedomleniya"]').forEach((el) => { el.innerHTML = ''; });
+        document.querySelectorAll('[data-badge="/account/notifications"]').forEach((el) => { el.innerHTML = ''; });
         document.querySelector('meta[name="badge-count"]')?.setAttribute('content', '0');
         navigator.clearAppBadge?.();
     }

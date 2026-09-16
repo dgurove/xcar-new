@@ -28,7 +28,7 @@ class ChatController
         $messages = $chat->messages()->with(['author', 'files'])->get();
 
         return response(view('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $request->user()]))
-            ->header('X-Chat-Id', (string) $chat->id)->header('X-Chat-Url', "/chaty/{$chat->id}/soobshcheniya");
+            ->header('X-Chat-Id', (string) $chat->id)->header('X-Chat-Url', "/chats/{$chat->id}/messages");
     }
 
     public function messages(Request $request, Chat $chat, MarkChatRead $read)

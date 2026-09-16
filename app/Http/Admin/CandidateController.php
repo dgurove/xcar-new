@@ -32,7 +32,7 @@ class CandidateController
         abort_if($candidate->state === CandidateState::Promoted, 404);
         $offer = $promote($candidate, $request->user());
 
-        return redirect("/predlozheniya/{$offer->number}")->with('toast', 'Черновик заведён, фото подтягиваются');
+        return redirect("/offers/{$offer->number}")->with('toast', 'Черновик заведён, фото подтягиваются');
     }
 
     public function reject(Candidate $candidate)

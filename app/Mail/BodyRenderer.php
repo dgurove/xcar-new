@@ -11,7 +11,7 @@ final class BodyRenderer
 {
     private const FORBIDDEN = ['script', 'iframe', 'object', 'embed', 'applet', 'form', 'base', 'meta', 'link'];
 
-    public function document(Message $message, bool $remoteImages = false, string $base = '/rabota/pochta'): string
+    public function document(Message $message, bool $remoteImages = false, string $base = '/work/mail'): string
     {
         $body = $this->body($message);
         foreach (self::FORBIDDEN as $tag) {
@@ -56,7 +56,7 @@ final class BodyRenderer
         }
         $map = [];
         foreach ($message->attachments->whereNotNull('content_id') as $attachment) {
-            $map['cid:'.$attachment->content_id] = "{$base}/vlozheniya/{$attachment->id}";
+            $map['cid:'.$attachment->content_id] = "{$base}/attachments/{$attachment->id}";
         }
 
         return $map ? strtr($html, $map) : $html;

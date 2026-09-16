@@ -14,13 +14,13 @@ class PwaController
 
         [$description, $shortcuts] = match ($surface) {
             Surface::Site => ['Предложения, сделки, закупки', [
-                ['Предложения', '/', 'car'], ['Сделки', '/lk/sdelki', 'deal'], ['Уведомления', '/lk/uvedomleniya', 'bell'],
+                ['Предложения', '/', 'car'], ['Сделки', '/account/deals', 'deal'], ['Уведомления', '/account/notifications', 'bell'],
             ]],
             Surface::Crm => ['Предложения, галерея, работа, закупки', [
-                ['Предложения', '/', 'car'], ['Галерея', '/galereya', 'photo'], ['Работа', '/rabota', 'deal'], ['Закупки', '/zakupki', 'cart'],
+                ['Предложения', '/', 'car'], ['Галерея', '/gallery', 'photo'], ['Работа', '/work', 'deal'], ['Закупки', '/purchases', 'cart'],
             ]],
             Surface::Park => ['Заявки, машины, стоянки', [
-                ['Заявки', '/', 'flag'], ['Машины', '/mashiny', 'car'],
+                ['Заявки', '/', 'flag'], ['Машины', '/cars', 'car'],
             ]],
         };
 

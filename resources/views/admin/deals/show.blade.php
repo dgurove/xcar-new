@@ -5,7 +5,7 @@
     $open = $deal->requirements->whereNull('done_at');
     $answered = $deal->requirements->whereNotNull('done_at')->sortByDesc('done_at');
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/rabota/sdelki']">
+<x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/work/deals']">
     <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
         @if ($deal->state !== DealState::Active)
             <x-ui.pill :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.pill>
@@ -15,7 +15,7 @@
         @else
             <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
         @endif
-        <x-ui.pill tone="plain" href="/predlozheniya/{{ $offer->number }}"><x-ui.icon name="car" class="size-4"/> Предложение № {{ $offer->number }}</x-ui.pill>
+        <x-ui.pill tone="plain" href="/offers/{{ $offer->number }}"><x-ui.icon name="car" class="size-4"/> Предложение № {{ $offer->number }}</x-ui.pill>
         @if ($errors->has('exit'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('exit') }}</x-ui.flash>@endif
     </div>
 
@@ -38,7 +38,7 @@
                             </div>
                             @if ($r->media->isNotEmpty())
                                 <div class="mt-2 flex flex-col">
-                                    @foreach ($r->media as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/fayly/{{ $f->id }}" class="py-1"/>@endforeach
+                                    @foreach ($r->media as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                                 </div>
                             @endif
                         </div>
@@ -66,7 +66,7 @@
                             @endif
                             @if ($r->media->isNotEmpty())
                                 <div class="mt-2 flex flex-col">
-                                    @foreach ($r->media as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/fayly/{{ $f->id }}" class="py-1"/>@endforeach
+                                    @foreach ($r->media as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                                 </div>
                             @endif
                         </div>
@@ -76,7 +76,7 @@
             @endif
 
             <x-ui.card title="Заметка" class="order-4" id="deal-note">
-                <form method="post" action="/rabota/sdelki/{{ $deal->id }}/zametka" class="flex flex-col gap-2">
+                <form method="post" action="/work/deals/{{ $deal->id }}/note" class="flex flex-col gap-2">
                     @csrf
                     <textarea name="notes" class="field-input" placeholder="Что важно помнить по этой сделке">{{ old('notes', $deal->notes) }}</textarea>
                     <x-ui.button size="sm" variant="secondary" class="self-end">Сохранить</x-ui.button>
@@ -86,7 +86,7 @@
 
         <div class="contents lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             <x-ui.card class="order-1 overflow-hidden !p-0">
-                <a href="/predlozheniya/{{ $offer->number }}" class="block aspect-[4/3] bg-surface-3"><x-offer.photo :media="$offer->mainPhoto()" sizes="(min-width: 1024px) 352px, 100vw" class="size-full object-cover"/></a>
+                <a href="/offers/{{ $offer->number }}" class="block aspect-[4/3] bg-surface-3"><x-offer.photo :media="$offer->mainPhoto()" sizes="(min-width: 1024px) 352px, 100vw" class="size-full object-cover"/></a>
                 <div class="p-4">
                     <div class="nums text-2xl font-bold leading-none">{{ \App\Support\Money::rub($deal->amount) }}</div>
                     <div class="mt-2 flex flex-wrap items-center gap-1.5">

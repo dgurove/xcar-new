@@ -22,6 +22,6 @@
     </div>
     <div class="box mt-12">
         <p class="text-ink-muted">Не нашли ответа?</p>
-        <a href="/kontakty" class="mt-2 inline-block text-accent-text hover:underline">Напишите нам</a>
+        <a href="/contacts" class="mt-2 inline-block text-accent-text hover:underline">Напишите нам</a>
     </div>
 </x-ui.shell>

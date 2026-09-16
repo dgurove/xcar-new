@@ -10,7 +10,7 @@ import { openSheet, closeSheet } from '../sheet';
 // navigator.share({files}); где его нет или он однажды упал — window.open на
 // тот же адрес в самом жесте: в установленном приложении это встроенный браузер
 // с предпросмотром и системным «Поделиться», на компьютере — вкладка. Каждый
-// сбой — тостом и на сервер (/share/oshibka): иначе с чужого телефона не видно ничего.
+// сбой — тостом и на сервер (/share/error): иначе с чужого телефона не видно ничего.
 const BROKEN = 'share:open';
 
 export default class extends Controller {
@@ -165,7 +165,7 @@ export default class extends Controller {
         this.status(text);
         window.toast?.(text, 'danger');
         // _token в теле: заголовков у sendBeacon нет, без него 419.
-        navigator.sendBeacon?.('/share/oshibka', new Blob([JSON.stringify({
+        navigator.sendBeacon?.('/share/error', new Blob([JSON.stringify({
             _token: document.querySelector('meta[name=csrf-token]')?.content, stage, name: e.name || '?', message: String(e.message ?? '').slice(0, 300),
             standalone: matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
         })], { type: 'application/json' }));

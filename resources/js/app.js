@@ -335,7 +335,7 @@ function stalePage() {
         }
     }
     document.addEventListener('turbo:submit-start', (event) => {
-        if (new URL(event.target.action, location.href).pathname === '/vyhod') navigator.serviceWorker?.controller?.postMessage({ forgetPages: true });
+        if (new URL(event.target.action, location.href).pathname === '/logout') navigator.serviceWorker?.controller?.postMessage({ forgetPages: true });
     });
     // На одном телефоне сменился человек (вошёл другой без явного выхода, истекла
     // сессия) — экраны прежнего из кэша воркера не должны всплыть первым кадром.
@@ -439,7 +439,7 @@ function noticeSeen() {
         if (!link) return;
         const body = new FormData();
         body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
-        navigator.sendBeacon(`/lk/uvedomleniya/${link.dataset.notice}/otkryto`, body);
+        navigator.sendBeacon(`/account/notifications/${link.dataset.notice}/otkryto`, body);
         link.closest('.swipe, .block')?.querySelector('.rounded-full.bg-accent-soft')?.remove();
     }, true);
 }

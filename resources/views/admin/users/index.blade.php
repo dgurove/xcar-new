@@ -7,7 +7,7 @@
             <div data-controller="sheet" class="contents">
                 <button type="button" class="btn btn-s btn-accent shrink-0 rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Пользователь</span></button>
                 <x-ui.sheet id="user-new" title="Новый пользователь">
-                    <form method="post" action="/nastroyki/polzovateli" class="flex flex-col gap-4">
+                    <form method="post" action="/settings/users" class="flex flex-col gap-4">
                         @csrf
                         <x-ui.field name="name" label="Имя" required autofocus/>
                         <x-ui.field name="phone" label="Телефон" type="tel"/>
@@ -51,16 +51,16 @@
                             @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
                         </div>
                         <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                            @if ($user->isBuyer() && $user->manager)<a href="/nastroyki/polzovateli?preset=buyers&manager={{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
+                            @if ($user->isBuyer() && $user->manager)<a href="/settings/users?preset=buyers&manager={{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
                             @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif
                             @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="tag nums">{{ $user->phoneFormatted() }}</a>@endif
                             @if ($user->email)<a href="mailto:{{ $user->email }}" class="tag">{{ $user->email }}</a>@endif
-                            @if ($user->isManager() && isset($user->buyers_count))<a href="/nastroyki/polzovateli?preset=buyers&manager={{ $user->id }}" class="tag">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
+                            @if ($user->isManager() && isset($user->buyers_count))<a href="/settings/users?preset=buyers&manager={{ $user->id }}" class="tag">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
                             @if ($user->isPending() || $user->isBuyer())<span class="tag nums">с {{ $user->created_at->translatedFormat('j M') }}</span>@endif
                         </div>
                     </div>
                     @if (!$user->isApproved() && !$user->is($me))
-                        <form method="post" action="/nastroyki/polzovateli/{{ $user->id }}/dostup" class="flex items-center gap-1.5">
+                        <form method="post" action="/settings/users/{{ $user->id }}/access" class="flex items-center gap-1.5">
                             @csrf
                             <select name="role" class="field-input field-s !w-auto" aria-label="Роль">@foreach (UserController::CREATABLE as $r)<option value="{{ $r->value }}" @selected($r === Role::Manager)>{{ $r->label() }}</option>@endforeach</select>
                             <x-ui.button size="sm">Открыть</x-ui.button>
@@ -74,7 +74,7 @@
                                 <p class="text-sm text-ink-muted">Действует сутки, один раз. Отдайте её {{ $user->shortName() }} любым способом.</p>
                             </x-ui.copy-link>
                         @endif
-                        <form method="post" action="/nastroyki/polzovateli/{{ $user->id }}" class="flex flex-col gap-4">
+                        <form method="post" action="/settings/users/{{ $user->id }}" class="flex flex-col gap-4">
                             @csrf @method('put')
                             <x-ui.field name="name" label="Имя" :value="$user->name" required/>
                             @if ($user->isBuyer())
@@ -97,7 +97,7 @@
                             <x-ui.button block>Сохранить</x-ui.button>
                         </form>
                         @unless ($user->is($me))
-                            <form method="post" action="/nastroyki/polzovateli/{{ $user->id }}/parol" class="mt-3"
+                            <form method="post" action="/settings/users/{{ $user->id }}/password" class="mt-3"
                                 data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
                                 data-turbo-confirm-text="{{ $user->name }} откроет её и придумает пароль сам. Прежние ссылки погаснут, текущий пароль пока действует.">
                                 @csrf

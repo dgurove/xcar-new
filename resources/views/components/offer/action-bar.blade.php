@@ -13,7 +13,7 @@
 @if ($label || $canShow)
     <x-ui.action-bar class="lg:hidden">
         @if (!$user)
-            <a href="/vhod?intended={{ urlencode(request()->getRequestUri()) }}" class="btn btn-accent min-w-0 flex-1">Войти</a>
+            <a href="/login?intended={{ urlencode(request()->getRequestUri()) }}" class="btn btn-accent min-w-0 flex-1">Войти</a>
         @elseif ($label)
             <button type="button" class="btn btn-accent min-w-0 flex-1" data-controller="emit" data-action="emit#send" data-emit-event-param="deal:open" @if ($canBid && $prices) data-closes-with-timer @endif>{{ $label }}</button>
         @endif

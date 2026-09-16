@@ -4,8 +4,8 @@
     $trail = $hero ? [] : [['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения']];
     $sections = array_filter([
         ['Предложения', $counts['offers'], '/', !$gallery],
-        $counts['gallery'] || $gallery ? ['Галерея', $counts['gallery'], '/galereya', $gallery] : null,
-        $counts['purchases'] ? ['Закупки', $counts['purchases'], '/zakupki', false] : null,
+        $counts['gallery'] || $gallery ? ['Галерея', $counts['gallery'], '/gallery', $gallery] : null,
+        $counts['purchases'] ? ['Закупки', $counts['purchases'], '/purchases', false] : null,
     ]);
 @endphp
 @php
@@ -20,7 +20,7 @@
         <x-ui.hero :count="$counts['offers']" :label="\App\Support\Plural::of($counts['offers'], ['предложение доступно', 'предложения доступно', 'предложений доступно'])" href="#catalog-section"/>
     @endif
 
-    <div id="catalog-section" @class(['over-hero' => $hero]) @if ($selecting) data-controller="selection" data-selection-url-value="/lk/pokazy/novyy" @endif>
+    <div id="catalog-section" @class(['over-hero' => $hero]) @if ($selecting) data-controller="selection" data-selection-url-value="/account/showings/new" @endif>
         {{-- Без первого экрана контейнер уже даёт шелл — второй удваивал поля. --}}
         <div @class(['container-site pt-10 pb-10 sm:pt-14 sm:pb-14' => $hero])>
             <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
@@ -79,7 +79,7 @@
                             </{{ $tag }}>
                         @endif
                     @else
-                    <x-ui.empty :href="$gallery ? '/galereya' : '/'" :link="$filters ? 'Сбросить фильтры' : null" id="catalog-empty">
+                    <x-ui.empty :href="$gallery ? '/gallery' : '/'" :link="$filters ? 'Сбросить фильтры' : null" id="catalog-empty">
                         @if ($filters) По этим условиям ничего нет. @elseif ($gallery) Пока пусто. @else Предложений пока нет. @endif
                     </x-ui.empty>
                     @endif

@@ -1,7 +1,7 @@
 {{-- Машина стоянки — та же карточка, что у оффера: кадр, название с госномером, пилюли состояния, действие. --}}
 @props(['vehicle', 'href' => null])
 @php
-    $href ??= '/mashiny/'.$vehicle->id;
+    $href ??= '/cars/'.$vehicle->id;
     $main = $vehicle->mainPhoto();
     $photos = $vehicle->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $hasMedia = $photos->isNotEmpty();

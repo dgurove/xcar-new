@@ -1,4 +1,4 @@
-@php $href = $item->data['href'] ?? '/lk/uvedomleniya'; $foreign = str_starts_with($href, 'http') || str_starts_with($href, '/admin'); @endphp
+@php $href = $item->data['href'] ?? '/account/notifications'; $foreign = str_starts_with($href, 'http') || str_starts_with($href, '/admin'); @endphp
 <x-ui.swipe id="notice-{{ $item->id }}">
     {{-- Ссылка ведёт сразу на объект; чужой хост или старый /admin — полной загрузкой. --}}
     {{-- Строка: непрочитанное — с лаймовой точкой слева, время справа; текст — второй строкой. --}}
@@ -13,6 +13,6 @@
         </span>
     </a>
     <x-slot:actions>
-        <form method="post" action="/lk/uvedomleniya/{{ $item->id }}/prochitano" data-queue>@csrf<button type="submit" class="swipe-btn swipe-btn-accent" aria-label="{{ $item->read_at ? 'Не прочитано' : 'Прочитано' }}"><x-ui.icon :name="$item->read_at ? 'eye-off' : 'eye'" class="size-5"/></button></form>
+        <form method="post" action="/account/notifications/{{ $item->id }}/read" data-queue>@csrf<button type="submit" class="swipe-btn swipe-btn-accent" aria-label="{{ $item->read_at ? 'Не прочитано' : 'Прочитано' }}"><x-ui.icon :name="$item->read_at ? 'eye-off' : 'eye'" class="size-5"/></button></form>
     </x-slot:actions>
 </x-ui.swipe>

@@ -28,6 +28,6 @@ final class IssuePasswordLink
             'created_at' => now(),
         ]);
 
-        return Surface::Site->url("/parol/ssylka/{$plain}");
+        return Surface::Site->url("/password/link/{$plain}");
     }
 }

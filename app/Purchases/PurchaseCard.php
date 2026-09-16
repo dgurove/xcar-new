@@ -14,6 +14,6 @@ final readonly class PurchaseCard
 
     public function url(): string
     {
-        return "/zakupki/{$this->purchase->number}?group={$this->group->value}";
+        return "/purchases/{$this->purchase->number}?group={$this->group->value}";
     }
 }

@@ -175,11 +175,11 @@ export default class extends Controller {
 
     async reorder() {
         const order = this.cells().map((el) => el.dataset.id);
-        const r = await this.post(this.urlValue + '/poryadok', JSON.stringify({ order }), 'application/json');
+        const r = await this.post(this.urlValue + '/order', JSON.stringify({ order }), 'application/json');
         if (r.ok) this.apply(await r.text());
     }
 
-    // Кнопка на плитке: skryt / povernut / udalit.
+    // Кнопка на плитке: hide / rotate / delete.
     act(event) {
         const button = event.currentTarget;
         this.perform(button.closest('.photo-cell').dataset.id, button.dataset.act, button.dataset.confirm);
@@ -187,17 +187,17 @@ export default class extends Controller {
 
     async perform(id, act, confirm) {
         if (this.busy) return false;
-        if (confirm && !(await confirmSheet(confirm, { danger: act === 'udalit' }))) return false;
+        if (confirm && !(await confirmSheet(confirm, { danger: act === 'delete' }))) return false;
         this.busy = true;
         try { return await this.run(id, act); } finally { this.busy = false; }
     }
 
     async run(id, act) {
-        const url = `${this.urlValue}/${id}${act === 'udalit' ? '' : '/' + act}`;
-        const r = await this.post(url, act === 'udalit' ? '_method=delete' : '', 'application/x-www-form-urlencoded');
+        const url = `${this.urlValue}/${id}${act === 'delete' ? '' : '/' + act}`;
+        const r = await this.post(url, act === 'delete' ? '_method=delete' : '', 'application/x-www-form-urlencoded');
         if (!r.ok) { window.toast?.('Не получилось', 'danger'); return false; }
         this.apply(await r.text());
-        if (act === 'povernut') this.bust(id);
+        if (act === 'rotate') this.bust(id);
         return true;
     }
 
@@ -251,10 +251,10 @@ export default class extends Controller {
 
     show(index) {
         this.viewer?.destroy();
-        const canHide = !!this.gridTarget.querySelector('[data-act="skryt"]');
+        const canHide = !!this.gridTarget.querySelector('[data-act="hide"]');
         const toolbar = { prev: 1, zoomOut: 1, zoomIn: 1, next: 1 };
-        if (canHide) toolbar.eye = { show: 1, size: 'large', click: () => this.fromViewer('skryt') };
-        toolbar.rotate = { show: 1, size: 'large', click: () => this.fromViewer('povernut') };
+        if (canHide) toolbar.eye = { show: 1, size: 'large', click: () => this.fromViewer('hide') };
+        toolbar.rotate = { show: 1, size: 'large', click: () => this.fromViewer('rotate') };
         toolbar.trash = { show: 1, size: 'large', click: () => this.fromViewer('udalit', 'Удалить фото?') };
         this.viewer = new this.Viewer(this.gridTarget, {
             url: (img) => img.dataset.full,

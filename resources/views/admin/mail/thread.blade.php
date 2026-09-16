@@ -1,18 +1,18 @@
-@php use App\Mail\{Direction, ParseState, SendState}; $park = $base === '/pochta'; @endphp
-<x-ui.shell :title="$thread->subject ?: '(без темы)'" :back="['Почта', '/rabota/pochta']">
+@php use App\Mail\{Direction, ParseState, SendState}; $park = $base === '/mail'; @endphp
+<x-ui.shell :title="$thread->subject ?: '(без темы)'" :back="['Почта', '/work/mail']">
     <div class="mb-4 flex flex-wrap items-center gap-2" data-controller="sheet">
         <span class="chip">{{ $thread->account->title }}</span>
         @if ($park && $thread->vehicle)
-            <a href="/mashiny/{{ $thread->vehicle->id }}" class="chip bg-accent-soft text-accent-text">{{ $thread->vehicle->titleWithYear() }}@if ($thread->vehicle->ref) <span class="nums opacity-70">{{ $thread->vehicle->ref }}</span>@endif</a>
+            <a href="/cars/{{ $thread->vehicle->id }}" class="chip bg-accent-soft text-accent-text">{{ $thread->vehicle->titleWithYear() }}@if ($thread->vehicle->ref) <span class="nums opacity-70">{{ $thread->vehicle->ref }}</span>@endif</a>
         @elseif (!$park && $thread->offer)
-            <a href="/predlozheniya/{{ $thread->offer->number }}" class="chip bg-accent-soft text-accent-text">{{ $thread->offer->title() }} <span class="nums opacity-70">№ {{ $thread->offer->number }}</span></a>
+            <a href="/offers/{{ $thread->offer->number }}" class="chip bg-accent-soft text-accent-text">{{ $thread->offer->title() }} <span class="nums opacity-70">№ {{ $thread->offer->number }}</span></a>
         @endif
         <button type="button" class="chip" data-action="sheet#open">{{ ($park ? $thread->vehicle : $thread->offer) ? 'Перепривязать' : ($park ? 'Привязать к машине' : 'Привязать к предложению') }}</button>
         <x-ui.sheet id="link" :title="$park ? 'Машина' : 'Предложение'" :open="$errors->has('number') || $errors->has('vehicle_id')">
-            <form method="post" action="{{ $base }}/{{ $thread->id }}/privyazka" class="flex flex-col gap-3">
+            <form method="post" action="{{ $base }}/{{ $thread->id }}/link" class="flex flex-col gap-3">
                 @csrf
                 @if ($park)
-                    <x-ui.combobox name="vehicle_id" label="Машина" url="/spravochnik/mashiny" :value="$thread->vehicle_id" :text="$thread->vehicle?->titleWithYear()"/>
+                    <x-ui.combobox name="vehicle_id" label="Машина" url="/reference/cars" :value="$thread->vehicle_id" :text="$thread->vehicle?->titleWithYear()"/>
                 @else
                     <x-ui.field name="number" label="Номер предложения" inputmode="numeric" :value="$thread->offer?->number" autofocus/>
                 @endif
@@ -22,7 +22,7 @@
                 </div>
             </form>
         </x-ui.sheet>
-        <form method="post" action="{{ $base }}/{{ $thread->id }}/neprochitano" class="ml-auto">@csrf<x-ui.button variant="ghost" size="sm">Не прочитано</x-ui.button></form>
+        <form method="post" action="{{ $base }}/{{ $thread->id }}/unread" class="ml-auto">@csrf<x-ui.button variant="ghost" size="sm">Не прочитано</x-ui.button></form>
     </div>
 
     <div class="flex flex-col gap-4">
@@ -39,7 +39,7 @@
                     </div>
                     <div class="flex shrink-0 items-center gap-1">
                         <span class="text-sm text-ink-dim">{{ $message->date_at?->translatedFormat('j M, H:i') }}</span>
-                        <form method="post" action="{{ $base }}/pisma/{{ $message->id }}/flag">@csrf<button class="btn btn-ghost btn-s px-1.5 {{ $message->is_flagged ? 'text-urgent' : 'text-ink-dim' }}" aria-label="Отметить"><x-ui.icon name="flag" class="size-5"/></button></form>
+                        <form method="post" action="{{ $base }}/messages/{{ $message->id }}/flag">@csrf<button class="btn btn-ghost btn-s px-1.5 {{ $message->is_flagged ? 'text-urgent' : 'text-ink-dim' }}" aria-label="Отметить"><x-ui.icon name="flag" class="size-5"/></button></form>
                     </div>
                 </div>
 
@@ -47,7 +47,7 @@
                     <div class="mb-3 flex flex-wrap items-center gap-2">
                         <span class="chip {{ $message->send_state === SendState::Failed ? 'bg-danger-soft text-danger' : 'bg-urgent-soft text-urgent' }}">{{ $message->send_state?->label() }}</span>
                         @if ($message->send_error)<span class="text-sm text-danger">{{ $message->send_error }}</span>@endif
-                        @if ($message->send_state === SendState::Failed)<form method="post" action="{{ $base }}/pisma/{{ $message->id }}/snova">@csrf<x-ui.button size="sm" variant="secondary">Отправить снова</x-ui.button></form>@endif
+                        @if ($message->send_state === SendState::Failed)<form method="post" action="{{ $base }}/messages/{{ $message->id }}/retry">@csrf<x-ui.button size="sm" variant="secondary">Отправить снова</x-ui.button></form>@endif
                     </div>
                 @elseif ($out && !$message->appended_to_sent_at)
                     <div class="mb-3 text-sm text-ink-muted">Ушло, но копия в «Отправленных» ящика не сохранилась.</div>
@@ -57,7 +57,7 @@
                     <div class="mb-3 flex flex-wrap items-center gap-2">
                         <span class="chip bg-danger-soft text-danger">Не разобралось</span>
                         <span class="text-sm text-ink-muted">{{ $message->parse_error }}</span>
-                        <form method="post" action="{{ $base }}/pisma/{{ $message->id }}/razbor">@csrf<x-ui.button size="sm" variant="secondary">Разобрать снова</x-ui.button></form>
+                        <form method="post" action="{{ $base }}/messages/{{ $message->id }}/parse">@csrf<x-ui.button size="sm" variant="secondary">Разобрать снова</x-ui.button></form>
                     </div>
                 @elseif ($message->parse_state === ParseState::Pending)
                     <div class="mb-3 text-sm text-ink-muted">Разбирается…</div>
@@ -74,8 +74,8 @@
                     <div class="mt-3 flex flex-wrap gap-2">
                         @foreach ($message->files() as $file)
                             {{-- Миниатюра — только у закреплённого файла: незакреплённый лежит в ящике, за ним ходят по клику. --}}
-                            <a href="{{ $base }}/vlozheniya/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3">
-                                <x-ui.file-icon :name="$file->filename" :mime="$file->mime" :thumb="$file->isImage() && $file->isPinned() ? $base.'/vlozheniya/'.$file->id : null"/>
+                            <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3">
+                                <x-ui.file-icon :name="$file->filename" :mime="$file->mime" :thumb="$file->isImage() && $file->isPinned() ? $base.'/attachments/'.$file->id : null"/>
                                 <span class="min-w-0"><span class="block truncate text-sm">{{ $file->filename }}</span><span class="text-xs text-ink-muted">{{ $file->humanSize() }}</span></span>
                             </a>
                         @endforeach
@@ -83,9 +83,9 @@
                 @endif
 
                 <div class="mt-4 flex flex-wrap gap-2">
-                    <a href="{{ $base }}/{{ $thread->id }}/otvet/{{ $message->id }}" class="btn btn-quiet btn-s">Ответить</a>
-                    <a href="{{ $base }}/{{ $thread->id }}/otvet/{{ $message->id }}?rezhim=all" class="btn btn-ghost btn-s">Всем</a>
-                    <a href="{{ $base }}/{{ $thread->id }}/otvet/{{ $message->id }}?rezhim=forward" class="btn btn-ghost btn-s">Переслать</a>
+                    <a href="{{ $base }}/{{ $thread->id }}/reply/{{ $message->id }}" class="btn btn-quiet btn-s">Ответить</a>
+                    <a href="{{ $base }}/{{ $thread->id }}/reply/{{ $message->id }}?rezhim=all" class="btn btn-ghost btn-s">Всем</a>
+                    <a href="{{ $base }}/{{ $thread->id }}/reply/{{ $message->id }}?rezhim=forward" class="btn btn-ghost btn-s">Переслать</a>
                 </div>
             </x-ui.card>
         @endforeach

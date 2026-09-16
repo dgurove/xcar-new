@@ -1,5 +1,5 @@
 @php use App\Cars\{Transmission, Fuel}; use App\Purchases\{Kind, OfferState, ImportState}; $n = $purchase->number; @endphp
-<x-ui.shell :title="$car->titleWithYear()" :back="['Закупка', '/zakupki/'.$purchase->number]">
+<x-ui.shell :title="$car->titleWithYear()" :back="['Закупка', '/purchases/'.$purchase->number]">
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <span class="chip">{{ str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl }}</span>
         <span class="chip">№ {{ $car->ref }}</span>
@@ -9,12 +9,12 @@
         @if ($errors->any())<span class="field-error w-full">{{ $errors->first() }}</span>@endif
     </div>
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}" id="car-form" data-controller="vin" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+        <form method="post" action="/purchases/{{ $n }}/{{ $car->ref }}" id="car-form" data-controller="vin" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @csrf @method('put')
             <x-ui.card title="Машина" class="order-1">
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                    <x-ui.combobox name="brand_id" label="Марка" url="/spravochnik/marki" create="/spravochnik/marki" :value="$car->brand_id" :text="$car->brand?->name ?? $car->brand_raw" resets="#cb-model_id"/>
-                    <x-ui.combobox name="model_id" label="Модель" url="/spravochnik/modeli" create="/spravochnik/modeli" depends="#f-brand_id" :value="$car->model_id" :text="$car->model?->name ?? $car->model_raw"/>
+                    <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$car->brand_id" :text="$car->brand?->name ?? $car->brand_raw" resets="#cb-model_id"/>
+                    <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="$car->model_id" :text="$car->model?->name ?? $car->model_raw"/>
                     <x-ui.field name="year" label="Год" inputmode="numeric" :value="$car->year"/>
                     <x-ui.field name="mileage" label="Пробег, км" inputmode="numeric" :value="$car->mileage"/>
                     <x-ui.vin :value="$car->vin" span="col-span-2 lg:col-span-1"/>
@@ -45,7 +45,7 @@
             </x-ui.card>
         </form>
 
-        <x-ui.card title="Фотографии" class="order-2 lg:col-span-2" data-controller="photos" data-photos-url-value="/zakupki/mashiny/{{ $car->id }}/media">
+        <x-ui.card title="Фотографии" class="order-2 lg:col-span-2" data-controller="photos" data-photos-url-value="/purchases/cars/{{ $car->id }}/media">
             <input type="file" accept="image/*,.heic" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             @if ($car->cloud_url || $car->photos_state->needsAttention())
                 <div class="mb-3 flex flex-wrap items-center gap-2">

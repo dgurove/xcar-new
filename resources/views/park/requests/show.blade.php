@@ -20,7 +20,7 @@
                 <span class="chip {{ $req->isOverdue() ? 'bg-danger-soft text-danger' : ($req->isOpen() ? 'bg-accent-soft text-accent-text' : 'bg-closed-soft text-closed') }}">{{ $req->isOpen() ? 'Ждёт' : $req->state->label() }}</span>
                 @if ($req->planned_at)<span class="chip">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif
                 @if ($req->type === RequestType::Move && $req->yard)<span class="chip">→ {{ $req->yard->name }}</span>@endif
-                @if ($req->thread)<a href="/pochta/{{ $req->thread_id }}" class="chip"><x-ui.icon name="mail" class="size-4"/> Письмо</a>@endif
+                @if ($req->thread)<a href="/mail/{{ $req->thread_id }}" class="chip"><x-ui.icon name="mail" class="size-4"/> Письмо</a>@endif
             </div>
             @if ($req->contact)<div class="mt-3">{{ $req->contact }}</div>@endif
             @if ($req->note)<div class="mt-1 whitespace-pre-line text-ink-muted">{{ $req->note }}</div>@endif
@@ -30,7 +30,7 @@
         @if ($errors->any())<p class="field-error">{{ $errors->first() }}</p>@endif
 
         @if ($req->isOpen() && $req->type === RequestType::Intake && $vehicle->state === VehicleState::Expected)
-            <form method="post" action="/zayavki/{{ $req->id }}/priem" id="act-form" class="flex flex-col gap-4">
+            <form method="post" action="/requests/{{ $req->id }}/intake" id="act-form" class="flex flex-col gap-4">
                 @csrf
                 <x-ui.card title="Приём">
                     <div class="grid grid-cols-2 gap-3">
@@ -47,7 +47,7 @@
                         <x-ui.field name="damage_note" label="Что ещё заметили" type="textarea" span="col-span-full"/>
                     </div>
                 </x-ui.card>
-                <x-ui.card title="Фото при приёме" data-controller="photos" data-photos-url-value="/mashiny/{{ $vehicle->id }}/media">
+                <x-ui.card title="Фото при приёме" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
                     <input type="file" accept="image/*,.heic,.heif" capture="environment" multiple hidden data-photos-target="input" data-action="change->photos#upload">
                     <div hidden data-photos-target="progress" class="mb-3">
                         <div class="mb-1 text-sm text-ink-muted" data-label></div>
@@ -57,12 +57,12 @@
                 </x-ui.card>
             </form>
         @elseif ($req->isOpen() && $req->type === RequestType::Move && $vehicle->state === VehicleState::Stored)
-            <form method="post" action="/zayavki/{{ $req->id }}/perestanovka" id="act-form">
+            <form method="post" action="/requests/{{ $req->id }}/move" id="act-form">
                 @csrf
                 <x-ui.card title="Перестановка"><x-ui.field name="yard_id" label="Куда" :options="$yards" :value="$req->yard_id" required/></x-ui.card>
             </form>
         @elseif ($req->isOpen() && $req->type === RequestType::Release && $vehicle->state === VehicleState::Stored)
-            <form method="post" action="/zayavki/{{ $req->id }}/vydacha" id="act-form">
+            <form method="post" action="/requests/{{ $req->id }}/release" id="act-form">
                 @csrf
                 <x-ui.card title="Выдача">
                     <div class="grid grid-cols-2 gap-3">
@@ -72,7 +72,7 @@
                 </x-ui.card>
             </form>
         @elseif ($req->isOpen())
-            <form method="post" action="/zayavki/{{ $req->id }}/zakryt" id="act-form">
+            <form method="post" action="/requests/{{ $req->id }}/close" id="act-form">
                 @csrf<input type="hidden" name="done" value="1">
                 <x-ui.card :title="$req->type->label()"><x-ui.field name="note" label="Что сделано" type="textarea"/></x-ui.card>
             </form>
@@ -81,7 +81,7 @@
     @if ($verb)
         <x-ui.action-bar>
             <x-ui.button form="act-form" class="min-w-0 flex-1">{{ $verb }}</x-ui.button>
-            <form method="post" action="/zayavki/{{ $req->id }}/zakryt" data-turbo-confirm="Отменить заявку?">@csrf<input type="hidden" name="done" value="0"><x-ui.button variant="ghost">Отменить</x-ui.button></form>
+            <form method="post" action="/requests/{{ $req->id }}/close" data-turbo-confirm="Отменить заявку?">@csrf<input type="hidden" name="done" value="0"><x-ui.button variant="ghost">Отменить</x-ui.button></form>
         </x-ui.action-bar>
     @endif
 </x-ui.shell>

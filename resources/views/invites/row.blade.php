@@ -61,7 +61,7 @@
             <h3 class="mt-6 mb-2 text-base font-medium">Пришли по ссылке</h3>
             <div class="flex flex-col gap-2">
                 @foreach ($came as $person)
-                    @php($href = $person->isBuyer() && $person->manager_id === $me->id ? '/lk/pokupateli/'.$person->id : null)
+                    @php($href = $person->isBuyer() && $person->manager_id === $me->id ? '/account/buyers/'.$person->id : null)
                     <{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif class="row">
                         <x-ui.avatar :user="$person" :size="40"/>
                         <span class="min-w-0 flex-1">
@@ -75,12 +75,12 @@
         @endif
 
         @if ($invite->isActive())
-            <form method="post" action="{{ $base }}/{{ $invite->code }}/vykl" class="mt-6" data-turbo-confirm="Выключить ссылку?" data-turbo-confirm-text="Те, кто уже зарегистрировался, останутся. Новые по ней не пройдут.">
+            <form method="post" action="{{ $base }}/{{ $invite->code }}/off" class="mt-6" data-turbo-confirm="Выключить ссылку?" data-turbo-confirm-text="Те, кто уже зарегистрировался, останутся. Новые по ней не пройдут.">
                 @csrf
                 <x-ui.button block variant="ghost">Выключить ссылку</x-ui.button>
             </form>
         @elseif (!$invite->isUsedUp() && !$invite->isExpired())
-            <form method="post" action="{{ $base }}/{{ $invite->code }}/vkl" class="mt-6">
+            <form method="post" action="{{ $base }}/{{ $invite->code }}/on" class="mt-6">
                 @csrf
                 <x-ui.button block variant="secondary">Включить снова</x-ui.button>
             </form>

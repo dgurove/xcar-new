@@ -15,11 +15,11 @@
                 @php $answered = $offer->requirements()->whereNotNull('done_at')->with('media')->get()->filter(fn ($r) => $r->media->isNotEmpty()); @endphp
                 @foreach ($answered as $r)
                     <div class="flex flex-col">
-                        @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/fayly/{{ $f->id }}" class="py-1"/>@endforeach
+                        @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                     </div>
                 @endforeach
                 @if ($stage->template_id)
-                    <a href="/rabota/pochta/novoe?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-quiet btn-s self-start"><x-ui.icon name="send" class="size-4"/> Письмо страховой</a>
+                    <a href="/work/mail/new?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-quiet btn-s self-start"><x-ui.icon name="send" class="size-4"/> Письмо страховой</a>
                 @endif
                 @if ($staffExits->isNotEmpty())
                     <div class="flex flex-wrap gap-2">
@@ -28,7 +28,7 @@
                                 <div data-controller="sheet">
                                     <x-ui.button type="button" size="sm" :variant="$loop->first ? 'primary' : 'secondary'" data-action="sheet#open">{{ $exit->label }}</x-ui.button>
                                     <x-ui.sheet id="exit-{{ $exit->id }}" :title="$exit->label">
-                                        <form method="post" action="/predlozheniya/{{ $offer->number }}/iskhod/{{ $exit->id }}" class="flex flex-col gap-4">
+                                        <form method="post" action="/offers/{{ $offer->number }}/exit/{{ $exit->id }}" class="flex flex-col gap-4">
                                             @csrf
                                             @foreach ($exit->to->staff_fields as $field)
                                                 <x-route.field :field="$field" :name="'fields['.$field['key'].']'"/>
@@ -38,7 +38,7 @@
                                     </x-ui.sheet>
                                 </div>
                             @else
-                                <form method="post" action="/predlozheniya/{{ $offer->number }}/iskhod/{{ $exit->id }}" @if ($exit->confirm) data-turbo-confirm="{{ $exit->confirm }}" @endif>
+                                <form method="post" action="/offers/{{ $offer->number }}/exit/{{ $exit->id }}" @if ($exit->confirm) data-turbo-confirm="{{ $exit->confirm }}" @endif>
                                     @csrf<x-ui.button size="sm" :variant="$loop->first ? 'primary' : 'secondary'">{{ $exit->label }}</x-ui.button>
                                 </form>
                             @endif
@@ -53,16 +53,16 @@
         <div class="flex flex-wrap gap-2">
             <x-ui.button type="button" variant="ghost" size="sm" data-action="sheet#open">Поставить на этап</x-ui.button>
             @if ($service?->is_active && !$pickup && !in_array($offer->state, [\App\Offers\OfferState::Delivered, \App\Offers\OfferState::Cancelled, \App\Offers\OfferState::Archived], true))
-                <form method="post" action="/predlozheniya/{{ $offer->number }}/vyvoz" data-turbo-confirm="Запустить вывоз автомобиля от страхователя?">@csrf<x-ui.button variant="ghost" size="sm">Нужен вывоз</x-ui.button></form>
+                <form method="post" action="/offers/{{ $offer->number }}/pickup" data-turbo-confirm="Запустить вывоз автомобиля от страхователя?">@csrf<x-ui.button variant="ghost" size="sm">Нужен вывоз</x-ui.button></form>
             @elseif ($pickup && !$service?->auto_start && $pickup->stage->is($service->startStage()))
-                <form method="post" action="/predlozheniya/{{ $offer->number }}/vyvoz" data-turbo-confirm="Отменить вывоз?">@csrf @method('delete')<x-ui.button variant="ghost" size="sm" class="text-danger">Вывоз не нужен</x-ui.button></form>
+                <form method="post" action="/offers/{{ $offer->number }}/pickup" data-turbo-confirm="Отменить вывоз?">@csrf @method('delete')<x-ui.button variant="ghost" size="sm" class="text-danger">Вывоз не нужен</x-ui.button></form>
             @endif
             @if ($offer->deal)
                 <a href="#deal-note" class="btn btn-ghost btn-s">Заметка к сделке</a>
             @endif
         </div>
         <x-ui.sheet id="place-on-stage" title="Поставить на этап">
-            <form method="post" action="/predlozheniya/{{ $offer->number }}/etap" class="flex flex-col gap-4">
+            <form method="post" action="/offers/{{ $offer->number }}/stage" class="flex flex-col gap-4">
                 @csrf
                 <select name="stage_id" class="field-input">
                     @foreach ($stages as $track => $list)
@@ -81,7 +81,7 @@
         @if ($offer->deal->buyer)<x-ui.person :user="$offer->deal->buyer" full/><a href="tel:+{{ $offer->deal->buyer->phone }}" class="tag nums">{{ $offer->deal->buyer->phoneFormatted() }}</a>@endif
         <span class="tag nums font-semibold">{{ \App\Support\Money::rub($offer->deal->amount) }}</span>
     </div>
-    <form method="post" action="/rabota/sdelki/{{ $offer->deal->id }}/zametka" class="flex flex-col gap-2">
+    <form method="post" action="/work/deals/{{ $offer->deal->id }}/note" class="flex flex-col gap-2">
         @csrf
         <textarea name="notes" class="field-input" placeholder="Заметка">{{ old('notes', $offer->deal->notes) }}</textarea>
         <x-ui.button size="sm" variant="secondary" class="self-end">Сохранить</x-ui.button>

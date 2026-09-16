@@ -84,7 +84,7 @@ class DealController
         $exit = Outcome::findOrFail($request->validate(['exit' => ['required', 'integer']])['exit']);
         $answer($requirement, $exit, $request->user(), (array) $request->input('fields', []));
 
-        return redirect("/lk/sdelki/{$deal->id}")->with('toast', $exit->label);
+        return redirect("/account/deals/{$deal->id}")->with('toast', $exit->label);
     }
 
     public function upload(Request $request, Deal $deal, PhotoIngest $ingest)

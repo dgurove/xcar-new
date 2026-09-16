@@ -10,7 +10,7 @@ const PAGES = `pages-${VERSION}`;
 const MEDIA_LIMIT = 400;
 const PAGES_LIMIT = 30;
 // Экраны, которые нельзя показывать из кэша: вход, выход, служебное.
-const NO_PAGE_CACHE = /^\/(vhod|vyhod|registraciya|parol|passkey|i|offline|dev|live|up)(\/|$)/;
+const NO_PAGE_CACHE = /^\/(login|logout|register|password|passkey|i|offline|dev|live|up)(\/|$)/;
 
 self.addEventListener('install', (event) => {
     event.waitUntil((async () => {
@@ -55,7 +55,7 @@ self.addEventListener('fetch', (event) => {
             const cacheable = !NO_PAGE_CACHE.test(url.pathname);
             const network = (async () => {
                 const response = (await event.preloadResponse) || (await fetch(request));
-                if (response.redirected && /\/vhod(\/|$|\?)/.test(new URL(response.url).pathname)) await caches.delete(PAGES);
+                if (response.redirected && /\/login(\/|$|\?)/.test(new URL(response.url).pathname)) await caches.delete(PAGES);
                 else if (cacheable && response.ok && (response.headers.get('Content-Type') || '').includes('text/html')) {
                     const cache = await caches.open(PAGES);
                     await cache.put(request, response.clone());

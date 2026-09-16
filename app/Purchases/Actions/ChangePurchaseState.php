@@ -32,7 +32,7 @@ final class ChangePurchaseState
         if ($next === PurchaseState::Open && ! $wasPublic) {
             Notification::send(User::where('role', Role::Manager)->get(), new PurchaseOpenedNotice($purchase));
         }
-        app(Publisher::class)->refresh(Topics::CATALOG, ['/zakupki', "/zakupki/{$purchase->number}"]);
+        app(Publisher::class)->refresh(Topics::CATALOG, ['/purchases', "/purchases/{$purchase->number}"]);
 
         return $purchase;
     }

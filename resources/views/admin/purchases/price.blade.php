@@ -4,14 +4,14 @@
      Поле в потоке страницы, не в action-bar: iOS сам подкручивает к нему, а фиксированная полоса внизу
      уходит под клавиатуру. «Дальше» сохраняет и ведёт к следующей без цены заменой записи истории,
      как и стрелки: сколько ни листай, «Назад» один раз — в список. --}}
-@php $n = $purchase->number; $back = ['Закупка', '/zakupki/'.$n.'?preset=unfinal']; $live = $car->activeOfferList()->sortByDesc('amount'); $photos = $car->visiblePhotos(); @endphp
+@php $n = $purchase->number; $back = ['Закупка', '/purchases/'.$n.'?preset=unfinal']; $live = $car->activeOfferList()->sortByDesc('amount'); $photos = $car->visiblePhotos(); @endphp
 <x-ui.shell :title="$car->titleWithYear()" :heading="false" :back="$back">
     <div class="has-back mb-4 flex items-center gap-3">
         <x-ui.back :back="$back"/>
         <h1 class="min-w-0 truncate text-[24px] sm:text-[34px]">{{ $car->titleWithYear() }}</h1>
         <x-ui.nav-arrows class="ml-auto shrink-0" :index="$index" :total="$total"
-            :prev="$prev ? '/zakupki/'.$n.'/'.$prev->ref.'/ocenka' : null"
-            :next="$next ? '/zakupki/'.$n.'/'.$next->ref.'/ocenka' : null"/>
+            :prev="$prev ? '/purchases/'.$n.'/'.$prev->ref.'/estimate' : null"
+            :next="$next ? '/purchases/'.$n.'/'.$next->ref.'/estimate' : null"/>
     </div>
 
     <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-x-8">
@@ -38,7 +38,7 @@
                 @else
                     <p class="text-sm text-ink-dim">Менеджеры цены не предложили</p>
                 @endif
-                <form method="post" action="/zakupki/{{ $n }}/{{ $car->ref }}/ocenka" class="flex gap-2" data-controller="bid" data-bid-asking-value="0" data-turbo-action="replace">
+                <form method="post" action="/purchases/{{ $n }}/{{ $car->ref }}/estimate" class="flex gap-2" data-controller="bid" data-bid-asking-value="0" data-turbo-action="replace">
                     @csrf
                     <input type="hidden" name="price_final" data-bid-target="amount" value="{{ $car->price_final }}">
                     <input type="text" inputmode="numeric" autocomplete="off" class="field-input nums !h-14 min-w-0 flex-1 text-xl" placeholder="Наша цена, ₽" aria-label="Наша цена, ₽"
@@ -60,7 +60,7 @@
                 <h2 class="mt-8 text-xl">Описание</h2>
                 <p class="mt-4 whitespace-pre-line text-ink-muted">{{ $car->description }}</p>
             @endif
-            <div class="mt-8"><a href="/zakupki/{{ $n }}/{{ $car->ref }}" class="chip">Карточка машины</a></div>
+            <div class="mt-8"><a href="/purchases/{{ $n }}/{{ $car->ref }}" class="chip">Карточка машины</a></div>
         </div>
     </div>
 </x-ui.shell>

@@ -1,6 +1,6 @@
 <x-ui.auth title="Вход">
     @if (session('status'))<x-ui.flash class="mt-5">{{ session('status') }}</x-ui.flash>@endif
-    <form method="post" action="/vhod" class="mt-6 space-y-3">
+    <form method="post" action="/login" class="mt-6 space-y-3">
         @csrf
         <input name="login" type="text" required autocomplete="username webauthn" inputmode="email" class="field-input" placeholder="Логин, телефон или почта" value="{{ old('login') }}" autofocus>
         <input name="password" type="password" required autocomplete="current-password" class="field-input" placeholder="Пароль">
@@ -14,7 +14,7 @@
         <button type="button" class="btn btn-quiet w-full" data-action="passkey#login" data-passkey-target="button"><x-ui.icon name="faceid" class="size-5"/> <span data-label>Войти по ключу</span></button>
     </div>
     <div class="mt-5 flex justify-between text-sm">
-        <a href="/parol" class="text-ink-muted hover:text-accent-text">Забыли пароль?</a>
-        <a href="/registraciya" class="text-ink-muted hover:text-accent-text">Нет аккаунта?</a>
+        <a href="/password" class="text-ink-muted hover:text-accent-text">Забыли пароль?</a>
+        <a href="/register" class="text-ink-muted hover:text-accent-text">Нет аккаунта?</a>
     </div>
 </x-ui.auth>

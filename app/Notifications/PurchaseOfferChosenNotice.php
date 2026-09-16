@@ -20,7 +20,7 @@ final class PurchaseOfferChosenNotice extends Notice
 
     public function href(): string
     {
-        return "/zakupki/{$this->offer->car->purchase->number}/{$this->offer->car->ref}";
+        return "/purchases/{$this->offer->car->purchase->number}/{$this->offer->car->ref}";
     }
 
     public function category(): string
