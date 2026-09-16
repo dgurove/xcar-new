@@ -18,7 +18,6 @@ use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RouteController;
 use App\Http\Admin\SettingsController;
 use App\Http\Admin\TagController;
-use App\Http\Admin\InviteController;
 use App\Http\Admin\UserController;
 use App\Http\Admin\WorkflowController;
 use App\Http\Site\ShareController;
@@ -119,9 +118,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::put('/polzovateli/{user}', [UserController::class, 'update']);
         Route::post('/polzovateli/{user}/dostup', [UserController::class, 'decide']);
         Route::post('/polzovateli/{user}/parol', [UserController::class, 'passwordLink']);
-        Route::post('/polzovateli/priglasheniya', [InviteController::class, 'store']);
-        Route::post('/polzovateli/priglasheniya/{invite}/vykl', [InviteController::class, 'disable']);
-        Route::post('/polzovateli/priglasheniya/{invite}/vkl', [InviteController::class, 'enable']);
+        Route::post('/polzovateli/priglasheniya', [\App\Http\Cabinet\InviteController::class, 'store']);
+        Route::post('/polzovateli/priglasheniya/{invite}/vykl', [\App\Http\Cabinet\InviteController::class, 'disable']);
+        Route::post('/polzovateli/priglasheniya/{invite}/vkl', [\App\Http\Cabinet\InviteController::class, 'enable']);
 
         Route::get('/tegi', [TagController::class, 'index']);
         Route::post('/tegi', [TagController::class, 'store']);

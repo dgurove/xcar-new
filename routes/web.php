@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Cabinet\AdminInviteController;
 use App\Http\Cabinet\BuyerController;
 use App\Http\Cabinet\BuyerInterestController;
 use App\Http\Cabinet\ChatController as CabinetChatController;
@@ -93,19 +92,16 @@ Route::middleware(['auth', 'wall'])->group(function () {
 
     Route::get('/live/badges', [FragmentController::class, 'badges']);
 
-    // Приглашения админа в кабинете на сайте — то же, что CRM «Пользователи → Ссылки» (чужому 404 в контроллере).
-    Route::get('/lk/priglasheniya', [AdminInviteController::class, 'index']);
-    Route::post('/lk/priglasheniya', [AdminInviteController::class, 'store']);
-    Route::post('/lk/priglasheniya/{invite}/vykl', [AdminInviteController::class, 'disable']);
-    Route::post('/lk/priglasheniya/{invite}/vkl', [AdminInviteController::class, 'enable']);
+    // Приглашения — менеджеру и админу один экран (чужому 404 в контроллере); прежний адрес — навсегда сюда.
+    Route::get('/lk/priglasheniya', [InviteController::class, 'index']);
+    Route::post('/lk/priglasheniya', [InviteController::class, 'store']);
+    Route::post('/lk/priglasheniya/{invite}/vykl', [InviteController::class, 'disable']);
+    Route::post('/lk/priglasheniya/{invite}/vkl', [InviteController::class, 'enable']);
+    Route::permanentRedirect('/lk/pokupateli/priglasheniya', '/lk/priglasheniya');
 
     // Кабинет менеджера: покупатели, группы, приглашения, показы. Конкретные пути раньше {user}.
     Route::middleware('manager')->group(function () {
         Route::get('/lk/pokupateli', [BuyerController::class, 'index']);
-        Route::get('/lk/pokupateli/priglasheniya', [InviteController::class, 'index']);
-        Route::post('/lk/pokupateli/priglasheniya', [InviteController::class, 'store']);
-        Route::post('/lk/pokupateli/priglasheniya/{invite}/vykl', [InviteController::class, 'disable']);
-        Route::post('/lk/pokupateli/priglasheniya/{invite}/vkl', [InviteController::class, 'enable']);
         Route::get('/lk/interes', [BuyerInterestController::class, 'index']);
         Route::post('/lk/interes/{interest}', [BuyerInterestController::class, 'update']);
         Route::post('/lk/pokupateli/gruppy', [GroupController::class, 'store']);

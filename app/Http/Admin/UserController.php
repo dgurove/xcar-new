@@ -63,7 +63,7 @@ class UserController
             'counts' => $counts,
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
             // Все ссылки — и админские, и менеджерские: админ видит, кто кого зовёт.
-            'invites' => $preset === 'invites' ? Invite::with(['manager', 'creator', 'group', 'buyers'])->withCount('buyers')->latest()->get() : collect(),
+            'invites' => $preset === 'invites' ? \App\Http\Cabinet\InviteController::listFor($request->user()) : collect(),
             'fresh' => session('invite'),
         ]);
     }

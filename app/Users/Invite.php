@@ -3,6 +3,7 @@
 namespace App\Users;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -58,6 +59,23 @@ class Invite extends Model
         return $this->hasMany(User::class, 'invite_id');
     }
 
+    /** Кто вправе видеть и выключать (scopeManageableBy / isManageableBy): админ — все, менеджер — ссылки своих покупателей (и сделанные для него админом). */
+    public function scopeManageableBy(Builder $q, User $user): Builder
+    {
+        return $user->isAdmin() ? $q : $q->where('manager_id', $user->id);
+    }
+
+    public function isManageableBy(User $user): bool
+    {
+        return $user->isAdmin() || $this->manager_id === $user->id;
+    }
+
+    /** Кому ссылка: короткое слово для чипа. */
+    public function kind(): string
+    {
+        return $this->forManager() ? 'менеджеру' : 'покупателю';
+    }
+
     public function url(): string
     {
         return \App\Support\Surface::Site->url("/i/{$this->code}");
@@ -93,6 +111,6 @@ class Invite extends Model
     /** Подпись строки: своё название или дата. */
     public function title(): string
     {
-        return $this->label ?: ($this->forManager() ? 'Менеджер' : 'Ссылка').' от '.$this->created_at->translatedFormat('j M');
+        return $this->label ?: ($this->forManager() ? 'Менеджеру' : 'Покупателю');
     }
 }

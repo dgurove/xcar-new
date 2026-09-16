@@ -2,45 +2,56 @@
 
 namespace App\Http\Cabinet;
 
+use App\Support\Surface;
+use App\Users\Actions\IssueInvite;
+use App\Users\BuyerGroup;
 use App\Users\Invite;
+use App\Users\Role;
+use App\Users\User;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
-/** Пригласительные ссылки менеджера: что покупатель укажет, в какую группу попадёт. */
+/**
+ * Пригласительные ссылки — один экран и одна дверь для менеджера и админа,
+ * в кабинете на сайте и в CRM («Пользователи → Ссылки»): менеджер видит ссылки
+ * своих покупателей, в том числе сделанные для него админом; админ — все.
+ */
 class InviteController
 {
     public function index(Request $request)
     {
         $me = $request->user();
+        abort_unless($me->isAdmin() || $me->isManager(), 404);
 
-        return view('cabinet.buyers.invites', [
-            'invites' => $me->invites()->with('group')->withCount('buyers')->latest()->get(),
-            'groups' => $me->ownGroups,
+        return view('invites.index', [
+            'invites' => self::listFor($me),
+            'admin' => $me->isAdmin(),
+            'managers' => $me->isAdmin() ? User::where('role', Role::Manager)->orderBy('name')->get() : collect(),
+            'groups' => $me->isAdmin() ? collect() : $me->ownGroups,
             'fresh' => session('invite'),
         ]);
     }
 
-    public function store(Request $request)
+    /** Список с тем, что нужно строке и шторке — тот же в CRM. */
+    public static function listFor(User $me)
+    {
+        return Invite::manageableBy($me)->with(['manager', 'creator', 'group', 'buyers'])->latest()->get();
+    }
+
+    public function store(Request $request, IssueInvite $issue)
     {
         $me = $request->user();
-        $data = $request->validate([
-            'label' => ['nullable', 'string', 'max:60'],
-            'group_id' => ['nullable', Rule::exists('buyer_groups', 'id')->where('manager_id', $me->id)],
-        ]);
-        $invite = $me->invites()->create([
-            'code' => Invite::freshCode(),
-            'created_by' => $me->id,
-            'label' => trim((string) $data['label']) ?: null,
-            'group_id' => $data['group_id'] ?: null,
-            'fields' => ['phone' => $request->boolean('phone'), 'email' => $request->boolean('email')],
-        ]);
+        abort_unless($me->isAdmin() || $me->isManager(), 404);
+        $data = $request->validate(IssueInvite::rules($me));
+        $data['phone'] = $request->boolean('phone');
+        $data['email'] = $request->boolean('email');
+        $invite = $issue($me, $data);
 
-        return redirect('/lk/pokupateli/priglasheniya')->with('invite', $invite->id);
+        return redirect(self::home())->with('invite', $invite->id);
     }
 
     public function disable(Request $request, Invite $invite)
     {
-        abort_unless($invite->manager_id === $request->user()->id, 404);
+        abort_unless($invite->isManageableBy($request->user()), 404);
         $invite->update(['disabled_at' => now()]);
 
         return back()->with('toast', 'Ссылка выключена');
@@ -48,9 +59,21 @@ class InviteController
 
     public function enable(Request $request, Invite $invite)
     {
-        abort_unless($invite->manager_id === $request->user()->id, 404);
+        abort_unless($invite->isManageableBy($request->user()), 404);
         $invite->update(['disabled_at' => null]);
 
         return back()->with('toast', 'Ссылка снова действует');
+    }
+
+    /** Куда возвращать после создания: на том же хосте, где сделали. */
+    public static function home(): string
+    {
+        return Surface::current() === Surface::Crm ? '/nastroyki/polzovateli?preset=invites' : '/lk/priglasheniya';
+    }
+
+    /** Путь для vykl/vkl на текущем хосте. */
+    public static function base(): string
+    {
+        return Surface::current() === Surface::Crm ? '/nastroyki/polzovateli/priglasheniya' : '/lk/priglasheniya';
     }
 }

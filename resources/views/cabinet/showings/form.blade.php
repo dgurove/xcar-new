@@ -32,7 +32,7 @@
         @endif
 
         @if ($rows === 0)
-            <x-ui.empty class="!py-12" href="/lk/pokupateli/priglasheniya" link="Пригласить покупателей">Показывать пока некому.</x-ui.empty>
+            <x-ui.empty class="!py-12" href="/lk/priglasheniya" link="Пригласить покупателей">Показывать пока некому.</x-ui.empty>
         @else
             @if ($rows > 8)<input type="search" class="field-input field-s" placeholder="Найти" autocomplete="off" data-action="input->select#filter">@endif
             <div class="flex flex-col gap-2">

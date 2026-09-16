@@ -1,15 +1,9 @@
 @php use App\Users\{Role, Section}; use App\Http\Admin\UserController; $me = auth()->user(); $link = session('password_link'); @endphp
-{{-- Пользователи и пригласительные ссылки: «Ссылка» — менеджеру (одноразовая, пришедший сразу менеджер)
-     или покупателю от имени выбранного менеджера; пилюля «Ссылки» — все ссылки, и менеджерские тоже. --}}
+{{-- Пользователи; пилюля «Ссылки» — все пригласительные ссылки тем же списком, что в кабинете
+     (x-invites.list): первая строка — новая, менеджеру или покупателю от имени менеджера. --}}
 <x-ui.shell title="Пользователи" :count="$preset === 'invites' ? $invites->count() : $users->total()">
     <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" name="users">
         <x-slot:extra>
-            <div data-controller="sheet" class="contents">
-                <button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="sheet#open"><x-ui.icon name="link" class="size-4"/><span class="hidden sm:inline">Ссылка</span></button>
-                <x-ui.sheet id="invite-new" title="Пригласительная ссылка" :open="$errors->has('role') || $errors->has('manager_id')">
-                    @include('admin.invites.form', ['action' => '/nastroyki/polzovateli/priglasheniya'])
-                </x-ui.sheet>
-            </div>
             <div data-controller="sheet" class="contents">
                 <button type="button" class="btn btn-s btn-accent shrink-0 rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Пользователь</span></button>
                 <x-ui.sheet id="user-new" title="Новый пользователь">
@@ -41,11 +35,7 @@
     </x-ui.toolbar>
 
     @if ($preset === 'invites')
-        @if ($invites->isEmpty())
-            <x-ui.empty class="mt-6">Ссылок пока нет.</x-ui.empty>
-        @else
-            @include('admin.invites.list', ['base' => '/nastroyki/polzovateli/priglasheniya', 'class' => 'mt-6'])
-        @endif
+        <div class="mt-6"><x-invites.list :invites="$invites" admin :managers="$managers" :fresh="$fresh"/></div>
     @elseif ($users->isEmpty())
         <x-ui.empty class="mt-6">{{ $preset === 'buyers' ? 'Покупателей пока нет — они приходят по ссылкам менеджеров.' : 'Никого нет.' }}</x-ui.empty>
     @else

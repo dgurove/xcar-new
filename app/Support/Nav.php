@@ -190,6 +190,7 @@ final class Nav
         $links = [self::link('Сводка', '/lk', exact: true)];
         if ($user->role === Role::Manager) {
             $links[] = self::link('Покупатели', '/lk/pokupateli');
+            $links[] = self::link('Приглашения', '/lk/priglasheniya');
             $links[] = self::link('Интерес', '/lk/interes');
             $links[] = self::link('Подтверждения', '/lk/stavki');
             $links[] = self::link('Сделки', '/lk/sdelki');

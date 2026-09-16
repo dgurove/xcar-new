@@ -32,7 +32,7 @@
             <section class="mt-8">
                 <h2 class="text-xl">Состав</h2>
                 @if ($buyers->isEmpty())
-                    <x-ui.empty class="mt-4 !py-12" href="/lk/pokupateli/priglasheniya" link="Пригласить">Покупателей пока нет.</x-ui.empty>
+                    <x-ui.empty class="mt-4 !py-12" href="/lk/priglasheniya" link="Пригласить">Покупателей пока нет.</x-ui.empty>
                 @else
                     <form method="post" action="/lk/pokupateli/gruppy/{{ $group->id }}/sostav" class="mt-4 flex flex-col gap-2" data-controller="autosubmit select">
                         @csrf @method('put')

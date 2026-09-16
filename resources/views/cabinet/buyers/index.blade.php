@@ -13,7 +13,7 @@
                     </form>
                 </x-ui.sheet>
             </div>
-            <a href="/lk/pokupateli/priglasheniya" class="pill shrink-0"><x-ui.icon name="link" class="size-4"/> Ссылки@if ($invites) <span class="nums opacity-70">{{ $invites }}</span>@endif</a>
+            <a href="/lk/priglasheniya" class="pill shrink-0"><x-ui.icon name="link" class="size-4"/> Ссылки@if ($invites) <span class="nums opacity-70">{{ $invites }}</span>@endif</a>
         </x-slot:pillsExtra>
         <x-slot:filters>
             <input name="q" value="{{ request('q') }}" placeholder="Имя, логин, телефон" class="field-input field-s">
@@ -60,6 +60,6 @@
     @endif
 
     <x-ui.action-bar>
-        <a href="/lk/pokupateli/priglasheniya" class="btn btn-accent min-w-0 flex-1 md:flex-none"><x-ui.icon name="link" class="size-5"/> Пригласить</a>
+        <a href="/lk/priglasheniya" class="btn btn-accent min-w-0 flex-1 md:flex-none"><x-ui.icon name="link" class="size-5"/> Пригласить</a>
     </x-ui.action-bar>
 </x-ui.cabinet>
