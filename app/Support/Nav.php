@@ -193,6 +193,7 @@ final class Nav
             $links[] = self::link('Покупатели', '/account/buyers', also: ['/account/interest', '/account/invites']);
             $links[] = self::link('Сделки', '/account/deals');
         } elseif ($user->isAdmin()) {
+            $links[] = self::link('Пользователи', '/account/users');
             $links[] = self::link('Приглашения', '/account/invites');
         } elseif (! $user->isStaff()) {
             $links[] = self::link('Интерес', '/account/interests');

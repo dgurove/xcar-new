@@ -1,11 +1,11 @@
-@php use App\Users\{Role, Section}; use App\Http\Admin\UserController; $me = auth()->user(); $link = session('password_link'); @endphp
+@php use App\Users\{Role, Section}; use App\Http\Admin\UserController; $me = auth()->user(); $link = session('password_link'); $base = UserController::base(); @endphp
 {{-- Пользователи; пилюля «Ссылки» — все пригласительные ссылки тем же списком, что в кабинете
      (x-invites.list): первая строка — новая, менеджеру или покупателю от имени менеджера. --}}
 <x-ui.cabinet title="Пользователи">
     <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" name="users">
         <x-slot:extra>
             {{-- Руками людей не заводят: только пригласительной ссылкой — кнопка ведёт к ним. --}}
-            @if ($preset !== 'invites')<a href="/settings/users?preset=invites" class="btn btn-s btn-accent shrink-0 rounded-full" data-turbo-action="replace"><x-ui.icon name="link" class="size-4"/><span class="hidden sm:inline">Пригласить</span></a>@endif
+            @if ($preset !== 'invites')<a href="{{ \App\Http\Cabinet\InviteController::home() }}" class="btn btn-s btn-accent shrink-0 rounded-full" data-turbo-action="replace"><x-ui.icon name="link" class="size-4"/><span class="hidden sm:inline">Пригласить</span></a>@endif
         </x-slot:extra>
         <x-slot:filters>
             <input name="q" value="{{ request('q') }}" placeholder="Имя, логин, телефон, почта" class="field-input field-s">
@@ -35,18 +35,18 @@
                             @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
                         </div>
                         <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                            @if ($user->isBuyer() && $user->manager)<a href="/settings/users?preset=buyers&manager={{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
+                            @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}?preset=buyers&manager={{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
                             @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif
                             @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="tag nums">{{ $user->phoneFormatted() }}</a>@endif
                             @if ($user->email)<a href="mailto:{{ $user->email }}" class="tag">{{ $user->email }}</a>@endif
-                            @if ($user->isManager() && isset($user->buyers_count))<a href="/settings/users?preset=buyers&manager={{ $user->id }}" class="tag">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
+                            @if ($user->isManager() && isset($user->buyers_count))<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="tag">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
                             @if ($user->isPending() || $user->isBuyer())<span class="tag nums">с {{ $user->created_at->translatedFormat('j M') }}</span>@endif
                             {{-- Сотрудник или менеджер пришёл по одноразовой ссылке — чьей: без этого непонятно, кто его позвал. --}}
                             @if (! $user->isBuyer() && $user->invite?->creator)<x-ui.person :user="$user->invite->creator" full prefix="по ссылке"/>@endif
                         </div>
                     </div>
                     @if (!$user->isApproved() && !$user->is($me))
-                        <form method="post" action="/settings/users/{{ $user->id }}/access" class="flex items-center gap-1.5">
+                        <form method="post" action="{{ $base }}/{{ $user->id }}/access" class="flex items-center gap-1.5">
                             @csrf
                             <select name="role" class="field-input field-s !w-auto" aria-label="Роль">@foreach (UserController::ROLES as $r)<option value="{{ $r->value }}" @selected($r === Role::Manager)>{{ $r->label() }}</option>@endforeach</select>
                             <x-ui.button size="sm">Открыть</x-ui.button>
@@ -60,7 +60,7 @@
                                 <p class="text-sm text-ink-muted">Действует сутки, один раз. Отдайте её {{ $user->shortName() }} любым способом.</p>
                             </x-ui.copy-link>
                         @endif
-                        <form method="post" action="/settings/users/{{ $user->id }}" class="flex flex-col gap-4">
+                        <form method="post" action="{{ $base }}/{{ $user->id }}" class="flex flex-col gap-4">
                             @csrf @method('put')
                             <x-ui.field name="name" label="Имя" :value="$user->name" required/>
                             @if ($user->isBuyer())
@@ -83,7 +83,7 @@
                             <x-ui.button block>Сохранить</x-ui.button>
                         </form>
                         @unless ($user->is($me))
-                            <form method="post" action="/settings/users/{{ $user->id }}/password" class="mt-3"
+                            <form method="post" action="{{ $base }}/{{ $user->id }}/password" class="mt-3"
                                 data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
                                 data-turbo-confirm-text="{{ $user->name }} откроет её и придумает пароль сам. Прежние ссылки погаснут, текущий пароль пока действует.">
                                 @csrf
@@ -92,14 +92,14 @@
                             {{-- Ссылка могла уйти не тому: допущенному — закрыть доступ (выйдет отовсюду, вернуть можно из «Отклонённых»);
                                  отклонённому без истории — удалить насовсем. --}}
                             @if ($user->isApproved())
-                                <form method="post" action="/settings/users/{{ $user->id }}/access" class="mt-3"
+                                <form method="post" action="{{ $base }}/{{ $user->id }}/access" class="mt-3"
                                     data-turbo-confirm="Закрыть доступ {{ $user->shortName() }}?" data-turbo-confirm-label="Закрыть"
                                     data-turbo-confirm-text="{{ $user->isManager() ? 'Выйдет со всех устройств, его ссылки и покупатели закроются. Сделки останутся в истории' : 'Выйдет со всех устройств и не сможет войти' }}">
                                     @csrf<input type="hidden" name="reject" value="1">
                                     <x-ui.button type="submit" variant="danger" block>Закрыть доступ</x-ui.button>
                                 </form>
                             @elseif ($user->isRejected() && ! UserController::traces($user))
-                                <form method="post" action="/settings/users/{{ $user->id }}" class="mt-3"
+                                <form method="post" action="{{ $base }}/{{ $user->id }}" class="mt-3"
                                     data-turbo-confirm="Удалить {{ $user->shortName() }} насовсем?" data-turbo-confirm-label="Удалить" data-turbo-confirm-text="Данных о нём не останется">
                                     @csrf @method('delete')
                                     <x-ui.button type="submit" variant="danger" block>Удалить</x-ui.button>

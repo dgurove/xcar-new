@@ -6,6 +6,7 @@ use App\Chats\Chat;
 use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Support\Phone;
+use App\Support\Surface;
 use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\Actions\TransferBuyer;
@@ -22,14 +23,23 @@ class UserController
 {
     public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
 
-    /** Роли, которые заводит админ: покупатели приходят только по ссылке менеджера, посетителей больше нет. */
     /** Роли, которые админ выставляет в списке; заводят людей только пригласительной ссылкой. */
     public const ROLES = [Role::Moderator, Role::Admin, Role::Manager];
+
+    /** Один экран на двух хостах: в CRM /settings/users, в кабинете сайта /account/users. */
+    public static function base(): string
+    {
+        return Surface::current() === Surface::Crm ? '/settings/users' : '/account/users';
+    }
 
     public function index(Request $request)
     {
         abort_unless($request->user()->isAdmin(), 404);
         $preset = $request->query('preset', 'staff');
+        // На сайте ссылки — своя пилюля кабинета, а не пресет.
+        if ($preset === 'invites' && Surface::current() !== Surface::Crm) {
+            return redirect('/account/invites');
+        }
         $q = User::query()->with(['manager', 'invite.creator'])->orderBy('name');
         match ($preset) {
             'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->reorder('created_at', 'desc'),
@@ -59,6 +69,9 @@ class UserController
         ];
         // Прежний допуск по заявке остался в коде, но людей там больше не бывает — пустые пилюли не показываем.
         $pills = array_filter(self::PRESETS, fn ($_, $key) => ! in_array($key, ['waiting', 'visitors', 'rejected'], true) || $counts[$key] > 0 || $preset === $key, ARRAY_FILTER_USE_BOTH);
+        if (Surface::current() !== Surface::Crm) {
+            unset($pills['invites']);
+        }
 
         return view('admin.users.index', [
             'users' => $q->paginate(50)->withQueryString(),
@@ -94,7 +107,7 @@ class UserController
         $decide->reject($user, $request->user());
         $user->delete();
 
-        return redirect('/settings/users?preset='.$preset)->with('toast', 'Удалён');
+        return redirect(self::base().'?preset='.$preset)->with('toast', 'Удалён');
     }
 
     /** Есть ли за человеком то, что должно остаться в истории. */

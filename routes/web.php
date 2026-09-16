@@ -103,6 +103,13 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/account/invites/{invite}/on', [InviteController::class, 'enable']);
     Route::permanentRedirect('/account/buyers/invites', '/account/invites');
 
+    // Пользователи — админу тот же экран, что в CRM (чужому 404 в контроллере).
+    Route::get('/account/users', [\App\Http\Admin\UserController::class, 'index']);
+    Route::put('/account/users/{user}', [\App\Http\Admin\UserController::class, 'update']);
+    Route::delete('/account/users/{user}', [\App\Http\Admin\UserController::class, 'destroy']);
+    Route::post('/account/users/{user}/access', [\App\Http\Admin\UserController::class, 'decide']);
+    Route::post('/account/users/{user}/password', [\App\Http\Admin\UserController::class, 'passwordLink']);
+
     // Кабинет менеджера: покупатели, группы, приглашения, показы. Конкретные пути раньше {user}.
     Route::middleware('manager')->group(function () {
         Route::get('/account/buyers', [BuyerController::class, 'index']);
