@@ -48,7 +48,7 @@ class UserController
             'staff' => User::whereIn('role', [Role::Admin, Role::Moderator])->count(),
             'managers' => User::where('role', Role::Manager)->count(),
             'buyers' => User::where('role', Role::Buyer)->count(),
-            'invites' => Invite::whereNull('disabled_at')->where(fn ($w) => $w->whereNull('max_uses')->orWhereColumn('uses_count', '<', 'max_uses'))->count(),
+            'invites' => Invite::whereNull('disabled_at')->where(fn ($w) => $w->whereNull('max_uses')->orWhereColumn('uses_count', '<', 'max_uses'))->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count(),
             'waiting' => User::whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->count(),
             'visitors' => User::where('role', Role::Visitor)->whereNotNull('approved_at')->count(),
             'rejected' => User::whereNotNull('rejected_at')->whereNull('approved_at')->count(),

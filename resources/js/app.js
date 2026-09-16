@@ -297,7 +297,8 @@ function headerState() {
     const watch = () => {
         observer?.disconnect();
         onScroll();
-        const h1 = document.querySelector('#main h1');
+        // Якорь — h1, а где его нет (кабинет: разделом называется пилюля) — помеченный элемент.
+        const h1 = document.querySelector('#main h1, #main [data-title-anchor]');
         const h = header();
         if (!h1 || !h) { h?.classList.remove('is-past-title'); return; }
         observer = new IntersectionObserver(([entry]) => {

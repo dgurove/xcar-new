@@ -15,14 +15,14 @@ use Illuminate\Support\Str;
  * регистрации). Админ зовёт менеджеров — такая ссылка одноразовая (`max_uses` 1):
  * пришедший сразу становится менеджером — и покупателей от имени менеджера.
  */
-#[Fillable(['manager_id', 'role', 'created_by', 'code', 'label', 'fields', 'group_id', 'max_uses', 'disabled_at'])]
+#[Fillable(['manager_id', 'role', 'created_by', 'code', 'label', 'fields', 'group_id', 'max_uses', 'expires_at', 'disabled_at'])]
 class Invite extends Model
 {
     public const FIELDS = ['phone' => 'Телефон', 'email' => 'Почта'];
 
     protected function casts(): array
     {
-        return ['fields' => 'array', 'disabled_at' => 'datetime', 'role' => Role::class];
+        return ['fields' => 'array', 'disabled_at' => 'datetime', 'expires_at' => 'datetime', 'role' => Role::class];
     }
 
     public function getRouteKeyName(): string
@@ -83,7 +83,12 @@ class Invite extends Model
 
     public function isActive(): bool
     {
-        return $this->disabled_at === null && ! $this->isUsedUp();
+        return $this->disabled_at === null && ! $this->isUsedUp() && ! $this->isExpired();
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->expires_at !== null && $this->expires_at->isPast();
     }
 
     /** Одноразовая (или с пределом) ссылка уже сработала. */

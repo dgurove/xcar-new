@@ -5,11 +5,12 @@
     $path = '/'.ltrim(request()->path(), '/');
     $groups = \App\Support\Nav::cabinet($user);
 @endphp
-<x-ui.shell :title="$title" :heading="$heading ?? $title" :trail="$trail" :back="$back">
+{{-- Заголовка-h1 нет: разделом называется текущая пилюля, крошки — тоже лишние. В шапке телефона имя экрана появляется при прокрутке. --}}
+<x-ui.shell :title="$title" :heading="$heading ?? false" :back="$back">
     <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
     <div class="grid gap-6 lg:grid-cols-[15rem_1fr]">
         {{-- min-w-0 обязателен: иначе лента шире экрана растягивает колонку сетки. --}}
-        <nav class="min-w-0 lg:sticky lg:top-32 lg:self-start" aria-label="Разделы кабинета">
+        <nav class="min-w-0 lg:sticky lg:top-32 lg:self-start" aria-label="Разделы кабинета" data-title-anchor>
             <div class="cabinet-pills -mx-4 flex snap-x snap-mandatory gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
                 @foreach ($groups as $group => $links)
                     @if ($group !== '' && count($groups) > 1)<span class="hidden pb-1 pl-5 pt-3 text-xs uppercase tracking-wide text-ink-dim first:pt-0 lg:block">{{ $group }}</span>@endif

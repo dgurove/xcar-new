@@ -17,7 +17,7 @@
     $back = $back === false ? null : ($back ?? \App\Support\Nav::backFor('/'.ltrim(request()->path(), '/'), auth()->user()));
 @endphp
 <x-ui.layout :title="$title" :cache="$cache" class="min-h-dvh flex flex-col">
-    <x-ui.header :over-hero="$overHero" :back="$back" :heading="$overHero ? null : $heading"/>
+    <x-ui.header :over-hero="$overHero" :back="$back" :heading="$overHero ? null : ($heading ?? $title)"/>
 
     <main id="main" class="grow {{ $overHero ? '' : 'relative' }}{{ $site ? '' : ' main-app' }}">
         @if ($overHero)

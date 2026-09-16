@@ -10,7 +10,8 @@ use Illuminate\Validation\Rule;
 /**
  * Одна дверь для пригласительных ссылок — из кабинета на сайте и из CRM.
  * Менеджер зовёт покупателей: многоразовая, сразу в группу, что покупатель укажет.
- * Админ зовёт менеджера — одноразовая, пришедший сразу менеджер — или покупателя
+ * Админ зовёт менеджера — одноразовая и со сроком, без названия: пришедший сразу
+ * менеджер — или покупателя
  * от имени выбранного менеджера, как если бы тот сделал ссылку сам.
  */
 final class IssueInvite
@@ -39,8 +40,9 @@ final class IssueInvite
             'role' => $manager ? Role::Manager : Role::Buyer,
             'manager_id' => $manager ? null : (int) $data['manager_id'],
             'created_by' => $by->id,
-            'label' => $label,
+            'label' => $manager ? null : $label,
             'max_uses' => $manager ? 1 : null,
+            'expires_at' => $manager ? ($data['expires_at'] ?? null) : null,
             'fields' => $manager ? ['phone' => true, 'email' => true] : $fields,
         ]);
     }
@@ -52,6 +54,7 @@ final class IssueInvite
         if ($by->isAdmin()) {
             $rules['role'] = ['required', Rule::in([Role::Manager->value, Role::Buyer->value])];
             $rules['manager_id'] = ['required_if:role,buyer', 'nullable', Rule::exists('users', 'id')->where('role', Role::Manager->value)];
+            $rules['expires_at'] = ['required_if:role,manager', 'nullable', 'date', 'after:now'];
         } else {
             $rules['group_id'] = ['nullable', Rule::exists('buyer_groups', 'id')->where('manager_id', $by->id)];
         }

@@ -9,20 +9,26 @@
         <span class="min-w-0 flex-1">
             <span class="block truncate font-medium">{{ $invite->title() }}</span>
             <span class="row-sub">
-                @if ($admin && $invite->label)<span class="tag">{{ $invite->kind() }}</span>@endif
-                @if ($invite->forManager() && $came->isNotEmpty())
-                    <x-ui.person :user="$came->first()"/>
-                @elseif ($admin && $invite->manager)
-                    <x-ui.person :user="$invite->manager"/>
+                @if ($invite->forManager())
+                    {{-- Менеджерская: когда сделана, до когда действует, кто пришёл. Одноразовость — пилюлей справа. --}}
+                    <span class="tag nums">{{ $invite->created_at->translatedFormat('j M H:i') }}</span>
+                    @if ($came->isNotEmpty())<x-ui.person :user="$came->first()"/>
+                    @elseif ($invite->expires_at)<span class="tag nums">до {{ $invite->expires_at->translatedFormat('j M H:i') }}</span>@endif
+                @else
+                    @if ($admin && $invite->label)<span class="tag">{{ $invite->kind() }}</span>@endif
+                    @if ($admin && $invite->manager)<x-ui.person :user="$invite->manager"/>@endif
+                    @if ($invite->group)<span class="tag">→ {{ $invite->group->name }}</span>@endif
+                    @if ($other)<span class="tag">от {{ $invite->creator->shortName() }}</span>@endif
+                    @if ($came->isNotEmpty())<span class="tag nums">пришло {{ $came->count() }}</span>@endif
+                    @if ($invite->isActive() && $came->isEmpty() && !$invite->group && !$other && !($admin && $invite->manager))<span class="tag nums">{{ $invite->created_at->translatedFormat('j M') }}</span>@endif
                 @endif
-                @if ($invite->group)<span class="tag">→ {{ $invite->group->name }}</span>@endif
-                @if ($other)<span class="tag">от {{ $invite->creator->shortName() }}</span>@endif
-                @if (!$invite->forManager() && $came->isNotEmpty())<span class="tag nums">пришло {{ $came->count() }}</span>@endif
-                @if ($invite->isActive() && $came->isEmpty() && !$invite->group && !$other && !($admin && $invite->manager))<span class="tag nums">{{ $invite->created_at->translatedFormat('j M') }}</span>@endif
             </span>
         </span>
         <span class="flex shrink-0 items-center gap-2">
-            @if ($invite->isUsedUp())<x-ui.pill tone="open" class="!min-h-0 !py-1 text-xs">сработала</x-ui.pill>@elseif (!$invite->isActive())<x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">выключена</x-ui.pill>@endif
+            @if ($invite->isUsedUp())<x-ui.pill tone="open" class="!min-h-0 !py-1 text-xs">сработала</x-ui.pill>
+            @elseif ($invite->isExpired())<x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">истекла</x-ui.pill>
+            @elseif (!$invite->isActive())<x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">выключена</x-ui.pill>
+            @elseif ($invite->forManager())<x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">одноразовая</x-ui.pill>@endif
             <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
         </span>
     </button>
@@ -31,18 +37,22 @@
             <span class="tag">{{ $invite->kind() }}</span>
             @if ($invite->manager)<x-ui.person :user="$invite->manager"/>@endif
             @if ($invite->group)<span class="tag">→ {{ $invite->group->name }}</span>@endif
-            @if ($invite->forManager())<span class="tag">одноразовая</span>@else
+            @if ($invite->forManager())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">одноразовая</x-ui.pill>@if ($invite->expires_at)<span class="tag nums">до {{ $invite->expires_at->translatedFormat('j M H:i') }}</span>@endif @else
                 @foreach ($invite->contactFields() as $f)<span class="tag">{{ mb_strtolower(\App\Users\Invite::FIELDS[$f]) }}</span>@endforeach
                 @if ($invite->contactFields() === [])<span class="tag">только имя и логин</span>@endif
             @endif
-            <span class="tag nums">{{ $invite->created_at->translatedFormat('j M') }}</span>
+            <span class="tag nums">{{ $invite->created_at->translatedFormat($invite->forManager() ? 'j M H:i' : 'j M') }}</span>
             @if ($invite->creator && $invite->creator->isNot($me))<span class="tag">от {{ $invite->creator->shortName() }}</span>@endif
         </div>
 
         @if ($invite->isActive())
-            <x-ui.copy-link :url="$invite->url()" title="Приглашение в xcar" class="mt-5"/>
+            <x-ui.copy-link :url="$invite->url()" title="Приглашение в xcar" class="mt-5">
+                @if ($invite->forManager())<p class="text-sm text-ink-muted">Сработает один раз: первый, кто откроет и зарегистрируется, станет менеджером, дальше ссылка мертва.</p>@endif
+            </x-ui.copy-link>
         @elseif ($invite->isUsedUp())
             <p class="mt-5 text-ink-muted">Ссылка сработала и больше не действует.</p>
+        @elseif ($invite->isExpired())
+            <p class="mt-5 text-ink-muted">Срок ссылки вышел {{ $invite->expires_at->translatedFormat('j M H:i') }} — сделайте новую.</p>
         @else
             <p class="mt-5 text-ink-muted">Ссылка выключена: по ней больше нельзя зарегистрироваться.</p>
         @endif
@@ -69,7 +79,7 @@
                 @csrf
                 <x-ui.button block variant="ghost">Выключить ссылку</x-ui.button>
             </form>
-        @elseif (!$invite->isUsedUp())
+        @elseif (!$invite->isUsedUp() && !$invite->isExpired())
             <form method="post" action="{{ $base }}/{{ $invite->code }}/vkl" class="mt-6">
                 @csrf
                 <x-ui.button block variant="secondary">Включить снова</x-ui.button>

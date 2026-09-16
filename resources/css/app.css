@@ -331,6 +331,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row-check:has(input:disabled) { @apply cursor-default opacity-60; }
   /* Ссылка админа: блок «для покупателя» виден только при роли «покупателю». */
   .invite-form:has(input[name="role"][value="manager"]:checked) [data-buyer] { display: none !important; }
+  .invite-form:has(input[name="role"][value="buyer"]:checked) [data-manager] { display: none !important; }
   .row-sub { @apply mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted; }
 
   /* Режим выбора в ленте менеджера: кружок на каждой карточке, отмеченная — с обводкой.
@@ -449,6 +450,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     padding: 2px 10px; line-height: 1.25;
     background: var(--tag-bg, var(--color-surface-3)); color: var(--tag-text, var(--color-ink-muted));
   }
+  /* Число в чипе — дата, номер, счётчик — не ломается посередине, как и цена. */
+  .tag.nums { white-space: nowrap; }
   .dark .tag { background: var(--tag-bg-d, var(--color-surface-3)); color: var(--tag-text-d, var(--color-ink-muted)); }
 
   /* Пилюля: пресет, раздел, состояние. Активная — лайм с белым. */

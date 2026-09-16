@@ -95,9 +95,13 @@
 **Покупатели.** `login` (латиница; вход одним полем логин / телефон / почта),
 `manager_id`, `contact_fields` (что покупатель вправе указывать — снимок с
 приглашения). Приглашение `Users\Invite` (`/i/{code}`): менеджер зовёт
-покупателей (многоразовая, `fields`, группа), админ — в CRM «Пользователи →
-Ссылка» и в кабинете сайта `/lk/priglasheniya` (`IssueAdminInvite`) — менеджера (`role` manager, `max_uses` 1, `ManagerJoined`) или
-покупателя от имени менеджера. `AcceptInvite` даёт `approved_at` сразу.
+покупателей (многоразовая, `fields`, группа), админ — менеджера (`role`
+manager, `max_uses` 1, `expires_at`, без названия, `ManagerJoined`) или покупателя
+от имени менеджера. Одна дверь `IssueInvite`, один экран `x-invites.list`
+(`/lk/priglasheniya` и CRM «Пользователи → Ссылки»), доступ
+`Invite::manageableBy` — менеджер видит и сделанные для него админом. Новая
+ссылка — первая строка списка. В кабинете `h1` нет: раздел называет пилюля.
+`AcceptInvite` даёт `approved_at` сразу.
 Группы `BuyerGroup`; показы `Offers\Showing` (ровно одно из user/group),
 `ShowOffers`/`HideOffers`, покупателю одно уведомление на пачку, live —
 `refresh` в `user/{id}` (тему `catalog` покупатель не слушает). Интерес

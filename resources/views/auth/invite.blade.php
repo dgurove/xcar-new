@@ -3,7 +3,7 @@
 @php($manager = $invite->forManager() ? null : $invite->manager)
 <x-ui.auth :title="! $invite->isActive() ? 'Ссылка не действует' : ($manager ? $manager->shortName().' приглашает вас в xcar' : 'Вас приглашают в xcar')">
     @if (! $invite->isActive())
-        <p class="mt-4 text-ink-muted">{{ $invite->isUsedUp() ? 'По этой ссылке уже зарегистрировались.' : 'Попросите новую ссылку'.($manager ? ' у '.$manager->shortName() : '').'.' }}</p>
+        <p class="mt-4 text-ink-muted">{{ $invite->isUsedUp() ? 'По этой ссылке уже зарегистрировались.' : ($invite->isExpired() ? 'Срок ссылки вышел — попросите новую.' : 'Попросите новую ссылку'.($manager ? ' у '.$manager->shortName() : '').'.') }}</p>
         <a href="/vhod" class="btn btn-quiet mt-6 w-full">У меня уже есть аккаунт</a>
     @else
         @if ($manager)
