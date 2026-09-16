@@ -30,4 +30,15 @@ final class StageDueNotice extends Notice
     {
         return $this->offer->number;
     }
+
+    public function category(): string
+    {
+        return 'deals';
+    }
+
+    /** Покупателю сделки — всегда; сотруднику сроки этапов можно выключить. */
+    public function critical(): bool
+    {
+        return $this->dealId !== null;
+    }
 }

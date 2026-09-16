@@ -22,4 +22,14 @@ final class PurchaseOfferChosenNotice extends Notice
     {
         return "/zakupki/{$this->offer->car->purchase->number}/{$this->offer->car->ref}";
     }
+
+    public function category(): string
+    {
+        return 'purchases';
+    }
+
+    public function critical(): bool
+    {
+        return true;
+    }
 }

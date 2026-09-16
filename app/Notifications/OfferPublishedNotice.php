@@ -27,4 +27,9 @@ final class OfferPublishedNotice extends Notice
     {
         return $this->offer->number;
     }
+
+    public function category(): string
+    {
+        return 'offers';
+    }
 }

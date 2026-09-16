@@ -38,4 +38,9 @@ final class OffersShownNotice extends Notice
     {
         return count($this->offerIds) === 1 ? Offer::find($this->offerIds[0])?->number : null;
     }
+
+    public function category(): string
+    {
+        return 'offers';
+    }
 }

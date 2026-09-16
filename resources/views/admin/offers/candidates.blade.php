@@ -17,7 +17,7 @@
                                 <span class="tag nums">{{ $c->created_at->translatedFormat('j M, H:i') }}</span>
                             </div>
                         </div>
-                        @if ($v('floor_price'))<span class="nums shrink-0 text-lg">{{ \App\Support\Money::rub($v('floor_price')) }}</span>@endif
+                        @if ($v('floor_price'))<span class="nums shrink-0 text-lg font-semibold">{{ \App\Support\Money::rub($v('floor_price')) }}</span>@endif
                     </div>
                     <div class="flex flex-wrap gap-1.5 text-sm">
                         @if ($c->code)<span class="chip">{{ $c->code }}</span>@endif

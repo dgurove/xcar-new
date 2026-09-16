@@ -29,4 +29,14 @@ final class DealStepNotice extends Notice
     {
         return $this->deal->offer->number;
     }
+
+    public function category(): string
+    {
+        return 'deals';
+    }
+
+    public function critical(): bool
+    {
+        return true;
+    }
 }

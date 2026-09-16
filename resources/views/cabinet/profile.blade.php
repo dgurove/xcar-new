@@ -61,14 +61,11 @@
             </x-ui.sheet>
         </div>
 
-        <div data-controller="sheet" class="contents">
-            <button type="button" class="row w-full text-left" data-action="sheet#open">
-                <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="bell" class="size-5"/></span>
-                <span class="min-w-0 flex-1 font-medium">Уведомления</span>
-                <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
-            </button>
-            @include('cabinet.notification-settings')
-        </div>
+        <a href="/lk/uvedomleniya/nastroyki" class="row">
+            <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="bell" class="size-5"/></span>
+            <span class="min-w-0 flex-1 font-medium">Уведомления</span>
+            <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+        </a>
 
         @foreach ($passkeys as $key)
             {{-- Строка ключа и есть кнопка удаления: одно действие — сам элемент, с подтверждением. --}}

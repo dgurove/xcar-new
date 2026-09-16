@@ -18,4 +18,14 @@ final class AccessOpenedNotice extends Notice
     {
         return '/';
     }
+
+    public function category(): string
+    {
+        return 'people';
+    }
+
+    public function critical(): bool
+    {
+        return true;
+    }
 }

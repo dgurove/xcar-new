@@ -8,4 +8,5 @@
 @endforeach
 </ul>
 <p><a href="{{ url('/lk/uvedomleniya') }}" style="color:#669709">Все уведомления</a></p>
+<p style="font-size:13px"><a href="{{ $user->unsubscribeUrl() }}" style="color:#808080">Не присылать на почту</a></p>
 </body></html>

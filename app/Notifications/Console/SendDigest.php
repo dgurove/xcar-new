@@ -18,7 +18,7 @@ class SendDigest extends Command
         User::whereNotNull('email')->whereHas('notifications', fn ($q) => $q->whereNull('read_at')->where('created_at', '>=', now()->subDay()))
             ->with(['notifications' => fn ($q) => $q->whereNull('read_at')->where('created_at', '>=', now()->subDay())->latest()])
             ->each(function (User $user) use (&$sent) {
-                if (! $user->wantsMail()) {
+                if (! $user->wantsMail() || ! $user->wantsDigest()) {
                     return;
                 }
                 Mail::send('mail.digest', ['user' => $user, 'items' => $user->notifications], function ($m) use ($user) {

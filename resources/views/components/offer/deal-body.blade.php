@@ -16,7 +16,7 @@
 @endif
 
 @if ($price->shown())
-    <div class="nums text-[32px] leading-tight" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
+    <div class="nums text-[32px] font-bold leading-tight" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
     @if ($price->declared)<div class="mt-2"><span class="tag nums">заявлена {{ $price::money($price->declared) }}</span></div>@endif
 @elseif ($gallery)
     <div class="text-lg text-accent-text">Скоро в продаже</div>
@@ -25,7 +25,7 @@
 @if ($left !== null && $left > 0)
     <div class="mt-5 flex items-baseline justify-between gap-3 rounded-(--radius-l) bg-surface-2 px-4 py-3" data-closes-with-timer>
         <span class="text-sm text-ink-muted">Приём закрывается</span>
-        <span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт"></span>
+        <span class="nums font-semibold {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт"></span>
     </div>
     <div class="mt-5 rounded-(--radius-l) bg-surface-2 px-4 py-3 text-sm text-ink-muted" hidden data-shows-when-closed>Приём подтверждений закрыт</div>
 @elseif (!$gallery && ($user?->role->canBid() ?? false) && !$offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft)

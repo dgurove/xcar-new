@@ -9,7 +9,7 @@
                         <span class="block truncate">{{ $offer->titleWithYear() }}</span>
                         <span class="mt-1 flex flex-wrap gap-1.5"><span class="tag nums">№ {{ $offer->number }}</span>@if ($offer->mileage)<span class="tag nums">{{ \App\Support\Money::nums($offer->mileage) }} км</span>@endif</span>
                     </span>
-                    @php($price = \App\Offers\PriceView::for($offer, auth()->user()))@if ($price->shown())<span class="nums shrink-0 text-sm">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
+                    @php($price = \App\Offers\PriceView::for($offer, auth()->user()))@if ($price->shown())<span class="nums shrink-0 text-sm font-semibold">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
                 </a>
             @endforeach
         </div>

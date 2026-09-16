@@ -13,7 +13,7 @@
                 @foreach ($via as $s)<span class="tag">через {{ $s->group->name }}</span>@endforeach
             </span>
         </span>
-        @if ($price->shown())<span class="nums shrink-0 text-sm">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
+        @if ($price->shown())<span class="nums shrink-0 text-sm font-semibold">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
         @if ($hide)
             <button type="submit" form="hide-{{ $offer->id }}" class="btn btn-s btn-quiet btn-round relative z-10 hidden shrink-0 md:inline-flex" aria-label="Закрыть предложение"><x-ui.icon name="x" class="size-4"/></button>
         @endif

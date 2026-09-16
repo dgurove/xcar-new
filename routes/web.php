@@ -31,6 +31,8 @@ use Illuminate\Support\Facades\Storage;
 Route::get('/manifest.webmanifest', [PwaController::class, 'manifest']);
 Route::get('/offline', [PwaController::class, 'offline']);
 Route::get('/sw.js', [PwaController::class, 'worker']);
+// «Не присылать на почту» из письма: подписанная ссылка, без входа.
+Route::match(['get', 'post'], '/pochta/otpiska/{user}', [NotificationController::class, 'unsubscribe'])->middleware('signed')->name('mail.unsubscribe');
 Route::post('/push/podpiska', [PushController::class, 'store'])->middleware('auth');
 Route::delete('/push/podpiska', [PushController::class, 'destroy'])->middleware('auth');
 
@@ -87,7 +89,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/lk/uvedomleniya/prochitano', [NotificationController::class, 'readAll']);
     Route::post('/lk/uvedomleniya/{id}/prochitano', [NotificationController::class, 'toggleRead']);
     Route::post('/lk/uvedomleniya/{id}/otkryto', [NotificationController::class, 'seen']);
+    Route::get('/lk/uvedomleniya/nastroyki', [NotificationController::class, 'settingsPage']);
     Route::put('/lk/uvedomleniya/nastroyki', [NotificationController::class, 'settings']);
+    Route::post('/lk/uvedomleniya/proverka', [NotificationController::class, 'test'])->middleware('throttle:3,1');
     Route::get('/lk/uvedomleniya/{id}', [NotificationController::class, 'open']);
 
     Route::get('/live/badges', [FragmentController::class, 'badges']);

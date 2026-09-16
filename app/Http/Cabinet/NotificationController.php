@@ -2,6 +2,9 @@
 
 namespace App\Http\Cabinet;
 
+use App\Notifications\Categories;
+use App\Notifications\TestNotice;
+use App\Users\User;
 use Illuminate\Http\Request;
 
 class NotificationController
@@ -57,11 +60,52 @@ class NotificationController
         return $request->ajax() ? response()->noContent() : back();
     }
 
+    /** Экран настроек: каналы, о чём, тихие часы; строки сохраняются сами. */
+    public function settingsPage(Request $request)
+    {
+        $user = $request->user();
+
+        return view('cabinet.notification-settings', [
+            'user' => $user,
+            'categories' => Categories::for($user->role),
+            'settings' => $user->notification_settings ?? [],
+        ]);
+    }
+
     public function settings(Request $request)
     {
         $user = $request->user();
-        $user->update(['notification_settings' => ['mail' => $request->boolean('mail')] + ($user->notification_settings ?? [])]);
+        $allowed = array_keys(Categories::for($user->role)['on']);
+        $user->update(['notification_settings' => [
+            'mail' => $request->boolean('mail'),
+            'digest' => $request->boolean('digest'),
+            'quiet' => $request->boolean('quiet'),
+            // Форма присылает включённые категории — выключенные считаем от разрешённых.
+            'off' => array_values(array_diff($allowed, array_map('strval', (array) $request->input('on', [])))),
+        ]]);
 
         return back()->with('toast', 'Сохранено');
+    }
+
+    public function test(Request $request)
+    {
+        $request->user()->notify(new TestNotice);
+
+        return back()->with('toast', 'Отправили пробное уведомление');
+    }
+
+    /** Из письма, без входа: подписанная ссылка выключает почту; «Вернуть» — включает. */
+    public function unsubscribe(Request $request, User $user)
+    {
+        if ($request->isMethod('post')) {
+            $user->update(['notification_settings' => ['mail' => true] + ($user->notification_settings ?? [])]);
+
+            return back()->with('toast', 'Письма снова приходят');
+        }
+        if ($user->wantsMail()) {
+            $user->update(['notification_settings' => ['mail' => false] + ($user->notification_settings ?? [])]);
+        }
+
+        return view('cabinet.unsubscribed', ['user' => $user]);
     }
 }

@@ -23,4 +23,9 @@ final class BuyerJoinedNotice extends Notice
     {
         return "/lk/pokupateli/{$this->buyer->id}";
     }
+
+    public function category(): string
+    {
+        return 'people';
+    }
 }

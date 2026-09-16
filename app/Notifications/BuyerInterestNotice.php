@@ -28,4 +28,9 @@ final class BuyerInterestNotice extends Notice
     {
         return $this->interest->offer->number;
     }
+
+    public function category(): string
+    {
+        return 'interest';
+    }
 }

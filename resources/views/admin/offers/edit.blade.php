@@ -45,7 +45,7 @@
                     @foreach ($bids as $bid)
                         <div class="box-nested">
                             <div class="flex items-center gap-2">
-                                <span class="nums whitespace-nowrap text-lg">{{ \App\Support\Money::rub($bid->amount) }}</span>
+                                <span class="nums whitespace-nowrap text-lg font-semibold">{{ \App\Support\Money::rub($bid->amount) }}</span>
                                 @if ($bid->is($best) && $waiting->count() > 1)<x-ui.pill tone="soft" class="!min-h-0 !py-1 text-xs">Лучшая</x-ui.pill>
                                 @elseif ($bid->state !== BidState::Active)<x-ui.pill :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $bid->state->label() }}</x-ui.pill>@endif
                             </div>

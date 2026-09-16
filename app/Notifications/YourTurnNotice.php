@@ -30,4 +30,14 @@ final class YourTurnNotice extends Notice
     {
         return $this->requirement->offer->number;
     }
+
+    public function category(): string
+    {
+        return 'deals';
+    }
+
+    public function critical(): bool
+    {
+        return true;
+    }
 }

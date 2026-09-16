@@ -24,7 +24,7 @@
                         </div>
                         @if ($interest->comment)<p class="mt-1.5 text-sm text-ink-muted">{{ $interest->comment }}</p>@endif
                     </div>
-                    @if ($open && $offer->asking_price)<span class="nums shrink-0 text-sm">{{ \App\Support\Money::rub($offer->asking_price) }}</span>@endif
+                    @if ($open && $offer->asking_price)<span class="nums shrink-0 text-sm font-semibold">{{ \App\Support\Money::rub($offer->asking_price) }}</span>@endif
                 </{{ $open ? 'a' : 'div' }}>
             @endforeach
         </div>

@@ -2,7 +2,7 @@
    XCar. Единственный источник правды по цвету, типографике и скруглениям —
    для витрины, кабинета, админа и стоянки. Язык — витрина xcar.ru.
 
-   Девять правил:
+   Десять правил:
    1. Лайм — глагол, а не поверхность: действие, активный пункт, текущий шаг.
       На лайме текст всегда белый.
    2. Тёмное — только хром: первый экран и, в тёмной теме, полосы шапки и
@@ -13,10 +13,14 @@
       меню, сообщение.
    4. Обводок нет. Белое на сером различается заливкой.
    5. Скругление 24 — основное. 16 вложенное, 12 поле, 8 метка.
-   6. Заголовки — 500, не 700. Полужирным набираются числа.
+   6. Заголовки — 500, не 700. Полужирным — только цена и главный
+      показатель; дата, номер, счётчик, логин — обычным.
    7. Подписей под элементами нет. Непонятный блок переделывается.
-   8. Числа табличные: цена не дёргает соседей при обновлении.
+   8. Числа табличные (.nums): цена не дёргает соседей при обновлении.
    9. Пустой блок не рисуется.
+  10. Фраза в интерфейсе — без точки в конце: подписи, подсказки, пустые
+      состояния, тосты, подтверждения. Точки — только внутри текста из
+      нескольких предложений (описание, письмо).
 
    Тёмная тема — класс .dark на <html>; всё тематическое описано здесь через
    `.dark …`, утилиты dark: не используются.
@@ -232,7 +236,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* Числа: табличные и полужирные — цены, счётчики, таймеры, чтобы не дёргали соседей.
    Даты, телефоны и номера набираются обычными цифрами: у табличной единицы широкая
    ячейка, и текст выглядит разреженным. */
-.nums { font-variant-numeric: tabular-nums; font-weight: 700; }
+.nums { font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------- кнопки */
 
@@ -285,6 +289,22 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .field-input.field-s { @apply px-3 py-0 leading-none; min-height: 2.75rem; }
   @media (min-width: 640px) { .field-input.field-s { @apply text-sm; min-height: 2.5rem; } }
 
+  /* Тумблер, как в системных настройках: дорожка 51×31, кружок 27, лайм — включено. */
+  .switch {
+    appearance: none; width: 51px; height: 31px; border-radius: 9999px; position: relative; flex-shrink: 0;
+    background: var(--color-line); transition: background-color var(--dur-fast); cursor: pointer; outline: none;
+  }
+  .switch::before {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 9999px; background: #fff;
+    box-shadow: 0 2px 6px rgb(0 0 0 / .2); transition: translate var(--dur-fast) var(--ease-out);
+  }
+  .switch:checked { background: var(--color-accent); }
+  .switch:checked::before { translate: 20px 0; }
+  .switch:focus-visible { box-shadow: 0 0 0 2px var(--color-accent-soft); }
+  .switch:disabled { cursor: default; }
+  .dark .switch { background: var(--color-surface-3); }
+  .dark .switch:checked { background: var(--color-accent); }
+
   .check { @apply inline-flex items-center gap-3 select-none; }
   .check input { @apply size-5 shrink-0 appearance-none rounded-(--radius-s) bg-surface-3 bg-center bg-no-repeat outline-none
       checked:bg-accent focus-visible:ring-2 focus-visible:ring-accent/60; }
@@ -325,6 +345,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet .row, .box .row { @apply bg-surface-2; }
 
   /* Строка-выбор: вся строка — цель, галка справа, отмеченная — светлый лайм. */
+  /* Строка с тумблером справа (настройки): label.row, .switch — ml-auto; выключенный тумблер — строка приглушена. */
+  .row-switch { @apply cursor-pointer; }
+  .row-switch .switch { @apply ml-auto shrink-0; }
+  .row-switch:has(.switch:disabled) { @apply cursor-default opacity-60; }
   .row-check { @apply cursor-pointer; }
   .row-check .check { @apply ml-auto shrink-0; }
   .row-check:has(input:checked) { @apply bg-accent-soft; }
@@ -433,7 +457,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .chip.person-current { @apply bg-accent-soft text-accent-text; }
   /* Предложение менеджера — чип-кнопка; выбранное — акцентом с галочкой. */
   .offer-chip { @apply cursor-pointer transition-colors; }
-  .offer-chip .nums { font-weight: 500; }
   .offer-chip-chosen { @apply bg-accent-soft text-accent-text; box-shadow: inset 0 0 0 1.5px var(--color-accent); }
   @media (hover: hover) { .offer-chip:hover { @apply bg-hover; } .offer-chip-chosen:hover { @apply bg-accent-soft; filter: brightness(1.05); } }
   .offer-chip:active { scale: .97; }
@@ -451,8 +474,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     padding: 2px 10px; line-height: 1.25;
     background: var(--tag-bg, var(--color-surface-3)); color: var(--tag-text, var(--color-ink-muted));
   }
-  /* Число в чипе — дата, номер, счётчик — не ломается посередине, как и цена. */
-  .tag.nums { white-space: nowrap; }
+  /* Чип — одно слово-факт: не ломается посередине, переносится целиком. */
+  .tag { white-space: nowrap; }
   .dark .tag { background: var(--tag-bg-d, var(--color-surface-3)); color: var(--tag-text-d, var(--color-ink-muted)); }
 
   /* Пилюля: пресет, раздел, состояние. Активная — лайм с белым. */
@@ -474,7 +497,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .pill-danger { @apply bg-danger-soft text-danger; }
   .pill-soft   { @apply bg-accent-soft text-accent-text; }
   .pill-plain  { @apply bg-surface-2 text-ink-muted; }
-  .pill .nums { font-weight: 500; }
 
   .badge { @apply inline-flex min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-4 text-white tabular-nums; }
 
@@ -772,7 +794,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .dark .hero-ground { background-color: var(--color-chrome); }
   .hero-shade { background: linear-gradient(to right, rgb(255 255 255 / .82) 0%, rgb(255 255 255 / .38) 38%, rgb(255 255 255 / 0) 68%); }
   .dark .hero-shade { background: linear-gradient(to right, rgb(18 18 18 / .78) 0%, rgb(18 18 18 / .34) 38%, rgb(18 18 18 / 0) 68%); }
-  .hero-count { font-size: clamp(84px, 24vw, 158px); line-height: .85; color: var(--color-ink); }
+  .hero-count { font-size: clamp(84px, 24vw, 158px); font-weight: 700; line-height: .85; color: var(--color-ink); }
   .dark .hero-count { color: #fff; }
   @media (min-width: 640px) { .hero-count { font-size: clamp(76px, 10.5vw, 158px); } }
   .hero-sub { color: rgb(29 29 27 / .72); }
@@ -926,7 +948,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card-action .btn-round { width: var(--card-btn-h); padding: 0; flex: 0 0 auto; aspect-ratio: 1; }
   .card-action > .btn:not(.btn-round), .card-action > form, .card-action > span:not(.btn-round) { flex: 1 1 auto; min-width: 0; }
   .card-aside { display: flex; flex: none; min-width: 0; align-items: center; gap: .5rem; width: var(--aside-w); justify-content: space-between; margin-left: var(--aside-push); }
-  .card-price { font-size: var(--price-size); line-height: 1.25; text-align: var(--price-align); white-space: nowrap; display: block; }
+  .card-price { font-size: var(--price-size); font-weight: 700; line-height: 1.25; text-align: var(--price-align); white-space: nowrap; display: block; }
   .card-price-from, .card-price-now { white-space: nowrap; }
   .card-price-from { color: var(--color-ink-muted); }
 

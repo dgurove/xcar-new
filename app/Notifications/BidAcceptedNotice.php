@@ -27,4 +27,14 @@ final class BidAcceptedNotice extends Notice
     {
         return $this->deal->offer->number;
     }
+
+    public function category(): string
+    {
+        return 'bids';
+    }
+
+    public function critical(): bool
+    {
+        return true;
+    }
 }

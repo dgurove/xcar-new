@@ -28,4 +28,9 @@ final class BidPlacedNotice extends Notice
     {
         return $this->bid->offer->number;
     }
+
+    public function category(): string
+    {
+        return 'bids';
+    }
 }

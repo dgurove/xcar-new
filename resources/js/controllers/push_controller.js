@@ -2,7 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 
 // Уведомления на телефон: разрешение, подписка, отправка ключей на сервер.
 export default class extends Controller {
-    static targets = ['on', 'off', 'state'];
+    static targets = ['on', 'off', 'state', 'toggle'];
 
     async connect() {
         this.supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -14,9 +14,15 @@ export default class extends Controller {
 
     render() {
         const granted = Notification.permission === 'granted' && this.sub;
-        this.onTarget.hidden = !!granted;
-        this.offTarget.hidden = !granted;
+        if (this.hasOnTarget) this.onTarget.hidden = !!granted;
+        if (this.hasOffTarget) this.offTarget.hidden = !granted;
+        // Тумблер в строке настроек: одно поле вместо пары кнопок.
+        if (this.hasToggleTarget) { this.toggleTarget.checked = !!granted; this.toggleTarget.disabled = Notification.permission === 'denied'; }
         if (this.hasStateTarget) this.stateTarget.textContent = Notification.permission === 'denied' ? 'Уведомления запрещены в настройках телефона' : '';
+    }
+
+    toggle(event) {
+        event.target.checked ? this.enable() : this.disable();
     }
 
     async enable() {

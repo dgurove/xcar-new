@@ -37,4 +37,9 @@ final class ChatNotice extends Notice
     {
         return $this->message->chat->offer?->number;
     }
+
+    public function category(): string
+    {
+        return 'chats';
+    }
 }

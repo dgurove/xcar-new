@@ -17,7 +17,7 @@
                     <span class="block truncate">{{ $single->titleWithYear() }}</span>
                     <span class="row-sub"><span class="tag nums">№ {{ $single->number }}</span></span>
                 </span>
-                @if ($price->shown())<span class="nums shrink-0 text-sm">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
+                @if ($price->shown())<span class="nums shrink-0 text-sm font-semibold">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
             </div>
         @else
             <div class="row">

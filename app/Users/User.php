@@ -155,6 +155,35 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return ($this->notification_settings['mail'] ?? true) !== false;
     }
 
+    /** Утренняя сводка непрочитанного — по умолчанию вместе с почтой. */
+    public function wantsDigest(): bool
+    {
+        return ($this->notification_settings['digest'] ?? $this->wantsMail()) !== false;
+    }
+
+    /** Категория уведомлений не выключена (Notifications\Categories). */
+    public function wants(string $category): bool
+    {
+        return ! in_array($category, $this->notification_settings['off'] ?? [], true);
+    }
+
+    /** Тихие часы включены и сейчас ночь по Москве: пуш не шлём, лента и почта работают. */
+    public function quietHours(): bool
+    {
+        if (! ($this->notification_settings['quiet'] ?? false)) {
+            return false;
+        }
+        $h = (int) now('Europe/Moscow')->format('G');
+
+        return $h >= 22 || $h < 8;
+    }
+
+    /** Подписанная ссылка «не присылать на почту» — работает без входа. */
+    public function unsubscribeUrl(): string
+    {
+        return \Illuminate\Support\Facades\URL::signedRoute('mail.unsubscribe', ['user' => $this->id]);
+    }
+
     public function unreadCount(): int
     {
         return $this->unreadNotifications()->count();

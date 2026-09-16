@@ -9,8 +9,8 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Уведомление: заголовок, текст, куда ведёт. В ленту кабинета всегда,
- * на почту — если у человека есть адрес и он её не выключил. Пуш — этап 8.
+ * Уведомление: заголовок, текст, куда ведёт. Куда доставлять — решают настройки
+ * человека (User::notification_settings): категории, почта, тихие часы.
  */
 abstract class Notice extends Notification implements ShouldQueue
 {
@@ -30,9 +30,31 @@ abstract class Notice extends Notification implements ShouldQueue
         return null;
     }
 
+    /** Категория для настроек (Categories): что человек может выключить. */
+    public function category(): string
+    {
+        return 'other';
+    }
+
+    /** Критичное приходит всегда: ответ на подтверждение, сделки, выбор цены. */
+    public function critical(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Куда: выключенная категория — никуда; лента всегда; пуш — не в тихие часы;
+     * почта — если есть адрес и не выключена.
+     */
     public function via(User $user): array
     {
-        $via = ['database', \App\Push\WebPushChannel::class];
+        if (! $this->critical() && ! $user->wants($this->category())) {
+            return [];
+        }
+        $via = ['database'];
+        if (! $user->quietHours()) {
+            $via[] = \App\Push\WebPushChannel::class;
+        }
         if ($user->email && $user->wantsMail()) {
             $via[] = 'mail';
         }
@@ -53,6 +75,7 @@ abstract class Notice extends Notification implements ShouldQueue
             $mail->line($this->text());
         }
 
-        return $mail->action('Открыть', url($this->href()))->salutation(config('app.name'));
+        return $mail->action('Открыть', url($this->href()))->salutation(config('app.name'))
+            ->line(new \Illuminate\Support\HtmlString('<a href="'.e($user->unsubscribeUrl()).'" style="color:#808080">Не присылать на почту</a>'));
     }
 }

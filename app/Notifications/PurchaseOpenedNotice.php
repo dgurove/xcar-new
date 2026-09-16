@@ -22,4 +22,9 @@ final class PurchaseOpenedNotice extends Notice
     {
         return "/zakupki/{$this->purchase->number}";
     }
+
+    public function category(): string
+    {
+        return 'purchases';
+    }
 }

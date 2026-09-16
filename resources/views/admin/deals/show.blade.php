@@ -88,7 +88,7 @@
             <x-ui.card class="order-1 overflow-hidden !p-0">
                 <a href="/predlozheniya/{{ $offer->number }}" class="block aspect-[4/3] bg-surface-3"><x-offer.photo :media="$offer->mainPhoto()" sizes="(min-width: 1024px) 352px, 100vw" class="size-full object-cover"/></a>
                 <div class="p-4">
-                    <div class="nums text-2xl leading-none">{{ \App\Support\Money::rub($deal->amount) }}</div>
+                    <div class="nums text-2xl font-bold leading-none">{{ \App\Support\Money::rub($deal->amount) }}</div>
                     <div class="mt-2 flex flex-wrap items-center gap-1.5">
                         @if ($offer->asking_price)<span class="tag nums">продажа {{ \App\Support\Money::rub($offer->asking_price) }}</span>@endif
                         <span class="tag nums">{{ $deal->created_at->translatedFormat('j M Y') }}</span>
