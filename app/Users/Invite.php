@@ -82,6 +82,29 @@ class Invite extends Model
         };
     }
 
+    /**
+     * Текст, с которым ссылку отправляют человеку (WhatsApp, Telegram): согласован
+     * с владельцем 16.09.2026. Покупателю — от имени менеджера, без слова «покупателем»;
+     * остальным — кем зовут, одноразовость и срок. Сама ссылка — следующей строкой.
+     */
+    public function message(): string
+    {
+        if ($this->forBuyer()) {
+            return ($this->manager ? $this->manager->name.' приглашает вас' : 'Вас приглашают').' в xcar';
+        }
+        $text = 'Вас приглашают в xcar '.match ($this->role) {
+            Role::Manager => 'менеджером',
+            Role::Moderator => 'модератором',
+            Role::Admin => 'администратором',
+            default => mb_strtolower($this->role->label()),
+        }.'. Ссылка одноразовая';
+        if ($this->expires_at) {
+            $text .= ', действует до '.$this->expires_at->translatedFormat('j F H:i');
+        }
+
+        return $text;
+    }
+
     public function url(): string
     {
         return \App\Support\Surface::Site->url("/i/{$this->code}");

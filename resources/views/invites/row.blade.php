@@ -46,9 +46,8 @@
         </div>
 
         @if ($invite->isActive())
-            <x-ui.copy-link :url="$invite->url()" title="Приглашение в xcar" class="mt-5">
-                @if (! $invite->forBuyer())<p class="text-sm text-ink-muted">Ссылка одноразовая: после регистрации перестанет действовать</p>@endif
-            </x-ui.copy-link>
+            {{-- Готовый текст для мессенджера: одноразовость и срок в нём уже сказаны. --}}
+            <x-ui.copy-link :url="$invite->url()" title="Приглашение в xcar" :message="$invite->message()" class="mt-5"/>
         @elseif ($invite->isUsedUp())
             <p class="mt-5 text-ink-muted">Ссылка сработала и больше не действует.</p>
         @elseif ($invite->isExpired())
