@@ -4,6 +4,8 @@ namespace App\Http\Cabinet;
 
 use App\Live\Stream;
 use App\Media\PhotoIngest;
+use App\Offers\Bid;
+use App\Offers\BidState;
 use App\Offers\Deal;
 use App\Offers\OfferEventType;
 use App\Workflow\Actions\AnswerRequirement;
@@ -21,11 +23,18 @@ class DealController
 {
     public function index(Request $request)
     {
+        $me = $request->user();
         $deals = Deal::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
-            ->where('buyer_id', $request->user()->id)
+            ->where('buyer_id', $me->id)
             ->orderByRaw("case when state = 'active' then 0 else 1 end")->latest()->paginate(30);
 
-        return view('cabinet.deals.index', ['deals' => $deals]);
+        // Подтверждения — на том же экране: ждущие решения — будущие сделки, отклонённые и отозванные —
+        // короткая история внизу; принятые уже стоят сделками.
+        $bids = fn () => Bid::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $me->id)->latest();
+        $pending = $bids()->where('state', BidState::Active)->get();
+        $lost = $bids()->whereIn('state', [BidState::Declined, BidState::Withdrawn])->limit(10)->get();
+
+        return view('cabinet.deals.index', ['deals' => $deals, 'pending' => $pending, 'lost' => $lost]);
     }
 
     public function show(Request $request, Deal $deal)

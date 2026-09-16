@@ -2,7 +2,6 @@
 
 namespace App\Http\Cabinet;
 
-use App\Offers\Bid;
 use App\Offers\Interest;
 use App\Offers\Offer;
 use Illuminate\Http\Request;
@@ -18,13 +17,6 @@ class ListsController
             ->latest()->paginate(24);
 
         return view('cabinet.favorites', ['offers' => $offers]);
-    }
-
-    public function bids(Request $request)
-    {
-        $bids = Bid::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $request->user()->id)->latest()->paginate(30);
-
-        return view('cabinet.bids', ['bids' => $bids]);
     }
 
     public function interests(Request $request)

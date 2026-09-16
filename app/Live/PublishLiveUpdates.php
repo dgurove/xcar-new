@@ -78,7 +78,7 @@ final class PublishLiveUpdates
     public function bidDecided(BidAccepted|BidDeclined $e): void
     {
         $n = $e->bid->offer->number;
-        $this->publish->refresh(Topics::user($e->bid->user_id), ['/account/confirmations', '/account/deals', "/offers/{$n}"]);
+        $this->publish->refresh(Topics::user($e->bid->user_id), ['/account/deals', "/offers/{$n}"]);
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals']);
     }
 

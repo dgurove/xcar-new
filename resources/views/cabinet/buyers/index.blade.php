@@ -1,5 +1,6 @@
-{{-- Покупатели менеджера: сверху группы — свои строки, последняя «Новая группа»; ниже люди.
-     Сверху поле поиска (при поиске групп нет: ищут людей). Главное действие — «Пригласить» — в полосе внизу. --}}
+{{-- Покупатели менеджера — один вход для всего, что про людей: сверху «Интерес» и «Пригласить»
+     (свои экраны вложены сюда), затем группы — свои строки, последняя «Новая группа»; ниже люди.
+     Поле поиска над всем (при поиске верхних блоков нет: ищут людей). --}}
 <x-ui.cabinet title="Покупатели">
     {{-- Поиск — поле прямо на экране, без тулбара с одной кнопкой фильтра. --}}
     <form method="get" action="/account/buyers" data-turbo-action="replace" class="header-btn header-search relative h-11 justify-start rounded-full px-4" role="search">
@@ -8,6 +9,24 @@
     </form>
 
     @unless ($term)
+        <div class="flex flex-col gap-2">
+            <a href="/account/interest" class="row">
+                <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="flag" class="size-5"/></span>
+                <span class="min-w-0 flex-1 font-medium">Интерес</span>
+                @if ($interestNew)
+                    <x-ui.pill tone="accent" class="!min-h-0 !py-1 text-xs">{{ $interestNew }}</x-ui.pill>
+                @elseif ($interestAll)
+                    <span class="nums text-sm text-ink-muted">{{ $interestAll }}</span>
+                @endif
+                <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+            </a>
+            <a href="/account/invites" class="row">
+                <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="link" class="size-5"/></span>
+                <span class="min-w-0 flex-1 font-medium">Пригласить</span>
+                <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+            </a>
+        </div>
+
         <section>
             @if ($groups->isNotEmpty())<h2 class="text-xl">Группы</h2>@endif
             <div class="{{ $groups->isNotEmpty() ? 'mt-4 ' : '' }}flex flex-col gap-2">
@@ -51,11 +70,6 @@
             @endif
         @else
             <div class="mt-4 flex flex-col gap-2">
-                {{-- «Пригласить» — строкой в списке, как «Новая группа»: на компьютере парящую кнопку не видно. --}}
-                <a href="/account/invites" class="row">
-                    <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="link" class="size-5"/></span>
-                    <span class="min-w-0 flex-1 font-medium">Пригласить</span>
-                </a>
                 @foreach ($buyers as $buyer)
                     <div class="row relative">
                         <a href="/account/buyers/{{ $buyer->id }}" class="absolute inset-0 rounded-(--radius-l)" aria-label="{{ $buyer->name }}"></a>

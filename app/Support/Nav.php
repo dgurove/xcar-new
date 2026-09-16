@@ -150,7 +150,7 @@ final class Nav
     /**
      * Пилюли кабинета группами.
      *
-     * @return array<string, list<array{label: string, href: string, match: string}>>
+     * @return array<string, list<array{label: string, href: string, match: string, also: list<string>}>>
      */
     public static function cabinet(User $user, ?Surface $surface = null): array
     {
@@ -187,10 +187,8 @@ final class Nav
 
         $links = [self::link('Профиль', '/account', exact: true)];
         if ($user->role === Role::Manager) {
-            $links[] = self::link('Покупатели', '/account/buyers');
-            $links[] = self::link('Приглашения', '/account/invites');
-            $links[] = self::link('Интерес', '/account/interest');
-            $links[] = self::link('Подтверждения', '/account/confirmations');
+            // Интерес и приглашения — про людей: живут внутри «Покупателей»; подтверждения — начало сделки.
+            $links[] = self::link('Покупатели', '/account/buyers', also: ['/account/interest', '/account/invites']);
             $links[] = self::link('Сделки', '/account/deals');
         } elseif ($user->isAdmin()) {
             $links[] = self::link('Приглашения', '/account/invites');
@@ -242,7 +240,9 @@ final class Nav
 
         if ($user->isManager()) {
             $badges['/account/deals'] = Requirement::where('user_id', $user->id)->whereNull('done_at')->count();
+            // Новый интерес — на табе «Покупатели»: свой экран интереса вложен туда.
             $badges['/account/interest'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
+            $badges['/account/buyers'] = $badges['/account/interest'];
         }
         if ($user->role->canChat()) {
             $badges['/account/chats'] = (int) Chat::where('user_id', $user->id)->sum('unread_for_user');
@@ -329,7 +329,18 @@ final class Nav
         // Пилюли кабинета и заголовки «Работы» — корни своих экранов, а не глубина.
         if ($user) {
             foreach (self::cabinet($user, $surface) as $links) {
-                array_push($items, ...array_filter($links, fn ($l) => ! str_starts_with($l['match'], '=')));
+                foreach ($links as $l) {
+                    if (str_starts_with($l['match'], '=')) {
+                        continue;
+                    }
+                    $items[] = $l;
+                    // Вложенный экран под чужим адресом (интерес, приглашения) — «назад» на свою пилюлю.
+                    foreach ($l['also'] as $also) {
+                        if ($path === $also || str_starts_with($path, $also.'/')) {
+                            return [$l['label'], $l['href']];
+                        }
+                    }
+                }
             }
         }
         if ($surface === Surface::Crm) {
@@ -399,9 +410,10 @@ final class Nav
         return ['label' => $label, 'icon' => $icon, 'href' => $href, 'match' => $match ?? $href, 'tab' => $tab, 'capsule' => $capsule];
     }
 
-    private static function link(string $label, string $href, bool $exact = false): array
+    /** @param list<string> $also  чужие адреса, при которых пилюля активна и служит «назад» */
+    private static function link(string $label, string $href, bool $exact = false, array $also = []): array
     {
-        return ['label' => $label, 'href' => $href, 'match' => $exact ? '='.$href : $href];
+        return ['label' => $label, 'href' => $href, 'match' => $exact ? '='.$href : $href, 'also' => $also];
     }
 
     /** Активная пилюля кабинета: точное совпадение для сводки, префикс для остальных. */
@@ -409,6 +421,11 @@ final class Nav
     {
         if (str_starts_with($link['match'], '=')) {
             return $path === substr($link['match'], 1);
+        }
+        foreach ($link['also'] ?? [] as $also) {
+            if (str_starts_with($path, $also)) {
+                return true;
+            }
         }
 
         return self::isCurrent($link, $path);

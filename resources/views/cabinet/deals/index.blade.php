@@ -1,4 +1,5 @@
-@php $debts = $deals->filter(fn ($d) => $d->state === \App\Offers\DealState::Active && $d->openRequirement); @endphp
+{{-- Сделки менеджера одним экраном: что ждёт ответа, подтверждения без решения, сами сделки, внизу — не состоявшиеся. --}}
+@php $debts = $deals->filter(fn ($d) => $d->state === \App\Offers\DealState::Active && $d->openRequirement); $sections = $debts->isNotEmpty() || $pending->isNotEmpty() || $lost->isNotEmpty(); @endphp
 <x-ui.cabinet title="Сделки">
     @if ($debts->isNotEmpty())
         {{-- Что ждёт ответа — строками на оранжевой подложке, первыми. --}}
@@ -20,10 +21,23 @@
         </section>
     @endif
 
-    @if ($deals->isEmpty())
+    @if ($pending->isNotEmpty())
+        <section>
+            <h2 class="text-xl">Ждут решения</h2>
+            <div class="mt-4 flex flex-col gap-2">
+                @foreach ($pending as $bid)
+                    @include('cabinet.deals.bid-row', ['bid' => $bid, 'state' => false])
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    @if ($deals->isEmpty() && ! $sections)
         <x-ui.empty href="/" link="В каталог">Пока ни одной сделки</x-ui.empty>
-    @else
-        <div class="flex flex-col gap-2">
+    @elseif ($deals->isNotEmpty())
+        <section>
+        @if ($sections)<h2 class="text-xl">Сделки <span class="nums text-ink-dim">{{ $deals->total() }}</span></h2>@endif
+        <div class="{{ $sections ? 'mt-4 ' : '' }}flex flex-col gap-2">
             @foreach ($deals as $deal)
                 @php $offer = $deal->offer; $position = $offer->position(); $alarm = $position?->isOverdue() ?? false; @endphp
                 <a href="/account/deals/{{ $deal->id }}" class="row">
@@ -47,5 +61,17 @@
             @endforeach
         </div>
         {{ $deals->links() }}
+        </section>
+    @endif
+
+    @if ($lost->isNotEmpty())
+        <section>
+            <h2 class="text-xl">Не состоялись</h2>
+            <div class="mt-4 flex flex-col gap-2">
+                @foreach ($lost as $bid)
+                    @include('cabinet.deals.bid-row', ['bid' => $bid, 'state' => true])
+                @endforeach
+            </div>
+        </section>
     @endif
 </x-ui.cabinet>

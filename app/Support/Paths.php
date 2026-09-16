@@ -16,7 +16,7 @@ final class Paths
         'chaty' => 'chats',
         'interes' => 'interest',
         'interesy' => 'interests',
-        'stavki' => 'confirmations',
+        'stavki' => 'deals',
         'stavka' => 'confirm',
         'sdelki' => 'deals',
         'otvet' => 'reply',

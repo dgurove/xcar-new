@@ -39,8 +39,14 @@ class BuyerController
             $seen[$buyer->id] = Offer::where('state', OfferState::Open)->visibleTo($buyer)->count();
         }
         $interests = Interest::whereIn('user_id', $ids)->where('state', InterestState::New)->selectRaw('user_id, count(*) as n')->groupBy('user_id')->pluck('n', 'user_id');
+        // Строка «Интерес» над списком: новых — лаймом, иначе сколько всего.
+        $mine = Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id));
+        $interestAll = $term ? 0 : (clone $mine)->count();
+        $interestNew = $term ? 0 : $mine->where('state', InterestState::New)->count();
 
         return view('cabinet.buyers.index', [
+            'interestNew' => $interestNew,
+            'interestAll' => $interestAll,
             'buyers' => $buyers,
             'groups' => $groups,
             'groupSeen' => $groupSeen,
