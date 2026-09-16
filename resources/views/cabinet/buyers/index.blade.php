@@ -1,63 +1,80 @@
-{{-- Покупатели менеджера: пилюли — группы, строка — человек-контакт с тем, что о нём важно.
-     Главное действие — «Пригласить» — в полосе внизу. --}}
+{{-- Покупатели менеджера: сверху группы — свои строки, последняя «Новая группа»; ниже люди.
+     Сверху поле поиска (при поиске групп нет: ищут людей). Главное действие — «Пригласить» — в полосе внизу. --}}
 <x-ui.cabinet title="Покупатели">
-    <x-ui.toolbar :pills="$pills" :pill="(string) ($group ?? '')" pill-param="group" :counts="$counts" name="buyers" action="/lk/pokupateli">
-        <x-slot:pillsExtra>
-            <div data-controller="sheet" class="contents">
-                <button type="button" class="pill shrink-0" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/> Группа</button>
-                <x-ui.sheet id="group-new" title="Новая группа">
-                    <form method="post" action="/lk/pokupateli/gruppy" class="flex flex-col gap-4">
-                        @csrf
-                        <x-ui.field name="name" label="Название" required maxlength="60" placeholder="Дилеры, Казань, VIP…" autofocus/>
-                        <x-ui.button block>Создать</x-ui.button>
-                    </form>
-                </x-ui.sheet>
-            </div>
-            <a href="/lk/priglasheniya" class="pill shrink-0"><x-ui.icon name="link" class="size-4"/> Ссылки@if ($invites) <span class="nums opacity-70">{{ $invites }}</span>@endif</a>
-        </x-slot:pillsExtra>
-        <x-slot:filters>
-            <input name="q" value="{{ request('q') }}" placeholder="Имя, логин, телефон" class="field-input field-s">
-        </x-slot:filters>
-    </x-ui.toolbar>
+    {{-- Поиск — поле прямо на экране, без тулбара с одной кнопкой фильтра. --}}
+    <form method="get" action="/lk/pokupateli" data-turbo-action="replace" class="header-btn header-search relative h-11 justify-start rounded-full px-4" role="search">
+        <x-ui.icon name="search" class="size-[18px] shrink-0 text-ink-muted"/>
+        <input type="search" name="q" value="{{ $term }}" placeholder="Имя, логин, телефон" enterkeyhint="search" autocomplete="off" aria-label="Поиск">
+    </form>
 
-    @if ($group)
-        @php($current = $groups->firstWhere('id', $group))
-        <a href="/lk/pokupateli/gruppy/{{ $group }}" class="flex items-center gap-2 text-xl transition-colors hover:text-accent-text">
-            <span class="flex size-9 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="users" class="size-5"/></span>
-            {{ $current?->name }}
-            <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
-        </a>
-    @endif
-
-    @if ($buyers->isEmpty())
-        @if ($group || request('q'))
-            <x-ui.empty href="/lk/pokupateli" link="Все покупатели">Здесь пока никого.</x-ui.empty>
-        @else
-            <x-ui.empty>Покупателей пока нет — отправьте им ссылку.</x-ui.empty>
-        @endif
-    @else
-        <div class="flex flex-col gap-2">
-            @foreach ($buyers as $buyer)
-                <a href="/lk/pokupateli/{{ $buyer->id }}" class="row transition-colors hover:bg-hover">
-                    <x-ui.avatar :user="$buyer" :size="44"/>
-                    <span class="min-w-0 flex-1">
-                        <span class="block truncate font-medium">{{ $buyer->name }}</span>
-                        <span class="row-sub">
-                            @if ($buyer->login)<span class="tag nums">{{ $buyer->login }}</span>@endif
-                            @if ($buyer->phone)<span class="tag nums">{{ $buyer->phoneFormatted() }}</span>@endif
-                            @foreach ($buyer->groups as $g)<span class="tag">{{ $g->name }}</span>@endforeach
+    @unless ($term)
+        <section>
+            @if ($groups->isNotEmpty())<h2 class="text-xl">Группы</h2>@endif
+            <div class="{{ $groups->isNotEmpty() ? 'mt-4 ' : '' }}flex flex-col gap-2">
+                @foreach ($groups as $g)
+                    <a href="/lk/pokupateli/gruppy/{{ $g->id }}" class="row">
+                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="users" class="size-5"/></span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate font-medium">{{ $g->name }}</span>
+                            <span class="row-sub">
+                                <span class="tag nums">{{ $g->members_count }} {{ \App\Support\Plural::of($g->members_count, ['человек', 'человека', 'человек']) }}</span>
+                                @if ($groupSeen[$g->id] ?? 0)<span class="tag nums">видит {{ $groupSeen[$g->id] }}</span>@endif
+                            </span>
                         </span>
-                    </span>
-                    <span class="flex shrink-0 items-center gap-2">
-                        @if ($interests[$buyer->id] ?? 0)<x-ui.pill tone="accent" class="!min-h-0 !py-1 text-xs">интерес {{ $interests[$buyer->id] }}</x-ui.pill>@endif
-                        @if ($seen[$buyer->id] ?? 0)<span class="nums text-sm text-ink-muted">видит {{ $seen[$buyer->id] }}</span>@endif
-                        <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
-                    </span>
-                </a>
-            @endforeach
-        </div>
-        {{ $buyers->links() }}
-    @endif
+                        <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                    </a>
+                @endforeach
+                <div data-controller="sheet" class="contents">
+                    <button type="button" class="row w-full text-left" data-action="sheet#open">
+                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
+                        <span class="min-w-0 flex-1 font-medium">Новая группа</span>
+                    </button>
+                    <x-ui.sheet id="group-new" title="Новая группа" :open="$errors->has('name')">
+                        <form method="post" action="/lk/pokupateli/gruppy" class="flex flex-col gap-4">
+                            @csrf
+                            <x-ui.field name="name" label="Название" required maxlength="60" placeholder="Дилеры, Казань, VIP…"/>
+                            <x-ui.button block>Создать</x-ui.button>
+                        </form>
+                    </x-ui.sheet>
+                </div>
+            </div>
+        </section>
+    @endunless
+
+    <section>
+        @if (!$term || $buyers->isNotEmpty())<h2 class="text-xl">Покупатели @if ($buyers->total())<span class="nums text-ink-dim">{{ $buyers->total() }}</span>@endif</h2>@endif
+        @if ($buyers->isEmpty())
+            @if ($term)
+                <x-ui.empty href="/lk/pokupateli" link="Все покупатели">Никого не нашлось.</x-ui.empty>
+            @else
+                <x-ui.empty class="mt-4">Покупателей пока нет — отправьте им ссылку.</x-ui.empty>
+            @endif
+        @else
+            <div class="mt-4 flex flex-col gap-2">
+                @foreach ($buyers as $buyer)
+                    <div class="row relative">
+                        <a href="/lk/pokupateli/{{ $buyer->id }}" class="absolute inset-0 rounded-(--radius-l)" aria-label="{{ $buyer->name }}"></a>
+                        <x-ui.avatar :user="$buyer" :size="44"/>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate font-medium">{{ $buyer->name }}</span>
+                            <span class="row-sub">
+                                @if ($buyer->login)<span class="tag nums">{{ $buyer->login }}</span>@endif
+                                @if ($buyer->phone)<span class="tag nums">{{ $buyer->phoneFormatted() }}</span>@endif
+                                @foreach ($buyer->groups as $g)<a href="/lk/pokupateli/gruppy/{{ $g->id }}" class="tag relative z-10">{{ $g->name }}</a>@endforeach
+                            </span>
+                        </span>
+                        {{-- Числа — столбиком, как цена и состояние в сделках. --}}
+                        <span class="flex shrink-0 flex-col items-end gap-1.5">
+                            @if ($interests[$buyer->id] ?? 0)<x-ui.pill tone="accent" class="!min-h-0 !py-1 text-xs">интерес {{ $interests[$buyer->id] }}</x-ui.pill>@endif
+                            @if ($seen[$buyer->id] ?? 0)<span class="nums text-sm text-ink-muted">видит {{ $seen[$buyer->id] }}</span>@endif
+                        </span>
+                        <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                    </div>
+                @endforeach
+            </div>
+            {{ $buyers->links() }}
+        @endif
+    </section>
 
     <x-ui.action-bar>
         <a href="/lk/priglasheniya" class="btn btn-accent min-w-0 flex-1 md:flex-none"><x-ui.icon name="link" class="size-5"/> Пригласить</a>

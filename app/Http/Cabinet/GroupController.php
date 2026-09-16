@@ -30,7 +30,8 @@ class GroupController
 
         return view('cabinet.buyers.group', [
             'group' => $group,
-            'buyers' => $me->buyers()->orderBy('name')->get(),
+            // Участники сверху — состав читается сразу, остальных можно добавить ниже.
+            'buyers' => $me->buyers()->orderBy('name')->get()->sortByDesc(fn ($b) => $group->members->contains('id', $b->id))->values(),
             'offers' => Offer::with(['brand', 'model', 'settlement', 'media', 'favorites'])->whereIn('id', $offerIds)->where('state', OfferState::Open)->orderByDesc('published_at')->get(),
         ]);
     }

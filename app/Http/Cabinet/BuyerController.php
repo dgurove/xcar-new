@@ -12,22 +12,25 @@ use App\Users\BuyerGroup;
 use App\Users\User;
 use Illuminate\Http\Request;
 
-/** Покупатели менеджера: список с группами-пилюлями и страница человека. */
+/** Покупатели менеджера: группы и люди одним списком, страница человека. */
 class BuyerController
 {
     public function index(Request $request)
     {
         $me = $request->user();
-        $groups = $me->ownGroups()->withCount('members')->get();
-        $group = $request->integer('group') ?: null;
+        $term = trim((string) $request->query('q'));
         $q = $me->buyers()->with('groups')->orderBy('name');
-        if ($group) {
-            $q->whereHas('groups', fn ($g) => $g->where('buyer_groups.id', $group));
-        }
-        if ($term = trim((string) $request->query('q'))) {
+        if ($term) {
             $q->where(fn ($w) => $w->where('name', 'ilike', "%{$term}%")->orWhere('login', 'ilike', "%{$term}%")->orWhere('phone', 'like', '%'.preg_replace('/\D+/', '', $term).'%'));
         }
         $buyers = $q->paginate(50)->withQueryString();
+
+        // Группы — свои объекты над списком (при поиске не показываются: ищут людей); на строке —
+        // сколько человек и сколько предложений открыто группе.
+        $groups = $term ? collect() : $me->ownGroups()->withCount('members')->get();
+        $groupSeen = $groups->isEmpty() ? collect() : Showing::whereIn('group_id', $groups->pluck('id'))
+            ->whereHas('offer', fn ($o) => $o->where('state', OfferState::Open))
+            ->selectRaw('group_id, count(*) as n')->groupBy('group_id')->pluck('n', 'group_id');
 
         // Числа на строках — одним проходом: сколько машин видит и сколько интересов в работе.
         $ids = $buyers->pluck('id')->all();
@@ -40,12 +43,10 @@ class BuyerController
         return view('cabinet.buyers.index', [
             'buyers' => $buyers,
             'groups' => $groups,
-            'group' => $group,
-            'pills' => ['' => 'Все'] + $groups->mapWithKeys(fn ($g) => [(string) $g->id => $g->name])->all(),
-            'counts' => ['' => $me->buyers()->count()] + $groups->mapWithKeys(fn ($g) => [(string) $g->id => $g->members_count])->all(),
+            'groupSeen' => $groupSeen,
+            'term' => $term,
             'seen' => $seen,
             'interests' => $interests,
-            'invites' => $me->invites()->count(),
         ]);
     }
 
