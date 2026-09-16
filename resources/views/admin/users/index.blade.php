@@ -89,6 +89,22 @@
                                 @csrf
                                 <x-ui.button type="submit" variant="secondary" block><x-ui.icon name="link" class="size-5"/> Ссылка для нового пароля</x-ui.button>
                             </form>
+                            {{-- Ссылка могла уйти не тому: допущенному — закрыть доступ (выйдет отовсюду, вернуть можно из «Отклонённых»);
+                                 отклонённому без истории — удалить насовсем. --}}
+                            @if ($user->isApproved())
+                                <form method="post" action="/settings/users/{{ $user->id }}/access" class="mt-3"
+                                    data-turbo-confirm="Закрыть доступ {{ $user->shortName() }}?" data-turbo-confirm-label="Закрыть"
+                                    data-turbo-confirm-text="{{ $user->isManager() ? 'Выйдет со всех устройств, его ссылки и покупатели закроются. Сделки останутся в истории' : 'Выйдет со всех устройств и не сможет войти' }}">
+                                    @csrf<input type="hidden" name="reject" value="1">
+                                    <x-ui.button type="submit" variant="danger" block>Закрыть доступ</x-ui.button>
+                                </form>
+                            @elseif ($user->isRejected() && ! UserController::traces($user))
+                                <form method="post" action="/settings/users/{{ $user->id }}" class="mt-3"
+                                    data-turbo-confirm="Удалить {{ $user->shortName() }} насовсем?" data-turbo-confirm-label="Удалить" data-turbo-confirm-text="Данных о нём не останется">
+                                    @csrf @method('delete')
+                                    <x-ui.button type="submit" variant="danger" block>Удалить</x-ui.button>
+                                </form>
+                            @endif
                         @endunless
                     </x-ui.sheet>
                 </div>

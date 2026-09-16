@@ -2,6 +2,9 @@
 
 namespace App\Http\Admin;
 
+use App\Chats\Chat;
+use App\Offers\Bid;
+use App\Offers\Deal;
 use App\Support\Phone;
 use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssuePasswordLink;
@@ -11,6 +14,7 @@ use App\Users\Role;
 use App\Users\Section;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /** Пользователи: роль, доступ к стоянке, почта. Только для администратора. */
@@ -76,14 +80,41 @@ class UserController
         return back()->with('password_link', ['user' => $user->id, 'url' => $issue($user, $request->user())]);
     }
 
-    /** Решение по ждущему: открыть с выбранной ролью или отклонить. */
+    /**
+     * Удалить насовсем — только того, за кем ничего нет: следы (подтверждения, сделки,
+     * предложения, покупатели, чаты) остаются в истории, такому можно лишь закрыть доступ.
+     */
+    public function destroy(Request $request, User $user, DecideAccess $decide)
+    {
+        abort_unless($request->user()->isAdmin() && ! $user->is($request->user()), 404);
+        if (self::traces($user)) {
+            return back()->with('toast', 'За '.$user->shortName().' есть история — только закрыть доступ');
+        }
+        $preset = $user->isRejected() ? 'rejected' : $this->presetOf($user->role);
+        $decide->reject($user, $request->user());
+        $user->delete();
+
+        return redirect('/settings/users?preset='.$preset)->with('toast', 'Удалён');
+    }
+
+    /** Есть ли за человеком то, что должно остаться в истории. */
+    public static function traces(User $user): bool
+    {
+        return Bid::where('user_id', $user->id)->exists()
+            || Deal::where('buyer_id', $user->id)->exists()
+            || DB::table('offer_managers')->where('user_id', $user->id)->exists()
+            || $user->buyers()->exists()
+            || Chat::where('user_id', $user->id)->where('messages_count', '>', 0)->exists();
+    }
+
+    /** Решение по ждущему или уже допущенному: открыть с выбранной ролью или закрыть доступ. */
     public function decide(Request $request, User $user, DecideAccess $decide)
     {
         abort_unless($request->user()->isAdmin() && ! $user->is($request->user()), 404);
         if ($request->boolean('reject')) {
             $decide->reject($user, $request->user());
 
-            return back()->with('toast', 'Отклонён');
+            return back()->with('toast', $user->wasChanged('approved_at') ? 'Доступ закрыт' : 'Отклонён');
         }
         $role = Role::from($request->validate(['role' => ['required', Rule::enum(Role::class)]])['role']);
         $decide->approve($user, $role, $request->user());

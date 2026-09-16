@@ -117,6 +117,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::get('/users', [UserController::class, 'index']);
         Route::put('/users/{user}', [UserController::class, 'update']);
         Route::post('/users/{user}/access', [UserController::class, 'decide']);
+        Route::delete('/users/{user}', [UserController::class, 'destroy']);
         Route::post('/users/{user}/password', [UserController::class, 'passwordLink']);
         Route::post('/users/invites', [\App\Http\Cabinet\InviteController::class, 'store']);
         Route::post('/users/invites/{invite}/off', [\App\Http\Cabinet\InviteController::class, 'disable']);
