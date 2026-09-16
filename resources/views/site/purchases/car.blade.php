@@ -15,7 +15,7 @@
 
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
         <x-purchase.deadline :purchase="$purchase"/>
-        @if ($mine)<x-ui.pill tone="soft">Ваша цена {{ number_format($mine->amount, 0, '', ' ') }} ₽</x-ui.pill>@endif
+        @if ($mine)<x-ui.pill tone="soft">Ваша цена {{ \App\Support\Money::rub($mine->amount) }}</x-ui.pill>@endif
         @if ($car->fssp)<x-ui.pill tone="urgent">Ограничения ФССП</x-ui.pill>@endif
     </div>
 
@@ -30,12 +30,12 @@
                     @if ($asSheet)<div class="mb-2 flex justify-end lg:hidden"><button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>@endif
                     <h2 class="text-xl">Предложение</h2>
                     @if ($mine?->state === \App\Purchases\OfferState::Chosen)
-                        <p class="flash flash-accent mt-4">Ваша цена {{ number_format($mine->amount, 0, '', ' ') }} ₽ выбрана — с Вами свяжутся</p>
+                        <p class="flash flash-accent mt-4">Ваша цена {{ \App\Support\Money::rub($mine->amount) }} выбрана — с Вами свяжутся</p>
                     @elseif ($purchase->acceptsOffers())
                         <form method="post" action="/zakupki/{{ $purchase->number }}/{{ $car->ref }}/cena{{ $suffix }}" class="mt-4 flex flex-col gap-3" data-controller="bid" data-bid-asking-value="0" data-bid-min-value="0">
                             @csrf
                             <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $mine?->amount) }}">
-                            <input type="text" inputmode="numeric" required class="field-input nums text-lg" placeholder="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? number_format($mine->amount, 0, '', ' ') : '') }}" autocomplete="off">
+                            <input type="text" inputmode="numeric" required class="field-input nums text-lg" placeholder="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? \App\Support\Money::nums($mine->amount) : '') }}" autocomplete="off">
                             @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror
                             <textarea name="comment" rows="3" class="field-input !min-h-0 text-sm" placeholder="Комментарий">{{ old('comment', $mine?->comment) }}</textarea>
                             <button type="submit" class="btn btn-accent w-full" data-bid-target="submit">{{ $mine ? 'Изменить' : 'Предложить' }}</button>

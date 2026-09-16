@@ -23,7 +23,7 @@
             @if ($car || ($person && $interest->user->phone))
                 <span class="row-sub">
                     @if ($person && $car)<span class="truncate">{{ $offer->titleWithYear() }}</span>@endif
-                    @if ($car && $price->shown())<span class="nums">{{ $price::money($price->to) }} ₽</span>@endif
+                    @if ($car && $price->shown())<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
                     @if ($person && $interest->user->phone)<span class="tag nums">{{ $interest->user->phoneFormatted() }}</span>@endif
                 </span>
             @endif

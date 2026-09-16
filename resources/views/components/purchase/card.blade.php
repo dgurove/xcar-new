@@ -9,7 +9,7 @@
     $main = $car->mainPhoto();
     $photos = $car->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $hasMedia = $photos->isNotEmpty();
-    $facts = array_filter([$car->year, $car->mileage !== null ? number_format($car->mileage, 0, '', ' ').' км' : null, $car->transmission?->label(), $car->fuel?->label()]);
+    $facts = array_filter([$car->year, $car->mileage !== null ? \App\Support\Money::nums($car->mileage).' км' : null, $car->transmission?->label(), $car->fuel?->label()]);
 @endphp
 <article id="car-{{ $car->id }}" class="card rise group">
     @if ($hasMedia)
@@ -50,12 +50,12 @@
     <div class="card-action">
         @if ($staff)
             @if ($best)
-                <a href="{{ $href }}" class="btn btn-s {{ $best->state === \App\Purchases\OfferState::Chosen ? 'btn-accent' : 'btn-quiet' }} w-full gap-2 whitespace-nowrap"><span class="nums">{{ number_format($best->amount, 0, '', ' ') }} ₽</span><span class="truncate font-normal opacity-80">{{ $best->user->shortName() }}{{ $active->count() > 1 ? ' +'.($active->count() - 1) : '' }}</span></a>
+                <a href="{{ $href }}" class="btn btn-s {{ $best->state === \App\Purchases\OfferState::Chosen ? 'btn-accent' : 'btn-quiet' }} w-full gap-2 whitespace-nowrap"><span class="nums">{{ \App\Support\Money::rub($best->amount) }}</span><span class="truncate font-normal opacity-80">{{ $best->user->shortName() }}{{ $active->count() > 1 ? ' +'.($active->count() - 1) : '' }}</span></a>
             @else
                 <a href="{{ $href }}" class="btn btn-s btn-ghost w-full whitespace-nowrap text-ink-dim">Нет предложений</a>
             @endif
         @elseif ($mine)
-            <a href="{{ $href }}" class="btn btn-s btn-accent nums w-full whitespace-nowrap">{{ number_format($mine->amount, 0, '', ' ') }} ₽</a>
+            <a href="{{ $href }}" class="btn btn-s btn-accent nums w-full whitespace-nowrap">{{ \App\Support\Money::rub($mine->amount) }}</a>
         @else
             <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Предложить</a>
         @endif

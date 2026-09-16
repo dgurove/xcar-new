@@ -105,7 +105,7 @@
                         <x-offer.photo :media="$photo" sizes="(min-width: 1024px) 320px, 100vw" class="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"/>
                     @endif
                     <div class="p-6">
-                        <p class="nums text-[32px] leading-none">{{ number_format($deal->amount, 0, '', ' ') }} ₽</p>
+                        <p class="nums text-[32px] leading-none">{{ \App\Support\Money::rub($deal->amount) }}</p>
                         <p class="mt-2 text-sm text-ink-muted group-hover:text-accent-text">{{ $offer->titleWithYear() }}</p>
                     </div>
                 </a>

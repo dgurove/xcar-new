@@ -5,7 +5,7 @@
 @php
     use App\Purchases\OfferState;
     $chosen = $offer->state === OfferState::Chosen;
-    $sum = number_format($offer->amount, 0, '', ' ').' ₽';
+    $sum = \App\Support\Money::rub($offer->amount);
     $who = $offer->user->shortName();
 @endphp
 <form method="post" action="/zakupki/ceny/{{ $offer->id }}/{{ $chosen ? 'otmenit' : 'vybrat' }}" class="contents"

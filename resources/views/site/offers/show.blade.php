@@ -7,7 +7,7 @@
     $dealInSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
     $facts = array_filter([
         'Год' => $offer->year,
-        'Пробег' => $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null,
+        'Пробег' => $offer->mileage !== null ? \App\Support\Money::nums($offer->mileage).' км' : null,
         'Кузов' => $offer->body?->label(), 'КПП' => $offer->transmission?->label(), 'Привод' => $offer->drive?->label(),
         'Топливо' => $offer->fuel?->label(), 'Объём' => $offer->engine_volume ? $offer->engine_volume.' см³' : null,
         'Мощность' => $offer->engine_power ? $offer->engine_power.' л. с.' : null, 'Цвет' => $offer->color,

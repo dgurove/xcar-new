@@ -30,7 +30,7 @@
                 <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5">
                     @foreach (['С учётом переоценки' => $car->price_revalued, 'Для размещения' => $car->price_listing] as $label => $value)
                         <dt class="text-sm text-ink-dim">{{ $label }}</dt>
-                        @if ($value)<dd class="nums text-right font-medium">{{ number_format($value, 0, '', ' ') }} ₽</dd>@else<dd class="nums text-right text-ink-dim">—</dd>@endif
+                        @if ($value)<dd class="nums text-right font-medium">{{ \App\Support\Money::rub($value) }}</dd>@else<dd class="nums text-right text-ink-dim">—</dd>@endif
                     @endforeach
                 </dl>
                 @if ($live->isNotEmpty())
@@ -42,7 +42,7 @@
                     @csrf
                     <input type="hidden" name="price_final" data-bid-target="amount" value="{{ $car->price_final }}">
                     <input type="text" inputmode="numeric" autocomplete="off" class="field-input nums !h-14 min-w-0 flex-1 text-xl" placeholder="Наша цена, ₽" aria-label="Наша цена, ₽"
-                        data-bid-target="display" data-action="input->bid#input" value="{{ $car->price_final ? number_format($car->price_final, 0, '', ' ') : '' }}" data-controller="autofocus">
+                        data-bid-target="display" data-action="input->bid#input" value="{{ $car->price_final ? \App\Support\Money::nums($car->price_final) : '' }}" data-controller="autofocus">
                     <button type="submit" class="btn btn-accent shrink-0 px-5">Дальше</button>
                 </form>
                 @error('price_final')<p class="text-sm text-danger">{{ $message }}</p>@enderror

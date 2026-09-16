@@ -14,8 +14,8 @@
         <div class="min-w-0 flex-1">
             <a href="/zakupki/{{ $n }}/{{ $car->ref }}" class="flex items-baseline gap-2"><span class="truncate font-medium">{{ $car->titleWithYear() }}</span><span class="nums shrink-0 text-sm text-ink-dim">{{ $car->dl }}</span></a>
             <div class="mt-1.5 flex flex-wrap gap-1.5">
-                @if ($car->price_revalued)<span class="tag nums whitespace-nowrap">переоценка {{ number_format($car->price_revalued, 0, '', ' ') }} ₽</span>@endif
-                @if ($car->price_listing)<span class="tag nums whitespace-nowrap">размещение {{ number_format($car->price_listing, 0, '', ' ') }} ₽</span>@endif
+                @if ($car->price_revalued)<span class="tag nums whitespace-nowrap">переоценка {{ \App\Support\Money::rub($car->price_revalued) }}</span>@endif
+                @if ($car->price_listing)<span class="tag nums whitespace-nowrap">размещение {{ \App\Support\Money::rub($car->price_listing) }}</span>@endif
                 <span class="tag">{{ $car->kind->label() }}</span>
                 @if ($car->settlement?->name ?? $car->city)<span class="tag">{{ $car->settlement?->name ?? $car->city }}</span>@endif
                 @if ($car->specs_state->needsAttention())<span class="tag" style="{{ $amber }}">{{ $car->specs_state->label() }}</span>@elseif ($car->photos_state->needsAttention())<span class="tag" style="{{ $amber }}">{{ $car->photos_state->label() }}</span>@endif
@@ -29,7 +29,7 @@
             <x-purchase.offer-chip :offer="$offer" :car="$car" :highlight="$highlight"/>
         @endforeach
         @if ($price)
-            <a href="/zakupki/{{ $n }}/{{ $car->ref }}/ocenka" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? number_format($car->price_final, 0, '', ' ').' ₽' : 'оценить' }}</a>
+            <a href="/zakupki/{{ $n }}/{{ $car->ref }}/ocenka" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? \App\Support\Money::rub($car->price_final) : 'оценить' }}</a>
         @endif
     </div>
 </div>

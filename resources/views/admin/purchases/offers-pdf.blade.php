@@ -4,7 +4,7 @@
      числом ячеек одной таблицы), а матрица с менеджерами — ещё и на наборы по 6 колонок
      людей, как печать широкой таблицы в Excel. --}}
 @php
-    $fmt = fn ($v) => is_int($v) || is_float($v) ? ($v >= 10000 ? number_format($v, 0, '', ' ') : $v) : $v;
+    $fmt = fn ($v) => is_int($v) || is_float($v) ? ($v >= 10000 ? \App\Support\Money::nums($v) : $v) : $v;
     $fonts = resource_path('fonts/pdf');
     $logo = public_path('images/xcar.svg');
     $perSet = 6;

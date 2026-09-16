@@ -79,7 +79,7 @@
 <x-ui.card title="Сделка" id="deal-note" class="order-1">
     <div class="mb-3 flex flex-wrap items-center gap-1.5">
         @if ($offer->deal->buyer)<x-ui.person :user="$offer->deal->buyer" full/><a href="tel:+{{ $offer->deal->buyer->phone }}" class="tag nums">{{ $offer->deal->buyer->phoneFormatted() }}</a>@endif
-        <span class="tag nums font-semibold">{{ number_format($offer->deal->amount, 0, '', ' ') }} ₽</span>
+        <span class="tag nums font-semibold">{{ \App\Support\Money::rub($offer->deal->amount) }}</span>
     </div>
     <form method="post" action="/rabota/sdelki/{{ $offer->deal->id }}/zametka" class="flex flex-col gap-2">
         @csrf

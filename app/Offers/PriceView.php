@@ -52,6 +52,6 @@ final class PriceView
 
     public static function money(?int $value): string
     {
-        return $value === null ? '' : number_format($value, 0, '', ' ');
+        return \App\Support\Money::nums($value);
     }
 }

@@ -45,7 +45,7 @@
                     @foreach ($bids as $bid)
                         <div class="box-nested">
                             <div class="flex items-center gap-2">
-                                <span class="nums whitespace-nowrap text-lg">{{ number_format($bid->amount, 0, '', ' ') }} ₽</span>
+                                <span class="nums whitespace-nowrap text-lg">{{ \App\Support\Money::rub($bid->amount) }}</span>
                                 @if ($bid->is($best) && $waiting->count() > 1)<x-ui.pill tone="soft" class="!min-h-0 !py-1 text-xs">Лучшая</x-ui.pill>
                                 @elseif ($bid->state !== BidState::Active)<x-ui.pill :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $bid->state->label() }}</x-ui.pill>@endif
                             </div>
@@ -53,7 +53,7 @@
                             @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
                             @if ($bid->state === BidState::Active)
                                 <div class="mt-2 flex gap-2">
-                                    <form method="post" action="/stavki/{{ $bid->id }}/prinyat" data-turbo-confirm="Отдать {{ $offer->title() }} менеджеру {{ $bid->user->name }} за {{ number_format($bid->amount, 0, '', ' ') }} ₽?{{ $waiting->count() > 1 ? ' Остальные подтверждения будут отклонены.' : '' }}">@csrf<x-ui.button size="sm">Принять</x-ui.button></form>
+                                    <form method="post" action="/stavki/{{ $bid->id }}/prinyat" data-turbo-confirm="Отдать {{ $offer->title() }} менеджеру {{ $bid->user->name }} за {{ \App\Support\Money::rub($bid->amount) }}?{{ $waiting->count() > 1 ? ' Остальные подтверждения будут отклонены.' : '' }}">@csrf<x-ui.button size="sm">Принять</x-ui.button></form>
                                     <form method="post" action="/stavki/{{ $bid->id }}/otklonit">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>
                                 </div>
                             @endif
@@ -179,9 +179,9 @@
             <x-ui.card title="Деньги" class="order-2">
                 <div class="{{ $grid }}">
                     <x-ui.field name="floor_price" label="Закупочная, ₽" inputmode="numeric" :value="$offer->floor_price"/>
-                    <x-ui.field name="publish_price" label="Заявленная, ₽" inputmode="numeric" :value="$offer->publish_price" :placeholder="$offer->floor_price ? number_format($offer->floor_price, 0, '', ' ') : null"/>
+                    <x-ui.field name="publish_price" label="Заявленная, ₽" inputmode="numeric" :value="$offer->publish_price" :placeholder="$offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : null"/>
                     <x-ui.field name="asking_price" label="Цена продажи, ₽" inputmode="numeric" :value="$offer->asking_price"/>
-                    <x-ui.field name="min_bid_price" label="Минимальная, ₽" inputmode="numeric" :value="$offer->min_bid_price" :placeholder="$offer->minBid() ? number_format($offer->minBid(), 0, '', ' ') : null"/>
+                    <x-ui.field name="min_bid_price" label="Минимальная, ₽" inputmode="numeric" :value="$offer->min_bid_price" :placeholder="$offer->minBid() ? \App\Support\Money::nums($offer->minBid()) : null"/>
                     <x-ui.field name="min_bid_share" label="Доля до продажной" inputmode="decimal" :value="$offer->min_bid_share" placeholder="0,6"/>
                     <x-ui.field name="bids_close_at" label="Приём подтверждений до" type="datetime-local" :value="$offer->bids_close_at?->format('Y-m-d\TH:i')" span="col-span-2 lg:col-span-1"/>
                     <div class="col-span-full flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">

@@ -7,9 +7,9 @@
                     <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="4.5rem"/></span>
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $offer->titleWithYear() }}</span>
-                        <span class="mt-1 flex flex-wrap gap-1.5"><span class="tag nums">№ {{ $offer->number }}</span>@if ($offer->mileage)<span class="tag nums">{{ number_format($offer->mileage, 0, '', ' ') }} км</span>@endif</span>
+                        <span class="mt-1 flex flex-wrap gap-1.5"><span class="tag nums">№ {{ $offer->number }}</span>@if ($offer->mileage)<span class="tag nums">{{ \App\Support\Money::nums($offer->mileage) }} км</span>@endif</span>
                     </span>
-                    @php($price = \App\Offers\PriceView::for($offer, auth()->user()))@if ($price->shown())<span class="nums shrink-0 text-sm">{{ $price::money($price->to) }} ₽</span>@endif
+                    @php($price = \App\Offers\PriceView::for($offer, auth()->user()))@if ($price->shown())<span class="nums shrink-0 text-sm">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
                 </a>
             @endforeach
         </div>

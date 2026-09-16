@@ -17,13 +17,13 @@
                                 <span class="tag nums">{{ $c->created_at->translatedFormat('j M, H:i') }}</span>
                             </div>
                         </div>
-                        @if ($v('floor_price'))<span class="nums shrink-0 text-lg">{{ number_format($v('floor_price'), 0, '', ' ') }} ₽</span>@endif
+                        @if ($v('floor_price'))<span class="nums shrink-0 text-lg">{{ \App\Support\Money::rub($v('floor_price')) }}</span>@endif
                     </div>
                     <div class="flex flex-wrap gap-1.5 text-sm">
                         @if ($c->code)<span class="chip">{{ $c->code }}</span>@endif
                         @if ($v('vin'))<span class="chip font-mono">{{ $v('vin') }}</span>@endif
                         @if ($v('plate'))<span class="chip">{{ $v('plate') }}</span>@endif
-                        @if ($v('mileage'))<span class="chip nums">{{ number_format($v('mileage'), 0, '', ' ') }} км</span>@endif
+                        @if ($v('mileage'))<span class="chip nums">{{ \App\Support\Money::nums($v('mileage')) }} км</span>@endif
                         @foreach (['transmission' => \App\Cars\Transmission::class, 'drive' => \App\Cars\Drive::class, 'fuel' => \App\Cars\Fuel::class] as $f => $enum)
                             @if ($v($f))<span class="chip">{{ $enum::labelOf($v($f)) }}</span>@endif
                         @endforeach

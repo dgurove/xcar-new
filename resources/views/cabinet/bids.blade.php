@@ -11,7 +11,7 @@
                         <div class="mt-1.5 flex flex-wrap gap-1.5"><span class="tag nums">№ {{ $offer->number }}</span><span class="tag nums">{{ $bid->created_at->translatedFormat('j M') }}</span></div>
                     </a>
                     <div class="flex items-center justify-between gap-3 sm:contents">
-                        <div class="nums sm:text-right">{{ number_format($bid->amount, 0, '', ' ') }} ₽</div>
+                        <div class="nums sm:text-right">{{ \App\Support\Money::rub($bid->amount) }}</div>
                         <x-ui.pill :tone="match ($bid->state) { \App\Offers\BidState::Accepted => 'open', \App\Offers\BidState::Active => 'urgent', \App\Offers\BidState::Declined => 'danger', default => 'closed' }">{{ $bid->state->label() }}</x-ui.pill>
                     </div>
                 </div>

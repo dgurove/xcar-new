@@ -60,7 +60,7 @@
         @if ($admin && $gallery && ($offer->interests_count ?? 0))
             <div class="mt-1 text-sm text-accent-text">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</div>
         @elseif ($admin && !$gallery && ($offer->active_bids_count ?? 0))
-            <div class="mt-1 text-sm text-urgent">{{ $offer->active_bids_count }} {{ \App\Support\Plural::of($offer->active_bids_count, ['подтверждение', 'подтверждения', 'подтверждений']) }}@if ($offer->top_bid) <span class="tag nums">до {{ number_format($offer->top_bid, 0, '', ' ') }} ₽</span>@endif</div>
+            <div class="mt-1 text-sm text-urgent">{{ $offer->active_bids_count }} {{ \App\Support\Plural::of($offer->active_bids_count, ['подтверждение', 'подтверждения', 'подтверждений']) }}@if ($offer->top_bid) <span class="tag nums">до {{ \App\Support\Money::rub($offer->top_bid) }}</span>@endif</div>
         @endif
     </div>
 
@@ -70,7 +70,7 @@
         @if ($offer->settlement)<span class="text-sm text-ink-dim">{{ $offer->settlement->name }}</span>@endif
         <span class="card-aside">
             @if ($prices || $admin)
-                @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}</span> → @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@elseif ($admin && $offer->asking_price)<span class="card-price nums" data-controller="fit">@if ($offer->floor_price)<span class="card-price-from">{{ number_format($offer->floor_price, 0, '', ' ') }}</span> → @endif<span class="card-price-now">{{ number_format($offer->asking_price, 0, '', ' ') }}&nbsp;₽</span></span>@endif
+                @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@elseif ($admin && $offer->asking_price)<span class="card-price nums" data-controller="fit">@if ($offer->floor_price)<span class="card-price-from">{{ \App\Support\Money::nums($offer->floor_price) }}&nbsp;→</span> @endif<span class="card-price-now">{{ \App\Support\Money::nums($offer->asking_price) }}&nbsp;₽</span></span>@endif
                 @if ($price->declared)<span class="tag nums">заявлена {{ $price::money($price->declared) }}</span>@endif
             @elseif ($gallery)
                 <span class="text-sm text-accent-text">Скоро в продаже</span>

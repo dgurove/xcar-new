@@ -30,7 +30,7 @@
                         <span class="nums mt-1 block text-sm font-normal text-ink-dim">№ {{ $offer->number }}</span>
                     </span>
                     <span class="flex items-center justify-between gap-3 sm:contents">
-                        <span class="nums sm:text-right">{{ number_format($deal->amount, 0, '', ' ') }} ₽</span>
+                        <span class="nums sm:text-right">{{ \App\Support\Money::rub($deal->amount) }}</span>
                         {{-- Этап в покое серый: лайм — глагол. Красным становится просрочка. --}}
                         @if ($deal->state !== \App\Offers\DealState::Active)
                             <x-ui.pill :tone="$deal->state === \App\Offers\DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.pill>
