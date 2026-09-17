@@ -59,15 +59,23 @@ COPY --from=vendor --chown=www-data:www-data /app/vendor ./vendor
 COPY --from=assets --chown=www-data:www-data /app/public/build ./public/build
 COPY --from=composer-bin /usr/bin/composer /usr/bin/composer
 
+# Скомпилированные блейды живут в образе, а не в томе storage: том переживает
+# выкладки, а Blade сравнивает mtime исходника (время коммита из git archive)
+# с mtime компилята — коммит, сделанный во время предыдущей выкладки, оставлял
+# в силе старый шаблон (так всплывал прежний таб-бар с иконками). Каждый релиз
+# компилирует все виды при сборке в свой каталог.
+ENV VIEW_COMPILED_PATH=/app/bootstrap/cache/views
+
 # Каталоги storage — до dump-autoload: package:discover поднимает приложение,
 # и без storage/framework/views оно падает на компиляторе блейда.
 RUN set -eux; \
     mkdir -p storage/app/media storage/app/private storage/app/public storage/app/cache \
         storage/framework/cache/data storage/framework/sessions storage/framework/views \
-        storage/logs bootstrap/cache; \
+        storage/logs bootstrap/cache/views; \
     COMPOSER_ALLOW_SUPERUSER=1 composer dump-autoload --optimize --no-dev; \
     rm -f /usr/bin/composer; \
     CACHE_STORE=array SESSION_DRIVER=array QUEUE_CONNECTION=sync php artisan optimize:clear; \
+    CACHE_STORE=array SESSION_DRIVER=array QUEUE_CONNECTION=sync php artisan view:cache; \
     chown -R www-data:www-data storage bootstrap/cache; \
     mkdir -p /data/caddy /config/caddy && chown -R www-data:www-data /data /config
 

@@ -30,67 +30,67 @@ use Illuminate\Support\Facades\Cache;
  */
 final class Nav
 {
-    /** @return list<array{label: string, icon: string, href: string, match: string|list<string>, tab: bool, capsule: bool}> */
+    /** @return list<array{label: string, href: string, match: string|list<string>, tab: bool, capsule: bool}> */
     public static function sections(?User $user, ?Surface $surface = null): array
     {
         $surface ??= Surface::current();
 
         if ($surface === Surface::Park) {
             return [
-                self::item('Заявки', 'flag', '/', ['/', '/requests']),
-                self::item('ТС', 'car', '/cars'),
-                self::item('Стоянки', 'park', '/yards'),
-                self::item('Почта', 'mail', '/mail'),
-                self::item('Клиенты', 'user', '/clients', tab: false),
+                self::item('Заявки', '/', ['/', '/requests']),
+                self::item('ТС', '/cars'),
+                self::item('Стоянки', '/yards'),
+                self::item('Почта', '/mail'),
+                self::item('Клиенты', '/clients', tab: false),
             ];
         }
 
         if ($surface === Surface::Crm) {
             return [
-                self::item('Предложения', 'car', '/', ['/', '/offers']),
-                self::item('Галерея', 'photo', '/gallery'),
-                self::item('Работа', 'deal', '/work'),
-                self::item('Закупки', 'cart', '/purchases'),
+                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Галерея', '/gallery'),
+                self::item('Работа', '/work'),
+                self::item('Закупки', '/purchases'),
                 // Кабинет CRM — это «Настройки»: профиль первой пилюлей, уведомления — под /account.
-                self::item('Настройки', 'settings', '/settings', ['/settings', '/account'], tab: false),
+                self::item('Настройки', '/settings', ['/settings', '/account'], tab: false),
             ];
         }
 
         if ($user?->isStaff()) {
             return [
-                self::item('Предложения', 'car', '/', ['/', '/offers']),
-                self::item('Галерея', 'photo', '/gallery'),
-                self::item('Закупки', 'cart', '/purchases'),
-                self::item('Уведомления', 'bell', '/account/notifications', capsule: false),
+                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Галерея', '/gallery'),
+                self::item('Закупки', '/purchases'),
+                self::item('Уведомления', '/account/notifications', capsule: false),
             ];
         }
 
         if ($user?->role === Role::Manager) {
             return [
-                self::item('Предложения', 'car', '/', ['/', '/offers']),
-                self::item('Галерея', 'photo', '/gallery', tab: false),
-                self::item('Закупки', 'cart', '/purchases'),
-                self::item('Покупатели', 'users', '/account/buyers'),
-                self::item('Сделки', 'deal', '/account/deals', tab: false),
-                self::item('Уведомления', 'bell', '/account/notifications', capsule: false),
+                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Галерея', '/gallery', tab: false),
+                self::item('Закупки', '/purchases'),
+                self::item('Покупатели', '/account/buyers'),
+                self::item('Сделки', '/account/deals', tab: false),
+                self::item('Уведомления', '/account/notifications', capsule: false),
             ];
         }
 
         // Покупатель: только то, что открыл менеджер, его интерес и уведомления.
         if ($user?->isBuyer()) {
             return [
-                self::item('Предложения', 'car', '/', ['/', '/offers']),
-                self::item('Интерес', 'flag', '/account/interests'),
-                self::item('Уведомления', 'bell', '/account/notifications', capsule: false),
+                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Интерес', '/account/interests'),
+                self::item('Уведомления', '/account/notifications', capsule: false),
             ];
         }
 
         if ($user?->isApproved()) {
             return [
-                self::item('Предложения', 'car', '/', ['/', '/offers']),
-                self::item('Галерея', 'photo', '/gallery'),
-                self::item('Избранное', 'bookmark', '/account/favorites', capsule: false),
-                self::item('Уведомления', 'bell', '/account/notifications', capsule: false),
+                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Галерея', '/gallery'),
+                self::item('Избранное', '/account/favorites', capsule: false),
+                self::item('Уведомления', '/account/notifications', capsule: false),
             ];
         }
 
@@ -105,12 +105,12 @@ final class Nav
         $tabs = array_values(array_filter(self::sections($user, $surface), fn ($i) => $i['tab']));
         $tabs = array_slice($tabs, 0, 4);
         if ($surface === Surface::Site && $user && ! $user->isApproved()) {
-            return [self::item('Контакты', 'mail', '/contacts'), self::item('Выйти', 'exit', '/logout', capsule: false) + ['logout' => true]];
+            return [self::item('Контакты', '/contacts'), self::item('Выйти', '/logout', capsule: false) + ['logout' => true]];
         }
         $tabs[] = match (true) {
-            ! $user => self::item('Войти', 'login', '/login'),
-            $surface === Surface::Crm => self::item('Настройки', 'settings', '/settings', ['/settings', '/account']),
-            default => self::item('Кабинет', 'user', '/account'),
+            ! $user => self::item('Войти', '/login'),
+            $surface === Surface::Crm => self::item('Настройки', '/settings', ['/settings', '/account']),
+            default => self::item('Кабинет', '/account'),
         };
 
         return $tabs;
@@ -128,22 +128,22 @@ final class Nav
         $surface ??= Surface::current();
 
         if ($surface === Surface::Park) {
-            return [self::item('На сайт', 'car', Surface::Site->url())];
+            return [self::item('На сайт', Surface::Site->url())];
         }
 
         if ($surface === Surface::Crm) {
             return [
-                self::item('На сайт', 'car', Surface::Site->url()),
-                self::item('Стоянка', 'park', Surface::Park->url()),
+                self::item('На сайт', Surface::Site->url()),
+                self::item('Стоянка', Surface::Park->url()),
             ];
         }
 
         if (! $user?->isApproved()) {
-            return [self::item('Контакты', 'mail', '/contacts')];
+            return [self::item('Контакты', '/contacts')];
         }
         $top = [
-            self::item('Вопросы', 'file', '/faq'),
-            self::item('Контакты', 'mail', '/contacts'),
+            self::item('Вопросы', '/faq'),
+            self::item('Контакты', '/contacts'),
         ];
 
         // Ссылок в CRM с сайта нет — владелец: сайт для покупателей, сотрудники ходят по своему адресу.
@@ -406,9 +406,9 @@ final class Nav
         return $best;
     }
 
-    private static function item(string $label, string $icon, string $href, string|array|null $match = null, bool $tab = true, bool $capsule = true): array
+    private static function item(string $label, string $href, string|array|null $match = null, bool $tab = true, bool $capsule = true): array
     {
-        return ['label' => $label, 'icon' => $icon, 'href' => $href, 'match' => $match ?? $href, 'tab' => $tab, 'capsule' => $capsule];
+        return ['label' => $label, 'href' => $href, 'match' => $match ?? $href, 'tab' => $tab, 'capsule' => $capsule];
     }
 
     /** @param list<string> $also  чужие адреса, при которых пилюля активна и служит «назад» */

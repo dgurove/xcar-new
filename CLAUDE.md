@@ -192,3 +192,7 @@ cookie на `.xcar.localhost`. База `xcar_new` (xcar/xcar). Почта ло�
 (`deploy/backup.sh`). Домены `xcar.ru`, `crm.xcar.ru`, `park.xcar.ru`. Старый
 сервер `xcar-new` (201.24.57.130) заморожен с 12.09.2026.
 **Прод не трогать без спроса, выкладка только `deploy/deploy.sh`.**
+Скомпилированные блейды — в образе (`VIEW_COMPILED_PATH=/app/bootstrap/cache/views`,
+`view:cache` при сборке): том `storage/framework/views` не читается, старый
+компилят из прошлого релиза всплыть не может, коммитить во время выкладки
+можно.
