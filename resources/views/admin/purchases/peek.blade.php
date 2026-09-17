@@ -1,8 +1,8 @@
 {{-- Окошко строки таблицы машин закупки (фрейм peek) — здесь же оценка: лента фото,
      метки, наша цена справа, факты, поле «Наша цена» и «Дальше» (сохраняет и ведёт
      к следующей без цены; пустое поле — просто дальше), ниже предложения менеджеров
-     (выбрать/отменить прямо тут), описание. Цены Carcade и характеристики — метками
-     и фактами наверху, отдельных блоков нет: окошко — полэкрана.
+     (выбрать/отменить прямо тут), описание. Цены Carcade — подписями под полем,
+     характеристики — метками и фактами наверху, отдельных блоков нет: окошко — полэкрана.
      Формы отвечают в окошко (PeekBack), строка таблицы — свежей из row. --}}
 @php
     use App\Purchases\ImportState;
@@ -18,8 +18,6 @@
             <span class="tag">{{ $car->kind->label() }}</span>
             @if ($car->settlement?->name ?? $car->city)<span class="tag">{{ $car->settlement?->name ?? $car->city }}</span>@endif
             @if ($car->vin)<span class="tag nums">{{ $car->vin }}</span>@endif
-            @if ($car->price_revalued)<span class="tag nums">переоценка {{ \App\Support\Money::rub($car->price_revalued) }}</span>@endif
-            @if ($car->price_listing)<span class="tag nums">размещение {{ \App\Support\Money::rub($car->price_listing) }}</span>@endif
             @if ($car->fssp)<x-ui.pill tone="urgent">Ограничения ФССП</x-ui.pill>@endif
             @if ($car->specs_state->needsAttention())<span class="tag" style="{{ $amber }}">{{ $car->specs_state->label() }}</span>@elseif ($car->photos_state->needsAttention())<span class="tag" style="{{ $amber }}">{{ $car->photos_state->label() }}</span>@endif
             @if (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true))<span class="tag">фото едут</span>@endif
@@ -37,6 +35,14 @@
                 <button type="submit" class="btn btn-s btn-accent shrink-0">Дальше</button>
             </form>
             @error('price_final')<p class="w-full text-sm text-danger">{{ $message }}</p>@enderror
+            {{-- Цены Carcade — под полем, подписями: это ориентир для нашей цены, а не характеристика ТС. --}}
+            @if ($car->price_revalued || $car->price_listing)
+                <dl class="flex w-full gap-6">
+                    @foreach (['С учётом переоценки' => $car->price_revalued, 'Для размещения' => $car->price_listing] as $label => $value)
+                        @if ($value)<div><dt class="text-xs text-ink-dim">{{ $label }}</dt><dd class="nums text-sm font-medium">{{ \App\Support\Money::rub($value) }}</dd></div>@endif
+                    @endforeach
+                </dl>
+            @endif
         </x-slot:actions>
         @if ($offers->isNotEmpty())
             <div class="mt-3 flex flex-wrap items-center gap-1.5">
