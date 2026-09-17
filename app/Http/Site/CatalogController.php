@@ -20,6 +20,10 @@ class CatalogController
     /** Главная: первый экран с числом предложений, ниже — каталог. С фильтрами в адресе — просто каталог. */
     public function index(Request $request)
     {
+        if ($request->user()?->isManager()) {
+            return redirect('/purchases');
+        }
+
         return $this->list($request, gallery: false);
     }
 

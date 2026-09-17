@@ -65,9 +65,9 @@ final class Nav
             ];
         }
 
+        // Менеджеру предложения пока закрыты (временно, по просьбе руководства): главная уводит в закупки.
         if ($user?->role === Role::Manager) {
             return [
-                self::item('Предложения', '/', ['/', '/offers']),
                 self::item('Галерея', '/gallery', tab: false),
                 self::item('Закупки', '/purchases'),
                 self::item('Покупатели', '/account/buyers'),
