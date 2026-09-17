@@ -1257,6 +1257,8 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
      во всю высоту: лента тянется, поле внизу над клавиатурой. */
   .chat { position: relative; display: flex; flex-direction: column; }
   .chat-list { @apply flex flex-col gap-1 overflow-y-auto py-2; overscroll-behavior: contain; scrollbar-width: thin; }
+  /* Сообщения прижаты к полю ввода, а не к верху: пустое место — над ними (распорка, чтобы прокрутка жила). */
+  .chat-list::before { content: ''; flex: 1 0 auto; }
   .chat:not(.chat-screen) .chat-list { max-height: 50dvh; }
   .chat-tall .chat-list { max-height: none; min-height: 50dvh; }
   .chat-screen { flex: 1 1 0; min-height: 0; }
@@ -1288,7 +1290,9 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .chat-split.has-current .chat-rows { display: none; }
   .chat-split.has-current .chat-pane { display: flex; flex-direction: column; }
   @media (min-width: 1024px) {
-    .chat-split { display: grid; grid-template-columns: 20rem minmax(0, 1fr); gap: 1.5rem; height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 4rem); }
+    .chat-split { display: grid; grid-template-columns: 20rem minmax(0, 1fr); gap: 1.5rem; height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 5.5rem); }
+    /* «‹ Чаты» над двумя колонками не нужна: список и так слева. */
+    a:has(+ .chat-split.has-current) { display: none !important; }
     .chat-split .chat-rows, .chat-split.has-current .chat-rows { display: flex; overflow-y: auto; padding-right: .25rem; scrollbar-width: thin; }
     .chat-split .chat-pane, .chat-split.has-current .chat-pane { display: flex; flex-direction: column; }
     .chat-pane .chat-page { flex: 1 1 0; }
