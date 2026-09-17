@@ -11,7 +11,8 @@
     // Шапка ведёт к собеседнику: менеджеру — страница покупателя с возвратом в чат; покупателю и всем,
     // кто пишет площадке, — шторка-контакт; статус там по рабочему времени, а не по seen_at.
     $mine = $chat && $chat->isCounterpart($me);
-    $link = $mine ? '/account/buyers/'.$other->id.'?chat='.$chat->id : null;
+    // Покупатель мог уйти к другому менеджеру — чат остался, а его страницы у меня больше нет.
+    $link = $mine && $other->manager_id === $me->id ? '/account/buyers/'.$other->id.'?chat='.$chat->id : null;
     $status = $mine ? false : \App\Chats\Hours::presence(feminine: $other === null);
     $others = $mine || ! $other ? collect() : $chats->filter(fn ($c) => $c->manager_id === $other->id && $c->id !== $chat?->id);
     // «Администрация XCar» в списке есть всегда: обращения ещё нет — строка ведёт на пустой экран.

@@ -3,7 +3,6 @@
 namespace App\Chats;
 
 use Carbon\CarbonImmutable;
-use Carbon\CarbonInterface;
 
 /**
  * Рабочее время площадки по Москве, одно для всех: от него — автоответ администрации и
@@ -18,7 +17,7 @@ final class Hours
 
     public const TZ = 'Europe/Moscow';
 
-    public static function open(?CarbonInterface $at = null): bool
+    public static function open(?\DateTimeInterface $at = null): bool
     {
         $hour = (int) CarbonImmutable::instance($at ?? now())->setTimezone(self::TZ)->format('G');
 
@@ -26,7 +25,7 @@ final class Hours
     }
 
     /** «в сети» или «был в сети 2 ч 15 мин назад»: от последних 21:00 (до утра — вчерашних). */
-    public static function presence(bool $feminine = false, ?CarbonInterface $at = null): string
+    public static function presence(bool $feminine = false, ?\DateTimeInterface $at = null): string
     {
         $now = CarbonImmutable::instance($at ?? now())->setTimezone(self::TZ);
         if (self::open($now)) {

@@ -40,7 +40,7 @@
                 @else
                     <div class="chat-rows-list mt-4 rounded-(--radius-l) border border-line">
                         @foreach ($chats as $c)
-                            <x-chat.row :chat="$c" :me="$me" :href="'/work/chats/'.$c->id" staff/>
+                            <x-chat.row :chat="$c" :me="$me" :href="\App\Support\Surface::Crm->url('/work/chats/'.$c->id)" staff/>
                         @endforeach
                     </div>
                 @endif
