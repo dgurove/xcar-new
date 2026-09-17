@@ -1,4 +1,4 @@
-{{-- Строка таблицы машин закупки на сайте: машина, тип, город, ДЛ, цена — своя у
+{{-- Строка таблицы ТС закупки на сайте: внешний номер (ref), название, тип, город, цена — своя у
      менеджера, лучшая у сотрудника, «Без цены». Нажатие — окошко (peek). --}}
 @props(['car', 'purchase', 'query' => '', 'showKind' => false])
 @php
@@ -8,7 +8,7 @@
     $href = "/purchases/{$purchase->number}/{$car->ref}".($query ? '?'.$query : '');
 @endphp
 <tr id="car-{{ $car->id }}" data-peek-url="/purchases/{{ $purchase->number }}/{{ $car->ref }}/peek{{ $query ? '?'.$query : '' }}" data-href="{{ $href }}" tabindex="0">
-    <td class="nums text-ink-dim">{{ $car->dl }}</td>
+    <td class="nums text-ink-dim">{{ $car->ref }}</td>
     <td>{{ $car->titleWithYear() }}</td>
     @if ($showKind)<td class="hidden w-32 text-ink-dim sm:table-cell">{{ $car->kind->label() }}</td>@endif
     <td class="hidden text-ink-dim sm:table-cell">{{ $car->settlement?->name ?? $car->city }}</td>

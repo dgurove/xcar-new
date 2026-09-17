@@ -8,7 +8,7 @@
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="$href" :title="$car->titleWithYear()" :photo="$car->mainPhoto()" :facts="$car->facts()" :action="$staff || $mine ? 'Открыть' : 'Предложить'">
         <x-slot:marks>
-            <span class="tag nums">{{ $car->dl }}</span>
+            <span class="tag nums">№ {{ $car->ref }}</span>
             <span class="tag">{{ $car->kind->label() }}</span>
             @if ($car->settlement?->name ?? $car->city)<span class="tag">{{ $car->settlement?->name ?? $car->city }}</span>@endif
             @if ($car->vin)<span class="tag nums">{{ $car->vin }}</span>@endif

@@ -42,7 +42,7 @@
             <x-ui.table id="cars">
                 <x-slot:head>
                     <tr>
-                        <th class="w-24 sm:w-28">ДЛ</th>
+                        <th class="w-12 sm:w-16">№</th>
                         <th>Марка, модель</th>
                         @if (count($kinds) > 1)<th class="hidden w-32 sm:table-cell">Тип</th>@endif
                         <th class="hidden w-36 sm:table-cell">Город</th>
