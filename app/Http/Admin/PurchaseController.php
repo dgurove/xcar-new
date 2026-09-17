@@ -27,9 +27,9 @@ use Illuminate\Validation\Rule;
 
 class PurchaseController
 {
-    public const PRESETS = ['all' => 'Все машины', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений', 'unfinal' => 'Без нашей цены', 'final' => 'С нашей ценой', 'attention' => 'Требуют внимания', 'nophoto' => 'Без фото', 'hidden' => 'Скрытые'];
+    public const PRESETS = ['all' => 'Все ТС', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений', 'unfinal' => 'Без нашей цены', 'final' => 'С нашей ценой', 'attention' => 'Требуют внимания', 'nophoto' => 'Без фото', 'hidden' => 'Скрытые'];
 
-    /** Пресеты группами в выборе «Все машины ▾»: из каждой группы выбирают один ответ. */
+    /** Пресеты группами в выборе «Все ТС ▾»: из каждой группы выбирают один ответ. */
     public const PRESET_GROUPS = ['' => ['all'], 'Предложения менеджеров' => ['priced', 'unpriced'], 'Наша цена' => ['unfinal', 'final'], 'Служебное' => ['attention', 'nophoto', 'hidden']];
 
     public const SORTS = ['dl' => 'По порядку файла', 'best' => 'Лучшая цена', 'final' => 'Наша цена', 'fresh' => 'Сначала новые'];

@@ -72,7 +72,7 @@ class Car extends Model implements HasMedia
 
     public function title(): string
     {
-        return trim(($this->brand?->name ?? $this->brand_raw ?? '').' '.($this->model?->name ?? $this->model_raw ?? '')) ?: 'Машина';
+        return trim(($this->brand?->name ?? $this->brand_raw ?? '').' '.($this->model?->name ?? $this->model_raw ?? '')) ?: 'ТС';
     }
 
     public function titleWithYear(): string

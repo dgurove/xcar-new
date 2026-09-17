@@ -10,7 +10,7 @@
 @endphp
 <form method="post" action="/purchases/prices/{{ $offer->id }}/{{ $chosen ? 'cancel' : 'choose' }}" class="contents"
     data-turbo-confirm="{{ $chosen ? 'Отменить выбор?' : 'Выбрать предложение?' }}"
-    data-turbo-confirm-text="{{ $offer->user->name }}, {{ $sum }} за {{ $car->titleWithYear() }}{{ $chosen ? '. Остальные цены по машине снова будут ждать' : '' }}"
+    data-turbo-confirm-text="{{ $offer->user->name }}, {{ $sum }} за {{ $car->titleWithYear() }}{{ $chosen ? '. Остальные цены по этому ТС снова будут ждать' : '' }}"
     data-turbo-confirm-label="{{ $chosen ? 'Отменить выбор' : 'Выбрать' }}"
     @if ($offer->comment) data-turbo-confirm-quote="{{ $offer->comment }}" data-turbo-confirm-quote-by="{{ $offer->user->name }}" @endif>
     @csrf

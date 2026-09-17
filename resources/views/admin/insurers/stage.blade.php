@@ -20,7 +20,7 @@
                 @if ($w->track === Track::Sale)
                     <x-ui.field name="offer_state" label="Что становится с предложением" :options="OfferState::options()" placeholder="Не меняется" :value="$stage->offer_state?->value"/>
                 @else
-                    <x-ui.field name="car_place" label="Где машина" :options="CarPlace::options()" placeholder="Не меняется" :value="$stage->car_place?->value"/>
+                    <x-ui.field name="car_place" label="Где ТС" :options="CarPlace::options()" placeholder="Не меняется" :value="$stage->car_place?->value"/>
                 @endif
             </div>
         </x-ui.card>

@@ -1,11 +1,11 @@
 @php use App\Park\{VehicleState, RequestType}; $photos = $vehicle->visiblePhotos(); @endphp
-<x-ui.shell :title="$vehicle->titleWithYear()" :back="['Машины', '/cars']" cache="no-cache">
+<x-ui.shell :title="$vehicle->titleWithYear()" :back="['ТС', '/cars']" cache="no-cache">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-park.state :vehicle="$vehicle"/>
         @if ($vehicle->ref)<span class="chip">{{ $vehicle->ref }}</span>@endif
         @if ($threads->count())<x-ui.pill tone="plain" :href="$threads->count() === 1 ? '/mail/'.$threads->first()->id : '/mail?preset=linked&q='.urlencode($vehicle->ref ?? '')" class="!min-h-0 !py-1 text-xs"><x-ui.icon name="mail" class="size-4"/> {{ $threads->count() === 1 ? 'Письмо' : 'Писем: '.$threads->count() }}</x-ui.pill>@endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
-        <x-ui.sheet id="vehicle-actions" title="Машина">
+        <x-ui.sheet id="vehicle-actions" title="Транспортное средство">
             <div class="flex flex-col gap-2">
                 @if ($vehicle->state === VehicleState::Expected)
                     <x-ui.button href="/requests/new?tip=intake&mashina={{ $vehicle->id }}" block>Принять на стоянку</x-ui.button>
@@ -15,7 +15,7 @@
                         <x-ui.field name="yard_id" label="Стоянка" :options="$yards" :value="$vehicle->yard_id" span="flex-1"/>
                         <x-ui.button variant="secondary">Переставить</x-ui.button>
                     </form>
-                    <form method="post" action="/cars/{{ $vehicle->id }}/release" class="flex items-end gap-2" data-turbo-confirm="Выдать машину?">@csrf
+                    <form method="post" action="/cars/{{ $vehicle->id }}/release" class="flex items-end gap-2" data-turbo-confirm="Выдать ТС?">@csrf
                         <x-ui.field name="released_at" label="Выдача" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" span="flex-1"/>
                         <x-ui.button variant="secondary">Выдать</x-ui.button>
                     </form>
@@ -36,7 +36,7 @@
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin draft" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @csrf @method('put')
-            <x-ui.card title="Машина" class="order-1">
+            <x-ui.card title="Транспортное средство" class="order-1">
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
                     <x-ui.field name="ref" label="Номер убытка" :value="$vehicle->ref" span="col-span-2 lg:col-span-1"/>
                     <x-ui.field name="client_id" label="Заказчик" :options="$clients" placeholder="—" :value="$vehicle->client_id"/>

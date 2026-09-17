@@ -23,7 +23,7 @@ final class Move
         return DB::transaction(function () use ($vehicle, $by, $to) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             if ($vehicle->state !== VehicleState::Stored) {
-                throw ValidationException::withMessages(['state' => 'Переставить можно только машину на стоянке']);
+                throw ValidationException::withMessages(['state' => 'Переставить можно только ТС на стоянке']);
             }
             $from = $vehicle->yard?->name;
             $vehicle->update(['yard_id' => $to->id]);

@@ -24,7 +24,7 @@ final class Intake
         return DB::transaction(function () use ($vehicle, $by, $yard, $at, $damageZones, $damageNote) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             if ($vehicle->state !== VehicleState::Expected) {
-                throw ValidationException::withMessages(['state' => 'Машина уже '.$vehicle->state->label()]);
+                throw ValidationException::withMessages(['state' => 'ТС уже '.$vehicle->state->label()]);
             }
             $vehicle->update(['state' => VehicleState::Stored, 'yard_id' => $yard->id, 'accepted_at' => $at ?? now(), 'damage_zones' => array_values($damageZones), 'damage_note' => $damageNote ?: null]);
             $vehicle->log(EventType::Accepted, $by, ['yard' => $yard->name]);

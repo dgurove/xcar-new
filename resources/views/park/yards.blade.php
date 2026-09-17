@@ -11,7 +11,7 @@
                     <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
                 </div>
                 <a href="/cars?stoyanka={{ $yard->id }}" class="flex flex-col gap-1.5">
-                    <div class="flex items-baseline justify-between"><span class="nums text-[40px] leading-none">{{ $yard->stored_vehicles_count }}</span><span class="flex gap-1.5">@if ($yard->capacity)<span class="tag nums">из {{ $yard->capacity }}</span><span class="tag nums">свободно {{ $free }}</span>@else<span class="tag">машин</span>@endif</span></div>
+                    <div class="flex items-baseline justify-between"><span class="nums text-[40px] leading-none">{{ $yard->stored_vehicles_count }}</span><span class="flex gap-1.5">@if ($yard->capacity)<span class="tag nums">из {{ $yard->capacity }}</span><span class="tag nums">свободно {{ $free }}</span>@else<span class="tag">ТС</span>@endif</span></div>
                     @if ($yard->capacity)<div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full {{ $share > 90 ? 'bg-danger' : 'bg-accent' }}" style="width:{{ $share }}%"></div></div>@endif
                 </a>
                 <x-ui.sheet id="yard-{{ $yard->id }}" title="Стоянка">

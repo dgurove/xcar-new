@@ -15,7 +15,7 @@ final class RegisterInterest
     public function __invoke(Offer $offer, User $by, ?string $comment = null): Interest
     {
         if (! $offer->state->acceptsInterest()) {
-            throw ValidationException::withMessages(['interest' => 'Машина уже недоступна']);
+            throw ValidationException::withMessages(['interest' => 'ТС уже недоступно']);
         }
 
         $interest = $offer->interests()->firstOrNew(['user_id' => $by->id]);

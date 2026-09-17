@@ -9,7 +9,7 @@
         @csrf
         <input type="hidden" name="type" value="{{ $type->value }}">
         @if ($type === RequestType::Intake && !$vehicle)
-            <x-ui.card title="Машина">
+            <x-ui.card title="Транспортное средство">
                 <div class="grid gap-4 sm:grid-cols-2">
                     <x-ui.field name="ref" label="Номер убытка" class="sm:col-span-2"/>
                     <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" resets="#cb-model_id"/>
@@ -22,7 +22,7 @@
                 </div>
             </x-ui.card>
         @else
-            <x-ui.card title="Машина">
+            <x-ui.card title="Транспортное средство">
                 <x-ui.combobox name="vehicle_id" label="Номер убытка, VIN или госномер" url="/reference/cars" :value="$vehicle?->id" :text="$vehicle?->titleWithYear()"/>
             </x-ui.card>
         @endif

@@ -1,11 +1,11 @@
 @php $view = \App\Support\ListView::pick(request(), $vehicles->total()); @endphp
-<x-ui.shell :title="$yard ? $yard->name : 'Машины'" :count="$vehicles->total()" :back="$yard ? ['Стоянки', '/yards'] : false">
+<x-ui.shell :title="$yard ? $yard->name : 'ТС'" :count="$vehicles->total()" :back="$yard ? ['Стоянки', '/yards'] : false">
     <x-ui.toolbar :sorts="\App\Http\Park\VehicleController::SORTS" :sort="$sort" :pills="\App\Http\Park\VehicleController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['yard' => request('yard'), \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)])" name="vehicles">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:filters><input name="q" value="{{ $q }}" placeholder="Номер, VIN, госномер, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>
     @if ($vehicles->isEmpty())
-        <x-ui.empty class="mt-6">Машин нет</x-ui.empty>
+        <x-ui.empty class="mt-6">ТС нет</x-ui.empty>
     @else
         @if ($view === \App\Support\ListView::TABLE)
             <x-ui.table id="vehicles" class="mt-6">

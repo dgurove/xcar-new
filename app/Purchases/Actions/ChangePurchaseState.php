@@ -25,7 +25,7 @@ final class ChangePurchaseState
             throw ValidationException::withMessages(['state' => "Из «{$purchase->state->label()}» нельзя в «{$next->label()}»"]);
         }
         if ($next === PurchaseState::Open && ! $purchase->cars()->exists()) {
-            throw ValidationException::withMessages(['state' => 'В закупке нет машин']);
+            throw ValidationException::withMessages(['state' => 'В закупке нет ТС']);
         }
         $wasPublic = $purchase->state->isPublic();
         $purchase->update(['state' => $next]);

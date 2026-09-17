@@ -60,7 +60,7 @@
                 <h2 class="mt-8 text-xl">Описание</h2>
                 <p class="mt-4 whitespace-pre-line text-ink-muted">{{ $car->description }}</p>
             @endif
-            <div class="mt-8"><a href="/purchases/{{ $n }}/{{ $car->ref }}" class="chip">Карточка машины</a></div>
+            <div class="mt-8"><a href="/purchases/{{ $n }}/{{ $car->ref }}" class="chip">Карточка ТС</a></div>
         </div>
     </div>
 </x-ui.shell>

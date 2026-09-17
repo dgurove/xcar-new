@@ -77,7 +77,7 @@ class RequestController
         $type = RequestType::from($data['type']);
         $vehicle = ! empty($data['vehicle_id']) ? Vehicle::find($data['vehicle_id']) : null;
         if ($type !== RequestType::Intake && ! $vehicle) {
-            return back()->withInput()->withErrors(['vehicle_id' => 'Выберите машину']);
+            return back()->withInput()->withErrors(['vehicle_id' => 'Выберите ТС']);
         }
         $req = $create($request->user(), $type, $vehicle, $data);
 

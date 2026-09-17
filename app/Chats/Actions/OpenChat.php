@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 /** Чат по офферу для человека: заводится один раз, с приветствием от площадки. */
 final class OpenChat
 {
-    public const GREETING = 'Добрый день! Спрашивайте про машину — ответим здесь.';
+    public const GREETING = 'Добрый день! Спрашивайте про ТС — ответим здесь.';
 
     public function __invoke(Offer $offer, User $user): Chat
     {

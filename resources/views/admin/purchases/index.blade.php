@@ -24,7 +24,7 @@
                             <x-ui.pill :tone="$p->state->tone() === 'open' ? 'open' : ($p->state->tone() === 'plain' ? 'plain' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $p->state->label() }}</x-ui.pill>
                             @if ($p->offers_close_at)<span class="chip">до {{ $p->offers_close_at->translatedFormat('j M, H:i') }}</span>@endif
                         @endif
-                        <span class="chip">{{ $p->cars_count }} машин</span>
+                        <span class="chip">{{ $p->cars_count }} ТС</span>
                     </div>
                 </div>
                 <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>

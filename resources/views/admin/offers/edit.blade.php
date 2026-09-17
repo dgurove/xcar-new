@@ -136,7 +136,7 @@
         <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @csrf @method('put')
 
-            <x-ui.card title="Машина" class="order-2">
+            <x-ui.card title="Транспортное средство" class="order-2">
                 <div class="{{ $grid }}">
                     <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id"/>
                     <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="$offer->model_id" :text="$offer->model?->name"/>

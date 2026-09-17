@@ -38,7 +38,7 @@ final class Nav
         if ($surface === Surface::Park) {
             return [
                 self::item('Заявки', 'flag', '/', ['/', '/requests']),
-                self::item('Машины', 'car', '/cars'),
+                self::item('ТС', 'car', '/cars'),
                 self::item('Стоянки', 'park', '/yards'),
                 self::item('Почта', 'mail', '/mail'),
                 self::item('Клиенты', 'user', '/clients', tab: false),

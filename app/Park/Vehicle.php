@@ -85,12 +85,12 @@ class Vehicle extends Model implements HasMedia
 
     public function title(): string
     {
-        return trim(implode(' ', array_filter([$this->brand?->name, $this->model?->name, $this->year ? ', '.$this->year : null]))) ?: ($this->ref ?: 'Машина');
+        return trim(implode(' ', array_filter([$this->brand?->name, $this->model?->name, $this->year ? ', '.$this->year : null]))) ?: ($this->ref ?: 'ТС');
     }
 
     public function titleWithYear(): string
     {
-        return trim(($this->brand?->name ?? '').' '.($this->model?->name ?? '')).($this->year ? ", {$this->year}" : '') ?: ($this->ref ?: 'Машина');
+        return trim(($this->brand?->name ?? '').' '.($this->model?->name ?? '')).($this->year ? ", {$this->year}" : '') ?: ($this->ref ?: 'ТС');
     }
 
     public function daysStored(): ?int

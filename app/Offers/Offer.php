@@ -231,7 +231,7 @@ class Offer extends Model implements HasMedia
 
     public function title(): string
     {
-        return trim(($this->brand?->name ?? '').' '.($this->model?->name ?? '')) ?: 'Машина';
+        return trim(($this->brand?->name ?? '').' '.($this->model?->name ?? '')) ?: 'ТС';
     }
 
     public function titleWithYear(): string

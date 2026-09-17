@@ -7,12 +7,12 @@
         @elseif (!$park && $thread->offer)
             <a href="/offers/{{ $thread->offer->number }}" class="chip bg-accent-soft text-accent-text">{{ $thread->offer->title() }} <span class="nums opacity-70">№ {{ $thread->offer->number }}</span></a>
         @endif
-        <button type="button" class="chip" data-action="sheet#open">{{ ($park ? $thread->vehicle : $thread->offer) ? 'Перепривязать' : ($park ? 'Привязать к машине' : 'Привязать к предложению') }}</button>
-        <x-ui.sheet id="link" :title="$park ? 'Машина' : 'Предложение'" :open="$errors->has('number') || $errors->has('vehicle_id')">
+        <button type="button" class="chip" data-action="sheet#open">{{ ($park ? $thread->vehicle : $thread->offer) ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</button>
+        <x-ui.sheet id="link" :title="$park ? 'Транспортное средство' : 'Предложение'" :open="$errors->has('number') || $errors->has('vehicle_id')">
             <form method="post" action="{{ $base }}/{{ $thread->id }}/link" class="flex flex-col gap-3">
                 @csrf
                 @if ($park)
-                    <x-ui.combobox name="vehicle_id" label="Машина" url="/reference/cars" :value="$thread->vehicle_id" :text="$thread->vehicle?->titleWithYear()"/>
+                    <x-ui.combobox name="vehicle_id" label="Транспортное средство" url="/reference/cars" :value="$thread->vehicle_id" :text="$thread->vehicle?->titleWithYear()"/>
                 @else
                     <x-ui.field name="number" label="Номер предложения" inputmode="numeric" :value="$thread->offer?->number" autofocus/>
                 @endif

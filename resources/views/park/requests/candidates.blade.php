@@ -27,7 +27,7 @@
                     <div class="mt-auto flex flex-wrap items-center gap-2">
                         <a href="/mail/{{ $c->thread_id }}" class="btn btn-ghost btn-s">Письмо</a>
                         @if ($c->state === CandidateState::Promoted)
-                            <x-ui.pill tone="closed" href="/cars/{{ $c->vehicle_id }}" class="ml-auto">Машина</x-ui.pill>
+                            <x-ui.pill tone="closed" href="/cars/{{ $c->vehicle_id }}" class="ml-auto">ТС</x-ui.pill>
                         @else
                             <form method="post" action="/requests/from-mail/{{ $c->id }}/decline" class="ml-auto">@csrf<x-ui.button size="sm" variant="ghost">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Отклонить' }}</x-ui.button></form>
                             <form method="post" action="/requests/from-mail/{{ $c->id }}/create">@csrf<x-ui.button size="sm">Завести</x-ui.button></form>
