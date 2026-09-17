@@ -3,6 +3,7 @@
 namespace App\Chats;
 
 use App\Offers\Offer;
+use App\Support\Linkify;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -67,7 +68,7 @@ class Chat extends Model
         if ($this->last_deleted_at) {
             return 'Сообщение удалено';
         }
-        $text = $this->last_text ? Str::limit($this->last_text, 90) : ($this->last_doc ? 'Файл' : 'Фото');
+        $text = $this->last_text ? Str::limit(Linkify::plain($this->last_text), 90) : ($this->last_doc ? 'Файл' : 'Фото');
 
         return ($me && $this->last_author_id === $me->id ? 'Вы: ' : '').$text;
     }

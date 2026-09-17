@@ -2,11 +2,13 @@
 
 namespace App\Chats;
 
+use App\Support\Linkify;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 #[Fillable(['chat_id', 'seq', 'author_id', 'author_kind', 'text', 'reply_to', 'edited_at', 'deleted_at'])]
 class Message extends Model
@@ -49,7 +51,7 @@ class Message extends Model
     /** Имя автора для чужого пузыря и цитаты. */
     public function authorName(Chat $chat): string
     {
-        return $this->author?->name ?? ($this->author_kind === AuthorKind::Staff ? 'XCar' : ($chat->guest_name ?? ''));
+        return $this->author?->name ?? ($this->author_kind === AuthorKind::Staff ? Chat::PLATFORM : ($chat->guest_name ?? ''));
     }
 
     /** Строка превью: список чатов, цитата, тост. */
@@ -60,7 +62,7 @@ class Message extends Model
         }
 
         if ($this->text) {
-            return \Illuminate\Support\Str::limit($this->text, $limit);
+            return Str::limit(Linkify::plain($this->text), $limit);
         }
 
         return $this->relationLoaded('files') && $this->files->contains(fn (File $f) => ! $f->isImage()) ? 'Файл' : 'Фото';

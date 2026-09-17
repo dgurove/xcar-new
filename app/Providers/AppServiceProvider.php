@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Listeners\AttachGuestEnquiry;
+use App\Chats\Listeners\ScheduleAutoReply;
 use App\Live\PublishLiveUpdates;
 use App\Mail\OnMessage;
 use App\Media\StampOnAdd;
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);
         Event::listen(Login::class, AttachGuestEnquiry::class);
+        Event::listen(ChatMessagePosted::class, ScheduleAutoReply::class);
         Event::subscribe(Passkeys::class);
         Event::listen(MediaHasBeenAddedEvent::class, StampOnAdd::class);
         Auth::provider('xcar-webauthn', fn (Application $app, array $config) => new WebAuthnProvider(
