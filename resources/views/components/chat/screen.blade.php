@@ -3,7 +3,7 @@
      other — человек на том конце (аватар, телефон, «в сети»); без него — площадка.
      chat может не быть (экран «написать» со страницы ТС): тогда offer — сама ТС, лента пуста,
      первое сообщение заводит чат. readonly — сотрудник читает чужую переписку. --}}
-@props(['chat', 'messages', 'user', 'name', 'other' => null, 'offer' => null, 'back' => '/account/chats', 'firstUnread' => 0, 'more' => false, 'readonly' => false])
+@props(['chat', 'messages', 'user', 'name', 'other' => null, 'offer' => null, 'back' => '/account/chats', 'open' => null, 'firstUnread' => 0, 'more' => false, 'readonly' => false])
 @php
     $offer ??= $chat?->offer;
     $price = $offer ? \App\Offers\PriceView::for($offer, $user) : null;
@@ -12,7 +12,7 @@
 <div class="chat-page">
     <div class="chat-head">
         <a href="{{ $back }}" class="chat-back header-btn" aria-label="Назад" data-controller="back" data-action="back#go" data-turbo-action="replace"><x-ui.icon name="chevron-left" class="size-5"/></a>
-        @if ($other)<x-ui.avatar :user="$other" :size="36" :online="$seen === 'в сети'"/>@else<span class="avatar" style="width:36px;height:36px"><x-ui.icon name="chat" class="size-[18px]"/></span>@endif
+        <x-chat.avatar :user="$other" :size="36" :online="$seen === 'в сети'"/>
         <div class="min-w-0 flex-1">
             <div class="truncate font-medium leading-tight">{{ $name }}</div>
             <div class="truncate text-[13px] leading-tight text-ink-muted" data-chat-status>{{ $seen }}</div>
@@ -28,5 +28,5 @@
             <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
         </a>
     @endif
-    <x-chat.box :chat="$chat" :messages="$messages" :user="$user" :first-unread="$firstUnread" :more="$more" :readonly="$readonly" :open="$chat ? null : '/offers/'.$offer->number.'/chat'" screen/>
+    <x-chat.box :chat="$chat" :messages="$messages" :user="$user" :first-unread="$firstUnread" :more="$more" :readonly="$readonly" :open="$open ?? ($chat || !$offer ? null : '/offers/'.$offer->number.'/chat')" screen/>
 </div>

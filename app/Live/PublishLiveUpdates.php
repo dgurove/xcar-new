@@ -12,9 +12,9 @@ use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
-use App\Offers\Events\OfferStateChanged;
 use App\Offers\Events\OffersHidden;
 use App\Offers\Events\OffersShown;
+use App\Offers\Events\OfferStateChanged;
 use App\Offers\Showing;
 use App\Users\User;
 use App\Workflow\Events\StageEntered;
@@ -120,7 +120,7 @@ final class PublishLiveUpdates
         $other = $this->otherSide($chat);
         $sides = [$other, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
         // Кому какой адрес: участнику — его экран, второй стороне — свой; тост берёт по своей теме.
-        ($this->publish)($sides[1], 'chat', $data + ['from' => $chat->manager?->shortName() ?? 'XCar', 'href' => ChatNotice::hrefFor($chat, false)]);
+        ($this->publish)($sides[1], 'chat', $data + ['from' => $chat->manager?->shortName() ?? Chat::PLATFORM, 'href' => ChatNotice::hrefFor($chat, false)]);
         ($this->publish)($other, 'chat', $data + ['from' => $chat->displayName(), 'href' => ChatNotice::hrefFor($chat, true)]);
         if ($chat->manager_id) {
             ($this->publish)(Topics::STAFF, 'chat', $data);

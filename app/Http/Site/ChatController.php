@@ -6,6 +6,7 @@ use App\Chats\Actions\DeleteMessage;
 use App\Chats\Actions\EditMessage;
 use App\Chats\Actions\MarkChatRead;
 use App\Chats\Actions\OpenChat;
+use App\Chats\Actions\OpenEnquiry;
 use App\Chats\Actions\PostMessage;
 use App\Chats\Chat;
 use App\Chats\File;
@@ -37,6 +38,20 @@ class ChatController
         $messages = $chat->messages()->with(['author', 'files'])->get();
 
         return response(view('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $request->user()]))
+            ->header('X-Chat-Id', (string) $chat->id)->header('X-Chat-Url', "/chats/{$chat->id}/messages");
+    }
+
+    /** Первое сообщение администрации из кабинета: обращение заводится здесь же, как чат по ТС в open(). */
+    public function support(Request $request, OpenEnquiry $open, PostMessage $post)
+    {
+        $user = $request->user();
+        abort_if($user->isStaff(), 404);
+        $this->validateMessage($request);
+        $chat = $open($user, null, null);
+        $this->guarded(fn () => $post($chat, $user, $request->input('text'), $request->file('files', []), $request->integer('reply_to') ?: null));
+        $messages = $chat->messages()->with(['author', 'files'])->get();
+
+        return response(view('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $user]))
             ->header('X-Chat-Id', (string) $chat->id)->header('X-Chat-Url', "/chats/{$chat->id}/messages");
     }
 

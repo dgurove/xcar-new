@@ -1296,6 +1296,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .chat-car-photo { flex-shrink: 0; width: 2.5rem; height: 1.75rem; overflow: hidden; border-radius: 6px; background: var(--color-surface-3); }
   .chat-car-photo img, .chat-car-photo svg { width: 100%; height: 100%; object-fit: cover; }
   .chat-none { display: flex; flex: 1 1 0; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; height: 100%; color: var(--color-ink-muted); }
+  .avatar-xcar { background: var(--color-chrome); }
   .avatar.is-online { position: relative; overflow: visible; }
   .avatar.is-online img { border-radius: 50%; }
   .avatar.is-online::after { content: ''; position: absolute; right: 0; bottom: 0; width: 10px; height: 10px; border-radius: 50%; background: #34c759; box-shadow: 0 0 0 2px var(--color-bar); }

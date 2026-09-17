@@ -4,8 +4,9 @@ namespace App\Notifications;
 
 use App\Chats\Chat;
 use App\Chats\Message;
-use App\Users\User;
+use App\Push\WebPushChannel;
 use App\Support\Surface;
+use App\Users\User;
 
 /**
  * Сообщение в чате: пуш — на каждое (уведомления одного чата заменяют друг друга по tag), в ленту и
@@ -20,7 +21,7 @@ final class ChatNotice extends Notice
     {
         $via = parent::via($user);
 
-        return $this->first ? $via : array_values(array_intersect($via, [\App\Push\WebPushChannel::class]));
+        return $this->first ? $via : array_values(array_intersect($via, [WebPushChannel::class]));
     }
 
     public function tag(): ?string
@@ -31,7 +32,7 @@ final class ChatNotice extends Notice
     public function title(): string
     {
         $chat = $this->message->chat;
-        $who = $this->forStaff ? $chat->displayName() : ($chat->manager?->shortName() ?? 'XCar');
+        $who = $this->forStaff ? $chat->displayName() : ($chat->manager?->shortName() ?? Chat::PLATFORM);
 
         return $chat->isEnquiry() ? "{$who}: обращение с сайта" : "{$who}: сообщение по № {$chat->offer->number}";
     }

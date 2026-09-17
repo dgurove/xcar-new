@@ -58,6 +58,21 @@ class ChatController
         ]);
     }
 
+    /** «Администрация XCar» в списке есть всегда: обращение заведено — на его экран, нет — пустой экран, первое сообщение заведёт. */
+    public function support(Request $request)
+    {
+        $user = $request->user();
+        abort_if($user->isStaff(), 404);
+        if ($chat = Chat::whereNull('offer_id')->where('user_id', $user->id)->latest('last_message_at')->first()) {
+            return redirect('/account/chats/'.$chat->id);
+        }
+
+        return view('cabinet.chats', [
+            'chat' => null, 'offer' => null, 'messages' => collect(), 'user' => $user, 'firstUnread' => 0, 'more' => false,
+            'chats' => $this->list($user->id), 'current' => 'support',
+        ]);
+    }
+
     private function list(int $me)
     {
         return Chat::where(fn ($w) => $w->where('user_id', $me)->orWhere('manager_id', $me))

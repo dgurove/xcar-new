@@ -19,6 +19,9 @@ use Illuminate\Support\Str;
 #[Fillable(['offer_id', 'user_id', 'manager_id', 'guest_name', 'guest_token', 'messages_count', 'unread_for_user', 'unread_for_staff', 'read_seq_user', 'read_seq_staff', 'last_message_at'])]
 class Chat extends Model
 {
+    /** Как площадка называется собеседнику — в списке, баре чата, тосте и пуше. */
+    public const PLATFORM = 'Администрация XCar';
+
     /** Токен гостя открытым текстом — только сразу после создания, для cookie. */
     public ?string $plainToken = null;
 
@@ -95,7 +98,7 @@ class Chat extends Model
     /** Кто на другом конце для читающего: участнику — менеджер или XCar, второй стороне — участник. */
     public function counterpartName(?User $for): string
     {
-        return $this->isCounterpart($for) ? $this->displayName() : ($this->manager?->shortName() ?? 'XCar');
+        return $this->isCounterpart($for) ? $this->displayName() : ($this->manager?->shortName() ?? self::PLATFORM);
     }
 
     /** До какого номера дочитала другая сторона — для галочек на своих сообщениях читающего. */

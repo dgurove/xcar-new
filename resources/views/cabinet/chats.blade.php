@@ -6,26 +6,30 @@
     $current ??= null;
     $chat ??= null;
     $offer ??= null;
-    $other = $chat ? ($chat->isCounterpart($me) ? $chat->user : $chat->manager) : ($me->isBuyer() ? $me->manager : null);
-    $name = $chat ? $chat->counterpartName($me) : ($other?->shortName() ?? 'XCar');
+    $other = $chat ? ($chat->isCounterpart($me) ? $chat->user : $chat->manager) : ($offer && $me->isBuyer() ? $me->manager : null);
+    $name = $chat ? $chat->counterpartName($me) : ($other?->shortName() ?? \App\Chats\Chat::PLATFORM);
+    // «Администрация XCar» в списке есть всегда: обращения ещё нет — строка ведёт на пустой экран.
+    $support = !$me->isStaff() && $chats->doesntContain(fn ($c) => $c->isEnquiry());
 @endphp
 <x-ui.cabinet :title="$current ? $name : 'Чаты'">
     <div class="chat-split {{ $current ? 'has-current' : '' }}" data-controller="split">
         <div class="chat-rows">
-            @if ($chats->isEmpty())
-                <x-ui.empty href="/contacts" link="Написать нам">Чатов пока нет</x-ui.empty>
-            @else
-                <div class="chat-rows-list">
-                    @foreach ($chats as $c)
-                        <x-chat.row :chat="$c" :me="$me" :href="'/account/chats/'.$c->id" :current="$c->id === $current"/>
-                    @endforeach
-                </div>
-                {{ $chats->links() }}
-            @endif
+            <div class="chat-rows-list">
+                @foreach ($chats as $c)
+                    <x-chat.row :chat="$c" :me="$me" :href="'/account/chats/'.$c->id" :current="$c->id === $current"/>
+                @endforeach
+                @if ($support)
+                    <a href="/account/chats/support" class="chat-row" @if ($current === 'support') aria-current="true" @endif data-turbo-action="advance">
+                        <x-chat.avatar :size="44"/>
+                        <div class="min-w-0 flex-1 truncate">{{ \App\Chats\Chat::PLATFORM }}</div>
+                    </a>
+                @endif
+            </div>
+            {{ $chats->links() }}
         </div>
         <turbo-frame id="chat-screen" class="chat-pane" target="_top">
             @if ($current)
-                <x-chat.screen :chat="$chat" :offer="$offer" :messages="$messages" :user="$me" :name="$name" :other="$other" :first-unread="$firstUnread" :more="$more"/>
+                <x-chat.screen :chat="$chat" :offer="$offer" :messages="$messages" :user="$me" :name="$name" :other="$other" :open="$current === 'support' ? '/chats/support' : null" :first-unread="$firstUnread" :more="$more"/>
             @else
                 <div class="chat-none"><x-ui.icon name="chat" class="size-10 text-ink-dim"/>Выберите чат</div>
             @endif
