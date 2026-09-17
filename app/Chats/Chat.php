@@ -51,9 +51,11 @@ class Chat extends Model
     public function scopeWithLast(Builder $query): Builder
     {
         $last = fn (string $column) => Message::select($column)->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1);
+        // Есть ли у последнего сообщения не-картинка — чтобы превью говорило «Файл», а не «Фото».
+        $doc = File::selectRaw('1')->whereIn('message_id', $last('id'))->where('mime', 'not like', 'image/%')->limit(1);
 
         return $query->with(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager'])
-            ->addSelect(['*', 'last_text' => $last('text'), 'last_author_id' => $last('author_id'), 'last_deleted_at' => $last('deleted_at')]);
+            ->addSelect(['*', 'last_text' => $last('text'), 'last_author_id' => $last('author_id'), 'last_deleted_at' => $last('deleted_at'), 'last_doc' => $doc]);
     }
 
     /** Превью последнего сообщения в строке списка; me — чтобы своё начиналось с «Вы:». */
@@ -62,7 +64,7 @@ class Chat extends Model
         if ($this->last_deleted_at) {
             return 'Сообщение удалено';
         }
-        $text = $this->last_text ? Str::limit($this->last_text, 90) : 'Фото';
+        $text = $this->last_text ? Str::limit($this->last_text, 90) : ($this->last_doc ? 'Файл' : 'Фото');
 
         return ($me && $this->last_author_id === $me->id ? 'Вы: ' : '').$text;
     }

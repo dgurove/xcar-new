@@ -26,7 +26,7 @@
             <form method="post" class="chat-form" data-chat-target="form" data-action="submit->chat#send" data-controller="draft" data-draft-key-value="chat:{{ $chat?->id ?? request()->path() }}">
                 <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-chat-target="files" data-action="change->chat#filesPicked">
                 <button type="button" class="btn btn-ghost btn-round" data-action="chat#pick" aria-label="Приложить"><x-ui.icon name="clip" class="size-5"/></button>
-                <div class="chat-input"><textarea name="text" rows="1" placeholder="Сообщение" data-chat-target="input" data-action="keydown->chat#keydown input->chat#typed paste->chat#paste" enterkeyhint="enter"></textarea></div>
+                <div class="chat-input"><textarea name="text" rows="1" placeholder="Сообщение" data-chat-target="input" data-action="keydown->chat#keydown input->chat#typed change->chat#typed paste->chat#paste" enterkeyhint="enter"></textarea></div>
                 <button class="chat-send is-empty" aria-label="Отправить" data-chat-target="submit"><x-ui.icon name="send" class="size-5"/></button>
             </form>
         </div>

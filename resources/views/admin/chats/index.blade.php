@@ -5,8 +5,9 @@
     $current ??= null;
     $chat ??= null;
     $me = auth()->user();
+    $qs = request()->getQueryString() ? '?'.request()->getQueryString() : '';
 @endphp
-<x-ui.shell :title="$chat ? $chat->displayName() : 'Чаты'" :heading="false" :back="$chat ? ['Чаты', '/work/chats'] : null" :back-row="false">
+<x-ui.shell :title="$chat ? $chat->displayName() : 'Чаты'" :heading="false" :back="$chat ? ['Чаты', '/work/chats'.$qs] : null" :back-row="false">
     <div class="chat-crm-top">
         <x-admin.work-titles current="chats" :count="$chats->total()"/>
         <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\ChatController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" name="chats">
@@ -22,7 +23,7 @@
             @else
                 <div class="chat-rows-list">
                     @foreach ($chats as $c)
-                        <x-chat.row :chat="$c" :me="$me" :href="'/work/chats/'.$c->id.(request()->getQueryString() ? '?'.request()->getQueryString() : '')" :current="$c->id === $current" staff/>
+                        <x-chat.row :chat="$c" :me="$me" :href="'/work/chats/'.$c->id.$qs" :current="$c->id === $current" staff/>
                     @endforeach
                 </div>
                 {{ $chats->links() }}
@@ -30,7 +31,7 @@
         </div>
         <turbo-frame id="chat-screen" class="chat-pane" target="_top">
             @if ($chat)
-                <x-chat.screen :chat="$chat" :messages="$messages" :user="$user" :name="$chat->displayName()" :other="$chat->user" back="/work/chats" :first-unread="$firstUnread" :more="$more" :readonly="$chat->isBuyerChat()"/>
+                <x-chat.screen :chat="$chat" :messages="$messages" :user="$user" :name="$chat->displayName()" :other="$chat->user" :back="'/work/chats'.$qs" :first-unread="$firstUnread" :more="$more" :readonly="$chat->isBuyerChat()"/>
             @else
                 <div class="chat-none"><x-ui.icon name="chat" class="size-10 text-ink-dim"/>Выберите чат</div>
             @endif

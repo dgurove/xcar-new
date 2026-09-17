@@ -520,8 +520,12 @@ export default class extends Controller {
             if (!this.urlValue) {
                 this.urlValue = r.headers.get('X-Chat-Url') || '';
                 this.idValue = Number(r.headers.get('X-Chat-Id') || 0);
-                // Экран «написать» по ТС стал чатом — адрес теперь его, чтобы обновление и «назад» вели сюда же.
-                if (this.idValue && this.element.closest('.chat-page') && location.pathname.startsWith('/account/chats/')) history.replaceState(history.state, '', `/account/chats/${this.idValue}`);
+                // Экран «написать» по ТС стал чатом — адрес теперь его, чтобы обновление и «назад» вели сюда же;
+                // на широком экране страница перечитывается: слева должен появиться и сам чат.
+                if (this.idValue && this.element.closest('.chat-page') && location.pathname.startsWith('/account/chats/')) {
+                    if (matchMedia('(min-width: 1024px)').matches) { window.Turbo.visit(`/account/chats/${this.idValue}`, { action: 'replace' }); return; }
+                    window.Turbo.session.history.replace(new URL(`/account/chats/${this.idValue}`, location.href));
+                }
             }
             this.append(await r.text());
             bubble.remove();
