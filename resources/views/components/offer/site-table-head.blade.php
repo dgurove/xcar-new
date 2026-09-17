@@ -1,6 +1,6 @@
 {{-- Шапка таблицы предложений на сайте; столбцы те же, что в x-offer.site-table-row. --}}
 <tr>
-    <th class="w-12 sm:w-14">№</th>
+    <th class="w-14 sm:w-16">№</th>
     <th>Марка, модель</th>
     <th class="hidden w-36 sm:table-cell">Приём</th>
     <th class="hidden w-36 sm:table-cell">Город</th>
