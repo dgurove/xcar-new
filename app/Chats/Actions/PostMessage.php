@@ -20,7 +20,7 @@ final class PostMessage
     private const MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'application/pdf'];
 
     /** @param  list<UploadedFile>  $files */
-    public function __invoke(Chat $chat, ?User $by, ?string $text, array $files = []): Message
+    public function __invoke(Chat $chat, ?User $by, ?string $text, array $files = [], ?int $replyTo = null): Message
     {
         $text = trim((string) $text);
         if ($text === '' && ! $files) {
@@ -32,10 +32,13 @@ final class PostMessage
             }
         }
 
-        $message = DB::transaction(function () use ($chat, $by, $text, $files) {
+        $message = DB::transaction(function () use ($chat, $by, $text, $files, $replyTo) {
             $chat = Chat::whereKey($chat->id)->lockForUpdate()->firstOrFail();
             $kind = $chat->isCounterpart($by) ? AuthorKind::Staff : AuthorKind::Participant;
-            $message = $chat->messages()->create(['seq' => $chat->messages_count + 1, 'author_id' => $by?->id, 'author_kind' => $kind, 'text' => $text ?: null]);
+            $seq = $chat->messages_count + 1;
+            // Ответ — только на сообщение этого чата; чужой номер молча отбрасывается.
+            $replyTo = $replyTo && $replyTo < $seq ? $replyTo : null;
+            $message = $chat->messages()->create(['seq' => $seq, 'author_id' => $by?->id, 'author_kind' => $kind, 'text' => $text ?: null, 'reply_to' => $replyTo]);
             foreach ($files as $file) {
                 $mime = (string) $file->getMimeType();
                 if (str_starts_with($mime, 'image/')) {
@@ -55,11 +58,13 @@ final class PostMessage
                 }
                 $message->files()->create(['name' => mb_substr($file->getClientOriginalName(), 0, 255), 'mime' => $mime, 'size' => Storage::disk('private')->size($path), 'path' => $path]);
             }
+            // Своё сообщение — своя сторона дочитала всё; у другой непрочитанного стало на одно больше.
             $chat->update([
-                'messages_count' => $chat->messages_count + 1,
+                'messages_count' => $seq,
                 'last_message_at' => now(),
                 'unread_for_user' => $kind === AuthorKind::Participant ? 0 : $chat->unread_for_user + 1,
                 'unread_for_staff' => $kind === AuthorKind::Participant ? $chat->unread_for_staff + 1 : 0,
+                $kind === AuthorKind::Participant ? 'read_seq_user' : 'read_seq_staff' => $seq,
             ]);
 
             return $message;

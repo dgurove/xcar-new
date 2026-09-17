@@ -35,6 +35,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'role' => Role::class,
             'access' => 'array',
             'notification_settings' => 'array',
+            'seen_at' => 'datetime',
             'list_prefs' => 'array',
             'contact_fields' => 'array',
             'email_verified_at' => 'datetime',
@@ -187,6 +188,40 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function unreadCount(): int
     {
         return $this->unreadNotifications()->count();
+    }
+
+    /** Бейдж приложения: непрочитанные уведомления и сообщения в чатах вместе. */
+    public function badgeCount(): int
+    {
+        return $this->unreadCount() + $this->unreadChats();
+    }
+
+    /** Непрочитанное в чатах: свои чаты и чаты покупателей, где человек — вторая сторона. */
+    public function unreadChats(): int
+    {
+        if (! $this->canChat()) {
+            return 0;
+        }
+
+        return (int) \App\Chats\Chat::where('user_id', $this->id)->sum('unread_for_user') + (int) \App\Chats\Chat::where('manager_id', $this->id)->sum('unread_for_staff');
+    }
+
+    /** «в сети» — был здесь только что; иначе когда: «в сети 12:40», «в сети вчера», «в сети 12 сен». */
+    public function seenLabel(): ?string
+    {
+        $at = $this->seen_at;
+        if (! $at) {
+            return null;
+        }
+        if ($at->gt(now()->subMinutes(2))) {
+            return 'в сети';
+        }
+
+        return 'в сети '.match (true) {
+            $at->isToday() => $at->format('H:i'),
+            $at->isYesterday() => 'вчера',
+            default => $at->translatedFormat('j M'),
+        };
     }
 
     /** Подпись ключа в связке устройства: почта, телефон или логин и имя. Пакет ждёт строки, а почты может не быть. */

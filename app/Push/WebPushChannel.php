@@ -27,8 +27,8 @@ final class WebPushChannel
                 'title' => $notice->title(),
                 'body' => (string) $notice->text(),
                 'navigate' => url($notice->href()),
-                'tag' => $notice->offerNumber() ? 'offer-'.$notice->offerNumber() : null,
-                'app_badge' => $user->unreadCount(),
+                'tag' => $notice->tag(),
+                'app_badge' => $user->badgeCount(),
                 'lang' => 'ru',
             ],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

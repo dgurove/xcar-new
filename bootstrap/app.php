@@ -11,6 +11,7 @@ use App\Http\Middleware\RedirectLegacyPaths;
 use App\Http\Middleware\ResolveSurface;
 use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
+use App\Http\Middleware\TouchSeen;
 use App\Live\SubscriberCookie;
 use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
@@ -55,7 +56,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/');
         $middleware->alias(['staff' => EnsureStaff::class, 'manager' => EnsureManager::class, 'section' => EnsureSection::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
         $middleware->prepend(RedirectLegacyPaths::class);
-        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class]);
+        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, TouchSeen::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

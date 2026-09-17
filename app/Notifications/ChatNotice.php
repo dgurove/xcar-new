@@ -2,17 +2,31 @@
 
 namespace App\Notifications;
 
+use App\Chats\Chat;
 use App\Chats\Message;
+use App\Users\User;
 use App\Support\Surface;
-use Illuminate\Support\Str;
 
 /**
- * Первое непрочитанное в чате: участнику — на страницу предложения или в контакты; второй стороне —
- * сотруднику в чат CRM, менеджеру покупателя — в его кабинет. forStaff — адресат вторая сторона.
+ * Сообщение в чате: пуш — на каждое (уведомления одного чата заменяют друг друга по tag), в ленту и
+ * на почту — только первое непрочитанное. Участнику — на его экран чата, сотруднику — в CRM,
+ * менеджеру покупателя — в кабинет. forStaff — адресат вторая сторона.
  */
 final class ChatNotice extends Notice
 {
-    public function __construct(private Message $message, private bool $forStaff) {}
+    public function __construct(private Message $message, private bool $forStaff, private bool $first = true) {}
+
+    public function via(User $user): array
+    {
+        $via = parent::via($user);
+
+        return $this->first ? $via : array_values(array_intersect($via, [\App\Push\WebPushChannel::class]));
+    }
+
+    public function tag(): ?string
+    {
+        return 'chat-'.$this->message->chat_id;
+    }
 
     public function title(): string
     {
@@ -24,16 +38,25 @@ final class ChatNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->message->text ? Str::limit($this->message->text, 120) : 'Файл';
+        return $this->message->preview(120);
     }
 
     public function href(): string
     {
-        if ($this->forStaff) {
-            return $this->message->chat->manager_id ? "/account/chats/{$this->message->chat_id}" : Surface::Crm->url("/work/chats/{$this->message->chat_id}");
+        return self::hrefFor($this->message->chat, $this->forStaff);
+    }
+
+    /** Куда вести из уведомления и тоста: сотруднику площадки — CRM, всем остальным — экран чата в кабинете. */
+    public static function hrefFor(Chat $chat, bool $forStaff): string
+    {
+        if ($forStaff && ! $chat->manager_id) {
+            return Surface::Crm->url("/work/chats/{$chat->id}");
+        }
+        if (! $chat->user_id) {
+            return '/contacts';
         }
 
-        return $this->message->chat->isEnquiry() ? '/contacts' : "/offers/{$this->message->chat->offer->number}?chat=1";
+        return "/account/chats/{$chat->id}";
     }
 
     public function offerNumber(): ?int

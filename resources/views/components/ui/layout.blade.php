@@ -35,7 +35,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/pwa/{{ $surface->value }}/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
     <x-ui.startup/>
-    @auth<meta name="badge-count" content="{{ auth()->user()->unreadCount() }}"><meta name="user-id" content="{{ auth()->id() }}">@endauth
+    @auth<meta name="badge-count" content="{{ auth()->user()->badgeCount() }}"><meta name="user-id" content="{{ auth()->id() }}">@endauth
     @if (config('xcar.vapid.public'))<meta name="vapid-key" content="{{ config('xcar.vapid.public') }}">@endif
     <link rel="preload" href="/fonts/onest-var.woff2" as="font" type="font/woff2" crossorigin>
     @if ($surface !== \App\Support\Surface::Site)

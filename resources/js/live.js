@@ -11,7 +11,9 @@ import * as Turbo from '@hotwired/turbo';
 //   refresh {paths}  — если открыта одна из страниц, перечитать её (morph)
 //   toast   {message, href}
 //   badges           — счётчики таб-бара
-//   chat    {...}    — событие live:chat на document для chat_controller
+//   chat    {chat, seq, author, from, text, href} — live:chat на document для chat_controller;
+//           если ни одна лента этого чата не на экране (handled) и это не своё — тост
+//   chat-edit / chat-read / chat-typing {chat, ...} — тем же путём, без тоста
 let source = null;
 let topics = '';
 let lastEventId = '';
@@ -54,7 +56,8 @@ function open() {
     on('refresh', refresh);
     on('toast', ({ message, href }) => window.toast?.(message, href ? { href } : undefined));
     on('badges', badges);
-    on('chat', (detail) => document.dispatchEvent(new CustomEvent('live:chat', { detail })));
+    on('chat', chat);
+    ['chat-edit', 'chat-read', 'chat-typing'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     source.onopen = () => {
         document.documentElement.removeAttribute('data-net');
         if (openedAt) badges();
@@ -75,6 +78,13 @@ async function reopen(delay) {
         source?.close();
         open();
     }, delay);
+}
+
+// Сообщение чата: лента на экране забирает его сама (ставит handled), иначе — тост с переходом.
+function chat(detail) {
+    document.dispatchEvent(new CustomEvent('live:chat', { detail }));
+    if (detail.handled || !detail.from || String(detail.author) === document.querySelector('meta[name="user-id"]')?.content) return;
+    window.toast?.(`${detail.from}: ${detail.text}`, detail.href ? { href: detail.href } : undefined);
 }
 
 async function card({ number }) {

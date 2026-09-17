@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import * as Turbo from '@hotwired/turbo';
 
 // Колокольчик: рядом со sheet на том же элементе. При открытии фрейм с пятью
 // последними перечитывается, после загрузки всё отмечается прочитанным и
@@ -19,7 +20,11 @@ export default class extends Controller {
             await fetch(`${base}/account/notifications/read`, { method: 'POST', headers: { 'X-CSRF-TOKEN': token, 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' }, credentials: 'include' });
         } catch { return; }
         document.querySelectorAll('[data-badge="/account/notifications"]').forEach((el) => { el.innerHTML = ''; });
-        document.querySelector('meta[name="badge-count"]')?.setAttribute('content', '0');
-        navigator.clearAppBadge?.();
+        // Значок приложения — из свежих счётчиков: непрочитанные чаты в нём остаются.
+        try {
+            const r = await fetch(`${base}/live/badges`, { headers: { Accept: 'text/vnd.turbo-stream.html' }, credentials: 'include' });
+            if (r.ok) Turbo.renderStreamMessage(await r.text());
+        } catch {}
+        document.dispatchEvent(new CustomEvent('badges:updated'));
     }
 }

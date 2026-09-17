@@ -13,7 +13,7 @@ export default class extends Controller {
 
     connect() {
         const user = document.querySelector('meta[name="user-id"]')?.content ?? '';
-        this.key = `draft:${user}:${this.keyValue || new URL(this.element.action || location.href).pathname}`;
+        this.store = `draft:${user}:${this.keyValue || new URL(this.element.action || location.href).pathname}`;
         this.restore();
         this.onInput = () => { clearTimeout(this.timer); this.timer = setTimeout(() => this.save(), 300); };
         this.onHide = () => document.visibilityState === 'hidden' && this.save();
@@ -66,14 +66,14 @@ export default class extends Controller {
             if (value !== base) touched = true;
         }
         try {
-            if (touched) localStorage.setItem(this.key, JSON.stringify({ at: Date.now(), data }));
-            else localStorage.removeItem(this.key);
+            if (touched) localStorage.setItem(this.store, JSON.stringify({ at: Date.now(), data }));
+            else localStorage.removeItem(this.store);
         } catch {}
     }
 
     restore() {
         let saved;
-        try { saved = JSON.parse(localStorage.getItem(this.key) || 'null'); } catch { return; }
+        try { saved = JSON.parse(localStorage.getItem(this.store) || 'null'); } catch { return; }
         if (!saved) return;
         if (Date.now() - saved.at > TTL || this.element.querySelector('.field-invalid')) { this.clear(); return; }
         let restored = false;
@@ -93,6 +93,6 @@ export default class extends Controller {
     }
 
     clear() {
-        try { localStorage.removeItem(this.key); } catch {}
+        try { localStorage.removeItem(this.store); } catch {}
     }
 }

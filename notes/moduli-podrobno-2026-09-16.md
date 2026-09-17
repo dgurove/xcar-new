@@ -38,7 +38,8 @@
 архивы в `photos`; в опубликованный оффер кадры ложатся скрытыми; дубли
 отсекает отпечаток `sha` исходника, который `PhotoIngest` пишет каждому
 кадру — `HasPhotos::hasFile`), `app/Chats` (чаты по
-предложениям и обращения с `/contacts` — у гостя по cookie), `app/Telegram`
+предложениям и обращения с `/contacts` — у гостя по cookie; с 17.09 — мессенджер,
+`notes/chaty-messendzher-2026-09-17.md`), `app/Telegram`
 (бот владельца без SDK: `Bot` на `Http` по IPv6 — по IPv4 Telegram с сервера
 недостижим, длинный опрос `telegram:poll` каждую минуту из планировщика,
 сообщения `Messages/*` с кнопками, нажатия — `UpdateHandler`, только из чата

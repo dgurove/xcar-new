@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
+use App\Chats\Presence;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
@@ -147,18 +148,22 @@ final class Notify
         Notification::send($this->staff(), new StageDueNotice($e->offer, $e->position, $e->overdue));
     }
 
-    /** Уведомление только о первом непрочитанном: дальше человек уже в чате. */
+    /**
+     * Каждое сообщение — пушем (первое непрочитанное — ещё в ленту и на почту); тому, у кого
+     * этот чат сейчас на экране (Chat presence), — ничего: он его уже видит.
+     */
     public function chat(ChatMessagePosted $e): void
     {
         $chat = $e->message->chat;
         if ($e->message->author_kind === AuthorKind::Participant) {
             // Вторая сторона: менеджер покупателя или сотрудники площадки.
-            if ($chat->unread_for_staff === 1) {
-                $chat->manager_id ? $chat->manager?->notify(new ChatNotice($e->message, true)) : Notification::send($this->staff(), new ChatNotice($e->message, true));
-            }
-        } elseif ($chat->unread_for_user === 1) {
-            $chat->user?->notify(new ChatNotice($e->message, false));
+            $to = $chat->manager_id ? collect([$chat->manager])->filter() : $this->staff();
+            $notice = new ChatNotice($e->message, true, $chat->unread_for_staff === 1);
+        } else {
+            $to = collect([$chat->user])->filter();
+            $notice = new ChatNotice($e->message, false, $chat->unread_for_user === 1);
         }
+        Notification::send($to->reject(fn (User $u) => Presence::viewing($chat, $u)), $notice);
     }
 
     private function staff()

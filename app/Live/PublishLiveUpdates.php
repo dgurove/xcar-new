@@ -2,7 +2,11 @@
 
 namespace App\Live;
 
+use App\Chats\Chat;
+use App\Chats\Events\ChatMessageChanged;
 use App\Chats\Events\ChatMessagePosted;
+use App\Chats\Events\ChatRead;
+use App\Notifications\ChatNotice;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
@@ -36,6 +40,8 @@ final class PublishLiveUpdates
             StageEntered::class => 'stage',
             NotificationSent::class => 'notification',
             ChatMessagePosted::class => 'chat',
+            ChatMessageChanged::class => 'chatChanged',
+            ChatRead::class => 'chatRead',
         ];
     }
 
@@ -102,24 +108,68 @@ final class PublishLiveUpdates
         }
     }
 
+    /**
+     * Новое сообщение: обеим сторонам {chat, seq} — лента догоняет; с превью (кто, текст, куда) —
+     * для тоста тому, у кого этот чат не на экране. Сотрудникам, читающим чужой чат в CRM, — тоже.
+     */
     public function chat(ChatMessagePosted $e): void
     {
-        $chat = $e->message->chat;
-        $data = ['chat' => $chat->id, 'seq' => $e->message->seq];
-        // Вторая сторона — менеджер покупателя или сотрудники площадки.
-        $other = $chat->manager_id ? Topics::user($chat->manager_id) : Topics::STAFF;
-        $topics = [$other, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
-        ($this->publish)($topics, 'chat', $data);
+        $m = $e->message;
+        $chat = $m->chat;
+        $data = ['chat' => $chat->id, 'seq' => $m->seq, 'author' => $m->author_id, 'text' => $m->preview(90)];
+        $other = $this->otherSide($chat);
+        $sides = [$other, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
+        // Кому какой адрес: участнику — его экран, второй стороне — свой; тост берёт по своей теме.
+        ($this->publish)($sides[1], 'chat', $data + ['from' => $chat->manager?->shortName() ?? 'XCar', 'href' => ChatNotice::hrefFor($chat, false)]);
+        ($this->publish)($other, 'chat', $data + ['from' => $chat->displayName(), 'href' => ChatNotice::hrefFor($chat, true)]);
+        if ($chat->manager_id) {
+            ($this->publish)(Topics::STAFF, 'chat', $data);
+        }
         $this->publish->badges($other);
         if ($chat->user_id) {
             $this->publish->badges(Topics::user($chat->user_id));
         }
         $this->publish->refresh($other, [$chat->manager_id ? '/account/chats' : '/work/chats']);
+        if ($chat->user_id) {
+            $this->publish->refresh(Topics::user($chat->user_id), ['/account/chats']);
+        }
+    }
+
+    /** Правка или удаление — обеим сторонам перечитать один пузырь. */
+    public function chatChanged(ChatMessageChanged $e): void
+    {
+        $chat = $e->message->chat;
+        ($this->publish)($this->allSides($chat), 'chat-edit', ['chat' => $chat->id, 'seq' => $e->message->seq]);
+        $this->publish->refresh($this->otherSide($chat), [$chat->manager_id ? '/account/chats' : '/work/chats']);
+    }
+
+    /** Сторона дочитала — другой стороне двойные галочки. */
+    public function chatRead(ChatRead $e): void
+    {
+        $chat = $e->chat;
+        $topic = $e->byCounterpart ? ($chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)) : $this->otherSide($chat);
+        ($this->publish)($topic, 'chat-read', ['chat' => $chat->id, 'seq' => $e->seq]);
+    }
+
+    /** Вторая сторона — менеджер покупателя или сотрудники площадки. */
+    private function otherSide(Chat $chat): string
+    {
+        return $chat->manager_id ? Topics::user($chat->manager_id) : Topics::STAFF;
+    }
+
+    /** Обе стороны и сотрудники (они читают любой чат). */
+    private function allSides(Chat $chat): array
+    {
+        return array_unique([$this->otherSide($chat), $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id), Topics::STAFF]);
     }
 
     public function notification(NotificationSent $e): void
     {
         if ($e->channel !== 'database' || ! $e->notifiable instanceof User) {
+            return;
+        }
+        // Сообщение чата тостом показывает сам live-канал (событие chat) — второй раз не надо.
+        if ($e->notification instanceof ChatNotice) {
             return;
         }
         $topic = Topics::user($e->notifiable);

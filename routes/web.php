@@ -45,6 +45,10 @@ Route::view('/consent', 'site.pages.soglasie');
 // Лента чата открыта и гостю с обращением — право решает Chat::allows по cookie.
 Route::get('/chats/{chat}/messages', [ChatController::class, 'messages'])->middleware('throttle:120,1');
 Route::post('/chats/{chat}/messages', [ChatController::class, 'post'])->middleware('throttle:30,1');
+Route::get('/chats/{chat}/messages/{seq}', [ChatController::class, 'message'])->whereNumber('seq');
+Route::patch('/chats/{chat}/messages/{seq}', [ChatController::class, 'edit'])->whereNumber('seq')->middleware('throttle:30,1');
+Route::delete('/chats/{chat}/messages/{seq}', [ChatController::class, 'destroy'])->whereNumber('seq')->middleware('throttle:30,1');
+Route::post('/chats/{chat}/typing', [ChatController::class, 'typing'])->middleware('throttle:30,1');
 Route::get('/chats/{chat}/files/{file}', [ChatController::class, 'file']);
 
 // Сайт закрыт: дальше только с открытым доступом (SiteWall).

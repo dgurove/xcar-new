@@ -25,7 +25,7 @@ class EnquiryController
             ? Chat::whereNull('offer_id')->where('user_id', $user->id)->latest('last_message_at')->first()
             : $guest->chat($request);
         if ($chat) {
-            $read($chat, $user);
+            $read($chat, $user, $guest->token($request));
         }
 
         return view('site.pages.kontakty', [

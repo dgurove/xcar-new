@@ -30,6 +30,12 @@ abstract class Notice extends Notification implements ShouldQueue
         return null;
     }
 
+    /** Метка пуша: уведомления с одной меткой заменяют друг друга; по умолчанию — предложение. */
+    public function tag(): ?string
+    {
+        return $this->offerNumber() ? 'offer-'.$this->offerNumber() : null;
+    }
+
     /** Категория для настроек (Categories): что человек может выключить. */
     public function category(): string
     {

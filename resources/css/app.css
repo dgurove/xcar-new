@@ -1253,11 +1253,98 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
 /* ------------------------------------------------------------- чат */
 
 @layer components {
+  /* Лента с полем: обычная (шторка, контакты) — лента до полэкрана; screen — экран мессенджера
+     во всю высоту: лента тянется, поле внизу над клавиатурой. */
+  .chat { position: relative; display: flex; flex-direction: column; }
+  .chat-list { @apply flex flex-col gap-1 overflow-y-auto py-2; overscroll-behavior: contain; scrollbar-width: thin; }
+  .chat:not(.chat-screen) .chat-list { max-height: 50dvh; }
+  .chat-tall .chat-list { max-height: none; min-height: 50dvh; }
+  .chat-screen { flex: 1 1 0; min-height: 0; }
+  .chat-screen .chat-list { flex: 1 1 0; min-height: 0; max-height: none; }
+  .chat-form { @apply flex items-end gap-2 pt-2; }
+  .chat-form textarea { max-height: 140px; }
+
+  /* Экран: полоса собеседника, плашка ТС, лента. На телефоне — во всю высоту под шапкой,
+     таб-бара и пилюль кабинета нет (тело узнаёт по :has), поле садится на клавиатуру. */
+  .chat-page { display: flex; flex-direction: column; min-height: 0; }
+  .chat-head { @apply flex items-center gap-3 pb-3; }
+  .chat-head .avatar { @apply shrink-0; }
+  .chat-car { @apply mb-2 flex items-center gap-3 rounded-(--radius-m) bg-surface-2 px-3 py-2; }
+  .chat-none { @apply flex h-full items-center justify-center text-ink-muted; }
+  @media (max-width: 1023px) {
+    .chat-page { height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - .75rem - var(--kb, 0px)); }
+    body:has(.chat-page) .tabbar, body:has(.chat-page) .footer, body:has(.chat-page) nav:has(> .cabinet-pills) { display: none; }
+    /* Отступы контейнера — утилиты (слой выше): здесь их снимает !important. */
+    body:has(.chat-page) #main > .container-site { padding-top: .75rem !important; padding-bottom: 0 !important; }
+    body:has(.chat-page) .chat-form { padding-bottom: max(env(safe-area-inset-bottom), .5rem); }
+    html.kb-open body:has(.chat-page) .chat-form { padding-bottom: .5rem; }
+  }
+
+  /* Список и чат рядом от 1024: список своей прокрутки слева, чат справа во всю высоту окна. */
+  .chat-split { display: flex; flex-direction: column; min-height: 0; }
+  .chat-rows { @apply flex flex-col gap-2; }
+  .chat-row[aria-current] { @apply bg-accent-soft; }
+  .chat-pane { display: none; min-height: 0; }
+  .chat-split.has-current .chat-rows { display: none; }
+  .chat-split.has-current .chat-pane { display: flex; flex-direction: column; }
+  @media (min-width: 1024px) {
+    .chat-split { display: grid; grid-template-columns: 20rem minmax(0, 1fr); gap: 1.5rem; height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 4rem); }
+    .chat-split .chat-rows, .chat-split.has-current .chat-rows { display: flex; overflow-y: auto; padding-right: .25rem; scrollbar-width: thin; }
+    .chat-split .chat-pane, .chat-split.has-current .chat-pane { display: flex; flex-direction: column; }
+    .chat-pane .chat-page { flex: 1 1 0; }
+  }
+
+  /* Пузыри. Своё справа лаймовым, чужое слева серым; подряд от одного автора — ближе и без имени. */
+  .msg { display: flex; touch-action: pan-y; }
+  .msg.is-mine { justify-content: flex-end; }
+  .msg.is-their { justify-content: flex-start; }
+  .msg.is-system { justify-content: center; }
+  .msg.is-cont { margin-top: -.125rem; }
+  .msg + .msg:not(.is-cont) { margin-top: .375rem; }
+  .msg-bubble { @apply relative max-w-[85%] rounded-(--radius-l) px-3.5 py-2 bg-surface-3; }
+  /* На пальце долгое нажатие — меню пузыря, а не выделение текста (скопировать — пунктом меню). */
+  @media (pointer: coarse) { .msg-bubble { -webkit-touch-callout: none; user-select: none; } }
+  .msg.is-mine .msg-bubble { @apply bg-accent-soft; }
+  .msg.is-pending .msg-bubble { opacity: .7; }
+  .msg.is-flash .msg-bubble { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .msg-system { @apply max-w-[85%] text-center text-sm text-ink-muted; }
+  .msg-author { @apply mb-0.5 text-xs text-ink-muted; }
+  .msg-text { @apply whitespace-pre-line break-words; }
+  .msg-text a { @apply text-accent-text underline decoration-accent-text/40 underline-offset-2; }
+  .msg-deleted { @apply text-sm text-ink-muted; }
+  .msg-quote { @apply mb-1.5 block w-full rounded-(--radius-s) border-l-2 border-accent bg-surface/60 px-2 py-1 text-left text-sm; }
+  .msg-quote-name { @apply block text-xs text-accent-text; }
+  .msg-photos { @apply mt-1.5 flex flex-col gap-1.5; }
+  .msg-photos img { @apply block max-h-64 rounded-(--radius-s) object-cover; }
+  .msg-photos.is-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .msg-photos.is-grid img { @apply aspect-square h-auto max-h-none w-full; }
+  .msg-photos a { cursor: zoom-in; }
+  .msg-file { @apply mt-1.5 flex items-center gap-1.5 rounded-(--radius-s) bg-surface-2 px-2 py-1.5 text-sm; }
+  .msg-meta { @apply mt-0.5 flex items-center justify-end gap-1 text-[11px] text-ink-dim; }
+  .msg-tick { display: none; }
+  .msg.is-mine .msg-tick-sent { display: block; }
+  .msg.is-mine.is-read .msg-tick-sent { display: none; }
+  .msg.is-mine.is-read .msg-tick-read { display: block; color: var(--color-accent-text); }
+  .msg.is-pending .msg-tick { display: none; }
   /* Своё сообщение до ответа сервера — бледнее; не ушло — красная точка, тап — повтор. */
-  [data-pending].is-failed > div { position: relative; cursor: pointer; }
-  [data-pending].is-failed > div::after { content: ''; position: absolute; right: -.5rem; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--color-danger); }
+  .msg.is-failed .msg-bubble { cursor: pointer; }
+  .msg.is-failed .msg-bubble::after { content: ''; position: absolute; left: -.75rem; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--color-danger); }
+
+  /* Разделители: день по центру, «Новые сообщения» лаймовой строкой. */
+  .chat-day { @apply my-2 text-center text-xs text-ink-dim; }
+  .chat-new { @apply my-2 rounded-(--radius-s) bg-accent-soft py-1 text-center text-xs text-accent-text; }
+  .chat-more { height: 1px; }
+
+  /* Над полем: чип ответа или правки; ряд превью выбранных фото с крестиками. */
+  .chat-state { @apply mt-2 flex items-center gap-2 rounded-(--radius-m) bg-surface-2 py-1 pl-3 pr-1; }
+  .chat-previews { @apply mt-2 flex gap-2 overflow-x-auto; scrollbar-width: none; }
+  .chat-preview { @apply relative shrink-0 overflow-hidden rounded-(--radius-s) bg-surface-3; width: 4.5rem; height: 4.5rem; }
+  .chat-preview img { @apply size-full object-cover; }
+  .chat-preview.is-file { @apply flex items-end p-1.5 text-[11px] leading-tight break-all; width: auto; max-width: 9rem; }
+  .chat-preview-x { position: absolute; top: .25rem; right: .25rem; display: flex; width: 20px; height: 20px; align-items: center; justify-content: center; border-radius: 50%; background: rgb(0 0 0 / .6); color: #fff; }
+  .chat-preview-x svg { width: 12px; height: 12px; }
+
   /* Пришло новое, пока читали историю: «↓ N» над полем ввода. */
-  [data-controller~="chat"] { position: relative; }
   .chat-down { position: absolute; left: 50%; bottom: 4.25rem; translate: -50% 0; z-index: 1; padding: .375rem .875rem; border-radius: 999px; background: var(--color-chrome); color: #fff; font-size: 13px; box-shadow: var(--shadow-drop); }
   .dark .chat-down { background: #fff; color: var(--color-chrome); }
 }

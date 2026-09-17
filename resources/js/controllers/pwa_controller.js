@@ -42,10 +42,9 @@ export default class extends Controller {
         } catch {}
     }
 
-    // Число — из бейджа таб-бара «Уведомления», если он есть (его обновляет /live/badges), иначе из meta.
+    // Число — уведомления и чаты вместе, из meta (её обновляет /live/badges вместе с бейджами).
     badge() {
-        const live = document.querySelector('[data-badge="/account/notifications"]')?.textContent.trim();
-        const count = live === undefined ? Number(document.querySelector('meta[name="badge-count"]')?.content || 0) : parseInt(live) || 0;
+        const count = Number(document.querySelector('meta[name="badge-count"]')?.content || 0);
         if (!('setAppBadge' in navigator)) return;
         (count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(() => {});
     }

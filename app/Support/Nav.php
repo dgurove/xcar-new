@@ -249,7 +249,7 @@ final class Nav
         }
         if ($user->canChat()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона.
-            $badges['/account/chats'] = (int) Chat::where('user_id', $user->id)->sum('unread_for_user') + (int) Chat::where('manager_id', $user->id)->sum('unread_for_staff');
+            $badges['/account/chats'] = $user->unreadChats();
         }
         $badges['/account/favorites'] = Favorite::where('user_id', $user->id)->count();
 
