@@ -4,9 +4,9 @@ namespace App\Http\Cabinet;
 
 use App\Chats\Actions\MarkChatRead;
 use App\Chats\Chat;
-use App\Chats\Message;
 use App\Chats\Presence;
 use App\Http\Site\ChatController as Feed;
+use App\Offers\Offer;
 use Illuminate\Http\Request;
 
 /**
@@ -39,14 +39,28 @@ class ChatController
         ]);
     }
 
+    /**
+     * «Написать» со страницы ТС: чат есть — на его экран; нет — экран с плашкой ТС и пустой лентой,
+     * первое сообщение заведёт чат (бокс шлёт его на /offers/{n}/chat и получает адрес ленты).
+     */
+    public function offer(Request $request, Offer $offer)
+    {
+        $user = $request->user();
+        abort_unless($user->canChat() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest()), 404);
+        if ($chat = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first()) {
+            return redirect('/account/chats/'.$chat->id);
+        }
+        $offer->load(['brand', 'model', 'media']);
+
+        return view('cabinet.chats', [
+            'chat' => null, 'offer' => $offer, 'messages' => collect(), 'user' => $user, 'firstUnread' => 0, 'more' => false,
+            'chats' => $this->list($user->id), 'current' => 'new',
+        ]);
+    }
+
     private function list(int $me)
     {
-        $last = fn (string $column) => Message::select($column)->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1);
-
         return Chat::where(fn ($w) => $w->where('user_id', $me)->orWhere('manager_id', $me))
-            ->with(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager'])
-            ->addSelect(['*', 'last_text' => $last('text'), 'last_author_id' => $last('author_id'), 'last_deleted_at' => $last('deleted_at')])
-            ->orderByDesc('last_message_at')
-            ->paginate(30);
+            ->withLast()->orderByDesc('last_message_at')->paginate(30)->withPath('/account/chats');
     }
 }

@@ -93,7 +93,7 @@
             <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Открыть</a>
         @endif
         @if (!$gallery && $user?->canChat() && $offer->chat_enabled)
-            <a href="{{ $href }}{{ str_contains($href, '?') ? '&' : '?' }}chat=1" class="btn btn-s btn-quiet btn-round" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-5"/></a>
+            <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-s btn-quiet btn-round" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-5"/></a>
         @endif
     </div>
     @endunless

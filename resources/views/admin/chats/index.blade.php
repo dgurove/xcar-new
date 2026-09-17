@@ -1,35 +1,39 @@
-<x-ui.shell title="Чаты" :heading="false">
-    <x-admin.work-titles current="chats" :count="$chats->total()"/>
-
-    <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\ChatController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" name="chats">
-        <x-slot:filters>
-            <input name="q" value="{{ $q }}" placeholder="Имя, телефон, менеджер, номер предложения" class="field-input field-s">
-        </x-slot:filters>
-    </x-ui.toolbar>
-    @if ($chats->isEmpty())
-        <x-ui.empty class="mt-6">Чатов нет</x-ui.empty>
-    @else
-        <div class="mt-6 flex flex-col gap-2">
-            @foreach ($chats as $chat)
-                <a href="/work/chats/{{ $chat->id }}" class="row items-start">
-                    <div class="row-photo">
-                        @if ($chat->offer)<x-offer.photo :media="$chat->offer->mainPhoto()" sizes="64px"/>
-                        @else<div class="flex size-full items-center justify-center text-ink-dim"><x-ui.icon name="chat" class="size-7"/></div>@endif
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-baseline gap-2">
-                            <span class="truncate {{ $chat->unread_for_staff && !$chat->manager_id ? 'font-medium' : '' }}">{{ $chat->displayName() }}</span>
-                            @unless ($chat->user)<span class="tag">гость</span>@endunless
-                            <span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span>
-                        </div>
-                        {{-- Переписка покупателя с его менеджером: кто с кем, читается без ответа. --}}
-                        @if ($chat->manager)<div class="mt-0.5"><x-ui.person :user="$chat->manager" prefix="→"/></div>@endif
-                        <div class="flex items-baseline gap-2 text-sm text-ink-muted">@if ($chat->offer)<span class="truncate">{{ $chat->offer->titleWithYear() }}</span><span class="nums shrink-0 text-ink-dim">№ {{ $chat->offer->number }}</span>@else<span>Обращение с сайта</span>@endif</div>
-                    </div>
-                    @if ($chat->unread_for_staff && !$chat->manager_id)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif
-                </a>
-            @endforeach
+{{-- Чаты в CRM: пресеты и поиск сверху, ниже панель «список | переписка». Чат площадки — с полем
+     ответа; переписка покупателя с менеджером — только читается (readonly: поля нет, счётчики не
+     трогаются), в баре — покупатель и чип его менеджера. --}}
+@php
+    $current ??= null;
+    $chat ??= null;
+    $me = auth()->user();
+@endphp
+<x-ui.shell :title="$chat ? $chat->displayName() : 'Чаты'" :heading="false" :back="$chat ? ['Чаты', '/work/chats'] : null" :back-row="false">
+    <div class="chat-crm-top">
+        <x-admin.work-titles current="chats" :count="$chats->total()"/>
+        <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\ChatController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" name="chats">
+            <x-slot:filters>
+                <input name="q" value="{{ $q }}" placeholder="Имя, телефон, менеджер, номер предложения" class="field-input field-s">
+            </x-slot:filters>
+        </x-ui.toolbar>
+    </div>
+    <div class="chat-split chat-split-crm mt-6 {{ $current ? 'has-current' : '' }}" data-controller="split">
+        <div class="chat-rows">
+            @if ($chats->isEmpty())
+                <x-ui.empty>Чатов нет</x-ui.empty>
+            @else
+                <div class="chat-rows-list">
+                    @foreach ($chats as $c)
+                        <x-chat.row :chat="$c" :me="$me" :href="'/work/chats/'.$c->id.(request()->getQueryString() ? '?'.request()->getQueryString() : '')" :current="$c->id === $current" staff/>
+                    @endforeach
+                </div>
+                {{ $chats->links() }}
+            @endif
         </div>
-        <div class="mt-8">{{ $chats->links() }}</div>
-    @endif
+        <turbo-frame id="chat-screen" class="chat-pane" target="_top">
+            @if ($chat)
+                <x-chat.screen :chat="$chat" :messages="$messages" :user="$user" :name="$chat->displayName()" :other="$chat->user" back="/work/chats" :first-unread="$firstUnread" :more="$more" :readonly="$chat->isBuyerChat()"/>
+            @else
+                <div class="chat-none"><x-ui.icon name="chat" class="size-10 text-ink-dim"/>Выберите чат</div>
+            @endif
+        </turbo-frame>
+    </div>
 </x-ui.shell>

@@ -67,7 +67,7 @@ export default class extends Controller {
     typing(event) {
         if (event.detail?.chat !== this.idValue || !this.status) return;
         this.status.dataset.seen ??= this.status.textContent;
-        this.status.textContent = 'печатает…';
+        this.status.innerHTML = 'печатает<span class="typing-dots"><i></i><i></i><i></i></span>';
         clearTimeout(this.typingTimer);
         this.typingTimer = setTimeout(() => { this.status.textContent = this.status.dataset.seen; }, 4000);
     }
@@ -367,6 +367,8 @@ export default class extends Controller {
         const i = this.inputTarget;
         i.style.height = 'auto';
         i.style.height = `${Math.min(i.scrollHeight, 140)}px`;
+        // «Отправить» бледная, пока слать нечего.
+        if (this.hasSubmitTarget) this.submitTarget.classList.toggle('is-empty', !i.value.trim() && this.picked.length === 0);
     }
 
     // «Печатает…» — другой стороне, не чаще раза в три секунды.
@@ -422,6 +424,7 @@ export default class extends Controller {
         const box = this.previewsTarget;
         box.replaceChildren();
         box.hidden = this.picked.length === 0;
+        this.grow();
         this.picked.forEach((p, i) => {
             const item = document.createElement('div');
             item.className = 'chat-preview';
@@ -462,8 +465,9 @@ export default class extends Controller {
         const el = document.createElement('div');
         el.className = 'msg is-mine is-pending';
         el.dataset.pending = '1';
-        el.innerHTML = '<div class="msg-bubble"><div class="msg-text"></div></div>';
+        el.innerHTML = '<div class="msg-bubble"><div class="msg-text"></div><div class="msg-meta"><span class="nums"></span></div></div>';
         el.querySelector('.msg-text').textContent = text || (files.length ? `Фото: ${files.length}` : '');
+        el.querySelector('.msg-meta span').textContent = new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
         this.listTarget.append(el);
         this.scroll();
         return el;
@@ -513,7 +517,12 @@ export default class extends Controller {
                 const d = await r.json().catch(() => ({}));
                 throw new Error(d.message || (r.status === 401 || r.status === 419 ? 'Войдите заново' : 'Не отправилось'));
             }
-            if (!this.urlValue) { this.urlValue = r.headers.get('X-Chat-Url') || ''; this.idValue = Number(r.headers.get('X-Chat-Id') || 0); }
+            if (!this.urlValue) {
+                this.urlValue = r.headers.get('X-Chat-Url') || '';
+                this.idValue = Number(r.headers.get('X-Chat-Id') || 0);
+                // Экран «написать» по ТС стал чатом — адрес теперь его, чтобы обновление и «назад» вели сюда же.
+                if (this.idValue && this.element.closest('.chat-page') && location.pathname.startsWith('/account/chats/')) history.replaceState(history.state, '', `/account/chats/${this.idValue}`);
+            }
             this.append(await r.text());
             bubble.remove();
         } catch (e) {

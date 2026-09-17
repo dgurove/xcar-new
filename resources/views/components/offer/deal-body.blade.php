@@ -67,6 +67,6 @@
     @endif
 
     @if ($canChat)
-        <button type="button" class="btn btn-quiet mt-3 w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="chat:open"><x-ui.icon name="chat" class="size-5"/> {{ $manager ? 'Написать '.$manager->shortName() : 'Написать в чат' }}@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</button>
+        <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet mt-3 w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="chat:open" data-emit-wide-param="1024"><x-ui.icon name="chat" class="size-5"/> {{ $manager ? 'Написать '.$manager->shortName() : 'Написать в чат' }}@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>
     @endif
 @endguest

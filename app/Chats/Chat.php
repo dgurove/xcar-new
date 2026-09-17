@@ -5,9 +5,11 @@ namespace App\Chats;
 use App\Offers\Offer;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * Чат по предложению (пара оффер + участник) или обращение с сайта (без предложения; у гостя — по токену).
@@ -43,6 +45,26 @@ class Chat extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class)->orderBy('seq');
+    }
+
+    /** Для строки списка: последнее сообщение (текст, автор, удалено) подзапросами, без второй выборки. */
+    public function scopeWithLast(Builder $query): Builder
+    {
+        $last = fn (string $column) => Message::select($column)->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1);
+
+        return $query->with(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager'])
+            ->addSelect(['*', 'last_text' => $last('text'), 'last_author_id' => $last('author_id'), 'last_deleted_at' => $last('deleted_at')]);
+    }
+
+    /** Превью последнего сообщения в строке списка; me — чтобы своё начиналось с «Вы:». */
+    public function lastPreview(?User $me): string
+    {
+        if ($this->last_deleted_at) {
+            return 'Сообщение удалено';
+        }
+        $text = $this->last_text ? Str::limit($this->last_text, 90) : 'Фото';
+
+        return ($me && $this->last_author_id === $me->id ? 'Вы: ' : '').$text;
     }
 
     public function isEnquiry(): bool

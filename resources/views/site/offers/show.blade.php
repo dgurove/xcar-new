@@ -115,7 +115,7 @@
 
     @if ($canChat)
         <div data-controller="sheet" data-action="chat:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="chat" title="Чат по № {{ $offer->number }}" :open="request()->boolean('chat')" wide>
+            <x-ui.sheet id="chat" :title="$manager?->shortName() ?? 'Чат с XCar'" :open="request()->boolean('chat')" wide>
                 {{-- Лента грузится при открытии шторки (ленивый фрейм видит showModal), страница и стрелки к соседям легче. --}}
                 <turbo-frame id="offer-chat" src="/offers/{{ $offer->number }}/chat" loading="{{ request()->boolean('chat') ? 'eager' : 'lazy' }}" target="_top" class="block min-h-32">
                     <x-ui.skeleton :rows="2"/>

@@ -21,7 +21,7 @@
             <button type="button" class="btn shrink-0 {{ $label ? 'btn-quiet btn-round btn-lg' : 'btn-accent min-w-0 flex-1' }}" data-controller="emit" data-action="emit#send" data-emit-event-param="show:open" aria-label="Показать покупателям"><x-ui.icon name="users" class="size-6"/>@unless ($label) Показать покупателям @endunless</button>
         @endif
         @if ($canChat)
-            <button type="button" class="btn btn-quiet btn-round btn-lg relative shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="chat:open" aria-label="Чат"><x-ui.icon name="chat" class="size-6"/>@if ($chat?->unread_for_user)<span class="badge absolute -right-0.5 -top-0.5">{{ $chat->unread_for_user }}</span>@endif</button>
+            <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet btn-round btn-lg relative shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="chat:open" data-emit-wide-param="1024" aria-label="Чат"><x-ui.icon name="chat" class="size-6"/>@if ($chat?->unread_for_user)<span class="badge absolute -right-0.5 -top-0.5">{{ $chat->unread_for_user }}</span>@endif</a>
         @endif
     </x-ui.action-bar>
 @endif

@@ -1,15 +1,16 @@
 <?php
 
+use App\Http\Admin\UserController;
 use App\Http\Cabinet\BuyerController;
 use App\Http\Cabinet\BuyerInterestController;
 use App\Http\Cabinet\ChatController as CabinetChatController;
+use App\Http\Cabinet\DealController;
 use App\Http\Cabinet\GroupController;
 use App\Http\Cabinet\InviteController;
-use App\Http\Cabinet\ShowingController;
-use App\Http\Cabinet\DealController;
 use App\Http\Cabinet\ListsController;
 use App\Http\Cabinet\NotificationController;
 use App\Http\Cabinet\ProfileController;
+use App\Http\Cabinet\ShowingController;
 use App\Http\Live\FragmentController;
 use App\Http\Pwa\PushController;
 use App\Http\Pwa\PwaController;
@@ -78,6 +79,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::permanentRedirect('/account/profile', '/account');
     Route::get('/account/favorites', [ListsController::class, 'favorites']);
     Route::get('/account/chats', [CabinetChatController::class, 'index']);
+    Route::get('/account/chats/offer/{offer}', [CabinetChatController::class, 'offer']);
     Route::get('/account/chats/{chat}', [CabinetChatController::class, 'show']);
     Route::permanentRedirect('/account/confirmations', '/account/deals');
     Route::get('/account/interests', [ListsController::class, 'interests']);
@@ -110,11 +112,11 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::permanentRedirect('/account/buyers/invites', '/account/invites');
 
     // Пользователи — админу тот же экран, что в CRM (чужому 404 в контроллере).
-    Route::get('/account/users', [\App\Http\Admin\UserController::class, 'index']);
-    Route::put('/account/users/{user}', [\App\Http\Admin\UserController::class, 'update']);
-    Route::delete('/account/users/{user}', [\App\Http\Admin\UserController::class, 'destroy']);
-    Route::post('/account/users/{user}/access', [\App\Http\Admin\UserController::class, 'decide']);
-    Route::post('/account/users/{user}/password', [\App\Http\Admin\UserController::class, 'passwordLink']);
+    Route::get('/account/users', [UserController::class, 'index']);
+    Route::put('/account/users/{user}', [UserController::class, 'update']);
+    Route::delete('/account/users/{user}', [UserController::class, 'destroy']);
+    Route::post('/account/users/{user}/access', [UserController::class, 'decide']);
+    Route::post('/account/users/{user}/password', [UserController::class, 'passwordLink']);
 
     // Кабинет менеджера: покупатели, группы, приглашения, показы. Конкретные пути раньше {user}.
     Route::middleware('manager')->group(function () {

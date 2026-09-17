@@ -15,18 +15,21 @@
         @endif
     </div>
     @unless ($readonly)
-        <div class="chat-state" data-chat-target="state" hidden>
-            <x-ui.icon name="reply" class="size-4 shrink-0 text-accent-text" data-chat-target="stateIcon"/>
-            <div class="min-w-0 flex-1"><div class="truncate text-xs text-accent-text" data-chat-target="stateName"></div><div class="truncate text-sm" data-chat-target="stateText"></div></div>
-            <button type="button" class="btn btn-ghost btn-s px-2" data-action="chat#cancel" aria-label="Отменить"><x-ui.icon name="x" class="size-4"/></button>
+        {{-- Бар поля: чип ответа/правки, превью, скрепка, капсула ввода, круглая «отправить» (бледная, пока нечего слать). --}}
+        <div class="chat-bar">
+            <div class="chat-state" data-chat-target="state" hidden>
+                <x-ui.icon name="reply" class="size-4 shrink-0 text-accent-text" data-chat-target="stateIcon"/>
+                <div class="min-w-0 flex-1"><div class="truncate text-xs text-accent-text" data-chat-target="stateName"></div><div class="truncate text-sm" data-chat-target="stateText"></div></div>
+                <button type="button" class="btn btn-ghost btn-s px-2" data-action="chat#cancel" aria-label="Отменить"><x-ui.icon name="x" class="size-4"/></button>
+            </div>
+            <div class="chat-previews" data-chat-target="previews" hidden></div>
+            <form method="post" class="chat-form" data-chat-target="form" data-action="submit->chat#send" data-controller="draft" data-draft-key-value="chat:{{ $chat?->id ?? request()->path() }}">
+                <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-chat-target="files" data-action="change->chat#filesPicked">
+                <button type="button" class="btn btn-ghost btn-round" data-action="chat#pick" aria-label="Приложить"><x-ui.icon name="clip" class="size-5"/></button>
+                <div class="chat-input"><textarea name="text" rows="1" placeholder="Сообщение" data-chat-target="input" data-action="keydown->chat#keydown input->chat#typed paste->chat#paste" enterkeyhint="enter"></textarea></div>
+                <button class="chat-send is-empty" aria-label="Отправить" data-chat-target="submit"><x-ui.icon name="send" class="size-5"/></button>
+            </form>
         </div>
-        <div class="chat-previews" data-chat-target="previews" hidden></div>
-        <form method="post" class="chat-form" data-chat-target="form" data-action="submit->chat#send" data-controller="draft" data-draft-key-value="chat:{{ $chat?->id ?? request()->path() }}">
-            <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-chat-target="files" data-action="change->chat#filesPicked">
-            <button type="button" class="btn btn-ghost px-2" data-action="chat#pick" aria-label="Приложить"><x-ui.icon name="clip" class="size-5"/></button>
-            <textarea name="text" rows="1" class="field-input !min-h-12 flex-1 resize-none" placeholder="Сообщение" data-chat-target="input" data-action="keydown->chat#keydown input->chat#typed paste->chat#paste" enterkeyhint="enter"></textarea>
-            <button class="btn btn-accent px-3" aria-label="Отправить" data-chat-target="submit"><x-ui.icon name="send" class="size-5"/></button>
-        </form>
         <div class="menu" popover data-chat-target="menu" role="menu">
             <button type="button" class="menu-item w-full" role="menuitem" data-action="chat#reply"><x-ui.icon name="reply" class="size-5"/>Ответить</button>
             <button type="button" class="menu-item w-full" role="menuitem" data-action="chat#copy" data-chat-target="copyItem"><x-ui.icon name="copy" class="size-5"/>Скопировать</button>
