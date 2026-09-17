@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\EnsureManager;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\MarkInstalled;
+use App\Http\Middleware\PeekBack;
 use App\Http\Middleware\RedirectLegacyPaths;
 use App\Http\Middleware\ResolveSurface;
 use App\Http\Middleware\ServerTiming;
@@ -54,7 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/');
         $middleware->alias(['staff' => EnsureStaff::class, 'manager' => EnsureManager::class, 'section' => EnsureSection::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
         $middleware->prepend(RedirectLegacyPaths::class);
-        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class]);
+        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

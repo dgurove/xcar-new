@@ -108,9 +108,13 @@ class PurchaseController
             default => $cars->orderBy('dl'),
         };
 
+        $cars = $cars->paginate(50)->withQueryString();
+        // ?peek=ref (или first) — открыть окошко этой строки сразу: так «Оценить» ведёт в таблицу.
+        $peek = $request->query('peek') ? $cars->first(fn ($c) => $request->query('peek') === 'first' || (string) $c->ref === (string) $request->query('peek')) : null;
+
         return view('admin.purchases.show', [
             'purchase' => $purchase, 'q' => $q, 'pending' => $pending, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state),
-            'cars' => $cars->paginate(50)->withQueryString(), 'preset' => $preset, 'sort' => $sort,
+            'cars' => $cars, 'preset' => $preset, 'sort' => $sort, 'peek' => $peek ? 'car-'.$peek->id : null,
             'counts' => $counts, 'kind' => $kind, 'kinds' => $kinds, 'managers' => $managers, 'offered' => $offered, 'user' => $user,
         ]);
     }
@@ -265,36 +269,16 @@ class PurchaseController
         return back()->with('toast', 'Сохранено');
     }
 
-    /** Экран оценки: одна машина, соседи — среди машин без нашей цены по порядку файла (сама машина в наборе, даже если уже оценена). */
-    public function price(Purchase $purchase, Car $car)
-    {
-        abort_unless($car->purchase_id === $purchase->id, 404);
-        $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
-        $ids = $purchase->cars()->where(fn ($w) => $w->whereNull('price_final')->orWhere('id', $car->id))->orderBy('dl')->orderBy('id')->pluck('id')->all();
-        $pos = array_search($car->id, $ids, true);
-
-        return view('admin.purchases.price', [
-            'purchase' => $purchase, 'car' => $car, 'index' => $pos + 1, 'total' => count($ids),
-            'prev' => $pos > 0 ? Car::find($ids[$pos - 1]) : null, 'next' => $pos < count($ids) - 1 ? Car::find($ids[$pos + 1]) : null,
-        ]);
-    }
-
-    /** «Дальше»: сохранить нашу цену (пустое поле ничего не трогает) и перейти к следующей без цены после этой по файлу. */
-    public function priceStore(Request $request, Purchase $purchase, Car $car)
+    /** Наша цена из окошка строки («Дальше»): пустое поле ничего не трогает; окошко переходит к следующей без цены само. */
+    public function estimate(Request $request, Purchase $purchase, Car $car)
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
         $raw = $request->validate(['price_final' => ['nullable', 'string', 'max:20']])['price_final'] ?? '';
         if ($raw !== '') {
             $car->update(['price_final' => (int) preg_replace('/\D+/', '', $raw) ?: null]);
         }
-        $next = $purchase->cars()->whereNull('price_final')->where('id', '!=', $car->id)
-            ->where(fn ($w) => $w->where('dl', '>', $car->dl)->orWhere(fn ($x) => $x->where('dl', $car->dl)->where('id', '>', $car->id)))
-            ->orderBy('dl')->orderBy('id')->first()
-            ?? $purchase->cars()->whereNull('price_final')->where('id', '!=', $car->id)->orderBy('dl')->orderBy('id')->first();
 
-        return $next
-            ? redirect("/purchases/{$purchase->number}/{$next->ref}/estimate")
-            : redirect("/purchases/{$purchase->number}")->with('toast', 'Все оценены');
+        return redirect("/purchases/{$purchase->number}?preset=unfinal")->with('peek-advance', true);
     }
 
     public function choose(Request $request, Offer $offer, ChooseOffer $choose)

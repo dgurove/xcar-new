@@ -1,8 +1,17 @@
 {{-- Кадры оффера: лента со snap, стрелки, счётчик, полноэкранный просмотр, миниатюры 4/6 в ряд
-     (:thumbs="false" — миниатюры только от lg: экран оценки на телефоне). --}}
-@props(['photos', 'alt' => '', 'thumbs' => true])
+     (:thumbs="false" — миниатюры только от lg). strip — узкая лента кадров в окошке
+     строки таблицы: несколько в ряд, без стрелок, тап — во весь экран. --}}
+@props(['photos', 'alt' => '', 'thumbs' => true, 'strip' => false])
 @if ($photos->isEmpty())
-    <div class="flex aspect-[4/3] items-center justify-center rounded-(--radius-xl) bg-surface-3 text-ink-dim">Фотографий нет</div>
+    @if ($strip)<div class="peek-strip-empty"><x-ui.car-blank/></div>@else<div class="flex aspect-[4/3] items-center justify-center rounded-(--radius-xl) bg-surface-3 text-ink-dim">Фотографий нет</div>@endif
+@elseif ($strip)
+    <div class="peek-strip" data-controller="gallery" data-gallery-target="strip">
+        @foreach ($photos as $i => $media)
+            <a href="{{ \App\Media\MediaUrl::for($media) }}" class="peek-strip-frame" data-action="click->gallery#open" data-index="{{ $i }}">
+                <x-offer.photo :media="$media" sizes="192px" :eager="$i < 3" class="size-full object-cover"/>
+            </a>
+        @endforeach
+    </div>
 @else
     <div data-controller="gallery" data-action="keydown@window->gallery#key">
         <div class="relative overflow-hidden rounded-(--radius-xl) bg-surface-3">

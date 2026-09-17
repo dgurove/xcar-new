@@ -20,6 +20,8 @@ use App\Http\Admin\TagController;
 use App\Http\Admin\UserController;
 use App\Http\Admin\WorkflowController;
 use App\Http\Site\ShareController;
+use App\Purchases\Car;
+use App\Purchases\Purchase;
 use Illuminate\Support\Facades\Route;
 
 // CRM — свой хост того же приложения, только для сотрудников.
@@ -103,8 +105,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car']);
     Route::match(['get', 'post'], '/purchases/{purchase}/{car}/pdf', [ShareController::class, 'carPdf']);
     Route::put('/purchases/{purchase}/{car}', [PurchaseController::class, 'updateCar']);
-    Route::get('/purchases/{purchase}/{car}/estimate', [PurchaseController::class, 'price']);
-    Route::post('/purchases/{purchase}/{car}/estimate', [PurchaseController::class, 'priceStore']);
+    // Оценка — в окошке строки таблицы; старый экран ведёт туда же.
+    Route::get('/purchases/{purchase}/{car}/estimate', fn (Purchase $purchase, Car $car) => redirect("/purchases/{$purchase->number}?preset=unfinal&vid=table&peek={$car->ref}", 301));
+    Route::post('/purchases/{purchase}/{car}/estimate', [PurchaseController::class, 'estimate']);
     Route::post('/purchases/cars/{car}/media', [PurchaseCarPhotoController::class, 'store']);
     Route::post('/purchases/cars/{car}/media/order', [PurchaseCarPhotoController::class, 'reorder']);
     Route::post('/purchases/cars/{car}/media/{media}/hide', [PurchaseCarPhotoController::class, 'toggle']);

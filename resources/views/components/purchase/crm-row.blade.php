@@ -29,7 +29,7 @@
             <x-purchase.offer-chip :offer="$offer" :car="$car" :highlight="$highlight"/>
         @endforeach
         @if ($price)
-            <a href="/purchases/{{ $n }}/{{ $car->ref }}/estimate" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? \App\Support\Money::rub($car->price_final) : 'оценить' }}</a>
+            <a href="/purchases/{{ $n }}?{{ $car->price_final ? '' : 'preset=unfinal&' }}vid=table&peek={{ $car->ref }}" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? \App\Support\Money::rub($car->price_final) : 'оценить' }}</a>
         @endif
     </div>
 </div>

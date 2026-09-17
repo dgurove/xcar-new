@@ -77,12 +77,16 @@
         @if ($managers->isNotEmpty())
             <x-ui.choose name="user" :options="['' => 'Все менеджеры'] + $managers->mapWithKeys(fn ($u) => [$u->id => $u->shortName()])->all()" :value="$user?->id ?? ''" default="" :counts="$offered->all()" title="Менеджер" id="user-purchase"/>
         @endif
+        {{-- Оценка идёт в окошке таблицы: первая без нашей цены открывается сразу, «Дальше» ведёт по строкам. --}}
+        @if ($counts['unfinal'] > 0 && !($preset === 'unfinal' && $view === \App\Support\ListView::TABLE))
+            <a href="/purchases/{{ $n }}?preset=unfinal&vid=table&peek=first{{ $kind ? '&kind='.$kind->value : '' }}" class="btn btn-s btn-accent ml-auto" data-turbo-action="replace">Оценить</a>
+        @endif
     </div>
 
     @if ($cars->isEmpty())
         <x-ui.empty class="mt-4">Ничего не нашлось</x-ui.empty>
     @elseif ($view === \App\Support\ListView::TABLE)
-        <x-ui.table id="cars" class="mt-4">
+        <x-ui.table id="cars" class="mt-4" :open="$peek">
             <x-slot:head>
                 <tr>
                     <th>ДЛ</th>
