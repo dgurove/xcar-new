@@ -14,7 +14,7 @@
             <div class="row">
                 <span class="row-photo"><x-offer.photo :media="$single->mainPhoto()" sizes="72px"/></span>
                 <span class="min-w-0 flex-1">
-                    <span class="block truncate">{{ $single->titleWithYear() }}</span>
+                    <span class="block truncate">{{ $single->titleWithYear() }}@if ($single->recommended)<x-offer.recommended/>@endif</span>
                     <span class="row-sub"><span class="tag nums">№ {{ $single->number }}</span></span>
                 </span>
                 @if ($price->shown())<span class="nums shrink-0 text-sm font-semibold">{{ $price::money($price->to) }}&nbsp;₽</span>@endif

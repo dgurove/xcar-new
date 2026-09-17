@@ -97,6 +97,7 @@
   --color-closed-soft: #ececec;
   --color-danger: #ff0037;
   --color-danger-soft: #ffe8ec;
+  --color-recommended: #229ed9;
 
   --radius-s: 8px;
   --radius-m: 12px;
@@ -478,6 +479,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .vincode { cursor: pointer; }
   @media (hover: hover) { .vincode:hover > svg { color: var(--color-ink); } }
   .dark .tag { background: var(--tag-bg-d, var(--color-surface-3)); color: var(--tag-text-d, var(--color-ink-muted)); }
+  /* «Рекомендуем»: синий кружок с галочкой в размер шрифта после названия; тег с подписью — синяя палитра. */
+  .recommended { display: inline-flex; flex-shrink: 0; width: 1.05em; height: 1.05em; margin-left: .3em; vertical-align: -.15em; }
+  .recommended > svg { width: 100%; height: 100%; }
+  .tag-recommended { --tag-bg: #e3f1fb; --tag-text: #1878b8; --tag-bg-d: #0f2537; --tag-text-d: #6cc0ff; }
 
   /* Пилюля: пресет, раздел, состояние. Активная — лайм с белым. */
   /* scroll-padding: иначе snap прижимает первую пилюлю к краю экрана, съедая поле. */

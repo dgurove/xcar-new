@@ -11,21 +11,21 @@ use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
-use App\Offers\Showing;
-use App\Users\Role;
-use App\Users\User;
 use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Showing;
 use App\Offers\Tag;
 use App\Support\ListPrefs;
+use App\Users\Role;
+use App\Users\User;
 use App\Workflow\Insurer;
 use Illuminate\Http\Request;
 
 class OfferController
 {
     public const PRESETS = [
-        'all' => 'Все', 'draft' => 'Черновики', 'open' => 'В продаже',
+        'all' => 'Все', 'recommended' => 'Рекомендуем', 'draft' => 'Черновики', 'open' => 'В продаже',
         'bids' => 'Ждут ответа', 'sold' => 'В сделке', 'archive' => 'Архив',
     ];
 
@@ -40,6 +40,7 @@ class OfferController
         $q = Offer::query()->with(['brand', 'model', 'media'])->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
         match ($preset) {
+            'recommended' => $q->where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),
             'draft' => $q->where('state', OfferState::Draft),
             'open' => $q->where('state', OfferState::Open),
             'bids' => $q->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
@@ -63,6 +64,7 @@ class OfferController
             'preset' => $preset,
             'sort' => $sort,
             'counts' => [
+                'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
                 'draft' => Offer::where('state', OfferState::Draft)->count(),
                 'bids' => Offer::whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->count(),
             ],

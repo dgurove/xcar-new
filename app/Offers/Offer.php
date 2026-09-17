@@ -35,7 +35,7 @@ use Spatie\MediaLibrary\HasMedia;
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
     'incident_date', 'description', 'settlement_id', 'inspection_address', 'floor_price', 'publish_price',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'bids_close_at', 'sort_weight',
-    'chat_enabled', 'share_locked', 'managers_limited', 'insurer_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
+    'chat_enabled', 'share_locked', 'managers_limited', 'recommended', 'insurer_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
 ])]
 class Offer extends Model implements HasMedia
 {
@@ -63,6 +63,7 @@ class Offer extends Model implements HasMedia
             'prices_include_vat' => 'bool',
             'chat_enabled' => 'bool',
             'share_locked' => 'bool',
+            'recommended' => 'bool',
             'managers_limited' => 'bool',
             'incident_date' => 'date',
             'published_at' => 'datetime',

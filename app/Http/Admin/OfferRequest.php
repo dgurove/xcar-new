@@ -59,6 +59,7 @@ class OfferRequest extends FormRequest
             'bids_close_at' => ['nullable', 'date'],
             'chat_enabled' => ['boolean'],
             'share_locked' => ['boolean'],
+            'recommended' => ['boolean'],
             'managers_limited' => ['boolean'],
             'managers' => ['nullable', 'array'],
             'managers.*' => ['integer', Rule::exists('users', 'id')->where('role', 'manager')],
@@ -79,6 +80,7 @@ class OfferRequest extends FormRequest
         $data['show_vin'] = $this->boolean('show_vin');
         $data['chat_enabled'] = $this->boolean('chat_enabled');
         $data['share_locked'] = $this->boolean('share_locked');
+        $data['recommended'] = $this->boolean('recommended');
         $data['managers_limited'] = $this->boolean('managers_limited');
         $data['managers'] = array_values(array_map('intval', $data['managers'] ?? []));
         $data['damage_zones'] = $data['damage_zones'] ?? [];

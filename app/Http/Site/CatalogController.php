@@ -3,13 +3,13 @@
 namespace App\Http\Site;
 
 use App\Cars\Brand;
+use App\Http\Middleware\MarkInstalled;
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Purchases\Purchase;
 use App\Support\ListContext;
-use App\Http\Middleware\MarkInstalled;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use Illuminate\Http\Request;
@@ -59,13 +59,18 @@ class CatalogController
                 'gallery' => Offer::where('state', OfferState::Gallery)->count(),
                 // Закупок на витрине столько, сколько карточек: одна присланная — две (легковые и грузовые).
                 'purchases' => count(Purchase::showcase(null)),
+                'recommended' => Offer::where('state', OfferState::Open)->where('recommended', true)->count(),
+                'recommended_gallery' => Offer::where('state', OfferState::Gallery)->where('recommended', true)->count(),
             ])
             : [
                 'offers' => Offer::visibleTo($user)->where('state', OfferState::Open)->count(),
                 'gallery' => $user?->role->canSeeGallery() ? Offer::visibleTo($user)->where('state', OfferState::Gallery)->count() : 0,
                 'purchases' => $user?->role->canSeePurchases() ? count(Purchase::showcase($user)) : 0,
+                'recommended' => Offer::visibleTo($user)->whereIn('state', $states)->where('recommended', true)->count(),
             ];
         $counts['purchases'] = $user?->role->canSeePurchases() ? $counts['purchases'] : 0;
+        // «Рекомендуем» — сколько отмеченных в этом разделе: пилюля с числом, без отмеченных пилюли нет.
+        $recommended = $counts[$gallery && $user?->isStaff() ? 'recommended_gallery' : 'recommended'] ?? 0;
 
         $offers = CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery)->paginate(CatalogQuery::PER_PAGE)->withQueryString();
         Showing::remember($user, $offers->pluck('id')->all());
@@ -76,13 +81,13 @@ class CatalogController
             'filters' => $filters,
             'sort' => $sort,
             'sorts' => CatalogQuery::allowedSorts($gallery, $prices, $user),
-            'views' => CatalogQuery::allowedViews($user, $gallery),
+            'views' => CatalogQuery::allowedViews($user, $gallery, $recommended),
             'view' => $view,
             'context' => ListContext::forList($gallery, $filters + ['sort' => $sort], $view),
             'brands' => Brand::whereHas('offers', fn ($o) => $o->visibleTo($user)->whereIn('state', $states))->orderBy('name')->get(),
             'gallery' => $gallery,
             'prices' => $prices,
-            'counts' => $counts,
+            'counts' => ['recommended' => $recommended] + $counts,
             // Установленное приложение открывается сразу в список, первый экран — гостю в браузере.
             // Покупателю первый экран ни к чему: у него не витрина, а то, что открыл менеджер.
             'hero' => ! $gallery && $filters === [] && $view === null && ! $request->has('page') && ! MarkInstalled::installed($request) && ! $user?->isBuyer(),

@@ -185,6 +185,7 @@
                     <x-ui.field name="min_bid_share" label="Доля до продажной" inputmode="decimal" :value="$offer->min_bid_share" placeholder="0,6"/>
                     <x-ui.field name="bids_close_at" label="Приём подтверждений до" type="datetime-local" :value="$offer->bids_close_at?->format('Y-m-d\TH:i')" span="col-span-2 lg:col-span-1"/>
                     <div class="col-span-full flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
+                        <x-ui.check name="recommended" :checked="$offer->recommended">Рекомендуем</x-ui.check>
                         <x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat">С НДС</x-ui.check>
                         <x-ui.check name="chat_enabled" :checked="$offer->chat_enabled">Чат с покупателями</x-ui.check>
                         <x-ui.check name="share_locked" :checked="$offer->share_locked">Запретить шеринг</x-ui.check>

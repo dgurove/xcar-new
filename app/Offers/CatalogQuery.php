@@ -21,7 +21,7 @@ final class CatalogQuery
         'closing' => ['Скоро закрытие', false],
     ];
 
-    public const VIEWS = ['' => 'Все', 'fresh' => 'Новые', 'ending' => 'Горящие', 'favorite' => 'Избранное'];
+    public const VIEWS = ['' => 'Все', 'recommended' => 'Рекомендуем', 'fresh' => 'Новые', 'ending' => 'Горящие', 'favorite' => 'Избранное'];
 
     public const FILTERS = ['brand', 'q', 'year_from', 'year_to', 'price_from', 'price_to', 'view', 'sort'];
 
@@ -65,6 +65,7 @@ final class CatalogQuery
         }
 
         match ($filters['view'] ?? '') {
+            'recommended' => $q->where('recommended', true),
             'fresh' => $q->where('published_at', '>=', now()->subDay()),
             'ending' => $q->where('state', OfferState::Open)->whereBetween('bids_close_at', [now(), now()->addDay()]),
             'favorite' => $user ? $q->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id)) : $q->whereRaw('false'),
@@ -103,10 +104,11 @@ final class CatalogQuery
         }, ARRAY_FILTER_USE_BOTH);
     }
 
-    /** Пилюли для тулбара: «Горящие» только в каталоге и не покупателю, «Избранное» только вошедшему. */
-    public static function allowedViews(?User $user, bool $gallery): array
+    /** Пилюли для тулбара: «Рекомендуем» пока есть отмеченные, «Горящие» только в каталоге и не покупателю, «Избранное» только вошедшему. */
+    public static function allowedViews(?User $user, bool $gallery, int $recommended = 0): array
     {
         return array_filter(self::VIEWS, fn ($_, $key) => match ($key) {
+            'recommended' => $recommended > 0,
             'ending' => ! $gallery && ! $user?->isBuyer(),
             'favorite' => $user !== null,
             default => true,

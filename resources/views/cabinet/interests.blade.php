@@ -15,7 +15,7 @@
                     <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                            <span class="truncate font-medium">{{ $offer->titleWithYear() }}</span>
+                            <span class="truncate font-medium">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
                             @if ($tag)<x-ui.pill tone="closed" class="!min-h-0 !py-0.5 text-xs">{{ $tag }}</x-ui.pill>@endif
                         </div>
                         <div class="mt-1 flex flex-wrap items-center gap-1.5">

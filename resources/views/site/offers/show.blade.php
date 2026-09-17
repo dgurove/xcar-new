@@ -31,7 +31,7 @@
             :back="$back" :index="$position['index']" :total="$position['total']"/>
     </x-slot:actions>
 
-    <div class="-mt-3 mb-6 flex flex-wrap gap-1.5"><x-offer.tags :offer="$offer" :facts="false"/></div>
+    <div class="-mt-3 mb-6 flex flex-wrap gap-1.5">@if ($offer->recommended)<x-offer.recommended label/>@endif<x-offer.tags :offer="$offer" :facts="false"/></div>
 
     {{-- Слева галерея и описание, справа цена и характеристики: всё о машине — в первом экране. --}}
     <div class="grid gap-6 lg:grid-cols-[1fr_22rem] lg:gap-8">

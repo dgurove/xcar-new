@@ -15,7 +15,7 @@
 @endphp
 <tr id="offer-{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="{{ $peek }}" data-href="{{ $href }}" tabindex="0">
     <td class="nums text-ink-dim">{{ $n }}</td>
-    <td class="grow">@if ($fresh)<span class="dot dot-open"></span>@endif{{ $offer->titleWithYear() }}</td>
+    <td class="grow">@if ($fresh)<span class="dot dot-open"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</td>
     <td class="hidden sm:table-cell">
         @if ($gallery)<span class="text-accent-text">Скоро в продаже</span>
         @elseif ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
