@@ -6,7 +6,7 @@
      нажатие — окошко, двойное или ⌘Enter — на страницу, Enter — раскрыть/свернуть,
      ↑/↓ и стрелки у счётчика — по строкам; open — id строки, которую открыть сразу (?peek=). --}}
 @props(['head', 'id' => null, 'open' => null])
-<div {{ $attributes->merge(['class' => 'table-wrap']) }} data-controller="peek" data-action="keydown->peek#key turbo:before-frame-render->peek#rendering turbo:frame-load->peek#loaded turbo:before-fetch-request->peek#request" @if ($open) data-peek-open-value="{{ $open }}" @endif @if ($id) id="{{ $id }}" @endif>
+<div {{ $attributes->merge(['class' => 'table-wrap']) }} data-controller="peek" data-action="keydown->peek#key turbo:frame-load->peek#loaded turbo:before-fetch-request->peek#request" @if ($open) data-peek-open-value="{{ $open }}" @endif @if ($id) id="{{ $id }}" @endif>
     <div class="table-box">
         <table class="table">
             <thead>{{ $head }}</thead>

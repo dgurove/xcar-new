@@ -628,23 +628,24 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet-close { @apply flex size-9 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
 
   /* Окошко строки таблицы (peek): не модальное — список за ним листается.
-     Телефон: лист от самого низа поверх таб-бара (в другой раздел — закрыв окошко),
-     коротко (до половины экрана, тело прокручивается) или во весь экран (.is-full,
-     за ручку); клавиатура поднимает его (--kb). От 768 — парит снизу по центру.
+     Высота везде фиксированная — переключение строк ничего не дёргает, лишнее
+     прокручивается внутри. Телефон: лист от самого низа поверх таб-бара (в другой
+     раздел — закрыв окошко), полэкрана или во весь экран (.is-full, за ручку);
+     клавиатура поднимает его (--kb). От 768 — парит снизу по центру.
      От 1024 — не парит, а стоит панелью справа от таблицы (.table-wrap становится
      сеткой) и липнет под шапкой. Пока открыто на телефоне, у страницы нижний
      отступ, чтобы последние строки выезжали из-под него. */
   .table-box { @apply rounded-(--radius-l) bg-surface; overflow: clip; }
   .peek {
     @apply fixed z-[45] flex flex-col rounded-t-(--radius-xl) bg-surface text-ink shadow-(--shadow-drop);
-    inset-inline: 0; margin-inline: auto; max-width: 36rem; max-height: 50dvh;
+    inset-inline: 0; margin-inline: auto; max-width: 36rem; height: 50dvh;
     bottom: var(--kb, 0px);
     padding-bottom: max(env(safe-area-inset-bottom), 0px);
     animation: sheet-up var(--dur-slow) var(--ease-out) both;
     overscroll-behavior: contain;
   }
   .peek[hidden] { display: none; }
-  .peek.is-full { top: calc(var(--spacing-header) + env(safe-area-inset-top) + .5rem); max-height: none; }
+  .peek.is-full { top: calc(var(--spacing-header) + env(safe-area-inset-top) + .5rem); height: auto; }
   .peek.is-closing { animation: sheet-down var(--dur) var(--ease-in) both; pointer-events: none; }
   .peek-bar { @apply relative flex shrink-0 items-center gap-1 px-3 pt-2; }
   .peek-handle { @apply absolute inset-x-0 top-0 h-6 cursor-grab; }
@@ -673,7 +674,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table-wrap:has(.peek:not([hidden])) { display: grid; grid-template-columns: minmax(0, 1fr) 26rem; gap: 1rem; align-items: start; }
     .peek, .peek.is-full {
       position: sticky; inset: auto; top: calc(var(--spacing-header) + env(safe-area-inset-top) + .75rem);
-      margin: 0; width: auto; max-width: none; max-height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 1.5rem);
+      margin: 0; width: auto; max-width: none; height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 1.5rem);
       padding-bottom: 0; border-radius: var(--radius-xl); box-shadow: none; animation: dialog-in var(--dur) var(--ease-out);
     }
     .peek-handle { display: none; }
