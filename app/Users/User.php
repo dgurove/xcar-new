@@ -66,6 +66,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->role === Role::Manager;
     }
 
+    /** Чат по предложению: по роли, а покупателю — только со своим менеджером. */
+    public function canChat(): bool
+    {
+        return $this->role->canChat() && (! $this->isBuyer() || $this->manager_id);
+    }
+
     /** Менеджер покупателя — тот, чью пригласительную ссылку он открыл. */
     public function manager(): BelongsTo
     {

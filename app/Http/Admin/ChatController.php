@@ -14,7 +14,8 @@ class ChatController
     {
         $preset = $request->query('preset', 'unread');
         $q = trim((string) $request->query('q'));
-        $chats = Chat::with(['offer.brand', 'offer.model', 'offer.media', 'user'])
+        // Чаты покупателей с их менеджерами — не наши, в CRM их нет.
+        $chats = Chat::with(['offer.brand', 'offer.model', 'offer.media', 'user'])->whereNull('manager_id')
             ->when($preset === 'unread', fn ($c) => $c->where('unread_for_staff', '>', 0))
             ->when($preset === 'offers', fn ($c) => $c->whereNotNull('offer_id'))
             ->when($preset === 'enquiries', fn ($c) => $c->whereNull('offer_id'))
@@ -25,12 +26,13 @@ class ChatController
 
         return view('admin.chats.index', [
             'chats' => $chats, 'preset' => $preset, 'q' => $q,
-            'unread' => Chat::where('unread_for_staff', '>', 0)->count(),
+            'unread' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
         ]);
     }
 
     public function show(Request $request, Chat $chat, MarkChatRead $read)
     {
+        abort_if($chat->isBuyerChat(), 404);
         $chat->load(['offer.brand', 'offer.model', 'offer.media', 'user']);
         $read($chat, $request->user());
 

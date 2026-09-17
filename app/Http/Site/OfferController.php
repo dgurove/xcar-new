@@ -31,7 +31,7 @@ class OfferController
             : ['prev' => null, 'next' => null, 'index' => null, 'total' => 0];
 
         // Открыли шторку — непрочитанное прочитано, бейдж гаснет сразу.
-        $canChat = $user && $user->role->canChat() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest());
+        $canChat = $user && $user->canChat() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest());
         if ($request->boolean('chat') && $canChat && ($existing = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first())) {
             app(MarkChatRead::class)($existing, $user);
         }
@@ -44,7 +44,7 @@ class OfferController
             'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->where('state', BidState::Active)->first() : null,
             'myInterest' => $user ? $offer->interests()->where('user_id', $user->id)->first() : null,
             'chat' => $canChat ? Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first() : null,
-            // Шторка чата есть у менеджера всегда; сам чат заведётся первым сообщением. Покупатель говорит со своим менеджером вне сайта.
+            // Шторка чата есть всегда; сам чат заведётся первым сообщением: менеджеру — с площадкой, покупателю — со своим менеджером.
             'canChat' => $canChat,
             'manager' => $user?->isBuyer() ? $user->manager : null,
             'showings' => $user?->isManager() ? $offer->showings()->where('manager_id', $user->id)->with(['user', 'group'])->get() : collect(),
@@ -59,7 +59,7 @@ class OfferController
         $user = $request->user();
         abort_unless($offer->isVisibleTo($user), 404);
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites']);
-        $canChat = $user && $user->role->canChat() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest());
+        $canChat = $user && $user->canChat() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest());
 
         return view('site.offers.peek', [
             'offer' => $offer,
@@ -74,7 +74,7 @@ class OfferController
     public function chat(Request $request, Offer $offer)
     {
         $user = $request->user();
-        abort_unless($user && $user->role->canChat() && $offer->chat_enabled, 404);
+        abort_unless($user && $user->canChat() && $offer->chat_enabled, 404);
         $chat = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first();
 
         return view('site.offers.chat', [

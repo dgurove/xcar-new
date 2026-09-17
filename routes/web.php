@@ -74,6 +74,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::permanentRedirect('/account/profile', '/account');
     Route::get('/account/favorites', [ListsController::class, 'favorites']);
     Route::get('/account/chats', [CabinetChatController::class, 'index']);
+    Route::get('/account/chats/{chat}', [CabinetChatController::class, 'show']);
     Route::permanentRedirect('/account/confirmations', '/account/deals');
     Route::get('/account/interests', [ListsController::class, 'interests']);
 

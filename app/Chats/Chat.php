@@ -9,8 +9,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** Чат по предложению (пара оффер + участник) или обращение с сайта (без предложения; у гостя — по токену). */
-#[Fillable(['offer_id', 'user_id', 'guest_name', 'guest_token', 'messages_count', 'unread_for_user', 'unread_for_staff', 'last_message_at'])]
+/**
+ * Чат по предложению (пара оффер + участник) или обращение с сайта (без предложения; у гостя — по токену).
+ * Вторая сторона — сотрудники площадки, а с manager_id — менеджер, с которым говорит его покупатель:
+ * тогда счётчик unread_for_staff и AuthorKind::Staff означают «вторая сторона», сотрудники в чате не участвуют.
+ */
+#[Fillable(['offer_id', 'user_id', 'manager_id', 'guest_name', 'guest_token', 'messages_count', 'unread_for_user', 'unread_for_staff', 'last_message_at'])]
 class Chat extends Model
 {
     /** Токен гостя открытым текстом — только сразу после создания, для cookie. */
@@ -31,6 +35,11 @@ class Chat extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class)->orderBy('seq');
@@ -41,19 +50,31 @@ class Chat extends Model
         return $this->offer_id === null;
     }
 
-    /** Имя собеседника для сотрудника. */
+    /** Чат покупателя со своим менеджером, а не с площадкой. */
+    public function isBuyerChat(): bool
+    {
+        return $this->manager_id !== null;
+    }
+
+    /** Вторая сторона чата: менеджер покупателя или любой сотрудник площадки. Одна дверь для счётчиков, «моих» сообщений и доступа. */
+    public function isCounterpart(?User $user): bool
+    {
+        return $user !== null && ($this->manager_id ? $user->id === $this->manager_id : $user->isStaff());
+    }
+
+    /** Имя собеседника для второй стороны. */
     public function displayName(): string
     {
         return $this->user?->name ?? $this->guest_name ?? 'Гость';
     }
 
     /**
-     * Читать и писать может участник, сотрудник или гость с токеном из cookie;
+     * Читать и писать может участник, вторая сторона или гость с токеном из cookie;
      * постороннему — 404, а не 403, чтобы перебором не узнать, какие чаты есть.
      */
     public function allows(?User $user, ?string $token = null): bool
     {
-        if ($user && ($user->id === $this->user_id || $user->isStaff())) {
+        if ($user && ($user->id === $this->user_id || $this->isCounterpart($user))) {
             return true;
         }
 

@@ -152,8 +152,9 @@ final class Notify
     {
         $chat = $e->message->chat;
         if ($e->message->author_kind === AuthorKind::Participant) {
+            // Вторая сторона: менеджер покупателя или сотрудники площадки.
             if ($chat->unread_for_staff === 1) {
-                Notification::send($this->staff(), new ChatNotice($e->message, true));
+                $chat->manager_id ? $chat->manager?->notify(new ChatNotice($e->message, true)) : Notification::send($this->staff(), new ChatNotice($e->message, true));
             }
         } elseif ($chat->unread_for_user === 1) {
             $chat->user?->notify(new ChatNotice($e->message, false));

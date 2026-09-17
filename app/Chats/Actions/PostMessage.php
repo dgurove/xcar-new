@@ -34,7 +34,7 @@ final class PostMessage
 
         $message = DB::transaction(function () use ($chat, $by, $text, $files) {
             $chat = Chat::whereKey($chat->id)->lockForUpdate()->firstOrFail();
-            $kind = $by?->isStaff() ? AuthorKind::Staff : AuthorKind::Participant;
+            $kind = $chat->isCounterpart($by) ? AuthorKind::Staff : AuthorKind::Participant;
             $message = $chat->messages()->create(['seq' => $chat->messages_count + 1, 'author_id' => $by?->id, 'author_kind' => $kind, 'text' => $text ?: null]);
             foreach ($files as $file) {
                 $mime = (string) $file->getMimeType();
@@ -65,7 +65,7 @@ final class PostMessage
             return $message;
         });
         // После коммита: иначе браузер придёт за «всё после N» раньше, чем сообщение видно.
-        ChatMessagePosted::dispatch($message->load('chat.offer', 'chat.user', 'files'));
+        ChatMessagePosted::dispatch($message->load('chat.offer', 'chat.user', 'chat.manager', 'files'));
 
         return $message;
     }

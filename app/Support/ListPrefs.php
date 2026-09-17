@@ -18,8 +18,10 @@ final class ListPrefs
 
     public static function sync(Request $request, string $list): void
     {
-        $saved = self::all($request)[$list] ?? [];
-        $given = array_filter($request->only(self::KEYS), fn ($v) => is_string($v) && $v !== '');
+        // Таблица не запоминается: сама она включается только у длинного списка (ListView::pick),
+        // а запомненная включалась бы и на трёх строках; вид в адресе — на этот раз.
+        $saved = array_filter(self::all($request)[$list] ?? [], fn ($v, $k) => ! ($k === ListView::PARAM && $v === ListView::TABLE), ARRAY_FILTER_USE_BOTH);
+        $given = array_filter($request->only(self::KEYS), fn ($v, $k) => is_string($v) && $v !== '' && ! ($k === ListView::PARAM && $v === ListView::TABLE), ARRAY_FILTER_USE_BOTH);
         // Пришли по адресу с параметрами — это выбор, запоминаем.
         if ($given && $given !== array_intersect_key($saved, $given)) {
             self::remember($request, $list, $given + $saved);

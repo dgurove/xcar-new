@@ -106,13 +106,15 @@ final class PublishLiveUpdates
     {
         $chat = $e->message->chat;
         $data = ['chat' => $chat->id, 'seq' => $e->message->seq];
-        $topics = [Topics::STAFF, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
+        // Вторая сторона — менеджер покупателя или сотрудники площадки.
+        $other = $chat->manager_id ? Topics::user($chat->manager_id) : Topics::STAFF;
+        $topics = [$other, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
         ($this->publish)($topics, 'chat', $data);
-        $this->publish->badges(Topics::STAFF);
+        $this->publish->badges($other);
         if ($chat->user_id) {
             $this->publish->badges(Topics::user($chat->user_id));
         }
-        $this->publish->refresh(Topics::STAFF, ['/work/chats']);
+        $this->publish->refresh($other, [$chat->manager_id ? '/account/chats' : '/work/chats']);
     }
 
     public function notification(NotificationSent $e): void

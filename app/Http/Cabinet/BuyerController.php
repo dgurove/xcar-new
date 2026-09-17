@@ -2,6 +2,8 @@
 
 namespace App\Http\Cabinet;
 
+use App\Chats\Chat;
+use App\Chats\Message;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
@@ -74,6 +76,8 @@ class BuyerController
             'direct' => $direct,
             'via' => $via,
             'interests' => $user->interests()->with('offer.brand', 'offer.model')->latest()->get(),
+            'chats' => Chat::where('user_id', $user->id)->where('manager_id', $me->id)->with(['offer.brand', 'offer.model'])
+                ->addSelect(['*', 'last_text' => Message::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'link' => session('password_link'),
         ]);
     }

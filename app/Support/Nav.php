@@ -198,7 +198,7 @@ final class Nav
         } elseif (! $user->isStaff()) {
             $links[] = self::link('Интерес', '/account/interests');
         }
-        if ($user->role->canChat()) {
+        if ($user->canChat()) {
             $links[] = self::link('Чаты', '/account/chats');
         }
         $links[] = self::link('Избранное', '/account/favorites');
@@ -247,8 +247,9 @@ final class Nav
             $badges['/account/interest'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
             $badges['/account/buyers'] = $badges['/account/interest'];
         }
-        if ($user->role->canChat()) {
-            $badges['/account/chats'] = (int) Chat::where('user_id', $user->id)->sum('unread_for_user');
+        if ($user->canChat()) {
+            // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона.
+            $badges['/account/chats'] = (int) Chat::where('user_id', $user->id)->sum('unread_for_user') + (int) Chat::where('manager_id', $user->id)->sum('unread_for_staff');
         }
         $badges['/account/favorites'] = Favorite::where('user_id', $user->id)->count();
 
@@ -274,7 +275,7 @@ final class Nav
                 '/' => Bid::where('state', BidState::Active)->count(),
                 '/offers/from-mail' => Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->count(),
                 '/work/mail' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
-                '/work/chats' => Chat::where('unread_for_staff', '>', 0)->count(),
+                '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
                 '/work/deals' => Position::where('track', 'sale')
                     ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
                     ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))

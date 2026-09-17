@@ -50,10 +50,10 @@ enum Role: string
         return $this !== self::Buyer;
     }
 
-    /** Чат с площадкой — у менеджера и посетителя; покупатель общается со своим менеджером вне сайта. */
+    /** Чат по предложению: менеджер и посетитель — с площадкой, покупатель — со своим менеджером (нужен manager_id, см. User::canChat). */
     public function canChat(): bool
     {
-        return in_array($this, [self::Visitor, self::Manager], true);
+        return in_array($this, [self::Visitor, self::Manager, self::Buyer], true);
     }
 
     /** Поделиться PDF — всем, кроме покупателя: его цена — не для пересылки дальше. */

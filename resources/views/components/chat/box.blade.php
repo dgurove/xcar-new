@@ -1,11 +1,12 @@
 {{-- Лента чата с полем ввода. Сообщения приезжают фрагментами по seq.
-     Чата может ещё не быть: тогда приветствие статичное, а первое сообщение уходит на open и заводит чат. --}}
+     Чата может ещё не быть: тогда приветствие площадки статичное (покупателю, чей чат — с его
+     менеджером, лента просто пуста), а первое сообщение уходит на open и заводит чат. --}}
 @props(['chat' => null, 'messages', 'user', 'tall' => false, 'open' => null])
 <div data-controller="chat" data-chat-url-value="{{ $chat ? '/chats/'.$chat->id.'/messages' : '' }}" data-chat-open-value="{{ $open ?? '' }}" data-chat-id-value="{{ $chat?->id ?? 0 }}" data-chat-last-value="{{ $messages->max('seq') ?? 0 }}" class="flex flex-col {{ $tall ? 'min-h-[60dvh]' : '' }}">
     <div class="flex flex-1 flex-col gap-2 overflow-y-auto {{ $tall ? '' : 'max-h-[50dvh]' }} py-2" data-chat-target="list">
         @if ($chat)
             @include('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $user])
-        @else
+        @elseif (!$user?->isBuyer())
             <div class="flex justify-center"><div class="max-w-[85%] text-center text-sm text-ink-muted">{{ \App\Chats\Actions\OpenChat::GREETING }}</div></div>
         @endif
     </div>

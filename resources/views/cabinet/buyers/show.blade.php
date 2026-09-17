@@ -73,6 +73,22 @@
                 </x-ui.action-bar>
             </section>
 
+            @if ($chats->isNotEmpty())
+                <section class="mt-8">
+                    <h2 class="text-xl">Чаты</h2>
+                    <div class="mt-4 flex flex-col gap-2">
+                        @foreach ($chats as $chat)
+                            <a href="/account/chats/{{ $chat->id }}" class="row">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->offer?->titleWithYear() ?? 'Обращение' }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span></div>
+                                    <div class="truncate text-sm {{ $chat->unread_for_staff ? '' : 'text-ink-muted' }}">{{ $chat->last_text ? \Illuminate\Support\Str::limit($chat->last_text, 90) : 'Файл' }}</div>
+                                </div>
+                                @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
             @if ($interests->isNotEmpty())
                 <section class="mt-8">
                     <h2 class="text-xl">Интерес</h2>
