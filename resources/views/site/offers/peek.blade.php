@@ -77,10 +77,11 @@
             @elseif ($bids && !$gallery && !$offer->bidsOpen() && $offer->state !== OfferState::Draft)
                 <span class="text-sm text-ink-muted">Приём подтверждений закрыт</span>
             @endif
-            @auth<x-offer.favorite :offer="$offer" variant="compact"/>@endauth
+            @auth<x-offer.favorite :offer="$offer" variant="pill"/>@endauth
             @if ($canChat)<a href="{{ $href }}{{ str_contains($href, '?') ? '&' : '?' }}chat=1" class="pill pill-plain"><x-ui.icon name="chat" class="size-4"/> Чат@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>@endif
             @if ($user?->isManager() && $offer->state->isPublic())<a href="{{ $href }}" class="pill pill-plain"><x-ui.icon name="users" class="size-4"/> Показать покупателям</a>@endif
-            @if ($manager?->phone)<a href="tel:+{{ $manager->phone }}" class="pill pill-plain"><x-ui.icon name="phone" class="size-4"/> {{ $manager->shortName() }}</a>@endif
+            {{-- Покупателю — его менеджер: кто и как позвонить, одной пилюлей. --}}
+            @if ($manager?->phone)<a href="tel:+{{ $manager->phone }}" class="pill pill-plain"><x-ui.avatar :user="$manager" :size="20"/> {{ $manager->shortName() }} <span class="nums">{{ $manager->phoneFormatted() }}</span> <x-ui.icon name="phone" class="size-4"/></a>@endif
         </x-slot:actions>
         @if ($offer->description)<p class="mt-3 whitespace-pre-line text-sm text-ink-muted">{{ $offer->description }}</p>@endif
         <x-slot:row><x-offer.site-table-row :offer="$offer" :context="$context"/></x-slot:row>

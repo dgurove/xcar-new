@@ -5,7 +5,7 @@ import { Controller } from '@hotwired/stimulus';
 export default class extends Controller {
     press() {
         const button = this.element.querySelector('button');
-        const on = button.classList.contains('is-on') || button.classList.contains('bg-accent-soft');
+        const on = button.classList.contains('is-on') || button.classList.contains('bg-accent-soft') || button.classList.contains('pill-soft');
         this.was = on;
         this.paint(button, !on);
         button.classList.add('is-pop');
@@ -24,6 +24,11 @@ export default class extends Controller {
         if (button.classList.contains('card-star')) {
             button.classList.toggle('is-on', on);
             icon?.classList.toggle('fill-current', on);
+        } else if (button.classList.contains('pill')) {
+            button.classList.toggle('pill-soft', on); button.classList.toggle('pill-plain', !on);
+            icon?.classList.toggle('fill-accent', on); icon?.classList.toggle('text-accent', on);
+            const label = button.querySelector('span');
+            if (label) label.textContent = on ? 'В избранном' : 'Избранное';
         } else {
             button.classList.toggle('bg-accent-soft', on); button.classList.toggle('text-accent-text', on);
             button.classList.toggle('text-ink-muted', !on);

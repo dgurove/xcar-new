@@ -1,10 +1,15 @@
-{{-- Закладка. star — кружок на кадре карточки; compact — иконка с подписью в ряду действий.
-     Turbo-форма: ответ — стрим, который заменяет форму и счётчик в шапке. --}}
+{{-- Закладка. star — кружок на кадре карточки; compact — иконка с подписью в ряду действий;
+     pill — пилюля среди других пилюль (окошко строки). Turbo-форма: ответ — стрим, который
+     заменяет форму и счётчик в шапке. --}}
 @props(['offer', 'variant' => 'star'])
 @php $on = $offer->isFavoriteOf(auth()->user()); $label = $on ? 'Убрать из избранного' : 'В избранное'; @endphp
-<form method="post" action="/offers/{{ $offer->number }}/favorites" id="fav-{{ $offer->number }}{{ $variant === 'compact' ? '-compact' : '' }}" class="contents" data-queue data-controller="favorite" data-action="turbo:submit-start->favorite#press turbo:submit-end->favorite#settle" @guest data-turbo="false" @endguest>
+<form method="post" action="/offers/{{ $offer->number }}/favorites" id="fav-{{ $offer->number }}{{ $variant === 'star' ? '' : '-'.$variant }}" class="contents" data-queue data-controller="favorite" data-action="turbo:submit-start->favorite#press turbo:submit-end->favorite#settle" @guest data-turbo="false" @endguest>
     @csrf
-    @if ($variant === 'compact')
+    @if ($variant === 'pill')
+        <button {{ $attributes->merge(['class' => 'pill '.($on ? 'pill-soft' : 'pill-plain')]) }} aria-label="{{ $label }}">
+            <x-ui.icon name="bookmark" class="size-4 {{ $on ? 'fill-accent text-accent' : '' }}"/><span>{{ $on ? 'В избранном' : 'Избранное' }}</span>
+        </button>
+    @elseif ($variant === 'compact')
         <button {{ $attributes->merge(['class' => 'group inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-2.5 pr-3 text-sm font-medium transition-colors sm:gap-2 sm:pl-3 sm:pr-4 '.($on ? 'bg-accent-soft text-accent-text' : 'text-ink-muted hover:bg-surface-2 hover:text-ink')]) }} aria-label="{{ $label }}">
             <x-ui.icon name="bookmark" class="size-5 {{ $on ? 'fill-accent text-accent' : 'text-ink-dim' }}"/><span>Избранное</span>
         </button>
