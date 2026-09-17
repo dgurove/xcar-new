@@ -1,7 +1,8 @@
 {{-- Окошко строки таблицы машин закупки (фрейм peek) — здесь же оценка: лента фото,
      метки, наша цена справа, факты, поле «Наша цена» и «Дальше» (сохраняет и ведёт
      к следующей без цены; пустое поле — просто дальше), ниже цены Carcade,
-     предложения менеджеров (выбрать/отменить прямо тут), характеристики, описание.
+     предложения менеджеров (выбрать/отменить прямо тут), описание. Характеристики —
+     метками и фактами наверху, отдельного списка нет: окошко — полэкрана.
      Формы отвечают в окошко (PeekBack), строка таблицы — свежей из row. --}}
 @php
     use App\Purchases\ImportState;
@@ -48,11 +49,6 @@
         @else
             <p class="mt-3 text-sm text-ink-dim">Менеджеры цены не предложили</p>
         @endif
-        <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-2.5">
-            @foreach ($car->factsList() as $label => $value)
-                <div class="min-w-0"><dt class="text-xs text-ink-dim">{{ $label }}</dt><dd class="nums break-words text-sm font-medium">{{ $value }}</dd></div>
-            @endforeach
-        </dl>
         @if ($car->description)<p class="mt-4 whitespace-pre-line text-sm text-ink-muted">{{ $car->description }}</p>@endif
         <x-slot:row><x-purchase.table-row :car="$car" :purchase="$purchase"/></x-slot:row>
     </x-ui.peek>

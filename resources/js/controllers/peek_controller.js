@@ -28,10 +28,14 @@ export default class extends Controller {
         this.onPop = (e) => this.popped(e);
         this.onVisit = () => { this.inHistory = false; };
         this.onCache = () => this.reset();
+        this.onClick = (e) => this.leave(e);
+        this.onSubmit = (e) => this.submit(e);
         addEventListener('keydown', this.onKey, true);
         addEventListener('popstate', this.onPop);
         document.addEventListener('turbo:visit', this.onVisit);
         document.addEventListener('turbo:before-cache', this.onCache);
+        document.addEventListener('turbo:click', this.onClick);
+        document.addEventListener('submit', this.onSubmit, true);
         try { this.full = localStorage.getItem('peek:full') === '1'; } catch { this.full = false; }
         // Открыть сразу (?peek=): при первой загрузке контроллер подключается, пока
         // таблица ещё парсится и окошка внизу нет — ждём конца разбора.
@@ -46,6 +50,8 @@ export default class extends Controller {
         removeEventListener('popstate', this.onPop);
         document.removeEventListener('turbo:visit', this.onVisit);
         document.removeEventListener('turbo:before-cache', this.onCache);
+        document.removeEventListener('turbo:click', this.onClick);
+        document.removeEventListener('submit', this.onSubmit, true);
     }
 
     get rows() { return [...this.bodyTarget.querySelectorAll('tr[data-peek-url]')]; }
@@ -68,15 +74,24 @@ export default class extends Controller {
         const rows = this.rows;
         if (!rows.length) return;
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            const i = rows.indexOf(this.current);
-            const next = rows[Math.min(rows.length - 1, Math.max(0, i + (event.key === 'ArrowDown' ? 1 : -1)))];
-            if (next && next !== this.current) { event.preventDefault(); this.show(next); }
+            event.preventDefault();
+            this.step(event.key === 'ArrowDown' ? 1 : -1);
         } else if (event.key === 'Enter' && this.current && !event.target.closest('a, button')) {
             event.preventDefault();
             if (event.metaKey || event.ctrlKey) this.visit(this.current.dataset.href);
             else if (this.panelTarget.hidden) this.show(this.current, { focus: 'fine' });
             else this.toggle();
         }
+    }
+
+    // Стрелки у счётчика: соседняя строка.
+    prev() { this.step(-1); }
+    next() { this.step(1); }
+
+    step(delta) {
+        const rows = this.rows, i = rows.indexOf(this.current);
+        const row = rows[Math.min(rows.length - 1, Math.max(0, i + delta))];
+        if (row && row !== this.current) this.show(row);
     }
 
     // focus: 'always' — фокус в поле окошка (data-peek-focus) и на телефоне (поток
@@ -109,11 +124,13 @@ export default class extends Controller {
     loaded(event) {
         const frame = this.frameTarget;
         if (event.target !== frame) return;
+        // Строка — по id: пока ответ шёл, выделение могло уйти на другую.
         const row = frame.querySelector('template[data-peek-row]');
         const fresh = row?.content.firstElementChild;
-        if (fresh?.tagName === 'TR' && this.current) {
-            fresh.setAttribute('aria-selected', 'true');
-            this.current.replaceWith(fresh);
+        const stale = fresh?.tagName === 'TR' && fresh.id ? this.bodyTarget.querySelector(`#${CSS.escape(fresh.id)}`) : null;
+        if (stale) {
+            if (stale === this.current) fresh.setAttribute('aria-selected', 'true');
+            stale.replaceWith(fresh);
         }
         row?.remove();
         const flash = frame.querySelector('template[data-peek-toast]');
@@ -168,7 +185,8 @@ export default class extends Controller {
         this.current?.removeAttribute('aria-selected');
         panel.style.translate = '';
         const done = () => {
-            if (panel.hidden) return;
+            // Пока шла анимация, окошко могли открыть снова — тогда ничего не трогать.
+            if (panel.hidden || (!reduce.matches && !panel.classList.contains('is-closing'))) return;
             panel.classList.remove('is-closing');
             panel.hidden = true;
             if (!viaHistory) this.unwind();
@@ -205,6 +223,8 @@ export default class extends Controller {
     }
 
     popped(event) {
+        // «Вперёд» на снятую запись окошка — назад, она мёртвая.
+        if (!this.inHistory && event.state?.peek) { history.back(); return; }
         if (!this.inHistory || event.state?.peek) return;
         this.inHistory = false;
         // Turbo на пустое состояние сам ставит свой ключ; если нет — возвращаем снятый.
@@ -214,13 +234,25 @@ export default class extends Controller {
         this.settle = null;
     }
 
-    // Ссылка из окошка: сначала снять запись, потом визит — иначе «Назад» вернёт окошко.
+    // Любая ссылка со страницы при открытом окошке (таб, «‹ Раздел», само окошко):
+    // сначала снять запись, потом визит — иначе «Назад» вернёт адрес списка с
+    // чужим экраном (Turbo на пустое состояние ничего не рисует).
     leave(event) {
-        if (!this.panelTarget.contains(event.target) || !this.inHistory) return;
+        if (!this.inHistory) return;
         event.preventDefault();
         event.detail.originalEvent.preventDefault();
         const action = event.target.closest('a')?.dataset.turboAction || 'advance';
         this.unwind().then(() => window.Turbo.visit(event.detail.url, { action }));
+    }
+
+    // GET-форма (сортировка, фильтры) при открытом окошке — так же, как у шторки в app.js.
+    submit(event) {
+        const form = event.target;
+        if (!this.inHistory || (form.method || 'get').toLowerCase() !== 'get' || form.closest('dialog[open]')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const submitter = event.submitter;
+        this.unwind().then(() => form.requestSubmit(submitter ?? undefined));
     }
 
     visit(href) {
