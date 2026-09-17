@@ -23,9 +23,9 @@
             <x-ui.pill :tone="$offer->state->tone()" class="!min-h-0 !py-1 text-xs">{{ $offer->state->label() }}</x-ui.pill>
             @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
             @elseif (!$gallery && $offer->closed())<span class="tag">приём закрыт</span>@endif
-            @if ($offer->car_place)<span class="tag">{{ $offer->car_place->label() }}</span>@endif
-            @if ($offer->settlement)<span class="tag">{{ $offer->settlement->name }}</span>@endif
-            @if ($offer->vin)<span class="tag nums">{{ $offer->vin }}</span>@endif
+            @if ($offer->car_place)<x-ui.place class="tag">{{ $offer->car_place->label() }}</x-ui.place>@endif
+            @if ($offer->settlement)<x-ui.place class="tag">{{ $offer->settlement->name }}</x-ui.place>@endif
+            <x-ui.vin-code :vin="$offer->vin" class="tag"/>
             @if ($gallery && $offer->interests_count)<span class="tag text-accent-text nums">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</span>@endif
         </x-slot:marks>
         <x-slot:aside>

@@ -22,7 +22,7 @@
         @elseif ($bids && !$offer->bidsOpen())<span class="text-ink-dim">Приём закрыт</span>
         @elseif ($fresh)<span class="text-accent-text">Новый</span>@endif
     </td>
-    <td class="hidden text-ink-dim sm:table-cell">{{ $offer->settlement?->name }}</td>
+    <td class="hidden text-ink-dim sm:table-cell"><x-ui.place>{{ $offer->settlement?->name }}</x-ui.place></td>
     <td class="num nums">
         @if ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted sm:inline">{{ $price::money($price->from) }} →</span> @endif<span class="font-bold">{{ $price::money($price->to) }}</span>@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif
     </td>

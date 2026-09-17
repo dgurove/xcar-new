@@ -6,7 +6,7 @@
                 <div class="flex items-start gap-2">
                     <div class="min-w-0 flex-1">
                         <div class="font-medium">{{ $yard->name }}@unless ($yard->is_active) <x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">закрыта</x-ui.pill>@endunless</div>
-                        @if ($yard->address)<div class="text-sm text-ink-muted">{{ $yard->address }}</div>@endif
+                        @if ($yard->address)<div class="text-sm text-ink-muted"><x-ui.place>{{ $yard->address }}</x-ui.place></div>@endif
                     </div>
                     <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
                 </div>

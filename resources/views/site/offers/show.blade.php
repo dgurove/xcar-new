@@ -93,7 +93,11 @@
                         @foreach ($facts as $label => $value)
                             <div @class(['min-w-0', 'col-span-2' => in_array($label, ['VIN', 'Осмотр', 'Повреждения'], true)])>
                                 <dt class="text-sm text-ink-dim">{{ $label }}</dt>
-                                <dd @class(['mt-0.5 font-medium', 'nums whitespace-nowrap' => $label === 'VIN', 'break-words' => $label !== 'VIN']) @if ($label === 'Где сейчас') data-offer-place @endif>{{ $value }}</dd>
+                                <dd @class(['mt-0.5 font-medium', 'nums whitespace-nowrap' => $label === 'VIN', 'break-words' => $label !== 'VIN']) @if ($label === 'Где сейчас') data-offer-place @endif>
+                                    @if ($label === 'VIN')<x-ui.vin-code :vin="$value" :copy="$offer->show_vin"/>
+                                    @elseif (in_array($label, ['Город', 'Где сейчас', 'Осмотр'], true))<x-ui.place>{{ $value }}</x-ui.place>
+                                    @else{{ $value }}@endif
+                                </dd>
                             </div>
                         @endforeach
                     </dl>

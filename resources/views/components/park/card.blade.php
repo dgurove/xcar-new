@@ -39,9 +39,9 @@
     </div>
     <div class="card-extra">
         @if ($vehicle->ref)<span class="tag">{{ $vehicle->ref }}</span>@endif
-        @if ($vehicle->vin)<span class="tag">{{ $vehicle->vin }}</span>@endif
+        <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
         @if ($vehicle->client)<span class="tag">{{ $vehicle->client->name }}</span>@endif
-        @if ($state === \App\Park\VehicleState::Stored && $vehicle->yard)<span class="text-sm text-ink-dim">{{ $vehicle->yard->name }}</span>@endif
+        @if ($state === \App\Park\VehicleState::Stored && $vehicle->yard)<x-ui.place class="text-sm text-ink-dim">{{ $vehicle->yard->name }}</x-ui.place>@endif
         @if ($state === \App\Park\VehicleState::Released && $vehicle->released_at)<span class="nums text-sm font-normal text-ink-dim">выдана {{ $vehicle->released_at->translatedFormat('j M Y') }}</span>@endif
         {{ $slot }}
     </div>

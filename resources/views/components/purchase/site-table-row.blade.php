@@ -11,7 +11,7 @@
     <td class="nums text-ink-dim">{{ $car->ref }}</td>
     <td class="grow">{{ $car->titleWithYear() }}</td>
     @if ($showKind)<td class="hidden text-ink-dim sm:table-cell">{{ $car->kind->label() }}</td>@endif
-    <td class="hidden text-ink-dim sm:table-cell">{{ $car->settlement?->name ?? $car->city }}</td>
+    <td class="hidden text-ink-dim sm:table-cell"><x-ui.place>{{ $car->settlement?->name ?? $car->city }}</x-ui.place></td>
     <td class="num nums">
         @if ($staff)
             @if ($best)<span class="font-bold {{ $best->state === \App\Purchases\OfferState::Chosen ? 'text-accent-text' : '' }}">{{ \App\Support\Money::nums($best->amount) }}</span> <span class="hidden text-ink-dim sm:inline">{{ $best->user->shortName() }}</span>@endif

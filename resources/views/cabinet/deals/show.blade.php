@@ -112,7 +112,7 @@
                 <div class="px-6 pb-6">
                     <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
                         @foreach (['Предложение' => $offer->number, 'Год' => $offer->year, 'VIN' => $offer->vinMasked(), 'Город' => $offer->settlement?->name] as $label => $value)
-                            @if ($value)<div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal">{{ $value }}</dd></div>@endif
+                            @if ($value)<div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal">@if ($label === 'VIN')<x-ui.vin-code :vin="$value" :copy="$offer->show_vin"/>@elseif ($label === 'Город')<x-ui.place>{{ $value }}</x-ui.place>@else{{ $value }}@endif</dd></div>@endif
                         @endforeach
                     </dl>
                 </div>

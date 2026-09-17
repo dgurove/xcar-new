@@ -4,9 +4,10 @@ import { Controller } from '@hotwired/stimulus';
 // (только там, где он есть; иначе кнопка прячется). Если рядом поле с сообщением,
 // ссылка уходит вместе с ним одним текстом: url отдельно от text мессенджеры
 // на Android теряют, а внутри текста ссылка остаётся кликабельной везде.
+// done — свой текст тоста (VIN, номер), по умолчанию про ссылку.
 export default class extends Controller {
     static targets = ['share', 'message'];
-    static values = { text: String, title: String };
+    static values = { text: String, title: String, done: String };
 
     connect() {
         if (this.hasShareTarget && !navigator.share) this.shareTarget.hidden = true;
@@ -20,7 +21,7 @@ export default class extends Controller {
     async copy() {
         try {
             await navigator.clipboard.writeText(this.payload());
-            window.toast?.(this.hasMessageTarget ? 'Текст и ссылка в буфере' : 'Ссылка в буфере');
+            window.toast?.(this.doneValue || (this.hasMessageTarget ? 'Текст и ссылка в буфере' : 'Ссылка в буфере'));
         } catch {
             window.toast?.('Не получилось скопировать — выделите и скопируйте руками', 'danger');
         }

@@ -17,7 +17,7 @@
                 @if ($car->price_revalued)<span class="tag nums whitespace-nowrap">переоценка {{ \App\Support\Money::rub($car->price_revalued) }}</span>@endif
                 @if ($car->price_listing)<span class="tag nums whitespace-nowrap">размещение {{ \App\Support\Money::rub($car->price_listing) }}</span>@endif
                 <span class="tag">{{ $car->kind->label() }}</span>
-                @if ($car->settlement?->name ?? $car->city)<span class="tag">{{ $car->settlement?->name ?? $car->city }}</span>@endif
+                @if ($car->settlement?->name ?? $car->city)<x-ui.place class="tag">{{ $car->settlement?->name ?? $car->city }}</x-ui.place>@endif
                 @if ($car->specs_state->needsAttention())<span class="tag" style="{{ $amber }}">{{ $car->specs_state->label() }}</span>@elseif ($car->photos_state->needsAttention())<span class="tag" style="{{ $amber }}">{{ $car->photos_state->label() }}</span>@endif
                 @if (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true))<span class="tag">фото едут</span>@endif
                 @unless ($car->is_published)<span class="tag">скрыта</span>@endunless

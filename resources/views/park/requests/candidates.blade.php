@@ -19,7 +19,7 @@
                     </div>
                     <div class="flex flex-wrap gap-1.5 text-sm">
                         @if ($v('brand'))<span class="chip">{{ $v('brand') }} {{ $v('model') }}</span>@endif
-                        @if ($v('vin'))<span class="chip font-mono">{{ $v('vin') }}</span>@endif
+                        <x-ui.vin-code :vin="$v('vin')" class="chip"/>
                         @if ($v('plate'))<span class="chip">{{ $v('plate') }}</span>@endif
                         @foreach ((array) $v('phones') as $phone)<a href="tel:{{ preg_replace('/\D/', '', $phone) }}" class="chip text-accent-text">{{ $phone }}</a>@endforeach
                         @if ($files->isNotEmpty())<span class="chip"><x-ui.icon name="clip" class="size-3.5"/> {{ $files->count() }}</span>@endif

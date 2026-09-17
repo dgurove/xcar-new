@@ -19,7 +19,7 @@
             <div class="flex flex-wrap items-center gap-2">
                 <span class="chip {{ $req->isOverdue() ? 'bg-danger-soft text-danger' : ($req->isOpen() ? 'bg-accent-soft text-accent-text' : 'bg-closed-soft text-closed') }}">{{ $req->isOpen() ? 'Ждёт' : $req->state->label() }}</span>
                 @if ($req->planned_at)<span class="chip">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif
-                @if ($req->type === RequestType::Move && $req->yard)<span class="chip">→ {{ $req->yard->name }}</span>@endif
+                @if ($req->type === RequestType::Move && $req->yard)<x-ui.place class="chip">{{ $req->yard->name }}</x-ui.place>@endif
                 @if ($req->thread)<a href="/mail/{{ $req->thread_id }}" class="chip"><x-ui.icon name="mail" class="size-4"/> Письмо</a>@endif
             </div>
             @if ($req->contact)<div class="mt-3">{{ $req->contact }}</div>@endif

@@ -67,7 +67,7 @@
     <div class="card-extra">
         <x-offer.tags :offer="$offer"/>
         @if ($seen)<span class="tag nums">видят {{ $seen }}</span>@endif
-        @if ($offer->settlement)<span class="text-sm text-ink-dim">{{ $offer->settlement->name }}</span>@endif
+        @if ($offer->settlement)<x-ui.place class="text-sm text-ink-dim">{{ $offer->settlement->name }}</x-ui.place>@endif
         <span class="card-aside">
             @if ($prices || $admin)
                 @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@elseif ($admin && $offer->asking_price)<span class="card-price nums" data-controller="fit">@if ($offer->floor_price)<span class="card-price-from">{{ \App\Support\Money::nums($offer->floor_price) }}&nbsp;→</span> @endif<span class="card-price-now">{{ \App\Support\Money::nums($offer->asking_price) }}&nbsp;₽</span></span>@endif

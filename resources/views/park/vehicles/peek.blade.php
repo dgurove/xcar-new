@@ -14,9 +14,9 @@
             <x-ui.pill :tone="$state->tone()" class="!min-h-0 !py-1 text-xs">{{ $state->label() }}</x-ui.pill>
             @if ($vehicle->plate)<span class="tag nums">{{ $vehicle->plate }}</span>@endif
             @if ($vehicle->ref)<span class="tag">{{ $vehicle->ref }}</span>@endif
-            @if ($vehicle->vin)<span class="tag nums">{{ $vehicle->vin }}</span>@endif
+            <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
             @if ($vehicle->client)<span class="tag">{{ $vehicle->client->name }}</span>@endif
-            @if ($vehicle->yard)<span class="tag">{{ $vehicle->yard->name }}</span>@endif
+            @if ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
             @if ($vehicle->accepted_at)<span class="tag nums">принята {{ $vehicle->accepted_at->translatedFormat('j M Y') }}</span>@endif
             @if ($state === VehicleState::Released && $vehicle->released_at)<span class="tag nums">выдана {{ $vehicle->released_at->translatedFormat('j M Y') }}</span>@endif
         </x-slot:marks>

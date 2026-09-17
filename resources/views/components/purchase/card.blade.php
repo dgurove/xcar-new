@@ -44,7 +44,7 @@
         @if (!$staff && !$mine)<span class="tag" style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d">Без цены</span>@endif
         @if ($showKind)<span class="tag">{{ $car->kind->label() }}</span>@endif
         @foreach ($facts as $fact)<span class="tag">{{ $fact }}</span>@endforeach
-        @if ($car->settlement?->name ?? $car->city)<span class="text-sm text-ink-dim">{{ $car->settlement?->name ?? $car->city }}</span>@endif
+        @if ($car->settlement?->name ?? $car->city)<x-ui.place class="text-sm text-ink-dim">{{ $car->settlement?->name ?? $car->city }}</x-ui.place>@endif
         <span class="card-aside"><span class="nums text-sm font-normal text-ink-dim">{{ $car->dl }}</span></span>
     </div>
     <div class="card-action">

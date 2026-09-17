@@ -16,4 +16,4 @@
     @if (!$offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft && !$admin && $bids)<span class="mark mark-glass">Приём закрыт</span>@endif
     @if ($left !== null && $left > 0)<span class="mark {{ $admin && $offer->isEndingSoon() ? 'mark-urgent' : 'mark-glass' }} nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>@endif
 @endunless
-@if ($offer->car_place)<span class="mark mark-glass">{{ $offer->car_place->label() }}</span>@endif
+@if ($offer->car_place)<x-ui.place class="mark mark-glass">{{ $offer->car_place->label() }}</x-ui.place>@endif

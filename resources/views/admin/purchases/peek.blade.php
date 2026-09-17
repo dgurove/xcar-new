@@ -16,8 +16,8 @@
         <x-slot:marks>
             <span class="tag nums">{{ $car->dl }}</span>
             <span class="tag">{{ $car->kind->label() }}</span>
-            @if ($car->settlement?->name ?? $car->city)<span class="tag">{{ $car->settlement?->name ?? $car->city }}</span>@endif
-            @if ($car->vin)<span class="tag nums">{{ $car->vin }}</span>@endif
+            @if ($car->settlement?->name ?? $car->city)<x-ui.place class="tag">{{ $car->settlement?->name ?? $car->city }}</x-ui.place>@endif
+            <x-ui.vin-code :vin="$car->vin" class="tag"/>
             @if ($car->fssp)<x-ui.pill tone="urgent">Ограничения ФССП</x-ui.pill>@endif
             @if ($car->specs_state->needsAttention())<span class="tag" style="{{ $amber }}">{{ $car->specs_state->label() }}</span>@elseif ($car->photos_state->needsAttention())<span class="tag" style="{{ $amber }}">{{ $car->photos_state->label() }}</span>@endif
             @if (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true))<span class="tag">фото едут</span>@endif

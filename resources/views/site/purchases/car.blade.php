@@ -61,7 +61,7 @@
                 <h2 class="text-xl">Характеристики</h2>
                 <dl class="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3">
                     @foreach ($facts as $label => $value)
-                        <div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-medium">{{ $value }}</dd></div>
+                        <div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-medium">@if ($label === 'VIN')<x-ui.vin-code :vin="$value"/>@elseif ($label === 'Где')<x-ui.place>{{ $value }}</x-ui.place>@else{{ $value }}@endif</dd></div>
                     @endforeach
                 </dl>
             </section>

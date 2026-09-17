@@ -476,6 +476,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   /* Чип — одно слово-факт: не ломается посередине, переносится целиком. */
   .tag { white-space: nowrap; }
+  /* Место (x-ui.place) — метка на карте в размер шрифта перед текстом; VIN (x-ui.vin-code) —
+     иконка копирования после, нажатие по всему. Форма — от класса снаружи (tag, chip, mark, текст). */
+  .place, .vincode { @apply inline-flex min-w-0 items-center gap-1; }
+  .place > svg, .vincode > svg { @apply size-[1em] shrink-0 text-ink-dim; }
+  .tag.place { padding-left: 7px; }
+  .tag.vincode { padding-right: 7px; }
+  .mark.place > svg { color: inherit; opacity: .8; }
+  .vincode { cursor: pointer; }
+  @media (hover: hover) { .vincode:hover > svg { color: var(--color-ink); } }
   .dark .tag { background: var(--tag-bg-d, var(--color-surface-3)); color: var(--tag-text-d, var(--color-ink-muted)); }
 
   /* Пилюля: пресет, раздел, состояние. Активная — лайм с белым. */
