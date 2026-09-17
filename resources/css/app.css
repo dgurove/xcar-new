@@ -647,11 +647,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .peek[hidden] { display: none; }
   .peek.is-full { top: calc(var(--spacing-header) + env(safe-area-inset-top) + .5rem); height: auto; }
   .peek.is-closing { animation: sheet-down var(--dur) var(--ease-in) both; pointer-events: none; }
-  .peek-bar { @apply relative flex shrink-0 items-center gap-1 px-3 pt-2; }
-  .peek-handle { @apply absolute inset-x-0 top-0 h-6 cursor-grab; }
+  /* Шапка окошка: ручка сверху, под ней одна линия — стрелки, счётчик, на страницу, закрыть. */
+  .peek-bar { @apply relative flex shrink-0 items-center gap-1 px-3 pb-1 pt-4; }
+  .peek-handle { @apply absolute inset-x-0 top-0 h-4 cursor-grab; }
   .peek-handle::before { content: ''; display: block; width: 36px; height: 5px; margin: .375rem auto 0; border-radius: 3px; background: var(--color-line); }
-  .peek-count { @apply mr-auto mt-3 text-xs text-ink-muted; }
-  .peek-close { @apply relative z-10 mt-2 flex size-8 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
+  .peek-count { @apply mr-auto text-xs leading-none text-ink-muted; }
+  .peek-close { @apply relative z-10 flex size-8 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   .peek-body { @apply block min-h-0 overflow-y-auto px-4 pb-4 pt-1; overscroll-behavior: contain; transition: opacity var(--dur-fast); }
   .peek-body[aria-busy="true"] { opacity: .45; }
   .peek-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 6rem; height: 4.5rem; }
@@ -667,7 +668,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   @media (min-width: 768px) and (max-width: 1023.98px) {
     .peek { bottom: 1.25rem; inset-inline: .75rem; padding-bottom: 0; border-radius: var(--radius-xl); animation: dialog-in var(--dur) var(--ease-out); }
-    .peek-handle::before { display: none; }
+    .peek-handle { display: none; }
+    .peek-bar { padding-top: .5rem; }
     .peek.is-closing { animation: dialog-in var(--dur-fast) var(--ease-in) reverse both; }
   }
   @media (min-width: 1024px) {
@@ -678,8 +680,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       padding-bottom: 0; border-radius: var(--radius-xl); box-shadow: none; animation: dialog-in var(--dur) var(--ease-out);
     }
     .peek-handle { display: none; }
-    .peek-count { margin-top: .5rem; }
-    .peek-close { margin-top: 0; }
+    .peek-bar { padding-top: .5rem; }
     .peek.is-closing { animation: dialog-in var(--dur-fast) var(--ease-in) reverse both; }
   }
 

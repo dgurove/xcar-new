@@ -19,7 +19,7 @@
             <button type="button" class="peek-close" data-action="peek#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
             <button type="button" class="peek-close" data-action="peek#next" aria-label="Следующая"><x-ui.icon name="chevron-down" class="size-[18px]"/></button>
             <span class="peek-count nums" data-peek-target="count"></span>
-            <a class="peek-close" href="#" data-peek-target="open" aria-label="Открыть страницу"><x-ui.icon name="expand" class="size-4"/></a>
+            <a class="peek-close" href="#" data-peek-target="open" aria-label="Открыть страницу"><x-ui.icon name="expand" class="size-[18px]"/></a>
             <button type="button" class="peek-close" data-action="peek#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button>
         </div>
         <turbo-frame id="peek" target="_top" data-peek-target="frame" class="peek-body"><x-ui.skeleton :rows="2"/></turbo-frame>
