@@ -25,10 +25,15 @@ class ResolveSurface
             $own = $request->route()?->getDomain() === $surface->host();
             abort_unless($own || in_array($first, self::SHARED, true), 404);
 
-            // Чужому здесь делать нечего: 404, а не 403, чтобы не подсказывать, что есть.
+            // Чужой вошедший упирается в стену без шапки и разделов; гостя `auth` уводит на /login этого хоста.
             $user = $request->user();
             $allowed = $surface === Surface::Crm ? $user?->isStaff() : $user?->canAccess(Section::Park);
-            abort_if($user && ! $allowed && ! in_array($first, self::ANYONE, true), 404);
+            if ($user && ! $allowed && ! in_array($first, self::ANYONE, true)) {
+                abort_if($request->expectsJson(), 403);
+
+                return response()->view('auth.foreign', ['user' => $user, 'surface' => $surface], 403)
+                    ->header('X-Robots-Tag', 'noindex, nofollow');
+            }
         }
 
         $response = $next($request);

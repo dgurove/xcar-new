@@ -7,16 +7,9 @@
         $counts['gallery'] || $gallery ? ['Галерея', $counts['gallery'], '/gallery', $gallery] : null,
         $counts['purchases'] ? ['Закупки', $counts['purchases'], '/purchases', false] : null,
     ]);
-@endphp
-@php
     $selecting = $user?->isManager() && !$gallery;
-    // Покупателю — лента без каталожной обвязки: один заголовок, тулбар (поиск и сортировка)
-    // только когда предложений больше дюжины, ничего лишнего.
+    // Покупателю та же лента и тот же тулбар: у него нет только первого экрана, а пустая лента — с контактом менеджера.
     $buyer = $user?->isBuyer() ?? false;
-    // Пилюля «Рекомендуем» короткую ленту не усложняет: сортировка и поиск от неё не появляются.
-    $simple = $buyer && $counts['offers'] <= 12 && !array_diff_key($filters, ['view' => 1]);
-    // Покупателю из пилюль только «Рекомендуем»: остальная каталожная обвязка ему ни к чему.
-    $pills = ['' => 'Все', 'recommended' => 'Рекомендуем'];
 @endphp
 <x-ui.shell :title="$gallery ? 'Скоро в продаже' : ($hero ? null : 'Предложения')" :heading="false" :over-hero="$hero" :trail="$trail">
     @if ($hero)
@@ -32,16 +25,6 @@
                 @endforeach
             </div>
 
-            @if ($simple)
-                {{-- В короткой ленте тулбара нет, но если менеджер что-то рекомендовал — одни пилюли. --}}
-                @if ($counts['recommended'])<x-ui.toolbar class="mt-5" :pills="$pills" :pill="$filters['view'] ?? ''" :counts="$counts" name="catalog"/>@endif
-            @elseif ($buyer)
-            <x-ui.toolbar class="mt-5" :sorts="$sorts" :sort="$sort" sort-side="right" :pills="$counts['recommended'] ? $pills : []" :pill="$filters['view'] ?? ''" :counts="$counts" :hidden="[\App\Support\ListView::PARAM => $view]" name="catalog">
-                <x-slot:filters>
-                    <input name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Марка, модель" class="field-input field-s">
-                </x-slot:filters>
-            </x-ui.toolbar>
-            @else
             <x-ui.toolbar class="mt-5" :sorts="$sorts" :sort="$sort" :pills="$views" :pill="$filters['view'] ?? ''" :counts="$counts" :hidden="[\App\Support\ListView::PARAM => $view]" :name="$gallery ? 'gallery' : 'catalog'">
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && $view !== \App\Support\ListView::TABLE)<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
@@ -65,7 +48,6 @@
                     @endif
                 </x-slot:filters>
             </x-ui.toolbar>
-            @endif
 
             <div class="mt-6">
                 @if ($offers->isEmpty())
