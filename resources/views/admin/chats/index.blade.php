@@ -31,7 +31,7 @@
         </div>
         <turbo-frame id="chat-screen" class="chat-pane" target="_top">
             @if ($chat)
-                <x-chat.screen :chat="$chat" :messages="$messages" :user="$user" :name="$chat->displayName()" :other="$chat->user" :back="'/work/chats'.$qs" :first-unread="$firstUnread" :more="$more" :readonly="$chat->isBuyerChat()"/>
+                <x-chat.screen :chat="$chat" :messages="$messages" :user="$user" :name="$chat->displayName()" :other="$chat->user" :back="'/work/chats'.$qs" :first-unread="$firstUnread" :more="$more" :readonly="$chat->isBuyerChat()" :link="$chat->user_id ? '/settings/users/'.$chat->user_id.'?chat='.$chat->id : null"/>
             @else
                 <div class="chat-none"><x-ui.icon name="chat" class="size-10 text-ink-dim"/>Выберите чат</div>
             @endif

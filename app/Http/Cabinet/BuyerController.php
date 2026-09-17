@@ -69,7 +69,11 @@ class BuyerController
         // Через какую группу пришёл показ — чипом на карточке; прямой показ снимается здесь же.
         $via = Showing::where('manager_id', $me->id)->whereIn('offer_id', $offers->pluck('id'))->whereIn('group_id', $user->groups->pluck('id'))->with('group')->get()->groupBy('offer_id');
 
+        // Пришли из шапки чата — «‹ Чат» вместо «‹ Покупатели».
+        $chat = $request->integer('chat') ? Chat::whereKey($request->integer('chat'))->where('user_id', $user->id)->where('manager_id', $me->id)->first() : null;
+
         return view('cabinet.buyers.show', [
+            'back' => $chat ? ['Чат', '/account/chats/'.$chat->id] : null,
             'buyer' => $user,
             'groups' => $me->ownGroups,
             'offers' => $offers,

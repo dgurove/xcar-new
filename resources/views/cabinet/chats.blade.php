@@ -8,6 +8,12 @@
     $offer ??= null;
     $other = $chat ? ($chat->isCounterpart($me) ? $chat->user : $chat->manager) : ($offer && $me->isBuyer() ? $me->manager : null);
     $name = $chat ? $chat->counterpartName($me) : ($other?->shortName() ?? \App\Chats\Chat::PLATFORM);
+    // Шапка ведёт к собеседнику: менеджеру — страница покупателя с возвратом в чат; покупателю и всем,
+    // кто пишет площадке, — шторка-контакт; статус там по рабочему времени, а не по seen_at.
+    $mine = $chat && $chat->isCounterpart($me);
+    $link = $mine ? '/account/buyers/'.$other->id.'?chat='.$chat->id : null;
+    $status = $mine ? false : \App\Chats\Hours::presence(feminine: $other === null);
+    $others = $mine || ! $other ? collect() : $chats->filter(fn ($c) => $c->manager_id === $other->id && $c->id !== $chat?->id);
     // «Администрация XCar» в списке есть всегда: обращения ещё нет — строка ведёт на пустой экран.
     $support = !$me->isStaff() && $chats->doesntContain(fn ($c) => $c->isEnquiry());
 @endphp
@@ -29,7 +35,7 @@
         </div>
         <turbo-frame id="chat-screen" class="chat-pane" target="_top">
             @if ($current)
-                <x-chat.screen :chat="$chat" :offer="$offer" :messages="$messages" :user="$me" :name="$name" :other="$other" :open="$current === 'support' ? '/chats/support' : null" :first-unread="$firstUnread" :more="$more"/>
+                <x-chat.screen :chat="$chat" :offer="$offer" :messages="$messages" :user="$me" :name="$name" :other="$other" :open="$current === 'support' ? '/chats/support' : null" :first-unread="$firstUnread" :more="$more" :link="$link" :sheet="! $mine" :status="$status" :chats="$others"/>
             @else
                 <div class="chat-none"><x-ui.icon name="chat" class="size-10 text-ink-dim"/>Выберите чат</div>
             @endif

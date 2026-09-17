@@ -2,7 +2,7 @@
      Ниже — что видит (строки, прямой показ снимается смахиванием) и интерес. Группы — действие «Группы» в том же ряду.
      Главное действие — «Открыть предложения» — в полосе внизу. --}}
 @php $me = auth()->user(); $link = ($link['user'] ?? null) === $buyer->id ? $link : null; @endphp
-<x-ui.cabinet :title="$buyer->name">
+<x-ui.cabinet :title="$buyer->name" :back="$back">
 
     <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">

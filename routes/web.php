@@ -115,6 +115,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
 
     // Пользователи — админу тот же экран, что в CRM (чужому 404 в контроллере).
     Route::get('/account/users', [UserController::class, 'index']);
+    Route::get('/account/users/{user}', [UserController::class, 'show'])->whereNumber('user');
     Route::put('/account/users/{user}', [UserController::class, 'update']);
     Route::delete('/account/users/{user}', [UserController::class, 'destroy']);
     Route::post('/account/users/{user}/access', [UserController::class, 'decide']);

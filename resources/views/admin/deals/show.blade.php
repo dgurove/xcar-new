@@ -93,7 +93,7 @@
                         @if ($offer->asking_price)<span class="tag nums">продажа {{ \App\Support\Money::rub($offer->asking_price) }}</span>@endif
                         <span class="tag nums">{{ $deal->created_at->translatedFormat('j M Y') }}</span>
                     </div>
-                    <div class="mt-3 font-medium">{{ $deal->buyer?->name }}</div>
+                    @if ($deal->buyer)<a href="/settings/users/{{ $deal->buyer_id }}" class="mt-3 block font-medium">{{ $deal->buyer->name }}</a>@endif
                     @if ($deal->buyer?->phone)<a href="tel:+{{ $deal->buyer->phone }}" class="text-accent-text">{{ $deal->buyer->phoneFormatted() }}</a>@endif
                     @if ($deal->buyer?->email)<div class="text-sm text-ink-muted">{{ $deal->buyer->email }}</div>@endif
                     @if ($deal->bid?->comment)<div class="mt-2 text-sm">{{ $deal->bid->comment }}</div>@endif

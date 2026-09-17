@@ -3,8 +3,11 @@
 namespace App\Http\Admin;
 
 use App\Chats\Chat;
+use App\Http\Cabinet\InviteController;
 use App\Offers\Bid;
 use App\Offers\Deal;
+use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Support\Phone;
 use App\Support\Surface;
 use App\Users\Actions\DecideAccess;
@@ -17,8 +20,9 @@ use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
-/** Пользователи: роль, доступ к стоянке, почта. Только для администратора. */
+/** Пользователи: список и правки — администратору, карточка человека — любому сотруднику. */
 class UserController
 {
     public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
@@ -80,8 +84,35 @@ class UserController
             'counts' => $counts,
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
             // Все ссылки — и админские, и менеджерские: админ видит, кто кого зовёт.
-            'invites' => $preset === 'invites' ? \App\Http\Cabinet\InviteController::listFor($request->user()) : collect(),
+            'invites' => $preset === 'invites' ? InviteController::listFor($request->user()) : collect(),
             'fresh' => session('invite'),
+        ]);
+    }
+
+    /**
+     * Карточка человека — любому сотруднику, из шапки чата и из списка: контакт, его чаты (у менеджера —
+     * и чаты его покупателей), менеджеру сделки, покупателю интерес. Правки — админу тем же шитом, что в списке.
+     */
+    public function show(Request $request, User $user)
+    {
+        $me = $request->user();
+        abort_unless($me->isStaff(), 404);
+        $user->load(['manager', 'invite.creator']);
+        $chats = Chat::where('user_id', $user->id)->when($user->isManager(), fn ($q) => $q->orWhere('manager_id', $user->id))
+            ->withLast()->with(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager'])->orderByDesc('last_message_at')->limit(50)->get();
+        // Пришли из шапки чата — «‹ Чат» вместо «‹ Пользователи».
+        $chat = $request->integer('chat') ? Chat::find($request->integer('chat')) : null;
+
+        return view('admin.users.show', [
+            'user' => $user,
+            'back' => $chat ? ['Чат', (Surface::current() === Surface::Crm ? '/work/chats/' : '/account/chats/').$chat->id] : null,
+            'chats' => $chats,
+            'deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->with(['offer.brand', 'offer.model', 'offer.media', 'buyer'])->latest()->get() : collect(),
+            'buyersCount' => $user->isManager() ? $user->buyers()->count() : 0,
+            'interests' => $user->isBuyer() ? $user->interests()->with(['offer.brand', 'offer.model', 'offer.media'])->latest()->get() : collect(),
+            'seen' => $user->isBuyer() ? Offer::where('state', OfferState::Open)->visibleTo($user)->count() : null,
+            'managers' => $me->isAdmin() ? User::where('role', Role::Manager)->orderBy('name')->get() : collect(),
+            'link' => session('password_link'),
         ]);
     }
 
@@ -178,7 +209,7 @@ class UserController
             'login.regex' => 'Логин — латиницей, от трёх знаков: буквы, цифры, точка',
         ]);
         if (! $data['phone'] && ! $data['email'] && ! ($data['login'] ?? null)) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['phone' => 'Нужен телефон, почта или логин — чем-то человек должен входить']);
+            throw ValidationException::withMessages(['phone' => 'Нужен телефон, почта или логин — чем-то человек должен входить']);
         }
         $data['email'] = $data['email'] ?: null;
         $data['phone'] = $data['phone'] ?: null;

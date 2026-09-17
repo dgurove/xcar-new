@@ -5,6 +5,7 @@ namespace App\Chats\Actions;
 use App\Chats\AuthorKind;
 use App\Chats\Chat;
 use App\Chats\Events\ChatMessagePosted;
+use App\Chats\Hours;
 use App\Chats\Message;
 use Illuminate\Support\Facades\DB;
 
@@ -16,11 +17,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class AutoReply
 {
-    /** Рабочее время по Москве — когда «в течение часа» правда. */
-    public const OPEN = 9;
-
-    public const CLOSE = 21;
-
     /** Нужен ли автоответ на это сообщение: чат площадки, написал участник, после последнего живого ответа сотрудника автоответа ещё не было. */
     public static function due(Message $message): bool
     {
@@ -35,11 +31,10 @@ final class AutoReply
 
     public static function text(Chat $chat, ?\DateTimeInterface $at = null): string
     {
-        $hour = (int) ($at ?? now())->format('G');
-        $open = $hour >= self::OPEN && $hour < self::CLOSE;
+        $open = Hours::open($at);
         $lines = [
             $open ? 'Добрый день! Получили Ваше сообщение' : 'Здравствуйте! Получили Ваше сообщение',
-            $open ? 'Как правило, сотрудники отвечают в течение часа.' : 'Сейчас нерабочее время, сотрудники ответят с '.self::OPEN.':00.',
+            $open ? 'Как правило, сотрудники отвечают в течение часа.' : 'Сейчас нерабочее время, сотрудники ответят с '.Hours::OPEN.':00.',
         ];
         // Гостю с /contacts уведомления включить негде — ответ появится там же.
         $lines[1] .= $chat->user_id ? ' Чтобы не пропустить ответ, рекомендуем включить уведомления [в настройках](/account/notifications/settings)' : ' Ответ появится на этой странице';

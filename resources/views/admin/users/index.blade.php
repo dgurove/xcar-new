@@ -29,7 +29,7 @@
                     <x-ui.avatar :user="$user" :size="40"/>
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                            <span class="truncate font-medium">{{ $user->name }}</span>
+                            <a href="{{ $base }}/{{ $user->id }}" class="truncate font-medium">{{ $user->name }}</a>
                             <x-ui.pill :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')" class="!min-h-0 !py-0.5 text-xs">{{ $user->role->label() }}</x-ui.pill>
                             @if ($user->canAccess(Section::Park) && !$user->isAdmin())<span class="chip text-xs">Стоянка</span>@endif
                             @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
@@ -46,67 +46,10 @@
                         </div>
                     </div>
                     @if (!$user->isApproved() && !$user->is($me))
-                        <form method="post" action="{{ $base }}/{{ $user->id }}/access" class="flex items-center gap-1.5">
-                            @csrf
-                            <select name="role" class="field-input field-s !w-auto" aria-label="Роль">@foreach (UserController::ROLES as $r)<option value="{{ $r->value }}" @selected($r === Role::Manager)>{{ $r->label() }}</option>@endforeach</select>
-                            <x-ui.button size="sm">Открыть</x-ui.button>
-                            @unless ($user->isRejected())<x-ui.button size="sm" variant="ghost" name="reject" value="1" data-turbo-confirm="Отклонить {{ $user->name }}?">Отклонить</x-ui.button>@endunless
-                        </form>
+                        <x-admin.user-access :user="$user" :base="$base"/>
                     @endif
                     <button type="button" class="btn btn-ghost btn-s px-2" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
-                    <x-ui.sheet id="user-{{ $user->id }}" :title="$user->name" :open="($link['user'] ?? null) === $user->id">
-                        @if (($link['user'] ?? null) === $user->id)
-                            <x-ui.copy-link :url="$link['url']" title="Ссылка для нового пароля" class="mb-6">
-                                <p class="text-sm text-ink-muted">Действует сутки, один раз. Отдайте её {{ $user->shortName() }} любым способом.</p>
-                            </x-ui.copy-link>
-                        @endif
-                        <form method="post" action="{{ $base }}/{{ $user->id }}" class="flex flex-col gap-4">
-                            @csrf @method('put')
-                            <x-ui.field name="name" label="Имя" :value="$user->name" required/>
-                            @if ($user->isBuyer())
-                                <div class="flex flex-wrap gap-1.5">
-                                    @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif
-                                    @if ($user->phone)<span class="tag nums">{{ $user->phoneFormatted() }}</span>@endif
-                                    @if ($user->email)<span class="tag">{{ $user->email }}</span>@endif
-                                </div>
-                                <x-ui.field name="manager_id" label="Менеджер" :options="$managers->mapWithKeys(fn ($m) => [$m->id => $m->name])" :value="$user->manager_id"/>
-                            @else
-                                <x-ui.field name="phone" label="Телефон" type="tel" :value="$user->phoneFormatted()"/>
-                                <x-ui.field name="email" label="Почта" type="email" :value="$user->email"/>
-                                <x-ui.field name="login" label="Логин" :value="$user->login" autocapitalize="none"/>
-                                <x-ui.field name="role" label="Роль" :options="collect(UserController::ROLES)->mapWithKeys(fn ($r) => [$r->value => $r->label()])" :value="$user->role->value" :disabled="$user->is($me)"/>
-                                <div class="flex flex-wrap gap-x-6 gap-y-2">
-                                    <x-ui.check name="park" :checked="in_array(Section::Park->value, $user->access ?? [], true)">Стоянка</x-ui.check>
-                                    <x-ui.check name="mail" :checked="$user->wantsMail()">Письма о событиях</x-ui.check>
-                                </div>
-                            @endif
-                            <x-ui.button block>Сохранить</x-ui.button>
-                        </form>
-                        @unless ($user->is($me))
-                            <form method="post" action="{{ $base }}/{{ $user->id }}/password" class="mt-3"
-                                data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
-                                data-turbo-confirm-text="{{ $user->name }} откроет её и придумает пароль сам. Прежние ссылки погаснут, текущий пароль пока действует.">
-                                @csrf
-                                <x-ui.button type="submit" variant="secondary" block><x-ui.icon name="link" class="size-5"/> Ссылка для нового пароля</x-ui.button>
-                            </form>
-                            {{-- Ссылка могла уйти не тому: допущенному — закрыть доступ (выйдет отовсюду, вернуть можно из «Отклонённых»);
-                                 отклонённому без истории — удалить насовсем. --}}
-                            @if ($user->isApproved())
-                                <form method="post" action="{{ $base }}/{{ $user->id }}/access" class="mt-3"
-                                    data-turbo-confirm="Закрыть доступ {{ $user->shortName() }}?" data-turbo-confirm-label="Закрыть"
-                                    data-turbo-confirm-text="{{ $user->isManager() ? 'Выйдет со всех устройств, его ссылки и покупатели закроются. Сделки останутся в истории' : 'Выйдет со всех устройств и не сможет войти' }}">
-                                    @csrf<input type="hidden" name="reject" value="1">
-                                    <x-ui.button type="submit" variant="danger" block>Закрыть доступ</x-ui.button>
-                                </form>
-                            @elseif ($user->isRejected() && ! UserController::traces($user))
-                                <form method="post" action="{{ $base }}/{{ $user->id }}" class="mt-3"
-                                    data-turbo-confirm="Удалить {{ $user->shortName() }} насовсем?" data-turbo-confirm-label="Удалить" data-turbo-confirm-text="Данных о нём не останется">
-                                    @csrf @method('delete')
-                                    <x-ui.button type="submit" variant="danger" block>Удалить</x-ui.button>
-                                </form>
-                            @endif
-                        @endunless
-                    </x-ui.sheet>
+                    <x-admin.user-sheet :user="$user" :managers="$managers" :link="$link" :base="$base" :me="$me"/>
                 </div>
             @endforeach
         </div>

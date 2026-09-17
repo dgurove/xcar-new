@@ -120,6 +120,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::permanentRedirect('/account', '/settings');
     Route::prefix('settings')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
+        Route::get('/users/{user}', [UserController::class, 'show'])->whereNumber('user');
         Route::put('/users/{user}', [UserController::class, 'update']);
         Route::post('/users/{user}/access', [UserController::class, 'decide']);
         Route::delete('/users/{user}', [UserController::class, 'destroy']);
