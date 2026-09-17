@@ -11,7 +11,7 @@ let viewerModule = null;
 const loadViewer = () => (viewerModule ??= Promise.all([import('viewerjs'), import('viewerjs/dist/viewer.css')]).then(([m]) => m.default));
 
 export default class extends Controller {
-    static targets = ['list', 'form', 'input', 'files', 'submit', 'state', 'stateIcon', 'stateName', 'stateText', 'previews', 'menu', 'ownItem', 'copyItem', 'more'];
+    static targets = ['list', 'form', 'input', 'files', 'submit', 'state', 'stateIcon', 'stateName', 'stateText', 'previews', 'menu', 'ownItem', 'copyItem', 'editItem', 'more'];
     static values = { url: String, open: String, id: Number, last: Number, readonly: Boolean };
 
     connect() {
@@ -220,8 +220,10 @@ export default class extends Controller {
 
     // ------------------------------------------------------------ меню пузыря
 
+    // Долгое нажатие и свайп — только пальцем: мышь открывает меню правой кнопкой (contextmenu),
+    // а выделение текста и уход курсора с пузыря ничего не показывают.
     press(event) {
-        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        if (event.pointerType === 'mouse') return;
         const el = event.currentTarget;
         this.pressed = { el, x: event.clientX, y: event.clientY, moved: false };
         clearTimeout(this.pressTimer);
@@ -233,7 +235,7 @@ export default class extends Controller {
         if (!p || p.el !== event.currentTarget) return;
         const dx = event.clientX - p.x, dy = event.clientY - p.y;
         if (Math.abs(dy) > 12) { p.moved = true; this.slide(p.el, 0); return; }
-        if (event.pointerType !== 'mouse' && dx > 8) { p.moved = true; p.swipe = dx; this.slide(p.el, Math.min(dx, 72)); }
+        if (dx > 8) { p.moved = true; p.swipe = dx; this.slide(p.el, Math.min(dx, 72)); }
     }
 
     release(event) {
@@ -255,11 +257,19 @@ export default class extends Controller {
 
     open(el, x, y) {
         if (this.readonlyValue || !this.hasMenuTarget) return;
+        // Долгое нажатие и contextmenu на Android приходят вместе: второй раз меню не открывается заново.
+        if (this.active === el && this.menuTarget.matches(':popover-open')) return;
+        clearTimeout(this.pressTimer);
+        this.pressed = null;
         this.active = el;
         const own = el.hasAttribute('data-own');
+        const text = el.querySelector('.msg-bubble')?.dataset.text;
         this.ownItemTargets.forEach((b) => { b.hidden = !own; });
-        this.copyItemTarget.hidden = !el.querySelector('.msg-bubble')?.dataset.text;
+        // Изменить — только текст: у сообщения из одних фото править нечего.
+        this.editItemTarget.hidden = !own || !text;
+        this.copyItemTarget.hidden = !text;
         const menu = this.menuTarget;
+        this.closeMenu();
         menu.showPopover();
         const w = document.documentElement.clientWidth, h = innerHeight;
         menu.style.left = `${Math.max(8, Math.min(x, w - menu.offsetWidth - 8))}px`;
@@ -473,8 +483,10 @@ export default class extends Controller {
         this.previews();
         this.cancel();
         this.inputTarget.focus();
-        if (mode?.kind === 'edit') await this.saveEdit(mode.seq, text);
-        else await this.deliver(text, files, mode?.seq);
+        if (mode?.kind !== 'edit') { await this.deliver(text, files, mode?.seq); return; }
+        // Правка меняет текст; приложенные при этом фото уходят следом отдельным сообщением.
+        if (text) await this.saveEdit(mode.seq, text);
+        if (files.length) await this.deliver('', files);
     }
 
     async saveEdit(seq, text) {

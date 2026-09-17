@@ -11,7 +11,8 @@ final class Linkify
     public static function html(?string $text): string
     {
         $html = e((string) $text);
-        $html = preg_replace_callback('~(?<![\w/])(https?://[^\s<]+[^\s<.,;:!?)\]}»"\'])~u', fn ($m) => '<a href="'.$m[1].'" target="_blank" rel="noopener">'.$m[1].'</a>', $html);
+        // Текст уже экранирован: кавычка после адреса — это &quot;, она в ссылку не входит.
+        $html = preg_replace_callback('~(?<![\w/])(https?://(?:(?!&(?:quot|#039|lt|gt);)[^\s<])+?)(?=[.,;:!?)\]}»]*(?:\s|$|&(?:quot|#039|lt|gt);|<))~u', fn ($m) => '<a href="'.$m[1].'" target="_blank" rel="noopener">'.$m[1].'</a>', $html);
         $html = preg_replace_callback('~(?<![\d\w])(\+7|8)[\s(-]*(\d{3})[\s)-]*(\d{3})[\s-]*(\d{2})[\s-]*(\d{2})(?!\d)~u', fn ($m) => '<a href="tel:+7'.$m[2].$m[3].$m[4].$m[5].'" class="nums">'.$m[0].'</a>', $html);
         $html = preg_replace('~(?<![\w/])№\s?(\d{1,7})(?!\d)~u', '<a href="/offers/$1" class="nums">№&nbsp;$1</a>', $html);
 
