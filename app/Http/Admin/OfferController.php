@@ -100,6 +100,14 @@ class OfferController
         ]);
     }
 
+    /** Окошко строки таблицы: фрейм peek с фото, метками, фактами и ценой. */
+    public function peek(Offer $offer)
+    {
+        $offer->load(['brand', 'model', 'settlement', 'media'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
+
+        return view('admin.offers.peek', ['offer' => $offer]);
+    }
+
     public function update(OfferRequest $request, Offer $offer, UpdateOffer $update)
     {
         $update($offer, $request->payload(), $request->user());

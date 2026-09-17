@@ -51,6 +51,14 @@ class VehicleController
         ]);
     }
 
+    /** Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки. */
+    public function peek(Vehicle $vehicle)
+    {
+        $vehicle->load(['brand', 'model', 'client', 'yard', 'media']);
+
+        return view('park.vehicles.peek', ['vehicle' => $vehicle]);
+    }
+
     public function show(Vehicle $vehicle)
     {
         $vehicle->load(['brand', 'model', 'client', 'yard', 'media', 'requests.yard', 'events.user']);

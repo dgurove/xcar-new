@@ -1,17 +1,24 @@
-{{-- Одна кнопка «плитки/строки»: показывает, куда ведёт. Пока вид не выбран —
-     две, видимость решает ширина экрана. --}}
+{{-- Вид списка: круглая кнопка с иконкой текущего вида, по нажатию — меню
+     «Плитками · Строками · Таблицей» (x-ui.menu). Пока вид не выбран, его
+     решает ширина экрана: две кнопки, видна одна. views — какие виды есть. --}}
+@props(['views' => \App\Support\ListView::ALL])
 @php
     $current = \App\Support\ListView::fromRequest(request());
     $path = '/'.ltrim(request()->path(), '/');
     $url = fn (string $v) => $path.'?'.http_build_query(array_merge(request()->query(), [\App\Support\ListView::PARAM => $v]));
-    $grid = ['url' => $url('grid'), 'label' => 'Показать плитками', 'icon' => 'grid-2'];
-    $list = ['url' => $url('list'), 'label' => 'Показать строками', 'icon' => 'list'];
-    $buttons = match ($current) {
-        'list' => [$grid + ['class' => '']],
-        'grid' => [$list + ['class' => '']],
-        default => [$grid + ['class' => 'sm:hidden'], $list + ['class' => 'hidden sm:inline-flex']],
-    };
+    $all = ['grid' => ['Плитками', 'grid-2'], 'list' => ['Строками', 'list'], 'table' => ['Таблицей', 'table']];
+    $items = array_intersect_key($all, array_flip($views));
+    // Без выбора — на телефоне строки, от 640 плитки (если плиток нет — строки).
+    $shown = $current ? [$current => ''] : (isset($items['grid']) ? ['list' => 'sm:hidden', 'grid' => 'hidden sm:inline-flex'] : ['list' => '']);
+    $id = 'view-'.substr(md5($path), 0, 6);
 @endphp
-@foreach ($buttons as $b)
-    <a href="{{ $b['url'] }}" class="btn btn-s btn-quiet btn-round shrink-0 {{ $b['class'] }}" data-turbo-action="replace" aria-label="{{ $b['label'] }}" title="{{ $b['label'] }}"><x-ui.icon :name="$b['icon']" class="size-5"/></a>
-@endforeach
+<div class="contents" data-controller="menu">
+    @foreach ($shown as $view => $class)
+        <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 {{ $class }}" data-action="menu#toggle" aria-label="Вид списка" aria-haspopup="menu" aria-controls="{{ $id }}"><x-ui.icon :name="$items[$view][1]" class="size-5"/></button>
+    @endforeach
+    <div id="{{ $id }}" class="menu" popover data-menu-target="list" role="menu">
+        @foreach ($items as $view => [$label, $icon])
+            <a href="{{ $url($view) }}" class="menu-item" role="menuitem" data-turbo-action="replace" data-action="menu#close" @if ($view === $current || (!$current && array_key_first($shown) === $view && count($shown) === 1)) aria-current="true" @endif><x-ui.icon :name="$icon" class="size-5"/>{{ $label }}</a>
+        @endforeach
+    </div>
+</div>

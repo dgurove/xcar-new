@@ -66,7 +66,8 @@
     @if ($errors->any())<x-ui.flash tone="danger" class="mb-4">{{ $errors->first() }}</x-ui.flash>@endif
 
     @php $kindPills = count($kinds) > 1 ? ['' => 'Все'] + collect(Kind::cases())->filter(fn ($k) => isset($kinds[$k->value]))->mapWithKeys(fn ($k) => [$k->value => $k->label()])->all() : []; @endphp
-    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" sort-side="right" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :pill-default="false" :counts="['' => array_sum($kinds)] + $kinds" :hidden="['preset' => $preset, 'kind' => $kind?->value, 'user' => $user?->id]" name="purchase">
+    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" sort-side="right" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :pill-default="false" :counts="['' => array_sum($kinds)] + $kinds" :hidden="['preset' => $preset, 'kind' => $kind?->value, 'user' => $user?->id, \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)]" name="purchase">
+        <x-slot:extra><x-ui.view-switch :views="['list', 'table']"/></x-slot:extra>
         <x-slot:filters><input name="q" value="{{ $q }}" placeholder="ДЛ, VIN, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>
 
@@ -78,12 +79,29 @@
         @endif
     </div>
 
+    @if ($cars->isEmpty())
+        <x-ui.empty class="mt-4">Ничего не нашлось</x-ui.empty>
+    @elseif (\App\Support\ListView::fromRequest(request()) === \App\Support\ListView::TABLE)
+        <x-ui.table id="cars" class="mt-4">
+            <x-slot:head>
+                <tr>
+                    <th class="hidden w-28 sm:table-cell">ДЛ</th>
+                    <th>Машина</th>
+                    <th class="hidden w-36 sm:table-cell">Тип</th>
+                    <th class="num hidden w-28 sm:table-cell">Размещение</th>
+                    <th class="num w-9 sm:w-40"><span class="hidden sm:inline">Предложения</span></th>
+                    <th class="num w-24 sm:w-28">Наша цена</th>
+                    <th class="hidden w-40 sm:table-cell"></th>
+                </tr>
+            </x-slot:head>
+            @foreach ($cars as $car)<x-purchase.table-row :car="$car" :purchase="$purchase"/>@endforeach
+        </x-ui.table>
+    @else
     <div class="mt-4 flex flex-col gap-2">
-        @forelse ($cars as $car)
+        @foreach ($cars as $car)
             <x-purchase.crm-row :car="$car" :purchase="$purchase" :highlight="$user?->id" price/>
-        @empty
-            <x-ui.empty>Ничего не нашлось</x-ui.empty>
-        @endforelse
+        @endforeach
     </div>
+    @endif
     <div class="mt-8">{{ $cars->links() }}</div>
 </x-ui.shell>

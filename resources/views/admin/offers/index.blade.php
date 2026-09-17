@@ -14,9 +14,17 @@
         @if ($offers->isEmpty())
             <x-ui.empty>Предложений нет</x-ui.empty>
         @else
-            <div id="offers" class="{{ \App\Support\ListView::containerClass(\App\Support\ListView::fromRequest(request())) }}" data-controller="ticker">
+            @php $view = \App\Support\ListView::fromRequest(request()); @endphp
+            @if ($view === \App\Support\ListView::TABLE)
+                <x-ui.table id="offers">
+                    <x-slot:head><x-offer.table-head/></x-slot:head>
+                    @foreach ($offers as $offer)<x-offer.table-row :offer="$offer"/>@endforeach
+                </x-ui.table>
+            @else
+            <div id="offers" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
                 @foreach ($offers as $offer)<x-offer.card :offer="$offer" admin/>@endforeach
             </div>
+            @endif
             <div class="mt-8">{{ $offers->links() }}</div>
         @endif
     </div>

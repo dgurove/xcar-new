@@ -527,6 +527,33 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { a.row:hover, .row:has(> a:hover) { @apply bg-hover; } }
   .row[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--color-accent); }
 
+  /* Таблица (третий вид списка): плотно, сотни строк; обводок нет — чётные
+     строки заливкой, шапка прилипает под шапку страницы, выбранная строка —
+     лаймовая заливка (её окошко внизу, .peek). Лишние столбцы на телефоне —
+     hidden sm:table-cell в разметке. */
+  .table-wrap { @apply rounded-(--radius-l) bg-surface; overflow: clip; }
+  .table { @apply w-full border-collapse text-[13px] leading-tight; table-layout: fixed; }
+  .table th, .table td { @apply px-2 py-1.5 text-left align-middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .table th:first-child, .table td:first-child { @apply pl-3; }
+  .table th:last-child, .table td:last-child { @apply pr-3; }
+  .table thead th { @apply sticky z-10 bg-surface text-xs font-normal text-ink-muted; top: calc(var(--spacing-header) + env(safe-area-inset-top)); }
+  .table tbody tr { @apply cursor-pointer; height: 2.25rem; }
+  .table tbody tr:nth-child(even) { background: var(--color-ground); }
+  @media (hover: hover) { .table tbody tr:hover { background: var(--color-hover); } }
+  .table tbody tr[aria-selected="true"], .table tbody tr[aria-selected="true"]:hover { background: var(--color-accent-soft); }
+  .table tbody tr:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+  .table .num { @apply text-right; }
+  .table .dot { @apply mr-1.5 inline-block size-2 shrink-0 rounded-full bg-line align-[1px]; }
+  .table .dot-open { background: var(--color-accent); }
+  .table .dot-urgent { background: var(--color-urgent); }
+  .table .dot-danger { background: var(--color-danger); }
+
+  /* Меню под кнопкой (вид списка): popover в top layer, место ставит menu_controller. */
+  .menu { @apply rounded-(--radius-l) bg-surface p-1.5 text-ink shadow-(--shadow-drop); position: fixed; inset: auto; margin: 0; border: 0; min-width: 11rem; }
+  .menu:popover-open { animation: dialog-in var(--dur) var(--ease-out); }
+  .menu-item { @apply flex items-center gap-3 rounded-(--radius-m) px-3 text-sm text-ink hover:bg-surface-3; min-height: 44px; }
+  .menu-item[aria-current] { @apply bg-accent text-white hover:bg-accent; }
+
   .legal { @apply text-ink-muted; max-width: 62ch; }
   .legal h2 { @apply mt-10 text-xl text-ink; }
   .legal > h2:first-child { @apply mt-0; }
@@ -595,6 +622,30 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   @media (max-width: 1023.98px) { .sheet--inflow[open]:not(:modal) { display: none; } }
   .sheet-close { @apply flex size-9 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
+
+  /* Окошко строки таблицы (peek): парит внизу над таб-баром, не модальное —
+     список за ним листается; от 768 — снизу по центру. Пока открыто, у страницы
+     нижний отступ, чтобы последние строки выезжали из-под него. */
+  .peek {
+    @apply fixed z-30 rounded-(--radius-xl) bg-surface p-4 text-ink shadow-(--shadow-drop);
+    inset-inline: .75rem; margin-inline: auto; max-width: 36rem;
+    bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + .75rem);
+    animation: sheet-up var(--dur-slow) var(--ease-out) both;
+    overscroll-behavior: contain;
+  }
+  .peek[hidden] { display: none; }
+  .peek.is-closing { animation: sheet-down var(--dur) var(--ease-in) both; pointer-events: none; }
+  .peek::before { content: ''; display: block; width: 36px; height: 5px; margin: -.5rem auto .625rem; border-radius: 3px; background: var(--color-line); }
+  @media (min-width: 768px) {
+    .peek { bottom: 1.25rem; animation: dialog-in var(--dur) var(--ease-out); }
+    .peek::before { display: none; }
+    .peek.is-closing { animation: dialog-in var(--dur-fast) var(--ease-in) reverse both; }
+  }
+  .peek-close { @apply absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
+  .peek-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 6rem; height: 4.5rem; }
+  .peek-photo img { @apply size-full object-cover; }
+  body:has(.peek:not([hidden])) .main-app { padding-bottom: calc(14rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
+  html:has(.peek:not([hidden])) { scroll-padding-bottom: 15rem; }
 
   .toasts { @apply pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4;
     top: calc(.75rem + env(safe-area-inset-top)); }

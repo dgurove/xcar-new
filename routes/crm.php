@@ -32,6 +32,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/offers/from-mail/{candidate}/create', [CandidateController::class, 'promote']);
     Route::post('/offers/from-mail/{candidate}/decline', [CandidateController::class, 'reject']);
     Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
+    Route::get('/offers/{offer}/peek', [OfferController::class, 'peek']);
     // Шеринг PDF: маршруты без домена на хосте CRM отбивает ResolveSurface — свои копии.
     Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
     Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
@@ -98,6 +99,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/purchases/{purchase}/import', [PurchaseController::class, 'import']);
     Route::get('/purchases/{purchase}/export', [PurchaseController::class, 'export']);
     Route::redirect('/purchases/{purchase}/offers', '/purchases/{purchase}', 301);
+    Route::get('/purchases/{purchase}/{car}/peek', [PurchaseController::class, 'peek']);
     Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car']);
     Route::match(['get', 'post'], '/purchases/{purchase}/{car}/pdf', [ShareController::class, 'carPdf']);
     Route::put('/purchases/{purchase}/{car}', [PurchaseController::class, 'updateCar']);

@@ -6,7 +6,8 @@ use Illuminate\Http\Request;
 
 /**
  * Вид списка: без выбора — строки на телефоне и плитки от 640 (решает CSS),
- * `?vid=list` и `?vid=grid` — явный выбор, он живёт в адресе.
+ * `?vid=list`, `?vid=grid` и `?vid=table` — явный выбор, он живёт в адресе.
+ * Таблица — своя разметка (x-ui.table), не .cards.
  */
 final class ListView
 {
@@ -16,11 +17,15 @@ final class ListView
 
     public const GRID = 'grid';
 
+    public const TABLE = 'table';
+
+    public const ALL = [self::GRID, self::LIST, self::TABLE];
+
     public static function fromRequest(Request $request): ?string
     {
         $vid = $request->query(self::PARAM);
 
-        return in_array($vid, [self::LIST, self::GRID], true) ? $vid : null;
+        return in_array($vid, self::ALL, true) ? $vid : null;
     }
 
     /**
@@ -30,7 +35,7 @@ final class ListView
     public static function sizes(?string $view): string
     {
         return match ($view) {
-            self::LIST => '(min-width: 640px) 6rem, 4.5rem',
+            self::LIST, self::TABLE => '(min-width: 640px) 6rem, 4.5rem',
             self::GRID => '(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw',
             default => '(min-width: 1024px) 320px, (min-width: 640px) 45vw, 4.5rem',
         };

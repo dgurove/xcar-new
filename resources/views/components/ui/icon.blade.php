@@ -45,6 +45,7 @@ $paths = [
     'arrow-up' => 'M12 19V5M5 12l7-7 7 7',
     'list' => 'M4 6h16M4 12h16M4 18h16',
     'grid-2' => 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+    'table' => 'M4 5h16v14H4zM4 9.5h16M4 14.5h16',
     'expand' => 'M8 3H3v5M12 17h5v-5M17 8V3h-5M3 12v5h5',
     'chevron-down' => 'm6 9 6 6 6-6',
     'arrow-down' => 'M12 5v14m0 0-6-6m6 6 6-6',

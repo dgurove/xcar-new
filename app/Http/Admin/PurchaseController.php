@@ -18,6 +18,7 @@ use App\Purchases\OfferState;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
 use App\Purchases\Restriction;
+use App\Support\ListPrefs;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -55,6 +56,7 @@ class PurchaseController
      */
     public function show(Request $request, Purchase $purchase)
     {
+        ListPrefs::sync($request, 'crm-purchase-cars');
         $q = trim((string) $request->query('q'));
         $preset = array_key_exists($request->query('preset', 'all'), self::PRESETS) ? $request->query('preset', 'all') : 'all';
         $sort = array_key_exists($request->query('sort', 'dl'), self::SORTS) ? $request->query('sort', 'dl') : 'dl';
@@ -231,6 +233,15 @@ class PurchaseController
         $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
 
         return view('admin.purchases.car', ['purchase' => $purchase, 'car' => $car, 'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id')]);
+    }
+
+    /** Окошко строки таблицы: фото, факты, цены Carcade, предложения менеджеров, наша цена. */
+    public function peek(Purchase $purchase, Car $car)
+    {
+        abort_unless($car->purchase_id === $purchase->id, 404);
+        $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
+
+        return view('admin.purchases.peek', ['purchase' => $purchase, 'car' => $car]);
     }
 
     public function updateCar(Request $request, Purchase $purchase, Car $car, UpdateCar $update)

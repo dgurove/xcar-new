@@ -28,6 +28,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
 
     Route::get('/cars', [VehicleController::class, 'index']);
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
+    Route::get('/cars/{vehicle}/peek', [VehicleController::class, 'peek']);
     Route::put('/cars/{vehicle}', [VehicleController::class, 'update']);
     Route::post('/cars/{vehicle}/media', [VehicleController::class, 'upload']);
     Route::post('/cars/{vehicle}/media/order', [VehicleController::class, 'reorder']);
