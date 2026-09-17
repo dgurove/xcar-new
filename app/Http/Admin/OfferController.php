@@ -100,12 +100,16 @@ class OfferController
         ]);
     }
 
-    /** Окошко строки таблицы: фрейм peek с фото, метками, фактами и ценой. */
-    public function peek(Offer $offer)
+    /** Окошко строки таблицы: фото, метки, цена, действия, подтверждения, интерес; ?gallery=1 — строка списка галереи. */
+    public function peek(Request $request, Offer $offer)
     {
-        $offer->load(['brand', 'model', 'settlement', 'media'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
+        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'deal'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
 
-        return view('admin.offers.peek', ['offer' => $offer]);
+        return view('admin.offers.peek', [
+            'offer' => $offer,
+            'chats' => Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']),
+            'list' => $request->boolean('gallery'),
+        ]);
     }
 
     public function update(OfferRequest $request, Offer $offer, UpdateOffer $update)

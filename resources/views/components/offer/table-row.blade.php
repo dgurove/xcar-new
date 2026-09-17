@@ -8,7 +8,7 @@
     $tone = $offer->state->tone();
     $since = $gallery ? $offer->created_at : ($offer->published_at ?? $offer->updated_at);
 @endphp
-<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="/offers/{{ $n }}/peek" data-href="/offers/{{ $n }}" tabindex="0">
+<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0">
     <td class="nums text-ink-dim">{{ $n }}</td>
     <td class="grow">{{ $offer->titleWithYear() }}</td>
     <td>

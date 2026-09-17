@@ -51,12 +51,12 @@ class VehicleController
         ]);
     }
 
-    /** Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки. */
+    /** Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка. */
     public function peek(Vehicle $vehicle)
     {
-        $vehicle->load(['brand', 'model', 'client', 'yard', 'media']);
+        $vehicle->load(['brand', 'model', 'client', 'yard', 'media', 'requests.yard', 'events.user']);
 
-        return view('park.vehicles.peek', ['vehicle' => $vehicle]);
+        return view('park.vehicles.peek', ['vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id')]);
     }
 
     public function show(Vehicle $vehicle)

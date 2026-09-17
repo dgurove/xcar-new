@@ -651,7 +651,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .peek-handle::before { content: ''; display: block; width: 36px; height: 5px; margin: .375rem auto 0; border-radius: 3px; background: var(--color-line); }
   .peek-count { @apply mr-auto mt-3 text-xs text-ink-muted; }
   .peek-close { @apply relative z-10 mt-2 flex size-8 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
-  .peek-body { @apply block min-h-0 overflow-y-auto px-4 pb-4 pt-1; overscroll-behavior: contain; }
+  .peek-body { @apply block min-h-0 overflow-y-auto px-4 pb-4 pt-1; overscroll-behavior: contain; transition: opacity var(--dur-fast); }
+  .peek-body[aria-busy="true"] { opacity: .45; }
   .peek-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 6rem; height: 4.5rem; }
   .peek-photo img { @apply size-full object-cover; }
   /* Лента кадров в окошке: несколько в ряд, тап — во весь экран (Viewer). */

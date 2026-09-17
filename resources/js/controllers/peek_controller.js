@@ -110,20 +110,26 @@ export default class extends Controller {
         this.openTarget.href = row.dataset.href;
         this.countTarget.textContent = `${rows.indexOf(row) + 1} из ${rows.length}`;
         this.wantFocus = focus;
-        if (frame.src !== new URL(row.dataset.peekUrl, location.href).href) {
-            frame.innerHTML = this.skeleton ??= frame.innerHTML;
-            frame.src = row.dataset.peekUrl;
-        } else {
-            this.focus();
-        }
-        frame.scrollTop = 0;
+        // Прошлое содержимое остаётся, пока едет новое (Turbo ставит фрейму aria-busy —
+        // оно притушено); скелет — только в самый первый раз.
+        this.skeleton ??= frame.innerHTML;
+        if (frame.src !== new URL(row.dataset.peekUrl, location.href).href) frame.src = row.dataset.peekUrl;
+        else this.focus();
         row.scrollIntoView({ block: 'nearest', behavior: reduce.matches ? 'auto' : 'smooth' });
     }
 
-    // Ответ фрейма: свежая строка, сообщение, формы — в окошко, переход к следующей.
+    // Перед заменой содержимого — запомнить высоту, чтобы новое не дёргало окошко.
+    rendering(event) {
+        if (event.target === this.frameTarget) this.heightBefore = this.panelTarget.offsetHeight;
+    }
+
+    // Ответ фрейма: высота окошка плавно к новой, свежая строка, сообщение, формы —
+    // в окошко, переход к следующей.
     loaded(event) {
         const frame = this.frameTarget;
         if (event.target !== frame) return;
+        this.settle();
+        frame.scrollTop = 0;
         // Строка — по id: пока ответ шёл, выделение могло уйти на другую.
         const row = frame.querySelector('template[data-peek-row]');
         const fresh = row?.content.firstElementChild;
@@ -138,6 +144,24 @@ export default class extends Controller {
         frame.querySelectorAll('form:not([data-turbo-frame])').forEach((f) => { f.dataset.turboFrame = 'peek'; });
         if (frame.querySelector('template[data-peek-advance]')) { this.advance(); return; }
         this.focus();
+    }
+
+    // Высота: от прошлой к новой переходом, а не скачком (кроме полного положения —
+    // там она задана краями экрана).
+    settle() {
+        const panel = this.panelTarget, before = this.heightBefore;
+        this.heightBefore = null;
+        if (!before || reduce.matches || this.full || panel.hidden) return;
+        const after = panel.offsetHeight;
+        if (Math.abs(after - before) < 2) return;
+        panel.style.transition = 'none';
+        panel.style.height = `${before}px`;
+        void panel.offsetHeight;
+        panel.style.transition = 'height var(--dur) var(--ease-out)';
+        panel.style.height = `${after}px`;
+        const done = () => { panel.style.height = ''; panel.style.transition = ''; };
+        panel.addEventListener('transitionend', done, { once: true });
+        setTimeout(done, 300);
     }
 
     // Форма из окошка: серверу — куда возвращать ответ (PeekBack).
