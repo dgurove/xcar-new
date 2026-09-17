@@ -11,6 +11,8 @@ use App\Purchases\Offer;
 use App\Purchases\OfferState;
 use App\Purchases\Purchase;
 use App\Purchases\Restriction;
+use App\Support\ListPrefs;
+use App\Support\ListView;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -29,6 +31,7 @@ class PurchaseController
     public function show(Request $request, Purchase $purchase)
     {
         abort_unless($purchase->state->isPublic(), 404);
+        ListPrefs::sync($request, 'purchase-cars');
         $filters = $request->only(['preset', 'q', 'kind', 'sort', 'group']);
         $group = $this->group($filters);
         // Категории считаются без фильтра по категории: пилюли должны остаться, когда одна выбрана.
@@ -41,6 +44,16 @@ class PurchaseController
         return view('site.purchases.show', [
             'purchase' => $purchase, 'cars' => $cars, 'filters' => $filters, 'total' => $total, 'done' => $done, 'kinds' => $kinds, 'group' => $group,
         ]);
+    }
+
+    /** Окошко строки таблицы: фото, факты, своя или лучшая цена. */
+    public function peek(Request $request, Purchase $purchase, Car $car)
+    {
+        abort_unless($purchase->state->isPublic() && $car->purchase_id === $purchase->id && $purchase->showsOnSite($car), 404);
+        abort_if(in_array($car->kind->value, Restriction::hiddenFor($request->user()), true), 404);
+        $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
+
+        return view('site.purchases.peek', ['purchase' => $purchase, 'car' => $car, 'query' => http_build_query(array_filter($request->only(['preset', 'q', 'kind', 'sort', 'group', ListView::PARAM])))]);
     }
 
     public function car(Request $request, Purchase $purchase, Car $car)

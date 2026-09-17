@@ -4,12 +4,14 @@ namespace App\Http\Cabinet;
 
 use App\Offers\Interest;
 use App\Offers\Offer;
+use App\Support\ListPrefs;
 use Illuminate\Http\Request;
 
 class ListsController
 {
     public function favorites(Request $request)
     {
+        ListPrefs::sync($request, 'favorites');
         // Избранное — только то, что человеку и сейчас видно: закрытое менеджером покупателю не показываем.
         $offers = Offer::with(['brand', 'model', 'media', 'favorites'])
             ->whereHas('favorites', fn ($f) => $f->where('user_id', $request->user()->id))

@@ -38,9 +38,24 @@
         @if ($cars->isEmpty())
             <x-ui.empty :href="'/purchases/'.$purchase->number.($group ? '?group='.$group->value : '')" link="Сбросить фильтры">По этим условиям ничего не нашлось</x-ui.empty>
         @else
+            @if ($view === \App\Support\ListView::TABLE)
+            <x-ui.table id="cars">
+                <x-slot:head>
+                    <tr>
+                        <th>Машина</th>
+                        @if (count($kinds) > 1)<th class="hidden w-32 sm:table-cell">Тип</th>@endif
+                        <th class="hidden w-36 sm:table-cell">Город</th>
+                        <th class="hidden w-28 sm:table-cell">ДЛ</th>
+                        <th class="num w-28 sm:w-56">Цена</th>
+                    </tr>
+                </x-slot:head>
+                @foreach ($cars as $car)<x-purchase.site-table-row :car="$car" :purchase="$purchase" :query="$qs" :show-kind="count($kinds) > 1"/>@endforeach
+            </x-ui.table>
+            @else
             <div class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
                 @foreach ($cars as $car)<x-purchase.card :car="$car" :purchase="$purchase" :query="$qs" :show-kind="count($kinds) > 1"/>@endforeach
             </div>
+            @endif
             <div class="mt-10">{{ $cars->links() }}</div>
         @endif
     </div>

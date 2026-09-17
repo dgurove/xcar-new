@@ -39,7 +39,7 @@
             @else
             <x-ui.toolbar class="mt-5" :sorts="$sorts" :sort="$sort" :pills="$views" :pill="$filters['view'] ?? ''" :hidden="[\App\Support\ListView::PARAM => $view]" :name="$gallery ? 'gallery' : 'catalog'">
                 <x-slot:extra>
-                    @if ($selecting && $offers->isNotEmpty())<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
+                    @if ($selecting && $offers->isNotEmpty() && $view !== \App\Support\ListView::TABLE)<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
                     <x-ui.view-switch/>
                 </x-slot:extra>
                 <x-slot:filters>
@@ -84,9 +84,16 @@
                     </x-ui.empty>
                     @endif
                 @else
+                    @if ($view === \App\Support\ListView::TABLE)
+                    <x-ui.table id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}">
+                        <x-slot:head><x-offer.site-table-head/></x-slot:head>
+                        @foreach ($offers as $offer)<x-offer.site-table-row :offer="$offer" :context="$context"/>@endforeach
+                    </x-ui.table>
+                    @else
                     <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
                         @foreach ($offers as $offer)<x-offer.card :offer="$offer" :context="$context"/>@endforeach
                     </div>
+                    @endif
                     <div class="mt-10">{{ $offers->links() }}</div>
                 @endif
             </div>

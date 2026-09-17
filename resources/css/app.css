@@ -644,7 +644,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .peek-close { @apply absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   .peek-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 6rem; height: 4.5rem; }
   .peek-photo img { @apply size-full object-cover; }
-  body:has(.peek:not([hidden])) .main-app { padding-bottom: calc(14rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
+  body:has(.peek:not([hidden])) .main-app, body.surface-site:has(.peek:not([hidden])) #main { padding-bottom: calc(14rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
   html:has(.peek:not([hidden])) { scroll-padding-bottom: 15rem; }
 
   .toasts { @apply pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4;
