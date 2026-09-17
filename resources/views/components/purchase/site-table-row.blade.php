@@ -9,8 +9,8 @@
 @endphp
 <tr id="car-{{ $car->id }}" data-peek-url="/purchases/{{ $purchase->number }}/{{ $car->ref }}/peek{{ $query ? '?'.$query : '' }}" data-href="{{ $href }}" tabindex="0">
     <td class="nums text-ink-dim">{{ $car->ref }}</td>
-    <td>{{ $car->titleWithYear() }}</td>
-    @if ($showKind)<td class="hidden w-32 text-ink-dim sm:table-cell">{{ $car->kind->label() }}</td>@endif
+    <td class="grow">{{ $car->titleWithYear() }}</td>
+    @if ($showKind)<td class="hidden text-ink-dim sm:table-cell">{{ $car->kind->label() }}</td>@endif
     <td class="hidden text-ink-dim sm:table-cell">{{ $car->settlement?->name ?? $car->city }}</td>
     <td class="num nums">
         @if ($staff)

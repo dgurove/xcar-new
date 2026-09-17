@@ -85,13 +85,13 @@
         <x-ui.table id="cars" class="mt-4">
             <x-slot:head>
                 <tr>
-                    <th class="w-24 sm:w-28">ДЛ</th>
-                    <th>Марка, модель</th>
-                    <th class="hidden w-36 sm:table-cell">Тип</th>
-                    <th class="num hidden w-28 sm:table-cell">Размещение</th>
-                    <th class="num w-7 sm:w-40"><span class="hidden sm:inline">Предложения</span></th>
-                    <th class="num w-20 sm:w-28">Наша цена</th>
-                    <th class="hidden w-40 sm:table-cell"></th>
+                    <th>ДЛ</th>
+                    <th class="grow">Марка, модель</th>
+                    <th class="hidden sm:table-cell">Тип</th>
+                    <th class="num hidden sm:table-cell">Размещение</th>
+                    <th class="num"><span class="hidden sm:inline">Предложения</span></th>
+                    <th class="num">Наша цена</th>
+                    <th class="hidden sm:table-cell"></th>
                 </tr>
             </x-slot:head>
             @foreach ($cars as $car)<x-purchase.table-row :car="$car" :purchase="$purchase"/>@endforeach

@@ -11,7 +11,7 @@
 @endphp
 <tr id="car-{{ $car->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0" class="{{ $car->is_published ? '' : 'text-ink-muted' }}">
     <td class="nums text-ink-dim">{{ $car->dl }}</td>
-    <td>{{ $car->titleWithYear() }}</td>
+    <td class="grow">{{ $car->titleWithYear() }}</td>
     <td class="hidden sm:table-cell">{{ $car->kind->label() }}</td>
     <td class="num nums hidden text-ink-dim sm:table-cell">{{ $car->price_listing ? \App\Support\Money::nums($car->price_listing) : '' }}</td>
     <td class="num nums">@if ($offers->isNotEmpty())<span class="text-ink">{{ $offers->count() }}</span> <span class="hidden text-ink-dim sm:inline">{{ \App\Support\Money::nums($best) }}</span>@endif</td>

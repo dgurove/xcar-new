@@ -11,12 +11,12 @@
             <x-ui.table id="vehicles" class="mt-6">
                 <x-slot:head>
                     <tr>
-                        <th class="w-32 sm:w-36">№</th>
-                        <th>Марка, модель</th>
-                        <th class="w-[5.5rem] sm:w-32">Состояние</th>
-                        <th class="hidden w-36 sm:table-cell">Стоянка</th>
-                        <th class="hidden w-40 sm:table-cell">Клиент</th>
-                        <th class="num w-12 sm:w-24">Дней</th>
+                        <th>№</th>
+                        <th class="grow">Марка, модель</th>
+                        <th>Состояние</th>
+                        <th class="hidden sm:table-cell">Стоянка</th>
+                        <th class="hidden sm:table-cell">Клиент</th>
+                        <th class="num">Дней</th>
                     </tr>
                 </x-slot:head>
                 @foreach ($vehicles as $vehicle)<x-park.table-row :vehicle="$vehicle"/>@endforeach

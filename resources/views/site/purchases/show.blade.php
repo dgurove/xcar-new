@@ -42,11 +42,11 @@
             <x-ui.table id="cars">
                 <x-slot:head>
                     <tr>
-                        <th class="w-12 sm:w-16">№</th>
-                        <th>Марка, модель</th>
-                        @if (count($kinds) > 1)<th class="hidden w-32 sm:table-cell">Тип</th>@endif
-                        <th class="hidden w-36 sm:table-cell">Город</th>
-                        <th class="num w-24 sm:w-56">Цена</th>
+                        <th>№</th>
+                        <th class="grow">Марка, модель</th>
+                        @if (count($kinds) > 1)<th class="hidden sm:table-cell">Тип</th>@endif
+                        <th class="hidden sm:table-cell">Город</th>
+                        <th class="num">Цена</th>
                     </tr>
                 </x-slot:head>
                 @foreach ($cars as $car)<x-purchase.site-table-row :car="$car" :purchase="$purchase" :query="$qs" :show-kind="count($kinds) > 1"/>@endforeach

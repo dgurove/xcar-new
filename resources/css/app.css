@@ -532,7 +532,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      лаймовая заливка (её окошко внизу, .peek). Лишние столбцы на телефоне —
      hidden sm:table-cell в разметке. */
   .table-wrap { @apply rounded-(--radius-l) bg-surface; overflow: clip; }
-  .table { @apply w-full border-collapse text-xs leading-tight sm:text-[13px]; table-layout: fixed; }
+  /* Столбцы по содержимому — номер, состояние, цена не режутся никогда; режется
+     только название: столбец .grow забирает остаток ширины. */
+  .table { @apply w-full border-collapse text-xs leading-tight sm:text-[13px]; table-layout: auto; }
+  .table th.grow { width: 100%; }
+  .table td.grow { max-width: 0; }
   .table th, .table td { @apply px-1 py-1.5 text-left align-middle sm:px-2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .table th:first-child, .table td:first-child { @apply pl-2.5 sm:pl-3; }
   .table th:last-child, .table td:last-child { @apply pr-2.5 sm:pr-3; }
