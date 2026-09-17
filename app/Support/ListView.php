@@ -6,7 +6,8 @@ use Illuminate\Http\Request;
 
 /**
  * Вид списка: без выбора — строки на телефоне и плитки от 640 (решает CSS),
- * `?vid=list`, `?vid=grid` и `?vid=table` — явный выбор, он живёт в адресе.
+ * `?vid=list`, `?vid=grid` и `?vid=table` — явный выбор, он живёт в адресе;
+ * без выбора список длиннее 20 строк открывается таблицей (pick).
  * Таблица — своя разметка (x-ui.table), не .cards.
  */
 final class ListView
@@ -26,6 +27,12 @@ final class ListView
         $vid = $request->query(self::PARAM);
 
         return in_array($vid, self::ALL, true) ? $vid : null;
+    }
+
+    /** Вид без выбора: длинный список (больше 20) сразу таблицей, короткий — решает CSS. */
+    public static function pick(Request $request, int $count): ?string
+    {
+        return self::fromRequest($request) ?? ($count > 20 ? self::TABLE : null);
     }
 
     /**

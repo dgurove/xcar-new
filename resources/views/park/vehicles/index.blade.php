@@ -1,21 +1,22 @@
+@php $view = \App\Support\ListView::pick(request(), $vehicles->total()); @endphp
 <x-ui.shell :title="$yard ? $yard->name : 'Машины'" :count="$vehicles->total()" :back="$yard ? ['Стоянки', '/yards'] : false">
     <x-ui.toolbar :sorts="\App\Http\Park\VehicleController::SORTS" :sort="$sort" :pills="\App\Http\Park\VehicleController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['yard' => request('yard'), \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)])" name="vehicles">
-        <x-slot:extra><x-ui.view-switch/></x-slot:extra>
+        <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:filters><input name="q" value="{{ $q }}" placeholder="Номер, VIN, госномер, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>
     @if ($vehicles->isEmpty())
         <x-ui.empty class="mt-6">Машин нет</x-ui.empty>
     @else
-        @php $view = \App\Support\ListView::fromRequest(request()); @endphp
         @if ($view === \App\Support\ListView::TABLE)
             <x-ui.table id="vehicles" class="mt-6">
                 <x-slot:head>
                     <tr>
-                        <th>Машина</th>
-                        <th class="w-32">Состояние</th>
+                        <th class="w-32 sm:w-36">№</th>
+                        <th>Марка, модель</th>
+                        <th class="w-[5.5rem] sm:w-32">Состояние</th>
                         <th class="hidden w-36 sm:table-cell">Стоянка</th>
                         <th class="hidden w-40 sm:table-cell">Клиент</th>
-                        <th class="num w-16 sm:w-24">Дней</th>
+                        <th class="num w-12 sm:w-24">Дней</th>
                     </tr>
                 </x-slot:head>
                 @foreach ($vehicles as $vehicle)<x-park.table-row :vehicle="$vehicle"/>@endforeach

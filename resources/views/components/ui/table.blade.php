@@ -8,7 +8,7 @@
         <thead>{{ $head }}</thead>
         <tbody data-peek-target="body" data-action="click->peek#tap dblclick->peek#open">{{ $slot }}</tbody>
     </table>
-    <div class="peek" hidden data-peek-target="panel" data-turbo-temporary role="dialog" aria-label="Машина" data-action="touchstart->peek#touchStart:passive touchmove->peek#touchMove touchend->peek#touchEnd">
+    <div class="peek" hidden data-peek-target="panel" data-turbo-temporary role="dialog" aria-label="Транспортное средство" data-action="touchstart->peek#touchStart:passive touchmove->peek#touchMove touchend->peek#touchEnd">
         <button type="button" class="peek-close" data-action="peek#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button>
         <turbo-frame id="peek" target="_top" data-peek-target="frame" class="block"><x-ui.skeleton :rows="2"/></turbo-frame>
     </div>

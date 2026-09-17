@@ -7,8 +7,9 @@
     $state = $vehicle->state;
 @endphp
 <tr id="vehicle-{{ $vehicle->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
-    <td>{{ $vehicle->titleWithYear() }}@if ($vehicle->plate) <span class="nums text-ink-muted">{{ $vehicle->plate }}</span>@endif</td>
-    <td><span class="dot {{ match ($state->tone()) { 'open' => 'dot-open', 'urgent' => 'dot-urgent', default => '' } }}"></span>{{ $state->label() }}</td>
+    <td class="nums text-[11px] tracking-tighter text-ink-dim sm:text-[13px] sm:tracking-normal">{{ $vehicle->ref }}</td>
+    <td>{{ $vehicle->titleWithYear() }}@if ($vehicle->plate) <span class="nums hidden text-ink-muted sm:inline">{{ $vehicle->plate }}</span>@endif</td>
+    <td class="text-[11px] sm:text-[13px]"><span class="dot {{ match ($state->tone()) { 'open' => 'dot-open', 'urgent' => 'dot-urgent', default => '' } }}"></span>{{ $state->label() }}</td>
     <td class="hidden text-ink-dim sm:table-cell">{{ $vehicle->yard?->name }}</td>
     <td class="hidden text-ink-dim sm:table-cell">{{ $vehicle->client?->name }}</td>
     <td class="num nums text-ink-dim">

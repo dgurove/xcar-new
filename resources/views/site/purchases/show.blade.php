@@ -1,6 +1,6 @@
 @php
     $qs = http_build_query(array_filter($filters + [\App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)], fn ($v) => $v !== null && $v !== ''));
-    $view = \App\Support\ListView::fromRequest(request());
+    $view = \App\Support\ListView::pick(request(), $cars->total());
 @endphp
 <x-ui.shell :title="$purchase->publicTitle($group)" :heading="false" :back="['Закупки', '/purchases']" :trail="[['Главная', '/'], ['Закупки', '/purchases'], [$purchase->publicTitle($group)]]">
     <div class="box">
@@ -28,7 +28,7 @@
     </div>
 
     <x-ui.toolbar class="mt-5" :sorts="\App\Http\Site\PurchaseController::SORTS" :sort="$filters['sort'] ?? 'dl'" :pills="\App\Http\Site\PurchaseController::PRESETS" :pill="$filters['preset'] ?? 'all'" pill-param="preset" :hidden="['group' => $group?->value, 'kind' => $filters['kind'] ?? null, \App\Support\ListView::PARAM => $view]" name="purchase">
-        <x-slot:extra><x-ui.view-switch/></x-slot:extra>
+        <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:filters>
             <input name="q" value="{{ $filters['q'] ?? '' }}" placeholder="ДЛ, VIN, марка" class="field-input field-s">
         </x-slot:filters>
@@ -42,11 +42,11 @@
             <x-ui.table id="cars">
                 <x-slot:head>
                     <tr>
-                        <th>Машина</th>
+                        <th class="w-24 sm:w-28">ДЛ</th>
+                        <th>Марка, модель</th>
                         @if (count($kinds) > 1)<th class="hidden w-32 sm:table-cell">Тип</th>@endif
                         <th class="hidden w-36 sm:table-cell">Город</th>
-                        <th class="hidden w-28 sm:table-cell">ДЛ</th>
-                        <th class="num w-28 sm:w-56">Цена</th>
+                        <th class="num w-24 sm:w-56">Цена</th>
                     </tr>
                 </x-slot:head>
                 @foreach ($cars as $car)<x-purchase.site-table-row :car="$car" :purchase="$purchase" :query="$qs" :show-kind="count($kinds) > 1"/>@endforeach

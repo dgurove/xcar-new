@@ -40,7 +40,7 @@
             <x-ui.toolbar class="mt-5" :sorts="$sorts" :sort="$sort" :pills="$views" :pill="$filters['view'] ?? ''" :hidden="[\App\Support\ListView::PARAM => $view]" :name="$gallery ? 'gallery' : 'catalog'">
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && $view !== \App\Support\ListView::TABLE)<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
-                    <x-ui.view-switch/>
+                    <x-ui.view-switch :current="$view"/>
                 </x-slot:extra>
                 <x-slot:filters>
                     <input name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Марка, модель, VIN" class="field-input field-s">

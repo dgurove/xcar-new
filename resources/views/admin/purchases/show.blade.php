@@ -1,4 +1,4 @@
-@php use App\Purchases\{Kind, PurchaseState}; $n = $purchase->number; $ctl = \App\Http\Admin\PurchaseController::class; @endphp
+@php use App\Purchases\{Kind, PurchaseState}; $n = $purchase->number; $ctl = \App\Http\Admin\PurchaseController::class; $view = \App\Support\ListView::pick(request(), $cars->total()); @endphp
 <x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/purchases']">
     <div class="has-back mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
         <x-ui.back :back="['Закупки', '/purchases']"/>
@@ -67,7 +67,7 @@
 
     @php $kindPills = count($kinds) > 1 ? ['' => 'Все'] + collect(Kind::cases())->filter(fn ($k) => isset($kinds[$k->value]))->mapWithKeys(fn ($k) => [$k->value => $k->label()])->all() : []; @endphp
     <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" sort-side="right" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :pill-default="false" :counts="['' => array_sum($kinds)] + $kinds" :hidden="['preset' => $preset, 'kind' => $kind?->value, 'user' => $user?->id, \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)]" name="purchase">
-        <x-slot:extra><x-ui.view-switch :views="['list', 'table']"/></x-slot:extra>
+        <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:filters><input name="q" value="{{ $q }}" placeholder="ДЛ, VIN, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>
 
@@ -81,21 +81,25 @@
 
     @if ($cars->isEmpty())
         <x-ui.empty class="mt-4">Ничего не нашлось</x-ui.empty>
-    @elseif (\App\Support\ListView::fromRequest(request()) === \App\Support\ListView::TABLE)
+    @elseif ($view === \App\Support\ListView::TABLE)
         <x-ui.table id="cars" class="mt-4">
             <x-slot:head>
                 <tr>
-                    <th class="hidden w-28 sm:table-cell">ДЛ</th>
-                    <th>Машина</th>
+                    <th class="w-24 sm:w-28">ДЛ</th>
+                    <th>Марка, модель</th>
                     <th class="hidden w-36 sm:table-cell">Тип</th>
                     <th class="num hidden w-28 sm:table-cell">Размещение</th>
-                    <th class="num w-9 sm:w-40"><span class="hidden sm:inline">Предложения</span></th>
-                    <th class="num w-24 sm:w-28">Наша цена</th>
+                    <th class="num w-7 sm:w-40"><span class="hidden sm:inline">Предложения</span></th>
+                    <th class="num w-20 sm:w-28">Наша цена</th>
                     <th class="hidden w-40 sm:table-cell"></th>
                 </tr>
             </x-slot:head>
             @foreach ($cars as $car)<x-purchase.table-row :car="$car" :purchase="$purchase"/>@endforeach
         </x-ui.table>
+    @elseif ($view === \App\Support\ListView::GRID)
+    <div class="mt-4 cards cards--grid" data-controller="ticker">
+        @foreach ($cars as $car)<x-purchase.card :car="$car" :purchase="$purchase" :show-kind="count($kinds) > 1"/>@endforeach
+    </div>
     @else
     <div class="mt-4 flex flex-col gap-2">
         @foreach ($cars as $car)

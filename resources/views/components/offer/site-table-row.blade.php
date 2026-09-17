@@ -14,6 +14,7 @@
     $fresh = !$gallery && $offer->isFresh();
 @endphp
 <tr id="offer-{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="{{ $peek }}" data-href="{{ $href }}" tabindex="0">
+    <td class="nums text-ink-dim">{{ $n }}</td>
     <td>@if ($fresh)<span class="dot dot-open"></span>@endif{{ $offer->titleWithYear() }}</td>
     <td class="hidden sm:table-cell">
         @if ($gallery)<span class="text-accent-text">Скоро в продаже</span>

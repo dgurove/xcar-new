@@ -1,9 +1,10 @@
 {{-- Вид списка: круглая кнопка с иконкой текущего вида, по нажатию — меню
      «Плитками · Строками · Таблицей» (x-ui.menu). Пока вид не выбран, его
      решает ширина экрана: две кнопки, видна одна. views — какие виды есть. --}}
-@props(['views' => \App\Support\ListView::ALL])
+@props(['views' => \App\Support\ListView::ALL, 'current' => false])
 @php
-    $current = \App\Support\ListView::fromRequest(request());
+    // current — вид, которым список открыт (ListView::pick): длинный без выбора — таблицей.
+    $current = $current === false ? \App\Support\ListView::fromRequest(request()) : $current;
     $path = '/'.ltrim(request()->path(), '/');
     $url = fn (string $v) => $path.'?'.http_build_query(array_merge(request()->query(), [\App\Support\ListView::PARAM => $v]));
     $all = ['grid' => ['Плитками', 'grid-2'], 'list' => ['Строками', 'list'], 'table' => ['Таблицей', 'table']];

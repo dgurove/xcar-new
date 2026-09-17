@@ -10,7 +10,7 @@
     $flag = $car->specs_state->needsAttention() ? $car->specs_state->label() : ($car->photos_state->needsAttention() ? $car->photos_state->label() : null);
 @endphp
 <tr id="car-{{ $car->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0" class="{{ $car->is_published ? '' : 'text-ink-muted' }}">
-    <td class="nums hidden text-ink-dim sm:table-cell">{{ $car->dl }}</td>
+    <td class="nums text-ink-dim">{{ $car->dl }}</td>
     <td>{{ $car->titleWithYear() }}</td>
     <td class="hidden sm:table-cell">{{ $car->kind->label() }}</td>
     <td class="num nums hidden text-ink-dim sm:table-cell">{{ $car->price_listing ? \App\Support\Money::nums($car->price_listing) : '' }}</td>

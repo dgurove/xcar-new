@@ -47,7 +47,6 @@ class CatalogController
         $user = $request->user();
         ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog');
         $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
-        $view = ListView::fromRequest($request);
         $prices = ! $gallery && ($user?->role->canSeePrices() ?? false);
         $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
         $states = $gallery ? [OfferState::Gallery] : [OfferState::Open];
@@ -70,6 +69,7 @@ class CatalogController
 
         $offers = CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery)->paginate(CatalogQuery::PER_PAGE)->withQueryString();
         Showing::remember($user, $offers->pluck('id')->all());
+        $view = ListView::pick($request, $offers->total());
 
         return view('site.catalog', [
             'offers' => $offers,
