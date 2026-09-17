@@ -56,7 +56,6 @@ systemTheme();
 headerState();
 activePillIntoView();
 infiniteLists();
-nativeBackGesture();
 haptics();
 neighbourDirection();
 noticeSeen();
@@ -384,21 +383,6 @@ function infiniteLists() {
         observer.observe(nav);
     };
     document.addEventListener('turbo:load', arm);
-}
-
-// Свайп от края в standalone iOS: WebKit сам тянет снимок предыдущей страницы, а
-// следом popstate → Turbo играет свой pop — экран уезжал бы дважды. Restore-визит
-// сразу после касания у края идёт без анимации: страница просто встаёт на место.
-function nativeBackGesture() {
-    let edgeAt = 0;
-    document.addEventListener('touchstart', (e) => {
-        const x = e.touches[0].clientX;
-        if (x < 24 || x > innerWidth - 24) edgeAt = Date.now();
-    }, { capture: true, passive: true });
-    document.addEventListener('turbo:visit', (e) => {
-        if (e.detail.action === 'restore' && Date.now() - edgeAt < 1200) document.documentElement.dataset.nativeBack = '1';
-    });
-    document.addEventListener('turbo:load', () => delete document.documentElement.dataset.nativeBack);
 }
 
 // Тактильный отклик: настоящее касание по невидимому switch (.haptic) в табе и
