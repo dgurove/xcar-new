@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Vendors\Parser;
+use App\Vendors\TariffService;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\ApplyPreset;
 use App\Workflow\Preset;
@@ -26,6 +27,12 @@ class VendorSeeder extends Seeder
         ['Энергогарант', ['msk-garant.ru', 'energogarant.ru'], Parser::Energogarant, null, false],
         ['ИНСАЙТ', ['insightins.ru'], Parser::Insight, null, false],
         ['Абсолют Страхование', ['absolutins.ru'], Parser::Generic, null, false],
+        ['ВСК', ['vsk.ru'], Parser::Generic, null, false],
+    ];
+
+    /** Договорные цены хранения в сутки по категориям — со слов владельца; заводятся один раз, пока у вендора нет прайса. */
+    public const STORAGE_RATES = [
+        'ВСК' => ['passenger' => 120, 'light' => 150, 'truck' => 180, 'long' => 200],
     ];
 
     public function run(ApplyPreset $apply): void
@@ -38,6 +45,12 @@ class VendorSeeder extends Seeder
             if ($sale) {
                 $this->fill($vendor->workflowOrNew(Track::Sale), $sale, true, $apply);
                 $this->fill($vendor->workflowOrNew(Track::Service), Preset::Pickup, $autoPickup, $apply);
+            }
+            if (isset(self::STORAGE_RATES[$name]) && ! $vendor->tariffs()->exists()) {
+                foreach (self::STORAGE_RATES[$name] as $category => $price) {
+                    $vendor->tariffs()->create(['category' => $category, 'service' => TariffService::Storage, 'from_day' => 1, 'price' => $price, 'valid_from' => now()->toDateString()]);
+                }
+                $this->command?->info("{$name}: прайс хранения");
             }
         }
     }

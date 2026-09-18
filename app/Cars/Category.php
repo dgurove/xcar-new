@@ -13,6 +13,7 @@ enum Category: string
     case Passenger = 'passenger';
     case Light = 'light';
     case Truck = 'truck';
+    case Long = 'long';
     case Trailer = 'trailer';
     case Special = 'special';
     case Moto = 'moto';
@@ -23,6 +24,7 @@ enum Category: string
             self::Passenger => 'Легковой',
             self::Light => 'Лёгкий коммерческий',
             self::Truck => 'Грузовой',
+            self::Long => 'Длинномер',
             self::Trailer => 'Прицеп',
             self::Special => 'Спецтехника',
             self::Moto => 'Мото',
@@ -38,11 +40,13 @@ enum Category: string
         }
 
         return match (true) {
-            str_contains($t, 'полуприцеп') || str_contains($t, 'прицеп') => self::Trailer,
+            str_contains($t, 'полуприцеп') || str_contains($t, 'длинномер') || str_contains($t, 'фура') || str_contains($t, 'автопоезд') => self::Long,
+            str_contains($t, 'прицеп') => self::Trailer,
             str_contains($t, 'погрузчик') || str_contains($t, 'спецтехник') || str_contains($t, 'экскаватор') || str_contains($t, 'кран') => self::Special,
             str_contains($t, 'мотоцикл') || str_contains($t, 'мототехник') || str_contains($t, 'скутер') || str_contains($t, 'квадроцикл') => self::Moto,
             str_contains($t, 'газель') || str_contains($t, 'микроавтобус') || str_contains($t, 'фургон') || str_contains($t, 'легкий коммерческий') => self::Light,
-            str_contains($t, 'грузов') || str_contains($t, 'тягач') || str_contains($t, 'автобус') || str_contains($t, 'самосвал') => self::Truck,
+            str_contains($t, 'тягач') => self::Long,
+            str_contains($t, 'грузов') || str_contains($t, 'автобус') || str_contains($t, 'самосвал') => self::Truck,
             str_contains($t, 'легков') => self::Passenger,
             default => null,
         };
