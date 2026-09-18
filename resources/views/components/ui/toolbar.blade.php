@@ -18,7 +18,7 @@
     // Ссылка на критерий: активный с направлением — переворот, чужой — своё направление по умолчанию (убывание).
     $sortUrl = fn (string $key) => $url([$sortParam => $key === $currentKey ? ($norm[$key][1] ? ($desc ? $key : '-'.$key) : $key) : ($norm[$key][1] ? '-'.$key : $key), 'page' => null]);
 @endphp
-<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-3'.($sortSide === 'right' ? ' toolbar--sort-right' : '')]) }}>
+<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-3 max-md:gap-x-2 max-md:gap-y-3 max-md:justify-end'.($sortSide === 'right' ? ' toolbar--sort-right' : '')]) }}>
     @if ($sortSide === 'left')
     @if ($norm->isNotEmpty())
         {{-- Десктоп: select + направление --}}

@@ -498,8 +498,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (max-width: 767px) {
     .toolbar { flex-wrap: wrap; }
     .toolbar-pills .pill { padding-inline: 1.25rem; min-height: 2.75rem; }
-    .toolbar .toolbar-sort { flex: 1 1 0; min-width: 0; max-width: max-content; margin-right: auto; }
+    /* В кабинете разделы уже названы своей лентой пилюль — пилюли тулбара остаются обычными. */
+    [data-title-anchor] .toolbar-pills .pill { padding-inline: .875rem; min-height: 2.25rem; }
+    .toolbar .toolbar-sort { flex: 1 1 0; min-width: 0; max-width: max-content; margin-right: auto; padding-inline: .875rem; }
     .toolbar--sort-right .toolbar-sort { margin-right: 0; margin-left: auto; }
+    /* Кнопка с подписью, спрятанной на телефоне («+ Новый», «Из писем») — круглая, как соседи. */
+    .toolbar .btn:has(> .hidden) { width: 2.75rem; padding: 0; }
   }
   .pill {
     @apply inline-flex shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1.5 text-sm text-ink-muted transition-colors;
