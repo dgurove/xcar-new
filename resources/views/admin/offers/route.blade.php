@@ -19,7 +19,7 @@
                     </div>
                 @endforeach
                 @if ($stage->template_id)
-                    <a href="/work/mail/new?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-quiet btn-s self-start"><x-ui.icon name="send" class="size-4"/> Письмо страховой</a>
+                    <a href="/work/mail/new?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-quiet btn-s self-start"><x-ui.icon name="send" class="size-4"/> Письмо вендору</a>
                 @endif
                 @if ($staffExits->isNotEmpty())
                     <div class="flex flex-wrap gap-2">
@@ -49,7 +49,7 @@
         @endforeach
         @if ($errors->has('exit'))<p class="field-error">{{ $errors->first('exit') }}</p>@endif
 
-        @php $service = $offer->insurer?->workflow(Track::Service); $pickup = $offer->position(Track::Service); @endphp
+        @php $service = $offer->vendor?->workflow(Track::Service); $pickup = $offer->position(Track::Service); @endphp
         <div class="flex flex-wrap gap-2">
             <x-ui.button type="button" variant="ghost" size="sm" data-action="sheet#open">Поставить на этап</x-ui.button>
             @if ($service?->is_active && !$pickup && !in_array($offer->state, [\App\Offers\OfferState::Delivered, \App\Offers\OfferState::Cancelled, \App\Offers\OfferState::Archived], true))

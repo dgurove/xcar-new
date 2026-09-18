@@ -7,8 +7,11 @@ use App\Mail\CandidateState;
 use App\Mail\Direction;
 use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Extractor;
+use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Message;
+use App\Mail\Scope;
 use App\Offers\Offer;
+use App\Park\Vehicle;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -28,19 +31,19 @@ final class ExtractCandidate implements ShouldQueue
         if (! $message || $message->direction !== Direction::In) {
             return;
         }
-        $park = $message->account->scope === \App\Mail\Scope::Park;
+        $park = $message->account->scope === Scope::Park;
         $body = $message->text_body ?: $message->html_body;
-        $fields = $park ? (new \App\Mail\Extraction\ParkExtractor)->extract($message->subject, $body, $message->from_email)
-            : $extractor->extract($message->subject, $body, $message->from_email);
+        $fields = $park ? (new ParkExtractor)->extract($message->subject, $body, $message->from_email, $message->date_at)
+            : $extractor->extract($message->subject, $body, $message->from_email, $message->date_at);
         $code = Code::normalize($fields['code']['value'] ?? null);
-        if ($park ? ! \App\Mail\Extraction\ParkExtractor::looksLikeRequest($fields) : ! Extractor::looksLikeOffer($fields)) {
+        if ($park ? ! ParkExtractor::looksLikeRequest($fields) : ! Extractor::looksLikeOffer($fields)) {
             return;
         }
-        if ($code && ($park ? \App\Park\Vehicle::where('ref_key', self::key($code))->exists() : Offer::where('claim_ref_key', self::key($code))->exists())) {
+        if ($code && ($park ? Vehicle::where('ref_key', self::key($code))->exists() : Offer::where('claim_ref_key', self::key($code))->exists())) {
             return;
         }
 
-        $scope = $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers;
+        $scope = $park ? Scope::Park : Scope::Offers;
         $existing = Candidate::where('scope', $scope)->whereIn('state', [CandidateState::New, CandidateState::Rejected])
             ->where(fn ($q) => $code ? $q->where('code', $code) : $q->where('message_id', $message->id))->first();
         if (! $existing) {

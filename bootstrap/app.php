@@ -1,9 +1,9 @@
 <?php
 
 use App\Cars\Console\LearnVins;
+use App\Http\Middleware\EnsureManager;
 use App\Http\Middleware\EnsurePurchases;
 use App\Http\Middleware\EnsureSection;
-use App\Http\Middleware\EnsureManager;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\MarkInstalled;
 use App\Http\Middleware\PeekBack;
@@ -17,14 +17,14 @@ use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
 use App\Mail\Console\WatchMail;
 use App\Media\Console\MovePapers;
-use App\Offers\Console\TickOffers;
 use App\Media\Console\Restamp;
+use App\Offers\Console\TickOffers;
 use App\Push\Console\MakeKeys;
 use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
 use App\Telegram\Console\Poll;
 use App\Users\Console\CreateUser;
-use App\Workflow\Console\RefillInsurers;
+use App\Workflow\Console\RefillVendors;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -39,7 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         CreateUser::class,
         TickOffers::class,
-        RefillInsurers::class,
+        RefillVendors::class,
         SyncMail::class,
         WatchMail::class,
         ReconcileMail::class,

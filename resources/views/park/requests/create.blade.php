@@ -18,7 +18,8 @@
                     <x-ui.field name="plate" label="Госномер" autocapitalize="characters"/>
                     <x-ui.vin/>
                     <x-ui.field name="color" label="Цвет"/>
-                    <x-ui.field name="client_id" label="Заказчик" :options="$clients" placeholder="—"/>
+                    <x-ui.field name="vendor_id" label="Заказчик" :options="$vendors" placeholder="—"/>
+                    <x-ui.field name="category" label="Категория" :options="$categories" placeholder="—"/>
                 </div>
             </x-ui.card>
         @else

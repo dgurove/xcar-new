@@ -40,7 +40,7 @@
             <tr><th>VIN</th><td>{{ $vehicle->vin ?? '—' }}</td></tr>
             <tr><th>Гос. номер</th><td>{{ $vehicle->plate ?? '—' }}</td></tr>
             <tr><th>Цвет</th><td>{{ $vehicle->color ?? '—' }}</td></tr>
-            <tr><th>Заказчик</th><td>{{ $vehicle->client?->name ?? '—' }}</td></tr>
+            <tr><th>Заказчик</th><td>{{ $vehicle->vendor?->name ?? '—' }}</td></tr>
             <tr><th>Стоянка</th><td>{{ trim(($vehicle->yard?->name ?? '—').', '.($vehicle->yard?->address ?? ''), ' ,') }}</td></tr>
             <tr><th>Принят на хранение</th><td>{{ $vehicle->accepted_at?->format('d.m.Y H:i') ?? '—' }}</td></tr>
             @unless ($intake)

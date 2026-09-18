@@ -8,7 +8,6 @@ use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
-use App\Purchases\Purchase;
 use App\Support\ListContext;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -55,24 +54,20 @@ class CatalogController
         $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
         $states = $gallery ? [OfferState::Gallery] : [OfferState::Open];
 
-        // Три счётчика на каждый запрос списка — полминуты в кэше, слабому серверу легче.
+        // Счётчики на каждый запрос списка — полминуты в кэше, слабому серверу легче.
         // Сотруднику — общие; менеджеру и покупателю выдача своя, считаем по ней и без кэша: после «Показать…» число должно сойтись сразу.
         $counts = $user?->isStaff()
             ? Cache::remember('catalog.counts', 30, fn () => [
                 'offers' => Offer::where('state', OfferState::Open)->count(),
                 'gallery' => Offer::where('state', OfferState::Gallery)->count(),
-                // Закупок на витрине столько, сколько карточек: одна присланная — две (легковые и грузовые).
-                'purchases' => count(Purchase::showcase(null)),
                 'recommended' => Offer::where('state', OfferState::Open)->where('recommended', true)->count(),
                 'recommended_gallery' => Offer::where('state', OfferState::Gallery)->where('recommended', true)->count(),
             ])
             : [
                 'offers' => Offer::visibleTo($user)->where('state', OfferState::Open)->count(),
                 'gallery' => $user?->role->canSeeGallery() ? Offer::visibleTo($user)->where('state', OfferState::Gallery)->count() : 0,
-                'purchases' => $user?->role->canSeePurchases() ? count(Purchase::showcase($user)) : 0,
                 'recommended' => Offer::visibleTo($user)->whereIn('state', $states)->where('recommended', true)->count(),
             ];
-        $counts['purchases'] = $user?->role->canSeePurchases() ? $counts['purchases'] : 0;
         // «Рекомендуем» — сколько отмеченных в этом разделе: пилюля с числом, без отмеченных пилюли нет.
         $recommended = $counts[$gallery && $user?->isStaff() ? 'recommended_gallery' : 'recommended'] ?? 0;
 

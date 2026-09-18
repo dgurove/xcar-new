@@ -2,12 +2,12 @@
     use App\Workflow\{Track, WaitsFor, DeadlineSource, Asks, Actor};
     use App\Offers\{OfferState, CarPlace};
     $w = $workflow;
-    $back = "/settings/insurers/{$w->insurer_id}?track={$w->track->value}";
+    $back = "/settings/vendors/{$w->vendor_id}?pill=routes&track={$w->track->value}";
     $m = $stage->limit_minutes;
     [$limitValue, $limitUnit] = $m === null ? [null, 'hours'] : ($m % 1440 === 0 ? [$m / 1440, 'days'] : ($m % 60 === 0 ? [$m / 60, 'hours'] : [$m, 'minutes']));
     $types = ['text' => 'Строка', 'number' => 'Число', 'date' => 'Дата', 'textarea' => 'Текст'];
 @endphp
-<x-ui.cabinet :title="$stage->exists ? $stage->name : 'Новый этап'" :back="[$w->insurer->name, $back]">
+<x-ui.cabinet :title="$stage->exists ? $stage->name : 'Новый этап'" :back="[$w->vendor->name, $back]">
     <h2 class="text-xl">{{ $stage->exists ? $stage->name : 'Новый этап' }}</h2>
     <form method="post" action="{{ $stage->exists ? '/settings/workflows/stages/'.$stage->id : '/settings/workflows/'.$w->id.'/stages' }}" id="stage-form" class="flex flex-col gap-4">
         @csrf @if ($stage->exists) @method('put') @endif
@@ -69,7 +69,7 @@
         </x-ui.card>
 
         @if ($templates->isNotEmpty())
-        <x-ui.card title="Письмо страховой">
+        <x-ui.card title="Письмо вендору">
             <x-ui.field name="template_id" label="Шаблон" :options="$templates" placeholder="Не пишем" :value="$stage->template_id"/>
         </x-ui.card>
         @endif

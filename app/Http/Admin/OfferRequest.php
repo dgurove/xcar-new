@@ -9,6 +9,7 @@ use App\Cars\Drive;
 use App\Cars\Fuel;
 use App\Cars\Papers;
 use App\Cars\Transmission;
+use App\Offers\Flag;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -63,7 +64,15 @@ class OfferRequest extends FormRequest
             'managers_limited' => ['boolean'],
             'managers' => ['nullable', 'array'],
             'managers.*' => ['integer', Rule::exists('users', 'id')->where('role', 'manager')],
-            'insurer_id' => ['nullable', 'exists:insurers,id'],
+            'vendor_id' => ['nullable', 'exists:vendors,id'],
+            'answer_by' => ['nullable', 'date'],
+            'insured_name' => ['nullable', 'string', 'max:80'],
+            'insured_phone' => ['nullable', 'string', 'max:20'],
+            'flags' => ['nullable', 'array'],
+            'flags.*' => ['string', Rule::enum(Flag::class)],
+            'holder' => ['nullable', 'string', 'max:80'],
+            'contact_name' => ['nullable', 'string', 'max:80'],
+            'contact_email' => ['nullable', 'email', 'max:120'],
             'claim_ref' => ['nullable', 'string', 'max:60'],
             'insurer_deadline_at' => ['nullable', 'date'],
         ];
@@ -85,6 +94,7 @@ class OfferRequest extends FormRequest
         $data['managers'] = array_values(array_map('intval', $data['managers'] ?? []));
         $data['damage_zones'] = $data['damage_zones'] ?? [];
         $data['tags'] = array_values(array_filter($data['tags'] ?? []));
+        $data['flags'] = array_values(array_filter($data['flags'] ?? []));
         $data['prices_include_vat'] = $this->boolean('prices_include_vat');
         foreach (['is_runnable', 'has_keys'] as $tri) {
             $data[$tri] = $this->filled($tri) ? $this->boolean($tri) : null;

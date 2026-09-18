@@ -49,7 +49,7 @@ final class Nav
                 self::item('ТС', '/cars'),
                 self::item('Стоянки', '/yards'),
                 self::item('Почта', '/mail'),
-                self::item('Клиенты', '/clients', tab: false),
+                self::item('Вендоры', '/clients', tab: false),
             ];
         }
 
@@ -170,7 +170,7 @@ final class Nav
         if ($surface === Surface::Park) {
             return ['' => [
                 self::link('Профиль', '/account', exact: true),
-                self::link('Клиенты', '/clients'),
+                self::link('Вендоры', '/clients'),
                 self::link('Уведомления', '/account/notifications'),
                 self::link('Шаблоны', Surface::Crm->url('/settings/templates')),
             ]];
@@ -182,7 +182,8 @@ final class Nav
                 '' => [
                     self::link('Профиль', '/settings', exact: true),
                     ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users')] : []),
-                    self::link('Страховые', '/settings/insurers'),
+                    self::link('Вендоры', '/settings/vendors'),
+                    self::link('Тарифы', '/settings/tariffs'),
                     self::link('Ящики', '/settings/mailboxes'),
                     self::link('Шаблоны', '/settings/templates'),
                     self::link('Метки', '/settings/tags'),

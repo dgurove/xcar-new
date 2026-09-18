@@ -37,6 +37,8 @@ class VehicleEvent extends Model
             EventType::Released => 'Выдана',
             EventType::Note => (string) ($p['text'] ?? ''),
             EventType::Updated => 'Изменена: '.implode(', ', $p['fields'] ?? []),
+            EventType::DocSent => 'Отправлено вендору: '.($p['doc'] ?? ''),
+            EventType::DocBack => 'Снята отметка: '.($p['doc'] ?? ''),
         };
     }
 }

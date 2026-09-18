@@ -2,6 +2,7 @@
 
 namespace App\Purchases;
 
+use App\Cars\Category;
 use App\Cars\HasLabels;
 use Illuminate\Support\Str;
 
@@ -24,6 +25,17 @@ enum Kind: string
             self::Truck => 'Грузовые',
             self::Special => 'Спецтехника',
             self::Other => 'Прочее',
+        };
+    }
+
+    /** Категория прайса стоянки. */
+    public function category(): Category
+    {
+        return match ($this) {
+            self::Light => Category::Light,
+            self::Truck => Category::Truck,
+            self::Special => Category::Special,
+            default => Category::Passenger,
         };
     }
 

@@ -24,6 +24,7 @@ use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Vendors\ContactRole;
 use Illuminate\Http\Request;
 
 /** Почта в админке: ветки, письмо, ответ. Ящики — по scope поверхности. */
@@ -95,13 +96,22 @@ class MailController
         $parent = null;
         $values = [];
         if ($offer) {
-            $values = self::placeholders($offer) + ['to' => $offer->insurer?->email ?? ''];
+            // Адресат — ответственный по убытку, иначе контакт вендора по реализации или убыткам; кого он держит в копии — в cc.
+            $offer->loadMissing('vendor.contacts');
+            $values = self::placeholders($offer) + [
+                'to' => $offer->contact_email ?? $offer->vendor?->email(ContactRole::Sales, ContactRole::Claims) ?? '',
+                'cc' => implode(', ', $offer->vendor?->ccEmails() ?? []),
+            ];
+            if (! $request->query('yashchik') && $offer->vendor?->mail_account_id) {
+                $account = $accounts->firstWhere('id', $offer->vendor->mail_account_id) ?? $account;
+            }
         }
         if ($vehicle) {
             // Письмо о машине отвечает в ту ветку, которой приехала заявка.
             $thread = Thread::where('vehicle_id', $vehicle->id)->orderByDesc('last_message_at')->first();
             $parent = $thread?->messages()->where('direction', Direction::In)->orderByDesc('date_at')->first();
-            $values = self::vehiclePlaceholders($vehicle) + ['to' => $parent?->replyToAddress() ?? $vehicle->client?->email() ?? ''];
+            $vehicle->loadMissing('vendor.contacts');
+            $values = self::vehiclePlaceholders($vehicle) + ['to' => $parent?->replyToAddress() ?? $vehicle->vendor?->email(ContactRole::Storage, ContactRole::Claims) ?? ''];
         }
         $defaults = $composer->fresh($account, $template, $values);
         if ($parent) {
@@ -266,7 +276,7 @@ class MailController
     /** Подстановки шаблона из оффера. */
     public static function placeholders(Offer $offer): array
     {
-        $offer->loadMissing(['brand', 'model', 'insurer', 'deal.buyer']);
+        $offer->loadMissing(['brand', 'model', 'vendor', 'deal.buyer']);
 
         return [
             'number' => $offer->number,
@@ -275,7 +285,7 @@ class MailController
             'claim_ref' => $offer->claim_ref ?? '',
             'price' => $offer->deal?->amount ? number_format($offer->deal->amount, 0, '', ' ').' ₽' : ($offer->asking_price ? number_format($offer->asking_price, 0, '', ' ').' ₽' : ''),
             'manager' => $offer->deal?->buyer?->name ?? '',
-            'insurer' => $offer->insurer?->name ?? '',
+            'insurer' => $offer->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),
         ];
     }
@@ -283,7 +293,7 @@ class MailController
     /** Подстановки шаблона из машины на стоянке. */
     public static function vehiclePlaceholders(Vehicle $vehicle): array
     {
-        $vehicle->loadMissing(['brand', 'model', 'client', 'yard']);
+        $vehicle->loadMissing(['brand', 'model', 'vendor', 'yard']);
 
         return [
             'ref' => $vehicle->ref ?? '',
@@ -295,7 +305,7 @@ class MailController
             'date' => ($vehicle->released_at ?? $vehicle->accepted_at)?->format('d.m.Y') ?? now()->format('d.m.Y'),
             'days' => (string) ($vehicle->daysStored() ?? ''),
             'damages' => $vehicle->damages() ? implode(', ', $vehicle->damages()).($vehicle->damage_note ? '. '.$vehicle->damage_note : '') : 'не обнаружены',
-            'client' => $vehicle->client?->name ?? '',
+            'client' => $vehicle->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),
         ];
     }

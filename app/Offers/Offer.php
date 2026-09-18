@@ -15,7 +15,7 @@ use App\Mail\Extraction\Code;
 use App\Media\HasPhotos;
 use App\Users\Role;
 use App\Users\User;
-use App\Workflow\Insurer;
+use App\Vendors\Vendor;
 use App\Workflow\Position;
 use App\Workflow\Requirement;
 use App\Workflow\Stage;
@@ -35,7 +35,8 @@ use Spatie\MediaLibrary\HasMedia;
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
     'incident_date', 'description', 'settlement_id', 'inspection_address', 'floor_price', 'publish_price',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'bids_close_at', 'sort_weight',
-    'chat_enabled', 'share_locked', 'managers_limited', 'recommended', 'insurer_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
+    'chat_enabled', 'share_locked', 'managers_limited', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
+    'answer_by', 'insured_name', 'insured_phone', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
 ])]
 class Offer extends Model implements HasMedia
 {
@@ -49,6 +50,9 @@ class Offer extends Model implements HasMedia
             'state' => OfferState::class,
             'car_place' => CarPlace::class,
             'insurer_deadline_at' => 'date',
+            'answer_by' => 'datetime',
+            'flags' => 'array',
+            'docs_required' => 'array',
             'body' => Body::class,
             'transmission' => Transmission::class,
             'drive' => Drive::class,
@@ -88,9 +92,15 @@ class Offer extends Model implements HasMedia
         $this->attributes['claim_ref_key'] = Code::key($value);
     }
 
-    public function insurer(): BelongsTo
+    public function vendor(): BelongsTo
     {
-        return $this->belongsTo(Insurer::class);
+        return $this->belongsTo(Vendor::class);
+    }
+
+    /** @return list<Flag> */
+    public function flagList(): array
+    {
+        return Flag::fromList($this->flags);
     }
 
     public function positions(): HasMany

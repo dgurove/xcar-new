@@ -4,6 +4,7 @@ namespace App\Workflow;
 
 use App\Offers\CarPlace;
 use App\Offers\OfferState;
+use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * первого блока, конец — этап без исходов. Включить можно только маршрут
  * без дыр: иначе оффер молча встал бы в тупик на живой сделке.
  */
-#[Fillable(['insurer_id', 'track', 'is_active', 'auto_start'])]
+#[Fillable(['vendor_id', 'track', 'is_active', 'auto_start'])]
 class Workflow extends Model
 {
     protected function casts(): array
@@ -23,9 +24,9 @@ class Workflow extends Model
         return ['track' => Track::class, 'is_active' => 'bool', 'auto_start' => 'bool'];
     }
 
-    public function insurer(): BelongsTo
+    public function vendor(): BelongsTo
     {
-        return $this->belongsTo(Insurer::class);
+        return $this->belongsTo(Vendor::class);
     }
 
     public function blocks(): HasMany

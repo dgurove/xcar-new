@@ -33,7 +33,7 @@ class RouteController
     public function place(Request $request, Offer $offer, PlaceOnStage $place)
     {
         $stage = Stage::findOrFail($request->validate(['stage_id' => ['required', 'integer']])['stage_id']);
-        abort_unless($stage->workflow->insurer_id === $offer->insurer_id, 403);
+        abort_unless($stage->workflow->vendor_id === $offer->vendor_id, 403);
         $place($offer, $stage, $request->user());
 
         return redirect("/offers/{$offer->number}")->with('toast', 'Поставлен на «'.$stage->name.'»');
@@ -42,7 +42,7 @@ class RouteController
     /** Вывоз по решению сотрудника — там, где он исключение, а не правило. */
     public function pickup(Request $request, Offer $offer, StartRoute $start)
     {
-        $start($offer->load('insurer.workflows'), $request->user(), Track::Service);
+        $start($offer->load('vendor.workflows'), $request->user(), Track::Service);
 
         return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз запущен');
     }

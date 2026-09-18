@@ -40,7 +40,7 @@
     <div class="card-extra">
         @if ($vehicle->ref)<span class="tag">{{ $vehicle->ref }}</span>@endif
         <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
-        @if ($vehicle->client)<span class="tag">{{ $vehicle->client->name }}</span>@endif
+        @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
         @if ($state === \App\Park\VehicleState::Released && $vehicle->released_at)<span class="nums text-sm font-normal text-ink-dim">выдана {{ $vehicle->released_at->translatedFormat('j M Y') }}</span>@endif
         {{ $slot }}
     </div>

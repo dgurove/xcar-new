@@ -10,8 +10,8 @@ use App\Workflow\Workflow;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Поставить оффер на маршруты его страховой. Ветка, на которой оффер уже
- * стоит, не трогается: смена страховой не отматывает сделанную работу.
+ * Поставить оффер на маршруты его вендора. Ветка, на которой оффер уже
+ * стоит, не трогается: смена вендора не отматывает сделанную работу.
  * Без ветки запускаются только маршруты «с каждым предложением»; с веткой —
  * она одна, и по кнопке: так вывоз заводится там, где он исключение.
  */
@@ -21,15 +21,15 @@ final class StartRoute
 
     public function __invoke(Offer $offer, ?User $by = null, ?Track $track = null): Offer
     {
-        $insurer = $offer->insurer;
-        if (! $insurer || ! $insurer->is_active) {
+        $vendor = $offer->vendor;
+        if (! $vendor || ! $vendor->is_active) {
             return $offer;
         }
         foreach ($track ? [$track] : Track::cases() as $t) {
             if ($offer->position($t)) {
                 continue;
             }
-            $workflow = $insurer->workflow($t);
+            $workflow = $vendor->workflow($t);
             if (! $workflow?->is_active || (! $track && ! $workflow->auto_start) || ! ($start = $this->entry($offer, $workflow))) {
                 continue;
             }
@@ -41,7 +41,7 @@ final class StartRoute
 
     /**
      * Куда встать: на продаже — на первый этап своего состояния, иначе на
-     * начало. Страховую могут назначить уже опубликованному предложению, и
+     * начало. Вендора могут назначить уже опубликованному предложению, и
      * стартовый черновик вернул бы его с витрины.
      */
     private function entry(Offer $offer, Workflow $workflow): ?Stage

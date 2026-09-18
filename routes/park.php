@@ -35,6 +35,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/media/{media}/rotate', [VehicleController::class, 'rotateMedia']);
     Route::delete('/cars/{vehicle}/media/{media}', [VehicleController::class, 'destroyMedia']);
     Route::post('/cars/{vehicle}/note', [VehicleController::class, 'note']);
+    Route::post('/cars/{vehicle}/docs', [VehicleController::class, 'doc']);
     Route::post('/cars/{vehicle}/move', [VehicleController::class, 'move']);
     Route::post('/cars/{vehicle}/release', [VehicleController::class, 'release']);
     Route::get('/reference/cars', [VehicleController::class, 'suggest']);

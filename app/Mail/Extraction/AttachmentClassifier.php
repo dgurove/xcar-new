@@ -33,6 +33,37 @@ final class AttachmentClassifier
         return ['photos' => $photos, 'documents' => $documents, 'archives' => $archives];
     }
 
+    /** Что за документ по имени файла: договор, акт, оценка, СТС, ПТС, соглашение, осмотр. Не распознан — null. */
+    public static function kindOf(?string $filename): ?string
+    {
+        $name = mb_strtolower(str_replace('ё', 'е', (string) $filename));
+        foreach ([
+            'contract' => ['договор'],
+            'act' => ['акт прием', 'акт приём', 'акт п/п', 'акт_прием', 'акт_приём', 'акт-прием', 'приема-передачи', 'приёма-передачи', 'приема_передачи'],
+            'inspection' => ['акт осмотра', 'акт_осмотра', 'осмотр'],
+            'valuation' => ['оценк', 'оценко', 'протокол', 'аукцион', 'торг'],
+            'agreement' => ['соглашени'],
+            'sts' => ['стс', 'свидетельств'],
+            'pts' => ['птс', 'эптс', 'паспорт тс', 'электронного паспорта', 'elektronnogo pasporta'],
+        ] as $kind => $markers) {
+            foreach ($markers as $marker) {
+                if (str_contains($name, $marker)) {
+                    return $kind;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public static function kindLabel(?string $kind): ?string
+    {
+        return match ($kind) {
+            'contract' => 'Договор', 'act' => 'Акт п/п', 'inspection' => 'Акт осмотра', 'valuation' => 'Оценка',
+            'agreement' => 'Соглашение', 'sts' => 'СТС', 'pts' => 'ПТС', default => null,
+        };
+    }
+
     private function looksLikeDocument(string $filename): bool
     {
         foreach (self::DOCUMENT_MARKERS as $marker) {

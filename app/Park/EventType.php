@@ -12,4 +12,6 @@ enum EventType: string
     case Released = 'released';
     case Note = 'note';
     case Updated = 'updated';
+    case DocSent = 'doc_sent';
+    case DocBack = 'doc_back';
 }

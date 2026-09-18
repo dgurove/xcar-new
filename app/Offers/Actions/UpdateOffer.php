@@ -46,8 +46,8 @@ final class UpdateOffer
             Position::where('offer_id', $offer->id)->whereHas('stage', fn ($s) => $s->where('deadline_source', DeadlineSource::InsurerDeadline))
                 ->update(['deadline_at' => $offer->insurer_deadline_at?->copy()->endOfDay(), 'reminded_at' => null, 'overdue_at' => null]);
         }
-        if ($offer->insurer_id) {
-            $offer = ($this->startRoute)($offer->load('insurer.workflows'), $by);
+        if ($offer->vendor_id) {
+            $offer = ($this->startRoute)($offer->load('vendor.workflows'), $by);
         }
 
         return $offer;

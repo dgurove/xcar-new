@@ -2,47 +2,26 @@
 
 namespace App\Mail\Extraction;
 
-use App\Mail\Extraction\Templates\Energogarant;
 use App\Mail\Extraction\Templates\Generic;
-use App\Mail\Extraction\Templates\Insight;
-use App\Mail\Extraction\Templates\Sovcombank;
 use App\Mail\Extraction\Templates\Template;
-use App\Mail\Extraction\Templates\Tinkoff;
+use App\Vendors\Vendor;
 
-/** Машина из письма: настоящий отправитель → домен → шаблон страховой. */
+/** Машина из письма: настоящий отправитель → вендор по адресу или домену → его шаблон разбора. */
 final class Extractor
 {
-    private const TEMPLATES = [
-        'tinsurance.ru' => Tinkoff::class,
-        'tinkoffinsurance.ru' => Tinkoff::class,
-        'sovcomins.ru' => Sovcombank::class,
-        'msk-garant.ru' => Energogarant::class,
-        'energogarant.ru' => Energogarant::class,
-        'insightins.ru' => Insight::class,
-    ];
-
-    /** Домен → название страховой в справочнике, чтобы кандидат сразу знал её. */
-    private const INSURERS = [
-        'tinsurance.ru' => 'Т-Страхование',
-        'tinkoffinsurance.ru' => 'Т-Страхование',
-        'sovcomins.ru' => 'Совкомбанк Страхование',
-        'msk-garant.ru' => 'Энергогарант',
-        'energogarant.ru' => 'Энергогарант',
-        'insightins.ru' => 'ИНСАЙТ',
-        'alfastrah.ru' => 'АльфаСтрахование',
-    ];
-
-    public function extract(?string $subject, ?string $body, ?string $fromEmail = null): array
+    public function extract(?string $subject, ?string $body, ?string $fromEmail = null, ?\DateTimeInterface $on = null): array
     {
         $text = QuotationStripper::strip($body);
         $sender = QuotationStripper::forwardedSender($body) ?? $fromEmail;
-        $domain = $sender ? mb_strtolower((string) preg_replace('/.*@/u', '', $sender)) : '';
-        $class = self::TEMPLATES[$domain] ?? Generic::class;
+        $vendor = Vendor::forSender($sender);
+        $class = $vendor?->parser?->templateClass() ?? Generic::class;
         /** @var Template $template */
         $template = new $class;
         $fields = $template->extract(trim((string) $subject), $text);
-        if (isset(self::INSURERS[$domain])) {
-            $fields['insurer'] = ['value' => self::INSURERS[$domain], 'source' => 'sender'];
+        $fields += Template::common(trim((string) $subject), $text, $on);
+        if ($vendor) {
+            $fields['vendor_id'] = ['value' => $vendor->id, 'source' => 'sender'];
+            $fields['vendor'] = ['value' => $vendor->name, 'source' => 'sender'];
         }
         $fields['sender'] = ['value' => $sender, 'source' => 'sender'];
 

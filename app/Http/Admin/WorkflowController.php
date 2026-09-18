@@ -28,7 +28,7 @@ class WorkflowController
 {
     private function back(Workflow $workflow): string
     {
-        return "/settings/insurers/{$workflow->insurer_id}?track={$workflow->track->value}";
+        return "/settings/vendors/{$workflow->vendor_id}?pill=routes&track={$workflow->track->value}";
     }
 
     public function activate(Request $request, Workflow $workflow, RevalidateWorkflow $revalidate)
@@ -124,7 +124,7 @@ class WorkflowController
     {
         $workflow->load('blocks.stages');
 
-        return view('admin.insurers.stage', [
+        return view('admin.vendors.stage', [
             'workflow' => $workflow,
             'stage' => $stage,
             'targets' => $workflow->blocks->flatMap(fn (Block $b) => $b->stages->map(fn (Stage $s) => [$s->id, $b->name.' › '.$s->name]))->mapWithKeys(fn ($p) => [$p[0] => $p[1]])->all(),

@@ -4,17 +4,23 @@ namespace App\Park;
 
 use App\Cars\Brand;
 use App\Cars\CarModel;
+use App\Cars\Category;
 use App\Cars\DamageZone;
+use App\Mail\Extraction\Code;
 use App\Media\HasPhotos;
+use App\Offers\Flag;
 use App\Offers\Offer;
 use App\Users\User;
+use App\Vendors\DocRequirement;
+use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
 
-#[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'client_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id'])]
+#[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id',
+    'contact_name', 'contact_phone', 'flags', 'docs_required', 'docs_done', 'value'])]
 class Vehicle extends Model implements HasMedia
 {
     use HasPhotos;
@@ -23,7 +29,8 @@ class Vehicle extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['state' => VehicleState::class, 'damage_zones' => 'array', 'accepted_at' => 'datetime', 'released_at' => 'datetime', 'year' => 'int'];
+        return ['state' => VehicleState::class, 'category' => Category::class, 'oversize' => 'bool', 'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array', 'docs_done' => 'array',
+            'accepted_at' => 'datetime', 'released_at' => 'datetime', 'year' => 'int'];
     }
 
     public function setRefAttribute(?string $value): void
@@ -45,7 +52,7 @@ class Vehicle extends Model implements HasMedia
 
     public static function keyFor(string $ref): string
     {
-        return (string) \App\Mail\Extraction\Code::key($ref);
+        return (string) Code::key($ref);
     }
 
     public function brand(): BelongsTo
@@ -58,9 +65,28 @@ class Vehicle extends Model implements HasMedia
         return $this->belongsTo(CarModel::class, 'model_id');
     }
 
-    public function client(): BelongsTo
+    public function vendor(): BelongsTo
     {
-        return $this->belongsTo(Client::class, 'client_id');
+        return $this->belongsTo(Vendor::class);
+    }
+
+    /** @return list<Flag> */
+    public function flagList(): array
+    {
+        return Flag::fromList($this->flags);
+    }
+
+    /** Что вендор ждёт после приёма: своё у машины, иначе правило вендора. @return list<DocRequirement> */
+    public function docsRequired(): array
+    {
+        $values = $this->docs_required ?: ($this->vendor?->intake_docs ?? []);
+
+        return array_values(array_filter(array_map(fn ($v) => DocRequirement::tryFrom((string) $v), $values)));
+    }
+
+    public function docDone(DocRequirement $doc): bool
+    {
+        return in_array($doc->value, $this->docs_done ?? [], true);
     }
 
     public function yard(): BelongsTo

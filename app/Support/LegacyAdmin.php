@@ -13,7 +13,7 @@ final class LegacyAdmin
         'zakupki' => '/purchases',
         'stavki' => '/?preset=bids',
         'interesy' => '/interests',
-        'strahovye' => '/settings/insurers',
+        'strahovye' => '/settings/vendors',
         'marshruty' => '/settings/workflows',
         'kandidaty' => '/offers/from-mail',
         'galereya' => '/gallery',

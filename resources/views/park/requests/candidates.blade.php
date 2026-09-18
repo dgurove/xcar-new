@@ -12,7 +12,7 @@
                     <div class="min-w-0">
                         <div class="text-lg leading-snug">{{ $c->code ?: ($c->subject ?: 'Письмо') }}</div>
                         <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                            @if ($v('sender'))<span class="tag">{{ $v('sender') }}</span>@endif
+                            @if ($v('vendor') ?? $v('sender'))<span class="tag">{{ $v('vendor') ?? $v('sender') }}</span>@endif
                             <span class="tag nums">{{ $c->created_at->translatedFormat('j M, H:i') }}</span>
                         </div>
                         @if ($c->code && $c->subject)<div class="mt-1 truncate text-sm">{{ $c->subject }}</div>@endif
@@ -21,7 +21,9 @@
                         @if ($v('brand'))<span class="chip">{{ $v('brand') }} {{ $v('model') }}</span>@endif
                         <x-ui.vin-code :vin="$v('vin')" class="chip"/>
                         @if ($v('plate'))<span class="chip">{{ $v('plate') }}</span>@endif
-                        @foreach ((array) $v('phones') as $phone)<a href="tel:{{ preg_replace('/\D/', '', $phone) }}" class="chip text-accent-text">{{ $phone }}</a>@endforeach
+                        @foreach ((array) $v('phones') as $phone)@if ($phone !== $v('insured_phone'))<a href="tel:{{ preg_replace('/\D/', '', $phone) }}" class="chip text-accent-text">{{ $phone }}</a>@endif @endforeach
+                        @if ($v('value'))<span class="chip nums">{{ \App\Support\Money::rub($v('value')) }}</span>@endif
+                        <x-mail.candidate-facts :v="$v"/>
                         @if ($files->isNotEmpty())<span class="chip"><x-ui.icon name="clip" class="size-3.5"/> {{ $files->count() }}</span>@endif
                     </div>
                     <div class="mt-auto flex flex-wrap items-center gap-2">

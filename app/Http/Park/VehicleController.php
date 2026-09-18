@@ -2,6 +2,7 @@
 
 namespace App\Http\Park;
 
+use App\Cars\Category;
 use App\Cars\DamageZone;
 use App\Live\Stream;
 use App\Mail\Scope;
@@ -9,16 +10,20 @@ use App\Mail\Template;
 use App\Mail\Thread;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
+use App\Park\Actions\MarkDoc;
 use App\Park\Actions\Move;
 use App\Park\Actions\Release;
 use App\Park\Actions\UpdateVehicle;
-use App\Park\Client;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Vendors\DocRequirement;
+use App\Vendors\Tariff;
+use App\Vendors\TariffService;
+use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -35,7 +40,7 @@ class VehicleController
         ListPrefs::sync($request, 'park-vehicles');
         $preset = $request->query('preset', 'stored');
         $q = trim((string) $request->query('q'));
-        $vehicles = Vehicle::query()->with(['brand', 'model', 'client', 'yard', 'media'])
+        $vehicles = Vehicle::query()->with(['brand', 'model', 'vendor', 'yard', 'media'])
             ->when(VehicleState::tryFrom($preset), fn ($v, $s) => $v->where('state', $s))
             ->when($request->query('stoyanka'), fn ($v, $y) => $v->where('yard_id', $y))
             ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
@@ -55,19 +60,21 @@ class VehicleController
     /** Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка. */
     public function peek(Vehicle $vehicle)
     {
-        $vehicle->load(['brand', 'model', 'client', 'yard', 'media', 'requests.yard', 'events.user']);
+        $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user']);
 
         return view('park.vehicles.peek', ['vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id')]);
     }
 
     public function show(Vehicle $vehicle)
     {
-        $vehicle->load(['brand', 'model', 'client', 'yard', 'media', 'requests.yard', 'events.user']);
+        $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user']);
 
         return view('park.vehicles.show', [
             'vehicle' => $vehicle,
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
-            'clients' => Client::orderBy('name')->pluck('name', 'id'),
+            'vendors' => Vendor::where('is_active', true)->orWhere('id', $vehicle->vendor_id)->orderBy('name')->pluck('name', 'id'),
+            'categories' => Category::options(),
+            'storageRate' => Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
             'threads' => Thread::where('vehicle_id', $vehicle->id)->get(),
             'templates' => Template::where('scope', Scope::Park)->orderBy('name')->get(),
             'zones' => DamageZone::cases(),
@@ -79,10 +86,13 @@ class VehicleController
         $data = $request->validate([
             'ref' => ['nullable', 'string', 'max:60'], 'vin' => ['nullable', 'string', 'max:17'], 'plate' => ['nullable', 'string', 'max:12'],
             'year' => ['nullable', 'integer', 'between:1950,'.(now()->year + 1)], 'color' => ['nullable', 'string', 'max:32'],
-            'brand_id' => ['nullable', 'exists:brands,id'], 'model_id' => ['nullable', 'exists:car_models,id'], 'client_id' => ['nullable', 'exists:park_clients,id'],
+            'brand_id' => ['nullable', 'exists:brands,id'], 'model_id' => ['nullable', 'exists:car_models,id'], 'vendor_id' => ['nullable', 'exists:vendors,id'],
+            'category' => ['nullable', Rule::enum(Category::class)], 'oversize' => ['boolean'],
+            'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'integer', 'min:0'],
             'damage_zones' => ['nullable', 'array'], 'damage_zones.*' => [Rule::enum(DamageZone::class)], 'damage_note' => ['nullable', 'string', 'max:2000'], 'notes' => ['nullable', 'string', 'max:5000'],
         ]);
         $data['damage_zones'] = $data['damage_zones'] ?? [];
+        $data['oversize'] = $request->boolean('oversize');
         $update($vehicle, $data, $request->user());
 
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Сохранено');
@@ -135,6 +145,15 @@ class VehicleController
         $vehicle->log(EventType::Note, $request->user(), ['text' => $data['text']]);
 
         return back()->with('toast', 'Записано');
+    }
+
+    /** Чип документа вендору — сам переключатель: отправлен / ещё нет. */
+    public function doc(Request $request, Vehicle $vehicle, MarkDoc $mark)
+    {
+        $doc = DocRequirement::from($request->validate(['doc' => ['required', Rule::enum(DocRequirement::class)]])['doc']);
+        $done = $mark($vehicle, $doc, $request->user());
+
+        return back()->with('toast', $done ? 'Отмечено' : 'Отметка снята');
     }
 
     public function move(Request $request, Vehicle $vehicle, Move $move)

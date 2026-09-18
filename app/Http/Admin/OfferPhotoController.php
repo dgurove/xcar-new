@@ -76,7 +76,7 @@ class OfferPhotoController
             ->header('Content-Type', 'text/vnd.turbo-stream.html');
     }
 
-    private static function safeName(string $name): string
+    public static function safeName(string $name): string
     {
         $ext = pathinfo($name, PATHINFO_EXTENSION);
         $base = trim(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', pathinfo($name, PATHINFO_FILENAME)), '-.') ?: 'dokument';

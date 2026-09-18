@@ -1,8 +1,13 @@
-@php use App\Park\{VehicleState, RequestType}; $photos = $vehicle->visiblePhotos(); @endphp
+@php use App\Park\{VehicleState, RequestType}; use App\Support\Money; $photos = $vehicle->visiblePhotos(); $docs = $vehicle->docsRequired(); @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" :back="['ТС', '/cars']" cache="no-cache">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-park.state :vehicle="$vehicle"/>
         @if ($vehicle->ref)<span class="chip">{{ $vehicle->ref }}</span>@endif
+        @if ($vehicle->category)<span class="chip">{{ $vehicle->category->label() }}</span>@endif
+        @if ($vehicle->oversize)<span class="chip">Негабарит</span>@endif
+        @foreach ($vehicle->flagList() as $flag)<span class="chip">{{ $flag->label() }}</span>@endforeach
+        @if ($storageRate)<span class="chip nums">{{ $storageRate }}</span>@endif
+        @if ($vehicle->contact_phone)<a href="tel:+{{ preg_replace('/\D+/', '', $vehicle->contact_phone) }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->contact_name ? \Illuminate\Support\Str::of($vehicle->contact_name)->explode(' ')->first().' ' : '' }}{{ $vehicle->contact_phone }}</a>@endif
         @if ($threads->count())<x-ui.pill tone="plain" :href="$threads->count() === 1 ? '/mail/'.$threads->first()->id : '/mail?preset=linked&q='.urlencode($vehicle->ref ?? '')" class="!min-h-0 !py-1 text-xs"><x-ui.icon name="mail" class="size-4"/> {{ $threads->count() === 1 ? 'Письмо' : 'Писем: '.$threads->count() }}</x-ui.pill>@endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <x-ui.sheet id="vehicle-actions" title="Транспортное средство">
@@ -39,13 +44,18 @@
             <x-ui.card title="Транспортное средство" class="order-1">
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
                     <x-ui.field name="ref" label="Номер убытка" :value="$vehicle->ref" span="col-span-2 lg:col-span-1"/>
-                    <x-ui.field name="client_id" label="Заказчик" :options="$clients" placeholder="—" :value="$vehicle->client_id"/>
+                    <x-ui.field name="vendor_id" label="Заказчик" :options="$vendors" placeholder="—" :value="$vehicle->vendor_id"/>
                     <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$vehicle->brand_id" :text="$vehicle->brand?->name" resets="#cb-model_id"/>
                     <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="$vehicle->model_id" :text="$vehicle->model?->name"/>
                     <x-ui.field name="year" label="Год" inputmode="numeric" :value="$vehicle->year"/>
                     <x-ui.field name="plate" label="Госномер" :value="$vehicle->plate" autocapitalize="characters"/>
                     <x-ui.vin :value="$vehicle->vin" span="col-span-2 lg:col-span-1"/>
                     <x-ui.field name="color" label="Цвет" :value="$vehicle->color"/>
+                    <x-ui.field name="category" label="Категория" :options="$categories" placeholder="—" :value="$vehicle->category?->value"/>
+                    <x-ui.field name="value" label="Оценка, ₽" :value="$vehicle->value" inputmode="numeric"/>
+                    <x-ui.field name="contact_name" label="Страхователь" :value="$vehicle->contact_name"/>
+                    <x-ui.field name="contact_phone" label="Телефон" type="tel" :value="$vehicle->contact_phone"/>
+                    <x-ui.check name="oversize" :checked="$vehicle->oversize" class="self-end">Негабарит</x-ui.check>
                 </div>
             </x-ui.card>
             <x-ui.card title="Осмотр" class="order-1">
@@ -63,6 +73,16 @@
                 </div>
             </x-ui.card>
         </form>
+        @if ($docs)
+        <x-ui.card title="Вендору после приёма" class="order-1">
+            <div class="flex flex-wrap gap-1.5">
+                @foreach ($docs as $doc)
+                    <form method="post" action="/cars/{{ $vehicle->id }}/docs" class="contents">@csrf<input type="hidden" name="doc" value="{{ $doc->value }}"><button class="chip {{ $vehicle->docDone($doc) ? 'bg-accent-soft text-accent-text' : '' }}">@if ($vehicle->docDone($doc))<x-ui.icon name="check" class="size-3.5"/>@endif {{ $doc->label() }}</button></form>
+                @endforeach
+            </div>
+            @if ($vehicle->vendor?->intake_note)<p class="mt-3 text-sm text-ink-muted">{{ $vehicle->vendor->intake_note }}</p>@endif
+        </x-ui.card>
+        @endif
 
         <x-ui.card title="Фотографии" class="order-2 lg:col-span-2" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
             <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">

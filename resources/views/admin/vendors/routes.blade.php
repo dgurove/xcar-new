@@ -1,33 +1,13 @@
+{{-- Маршруты вендора по веткам: редактор блоков и этапов, заготовки для пустого маршрута. --}}
 @php
     use App\Workflow\{Track, WaitsFor, Actor};
     $w = $workflow;
-    $base = "/settings/insurers/{$insurer->id}";
 @endphp
-<x-ui.cabinet :title="$insurer->name">
-    <div class="flex flex-wrap items-center gap-2" data-controller="sheet">
-        <h2 class="mr-auto text-xl">{{ $insurer->name }}</h2>
-        @unless ($insurer->is_active)<x-ui.pill tone="closed">выключена</x-ui.pill>@endunless
-        <x-ui.button type="button" variant="secondary" size="sm" data-action="sheet#open">Реквизиты</x-ui.button>
-        <x-ui.sheet id="insurer-form" title="Страховая" :open="$errors->hasAny(['name', 'email', 'phone'])">
-            <form method="post" action="{{ $base }}" class="flex flex-col gap-4">
-                @csrf @method('put')
-                <x-ui.field name="name" label="Название" :value="$insurer->name" required/>
-                <x-ui.field name="contact_name" label="Контакт" :value="$insurer->contact_name"/>
-                <x-ui.field name="phone" label="Телефон" type="tel" :value="$insurer->phone"/>
-                <x-ui.field name="email" label="Почта" type="email" :value="$insurer->email"/>
-                <x-ui.field name="notes" label="Заметки" type="textarea" :value="$insurer->notes"/>
-                <x-ui.check name="is_active" :checked="$insurer->is_active">Работаем с ней</x-ui.check>
-                <x-ui.button block>Сохранить</x-ui.button>
-            </form>
-            @if (!$insurer->offers()->exists())
-                <form method="post" action="{{ $base }}" class="mt-3" data-turbo-confirm="Удалить страховую?">@csrf @method('delete')<x-ui.button variant="danger" block>Удалить</x-ui.button></form>
-            @endif
-        </x-ui.sheet>
-        <div class="flex w-full gap-2">
-            @foreach (Track::cases() as $t)
-                <x-ui.pill :href="$base.'?track='.$t->value" :current="$track === $t">{{ $t->label() }}</x-ui.pill>
-            @endforeach
-        </div>
+<div class="flex flex-col gap-4">
+    <div class="flex w-full gap-2">
+        @foreach (Track::cases() as $t)
+            <x-ui.pill :href="$base.'?pill=routes&track='.$t->value" :current="$track === $t">{{ $t->label() }}</x-ui.pill>
+        @endforeach
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
@@ -127,4 +107,4 @@
             </form>
         </x-ui.sheet>
     </div>
-</x-ui.cabinet>
+</div>

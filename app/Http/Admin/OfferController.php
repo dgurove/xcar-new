@@ -20,7 +20,7 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Users\Role;
 use App\Users\User;
-use App\Workflow\Insurer;
+use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 
 class OfferController
@@ -81,7 +81,7 @@ class OfferController
 
     public function edit(Offer $offer)
     {
-        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'events.user', 'insurer.workflows',
+        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'events.user', 'vendor.workflows',
             'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer']);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
@@ -93,8 +93,8 @@ class OfferController
             'threads' => Thread::where('offer_id', $offer->id)->get(),
             'chats' => Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'import' => ImportThreadFiles::progress($offer->id),
-            'insurers' => Insurer::where('is_active', true)->orWhere('id', $offer->insurer_id)->orderBy('name')->pluck('name', 'id'),
-            'stages' => $offer->insurer ? $offer->insurer->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
+            'vendors' => Vendor::where('is_active', true)->orWhere('id', $offer->vendor_id)->orderBy('name')->pluck('name', 'id'),
+            'stages' => $offer->vendor ? $offer->vendor->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
             'tags' => Tag::orderBy('sort')->get(),
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
             'offerManagers' => $offer->managers()->pluck('users.id')->all(),

@@ -46,13 +46,13 @@ class DealController
     public function show(Deal $deal)
     {
         $deal->load(['buyer', 'bid', 'requirements.media', 'requirements.stage.block', 'offer.brand', 'offer.model', 'offer.media', 'offer.settlement',
-            'offer.insurer.workflows', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.positions.stage.workflow', 'offer.events.user']);
+            'offer.vendor.workflows', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.positions.stage.workflow', 'offer.events.user']);
         $offer = $deal->offer;
 
         return view('admin.deals.show', [
             'deal' => $deal,
             'offer' => $offer,
-            'stages' => $offer->insurer ? $offer->insurer->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
+            'stages' => $offer->vendor ? $offer->vendor->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
             'events' => $offer->events->where('created_at', '>=', $deal->created_at),
             'dealCard' => false,
         ]);

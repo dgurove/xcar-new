@@ -10,10 +10,10 @@ use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
 use App\Users\User;
-use App\Workflow\Insurer;
+use App\Vendors\Vendor;
 use Illuminate\Support\Facades\DB;
 
-/** Кандидат → черновик оффера: поля из письма, страховая по отправителю, ветка писем привязана — её файлы едут в черновик. */
+/** Кандидат → черновик оффера: поля из письма, вендор по отправителю, ветка писем привязана — её файлы едут в черновик. */
 final class PromoteCandidate
 {
     public function __construct(private CreateOffer $create, private UpdateOffer $update, private LinkThread $link) {}
@@ -24,8 +24,9 @@ final class PromoteCandidate
             $v = fn (string $f) => $candidate->value($f);
             $brand = $v('brand') ? Brand::resolve($this->clean($v('brand'))) : null;
             $model = $brand && $v('model') ? CarModel::resolve($brand, $this->clean($v('model'))) : null;
-            $insurer = $v('insurer') ? Insurer::whereRaw('lower(name) = ?', [mb_strtolower($v('insurer'))])->first()
-                ?? Insurer::whereRaw('lower(name) like ?', ['%'.mb_strtolower(explode(' ', $v('insurer'))[0]).'%'])->first() : null;
+            // Кандидаты до вендоров несли только имя страховой — старым ещё нужен поиск по нему.
+            $vendor = $v('vendor_id') ? Vendor::find($v('vendor_id')) : Vendor::forSender($v('sender'))
+                ?? ($v('insurer') ? Vendor::whereRaw('lower(name) = ?', [mb_strtolower($v('insurer'))])->first() : null);
 
             $offer = ($this->create)($by);
             ($this->update)($offer, array_filter([
@@ -42,7 +43,16 @@ final class PromoteCandidate
                 'floor_price' => $v('floor_price'),
                 'inspection_address' => $v('location'),
                 'claim_ref' => $candidate->code,
-                'insurer_id' => $insurer?->id,
+                'vendor_id' => $vendor?->id,
+                'prices_include_vat' => $v('vat') ?? $vendor?->vat_included,
+                'answer_by' => $v('answer_by'),
+                'insured_name' => $v('insured_name'),
+                'insured_phone' => $v('insured_phone'),
+                'flags' => $v('flags') ?: null,
+                'holder' => $v('holder'),
+                'docs_required' => $v('docs_required') ?: null,
+                'contact_name' => $v('contact_name') ?? $candidate->message?->from_name,
+                'contact_email' => $v('sender'),
                 'description' => $v('photos_url') ? 'Фото: '.$v('photos_url') : null,
             ], fn ($x) => $x !== null && $x !== ''), $by);
 

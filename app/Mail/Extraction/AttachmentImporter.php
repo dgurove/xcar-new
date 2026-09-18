@@ -98,7 +98,7 @@ final class AttachmentImporter
         $this->guard(fn () => $model->addMediaFromString($contents)
             ->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $document->filename) ?: 'dokument')
             ->usingName(pathinfo($document->filename, PATHINFO_FILENAME))
-            ->withCustomProperties(['sha' => $sha])
+            ->withCustomProperties(array_filter(['sha' => $sha, 'kind' => AttachmentClassifier::kindOf($document->filename)]))
             ->toMediaCollection($collection));
 
         return true;

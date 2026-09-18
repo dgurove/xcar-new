@@ -2,13 +2,13 @@
 
 namespace App\Http\Park;
 
+use App\Cars\Category;
 use App\Cars\DamageZone;
 use App\Park\Actions\CloseRequest;
 use App\Park\Actions\CreateRequest;
 use App\Park\Actions\Intake;
 use App\Park\Actions\Move;
 use App\Park\Actions\Release;
-use App\Park\Client;
 use App\Park\Request as ParkRequest;
 use App\Park\RequestState;
 use App\Park\RequestType;
@@ -16,6 +16,7 @@ use App\Park\Vehicle;
 use App\Park\Yard;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -29,14 +30,14 @@ class RequestController
         ListPrefs::sync($request, 'park-requests');
         $type = $request->query('preset', 'all');
         $done = $request->boolean('gotovye');
-        $q = ParkRequest::query()->with(['vehicle.brand', 'vehicle.model', 'vehicle.client', 'vehicle.media', 'yard'])
+        $q = ParkRequest::query()->with(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'yard'])
             ->where('state', $done ? '!=' : '=', RequestState::New);
         if ($t = RequestType::tryFrom($type)) {
             $q->where('type', $t);
         }
         $request->query('sort') === 'fresh' ? $q->latest() : $q->orderByRaw('planned_at asc nulls last')->latest();
 
-        $open = ParkRequest::where('state', RequestState::New)->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
+        $open = ParkRequest::where('state', $done ? '!=' : '=', RequestState::New)->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
         $presets = ['all' => 'Все'] + RequestType::options();
 
         return view('park.requests.index', [
@@ -54,7 +55,8 @@ class RequestController
         return view('park.requests.create', [
             'type' => RequestType::tryFrom($request->query('tip', '')) ?? RequestType::Intake,
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
-            'clients' => Client::orderBy('name')->pluck('name', 'id'),
+            'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            'categories' => Category::options(),
             'vehicle' => $request->query('mashina') ? Vehicle::find($request->query('mashina')) : null,
         ]);
     }
@@ -71,7 +73,8 @@ class RequestController
             'color' => ['nullable', 'string', 'max:32'],
             'brand_id' => ['nullable', 'exists:brands,id'],
             'model_id' => ['nullable', 'exists:car_models,id'],
-            'client_id' => ['nullable', 'exists:park_clients,id'],
+            'vendor_id' => ['nullable', 'exists:vendors,id'],
+            'category' => ['nullable', Rule::enum(Category::class)],
             'yard_id' => ['nullable', 'exists:park_yards,id'],
             'planned_at' => ['nullable', 'date'],
             'contact' => ['nullable', 'string', 'max:255'],
@@ -90,7 +93,7 @@ class RequestController
     public function show(ParkRequest $zayavka)
     {
         $request = $zayavka;
-        $request->load(['vehicle.brand', 'vehicle.model', 'vehicle.client', 'vehicle.yard', 'vehicle.media', 'yard', 'thread', 'assignee']);
+        $request->load(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.yard', 'vehicle.media', 'yard', 'thread', 'assignee']);
 
         return view('park.requests.show', [
             'req' => $request,

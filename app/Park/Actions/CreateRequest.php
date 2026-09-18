@@ -2,7 +2,6 @@
 
 namespace App\Park\Actions;
 
-use App\Support\Nav;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Vin\RememberVin;
@@ -11,6 +10,7 @@ use App\Park\Request;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
+use App\Support\Nav;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
@@ -20,13 +20,17 @@ final class CreateRequest
     public function __invoke(User $by, RequestType $type, ?Vehicle $vehicle, array $data): Request
     {
         Nav::forgetStaffCounts();
+
         return DB::transaction(function () use ($by, $type, $vehicle, $data) {
             if (! $vehicle) {
                 $brand = ! empty($data['brand']) ? Brand::resolve($data['brand']) : (! empty($data['brand_id']) ? Brand::find($data['brand_id']) : null);
                 $model = $brand && ! empty($data['model']) ? CarModel::resolve($brand, $data['model']) : (! empty($data['model_id']) ? CarModel::find($data['model_id']) : null);
                 $vehicle = Vehicle::create([
                     'ref' => $data['ref'] ?? null, 'vin' => $data['vin'] ?? null, 'plate' => $data['plate'] ?? null, 'year' => $data['year'] ?? null,
-                    'color' => $data['color'] ?? null, 'brand_id' => $brand?->id, 'model_id' => $model?->id, 'client_id' => $data['client_id'] ?? null,
+                    'color' => $data['color'] ?? null, 'brand_id' => $brand?->id, 'model_id' => $model?->id, 'vendor_id' => $data['vendor_id'] ?? null,
+                    'category' => $data['category'] ?? null,
+                    'contact_name' => $data['contact_name'] ?? null, 'contact_phone' => $data['contact_phone'] ?? null,
+                    'flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? [], 'value' => $data['value'] ?? null,
                     'state' => VehicleState::Expected,
                 ]);
                 $vehicle->log(EventType::Created, $by);

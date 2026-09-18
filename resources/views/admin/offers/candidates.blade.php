@@ -13,7 +13,7 @@
                         <div class="min-w-0 flex-1">
                             <div class="text-lg leading-snug">{{ $c->title() }}@if ($v('year')), {{ $v('year') }}@endif</div>
                             <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                                @if ($v('insurer') ?? $v('sender'))<span class="tag">{{ $v('insurer') ?? $v('sender') }}</span>@endif
+                                @if ($v('vendor') ?? $v('insurer') ?? $v('sender'))<span class="tag">{{ $v('vendor') ?? $v('insurer') ?? $v('sender') }}</span>@endif
                                 <span class="tag nums">{{ $c->created_at->translatedFormat('j M, H:i') }}</span>
                             </div>
                         </div>
@@ -29,6 +29,7 @@
                         @endforeach
                         @if ($v('location'))<x-ui.place class="chip">{{ $v('location') }}</x-ui.place>@endif
                         @if ($files->isNotEmpty())<span class="chip"><x-ui.icon name="clip" class="size-3.5"/> {{ $files->count() }}</span>@endif
+                        <x-mail.candidate-facts :v="$v"/>
                     </div>
                     @if ($c->proposed && $c->proposed !== $x)
                         <x-ui.pill tone="urgent" class="self-start">Пришло ещё письмо — проверьте поля</x-ui.pill>

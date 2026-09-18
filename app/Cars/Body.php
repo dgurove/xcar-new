@@ -38,4 +38,16 @@ enum Body: string
             self::Moto => 'Мототехника',
         };
     }
+
+    /** Категория прайса стоянки по кузову. */
+    public function category(): Category
+    {
+        return match ($this) {
+            self::Pickup, self::Van => Category::Light,
+            self::Truck, self::Bus => Category::Truck,
+            self::Special => Category::Special,
+            self::Moto => Category::Moto,
+            default => Category::Passenger,
+        };
+    }
 }

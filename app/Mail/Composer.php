@@ -50,7 +50,7 @@ final class Composer
     {
         $rendered = $template?->render($values) ?? ['subject' => '', 'body' => ''];
 
-        return ['to' => $values['to'] ?? '', 'cc' => '', 'subject' => $rendered['subject'], 'body' => $rendered['body'].$this->signature($account)];
+        return ['to' => $values['to'] ?? '', 'cc' => $values['cc'] ?? '', 'subject' => $rendered['subject'], 'body' => $rendered['body'].$this->signature($account)];
     }
 
     /**

@@ -5,7 +5,6 @@ use App\Http\Admin\CandidateController;
 use App\Http\Admin\ChatController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\GalleryController;
-use App\Http\Admin\InsurerController;
 use App\Http\Admin\InterestController;
 use App\Http\Admin\MailAccountController;
 use App\Http\Admin\MailController;
@@ -17,8 +16,13 @@ use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RouteController;
 use App\Http\Admin\TagController;
+use App\Http\Admin\TariffController;
 use App\Http\Admin\UserController;
+use App\Http\Admin\VendorContactController;
+use App\Http\Admin\VendorController;
 use App\Http\Admin\WorkflowController;
+use App\Http\Cabinet\InviteController;
+use App\Http\Cabinet\ProfileController;
 use App\Http\Site\ShareController;
 use App\Purchases\Car;
 use App\Purchases\Purchase;
@@ -121,7 +125,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
 
     // Настройки: справочное, что меняется редко.
     // Кабинет CRM = «Настройки»: корень — профиль (общий экран с сайтом), /account сюда же.
-    Route::get('/settings', [\App\Http\Cabinet\ProfileController::class, 'profile']);
+    Route::get('/settings', [ProfileController::class, 'profile']);
     Route::permanentRedirect('/account', '/settings');
     Route::prefix('settings')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
@@ -130,9 +134,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::post('/users/{user}/access', [UserController::class, 'decide']);
         Route::delete('/users/{user}', [UserController::class, 'destroy']);
         Route::post('/users/{user}/password', [UserController::class, 'passwordLink']);
-        Route::post('/users/invites', [\App\Http\Cabinet\InviteController::class, 'store']);
-        Route::post('/users/invites/{invite}/off', [\App\Http\Cabinet\InviteController::class, 'disable']);
-        Route::post('/users/invites/{invite}/on', [\App\Http\Cabinet\InviteController::class, 'enable']);
+        Route::post('/users/invites', [InviteController::class, 'store']);
+        Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
+        Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);
 
         Route::get('/tags', [TagController::class, 'index']);
         Route::post('/tags', [TagController::class, 'store']);
@@ -140,11 +144,20 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::put('/tags/{tag}', [TagController::class, 'update']);
         Route::delete('/tags/{tag}', [TagController::class, 'destroy']);
 
-        Route::get('/insurers', [InsurerController::class, 'index']);
-        Route::post('/insurers', [InsurerController::class, 'store']);
-        Route::get('/insurers/{insurer}', [InsurerController::class, 'show']);
-        Route::put('/insurers/{insurer}', [InsurerController::class, 'update']);
-        Route::delete('/insurers/{insurer}', [InsurerController::class, 'destroy']);
+        Route::get('/vendors', [VendorController::class, 'index']);
+        Route::post('/vendors', [VendorController::class, 'store']);
+        Route::get('/vendors/{vendor}', [VendorController::class, 'show']);
+        Route::put('/vendors/{vendor}', [VendorController::class, 'update']);
+        Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy']);
+        Route::post('/vendors/{vendor}/contract', [VendorController::class, 'contract']);
+        Route::delete('/vendors/{vendor}/contract', [VendorController::class, 'dropContract']);
+        Route::post('/vendors/{vendor}/contacts', [VendorContactController::class, 'store']);
+        Route::put('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'update']);
+        Route::delete('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'destroy']);
+        Route::get('/tariffs', [TariffController::class, 'index']);
+        Route::post('/tariffs', [TariffController::class, 'store']);
+        Route::put('/tariffs/{tariff}', [TariffController::class, 'update']);
+        Route::delete('/tariffs/{tariff}', [TariffController::class, 'destroy']);
 
         Route::post('/workflows/{workflow}/enable', [WorkflowController::class, 'activate']);
         Route::post('/workflows/{workflow}/launch', [WorkflowController::class, 'autoStart']);

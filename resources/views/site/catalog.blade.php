@@ -1,12 +1,7 @@
-{{-- Главная и галерея: первый экран (без фильтров), заголовки-переключатели разделов, тулбар, карточки. --}}
+{{-- Главная и галерея: первый экран (без фильтров), название раздела со счётчиком, тулбар, карточки. --}}
 @php
     $user = auth()->user();
     $trail = $hero ? [] : [['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения']];
-    $sections = array_filter([
-        ['Предложения', $counts['offers'], '/', !$gallery],
-        $counts['gallery'] || $gallery ? ['Галерея', $counts['gallery'], '/gallery', $gallery] : null,
-        $counts['purchases'] ? ['Закупки', $counts['purchases'], '/purchases', false] : null,
-    ]);
     $selecting = $user?->isManager() && !$gallery;
     // Покупателю та же лента и тот же тулбар: у него нет только первого экрана, а пустая лента — с контактом менеджера.
     $buyer = $user?->isBuyer() ?? false;
@@ -19,11 +14,9 @@
     <div id="catalog-section" @class(['over-hero' => $hero]) @if ($selecting) data-controller="selection" data-selection-url-value="/account/showings/new" @endif>
         {{-- Без первого экрана контейнер уже даёт шелл — второй удваивал поля. --}}
         <div @class(['container-site pt-10 pb-10 sm:pt-14 sm:pb-14' => $hero])>
-            {{-- Разделы те же, что в таб-баре: на телефоне ряд спрятан, его место — лента пилюль тулбара. --}}
-            <div class="hidden flex-wrap items-baseline gap-x-6 gap-y-2 md:flex">
-                @foreach ($sections as [$label, $count, $href, $current])
-                    <x-ui.section-title :count="$count" :href="$current ? null : $href" :current="$current" :level="$current ? 'h1' : 'h2'">{{ $label }}</x-ui.section-title>
-                @endforeach
+            {{-- Только название раздела: соседние разделы уже в шапке, а на телефоне и его место — лента пилюль тулбара. --}}
+            <div class="hidden md:block">
+                <x-ui.section-title level="h1" :count="$gallery ? $counts['gallery'] : $counts['offers']">{{ $gallery ? 'Галерея' : 'Предложения' }}</x-ui.section-title>
             </div>
 
             <x-ui.toolbar class="md:mt-5" :sorts="$sorts" :sort="$sort" :pills="$views" :pill="$filters['view'] ?? ''" :counts="$counts" :hidden="[\App\Support\ListView::PARAM => $view]" :name="$gallery ? 'gallery' : 'catalog'">

@@ -5,12 +5,12 @@ namespace App\Workflow\Console;
 use App\Mail\Scope;
 use App\Mail\Template;
 use App\Workflow\Actions\ApplyPreset;
-use App\Workflow\Insurer;
 use App\Workflow\Position;
 use App\Workflow\Preset;
 use App\Workflow\Requirement;
+use App\Vendors\Vendor;
 use App\Workflow\Track;
-use Database\Seeders\InsurerSeeder;
+use Database\Seeders\VendorSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -19,18 +19,21 @@ use Illuminate\Support\Facades\DB;
  * правки заготовки их иначе не обновить. Маршрут, на этапах которого стоят
  * предложения, не трогается — там правят руками.
  */
-class RefillInsurers extends Command
+class RefillVendors extends Command
 {
-    protected $signature = 'insurers:refill';
+    protected $signature = 'vendors:refill';
 
-    protected $description = 'Перезалить маршруты страховых из заготовок (только свободные от предложений)';
+    protected $description = 'Перезалить маршруты вендоров из заготовок (только свободные от предложений)';
 
     public function handle(ApplyPreset $apply): int
     {
-        foreach (InsurerSeeder::INSURERS as [$name, $sale, $autoPickup]) {
-            $insurer = Insurer::firstOrCreate(['name' => $name]);
+        foreach (VendorSeeder::VENDORS as [$name, $senders, $parser, $sale, $autoPickup]) {
+            if (! $sale) {
+                continue;
+            }
+            $vendor = Vendor::firstOrCreate(['name' => $name]);
             foreach ([[Track::Sale, $sale], [Track::Service, Preset::Pickup]] as [$track, $preset]) {
-                $workflow = $insurer->workflowOrNew($track);
+                $workflow = $vendor->workflowOrNew($track);
                 $ids = $workflow->stages()->pluck('workflow_stages.id');
                 // Занятые этапы и ответы менеджеров по ним — история, её не сносим.
                 if ($ids->isNotEmpty() && (Position::whereIn('stage_id', $ids)->exists() || Requirement::whereIn('stage_id', $ids)->exists())) {
