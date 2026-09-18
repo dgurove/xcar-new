@@ -2,7 +2,9 @@
 
 namespace App\Users;
 
+use App\Chats\Chat;
 use App\Media\MediaUrl;
+use App\Offers\Interest;
 use App\Support\Phone;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\URL;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
 use Laragear\WebAuthn\WebAuthnAuthentication;
 use Laragear\WebAuthn\WebAuthnData;
@@ -108,7 +111,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     public function interests(): HasMany
     {
-        return $this->hasMany(\App\Offers\Interest::class);
+        return $this->hasMany(Interest::class);
     }
 
     /**
@@ -182,7 +185,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Подписанная ссылка «не присылать на почту» — работает без входа. */
     public function unsubscribeUrl(): string
     {
-        return \Illuminate\Support\Facades\URL::signedRoute('mail.unsubscribe', ['user' => $this->id]);
+        return URL::signedRoute('mail.unsubscribe', ['user' => $this->id]);
     }
 
     public function unreadCount(): int
@@ -199,11 +202,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Непрочитанное в чатах: свои чаты и чаты покупателей, где человек — вторая сторона. */
     public function unreadChats(): int
     {
+        $staff = $this->isStaff() ? (int) Chat::whereNull('manager_id')->sum('unread_for_staff') : 0;
         if (! $this->canChat()) {
-            return 0;
+            return $staff;
         }
 
-        return (int) \App\Chats\Chat::where('user_id', $this->id)->sum('unread_for_user') + (int) \App\Chats\Chat::where('manager_id', $this->id)->sum('unread_for_staff');
+        return $staff + (int) Chat::where('user_id', $this->id)->sum('unread_for_user') + (int) Chat::where('manager_id', $this->id)->sum('unread_for_staff');
     }
 
     /** «в сети» — был здесь только что; иначе когда: «в сети 12:40», «в сети вчера», «в сети 12 сен». */

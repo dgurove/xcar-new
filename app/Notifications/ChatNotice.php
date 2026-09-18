@@ -5,13 +5,12 @@ namespace App\Notifications;
 use App\Chats\Chat;
 use App\Chats\Message;
 use App\Push\WebPushChannel;
-use App\Support\Surface;
 use App\Users\User;
 
 /**
  * Сообщение в чате: пуш — на каждое (уведомления одного чата заменяют друг друга по tag), в ленту и
- * на почту — только первое непрочитанное. Участнику — на его экран чата, сотруднику — в CRM,
- * менеджеру покупателя — в кабинет. forStaff — адресат вторая сторона.
+ * на почту — только первое непрочитанное. Адрес — экран чата в кабинете без хоста: сотруднику на
+ * CRM он станет `/work/chats/{id}`, на сайте откроется там же. forStaff — адресат вторая сторона.
  */
 final class ChatNotice extends Notice
 {
@@ -47,12 +46,12 @@ final class ChatNotice extends Notice
         return self::hrefFor($this->message->chat, $this->forStaff);
     }
 
-    /** Куда вести из уведомления и тоста: сотруднику площадки — CRM, всем остальным — экран чата в кабинете. */
+    /**
+     * Куда вести из уведомления и тоста: экран чата в кабинете — без хоста, чтобы установленное
+     * приложение не уходило во встроенный браузер; на CRM `/account/chats/{id}` → `/work/chats/{id}`.
+     */
     public static function hrefFor(Chat $chat, bool $forStaff): string
     {
-        if ($forStaff && ! $chat->manager_id) {
-            return Surface::Crm->url("/work/chats/{$chat->id}");
-        }
         if (! $chat->user_id) {
             return '/contacts';
         }

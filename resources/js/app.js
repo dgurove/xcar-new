@@ -209,13 +209,16 @@ function relaunchScroll() {
 function keyboardInset() {
     const vv = window.visualViewport;
     if (!vv) return;
+    const field = () => document.activeElement?.matches('input, textarea, select, [contenteditable="true"], trix-editor');
     const update = () => {
-        const kb = vv.scale > 1.01 ? 0 : Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
+        // Без поля в фокусе клавиатуры нет — разница высот от резины или зума не считается за неё.
+        const kb = vv.scale > 1.01 || !field() ? 0 : Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
         document.documentElement.style.setProperty('--kb', `${kb}px`);
         document.documentElement.classList.toggle('kb-open', kb > 100);
     };
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
+    document.addEventListener('focusout', () => requestAnimationFrame(update));
     update();
 }
 

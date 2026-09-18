@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use App\Offers\Interest;
-use App\Support\Surface;
 
 final class InterestNotice extends Notice
 {
@@ -21,7 +20,7 @@ final class InterestNotice extends Notice
 
     public function href(): string
     {
-        return Surface::Crm->url("/offers/{$this->interest->offer->number}");
+        return "/offers/{$this->interest->offer->number}";
     }
 
     public function offerNumber(): ?int

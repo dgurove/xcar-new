@@ -10,6 +10,18 @@ document.addEventListener('turbo:load', () => {
     requestAnimationFrame(() => scrollTo(0, y));
 });
 
+// Бар рендерится с каждой страницей; пока фокус в поле (поиск по мере ввода, чат), новый
+// бар приходит без is-hidden и выскакивал над клавиатурой. Класс переезжает на новый узел,
+// а морф его не трогает.
+const isField = (el) => el instanceof HTMLElement && el.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select, [contenteditable="true"], trix-editor');
+document.addEventListener('turbo:before-render', (event) => {
+    if (!isField(document.activeElement)) return;
+    event.detail.newBody.querySelector('#tabbar')?.classList.add('is-hidden');
+});
+document.addEventListener('turbo:before-morph-attribute', (event) => {
+    if (event.target.id === 'tabbar' && event.detail.attributeName === 'class') event.preventDefault();
+});
+
 // Таб-бар ведёт себя как нативный: при фокусе в поле уходит под клавиатуру,
 // табы переключаются заменой без записи в историю (data-turbo-action="replace"),
 // активный пункт загорается под пальцем, не дожидаясь ответа; тап по уже
@@ -73,6 +85,6 @@ export default class extends Controller {
     }
 
     isField(el) {
-        return el instanceof HTMLElement && el.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select, [contenteditable="true"], trix-editor');
+        return isField(el);
     }
 }

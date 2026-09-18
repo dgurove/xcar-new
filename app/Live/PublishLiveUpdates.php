@@ -129,7 +129,7 @@ final class PublishLiveUpdates
         if ($chat->user_id) {
             $this->publish->badges(Topics::user($chat->user_id));
         }
-        $this->publish->refresh($other, [$chat->manager_id ? '/account/chats' : '/work/chats']);
+        $this->publish->refresh($other, $chat->manager_id ? ['/account/chats'] : ['/work/chats', '/account/chats']);
         if ($chat->user_id) {
             $this->publish->refresh(Topics::user($chat->user_id), ['/account/chats']);
         }
@@ -140,7 +140,7 @@ final class PublishLiveUpdates
     {
         $chat = $e->message->chat;
         ($this->publish)($this->allSides($chat), 'chat-edit', ['chat' => $chat->id, 'seq' => $e->message->seq]);
-        $this->publish->refresh($this->otherSide($chat), [$chat->manager_id ? '/account/chats' : '/work/chats']);
+        $this->publish->refresh($this->otherSide($chat), $chat->manager_id ? ['/account/chats'] : ['/work/chats', '/account/chats']);
     }
 
     /** Сторона дочитала — другой стороне двойные галочки. */

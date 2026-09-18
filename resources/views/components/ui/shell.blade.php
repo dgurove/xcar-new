@@ -21,7 +21,8 @@
 <x-ui.layout :title="$title" :cache="$cache" class="min-h-dvh flex flex-col">
     <x-ui.header :over-hero="$overHero" :back="$back" :heading="$overHero ? null : ($heading ?? $title)"/>
 
-    <main id="main" class="grow {{ $overHero ? '' : 'relative' }}{{ $site ? '' : ' main-app' }}">
+    {{-- Запас под таб-бар: у CRM и стоянки всегда, у сайта — в приложении, где подвала с запасом нет. --}}
+    <main id="main" class="grow {{ $overHero ? '' : 'relative' }}{{ $site && !$installed ? '' : ' main-app' }}">
         @if ($overHero)
             {{ $slot }}
         @else

@@ -206,7 +206,8 @@ final class Nav
         } elseif (! $user->isStaff()) {
             $links[] = self::link('Интерес', '/account/interests');
         }
-        if ($user->canChat()) {
+        // Сотруднику — чаты площадки здесь же, а не переадресацией в CRM: другой хост в приложении — встроенный браузер.
+        if ($user->canChat() || $user->isStaff()) {
             $links[] = self::link('Чаты', '/account/chats');
         }
         $links[] = self::link('Избранное', '/account/favorites');
@@ -308,8 +309,8 @@ final class Nav
             $badges['/account/interest'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
             $badges['/account/buyers'] = $badges['/account/interest'];
         }
-        if ($user->canChat()) {
-            // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона.
+        if ($user->canChat() || $user->isStaff()) {
+            // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.
             $badges['/account/chats'] = $user->unreadChats();
         }
 

@@ -84,7 +84,12 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/gallery', [GalleryController::class, 'store']);
     // Старые адреса разделов — закладки и ссылки из уведомлений.
     Route::get('/deals', fn () => redirect('/work/deals', 301));
-    Route::get('/chats/{path?}', fn (?string $path = null) => redirect('/work'.($path ? "/{$path}" : '').(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301))->where('path', '.*');
+    // Только корень и экран чата: `/chats/{id}/messages|files|typing` из web.php должны дойти до ленты.
+    Route::get('/chats', fn () => redirect('/work/chats'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
+    Route::get('/chats/{chat}', fn (int $chat) => redirect("/work/chats/{$chat}", 301))->whereNumber('chat');
+    // Уведомления и тосты зовут на экран кабинета без хоста — на CRM это «Чаты» в работе.
+    Route::get('/account/chats', fn () => redirect('/work/chats'));
+    Route::get('/account/chats/{chat}', fn (int $chat) => redirect("/work/chats/{$chat}"))->whereNumber('chat');
 
     Route::get('/purchases', [PurchaseController::class, 'index']);
     Route::post('/purchases', [PurchaseController::class, 'store']);

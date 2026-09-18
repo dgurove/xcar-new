@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'endpoint', 'p256dh', 'auth', 'agent', 'failed_at'])]
+#[Fillable(['user_id', 'endpoint', 'p256dh', 'auth', 'agent', 'host', 'failed_at'])]
 class Subscription extends Model
 {
     protected $table = 'push_subscriptions';

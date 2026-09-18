@@ -18,7 +18,7 @@
                 @foreach ($groups as $group => $links)
                     @if ($group !== '' && count($groups) > 1)<span class="hidden pb-1 pl-5 pt-3 text-xs uppercase tracking-wide text-ink-dim first:pt-0 lg:block">{{ $group }}</span>@endif
                     @foreach ($links as $link)
-                        <a href="{{ $link['href'] }}" class="pill pill-lg" data-turbo-action="replace" @if (\App\Support\Nav::isCurrentLink($link, $path)) aria-current="true" @endif @if (str_starts_with($link['href'], 'http')) data-turbo="false" @endif>{{ $link['label'] }}</a>
+                        <a href="{{ $link['href'] }}" class="pill pill-lg" data-turbo-action="replace" @if (\App\Support\Nav::isCurrentLink($link, $path)) aria-current="true" @endif @if (str_starts_with($link['href'], 'http')) data-turbo="false" @endif>{{ $link['label'] }}@if (str_starts_with($link['href'], 'http')) ↗@endif</a>
                     @endforeach
                 @endforeach
             </div>

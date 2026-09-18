@@ -12,7 +12,7 @@ class PushController
         $data = $request->validate(['endpoint' => ['required', 'string', 'max:500'], 'keys.p256dh' => ['required', 'string'], 'keys.auth' => ['required', 'string']]);
         Subscription::updateOrCreate(['endpoint' => $data['endpoint']], [
             'user_id' => $request->user()->id, 'p256dh' => $data['keys']['p256dh'], 'auth' => $data['keys']['auth'],
-            'agent' => mb_substr((string) $request->userAgent(), 0, 255), 'failed_at' => null,
+            'agent' => mb_substr((string) $request->userAgent(), 0, 255), 'host' => $request->getHost(), 'failed_at' => null,
         ]);
         $request->user()->update(['notification_settings' => ['push' => true] + ($request->user()->notification_settings ?? [])]);
 

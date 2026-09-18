@@ -7,17 +7,20 @@ use App\Chats\Chat;
 use App\Chats\Presence;
 use App\Http\Site\ChatController as Feed;
 use App\Offers\Offer;
+use App\Users\User;
 use Illuminate\Http\Request;
 
 /**
  * Чаты человека: свои по предложениям и обращение с сайта, а у менеджера — ещё чаты его покупателей,
- * где он вторая сторона. Список и экран — как в мессенджере: на широком экране рядом.
+ * где он вторая сторона. Сотруднику — и чаты площадки: те же, что в CRM, отвечать можно отсюда,
+ * без ухода на другой хост (установленное приложение открывало бы его во встроенном браузере).
+ * Список и экран — как в мессенджере: на широком экране рядом.
  */
 class ChatController
 {
     public function index(Request $request)
     {
-        return view('cabinet.chats', ['chats' => $this->list($request->user()->id), 'current' => null]);
+        return view('cabinet.chats', ['chats' => $this->list($request->user()), 'current' => null]);
     }
 
     /** Экран чата: собеседник в шапке, плашка ТС, последние сообщения; на широком экране слева список. */
@@ -35,7 +38,7 @@ class ChatController
         return view('cabinet.chats', [
             'chat' => $chat, 'messages' => $messages, 'user' => $user, 'firstUnread' => $firstUnread,
             'more' => $messages->isNotEmpty() && $messages->first()->seq > 1,
-            'chats' => $this->list($user->id), 'current' => $chat->id,
+            'chats' => $this->list($user), 'current' => $chat->id,
         ]);
     }
 
@@ -54,7 +57,7 @@ class ChatController
 
         return view('cabinet.chats', [
             'chat' => null, 'offer' => $offer, 'messages' => collect(), 'user' => $user, 'firstUnread' => 0, 'more' => false,
-            'chats' => $this->list($user->id), 'current' => 'new',
+            'chats' => $this->list($user), 'current' => 'new',
         ]);
     }
 
@@ -69,13 +72,13 @@ class ChatController
 
         return view('cabinet.chats', [
             'chat' => null, 'offer' => null, 'messages' => collect(), 'user' => $user, 'firstUnread' => 0, 'more' => false,
-            'chats' => $this->list($user->id), 'current' => 'support',
+            'chats' => $this->list($user), 'current' => 'support',
         ]);
     }
 
-    private function list(int $me)
+    private function list(User $me)
     {
-        return Chat::where(fn ($w) => $w->where('user_id', $me)->orWhere('manager_id', $me))
+        return Chat::where(fn ($w) => $w->where('user_id', $me->id)->orWhere('manager_id', $me->id)->when($me->isStaff(), fn ($w) => $w->orWhereNull('manager_id')))
             ->withLast()->orderByDesc('last_message_at')->paginate(30)->withPath('/account/chats');
     }
 }

@@ -166,6 +166,10 @@
   html {
     /* Холст под резиновым оверскроллом iOS — цвет полосы, не страницы. */
     background-color: var(--color-bar);
+    /* Резины у корня нет: iOS тянет с документом и fixed-слои — таб-бар уезжал вверх, под ним
+       открывался холст. На body одного правила мало — WebKit слушает html. Внутренние
+       прокрутки (шторки, peek, лента чата) со своим contain. */
+    overscroll-behavior: none;
     scroll-padding-top: calc(var(--spacing-header) + env(safe-area-inset-top) + 1rem);
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
@@ -871,10 +875,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* ------------------------------------------------------------- полоса действий */
 
 @layer components {
-  /* Низ экрана CRM и стоянки: место под таб-бар; с полосой действий — ещё и под неё. */
+  /* Низ экрана: место под таб-бар (CRM, стоянка, сайт в приложении — без подвала); с полосой действий — ещё и под неё. */
   .main-app { padding-bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
   @media (min-width: 768px) { .main-app { padding-bottom: 0; } }
-  body:has(.action-bar) .main-app, body.surface-site:has(.action-bar) #main { padding-bottom: calc(5.5rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
+  body:has(.action-bar) .main-app { padding-bottom: calc(5.5rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); }
   @media (max-width: 1023px) { body:has(.action-bar) .footer { padding-bottom: calc(8rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); } }
   html:has(.action-bar) { scroll-padding-bottom: 6rem; }
 
