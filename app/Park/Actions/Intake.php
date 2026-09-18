@@ -2,6 +2,10 @@
 
 namespace App\Park\Actions;
 
+use App\Billing\Actions\AddCharge;
+use App\Billing\Actions\IssueTransferObligation;
+use App\Billing\ChargeKind;
+use App\Billing\Ledger;
 use App\Park\Events\VehicleAccepted;
 use App\Park\EventType;
 use App\Park\Inspection;
@@ -26,7 +30,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class Intake
 {
-    public function __construct(private OpenDocs $openDocs) {}
+    public function __construct(private OpenDocs $openDocs, private AddCharge $addCharge, private IssueTransferObligation $transfer) {}
 
     public function __invoke(Vehicle $vehicle, User $by, Yard $yard, ?Carbon $at, array $inspection = [], ?Request $request = null, ?string $spot = null): Vehicle
     {
@@ -56,9 +60,15 @@ final class Intake
             }
             Request::where('vehicle_id', $vehicle->id)->whereIn('type', [RequestType::Intake, RequestType::Tow])->whereIn('state', RequestState::open())->update($done);
             ($this->openDocs)($vehicle);
+            // Эвакуация со стоимостью — начисление тому, кто платит хранение; договор комиссии — обязательство перед вендором.
+            $vehicle->loadMissing('vendor');
+            if ($request?->isTow() && $request->cost && ($party = Ledger::payerParty($vehicle, $vehicle->vendor?->storage_payer ?? 'vendor'))) {
+                ($this->addCharge)($party, ChargeKind::Tow, 'Эвакуация'.($request->from_address ? ' из '.$request->from_address : '').($request->distance_km ? ', '.$request->distance_km.' км' : ''), 1, 'pc', $request->cost, $by, $vehicle);
+            }
 
             return $vehicle;
         });
+        ($this->transfer)($vehicle, $by);
         VehicleAccepted::dispatch($vehicle, $request, $by);
 
         return $vehicle;

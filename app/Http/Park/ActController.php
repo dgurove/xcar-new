@@ -2,6 +2,7 @@
 
 namespace App\Http\Park;
 
+use App\Billing\Party;
 use App\Park\InspectionKind;
 use App\Park\Vehicle;
 
@@ -10,7 +11,10 @@ class ActController
 {
     public function show(Vehicle $vehicle, string $kind)
     {
-        $vehicle->load(['brand', 'model', 'vendor', 'yard.settlement', 'media', 'inspections']);
+        $vehicle->load(['brand', 'model', 'vendor.party', 'ownerParty', 'yard.settlement', 'media', 'inspections']);
+        if (in_array($kind, ['contract', 'handover'], true)) {
+            return view('billing.docs.commission', ['vehicle' => $vehicle, 'kind' => $kind, 'self' => Party::self()]);
+        }
         abort_if($kind === 'release' && ! $vehicle->released_at, 404);
         abort_if($kind === 'intake' && ! $vehicle->accepted_at, 404);
 

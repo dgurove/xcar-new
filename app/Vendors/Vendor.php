@@ -2,6 +2,7 @@
 
 namespace App\Vendors;
 
+use App\Billing\Party;
 use App\Mail\Account;
 use App\Offers\Offer;
 use App\Park\Vehicle;
@@ -27,7 +28,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
     'agreement_number', 'agreement_date', 'agreement_until',
     'deal_format', 'reward_kind', 'reward_value', 'payment_days', 'vat_included', 'answer_hours', 'silence_means_buy', 'binding_days',
     'storage_payer', 'buyer_storage_after_days', 'release_without_payment',
-    'senders', 'parser', 'mail_account_id',
+    'senders', 'parser', 'mail_account_id', 'party_id',
     'intake_docs', 'intake_note',
 ])]
 class Vendor extends Model implements HasMedia
@@ -80,6 +81,11 @@ class Vendor extends Model implements HasMedia
     public function tariffs(): HasMany
     {
         return $this->hasMany(Tariff::class);
+    }
+
+    public function party(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'party_id');
     }
 
     public function mailAccount(): BelongsTo

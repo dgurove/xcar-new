@@ -2,15 +2,15 @@
 
 namespace App\Http\Admin;
 
+use App\Billing\Invoice;
+use App\Billing\Ledger;
 use App\Cars\Category;
 use App\Mail\Account;
-use App\Mail\Scope;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
-use App\Vendors\ContactRole;
 use App\Vendors\DealFormat;
 use App\Vendors\DocRequirement;
 use App\Vendors\Kind;
@@ -26,7 +26,7 @@ use Illuminate\Validation\Rule;
 
 class VendorController
 {
-    public const PILLS = ['overview' => 'Обзор', 'routes' => 'Маршруты', 'contacts' => 'Контакты', 'tariffs' => 'Тарифы'];
+    public const PILLS = ['overview' => 'Обзор', 'routes' => 'Маршруты', 'contacts' => 'Контакты', 'tariffs' => 'Тарифы', 'money' => 'Деньги'];
 
     public function index(Request $request)
     {
@@ -86,6 +86,13 @@ class VendorController
             ];
         } elseif ($pill === 'tariffs') {
             $data += self::tariffData($request, $vendor);
+        } elseif ($pill === 'money') {
+            $party = $vendor->party;
+            $data += [
+                'party' => $party,
+                'debt' => $party ? Ledger::debtOf($party) : null,
+                'invoices' => $party ? Invoice::where('party_id', $party->id)->with(['vehicle.brand', 'vehicle.model'])->latest('issued_at')->latest('id')->limit(30)->get() : collect(),
+            ];
         } else {
             $data += [
                 'vehicles' => Vehicle::where('vendor_id', $vendor->id)->where('state', VehicleState::Stored)->with(['brand', 'model', 'yard.settlement'])->orderBy('accepted_at')->get(),

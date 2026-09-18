@@ -2,6 +2,7 @@
 
 namespace App\Park;
 
+use App\Support\Money;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -34,7 +35,7 @@ class VehicleEvent extends Model
             EventType::Moved => 'Переставлена'.(! empty($p['from']) ? ' с «'.$p['from'].'»' : '').(! empty($p['to']) ? ' на «'.$p['to'].'»' : ''),
             EventType::Inspected => 'Осмотрена'.(! empty($p['note']) ? ': '.$p['note'] : ''),
             EventType::Towed => 'Эвакуация'.(! empty($p['note']) ? ': '.$p['note'] : ''),
-            EventType::Released => 'Выдана'.(! empty($p['to']) ? ' — '.$p['to'] : ''),
+            EventType::Released => 'Выдана'.(! empty($p['to']) ? ' — '.$p['to'] : '').(! empty($p['unpaid']) ? ', с долгом '.Money::rub($p['unpaid']) : ''),
             EventType::Note => (string) ($p['text'] ?? ''),
             EventType::Updated => 'Изменена: '.implode(', ', $p['fields'] ?? []),
             EventType::DocSent => ($p['direction'] ?? 'out') === 'in' ? 'Получено от вендора: '.($p['doc'] ?? '') : 'Отправлено вендору: '.($p['doc'] ?? ''),
@@ -44,6 +45,11 @@ class VehicleEvent extends Model
             EventType::Assigned => 'Исполнитель: '.($p['user'] ?? ''),
             EventType::Cancelled => 'Не привезена'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
             EventType::Linked => 'Связана с предложением № '.($p['number'] ?? ''),
+            EventType::Charged => 'Начислено: '.($p['title'] ?? '').' — '.Money::rub($p['amount'] ?? 0),
+            EventType::Invoiced => 'Счёт '.($p['label'] ?? '').' на '.Money::rub($p['amount'] ?? 0).' — '.($p['party'] ?? ''),
+            EventType::Owed => 'Должны '.($p['party'] ?? '').' '.Money::rub($p['amount'] ?? 0),
+            EventType::Paid => 'Оплата '.Money::rub($p['amount'] ?? 0).' по счёту '.($p['label'] ?? '').(($p['left'] ?? 0) > 0 ? ', остаток '.Money::rub($p['left']) : ''),
+            EventType::InvoiceVoided => 'Счёт '.($p['label'] ?? '').' аннулирован',
         };
     }
 }

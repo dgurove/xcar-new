@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Billing\Events\InvoiceOverdue;
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
@@ -15,6 +16,7 @@ use App\Park\Events\CandidateArrived;
 use App\Park\Events\RequestAssigned;
 use App\Park\Events\RequestDue;
 use App\Park\Events\VehicleIdle;
+use App\Support\Money;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
@@ -58,6 +60,7 @@ final class Notify
             RequestAssigned::class => 'parkAssigned',
             RequestDue::class => 'parkDue',
             VehicleIdle::class => 'parkIdle',
+            InvoiceOverdue::class => 'invoiceOverdue',
         ];
     }
 
@@ -198,6 +201,16 @@ final class Notify
     public function parkIdle(VehicleIdle $e): void
     {
         Notification::send($this->parkStaff()->filter->isAdmin(), ParkNotice::idle($e->vehicle, $e->days));
+    }
+
+    /** Просроченный счёт — владельцу в Telegram с кнопкой «Оплачен», админам — в ленту. */
+    public function invoiceOverdue(InvoiceOverdue $e): void
+    {
+        $invoice = $e->invoice->load(['party', 'vehicle.brand', 'vehicle.model']);
+        NotifyOwner::dispatch(new \App\Telegram\Messages\InvoiceOverdue($invoice));
+        Notification::send($this->parkStaff()->filter->isAdmin(), new ParkNotice(
+            ($invoice->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$invoice->label().' — '.$invoice->party->name,
+            Money::rub($invoice->remaining()), '/money/invoices/'.$invoice->id, $invoice->vehicle_id, true));
     }
 
     private function parkStaff()

@@ -19,4 +19,9 @@ enum EventType: string
     case Assigned = 'assigned';
     case Cancelled = 'cancelled';
     case Linked = 'linked';
+    case Charged = 'charged';
+    case Invoiced = 'invoiced';
+    case Owed = 'owed';
+    case Paid = 'paid';
+    case InvoiceVoided = 'invoice_voided';
 }

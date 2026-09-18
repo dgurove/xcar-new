@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Billing\Invoice;
+use App\Billing\InvoiceState;
 use App\Chats\Chat;
 use App\Http\Middleware\MarkInstalled;
 use App\Mail\Candidate;
@@ -47,8 +49,9 @@ final class Nav
             return [
                 self::item('Сегодня', '/', ['/', '/requests']),
                 self::item('ТС', '/cars'),
-                self::item('Стоянки', '/yards'),
+                self::item('Деньги', '/money'),
                 self::item('Почта', '/mail'),
+                self::item('Стоянки', '/yards', tab: false),
                 self::item('Вендоры', '/clients', tab: false),
             ];
         }
@@ -171,6 +174,8 @@ final class Nav
             return ['' => [
                 self::link('Профиль', '/account', exact: true),
                 self::link('Вендоры', '/clients'),
+                self::link('Стоянки', '/yards'),
+                self::link('Реквизиты', '/money/parties'),
                 self::link('Уведомления', '/account/notifications'),
                 self::link('Шаблоны', Surface::Crm->url('/settings/templates')),
             ]];
@@ -264,6 +269,7 @@ final class Nav
                     '/' => Request::whereIn('state', RequestState::open())->count(),
                     '/cars' => Vehicle::where('state', VehicleState::Stored)->count(),
                     '/yards' => Yard::count(),
+                    '/money' => Invoice::where('state', InvoiceState::Issued)->count(),
                     '/mail' => Thread::whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ], 'fresh' => [
                     '/cars' => Vehicle::where('state', VehicleState::Expected)->count(),
@@ -331,6 +337,7 @@ final class Nav
                     // Бейдж «Сегодня» — просроченные: то, что горит.
                     '/' => Request::whereIn('state', RequestState::open())->where('planned_at', '<', now())->count(),
                     '/requests/from-mail' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count(),
+                    '/money' => Invoice::where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString())->count(),
                     '/mail' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ];
             }

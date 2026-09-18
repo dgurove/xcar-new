@@ -152,7 +152,7 @@ class RequestController
     {
         $req = $zayavka;
         $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)]] + self::inspectionRules());
-        $release($req->vehicle, $request->user(), isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req);
+        $release($req->vehicle, $request->user(), isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req, $request->boolean('force'));
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
     }

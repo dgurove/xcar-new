@@ -2,6 +2,11 @@
 
 namespace App\Telegram;
 
+use App\Billing\Actions\RecordPayment;
+use App\Billing\Invoice;
+use App\Billing\InvoiceState;
+use App\Billing\PaymentSource;
+use App\Telegram\Messages\InvoiceOverdue;
 use App\Telegram\Messages\Registration;
 use App\Users\Actions\DecideAccess;
 use App\Users\Role;
@@ -48,6 +53,7 @@ final class UpdateHandler
         }
         match ($press->topic) {
             'access' => $this->access($press),
+            'invoice' => $this->invoice($press),
             default => $this->bot->answer($press->queryId, 'Кнопка устарела.'),
         };
     }
@@ -80,6 +86,28 @@ final class UpdateHandler
             return;
         }
         $this->bot->edit($press->chatId, $press->messageId, $message->text($message->decided()), $message->afterDecision());
+    }
+
+    /** «Оплачен» под просроченным счётом — оплата на весь остаток от имени владельца. */
+    private function invoice(Press $press): void
+    {
+        $invoice = Invoice::with(['party', 'vehicle'])->find($press->id);
+        if (! $invoice) {
+            $this->bot->answer($press->queryId, 'Счёт удалён.');
+
+            return;
+        }
+        $message = new InvoiceOverdue($invoice);
+        if ($invoice->state !== InvoiceState::Issued || $invoice->remaining() <= 0) {
+            $this->bot->answer($press->queryId, 'Уже '.mb_strtolower($invoice->state->label()).'.');
+            $this->bot->edit($press->chatId, $press->messageId, $message->text($invoice->state->label()), $message->afterDecision());
+
+            return;
+        }
+        $owner = User::where('role', Role::Admin)->orderBy('id')->firstOrFail();
+        app(RecordPayment::class)($invoice, $owner, $invoice->remaining(), null, PaymentSource::Bank, null, 'из Telegram');
+        $this->bot->answer($press->queryId, 'Оплачен.');
+        $this->bot->edit($press->chatId, $press->messageId, $message->text('Оплачен '.now()->translatedFormat('j M, H:i')), $message->afterDecision());
     }
 
     /** Личное сообщение: пока владелец не задан, бот отвечает chat_id — иначе узнать его нечем. */

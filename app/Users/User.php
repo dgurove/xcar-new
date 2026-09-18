@@ -2,6 +2,7 @@
 
 namespace App\Users;
 
+use App\Billing\Party;
 use App\Chats\Chat;
 use App\Media\MediaUrl;
 use App\Offers\Interest;
@@ -25,7 +26,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'phone', 'login', 'email', 'password', 'role', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_yard_id', 'park_readonly'])]
+#[Fillable(['name', 'phone', 'login', 'email', 'password', 'role', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_yard_id', 'park_readonly', 'party_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -161,6 +162,11 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function canManagePark(): bool
     {
         return $this->isAdmin() || ($this->canAccess(Section::Park) && ! $this->park_readonly);
+    }
+
+    public function party(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'party_id');
     }
 
     public function parkYard(): BelongsTo

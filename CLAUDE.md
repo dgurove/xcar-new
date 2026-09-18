@@ -253,6 +253,32 @@
   категория `park` (`ParkNotice`: письмо, назначение, срок, простой), Telegram
   `ParkLetter` и `ParkDigest` (`park:digest` 9:00 по будням), `park:tick` каждые
   5 минут.
+- **Деньги** (`app/Billing`, с 21.09.2026). Контрагент — `billing_parties`
+  (юрлицо с реквизитами или физлицо с паспортом; одна строка `is_self` — ПРАЙМ;
+  `Party::forVendor/forUser` заводят по первому счёту). Хранение считается **на
+  лету** (`Accrual::storage`): сутки — календарный день, день приёма — первые,
+  день выдачи не считается; ставка на каждый день из лестницы прайса (прайс,
+  заведённый позже, действует на прошлые невыставленные дни), персональная
+  `storage_rate` поверх, негабарит прибавляется, плательщик режет период
+  (`storage_payer`, `buyer_storage_after_days` → покупатель по базовому прайсу);
+  в строки `billing_charges` превращается при выставлении, `storage_billed_until`
+  на ТС. Счёт `billing_invoices` в обе стороны: `issued` — нам должны (номер
+  сквозной в году, PDF-снимок dompdf в `file`), `owed` — мы должны (перечисление
+  вендору назначенной цены по договору комиссии в `payment_days` рабочих дней —
+  `IssueTransferObligation` с приёма); состояния `issued|paid|void`, просрочка и
+  «частично» вычисляются, `light()` — светофор. Оплаты частями
+  (`RecordPayment`, не больше остатка), аннулирование только без оплат
+  (откатывает `storage_billed_until`). `Ledger` — долги по контрагенту, по ТС,
+  по всем, месяц. Выдача с долгом — только с `force` или у вендора «выдавать без
+  оплаты», и это в ленте. Экраны стоянки: `/money` (пресеты, окошко, PDF, акт
+  хранения), карточка счёта, `/money/debts`, `/money/summary`, `/money/parties`;
+  из ТС — `/cars/{id}/invoices/new` (отрезки хранения по плательщикам,
+  начисления, свободные строки) и шторка «Начислить»; карточка «Договор» на ТС
+  (комиссия / хранение, номер, назначенная цена, ПТС, СТС, комитент). Документы
+  страницей на печать: акт хранения по счёту, договор комиссии и акт
+  приёма-передачи по образцу Совкомбанка (`/acts/{id}/contract|handover`,
+  сумма прописью `Support\Words`). `billing:tick` 9:05 — просрочка раз, владельцу
+  в Telegram с кнопкой «Оплачен» раз в неделю. У вендора в CRM — пилюля «Деньги».
 - Разбор писем: `Template::common` — общее для всех вендоров (срок ответа
   `answer_by`, страхователь с телефоном — только рядом со словом «клиент»,
   признаки `Offers\Flag`, НДС, держатель, требования к документам
@@ -278,7 +304,7 @@
 ./serve-local.sh                 # http://xcar.localhost:8010 (php@8.5 и postgres из brew)
 php artisan queue:work database-long --queue=long,mail --stop-when-empty   # почта, фото, закупки
 php artisan queue:work --stop-when-empty                                   # конверсии, уведомления
-php artisan offers:tick | park:tick | park:digest | mail:sync | mail:reconcile | push:keys | media:restamp | vendors:refill
+php artisan offers:tick | park:tick | park:digest | billing:tick | mail:sync | mail:reconcile | push:keys | media:restamp | vendors:refill
 npm run build                    # ассеты; npm run dev — с горячей перезагрузкой
 node scripts/icons.mjs           # иконки, экраны запуска, водяной знак из resources/icons
 ./deploy/deploy.sh               # выкладка: снимок git → сборка → бэкап базы → миграции → up

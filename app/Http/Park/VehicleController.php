@@ -2,6 +2,10 @@
 
 namespace App\Http\Park;
 
+use App\Billing\Accrual;
+use App\Billing\ChargeKind;
+use App\Billing\Ledger;
+use App\Billing\Party;
 use App\Cars\Category;
 use App\Cars\DamageZone;
 use App\Http\Admin\OfferPhotoController;
@@ -31,6 +35,7 @@ use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Money;
 use App\Vendors\Tariff;
 use App\Vendors\TariffService;
 use App\Vendors\Vendor;
@@ -79,7 +84,7 @@ class VehicleController
     public function show(Request $request, Vehicle $vehicle)
     {
         abort_unless(Scope::allows($request->user(), $vehicle), 404);
-        $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer']);
+        $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party']);
 
         return view('park.vehicles.show', [
             'vehicle' => $vehicle,
@@ -87,6 +92,11 @@ class VehicleController
             'vendors' => Vendor::where('is_active', true)->orWhere('id', $vehicle->vendor_id)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
             'storageRate' => Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
+            'accrued' => Accrual::summary($vehicle),
+            'owners' => Party::where('kind', 'person')->orderBy('name')->pluck('name', 'id'),
+            'debt' => Ledger::vehicleDebt($vehicle),
+            'pendingCharges' => $vehicle->charges()->whereNull('invoice_id')->whereNull('voided_at')->get(),
+            'chargeKinds' => collect([ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other])->mapWithKeys(fn ($k) => [$k->value => $k->label().(($price = VehicleInvoiceController::priceFor($vehicle, $k)) ? ' — '.Money::rub($price) : '')]),
             'threads' => Thread::where('vehicle_id', $vehicle->id)->get(),
             'templates' => Template::where('scope', MailScope::Park)->orderBy('name')->get(),
             'zones' => DamageZone::cases(),
@@ -104,6 +114,8 @@ class VehicleController
             'brand_id' => ['nullable', 'exists:brands,id'], 'model_id' => ['nullable', 'exists:car_models,id'], 'vendor_id' => ['nullable', 'exists:vendors,id'],
             'category' => ['nullable', Rule::enum(Category::class)], 'oversize' => ['boolean'],
             'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'integer', 'min:0'],
+            'contract_kind' => ['nullable', Rule::in(['storage', 'commission'])], 'contract_no' => ['nullable', 'string', 'max:60'], 'contract_at' => ['nullable', 'date'], 'assigned_price' => ['nullable', 'integer', 'min:0'],
+            'pts' => ['nullable', 'string', 'max:40'], 'sts' => ['nullable', 'string', 'max:40'], 'owner_party_id' => ['nullable', 'exists:billing_parties,id'], 'storage_rate' => ['nullable', 'numeric', 'min:0'], 'storage_rate_note' => ['nullable', 'string', 'max:120'],
             'damage_zones' => ['nullable', 'array'], 'damage_zones.*' => [Rule::enum(DamageZone::class)], 'damage_note' => ['nullable', 'string', 'max:2000'], 'notes' => ['nullable', 'string', 'max:5000'],
         ]);
         $data['damage_zones'] = $data['damage_zones'] ?? [];
@@ -227,7 +239,7 @@ class VehicleController
     public function release(Request $request, Vehicle $vehicle, Release $release)
     {
         $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)]]);
-        $release($vehicle, $request->user(), isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''));
+        $release($vehicle, $request->user(), isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), force: $request->boolean('force'));
 
         return back()->with('toast', 'Выдана');
     }

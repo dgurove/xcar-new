@@ -1,5 +1,6 @@
 <?php
 
+use App\Billing\Console\TickBilling;
 use App\Cars\Console\LearnVins;
 use App\Http\Middleware\EnsureManager;
 use App\Http\Middleware\EnsureParkManager;
@@ -45,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         RefillVendors::class,
         TickPark::class,
         ParkDigestCommand::class,
+        TickBilling::class,
         SyncMail::class,
         WatchMail::class,
         ReconcileMail::class,

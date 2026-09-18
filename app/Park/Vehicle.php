@@ -2,6 +2,9 @@
 
 namespace App\Park;
 
+use App\Billing\Charge;
+use App\Billing\Invoice;
+use App\Billing\Party;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Category;
@@ -21,7 +24,8 @@ use Spatie\MediaLibrary\HasMedia;
 
 #[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id',
     'contact_name', 'contact_phone', 'flags', 'docs_required', 'value',
-    'cancelled_at', 'cancel_reason', 'spot', 'transit_started_at', 'mileage', 'fuel', 'idle_noticed_at'])]
+    'cancelled_at', 'cancel_reason', 'spot', 'transit_started_at', 'mileage', 'fuel', 'idle_noticed_at',
+    'owner_party_id', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'storage_rate', 'storage_rate_note', 'storage_billed_until', 'pts', 'sts'])]
 class Vehicle extends Model implements HasMedia
 {
     use HasPhotos;
@@ -31,7 +35,8 @@ class Vehicle extends Model implements HasMedia
     protected function casts(): array
     {
         return ['state' => VehicleState::class, 'category' => Category::class, 'oversize' => 'bool', 'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',
-            'accepted_at' => 'datetime', 'released_at' => 'datetime', 'cancelled_at' => 'datetime', 'transit_started_at' => 'datetime', 'idle_noticed_at' => 'datetime', 'year' => 'int'];
+            'accepted_at' => 'datetime', 'released_at' => 'datetime', 'cancelled_at' => 'datetime', 'transit_started_at' => 'datetime', 'idle_noticed_at' => 'datetime', 'year' => 'int',
+            'contract_at' => 'date', 'storage_billed_until' => 'date', 'storage_rate' => 'float'];
     }
 
     public function setRefAttribute(?string $value): void
@@ -83,6 +88,21 @@ class Vehicle extends Model implements HasMedia
         $values = $this->docs_required ?: ($this->vendor?->intake_docs ?? []);
 
         return array_values(array_filter(array_map(fn ($v) => DocRequirement::tryFrom((string) $v), $values)));
+    }
+
+    public function ownerParty(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'owner_party_id');
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class, 'vehicle_id')->latest('issued_at')->latest('id');
+    }
+
+    public function charges(): HasMany
+    {
+        return $this->hasMany(Charge::class, 'vehicle_id');
     }
 
     public function inspections(): HasMany
