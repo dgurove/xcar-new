@@ -832,6 +832,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .tabbar {
     position: fixed; inset: auto 0 0 0; z-index: 40;
     display: flex; align-items: stretch;
+    /* Ширина таба — по подписи плюс равная всем доля свободного места: тогда «Предложения» отстоит от
+       левого края ровно на столько же, на сколько «Кабинет» от правого, а между словами — один шаг.
+       Равные пятые доли ставили длинное слово впритык к краю, короткое — с отступом. */
+    padding-inline: max(.5rem, env(safe-area-inset-left)) max(.5rem, env(safe-area-inset-right));
     height: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px));
     padding-bottom: max(env(safe-area-inset-bottom), 0px);
     border-top: 1px solid rgb(60 60 67 / .29);
@@ -841,9 +845,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (min-resolution: 2dppx) { .tabbar { border-top-width: .5px; } }
   @media (min-width: 768px) { .tabbar { display: none; } }
   .tabbar.is-hidden { transform: translateY(110%); }
+  /* Узкие экраны (SE): пять подписей впритык — чуть мельче и без разрядки, иначе крайние режутся. */
+  @media (max-width: 359px) { .tabbar { padding-inline: .25rem; } .tab { font-size: 10px !important; letter-spacing: 0; padding-inline: 0; } }
 
   .tab {
-    position: relative; flex: 1 1 0; min-width: 44px;
+    position: relative; flex: 1 1 auto; min-width: 44px; padding-inline: 2px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     height: var(--spacing-tabbar);
     color: var(--color-ink-muted);
