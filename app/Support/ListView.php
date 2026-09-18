@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 
 /**
@@ -11,8 +12,9 @@ use Illuminate\Http\Request;
  * `?vid=list`, `?vid=grid` и `?vid=table` — явный выбор, он живёт в адресе;
  * без выбора список длиннее 20 строк открывается таблицей (pick).
  * Таблица — своя разметка (x-ui.table), не .cards.
- * Сколько на странице — `?per=` из набора вида (perPage): карточкам 24 / 48 / 96 (24 делится
- * на 2, 3 и 4 колонки), таблице и плотным спискам 50 / 100 / 200; чужое число — первое из набора.
+ * Сколько на странице — `?per=` из набора вида (perPage): плиткам 24 / 48 / 96 (три колонки по
+ * восемь рядов), строкам 30 / 60 / 120 (та же длина прокрутки), плотным спискам без вида
+ * 50 / 100 / 200; таблица — целиком на одной странице. Чужое число — первое из набора.
  */
 final class ListView
 {
@@ -20,7 +22,9 @@ final class ListView
 
     public const PER = 'per';
 
-    public const PER_CARDS = [24, 48, 96];
+    public const PER_GRID = [24, 48, 96];
+
+    public const PER_LIST = [30, 60, 120];
 
     public const PER_ROWS = [50, 100, 200];
 
@@ -39,10 +43,14 @@ final class ListView
         return in_array($vid, self::ALL, true) ? $vid : null;
     }
 
-    /** Набор «по сколько» для вида: таблице — строки, плиткам и строкам-карточкам — карточки. */
+    /** Набор «по сколько» для вида; таблице — пустой: она целиком. */
     public static function perSizes(?string $view): array
     {
-        return $view === self::TABLE ? self::PER_ROWS : self::PER_CARDS;
+        return match ($view) {
+            self::TABLE => [],
+            self::LIST => self::PER_LIST,
+            default => self::PER_GRID,
+        };
     }
 
     public static function perPage(Request $request, array $sizes): int
@@ -55,12 +63,15 @@ final class ListView
     /**
      * Постраничка карточного списка: сколько на странице зависит от вида, а вид без выбора —
      * от длины (pick), поэтому счёт идёт до paginate. Шаблон берёт вид тем же pick по total().
+     * Таблица — вся на одной странице.
      */
-    public static function paginate(Request $request, Builder $q): LengthAwarePaginator
+    public static function paginate(Request $request, Builder|Relation $q): LengthAwarePaginator
     {
-        $view = self::pick($request, $q->count());
+        $count = $q->count();
+        $view = self::pick($request, $count);
+        $per = $view === self::TABLE ? max($count, 1) : self::perPage($request, self::perSizes($view));
 
-        return $q->paginate(self::perPage($request, self::perSizes($view)))->withQueryString();
+        return $q->paginate($per)->withQueryString();
     }
 
     /** Вид без выбора: длинный список (больше 20) сразу таблицей, короткий — решает CSS. */

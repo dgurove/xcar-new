@@ -1,5 +1,7 @@
-{{-- Карточка оффера — одна разметка на строку и плитку, раскладку задаёт
-     контейнер .cards. Якорь живых обновлений: id и data-offer-number. --}}
+{{-- Карточка оффера — одна разметка на строку и плитку, раскладку задаёт контейнер .cards
+     (сетка областей: media, body, extra, star, aside, place, action). Закладка, цена и город —
+     прямые дети карточки: закладка в правом верхнем углу, под ней цена, внизу кнопка, город
+     слева вровень с кнопкой. Якорь живых обновлений: id и data-offer-number. --}}
 @props(['offer', 'context' => null, 'admin' => false])
 @php
     $user = auth()->user();
@@ -44,6 +46,7 @@
     @else
         <a href="{{ $href }}" class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
     @endif
+    @if ($user && !$admin)<x-offer.favorite :offer="$offer"/>@endif
     @if (!$admin && !$gallery && $user?->isManager())
         {{-- Кружок режима выбора: в разметке всегда, виден только когда лента в режиме (selection). --}}
         <label class="card-check"><input type="checkbox" value="{{ $offer->id }}" aria-label="Выбрать"><span><x-ui.icon name="check" class="size-4"/></span></label>
@@ -52,7 +55,6 @@
     <div class="card-body">
         <div class="card-title">
             <a href="{{ $href }}" class="block min-w-0 flex-1 text-[17px] leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
-            @if ($user && !$admin)<x-offer.favorite :offer="$offer"/>@endif
         </div>
         @if ($hasMarks)
             <div class="card-marks"><x-offer.marks :offer="$offer" :admin="$admin"/></div>
@@ -67,18 +69,18 @@
     <div class="card-extra">
         <x-offer.tags :offer="$offer"/>
         @if ($seen)<span class="tag nums">видят {{ $seen }}</span>@endif
-        @if ($offer->settlement)<x-ui.place class="text-sm text-ink-dim">{{ $offer->settlement->name }}</x-ui.place>@endif
-        <span class="card-aside">
-            @if ($prices || $admin)
-                @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@elseif ($admin && $offer->asking_price)<span class="card-price nums" data-controller="fit">@if ($offer->floor_price)<span class="card-price-from">{{ \App\Support\Money::nums($offer->floor_price) }}&nbsp;→</span> @endif<span class="card-price-now">{{ \App\Support\Money::nums($offer->asking_price) }}&nbsp;₽</span></span>@endif
-                @if ($price->declared)<span class="tag nums">заявлена {{ $price::money($price->declared) }}</span>@endif
-            @elseif ($gallery)
-                <span class="text-sm text-accent-text">Скоро в продаже</span>
-            @else
-                <span class="text-sm text-accent-text">Узнать цену</span>
-            @endif
-        </span>
     </div>
+    <span class="card-aside">
+        @if ($prices || $admin)
+            @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@elseif ($admin && $offer->asking_price)<span class="card-price nums" data-controller="fit">@if ($offer->floor_price)<span class="card-price-from">{{ \App\Support\Money::nums($offer->floor_price) }}&nbsp;→</span> @endif<span class="card-price-now">{{ \App\Support\Money::nums($offer->asking_price) }}&nbsp;₽</span></span>@endif
+            @if ($price->declared)<span class="tag nums">заявлена {{ $price::money($price->declared) }}</span>@endif
+        @elseif ($gallery)
+            <span class="text-sm text-accent-text">Скоро в продаже</span>
+        @else
+            <span class="text-sm text-accent-text">Узнать цену</span>
+        @endif
+    </span>
+    <div class="card-place">@if ($offer->settlement)<x-ui.place class="truncate text-sm text-ink-dim">{{ $offer->settlement->name }}</x-ui.place>@endif</div>
 
     @unless ($admin)
     <div class="card-action">

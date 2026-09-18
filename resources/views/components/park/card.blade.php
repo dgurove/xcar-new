@@ -9,10 +9,10 @@
 @endphp
 <article id="vehicle-{{ $vehicle->id }}" class="card rise group">
     @if ($hasMedia)
-        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop touchstart->frames#start:passive touchend->frames#end:passive">
-            <a href="{{ $href }}" class="block h-full w-full" data-action="frames#click">
+        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
+            <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
                 @foreach ($photos as $i => $frame)
-                    <x-offer.photo :media="$frame" sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw" data-frames-target="frame" :hidden="$i > 0"/>
+                    <x-offer.photo :media="$frame" sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw" data-frames-target="frame"/>
                 @endforeach
             </a>
             @if ($photos->count() > 1)
@@ -41,10 +41,10 @@
         @if ($vehicle->ref)<span class="tag">{{ $vehicle->ref }}</span>@endif
         <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
         @if ($vehicle->client)<span class="tag">{{ $vehicle->client->name }}</span>@endif
-        @if ($state === \App\Park\VehicleState::Stored && $vehicle->yard)<x-ui.place class="text-sm text-ink-dim">{{ $vehicle->yard->name }}</x-ui.place>@endif
         @if ($state === \App\Park\VehicleState::Released && $vehicle->released_at)<span class="nums text-sm font-normal text-ink-dim">выдана {{ $vehicle->released_at->translatedFormat('j M Y') }}</span>@endif
         {{ $slot }}
     </div>
+    <div class="card-place">@if ($state === \App\Park\VehicleState::Stored && $vehicle->yard)<x-ui.place class="truncate text-sm text-ink-dim">{{ $vehicle->yard->name }}</x-ui.place>@endif</div>
     <div class="card-action">
         <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">{{ $state === \App\Park\VehicleState::Expected ? 'Принять' : ($state === \App\Park\VehicleState::Stored ? 'Открыть' : 'Карточка') }}</a>
     </div>

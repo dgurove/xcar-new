@@ -13,10 +13,10 @@
 @endphp
 <article id="car-{{ $car->id }}" class="card rise group">
     @if ($hasMedia)
-        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop touchstart->frames#start:passive touchend->frames#end:passive">
-            <a href="{{ $href }}" class="block h-full w-full" data-action="frames#click">
+        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
+            <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
                 @foreach ($photos as $i => $frame)
-                    <x-offer.photo :media="$frame" sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw" data-frames-target="frame" :hidden="$i > 0"/>
+                    <x-offer.photo :media="$frame" sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw" data-frames-target="frame"/>
                 @endforeach
             </a>
             @if ($photos->count() > 1)
@@ -44,9 +44,9 @@
         @if (!$staff && !$mine)<span class="tag" style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d">Без цены</span>@endif
         @if ($showKind)<span class="tag">{{ $car->kind->label() }}</span>@endif
         @foreach ($facts as $fact)<span class="tag">{{ $fact }}</span>@endforeach
-        @if ($car->settlement?->name ?? $car->city)<x-ui.place class="text-sm text-ink-dim">{{ $car->settlement?->name ?? $car->city }}</x-ui.place>@endif
-        <span class="card-aside"><span class="nums text-sm font-normal text-ink-dim">{{ $car->dl }}</span></span>
     </div>
+    <span class="card-aside"><span class="nums text-sm font-normal text-ink-dim">{{ $car->dl }}</span></span>
+    <div class="card-place">@if ($car->settlement?->name ?? $car->city)<x-ui.place class="truncate text-sm text-ink-dim">{{ $car->settlement?->name ?? $car->city }}</x-ui.place>@endif</div>
     <div class="card-action">
         @if ($staff)
             @if ($best)

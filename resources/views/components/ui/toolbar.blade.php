@@ -18,7 +18,7 @@
     // Ссылка на критерий: активный с направлением — переворот, чужой — своё направление по умолчанию (убывание).
     $sortUrl = fn (string $key) => $url([$sortParam => $key === $currentKey ? ($norm[$key][1] ? ($desc ? $key : '-'.$key) : $key) : ($norm[$key][1] ? '-'.$key : $key), 'page' => null]);
 @endphp
-<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-3']) }}>
+<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-3'.($sortSide === 'right' ? ' toolbar--sort-right' : '')]) }}>
     @if ($sortSide === 'left')
     @if ($norm->isNotEmpty())
         {{-- Десктоп: select + направление --}}
@@ -35,9 +35,9 @@
                 </a>
             @endif
         </form>
-        {{-- Телефон: круглая кнопка → шторка --}}
+        {{-- Телефон: кнопка с именем сортировки → шторка --}}
         <div class="contents sm:hidden" data-controller="sheet">
-            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Сортировка" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
+            <button type="button" class="toolbar-sort btn btn-s btn-quiet gap-1.5 rounded-full" data-action="sheet#open" aria-label="Сортировка" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5 shrink-0"/><span class="truncate">{{ $norm[$currentKey][0] ?? 'Сортировка' }}</span>@if ($hasDir)<x-ui.icon name="arrow-up" class="size-4 shrink-0 {{ $desc ? 'rotate-180' : '' }}"/>@endif</button>
             <x-ui.sheet id="sort-{{ $name }}" title="Сортировка">
                 <div class="space-y-2">
                     @foreach ($norm as $key => [$label, $dir])
@@ -50,7 +50,6 @@
             </x-ui.sheet>
         </div>
     @endif
-    <div class="toolbar-spacer"></div>
     @endif
 
     @if ($pills)
@@ -86,9 +85,9 @@
                 </a>
             @endif
         </form>
-        {{-- Телефон: круглая кнопка → шторка --}}
+        {{-- Телефон: кнопка с именем сортировки → шторка --}}
         <div class="contents sm:hidden" data-controller="sheet">
-            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Сортировка" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
+            <button type="button" class="toolbar-sort btn btn-s btn-quiet gap-1.5 rounded-full" data-action="sheet#open" aria-label="Сортировка" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5 shrink-0"/><span class="truncate">{{ $norm[$currentKey][0] ?? 'Сортировка' }}</span>@if ($hasDir)<x-ui.icon name="arrow-up" class="size-4 shrink-0 {{ $desc ? 'rotate-180' : '' }}"/>@endif</button>
             <x-ui.sheet id="sort-{{ $name }}" title="Сортировка">
                 <div class="space-y-2">
                     @foreach ($norm as $key => [$label, $dir])
@@ -101,7 +100,6 @@
             </x-ui.sheet>
         </div>
     @endif
-    <div class="toolbar-spacer"></div>
     @endif
 
     @isset($filters)

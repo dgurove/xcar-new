@@ -260,6 +260,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Круглая кнопка-иконка: 44px под палец, 36px от планшета. */
   .btn-round  { @apply rounded-full px-0; width: 2.75rem; height: 2.75rem; }
   @media (min-width: 640px) { .btn-round { width: 2.25rem; height: 2.25rem; } }
+  /* «Назад» и «Вперёд» полосы страниц: на телефоне одним шевроном, круглые. */
+  @media (max-width: 639px) { .pager-step { width: 2.75rem; padding: 0; } }
   .btn-round.btn-lg { width: 3.5rem; height: 3.5rem; }
 
   /* ------------------------------------------------------------- поля */
@@ -491,12 +493,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (min-width: 768px) { .pills { @apply mx-0 flex-wrap px-0 pb-0; } }
   /* Тулбар списка на телефоне — в две строки: пилюли первой на всю ширину навылет за поля
      (max-md:basis-full в разметке — утилиты сильнее слоя), крупнее — они стоят на месте h1;
-     кнопки ниже: сортировка слева, вид, «Новый», фильтр — справа за распоркой. */
-  .toolbar-spacer { display: none; }
+     кнопки ниже одной строкой: сортировка словом (basis 0 — не переносится, растёт до своего
+     текста и урезается, когда кнопок много) с auto-margin отжимает остальные кнопки к краю. */
   @media (max-width: 767px) {
     .toolbar { flex-wrap: wrap; }
     .toolbar-pills .pill { padding-inline: 1.25rem; min-height: 2.75rem; }
-    .toolbar > .toolbar-spacer { display: block; flex: 1; }
+    .toolbar .toolbar-sort { flex: 1 1 0; min-width: 0; max-width: max-content; margin-right: auto; }
+    .toolbar--sort-right .toolbar-sort { margin-right: 0; margin-left: auto; }
   }
   .pill {
     @apply inline-flex shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1.5 text-sm text-ink-muted transition-colors;
@@ -930,15 +933,17 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
 /* ------------------------------------------------------------- карточки списка */
 
-/* Одна разметка на строку и плитку: раскладку задаёт контейнер переменными.
+/* Одна разметка на строку и плитку: раскладку задаёт контейнер переменными — сетка областей
+   media, body, extra, star, aside, place, action. Закладка в правом верхнем углу (в плитке — на
+   кадре), под ней цена, внизу кнопка, город слева вровень с кнопкой.
    .cards — без выбора (строки до 640, плитки от 640), .cards--list, .cards--grid. */
 @layer components {
   .cards {
     display: flex; flex-direction: column; gap: .5rem;
 
-    --card-display: grid;
     --card-cols: auto minmax(0, 1fr) auto;
-    --card-areas: "media body body" "extra extra extra" "action action action";
+    --card-rows: auto;
+    --card-areas: "media body star" "extra extra extra" "aside aside aside" "place action action";
     --card-align: start;
     --card-gap: .375rem .75rem;
     --card-pad: .75rem;
@@ -947,58 +952,66 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     --media-w: 4.5rem; --media-h: 3.25rem; --media-ratio: auto; --media-radius: var(--radius-m);
     --blank-display: block; --blank-h: 3.25rem;
 
-    --body-pad: 0; --body-pad-end: 0; --body-gap: .25rem; --body-grow: 0; --extra-pad: 0;
+    --body-pad: 0; --body-pad-end: 0; --body-gap: .25rem; --extra-pad: 0;
 
     --float-pos: static; --frames-display: none;
 
-    --star-bg: transparent; --star-bg-hover: var(--color-surface-3); --star-ink: var(--color-ink-muted);
+    --star-pos: relative; --star-off: auto; --star-self: start; --star-bg: transparent; --star-bg-hover: var(--color-surface-3); --star-ink: var(--color-ink-muted);
     --glass-bg: var(--color-surface-3); --glass-ink: var(--color-ink); --glass-blur: none;
 
-    --action-pad: 0; --action-w: auto; --action-self: end; --action-dir: row; --action-mt: 0;
-    --card-btn-pad: .5rem; --card-btn-size: .8125rem; --card-btn-h: 2.25rem;
-    --price-size: 1.125rem; --price-align: right; --aside-w: auto; --aside-push: auto;
+    --aside-self: end; --aside-align: center; --aside-pad: 0; --place-pad: 0;
+    --action-pad: 0; --action-self: end; --action-dir: row;
+    --card-btn-pad: .75rem; --card-btn-size: .8125rem; --card-btn-h: 2.25rem;
+    --price-size: 1.125rem; --price-align: right;
   }
   @media (min-width: 640px) {
     .cards {
-      --card-areas: "media body action" "extra extra action";
+      --card-areas: "media body star" "extra extra aside" "place place action";
+      --card-cols: auto minmax(0, 1fr) 13rem;
       --card-align: center; --card-gap: .375rem 1rem; --card-pad: 1rem;
-      --media-w: 6rem; --media-h: 4rem; --blank-h: 4rem; --action-w: 13rem;
+      --media-w: 6rem; --media-h: 4rem; --blank-h: 4rem; --action-self: stretch;
     }
   }
   /* Плитки: по выбору всегда, без выбора — от 640. Переменные плитки в двух местах намеренно. */
   .cards--grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem;
-    --card-display: flex; --card-cols: none; --card-areas: none; --card-align: stretch; --card-gap: 0; --card-pad: 0;
+    --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
+    --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
+    --card-align: stretch; --card-gap: 0; --card-pad: 0;
     --card-radius: var(--radius-xl);
     --media-w: 100%; --media-h: auto; --media-ratio: 4 / 3; --media-radius: 0; --blank-display: block; --blank-h: auto;
-    --body-pad: 1.25rem 1.25rem 0; --body-pad-end: 1.25rem; --body-gap: .5rem; --body-grow: 0; --extra-pad: 0 1.25rem;
+    --body-pad: 1.25rem 1.25rem 0; --body-pad-end: 1.25rem; --body-gap: .5rem; --extra-pad: .5rem 1.25rem 0;
     --float-pos: absolute; --frames-display: contents;
-    --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
+    --star-pos: absolute; --star-off: .75rem; --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
     --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
-    --action-pad: .75rem 1.25rem 1.25rem; --action-w: auto; --action-self: stretch; --action-mt: auto;
+    --aside-self: start; --aside-align: start; --aside-pad: .5rem 1.25rem 0; --place-pad: .75rem 0 1.25rem 1.25rem;
+    --action-pad: .75rem 1.25rem 1.25rem .75rem; --action-self: end;
     --card-btn-pad: 1.125rem; --card-btn-size: .875rem; --card-btn-h: 2.5rem;
-    --price-size: 1.125rem; --price-align: left; --aside-w: 100%; --aside-push: 0;
+    --price-size: 1.125rem; --price-align: left;
   }
   @media (min-width: 640px) {
     .cards:not(.cards--list) {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem;
-      --card-display: flex; --card-cols: none; --card-areas: none; --card-align: stretch; --card-gap: 0; --card-pad: 0;
+      --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
+      --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
+      --card-align: stretch; --card-gap: 0; --card-pad: 0;
       --card-radius: var(--radius-xl);
       --media-w: 100%; --media-h: auto; --media-ratio: 4 / 3; --media-radius: 0; --blank-display: block; --blank-h: auto;
-      --body-pad: 1.25rem 1.25rem 0; --body-pad-end: 1.25rem; --body-gap: .5rem; --body-grow: 0; --extra-pad: 0 1.25rem;
+      --body-pad: 1.25rem 1.25rem 0; --body-pad-end: 1.25rem; --body-gap: .5rem; --extra-pad: .5rem 1.25rem 0;
       --float-pos: absolute; --frames-display: contents;
-      --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
+      --star-pos: absolute; --star-off: .75rem; --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
       --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
-      --action-pad: .75rem 1.25rem 1.25rem; --action-w: auto; --action-self: stretch; --action-mt: auto;
+      --aside-self: start; --aside-align: start; --aside-pad: .5rem 1.25rem 0; --place-pad: .75rem 0 1.25rem 1.25rem;
+      --action-pad: .75rem 1.25rem 1.25rem .75rem; --action-self: end;
       --card-btn-pad: 1.125rem; --card-btn-size: .875rem; --card-btn-h: 2.5rem;
-      --price-size: 1.125rem; --price-align: left; --aside-w: 100%; --aside-push: 0;
+      --price-size: 1.125rem; --price-align: left;
     }
   }
 
   .card {
     position: relative;
-    display: var(--card-display); flex-direction: column;
-    grid-template-columns: var(--card-cols); grid-template-areas: var(--card-areas);
+    display: grid;
+    grid-template-columns: var(--card-cols); grid-template-rows: var(--card-rows); grid-template-areas: var(--card-areas);
     align-items: var(--card-align); gap: var(--card-gap); padding: var(--card-pad);
     border-radius: var(--card-radius); background: var(--color-surface); overflow: hidden;
   }
@@ -1027,7 +1040,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .mark:empty { display: none; }
   .card-marks .mark-glass { background: var(--glass-bg); color: var(--glass-ink); backdrop-filter: var(--glass-blur); }
   .card-star {
-    position: var(--float-pos); top: .75rem; right: .75rem; z-index: 1;
+    grid-area: star; justify-self: end; align-self: var(--star-self);
+    position: var(--star-pos); top: var(--star-off); right: var(--star-off); z-index: 1;
     display: inline-flex; flex: none; align-items: center; justify-content: center;
     height: 2rem; width: 2rem; border-radius: 999px;
     background: var(--star-bg); color: var(--star-ink); backdrop-filter: blur(4px);
@@ -1040,18 +1054,21 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @keyframes pop { 30% { scale: 1.3; } 60% { scale: .9; } }
   .card-star:disabled { opacity: 1; }
   .card-title { display: flex; align-items: flex-start; gap: .5rem; }
-  .card-title > .card-star { margin-top: -.25rem; }
-  .card-body { grid-area: body; min-width: 0; display: flex; flex-direction: column; gap: var(--body-gap); flex: var(--body-grow) 1 auto; padding: var(--body-pad); }
+  .card-body { grid-area: body; min-width: 0; display: flex; flex-direction: column; gap: var(--body-gap); padding: var(--body-pad); }
   .card-body:last-child { padding-bottom: var(--body-pad-end); }
   .card-extra { grid-area: extra; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .5rem; padding: var(--extra-pad); }
+  .card-extra:empty { display: none; }
+  .card-place { grid-area: place; min-width: 0; align-self: center; display: flex; padding: var(--place-pad); }
+  .card-place > .place { min-width: 0; }
   .card-action {
-    grid-area: action; display: flex; flex-direction: var(--action-dir); align-items: center; justify-content: center; gap: .375rem;
-    width: var(--action-w); justify-self: var(--action-self); margin-top: var(--action-mt); padding: var(--action-pad);
+    grid-area: action; min-width: 0; max-width: 100%; display: flex; flex-direction: var(--action-dir); align-items: center; justify-content: center; gap: .375rem;
+    justify-self: var(--action-self); align-self: center; padding: var(--action-pad);
   }
   .card-action .btn { padding-inline: var(--card-btn-pad); font-size: var(--card-btn-size); height: var(--card-btn-h); }
   .card-action .btn-round { width: var(--card-btn-h); padding: 0; flex: 0 0 auto; aspect-ratio: 1; }
   .card-action > .btn:not(.btn-round), .card-action > form, .card-action > span:not(.btn-round) { flex: 1 1 auto; min-width: 0; }
-  .card-aside { display: flex; flex: none; min-width: 0; align-items: center; gap: .5rem; width: var(--aside-w); justify-content: space-between; margin-left: var(--aside-push); }
+  .card-aside { grid-area: aside; display: flex; flex-wrap: wrap; min-width: 0; align-items: center; gap: .25rem .5rem; justify-self: var(--aside-self); align-self: var(--aside-align); justify-content: flex-end; padding: var(--aside-pad); }
+  .card-aside:empty { display: none; }
   .card-price { font-size: var(--price-size); font-weight: 700; line-height: 1.25; text-align: var(--price-align); white-space: nowrap; display: block; }
   .card-price-from, .card-price-now { white-space: nowrap; }
   .card-price-from { color: var(--color-ink-muted); }
@@ -1080,36 +1097,43 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 }
 @media (min-width: 640px) {
   .surface-crm .cards, .surface-park .cards {
-    --card-areas: "media body action" "media extra action";
+    --card-areas: "media body star" "media extra aside" "media place action";
+    --card-cols: auto minmax(0, 1fr) 11rem;
     --card-pad: .5rem .75rem .5rem .5rem; --card-gap: .125rem .75rem;
-    --media-w: 5.5rem; --media-h: 3.75rem; --blank-h: 3.75rem; --action-w: 11rem;
+    --media-w: 5.5rem; --media-h: 3.75rem; --blank-h: 3.75rem;
   }
 }
 .surface-crm .cards--grid, .surface-park .cards--grid {
-  --card-display: flex; --card-cols: none; --card-areas: none; --card-align: stretch; --card-gap: 0; --card-pad: 0;
+  --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
+  --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
+  --card-align: stretch; --card-gap: 0; --card-pad: 0;
   --card-radius: var(--radius-l);
   --media-w: 100%; --media-h: auto; --media-ratio: 5 / 2; --media-radius: 0; --blank-display: block; --blank-h: auto;
-  --body-pad: .625rem .75rem 0; --body-pad-end: .75rem; --body-gap: .25rem; --body-grow: 0; --extra-pad: 0 .75rem;
+  --body-pad: .625rem .75rem 0; --body-pad-end: .75rem; --body-gap: .25rem; --extra-pad: .375rem .75rem 0;
   --float-pos: absolute; --frames-display: contents;
-  --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
+  --star-pos: absolute; --star-off: .75rem; --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
   --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
-  --action-pad: .5rem .75rem .75rem; --action-w: auto; --action-self: stretch; --action-mt: auto;
+  --aside-self: start; --aside-align: start; --aside-pad: .375rem .75rem 0; --place-pad: .5rem 0 .75rem .75rem;
+  --action-pad: .5rem .75rem .75rem .5rem; --action-self: end;
   --card-btn-pad: .75rem; --card-btn-size: .8125rem; --card-btn-h: 2rem;
-  --price-size: 1rem; --price-align: left; --aside-w: 100%; --aside-push: 0;
+  --price-size: 1rem; --price-align: left;
 }
 @media (min-width: 640px) {
   .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) {
-  --card-display: flex; --card-cols: none; --card-areas: none; --card-align: stretch; --card-gap: 0; --card-pad: 0;
-  --card-radius: var(--radius-l);
-  --media-w: 100%; --media-h: auto; --media-ratio: 5 / 2; --media-radius: 0; --blank-display: block; --blank-h: auto;
-  --body-pad: .625rem .75rem 0; --body-pad-end: .75rem; --body-gap: .25rem; --body-grow: 0; --extra-pad: 0 .75rem;
-  --float-pos: absolute; --frames-display: contents;
-  --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
-  --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
-  --action-pad: .5rem .75rem .75rem; --action-w: auto; --action-self: stretch; --action-mt: auto;
-  --card-btn-pad: .75rem; --card-btn-size: .8125rem; --card-btn-h: 2rem;
-  --price-size: 1rem; --price-align: left; --aside-w: 100%; --aside-push: 0;
-}
+    --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
+    --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
+    --card-align: stretch; --card-gap: 0; --card-pad: 0;
+    --card-radius: var(--radius-l);
+    --media-w: 100%; --media-h: auto; --media-ratio: 5 / 2; --media-radius: 0; --blank-display: block; --blank-h: auto;
+    --body-pad: .625rem .75rem 0; --body-pad-end: .75rem; --body-gap: .25rem; --extra-pad: .375rem .75rem 0;
+    --float-pos: absolute; --frames-display: contents;
+    --star-pos: absolute; --star-off: .75rem; --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
+    --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
+    --aside-self: start; --aside-align: start; --aside-pad: .375rem .75rem 0; --place-pad: .5rem 0 .75rem .75rem;
+    --action-pad: .5rem .75rem .75rem .5rem; --action-self: end;
+    --card-btn-pad: .75rem; --card-btn-size: .8125rem; --card-btn-h: 2rem;
+    --price-size: 1rem; --price-align: left;
+  }
 }
 /* Плитки чуть уже и без зазора в 1.25rem — их помещается заметно больше. */
 .surface-crm .cards--grid, .surface-park .cards--grid { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; }
@@ -1117,7 +1141,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 .surface-crm .card-title > a, .surface-park .card-title > a { font-size: .9375rem; }
 .surface-crm .card-marks, .surface-park .card-marks { top: .5rem; left: .5rem; gap: .25rem; }
 .surface-crm .card-marks .mark, .surface-park .card-marks .mark { font-size: 11px; padding-block: 2px; padding-inline: .375rem; }
-.surface-crm .card-star, .surface-park .card-star { top: .5rem; right: .5rem; }
+.surface-crm .cards--grid, .surface-park .cards--grid { --star-off: .5rem; }
+@media (min-width: 640px) { .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) { --star-off: .5rem; } }
 
 /* Шапка, таб-бар и полоса действий при переходе стоят на месте, едет только содержимое. */
 #header { view-transition-name: header; }
@@ -1428,9 +1453,6 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .chat-more { height: 1px; }
 }
 
-/* На телефоне полоса страниц не нужна — лента дотягивается сама (app.js). */
-@media (max-width: 767px) { [data-pages] { visibility: hidden; height: 1px; margin: 0; padding: 0; overflow: hidden; } }
-
 /* ------------------------------------------------------------- тактильный отклик */
 
 /* Невидимый switch под пальцем внутри таба и закладки: настоящее касание по нему —
@@ -1438,7 +1460,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
    appearance: none). Клик по нему не идёт дальше, а change превращается в клик по
    хозяину (app.js, haptics). */
 .haptic { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
-.tab, .card-star { position: relative; }
+.tab { position: relative; }  /* .card-star — position: var(--star-pos) в .cards: в строке relative, в плитке absolute */
 
 /* ------------------------------------------------------------- системный шрифт хрома */
 
