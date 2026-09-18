@@ -2,21 +2,29 @@
 
 namespace App\Park\Actions;
 
+use App\Park\Doc;
+use App\Park\DocState;
 use App\Park\EventType;
-use App\Park\Vehicle;
+use App\Support\Nav;
 use App\Users\User;
-use App\Vendors\DocRequirement;
+use Illuminate\Support\Carbon;
 
-/** Документ вендору после приёма: отметить отправленным или снять отметку. Возвращает новое состояние. */
+/** Бумага вендору: отправлена / получена / ещё нет — с датой, сканом и письмом. */
 final class MarkDoc
 {
-    public function __invoke(Vehicle $vehicle, DocRequirement $doc, User $by): bool
+    public function __invoke(Doc $doc, User $by, DocState $state, ?Carbon $at = null, ?int $mediaId = null, ?int $threadId = null, ?string $note = null): Doc
     {
-        $done = $vehicle->docs_done ?? [];
-        $was = in_array($doc->value, $done, true);
-        $vehicle->update(['docs_done' => array_values($was ? array_diff($done, [$doc->value]) : [...$done, $doc->value])]);
-        $vehicle->log($was ? EventType::DocBack : EventType::DocSent, $by, ['doc' => $doc->label()]);
+        Nav::forgetStaffCounts();
+        $doc->update([
+            'state' => $state,
+            'at' => $state === DocState::Pending ? null : ($at ?? now()),
+            'user_id' => $state === DocState::Pending ? null : $by->id,
+            'media_id' => $mediaId ?? $doc->media_id,
+            'thread_id' => $threadId ?? $doc->thread_id,
+            'note' => $note ?? $doc->note,
+        ]);
+        $doc->vehicle->log($state === DocState::Pending ? EventType::DocBack : EventType::DocSent, $by, ['doc' => $doc->kind->label(), 'direction' => $state === DocState::Received ? 'in' : 'out']);
 
-        return ! $was;
+        return $doc;
     }
 }

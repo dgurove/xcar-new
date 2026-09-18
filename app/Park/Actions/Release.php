@@ -2,25 +2,29 @@
 
 namespace App\Park\Actions;
 
-use App\Support\Nav;
+use App\Park\Events\VehicleReleased;
 use App\Park\EventType;
+use App\Park\Inspection;
+use App\Park\InspectionKind;
+use App\Park\ReleasedTo;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
+use App\Support\Nav;
 use App\Users\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** Выдача — зеркало приёма: дата не раньше постановки, заявка на выдачу закрывается. */
+/** Выдача — зеркало приёма: осмотр при выдаче, кому выдана, дата не раньше постановки, заявка закрывается. */
 final class Release
 {
-    public function __invoke(Vehicle $vehicle, User $by, ?Carbon $at, ?string $note = null): Vehicle
+    public function __invoke(Vehicle $vehicle, User $by, ?Carbon $at, ?string $note = null, ?ReleasedTo $to = null, array $inspection = [], ?Request $request = null): Vehicle
     {
         Nav::forgetStaffCounts();
-        return DB::transaction(function () use ($vehicle, $by, $at, $note) {
+        $vehicle = DB::transaction(function () use ($vehicle, $by, $at, $note, $to, $inspection, $request) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             if ($vehicle->state !== VehicleState::Stored) {
                 throw ValidationException::withMessages(['state' => 'Выдать можно только ТС на стоянке']);
@@ -29,12 +33,22 @@ final class Release
             if ($vehicle->accepted_at && $at->lt($vehicle->accepted_at)) {
                 throw ValidationException::withMessages(['released_at' => 'Выдача раньше приёма']);
             }
-            $vehicle->update(['state' => VehicleState::Released, 'released_at' => $at]);
-            $vehicle->log(EventType::Released, $by, array_filter(['note' => $note]));
-            Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Release)->where('state', RequestState::New)
-                ->update(['state' => RequestState::Done, 'done_at' => now(), 'assignee_id' => $by->id]);
+            $vehicle->update(['state' => VehicleState::Released, 'released_at' => $at, 'spot' => null]);
+            if ($inspection) {
+                Inspection::create(['vehicle_id' => $vehicle->id, 'request_id' => $request?->id, 'kind' => InspectionKind::Release, 'at' => $at, 'user_id' => $by->id,
+                    'damage_zones' => array_values($inspection['damage_zones'] ?? [])] + Intake::fields($inspection));
+            }
+            $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'to' => $to?->label()]));
+            $done = ['state' => RequestState::Done, 'done_at' => now(), 'done_by' => $by->id, 'note' => $note];
+            if ($request) {
+                $request->update($done);
+            }
+            Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Release)->whereIn('state', RequestState::open())->update($done);
 
             return $vehicle;
         });
+        VehicleReleased::dispatch($vehicle, $request, $by);
+
+        return $vehicle;
     }
 }

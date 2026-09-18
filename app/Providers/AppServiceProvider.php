@@ -9,6 +9,7 @@ use App\Live\PublishLiveUpdates;
 use App\Mail\OnMessage;
 use App\Media\StampOnAdd;
 use App\Notifications\Notify;
+use App\Park\Listeners\SyncOffer;
 use App\Users\Auth\WebAuthnProvider;
 use App\Users\Passkeys;
 use Illuminate\Auth\Events\Login;
@@ -30,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(Notify::class);
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);
+        Event::subscribe(SyncOffer::class);
         Event::listen(Login::class, AttachGuestEnquiry::class);
         Event::listen(ChatMessagePosted::class, ScheduleAutoReply::class);
         Event::subscribe(Passkeys::class);

@@ -1,4 +1,4 @@
-@php use App\Park\{VehicleState, RequestType}; use App\Support\Money; $photos = $vehicle->visiblePhotos(); $docs = $vehicle->docsRequired(); @endphp
+@php use App\Park\{VehicleState, RequestType, DocKind, DocState, ReleasedTo, InspectionKind}; use App\Support\Money; use App\Support\Surface; $photos = $vehicle->visiblePhotos(); $intake = $vehicle->lastInspection(InspectionKind::Intake); $release = $vehicle->lastInspection(InspectionKind::Release); @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" :back="['ТС', '/cars']" cache="no-cache">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-park.state :vehicle="$vehicle"/>
@@ -7,23 +7,36 @@
         @if ($vehicle->oversize)<span class="chip">Негабарит</span>@endif
         @foreach ($vehicle->flagList() as $flag)<span class="chip">{{ $flag->label() }}</span>@endforeach
         @if ($storageRate)<span class="chip nums">{{ $storageRate }}</span>@endif
+        @if ($vehicle->offer)<a href="{{ Surface::Crm->url('/offers/'.$vehicle->offer->number) }}" class="chip nums" data-turbo="false">№ {{ $vehicle->offer->number }}<span class="font-normal text-ink-muted">{{ $vehicle->offer->state->label() }}</span>@if ($vehicle->offer->asking_price) {{ Money::rub($vehicle->offer->asking_price) }}@endif</a>@endif
         @if ($vehicle->contact_phone)<a href="tel:+{{ preg_replace('/\D+/', '', $vehicle->contact_phone) }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->contact_name ? \Illuminate\Support\Str::of($vehicle->contact_name)->explode(' ')->first().' ' : '' }}{{ $vehicle->contact_phone }}</a>@endif
         @if ($threads->count())<x-ui.pill tone="plain" :href="$threads->count() === 1 ? '/mail/'.$threads->first()->id : '/mail?preset=linked&q='.urlencode($vehicle->ref ?? '')" class="!min-h-0 !py-1 text-xs"><x-ui.icon name="mail" class="size-4"/> {{ $threads->count() === 1 ? 'Письмо' : 'Писем: '.$threads->count() }}</x-ui.pill>@endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <x-ui.sheet id="vehicle-actions" title="Транспортное средство">
             <div class="flex flex-col gap-2">
-                @if ($vehicle->state === VehicleState::Expected)
-                    <x-ui.button href="/requests/new?tip=intake&mashina={{ $vehicle->id }}" block>Принять на стоянку</x-ui.button>
+                @php $tow = $vehicle->openRequest(RequestType::Tow); $intakeReq = $vehicle->openRequest(RequestType::Intake); @endphp
+                @if ($vehicle->state->isBefore())
+                    @if ($tow)<x-ui.button href="/requests/{{ $tow->id }}" block>Эвакуация: {{ mb_strtolower($tow->state->label()) }}</x-ui.button>
+                    @elseif ($intakeReq)<x-ui.button href="/requests/{{ $intakeReq->id }}" block>Принять на стоянку</x-ui.button>
+                    @else
+                        <x-ui.button href="/requests/new?tip=intake&mashina={{ $vehicle->id }}" block>Принять на стоянку</x-ui.button>
+                        @if ($vehicle->state === VehicleState::Expected)<x-ui.button href="/requests/new?tip=tow&mashina={{ $vehicle->id }}" variant="secondary" block>Забрать эвакуатором</x-ui.button>@endif
+                    @endif
                 @endif
                 @if ($vehicle->state === VehicleState::Stored)
-                    <form method="post" action="/cars/{{ $vehicle->id }}/move" class="flex items-end gap-2">@csrf
-                        <x-ui.field name="yard_id" label="Стоянка" :options="$yards" :value="$vehicle->yard_id" span="flex-1"/>
+                    <form method="post" action="/cars/{{ $vehicle->id }}/move" class="grid grid-cols-[1fr_auto_auto] items-end gap-2">@csrf
+                        <x-ui.field name="yard_id" label="Стоянка" :options="$yards" :value="$vehicle->yard_id"/>
+                        <x-ui.field name="spot" label="Место" :value="$vehicle->spot" list="spots-free" autocapitalize="characters" class="w-24"/>
+                        <datalist id="spots-free">@foreach ($spots as $s)<option value="{{ $s }}">@endforeach</datalist>
                         <x-ui.button variant="secondary">Переставить</x-ui.button>
                     </form>
-                    <form method="post" action="/cars/{{ $vehicle->id }}/release" class="flex items-end gap-2" data-turbo-confirm="Выдать ТС?">@csrf
-                        <x-ui.field name="released_at" label="Выдача" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" span="flex-1"/>
-                        <x-ui.button variant="secondary">Выдать</x-ui.button>
+                    <form method="post" action="/cars/{{ $vehicle->id }}/release" class="flex flex-col gap-2" data-turbo-confirm="Выдать ТС?">@csrf
+                        <div class="flex flex-wrap gap-1.5">@foreach (ReleasedTo::cases() as $to)<label class="choice"><input type="radio" name="to" value="{{ $to->value }}"><span>{{ $to->label() }}</span></label>@endforeach</div>
+                        <div class="flex items-end gap-2">
+                            <x-ui.field name="released_at" label="Выдача" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" span="flex-1"/>
+                            <x-ui.button variant="secondary">Выдать</x-ui.button>
+                        </div>
                     </form>
+                    <x-ui.button href="/requests/new?tip=tow&mashina={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую площадку</x-ui.button>
                     <x-ui.button href="/acts/{{ $vehicle->id }}/intake" variant="ghost" block data-turbo="false" target="_blank">Акт приёма</x-ui.button>
                 @endif
                 @if ($vehicle->state === VehicleState::Released)
@@ -33,7 +46,16 @@
                 @foreach ($templates as $t)
                     <x-ui.button href="/mail/new?mashina={{ $vehicle->id }}&shablon={{ $t->id }}" variant="ghost" block><x-ui.icon name="send" class="size-4"/> {{ $t->name }}</x-ui.button>
                 @endforeach
-                <x-ui.button href="/requests/new?tip=inspection&mashina={{ $vehicle->id }}" variant="ghost" block>Новая заявка</x-ui.button>
+                @unless ($vehicle->state->isFinal())<x-ui.button href="/requests/new?tip=inspection&mashina={{ $vehicle->id }}" variant="ghost" block>Новая заявка</x-ui.button>@endunless
+                @if ($canManage && $vehicle->state->isBefore())
+                    <form method="post" action="/cars/{{ $vehicle->id }}/cancel" class="flex items-end gap-2" data-turbo-confirm="ТС не привезут?">@csrf
+                        <x-ui.field name="reason" label="Почему не привезут" span="flex-1"/>
+                        <x-ui.button variant="danger">Не привезена</x-ui.button>
+                    </form>
+                @endif
+                @if ($canManage && $vehicle->state === VehicleState::Expected && $vehicle->events->count() <= 1 && $photos->isEmpty() && !$vehicle->offer_id && $threads->isEmpty())
+                    <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="Удалить ТС без следов?">@csrf @method('delete')<x-ui.button variant="ghost" block>Удалить</x-ui.button></form>
+                @endif
             </div>
         </x-ui.sheet>
     </div>
@@ -73,12 +95,29 @@
                 </div>
             </x-ui.card>
         </form>
-        @if ($docs)
-        <x-ui.card title="Вендору после приёма" class="order-1">
+        @if ($vehicle->docs->isNotEmpty() || $vehicle->state === VehicleState::Stored)
+        <x-ui.card title="Бумаги с вендором" class="order-1">
+            {{-- Чип — сама бумага: серый — ещё нет, контур — отправлена, лайм — получена; нажатие открывает шторку с датой, сканом и письмом. --}}
             <div class="flex flex-wrap gap-1.5">
-                @foreach ($docs as $doc)
-                    <form method="post" action="/cars/{{ $vehicle->id }}/docs" class="contents">@csrf<input type="hidden" name="doc" value="{{ $doc->value }}"><button class="chip {{ $vehicle->docDone($doc) ? 'bg-accent-soft text-accent-text' : '' }}">@if ($vehicle->docDone($doc))<x-ui.icon name="check" class="size-3.5"/>@endif {{ $doc->label() }}</button></form>
+                @foreach ($vehicle->docs as $doc)
+                    <span class="contents" data-controller="sheet">
+                        <button type="button" class="chip {{ $doc->state === DocState::Received ? 'bg-accent-soft text-accent-text' : ($doc->state === DocState::Sent ? 'ring-1 ring-inset ring-accent text-accent-text' : '') }}" data-action="sheet#open">
+                            @if ($doc->isDone())<x-ui.icon name="check" class="size-3.5"/>@endif
+                            {{ $doc->kind->label() }}
+                            @if (!$doc->isOut())<span class="font-normal">← ждём</span>@endif
+                            @if ($doc->at)<span class="nums font-normal">{{ $doc->at->translatedFormat('j M') }}</span>@endif
+                        </button>
+                        <x-ui.sheet id="doc-{{ $doc->id }}" :title="$doc->kind->label()">
+                            @include('park.vehicles.doc-form', ['doc' => $doc])
+                        </x-ui.sheet>
+                    </span>
                 @endforeach
+                <span class="contents" data-controller="sheet">
+                    <button type="button" class="chip text-ink-muted" data-action="sheet#open" aria-label="Ещё бумага"><x-ui.icon name="plus" class="size-3.5"/></button>
+                    <x-ui.sheet id="doc-new" title="Бумага">
+                        @include('park.vehicles.doc-form', ['doc' => null])
+                    </x-ui.sheet>
+                </span>
             </div>
             @if ($vehicle->vendor?->intake_note)<p class="mt-3 text-sm text-ink-muted">{{ $vehicle->vendor->intake_note }}</p>@endif
         </x-ui.card>
@@ -114,6 +153,43 @@
                         </a>
                     @endforeach
                 </div>
+            </x-ui.card>
+            @endif
+
+            @if ($intake || $release)
+            <x-ui.card title="Осмотр" class="order-4">
+                @foreach (array_filter([$intake, $release]) as $insp)
+                    <div class="flex flex-wrap items-center gap-1.5 {{ $loop->first ? '' : 'mt-3' }}">
+                        <span class="chip">{{ $insp->kind->label() }}</span>
+                        @if ($insp->mileage !== null)<span class="tag nums">{{ Money::nums($insp->mileage) }} км</span>@endif
+                        @if ($insp->fuel !== null)<span class="tag nums">бак {{ $insp->fuelLabel() }}</span>@endif
+                        @if ($insp->keys_count !== null)<span class="tag nums">ключей {{ $insp->keys_count }}</span>@endif
+                        @foreach ($insp->docs ?? [] as $d)<span class="tag">{{ \App\Park\Inspection::DOCS[$d] ?? $d }}</span>@endforeach
+                        @foreach ($insp->equipment ?? [] as $e)<span class="tag">{{ \App\Park\Inspection::EQUIPMENT[$e] ?? $e }}</span>@endforeach
+                        @foreach ($insp->repairMap() as $k => $v)@if ($v !== null)<span class="tag {{ $v ? 'text-danger' : '' }}">{{ \App\Park\Inspection::REPAIR[$k] }}: {{ $v ? 'ремонт' : 'цел' }}</span>@endif @endforeach
+                        @if ($insp->transit_damage)<span class="tag text-danger">при перевозке: {{ $insp->transit_damage }}</span>@endif
+                        @if ($insp->missing_parts)<span class="tag">нет: {{ $insp->missing_parts }}</span>@endif
+                        @if ($insp->signer_name)<span class="tag">{{ $insp->signer_name }}</span>@endif
+                    </div>
+                @endforeach
+            </x-ui.card>
+            @endif
+            @if ($canManage && ($vehicle->offer || $offerGuess || !$vehicle->state->isFinal()))
+            <x-ui.card title="Предложение" class="order-4">
+                @if ($vehicle->offer)
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <a href="{{ Surface::Crm->url('/offers/'.$vehicle->offer->number) }}" class="chip nums" data-turbo="false">№ {{ $vehicle->offer->number }}</a>
+                        <span class="chip">{{ $vehicle->offer->state->label() }}</span>
+                        @if ($vehicle->offer->car_place)<span class="chip">{{ $vehicle->offer->car_place->label() }}</span>@endif
+                        <form method="post" action="/cars/{{ $vehicle->id }}/offer" class="contents" data-turbo-confirm="Снять связь с предложением?">@csrf<button class="chip text-ink-muted">снять</button></form>
+                    </div>
+                @else
+                    <form method="post" action="/cars/{{ $vehicle->id }}/offer" class="flex items-end gap-2">@csrf
+                        <x-ui.field name="number" label="№ предложения" inputmode="numeric" :value="$offerGuess?->number" span="flex-1"/>
+                        <x-ui.button variant="secondary">Связать</x-ui.button>
+                    </form>
+                    @if ($offerGuess)<p class="mt-2 text-sm text-ink-muted">{{ $offerGuess->titleWithYear() }}{{ $offerGuess->claim_ref ? ', '.$offerGuess->claim_ref : '' }}</p>@endif
+                @endif
             </x-ui.card>
             @endif
 

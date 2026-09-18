@@ -2,36 +2,85 @@
 
 namespace App\Park\Actions;
 
-use App\Support\Nav;
+use App\Park\Events\VehicleAccepted;
 use App\Park\EventType;
+use App\Park\Inspection;
+use App\Park\InspectionKind;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
+use App\Support\Nav;
 use App\Users\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** Приём на стоянку одной транзакцией: место, дата, повреждения, закрытие заявки на приём. */
+/**
+ * Приём на стоянку одной транзакцией: площадка и место, дата, осмотр записью,
+ * копия повреждений и показаний на ТС для списков, закрытие переданной заявки
+ * и всех открытых эвакуаций (приезд — конец эвакуации), бумаги вендору,
+ * событие для CRM.
+ */
 final class Intake
 {
-    public function __invoke(Vehicle $vehicle, User $by, Yard $yard, ?Carbon $at, array $damageZones = [], ?string $damageNote = null): Vehicle
+    public function __construct(private OpenDocs $openDocs) {}
+
+    public function __invoke(Vehicle $vehicle, User $by, Yard $yard, ?Carbon $at, array $inspection = [], ?Request $request = null, ?string $spot = null): Vehicle
     {
         Nav::forgetStaffCounts();
-        return DB::transaction(function () use ($vehicle, $by, $yard, $at, $damageZones, $damageNote) {
+        $vehicle = DB::transaction(function () use ($vehicle, $by, $yard, $at, $inspection, $request, $spot) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
-            if ($vehicle->state !== VehicleState::Expected) {
-                throw ValidationException::withMessages(['state' => 'ТС уже '.$vehicle->state->label()]);
+            if (! $vehicle->state->isBefore()) {
+                throw ValidationException::withMessages(['state' => 'ТС уже '.mb_strtolower($vehicle->state->label())]);
             }
-            $vehicle->update(['state' => VehicleState::Stored, 'yard_id' => $yard->id, 'accepted_at' => $at ?? now(), 'damage_zones' => array_values($damageZones), 'damage_note' => $damageNote ?: null]);
-            $vehicle->log(EventType::Accepted, $by, ['yard' => $yard->name]);
-            Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Intake)->where('state', RequestState::New)
-                ->update(['state' => RequestState::Done, 'done_at' => now(), 'assignee_id' => $by->id]);
+            $spot = $spot ? mb_strtoupper(trim($spot)) : null;
+            if ($spot && Vehicle::where('yard_id', $yard->id)->where('spot', $spot)->where('state', VehicleState::Stored)->exists()) {
+                throw ValidationException::withMessages(['spot' => 'Место '.$spot.' занято']);
+            }
+            $at ??= now();
+            $zones = array_values($inspection['damage_zones'] ?? []);
+            $vehicle->update([
+                'state' => VehicleState::Stored, 'yard_id' => $yard->id, 'spot' => $spot, 'accepted_at' => $at, 'transit_started_at' => null,
+                'damage_zones' => $zones, 'damage_note' => ($inspection['damage_note'] ?? null) ?: null,
+                'mileage' => $inspection['mileage'] ?? $vehicle->mileage, 'fuel' => $inspection['fuel'] ?? $vehicle->fuel,
+            ]);
+            Inspection::create(['vehicle_id' => $vehicle->id, 'request_id' => $request?->id, 'kind' => InspectionKind::Intake, 'at' => $at, 'user_id' => $by->id, 'damage_zones' => $zones]
+                + self::fields($inspection));
+            $vehicle->log(EventType::Accepted, $by, array_filter(['yard' => $yard->name, 'spot' => $spot]));
+            $done = ['state' => RequestState::Done, 'done_at' => now(), 'done_by' => $by->id];
+            if ($request) {
+                $request->update($done);
+            }
+            Request::where('vehicle_id', $vehicle->id)->whereIn('type', [RequestType::Intake, RequestType::Tow])->whereIn('state', RequestState::open())->update($done);
+            ($this->openDocs)($vehicle);
 
             return $vehicle;
         });
+        VehicleAccepted::dispatch($vehicle, $request, $by);
+
+        return $vehicle;
+    }
+
+    /** Поля осмотра из формы: пустое не пишется, флаги «требует ремонта» — тройкой да/нет/не смотрели. */
+    public static function fields(array $in): array
+    {
+        $tri = fn ($v) => $v === null || $v === '' ? null : (bool) $v;
+
+        return [
+            'mileage' => $in['mileage'] ?? null,
+            'fuel' => $in['fuel'] ?? null,
+            'keys_count' => $in['keys_count'] ?? null,
+            'docs' => array_values($in['docs'] ?? []),
+            'equipment' => array_values($in['equipment'] ?? []),
+            'repair' => array_map($tri, array_intersect_key($in['repair'] ?? [], Inspection::REPAIR)),
+            'damage_note' => ($in['damage_note'] ?? null) ?: null,
+            'transit_damage' => ($in['transit_damage'] ?? null) ?: null,
+            'missing_parts' => ($in['missing_parts'] ?? null) ?: null,
+            'replaced_units' => ($in['replaced_units'] ?? null) ?: null,
+            'signer_name' => ($in['signer_name'] ?? null) ?: null,
+        ];
     }
 }

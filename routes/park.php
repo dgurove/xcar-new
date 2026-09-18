@@ -6,14 +6,15 @@ use App\Http\Park\ClientController;
 use App\Http\Park\MailController;
 use App\Http\Park\ParkCandidateController;
 use App\Http\Park\RequestController;
+use App\Http\Park\TodayController;
 use App\Http\Park\VehicleController;
 use App\Http\Park\YardController;
 use Illuminate\Support\Facades\Route;
 
 // Стоянка — свой хост того же приложения. Вход общий; пускает раздел «park».
 Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->group(function () {
-    Route::get('/', [RequestController::class, 'index']);
-    Route::get('/requests', fn () => redirect('/'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
+    Route::get('/', [TodayController::class, 'index']);
+    Route::get('/requests', [RequestController::class, 'index']);
 
     Route::get('/requests/new', [RequestController::class, 'create']);
     Route::get('/requests/from-mail', [ParkCandidateController::class, 'index']);
@@ -25,17 +26,24 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/{zayavka}/move', [RequestController::class, 'move']);
     Route::post('/requests/{zayavka}/release', [RequestController::class, 'release']);
     Route::post('/requests/{zayavka}/close', [RequestController::class, 'close']);
+    Route::post('/requests/{zayavka}/schedule', [RequestController::class, 'schedule']);
+    Route::post('/requests/{zayavka}/start', [RequestController::class, 'start']);
+    Route::post('/requests/{zayavka}/assign', [RequestController::class, 'assign']);
 
     Route::get('/cars', [VehicleController::class, 'index']);
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
     Route::get('/cars/{vehicle}/peek', [VehicleController::class, 'peek']);
-    Route::put('/cars/{vehicle}', [VehicleController::class, 'update']);
+    Route::put('/cars/{vehicle}', [VehicleController::class, 'update'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/media', [VehicleController::class, 'upload']);
     Route::post('/cars/{vehicle}/media/order', [VehicleController::class, 'reorder']);
     Route::post('/cars/{vehicle}/media/{media}/rotate', [VehicleController::class, 'rotateMedia']);
     Route::delete('/cars/{vehicle}/media/{media}', [VehicleController::class, 'destroyMedia']);
     Route::post('/cars/{vehicle}/note', [VehicleController::class, 'note']);
     Route::post('/cars/{vehicle}/docs', [VehicleController::class, 'doc']);
+    Route::post('/cars/{vehicle}/docs/{doc}', [VehicleController::class, 'doc']);
+    Route::post('/cars/{vehicle}/offer', [VehicleController::class, 'link'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/cancel', [VehicleController::class, 'cancel'])->middleware('park.manage');
+    Route::delete('/cars/{vehicle}', [VehicleController::class, 'destroy'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/move', [VehicleController::class, 'move']);
     Route::post('/cars/{vehicle}/release', [VehicleController::class, 'release']);
     Route::get('/reference/cars', [VehicleController::class, 'suggest']);
@@ -47,11 +55,11 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/acts/{vehicle}/{kind}', [ActController::class, 'show'])->where('kind', 'intake|release');
 
     Route::get('/yards', [YardController::class, 'index']);
-    Route::post('/yards', [YardController::class, 'store']);
-    Route::put('/yards/{yard}', [YardController::class, 'update']);
+    Route::post('/yards', [YardController::class, 'store'])->middleware('park.manage');
+    Route::put('/yards/{yard}', [YardController::class, 'update'])->middleware('park.manage');
     Route::get('/clients', [ClientController::class, 'index']);
-    Route::post('/clients', [ClientController::class, 'store']);
-    Route::put('/clients/{client}', [ClientController::class, 'update']);
+    Route::post('/clients', [ClientController::class, 'store'])->middleware('park.manage');
+    Route::put('/clients/{client}', [ClientController::class, 'update'])->middleware('park.manage');
 
     Route::get('/mail', [MailController::class, 'index']);
     Route::get('/mail/new', [MailController::class, 'compose']);

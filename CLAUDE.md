@@ -223,6 +223,36 @@
   (вендор > площадка > категория), `ladderLabel` — чип «300 ₽/сут с 4 дн».
   Кто платит хранение — правило вендора (`storage_payer`,
   `buyer_storage_after_days`), не прайс. Слово в интерфейсе — «Вендор».
+- **Стоянка как процесс** (`app/Park`, с 20.09.2026): положение ТС —
+  `VehicleState` `expected → in_transit → stored → released` плюс `cancelled`
+  («Не привезена»); фазы работы — у заявки (`RequestState` `new → scheduled →
+  in_progress → done|cancelled`, лестница целиком только у эвакуации).
+  Эвакуация — заявка `tow` с полями (откуда, куда, перевозчик, км, стоимость из
+  прайса, страхователь): `ScheduleTow` → `StartTow` (ТС «в пути», площадка
+  освобождается) → `Intake`. Осмотр — `park_inspections` (`kind
+  intake|release|pickup`: пробег, топливо восьмыми, ключи, документы,
+  комплектность, «требует ремонта» кузов/двигатель/ходовая, повреждения по акту и
+  при перевозке, нет деталей, замена агрегатов, кто сдал) — поля акта Совкомбанка;
+  на ТС копия последнего. Фото при приёме — чек-лист слотов `PhotoSlot`
+  (custom properties `stage`, `slot`, компонент `x-park.photo-slots`), в галерее
+  пилюли стадий. Бумаги с вендором — `park_vehicle_docs` (`DocKind`, `out|in`,
+  `pending|sent|received`, скан и письмо), открываются при приёме по правилу
+  вендора (`OpenDocs`), чип — сама бумага. Площадка: ряды `rows` → места
+  «A-1…», `spot` у ТС, занятые чипами на `/yards`. Тип заявки сверяется с
+  состоянием (`RequestType::allowedFor`); отмена ТС — `CancelVehicle`, удаление
+  только без следов. Главная стоянки — «Сегодня» (`TodayController`): секции
+  Просрочено · Связаться · Забрать · Принять · Выдать · Отправить вендору · Стоят
+  долго (`Park\Idle`: 30/60 дней), `/requests` — весь список. Доступ: своя
+  площадка `users.park_yard_id` (`Park\Scope`), «только приёмка»
+  `park_readonly` (`User::canManagePark`, middleware `park.manage`).
+  **Правда о положении ТС — у стоянки**: события `Park\Events\*` → слушатель
+  `SyncOffer` двигает `car_place` (`Workflow\Actions\SetCarPlace`) и этап
+  маршрута вывоза (`Workflow::stageForPlace`); запуск маршрута вывоза (кнопкой
+  или с каждым предложением) заводит ТС и заявку `RequestTowFromOffer`; связь —
+  `park_vehicles.offer_id` (`LinkOffer` по убытку или VIN). Уведомления —
+  категория `park` (`ParkNotice`: письмо, назначение, срок, простой), Telegram
+  `ParkLetter` и `ParkDigest` (`park:digest` 9:00 по будням), `park:tick` каждые
+  5 минут.
 - Разбор писем: `Template::common` — общее для всех вендоров (срок ответа
   `answer_by`, страхователь с телефоном — только рядом со словом «клиент»,
   признаки `Offers\Flag`, НДС, держатель, требования к документам
@@ -248,7 +278,7 @@
 ./serve-local.sh                 # http://xcar.localhost:8010 (php@8.5 и postgres из brew)
 php artisan queue:work database-long --queue=long,mail --stop-when-empty   # почта, фото, закупки
 php artisan queue:work --stop-when-empty                                   # конверсии, уведомления
-php artisan offers:tick | mail:sync | mail:reconcile | push:keys | media:restamp | vendors:refill
+php artisan offers:tick | park:tick | park:digest | mail:sync | mail:reconcile | push:keys | media:restamp | vendors:refill
 npm run build                    # ассеты; npm run dev — с горячей перезагрузкой
 node scripts/icons.mjs           # иконки, экраны запуска, водяной знак из resources/icons
 ./deploy/deploy.sh               # выкладка: снимок git → сборка → бэкап базы → миграции → up

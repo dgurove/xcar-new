@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
 /** Поставить оффер на этап: позиция и срок, состояние или место машины, просьба к менеджеру, лента, событие. */
 final class EnterStage
 {
-    public function __construct(private ChangeOfferState $changeState) {}
+    public function __construct(private ChangeOfferState $changeState, private SetCarPlace $setPlace) {}
 
     public function __invoke(Offer $offer, Stage $to, ?User $by = null, array $payload = [], ?Outcome $exit = null): Offer
     {
@@ -57,9 +57,8 @@ final class EnterStage
         if ($track === Track::Sale && $to->offer_state && $offer->state !== $to->offer_state && $offer->state->allows($to->offer_state)) {
             $offer = ($this->changeState)($offer, $to->offer_state, $by, followRoute: false);
         }
-        if ($track === Track::Service && $to->car_place && $offer->car_place !== $to->car_place) {
-            $offer->update(['car_place' => $to->car_place]);
-            $offer->log(OfferEventType::PlaceChanged, $by, ['place' => $to->car_place->value]);
+        if ($track === Track::Service && $to->car_place) {
+            $offer = ($this->setPlace)($offer, $to->car_place, $by);
         }
 
         if ($to->awaitsManager() && $deal && $deal->isActive() && $deal->buyer_id) {

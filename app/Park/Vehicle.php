@@ -20,7 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
 
 #[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id',
-    'contact_name', 'contact_phone', 'flags', 'docs_required', 'docs_done', 'value'])]
+    'contact_name', 'contact_phone', 'flags', 'docs_required', 'value',
+    'cancelled_at', 'cancel_reason', 'spot', 'transit_started_at', 'mileage', 'fuel', 'idle_noticed_at'])]
 class Vehicle extends Model implements HasMedia
 {
     use HasPhotos;
@@ -29,8 +30,8 @@ class Vehicle extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['state' => VehicleState::class, 'category' => Category::class, 'oversize' => 'bool', 'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array', 'docs_done' => 'array',
-            'accepted_at' => 'datetime', 'released_at' => 'datetime', 'year' => 'int'];
+        return ['state' => VehicleState::class, 'category' => Category::class, 'oversize' => 'bool', 'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',
+            'accepted_at' => 'datetime', 'released_at' => 'datetime', 'cancelled_at' => 'datetime', 'transit_started_at' => 'datetime', 'idle_noticed_at' => 'datetime', 'year' => 'int'];
     }
 
     public function setRefAttribute(?string $value): void
@@ -84,9 +85,36 @@ class Vehicle extends Model implements HasMedia
         return array_values(array_filter(array_map(fn ($v) => DocRequirement::tryFrom((string) $v), $values)));
     }
 
-    public function docDone(DocRequirement $doc): bool
+    public function inspections(): HasMany
     {
-        return in_array($doc->value, $this->docs_done ?? [], true);
+        return $this->hasMany(Inspection::class, 'vehicle_id')->latest('at');
+    }
+
+    public function lastInspection(InspectionKind $kind): ?Inspection
+    {
+        return $this->inspections->first(fn (Inspection $i) => $i->kind === $kind);
+    }
+
+    public function docs(): HasMany
+    {
+        return $this->hasMany(Doc::class, 'vehicle_id')->orderBy('direction', 'desc')->orderBy('id');
+    }
+
+    /** Бумаги вендору ещё не отправлены. */
+    public function docsPending(): bool
+    {
+        return $this->docs->contains(fn (Doc $d) => $d->isOut() && ! $d->isDone());
+    }
+
+    public function daysInTransit(): ?int
+    {
+        return $this->transit_started_at && $this->state === VehicleState::InTransit ? (int) $this->transit_started_at->diffInDays(now()) : null;
+    }
+
+    /** Открытая заявка типа, если есть. */
+    public function openRequest(RequestType $type): ?Request
+    {
+        return $this->requests->first(fn (Request $r) => $r->type === $type && $r->isOpen());
     }
 
     public function yard(): BelongsTo

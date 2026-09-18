@@ -49,7 +49,15 @@
         @endforeach
         @if ($errors->has('exit'))<p class="field-error">{{ $errors->first('exit') }}</p>@endif
 
-        @php $service = $offer->vendor?->workflow(Track::Service); $pickup = $offer->position(Track::Service); @endphp
+        @php $service = $offer->vendor?->workflow(Track::Service); $pickup = $offer->position(Track::Service); $pv = $offer->parkVehicle; @endphp
+        @if ($pv)
+            {{-- ТС на стоянке: где стоит, сколько, открытая заявка — на хост стоянки. --}}
+            <div class="flex flex-wrap items-center gap-1.5">
+                <a href="{{ \App\Support\Surface::Park->url('/cars/'.$pv->id) }}" class="contents" data-turbo="false"><x-park.state :vehicle="$pv"/></a>
+                @if ($tow = $pv->openRequest(\App\Park\RequestType::Tow))<a href="{{ \App\Support\Surface::Park->url('/requests/'.$tow->id) }}" class="chip" data-turbo="false">Эвакуация: {{ mb_strtolower($tow->state->label()) }}{{ $tow->planned_at ? ', '.$tow->planned_at->translatedFormat('j M') : '' }}</a>@endif
+                @if ($pv->docsPending())<span class="chip">бумаги вендору не отправлены</span>@endif
+            </div>
+        @endif
         <div class="flex flex-wrap gap-2">
             <x-ui.button type="button" variant="ghost" size="sm" data-action="sheet#open">Поставить на этап</x-ui.button>
             @if ($service?->is_active && !$pickup && !in_array($offer->state, [\App\Offers\OfferState::Delivered, \App\Offers\OfferState::Cancelled, \App\Offers\OfferState::Archived], true))

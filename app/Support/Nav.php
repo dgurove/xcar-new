@@ -45,7 +45,7 @@ final class Nav
 
         if ($surface === Surface::Park) {
             return [
-                self::item('Заявки', '/', ['/', '/requests']),
+                self::item('Сегодня', '/', ['/', '/requests']),
                 self::item('ТС', '/cars'),
                 self::item('Стоянки', '/yards'),
                 self::item('Почта', '/mail'),
@@ -261,7 +261,7 @@ final class Nav
             $day = now()->subDay();
             if ($surface === Surface::Park) {
                 return ['totals' => [
-                    '/' => Request::where('state', '!=', RequestState::Cancelled)->count(),
+                    '/' => Request::whereIn('state', RequestState::open())->count(),
                     '/cars' => Vehicle::where('state', VehicleState::Stored)->count(),
                     '/yards' => Yard::count(),
                     '/mail' => Thread::whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
@@ -328,7 +328,8 @@ final class Nav
         return Cache::remember("nav.staff:{$surface->value}", 30, function () use ($surface) {
             if ($surface === Surface::Park) {
                 return [
-                    '/' => Request::where('state', RequestState::New)->count(),
+                    // Бейдж «Сегодня» — просроченные: то, что горит.
+                    '/' => Request::whereIn('state', RequestState::open())->where('planned_at', '<', now())->count(),
                     '/requests/from-mail' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count(),
                     '/mail' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ];

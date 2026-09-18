@@ -13,12 +13,16 @@ use App\Park\VehicleState;
 use App\Support\Nav;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
-/** Заявка руками или из письма. На приём машина заводится тут же, на остальное — уже существующая. */
+/** Заявка руками или из письма. На приём и эвакуацию машина заводится тут же, на остальное — уже существующая; тип сверяется с состоянием ТС. */
 final class CreateRequest
 {
     public function __invoke(User $by, RequestType $type, ?Vehicle $vehicle, array $data): Request
     {
+        if ($vehicle && ! $type->allowedFor($vehicle->state)) {
+            throw ValidationException::withMessages(['type' => 'Для ТС «'.mb_strtolower($vehicle->state->label()).'» заявка «'.mb_strtolower($type->label()).'» невозможна']);
+        }
         Nav::forgetStaffCounts();
 
         return DB::transaction(function () use ($by, $type, $vehicle, $data) {
@@ -35,6 +39,7 @@ final class CreateRequest
                 ]);
                 $vehicle->log(EventType::Created, $by);
                 (new RememberVin)($vehicle);
+                (new LinkOffer)($vehicle, null, $by);
             }
 
             return Request::create([
@@ -44,6 +49,9 @@ final class CreateRequest
                 'yard_id' => $data['yard_id'] ?? null,
                 'planned_at' => $data['planned_at'] ?? null,
                 'contact' => $data['contact'] ?? null,
+                'contact_name' => $data['contact_name'] ?? null,
+                'contact_phone' => $data['contact_phone'] ?? null,
+                'from_address' => $data['from_address'] ?? null,
                 'note' => $data['note'] ?? null,
                 'created_by' => $by->id,
             ]);

@@ -13,6 +13,7 @@ use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Mail\Extraction\Code;
 use App\Media\HasPhotos;
+use App\Park\Vehicle;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -95,6 +96,12 @@ class Offer extends Model implements HasMedia
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    /** Машина на стоянке, если связана. */
+    public function parkVehicle(): HasOne
+    {
+        return $this->hasOne(Vehicle::class, 'offer_id');
     }
 
     /** @return list<Flag> */

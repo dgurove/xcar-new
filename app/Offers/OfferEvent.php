@@ -41,7 +41,8 @@ class OfferEvent extends Model
             OfferEventType::StageOverdue => 'Срок вышел: '.($p['stage'] ?? ''),
             OfferEventType::StageReminded => 'Срок подходит: '.($p['stage'] ?? ''),
             OfferEventType::RouteDropped => 'Вывоз отменён',
-            OfferEventType::PlaceChanged => 'Автомобиль: '.CarPlace::labelOf($p['place'] ?? null),
+            OfferEventType::PlaceChanged => 'Автомобиль: '.(CarPlace::labelOf($p['place'] ?? null) ?? 'место не указано'),
+            OfferEventType::Note => (string) ($p['text'] ?? ''),
             OfferEventType::RequirementAnswered => 'Менеджер: «'.($p['exit'] ?? '').'»'.(! empty($p['fields']) ? ' — '.implode(', ', $p['fields']) : ''),
             default => $this->type->value,
         };

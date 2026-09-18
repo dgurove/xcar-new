@@ -11,15 +11,21 @@ use App\Offers\Events\BidPlaced;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
+use App\Park\Events\CandidateArrived;
+use App\Park\Events\RequestAssigned;
+use App\Park\Events\RequestDue;
+use App\Park\Events\VehicleIdle;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
+use App\Telegram\Messages\ParkLetter;
 use App\Telegram\Messages\Registration;
+use App\Users\Events\AccessDecided;
 use App\Users\Events\BuyerJoined;
 use App\Users\Events\ManagerJoined;
-use App\Users\Events\AccessDecided;
 use App\Users\Events\UserRegistered;
 use App\Users\Role;
+use App\Users\Section;
 use App\Users\User;
 use App\Workflow\Events\StageDue;
 use App\Workflow\Events\StageEntered;
@@ -48,6 +54,10 @@ final class Notify
             BuyerJoined::class => 'buyerJoined',
             ManagerJoined::class => 'managerJoined',
             AccessDecided::class => 'accessDecided',
+            CandidateArrived::class => 'parkLetter',
+            RequestAssigned::class => 'parkAssigned',
+            RequestDue::class => 'parkDue',
+            VehicleIdle::class => 'parkIdle',
         ];
     }
 
@@ -164,6 +174,35 @@ final class Notify
             $notice = new ChatNotice($e->message, false, $chat->unread_for_user === 1);
         }
         Notification::send($to->reject(fn (User $u) => Presence::viewing($chat, $u)), $notice);
+    }
+
+    /** Письмо на стоянку — всем со стоянки в ленту и пуш, владельцу — строка в Telegram. */
+    public function parkLetter(CandidateArrived $e): void
+    {
+        Notification::send($this->parkStaff(), ParkNotice::letter($e->candidate));
+        NotifyOwner::dispatch(new ParkLetter($e->candidate));
+    }
+
+    public function parkAssigned(RequestAssigned $e): void
+    {
+        $e->assignee->notify(ParkNotice::assigned($e->request->load('vehicle')));
+    }
+
+    /** Срок заявки — исполнителю, без него — всем со стоянки. */
+    public function parkDue(RequestDue $e): void
+    {
+        $r = $e->request->load(['vehicle', 'assignee']);
+        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkStaff(), ParkNotice::due($r, $e->overdue));
+    }
+
+    public function parkIdle(VehicleIdle $e): void
+    {
+        Notification::send($this->parkStaff()->filter->isAdmin(), ParkNotice::idle($e->vehicle, $e->days));
+    }
+
+    private function parkStaff()
+    {
+        return User::where(fn ($q) => $q->where('role', Role::Admin)->orWhereJsonContains('access', Section::Park->value))->whereNotNull('approved_at')->get();
     }
 
     private function staff()

@@ -14,4 +14,9 @@ enum EventType: string
     case Updated = 'updated';
     case DocSent = 'doc_sent';
     case DocBack = 'doc_back';
+    case Scheduled = 'scheduled';
+    case Departed = 'departed';
+    case Assigned = 'assigned';
+    case Cancelled = 'cancelled';
+    case Linked = 'linked';
 }

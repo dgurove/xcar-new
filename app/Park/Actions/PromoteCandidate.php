@@ -21,7 +21,9 @@ final class PromoteCandidate
     {
         $request = DB::transaction(function () use ($candidate, $by) {
             $v = fn (string $f) => $candidate->value($f);
-            $request = ($this->create)($by, RequestType::Intake, null, [
+            // «На вывоз» — заявка на эвакуацию с контактом и адресом; «передача ТС» без вывоза — приём.
+            $type = $v('request') === 'tow' ? RequestType::Tow : RequestType::Intake;
+            $request = ($this->create)($by, $type, null, [
                 'ref' => $candidate->code, 'vin' => $v('vin'), 'plate' => $v('plate'), 'year' => null,
                 'brand' => $v('brand'), 'model' => $v('model'), 'color' => $v('color'),
                 'category' => $v('category'),
@@ -30,6 +32,7 @@ final class PromoteCandidate
                 'contact' => $v('phones') ? implode(', ', (array) $v('phones')) : null,
                 'contact_name' => $v('insured_name'),
                 'contact_phone' => $v('insured_phone') ?? ((array) $v('phones'))[0] ?? null,
+                'from_address' => $v('location'),
                 'flags' => $v('flags') ?: [],
                 'docs_required' => $v('docs_required') ?: [],
                 'value' => $v('value'),

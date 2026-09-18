@@ -219,6 +219,8 @@ class UserController
         $data['login'] = $data['login'] ?? null;
         $data['role'] = $self ? Role::Admin : Role::from($data['role']);
         $data['access'] = $request->boolean('park') ? [Section::Park->value] : [];
+        $data['park_yard_id'] = $request->boolean('park') && $request->filled('park_yard_id') ? (int) $request->input('park_yard_id') : null;
+        $data['park_readonly'] = $request->boolean('park') && $request->boolean('park_readonly');
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
 
         return $data;

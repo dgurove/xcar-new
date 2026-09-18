@@ -2,6 +2,7 @@
 
 use App\Cars\Console\LearnVins;
 use App\Http\Middleware\EnsureManager;
+use App\Http\Middleware\EnsureParkManager;
 use App\Http\Middleware\EnsurePurchases;
 use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\EnsureStaff;
@@ -19,6 +20,8 @@ use App\Mail\Console\WatchMail;
 use App\Media\Console\MovePapers;
 use App\Media\Console\Restamp;
 use App\Offers\Console\TickOffers;
+use App\Park\Console\ParkDigestCommand;
+use App\Park\Console\TickPark;
 use App\Push\Console\MakeKeys;
 use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
@@ -40,6 +43,8 @@ return Application::configure(basePath: dirname(__DIR__))
         CreateUser::class,
         TickOffers::class,
         RefillVendors::class,
+        TickPark::class,
+        ParkDigestCommand::class,
         SyncMail::class,
         WatchMail::class,
         ReconcileMail::class,
@@ -54,7 +59,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo('/');
-        $middleware->alias(['staff' => EnsureStaff::class, 'manager' => EnsureManager::class, 'section' => EnsureSection::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
+        $middleware->alias(['staff' => EnsureStaff::class, 'manager' => EnsureManager::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
         $middleware->prepend(RedirectLegacyPaths::class);
         $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, TouchSeen::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);

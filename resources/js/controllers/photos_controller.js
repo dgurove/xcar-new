@@ -156,6 +156,7 @@ export default class extends Controller {
             form.append('file', file);
             if (sha) form.append('sha', sha);
             form.append('collection', this.collectionValue);
+            for (const [k, v] of Object.entries(this.extra || {})) if (v) form.append(k, v);
             form.append('_token', this.token);
             xhr.open('POST', this.urlValue);
             xhr.setRequestHeader('Accept', 'text/vnd.turbo-stream.html');

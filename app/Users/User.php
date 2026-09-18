@@ -5,6 +5,7 @@ namespace App\Users;
 use App\Chats\Chat;
 use App\Media\MediaUrl;
 use App\Offers\Interest;
+use App\Park\Yard;
 use App\Support\Phone;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -24,7 +25,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'phone', 'login', 'email', 'password', 'role', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields'])]
+#[Fillable(['name', 'phone', 'login', 'email', 'password', 'role', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_yard_id', 'park_readonly'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -37,6 +38,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'password' => 'hashed',
             'role' => Role::class,
             'access' => 'array',
+            'park_readonly' => 'bool',
             'notification_settings' => 'array',
             'seen_at' => 'datetime',
             'list_prefs' => 'array',
@@ -153,6 +155,17 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function isPending(): bool
     {
         return ! $this->isApproved() && ! $this->isRejected();
+    }
+
+    /** Стоянка: править вендоров, площадки, реквизиты ТС, отменять и удалять — не «только приёмка». */
+    public function canManagePark(): bool
+    {
+        return $this->isAdmin() || ($this->canAccess(Section::Park) && ! $this->park_readonly);
+    }
+
+    public function parkYard(): BelongsTo
+    {
+        return $this->belongsTo(Yard::class, 'park_yard_id');
     }
 
     public function canAccess(Section $section): bool

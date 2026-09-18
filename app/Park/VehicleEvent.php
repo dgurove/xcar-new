@@ -34,11 +34,16 @@ class VehicleEvent extends Model
             EventType::Moved => 'Переставлена'.(! empty($p['from']) ? ' с «'.$p['from'].'»' : '').(! empty($p['to']) ? ' на «'.$p['to'].'»' : ''),
             EventType::Inspected => 'Осмотрена'.(! empty($p['note']) ? ': '.$p['note'] : ''),
             EventType::Towed => 'Эвакуация'.(! empty($p['note']) ? ': '.$p['note'] : ''),
-            EventType::Released => 'Выдана',
+            EventType::Released => 'Выдана'.(! empty($p['to']) ? ' — '.$p['to'] : ''),
             EventType::Note => (string) ($p['text'] ?? ''),
             EventType::Updated => 'Изменена: '.implode(', ', $p['fields'] ?? []),
-            EventType::DocSent => 'Отправлено вендору: '.($p['doc'] ?? ''),
+            EventType::DocSent => ($p['direction'] ?? 'out') === 'in' ? 'Получено от вендора: '.($p['doc'] ?? '') : 'Отправлено вендору: '.($p['doc'] ?? ''),
             EventType::DocBack => 'Снята отметка: '.($p['doc'] ?? ''),
+            EventType::Scheduled => 'Эвакуация назначена'.(! empty($p['at']) ? ' на '.$p['at'] : '').(! empty($p['from']) ? ', '.$p['from'] : ''),
+            EventType::Departed => 'Погружена'.(! empty($p['carrier']) ? ', '.$p['carrier'] : '').(! empty($p['from']) ? ' с «'.$p['from'].'»' : ''),
+            EventType::Assigned => 'Исполнитель: '.($p['user'] ?? ''),
+            EventType::Cancelled => 'Не привезена'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
+            EventType::Linked => 'Связана с предложением № '.($p['number'] ?? ''),
         };
     }
 }

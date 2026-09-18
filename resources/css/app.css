@@ -1215,6 +1215,14 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .photo-cell.is-failed::after { background: var(--color-danger); -webkit-mask: none; mask: none; width: 12px; height: 12px; }
   /* Плитка «добавить» — вне ленты: у ленты snap, и всё, что лежит в ней без
      привязки, уезжает за край. */
+  /* Чек-лист кадров при приёме: плитка на слот, обязательный пустой — лаймовый контур, заполненный — кадр с подписью снизу. */
+  .photo-slot { @apply relative flex aspect-[4/3] flex-col items-center justify-center gap-1 overflow-hidden rounded-(--radius-m) bg-surface-3 text-ink-muted transition-colors; }
+  .photo-slot.is-required { box-shadow: inset 0 0 0 2px var(--color-accent); }
+  .photo-slot.is-filled { @apply text-white; }
+  .photo-slot img { @apply absolute inset-0 h-full w-full object-cover; }
+  .photo-slot .photo-slot-label { @apply relative z-[1] px-1 text-center text-xs leading-tight; }
+  .photo-slot.is-filled .photo-slot-label { @apply absolute inset-x-0 bottom-0 bg-black/45 py-0.5; }
+  .photo-slot .mark { @apply absolute right-1 top-1 z-[1] bg-black/45 text-white; }
   .photo-add { @apply flex h-28 w-20 shrink-0 sm:aspect-[4/3] sm:w-auto cursor-pointer items-center justify-center rounded-(--radius-m) bg-surface-3 text-ink-muted transition-colors hover:bg-line hover:text-ink sm:h-36; }
   .is-dropping .photo-add { @apply bg-accent-soft text-accent-text; box-shadow: inset 0 0 0 2px var(--color-accent); }
   /* Плашка действий без размытия фона: на полосе в полсотни кадров backdrop-filter клал телефон. */

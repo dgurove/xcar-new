@@ -3,6 +3,7 @@
 namespace App\Workflow\Actions;
 
 use App\Offers\Offer;
+use App\Park\Actions\RequestTowFromOffer;
 use App\Users\User;
 use App\Workflow\Stage;
 use App\Workflow\Track;
@@ -34,6 +35,10 @@ final class StartRoute
                 continue;
             }
             $offer = DB::transaction(fn () => ($this->enter)($offer, $start, $by));
+            // Вывоз — работа стоянки: с маршрутом заводится ТС «ожидается» и заявка на эвакуацию.
+            if ($t === Track::Service && $by) {
+                app(RequestTowFromOffer::class)($offer, $by);
+            }
         }
 
         return $offer;

@@ -8,7 +8,7 @@
     <form method="post" action="/requests" id="request-form" data-controller="vin draft" class="flex flex-col gap-4">
         @csrf
         <input type="hidden" name="type" value="{{ $type->value }}">
-        @if ($type === RequestType::Intake && !$vehicle)
+        @if (in_array($type, [RequestType::Intake, RequestType::Tow], true) && !$vehicle)
             <x-ui.card title="Транспортное средство">
                 <div class="grid gap-4 sm:grid-cols-2">
                     <x-ui.field name="ref" label="Номер убытка" class="sm:col-span-2"/>
@@ -33,7 +33,13 @@
                     <x-ui.field name="yard_id" label="Куда" :options="$yards" placeholder="—"/>
                 @endif
                 <x-ui.field name="planned_at" label="Когда" type="datetime-local"/>
-                <x-ui.field name="contact" label="Контакт" placeholder="Имя, телефон"/>
+                @if ($type === RequestType::Tow)
+                    <x-ui.field name="from_address" label="Откуда" :value="$vehicle?->offer?->inspection_address"/>
+                    <x-ui.field name="contact_name" label="Страхователь" :value="$vehicle?->contact_name"/>
+                    <x-ui.field name="contact_phone" label="Телефон" type="tel" :value="$vehicle?->contact_phone"/>
+                @else
+                    <x-ui.field name="contact" label="Контакт" placeholder="Имя, телефон"/>
+                @endif
                 <x-ui.field name="note" label="Заметка" type="textarea" class="sm:col-span-2"/>
             </div>
         </x-ui.card>

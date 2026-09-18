@@ -11,6 +11,7 @@ use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Offers\Offer;
+use App\Park\Events\CandidateArrived;
 use App\Park\Vehicle;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -47,7 +48,10 @@ final class ExtractCandidate implements ShouldQueue
         $existing = Candidate::where('scope', $scope)->whereIn('state', [CandidateState::New, CandidateState::Rejected])
             ->where(fn ($q) => $code ? $q->where('code', $code) : $q->where('message_id', $message->id))->first();
         if (! $existing) {
-            Candidate::create(['scope' => $scope, 'code' => $code, 'message_id' => $message->id, 'thread_id' => $message->thread_id, 'subject' => $message->subject, 'extracted' => $fields]);
+            $candidate = Candidate::create(['scope' => $scope, 'code' => $code, 'message_id' => $message->id, 'thread_id' => $message->thread_id, 'subject' => $message->subject, 'extracted' => $fields]);
+            if ($park) {
+                CandidateArrived::dispatch($candidate);
+            }
 
             return;
         }

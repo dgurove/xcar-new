@@ -30,9 +30,20 @@ enum RequestType: string
         return match ($this) {
             self::Intake => 'Принять',
             self::Inspection => 'Осмотрена',
-            self::Tow => 'Привезена',
+            self::Tow => 'Назначить',
             self::Move => 'Переставить',
             self::Release => 'Выдать',
+        };
+    }
+
+    /** Какие заявки заводятся при каком состоянии ТС: выдать ожидаемую нельзя, забрать выданную — тоже. */
+    public function allowedFor(VehicleState $state): bool
+    {
+        return match ($this) {
+            self::Intake => $state->isBefore(),
+            self::Tow => $state === VehicleState::Expected || $state === VehicleState::Stored,
+            self::Move, self::Release => $state === VehicleState::Stored,
+            self::Inspection => ! $state->isFinal(),
         };
     }
 }

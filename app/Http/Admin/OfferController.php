@@ -81,7 +81,7 @@ class OfferController
 
     public function edit(Offer $offer)
     {
-        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'events.user', 'vendor.workflows',
+        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'events.user', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
             'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer']);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {

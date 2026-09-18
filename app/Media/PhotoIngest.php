@@ -32,10 +32,10 @@ final class PhotoIngest
     }
 
     /** Загрузка с телефона: кадр ужат до отправки, отпечаток исходника приходит полем sha. */
-    public function fromPhone(HasMedia $model, string $collection, Request $request, int $max = self::MAX_DIMENSION): Media
+    public function fromPhone(HasMedia $model, string $collection, Request $request, int $max = self::MAX_DIMENSION, array $properties = []): Media
     {
         $sha = $request->input('sha');
-        $properties = is_string($sha) && preg_match('/^[a-f0-9]{64}$/', $sha) ? ['sha' => $sha] : [];
+        $properties += is_string($sha) && preg_match('/^[a-f0-9]{64}$/', $sha) ? ['sha' => $sha] : [];
 
         return $this->fromUpload($model, $collection, $request->file('file'), $properties, $max);
     }

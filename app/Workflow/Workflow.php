@@ -47,6 +47,18 @@ class Workflow extends Model
         return $this->stages()->with(['exits', 'block'])->first();
     }
 
+    /** Первый этап ветки вывоза, где машина в этом месте; для «назначили дату» — этап перед первым «в пути». */
+    public function stageForPlace(CarPlace $place, bool $before = false): ?Stage
+    {
+        $stages = $this->stages()->with(['exits', 'block'])->get()->values();
+        $index = $stages->search(fn (Stage $s) => $s->car_place === $place);
+        if ($index === false) {
+            return null;
+        }
+
+        return $before ? ($index > 0 ? $stages[$index - 1] : null) : $stages[$index];
+    }
+
     /** Что в маршруте сломано — списком, человеческим языком. Пустой список — маршрут цел. */
     public function problems(): array
     {

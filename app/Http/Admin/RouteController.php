@@ -3,6 +3,8 @@
 namespace App\Http\Admin;
 
 use App\Offers\Offer;
+use App\Park\Actions\CloseRequest;
+use App\Park\Actions\RequestTowFromOffer;
 use App\Workflow\Actions\DropRoute;
 use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\StartRoute;
@@ -40,16 +42,22 @@ class RouteController
     }
 
     /** Вывоз по решению сотрудника — там, где он исключение, а не правило. */
-    public function pickup(Request $request, Offer $offer, StartRoute $start)
+    public function pickup(Request $request, Offer $offer, StartRoute $start, RequestTowFromOffer $tow)
     {
         $start($offer->load('vendor.workflows'), $request->user(), Track::Service);
+        $tow($offer, $request->user());
 
-        return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз запущен');
+        return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз запущен, заявка на стоянке');
     }
 
-    public function dropPickup(Request $request, Offer $offer, DropRoute $drop)
+    public function dropPickup(Request $request, Offer $offer, DropRoute $drop, CloseRequest $close)
     {
         $drop($offer, Track::Service, $request->user());
+        if ($vehicle = $offer->parkVehicle) {
+            foreach ($vehicle->requests->filter(fn ($r) => $r->isTow() && $r->isOpen()) as $open) {
+                $close($open, $request->user(), false, 'Вывоз не нужен');
+            }
+        }
 
         return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз отменён');
     }
