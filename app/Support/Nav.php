@@ -10,12 +10,20 @@ use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Bid;
 use App\Offers\BidState;
+use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Favorite;
 use App\Offers\Interest;
 use App\Offers\InterestState;
+use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Park\Request;
 use App\Park\RequestState;
+use App\Park\Vehicle;
+use App\Park\VehicleState;
+use App\Park\Yard;
+use App\Purchases\Purchase;
+use App\Purchases\PurchaseState;
 use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Position;
@@ -227,10 +235,63 @@ final class Nav
         if ($memo?->has($key)) {
             return $memo->get($key);
         }
-        $badges = self::count($user, $surface);
+        $badges = array_filter(self::count($user, $surface) + self::counts($user, $surface)['fresh']);
         $memo?->set($key, $badges);
 
         return $badges;
+    }
+
+    /**
+     * Сколько всего в разделе — серое число в таб-баре: путь → число; рядом «свежее» — что
+     * появилось за сутки (лаймовый бейдж там, где нет своего счётчика непрочитанного).
+     * Полминуты в кэше: сотрудникам общий, менеджеру и покупателю — свой (у них своя выдача).
+     */
+    public static function totals(?User $user, ?Surface $surface = null): array
+    {
+        return $user ? self::counts($user, $surface ?? Surface::current())['totals'] : [];
+    }
+
+    private static function counts(User $user, Surface $surface): array
+    {
+        $scope = $user->isStaff() ? 'staff' : $user->id;
+
+        return Cache::remember("nav.counts:{$surface->value}:{$scope}", 30, function () use ($user, $surface) {
+            $day = now()->subDay();
+            if ($surface === Surface::Park) {
+                return ['totals' => [
+                    '/' => Request::where('state', '!=', RequestState::Cancelled)->count(),
+                    '/cars' => Vehicle::where('state', VehicleState::Stored)->count(),
+                    '/yards' => Yard::count(),
+                    '/mail' => Thread::whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
+                ], 'fresh' => [
+                    '/cars' => Vehicle::where('state', VehicleState::Expected)->count(),
+                ]];
+            }
+            if ($surface === Surface::Crm) {
+                return ['totals' => [
+                    '/' => Offer::whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
+                    '/gallery' => Offer::where('state', OfferState::Gallery)->count(),
+                    '/work' => Deal::where('state', DealState::Active)->count(),
+                    '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),
+                ], 'fresh' => []];
+            }
+            $open = Offer::visibleTo($user)->where('state', OfferState::Open);
+            $gallery = Offer::visibleTo($user)->where('state', OfferState::Gallery);
+
+            // Ноль — тоже число («Покупатели 0»), нет только разделов, которых у роли нет.
+            return ['totals' => array_filter([
+                '/' => (clone $open)->count(),
+                '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->count() : null,
+                '/purchases' => $user->role->canSeePurchases() ? count(Purchase::showcase($user)) : null,
+                '/account/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
+                '/account/interests' => $user->isBuyer() ? Interest::where('user_id', $user->id)->count() : null,
+                '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
+                '/account/notifications' => $user->notifications()->count(),
+            ], fn ($v) => $v !== null), 'fresh' => [
+                '/' => (clone $open)->where('published_at', '>', $day)->count(),
+                '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->where('published_at', '>', $day)->count() : 0,
+            ]];
+        });
     }
 
     private static function count(User $user, Surface $surface): array
@@ -251,7 +312,6 @@ final class Nav
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона.
             $badges['/account/chats'] = $user->unreadChats();
         }
-        $badges['/account/favorites'] = Favorite::where('user_id', $user->id)->count();
 
         return array_filter($badges);
     }
@@ -287,10 +347,20 @@ final class Nav
         });
     }
 
+    /** Сброс общих счётчиков сотрудников — бейджей и итогов таб-бара; личные живут свои полминуты. */
     public static function forgetStaffCounts(): void
     {
         Cache::forget('nav.staff:crm');
         Cache::forget('nav.staff:park');
+        foreach (Surface::cases() as $surface) {
+            Cache::forget("nav.counts:{$surface->value}:staff");
+        }
+    }
+
+    /** Число в капсуле таб-бара: до трёх цифр, дальше «999+». */
+    public static function short(int $n): string
+    {
+        return $n > 999 ? '999+' : (string) $n;
     }
 
     /** Все пути, у которых бывает счётчик — для стрима бейджей. */
@@ -300,7 +370,6 @@ final class Nav
         $paths = array_column(self::sections($user, $surface), 'href');
         $paths[] = '/account/notifications';
         if ($surface === Surface::Site) {
-            $paths[] = '/account/favorites';
             $paths[] = '/account/chats';
             $paths[] = '/account/deals';
         }

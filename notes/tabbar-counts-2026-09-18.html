@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Счётчики в таб-баре</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #f4f4f2; --surface: #ffffff; --surface-2: #f7f7f7; --surface-3: #ececec; --line: #d0d0d0;
+    --ink: #1d1d1b; --ink-muted: #808080; --ink-dim: #a7a7a7; --ink-invert: #ffffff;
+    --accent: #97bf0d; --accent-hover: #669709; --accent-soft: #f0f7d8; --accent-text: #669709;
+    --grey-fill: #8e8e93; --bar: rgb(255 255 255 / .82); --bar-line: rgb(60 60 67 / .29);
+    --ease-out: cubic-bezier(.2, .7, .2, 1); --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+    --font: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a0a0a; --surface: #0d0d0d; --surface-2: #1a1a1a; --surface-3: #242424; --line: #2a2a2a;
+      --ink: #ededed; --ink-muted: #9a9a9a; --ink-dim: #6a6a6a; --ink-invert: #161616;
+      --accent-hover: #7ca30b; --accent-soft: #1a2605; --accent-text: #a6cf3a;
+      --grey-fill: #3a3a3c; --bar: rgb(18 18 18 / .78); --bar-line: rgb(84 84 88 / .6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0a0a; --surface: #0d0d0d; --surface-2: #1a1a1a; --surface-3: #242424; --line: #2a2a2a;
+    --ink: #ededed; --ink-muted: #9a9a9a; --ink-dim: #6a6a6a; --ink-invert: #161616;
+    --accent-hover: #7ca30b; --accent-soft: #1a2605; --accent-text: #a6cf3a;
+    --grey-fill: #3a3a3c; --bar: rgb(18 18 18 / .78); --bar-line: rgb(84 84 88 / .6);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.45; padding-inline: 16px; padding-block: 24px 64px; }
+  h1, h2, h3 { font-weight: 500; letter-spacing: -.02em; line-height: 1.15; margin: 0; text-wrap: balance; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 20px; }
+  p { margin: 0; }
+  .muted { color: var(--ink-muted); }
+  .nums { font-variant-numeric: tabular-nums; }
+
+  .wrap { max-width: 1120px; margin-inline: auto; display: flex; flex-direction: column; gap: 28px; }
+  .top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .top p { max-width: 62ch; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 10px; }
+  @media (min-width: 640px) { .controls { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in oklab, var(--bg) 88%, transparent); backdrop-filter: blur(12px); } }
+  .btn { appearance: none; border: 0; font: inherit; font-size: 14px; font-weight: 500; height: 40px; padding: 0 18px; border-radius: 999px; background: var(--surface-3); color: var(--ink); cursor: pointer; transition: background-color .15s; }
+  .btn:hover { background: var(--line); }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-accent:hover { background: var(--accent-hover); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
+  .variant { display: flex; flex-direction: column; gap: 14px; }
+  .variant header { display: flex; flex-direction: column; gap: 6px; }
+  .variant header .num { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-text); }
+  .variant .note { font-size: 14px; color: var(--ink-muted); max-width: 48ch; }
+  .variant .note b { color: var(--ink); font-weight: 500; }
+
+  /* Телефон: только низ экрана — обрывок ленты и таб-бар. */
+  .phone { position: relative; width: 100%; max-width: 375px; margin-inline: auto; height: 250px; border-radius: 28px 28px 0 0; overflow: hidden; background: var(--surface-2); border: 1px solid var(--line); border-bottom: 0; }
+  .ghost { position: absolute; inset: 0 0 49px 0; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .ghost .card { height: 92px; border-radius: 16px; background: var(--surface); display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 12px; }
+  .ghost .card i { display: block; border-radius: 12px; background: var(--surface-3); }
+  .ghost .card em { display: block; height: 10px; border-radius: 5px; background: var(--surface-3); margin-bottom: 8px; }
+  .ghost .card em:first-child { width: 55%; }
+  .ghost .card em:nth-child(2) { width: 80%; }
+  .ghost .card em:nth-child(3) { width: 35%; }
+  .ghost-title { font-size: 13px; color: var(--ink-dim); display: flex; justify-content: space-between; }
+
+  .tabbar { position: absolute; inset: auto 0 0 0; height: 49px; display: flex; align-items: stretch; background: var(--bar); backdrop-filter: saturate(180%) blur(20px); border-top: .5px solid var(--bar-line); }
+  .tabbar.tall { height: 56px; }
+  .tab { position: relative; flex: 1 1 0; min-width: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 100%; color: var(--ink-muted); font-size: 10px; font-weight: 500; line-height: 1; letter-spacing: .01em; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; background: none; border: 0; padding: 0; font-family: inherit; }
+  .tab:active { opacity: .6; }
+  .tab[aria-current="page"] { color: var(--accent-text); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: 12px; }
+  .tab .label { white-space: nowrap; }
+  .mark { display: flex; align-items: center; justify-content: center; height: 20px; font-size: 11px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; transition: transform .28s var(--ease-spring), background-color .2s, color .2s, box-shadow .2s, width .28s var(--ease-out), min-width .28s var(--ease-out); }
+  .mark .n { display: inline-block; }
+  .mark .n.roll { animation: roll .35s var(--ease-out); }
+  @keyframes roll { 0% { transform: translateY(-.7em); opacity: 0; } 100% { transform: none; opacity: 1; } }
+  .pop { animation: pop .4s var(--ease-spring); }
+  @keyframes pop { 35% { transform: scale(1.22); } 100% { transform: scale(1); } }
+  /* «Кабинет» без позиций: точка как сейчас, без капсулы. */
+  .mark.quiet { background: transparent !important; min-width: 0 !important; padding: 0 !important; box-shadow: none !important; }
+  .mark.quiet i { width: 8px; height: 8px; border-radius: 4px; background: var(--ink-dim); display: block; }
+  .tab[aria-current="page"] .mark.quiet i { background: var(--accent); width: 22px; }
+
+  /* 1. Пилюля пополам */
+  .v1 .mark { min-width: 44px; height: 20px; border-radius: 10px; overflow: hidden; background: var(--grey-fill); color: #fff; }
+  .v1 .mark .half { flex: 1 1 0; display: flex; align-items: center; justify-content: center; height: 100%; padding-inline: 7px; }
+  .v1 .mark .half.new { flex: 0 0 auto; background: var(--accent); max-width: 0; padding: 0; opacity: 0; transition: max-width .3s var(--ease-out), padding .3s var(--ease-out), opacity .2s; }
+  .v1 .mark.has-new .half.new { max-width: 60px; padding-inline: 7px; opacity: 1; }
+  .v1 .tab[aria-current="page"] .mark { transform: scale(1.12); box-shadow: 0 0 0 2px var(--bar), 0 0 0 3.5px var(--accent); }
+
+  /* 2. Капсула с делителем */
+  .v2 .mark { min-width: 44px; height: 20px; border-radius: 10px; padding-inline: 8px; gap: 6px; background: var(--surface-3); color: var(--ink-muted); }
+  .v2 .mark .new { color: var(--accent-text); display: inline-flex; align-items: center; gap: 6px; max-width: 0; overflow: hidden; opacity: 0; transition: max-width .3s var(--ease-out), opacity .2s; }
+  .v2 .mark .new::before { content: ''; width: 1px; height: 10px; background: var(--line); }
+  .v2 .mark.has-new .new { max-width: 60px; opacity: 1; }
+  .v2 .tab[aria-current="page"] .mark { background: var(--accent-soft); color: var(--accent-text); transform: scale(1.1); }
+  .v2 .tab[aria-current="page"] .mark .new { color: var(--accent-text); font-weight: 700; }
+
+  /* 3. Только цифры */
+  .v3 .mark { gap: 5px; height: 20px; font-size: 12px; font-weight: 600; color: var(--ink-dim); position: relative; }
+  .v3 .mark .new { color: var(--accent-text); max-width: 0; overflow: hidden; opacity: 0; transition: max-width .3s var(--ease-out), opacity .2s; }
+  .v3 .mark.has-new .new { max-width: 40px; opacity: 1; }
+  .v3 .mark::after { content: ''; position: absolute; left: 50%; bottom: -3px; width: 8px; height: 3px; border-radius: 2px; background: var(--ink-dim); translate: -50% 0; transition: width .28s var(--ease-spring), background-color .2s; }
+  .v3 .tab[aria-current="page"] .mark { color: var(--ink); }
+  .v3 .tab[aria-current="page"] .mark::after { width: 22px; background: var(--accent); }
+
+  /* 4. Точка, ставшая числом */
+  .v4 .mark { position: relative; min-width: 22px; height: 20px; padding-inline: 6px; border-radius: 10px; background: var(--surface-3); color: var(--ink-muted); }
+  .v4 .mark .badge { position: absolute; top: -7px; left: calc(100% - 9px); min-width: 16px; height: 16px; padding-inline: 4px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--bar); transform: scale(0); transition: transform .3s var(--ease-spring); }
+  .v4 .mark.has-new .badge { transform: scale(1); }
+  .v4 .tab[aria-current="page"] .mark { background: var(--accent); color: #fff; transform: scale(1.12); }
+  .v4 .tab[aria-current="page"] .mark .badge { background: var(--ink); color: var(--bar); }
+
+  /* 5. Полоска-шкала */
+  .v5 .mark { gap: 5px; height: 20px; font-size: 11px; color: var(--ink-dim); }
+  .v5 .mark .bar { width: 26px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; transition: width .28s var(--ease-spring); }
+  .v5 .mark .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .5s var(--ease-out); }
+  .v5 .mark .new { color: var(--accent-text); font-weight: 600; max-width: 0; overflow: hidden; opacity: 0; transition: max-width .3s var(--ease-out), opacity .2s; }
+  .v5 .mark.has-new .new { max-width: 40px; opacity: 1; }
+  .v5 .tab[aria-current="page"] .mark { color: var(--ink); }
+  .v5 .tab[aria-current="page"] .mark .bar { width: 36px; background: color-mix(in oklab, var(--accent) 35%, var(--line)); }
+
+  /* 6. Число в имени */
+  .v6 .tab { gap: 4px; }
+  .v6 .mark { height: 22px; width: 22px; }
+  .v6 .mark .dot { width: 8px; height: 8px; border-radius: 4px; background: var(--ink-dim); transition: width .28s var(--ease-spring), background-color .2s; }
+  .v6 .mark .newpill { position: absolute; height: 18px; min-width: 18px; padding-inline: 5px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 10px; display: flex; align-items: center; justify-content: center; transform: scale(0); transition: transform .3s var(--ease-spring); }
+  .v6 .mark.has-new .dot { opacity: 0; }
+  .v6 .mark.has-new .newpill { transform: scale(1); }
+  .v6 .label .tot { color: var(--ink-dim); font-weight: 600; margin-left: 3px; }
+  .v6 .tab[aria-current="page"] .mark .dot { width: 22px; background: var(--accent); }
+  .v6 .tab[aria-current="page"] .mark .newpill { background: var(--accent); box-shadow: 0 0 0 2px var(--bar); }
+  .v6 .tab[aria-current="page"] .label .tot { color: var(--accent-text); }
+
+  .legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 24px; font-size: 14px; color: var(--ink-muted); }
+  .legend b { color: var(--ink); font-weight: 500; }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h1>Счётчики в таб-баре</h1>
+      <p class="muted">Шесть раскладок одного и того же: у каждого раздела внизу — сколько всего позиций серым и сколько новых лаймом. Числа во всех вариантах одни, нажимайте по табам, добавляйте новое и смотрите, как это движется.</p>
+    </div>
+  </div>
+
+  <div class="controls" role="group" aria-label="Управление примером">
+    <button class="btn btn-accent" id="btn-new" type="button">Пришло новое</button>
+    <button class="btn" id="btn-read" type="button">Прочитать текущий раздел</button>
+    <button class="btn" id="btn-reset" type="button">Сбросить</button>
+    <button class="btn" id="btn-theme" type="button">Тема</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="legend">
+    <p><b>Про высоту.</b> Таб-бар сейчас 49px, как в iOS. Варианты 1, 2 и 4 с пилюлей в 20px помещаются в 49, но дышат в 56 — в примерах они на 56.</p>
+    <p><b>Про ноль.</b> Когда новых нет, зелёного нет нигде: пилюля становится одноцветной той же ширины, число общего — по центру.</p>
+    <p><b>Про «Кабинет».</b> У него нет позиций: там остаётся точка как сейчас, чтобы ряд не выглядел дырявым.</p>
+    <p><b>Про анимации.</b> Число при смене «выезжает» сверху, зелёная половина выдвигается из серой, активный таб чуть подрастает пружиной. Всё отключается при «уменьшить движение».</p>
+  </div>
+</div>
+
+<script>
+  const state = {
+    tabs: [
+      { key: 'offers', label: 'Предложения', total: 128, fresh: 4 },
+      { key: 'gallery', label: 'Галерея', total: 12, fresh: 1 },
+      { key: 'purchases', label: 'Закупки', total: 3, fresh: 0 },
+      { key: 'notices', label: 'Уведомления', total: 41, fresh: 7 },
+      { key: 'cabinet', label: 'Кабинет', total: null, fresh: 0 },
+    ],
+    active: 'offers',
+  };
+  const initial = JSON.parse(JSON.stringify(state));
+
+  const variants = [
+    { id: 'v1', tall: true, title: 'Пилюля пополам', note: 'Идея начальника как есть: слева серая половина с общим числом, справа лаймовая с новыми. Активный таб — пилюля подрастает и берётся в лаймовое кольцо. Без новых — одна серая пилюля той же ширины.',
+      mark: t => `<span class="mark${t.fresh ? ' has-new' : ''}"><span class="half"><span class="n tot">${t.total}</span></span><span class="half new"><span class="n fr">+${t.fresh}</span></span></span>` },
+    { id: 'v2', tall: true, title: 'Капсула с делителем', note: 'Тише, чем заливка: серая капсула, внутри общее число и через тонкий делитель — новые лаймовым текстом. Активный таб — капсула становится лаймово-мягкой, как чипы в кабинете. <b>Наш фаворит:</b> самый спокойный в ряду из пяти.',
+      mark: t => `<span class="mark${t.fresh ? ' has-new' : ''}"><span class="n tot">${t.total}</span><span class="new"><span class="n fr">+${t.fresh}</span></span></span>` },
+    { id: 'v3', tall: false, title: 'Только цифры', note: 'Без пилюль вовсе: общее число серым, новые лаймом со знаком плюс, а под ними — та же черта, что сейчас: точка у раздела, лаймовая черта у текущего. Помещается в 49px.',
+      mark: t => `<span class="mark${t.fresh ? ' has-new' : ''}"><span class="n tot">${t.total}</span><span class="new"><span class="n fr">+${t.fresh}</span></span></span>` },
+    { id: 'v4', tall: true, title: 'Точка стала числом', note: 'Ближе всего к нынешнему бару: серая точка выросла в капсулу с общим числом, новые — лаймовым бейджем сверху справа, как бейдж уведомлений сейчас. Активный таб — капсула лаймовая, бейдж тёмный.',
+      mark: t => `<span class="mark${t.fresh ? ' has-new' : ''}"><span class="n tot">${t.total}</span><span class="badge"><span class="n fr">${t.fresh}</span></span></span>` },
+    { id: 'v5', tall: false, title: 'Шкала', note: 'Черта раздела становится шкалой: серая дорожка — всё, лаймовая часть — доля новых. Числа по краям: общее серым, новые лаймом. Активный таб — дорожка длиннее. Видно не только сколько, но и насколько.',
+      mark: t => `<span class="mark${t.fresh ? ' has-new' : ''}"><span class="n tot">${t.total}</span><span class="bar"><i style="width:${t.total ? Math.min(100, Math.round(t.fresh / t.total * 100)) : 0}%"></i></span><span class="new"><span class="n fr">+${t.fresh}</span></span></span>` },
+    { id: 'v6', tall: false, title: 'Число в имени', note: 'Точка и черта остаются как сейчас; общее число серым встаёт в подпись раздела, а новые — лаймовой пилюлей на месте точки. Самое малое изменение бара: без новых он выглядит как сегодня, только с числами.',
+      mark: t => `<span class="mark${t.fresh ? ' has-new' : ''}"><span class="dot"></span><span class="newpill"><span class="n fr">${t.fresh}</span></span></span>`,
+      label: t => `<span class="label">${t.label}${t.total !== null ? `<span class="tot nums n">${t.total}</span>` : ''}</span>` },
+  ];
+
+  const grid = document.getElementById('grid');
+
+  function renderTab(v, t) {
+    const current = state.active === t.key ? ' aria-current="page"' : '';
+    const mark = t.total === null
+      ? (v.id === 'v6' ? `<span class="mark"><span class="dot"></span></span>` : `<span class="mark quiet"><i></i></span>`)
+      : v.mark(t);
+    const label = v.label ? v.label(t) : `<span class="label">${t.label}</span>`;
+    return `<button class="tab" type="button" data-key="${t.key}"${current}>${mark}${label}</button>`;
+  }
+
+  function renderVariant(v, i) {
+    return `<section class="variant ${v.id}" data-variant="${v.id}">
+      <header>
+        <span class="num">Вариант ${i + 1}</span>
+        <h2>${v.title}</h2>
+        <p class="note">${v.note}</p>
+      </header>
+      <div class="phone">
+        <div class="ghost">
+          <div class="ghost-title"><span>${state.tabs.find(t => t.key === state.active).label}</span><span class="nums">${state.tabs.find(t => t.key === state.active).total ?? ''}</span></div>
+          <div class="card"><i></i><div><em></em><em></em><em></em></div></div>
+          <div class="card"><i></i><div><em></em><em></em><em></em></div></div>
+        </div>
+        <nav class="tabbar${v.tall ? ' tall' : ''}" aria-label="Разделы">${state.tabs.map(t => renderTab(v, t)).join('')}</nav>
+      </div>
+    </section>`;
+  }
+
+  function renderAll() { grid.innerHTML = variants.map(renderVariant).join(''); }
+
+  // Точечное обновление одного таба во всех вариантах — чтобы анимации шли, а не перерисовка.
+  function updateTab(key, { changed = false } = {}) {
+    const t = state.tabs.find(x => x.key === key);
+    variants.forEach(v => {
+      const section = grid.querySelector(`[data-variant="${v.id}"]`);
+      const old = section.querySelector(`.tab[data-key="${key}"]`);
+      const tmp = document.createElement('div');
+      tmp.innerHTML = renderTab(v, t);
+      const fresh = tmp.firstElementChild;
+      const wasNew = old.querySelector('.mark')?.classList.contains('has-new');
+      old.replaceWith(fresh);
+      if (changed) {
+        fresh.querySelectorAll('.n.fr, .n.tot').forEach(n => n.classList.add('roll'));
+        const mark = fresh.querySelector('.mark');
+        if (mark && !wasNew && t.fresh) mark.classList.add('pop');
+        // Половинка выезжает: класс has-new ставится следующим кадром, чтобы transition сработал.
+        if (mark && !wasNew && t.fresh) { mark.classList.remove('has-new'); requestAnimationFrame(() => mark.classList.add('has-new')); }
+      }
+      section.querySelector('.ghost-title').innerHTML = `<span>${state.tabs.find(x => x.key === state.active).label}</span><span class="nums">${state.tabs.find(x => x.key === state.active).total ?? ''}</span>`;
+    });
+  }
+
+  grid.addEventListener('click', e => {
+    const tab = e.target.closest('.tab');
+    if (!tab) return;
+    const prev = state.active;
+    state.active = tab.dataset.key;
+    updateTab(prev); updateTab(state.active);
+  });
+
+  document.getElementById('btn-new').addEventListener('click', () => {
+    const pool = state.tabs.filter(t => t.total !== null);
+    const t = pool[Math.floor(Math.random() * pool.length)];
+    t.total += 1; t.fresh += 1;
+    updateTab(t.key, { changed: true });
+  });
+  document.getElementById('btn-read').addEventListener('click', () => {
+    const t = state.tabs.find(x => x.key === state.active);
+    if (t.total === null) return;
+    t.fresh = 0;
+    updateTab(t.key, { changed: true });
+  });
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    Object.assign(state, JSON.parse(JSON.stringify(initial)));
+    renderAll();
+  });
+  document.getElementById('btn-theme').addEventListener('click', () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme === 'dark' || (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.dataset.theme = dark ? 'light' : 'dark';
+  });
+
+  renderAll();
+</script>
+
+</body>
+</html>

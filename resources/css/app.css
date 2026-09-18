@@ -109,7 +109,7 @@
 
   --container-site: 1320px;
   --spacing-header: 56px;
-  --spacing-tabbar: 49px;
+  --spacing-tabbar: 54px;
   --spacing-safe-b: env(safe-area-inset-bottom);
   --spacing-safe-t: env(safe-area-inset-top);
 
@@ -848,13 +848,23 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   .tab:active { opacity: .6; }
   .tab[aria-current="page"] { color: var(--color-accent-text); }
-  /* Знак раздела: точка 8px в покое, у текущего — лаймовая черта 22px; та же высота, что у аватара, чтобы подписи стояли в линию. */
-  .tab-mark { display: flex; align-items: center; justify-content: center; width: 25px; height: 25px; }
-  .tab-mark::before { content: ''; width: 8px; height: 8px; border-radius: 4px; background: var(--color-ink-dim); transition: width var(--dur) var(--ease-out), background-color var(--dur-fast); }
-  .tab[aria-current="page"] .tab-mark::before { width: 22px; background: var(--color-accent); }
-  .tab .avatar { width: 25px; height: 25px; font-size: 10px; }
+  /* Знак раздела — капсула с числом позиций: серая по содержимому, у текущего лаймовая и не уже
+     2.75rem — одной ширины под три цифры; бейдж нового — сверху справа капсулы, у текущего тёмный.
+     Аватар кабинета и точка без позиций — той же высоты, чтобы подписи стояли в линию. */
+  .tab-mark { position: relative; display: flex; align-items: center; justify-content: center; height: 22px; }
+  .tab-count {
+    display: inline-flex; align-items: center; justify-content: center; height: 20px; min-width: 22px; padding-inline: 6px;
+    border-radius: 10px; background: var(--color-surface-3); color: var(--color-ink-muted);
+    font-size: 11px; font-weight: 600; line-height: 1;
+    transition: min-width var(--dur) var(--ease-spring), background-color var(--dur-fast), color var(--dur-fast);
+  }
+  .tab[aria-current="page"] .tab-count { min-width: 2.75rem; background: var(--color-accent); color: #fff; }
+  .tab-dot { width: 8px; height: 8px; border-radius: 4px; background: var(--color-ink-dim); transition: width var(--dur) var(--ease-out), background-color var(--dur-fast); }
+  .tab[aria-current="page"] .tab-dot { width: 22px; background: var(--color-accent); }
+  .tab .avatar { width: 22px; height: 22px; font-size: 10px; transition: box-shadow var(--dur-fast); }
   .tab[aria-current="page"] .avatar { box-shadow: 0 0 0 2px var(--color-accent); }
-  .tab .badge { position: absolute; top: 2px; left: calc(50% + 6px); }
+  .tab .badge { position: absolute; top: -6px; left: calc(100% - 8px); box-shadow: 0 0 0 2px var(--color-bar); transition: background-color var(--dur-fast), color var(--dur-fast); }
+  .tab[aria-current="page"] .badge { background: var(--color-ink); color: var(--color-bar); }
   .tab { font-size: 11px; }
 }
 
