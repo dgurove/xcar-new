@@ -111,5 +111,5 @@
         @endforeach
     </div>
     @endif
-    <div class="mt-8">{{ $cars->links() }}</div>
+    <div class="mt-8"><x-ui.pager :of="$cars" :sizes="\App\Support\ListView::perSizes($view)"/></div>
 </x-ui.shell>

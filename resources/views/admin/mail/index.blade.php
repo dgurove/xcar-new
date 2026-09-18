@@ -31,6 +31,6 @@
                 @include('admin.mail.thread-row')
             @endforeach
         </div>
-        <div class="mt-8">{{ $threads->links() }}</div>
+        <div class="mt-8"><x-ui.pager :of="$threads"/></div>
     @endif
 </x-ui.shell>

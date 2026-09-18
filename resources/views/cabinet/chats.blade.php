@@ -32,7 +32,7 @@
                     </a>
                 @endif
             </div>
-            {{ $chats->links() }}
+            <x-ui.pager :of="$chats" :sizes="[]"/>
         </div>
         <turbo-frame id="chat-screen" class="chat-pane" target="_top">
             @if ($current)

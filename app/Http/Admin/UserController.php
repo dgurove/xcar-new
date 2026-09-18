@@ -8,6 +8,8 @@ use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Support\ListPrefs;
+use App\Support\ListView;
 use App\Support\Phone;
 use App\Support\Surface;
 use App\Users\Actions\DecideAccess;
@@ -38,6 +40,7 @@ class UserController
 
     public function index(Request $request)
     {
+        ListPrefs::sync($request, 'crm-users');
         abort_unless($request->user()->isAdmin(), 404);
         $preset = $request->query('preset', 'staff');
         // На сайте ссылки — своя пилюля кабинета, а не пресет.
@@ -78,7 +81,7 @@ class UserController
         }
 
         return view('admin.users.index', [
-            'users' => $q->paginate(50)->withQueryString(),
+            'users' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset,
             'pills' => $pills,
             'counts' => $counts,

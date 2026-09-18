@@ -19,13 +19,14 @@
     <div id="catalog-section" @class(['over-hero' => $hero]) @if ($selecting) data-controller="selection" data-selection-url-value="/account/showings/new" @endif>
         {{-- Без первого экрана контейнер уже даёт шелл — второй удваивал поля. --}}
         <div @class(['container-site pt-10 pb-10 sm:pt-14 sm:pb-14' => $hero])>
-            <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+            {{-- Разделы те же, что в таб-баре: на телефоне ряд спрятан, его место — лента пилюль тулбара. --}}
+            <div class="hidden flex-wrap items-baseline gap-x-6 gap-y-2 md:flex">
                 @foreach ($sections as [$label, $count, $href, $current])
                     <x-ui.section-title :count="$count" :href="$current ? null : $href" :current="$current" :level="$current ? 'h1' : 'h2'">{{ $label }}</x-ui.section-title>
                 @endforeach
             </div>
 
-            <x-ui.toolbar class="mt-5" :sorts="$sorts" :sort="$sort" :pills="$views" :pill="$filters['view'] ?? ''" :counts="$counts" :hidden="[\App\Support\ListView::PARAM => $view]" :name="$gallery ? 'gallery' : 'catalog'">
+            <x-ui.toolbar class="md:mt-5" :sorts="$sorts" :sort="$sort" :pills="$views" :pill="$filters['view'] ?? ''" :counts="$counts" :hidden="[\App\Support\ListView::PARAM => $view]" :name="$gallery ? 'gallery' : 'catalog'">
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && $view !== \App\Support\ListView::TABLE)<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
                     <x-ui.view-switch :current="$view"/>
@@ -81,7 +82,7 @@
                         @foreach ($offers as $offer)<x-offer.card :offer="$offer" :context="$context"/>@endforeach
                     </div>
                     @endif
-                    <div class="mt-10">{{ $offers->links() }}</div>
+                    <div class="mt-10"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
                 @endif
             </div>
         </div>

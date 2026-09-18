@@ -16,6 +16,6 @@
                 @include('cabinet.notification-row')
             @endforeach
         </div>
-        {{ $items->links() }}
+        <x-ui.pager :of="$items" :sizes="[]"/>
     @endif
 </x-ui.cabinet>

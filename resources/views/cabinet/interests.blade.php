@@ -28,6 +28,6 @@
                 </{{ $open ? 'a' : 'div' }}>
             @endforeach
         </div>
-        {{ $interests->links() }}
+        <x-ui.pager :of="$interests" :sizes="[]"/>
     @endif
 </x-ui.cabinet>

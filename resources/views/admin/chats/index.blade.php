@@ -26,7 +26,7 @@
                         <x-chat.row :chat="$c" :me="$me" :href="'/work/chats/'.$c->id.$qs" :current="$c->id === $current" staff/>
                     @endforeach
                 </div>
-                {{ $chats->links() }}
+                <x-ui.pager :of="$chats"/>
             @endif
         </div>
         <turbo-frame id="chat-screen" class="chat-pane" target="_top">

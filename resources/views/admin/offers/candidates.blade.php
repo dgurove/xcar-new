@@ -45,6 +45,6 @@
                 </x-ui.card>
             @endforeach
         </div>
-        <div class="mt-4">{{ $candidates->links() }}</div>
+        <div class="mt-4"><x-ui.pager :of="$candidates"/></div>
     @endif
 </x-ui.shell>

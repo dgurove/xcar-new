@@ -6,6 +6,8 @@ use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Scope;
+use App\Support\ListPrefs;
+use App\Support\ListView;
 use Illuminate\Http\Request;
 
 class CandidateController
@@ -14,11 +16,12 @@ class CandidateController
 
     public function index(Request $request)
     {
+        ListPrefs::sync($request, 'crm-candidates');
         $preset = $request->query('preset', 'new');
         $candidates = Candidate::with(['message.account', 'message.attachments', 'offer'])
             ->where('scope', Scope::Offers)
             ->where('state', CandidateState::tryFrom($preset) ?? CandidateState::New)
-            ->latest()->paginate(30)->withQueryString();
+            ->latest()->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString();
 
         return view('admin.offers.candidates', [
             'candidates' => $candidates,

@@ -8,6 +8,6 @@
                 @include('cabinet.buyers.interest-row', ['interest' => $interest])
             @endforeach
         </div>
-        {{ $interests->links() }}
+        <x-ui.pager :of="$interests" :sizes="[]"/>
     @endif
 </x-ui.cabinet>

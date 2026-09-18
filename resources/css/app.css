@@ -489,6 +489,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .pills { @apply -mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1; scrollbar-width: none; scroll-padding-inline: 1rem; }
   .pills::-webkit-scrollbar { display: none; }
   @media (min-width: 768px) { .pills { @apply mx-0 flex-wrap px-0 pb-0; } }
+  /* Тулбар списка на телефоне — в две строки: пилюли первой на всю ширину навылет за поля
+     (max-md:basis-full в разметке — утилиты сильнее слоя), крупнее — они стоят на месте h1;
+     кнопки ниже: сортировка слева, вид, «Новый», фильтр — справа за распоркой. */
+  .toolbar-spacer { display: none; }
+  @media (max-width: 767px) {
+    .toolbar { flex-wrap: wrap; }
+    .toolbar-pills .pill { padding-inline: 1.25rem; min-height: 2.75rem; }
+    .toolbar > .toolbar-spacer { display: block; flex: 1; }
+  }
   .pill {
     @apply inline-flex shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1.5 text-sm text-ink-muted transition-colors;
     min-height: 2.25rem;

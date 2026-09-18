@@ -6,6 +6,8 @@ use App\Chats\Actions\MarkChatRead;
 use App\Chats\Chat;
 use App\Chats\Presence;
 use App\Http\Site\ChatController as Feed;
+use App\Support\ListPrefs;
+use App\Support\ListView;
 use Illuminate\Http\Request;
 
 /**
@@ -18,6 +20,8 @@ class ChatController
 
     public function index(Request $request)
     {
+        ListPrefs::sync($request, 'crm-chats');
+
         return view('admin.chats.index', $this->list($request) + ['current' => null]);
     }
 
@@ -53,7 +57,7 @@ class ChatController
                 ->orWhereRaw('lower(guest_name) like ?', [$like])
                 ->orWhereHas('offer', fn ($o) => $o->where('number', (int) $q))))
             // Страницы списка ведут на список, даже когда справа открыт чат.
-            ->orderByDesc('last_message_at')->paginate(30)->withPath('/work/chats')->withQueryString();
+            ->orderByDesc('last_message_at')->paginate(ListView::perPage($request, ListView::PER_ROWS))->withPath('/work/chats')->withQueryString();
 
         return [
             'chats' => $chats, 'preset' => $preset, 'q' => $q,

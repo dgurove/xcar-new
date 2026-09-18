@@ -11,8 +11,6 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class CatalogQuery
 {
-    public const PER_PAGE = 24;
-
     /** ключ → [подпись, есть ли направление] */
     public const SORTS = [
         'published' => ['Дата публикации', true],

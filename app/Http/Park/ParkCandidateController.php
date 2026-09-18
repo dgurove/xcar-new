@@ -6,15 +6,18 @@ use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Scope;
 use App\Park\Actions\PromoteCandidate;
+use App\Support\ListPrefs;
+use App\Support\ListView;
 use Illuminate\Http\Request;
 
 class ParkCandidateController
 {
     public function index(Request $request)
     {
+        ListPrefs::sync($request, 'park-candidates');
         $preset = $request->query('preset', 'new');
         $candidates = Candidate::with(['message.attachments', 'thread', 'vehicle'])->where('scope', Scope::Park)
-            ->where('state', CandidateState::tryFrom($preset) ?? CandidateState::New)->latest()->paginate(30)->withQueryString();
+            ->where('state', CandidateState::tryFrom($preset) ?? CandidateState::New)->latest()->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString();
 
         return view('park.requests.candidates', ['candidates' => $candidates, 'preset' => $preset,
             'counts' => ['new' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count()]]);

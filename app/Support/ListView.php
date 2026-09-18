@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 /**
@@ -9,10 +11,18 @@ use Illuminate\Http\Request;
  * `?vid=list`, `?vid=grid` и `?vid=table` — явный выбор, он живёт в адресе;
  * без выбора список длиннее 20 строк открывается таблицей (pick).
  * Таблица — своя разметка (x-ui.table), не .cards.
+ * Сколько на странице — `?per=` из набора вида (perPage): карточкам 24 / 48 / 96 (24 делится
+ * на 2, 3 и 4 колонки), таблице и плотным спискам 50 / 100 / 200; чужое число — первое из набора.
  */
 final class ListView
 {
     public const PARAM = 'vid';
+
+    public const PER = 'per';
+
+    public const PER_CARDS = [24, 48, 96];
+
+    public const PER_ROWS = [50, 100, 200];
 
     public const LIST = 'list';
 
@@ -27,6 +37,30 @@ final class ListView
         $vid = $request->query(self::PARAM);
 
         return in_array($vid, self::ALL, true) ? $vid : null;
+    }
+
+    /** Набор «по сколько» для вида: таблице — строки, плиткам и строкам-карточкам — карточки. */
+    public static function perSizes(?string $view): array
+    {
+        return $view === self::TABLE ? self::PER_ROWS : self::PER_CARDS;
+    }
+
+    public static function perPage(Request $request, array $sizes): int
+    {
+        $per = (int) $request->query(self::PER);
+
+        return in_array($per, $sizes, true) ? $per : $sizes[0];
+    }
+
+    /**
+     * Постраничка карточного списка: сколько на странице зависит от вида, а вид без выбора —
+     * от длины (pick), поэтому счёт идёт до paginate. Шаблон берёт вид тем же pick по total().
+     */
+    public static function paginate(Request $request, Builder $q): LengthAwarePaginator
+    {
+        $view = self::pick($request, $q->count());
+
+        return $q->paginate(self::perPage($request, self::perSizes($view)))->withQueryString();
     }
 
     /** Вид без выбора: длинный список (больше 20) сразу таблицей, короткий — решает CSS. */

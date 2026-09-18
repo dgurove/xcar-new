@@ -7,14 +7,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
 
 /**
- * Память списка: вид и сортировка, как их оставили. Явный параметр в адресе
+ * Память списка: вид, сортировка и «по сколько», как их оставили. Явный параметр в адресе
  * важнее памяти и запоминается; без параметра — подставляется запомненное,
  * так что таб и «‹ Раздел» ведут на чистый адрес, а список открывается как
  * его оставили. У пользователя — users.list_prefs, у гостя — cookie на год.
  */
 final class ListPrefs
 {
-    private const KEYS = ['sort', ListView::PARAM];
+    private const KEYS = ['sort', ListView::PARAM, ListView::PER];
 
     public static function sync(Request $request, string $list): void
     {

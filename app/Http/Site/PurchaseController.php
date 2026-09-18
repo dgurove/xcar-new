@@ -37,7 +37,7 @@ class PurchaseController
         // Категории считаются без фильтра по категории: пилюли должны остаться, когда одна выбрана.
         $kinds = $this->visible($purchase, $request, $group)->select('kind')->distinct()->pluck('kind')->map(fn ($k) => Kind::from($k->value ?? $k))->all();
         abort_if($group && ! $kinds, 404);
-        $cars = $this->cars($purchase, $request, $filters)->paginate(40)->withQueryString();
+        $cars = ListView::paginate($request, $this->cars($purchase, $request, $filters));
         $total = $this->visible($purchase, $request, $group)->count();
         $done = $this->visible($purchase, $request, $group)->whereHas('offers', fn ($o) => $o->where('user_id', $request->user()->id)->whereIn('state', [OfferState::Active, OfferState::Chosen]))->count();
 

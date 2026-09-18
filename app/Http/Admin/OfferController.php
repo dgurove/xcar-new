@@ -17,6 +17,7 @@ use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Offers\Tag;
 use App\Support\ListPrefs;
+use App\Support\ListView;
 use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Insurer;
@@ -60,7 +61,7 @@ class OfferController
         };
 
         return view('admin.offers.index', [
-            'offers' => $q->paginate(24)->withQueryString(),
+            'offers' => ListView::paginate($request, $q),
             'preset' => $preset,
             'sort' => $sort,
             'counts' => [

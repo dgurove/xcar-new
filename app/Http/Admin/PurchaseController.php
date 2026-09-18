@@ -19,6 +19,7 @@ use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
 use App\Purchases\Restriction;
 use App\Support\ListPrefs;
+use App\Support\ListView;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -108,7 +109,7 @@ class PurchaseController
             default => $cars->orderBy('dl'),
         };
 
-        $cars = $cars->paginate(50)->withQueryString();
+        $cars = ListView::paginate($request, $cars);
         // ?peek=ref (или first) — открыть окошко этой строки сразу: так «Оценить» ведёт в таблицу.
         $peek = $request->query('peek') ? $cars->first(fn ($c) => $request->query('peek') === 'first' || (string) $c->ref === (string) $request->query('peek')) : null;
 

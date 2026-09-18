@@ -53,6 +53,6 @@
                 </div>
             @endforeach
         </div>
-        <div class="mt-8">{{ $users->links() }}</div>
+        <div class="mt-8"><x-ui.pager :of="$users"/></div>
     @endif
 </x-ui.cabinet>

@@ -5,6 +5,7 @@ namespace App\Http\Cabinet;
 use App\Offers\Interest;
 use App\Offers\Offer;
 use App\Support\ListPrefs;
+use App\Support\ListView;
 use Illuminate\Http\Request;
 
 class ListsController
@@ -16,9 +17,9 @@ class ListsController
         $offers = Offer::with(['brand', 'model', 'media', 'favorites'])
             ->whereHas('favorites', fn ($f) => $f->where('user_id', $request->user()->id))
             ->when($request->user()->isBuyer(), fn ($q) => $q->visibleTo($request->user())->with(['interests' => fn ($i) => $i->where('user_id', $request->user()->id)]))
-            ->latest()->paginate(24);
+            ->latest();
 
-        return view('cabinet.favorites', ['offers' => $offers]);
+        return view('cabinet.favorites', ['offers' => ListView::paginate($request, $offers)]);
     }
 
     public function interests(Request $request)

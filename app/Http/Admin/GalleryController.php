@@ -6,6 +6,7 @@ use App\Offers\Actions\CreateOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Support\ListPrefs;
+use App\Support\ListView;
 use Illuminate\Http\Request;
 
 /** Галерея — предложения «скоро в продаже»: без цены, копят интерес. Новое заводится черновиком, в галерею — с карточки. */
@@ -28,7 +29,7 @@ class GalleryController
         };
 
         return view('admin.gallery.index', [
-            'offers' => $q->paginate(24)->withQueryString(),
+            'offers' => ListView::paginate($request, $q),
             'sort' => $sort,
         ]);
     }

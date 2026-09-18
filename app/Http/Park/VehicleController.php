@@ -18,6 +18,7 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\ListPrefs;
+use App\Support\ListView;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -42,7 +43,7 @@ class VehicleController
         $request->query('sort') === 'fresh' ? $vehicles->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
 
         return view('park.vehicles.index', [
-            'vehicles' => $vehicles->paginate(30)->withQueryString(),
+            'vehicles' => ListView::paginate($request, $vehicles),
             'preset' => $preset,
             'q' => $q,
             'sort' => $request->query('sort', 'longest'),

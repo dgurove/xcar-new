@@ -22,6 +22,8 @@ use App\Mail\Template;
 use App\Mail\Thread;
 use App\Offers\Offer;
 use App\Park\Vehicle;
+use App\Support\ListPrefs;
+use App\Support\ListView;
 use Illuminate\Http\Request;
 
 /** Почта в админке: ветки, письмо, ответ. Ящики — по scope поверхности. */
@@ -33,6 +35,7 @@ class MailController
 
     public function index(Request $request)
     {
+        ListPrefs::sync($request, 'crm-mail');
         $accounts = Account::where('scope', $this->scope)->orderBy('title')->get();
         $preset = $request->query('preset', 'all');
         $slug = $request->query('yashchik');
@@ -52,7 +55,7 @@ class MailController
         };
 
         return view('admin.mail.index', [
-            'threads' => $threads->orderByDesc('last_message_at')->paginate(30)->withQueryString(),
+            'threads' => $threads->orderByDesc('last_message_at')->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'accounts' => $accounts,
             'preset' => $preset,
             'slug' => $slug,

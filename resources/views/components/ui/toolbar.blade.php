@@ -18,7 +18,7 @@
     // Ссылка на критерий: активный с направлением — переворот, чужой — своё направление по умолчанию (убывание).
     $sortUrl = fn (string $key) => $url([$sortParam => $key === $currentKey ? ($norm[$key][1] ? ($desc ? $key : '-'.$key) : $key) : ($norm[$key][1] ? '-'.$key : $key), 'page' => null]);
 @endphp
-<div {{ $attributes->merge(['class' => 'flex items-center gap-3']) }}>
+<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-3']) }}>
     @if ($sortSide === 'left')
     @if ($norm->isNotEmpty())
         {{-- Десктоп: select + направление --}}
@@ -50,11 +50,11 @@
             </x-ui.sheet>
         </div>
     @endif
-
+    <div class="toolbar-spacer"></div>
     @endif
 
     @if ($pills)
-        <div class="toolbar-pills min-w-0 flex-1 snap-x overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div class="toolbar-pills min-w-0 flex-1 snap-x overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-md:order-first max-md:-mx-4 max-md:basis-full max-md:px-4" data-title-anchor>
             <div class="flex flex-nowrap items-center gap-2">
                 @foreach ($pills as $key => $label)
                     <a href="{{ $url([$pillParam => $key === '' || $key === array_key_first($pills) ? null : $key, 'page' => null]) }}" class="pill" data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
@@ -101,7 +101,7 @@
             </x-ui.sheet>
         </div>
     @endif
-
+    <div class="toolbar-spacer"></div>
     @endif
 
     @isset($filters)

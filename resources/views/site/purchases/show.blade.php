@@ -56,7 +56,7 @@
                 @foreach ($cars as $car)<x-purchase.card :car="$car" :purchase="$purchase" :query="$qs" :show-kind="count($kinds) > 1"/>@endforeach
             </div>
             @endif
-            <div class="mt-10">{{ $cars->links() }}</div>
+            <div class="mt-10"><x-ui.pager :of="$cars" :sizes="\App\Support\ListView::perSizes($view)"/></div>
         @endif
     </div>
 </x-ui.shell>

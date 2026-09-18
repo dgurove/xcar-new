@@ -1,5 +1,5 @@
 @php $view = \App\Support\ListView::pick(request(), $offers->total()); @endphp
-<x-ui.shell title="Галерея" :count="$offers->total()">
+<x-ui.shell title="Галерея" :count="$offers->total()" :phone-heading="false">
     <x-ui.toolbar :sorts="\App\Http\Admin\GalleryController::SORTS" :sort="$sort" name="gallery">
         <x-slot:extra>
             <x-ui.view-switch :current="$view"/>
@@ -24,7 +24,7 @@
                 @foreach ($offers as $offer)<x-offer.card :offer="$offer" admin/>@endforeach
             </div>
             @endif
-            <div class="mt-8">{{ $offers->links() }}</div>
+            <div class="mt-8"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
         @endif
     </div>
 </x-ui.shell>

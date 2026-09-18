@@ -10,6 +10,6 @@
                 @include('admin.deals.row', ['deal' => $deal])
             @endforeach
         </div>
-        <div class="mt-8">{{ $deals->links() }}</div>
+        <div class="mt-8"><x-ui.pager :of="$deals"/></div>
     @endif
 </x-ui.shell>

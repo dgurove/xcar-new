@@ -14,6 +14,6 @@
             @foreach ($offers as $offer)<x-offer.card :offer="$offer"/>@endforeach
         </div>
         @endif
-        {{ $offers->links() }}
+        <x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/>
     @endif
 </x-ui.cabinet>

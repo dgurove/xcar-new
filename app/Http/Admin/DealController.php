@@ -4,6 +4,8 @@ namespace App\Http\Admin;
 
 use App\Offers\Deal;
 use App\Offers\DealState;
+use App\Support\ListPrefs;
+use App\Support\ListView;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
 
@@ -15,6 +17,7 @@ class DealController
 
     public function index(Request $request)
     {
+        ListPrefs::sync($request, 'crm-deals');
         $preset = $request->query('preset', 'active');
         $sort = $request->query('sort', 'deadline');
 
@@ -33,7 +36,7 @@ class DealController
         };
 
         return view('admin.deals.index', [
-            'deals' => $q->paginate(30)->withQueryString(),
+            'deals' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset,
             'sort' => $sort,
         ]);

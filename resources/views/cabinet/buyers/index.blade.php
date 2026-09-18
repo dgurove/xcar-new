@@ -91,7 +91,7 @@
                     </div>
                 @endforeach
             </div>
-            {{ $buyers->links() }}
+            <x-ui.pager :of="$buyers" :sizes="[]"/>
         @endif
     </section>
 

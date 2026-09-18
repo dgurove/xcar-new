@@ -14,6 +14,8 @@ use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\Yard;
+use App\Support\ListPrefs;
+use App\Support\ListView;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -24,6 +26,7 @@ class RequestController
 
     public function index(Request $request)
     {
+        ListPrefs::sync($request, 'park-requests');
         $type = $request->query('preset', 'all');
         $done = $request->boolean('gotovye');
         $q = ParkRequest::query()->with(['vehicle.brand', 'vehicle.model', 'vehicle.client', 'vehicle.media', 'yard'])
@@ -37,7 +40,7 @@ class RequestController
         $presets = ['all' => 'Все'] + RequestType::options();
 
         return view('park.requests.index', [
-            'requests' => $q->paginate(30)->withQueryString(),
+            'requests' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $type,
             'presets' => $presets,
             'counts' => $open->all() + ['all' => $open->sum()],

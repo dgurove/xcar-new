@@ -76,7 +76,7 @@ class CatalogController
         // «Рекомендуем» — сколько отмеченных в этом разделе: пилюля с числом, без отмеченных пилюли нет.
         $recommended = $counts[$gallery && $user?->isStaff() ? 'recommended_gallery' : 'recommended'] ?? 0;
 
-        $offers = CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery)->paginate(CatalogQuery::PER_PAGE)->withQueryString();
+        $offers = ListView::paginate($request, CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery));
         Showing::remember($user, $offers->pluck('id')->all());
         $view = ListView::pick($request, $offers->total());
 
