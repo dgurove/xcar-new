@@ -215,7 +215,7 @@ class RequestController
             'repair' => ['nullable', 'array'], 'repair.*' => ['nullable', 'in:0,1'],
             'damage_zones' => ['nullable', 'array'], 'damage_zones.*' => [Rule::enum(DamageZone::class)],
             'damage_note' => ['nullable', 'string', 'max:2000'], 'transit_damage' => ['nullable', 'string', 'max:2000'],
-            'missing_parts' => ['nullable', 'string', 'max:1000'], 'replaced_units' => ['nullable', 'string', 'max:1000'], 'signer_name' => ['nullable', 'string', 'max:120'],
+            'missing_parts' => ['nullable', 'string', 'max:1000'], 'replaced_units' => ['nullable', 'string', 'max:1000'], 'signer_name' => ['nullable', 'string', 'max:120'], 'signature' => ['nullable', 'string', 'max:700000'],
         ];
     }
 }

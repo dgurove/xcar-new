@@ -1,5 +1,5 @@
 {{-- Осмотр по полям акта: показания, комплектность, требует ремонта, повреждения по акту и не по акту. --}}
-@php use App\Park\Inspection; $insp = $vehicle->lastInspection(\App\Park\InspectionKind::Intake); @endphp
+@php use App\Park\Inspection; $insp = $vehicle->lastInspection(\App\Park\InspectionKind::Intake); $signer ??= 'Кто сдал'; @endphp
 <x-ui.card title="Показания">
     <div class="grid grid-cols-2 gap-3">
         <x-ui.field name="mileage" label="Пробег, км" inputmode="numeric" :value="$vehicle->mileage"/>
@@ -43,6 +43,11 @@
         @if ($transit)<x-ui.field name="transit_damage" label="При перевозке" type="textarea" span="col-span-full"/>@endif
         <x-ui.field name="missing_parts" label="Нет деталей"/>
         <x-ui.field name="replaced_units" label="Замена агрегатов"/>
-        <x-ui.field name="signer_name" label="Кто сдал" span="col-span-full"/>
+    </div>
+</x-ui.card>
+<x-ui.card :title="$signer">
+    <div class="grid grid-cols-2 gap-3">
+        <x-ui.field name="signer_name" label="Имя" span="col-span-full"/>
+        <x-park.signature/>
     </div>
 </x-ui.card>

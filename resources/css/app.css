@@ -280,6 +280,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .field-input:focus-visible { outline-offset: 0; }
   .field-error { @apply text-sm text-danger; }
   .field-invalid .field-input { @apply ring-2 ring-danger/60; }
+  /* Подпись пальцем: холст того же тона, что поле; линия — цветом текста. */
+  .signature-pad { @apply mt-1 block h-36 w-full touch-none rounded-(--radius-m) bg-surface-3 text-ink; }
+  .signature.is-signed .signature-pad { @apply ring-2 ring-accent/50; }
   select.field-input { @apply appearance-none bg-no-repeat pr-10; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23808080' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-position: right 14px center; }
   textarea.field-input { @apply min-h-28; field-sizing: content; }
   /* Выбор-фильтр (x-ui.choose): зелёный, пока сужает список. */

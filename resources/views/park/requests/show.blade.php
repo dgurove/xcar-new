@@ -163,11 +163,10 @@
                                 @endforeach
                             </div>
                         </div>
-                        <x-ui.field name="signer_name" label="Кто получил" span="col-span-2"/>
                         <x-ui.field name="note" label="По какому документу" type="textarea" span="col-span-full"/>
                     </div>
                 </x-ui.card>
-                @include('park.requests.inspection-fields', ['transit' => false])
+                @include('park.requests.inspection-fields', ['transit' => false, 'signer' => 'Кто получил'])
                 <x-ui.card title="Фото при выдаче" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
                     <input type="file" accept="image/*,.heic,.heif" capture="environment" multiple hidden data-photos-target="input" data-action="change->photos#upload">
                     <div hidden data-photos-target="progress" class="mb-3">

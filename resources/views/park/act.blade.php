@@ -36,6 +36,8 @@
         .sign td { width: 50%; padding: 0 16px 0 0; vertical-align: top; }
         .sign .who { font-size: 12px; color: #444; margin-top: 4px; }
         .line { margin-top: 28px; border-top: 1px solid #1d1d1b; padding-top: 4px; color: #808080; font-size: 12px; }
+        .sign .box { height: 56px; margin-bottom: -28px; }
+        .sign .box img { display: block; height: 56px; width: auto; }
         .print { display: block; max-width: 720px; margin: 0 auto 16px; }
         .print button { font: inherit; padding: 10px 18px; border: 0; border-radius: 12px; background: #97bf0d; color: #fff; }
         @media print { body { padding: 0; background: #fff; } .act { max-width: none; padding: 0; } .print { display: none; } }
@@ -95,8 +97,9 @@
             </div>
         @endif
         <table class="sign"><tr>
-            <td><div class="line">{{ $intake ? 'Сдал' : 'Выдал' }}</div>@if ($intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
-            <td><div class="line">{{ $intake ? 'Принял' : 'Получил' }}</div>@if (!$intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
+            @php $sig = $inspection?->signatureDataUrl(); @endphp
+            <td><div class="box">@if ($intake && $sig)<img src="{{ $sig }}" alt="">@endif</div><div class="line">{{ $intake ? 'Сдал' : 'Выдал' }}</div>@if ($intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
+            <td><div class="box">@if (!$intake && $sig)<img src="{{ $sig }}" alt="">@endif</div><div class="line">{{ $intake ? 'Принял' : 'Получил' }}</div>@if (!$intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
         </tr></table>
     </article>
 </body>
