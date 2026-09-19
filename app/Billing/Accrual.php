@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Хранение на лету: сутки — календарный день, день приёма — первые сутки, день
- * выдачи не считается, минимум одни. Каждый день оценивается по лестнице
+ * выдачи тоже считается (решение владельца 19.09.2026), минимум одни. Каждый день оценивается по лестнице
  * прайса на ту дату (персональная ставка — поверх), негабарит прибавляется,
  * плательщик режет период: до `deal + N` дней — по правилу вендора, дальше —
  * покупатель по базовому прайсу. Дни с одной ставкой и плательщиком
@@ -30,10 +30,7 @@ final class Accrual
         $vehicle->loadMissing(['vendor', 'offer.deal']);
         $first = $vehicle->accepted_at->copy()->startOfDay();
         $from = $vehicle->storage_billed_until ? $vehicle->storage_billed_until->copy()->addDay()->startOfDay() : $first->copy();
-        $end = $vehicle->released_at ? $vehicle->released_at->copy()->startOfDay()->subDay() : Carbon::instance($until ?? now())->startOfDay();
-        if ($end->lt($first)) {
-            $end = $first->copy();   // выдана в день приёма — одни сутки
-        }
+        $end = $vehicle->released_at ? $vehicle->released_at->copy()->startOfDay() : Carbon::instance($until ?? now())->startOfDay();
         if ($from->gt($end)) {
             return collect();
         }
