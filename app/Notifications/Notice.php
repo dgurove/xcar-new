@@ -64,7 +64,8 @@ abstract class Notice extends Notification implements ShouldQueue
             $via[] = WebPushChannel::class;
         }
         if ($user->email && $user->wantsMail()) {
-            $via[] = 'mail';
+            // Через ящик стоянки, если он есть; иначе системный мейлер.
+            $via[] = MailboxChannel::account() ? MailboxChannel::class : 'mail';
         }
 
         return $via;
