@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Mail\Candidate;
+use App\Mail\Message;
 use App\Park\Request;
 use App\Park\Vehicle;
 use App\Support\Surface;
@@ -18,6 +19,11 @@ final class ParkNotice extends Notice
         $what = ($v('request') ?? null) === 'tow' ? 'Письмо на вывоз' : 'Письмо на приём';
 
         return new self($what.': '.$c->title(), implode(', ', array_filter([$v('vendor'), $v('location'), $v('insured_phone')])), '/requests/from-mail');
+    }
+
+    public static function mail(Vehicle $v, Message $m): self
+    {
+        return new self('Письмо: '.$v->titleWithYear(), ($m->from_name ?: $m->from_email).' — '.($m->subject ?: 'без темы'), '/mail/'.$m->thread_id, $v->id);
     }
 
     public static function assigned(Request $r): self

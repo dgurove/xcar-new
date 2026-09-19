@@ -11,7 +11,7 @@
         @if ($debt > 0)<x-ui.pill tone="danger" :href="'/money?preset=all&car='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</x-ui.pill>@endif
         @if ($vehicle->offer)<a href="{{ Surface::Crm->url('/offers/'.$vehicle->offer->number) }}" class="chip nums" data-turbo="false">№ {{ $vehicle->offer->number }}<span class="font-normal text-ink-muted">{{ $vehicle->offer->state->label() }}</span>@if ($vehicle->offer->asking_price) {{ Money::rub($vehicle->offer->asking_price) }}@endif</a>@endif
         @if ($vehicle->contact_phone)<a href="tel:+{{ preg_replace('/\D+/', '', $vehicle->contact_phone) }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->contact_name ? \Illuminate\Support\Str::of($vehicle->contact_name)->explode(' ')->first().' ' : '' }}{{ $vehicle->contact_phone }}</a>@endif
-        @if ($threads->count())<x-ui.pill tone="plain" :href="$threads->count() === 1 ? '/mail/'.$threads->first()->id : '/mail?preset=linked&q='.urlencode($vehicle->ref ?? '')" class="!min-h-0 !py-1 text-xs"><x-ui.icon name="mail" class="size-4"/> {{ $threads->count() === 1 ? 'Письмо' : 'Писем: '.$threads->count() }}</x-ui.pill>@endif
+        @if ($threads->count())<x-ui.pill tone="plain" :href="$threads->count() === 1 ? '/mail/'.$threads->first()->id : '/mail?car='.$vehicle->id" class="!min-h-0 !py-1 text-xs"><x-ui.icon name="mail" class="size-4"/> {{ $threads->count() === 1 ? 'Письмо' : 'Писем: '.$threads->count() }}</x-ui.pill>@endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <x-ui.sheet id="vehicle-actions" title="Транспортное средство">
             <div class="flex flex-col gap-2">
@@ -105,10 +105,9 @@
                 </div>
             </x-ui.card>
             @endif
-            <x-ui.card title="Осмотр" class="order-1">
+            <x-ui.card title="Повреждения" class="order-1">
                 <div class="grid grid-cols-2 gap-3">
                     <div class="field col-span-full">
-                        <span class="field-label">Повреждения</span>
                         <div class="flex flex-wrap gap-1.5">
                             @foreach ($zones as $zone)
                                 <label class="choice"><input type="checkbox" switch name="damage_zones[]" value="{{ $zone->value }}" @checked(in_array($zone->value, old('damage_zones', $vehicle->damage_zones ?? [])))><span>{{ $zone->label() }}</span></label>
@@ -168,6 +167,20 @@
 
         <div class="contents lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @if ($vehicle->requests->isNotEmpty())
+            @if ($threads->isNotEmpty())
+            <x-ui.card title="Письма" class="order-4">
+                <div class="flex flex-col divide-y divide-line/40 text-sm">
+                    @foreach ($threads as $t)
+                        @php $lastIn = $t->messages->where('direction', \App\Mail\Direction::In)->sortByDesc('date_at')->first(); @endphp
+                        <div class="flex items-center gap-2 py-2">
+                            <a href="/mail/{{ $t->id }}" class="min-w-0 flex-1"><span class="block truncate {{ $t->unread_count ? 'font-medium' : '' }}">{{ $t->subject ?: 'Без темы' }}</span><span class="block truncate text-ink-dim">{{ collect($t->counterparts())->map(fn ($p) => $p['name'] ?: $p['email'])->take(2)->implode(', ') }}{{ $t->last_message_at ? ', '.$t->last_message_at->translatedFormat('j M') : '' }}</span></a>
+                            @if ($t->messages_count > 1)<span class="chip nums shrink-0">{{ $t->messages_count }}</span>@endif
+                            @if ($lastIn)<a href="/mail/{{ $t->id }}/reply/{{ $lastIn->id }}" class="btn btn-ghost btn-s shrink-0">Ответить</a>@endif
+                        </div>
+                    @endforeach
+                </div>
+            </x-ui.card>
+            @endif
             <x-ui.card title="Заявки" class="order-4">
                 <div class="flex flex-col divide-y divide-line/40">
                     @foreach ($vehicle->requests as $r)
@@ -182,10 +195,10 @@
             @endif
 
             @if ($intake || $release)
-            <x-ui.card title="Осмотр" class="order-4">
+            <x-ui.card :title="$release ? 'Осмотры' : 'Осмотр при приёме'" class="order-4">
                 @foreach (array_filter([$intake, $release]) as $insp)
                     <div class="flex flex-wrap items-center gap-1.5 {{ $loop->first ? '' : 'mt-3' }}">
-                        <span class="chip">{{ $insp->kind->label() }}</span>
+                        <span class="chip">{{ $insp->kind->label() }}{{ $insp->at ? ', '.$insp->at->translatedFormat('j M') : '' }}</span>
                         @if ($insp->mileage !== null)<span class="tag nums">{{ Money::nums($insp->mileage) }} км</span>@endif
                         @if ($insp->fuel !== null)<span class="tag nums">бак {{ $insp->fuelLabel() }}</span>@endif
                         @if ($insp->keys_count !== null)<span class="tag nums">ключей {{ $insp->keys_count }}</span>@endif

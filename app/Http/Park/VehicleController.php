@@ -102,7 +102,7 @@ class VehicleController
             'payers' => Ledger::payersOf($vehicle),
             'pendingCharges' => $vehicle->charges()->whereNull('invoice_id')->whereNull('voided_at')->get(),
             'chargeKinds' => collect([ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other])->mapWithKeys(fn ($k) => [$k->value => $k->label().(($price = VehicleInvoiceController::priceFor($vehicle, $k)) ? ' — '.Money::rub($price) : '')]),
-            'threads' => Thread::where('vehicle_id', $vehicle->id)->get(),
+            'threads' => Thread::where('vehicle_id', $vehicle->id)->with('messages')->orderByDesc('last_message_at')->get(),
             'templates' => Template::where('scope', MailScope::Park)->orderBy('name')->get(),
             'zones' => DamageZone::cases(),
             'spots' => $vehicle->yard?->freeSpots() ?? [],
@@ -138,7 +138,8 @@ class VehicleController
             if ($request->input('collection') === 'papers') {
                 $vehicle->addMedia($file)->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $file->getClientOriginalName()) ?: 'dokument')->toMediaCollection('papers');
             } else {
-                $stage = in_array($request->input('stage'), ['intake', 'release', 'pickup', 'storage'], true) ? $request->input('stage') : null;
+                // Без стадии — снято на стоянке; «из письма» ставит только импорт ветки.
+                $stage = in_array($request->input('stage'), ['intake', 'release', 'pickup', 'storage'], true) ? $request->input('stage') : 'storage';
                 $slot = PhotoSlot::tryFrom((string) $request->input('slot'))?->value;
                 $ingest->fromPhone($vehicle, 'photos', $request, properties: array_filter(['stage' => $stage, 'slot' => $slot]));
             }

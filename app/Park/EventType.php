@@ -24,4 +24,5 @@ enum EventType: string
     case Owed = 'owed';
     case Paid = 'paid';
     case InvoiceVoided = 'invoice_voided';
+    case Letter = 'letter';
 }

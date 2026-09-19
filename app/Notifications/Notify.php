@@ -13,9 +13,11 @@ use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
 use App\Park\Events\CandidateArrived;
+use App\Park\Events\LetterArrived;
 use App\Park\Events\RequestAssigned;
 use App\Park\Events\RequestDue;
 use App\Park\Events\VehicleIdle;
+use App\Park\RequestState;
 use App\Support\Money;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
@@ -57,6 +59,7 @@ final class Notify
             ManagerJoined::class => 'managerJoined',
             AccessDecided::class => 'accessDecided',
             CandidateArrived::class => 'parkLetter',
+            LetterArrived::class => 'parkMail',
             RequestAssigned::class => 'parkAssigned',
             RequestDue::class => 'parkDue',
             VehicleIdle::class => 'parkIdle',
@@ -184,6 +187,13 @@ final class Notify
     {
         Notification::send($this->parkStaff(), ParkNotice::letter($e->candidate));
         NotifyOwner::dispatch(new ParkLetter($e->candidate));
+    }
+
+    /** Письмо в ветку привязанной ТС — исполнителю её открытой заявки, без него — всем со стоянки. */
+    public function parkMail(LetterArrived $e): void
+    {
+        $assignee = $e->vehicle->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
+        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff(), ParkNotice::mail($e->vehicle, $e->message));
     }
 
     public function parkAssigned(RequestAssigned $e): void

@@ -51,6 +51,7 @@ class VehicleEvent extends Model
             EventType::Owed => 'Должны '.($p['party'] ?? '').' '.Money::rub($p['amount'] ?? 0),
             EventType::Paid => 'Оплата '.Money::rub($p['amount'] ?? 0).' по счёту '.($p['label'] ?? '').(($p['left'] ?? 0) > 0 ? ', остаток '.Money::rub($p['left']) : ''),
             EventType::InvoiceVoided => 'Счёт '.($p['label'] ?? '').' аннулирован',
+            EventType::Letter => 'Письмо от '.($p['from'] ?? '').': '.($p['subject'] ?? 'без темы'),
         };
     }
 }

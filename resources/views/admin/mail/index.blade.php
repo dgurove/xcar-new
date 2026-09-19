@@ -6,7 +6,7 @@
         <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
     @endif
 
-    <x-ui.toolbar class="mt-5" :pills="$presets" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" :hidden="['account' => $slug]" name="mail">
+    <x-ui.toolbar class="mt-5" :pills="$presets" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" :hidden="array_filter(['account' => $slug, 'car' => request('car')])" name="mail">
         <x-slot:extra>
             <a href="{{ $base }}/new{{ $slug ? '?account='.$slug : '' }}" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">Написать</span></a>
         </x-slot:extra>
@@ -20,9 +20,15 @@
             @endif
         </x-slot:filters>
     </x-ui.toolbar>
+    @if ($car)
+        <div class="mt-4 flex flex-wrap items-center gap-1.5">
+            <a href="{{ $crm ? '/offers' : '/cars/'.$car->id }}" class="chip"><x-ui.icon name="car" class="size-3.5"/>{{ $car->titleWithYear() }}@if ($car->ref) <span class="nums text-ink-muted">{{ $car->ref }}</span>@endif</a>
+            <a href="{{ request()->fullUrlWithQuery(['car' => null, 'page' => null]) }}" class="chip" aria-label="Все письма"><x-ui.icon name="x" class="size-3.5"/></a>
+        </div>
+    @endif
 
     @if ($accounts->isEmpty())
-        <x-ui.empty class="mt-6" href="/settings/mailboxes/new" link="Завести ящик">Ящиков ещё нет</x-ui.empty>
+        @if ($crm)<x-ui.empty class="mt-6" href="/settings/mailboxes/new" link="Завести ящик">Ящиков ещё нет</x-ui.empty>@else<x-ui.empty class="mt-6">Ящиков ещё нет</x-ui.empty>@endif
     @elseif ($threads->isEmpty())
         <x-ui.empty class="mt-6">Писем нет</x-ui.empty>
     @else

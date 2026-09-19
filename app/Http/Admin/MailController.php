@@ -56,6 +56,7 @@ class MailController
         $threads = Thread::query()->with(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model'])
             ->whereIn('account_id', $accounts->pluck('id'))
             ->when($slug, fn ($t) => $t->whereHas('account', fn ($a) => $a->where('slug', $slug)))
+            ->when($request->query('car'), fn ($t, $id) => $t->where('vehicle_id', $id))
             ->when($q !== '', fn ($t) => $t->where(fn ($w) => $w->whereRaw('lower(subject) like ?', ['%'.mb_strtolower($q).'%'])->orWhereRaw('participants::text ilike ?', ['%'.$q.'%'])))
             ->where('messages_count', '>', 0);
         match ($preset) {
@@ -75,6 +76,7 @@ class MailController
             'base' => $this->base,
             'unread' => Thread::whereIn('account_id', $accounts->pluck('id'))->where('unread_count', '>', 0)->count(),
             'presets' => $this->presets(),
+            'car' => $request->query('car') ? Vehicle::with(['brand', 'model'])->find($request->query('car')) : null,
         ]);
     }
 

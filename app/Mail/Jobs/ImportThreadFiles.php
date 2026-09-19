@@ -61,7 +61,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $report('Читаем письмо');
             $attachments = $importer->attachmentsOf($this->messageId, $this->messageId ? null : $thread->id);
             $hidden = $offer && $offer->state !== OfferState::Draft;
-            $added = $importer->import($model, $attachments, 'photos', 'papers', $hidden ? ['hidden' => true] : [], $report);
+            $added = $importer->import($model, $attachments, 'photos', 'papers', $hidden ? ['hidden' => true] : ($model instanceof Vehicle ? ['stage' => 'mail'] : []), $report);
         } finally {
             $key && Cache::forget($key);
         }

@@ -8,6 +8,9 @@ use App\Mail\Actions\LinkThread;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
 use App\Mail\Jobs\ExtractCandidate;
+use App\Park\Events\LetterArrived;
+use App\Park\EventType;
+use App\Park\Vehicle;
 use Illuminate\Events\Dispatcher;
 
 /** Письмо разобрано: привязать к офферу, иначе — вычитать кандидата; и сказать админке. */
@@ -31,7 +34,15 @@ final class OnMessage
         }
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;
         $base = $message->account->scope === Scope::Park ? '/mail' : '/work/mail';
-        $this->publish->refresh($topic, [$base, "{$base}/{$message->thread_id}", '/offers/from-mail', '/requests/from-mail', '/']);
+        $paths = [$base, "{$base}/{$message->thread_id}", '/offers/from-mail', '/requests/from-mail', '/'];
+        // Письмо по привязанной ТС — в её ленту и сотруднику, который ею занят.
+        $vehicle = $linked instanceof Vehicle ? $linked : $thread?->vehicle;
+        if ($vehicle && $message->direction === Direction::In) {
+            $vehicle->log(EventType::Letter, null, ['from' => $message->from_name ?: $message->from_email, 'subject' => $message->subject, 'thread' => $message->thread_id]);
+            LetterArrived::dispatch($vehicle, $message);
+            $paths[] = "/cars/{$vehicle->id}";
+        }
+        $this->publish->refresh($topic, $paths);
         if ($message->direction === Direction::In && ! $message->is_seen) {
             $this->publish->toast($topic, ($message->from_name ?: $message->from_email).': '.($message->subject ?: 'без темы'), "{$base}/{$message->thread_id}");
             $this->publish->badges($topic);
@@ -40,6 +51,7 @@ final class OnMessage
 
     public function sent(MessageSent $e): void
     {
-        $this->publish->refresh(Topics::STAFF, ["/work/mail/{$e->message->thread_id}"]);
+        $park = $e->message->account->scope === Scope::Park;
+        $this->publish->refresh($park ? Topics::PARK : Topics::STAFF, [($park ? '/mail/' : '/work/mail/').$e->message->thread_id]);
     }
 }

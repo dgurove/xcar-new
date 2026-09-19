@@ -9,7 +9,7 @@
     <div class="flex flex-col gap-2">
         @foreach (DocState::cases() as $state)
             @if ($state === DocState::Received && ($doc?->isOut() ?? true) && !($doc === null))@continue @endif
-            <label class="row row-check !py-2"><span class="min-w-0 flex-1">{{ $state === DocState::Received && ($doc?->isOut() ?? false) ? 'Получен обратно' : $state->label() }}</span><span class="check"><input type="radio" name="state" value="{{ $state->value }}" @checked(($doc?->state ?? DocState::Pending) === $state)></span></label>
+            <label class="row row-check !py-2"><span class="min-w-0 flex-1">{{ $state->label() }}</span><span class="check"><input type="radio" name="state" value="{{ $state->value }}" @checked(($doc?->state ?? DocState::Pending) === $state)></span></label>
         @endforeach
     </div>
     <div class="grid grid-cols-2 gap-3">

@@ -4,6 +4,7 @@ namespace App\Park\Actions;
 
 use App\Mail\Thread;
 use App\Park\EventType;
+use App\Park\RequestState;
 use App\Park\Vehicle;
 use App\Support\Nav;
 use Illuminate\Validation\ValidationException;
@@ -15,7 +16,9 @@ final class DestroyVehicle
     {
         $traces = $vehicle->events()->where('type', '!=', EventType::Created)->exists()
             || $vehicle->media()->exists() || $vehicle->offer_id
-            || Thread::where('vehicle_id', $vehicle->id)->exists();
+            || Thread::where('vehicle_id', $vehicle->id)->exists()
+            || $vehicle->requests()->where('state', '!=', RequestState::New)->exists()
+            || $vehicle->docs()->exists() || $vehicle->charges()->exists() || $vehicle->invoices()->exists();
         if ($traces) {
             throw ValidationException::withMessages(['vehicle' => 'У ТС есть следы — отмените вместо удаления']);
         }
