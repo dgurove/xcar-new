@@ -2,6 +2,8 @@
 
 namespace App\Http\Cabinet;
 
+use App\Billing\Invoice;
+use App\Billing\InvoiceState;
 use App\Live\Stream;
 use App\Media\PhotoIngest;
 use App\Offers\Bid;
@@ -12,7 +14,6 @@ use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Actor;
 use App\Workflow\Block;
 use App\Workflow\Outcome;
-use App\Workflow\Requirement;
 use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
@@ -37,6 +38,16 @@ class DealController
         return view('cabinet.deals.index', ['deals' => $deals, 'pending' => $pending, 'lost' => $lost]);
     }
 
+    /** PDF счёта — только плательщику. */
+    public function invoice(Request $request, Invoice $invoice)
+    {
+        abort_unless($request->user()->party_id && $invoice->party_id === $request->user()->party_id, 404);
+        $media = $invoice->getFirstMedia('file');
+        abort_unless($media, 404);
+
+        return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
+    }
+
     public function show(Request $request, Deal $deal)
     {
         abort_unless($deal->buyer_id === $request->user()->id, 404);
@@ -57,6 +68,7 @@ class DealController
             'steps' => $steps,
             'requirement' => $deal->openRequirement,
             'exits' => $deal->openRequirement ? $position?->stage->exitsFor(Actor::Manager) : collect(),
+            'invoices' => Invoice::where('deal_id', $deal->id)->where('state', '!=', InvoiceState::Void)->orderBy('id')->get(),
         ]);
     }
 

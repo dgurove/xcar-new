@@ -6,6 +6,7 @@ use App\Http\Admin\ChatController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\InterestController;
+use App\Http\Admin\InvoiceController;
 use App\Http\Admin\MailAccountController;
 use App\Http\Admin\MailController;
 use App\Http\Admin\MailTemplateController;
@@ -39,6 +40,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/offers/from-mail/{candidate}/decline', [CandidateController::class, 'reject']);
     Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
     Route::get('/offers/{offer}/peek', [OfferController::class, 'peek']);
+    Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
+    Route::post('/work/invoices', [InvoiceController::class, 'store']);
     // Шеринг PDF: маршруты без домена на хосте CRM отбивает ResolveSurface — свои копии.
     Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
     Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');

@@ -157,11 +157,6 @@ class Vehicle extends Model implements HasMedia
         return $this->hasMany(VehicleEvent::class, 'vehicle_id')->latest('created_at');
     }
 
-    public function title(): string
-    {
-        return trim(implode(' ', array_filter([$this->brand?->name, $this->model?->name, $this->year ? ', '.$this->year : null]))) ?: ($this->ref ?: 'ТС');
-    }
-
     public function titleWithYear(): string
     {
         return trim(($this->brand?->name ?? '').' '.($this->model?->name ?? '')).($this->year ? ", {$this->year}" : '') ?: ($this->ref ?: 'ТС');

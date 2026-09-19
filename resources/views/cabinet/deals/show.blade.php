@@ -31,6 +31,18 @@
                         </dl>
                     @endif
 
+                    @if ($invoices->isNotEmpty())
+                        <div class="mt-5 flex flex-col gap-2">
+                            @foreach ($invoices as $i)
+                                <a href="/account/invoices/{{ $i->id }}/pdf" class="row !py-3" data-turbo="false" target="_blank">
+                                    <x-ui.icon name="file" class="size-5 shrink-0 text-ink-muted"/>
+                                    <span class="min-w-0 flex-1">Счёт {{ $i->label() }}{{ $i->state === \App\Billing\InvoiceState::Issued ? ', до '.$i->due_at->translatedFormat('j M') : '' }}</span>
+                                    <x-billing.light :invoice="$i"/>
+                                    <span class="nums font-semibold">{{ \App\Support\Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
                     @if ($requirement)
                         <div class="box-nested mt-5">
                             <h3 class="text-lg">{{ $requirement->title }}</h3>

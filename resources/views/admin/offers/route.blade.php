@@ -48,6 +48,15 @@
             </div>
         @endforeach
         @if ($errors->has('exit'))<p class="field-error">{{ $errors->first('exit') }}</p>@endif
+        @if ($offer->deal && $offer->deal->isActive())
+            @php $dealInvoices = \App\Billing\Invoice::where('deal_id', $offer->deal->id)->where('state', '!=', \App\Billing\InvoiceState::Void)->with('party')->get(); @endphp
+            <div class="flex flex-wrap items-center gap-1.5">
+                @foreach ($dealInvoices as $i)
+                    <a href="{{ \App\Support\Surface::Park->url('/money/invoices/'.$i->id) }}" class="chip nums" data-turbo="false">{{ $i->label() }} {{ \App\Support\Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</a><x-billing.light :invoice="$i"/>
+                @endforeach
+                <a href="/work/invoices/new?offer={{ $offer->number }}" class="chip">{{ $dealInvoices->isEmpty() ? 'Выставить счёт' : 'Ещё счёт' }}</a>
+            </div>
+        @endif
 
         @php $service = $offer->vendor?->workflow(Track::Service); $pickup = $offer->position(Track::Service); $pv = $offer->parkVehicle; @endphp
         @if ($pv)

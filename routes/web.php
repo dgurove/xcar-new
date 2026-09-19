@@ -88,6 +88,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
 
     Route::get('/account/deals', [DealController::class, 'index']);
     Route::get('/account/deals/{deal}', [DealController::class, 'show']);
+    Route::get('/account/invoices/{invoice}/pdf', [DealController::class, 'invoice']);
     Route::post('/account/deals/{deal}/reply', [DealController::class, 'answer']);
     Route::post('/account/deals/{deal}/files', [DealController::class, 'upload']);
     Route::delete('/account/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
