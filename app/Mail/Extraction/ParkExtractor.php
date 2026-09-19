@@ -62,9 +62,21 @@ final class ParkExtractor
         return $fields;
     }
 
+    /**
+     * Письмо — заявка, если в нём номер убытка, VIN или госномер. Свободный номер из текста (`REFS`:
+     * десять-восемь цифр) считается только от известного вендора — иначе рассылка с номером телефона
+     * или счёта становилась кандидатом.
+     */
     public static function looksLikeRequest(array $fields): bool
     {
-        return isset($fields['code']) || isset($fields['vin']) || isset($fields['plate']);
+        if (isset($fields['vin']) || isset($fields['plate'])) {
+            return true;
+        }
+        if (! isset($fields['code'])) {
+            return false;
+        }
+
+        return ($fields['code']['source'] ?? '') !== 'text' || isset($fields['vendor_id']);
     }
 
     private function ref(string $text): ?string
