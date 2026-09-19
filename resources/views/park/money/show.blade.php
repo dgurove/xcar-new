@@ -1,7 +1,7 @@
 {{-- Карточка счёта: строки и оплаты слева, контрагент, ТС, сделка справа; плашка — «Оплачен». --}}
 @php use App\Support\Money; use App\Billing\InvoiceState; use App\Support\Surface; $i = $invoice; $me = auth()->user(); @endphp
 <x-ui.shell :title="($i->isOwed() ? 'Мы должны ' : 'Счёт ').$i->label()" :back="['Деньги', '/money']" cache="no-cache">
-    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
+    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-billing.light :invoice="$i"/>
         <span class="chip nums">{{ $i->issued_at->translatedFormat('j M Y') }}</span>
         <span class="chip">{{ $i->kind->label() }}</span>
@@ -10,6 +10,20 @@
         @if ($file)<a href="/money/invoices/{{ $i->id }}/pdf" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>PDF</a>@endif
         @if ($i->kind === \App\Billing\ChargeKind::Storage)<a href="/money/invoices/{{ $i->id }}/act" class="chip" data-turbo="false" target="_blank">Акт хранения</a>@endif
         @if ($i->number)<a href="/money/invoices/{{ $i->id }}/print" class="chip" data-turbo="false" target="_blank">Печать</a>@endif
+        @if ($i->state === InvoiceState::Issued && $me->canManagePark())
+            <button type="button" class="chip" data-action="sheet#open"><x-ui.icon name="edit" class="size-3.5"/>Изменить</button>
+            <x-ui.sheet id="invoice-edit" title="Счёт" :open="$errors->has('due_at')">
+                <form method="post" action="/money/invoices/{{ $i->id }}" class="flex flex-col gap-3">
+                    @csrf @method('put')
+                    <div class="grid grid-cols-2 gap-3">
+                        <x-ui.field name="due_at" :label="$i->isOwed() ? 'Перечислить до' : 'Оплатить до'" type="date" :value="$i->due_at->toDateString()" required/>
+                        <x-ui.field name="external_no" :label="$i->isOwed() ? '№ у вендора' : 'Чужой номер'" :value="$i->external_no"/>
+                        <x-ui.field name="notes" label="Заметка в счёт" type="textarea" :value="$i->notes" span="col-span-2"/>
+                    </div>
+                    <x-ui.button block>Сохранить</x-ui.button>
+                </form>
+            </x-ui.sheet>
+        @endif
     </div>
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="flex flex-col gap-4">
@@ -27,7 +41,7 @@
                 <div class="flex flex-col divide-y divide-line/40">
                     @foreach ($i->payments as $p)
                         <div class="flex items-center gap-3 py-2">
-                            <span class="min-w-0 flex-1">{{ $p->source->label() }}{{ $p->ref ? ' № '.$p->ref : '' }}{{ $p->note ? ' — '.$p->note : '' }}</span>
+                            <span class="min-w-0 flex-1">{{ $p->source->label() }}{{ $p->ref ? ' № '.$p->ref : '' }}{{ $p->note ? ' — '.$p->note : '' }}@if ($p->slip()) <a href="/money/invoices/{{ $i->id }}/payments/{{ $p->id }}/slip" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>платёжка</a>@endif</span>
                             <span class="nums text-sm text-ink-muted">{{ $p->paid_at->translatedFormat('j M Y') }}</span>
                             <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
                             @if ($me->canManagePark())<form method="post" action="/money/invoices/{{ $i->id }}/payments/{{ $p->id }}" data-turbo-confirm="Отменить оплату?">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Отменить"><x-ui.icon name="x" class="size-4"/></button></form>@endif

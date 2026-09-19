@@ -2,8 +2,10 @@
 
 namespace App\Http\Admin;
 
+use App\Billing\Accrual;
 use App\Billing\Invoice;
 use App\Billing\Ledger;
+use App\Billing\Party;
 use App\Cars\Category;
 use App\Mail\Account;
 use App\Offers\Offer;
@@ -87,11 +89,15 @@ class VendorController
         } elseif ($pill === 'tariffs') {
             $data += self::tariffData($request, $vendor);
         } elseif ($pill === 'money') {
-            $party = $vendor->party;
+            // Контрагент на чтение не создаётся: без счетов долг — только не выставленное хранение по ТС вендора.
+            $party = Party::forVendor($vendor, false);
+            $stored = Vehicle::where('vendor_id', $vendor->id)->whereIn('state', [VehicleState::Stored, VehicleState::InTransit])->with(['brand', 'model', 'yard'])->orderBy('accepted_at')->get();
             $data += [
-                'party' => $party,
-                'debt' => $party ? Ledger::debtOf($party) : null,
-                'invoices' => $party ? Invoice::where('party_id', $party->id)->with(['vehicle.brand', 'vehicle.model'])->latest('issued_at')->latest('id')->limit(30)->get() : collect(),
+                'party' => $party->id ? $party : null,
+                'debt' => $party->id ? Ledger::debtOf($party) : ['owed_to_us' => 0, 'we_owe' => 0, 'overdue' => 0],
+                'unbilled' => $stored->mapWithKeys(fn (Vehicle $v) => [$v->id => round(collect(Accrual::storage($v))->where('payer', 'vendor')->sum('amount') + (float) $v->charges()->whereNull('invoice_id')->whereNull('voided_at')->when($party->id, fn ($q) => $q->where('party_id', $party->id))->sum('amount'), 2)]),
+                'stored' => $stored,
+                'invoices' => $party->id ? Invoice::where('party_id', $party->id)->with(['vehicle.brand', 'vehicle.model'])->latest('issued_at')->latest('id')->get() : collect(),
             ];
         } else {
             $data += [

@@ -235,6 +235,7 @@
                     <form method="post" action="/cars/{{ $vehicle->id }}/charges" class="flex flex-col gap-3">
                         @csrf
                         <x-ui.field name="kind" label="За что" :options="$chargeKinds"/>
+                        @if (count($payers) > 1)<x-ui.field name="party_id" label="Кому" :options="$payers" :value="array_key_first($payers)"/>@endif
                         <div class="grid grid-cols-2 gap-3">
                             <x-ui.field name="qty" label="Сколько" value="1" inputmode="decimal"/>
                             <x-ui.field name="price" label="Цена, ₽" inputmode="numeric" required/>

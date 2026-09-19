@@ -164,6 +164,12 @@
                             </div>
                         </div>
                         <x-ui.field name="note" label="По какому документу" type="textarea" span="col-span-full"/>
+                        @if ($debt > 0)
+                            <div class="col-span-full flex flex-wrap items-center gap-2">
+                                <x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</x-ui.pill>
+                                @if ($debtBlocks)<x-ui.check name="force">Выдать с долгом</x-ui.check>@else<span class="tag">вендору можно выдавать без оплаты</span>@endif
+                            </div>
+                        @endif
                     </div>
                 </x-ui.card>
                 @include('park.requests.inspection-fields', ['transit' => false, 'signer' => 'Кто получил'])

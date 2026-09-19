@@ -31,3 +31,6 @@
     <x-ui.field name="notes" label="Заметки" type="textarea" :value="$party?->notes"/>
     <x-ui.button block>Сохранить</x-ui.button>
 </form>
+@if ($party && ! $party->is_self && ! $party->invoices_count)
+    <form method="post" action="/money/parties/{{ $party->id }}" class="mt-2" data-turbo-confirm="Убрать контрагента «{{ $party->name }}»?">@csrf @method('delete')<x-ui.button variant="ghost" block>Убрать</x-ui.button></form>
+@endif

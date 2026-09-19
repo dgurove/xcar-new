@@ -25,9 +25,21 @@ class Party extends Model
         return $this->hasMany(Invoice::class, 'party_id');
     }
 
+    /** Мы. Строки нет (свежая база, снесли руками) — заводится из конфига, реквизиты банка дозаполняют на экране. */
     public static function self(): self
     {
-        return self::where('is_self', true)->firstOrFail();
+        $company = config('xcar.company', []);
+
+        return self::firstOrCreate(['is_self' => true], [
+            'kind' => PartyKind::Company, 'name' => $company['name'] ?? 'ООО «ПРАЙМ»', 'inn' => $company['inn'] ?? null,
+            'director' => $company['director'] ?? null, 'director_basis' => 'Устава',
+        ]);
+    }
+
+    /** Реквизитов для счёта не хватает — печатается с прочерком. */
+    public function bankMissing(): bool
+    {
+        return ! $this->bank_name || ! $this->account || ! $this->bik;
     }
 
     /**

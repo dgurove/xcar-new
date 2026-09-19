@@ -14,6 +14,7 @@ use App\Billing\PaymentSource;
 use App\Park\Scope;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Nav;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -83,7 +84,7 @@ class MoneyController
     public function show(Invoice $invoice)
     {
         self::guard($invoice);
-        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges', 'payments', 'deal.offer', 'creator', 'media']);
+        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges', 'payments.media', 'deal.offer', 'creator', 'media']);
 
         return view('park.money.show', ['invoice' => $invoice, 'sources' => PaymentSource::options(), 'file' => $invoice->getFirstMedia('file')]);
     }
@@ -91,12 +92,36 @@ class MoneyController
     public function pay(Request $request, Invoice $invoice, RecordPayment $record)
     {
         self::guard($invoice);
-        $data = $request->validate(['amount' => ['required', 'numeric', 'min:0.01'], 'paid_at' => ['nullable', 'date'], 'source' => ['required', Rule::enum(PaymentSource::class)], 'ref' => ['nullable', 'string', 'max:60'], 'note' => ['nullable', 'string', 'max:255']]);
-        $record($invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, PaymentSource::from($data['source']), $data['ref'] ?? null, $data['note'] ?? null);
+        $data = $request->validate(['amount' => ['required', 'numeric', 'min:0.01'], 'paid_at' => ['nullable', 'date'], 'source' => ['required', Rule::enum(PaymentSource::class)], 'ref' => ['nullable', 'string', 'max:60'], 'note' => ['nullable', 'string', 'max:255'], 'slip' => ['nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic']]);
+        $payment = $record($invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, PaymentSource::from($data['source']), $data['ref'] ?? null, $data['note'] ?? null);
+        if ($request->hasFile('slip')) {
+            $payment->addMediaFromRequest('slip')->toMediaCollection('slip');
+        }
 
         $paid = $invoice->fresh()->state === InvoiceState::Paid;
 
         return back()->with('toast', $invoice->isOwed() ? ($paid ? 'Перечислено' : 'Перечисление записано') : ($paid ? 'Оплачен' : 'Оплата записана'));
+    }
+
+    /** Скан платёжки — с закрытого диска, только своим. */
+    public function slip(Invoice $invoice, Payment $payment)
+    {
+        self::guard($invoice);
+        abort_unless($payment->invoice_id === $invoice->id && ($media = $payment->slip()), 404);
+
+        return response()->file($media->getPath(), ['Content-Type' => $media->mime_type, 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
+    }
+
+    /** Срок, чужой номер и заметка правятся у выставленного счёта; суммы и строки — нет. */
+    public function update(Request $request, Invoice $invoice)
+    {
+        self::guard($invoice);
+        abort_unless($invoice->state === InvoiceState::Issued, 404);
+        $data = $request->validate(['due_at' => ['required', 'date'], 'external_no' => ['nullable', 'string', 'max:60'], 'notes' => ['nullable', 'string', 'max:1000']]);
+        $invoice->update(['due_at' => Carbon::parse($data['due_at'])->toDateString(), 'external_no' => $data['external_no'] ?: null, 'notes' => $data['notes'] ?: null, 'overdue_at' => Carbon::parse($data['due_at'])->isFuture() ? null : $invoice->overdue_at]);
+        Nav::forgetStaffCounts();
+
+        return back()->with('toast', 'Сохранено');
     }
 
     public function unpay(Request $request, Invoice $invoice, Payment $payment, VoidPayment $void)

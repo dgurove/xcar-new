@@ -25,7 +25,11 @@
         </x-slot:aside>
         <x-slot:actions>
             @if ($state === VehicleState::Expected)
-                <a href="/requests/new?type=intake&car={{ $vehicle->id }}" class="btn btn-s btn-accent">Принять на стоянку</a>
+                @php $open = $vehicle->openRequest(\App\Park\RequestType::Tow) ?? $vehicle->openRequest(\App\Park\RequestType::Intake); @endphp
+                <a href="{{ $open ? '/requests/'.$open->id : '/requests/new?type=intake&car='.$vehicle->id }}" class="btn btn-s btn-accent">{{ $open?->isTow() ? 'Эвакуация' : 'Принять на стоянку' }}</a>
+            @endif
+            @if ($state === VehicleState::InTransit && ($tow = $vehicle->openRequest(\App\Park\RequestType::Tow)))
+                <a href="/requests/{{ $tow->id }}" class="btn btn-s btn-accent">Принять</a>
             @endif
             @if ($state === VehicleState::Stored)
                 <form method="post" action="{{ $href }}/move" class="contents" data-controller="autosubmit">@csrf
@@ -33,8 +37,9 @@
                         @foreach ($yards as $id => $name)<option value="{{ $id }}" @selected($id == $vehicle->yard_id)>{{ $name }}</option>@endforeach
                     </select>
                 </form>
-                <form method="post" action="{{ $href }}/release" class="contents" data-turbo-confirm="Выдать ТС?">@csrf
+                <form method="post" action="{{ $href }}/release" class="contents" data-turbo-confirm="{{ $debt > 0 && $debtBlocks ? 'Выдать ТС с долгом '.\App\Support\Money::rub($debt).'?' : 'Выдать ТС?' }}">@csrf
                     <input type="datetime-local" name="released_at" value="{{ now()->format('Y-m-d\TH:i') }}" class="field-input field-s w-auto" aria-label="Выдача">
+                    @if ($debt > 0 && $debtBlocks)<input type="hidden" name="force" value="1"><span class="pill pill-danger !min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</span>@endif
                     <button class="btn btn-s btn-accent">Выдать</button>
                 </form>
                 <a href="/acts/{{ $vehicle->id }}/intake" class="pill pill-plain" data-turbo="false" target="_blank">Акт приёма</a>

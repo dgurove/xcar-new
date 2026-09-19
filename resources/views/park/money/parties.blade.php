@@ -6,7 +6,7 @@
             <div class="row" data-controller="sheet">
                 <button type="button" class="contents text-left" data-action="sheet#open">
                     <span class="min-w-0 flex-1">
-                        <span class="block font-medium">{{ $p->name }}@if ($p->is_self) <span class="chip text-xs">мы</span>@endif</span>
+                        <span class="block font-medium">{{ $p->name }}@if ($p->is_self) <span class="chip text-xs">мы</span>@endif @if ($p->is_self && $p->bankMissing())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Заполните реквизиты банка</x-ui.pill>@endif</span>
                         <span class="row-sub mt-1 flex flex-wrap gap-1.5">
                             <span class="chip">{{ $p->kind->label() }}</span>
                             @if ($p->inn)<span class="tag nums">ИНН {{ $p->inn }}</span>@endif

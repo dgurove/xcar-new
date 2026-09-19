@@ -78,7 +78,11 @@ class VehicleController
     {
         $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user']);
 
-        return view('park.vehicles.peek', ['vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id')]);
+        return view('park.vehicles.peek', [
+            'vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            'debt' => $vehicle->state === VehicleState::Stored ? Ledger::vehicleDebt($vehicle) + Ledger::vehicleUnbilled($vehicle) : 0,
+            'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
+        ]);
     }
 
     public function show(Request $request, Vehicle $vehicle)
@@ -95,6 +99,7 @@ class VehicleController
             'accrued' => Accrual::summary($vehicle),
             'owners' => Party::where('kind', 'person')->orderBy('name')->pluck('name', 'id'),
             'debt' => Ledger::vehicleDebt($vehicle),
+            'payers' => Ledger::payersOf($vehicle),
             'pendingCharges' => $vehicle->charges()->whereNull('invoice_id')->whereNull('voided_at')->get(),
             'chargeKinds' => collect([ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other])->mapWithKeys(fn ($k) => [$k->value => $k->label().(($price = VehicleInvoiceController::priceFor($vehicle, $k)) ? ' — '.Money::rub($price) : '')]),
             'threads' => Thread::where('vehicle_id', $vehicle->id)->get(),

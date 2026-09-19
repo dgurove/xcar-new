@@ -77,6 +77,36 @@ final class Ledger
         return round($storage + $charges, 2);
     }
 
+    /** Кому можно начислить по ТС: вендор, страхователь, покупатель — те, у кого есть контрагент (для чтения не создаются). @return array<int, string> */
+    public static function payersOf(Vehicle $vehicle): array
+    {
+        $out = [];
+        foreach (['vendor' => 'вендор', 'owner' => 'страхователь', 'buyer' => 'покупатель'] as $payer => $label) {
+            if (($party = self::payerParty($vehicle, $payer, false)) && $party->id) {
+                $out[$party->id] = $party->name.' — '.$label;
+            }
+        }
+
+        return $out;
+    }
+
+    /** Не выставленное контрагенту: хранение по его ТС на стоянке и начисления вне счёта. */
+    public static function unbilledOf(Party $party): float
+    {
+        $sum = (float) Charge::where('party_id', $party->id)->whereNull('invoice_id')->whereNull('voided_at')->sum('amount');
+        $vehicles = Vehicle::with(['vendor.party', 'offer.deal.buyer', 'ownerParty'])->whereIn('state', [VehicleState::Stored, VehicleState::InTransit])
+            ->where(fn ($q) => $q->whereHas('vendor', fn ($v) => $v->where('party_id', $party->id))->orWhere('owner_party_id', $party->id))->get();
+        foreach ($vehicles as $v) {
+            foreach (Accrual::storage($v) as $s) {
+                if (self::payerParty($v, $s['payer'], false)?->id === $party->id) {
+                    $sum += $s['amount'];
+                }
+            }
+        }
+
+        return round($sum, 2);
+    }
+
     /** Кто платит отрезок хранения: вендор, страхователь или покупатель — их контрагенты; «никто» — null. */
     public static function payerParty(Vehicle $vehicle, string $payer, bool $create = true): ?Party
     {

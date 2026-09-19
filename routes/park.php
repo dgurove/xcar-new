@@ -64,12 +64,15 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::get('/money/parties', [PartyController::class, 'index']);
         Route::post('/money/parties', [PartyController::class, 'store']);
         Route::put('/money/parties/{party}', [PartyController::class, 'update']);
+        Route::delete('/money/parties/{party}', [PartyController::class, 'destroy']);
         Route::get('/money/invoices/{invoice}', [MoneyController::class, 'show']);
         Route::get('/money/invoices/{invoice}/peek', [MoneyController::class, 'peek']);
         Route::get('/money/invoices/{invoice}/pdf', [MoneyController::class, 'file']);
         Route::get('/money/invoices/{invoice}/print', [MoneyController::class, 'print']);
         Route::get('/money/invoices/{invoice}/act', [MoneyController::class, 'act']);
+        Route::put('/money/invoices/{invoice}', [MoneyController::class, 'update']);
         Route::post('/money/invoices/{invoice}/payments', [MoneyController::class, 'pay']);
+        Route::get('/money/invoices/{invoice}/payments/{payment}/slip', [MoneyController::class, 'slip']);
         Route::delete('/money/invoices/{invoice}/payments/{payment}', [MoneyController::class, 'unpay']);
         Route::post('/money/invoices/{invoice}/void', [MoneyController::class, 'void']);
     });

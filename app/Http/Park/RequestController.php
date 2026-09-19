@@ -2,6 +2,7 @@
 
 namespace App\Http\Park;
 
+use App\Billing\Ledger;
 use App\Cars\Category;
 use App\Cars\DamageZone;
 use App\Park\Actions\AssignRequest;
@@ -145,6 +146,9 @@ class RequestController
             'shots' => $vehicle->photos()->map(fn ($m) => $m->getCustomProperty('slot'))->filter()->countBy()->all(),
             'staff' => User::whereJsonContains('access', Section::Park->value)->orWhere('role', 'admin')->orderBy('name')->get(),
             'towCost' => $req->isTow() ? self::towCost($vehicle, $req->distance_km) : null,
+            // Выдача при долге держится, если у вендора не разрешено выдавать без оплаты: показать долг и «выдать с долгом».
+            'debt' => $req->type === RequestType::Release ? Ledger::vehicleDebt($vehicle) + Ledger::vehicleUnbilled($vehicle) : 0,
+            'debtBlocks' => $req->type === RequestType::Release && ! ($vehicle->vendor?->release_without_payment ?? false),
             // Перевозчики — кого уже возили: подсказка в поле, отдельного справочника нет.
             'carriers' => $req->isTow() ? ParkRequest::whereNotNull('carrier')->where('carrier', '!=', '')->selectRaw('carrier, count(*) as n')->groupBy('carrier')->orderByDesc('n')->limit(20)->pluck('carrier') : collect(),
             'storageRate' => Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
