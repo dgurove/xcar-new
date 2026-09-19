@@ -30,13 +30,15 @@ final class Release
             if ($vehicle->state !== VehicleState::Stored) {
                 throw ValidationException::withMessages(['state' => 'Выдать можно только ТС на стоянке']);
             }
-            // Долг по ТС держит выдачу, если у вендора не разрешено выдавать без оплаты; обход — с подтверждением, и это остаётся в ленте.
-            $debt = Ledger::vehicleDebt($vehicle);
-            $vehicle->loadMissing('vendor');
-            if ($debt > 0 && ! $force && ! ($vehicle->vendor?->release_without_payment ?? false)) {
-                throw ValidationException::withMessages(['state' => 'Не оплачено '.Money::rub($debt).' — выдача только после оплаты или с подтверждением']);
-            }
             $at ??= now();
+            // Долг по ТС — неоплаченные счета и то, что ещё не выставлено (хранение по день выдачи, начисления), — держит
+            // выдачу, если у вендора не разрешено выдавать без оплаты; обход — с подтверждением, и это остаётся в ленте.
+            $debt = Ledger::vehicleDebt($vehicle);
+            $unbilled = Ledger::vehicleUnbilled($vehicle, $at);
+            $vehicle->loadMissing('vendor');
+            if ($debt + $unbilled > 0 && ! $force && ! ($vehicle->vendor?->release_without_payment ?? false)) {
+                throw ValidationException::withMessages(['state' => implode(', ', array_filter([$debt > 0 ? 'не оплачено '.Money::rub($debt) : null, $unbilled > 0 ? 'не выставлено '.Money::rub($unbilled) : null])).' — выдача после оплаты или с подтверждением']);
+            }
             if ($vehicle->accepted_at && $at->lt($vehicle->accepted_at)) {
                 throw ValidationException::withMessages(['released_at' => 'Выдача раньше приёма']);
             }
@@ -45,7 +47,7 @@ final class Release
                 Inspection::create(['vehicle_id' => $vehicle->id, 'request_id' => $request?->id, 'kind' => InspectionKind::Release, 'at' => $at, 'user_id' => $by->id,
                     'damage_zones' => array_values($inspection['damage_zones'] ?? [])] + Intake::fields($inspection));
             }
-            $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'to' => $to?->label(), 'unpaid' => $debt > 0 ? $debt : null]));
+            $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'to' => $to?->label(), 'unpaid' => $debt + $unbilled > 0 ? round($debt + $unbilled, 2) : null]));
             Request::closeOpen($vehicle, [RequestType::Release], $by, $request, $note);
 
             return $vehicle;

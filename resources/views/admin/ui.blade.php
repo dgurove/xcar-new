@@ -43,7 +43,7 @@
             </div>
             <div class="mt-4 flex flex-wrap items-center gap-2">
                 <span class="tag">2023</span><span class="tag">Автоматическая</span><span class="tag" style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d">С НДС</span><span class="tag" style="--tag-bg:#f0f7d8;--tag-text:#669709;--tag-bg-d:#1a2605;--tag-text-d:#a6cf3a">Срочно</span>
-                <span class="chip">Чип</span><span class="chip nums font-normal">12 дн.</span><span class="badge">3</span><span class="badge">99+</span>
+                <span class="chip">Чип</span><span class="chip nums font-normal">12 дн</span><span class="badge">3</span><span class="badge">99+</span>
             </div>
         </x-ui.card>
 

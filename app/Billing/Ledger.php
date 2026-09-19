@@ -68,6 +68,15 @@ final class Ledger
         return round(Invoice::where('vehicle_id', $vehicle->id)->where('direction', 'issued')->where('state', InvoiceState::Issued)->get()->sum(fn (Invoice $i) => $i->remaining()), 2);
     }
 
+    /** Не выставленное по ТС: хранение по день (по умолчанию — сегодня) и начисления вне счёта. */
+    public static function vehicleUnbilled(Vehicle $vehicle, ?CarbonInterface $until = null): float
+    {
+        $storage = Accrual::storage($vehicle, $until)->sum('amount');
+        $charges = (float) Charge::where('vehicle_id', $vehicle->id)->whereNull('invoice_id')->whereNull('voided_at')->sum('amount');
+
+        return round($storage + $charges, 2);
+    }
+
     /** Кто платит отрезок хранения: вендор, страхователь или покупатель — их контрагенты; «никто» — null. */
     public static function payerParty(Vehicle $vehicle, string $payer, bool $create = true): ?Party
     {

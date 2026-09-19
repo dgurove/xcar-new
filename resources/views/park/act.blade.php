@@ -55,7 +55,7 @@
             <tr><th>Принят на хранение</th><td>{{ $vehicle->accepted_at?->format('d.m.Y H:i') ?? '—' }}</td></tr>
             @unless ($intake)
                 <tr><th>Выдан</th><td>{{ $vehicle->released_at?->format('d.m.Y H:i') ?? '—' }}</td></tr>
-                <tr><th>Срок хранения</th><td>{{ $vehicle->daysStored() }} дн.</td></tr>
+                <tr><th>Срок хранения</th><td>{{ $vehicle->daysStored() }} дн</td></tr>
             @endunless
             @if ($inspection)
                 @if ($inspection->mileage !== null)<tr><th>Пробег</th><td>{{ number_format($inspection->mileage, 0, '', ' ') }} км</td></tr>@endif
