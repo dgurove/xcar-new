@@ -181,7 +181,7 @@
                 </x-ui.card>
             </form>
         @elseif ($open && $req->type === RequestType::Release && $vehicle->state === VehicleState::Stored)
-            <form method="post" action="/requests/{{ $req->id }}/release" id="act-form" class="flex flex-col gap-4">
+            <form method="post" action="/requests/{{ $req->id }}/release" id="act-form" class="flex flex-col gap-4" data-controller="reveal">
                 @csrf
                 <x-ui.card title="Выдача">
                     <div class="grid grid-cols-2 gap-3">
@@ -190,14 +190,34 @@
                             <span class="field-label">Кому</span>
                             <div class="flex flex-wrap gap-1.5">
                                 @foreach (ReleasedTo::cases() as $to)
-                                    <label class="choice"><input type="radio" name="to" value="{{ $to->value }}" @checked(old('to') === $to->value)><span>{{ $to->label() }}</span></label>
+                                    <label class="choice"><input type="radio" name="to" value="{{ $to->value }}" @checked(old('to', $vehicle->sold_at ? ReleasedTo::Buyer->value : null) === $to->value)><span>{{ $to->label() }}</span></label>
                                 @endforeach
                             </div>
                         </div>
-                        <x-ui.field name="note" label="По какому документу" type="textarea" span="col-span-full"/>
+                        @if ($vehicle->pickup_name || $vehicle->pickup_phone)<div class="col-span-full flex flex-wrap gap-1.5"><span class="tag">{{ $vehicle->pickup_name }}</span>@if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="tag nums">{{ $vehicle->pickup_phone }}</a>@endif @if ($vehicle->pickup_note)<span class="tag">{{ $vehicle->pickup_note }}</span>@endif</div>@endif
+                        <x-ui.field name="note" label="По какому документу" type="textarea" span="col-span-full" :value="$vehicle->pickup_note"/>
+                        {{-- Получатель подписывает: ТС соответствует акту приёма или нет; не соответствует и не забрал — акт с отказом, ТС остаётся.
+                             Поле зовётся fits, не matches: имя поля формы перекрыло бы form.matches(), и Stimulus падает. --}}
+                        <div class="field col-span-full">
+                            <span class="field-label">Получатель осмотрел</span>
+                            <div class="flex flex-wrap gap-1.5">
+                                <label class="choice"><input type="radio" name="fits" value="1" data-action="reveal#pick" @checked(old('fits', '1') === '1')><span>Соответствует</span></label>
+                                <label class="choice"><input type="radio" name="fits" value="0" data-action="reveal#pick" @checked(old('fits') === '0')><span>Не соответствует</span></label>
+                            </div>
+                        </div>
+                        <div class="col-span-full grid grid-cols-2 gap-3" data-reveal-target="pane" data-reveal-key="0" hidden>
+                            <x-ui.field name="mismatch_note" label="Что не так" type="textarea" span="col-span-full" disabled/>
+                            <div class="field col-span-full">
+                                <div class="flex flex-wrap gap-1.5">
+                                    <label class="choice"><input type="radio" name="refused" value="0" disabled @checked(old('refused', '0') === '0')><span>Забрал</span></label>
+                                    <label class="choice"><input type="radio" name="refused" value="1" disabled @checked(old('refused') === '1')><span>Не забрал</span></label>
+                                </div>
+                            </div>
+                        </div>
                         @if ($debt > 0)
                             <div class="col-span-full flex flex-wrap items-center gap-2">
-                                <x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</x-ui.pill>
+                                @if ($debt - $buyerDebt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs nums">{{ $buyerDebt > 0 ? 'вендор ' : 'долг ' }}{{ Money::rub($debt - $buyerDebt) }}</x-ui.pill>@endif
+                                @if ($buyerDebt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs nums">покупатель {{ Money::rub($buyerDebt) }}</x-ui.pill><x-ui.check name="cash">Принял наличными {{ Money::rub($buyerDebt) }}</x-ui.check>@endif
                                 @if ($debtBlocks)<x-ui.check name="force">Выдать с долгом</x-ui.check>@else<span class="tag">вендору можно выдавать без оплаты</span>@endif
                             </div>
                         @endif

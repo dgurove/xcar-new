@@ -25,6 +25,7 @@ use App\Park\Actions\MarkDoc;
 use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\Documents\ActPdf;
+use App\Park\EventType;
 use App\Park\InspectionKind;
 use App\Park\Vehicle;
 use App\Support\ListPrefs;
@@ -144,8 +145,9 @@ class MailController
             $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
         }
         // Письмо о принятой ТС уходит с актом и фото приёма (Альфа и Совкомбанк просят именно их); лишнее снимают в форме.
+        // `act=release` — акт выдачи (в том числе с отказом от получения, когда ТС осталась).
         if ($vehicle?->accepted_at && ! $request->old()) {
-            $intake = ! $vehicle->released_at;
+            $intake = $request->query('act') ? $request->query('act') !== 'release' : ! $vehicle->released_at;
             $defaults['files'][] = $outbox->put($act->filename($vehicle, $intake), $act->render($vehicle, $intake));
             $shots = $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === ($intake ? 'intake' : 'release'));
             foreach (($shots->isNotEmpty() ? $shots : $vehicle->visiblePhotos())->take(12) as $i => $m) {
@@ -153,7 +155,7 @@ class MailController
             }
         }
 
-        return view('admin.mail.compose', ['account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults,
+        return view('admin.mail.compose', ['account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'back' => $request->query('back'),
             'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base]);
     }
 
@@ -186,6 +188,7 @@ class MailController
             'forward.*' => ['integer'],
             'offer' => ['nullable', 'integer'],
             'vehicle' => ['nullable', 'integer'],
+            'back' => ['nullable', 'string', 'max:255', 'starts_with:/'],
         ]);
         $account = Account::where('slug', $data['account'])->where('scope', $this->scope)->firstOrFail();
         if (! $composer->emails($data['to'])) {
@@ -201,16 +204,20 @@ class MailController
         if (! empty($data['vehicle']) && $message->thread && ! $message->thread->vehicle_id) {
             $message->thread->update(['vehicle_id' => $data['vehicle']]);
         }
-        // Ушёл акт и фото — бумаги «акт хранения» и «фото» вендору отмечаются отправленными этим письмом.
+        // Ушёл акт и фото — бумаги «акты» и «фото» вендору отмечаются отправленными этим письмом, в ленте ТС — отчёт.
         if (! empty($data['vehicle']) && ($vehicle = Vehicle::find($data['vehicle']))) {
             $sent = collect($message->attachments()->pluck('filename'));
-            $kinds = array_filter([$sent->contains(fn ($f) => str_starts_with($f, 'akt-')) ? DocKind::StorageAct : null, $sent->contains(fn ($f) => preg_match('/^(priem|vydacha)-\d+\./', $f)) ? DocKind::Photos : null]);
+            $act = $sent->first(fn ($f) => str_starts_with($f, 'akt-'));
+            $kinds = array_filter([$act ? DocKind::HandoverAct : null, $act ? DocKind::StorageAct : null, $sent->contains(fn ($f) => preg_match('/^(priem|vydacha)-\d+\./', $f)) ? DocKind::Photos : null]);
             foreach ($vehicle->docs()->where('direction', 'out')->where('state', DocState::Pending)->whereIn('kind', $kinds)->get() as $doc) {
                 $mark($doc, $request->user(), DocState::Sent, threadId: $message->thread_id);
             }
+            if ($act) {
+                $vehicle->log(EventType::ReportSent, $request->user(), ['what' => str_starts_with($act, 'akt-vydachi') ? 'Акт выдачи' : 'Акт приёма', 'thread' => $message->thread_id]);
+            }
         }
 
-        return redirect("{$this->base}/{$message->thread_id}")->with('toast', 'Письмо в очереди');
+        return redirect($data['back'] ?? "{$this->base}/{$message->thread_id}")->with('toast', 'Письмо в очереди');
     }
 
     public function file(Request $request, StoreOutboxFile $store)

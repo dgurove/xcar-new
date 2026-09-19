@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Billing\Actions\SettleStorage;
 use App\Billing\Ledger;
 use App\Park\Events\VehicleReleased;
 use App\Park\EventType;
@@ -22,15 +23,22 @@ use Illuminate\Validation\ValidationException;
 /** Выдача — зеркало приёма: осмотр при выдаче, кому выдана, дата не раньше постановки, заявка закрывается. */
 final class Release
 {
-    public function __invoke(Vehicle $vehicle, User $by, ?Carbon $at, ?string $note = null, ?ReleasedTo $to = null, array $inspection = [], ?Request $request = null, bool $force = false): Vehicle
+    public function __construct(private SettleStorage $settle) {}
+
+    /** `cash` — хранение по день выдачи выставляется тут же, счёт покупателю гасится наличными; долга не остаётся. */
+    public function __invoke(Vehicle $vehicle, User $by, ?Carbon $at, ?string $note = null, ?ReleasedTo $to = null, array $inspection = [], ?Request $request = null, bool $force = false, bool $cash = false): Vehicle
     {
         Nav::forgetStaffCounts();
-        $vehicle = DB::transaction(function () use ($vehicle, $by, $at, $note, $to, $inspection, $request, $force) {
+        $vehicle = DB::transaction(function () use ($vehicle, $by, $at, $note, $to, $inspection, $request, $force, $cash) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             if ($vehicle->state !== VehicleState::Stored) {
                 throw ValidationException::withMessages(['state' => 'Выдать можно только ТС на стоянке']);
             }
             $at ??= now();
+            if ($cash) {
+                ($this->settle)($vehicle, $by, $at, cash: true);
+                $vehicle->refresh();
+            }
             // Долг по ТС — неоплаченные счета и то, что ещё не выставлено (хранение по день выдачи, начисления), — держит
             // выдачу, если у вендора не разрешено выдавать без оплаты; обход — с подтверждением, и это остаётся в ленте.
             $debt = Ledger::vehicleDebt($vehicle);
@@ -45,7 +53,8 @@ final class Release
             $vehicle->update(['state' => VehicleState::Released, 'released_at' => $at, 'spot' => null]);
             if ($inspection) {
                 Inspection::create(['vehicle_id' => $vehicle->id, 'request_id' => $request?->id, 'kind' => InspectionKind::Release, 'at' => $at, 'user_id' => $by->id,
-                    'damage_zones' => array_values($inspection['damage_zones'] ?? [])] + Intake::fields($inspection));
+                    'damage_zones' => array_values($inspection['damage_zones'] ?? []),
+                    'matches' => isset($inspection['matches']) ? (bool) $inspection['matches'] : null, 'mismatch_note' => ($inspection['mismatch_note'] ?? null) ?: null] + Intake::fields($inspection));
             }
             $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'to' => $to?->label(), 'unpaid' => $debt + $unbilled > 0 ? round($debt + $unbilled, 2) : null]));
             Request::closeOpen($vehicle, [RequestType::Release], $by, $request, $note);

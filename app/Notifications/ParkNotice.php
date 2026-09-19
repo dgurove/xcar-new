@@ -26,6 +26,13 @@ final class ParkNotice extends Notice
         return new self('Письмо: '.$v->titleWithYear(), ($m->from_name ?: $m->from_email).' — '.($m->subject ?: 'без темы'), '/mail/'.$m->thread_id, $v->id);
     }
 
+    public static function sold(Vehicle $v, ?Message $m = null): self
+    {
+        $who = trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? ''));
+
+        return new self('Продано: '.$v->titleWithYear(), $who ? 'Заберёт '.$who : ($m?->subject ?: null), '/cars/'.$v->id, $v->id);
+    }
+
     public static function assigned(Request $r): self
     {
         return new self('Вам: '.mb_strtolower($r->type->label()).' — '.$r->vehicle->titleWithYear(), $r->planned_at?->translatedFormat('j M, H:i'), '/requests/'.$r->id, $r->vehicle_id, true);

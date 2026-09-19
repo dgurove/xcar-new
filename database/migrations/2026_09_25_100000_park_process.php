@@ -1,5 +1,6 @@
 <?php
 
+use App\Mail\Template;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -46,22 +47,11 @@ return new class extends Migration
                 $t->boolean('refused')->default(false);
             });
 
-            foreach (self::TEMPLATES as [$name, $subject, $body]) {
-                if (! DB::table('mail_templates')->where('scope', 'park')->where('name', $name)->exists()) {
-                    DB::table('mail_templates')->insert(['name' => $name, 'scope' => 'park', 'subject' => $subject, 'body' => $body, 'created_at' => now(), 'updated_at' => now()]);
-                }
+            foreach (array_keys(Template::PARK) as $key) {
+                Template::park($key);
             }
         });
     }
-
-    private const TEMPLATES = [
-        ['Приём на стоянку', 'Принято на хранение: {{ car }}, убыток {{ ref }}',
-            "Добрый день.\n\nТС {{ car }}, VIN {{ vin }}, госномер {{ plate }} принято на хранение {{ date }} на площадку «{{ yard }}» ({{ address }}).\nПовреждения: {{ damages }}.\n\nАкт приёма и фото во вложении.\n\nС уважением,\nООО «ПРАЙМ»"],
-        ['Отказ от получения', 'Отказ от получения: {{ car }}, убыток {{ ref }}',
-            "Добрый день.\n\nПолучатель ТС {{ car }}, VIN {{ vin }}, госномер {{ plate }} осмотрел ТС {{ today }} и от получения отказался.\nАкт осмотра с замечаниями и фото во вложении. ТС остаётся на хранении.\n\nС уважением,\nООО «ПРАЙМ»"],
-        ['Счёт за хранение', 'Счёт за хранение: {{ car }}, убыток {{ ref }}',
-            "Добрый день.\n\nНаправляем счёт и акт оказанных услуг за хранение ТС {{ car }}, VIN {{ vin }}, госномер {{ plate }}.\n\nС уважением,\nООО «ПРАЙМ»"],
-    ];
 
     public function down(): void
     {

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /** Осмотр — при приёме, выдаче, погрузке: показания, комплектность, что требует ремонта, повреждения по акту и не по акту. */
-#[Fillable(['vehicle_id', 'request_id', 'kind', 'at', 'user_id', 'mileage', 'fuel', 'keys_count', 'docs', 'equipment', 'repair', 'damage_zones', 'damage_note', 'transit_damage', 'missing_parts', 'replaced_units', 'signer_name', 'signature_path'])]
+#[Fillable(['vehicle_id', 'request_id', 'kind', 'at', 'user_id', 'mileage', 'fuel', 'keys_count', 'docs', 'equipment', 'repair', 'damage_zones', 'damage_note', 'transit_damage', 'missing_parts', 'replaced_units', 'signer_name', 'signature_path', 'matches', 'mismatch_note', 'refused'])]
 class Inspection extends Model
 {
     protected $table = 'park_inspections';
@@ -24,7 +24,7 @@ class Inspection extends Model
 
     protected function casts(): array
     {
-        return ['kind' => InspectionKind::class, 'at' => 'datetime', 'docs' => 'array', 'equipment' => 'array', 'repair' => 'array', 'damage_zones' => 'array'];
+        return ['kind' => InspectionKind::class, 'at' => 'datetime', 'docs' => 'array', 'equipment' => 'array', 'repair' => 'array', 'damage_zones' => 'array', 'matches' => 'bool', 'refused' => 'bool'];
     }
 
     public function vehicle(): BelongsTo

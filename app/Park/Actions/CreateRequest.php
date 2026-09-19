@@ -19,7 +19,7 @@ use Illuminate\Validation\ValidationException;
 /** Заявка руками или из письма. На приём и эвакуацию машина заводится тут же, на остальное — уже существующая; тип сверяется с состоянием ТС. */
 final class CreateRequest
 {
-    public function __invoke(User $by, RequestType $type, ?Vehicle $vehicle, array $data): Request
+    public function __invoke(?User $by, RequestType $type, ?Vehicle $vehicle, array $data): Request
     {
         if ($vehicle && ! $type->allowedFor($vehicle->state)) {
             throw ValidationException::withMessages(['type' => 'Для ТС «'.mb_strtolower($vehicle->state->label()).'» заявка «'.mb_strtolower($type->label()).'» невозможна']);
@@ -54,7 +54,7 @@ final class CreateRequest
                 'from_address' => $data['from_address'] ?? null,
                 'delivery' => $data['delivery'] ?? ($type === RequestType::Tow ? Delivery::Tow : null),
                 'note' => $data['note'] ?? null,
-                'created_by' => $by->id,
+                'created_by' => $by?->id,
             ]);
         });
     }

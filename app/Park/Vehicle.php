@@ -11,6 +11,7 @@ use App\Cars\CarModel;
 use App\Cars\Category;
 use App\Cars\DamageZone;
 use App\Mail\Extraction\Code;
+use App\Mail\Template;
 use App\Media\HasPhotos;
 use App\Offers\Flag;
 use App\Offers\Offer;
@@ -110,6 +111,25 @@ class Vehicle extends Model implements HasMedia
     public function cadence(): Cadence
     {
         return $this->billing_cadence ?? $this->vendor?->billing_cadence ?? Cadence::Monthly;
+    }
+
+    /**
+     * Редактор письма вендору с актом и фото: после приёма, выдачи или отказа от получения.
+     * Без вендора или у своего транспорта писать некому — null.
+     */
+    public function reportUrl(string $act, string $back): ?string
+    {
+        $vendor = $this->vendor;
+        if (! $vendor || ! $vendor->kind->billable()) {
+            return null;
+        }
+        $template = match ($act) {
+            'refusal' => $vendor->refusal_template_id ?? Template::park('refusal')->id,
+            'release' => Template::park('release')->id,
+            default => $vendor->report_template_id ?? Template::park('intake')->id,
+        };
+
+        return '/mail/new?'.http_build_query(['car' => $this->id, 'template' => $template, 'act' => $act === 'intake' ? 'intake' : 'release', 'back' => $back]);
     }
 
     /** Телефон покупателя для `tel:` — нормализованный или как записан. */

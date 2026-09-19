@@ -7,16 +7,19 @@ use App\Live\Topics;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
+use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Jobs\ExtractCandidate;
+use App\Park\Actions\MarkSold;
 use App\Park\Events\LetterArrived;
 use App\Park\EventType;
 use App\Park\Vehicle;
+use App\Park\VehicleState;
 use Illuminate\Events\Dispatcher;
 
 /** Письмо разобрано: привязать к офферу, иначе — вычитать кандидата; и сказать админке. */
 final class OnMessage
 {
-    public function __construct(private LinkThread $link, private Publisher $publish) {}
+    public function __construct(private LinkThread $link, private Publisher $publish, private MarkSold $sold) {}
 
     public function subscribe(Dispatcher $events): array
     {
@@ -39,7 +42,12 @@ final class OnMessage
         $vehicle = $linked instanceof Vehicle ? $linked : $thread?->vehicle;
         if ($vehicle && $message->direction === Direction::In) {
             $vehicle->log(EventType::Letter, null, ['from' => $message->from_name ?: $message->from_email, 'subject' => $message->subject, 'thread' => $message->thread_id]);
-            LetterArrived::dispatch($vehicle, $message);
+            // «Продано, заберёт такой-то» по ТС на стоянке — дата продажи и покупатель из письма, заявка на выдачу.
+            if ($vehicle->state === VehicleState::Stored && ! $vehicle->sold_at && ($sold = ParkExtractor::soldNotice($message->subject, $message->text_body ?: strip_tags((string) $message->html_body)))) {
+                ($this->sold)($vehicle, null, $message->date_at ?? now(), $sold['name'], $sold['phone'], $sold['note'], $message);
+            } else {
+                LetterArrived::dispatch($vehicle, $message);
+            }
             $paths[] = "/cars/{$vehicle->id}";
         }
         $this->publish->refresh($topic, $paths);

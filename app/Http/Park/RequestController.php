@@ -19,6 +19,7 @@ use App\Park\Actions\CreateRequest;
 use App\Park\Actions\Intake;
 use App\Park\Actions\Move;
 use App\Park\Actions\PromoteCandidate;
+use App\Park\Actions\RefuseRelease;
 use App\Park\Actions\Release;
 use App\Park\Actions\ScheduleTow;
 use App\Park\Actions\StartTow;
@@ -214,6 +215,7 @@ class RequestController
             'towCost' => $req->isTow() ? self::towCost($vehicle, $req->distance_km) : null,
             // Выдача при долге держится, если у вендора не разрешено выдавать без оплаты: показать долг и «выдать с долгом».
             'debt' => $req->type === RequestType::Release ? Ledger::vehicleDebt($vehicle) + Ledger::vehicleUnbilled($vehicle) : 0,
+            'buyerDebt' => $req->type === RequestType::Release ? Ledger::buyerDebt($vehicle) : 0,
             'debtBlocks' => $req->type === RequestType::Release && ! ($vehicle->vendor?->release_without_payment ?? false),
             // Перевозчики — кого уже возили: подсказка в поле, отдельного справочника нет.
             'carriers' => $req->isTow() ? ParkRequest::whereNotNull('carrier')->where('carrier', '!=', '')->selectRaw('carrier, count(*) as n')->groupBy('carrier')->orderByDesc('n')->limit(20)->pluck('carrier') : collect(),
@@ -228,8 +230,10 @@ class RequestController
             $req->vehicle->update(['category' => $data['category'], 'oversize' => $request->boolean('oversize')]);
         }
         $intake($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, $data, $req, $data['spot'] ?? null);
+        // Дальше — редактор письма вендору с актом и фото приёма; отправит сотрудник, проверив.
+        $report = $req->vehicle->fresh()->reportUrl('intake', "/cars/{$req->vehicle_id}");
 
-        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Принята');
+        return redirect($report ?? "/cars/{$req->vehicle_id}")->with('toast', $report ? 'Принята, письмо вендору готово' : 'Принята');
     }
 
     public function move(Request $request, ParkRequest $req, Move $move)
@@ -240,12 +244,27 @@ class RequestController
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Переставлена');
     }
 
-    public function release(Request $request, ParkRequest $req, Release $release)
+    /**
+     * Выдача с осмотром: «соответствует / не соответствует» — в акт; «не соответствует» и «не забрал» — акт с отказом,
+     * ТС остаётся; дальше в обоих случаях редактор письма вендору с актом выдачи.
+     */
+    public function release(Request $request, ParkRequest $req, Release $release, RefuseRelease $refuse)
     {
-        $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)]] + self::inspectionRules());
-        $release($req->vehicle, $request->user(), isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req, $request->boolean('force'));
+        $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)],
+            'fits' => ['required', 'boolean'], 'mismatch_note' => ['exclude_if:fits,1', 'required', 'string', 'max:500'], 'refused' => ['boolean']] + self::inspectionRules());
+        $at = isset($data['released_at']) ? Carbon::parse($data['released_at']) : null;
+        $vehicle = $req->vehicle;
+        $data['matches'] = $request->boolean('fits');
+        if (! $data['matches'] && $request->boolean('refused')) {
+            $refuse($vehicle, $request->user(), $at, $data['mismatch_note'], $data, $req);
+            $report = $vehicle->fresh()->reportUrl('refusal', "/requests/{$req->id}");
 
-        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
+            return redirect($report ?? "/requests/{$req->id}")->with('toast', $report ? 'Отказ записан, письмо вендору готово' : 'Отказ записан');
+        }
+        $release($vehicle, $request->user(), $at, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req, $request->boolean('force'), $request->boolean('cash'));
+        $report = $vehicle->fresh()->reportUrl('release', "/cars/{$req->vehicle_id}");
+
+        return redirect($report ?? "/cars/{$req->vehicle_id}")->with('toast', $report ? 'Выдана, письмо вендору готово' : 'Выдана');
     }
 
     public function close(Request $request, ParkRequest $req, CloseRequest $close)

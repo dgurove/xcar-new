@@ -107,15 +107,27 @@ final class Ledger
         return round($sum, 2);
     }
 
+    /** Сколько должен покупатель по этой ТС: его невыставленные дни хранения и неоплаченные счета ему. */
+    public static function buyerDebt(Vehicle $vehicle, ?CarbonInterface $until = null): float
+    {
+        $party = self::payerParty($vehicle, 'buyer', false);
+        $sum = Accrual::storage($vehicle, $until)->where('payer', 'buyer')->sum('amount');
+        if ($party?->id) {
+            $sum += $vehicle->invoices()->where('direction', 'issued')->where('state', InvoiceState::Issued)->where('party_id', $party->id)->get()->sum(fn (Invoice $i) => $i->remaining());
+        }
+
+        return round($sum, 2);
+    }
+
     /** Кто платит отрезок хранения: вендор, страхователь или покупатель — их контрагенты; «никто» — null. */
     public static function payerParty(Vehicle $vehicle, string $payer, bool $create = true): ?Party
     {
-        $vehicle->loadMissing(['vendor', 'ownerParty', 'offer.deal.buyer']);
+        $vehicle->loadMissing(['vendor', 'ownerParty', 'buyerParty', 'offer.deal.buyer']);
 
         return match ($payer) {
             'vendor' => $vehicle->vendor ? Party::forVendor($vehicle->vendor, $create) : null,
             'owner' => $vehicle->ownerParty,
-            'buyer' => ($buyer = $vehicle->offer?->deal?->buyer) ? Party::forUser($buyer, $create) : null,
+            'buyer' => $vehicle->buyerParty ?? (($buyer = $vehicle->offer?->deal?->buyer) ? Party::forUser($buyer, $create) : Party::forPickup($vehicle, $create)),
             default => null,
         };
     }

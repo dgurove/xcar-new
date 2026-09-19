@@ -40,10 +40,8 @@ final class Accrual
 
         $vendor = $vehicle->vendor;
         $payerRule = $vendor?->storage_payer ?? 'vendor';
-        $buyerFrom = null;
-        if ($vendor?->buyer_storage_after_days !== null && ($deal = $vehicle->offer?->deal) && $deal->buyer_id) {
-            $buyerFrom = $deal->created_at->copy()->startOfDay()->addDays($vendor->buyer_storage_after_days);
-        }
+        $buyerFrom = self::buyerFrom($vehicle);
+        $multiplier = (float) ($vendor?->buyer_rate_multiplier ?? 3);
 
         $timeline = $vehicle->yardTimeline();
         $segments = collect();
@@ -55,7 +53,11 @@ final class Accrual
             }
             $index = (int) $first->diffInDays($day) + 1;
             $payer = $buyerFrom && $day->gte($buyerFrom) ? 'buyer' : $payerRule;
-            $rate = $payer === 'nobody' ? 0.0 : self::rateOn($vehicle, $yard, $day, $index, $payer === 'buyer');
+            $rate = $payer === 'nobody' ? 0.0 : self::rateOn($vehicle, $yard, $day, $index, false);
+            if ($payer === 'buyer') {
+                // Покупатель платит по ставке вендора (нет — по базовому прайсу), умноженной на множитель вендора.
+                $rate = ($rate ?: self::rateOn($vehicle, $yard, $day, $index, true)) * $multiplier;
+            }
             if ($current && $current['payer'] === $payer && abs($current['rate'] - $rate) < 0.005) {
                 $current['to'] = $day->copy();
                 $current['days']++;
@@ -73,6 +75,31 @@ final class Accrual
         }
 
         return $segments;
+    }
+
+    /**
+     * С какого дня хранение платит покупатель: продажа (письмо страховой или сделка CRM) плюс дни за счёт вендора.
+     * Без даты продажи или без правила у вендора — никогда.
+     */
+    public static function buyerFrom(Vehicle $vehicle): ?Carbon
+    {
+        $vehicle->loadMissing(['vendor', 'offer.deal']);
+        $days = $vehicle->vendor?->buyer_storage_after_days;
+        if ($days === null) {
+            return null;
+        }
+        $sold = $vehicle->sold_at?->copy() ?? (($deal = $vehicle->offer?->deal) && $deal->buyer_id ? $deal->created_at->copy() : null);
+
+        return $sold?->startOfDay()->addDays($days);
+    }
+
+    /** Ставка покупателя на сегодня — для чипа «покупатель с …, N ₽/сут». */
+    public static function buyerRate(Vehicle $vehicle): float
+    {
+        $index = $vehicle->accepted_at ? (int) $vehicle->accepted_at->copy()->startOfDay()->diffInDays(now()->startOfDay()) + 1 : 1;
+        $rate = self::rateOn($vehicle, $vehicle->yard_id, now(), $index, false) ?: self::rateOn($vehicle, $vehicle->yard_id, now(), $index, true);
+
+        return $rate * (float) ($vehicle->vendor?->buyer_rate_multiplier ?? 3);
     }
 
     /**

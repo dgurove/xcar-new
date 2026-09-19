@@ -3,6 +3,7 @@
 namespace App\Http\Park;
 
 use App\Billing\Accrual;
+use App\Billing\Cadence;
 use App\Billing\ChargeKind;
 use App\Billing\Ledger;
 use App\Billing\Party;
@@ -20,6 +21,7 @@ use App\Park\Actions\CancelVehicle;
 use App\Park\Actions\DestroyVehicle;
 use App\Park\Actions\LinkOffer;
 use App\Park\Actions\MarkDoc;
+use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
 use App\Park\Actions\Release;
 use App\Park\Actions\UpdateVehicle;
@@ -103,8 +105,11 @@ class VehicleController
             'categories' => Category::options(),
             'storageRate' => Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
             'accrued' => Accrual::summary($vehicle),
+            'buyerFrom' => $vehicle->sold_at ? Accrual::buyerFrom($vehicle) : null,
+            'buyerRate' => $vehicle->sold_at ? Accrual::buyerRate($vehicle) : 0,
             'owners' => Party::where('kind', 'person')->orderBy('name')->pluck('name', 'id'),
             'debt' => Ledger::vehicleDebt($vehicle),
+            'buyerDebt' => Ledger::buyerDebt($vehicle),
             'payers' => Ledger::payersOf($vehicle),
             'pendingCharges' => $vehicle->charges()->whereNull('invoice_id')->whereNull('voided_at')->get(),
             'chargeKinds' => collect([ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other])->mapWithKeys(fn ($k) => [$k->value => $k->label().(($price = VehicleInvoiceController::priceFor($vehicle, $k)) ? ' — '.Money::rub($price) : '')]),
@@ -126,7 +131,7 @@ class VehicleController
             'category' => ['nullable', Rule::enum(Category::class)], 'oversize' => ['boolean'],
             'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'integer', 'min:0'],
             'contract_kind' => ['nullable', Rule::in(['storage', 'commission'])], 'contract_no' => ['nullable', 'string', 'max:60'], 'contract_at' => ['nullable', 'date'], 'assigned_price' => ['nullable', 'integer', 'min:0'],
-            'pts' => ['nullable', 'string', 'max:40'], 'sts' => ['nullable', 'string', 'max:40'], 'owner_party_id' => ['nullable', 'exists:billing_parties,id'], 'storage_rate' => ['nullable', 'numeric', 'min:0'], 'storage_rate_note' => ['nullable', 'string', 'max:120'],
+            'pts' => ['nullable', 'string', 'max:40'], 'sts' => ['nullable', 'string', 'max:40'], 'owner_party_id' => ['nullable', 'exists:billing_parties,id'], 'storage_rate' => ['nullable', 'numeric', 'min:0'], 'storage_rate_note' => ['nullable', 'string', 'max:120'], 'billing_cadence' => ['nullable', Rule::enum(Cadence::class)],
             'damage_zones' => ['nullable', 'array'], 'damage_zones.*' => [Rule::enum(DamageZone::class)], 'damage_note' => ['nullable', 'string', 'max:2000'], 'notes' => ['nullable', 'string', 'max:5000'],
         ]);
         $data['damage_zones'] = $data['damage_zones'] ?? [];
@@ -134,6 +139,22 @@ class VehicleController
         $update($vehicle, $data, $request->user());
 
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Сохранено');
+    }
+
+    /** Страховая продала ТС: дата и кому выдать — руками или поправить то, что вынул разбор письма. `clear` — не продано. */
+    public function sold(Request $request, Vehicle $vehicle, MarkSold $sold)
+    {
+        abort_unless(Scope::allows($request->user(), $vehicle) && $request->user()->canManagePark(), 404);
+        if ($request->boolean('clear')) {
+            $vehicle->update(['sold_at' => null, 'sold_message_id' => null, 'pickup_name' => null, 'pickup_phone' => null, 'pickup_note' => null]);
+            $vehicle->log(EventType::Updated, $request->user(), ['fields' => ['sold_at']]);
+
+            return redirect("/cars/{$vehicle->id}")->with('toast', 'Не продано');
+        }
+        $data = $request->validate(['sold_at' => ['required', 'date'], 'pickup_name' => ['nullable', 'string', 'max:120'], 'pickup_phone' => ['nullable', 'string', 'max:20'], 'pickup_note' => ['nullable', 'string', 'max:255']]);
+        $sold($vehicle, $request->user(), Carbon::parse($data['sold_at']), $data['pickup_name'] ?? null, $data['pickup_phone'] ?? null, $data['pickup_note'] ?? null);
+
+        return redirect("/cars/{$vehicle->id}")->with('toast', 'Продано');
     }
 
     public function upload(Request $request, Vehicle $vehicle, PhotoIngest $ingest)
@@ -251,7 +272,7 @@ class VehicleController
     public function release(Request $request, Vehicle $vehicle, Release $release)
     {
         $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)]]);
-        $release($vehicle, $request->user(), isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), force: $request->boolean('force'));
+        $release($vehicle, $request->user(), isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), force: $request->boolean('force'), cash: $request->boolean('cash'));
 
         return back()->with('toast', 'Выдана');
     }

@@ -22,6 +22,25 @@ class Template extends Model
 
     public const PARK_PLACEHOLDERS = ['ref', 'car', 'vin', 'plate', 'yard', 'address', 'date', 'days', 'damages', 'client', 'today'];
 
+    /** Письма стоянки по делу: приём, выдача, отказ от получения, счёт. Заводятся при первом обращении, дальше правятся руками. */
+    public const PARK = [
+        'intake' => ['Приём на стоянку', 'Принято на хранение: {{ car }}, убыток {{ ref }}',
+            "Добрый день.\n\nТС {{ car }}, VIN {{ vin }}, госномер {{ plate }} принято на хранение {{ date }} на площадку «{{ yard }}» ({{ address }}).\nПовреждения: {{ damages }}.\n\nАкт приёма и фото во вложении.\n\nС уважением,\nООО «ПРАЙМ»"],
+        'release' => ['Выдача со стоянки', 'Выдано со стоянки: {{ car }}, убыток {{ ref }}',
+            "Добрый день.\n\nТС {{ car }}, VIN {{ vin }}, госномер {{ plate }} выдано {{ date }}, хранение {{ days }} сут.\nАкт выдачи и фото во вложении.\n\nС уважением,\nООО «ПРАЙМ»"],
+        'refusal' => ['Отказ от получения', 'Отказ от получения: {{ car }}, убыток {{ ref }}',
+            "Добрый день.\n\nПолучатель ТС {{ car }}, VIN {{ vin }}, госномер {{ plate }} осмотрел ТС {{ today }} и от получения отказался.\nАкт осмотра с замечаниями и фото во вложении. ТС остаётся на хранении.\n\nС уважением,\nООО «ПРАЙМ»"],
+        'invoice' => ['Счёт за хранение', 'Счёт за хранение: {{ car }}, убыток {{ ref }}',
+            "Добрый день.\n\nНаправляем счёт и акт оказанных услуг за хранение ТС {{ car }}, VIN {{ vin }}, госномер {{ plate }}.\n\nС уважением,\nООО «ПРАЙМ»"],
+    ];
+
+    public static function park(string $key): self
+    {
+        [$name, $subject, $body] = self::PARK[$key];
+
+        return self::firstOrCreate(['scope' => Scope::Park, 'name' => $name], ['subject' => $subject, 'body' => $body]);
+    }
+
     public function stages(): HasMany
     {
         return $this->hasMany(Stage::class, 'template_id');

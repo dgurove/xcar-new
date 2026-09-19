@@ -15,7 +15,7 @@ class ActController
         if (in_array($kind, ['contract', 'handover'], true)) {
             return view('billing.docs.commission', ['vehicle' => $vehicle, 'kind' => $kind, 'self' => Party::self()]);
         }
-        abort_if($kind === 'release' && ! $vehicle->released_at, 404);
+        abort_if($kind === 'release' && ! $vehicle->released_at && ! $vehicle->lastInspection(InspectionKind::Release), 404);
         abort_if($kind === 'intake' && ! $vehicle->accepted_at, 404);
 
         $inspection = $vehicle->lastInspection($kind === 'intake' ? InspectionKind::Intake : InspectionKind::Release);

@@ -18,12 +18,14 @@ use App\Park\Events\RequestAssigned;
 use App\Park\Events\RequestCall;
 use App\Park\Events\RequestDue;
 use App\Park\Events\VehicleIdle;
+use App\Park\Events\VehicleSold;
 use App\Park\RequestState;
 use App\Support\Money;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
 use App\Telegram\Messages\ParkLetter;
+use App\Telegram\Messages\ParkSold;
 use App\Telegram\Messages\Registration;
 use App\Users\Events\AccessDecided;
 use App\Users\Events\BuyerJoined;
@@ -65,6 +67,7 @@ final class Notify
             RequestDue::class => 'parkDue',
             RequestCall::class => 'parkCall',
             VehicleIdle::class => 'parkIdle',
+            VehicleSold::class => 'parkSold',
             InvoiceOverdue::class => 'invoiceOverdue',
         ];
     }
@@ -208,6 +211,15 @@ final class Notify
     {
         $r = $e->request->load(['vehicle', 'assignee']);
         Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkStaff(), ParkNotice::call($r));
+    }
+
+    /** Продано: сотруднику, который ведёт ТС (иначе всем на стоянке), и владельцу в Telegram. */
+    public function parkSold(VehicleSold $e): void
+    {
+        $v = $e->vehicle->load(['brand', 'model', 'vendor']);
+        $assignee = $v->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
+        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff(), ParkNotice::sold($v, $e->message));
+        NotifyOwner::dispatch(new ParkSold($v));
     }
 
     public function parkDue(RequestDue $e): void

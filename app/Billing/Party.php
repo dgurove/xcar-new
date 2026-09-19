@@ -2,6 +2,7 @@
 
 namespace App\Billing;
 
+use App\Park\Vehicle;
 use App\Users\User;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
@@ -77,6 +78,25 @@ class Party extends Model
         if ($create) {
             $party->save();
             $user->update(['party_id' => $party->id]);
+        }
+
+        return $party;
+    }
+
+    /** Покупатель из письма «продано»: физлицо по имени и телефону, кому выдаём. Без имени — некому. */
+    public static function forPickup(Vehicle $vehicle, bool $create = true): ?self
+    {
+        if ($vehicle->buyerParty) {
+            return $vehicle->buyerParty;
+        }
+        if (! $vehicle->pickup_name) {
+            return null;
+        }
+        $party = self::make(['kind' => PartyKind::Person, 'name' => $vehicle->pickup_name, 'phone' => $vehicle->pickup_phone, 'notes' => $vehicle->pickup_note]);
+        if ($create) {
+            $party->save();
+            $vehicle->update(['buyer_party_id' => $party->id]);
+            $vehicle->setRelation('buyerParty', $party);
         }
 
         return $party;

@@ -79,6 +79,43 @@ final class ParkExtractor
         return ($fields['code']['source'] ?? '') !== 'text' || isset($fields['vendor_id']);
     }
 
+    /**
+     * Письмо страховой «ТС продано, заберёт такой-то»: дата продажи — дата письма, из текста — кому выдать
+     * (ФИО рядом с «покупател / заберёт / выдать / передать», телефон, доверенность или ДКП). Не о продаже — null.
+     *
+     * @return array{name: ?string, phone: ?string, note: ?string}|null
+     */
+    public static function soldNotice(?string $subject, ?string $body): ?array
+    {
+        $text = trim((string) $subject)."\n".QuotationStripper::strip($body);
+        if (! preg_match('/\b(продан[оаы]?|реализован[оаы]?|покупател[ья]|новы[йм] собственник)/iu', $text)
+            && ! preg_match('/\b(выдать|передать|отдать|забер[ёе]т|заберут|вывезет|вывезут)\b[^\n]{0,80}\b(ТС|ГОТС|автомобил|машин)/iu', $text)) {
+            return null;
+        }
+        $phone = '((?:\+?7|8)[\s(\-]*\d{3}[\s)\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2})(?!\d)';
+        $word = '[А-ЯЁ][а-яё]{2,}';
+        $name = null;
+        $tel = null;
+        // «покупателю Иванову Ивану Ивановичу», «заберёт Иванов И. И.», «представитель покупателя — Петров Пётр».
+        if (preg_match('/(?i:покупател[ьяюе]м?|заберут|забер[ёе]т|выдать|передать|отдать|представител[ьюя]|получател[ьюя])\s*(?:[—:-]\s*)?(?:ТС\s+)?('.$word.'(?:\s+(?:'.$word.'|[А-ЯЁ]\.)){1,2})/u', $text, $m)) {
+            $name = $m[1];
+        }
+        if ($name && preg_match('/'.preg_quote($name, '/').'[^\n]{0,80}?'.$phone.'/u', $text, $pm)) {
+            $tel = $pm[1];
+        } elseif (preg_match('/(?:покупател|заберут|забер[ёе]т|получател|тел)[^\n]{0,120}?'.$phone.'/iu', $text, $pm)) {
+            $tel = $pm[1];
+        }
+        $notes = [];
+        if (preg_match('/по\s+доверенности[^\n.]{0,60}/iu', $text, $nm)) {
+            $notes[] = trim($nm[0]);
+        }
+        if (preg_match('/(?:ДКП|договор[а-я]*\s+купли[- ]продажи)\s*(?:№\s*)?([A-ZА-Я0-9\/-]{2,30})/iu', $text, $nm)) {
+            $notes[] = 'ДКП № '.$nm[1];
+        }
+
+        return ['name' => $name, 'phone' => $tel ? Phone::format(Phone::normalize($tel) ?? $tel) : null, 'note' => $notes ? implode(', ', $notes) : null];
+    }
+
     private function ref(string $text): ?string
     {
         $normalized = Code::normalize($text) ?? '';
