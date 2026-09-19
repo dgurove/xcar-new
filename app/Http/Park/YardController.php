@@ -10,7 +10,7 @@ class YardController
 {
     public function index()
     {
-        return view('park.yards', ['yards' => Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at'])->orderByDesc('is_active')->orderBy('name')->get(),
+        return view('park.yards', ['yards' => Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand'])->orderByDesc('is_active')->orderBy('name')->get(),
             'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id')]);
     }
 
