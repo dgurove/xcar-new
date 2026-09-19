@@ -1,5 +1,6 @@
 <?php
 
+use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\LearnVins;
 use App\Http\Middleware\EnsureManager;
@@ -47,6 +48,7 @@ return Application::configure(basePath: dirname(__DIR__))
         TickPark::class,
         ParkDigestCommand::class,
         TickBilling::class,
+        CloseMonthCommand::class,
         SyncMail::class,
         WatchMail::class,
         ReconcileMail::class,

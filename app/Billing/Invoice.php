@@ -19,7 +19,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * в момент выставления, коллекция `file` на закрытом диске.
  */
 #[Fillable(['direction', 'year', 'number', 'external_no', 'kind', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'total', 'paid', 'state', 'paid_at',
-    'overdue_at', 'reminded_at', 'voided_at', 'void_reason', 'notes', 'created_by'])]
+    'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by'])]
 class Invoice extends Model implements HasMedia
 {
     use InteractsWithMedia;
@@ -31,12 +31,13 @@ class Invoice extends Model implements HasMedia
     protected function casts(): array
     {
         return ['kind' => ChargeKind::class, 'state' => InvoiceState::class, 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'vat' => 'bool',
-            'total' => 'float', 'paid' => 'float', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'voided_at' => 'datetime'];
+            'total' => 'float', 'paid' => 'float', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime'];
     }
 
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('file')->useDisk('private')->singleFile();
+        $this->addMediaCollection('act')->useDisk('private')->singleFile();
     }
 
     public function party(): BelongsTo

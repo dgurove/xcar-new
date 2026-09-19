@@ -63,6 +63,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::get('/money', [MoneyController::class, 'index']);
         Route::get('/money/debts', [MoneyController::class, 'debts']);
         Route::get('/money/summary', [MoneyController::class, 'summary']);
+        Route::get('/money/closing', [MoneyController::class, 'closing']);
+        Route::post('/money/closing', [MoneyController::class, 'close']);
         Route::get('/money/parties', [PartyController::class, 'index']);
         Route::post('/money/parties', [PartyController::class, 'store']);
         Route::put('/money/parties/{party}', [PartyController::class, 'update']);

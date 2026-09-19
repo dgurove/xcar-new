@@ -2,9 +2,13 @@
 
 namespace App\Http\Park;
 
+use App\Billing\Actions\IssueInvoice;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\Actions\VoidPayment;
+use App\Billing\ChargeKind;
+use App\Billing\Closing;
+use App\Billing\Documents\StorageActPdf;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Ledger;
@@ -14,7 +18,9 @@ use App\Billing\PaymentSource;
 use App\Park\Scope;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Money;
 use App\Support\Nav;
+use App\Support\Plural;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -166,9 +172,13 @@ class MoneyController
         return view('billing.docs.invoice', ['invoice' => $invoice, 'self' => Party::self(), 'pdf' => false]);
     }
 
+    /** Акт хранения: PDF, если выставлен закрытием месяца, иначе страница на печать. */
     public function act(Invoice $invoice)
     {
         self::guard($invoice);
+        if ($media = $invoice->getFirstMedia('act')) {
+            return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
+        }
         $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges']);
 
         return view('billing.docs.storage-act', ['invoice' => $invoice, 'self' => Party::self()]);
@@ -191,6 +201,38 @@ class MoneyController
             'sort' => $sort, 'q' => $request->query('q', ''),
             'totals' => ['owed_to_us' => round($debts->sum('owed_to_us'), 2), 'we_owe' => round($debts->sum('we_owe'), 2), 'overdue' => round($debts->sum('overdue'), 2), 'unbilled' => round($debts->sum('unbilled'), 2)],
         ]);
+    }
+
+    /** Закрытие месяца: строки «кому и за что выставить хранение» с галочками; «Выставить выбранные» — счета с актами. */
+    public function closing(Request $request)
+    {
+        $month = self::month($request);
+        $items = Closing::items($month);
+        // Уже выставленное за этот месяц — счета, чьё хранение кончается в нём.
+        $issued = Invoice::where('direction', 'issued')->whereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Storage)->whereBetween('period_to', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()]))
+            ->where('state', '!=', InvoiceState::Void)->with(['party', 'vehicle.brand', 'vehicle.model'])->latest('id')->get();
+
+        return view('park.money.closing', [
+            'month' => $month, 'items' => $items->groupBy(fn ($i) => $i['party']?->name ?? 'Без плательщика'),
+            'total' => round($items->sum('amount'), 2), 'issued' => $issued,
+            'months' => collect(range(0, 5))->map(fn ($n) => now()->subMonths($n)->startOfMonth()),
+        ]);
+    }
+
+    public function close(Request $request, IssueInvoice $issue, StorageActPdf $act)
+    {
+        abort_unless($request->user()->canManagePark(), 403);
+        $data = $request->validate(['month' => ['required', 'date_format:Y-m'], 'items' => ['required', 'array'], 'items.*' => ['string', 'max:20']]);
+        $result = Closing::issue(Carbon::createFromFormat('Y-m', $data['month']), $data['items'], $request->user(), $issue, $act);
+        $sum = Money::rub($result['issued']->sum('total'));
+        $toast = $result['issued']->isNotEmpty() ? 'Выставлено '.$result['issued']->count().' '.Plural::of($result['issued']->count(), ['счёт', 'счёта', 'счетов']).' на '.$sum : 'Ничего не выставлено';
+
+        return redirect('/money/closing?month='.$data['month'])->with('toast', $toast)->withErrors($result['errors'] ? ['closing' => implode('; ', $result['errors'])] : []);
+    }
+
+    private static function month(Request $request): Carbon
+    {
+        return $request->query('month') && preg_match('/^\d{4}-\d{2}$/', $request->query('month')) ? Carbon::createFromFormat('Y-m', $request->query('month'))->startOfMonth() : now()->subMonth()->startOfMonth();
     }
 
     public function summary(Request $request)

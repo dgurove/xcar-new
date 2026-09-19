@@ -6,6 +6,7 @@
         @if ($offer)<input type="hidden" name="offer" value="{{ $offer->id }}">@endif
         @if ($vehicle ?? null)<input type="hidden" name="vehicle" value="{{ $vehicle->id }}">@endif
         @if ($back ?? null)<input type="hidden" name="back" value="{{ $back }}">@endif
+        @if ($invoice ?? null)<input type="hidden" name="invoice" value="{{ $invoice->id }}">@endif
         <x-ui.card>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 @if ($accounts->count() > 1)

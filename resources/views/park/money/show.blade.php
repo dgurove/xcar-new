@@ -10,6 +10,8 @@
         @if ($file)<a href="/money/invoices/{{ $i->id }}/pdf" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>PDF</a>@endif
         @if ($i->kind === \App\Billing\ChargeKind::Storage)<a href="/money/invoices/{{ $i->id }}/act" class="chip" data-turbo="false" target="_blank">Акт хранения</a>@endif
         @if ($i->number)<a href="/money/invoices/{{ $i->id }}/print" class="chip" data-turbo="false" target="_blank">Печать</a>@endif
+        @if ($i->sent_at)<span class="chip nums"><x-ui.icon name="send" class="size-3.5"/>{{ $i->sent_at->translatedFormat('j M') }}</span>@endif
+        @if (!$i->isOwed() && $i->state === InvoiceState::Issued && $i->vehicle && $me->canManagePark())<a href="/mail/new?invoice={{ $i->id }}" class="chip bg-accent-soft text-accent-text"><x-ui.icon name="send" class="size-3.5"/>{{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</a>@endif
         @if ($i->state === InvoiceState::Issued && $me->canManagePark())
             <button type="button" class="chip" data-action="sheet#open"><x-ui.icon name="edit" class="size-3.5"/>Изменить</button>
             <x-ui.sheet id="invoice-edit" title="Счёт" :open="$errors->has('due_at')">

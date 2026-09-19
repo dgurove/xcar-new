@@ -2,6 +2,9 @@
 
 namespace App\Http\Admin;
 
+use App\Billing\ChargeKind;
+use App\Billing\Documents\StorageActPdf;
+use App\Billing\Invoice;
 use App\Live\Stream;
 use App\Mail\Account;
 use App\Mail\Actions\LinkThread;
@@ -111,7 +114,7 @@ class MailController
         ]);
     }
 
-    public function compose(Request $request, Composer $composer, StoreOutboxFile $outbox, ActPdf $act)
+    public function compose(Request $request, Composer $composer, StoreOutboxFile $outbox, ActPdf $act, StorageActPdf $actPdf)
     {
         $accounts = Account::where('scope', $this->scope)->where('is_active', true)->orderBy('title')->get();
         $account = $accounts->firstWhere('slug', $request->query('account')) ?? $accounts->first();
@@ -119,6 +122,12 @@ class MailController
         $template = $request->query('template') ? Template::find($request->query('template')) : null;
         $offer = $request->query('offer') ? Offer::where('number', $request->query('offer'))->first() : null;
         $vehicle = $request->query('car') ? Vehicle::find($request->query('car')) : null;
+        // Счёт за хранение вендору: ТС счёта, шаблон «Счёт за хранение», PDF счёта и акта, адресат — бухгалтерия вендора.
+        $invoice = $request->query('invoice') ? Invoice::with(['vehicle', 'party'])->find($request->query('invoice')) : null;
+        if ($invoice?->vehicle) {
+            $vehicle = $invoice->vehicle;
+            $template ??= Template::park('invoice');
+        }
         $thread = null;
         $parent = null;
         $values = [];
@@ -138,7 +147,9 @@ class MailController
             $thread = Thread::where('vehicle_id', $vehicle->id)->orderByDesc('last_message_at')->first();
             $parent = $thread?->messages()->where('direction', Direction::In)->orderByDesc('date_at')->first();
             $vehicle->loadMissing('vendor.contacts');
-            $values = self::vehiclePlaceholders($vehicle) + ['to' => $parent?->replyToAddress() ?? $vehicle->vendor?->email(ContactRole::Storage, ContactRole::Claims) ?? ''];
+            $values = self::vehiclePlaceholders($vehicle) + ['to' => $invoice
+                ? ($vehicle->vendor?->email(ContactRole::Accounting, ContactRole::Storage, ContactRole::Claims) ?? $parent?->replyToAddress() ?? '')
+                : ($parent?->replyToAddress() ?? $vehicle->vendor?->email(ContactRole::Storage, ContactRole::Claims) ?? '')];
         }
         $defaults = $composer->fresh($account, $template, $values);
         if ($parent) {
@@ -146,7 +157,16 @@ class MailController
         }
         // Письмо о принятой ТС уходит с актом и фото приёма (Альфа и Совкомбанк просят именно их); лишнее снимают в форме.
         // `act=release` — акт выдачи (в том числе с отказом от получения, когда ТС осталась).
-        if ($vehicle?->accepted_at && ! $request->old()) {
+        if ($invoice && ! $request->old()) {
+            foreach (['file', 'act'] as $collection) {
+                if ($media = $invoice->getFirstMedia($collection)) {
+                    $defaults['files'][] = $outbox->put($media->file_name, file_get_contents($media->getPath()));
+                }
+            }
+            if (! $invoice->getFirstMedia('act') && $invoice->kind === ChargeKind::Storage) {
+                $defaults['files'][] = $outbox->put('akt-hraneniya-'.$invoice->number.'-'.$invoice->year.'.pdf', $actPdf->render($invoice));
+            }
+        } elseif ($vehicle?->accepted_at && ! $request->old()) {
             $intake = $request->query('act') ? $request->query('act') !== 'release' : ! $vehicle->released_at;
             $defaults['files'][] = $outbox->put($act->filename($vehicle, $intake), $act->render($vehicle, $intake));
             $shots = $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === ($intake ? 'intake' : 'release'));
@@ -155,7 +175,7 @@ class MailController
             }
         }
 
-        return view('admin.mail.compose', ['account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'back' => $request->query('back'),
+        return view('admin.mail.compose', ['account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'back' => $request->query('back') ?? ($invoice ? '/money/invoices/'.$invoice->id : null), 'invoice' => $invoice,
             'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base]);
     }
 
@@ -189,6 +209,7 @@ class MailController
             'offer' => ['nullable', 'integer'],
             'vehicle' => ['nullable', 'integer'],
             'back' => ['nullable', 'string', 'max:255', 'starts_with:/'],
+            'invoice' => ['nullable', 'integer'],
         ]);
         $account = Account::where('slug', $data['account'])->where('scope', $this->scope)->firstOrFail();
         if (! $composer->emails($data['to'])) {
@@ -214,6 +235,11 @@ class MailController
             }
             if ($act) {
                 $vehicle->log(EventType::ReportSent, $request->user(), ['what' => str_starts_with($act, 'akt-vydachi') ? 'Акт выдачи' : 'Акт приёма', 'thread' => $message->thread_id]);
+            }
+            // Ушёл счёт — отметка на нём и в ленте ТС.
+            if (! empty($data['invoice']) && ($invoice = Invoice::where('vehicle_id', $vehicle->id)->find($data['invoice']))) {
+                $invoice->update(['sent_at' => now()]);
+                $vehicle->log(EventType::ReportSent, $request->user(), ['what' => 'Счёт '.$invoice->label(), 'thread' => $message->thread_id]);
             }
         }
 

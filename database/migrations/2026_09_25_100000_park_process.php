@@ -41,6 +41,8 @@ return new class extends Migration
             });
             DB::table('park_requests')->where('type', 'tow')->update(['delivery' => 'tow']);
 
+            Schema::table('billing_invoices', fn (Blueprint $t) => $t->timestamp('sent_at')->nullable()); // когда ушёл письмом вендору
+
             Schema::table('park_inspections', function (Blueprint $t) {
                 $t->boolean('matches')->nullable();
                 $t->string('mismatch_note', 500)->nullable();
@@ -56,6 +58,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('park_inspections', fn (Blueprint $t) => $t->dropColumn(['matches', 'mismatch_note', 'refused']));
+        Schema::table('billing_invoices', fn (Blueprint $t) => $t->dropColumn('sent_at'));
         Schema::table('park_requests', fn (Blueprint $t) => $t->dropColumn(['delivery', 'contacted_at', 'next_call_at']));
         Schema::table('park_vehicles', function (Blueprint $t) {
             $t->dropConstrainedForeignId('sold_message_id');

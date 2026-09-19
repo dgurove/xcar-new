@@ -12,6 +12,7 @@
     @unless ($party)
         <div class="mt-4 flex flex-col gap-2">
             <a href="/money/debts" class="row !py-3"><span class="min-w-0 flex-1 font-medium">Долги по контрагентам</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
+            <a href="/money/closing" class="row !py-3"><span class="min-w-0 flex-1 font-medium">Закрытие месяца</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
             <a href="/money/summary" class="row !py-3"><span class="min-w-0 flex-1 font-medium">Месяц</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
         </div>
     @endunless
