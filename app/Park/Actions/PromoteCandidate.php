@@ -29,7 +29,6 @@ final class PromoteCandidate
                 'category' => $v('category'),
                 'vendor_id' => $v('vendor_id') ?? Vendor::forSender($v('sender'))?->id,
                 'thread_id' => $candidate->thread_id,
-                'contact' => $v('phones') ? implode(', ', (array) $v('phones')) : null,
                 'contact_name' => $v('insured_name'),
                 'contact_phone' => $v('insured_phone') ?? ((array) $v('phones'))[0] ?? null,
                 'from_address' => $v('location'),

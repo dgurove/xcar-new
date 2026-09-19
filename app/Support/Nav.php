@@ -46,14 +46,14 @@ final class Nav
         $surface ??= Surface::current();
 
         if ($surface === Surface::Park) {
-            return [
+            return array_values(array_filter([
                 self::item('Сегодня', '/', ['/', '/requests']),
                 self::item('ТС', '/cars'),
-                self::item('Деньги', '/money'),
+                $user?->canManagePark() ? self::item('Деньги', '/money') : null,
                 self::item('Почта', '/mail'),
                 self::item('Стоянки', '/yards', tab: false),
                 self::item('Вендоры', '/clients', tab: false),
-            ];
+            ]));
         }
 
         if ($surface === Surface::Crm) {
@@ -171,14 +171,14 @@ final class Nav
         $surface ??= Surface::current();
 
         if ($surface === Surface::Park) {
-            return ['' => [
+            return ['' => array_values(array_filter([
                 self::link('Профиль', '/account', exact: true),
                 self::link('Вендоры', '/clients'),
                 self::link('Стоянки', '/yards'),
-                self::link('Реквизиты', '/money/parties'),
+                $user->canManagePark() ? self::link('Реквизиты', '/money/parties') : null,
                 self::link('Уведомления', '/account/notifications'),
                 self::link('Шаблоны', Surface::Crm->url('/settings/templates')),
-            ]];
+            ]))];
         }
 
         if ($surface === Surface::Crm) {

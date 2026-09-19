@@ -23,7 +23,7 @@ final class InvoiceOverdue extends Message
         return [
             $i->party->name,
             'Остаток '.Money::rub($i->remaining()).' из '.Money::rub($i->total),
-            'Срок '.$i->due_at->translatedFormat('j M').', '.$i->due_at->diffInDays(now()).' дн назад',
+            'Срок '.$i->due_at->translatedFormat('j M').', '.$i->overdueDays().' дн назад',
             $i->vehicle?->titleWithYear(),
         ];
     }

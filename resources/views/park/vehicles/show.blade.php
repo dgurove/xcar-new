@@ -8,7 +8,7 @@
         @foreach ($vehicle->flagList() as $flag)<span class="chip">{{ $flag->label() }}</span>@endforeach
         @if ($storageRate)<span class="chip nums">{{ $storageRate }}</span>@endif
         @foreach ($accrued as $payer => $a)@if ($a['amount'] > 0)<a href="/cars/{{ $vehicle->id }}/invoices/new?payer={{ $payer }}" class="chip nums">{{ \App\Support\Money::rub($a['amount']) }} за {{ $a['days'] }} дн{{ count($accrued) > 1 ? ' — '.\App\Billing\Accrual::payerLabel($payer) : '' }}</a>@endif @endforeach
-        @if ($debt > 0)<x-ui.pill tone="danger" :href="'/money?preset=all&mashina='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</x-ui.pill>@endif
+        @if ($debt > 0)<x-ui.pill tone="danger" :href="'/money?preset=all&car='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</x-ui.pill>@endif
         @if ($vehicle->offer)<a href="{{ Surface::Crm->url('/offers/'.$vehicle->offer->number) }}" class="chip nums" data-turbo="false">№ {{ $vehicle->offer->number }}<span class="font-normal text-ink-muted">{{ $vehicle->offer->state->label() }}</span>@if ($vehicle->offer->asking_price) {{ Money::rub($vehicle->offer->asking_price) }}@endif</a>@endif
         @if ($vehicle->contact_phone)<a href="tel:+{{ preg_replace('/\D+/', '', $vehicle->contact_phone) }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->contact_name ? \Illuminate\Support\Str::of($vehicle->contact_name)->explode(' ')->first().' ' : '' }}{{ $vehicle->contact_phone }}</a>@endif
         @if ($threads->count())<x-ui.pill tone="plain" :href="$threads->count() === 1 ? '/mail/'.$threads->first()->id : '/mail?preset=linked&q='.urlencode($vehicle->ref ?? '')" class="!min-h-0 !py-1 text-xs"><x-ui.icon name="mail" class="size-4"/> {{ $threads->count() === 1 ? 'Письмо' : 'Писем: '.$threads->count() }}</x-ui.pill>@endif
@@ -20,8 +20,8 @@
                     @if ($tow)<x-ui.button href="/requests/{{ $tow->id }}" block>Эвакуация: {{ mb_strtolower($tow->state->label()) }}</x-ui.button>
                     @elseif ($intakeReq)<x-ui.button href="/requests/{{ $intakeReq->id }}" block>Принять на стоянку</x-ui.button>
                     @else
-                        <x-ui.button href="/requests/new?tip=intake&mashina={{ $vehicle->id }}" block>Принять на стоянку</x-ui.button>
-                        @if ($vehicle->state === VehicleState::Expected)<x-ui.button href="/requests/new?tip=tow&mashina={{ $vehicle->id }}" variant="secondary" block>Забрать эвакуатором</x-ui.button>@endif
+                        <x-ui.button href="/requests/new?type=intake&car={{ $vehicle->id }}" block>Принять на стоянку</x-ui.button>
+                        @if ($vehicle->state === VehicleState::Expected)<x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="secondary" block>Забрать эвакуатором</x-ui.button>@endif
                     @endif
                 @endif
                 @if ($vehicle->state === VehicleState::Stored)
@@ -39,7 +39,7 @@
                         </div>
                         @if ($debt > 0)<x-ui.check name="force">Выдать с долгом {{ \App\Support\Money::rub($debt) }}</x-ui.check>@endif
                     </form>
-                    <x-ui.button href="/requests/new?tip=tow&mashina={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую площадку</x-ui.button>
+                    <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую площадку</x-ui.button>
                     <x-ui.button href="/acts/{{ $vehicle->id }}/intake" variant="ghost" block data-turbo="false" target="_blank">Акт приёма</x-ui.button>
                 @endif
                 @if ($vehicle->contract_kind === 'commission')
@@ -54,9 +54,9 @@
                     <x-ui.button href="/cars/{{ $vehicle->id }}/invoices/new" variant="secondary" block>Счёт</x-ui.button>
                 @endif
                 @foreach ($templates as $t)
-                    <x-ui.button href="/mail/new?mashina={{ $vehicle->id }}&shablon={{ $t->id }}" variant="ghost" block><x-ui.icon name="send" class="size-4"/> {{ $t->name }}</x-ui.button>
+                    <x-ui.button href="/mail/new?car={{ $vehicle->id }}&template={{ $t->id }}" variant="ghost" block><x-ui.icon name="send" class="size-4"/> {{ $t->name }}</x-ui.button>
                 @endforeach
-                @unless ($vehicle->state->isFinal())<x-ui.button href="/requests/new?tip=inspection&mashina={{ $vehicle->id }}" variant="ghost" block>Новая заявка</x-ui.button>@endunless
+                @unless ($vehicle->state->isFinal())<x-ui.button href="/requests/new?type=inspection&car={{ $vehicle->id }}" variant="ghost" block>Новая заявка</x-ui.button>@endunless
                 @if ($canManage && $vehicle->state->isBefore())
                     <form method="post" action="/cars/{{ $vehicle->id }}/cancel" class="flex items-end gap-2" data-turbo-confirm="ТС не привезут?">@csrf
                         <x-ui.field name="reason" label="Почему не привезут" span="flex-1"/>
@@ -225,7 +225,9 @@
                         <a href="/money/invoices/{{ $inv->id }}" class="flex items-center gap-2 py-2"><x-billing.light :invoice="$inv"/><span class="min-w-0 flex-1 truncate">{{ $inv->isOwed() ? 'мы должны' : $inv->label() }} {{ $inv->party->name }}</span><span class="nums shrink-0 font-semibold">{{ \App\Support\Money::rub($inv->remaining() > 0 ? $inv->remaining() : $inv->total) }}</span></a>
                     @endforeach
                     @foreach ($pendingCharges as $c)
-                        <div class="flex items-center gap-2 py-2 text-ink-muted"><span class="chip">не выставлено</span><span class="min-w-0 flex-1 truncate">{{ $c->title }}</span><span class="nums shrink-0">{{ \App\Support\Money::rub($c->amount) }}</span></div>
+                        <form method="post" action="/cars/{{ $vehicle->id }}/charges/{{ $c->id }}" data-turbo-confirm="Снять начисление «{{ $c->title }}»?">@csrf @method('delete')
+                            <button class="flex w-full items-center gap-2 py-2 text-left text-ink-muted"><span class="chip">не выставлено</span><span class="min-w-0 flex-1 truncate">{{ $c->title }}</span><span class="nums shrink-0">{{ \App\Support\Money::rub($c->amount) }}</span><x-ui.icon name="x" class="size-4 shrink-0"/></button>
+                        </form>
                     @endforeach
                 </div>
                 <button type="button" class="btn btn-ghost btn-s mt-2" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/> Начислить</button>

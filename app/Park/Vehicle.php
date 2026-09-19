@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\HasMedia;
 
 #[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id',
@@ -131,6 +133,17 @@ class Vehicle extends Model implements HasMedia
         return $this->transit_started_at && $this->state === VehicleState::InTransit ? (int) $this->transit_started_at->diffInDays(now()) : null;
     }
 
+    /** Место на площадке: заглавными, без пробелов по краям; занятое другой ТС на стоянке — ошибка формы. */
+    public static function takeSpot(Yard $yard, ?string $spot, ?int $exceptId = null): ?string
+    {
+        $spot = $spot ? mb_strtoupper(trim($spot)) : null;
+        if ($spot && self::where('yard_id', $yard->id)->where('spot', $spot)->where('state', VehicleState::Stored)->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))->exists()) {
+            throw ValidationException::withMessages(['spot' => 'Место '.$spot.' занято']);
+        }
+
+        return $spot;
+    }
+
     /** Открытая заявка типа, если есть. */
     public function openRequest(RequestType $type): ?Request
     {
@@ -160,6 +173,27 @@ class Vehicle extends Model implements HasMedia
     public function titleWithYear(): string
     {
         return trim(($this->brand?->name ?? '').' '.($this->model?->name ?? '')).($this->year ? ", {$this->year}" : '') ?: ($this->ref ?: 'ТС');
+    }
+
+    /**
+     * Где ТС стояла по дням — из ленты: приём и перестановка дают площадку, погрузка — «в пути» (null).
+     * Для хранения на лету: сутки в пути между площадками не считаются, ставка — по площадке того дня.
+     *
+     * @return list<array{day: Carbon, yard_id: ?int}>
+     */
+    public function yardTimeline(): array
+    {
+        $out = [];
+        foreach ($this->events()->reorder()->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])->oldest('created_at')->oldest('id')->get() as $e) {
+            $p = $e->payload ?? [];
+            $day = ! empty($p['day']) ? Carbon::parse($p['day'])->startOfDay() : $e->created_at->copy()->startOfDay();
+            // Старые записи без yard_id — площадка нынешняя: до 22.09.2026 в ленте было только имя.
+            $yardId = $e->type === EventType::Departed ? null : ($p['yard_id'] ?? $this->yard_id);
+            $out[] = ['day' => $day, 'yard_id' => $yardId ? (int) $yardId : null];
+        }
+        usort($out, fn ($a, $b) => $a['day'] <=> $b['day']);
+
+        return $out;
     }
 
     public function daysStored(): ?int

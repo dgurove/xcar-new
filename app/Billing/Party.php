@@ -30,29 +30,38 @@ class Party extends Model
         return self::where('is_self', true)->firstOrFail();
     }
 
-    /** Контрагент вендора: создаётся из его реквизитов при первом счёте, дальше живёт своей жизнью. */
-    public static function forVendor(Vendor $vendor): self
+    /**
+     * Контрагент вендора: создаётся из его реквизитов при первом счёте, дальше живёт своей жизнью.
+     * Чтение (долги, чипы) базу не трогает: `$create = false` отдаёт незаписанный черновик без id.
+     */
+    public static function forVendor(Vendor $vendor, bool $create = true): self
     {
         if ($vendor->party) {
             return $vendor->party;
         }
-        $party = self::create([
+        $party = self::make([
             'kind' => PartyKind::Company, 'name' => $vendor->legal_name ?: $vendor->name, 'inn' => $vendor->inn, 'kpp' => $vendor->kpp,
             'legal_address' => $vendor->legal_address, 'bank_name' => $vendor->bank_name, 'bik' => $vendor->bank_bic, 'account' => $vendor->bank_account,
             'corr_account' => $vendor->bank_corr, 'payment_purpose' => $vendor->payment_purpose, 'email' => $vendor->email(),
         ]);
-        $vendor->update(['party_id' => $party->id]);
+        if ($create) {
+            $party->save();
+            $vendor->update(['party_id' => $party->id]);
+        }
 
         return $party;
     }
 
-    public static function forUser(User $user): self
+    public static function forUser(User $user, bool $create = true): self
     {
         if ($user->party) {
             return $user->party;
         }
-        $party = self::create(['kind' => PartyKind::Person, 'name' => $user->name, 'phone' => $user->phone, 'email' => $user->email]);
-        $user->update(['party_id' => $party->id]);
+        $party = self::make(['kind' => PartyKind::Person, 'name' => $user->name, 'phone' => $user->phone, 'email' => $user->email]);
+        if ($create) {
+            $party->save();
+            $user->update(['party_id' => $party->id]);
+        }
 
         return $party;
     }

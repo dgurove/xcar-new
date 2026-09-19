@@ -9,7 +9,6 @@ use App\Park\Inspection;
 use App\Park\InspectionKind;
 use App\Park\ReleasedTo;
 use App\Park\Request;
-use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -47,11 +46,7 @@ final class Release
                     'damage_zones' => array_values($inspection['damage_zones'] ?? [])] + Intake::fields($inspection));
             }
             $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'to' => $to?->label(), 'unpaid' => $debt > 0 ? $debt : null]));
-            $done = ['state' => RequestState::Done, 'done_at' => now(), 'done_by' => $by->id, 'note' => $note];
-            if ($request) {
-                $request->update($done);
-            }
-            Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Release)->whereIn('state', RequestState::open())->update($done);
+            Request::closeOpen($vehicle, [RequestType::Release], $by, $request, $note);
 
             return $vehicle;
         });

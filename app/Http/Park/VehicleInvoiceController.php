@@ -5,6 +5,7 @@ namespace App\Http\Park;
 use App\Billing\Accrual;
 use App\Billing\Actions\AddCharge;
 use App\Billing\Actions\IssueInvoice;
+use App\Billing\Actions\VoidCharge;
 use App\Billing\Charge;
 use App\Billing\ChargeKind;
 use App\Billing\Ledger;
@@ -41,20 +42,14 @@ class VehicleInvoiceController
     {
         $data = $request->validate([
             'party_id' => ['required', 'exists:billing_parties,id'], 'due_at' => ['required', 'date'], 'vat' => ['boolean'], 'notes' => ['nullable', 'string', 'max:1000'],
-            'storage' => ['nullable', 'array'], 'storage.*' => ['string'], 'charges' => ['nullable', 'array'], 'charges.*' => ['integer'],
+            'storage_until' => ['nullable', 'date'], 'charges' => ['nullable', 'array'], 'charges.*' => ['integer'],
             'lines' => ['nullable', 'array'], 'lines.*.title' => ['nullable', 'string', 'max:160'], 'lines.*.qty' => ['nullable', 'numeric', 'min:0'], 'lines.*.price' => ['nullable', 'numeric', 'min:0'], 'lines.*.kind' => ['nullable', Rule::enum(ChargeKind::class)],
         ]);
         $party = Party::findOrFail($data['party_id']);
-        $storage = [];
-        foreach ($data['storage'] ?? [] as $key) {
-            [$from, $to, $days, $rate] = explode('|', $key) + [null, null, null, null];
-            if ($from && $to && $days !== null && $rate !== null) {
-                $storage[] = ['from' => Carbon::parse($from), 'to' => Carbon::parse($to), 'days' => (int) $days, 'rate' => (float) $rate];
-            }
-        }
+        $until = $request->boolean('with_storage') && ! empty($data['storage_until']) ? Carbon::parse($data['storage_until']) : null;
         $lines = array_values(array_filter($data['lines'] ?? [], fn ($l) => ($l['title'] ?? '') !== '' && ($l['price'] ?? '') !== ''));
-        $kind = $storage ? ChargeKind::Storage : (ChargeKind::tryFrom($lines[0]['kind'] ?? '') ?? ChargeKind::Other);
-        $invoice = $issue($party, $request->user(), 'issued', $kind, Carbon::parse($data['due_at']), $request->boolean('vat'), $storage, array_map('intval', $data['charges'] ?? []), $lines, $vehicle, notes: $data['notes'] ?? null);
+        $kind = $until ? ChargeKind::Storage : (ChargeKind::tryFrom($lines[0]['kind'] ?? '') ?? ChargeKind::Other);
+        $invoice = $issue($party, $request->user(), 'issued', $kind, Carbon::parse($data['due_at']), $request->boolean('vat'), $until, array_map('intval', $data['charges'] ?? []), $lines, $vehicle, notes: $data['notes'] ?? null);
 
         return redirect("/money/invoices/{$invoice->id}")->with('toast', 'Счёт '.$invoice->label().' выставлен');
     }
@@ -77,6 +72,14 @@ class VehicleInvoiceController
         $add($party, $kind, $data['title'] ?: $kind->label(), (float) ($data['qty'] ?? 1), $unit, (float) $data['price'], $request->user(), $vehicle);
 
         return back()->with('toast', 'Начислено');
+    }
+
+    public function uncharge(Request $request, Vehicle $vehicle, Charge $charge, VoidCharge $void)
+    {
+        abort_unless($charge->vehicle_id === $vehicle->id, 404);
+        $void($charge, $request->user());
+
+        return back()->with('toast', 'Начисление снято');
     }
 
     /** Цена услуги из прайса для шторки «Начислить». */

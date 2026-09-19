@@ -11,6 +11,10 @@ namespace App\Workflow\Presets;
  * Способ оформления документов — выбор, а не правило по регионам: в Москве,
  * Питере и Екатеринбурге обычно едем сами, но правило по городу связало бы
  * руки в обе стороны.
+ *
+ * Страхователь, адрес, дата вывоза, осмотр и площадка живут на стоянке
+ * (заявка на эвакуацию, осмотр, ТС) — полей для них здесь нет, этапы
+ * двигает сама стоянка (`Park\Listeners\SyncOffer`).
  */
 final class Pickup extends Route
 {
@@ -29,7 +33,6 @@ final class Pickup extends Route
         return [
             'call_owner' => [
                 'name' => 'Связь со страхователем', 'block' => 'at_owner', 'waits_for' => 'us', 'limit_minutes' => self::DAY, 'car_place' => 'owner',
-                'staff_fields' => [['label' => 'Страхователь'], ['label' => 'Телефон'], ['label' => 'Адрес автомобиля', 'type' => 'textarea']],
                 'exits' => [['Связались со страхователем', 'staff', 'papers_way']],
             ],
             'papers_way' => [
@@ -48,17 +51,14 @@ final class Pickup extends Route
             ],
             'pickup_date' => [
                 'name' => 'Назначение даты вывоза', 'block' => 'at_owner', 'waits_for' => 'us', 'limit_minutes' => 2 * self::DAY,
-                'staff_fields' => [['label' => 'Дата вывоза'], ['label' => 'Исполнитель']],
                 'exits' => [['Дата назначена', 'staff', 'pickup']],
             ],
             'pickup' => [
                 'name' => 'Вывоз и осмотр', 'block' => 'collecting', 'waits_for' => 'us', 'limit_minutes' => 3 * self::DAY, 'car_place' => 'moving',
-                'staff_fields' => [['label' => 'Результат осмотра', 'type' => 'textarea']],
                 'exits' => [['Автомобиль вывезен, осмотр проведён', 'staff', 'transfer']],
             ],
             'transfer' => [
                 'name' => 'Перегон в город присутствия', 'block' => 'moving', 'waits_for' => 'us', 'limit_minutes' => 5 * self::DAY, 'car_place' => 'moving',
-                'staff_fields' => [['label' => 'Город'], ['label' => 'Площадка']],
                 'exits' => [['Автомобиль на площадке', 'staff', 'at_yard']],
             ],
             'at_yard' => ['name' => 'Автомобиль на площадке', 'block' => 'at_yard', 'waits_for' => 'nobody', 'car_place' => 'ours'],

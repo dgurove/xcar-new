@@ -130,8 +130,8 @@ abstract class Template
 
             return $words ? implode(' ', array_slice($words, 0, 3)) : null;
         };
-        $after = substr($text, $offset + strlen($raw), 80);
-        $before = substr($text, max(0, $offset - 80), min(80, $offset));
+        $after = mb_strcut($text, $offset + strlen($raw), 80);
+        $before = mb_strcut($text, max(0, $offset - 80), min(80, $offset));
         $afterName = preg_match('/^\s*[,;:\-–]?\s*((?:'.$word.'\s+){0,2}'.$word.')/u', $after, $m) ? $clean($m[1]) : null;
         $beforeName = preg_match('/((?:'.$word.'\s+){0,2}'.$word.')\s*[,;:\-–]?\s*(?:тел\.?\s*)?$/iu', $before, $m) ? $clean($m[1]) : null;
         $pick = fn (?string $n) => $n && substr_count($n, ' ') >= 1 ? $n : null;

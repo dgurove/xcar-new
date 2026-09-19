@@ -1,8 +1,8 @@
 @php use App\Park\RequestType; @endphp
 <x-ui.shell title="Заявки" :count="$requests->total()" :phone-heading="false">
-    <x-ui.toolbar :sorts="\App\Http\Park\RequestController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="['gotovye' => $done ? 1 : null]" name="requests">
+    <x-ui.toolbar :sorts="\App\Http\Park\RequestController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="['done' => $done ? 1 : null]" name="requests">
         <x-slot:pillsExtra>
-            <x-ui.pill :href="request()->fullUrlWithQuery(['gotovye' => $done ? null : 1, 'page' => null])" :current="$done">Готовые</x-ui.pill>
+            <x-ui.pill :href="request()->fullUrlWithQuery(['done' => $done ? null : 1, 'page' => null])" :current="$done">Готовые</x-ui.pill>
         </x-slot:pillsExtra>
         <x-slot:extra>
             <a href="/requests/new" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Заявка</span></a>
@@ -18,7 +18,7 @@
                     <x-ui.pill :tone="$r->isOverdue() ? 'danger' : ($r->isOpen() ? 'soft' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $r->type->label() }}@if ($r->type === RequestType::Move && $r->yard) <x-ui.place>{{ $r->yard->name }}</x-ui.place>@endif</x-ui.pill>
                     @if ($r->planned_at)<span class="chip {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
                     @if (!$r->isOpen())<span class="chip">{{ $r->state->label() }}</span>@endif
-                    @if ($r->contact)<span class="text-sm text-ink-muted">{{ $r->contact }}</span>@endif
+                    @if ($r->contact_name || $r->contact_phone)<span class="text-sm text-ink-muted">{{ trim($r->contact_name.' '.$r->contact_phone) }}</span>@endif
                 </x-park.vehicle-row>
             @endforeach
         </div>

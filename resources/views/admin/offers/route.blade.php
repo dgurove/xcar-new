@@ -19,7 +19,7 @@
                     </div>
                 @endforeach
                 @if ($stage->template_id)
-                    <a href="/work/mail/new?offer={{ $offer->number }}&shablon={{ $stage->template_id }}" class="btn btn-quiet btn-s self-start"><x-ui.icon name="send" class="size-4"/> Письмо вендору</a>
+                    <a href="/work/mail/new?offer={{ $offer->number }}&template={{ $stage->template_id }}" class="btn btn-quiet btn-s self-start"><x-ui.icon name="send" class="size-4"/> Письмо вендору</a>
                 @endif
                 @if ($staffExits->isNotEmpty())
                     <div class="flex flex-wrap gap-2">

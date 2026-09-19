@@ -1,7 +1,7 @@
 {{-- Деньги: счета с пресетами и окошком строки; «Долги» и «Месяц» — строки над списком; главное действие — реквизиты не нужны, счёт выставляется из ТС. --}}
 @php $view = \App\Support\ListView::pick(request(), $invoices->total()); @endphp
 <x-ui.shell :title="$party ? $party->name : 'Деньги'" :count="$invoices->total()" :back="$party ? ['Долги', '/money/debts'] : false" :phone-heading="(bool) $party">
-    <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['party' => request('party'), 'mashina' => request('mashina'), \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)])" name="money">
+    <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['party' => request('party'), 'car' => request('car'), \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)])" name="money">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
     </x-ui.toolbar>
     @unless ($party)

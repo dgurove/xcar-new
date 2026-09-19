@@ -24,14 +24,14 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/from-mail/{candidate}/create', [ParkCandidateController::class, 'promote']);
     Route::post('/requests/from-mail/{candidate}/decline', [ParkCandidateController::class, 'reject']);
     Route::post('/requests', [RequestController::class, 'store']);
-    Route::get('/requests/{zayavka}', [RequestController::class, 'show']);
-    Route::post('/requests/{zayavka}/intake', [RequestController::class, 'intake']);
-    Route::post('/requests/{zayavka}/move', [RequestController::class, 'move']);
-    Route::post('/requests/{zayavka}/release', [RequestController::class, 'release']);
-    Route::post('/requests/{zayavka}/close', [RequestController::class, 'close']);
-    Route::post('/requests/{zayavka}/schedule', [RequestController::class, 'schedule']);
-    Route::post('/requests/{zayavka}/start', [RequestController::class, 'start']);
-    Route::post('/requests/{zayavka}/assign', [RequestController::class, 'assign']);
+    Route::get('/requests/{req}', [RequestController::class, 'show']);
+    Route::post('/requests/{req}/intake', [RequestController::class, 'intake']);
+    Route::post('/requests/{req}/move', [RequestController::class, 'move']);
+    Route::post('/requests/{req}/release', [RequestController::class, 'release']);
+    Route::post('/requests/{req}/close', [RequestController::class, 'close']);
+    Route::post('/requests/{req}/schedule', [RequestController::class, 'schedule']);
+    Route::post('/requests/{req}/start', [RequestController::class, 'start']);
+    Route::post('/requests/{req}/assign', [RequestController::class, 'assign']);
 
     Route::get('/cars', [VehicleController::class, 'index']);
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
@@ -52,21 +52,25 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/cars/{vehicle}/invoices/new', [VehicleInvoiceController::class, 'create'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/invoices', [VehicleInvoiceController::class, 'store'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/charges', [VehicleInvoiceController::class, 'charge'])->middleware('park.manage');
+    Route::delete('/cars/{vehicle}/charges/{charge}', [VehicleInvoiceController::class, 'uncharge'])->middleware('park.manage');
 
-    Route::get('/money', [MoneyController::class, 'index']);
-    Route::get('/money/debts', [MoneyController::class, 'debts']);
-    Route::get('/money/summary', [MoneyController::class, 'summary']);
-    Route::get('/money/parties', [PartyController::class, 'index']);
-    Route::post('/money/parties', [PartyController::class, 'store'])->middleware('park.manage');
-    Route::put('/money/parties/{party}', [PartyController::class, 'update'])->middleware('park.manage');
-    Route::get('/money/invoices/{invoice}', [MoneyController::class, 'show']);
-    Route::get('/money/invoices/{invoice}/peek', [MoneyController::class, 'peek']);
-    Route::get('/money/invoices/{invoice}/pdf', [MoneyController::class, 'file']);
-    Route::get('/money/invoices/{invoice}/print', [MoneyController::class, 'print']);
-    Route::get('/money/invoices/{invoice}/act', [MoneyController::class, 'act']);
-    Route::post('/money/invoices/{invoice}/payments', [MoneyController::class, 'pay'])->middleware('park.manage');
-    Route::delete('/money/invoices/{invoice}/payments/{payment}', [MoneyController::class, 'unpay'])->middleware('park.manage');
-    Route::post('/money/invoices/{invoice}/void', [MoneyController::class, 'void'])->middleware('park.manage');
+    // Деньги — не для «только приёмки»: счета, долги и реквизиты закрыты целиком.
+    Route::middleware('park.manage')->group(function () {
+        Route::get('/money', [MoneyController::class, 'index']);
+        Route::get('/money/debts', [MoneyController::class, 'debts']);
+        Route::get('/money/summary', [MoneyController::class, 'summary']);
+        Route::get('/money/parties', [PartyController::class, 'index']);
+        Route::post('/money/parties', [PartyController::class, 'store']);
+        Route::put('/money/parties/{party}', [PartyController::class, 'update']);
+        Route::get('/money/invoices/{invoice}', [MoneyController::class, 'show']);
+        Route::get('/money/invoices/{invoice}/peek', [MoneyController::class, 'peek']);
+        Route::get('/money/invoices/{invoice}/pdf', [MoneyController::class, 'file']);
+        Route::get('/money/invoices/{invoice}/print', [MoneyController::class, 'print']);
+        Route::get('/money/invoices/{invoice}/act', [MoneyController::class, 'act']);
+        Route::post('/money/invoices/{invoice}/payments', [MoneyController::class, 'pay']);
+        Route::delete('/money/invoices/{invoice}/payments/{payment}', [MoneyController::class, 'unpay']);
+        Route::post('/money/invoices/{invoice}/void', [MoneyController::class, 'void']);
+    });
 
     Route::get('/reference/cars', [VehicleController::class, 'suggest']);
     Route::get('/reference/vin', [ReferenceController::class, 'vin']);

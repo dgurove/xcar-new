@@ -14,7 +14,10 @@ use App\Users\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** Аннулировать счёт без оплат: начисления освобождаются, строки хранения гаснут и период снова не выставлен. */
+/**
+ * Аннулировать счёт без оплат: начисления, сделанные до счёта, освобождаются; строки хранения и строки,
+ * добавленные в самом счёте, гаснут вместе с ним (их никто не начислял отдельно); период снова не выставлен.
+ */
 final class VoidInvoice
 {
     public function __invoke(Invoice $invoice, User $by, ?string $reason = null): Invoice
@@ -26,10 +29,8 @@ final class VoidInvoice
                 throw ValidationException::withMessages(['invoice' => 'По счёту есть оплаты — сначала отмените их']);
             }
             $storage = $invoice->charges()->where('kind', ChargeKind::Storage)->orderBy('period_from')->get();
-            Charge::where('invoice_id', $invoice->id)->where('kind', '!=', ChargeKind::Storage)->update(['invoice_id' => null]);
-            foreach ($storage as $c) {
-                $c->update(['voided_at' => now(), 'void_reason' => $reason]);
-            }
+            Charge::where('invoice_id', $invoice->id)->where('kind', '!=', ChargeKind::Storage)->where('created_at', '<', $invoice->created_at)->update(['invoice_id' => null]);
+            Charge::where('invoice_id', $invoice->id)->whereNull('voided_at')->update(['voided_at' => now(), 'void_reason' => $reason]);
             if ($storage->isNotEmpty() && $invoice->vehicle_id) {
                 $vehicle = Vehicle::whereKey($invoice->vehicle_id)->lockForUpdate()->first();
                 $first = $storage->first()->period_from;

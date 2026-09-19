@@ -25,7 +25,7 @@
         </x-slot:aside>
         <x-slot:actions>
             @if ($state === VehicleState::Expected)
-                <a href="/requests/new?tip=intake&mashina={{ $vehicle->id }}" class="btn btn-s btn-accent">Принять на стоянку</a>
+                <a href="/requests/new?type=intake&car={{ $vehicle->id }}" class="btn btn-s btn-accent">Принять на стоянку</a>
             @endif
             @if ($state === VehicleState::Stored)
                 <form method="post" action="{{ $href }}/move" class="contents" data-controller="autosubmit">@csrf
@@ -43,7 +43,7 @@
                 <a href="/acts/{{ $vehicle->id }}/intake" class="pill pill-plain" data-turbo="false" target="_blank">Акт приёма</a>
                 <a href="/acts/{{ $vehicle->id }}/release" class="pill pill-plain" data-turbo="false" target="_blank">Акт выдачи</a>
             @endif
-            <a href="/requests/new?tip=inspection&mashina={{ $vehicle->id }}" class="pill pill-plain">Новая заявка</a>
+            <a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Новая заявка</a>
         </x-slot:actions>
         @if ($vehicle->requests->isNotEmpty())
             <div class="mt-3 flex flex-wrap gap-1.5">

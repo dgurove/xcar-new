@@ -11,7 +11,6 @@ use App\Park\EventType;
 use App\Park\Inspection;
 use App\Park\InspectionKind;
 use App\Park\Request;
-use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -40,25 +39,19 @@ final class Intake
             if (! $vehicle->state->isBefore()) {
                 throw ValidationException::withMessages(['state' => 'ТС уже '.mb_strtolower($vehicle->state->label())]);
             }
-            $spot = $spot ? mb_strtoupper(trim($spot)) : null;
-            if ($spot && Vehicle::where('yard_id', $yard->id)->where('spot', $spot)->where('state', VehicleState::Stored)->exists()) {
-                throw ValidationException::withMessages(['spot' => 'Место '.$spot.' занято']);
-            }
+            $spot = Vehicle::takeSpot($yard, $spot);
             $at ??= now();
             $zones = array_values($inspection['damage_zones'] ?? []);
+            // Дата приёма — первая: после перегона между площадками сутки хранения идут дальше, а не заново.
             $vehicle->update([
-                'state' => VehicleState::Stored, 'yard_id' => $yard->id, 'spot' => $spot, 'accepted_at' => $at, 'transit_started_at' => null,
+                'state' => VehicleState::Stored, 'yard_id' => $yard->id, 'spot' => $spot, 'accepted_at' => $vehicle->accepted_at ?? $at, 'transit_started_at' => null,
                 'damage_zones' => $zones, 'damage_note' => ($inspection['damage_note'] ?? null) ?: null,
                 'mileage' => $inspection['mileage'] ?? $vehicle->mileage, 'fuel' => $inspection['fuel'] ?? $vehicle->fuel,
             ]);
             Inspection::create(['vehicle_id' => $vehicle->id, 'request_id' => $request?->id, 'kind' => InspectionKind::Intake, 'at' => $at, 'user_id' => $by->id, 'damage_zones' => $zones]
                 + self::fields($inspection));
-            $vehicle->log(EventType::Accepted, $by, array_filter(['yard' => $yard->name, 'spot' => $spot]));
-            $done = ['state' => RequestState::Done, 'done_at' => now(), 'done_by' => $by->id];
-            if ($request) {
-                $request->update($done);
-            }
-            Request::where('vehicle_id', $vehicle->id)->whereIn('type', [RequestType::Intake, RequestType::Tow])->whereIn('state', RequestState::open())->update($done);
+            $vehicle->log(EventType::Accepted, $by, array_filter(['yard' => $yard->name, 'yard_id' => $yard->id, 'spot' => $spot, 'day' => $at->toDateString()]));
+            Request::closeOpen($vehicle, [RequestType::Intake, RequestType::Tow], $by, $request);
             ($this->openDocs)($vehicle);
             // Эвакуация со стоимостью — начисление тому, кто платит хранение; договор комиссии — обязательство перед вендором.
             $vehicle->loadMissing('vendor');

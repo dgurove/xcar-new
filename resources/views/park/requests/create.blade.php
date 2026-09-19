@@ -2,7 +2,7 @@
 <x-ui.shell title="Новая заявка" narrow>
     <x-ui.pills class="mb-6">
         @foreach (RequestType::cases() as $t)
-            <x-ui.pill :href="'/requests/new?tip='.$t->value.($vehicle ? '&mashina='.$vehicle->id : '')" :current="$type === $t">{{ $t->label() }}</x-ui.pill>
+            <x-ui.pill :href="'/requests/new?type='.$t->value.($vehicle ? '&car='.$vehicle->id : '')" :current="$type === $t">{{ $t->label() }}</x-ui.pill>
         @endforeach
     </x-ui.pills>
     <form method="post" action="/requests" id="request-form" data-controller="vin draft" class="flex flex-col gap-4">
@@ -35,11 +35,9 @@
                 <x-ui.field name="planned_at" label="Когда" type="datetime-local"/>
                 @if ($type === RequestType::Tow)
                     <x-ui.field name="from_address" label="Откуда" :value="$vehicle?->offer?->inspection_address"/>
-                    <x-ui.field name="contact_name" label="Страхователь" :value="$vehicle?->contact_name"/>
-                    <x-ui.field name="contact_phone" label="Телефон" type="tel" :value="$vehicle?->contact_phone"/>
-                @else
-                    <x-ui.field name="contact" label="Контакт" placeholder="Имя, телефон"/>
                 @endif
+                <x-ui.field name="contact_name" :label="$type === RequestType::Tow ? 'Страхователь' : 'Кто сдаёт'" :value="$vehicle?->contact_name"/>
+                <x-ui.field name="contact_phone" label="Телефон" type="tel" :value="$vehicle?->contact_phone"/>
                 <x-ui.field name="note" label="Заметка" type="textarea" class="sm:col-span-2"/>
             </div>
         </x-ui.card>

@@ -41,7 +41,7 @@ class RequestController
     {
         ListPrefs::sync($request, 'park-requests');
         $type = $request->query('preset', 'all');
-        $done = $request->boolean('gotovye');
+        $done = $request->boolean('done');
         $q = Scope::requests($request->user())->with(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'yard', 'assignee']);
         $done ? $q->whereNotIn('state', RequestState::open()) : $q->whereIn('state', RequestState::open());
         if ($t = RequestType::tryFrom($type)) {
@@ -65,11 +65,11 @@ class RequestController
     public function create(Request $request)
     {
         return view('park.requests.create', [
-            'type' => RequestType::tryFrom($request->query('tip', '')) ?? RequestType::Intake,
+            'type' => RequestType::tryFrom($request->query('type', '')) ?? RequestType::Intake,
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
-            'vehicle' => $request->query('mashina') ? Vehicle::find($request->query('mashina')) : null,
+            'vehicle' => $request->query('car') ? Vehicle::find($request->query('car')) : null,
         ]);
     }
 
@@ -89,7 +89,6 @@ class RequestController
             'category' => ['nullable', Rule::enum(Category::class)],
             'yard_id' => ['nullable', 'exists:park_yards,id'],
             'planned_at' => ['nullable', 'date'],
-            'contact' => ['nullable', 'string', 'max:255'],
             'contact_name' => ['nullable', 'string', 'max:80'],
             'contact_phone' => ['nullable', 'string', 'max:20'],
             'from_address' => ['nullable', 'string', 'max:255'],
@@ -105,16 +104,15 @@ class RequestController
         return redirect("/requests/{$req->id}")->with('toast', 'Заявка заведена');
     }
 
-    public function show(Request $http, ParkRequest $zayavka)
+    public function show(Request $http, ParkRequest $req)
     {
-        $request = $zayavka;
-        $request->load(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.yard', 'vehicle.media', 'vehicle.requests', 'yard', 'thread', 'assignee']);
-        abort_unless(Scope::allows($http->user(), $request->vehicle), 404);
-        $vehicle = $request->vehicle;
+        $req->load(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.yard', 'vehicle.media', 'vehicle.requests', 'yard', 'thread', 'assignee']);
+        abort_unless(Scope::allows($http->user(), $req->vehicle), 404);
+        $vehicle = $req->vehicle;
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
 
         return view('park.requests.show', [
-            'req' => $request,
+            'req' => $req,
             'vehicle' => $vehicle,
             'yards' => $yards->pluck('name', 'id'),
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),
@@ -122,14 +120,13 @@ class RequestController
             'slots' => PhotoSlot::cases(),
             'shots' => $vehicle->photos()->map(fn ($m) => $m->getCustomProperty('slot'))->filter()->countBy()->all(),
             'staff' => User::whereJsonContains('access', Section::Park->value)->orWhere('role', 'admin')->orderBy('name')->get(),
-            'towCost' => $request->isTow() ? self::towCost($vehicle, $request->distance_km) : null,
+            'towCost' => $req->isTow() ? self::towCost($vehicle, $req->distance_km) : null,
             'storageRate' => Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
         ]);
     }
 
-    public function intake(Request $request, ParkRequest $zayavka, Intake $intake)
+    public function intake(Request $request, ParkRequest $req, Intake $intake)
     {
-        $req = $zayavka;
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16'], 'accepted_at' => ['nullable', 'date'], 'category' => ['nullable', Rule::enum(Category::class)], 'oversize' => ['boolean']] + self::inspectionRules());
         if (! empty($data['category'])) {
             $req->vehicle->update(['category' => $data['category'], 'oversize' => $request->boolean('oversize')]);
@@ -139,34 +136,31 @@ class RequestController
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Принята');
     }
 
-    public function move(Request $request, ParkRequest $zayavka, Move $move)
+    public function move(Request $request, ParkRequest $req, Move $move)
     {
-        $req = $zayavka;
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
         $move($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null, $req);
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Переставлена');
     }
 
-    public function release(Request $request, ParkRequest $zayavka, Release $release)
+    public function release(Request $request, ParkRequest $req, Release $release)
     {
-        $req = $zayavka;
         $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)]] + self::inspectionRules());
         $release($req->vehicle, $request->user(), isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req, $request->boolean('force'));
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
     }
 
-    public function close(Request $request, ParkRequest $zayavka, CloseRequest $close)
+    public function close(Request $request, ParkRequest $req, CloseRequest $close)
     {
-        $req = $zayavka;
         $data = $request->validate(['done' => ['required', 'boolean'], 'note' => ['nullable', 'string', 'max:2000']]);
         $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
 
         return redirect('/')->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
     }
 
-    public function schedule(Request $request, ParkRequest $zayavka, ScheduleTow $schedule)
+    public function schedule(Request $request, ParkRequest $req, ScheduleTow $schedule)
     {
         $data = $request->validate([
             'planned_at' => ['nullable', 'date'], 'from_address' => ['nullable', 'string', 'max:255'], 'yard_id' => ['nullable', 'exists:park_yards,id'],
@@ -176,24 +170,24 @@ class RequestController
         if (! empty($data['contact_phone'])) {
             $data['contact_phone'] = Phone::format(Phone::normalize($data['contact_phone']) ?? $data['contact_phone']);
         }
-        $schedule($zayavka, $request->user(), $data);
+        $schedule($req, $request->user(), $data);
 
-        return redirect("/requests/{$zayavka->id}")->with('toast', 'Назначена');
+        return redirect("/requests/{$req->id}")->with('toast', 'Назначена');
     }
 
-    public function start(Request $request, ParkRequest $zayavka, StartTow $start)
+    public function start(Request $request, ParkRequest $req, StartTow $start)
     {
-        $start($zayavka, $request->user());
+        $start($req, $request->user());
 
-        return redirect("/requests/{$zayavka->id}")->with('toast', 'В пути');
+        return redirect("/requests/{$req->id}")->with('toast', 'В пути');
     }
 
-    public function assign(Request $request, ParkRequest $zayavka, AssignRequest $assign)
+    public function assign(Request $request, ParkRequest $req, AssignRequest $assign)
     {
         $data = $request->validate(['assignee_id' => ['nullable', 'exists:users,id']]);
-        $assign($zayavka, ! empty($data['assignee_id']) ? User::find($data['assignee_id']) : null, $request->user());
+        $assign($req, ! empty($data['assignee_id']) ? User::find($data['assignee_id']) : null, $request->user());
 
-        return redirect("/requests/{$zayavka->id}")->with('toast', 'Исполнитель записан');
+        return redirect("/requests/{$req->id}")->with('toast', 'Исполнитель записан');
     }
 
     /** Стоимость эвакуации по прайсу: фикс по категории и площадке плюс километры сверх включённых. */

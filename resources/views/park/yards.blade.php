@@ -15,7 +15,7 @@
                     </div>
                     <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
                 </div>
-                <a href="/cars?stoyanka={{ $yard->id }}" class="flex flex-col gap-1.5">
+                <a href="/cars?yard={{ $yard->id }}" class="flex flex-col gap-1.5">
                     <div class="flex items-baseline justify-between"><span class="nums text-[40px] leading-none">{{ $yard->stored_vehicles_count }}</span><span class="flex gap-1.5">@if ($yard->capacity)<span class="tag nums">из {{ $yard->capacity }}</span><span class="tag nums">свободно {{ $free }}</span>@else<span class="tag">ТС</span>@endif</span></div>
                     @if ($yard->capacity)<div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full {{ $share > 90 ? 'bg-danger' : 'bg-accent' }}" style="width:{{ $share }}%"></div></div>@endif
                 </a>
@@ -27,7 +27,7 @@
                                 @if ($name !== '')<span class="w-6 text-xs text-ink-dim">{{ $name }}</span>@endif
                                 @for ($i = 1; $i <= (int) ($row['n'] ?? 0); $i++)
                                     @php $spot = $name === '' ? (string) $i : $name.'-'.$i; $v = $occupied[$spot] ?? null; $days = $v?->accepted_at ? (int) $v->accepted_at->diffInDays(now()) : null; $tone = \App\Park\Idle::tone($days); @endphp
-                                    @if ($v)<a href="/cars?stoyanka={{ $yard->id }}&vid=table&peek={{ $v->id }}" class="chip nums !px-1.5 !py-0 text-xs {{ $tone === 'danger' ? 'bg-danger-soft text-danger' : ($tone === 'urgent' ? 'bg-urgent-soft text-urgent' : 'bg-accent-soft text-accent-text') }}" title="{{ $v->ref }}">{{ $i }}</a>
+                                    @if ($v)<a href="/cars?yard={{ $yard->id }}&vid=table&peek={{ $v->id }}" class="chip nums !px-1.5 !py-0 text-xs {{ $tone === 'danger' ? 'bg-danger-soft text-danger' : ($tone === 'urgent' ? 'bg-urgent-soft text-urgent' : 'bg-accent-soft text-accent-text') }}" title="{{ $v->ref }}">{{ $i }}</a>
                                     @else<span class="chip nums !px-1.5 !py-0 text-xs text-ink-dim">{{ $i }}</span>@endif
                                 @endfor
                             </div>

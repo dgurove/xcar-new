@@ -22,16 +22,24 @@ final class Ledger
         ];
     }
 
-    /** Все контрагенты с открытыми счетами или не выставленным хранением. @return Collection<int, array{party: Party, owed_to_us: float, we_owe: float, overdue: float, unbilled: float}> */
+    /**
+     * Все контрагенты с открытыми счетами или не выставленным хранением — и по выданным ТС тоже, пока хвост
+     * хранения не выставлен. Чтение базу не меняет: контрагент без строки — черновик с ключом по вендору.
+     *
+     * @return Collection<int, array{party: Party, owed_to_us: float, we_owe: float, overdue: float, unbilled: float}>
+     */
     public static function debts(): Collection
     {
         $open = Invoice::with('party')->where('state', InvoiceState::Issued)->get()->groupBy('party_id');
         $unbilled = [];
-        foreach (Vehicle::with(['vendor.party', 'offer.deal.buyer'])->where('state', VehicleState::Stored)->get() as $v) {
+        $vehicles = Vehicle::with(['vendor.party', 'offer.deal.buyer', 'ownerParty'])->whereIn('state', [VehicleState::Stored, VehicleState::InTransit, VehicleState::Released])->whereNotNull('accepted_at')
+            ->where(fn ($q) => $q->whereNull('released_at')->orWhereNull('storage_billed_until')->orWhereColumn('storage_billed_until', '<', 'released_at'))->get();
+        foreach ($vehicles as $v) {
             foreach (Accrual::storage($v) as $s) {
-                $party = self::payerParty($v, $s['payer']);
+                $party = self::payerParty($v, $s['payer'], false);
                 if ($party && $s['amount'] > 0) {
-                    $unbilled[$party->id] = ['party' => $party, 'amount' => ($unbilled[$party->id]['amount'] ?? 0) + $s['amount']];
+                    $key = $party->id ?? 'v'.$v->vendor_id;
+                    $unbilled[$key] = ['party' => $party, 'amount' => ($unbilled[$key]['amount'] ?? 0) + $s['amount']];
                 }
             }
         }
@@ -61,14 +69,14 @@ final class Ledger
     }
 
     /** Кто платит отрезок хранения: вендор, страхователь или покупатель — их контрагенты; «никто» — null. */
-    public static function payerParty(Vehicle $vehicle, string $payer): ?Party
+    public static function payerParty(Vehicle $vehicle, string $payer, bool $create = true): ?Party
     {
         $vehicle->loadMissing(['vendor', 'ownerParty', 'offer.deal.buyer']);
 
         return match ($payer) {
-            'vendor' => $vehicle->vendor ? Party::forVendor($vehicle->vendor) : null,
+            'vendor' => $vehicle->vendor ? Party::forVendor($vehicle->vendor, $create) : null,
             'owner' => $vehicle->ownerParty,
-            'buyer' => ($buyer = $vehicle->offer?->deal?->buyer) ? Party::forUser($buyer) : null,
+            'buyer' => ($buyer = $vehicle->offer?->deal?->buyer) ? Party::forUser($buyer, $create) : null,
             default => null,
         };
     }

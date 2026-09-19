@@ -89,6 +89,12 @@ class Invoice extends Model implements HasMedia
         return $this->state === InvoiceState::Issued && $this->remaining() > 0 && $this->due_at->isPast() && ! $this->due_at->isToday();
     }
 
+    /** Сколько полных дней прошло после срока. */
+    public function overdueDays(): int
+    {
+        return (int) $this->due_at->startOfDay()->diffInDays(now()->startOfDay());
+    }
+
     public function isPartial(): bool
     {
         return $this->state === InvoiceState::Issued && $this->paid > 0 && $this->remaining() > 0;

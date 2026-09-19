@@ -31,7 +31,9 @@ final class ScheduleTow
                 'cost' => $data['cost'] ?? null,
                 'contact_name' => $data['contact_name'] ?? null,
                 'contact_phone' => $data['contact_phone'] ?? null,
-            ], fn ($v) => $v !== null && $v !== '') + ['state' => $request->state === RequestState::New ? RequestState::Scheduled : $request->state]);
+            ], fn ($v) => $v !== null && $v !== '') + ['state' => $request->state === RequestState::New ? RequestState::Scheduled : $request->state]
+                // Новый срок — новые напоминание и просрочка.
+                + (! empty($data['planned_at']) ? ['reminded_at' => null, 'overdue_at' => null] : []));
             $request->vehicle->log(EventType::Scheduled, $by, array_filter([
                 'at' => $request->planned_at?->translatedFormat('j M, H:i'), 'from' => $request->from_address, 'carrier' => $request->carrier,
             ]));

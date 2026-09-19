@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['vehicle_id', 'type', 'state', 'thread_id', 'yard_id', 'planned_at', 'done_at', 'contact', 'note', 'assignee_id', 'created_by',
+#[Fillable(['vehicle_id', 'type', 'state', 'thread_id', 'yard_id', 'planned_at', 'done_at', 'note', 'assignee_id', 'created_by',
     'contact_name', 'contact_phone', 'from_address', 'carrier', 'distance_km', 'cost', 'started_at', 'done_by', 'cancel_reason'])]
 class Request extends Model
 {
@@ -54,10 +54,22 @@ class Request extends Model
         return $this->type === RequestType::Tow;
     }
 
-    /** Контакт, у кого забираем: новые поля, иначе старая строка. */
     public function contactLine(): ?string
     {
-        return trim(($this->contact_name ?? '').' '.($this->contact_phone ?? '')) ?: $this->contact;
+        return trim(($this->contact_name ?? '').' '.($this->contact_phone ?? '')) ?: null;
+    }
+
+    /**
+     * Закрыть сделанным: переданную заявку и все открытые заявки этих типов по ТС — одно действие стоянки
+     * закрывает всё, что о нём просило. Исполнитель не перетирается: кто закрыл — `done_by`.
+     *
+     * @param  list<RequestType>  $types
+     */
+    public static function closeOpen(Vehicle $vehicle, array $types, User $by, ?self $request = null, ?string $note = null): void
+    {
+        $done = array_filter(['state' => RequestState::Done, 'done_at' => now(), 'done_by' => $by->id, 'note' => $note]);
+        $request?->update($done);
+        self::where('vehicle_id', $vehicle->id)->whereIn('type', $types)->whereIn('state', RequestState::open())->update($done);
     }
 
     public function isOverdue(): bool

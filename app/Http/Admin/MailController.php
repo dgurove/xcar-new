@@ -89,9 +89,9 @@ class MailController
         $accounts = Account::where('scope', $this->scope)->where('is_active', true)->orderBy('title')->get();
         $account = $accounts->firstWhere('slug', $request->query('yashchik')) ?? $accounts->first();
         abort_unless($account, 404);
-        $template = $request->query('shablon') ? Template::find($request->query('shablon')) : null;
+        $template = $request->query('template') ? Template::find($request->query('template')) : null;
         $offer = $request->query('offer') ? Offer::where('number', $request->query('offer'))->first() : null;
-        $vehicle = $request->query('mashina') ? Vehicle::find($request->query('mashina')) : null;
+        $vehicle = $request->query('car') ? Vehicle::find($request->query('car')) : null;
         $thread = null;
         $parent = null;
         $values = [];

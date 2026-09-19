@@ -1,5 +1,6 @@
-{{-- Счёт из ТС: плательщик пилюлями (вендор / страхователь / покупатель — по отрезкам хранения), отрезки галками,
-     невыставленные начисления галками, свободные строки; срок и НДС — из вендора. --}}
+{{-- Счёт из ТС: плательщик пилюлями (вендор / страхователь / покупатель — по отрезкам хранения), хранение — по день
+     включительно (отрезки показаны, считаются заново на сервере), невыставленные начисления галками, свободные строки;
+     срок и НДС — из вендора. --}}
 @php use App\Support\Money; use App\Billing\Accrual; @endphp
 <x-ui.shell title="Счёт" :back="[$vehicle->titleWithYear(), '/cars/'.$vehicle->id]" narrow>
     <form method="post" action="/cars/{{ $vehicle->id }}/invoices" id="invoice-form" class="flex flex-col gap-4" data-controller="repeater">
@@ -21,12 +22,15 @@
             <x-ui.card title="Хранение">
                 <div class="flex flex-col gap-2">
                     @foreach ($segments as $s)
-                        <label class="row row-check !py-2">
+                        <div class="row !py-2">
                             <span class="min-w-0 flex-1"><span class="block nums">{{ $s['from']->translatedFormat('j M') }} – {{ $s['to']->translatedFormat('j M') }}</span><span class="row-sub nums">{{ $s['days'] }} сут × {{ Money::rub($s['rate']) }}</span></span>
                             <span class="nums font-semibold">{{ Money::rub($s['amount']) }}</span>
-                            <span class="check"><input type="checkbox" name="storage[]" value="{{ $s['from']->toDateString() }}|{{ $s['to']->toDateString() }}|{{ $s['days'] }}|{{ $s['rate'] }}" checked></span>
-                        </label>
+                        </div>
                     @endforeach
+                    <div class="grid grid-cols-2 gap-3">
+                        <x-ui.field name="storage_until" label="По день" type="date" :value="$segments->last()['to']->toDateString()" :min="$segments->first()['from']->toDateString()"/>
+                        <x-ui.check name="with_storage" :checked="true" class="self-end">В счёт</x-ui.check>
+                    </div>
                 </div>
             </x-ui.card>
         @endif

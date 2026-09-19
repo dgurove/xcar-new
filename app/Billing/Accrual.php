@@ -14,8 +14,11 @@ use Illuminate\Support\Collection;
  * выдачи тоже считается (решение владельца 19.09.2026), минимум одни. Каждый день оценивается по лестнице
  * прайса на ту дату (персональная ставка — поверх), негабарит прибавляется,
  * плательщик режет период: до `deal + N` дней — по правилу вендора, дальше —
- * покупатель по базовому прайсу. Дни с одной ставкой и плательщиком
- * склеиваются в отрезки; выставленное (`storage_billed_until`) не повторяется.
+ * покупатель по базовому прайсу. Площадка — та, где ТС стояла в этот день
+ * (`Vehicle::yardTimeline`), сутки в пути между площадками не считаются
+ * (день погрузки и день приёма — считаются). Дни с одной ставкой и
+ * плательщиком склеиваются в отрезки; выставленное (`storage_billed_until`)
+ * не повторяется.
  *
  * @phpstan-type Segment array{payer: string, from: Carbon, to: Carbon, days: int, rate: float, amount: float}
  */
@@ -42,12 +45,17 @@ final class Accrual
             $buyerFrom = $deal->created_at->copy()->startOfDay()->addDays($vendor->buyer_storage_after_days);
         }
 
+        $timeline = $vehicle->yardTimeline();
         $segments = collect();
         $current = null;
         for ($day = $from->copy(); $day->lte($end); $day->addDay()) {
+            $yard = self::yardOn($timeline, $day, $vehicle->yard_id);
+            if ($yard === false) {
+                continue;
+            }
             $index = (int) $first->diffInDays($day) + 1;
             $payer = $buyerFrom && $day->gte($buyerFrom) ? 'buyer' : $payerRule;
-            $rate = $payer === 'nobody' ? 0.0 : self::rateOn($vehicle, $day, $index, $payer === 'buyer');
+            $rate = $payer === 'nobody' ? 0.0 : self::rateOn($vehicle, $yard, $day, $index, $payer === 'buyer');
             if ($current && $current['payer'] === $payer && abs($current['rate'] - $rate) < 0.005) {
                 $current['to'] = $day->copy();
                 $current['days']++;
@@ -67,21 +75,45 @@ final class Accrual
         return $segments;
     }
 
+    /**
+     * Площадка на день по ленте: последняя запись не позже дня; погрузка в этот же день — ещё на прежней
+     * площадке, раньше — ТС в пути (false). Без ленты — нынешняя площадка.
+     *
+     * @param  list<array{day: Carbon, yard_id: ?int}>  $timeline
+     */
+    private static function yardOn(array $timeline, Carbon $day, ?int $current): int|null|false
+    {
+        $yard = $current;
+        $previous = $current;
+        foreach ($timeline as $e) {
+            if ($e['day']->gt($day)) {
+                break;
+            }
+            if ($e['yard_id'] === null) {
+                $yard = $e['day']->eq($day) ? $previous : false;
+            } else {
+                $previous = $yard = $e['yard_id'];
+            }
+        }
+
+        return $yard;
+    }
+
     /** Ставка на конкретный день: персональная, иначе лестница прайса (покупателю — базовый прайс), плюс негабарит. */
-    private static function rateOn(Vehicle $vehicle, Carbon $day, int $index, bool $base): float
+    private static function rateOn(Vehicle $vehicle, ?int $yard, Carbon $day, int $index, bool $base): float
     {
         if ($vehicle->storage_rate !== null && ! $base) {
             $rate = (float) $vehicle->storage_rate;
         } else {
             // Прайс, заведённый позже приёма, действует и на прошлые невыставленные дни: цены обычно вносят задним числом.
-            $ladder = Tariff::ladder($base ? null : $vehicle->vendor_id, $vehicle->yard_id, $vehicle->category, TariffService::Storage, $day);
+            $ladder = Tariff::ladder($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Storage, $day);
             if ($ladder->isEmpty() && $day->lt(now()->startOfDay())) {
-                $ladder = Tariff::ladder($base ? null : $vehicle->vendor_id, $vehicle->yard_id, $vehicle->category, TariffService::Storage);
+                $ladder = Tariff::ladder($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Storage);
             }
             $rate = (float) (Tariff::rateOnDay($ladder, $index) ?? 0);
         }
         if ($vehicle->oversize) {
-            $extra = Tariff::ladder($base ? null : $vehicle->vendor_id, $vehicle->yard_id, $vehicle->category, TariffService::Oversize, $day);
+            $extra = Tariff::ladder($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Oversize, $day);
             $rate += (float) (Tariff::rateOnDay($extra, $index) ?? 0);
         }
 

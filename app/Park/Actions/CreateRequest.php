@@ -48,7 +48,6 @@ final class CreateRequest
                 'thread_id' => $data['thread_id'] ?? null,
                 'yard_id' => $data['yard_id'] ?? null,
                 'planned_at' => $data['planned_at'] ?? null,
-                'contact' => $data['contact'] ?? null,
                 'contact_name' => $data['contact_name'] ?? null,
                 'contact_phone' => $data['contact_phone'] ?? null,
                 'from_address' => $data['from_address'] ?? null,

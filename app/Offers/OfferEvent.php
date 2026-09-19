@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\FieldLabels;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -29,7 +30,7 @@ class OfferEvent extends Model
 
         return match ($this->type) {
             OfferEventType::Created => 'Создан',
-            OfferEventType::Updated => 'Изменён: '.implode(', ', $p['fields'] ?? []),
+            OfferEventType::Updated => 'Изменён: '.FieldLabels::list($p['fields'] ?? []),
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
             OfferEventType::StateChanged => OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),
             OfferEventType::BidPlaced => 'Подтверждение '.number_format($p['amount'] ?? 0, 0, '', ' ').' ₽',

@@ -6,7 +6,7 @@
     @else
         <div class="flex flex-col gap-2">
             @foreach ($debts as $d)
-                <a href="/money?preset=all&party={{ $d['party']->id }}" class="row">
+                <a href="{{ $d['party']->id ? '/money?preset=all&party='.$d['party']->id : '/money' }}" class="row">
                     <div class="min-w-0 flex-1">
                         <div class="font-medium">{{ $d['party']->name }}</div>
                         <div class="mt-1.5 flex flex-wrap gap-1.5">

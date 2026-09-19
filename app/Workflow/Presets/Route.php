@@ -136,14 +136,13 @@ abstract class Route
         ];
     }
 
-    /** Счёт менеджеру и проверка оплаты. */
+    /** Счёт менеджеру (сам счёт — `/work/invoices/new`, полная оплата двигает этап сама) и проверка оплаты. */
     protected function invoiceSegment(string $next, string $suffix = ''): array
     {
         return [
             'invoice'.$suffix => [
                 'name' => 'Счёт выставлен менеджеру', 'block' => 'payment'.$suffix, 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY, 'asks' => 'document',
                 'ask_title' => 'Оплатите счёт', 'ask_text' => 'Поставщик выставил счёт. Оплатите его и приложите платёжное поручение — без него оплата не будет подтверждена.',
-                'staff_fields' => [['label' => 'Номер счёта'], ['label' => 'Сумма'], ['label' => 'Реквизиты', 'type' => 'textarea']],
                 'exits' => [['Платёжное поручение приложено', 'manager', 'payment_check'.$suffix]],
             ],
             'payment_check'.$suffix => [

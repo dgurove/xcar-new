@@ -21,7 +21,7 @@
                         <span class="field-label">Шаблон</span>
                         <div class="flex flex-wrap gap-2">
                             @foreach ($templates as $t)
-                                <x-ui.pill :href="request()->fullUrlWithQuery(['shablon' => $t->id])" :current="request()->query('shablon') == $t->id">{{ $t->name }}</x-ui.pill>
+                                <x-ui.pill :href="request()->fullUrlWithQuery(['template' => $t->id])" :current="request()->query('template') == $t->id">{{ $t->name }}</x-ui.pill>
                             @endforeach
                         </div>
                     </div>

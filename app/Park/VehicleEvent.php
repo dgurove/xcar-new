@@ -2,6 +2,7 @@
 
 namespace App\Park;
 
+use App\Support\FieldLabels;
 use App\Support\Money;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -37,7 +38,7 @@ class VehicleEvent extends Model
             EventType::Towed => 'Эвакуация'.(! empty($p['note']) ? ': '.$p['note'] : ''),
             EventType::Released => 'Выдана'.(! empty($p['to']) ? ' — '.$p['to'] : '').(! empty($p['unpaid']) ? ', с долгом '.Money::rub($p['unpaid']) : ''),
             EventType::Note => (string) ($p['text'] ?? ''),
-            EventType::Updated => 'Изменена: '.implode(', ', $p['fields'] ?? []),
+            EventType::Updated => 'Изменена: '.FieldLabels::list($p['fields'] ?? []),
             EventType::DocSent => ($p['direction'] ?? 'out') === 'in' ? 'Получено от вендора: '.($p['doc'] ?? '') : 'Отправлено вендору: '.($p['doc'] ?? ''),
             EventType::DocBack => 'Снята отметка: '.($p['doc'] ?? ''),
             EventType::Scheduled => 'Эвакуация назначена'.(! empty($p['at']) ? ' на '.$p['at'] : '').(! empty($p['from']) ? ', '.$p['from'] : ''),
