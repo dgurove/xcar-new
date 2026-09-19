@@ -1,10 +1,19 @@
-{{-- Долги по контрагентам: нам должны, мы должны, просрочено, не выставлено. Строка ведёт к счетам контрагента. --}}
+{{-- Долги по контрагентам: итоги сверху, сортировка и поиск в тулбаре, строка — нам должны, мы должны, просрочено, не выставлено; ведёт к счетам контрагента. --}}
 @php use App\Support\Money; @endphp
 <x-ui.shell title="Долги" :back="['Деньги', '/money']" narrow>
+    <div class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <x-ui.stat :value="Money::rub($totals['owed_to_us'])" label="Нам должны"/>
+        <x-ui.stat :value="Money::rub($totals['we_owe'])" label="Мы должны"/>
+        <x-ui.stat :value="Money::rub($totals['overdue'])" label="Просрочено" :class="$totals['overdue'] > 0 ? 'text-danger' : ''"/>
+        <x-ui.stat :value="Money::rub($totals['unbilled'])" label="Не выставлено"/>
+    </div>
+    <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::DEBT_SORTS" :sort="$sort" name="debts">
+        <x-slot:filters><input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Контрагент" enterkeyhint="search"></x-slot:filters>
+    </x-ui.toolbar>
     @if ($debts->isEmpty())
-        <x-ui.empty>Долгов нет</x-ui.empty>
+        <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Долгов нет' }}</x-ui.empty>
     @else
-        <div class="flex flex-col gap-2">
+        <div class="mt-6 flex flex-col gap-2">
             @foreach ($debts as $d)
                 <a href="{{ $d['party']->id ? '/money?preset=all&party='.$d['party']->id : '/money' }}" class="row">
                     <div class="min-w-0 flex-1">
@@ -20,5 +29,6 @@
                 </a>
             @endforeach
         </div>
+        <div class="mt-8"><x-ui.pager :of="$debts"/></div>
     @endif
 </x-ui.shell>

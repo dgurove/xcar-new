@@ -18,6 +18,7 @@ use App\Support\Nav;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
@@ -32,9 +33,14 @@ class MoneyController
     {
         ListPrefs::sync($request, 'park-money');
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'unpaid';
+        $qs = trim((string) $request->query('q'));
         $q = self::scoped($request->user(), Invoice::with(['party', 'vehicle.brand', 'vehicle.model']))
             ->when($request->query('party'), fn ($w, $id) => $w->where('party_id', $id))
-            ->when($request->query('car'), fn ($w, $id) => $w->where('vehicle_id', $id));
+            ->when($request->query('car'), fn ($w, $id) => $w->where('vehicle_id', $id))
+            ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s->where('external_no', 'ilike', "%{$qs}%")
+                ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs))
+                ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', "%{$qs}%"))
+                ->orWhereHas('vehicle', fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%'))));
         match ($preset) {
             'unpaid' => $q->where('direction', 'issued')->where('state', InvoiceState::Issued),
             'overdue' => $q->where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString()),
@@ -55,6 +61,8 @@ class MoneyController
                 'owed' => $open->where('direction', 'owed')->count(),
             ],
             'party' => $request->query('party') ? Party::find($request->query('party')) : null,
+            'q' => $qs,
+            'parties' => Party::where('is_self', false)->whereHas('invoices')->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 
@@ -166,9 +174,23 @@ class MoneyController
         return view('billing.docs.storage-act', ['invoice' => $invoice, 'self' => Party::self()]);
     }
 
-    public function debts()
+    public const DEBT_SORTS = ['overdue' => 'Просрочено', 'owed_to_us' => 'Нам должны', 'we_owe' => 'Мы должны', 'unbilled' => 'Не выставлено'];
+
+    public function debts(Request $request)
     {
-        return view('park.money.debts', ['debts' => Ledger::debts()]);
+        $sort = array_key_exists($request->query('sort', ''), self::DEBT_SORTS) ? $request->query('sort') : 'overdue';
+        $qs = mb_strtolower(trim((string) $request->query('q')));
+        $debts = Ledger::debts()
+            ->when($qs !== '', fn ($c) => $c->filter(fn ($d) => str_contains(mb_strtolower($d['party']->name), $qs)))
+            ->sortByDesc(fn ($d) => [$d[$sort], $d['overdue'], $d['owed_to_us']])->values();
+        $page = max(1, (int) $request->query('page', 1));
+        $per = 30;
+
+        return view('park.money.debts', [
+            'debts' => new LengthAwarePaginator($debts->forPage($page, $per), $debts->count(), $per, $page, ['path' => '/money/debts', 'query' => $request->query()]),
+            'sort' => $sort, 'q' => $request->query('q', ''),
+            'totals' => ['owed_to_us' => round($debts->sum('owed_to_us'), 2), 'we_owe' => round($debts->sum('we_owe'), 2), 'overdue' => round($debts->sum('overdue'), 2), 'unbilled' => round($debts->sum('unbilled'), 2)],
+        ]);
     }
 
     public function summary(Request $request)

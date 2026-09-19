@@ -59,6 +59,7 @@ class VehicleController
             ->when(VehicleState::tryFrom($preset), fn ($v, $s) => $v->where('state', $s))
             ->when($request->query('docs') === 'due', fn ($v) => $v->whereHas('docs', fn ($d) => $d->where('direction', 'out')->where('state', 'pending')))
             ->when($request->query('yard'), fn ($v, $y) => $v->where('yard_id', $y))
+            ->when($request->query('vendor'), fn ($v, $id) => $v->where('vendor_id', $id))
             ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
                 ->orWhere('plate', 'like', '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%')->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
         $request->query('sort') === 'fresh' ? $vehicles->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
@@ -70,6 +71,11 @@ class VehicleController
             'sort' => $request->query('sort', 'longest'),
             'counts' => Scope::vehicles($request->user())->selectRaw('state, count(*) as n')->groupBy('state')->pluck('n', 'state')->all(),
             'yard' => $request->query('yard') ? Yard::find($request->query('yard')) : null,
+            'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            'vendors' => Vendor::whereIn('id', Vehicle::whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
+            'docsDue' => Scope::vehicles($request->user())->whereHas('docs', fn ($d) => $d->where('direction', 'out')->where('state', 'pending'))->count(),
+            // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты площадки.
+            'peek' => $request->query('peek') && $request->query('vid') === ListView::TABLE ? 'vehicle-'.(int) $request->query('peek') : null,
         ]);
     }
 

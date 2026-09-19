@@ -1,5 +1,11 @@
 {{-- Площадки: занятость числом и полосой, занятые места чипами по рядам (чип ведёт к ТС), форма — город, адрес, ряды. --}}
 <x-ui.shell title="Стоянки">
+    @if ($closedCount)
+        <div class="mb-4 flex flex-wrap gap-1.5">
+            <x-ui.pill href="/yards" :current="! $closed">Открытые</x-ui.pill>
+            <x-ui.pill href="/yards?closed=1" :current="$closed">Все <span class="nums text-ink-dim">{{ $closedCount }} закрыт{{ $closedCount === 1 ? 'а' : 'о' }}</span></x-ui.pill>
+        </div>
+    @endif
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($yards as $yard)
             @php

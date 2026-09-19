@@ -37,6 +37,8 @@ class MailController
 {
     public const PRESETS = ['all' => 'Все', 'unread' => 'Непрочитанные', 'files' => 'С вложениями', 'sent' => 'Отправленные', 'linked' => 'По предложениям'];
 
+    public const SORTS = ['fresh' => 'Свежие', 'unanswered' => 'Давно без ответа', 'unread' => 'Непрочитанные первыми'];
+
     /** Пресеты по поверхности: на стоянке «привязанные» — к ТС, не к предложениям. */
     public function presets(): array
     {
@@ -52,6 +54,7 @@ class MailController
         $preset = $request->query('preset', 'all');
         $slug = $request->query('account');
         $q = trim((string) $request->query('q'));
+        $sort = array_key_exists($request->query('sort', ''), self::SORTS) ? $request->query('sort') : 'fresh';
 
         $threads = Thread::query()->with(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model'])
             ->whereIn('account_id', $accounts->pluck('id'))
@@ -67,8 +70,17 @@ class MailController
             default => null,
         };
 
+        match ($sort) {
+            // «Давно без ответа» — последнее письмо ветки входящее: сначала те, кому давно не отвечали.
+            'unanswered' => $threads->whereExists(fn ($s) => $s->selectRaw('1')->from('mail_messages as m')->whereColumn('m.thread_id', 'mail_threads.id')->where('m.direction', Direction::In->value)
+                ->whereRaw('m.date_at = (select max(date_at) from mail_messages where thread_id = mail_threads.id)'))->orderBy('last_message_at'),
+            'unread' => $threads->orderByDesc('unread_count')->orderByDesc('last_message_at'),
+            default => $threads->orderByDesc('last_message_at'),
+        };
+
         return view('admin.mail.index', [
-            'threads' => $threads->orderByDesc('last_message_at')->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+            'threads' => $threads->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+            'sort' => $sort,
             'accounts' => $accounts,
             'preset' => $preset,
             'slug' => $slug,

@@ -6,7 +6,7 @@
         <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
     @endif
 
-    <x-ui.toolbar class="mt-5" :pills="$presets" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" :hidden="array_filter(['account' => $slug, 'car' => request('car')])" name="mail">
+    <x-ui.toolbar class="mt-5" :sorts="\App\Http\Admin\MailController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" :hidden="array_filter(['account' => $slug, 'car' => request('car')])" name="mail">
         <x-slot:extra>
             <a href="{{ $base }}/new{{ $slug ? '?account='.$slug : '' }}" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">Написать</span></a>
         </x-slot:extra>

@@ -1,7 +1,11 @@
 {{-- Вендоры глазами стоянки: контакт по хранению, что прислать после приёма, заметки. Реквизиты, договор, прайс — в CRM. --}}
 @php use App\Vendors\ContactRole; @endphp
 <x-ui.shell title="Вендоры" narrow>
-    <div class="flex flex-col gap-2">
+    <x-ui.toolbar :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="clients">
+        <x-slot:filters><input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Название, ИНН" enterkeyhint="search"></x-slot:filters>
+    </x-ui.toolbar>
+    @if ($vendors->isEmpty())<x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Вендоров нет' }}</x-ui.empty>@endif
+    <div class="mt-6 flex flex-col gap-2">
         @foreach ($vendors as $vendor)
             @php $c = $vendor->contacts->firstWhere('role', ContactRole::Storage) ?? $vendor->contacts->first(); @endphp
             <div class="row" data-controller="sheet">

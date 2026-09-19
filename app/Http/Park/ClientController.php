@@ -13,11 +13,22 @@ use Illuminate\Validation\Rule;
 /** Вендоры глазами стоянки: список тех же компаний, правится только стояночное — контакт по хранению, что прислать после приёма, заметки. Остальное — карточка в CRM. */
 class ClientController
 {
-    public function index()
+    public const PRESETS = ['active' => 'Работаем', 'stored' => 'С ТС на стоянке', 'inactive' => 'Не работаем'];
+
+    public function index(Request $request)
     {
+        $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'active';
+        $q = trim((string) $request->query('q'));
+        $vendors = Vendor::with('contacts')->withCount(['vehicles', 'vehicles as stored_count' => fn ($q) => $q->where('state', 'stored')])
+            ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s->where('name', 'ilike', "%{$q}%")->orWhere('legal_name', 'ilike', "%{$q}%")->orWhere('inn', 'like', "%{$q}%")))
+            ->orderBy('name')->get();
+        $counts = ['active' => $vendors->where('is_active', true)->count(), 'stored' => $vendors->where('stored_count', '>', 0)->count(), 'inactive' => $vendors->where('is_active', false)->count()];
+
         return view('park.clients', [
-            'vendors' => Vendor::with('contacts')->withCount(['vehicles', 'vehicles as stored_count' => fn ($q) => $q->where('state', 'stored')])
-                ->orderByDesc('is_active')->orderBy('name')->get(),
+            'vendors' => match ($preset) {
+                'stored' => $vendors->where('stored_count', '>', 0), 'inactive' => $vendors->where('is_active', false), default => $vendors->where('is_active', true)
+            },
+            'preset' => $preset, 'presets' => self::PRESETS, 'counts' => $counts, 'q' => $q,
             'docs' => DocRequirement::cases(),
             'crm' => Surface::Crm->url('/settings/vendors'),
         ]);
