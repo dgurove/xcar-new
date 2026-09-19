@@ -83,7 +83,7 @@ class WorkflowController
 
     public function createStage(Request $request, Workflow $workflow)
     {
-        $block = $workflow->blocks()->findOrFail($request->query('blok'));
+        $block = $workflow->blocks()->findOrFail($request->query('block'));
 
         return $this->stageForm($workflow, new Stage(['block_id' => $block->id, 'waits_for' => WaitsFor::Us, 'deadline_source' => DeadlineSource::Own, 'asks' => Asks::Nothing]));
     }

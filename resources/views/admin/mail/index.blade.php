@@ -6,14 +6,14 @@
         <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
     @endif
 
-    <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\MailController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" :hidden="['yashchik' => $slug]" name="mail">
+    <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\MailController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" :hidden="['account' => $slug]" name="mail">
         <x-slot:extra>
-            <a href="{{ $base }}/new{{ $slug ? '?yashchik='.$slug : '' }}" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">Написать</span></a>
+            <a href="{{ $base }}/new{{ $slug ? '?account='.$slug : '' }}" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">Написать</span></a>
         </x-slot:extra>
         <x-slot:filters>
             <input name="q" value="{{ $q }}" placeholder="Тема, отправитель" class="field-input field-s">
             @if ($accounts->count() > 1)
-                <select name="yashchik" class="field-input field-s" aria-label="Ящик">
+                <select name="account" class="field-input field-s" aria-label="Ящик">
                     <option value="">Все ящики</option>
                     @foreach ($accounts as $account)<option value="{{ $account->slug }}" @selected($slug === $account->slug)>{{ $account->title }}</option>@endforeach
                 </select>

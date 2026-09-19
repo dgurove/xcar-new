@@ -3,9 +3,9 @@
 <x-ui.shell title="Сегодня" :phone-heading="false">
     <div class="flex flex-wrap items-center gap-1.5">
         @foreach ($days as $key => $label)
-            <x-ui.pill :href="$q(['den' => $key === 'today' ? null : $key])" :current="$day === $key">{{ $label }}</x-ui.pill>
+            <x-ui.pill :href="$q(['day' => $key === 'today' ? null : $key])" :current="$day === $key">{{ $label }}</x-ui.pill>
         @endforeach
-        <x-ui.pill :href="$q(['moi' => $mine ? null : 1])" :current="$mine" class="ml-auto">Мои</x-ui.pill>
+        <x-ui.pill :href="$q(['mine' => $mine ? null : 1])" :current="$mine" class="ml-auto">Мои</x-ui.pill>
         <a href="/requests" class="btn btn-s btn-quiet rounded-full">Все заявки</a>
         <a href="/requests/new" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Заявка</span></a>
         <a href="/requests/from-mail" class="btn btn-s btn-quiet relative rounded-full" aria-label="Из писем"><x-ui.icon name="mail" class="size-4"/><x-ui.badge href="/requests/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>

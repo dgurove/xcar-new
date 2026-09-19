@@ -85,7 +85,7 @@
                             </a>
                         @endforeach
                     </div>
-                    <a href="/settings/workflows/{{ $w->id }}/stages/new?blok={{ $block->id }}" class="btn btn-ghost btn-s mt-2 self-start"><x-ui.icon name="plus" class="size-4"/> Этап</a>
+                    <a href="/settings/workflows/{{ $w->id }}/stages/new?block={{ $block->id }}" class="btn btn-ghost btn-s mt-2 self-start"><x-ui.icon name="plus" class="size-4"/> Этап</a>
                 </x-ui.card>
             @endforeach
         </div>

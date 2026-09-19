@@ -39,7 +39,7 @@ class MailController
         ListPrefs::sync($request, 'crm-mail');
         $accounts = Account::where('scope', $this->scope)->orderBy('title')->get();
         $preset = $request->query('preset', 'all');
-        $slug = $request->query('yashchik');
+        $slug = $request->query('account');
         $q = trim((string) $request->query('q'));
 
         $threads = Thread::query()->with(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model'])
@@ -79,7 +79,7 @@ class MailController
             'thread' => $thread,
             'messages' => $thread->messages,
             'renderer' => $renderer,
-            'documents' => fn (Message $m) => $renderer->document($m, $request->boolean('kartinki'), $this->base),
+            'documents' => fn (Message $m) => $renderer->document($m, $request->boolean('images'), $this->base),
             'base' => $this->base,
         ]);
     }
@@ -87,7 +87,7 @@ class MailController
     public function compose(Request $request, Composer $composer)
     {
         $accounts = Account::where('scope', $this->scope)->where('is_active', true)->orderBy('title')->get();
-        $account = $accounts->firstWhere('slug', $request->query('yashchik')) ?? $accounts->first();
+        $account = $accounts->firstWhere('slug', $request->query('account')) ?? $accounts->first();
         abort_unless($account, 404);
         $template = $request->query('template') ? Template::find($request->query('template')) : null;
         $offer = $request->query('offer') ? Offer::where('number', $request->query('offer'))->first() : null;
@@ -102,7 +102,7 @@ class MailController
                 'to' => $offer->contact_email ?? $offer->vendor?->email(ContactRole::Sales, ContactRole::Claims) ?? '',
                 'cc' => implode(', ', $offer->vendor?->ccEmails() ?? []),
             ];
-            if (! $request->query('yashchik') && $offer->vendor?->mail_account_id) {
+            if (! $request->query('account') && $offer->vendor?->mail_account_id) {
                 $account = $accounts->firstWhere('id', $offer->vendor->mail_account_id) ?? $account;
             }
         }
@@ -127,7 +127,7 @@ class MailController
         $this->guard($thread);
         abort_unless($message->thread_id === $thread->id, 404);
         $message->load(['account', 'addresses', 'attachments']);
-        $mode = $request->query('rezhim', 'reply');
+        $mode = $request->query('mode', 'reply');
         $defaults = $mode === 'forward' ? $composer->forward($message) : $composer->reply($message, $mode === 'all');
 
         return view('admin.mail.compose', ['account' => $message->account, 'accounts' => collect([$message->account]), 'thread' => $thread, 'parent' => $message,

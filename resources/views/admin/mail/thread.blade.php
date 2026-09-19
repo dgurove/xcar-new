@@ -65,8 +65,8 @@
                     <div data-controller="frame" class="overflow-hidden rounded-(--radius-l) bg-white">
                         <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="{{ $documents($message) }}" title="Письмо" class="block w-full" style="height:120px" data-frame-target="frame" data-action="load->frame#fit"></iframe>
                     </div>
-                    @if (!request()->boolean('kartinki') && $renderer->hasRemoteImages($message))
-                        <a href="{{ request()->fullUrlWithQuery(['kartinki' => 1]) }}#msg-{{ $message->id }}" class="btn btn-ghost btn-s mt-2">Показать картинки</a>
+                    @if (!request()->boolean('images') && $renderer->hasRemoteImages($message))
+                        <a href="{{ request()->fullUrlWithQuery(['images' => 1]) }}#msg-{{ $message->id }}" class="btn btn-ghost btn-s mt-2">Показать картинки</a>
                     @endif
                 @endif
 
@@ -84,8 +84,8 @@
 
                 <div class="mt-4 flex flex-wrap gap-2">
                     <a href="{{ $base }}/{{ $thread->id }}/reply/{{ $message->id }}" class="btn btn-quiet btn-s">Ответить</a>
-                    <a href="{{ $base }}/{{ $thread->id }}/reply/{{ $message->id }}?rezhim=all" class="btn btn-ghost btn-s">Всем</a>
-                    <a href="{{ $base }}/{{ $thread->id }}/reply/{{ $message->id }}?rezhim=forward" class="btn btn-ghost btn-s">Переслать</a>
+                    <a href="{{ $base }}/{{ $thread->id }}/reply/{{ $message->id }}?mode=all" class="btn btn-ghost btn-s">Всем</a>
+                    <a href="{{ $base }}/{{ $thread->id }}/reply/{{ $message->id }}?mode=forward" class="btn btn-ghost btn-s">Переслать</a>
                 </div>
             </x-ui.card>
         @endforeach

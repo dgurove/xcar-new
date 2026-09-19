@@ -24,8 +24,8 @@ class TodayController
     public function index(Request $request)
     {
         $user = $request->user();
-        $day = array_key_exists($request->query('den', ''), self::DAYS) ? $request->query('den') : 'today';
-        $mine = $request->boolean('moi');
+        $day = array_key_exists($request->query('day', ''), self::DAYS) ? $request->query('day') : 'today';
+        $mine = $request->boolean('mine');
         [$from, $to] = match ($day) {
             'tomorrow' => [now()->addDay()->startOfDay(), now()->addDay()->endOfDay()],
             'week' => [now()->startOfDay(), now()->addDays(7)->endOfDay()],
