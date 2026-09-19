@@ -1,27 +1,36 @@
-@php use App\Park\RequestType; @endphp
+{{-- Заявки стоянки: пресеты типов и «Готовые», сортировка, поиск по ТС, вендор, площадка и «Мои» в фильтрах;
+     три вида — плитки/строки x-park.request-card, таблица x-park.request-row с окошком. --}}
+@php use App\Support\ListView; $view = ListView::pick(request(), $requests->total()); @endphp
 <x-ui.shell title="Заявки" :count="$requests->total()" :phone-heading="false">
-    <x-ui.toolbar :sorts="\App\Http\Park\RequestController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="['done' => $done ? 1 : null]" name="requests">
+    <x-ui.toolbar :sorts="\App\Http\Park\RequestController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['done' => $done ? 1 : null, 'vendor' => request('vendor'), 'yard' => request('yard'), 'mine' => request('mine'), ListView::PARAM => request(ListView::PARAM)])" name="requests">
         <x-slot:pillsExtra>
             <x-ui.pill :href="request()->fullUrlWithQuery(['done' => $done ? null : 1, 'page' => null])" :current="$done">Готовые</x-ui.pill>
         </x-slot:pillsExtra>
         <x-slot:extra>
+            <x-ui.view-switch :current="$view"/>
             <a href="/requests/new" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Заявка</span></a>
             <a href="/requests/from-mail" class="btn btn-s btn-quiet relative shrink-0 rounded-full" aria-label="Из писем"><x-ui.icon name="mail" class="size-4"/><span class="hidden sm:inline">Из писем</span><x-ui.badge href="/requests/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>
         </x-slot:extra>
+        <x-slot:filters>
+            <input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Убыток, VIN, госномер, марка" enterkeyhint="search">
+            <select name="vendor" class="field-input"><option value="">Все вендоры</option>@foreach ($vendors as $id => $name)<option value="{{ $id }}" @selected((string) request('vendor') === (string) $id)>{{ $name }}</option>@endforeach</select>
+            <select name="yard" class="field-input"><option value="">Все площадки</option>@foreach ($yards as $id => $name)<option value="{{ $id }}" @selected((string) request('yard') === (string) $id)>{{ $name }}</option>@endforeach</select>
+            <x-ui.check name="mine" :checked="request()->boolean('mine')">Мои</x-ui.check>
+        </x-slot:filters>
     </x-ui.toolbar>
     @if ($requests->isEmpty())
-        <x-ui.empty class="mt-6">{{ $done ? 'Готовых нет.' : 'Всё сделано.' }}</x-ui.empty>
+        <x-ui.empty class="mt-6">{{ $q !== '' || request('vendor') || request('yard') || request('mine') ? 'Ничего не нашлось' : ($done ? 'Готовых нет' : 'Всё сделано') }}</x-ui.empty>
+    @elseif ($view === ListView::TABLE)
+        <x-ui.table id="requests" class="mt-6">
+            <x-slot:head>
+                <tr><th>Тип</th><th class="grow">Марка, модель</th><th class="hidden sm:table-cell">№ убытка</th><th class="num">Срок</th><th class="hidden sm:table-cell">Исполнитель</th><th class="hidden sm:table-cell">Площадка</th></tr>
+            </x-slot:head>
+            @foreach ($requests as $r)<x-park.request-row :req="$r"/>@endforeach
+        </x-ui.table>
     @else
-        <div class="mt-6 flex flex-col gap-2">
-            @foreach ($requests as $r)
-                <x-park.vehicle-row :vehicle="$r->vehicle" :href="'/requests/'.$r->id">
-                    <x-ui.pill :tone="$r->isOverdue() ? 'danger' : ($r->isOpen() ? 'soft' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $r->type->label() }}@if ($r->type === RequestType::Move && $r->yard) <x-ui.place>{{ $r->yard->name }}</x-ui.place>@endif</x-ui.pill>
-                    @if ($r->planned_at)<span class="chip {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
-                    @if (!$r->isOpen())<span class="chip">{{ $r->state->label() }}</span>@endif
-                    @if ($r->contact_name || $r->contact_phone)<span class="text-sm text-ink-muted">{{ trim($r->contact_name.' '.$r->contact_phone) }}</span>@endif
-                </x-park.vehicle-row>
-            @endforeach
+        <div class="mt-6 {{ ListView::containerClass($view) }}" data-controller="ticker">
+            @foreach ($requests as $r)<x-park.request-card :req="$r"/>@endforeach
         </div>
-        <div class="mt-8"><x-ui.pager :of="$requests"/></div>
     @endif
+    <div class="mt-8"><x-ui.pager :of="$requests" :sizes="ListView::perSizes($view)"/></div>
 </x-ui.shell>

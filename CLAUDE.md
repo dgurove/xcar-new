@@ -249,7 +249,9 @@
   состоянием (`RequestType::allowedFor`); отмена ТС — `CancelVehicle`, удаление
   только без следов. Главная стоянки — «Сегодня» (`TodayController`): секции
   Просрочено · Связаться · Забрать · Принять · Выдать · Отправить вендору · Стоят
-  долго (`Park\Idle`: 30/60 дней), `/requests` — весь список. Доступ: своя
+  долго (`Park\Idle`: 30/60 дней), `/requests` — весь список: три вида
+  (`x-park.request-card`, `x-park.request-row`, окошко `/requests/{id}/peek`),
+  пресеты типов и «Готовые», поиск по ТС, вендор, площадка, «Мои». Доступ: своя
   площадка `users.park_yard_id` (`Park\Scope`), «только приёмка»
   `park_readonly` (`User::canManagePark`, middleware `park.manage`).
   **Правда о положении ТС — у стоянки**: события `Park\Events\*` → слушатель
@@ -304,7 +306,22 @@
   `always_cc`, с ящика вендора. Вложения получают `kind` по имени файла
   (`AttachmentClassifier::kindOf`).
 - Почта: письмо целиком не скачивается (`BODYSTRUCTURE`), ветка → машина
-  одной дверью `LinkThread`, файлы — `ImportThreadFiles`.
+  одной дверью `LinkThread`, файлы — `ImportThreadFiles`. **«Из писем»**
+  (`/offers/from-mail`, `/requests/from-mail`, один `Admin\CandidateController`,
+  стоянка наследует): кандидат `mail_candidates` — **одна ТС, сколько бы писем о
+  ней ни пришло**: тождество `key` — убыток (`Code::key`, любое написание) →
+  VIN → госномер → ветка; письма — пивот `mail_candidate_messages`,
+  `ExtractCandidate` сверяет все тождества письма со всеми тождествами открытых
+  кандидатов (`Candidate::allIdentities`), ключ поднимается до сильнейшего,
+  владельцу в Telegram — только новая ТС; письмо по уже заведённой ТС (номер,
+  VIN, госномер) кандидатом не становится — ветку привяжет `LinkThread::auto`.
+  «Завести» (`Park\Actions\PromoteCandidate`, `Mail\Actions\PromoteCandidate`)
+  привязывает все ветки кандидата, а если ТС/предложение уже завели руками —
+  не плодит второе, письма к нему. Экран один (`mail/candidates/index`): три
+  вида (`x-mail.candidate-card`, `x-mail.candidate-row`), сортировка (свежие,
+  дольше ждут, по сроку ответа), поиск и вендор, окошко со всеми письмами
+  (`x-mail.letters`). Пресет «привязанные» на стоянке — «По ТС»
+  (`MailController::presets()`).
 - Закупки Carcade: витрина — две карточки на закупку (легковые/грузовые), CRM
   — один список с фильтрами в адресе, оценка — в окошке строки таблицы (`?preset=unfinal&vid=table&peek=first`,
   `POST …/{car}/estimate`; старый экран `GET …/estimate` — 301), выгрузка — тот

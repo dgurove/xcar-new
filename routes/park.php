@@ -26,6 +26,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/from-mail/{candidate}/decline', [ParkCandidateController::class, 'reject']);
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests/{req}', [RequestController::class, 'show']);
+    Route::get('/requests/{req}/peek', [RequestController::class, 'peek']);
     Route::post('/requests/{req}/intake', [RequestController::class, 'intake']);
     Route::post('/requests/{req}/move', [RequestController::class, 'move']);
     Route::post('/requests/{req}/release', [RequestController::class, 'release']);
@@ -100,6 +101,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/mail/{thread}', [MailController::class, 'show']);
     Route::get('/mail/{thread}/reply/{message}', [MailController::class, 'reply']);
     Route::post('/mail/{thread}/unread', [MailController::class, 'unread']);
+    Route::post('/mail/{thread}/read', [MailController::class, 'toggleRead']);
     Route::post('/mail/{thread}/link', [MailController::class, 'link']);
 });
 

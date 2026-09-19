@@ -37,11 +37,17 @@ class MailController
 {
     public const PRESETS = ['all' => 'Все', 'unread' => 'Непрочитанные', 'files' => 'С вложениями', 'sent' => 'Отправленные', 'linked' => 'По предложениям'];
 
+    /** Пресеты по поверхности: на стоянке «привязанные» — к ТС, не к предложениям. */
+    public function presets(): array
+    {
+        return $this->scope === Scope::Park ? array_replace(self::PRESETS, ['linked' => 'По ТС']) : self::PRESETS;
+    }
+
     public function __construct(private Scope $scope = Scope::Offers, private string $base = '/work/mail') {}
 
     public function index(Request $request)
     {
-        ListPrefs::sync($request, 'crm-mail');
+        ListPrefs::sync($request, $this->scope->value.'-mail');
         $accounts = Account::where('scope', $this->scope)->orderBy('title')->get();
         $preset = $request->query('preset', 'all');
         $slug = $request->query('account');
@@ -68,6 +74,7 @@ class MailController
             'q' => $q,
             'base' => $this->base,
             'unread' => Thread::whereIn('account_id', $accounts->pluck('id'))->where('unread_count', '>', 0)->count(),
+            'presets' => $this->presets(),
         ]);
     }
 

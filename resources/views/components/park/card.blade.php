@@ -1,5 +1,5 @@
 {{-- Машина стоянки — та же карточка, что у оффера: кадр, название с госномером, пилюли состояния, действие. --}}
-@props(['vehicle', 'href' => null])
+@props(['vehicle', 'href' => null, 'action' => null])
 @php
     $href ??= '/cars/'.$vehicle->id;
     $main = $vehicle->mainPhoto();
@@ -46,6 +46,6 @@
     </div>
     <div class="card-place">@if ($state === \App\Park\VehicleState::Stored && $vehicle->yard)<x-ui.place class="truncate text-sm text-ink-dim">{{ $vehicle->yard->name }}</x-ui.place>@endif</div>
     <div class="card-action">
-        <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">{{ $state === \App\Park\VehicleState::Expected ? 'Принять' : ($state === \App\Park\VehicleState::Stored ? 'Открыть' : 'Карточка') }}</a>
+        <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">{{ $action ?? ($state === \App\Park\VehicleState::Expected ? 'Принять' : ($state === \App\Park\VehicleState::Stored ? 'Открыть' : 'Карточка')) }}</a>
     </div>
 </article>

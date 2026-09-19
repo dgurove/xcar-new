@@ -35,31 +35,55 @@ use Illuminate\Validation\Rule;
 
 class RequestController
 {
-    public const SORTS = ['planned' => 'По сроку', 'fresh' => 'Сначала новые'];
+    public const SORTS = ['planned' => 'По сроку', 'fresh' => 'Сначала новые', 'type' => 'По типу'];
 
+    /** Список заявок: пресеты типов и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с окошком строки. */
     public function index(Request $request)
     {
         ListPrefs::sync($request, 'park-requests');
         $type = $request->query('preset', 'all');
         $done = $request->boolean('done');
-        $q = Scope::requests($request->user())->with(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'yard', 'assignee']);
+        $qs = trim((string) $request->query('q'));
+        $filters = fn ($q) => $q
+            ->when($request->query('vendor'), fn ($w, $id) => $w->whereHas('vehicle', fn ($v) => $v->where('vendor_id', $id)))
+            ->when($request->query('yard'), fn ($w, $id) => $w->where(fn ($s) => $s->where('yard_id', $id)->orWhereHas('vehicle', fn ($v) => $v->where('yard_id', $id))))
+            ->when($request->boolean('mine'), fn ($w) => $w->where('assignee_id', $request->user()->id))
+            ->when($qs !== '', fn ($w) => $w->whereHas('vehicle', fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%')
+                ->orWhereHas('brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%")->orWhere('name_ru', 'ilike', "%{$qs}%"))));
+        $q = $filters(Scope::requests($request->user())->with(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee']));
         $done ? $q->whereNotIn('state', RequestState::open()) : $q->whereIn('state', RequestState::open());
         if ($t = RequestType::tryFrom($type)) {
             $q->where('type', $t);
         }
-        $request->query('sort') === 'fresh' ? $q->latest() : $q->orderByRaw('planned_at asc nulls last')->latest();
+        match ($request->query('sort')) {
+            'fresh' => $q->latest(),
+            'type' => $q->orderBy('type')->orderByRaw('planned_at asc nulls last')->latest(),
+            default => $q->orderByRaw('planned_at asc nulls last')->latest(),
+        };
 
-        $open = Scope::requests($request->user())->when($done, fn ($q) => $q->whereNotIn('state', RequestState::open()), fn ($q) => $q->whereIn('state', RequestState::open()))->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
+        $open = $filters(Scope::requests($request->user()))->when($done, fn ($q) => $q->whereNotIn('state', RequestState::open()), fn ($q) => $q->whereIn('state', RequestState::open()))->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
         $presets = ['all' => 'Все'] + RequestType::options();
 
         return view('park.requests.index', [
-            'requests' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+            'requests' => ListView::paginate($request, $q),
             'preset' => $type,
             'presets' => $presets,
             'counts' => $open->all() + ['all' => $open->sum()],
             'done' => $done,
             'sort' => $request->query('sort', 'planned'),
+            'q' => $qs,
+            'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
         ]);
+    }
+
+    /** Окошко строки таблицы: состояние, срок, контакт, исполнитель; действия — ссылками на страницу заявки. */
+    public function peek(Request $http, ParkRequest $req)
+    {
+        $req->load(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.yard', 'vehicle.media', 'yard', 'assignee', 'doneBy']);
+        abort_unless(Scope::allows($http->user(), $req->vehicle), 404);
+
+        return view('park.requests.peek', ['req' => $req, 'vehicle' => $req->vehicle]);
     }
 
     public function create(Request $request)
