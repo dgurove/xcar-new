@@ -1,6 +1,6 @@
 {{-- Новая заявка. С кандидатом из письма поля предзаполнены, письма — рядом с формой (справа от 1024,
      на телефоне — шторка «Письма»), чтобы сверять, не уходя со страницы. Тип «приём» / «эвакуация» решает поле «Доставка». --}}
-@php use App\Park\{RequestType, Delivery}; $p = $p ?? []; $val = fn ($k) => old($k, $p[$k] ?? null); $letters = $candidate !== null; @endphp
+@php use App\Park\{RequestType, Delivery}; $p = $p ?? []; $val = fn ($k) => old($k, $p[$k] ?? null); $letters = $candidate !== null; $delivery = $letters ? $val('delivery') : old('delivery', Delivery::Self->value); @endphp
 <x-ui.shell title="Новая заявка" :narrow="!$letters">
     <div class="{{ $letters ? 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_26rem]' : '' }}">
     <div class="min-w-0">
@@ -48,13 +48,13 @@
         <x-ui.card title="Заявка">
             <div class="grid gap-4 sm:grid-cols-2">
                 @if ($type === RequestType::Intake)
-                    {{-- Эвакуатор или сам — узнаём по телефону; «ещё не знаем» оставляет заявку в «Связаться». --}}
+                    {{-- Эвакуатор или сам — узнаём по телефону; «ещё не знаем» оставляет заявку в «Связаться». Руками заводят, когда уже знают — по умолчанию «сам». --}}
                     <div class="field sm:col-span-2">
                         <span class="field-label">Доставка</span>
                         <div class="flex flex-wrap gap-1.5">
-                            <label class="choice"><input type="radio" name="delivery" value="" @checked(!$val('delivery'))><span>Ещё не знаем</span></label>
+                            <label class="choice"><input type="radio" name="delivery" value="" @checked(!$delivery)><span>Ещё не знаем</span></label>
                             @foreach (Delivery::cases() as $d)
-                                <label class="choice"><input type="radio" name="delivery" value="{{ $d->value }}" @checked($val('delivery') === $d->value)><span>{{ $d->label() }}</span></label>
+                                <label class="choice"><input type="radio" name="delivery" value="{{ $d->value }}" @checked($delivery === $d->value)><span>{{ $d->label() }}</span></label>
                             @endforeach
                         </div>
                     </div>

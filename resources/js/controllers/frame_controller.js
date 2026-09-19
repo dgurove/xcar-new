@@ -7,7 +7,11 @@ export default class extends Controller {
 
     connect() {
         if (this.frameTarget.contentDocument?.readyState === 'complete') this.fit();
-        this.observer = new ResizeObserver(() => { if (this.frameTarget.clientWidth > 0) this.fit(); });
+        this.width = this.frameTarget.clientWidth;
+        this.observer = new ResizeObserver(() => {
+            const width = this.frameTarget.clientWidth;
+            if (width > 0 && width !== this.width) { this.width = width; this.fit(); }
+        });
         this.observer.observe(this.frameTarget);
     }
 

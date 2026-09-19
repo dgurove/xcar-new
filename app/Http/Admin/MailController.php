@@ -208,7 +208,7 @@ class MailController
             'forward.*' => ['integer'],
             'offer' => ['nullable', 'integer'],
             'vehicle' => ['nullable', 'integer'],
-            'back' => ['nullable', 'string', 'max:255', 'starts_with:/'],
+            'back' => ['nullable', 'string', 'max:255', 'regex:#^/(?!/)#'], // свой путь, не //host
             'invoice' => ['nullable', 'integer'],
         ]);
         $account = Account::where('slug', $data['account'])->where('scope', $this->scope)->firstOrFail();

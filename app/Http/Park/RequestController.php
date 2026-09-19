@@ -184,6 +184,11 @@ class RequestController
         $candidate = ! empty($data['candidate_id']) ? Candidate::where('scope', MailScope::Park)->find($data['candidate_id']) : null;
         if ($candidate) {
             $data['thread_id'] = $candidate->thread_id;
+            // Кандидата уже завели (двойное нажатие, вторая вкладка) — второй ТС не будет.
+            if ($candidate->state === CandidateState::Promoted && $candidate->vehicle_id) {
+                return redirect("/cars/{$candidate->vehicle_id}")->with('toast', 'Уже заведена');
+            }
+            $vehicle ??= $promote->existing($candidate);
         }
         $req = $create($request->user(), $type, $vehicle, $data);
         if ($candidate && $candidate->state !== CandidateState::Promoted) {

@@ -88,7 +88,8 @@ final class ParkExtractor
     public static function soldNotice(?string $subject, ?string $body): ?array
     {
         $text = trim((string) $subject)."\n".QuotationStripper::strip($body);
-        if (! preg_match('/\b(продан[оаы]?|реализован[оаы]?|покупател[ья]|новы[йм] собственник)/iu', $text)
+        // «не продано» / «ещё не реализовано» — не продажа.
+        if (! preg_match('/(?<!не |не\s)\b(продан[оаы]?|реализован[оаы]?|покупател[ья]|новы[йм] собственник)/iu', $text)
             && ! preg_match('/\b(выдать|передать|отдать|забер[ёе]т|заберут|вывезет|вывезут)\b[^\n]{0,80}\b(ТС|ГОТС|автомобил|машин)/iu', $text)) {
             return null;
         }

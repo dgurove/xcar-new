@@ -33,7 +33,11 @@ final class Accrual
         $vehicle->loadMissing(['vendor', 'offer.deal']);
         $first = $vehicle->accepted_at->copy()->startOfDay();
         $from = $vehicle->storage_billed_until ? $vehicle->storage_billed_until->copy()->addDay()->startOfDay() : $first->copy();
-        $end = $vehicle->released_at ? $vehicle->released_at->copy()->startOfDay() : Carbon::instance($until ?? now())->startOfDay();
+        // Конец периода — день выдачи, но не позже `until` (закрытие месяца считает по конец месяца).
+        $end = Carbon::instance($until ?? $vehicle->released_at ?? now())->startOfDay();
+        if ($vehicle->released_at && $vehicle->released_at->copy()->startOfDay()->lt($end)) {
+            $end = $vehicle->released_at->copy()->startOfDay();
+        }
         if ($from->gt($end)) {
             return collect();
         }
