@@ -6,7 +6,6 @@ use App\Media\PhotoIngest;
 use App\Users\Events\BuyerJoined;
 use App\Users\Events\ManagerJoined;
 use App\Users\Invite;
-use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  * По ссылке админа для менеджера человек становится менеджером; такая ссылка
  * одноразовая, счётчик закрывает её тут же.
  *
- * @param array{name: string, login: string, password: string, phone?: ?string, email?: ?string} $data
+ * @param  array{name: string, login: string, password: string, phone?: ?string, email?: ?string}  $data
  */
 final class AcceptInvite
 {

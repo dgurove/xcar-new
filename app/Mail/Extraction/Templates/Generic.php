@@ -3,8 +3,11 @@
 namespace App\Mail\Extraction\Templates;
 
 /** Незнакомая страховая: всё, что находится в теме, потом — чего в теме не бывает — из тела. */
-final class Generic extends Template
+class Generic extends Template
 {
+    /** Искать номер, VIN, госномер и год ещё и в теле — там, где тема бывает пустой. */
+    protected const BODY_FALLBACK = true;
+
     public function extract(string $subject, string $body): array
     {
         $subject = $this->subjectOf($subject, $body);
@@ -16,10 +19,12 @@ final class Generic extends Template
         [$brand, $model] = $this->brandAndModel($subject);
         $this->put($fields, 'brand', $brand, 'subject');
         $this->put($fields, 'model', $model, 'subject');
-        $this->put($fields, 'code', $this->firstCode($body), 'body');
-        $this->put($fields, 'vin', $this->match(self::VIN, $body), 'body');
-        $this->put($fields, 'plate', $this->match(self::PLATE, $body), 'body');
-        $this->put($fields, 'year', $this->match(self::YEAR, $body), 'body');
+        if (static::BODY_FALLBACK) {
+            $this->put($fields, 'code', $this->firstCode($body), 'body');
+            $this->put($fields, 'vin', $this->match(self::VIN, $body), 'body');
+            $this->put($fields, 'plate', $this->match(self::PLATE, $body), 'body');
+            $this->put($fields, 'year', $this->match(self::YEAR, $body), 'body');
+        }
         $this->put($fields, 'floor_price', $this->price($body), 'body');
         $this->put($fields, 'location', $this->location($body), 'body');
 

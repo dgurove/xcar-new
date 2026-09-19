@@ -2,6 +2,7 @@
 
 namespace App\Purchases\Actions;
 
+use App\Notifications\PurchaseOfferChosenNotice;
 use App\Purchases\Offer;
 use App\Purchases\OfferState;
 use App\Users\User;
@@ -15,7 +16,7 @@ final class ChooseOffer
         return DB::transaction(function () use ($offer) {
             Offer::where('car_id', $offer->car_id)->whereIn('state', [OfferState::Active, OfferState::Chosen])->where('id', '!=', $offer->id)->update(['state' => OfferState::Declined]);
             $offer->update(['state' => OfferState::Chosen]);
-            $offer->user->notify(new \App\Notifications\PurchaseOfferChosenNotice($offer->load('car.purchase')));
+            $offer->user->notify(new PurchaseOfferChosenNotice($offer->load('car.purchase')));
 
             return $offer;
         });

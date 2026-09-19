@@ -4,6 +4,7 @@ namespace App\Chats;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['message_id', 'name', 'mime', 'size', 'path'])]
@@ -18,7 +19,7 @@ class File extends Model
         static::deleted(fn (File $file) => Storage::disk('private')->delete($file->path));
     }
 
-    public function message(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function message(): BelongsTo
     {
         return $this->belongsTo(Message::class, 'message_id');
     }

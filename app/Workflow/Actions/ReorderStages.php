@@ -2,7 +2,6 @@
 
 namespace App\Workflow\Actions;
 
-use App\Workflow\Block;
 use App\Workflow\Stage;
 use App\Workflow\Workflow;
 use Illuminate\Support\Facades\DB;

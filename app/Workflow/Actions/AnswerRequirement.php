@@ -2,11 +2,12 @@
 
 namespace App\Workflow\Actions;
 
+use App\Offers\OfferEventType;
 use App\Users\User;
+use App\Workflow\Actor;
 use App\Workflow\Asks;
 use App\Workflow\Events\RequirementAnswered;
 use App\Workflow\Outcome;
-use App\Workflow\Actor;
 use App\Workflow\Requirement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -43,7 +44,7 @@ final class AnswerRequirement
 
             $requirement->update(['done_at' => now(), 'answer' => ['exit' => $exit->label, 'fields' => $answer]]);
             ($this->takeExit)($requirement->offer, $exit, Actor::Manager, $by, $answer);
-            $requirement->offer->log(\App\Offers\OfferEventType::RequirementAnswered, $by, ['exit' => $exit->label, 'fields' => $answer]);
+            $requirement->offer->log(OfferEventType::RequirementAnswered, $by, ['exit' => $exit->label, 'fields' => $answer]);
             RequirementAnswered::dispatch($requirement, $by);
 
             return $requirement;

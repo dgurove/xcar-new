@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Offers\Offer;
+use App\Park\Vehicle;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,7 +36,7 @@ class Thread extends Model
 
     public function vehicle(): BelongsTo
     {
-        return $this->belongsTo(\App\Park\Vehicle::class, 'vehicle_id');
+        return $this->belongsTo(Vehicle::class, 'vehicle_id');
     }
 
     /** Ветка ведётся по машине: файлы её писем закрепляются у нас, а не живут только в ящике. */

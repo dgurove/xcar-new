@@ -1,7 +1,5 @@
 <?php
 
-
-
 namespace App\Offers\Share;
 
 use RuntimeException;
@@ -48,7 +46,9 @@ final class PdfWriter
      * в нитку и не разъехалась в плашку.
      */
     private const STAMP_RATIO = 0.038;
+
     private const STAMP_MIN = 10.0;
+
     private const STAMP_MAX = 20.0;
 
     /**
@@ -61,14 +61,14 @@ final class PdfWriter
      */
     private const HELVETICA_WIDTHS =
         '278278355556556889667191333333389584278333278278556556556556'
-        . '556556556556556556278278584584584556101566766772272266761177'
-        . '872227850066755683372277866777872266761172266794466766761127'
-        . '827827846955633355655650055655627855655622222250022283355655'
-        . '6556556333500278556500722500500500334260334584';
+        .'556556556556556556278278584584584556101566766772272266761177'
+        .'872227850066755683372277866777872266761172266794466766761127'
+        .'827827846955633355655650055655627855655622222250022283355655'
+        .'6556556333500278556500722500500500334260334584';
 
     /**
-     * @param list<array{path: string, width: int, height: int}> $photos
-     * @param string|null $stamp строка водяного знака; null — без знака
+     * @param  list<array{path: string, width: int, height: int}>  $photos
+     * @param  string|null  $stamp  строка водяного знака; null — без знака
      */
     public function write(array $photos, ?string $stamp = null): string
     {
@@ -98,7 +98,7 @@ final class PdfWriter
             $width = round($photo['width'] * 72 / self::DPI, 2);
             $height = round($photo['height'] * 72 / self::DPI, 2);
 
-            $pageRefs[] = $pageId . ' 0 R';
+            $pageRefs[] = $pageId.' 0 R';
 
             $resources = sprintf('/XObject << /Im0 %d 0 R >>', $imageId);
 
@@ -112,7 +112,7 @@ final class PdfWriter
 
             $objects[$pageId] = sprintf(
                 '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %s %s] '
-                . '/Resources << %s >> /Contents %d 0 R >>',
+                .'/Resources << %s >> /Contents %d 0 R >>',
                 $this->number($width),
                 $this->number($height),
                 $resources,
@@ -123,7 +123,7 @@ final class PdfWriter
             $content = sprintf('q %s 0 0 %s 0 0 cm /Im0 Do Q', $this->number($width), $this->number($height));
 
             if ($stamp !== null) {
-                $content .= "\n" . $this->stampContent($stamp, $width, $height);
+                $content .= "\n".$this->stampContent($stamp, $width, $height);
             }
 
             $objects[$contentId] = sprintf(
@@ -134,7 +134,7 @@ final class PdfWriter
 
             $objects[$imageId] = sprintf(
                 '<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /%s '
-                . "/BitsPerComponent 8 /Filter /DCTDecode /Length %d >>\nstream\n%s\nendstream",
+                ."/BitsPerComponent 8 /Filter /DCTDecode /Length %d >>\nstream\n%s\nendstream",
                 $photo['width'],
                 $photo['height'],
                 $this->colorSpace($bytes),
@@ -145,7 +145,7 @@ final class PdfWriter
 
         if ($stamp !== null) {
             $objects[$fontId] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica '
-                . '/Encoding /WinAnsiEncoding >>';
+                .'/Encoding /WinAnsiEncoding >>';
             // ca — прозрачность заливки: полоса просвечивает, буквы по ней нет
             $objects[$alphaId] = '<< /Type /ExtGState /ca 0.42 >>';
         }
@@ -180,7 +180,7 @@ final class PdfWriter
 
         return sprintf(
             'q /GS0 gs 0.12 0.12 0.12 rg 0 0 %s %s re f Q'
-            . "\nBT /F0 %s Tf 1 1 1 rg %s %s Td (%s) Tj ET",
+            ."\nBT /F0 %s Tf 1 1 1 rg %s %s Td (%s) Tj ET",
             $this->number($width),
             $this->number($bar),
             $this->number($font),
@@ -203,7 +203,7 @@ final class PdfWriter
             // точка-разделитель (0xB7) в таблицу не входит: по ширине как пробел
             $sum += $code === 0xB7
                 ? 278
-                : (int)(substr(self::HELVETICA_WIDTHS, $index, 3) ?: '556');
+                : (int) (substr(self::HELVETICA_WIDTHS, $index, 3) ?: '556');
         }
 
         return $sum * $font / 1000;
@@ -237,21 +237,21 @@ final class PdfWriter
 
         foreach ($objects as $id => $body) {
             $offsets[$id] = strlen($pdf);
-            $pdf .= $id . " 0 obj\n" . $body . "\nendobj\n";
+            $pdf .= $id." 0 obj\n".$body."\nendobj\n";
         }
 
         $count = count($objects) + 1;
         $xrefAt = strlen($pdf);
 
-        $pdf .= "xref\n0 " . $count . "\n";
+        $pdf .= "xref\n0 ".$count."\n";
         $pdf .= "0000000000 65535 f \n";
 
         for ($id = 1; $id < $count; $id++) {
             $pdf .= sprintf("%010d 00000 n \n", $offsets[$id]);
         }
 
-        $pdf .= "trailer\n<< /Size " . $count . " /Root 1 0 R >>\n";
-        $pdf .= "startxref\n" . $xrefAt . "\n%%EOF\n";
+        $pdf .= "trailer\n<< /Size ".$count." /Root 1 0 R >>\n";
+        $pdf .= "startxref\n".$xrefAt."\n%%EOF\n";
 
         return $pdf;
     }

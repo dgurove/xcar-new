@@ -77,7 +77,9 @@ final class Carcade
             'keys' => $str($chars['Наличие ключей'] ?? null),
             'steering' => $str($chars['Расположение руля'] ?? null),
             'condition' => $str($chars['Состояние'] ?? $used['state'] ?? null),
-            'fssp' => match (mb_strtolower(trim((string) ($chars['Ограничения ФССП'] ?? '')))) { 'да' => true, 'нет' => false, default => null },
+            'fssp' => match (mb_strtolower(trim((string) ($chars['Ограничения ФССП'] ?? '')))) {
+                'да' => true, 'нет' => false, default => null
+            },
             'city' => $str($location['city'] ?? null),
             'address' => $str($used['city'] ?? null),
             'pictures' => array_values(array_unique(array_map(fn ($p) => str_starts_with(trim((string) $p), '//') ? 'https:'.trim((string) $p) : trim((string) $p), array_filter((array) ($used['pictures'] ?? []))))),

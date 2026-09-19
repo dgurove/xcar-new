@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\Money;
 use App\Users\Role;
 use App\Users\User;
 
@@ -52,6 +53,6 @@ final class PriceView
 
     public static function money(?int $value): string
     {
-        return \App\Support\Money::nums($value);
+        return Money::nums($value);
     }
 }

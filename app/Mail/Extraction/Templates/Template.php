@@ -18,7 +18,8 @@ abstract class Template
 
     protected const PLATE = '/\b[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}\b/u';
 
-    protected const YEAR = '/\b(?:19[89]\d|20[0-4]\d)\b/u';
+    // Год не из номера убытка («677209-2026», «0790/046/00728/25») и не из будущего.
+    protected const YEAR = '/(?<![\d\-\/])\b(?:19[89]\d|20[0-2]\d)\b(?![\d\-\/])/u';
 
     protected const STOP_WORDS = ['ТС', 'авто', 'автомашина', 'транспортное средство'];
 

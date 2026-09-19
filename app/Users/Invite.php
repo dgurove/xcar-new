@@ -2,6 +2,7 @@
 
 namespace App\Users;
 
+use App\Support\Surface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -107,7 +108,7 @@ class Invite extends Model
 
     public function url(): string
     {
-        return \App\Support\Surface::Site->url("/i/{$this->code}");
+        return Surface::Site->url("/i/{$this->code}");
     }
 
     public function isActive(): bool

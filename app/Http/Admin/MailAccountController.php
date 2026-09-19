@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Mail\Account;
+use App\Mail\Attachment;
 use App\Mail\ConnectionTester;
 use App\Mail\Jobs\SyncAccount;
 use App\Mail\Scope;
@@ -64,7 +65,7 @@ class MailAccountController
     public function destroy(Account $account)
     {
         // Каскад в базе файлы не трогает: закреплённые вложения отпускаются через модель.
-        \App\Mail\Attachment::whereHas('message', fn ($q) => $q->where('account_id', $account->id))->whereNotNull('blob_sha')
+        Attachment::whereHas('message', fn ($q) => $q->where('account_id', $account->id))->whereNotNull('blob_sha')
             ->chunkById(200, fn ($chunk) => $chunk->each->delete());
         $account->delete();
 

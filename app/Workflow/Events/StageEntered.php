@@ -2,6 +2,7 @@
 
 namespace App\Workflow\Events;
 
+use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Users\User;
 use App\Workflow\Outcome;
@@ -20,6 +21,6 @@ final class StageEntered
         public Stage $to,
         public ?Outcome $exit = null,
         public ?User $by = null,
-        public ?\App\Offers\Deal $deal = null,
+        public ?Deal $deal = null,
     ) {}
 }

@@ -4,11 +4,11 @@ namespace App\Workflow\Console;
 
 use App\Mail\Scope;
 use App\Mail\Template;
+use App\Vendors\Vendor;
 use App\Workflow\Actions\ApplyPreset;
 use App\Workflow\Position;
 use App\Workflow\Preset;
 use App\Workflow\Requirement;
-use App\Vendors\Vendor;
 use App\Workflow\Track;
 use Database\Seeders\VendorSeeder;
 use Illuminate\Console\Command;

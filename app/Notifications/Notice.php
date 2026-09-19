@@ -2,11 +2,13 @@
 
 namespace App\Notifications;
 
+use App\Push\WebPushChannel;
 use App\Users\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\HtmlString;
 
 /**
  * Уведомление: заголовок, текст, куда ведёт. Куда доставлять — решают настройки
@@ -59,7 +61,7 @@ abstract class Notice extends Notification implements ShouldQueue
         }
         $via = ['database'];
         if (! $user->quietHours()) {
-            $via[] = \App\Push\WebPushChannel::class;
+            $via[] = WebPushChannel::class;
         }
         if ($user->email && $user->wantsMail()) {
             $via[] = 'mail';
@@ -67,7 +69,6 @@ abstract class Notice extends Notification implements ShouldQueue
 
         return $via;
     }
-
 
     public function toArray(User $user): array
     {
@@ -82,6 +83,6 @@ abstract class Notice extends Notification implements ShouldQueue
         }
 
         return $mail->action('Открыть', url($this->href()))->salutation(config('app.name'))
-            ->line(new \Illuminate\Support\HtmlString('<a href="'.e($user->unsubscribeUrl()).'" style="color:#808080">Не присылать на почту</a>'));
+            ->line(new HtmlString('<a href="'.e($user->unsubscribeUrl()).'" style="color:#808080">Не присылать на почту</a>'));
     }
 }

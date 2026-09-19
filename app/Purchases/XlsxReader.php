@@ -37,6 +37,7 @@ final class XlsxReader
                         if ($map === null) {
                             $titles = array_merge($titles, array_filter($cells));
                         }
+
                         continue;
                     }
                     if (implode('', $cells) === '') {

@@ -2,6 +2,7 @@
 
 namespace App\Users;
 
+use App\Offers\Showing;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,6 +25,6 @@ class BuyerGroup extends Model
 
     public function showings(): HasMany
     {
-        return $this->hasMany(\App\Offers\Showing::class, 'group_id');
+        return $this->hasMany(Showing::class, 'group_id');
     }
 }

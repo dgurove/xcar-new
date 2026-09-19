@@ -1,9 +1,9 @@
 <?php
 
+use App\Http\Auth\InviteController;
 use App\Http\Auth\LoginController;
 use App\Http\Auth\PasskeyController;
 use App\Http\Auth\PasswordController;
-use App\Http\Auth\InviteController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {

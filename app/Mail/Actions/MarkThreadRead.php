@@ -2,11 +2,11 @@
 
 namespace App\Mail\Actions;
 
-use App\Support\Nav;
 use App\Mail\Direction;
 use App\Mail\Jobs\PushFlag;
 use App\Mail\Thread;
 use App\Mail\Threads;
+use App\Support\Nav;
 
 final class MarkThreadRead
 {

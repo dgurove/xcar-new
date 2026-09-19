@@ -1,7 +1,5 @@
 <?php
 
-
-
 namespace App\Mail\Extraction;
 
 use GdImage;
@@ -51,6 +49,7 @@ final class PageScanCropper
 
     /** Границы соотношения сторон: за ними это полоска, а не снимок. */
     private const MIN_RATIO = 0.3;
+
     private const MAX_RATIO = 3.5;
 
     /**
@@ -86,7 +85,7 @@ final class PageScanCropper
 
         $page = $this->upright($page, $contents);
 
-        if (!$this->looksLikePage($page)) {
+        if (! $this->looksLikePage($page)) {
             return [];
         }
 
@@ -144,7 +143,7 @@ final class PageScanCropper
     {
         $probe = $this->probe($page);
         $profile = $this->inkProfile($probe, vertical: false);
-        $bands = $this->bands($profile, (int)ceil(count($profile) * self::MIN_BAND_SHARE));
+        $bands = $this->bands($profile, (int) ceil(count($profile) * self::MIN_BAND_SHARE));
 
         if ($bands === []) {
             return null;
@@ -164,13 +163,13 @@ final class PageScanCropper
     /** Угол из EXIF: только повороты, отражения на сканах листов не бывает. */
     private function exifRotation(string $contents): int
     {
-        if (!function_exists('exif_read_data')) {
+        if (! function_exists('exif_read_data')) {
             return 0;
         }
 
-        $exif = @exif_read_data('data://image/jpeg;base64,' . base64_encode($contents));
+        $exif = @exif_read_data('data://image/jpeg;base64,'.base64_encode($contents));
 
-        return match ((int)($exif['Orientation'] ?? 0)) {
+        return match ((int) ($exif['Orientation'] ?? 0)) {
             3 => 180,
             6 => -90,
             8 => 90,
@@ -185,7 +184,6 @@ final class PageScanCropper
         if ($rotated === false) {
             return $image;
         }
-
 
         return $rotated;
     }
@@ -208,7 +206,7 @@ final class PageScanCropper
     {
         $probe = $this->probe($page);
         $width = imagesx($probe);
-        $margin = max(2, (int)($width * self::MARGIN_BAND));
+        $margin = max(2, (int) ($width * self::MARGIN_BAND));
 
         return $this->whiteShare($probe, 0, $margin) >= self::MARGIN_WHITE
             && $this->whiteShare($probe, $width - 1 - $margin, $width - 1) >= self::MARGIN_WHITE;
@@ -276,7 +274,7 @@ final class PageScanCropper
         $scale = imagesx($trimmed) / max(1, imagesx($probe));
 
         $rows = $this->inkProfile($probe, vertical: true);
-        $bands = $this->bands($rows, (int)ceil(count($rows) * self::MIN_BAND_SHARE));
+        $bands = $this->bands($rows, (int) ceil(count($rows) * self::MIN_BAND_SHARE));
 
         $photos = [];
 
@@ -288,7 +286,6 @@ final class PageScanCropper
             }
         }
 
-
         return $photos;
     }
 
@@ -298,7 +295,7 @@ final class PageScanCropper
      * Границы найдены на уменьшенной копии, поэтому возвращаются в исходный
      * масштаб и поджимаются внутрь: на краю остаётся рамка и ореол JPEG.
      *
-     * @param array{from: int, to: int} $band
+     * @param  array{from: int, to: int}  $band
      */
     private function cutBand(GdImage $source, GdImage $probe, array $band, float $scale): ?string
     {
@@ -310,13 +307,13 @@ final class PageScanCropper
         }
 
         $rect = [
-            'x' => (int)round($span['from'] * $scale) + self::INSET,
-            'y' => (int)round($band['from'] * $scale) + self::INSET,
-            'width' => (int)round(($span['to'] - $span['from'] + 1) * $scale) - self::INSET * 2,
-            'height' => (int)round(($band['to'] - $band['from'] + 1) * $scale) - self::INSET * 2,
+            'x' => (int) round($span['from'] * $scale) + self::INSET,
+            'y' => (int) round($band['from'] * $scale) + self::INSET,
+            'width' => (int) round(($span['to'] - $span['from'] + 1) * $scale) - self::INSET * 2,
+            'height' => (int) round(($band['to'] - $band['from'] + 1) * $scale) - self::INSET * 2,
         ];
 
-        if (!$this->plausible($rect, $source)) {
+        if (! $this->plausible($rect, $source)) {
             return null;
         }
 
@@ -333,7 +330,7 @@ final class PageScanCropper
 
         ob_start();
         imagejpeg($cut, null, self::JPEG_QUALITY);
-        $bytes = (string)ob_get_clean();
+        $bytes = (string) ob_get_clean();
 
         return $bytes === '' ? null : $bytes;
     }
@@ -344,7 +341,7 @@ final class PageScanCropper
      * Три независимые проверки: размер в пикселях, доля листа и пропорции.
      * Не сошлась любая — снимок не отдаём, лист уйдёт целиком.
      *
-     * @param array{x: int, y: int, width: int, height: int} $rect
+     * @param  array{x: int, y: int, width: int, height: int}  $rect
      */
     private function plausible(array $rect, GdImage $source): bool
     {
@@ -417,13 +414,13 @@ final class PageScanCropper
      * Строка считается пустой, пока содержимого в ней меньше доли: у JPEG на
      * белом поле всегда есть шум, и ровного нуля не бывает.
      *
-     * @param list<int> $profile
+     * @param  list<int>  $profile
      * @return list<array{from: int, to: int}>
      */
     private function bands(array $profile, int $minLength): array
     {
         $length = count($profile);
-        $threshold = max(1, (int)ceil($length * self::ROW_INK_SHARE));
+        $threshold = max(1, (int) ceil($length * self::ROW_INK_SHARE));
 
         $bands = [];
         $start = null;
@@ -435,7 +432,7 @@ final class PageScanCropper
                 $start = $i;
             }
 
-            if (!$filled && $start !== null) {
+            if (! $filled && $start !== null) {
                 $bands[] = ['from' => $start, 'to' => $i - 1];
                 $start = null;
             }
@@ -454,12 +451,12 @@ final class PageScanCropper
     /**
      * Крайние непустые позиции профиля.
      *
-     * @param list<int> $profile
+     * @param  list<int>  $profile
      * @return array{from: int, to: int}|null
      */
     private function span(array $profile): ?array
     {
-        $threshold = max(1, (int)ceil(count($profile) * self::ROW_INK_SHARE));
+        $threshold = max(1, (int) ceil(count($profile) * self::ROW_INK_SHARE));
 
         $from = null;
         $to = null;
@@ -473,13 +470,13 @@ final class PageScanCropper
             $to = $i;
         }
 
-        return $from === null ? null : ['from' => $from, 'to' => (int)$to];
+        return $from === null ? null : ['from' => $from, 'to' => (int) $to];
     }
 
     /**
      * Сколько содержимого на отрезке профиля.
      *
-     * @param list<int> $profile
+     * @param  list<int>  $profile
      */
     private function ink(array $profile, int $from, int $to): int
     {
@@ -496,7 +493,7 @@ final class PageScanCropper
     {
         $color = imagecolorat($image, $x, $y);
 
-        return (int)((
+        return (int) ((
             (($color >> 16) & 0xFF) * 299
             + (($color >> 8) & 0xFF) * 587
             + ($color & 0xFF) * 114

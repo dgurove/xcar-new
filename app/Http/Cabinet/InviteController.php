@@ -4,7 +4,6 @@ namespace App\Http\Cabinet;
 
 use App\Support\Surface;
 use App\Users\Actions\IssueInvite;
-use App\Users\BuyerGroup;
 use App\Users\Invite;
 use App\Users\Role;
 use App\Users\User;

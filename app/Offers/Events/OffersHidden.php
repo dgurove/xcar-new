@@ -9,7 +9,7 @@ use Illuminate\Foundation\Events\Dispatchable;
  * Менеджер закрыл предложение: у кого оно пропало — номера офферов по
  * покупателям, чтобы карточки ушли из их лент.
  *
- * @param  array<int, list<int>>  $gone id покупателя → номера офферов
+ * @param  array<int, list<int>>  $gone  id покупателя → номера офферов
  */
 final class OffersHidden
 {
