@@ -36,6 +36,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/offers', [OfferController::class, 'store']);
     // Из писем: кандидаты в предложения — раньше карточки, иначе iz-pisem примут за номер.
     Route::get('/offers/from-mail', [CandidateController::class, 'index']);
+    Route::get('/offers/from-mail/{candidate}/peek', [CandidateController::class, 'peek']);
     Route::post('/offers/from-mail/{candidate}/create', [CandidateController::class, 'promote']);
     Route::post('/offers/from-mail/{candidate}/decline', [CandidateController::class, 'reject']);
     Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');

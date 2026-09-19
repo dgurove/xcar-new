@@ -2,39 +2,30 @@
 
 namespace App\Http\Park;
 
+use App\Http\Admin\CandidateController;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Scope;
 use App\Park\Actions\PromoteCandidate;
-use App\Support\ListPrefs;
-use App\Support\ListView;
+use App\Park\Request as ParkRequest;
 use Illuminate\Http\Request;
 
-class ParkCandidateController
+/** «Из писем» на стоянке: тот же экран, «Завести» — ТС «ожидается» и заявка на приём или эвакуацию. */
+class ParkCandidateController extends CandidateController
 {
-    public function index(Request $request)
+    public function __construct()
     {
-        ListPrefs::sync($request, 'park-candidates');
-        $preset = $request->query('preset', 'new');
-        $candidates = Candidate::with(['message.attachments', 'thread', 'vehicle'])->where('scope', Scope::Park)
-            ->where('state', CandidateState::tryFrom($preset) ?? CandidateState::New)->latest()->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString();
-
-        return view('park.requests.candidates', ['candidates' => $candidates, 'preset' => $preset,
-            'counts' => ['new' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count()]]);
+        parent::__construct(Scope::Park, '/requests/from-mail', '/mail');
     }
 
-    public function promote(Request $request, Candidate $candidate, PromoteCandidate $promote)
+    public function promote(Request $request, Candidate $candidate)
     {
         abort_if($candidate->state === CandidateState::Promoted || $candidate->scope !== Scope::Park, 404);
-        $req = $promote($candidate, $request->user());
+        $result = app(PromoteCandidate::class)($candidate, $request->user());
+        if ($result instanceof ParkRequest) {
+            return redirect("/requests/{$result->id}")->with('toast', 'Заявка заведена, фото подтягиваются');
+        }
 
-        return redirect("/requests/{$req->id}")->with('toast', 'Заявка заведена, фото подтягиваются');
-    }
-
-    public function reject(Candidate $candidate)
-    {
-        $candidate->update(['state' => $candidate->state === CandidateState::Rejected ? CandidateState::New : CandidateState::Rejected]);
-
-        return back();
+        return redirect("/cars/{$result->id}")->with('toast', 'Письма привязаны к ТС');
     }
 }

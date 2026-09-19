@@ -6,20 +6,31 @@ use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
+use App\Mail\Jobs\ExtractCandidate;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Facades\DB;
 
-/** Кандидат → черновик оффера: поля из письма, вендор по отправителю, ветка писем привязана — её файлы едут в черновик. */
+/**
+ * Кандидат → черновик оффера: поля из писем, вендор по отправителю, все ветки кандидата привязаны —
+ * их файлы едут в черновик. Если предложение с тем же убытком или VIN уже есть, второго не будет: письма к нему.
+ */
 final class PromoteCandidate
 {
     public function __construct(private CreateOffer $create, private UpdateOffer $update, private LinkThread $link) {}
 
     public function __invoke(Candidate $candidate, User $by): Offer
     {
+        if ($offer = $this->existing($candidate)) {
+            $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
+            $this->linkAll($candidate, $offer);
+
+            return $offer;
+        }
         $offer = DB::transaction(function () use ($candidate, $by) {
             $v = fn (string $f) => $candidate->value($f);
             $brand = $v('brand') ? Brand::resolve($this->clean($v('brand'))) : null;
@@ -57,14 +68,31 @@ final class PromoteCandidate
             ], fn ($x) => $x !== null && $x !== ''), $by);
 
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
-            if ($candidate->thread) {
-                ($this->link)($candidate->thread, $offer);
-            }
+            $this->linkAll($candidate, $offer);
 
             return $offer;
         });
 
         return $offer;
+    }
+
+    private function linkAll(Candidate $candidate, Offer $offer): void
+    {
+        foreach ($candidate->threads() as $thread) {
+            if ($thread->offer_id !== $offer->id) {
+                ($this->link)($thread, $offer);
+            }
+        }
+    }
+
+    /** Предложение с тем же убытком или VIN, не в архиве. */
+    private function existing(Candidate $candidate): ?Offer
+    {
+        $live = fn () => Offer::where('state', '!=', OfferState::Archived)->latest();
+        $vin = $candidate->value('vin') ? strtoupper((string) $candidate->value('vin')) : null;
+
+        return ($candidate->code ? $live()->where('claim_ref_key', ExtractCandidate::key($candidate->code))->first() : null)
+            ?? ($vin ? $live()->where('vin', $vin)->first() : null);
     }
 
     /** Мобильный Mail рвёт «T 7» на два слова и оборачивает в звёздочки. */
