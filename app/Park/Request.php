@@ -9,14 +9,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['vehicle_id', 'type', 'state', 'thread_id', 'yard_id', 'planned_at', 'done_at', 'note', 'assignee_id', 'created_by',
-    'contact_name', 'contact_phone', 'from_address', 'carrier', 'distance_km', 'cost', 'started_at', 'done_by', 'cancel_reason'])]
+    'contact_name', 'contact_phone', 'from_address', 'carrier', 'distance_km', 'cost', 'started_at', 'done_by', 'cancel_reason', 'delivery', 'contacted_at', 'next_call_at'])]
 class Request extends Model
 {
     protected $table = 'park_requests';
 
     protected function casts(): array
     {
-        return ['type' => RequestType::class, 'state' => RequestState::class, 'planned_at' => 'datetime', 'done_at' => 'datetime', 'started_at' => 'datetime', 'reminded_at' => 'datetime', 'overdue_at' => 'datetime'];
+        return ['type' => RequestType::class, 'state' => RequestState::class, 'planned_at' => 'datetime', 'done_at' => 'datetime', 'started_at' => 'datetime', 'reminded_at' => 'datetime', 'overdue_at' => 'datetime', 'contacted_at' => 'datetime', 'next_call_at' => 'datetime', 'delivery' => Delivery::class];
     }
 
     public function vehicle(): BelongsTo
@@ -52,6 +52,28 @@ class Request extends Model
     public function isTow(): bool
     {
         return $this->type === RequestType::Tow;
+    }
+
+    /** Новая заявка на приём или эвакуацию, по которой ещё не созвонились — или пора перезвонить. */
+    public function needsCall(): bool
+    {
+        return in_array($this->type, [RequestType::Intake, RequestType::Tow], true) && $this->state === RequestState::New
+            && (($this->delivery === null && ! $this->contacted_at && ! $this->planned_at) || ($this->next_call_at && $this->next_call_at->lte(now())));
+    }
+
+    /** Что делать по заявке следующим — подпись главной кнопки на странице, в карточке и окошке. Закрытая — null. */
+    public function verb(): ?string
+    {
+        return match (true) {
+            ! $this->isOpen() => null,
+            $this->needsCall() => 'Связались',
+            $this->isTow() && $this->state === RequestState::New => 'Назначить',
+            $this->isTow() && $this->state === RequestState::Scheduled => 'Выехали',
+            $this->isTow() || $this->type === RequestType::Intake => 'Принять',
+            $this->type === RequestType::Release => 'Выдать',
+            $this->type === RequestType::Move => 'Переставить',
+            default => $this->type->verb(),
+        };
     }
 
     public function contactLine(): ?string

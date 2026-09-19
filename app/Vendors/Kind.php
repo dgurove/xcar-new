@@ -4,23 +4,27 @@ namespace App\Vendors;
 
 use App\Cars\HasLabels;
 
-/** Кто присылает машины: страховая, лизинг, банк-залогодержатель, прочие. */
+/** Кто присылает машины: страховая, лизинговая, корпоративный парк, физлицо, свой транспорт, банк-залогодержатель. */
 enum Kind: string
 {
     use HasLabels;
 
     case Insurer = 'insurer';
     case Leasing = 'leasing';
+    case Fleet = 'fleet';
+    case Person = 'person';
+    case Own = 'own';
     case Bank = 'bank';
-    case Other = 'other';
 
     public function label(): string
     {
         return match ($this) {
             self::Insurer => 'Страховая',
-            self::Leasing => 'Лизинг',
+            self::Leasing => 'Лизинговая',
+            self::Fleet => 'Корпоративный парк',
+            self::Person => 'Физическое лицо',
+            self::Own => 'Собственный транспорт',
             self::Bank => 'Банк',
-            self::Other => 'Прочее',
         };
     }
 
@@ -28,9 +32,17 @@ enum Kind: string
     {
         return match ($this) {
             self::Insurer => 'Страховые',
-            self::Leasing => 'Лизинг',
+            self::Leasing => 'Лизинговые',
+            self::Fleet => 'Корп. парки',
+            self::Person => 'Физлица',
+            self::Own => 'Свой транспорт',
             self::Bank => 'Банки',
-            self::Other => 'Прочие',
         };
+    }
+
+    /** Свой транспорт не платит за хранение и счетов не получает. */
+    public function billable(): bool
+    {
+        return $this !== self::Own;
     }
 }

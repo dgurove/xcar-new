@@ -3,6 +3,7 @@
 @php
     use App\Vendors\{Kind, DealFormat, RewardKind, Parser, ContactRole};
     use App\Support\Money;
+    use App\Billing\Cadence;
     $claims = $vendor->defaultContact(ContactRole::Claims, ContactRole::Sales);
 @endphp
 <x-ui.cabinet :title="$vendor->name" :back="['Вендоры', '/settings/vendors']">
@@ -62,7 +63,9 @@
                     <x-ui.section-title level="h3" class="!text-lg">Хранение</x-ui.section-title>
                     <div class="{{ $g }}">
                         <x-ui.field name="storage_payer" label="Хранение платит" :options="['vendor' => 'Вендор', 'owner' => 'Страхователь', 'nobody' => 'Никто']" :value="$vendor->storage_payer"/>
-                        <x-ui.field name="buyer_storage_after_days" label="Покупатель платит с дня" :value="$vendor->buyer_storage_after_days" inputmode="numeric"/>
+                        <x-ui.field name="billing_cadence" label="Счёт за хранение" :options="Cadence::options()" :value="$vendor->billing_cadence->value"/>
+                        <x-ui.field name="buyer_storage_after_days" label="После продажи за счёт вендора, дней" :value="$vendor->buyer_storage_after_days" inputmode="numeric"/>
+                        <x-ui.field name="buyer_rate_multiplier" label="Покупатель платит, × прайс" :value="rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.')" inputmode="decimal"/>
                         <x-ui.check name="release_without_payment" :checked="$vendor->release_without_payment" class="col-span-2">Выдавать без оплаты</x-ui.check>
                     </div>
                     <x-ui.section-title level="h3" class="!text-lg">Почта</x-ui.section-title>
@@ -70,6 +73,8 @@
                         <x-ui.field name="senders" label="Отправители: домены и адреса, по одному в строке" type="textarea" :value="implode(PHP_EOL, $vendor->senders ?? [])" span="col-span-2" placeholder="alfastrah.ru"/>
                         <x-ui.field name="parser" label="Разбор писем" :options="Parser::options()" :value="$vendor->parser->value" span="col-span-2"/>
                         <x-ui.field name="mail_account_id" label="Отвечаем с ящика" :options="$accounts" placeholder="Первый активный" :value="$vendor->mail_account_id" span="col-span-2"/>
+                        <x-ui.field name="report_template_id" label="Письмо о приёме" :options="$templates" placeholder="«Приём на стоянку»" :value="$vendor->report_template_id"/>
+                        <x-ui.field name="refusal_template_id" label="Письмо об отказе" :options="$templates" placeholder="«Отказ от получения»" :value="$vendor->refusal_template_id"/>
                     </div>
                     <x-ui.section-title level="h3" class="!text-lg">После приёма присылаем</x-ui.section-title>
                     <div class="flex flex-wrap gap-1.5">

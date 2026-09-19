@@ -2,8 +2,10 @@
 
 namespace App\Vendors;
 
+use App\Billing\Cadence;
 use App\Billing\Party;
 use App\Mail\Account;
+use App\Mail\Template;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Workflow\Track;
@@ -27,8 +29,8 @@ use Spatie\MediaLibrary\InteractsWithMedia;
     'bank_name', 'bank_account', 'bank_corr', 'bank_bic', 'payment_purpose',
     'agreement_number', 'agreement_date', 'agreement_until',
     'deal_format', 'reward_kind', 'reward_value', 'payment_days', 'vat_included', 'answer_hours', 'silence_means_buy', 'binding_days',
-    'storage_payer', 'buyer_storage_after_days', 'release_without_payment',
-    'senders', 'parser', 'mail_account_id', 'party_id',
+    'storage_payer', 'buyer_storage_after_days', 'release_without_payment', 'buyer_rate_multiplier', 'billing_cadence',
+    'senders', 'parser', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id',
     'intake_docs', 'intake_note',
 ])]
 class Vendor extends Model implements HasMedia
@@ -47,6 +49,8 @@ class Vendor extends Model implements HasMedia
             'vat_included' => 'bool',
             'silence_means_buy' => 'bool',
             'release_without_payment' => 'bool',
+            'buyer_rate_multiplier' => 'float',
+            'billing_cadence' => Cadence::class,
             'senders' => 'array',
             'parser' => Parser::class,
             'intake_docs' => 'array',
@@ -86,6 +90,16 @@ class Vendor extends Model implements HasMedia
     public function party(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'party_id');
+    }
+
+    public function reportTemplate(): BelongsTo
+    {
+        return $this->belongsTo(Template::class, 'report_template_id');
+    }
+
+    public function refusalTemplate(): BelongsTo
+    {
+        return $this->belongsTo(Template::class, 'refusal_template_id');
     }
 
     public function mailAccount(): BelongsTo

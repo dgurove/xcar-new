@@ -1,16 +1,8 @@
 {{-- Окошко заявки: ТС с фото, тип и состояние, срок, контакт, исполнитель; действие — на страницу заявки (формы с фото в окошко не тащим). --}}
 @php
-    use App\Park\RequestState; use App\Park\RequestType;
+    use App\Park\RequestState;
     $href = '/requests/'.$req->id;
-    $verb = match (true) {
-        ! $req->isOpen() => 'Открыть',
-        $req->type === RequestType::Tow && $req->state === RequestState::New => 'Назначить',
-        $req->type === RequestType::Tow && $req->state === RequestState::Scheduled => 'Выехали',
-        $req->type === RequestType::Tow || $req->type === RequestType::Intake => 'Принять',
-        $req->type === RequestType::Release => 'Выдать',
-        $req->type === RequestType::Move => 'Переставить',
-        default => 'Открыть',
-    };
+    $verb = $req->verb() ?? 'Открыть';
 @endphp
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()" :action="$verb">

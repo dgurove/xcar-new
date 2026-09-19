@@ -3,29 +3,22 @@
     use App\Support\Money;
     $open = $req->isOpen();
     $tow = $req->isTow();
-    // Что делает главная кнопка — по типу заявки, её фазе и состоянию ТС.
-    $verb = match (true) {
-        ! $open => null,
-        $tow && $req->state === RequestState::New => 'Назначить',
-        $tow && $req->state === RequestState::Scheduled => 'Выехали',
-        $tow && $req->state === RequestState::InProgress => 'Принять на стоянку',
-        $req->type === RequestType::Intake && $vehicle->state->isBefore() => 'Принять на стоянку',
-        $req->type === RequestType::Move && $vehicle->state === VehicleState::Stored => 'Переставить',
-        $req->type === RequestType::Release && $vehicle->state === VehicleState::Stored => 'Выдать',
-        default => $req->type->verb(),
-    };
-    $intakeForm = $open && (($req->type === RequestType::Intake && $vehicle->state->isBefore()) || ($tow && $req->state === RequestState::InProgress));
+    // Новая заявка на приём без звонка — сначала «Связались»: эвакуатор или сам.
+    $callForm = $open && $req->needsCall();
+    $verb = $req->verb();
+    $intakeForm = ! $callForm && $open && (($req->type === RequestType::Intake && $vehicle->state->isBefore()) || ($tow && $req->state === RequestState::InProgress));
     $contactName = $req->contact_name ?? $vehicle->contact_name;
     $contactPhone = $req->contact_phone ?? $vehicle->contact_phone;
 @endphp
-<x-ui.shell :title="$req->type->label()" :back="['Сегодня', '/']" narrow>
-    <div class="flex flex-col gap-4" data-controller="sheet">
+<x-ui.shell :title="$req->type->label()" :back="['Сегодня', '/']">
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_26rem]">
+    <div class="flex min-w-0 flex-col gap-4" data-controller="sheet">
         <x-park.vehicle-row :vehicle="$vehicle">
             <x-park.state :vehicle="$vehicle"/>
             @if ($vehicle->category)<span class="chip">{{ $vehicle->category->label() }}</span>@endif
         </x-park.vehicle-row>
 
-        @if ($tow && ($contactName || $contactPhone))
+        @if (($tow || $callForm) && ($contactName || $contactPhone))
             <x-ui.contact :name="$contactName ?: 'Страхователь'" icon="user">
                 <x-slot:chips>
                     @if ($contactPhone)<a href="tel:+{{ preg_replace('/\D+/', '', $contactPhone) }}" class="tag nums">{{ $contactPhone }}</a>@endif
@@ -44,15 +37,18 @@
                 @if ($req->planned_at)<span class="chip nums {{ $req->isOverdue() ? 'text-danger' : '' }}">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif
                 @if ($req->type === RequestType::Move && $req->yard)<x-ui.place class="chip">{{ $req->yard->name }}</x-ui.place>@endif
                 @if ($tow && $req->yard)<x-ui.place class="chip">→ {{ $req->yard->name }}</x-ui.place>@endif
+                @if ($req->delivery && !$tow)<span class="chip">{{ $req->delivery->label() }}</span>@endif
+                @if ($req->next_call_at && $open)<span class="chip nums {{ $req->next_call_at->isPast() ? 'text-danger' : '' }}"><x-ui.icon name="phone" class="size-4"/> {{ $req->next_call_at->translatedFormat('j M, H:i') }}</span>@endif
                 @if ($tow && $req->carrier)<span class="chip">{{ $req->carrier }}</span>@endif
                 @if ($tow && $req->distance_km)<span class="chip nums">{{ $req->distance_km }} км</span>@endif
                 @if ($tow && $req->cost)<span class="chip nums">{{ Money::rub($req->cost) }}</span>@endif
-                @if ($req->thread)<a href="/mail/{{ $req->thread_id }}" class="chip"><x-ui.icon name="mail" class="size-4"/> Письмо</a>@endif
+                @if ($messages->isNotEmpty())<x-mail.aside-button :count="$messages->count()" chip/>@endif
                 @if ($open)
                     <button type="button" class="chip person" data-action="sheet#open">@if ($req->assignee)<x-ui.avatar :user="$req->assignee" :size="20"/>{{ $req->assignee->shortName() }}@else<x-ui.icon name="user" class="size-4"/> Исполнитель@endif</button>
+                    @if ($req->assignee_id !== auth()->id())<form method="post" action="/requests/{{ $req->id }}/take" class="contents">@csrf<button class="chip bg-accent-soft text-accent-text">Беру</button></form>@endif
                 @elseif ($req->assignee)<x-ui.person :user="$req->assignee"/>@endif
             </div>
-            @if (!$tow && $req->contactLine())<div class="mt-3">{{ $req->contactLine() }}</div>@endif
+            @if (!$tow && !$callForm && $req->contactLine())<div class="mt-3">{{ $req->contactLine() }}</div>@endif
             @if ($req->note)<div class="mt-1 whitespace-pre-line text-ink-muted">{{ $req->note }}</div>@endif
             @if ($req->cancel_reason)<div class="mt-1 text-ink-muted">{{ $req->cancel_reason }}</div>@endif
             @if ($req->done_at)<div class="mt-3 flex flex-wrap items-center gap-1.5"><span class="tag nums">{{ $req->done_at->translatedFormat('j M, H:i') }}</span>@if ($req->doneBy)<x-ui.person :user="$req->doneBy"/>@endif</div>@endif
@@ -70,7 +66,42 @@
 
         @if ($errors->any())<p class="field-error">{{ $errors->first() }}</p>@endif
 
-        @if ($tow && $open && $req->state === RequestState::New)
+        @if ($callForm)
+            {{-- Звонок: эвакуатор (сразу с назначением), привезёт сам (когда), не дозвонились (когда снова). --}}
+            <form method="post" action="/requests/{{ $req->id }}/contact" id="act-form" class="flex flex-col gap-4" data-controller="reveal">
+                @csrf
+                <x-ui.card title="Звонок">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="field col-span-full">
+                            <span class="field-label">Как привезут</span>
+                            <div class="flex flex-wrap gap-1.5">
+                                <label class="choice"><input type="radio" name="outcome" value="tow" data-action="reveal#pick" @checked(old('outcome', 'tow') === 'tow')><span>Эвакуатор</span></label>
+                                <label class="choice"><input type="radio" name="outcome" value="self" data-action="reveal#pick" @checked(old('outcome') === 'self')><span>Привезёт сам</span></label>
+                                <label class="choice"><input type="radio" name="outcome" value="missed" data-action="reveal#pick" @checked(old('outcome') === 'missed')><span>Не дозвонились</span></label>
+                            </div>
+                        </div>
+                        <x-ui.field name="contact_name" label="Страхователь" :value="$contactName"/>
+                        <x-ui.field name="contact_phone" label="Телефон" type="tel" :value="$contactPhone"/>
+                        <div class="col-span-full grid grid-cols-2 gap-3" data-reveal-target="pane" data-reveal-key="tow">
+                            <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')" span="col-span-2"/>
+                            <x-ui.field name="from_address" label="Откуда" :value="$req->from_address" span="col-span-2"/>
+                            <x-ui.field name="yard_id" label="Куда" :options="$yards" placeholder="—" :value="$req->yard_id"/>
+                            <x-ui.field name="carrier" label="Перевозчик" :value="$req->carrier" list="carriers-list"/>
+                            <datalist id="carriers-list">@foreach ($carriers as $c)<option value="{{ $c }}">@endforeach</datalist>
+                            <x-ui.field name="distance_km" label="Километров" inputmode="numeric" :value="$req->distance_km"/>
+                            <x-ui.field name="cost" label="Стоимость, ₽" inputmode="numeric" :value="$req->cost ?? $towCost"/>
+                        </div>
+                        <div class="col-span-full grid grid-cols-2 gap-3" data-reveal-target="pane" data-reveal-key="self" hidden>
+                            <x-ui.field name="planned_at" label="Когда привезёт" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')" disabled/>
+                            <x-ui.field name="yard_id" label="Куда" :options="$yards" placeholder="—" :value="$req->yard_id" disabled/>
+                        </div>
+                        <div class="col-span-full" data-reveal-target="pane" data-reveal-key="missed" hidden>
+                            <x-ui.field name="next_call_at" label="Позвонить снова" type="datetime-local" :value="now()->addHours(2)->format('Y-m-d\TH:i')" disabled/>
+                        </div>
+                    </div>
+                </x-ui.card>
+            </form>
+        @elseif ($tow && $open && $req->state === RequestState::New)
             {{-- Назначить: дата, откуда, куда, перевозчик, километры — стоимость из прайса, поправима. --}}
             <form method="post" action="/requests/{{ $req->id }}/schedule" id="act-form" class="flex flex-col gap-4">
                 @csrf
@@ -182,12 +213,14 @@
                     <div id="photo-slots"><x-park.photo-slots :vehicle="$vehicle" stage="release" :slots="$slots"/></div>
                 </x-ui.card>
             </form>
-        @elseif ($open && !$tow)
+        @elseif ($open && !$tow && !$callForm)
             <form method="post" action="/requests/{{ $req->id }}/close" id="act-form">
                 @csrf<input type="hidden" name="done" value="1">
                 <x-ui.card :title="$req->type->label()"><x-ui.field name="note" label="Что сделано" type="textarea"/></x-ui.card>
             </form>
         @endif
+    </div>
+    @if ($messages->isNotEmpty())<x-mail.aside :messages="$messages"/>@endif
     </div>
     @if ($verb)
         <x-ui.action-bar>

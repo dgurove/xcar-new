@@ -15,6 +15,7 @@ use App\Offers\Events\OffersShown;
 use App\Park\Events\CandidateArrived;
 use App\Park\Events\LetterArrived;
 use App\Park\Events\RequestAssigned;
+use App\Park\Events\RequestCall;
 use App\Park\Events\RequestDue;
 use App\Park\Events\VehicleIdle;
 use App\Park\RequestState;
@@ -62,6 +63,7 @@ final class Notify
             LetterArrived::class => 'parkMail',
             RequestAssigned::class => 'parkAssigned',
             RequestDue::class => 'parkDue',
+            RequestCall::class => 'parkCall',
             VehicleIdle::class => 'parkIdle',
             InvoiceOverdue::class => 'invoiceOverdue',
         ];
@@ -202,6 +204,12 @@ final class Notify
     }
 
     /** Срок заявки — исполнителю, без него — всем со стоянки. */
+    public function parkCall(RequestCall $e): void
+    {
+        $r = $e->request->load(['vehicle', 'assignee']);
+        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkStaff(), ParkNotice::call($r));
+    }
+
     public function parkDue(RequestDue $e): void
     {
         $r = $e->request->load(['vehicle', 'assignee']);

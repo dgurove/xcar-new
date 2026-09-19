@@ -2,6 +2,7 @@
 
 namespace App\Park;
 
+use App\Billing\Cadence;
 use App\Billing\Charge;
 use App\Billing\Invoice;
 use App\Billing\Party;
@@ -13,6 +14,7 @@ use App\Mail\Extraction\Code;
 use App\Media\HasPhotos;
 use App\Offers\Flag;
 use App\Offers\Offer;
+use App\Support\Phone;
 use App\Users\User;
 use App\Vendors\DocRequirement;
 use App\Vendors\Vendor;
@@ -27,7 +29,8 @@ use Spatie\MediaLibrary\HasMedia;
 #[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id',
     'contact_name', 'contact_phone', 'flags', 'docs_required', 'value',
     'cancelled_at', 'cancel_reason', 'spot', 'transit_started_at', 'mileage', 'fuel', 'idle_noticed_at',
-    'owner_party_id', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'storage_rate', 'storage_rate_note', 'storage_billed_until', 'pts', 'sts'])]
+    'owner_party_id', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'storage_rate', 'storage_rate_note', 'storage_billed_until', 'pts', 'sts',
+    'sold_at', 'sold_message_id', 'pickup_name', 'pickup_phone', 'pickup_note', 'buyer_party_id', 'billing_cadence'])]
 class Vehicle extends Model implements HasMedia
 {
     use HasPhotos;
@@ -38,7 +41,7 @@ class Vehicle extends Model implements HasMedia
     {
         return ['state' => VehicleState::class, 'category' => Category::class, 'oversize' => 'bool', 'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',
             'accepted_at' => 'datetime', 'released_at' => 'datetime', 'cancelled_at' => 'datetime', 'transit_started_at' => 'datetime', 'idle_noticed_at' => 'datetime', 'year' => 'int',
-            'contract_at' => 'date', 'storage_billed_until' => 'date', 'storage_rate' => 'float'];
+            'contract_at' => 'date', 'storage_billed_until' => 'date', 'storage_rate' => 'float', 'sold_at' => 'date', 'billing_cadence' => Cadence::class];
     }
 
     public function setRefAttribute(?string $value): void
@@ -95,6 +98,24 @@ class Vehicle extends Model implements HasMedia
     public function ownerParty(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'owner_party_id');
+    }
+
+    /** Покупатель, которому выдаём: физлицо из письма «продано» или из сделки CRM. */
+    public function buyerParty(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'buyer_party_id');
+    }
+
+    /** Когда выставлять счёт за хранение: своё у ТС, иначе правило вендора. */
+    public function cadence(): Cadence
+    {
+        return $this->billing_cadence ?? $this->vendor?->billing_cadence ?? Cadence::Monthly;
+    }
+
+    /** Телефон покупателя для `tel:` — нормализованный или как записан. */
+    public function pickupPhoneDigits(): ?string
+    {
+        return $this->pickup_phone ? (Phone::normalize($this->pickup_phone) ?? preg_replace('/\D+/', '', $this->pickup_phone)) : null;
     }
 
     public function invoices(): HasMany

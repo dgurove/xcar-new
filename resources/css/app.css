@@ -653,6 +653,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     position: static; inset: auto; margin: 0; width: 100%; max-width: none; max-height: none;
     overflow: visible; border-radius: var(--radius-xl); box-shadow: none; animation: none; padding: 1.5rem;
   }
+  .sheet--inflow[open]:not(:modal) .sheet-close { display: none; }
   @media (max-width: 1023.98px) { .sheet--inflow[open]:not(:modal) { display: none; } }
   .sheet-close { @apply flex size-9 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
 

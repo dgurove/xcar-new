@@ -36,6 +36,11 @@ final class ParkNotice extends Notice
         return new self(($overdue ? 'Срок вышел: ' : 'Через два часа: ').mb_strtolower($r->type->label()).' — '.$r->vehicle->titleWithYear(), $r->planned_at?->translatedFormat('j M, H:i'), '/requests/'.$r->id, $r->vehicle_id, $overdue);
     }
 
+    public static function call(Request $r): self
+    {
+        return new self('Перезвонить: '.$r->vehicle->titleWithYear(), $r->contactLine() ?: null, '/requests/'.$r->id, $r->vehicle_id);
+    }
+
     public static function idle(Vehicle $v, int $days): self
     {
         return new self('Стоит '.$days.' дн: '.$v->titleWithYear(), ($v->vendor?->name ?? '').($v->yard ? ', '.$v->yard->name : ''), '/cars/'.$v->id, $v->id);

@@ -5,6 +5,7 @@ namespace App\Park\Actions;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Vin\RememberVin;
+use App\Park\Delivery;
 use App\Park\EventType;
 use App\Park\Request;
 use App\Park\RequestType;
@@ -51,6 +52,7 @@ final class CreateRequest
                 'contact_name' => $data['contact_name'] ?? null,
                 'contact_phone' => $data['contact_phone'] ?? null,
                 'from_address' => $data['from_address'] ?? null,
+                'delivery' => $data['delivery'] ?? ($type === RequestType::Tow ? Delivery::Tow : null),
                 'note' => $data['note'] ?? null,
                 'created_by' => $by->id,
             ]);

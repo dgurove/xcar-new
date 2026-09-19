@@ -37,9 +37,9 @@ final class Today
         $overdue = $open->filter(fn (ParkRequest $r) => $r->isOverdue());
         $rest = $open->reject(fn (ParkRequest $r) => $r->isOverdue())->filter(fn (ParkRequest $r) => $day === 'all' || ! $r->planned_at || $r->planned_at->between($from, $to));
 
-        $call = $rest->filter(fn (ParkRequest $r) => $r->isTow() && $r->state === RequestState::New && ! $r->planned_at);
-        $fetch = $rest->filter(fn (ParkRequest $r) => $r->isTow() && ($r->state !== RequestState::New || $r->planned_at));
-        $intake = $rest->filter(fn (ParkRequest $r) => $r->type === RequestType::Intake);
+        $call = $rest->filter(fn (ParkRequest $r) => $r->needsCall());
+        $fetch = $rest->filter(fn (ParkRequest $r) => $r->isTow() && ! $r->needsCall());
+        $intake = $rest->filter(fn (ParkRequest $r) => $r->type === RequestType::Intake && ! $r->needsCall());
         $release = $rest->filter(fn (ParkRequest $r) => $r->type === RequestType::Release);
         $other = $rest->filter(fn (ParkRequest $r) => in_array($r->type, [RequestType::Inspection, RequestType::Move], true));
 
@@ -59,7 +59,7 @@ final class Today
             ],
             'sections' => array_values(array_filter([
                 ['Просрочено', 'danger', $overdue, 'requests', '/requests?sort=planned'],
-                ['Связаться', null, $call, 'requests', '/requests?preset=tow'],
+                ['Связаться', null, $call, 'requests', '/requests?preset=call'],
                 ['Забрать', null, $fetch, 'requests', '/requests?preset=tow'],
                 ['Принять', null, $intake->concat($transit), 'mixed', '/requests?preset=intake'],
                 ['Выдать', null, $release, 'requests', '/requests?preset=release'],

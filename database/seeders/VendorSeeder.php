@@ -28,6 +28,7 @@ class VendorSeeder extends Seeder
         ['ИНСАЙТ', ['insightins.ru'], Parser::Insight, null, false],
         ['Абсолют Страхование', ['absolutins.ru'], Parser::Generic, null, false],
         ['ВСК', ['vsk.ru'], Parser::Generic, null, false],
+        ['СОГАЗ', ['sogaz.ru'], Parser::Generic, null, false],
     ];
 
     /** Договорные цены хранения в сутки по категориям — со слов владельца; заводятся один раз, пока у вендора нет прайса. */

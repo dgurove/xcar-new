@@ -22,7 +22,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/requests/new', [RequestController::class, 'create']);
     Route::get('/requests/from-mail', [ParkCandidateController::class, 'index']);
     Route::get('/requests/from-mail/{candidate}/peek', [ParkCandidateController::class, 'peek']);
-    Route::post('/requests/from-mail/{candidate}/create', [ParkCandidateController::class, 'promote']);
     Route::post('/requests/from-mail/{candidate}/decline', [ParkCandidateController::class, 'reject']);
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests/{req}', [RequestController::class, 'show']);
@@ -34,6 +33,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/{req}/schedule', [RequestController::class, 'schedule']);
     Route::post('/requests/{req}/start', [RequestController::class, 'start']);
     Route::post('/requests/{req}/assign', [RequestController::class, 'assign']);
+    Route::post('/requests/{req}/take', [RequestController::class, 'take']);
+    Route::post('/requests/{req}/contact', [RequestController::class, 'contact']);
 
     Route::get('/cars', [VehicleController::class, 'index']);
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);

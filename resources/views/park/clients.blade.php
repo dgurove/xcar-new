@@ -1,8 +1,14 @@
 {{-- Вендоры глазами стоянки: контакт по хранению, что прислать после приёма, заметки. Реквизиты, договор, прайс — в CRM. --}}
-@php use App\Vendors\ContactRole; @endphp
+@php use App\Vendors\ContactRole; use App\Vendors\Kind; @endphp
 <x-ui.shell title="Вендоры" narrow>
     <x-ui.toolbar :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="clients">
-        <x-slot:filters><input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Название, ИНН" enterkeyhint="search"></x-slot:filters>
+        <x-slot:filters>
+            <input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Название, ИНН" enterkeyhint="search">
+            <select name="kind" class="field-input field-s" aria-label="Тип">
+                <option value="">Все типы</option>
+                @foreach (Kind::cases() as $k)<option value="{{ $k->value }}" @selected($kind === $k)>{{ $k->plural() }}</option>@endforeach
+            </select>
+        </x-slot:filters>
     </x-ui.toolbar>
     @if ($vendors->isEmpty())<x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Вендоров нет' }}</x-ui.empty>@endif
     <div class="mt-6 flex flex-col gap-2">
@@ -14,6 +20,7 @@
                         <span class="block font-medium">{{ $vendor->name }} @if ($vendor->stored_count)<span class="text-sm text-ink-muted tabular-nums">{{ $vendor->stored_count }}</span>@endif</span>
                         <span class="row-sub mt-1.5 flex flex-wrap items-center gap-1.5">
                             @unless ($vendor->is_active)<span class="chip">не работаем</span>@endunless
+                            @if ($vendor->kind !== Kind::Insurer)<span class="tag">{{ $vendor->kind->label() }}</span>@endif
                             @if ($c?->name)<span class="tag">{{ $c->name }}</span>@endif
                             @if ($c?->phone)<span class="tag nums">{{ $c->phoneFormatted() }}</span>@endif
                             @if ($c?->email)<span class="tag">{{ $c->email }}</span>@endif
@@ -25,6 +32,7 @@
                 <x-ui.sheet id="vendor-{{ $vendor->id }}" :title="$vendor->name">
                     <form method="post" action="/clients/{{ $vendor->id }}" class="flex flex-col gap-4">
                         @csrf @method('put')
+                        <x-ui.field name="kind" label="Тип" :options="Kind::options()" :value="$vendor->kind->value"/>
                         <x-ui.field name="contact_name" label="Кто ведёт хранение" :value="$c?->name"/>
                         <x-ui.field name="phone" label="Телефон" type="tel" :value="$c?->phone"/>
                         <x-ui.field name="email" label="Почта" type="email" :value="$c?->email"/>
@@ -50,6 +58,7 @@
                 <form method="post" action="/clients" class="flex flex-col gap-4">
                     @csrf
                     <x-ui.field name="name" label="Название" required autofocus/>
+                    <x-ui.field name="kind" label="Тип" :options="Kind::options()" value="insurer"/>
                     <x-ui.button block>Добавить</x-ui.button>
                 </form>
             </x-ui.sheet>

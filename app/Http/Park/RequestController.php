@@ -3,16 +3,26 @@
 namespace App\Http\Park;
 
 use App\Billing\Ledger;
+use App\Cars\Brand;
+use App\Cars\CarModel;
 use App\Cars\Category;
 use App\Cars\DamageZone;
+use App\Mail\Candidate;
+use App\Mail\CandidateState;
+use App\Mail\Message;
+use App\Mail\Scope as MailScope;
+use App\Mail\Thread;
 use App\Park\Actions\AssignRequest;
 use App\Park\Actions\CloseRequest;
+use App\Park\Actions\Contact;
 use App\Park\Actions\CreateRequest;
 use App\Park\Actions\Intake;
 use App\Park\Actions\Move;
+use App\Park\Actions\PromoteCandidate;
 use App\Park\Actions\Release;
 use App\Park\Actions\ScheduleTow;
 use App\Park\Actions\StartTow;
+use App\Park\Delivery;
 use App\Park\Inspection;
 use App\Park\PhotoSlot;
 use App\Park\ReleasedTo;
@@ -51,10 +61,15 @@ class RequestController
             ->when($request->boolean('mine'), fn ($w) => $w->where('assignee_id', $request->user()->id))
             ->when($qs !== '', fn ($w) => $w->whereHas('vehicle', fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%')
                 ->orWhereHas('brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%")->orWhere('name_ru', 'ilike', "%{$qs}%"))));
+        // Связаться — то же условие, что `Request::needsCall()`, но запросом.
+        $needsCall = fn ($q) => $q->where('state', RequestState::New)->whereIn('type', [RequestType::Intake, RequestType::Tow])
+            ->where(fn ($w) => $w->where(fn ($n) => $n->whereNull('delivery')->whereNull('contacted_at')->whereNull('planned_at'))->orWhere('next_call_at', '<=', now()));
         $q = $filters(Scope::requests($request->user())->with(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee']));
         $done ? $q->whereNotIn('state', RequestState::open()) : $q->whereIn('state', RequestState::open());
         if ($t = RequestType::tryFrom($type)) {
             $q->where('type', $t);
+        } elseif ($type === 'call') {
+            $needsCall($q);
         }
         match ($request->query('sort')) {
             'fresh' => $q->latest(),
@@ -63,13 +78,13 @@ class RequestController
         };
 
         $open = $filters(Scope::requests($request->user()))->when($done, fn ($q) => $q->whereNotIn('state', RequestState::open()), fn ($q) => $q->whereIn('state', RequestState::open()))->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
-        $presets = ['all' => 'Все'] + RequestType::options();
+        $presets = ['all' => 'Все', 'call' => 'Связаться'] + RequestType::options();
 
         return view('park.requests.index', [
             'requests' => ListView::paginate($request, $q),
             'preset' => $type,
             'presets' => $presets,
-            'counts' => $open->all() + ['all' => $open->sum()],
+            'counts' => $open->all() + ['all' => $open->sum(), 'call' => $done ? 0 : $needsCall($filters(Scope::requests($request->user())))->count()],
             'done' => $done,
             'sort' => $request->query('sort', 'planned'),
             'q' => $qs,
@@ -87,22 +102,52 @@ class RequestController
         return view('park.requests.peek', ['req' => $req, 'vehicle' => $req->vehicle]);
     }
 
-    public function create(Request $request)
+    /**
+     * Форма заявки. С `?candidate=` поля предзаполнены из письма, письма кандидата — рядом с формой:
+     * сотрудник сверяет и сохраняет. Если такую ТС уже завели руками — форма открывается на неё.
+     */
+    public function create(Request $request, PromoteCandidate $promote)
     {
+        $type = RequestType::tryFrom($request->query('type', '')) ?? RequestType::Intake;
+        $vehicle = $request->query('car') ? Vehicle::find($request->query('car')) : null;
+        $candidate = $request->query('candidate') ? Candidate::where('scope', MailScope::Park)->where('state', '!=', CandidateState::Promoted)->with(['messages.attachments', 'messages.addresses', 'messages.author'])->find($request->query('candidate')) : null;
+        $prefill = [];
+        if ($candidate) {
+            $v = fn (string $f) => $candidate->value($f);
+            $vehicle = $promote->existing($candidate);
+            $brand = $v('brand') ? Brand::resolve($v('brand')) : null;
+            $model = $brand && $v('model') ? CarModel::resolve($brand, $v('model')) : null;
+            $prefill = [
+                'ref' => $candidate->code, 'vin' => $v('vin'), 'plate' => $v('plate'), 'color' => $v('color'),
+                'brand' => $brand, 'model' => $model, 'category' => $v('category'),
+                'vendor_id' => $v('vendor_id') ?? Vendor::forSender($v('sender'))?->id,
+                'contact_name' => $v('insured_name'), 'contact_phone' => $v('insured_phone') ?? ((array) $v('phones'))[0] ?? null,
+                'from_address' => $v('location'), 'note' => $candidate->subject,
+                'delivery' => $v('request') === 'tow' ? Delivery::Tow->value : null,
+                'flags' => $v('flags') ?: [], 'docs_required' => $v('docs_required') ?: [], 'value' => $v('value'),
+            ];
+            $type = in_array($type, [RequestType::Intake, RequestType::Tow], true) ? RequestType::Intake : $type;
+        }
+
         return view('park.requests.create', [
-            'type' => RequestType::tryFrom($request->query('type', '')) ?? RequestType::Intake,
+            'type' => $type,
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
-            'vehicle' => $request->query('car') ? Vehicle::find($request->query('car')) : null,
+            'vehicle' => $vehicle,
+            'candidate' => $candidate,
+            'p' => $prefill,
+            'messages' => $candidate?->messages ?? collect(),
         ]);
     }
 
-    public function store(Request $request, CreateRequest $create)
+    public function store(Request $request, CreateRequest $create, PromoteCandidate $promote)
     {
         $data = $request->validate([
             'type' => ['required', Rule::enum(RequestType::class)],
             'vehicle_id' => ['nullable', 'exists:park_vehicles,id'],
+            'candidate_id' => ['nullable', 'exists:mail_candidates,id'],
+            'delivery' => ['nullable', Rule::enum(Delivery::class)],
             'ref' => ['nullable', 'string', 'max:60'],
             'vin' => ['nullable', 'string', 'max:17'],
             'plate' => ['nullable', 'string', 'max:12'],
@@ -118,15 +163,33 @@ class RequestController
             'contact_phone' => ['nullable', 'string', 'max:20'],
             'from_address' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:2000'],
+            'flags' => ['nullable', 'array'], 'flags.*' => ['string', 'max:20'],
+            'docs_required' => ['nullable', 'array'], 'docs_required.*' => ['string', 'max:20'],
+            'value' => ['nullable', 'integer', 'min:0'],
         ]);
         $type = RequestType::from($data['type']);
+        // Эвакуатор или сам — решается по телефону; «эвакуатор» и есть заявка на эвакуацию.
+        $delivery = Delivery::tryFrom((string) ($data['delivery'] ?? ''));
+        if ($type === RequestType::Intake && $delivery === Delivery::Tow) {
+            $type = RequestType::Tow;
+        } elseif ($type === RequestType::Tow) {
+            $delivery = Delivery::Tow;
+        }
+        $data['delivery'] = $delivery;
         $vehicle = ! empty($data['vehicle_id']) ? Vehicle::find($data['vehicle_id']) : null;
         if (! in_array($type, [RequestType::Intake, RequestType::Tow], true) && ! $vehicle) {
             return back()->withInput()->withErrors(['vehicle_id' => 'Выберите ТС']);
         }
+        $candidate = ! empty($data['candidate_id']) ? Candidate::where('scope', MailScope::Park)->find($data['candidate_id']) : null;
+        if ($candidate) {
+            $data['thread_id'] = $candidate->thread_id;
+        }
         $req = $create($request->user(), $type, $vehicle, $data);
+        if ($candidate && $candidate->state !== CandidateState::Promoted) {
+            $promote->attach($candidate, $req->vehicle);
+        }
 
-        return redirect("/requests/{$req->id}")->with('toast', 'Заявка заведена');
+        return redirect("/requests/{$req->id}")->with('toast', $candidate ? 'Заявка заведена, фото подтягиваются' : 'Заявка заведена');
     }
 
     public function show(Request $http, ParkRequest $req)
@@ -135,10 +198,13 @@ class RequestController
         abort_unless(Scope::allows($http->user(), $req->vehicle), 404);
         $vehicle = $req->vehicle;
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
+        // Письма всех веток ТС — рядом с формой, чтобы заполнять, глядя в письмо.
+        $messages = Message::whereIn('thread_id', Thread::where('vehicle_id', $vehicle->id)->select('id'))->with(['attachments', 'addresses', 'author'])->orderByDesc('date_at')->get();
 
         return view('park.requests.show', [
             'req' => $req,
             'vehicle' => $vehicle,
+            'messages' => $messages,
             'yards' => $yards->pluck('name', 'id'),
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),
             'zones' => DamageZone::cases(),
@@ -188,6 +254,32 @@ class RequestController
         $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
+    }
+
+    /** Звонок страхователю: эвакуатор (с полями назначения), привезёт сам (когда), не дозвонились (когда снова). */
+    public function contact(Request $request, ParkRequest $req, Contact $contact)
+    {
+        $data = $request->validate([
+            'outcome' => ['required', Rule::in(['tow', 'self', 'missed'])],
+            'planned_at' => ['nullable', 'date'], 'next_call_at' => ['nullable', 'date'],
+            'from_address' => ['nullable', 'string', 'max:255'], 'yard_id' => ['nullable', 'exists:park_yards,id'],
+            'carrier' => ['nullable', 'string', 'max:80'], 'distance_km' => ['nullable', 'integer', 'between:0,5000'], 'cost' => ['nullable', 'integer', 'between:0,10000000'],
+            'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'],
+        ]);
+        $contact($req, $request->user(), $data['outcome'], $data);
+
+        return redirect("/requests/{$req->id}")->with('toast', match ($data['outcome']) {
+            'tow' => 'Эвакуация', 'self' => 'Привезёт сам', default => 'Позвоним снова'
+        });
+    }
+
+    /** «Беру» — исполнитель я, без шторки. */
+    public function take(Request $request, ParkRequest $req, AssignRequest $assign)
+    {
+        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
+        $assign($req, $request->user(), $request->user());
+
+        return back()->with('toast', 'Ваша');
     }
 
     public function schedule(Request $request, ParkRequest $req, ScheduleTow $schedule)

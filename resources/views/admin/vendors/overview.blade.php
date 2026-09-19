@@ -10,7 +10,8 @@
             @if ($vendor->answer_hours)<span class="tag nums">ответ {{ $vendor->answer_hours }} ч</span>@endif
             @if ($vendor->binding_days)<span class="tag nums">держим {{ $vendor->binding_days }} дн</span>@endif
             <span class="tag">хранение платит {{ ['vendor' => 'вендор', 'owner' => 'страхователь', 'nobody' => 'никто'][$vendor->storage_payer] ?? $vendor->storage_payer }}</span>
-            @if ($vendor->buyer_storage_after_days !== null)<span class="tag nums">покупатель с {{ $vendor->buyer_storage_after_days }} дня</span>@endif
+            <span class="tag">счёт {{ mb_strtolower($vendor->billing_cadence->label()) }}</span>
+            @if ($vendor->buyer_storage_after_days !== null)<span class="tag nums">после продажи {{ $vendor->buyer_storage_after_days }} дн за счёт вендора, дальше покупатель ×{{ rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.') }}</span>@endif
             @if ($vendor->release_without_payment)<span class="tag">выдача без оплаты</span>@endif
             @if ($vendor->legal_name)<span class="tag">{{ $vendor->legal_name }}</span>@endif
             @if ($vendor->inn)<span class="tag nums">ИНН {{ $vendor->inn }}</span>@endif

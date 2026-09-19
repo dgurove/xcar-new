@@ -37,7 +37,7 @@
         @if ($c->state === CandidateState::Promoted)
             <a href="{{ $park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">{{ $park ? 'ТС' : '№ '.$c->offer?->number }}</a>
         @else
-            <form method="post" action="{{ $base }}/{{ $c->id }}/create" class="contents">@csrf<button class="btn btn-s btn-accent w-full whitespace-nowrap">Завести</button></form>
+            @if ($park)<a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent w-full whitespace-nowrap">Завести</a>@else<form method="post" action="{{ $base }}/{{ $c->id }}/create" class="contents">@csrf<button class="btn btn-s btn-accent w-full whitespace-nowrap">Завести</button></form>@endif
         @endif
     </div>
 </article>

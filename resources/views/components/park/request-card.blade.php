@@ -3,15 +3,7 @@
 @php
     use App\Park\RequestState; use App\Park\RequestType;
     $tone = $req->isOverdue() ? 'danger' : ($req->isOpen() ? 'soft' : 'closed');
-    $verb = match (true) {
-        ! $req->isOpen() => 'Открыть',
-        $req->type === RequestType::Tow && $req->state === RequestState::New => 'Назначить',
-        $req->type === RequestType::Tow && $req->state === RequestState::Scheduled => 'Выехали',
-        $req->type === RequestType::Tow || $req->type === RequestType::Intake => 'Принять',
-        $req->type === RequestType::Release => 'Выдать',
-        $req->type === RequestType::Move => 'Переставить',
-        default => 'Открыть',
-    };
+    $verb = $req->verb() ?? 'Открыть';
 @endphp
 <x-park.card :vehicle="$req->vehicle" :href="'/requests/'.$req->id" :action="$verb">
     <x-ui.pill :tone="$tone" class="!min-h-0 !py-0.5 text-xs">{{ $req->type->label() }}@if ($req->type === RequestType::Move && $req->yard) <x-ui.place>{{ $req->yard->name }}</x-ui.place>@endif</x-ui.pill>

@@ -3,6 +3,7 @@
 namespace App\Billing;
 
 use App\Users\User;
+use App\Vendors\Kind;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -51,11 +52,14 @@ class Party extends Model
         if ($vendor->party) {
             return $vendor->party;
         }
-        $party = self::make([
-            'kind' => PartyKind::Company, 'name' => $vendor->legal_name ?: $vendor->name, 'inn' => $vendor->inn, 'kpp' => $vendor->kpp,
-            'legal_address' => $vendor->legal_address, 'bank_name' => $vendor->bank_name, 'bik' => $vendor->bank_bic, 'account' => $vendor->bank_account,
-            'corr_account' => $vendor->bank_corr, 'payment_purpose' => $vendor->payment_purpose, 'email' => $vendor->email(),
-        ]);
+        // Вендор-физлицо — контрагент-человек: без ИНН и банка, с телефоном контакта.
+        $party = self::make($vendor->kind === Kind::Person
+            ? ['kind' => PartyKind::Person, 'name' => $vendor->name, 'phone' => $vendor->contacts->first(fn ($c) => $c->phone)?->phone, 'email' => $vendor->email(), 'legal_address' => $vendor->legal_address]
+            : [
+                'kind' => PartyKind::Company, 'name' => $vendor->legal_name ?: $vendor->name, 'inn' => $vendor->inn, 'kpp' => $vendor->kpp,
+                'legal_address' => $vendor->legal_address, 'bank_name' => $vendor->bank_name, 'bik' => $vendor->bank_bic, 'account' => $vendor->bank_account,
+                'corr_account' => $vendor->bank_corr, 'payment_purpose' => $vendor->payment_purpose, 'email' => $vendor->email(),
+            ]);
         if ($create) {
             $party->save();
             $vendor->update(['party_id' => $party->id]);

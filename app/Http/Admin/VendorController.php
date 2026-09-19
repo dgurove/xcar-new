@@ -3,11 +3,14 @@
 namespace App\Http\Admin;
 
 use App\Billing\Accrual;
+use App\Billing\Cadence;
 use App\Billing\Invoice;
 use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Cars\Category;
 use App\Mail\Account;
+use App\Mail\Scope;
+use App\Mail\Template;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Vehicle;
@@ -72,6 +75,7 @@ class VendorController
             'pills' => self::PILLS,
             'base' => "/settings/vendors/{$vendor->id}",
             'accounts' => Account::where('is_active', true)->orderBy('title')->get()->mapWithKeys(fn ($a) => [$a->id => $a->title.' ('.$a->email.')']),
+            'templates' => Template::where('scope', Scope::Park)->orderBy('name')->pluck('name', 'id'),
             'docs' => DocRequirement::cases(),
         ];
 
@@ -159,6 +163,10 @@ class VendorController
             'storage_payer' => ['required', Rule::in(['vendor', 'owner', 'nobody'])],
             'buyer_storage_after_days' => ['nullable', 'integer', 'between:0,365'],
             'release_without_payment' => ['boolean'],
+            'buyer_rate_multiplier' => ['required', 'numeric', 'between:0,20'],
+            'billing_cadence' => ['required', Rule::enum(Cadence::class)],
+            'report_template_id' => ['nullable', 'exists:mail_templates,id'],
+            'refusal_template_id' => ['nullable', 'exists:mail_templates,id'],
             'senders' => ['nullable', 'string', 'max:2000'],
             'parser' => ['required', Rule::enum(Parser::class)],
             'mail_account_id' => ['nullable', 'exists:mail_accounts,id'],
