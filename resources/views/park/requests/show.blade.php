@@ -79,7 +79,8 @@
                         <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')" span="col-span-2"/>
                         <x-ui.field name="from_address" label="Откуда" :value="$req->from_address" span="col-span-2"/>
                         <x-ui.field name="yard_id" label="Куда" :options="$yards" placeholder="—" :value="$req->yard_id"/>
-                        <x-ui.field name="carrier" label="Перевозчик" :value="$req->carrier"/>
+                        <x-ui.field name="carrier" label="Перевозчик" :value="$req->carrier" list="carriers-list"/>
+                        <datalist id="carriers-list">@foreach ($carriers as $c)<option value="{{ $c }}">@endforeach</datalist>
                         <x-ui.field name="distance_km" label="Километров" inputmode="numeric" :value="$req->distance_km"/>
                         <x-ui.field name="cost" label="Стоимость, ₽" inputmode="numeric" :value="$req->cost ?? $towCost"/>
                         <x-ui.field name="contact_name" label="Страхователь" :value="$contactName"/>
@@ -94,7 +95,8 @@
                 <x-ui.card title="Перенести">
                     <div class="grid grid-cols-2 gap-3">
                         <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')"/>
-                        <x-ui.field name="carrier" label="Перевозчик" :value="$req->carrier"/>
+                        <x-ui.field name="carrier" label="Перевозчик" :value="$req->carrier" list="carriers-list"/>
+                        <datalist id="carriers-list">@foreach ($carriers as $c)<option value="{{ $c }}">@endforeach</datalist>
                         <x-ui.field name="distance_km" label="Километров" inputmode="numeric" :value="$req->distance_km"/>
                         <x-ui.field name="cost" label="Стоимость, ₽" inputmode="numeric" :value="$req->cost"/>
                         <x-ui.field name="yard_id" label="Куда" :options="$yards" placeholder="—" :value="$req->yard_id"/>

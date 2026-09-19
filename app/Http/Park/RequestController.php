@@ -121,6 +121,8 @@ class RequestController
             'shots' => $vehicle->photos()->map(fn ($m) => $m->getCustomProperty('slot'))->filter()->countBy()->all(),
             'staff' => User::whereJsonContains('access', Section::Park->value)->orWhere('role', 'admin')->orderBy('name')->get(),
             'towCost' => $req->isTow() ? self::towCost($vehicle, $req->distance_km) : null,
+            // Перевозчики — кого уже возили: подсказка в поле, отдельного справочника нет.
+            'carriers' => $req->isTow() ? ParkRequest::whereNotNull('carrier')->where('carrier', '!=', '')->selectRaw('carrier, count(*) as n')->groupBy('carrier')->orderByDesc('n')->limit(20)->pluck('carrier') : collect(),
             'storageRate' => Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
         ]);
     }
