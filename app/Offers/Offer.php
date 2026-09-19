@@ -202,11 +202,6 @@ class Offer extends Model implements HasMedia
         return $this->managers_limited ? $this->managers()->get() : User::where('role', Role::Manager)->orderBy('name')->get();
     }
 
-    public function openToManager(User $manager): bool
-    {
-        return ! $this->managers_limited || $this->managers()->whereKey($manager->id)->exists();
-    }
-
     /**
      * Одна дверь видимости. Сотрудник видит всё; менеджер — открытые и галерею
      * из своего круга; покупатель — открытые, которые ему показал его менеджер

@@ -6,7 +6,6 @@ use App\Users\BuyerGroup;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
@@ -44,15 +43,6 @@ class Showing extends Model
     public function group(): BelongsTo
     {
         return $this->belongsTo(BuyerGroup::class, 'group_id');
-    }
-
-    /** Показы менеджера, которые касаются покупателя: лично или через его группы. */
-    public function scopeReaching(Builder $q, User $buyer): Builder
-    {
-        $groups = $buyer->groups()->pluck('buyer_groups.id')->all();
-
-        return $q->where('manager_id', $buyer->manager_id)
-            ->where(fn ($w) => $w->where('user_id', $buyer->id)->when($groups, fn ($w) => $w->orWhereIn('group_id', $groups)));
     }
 
     /**

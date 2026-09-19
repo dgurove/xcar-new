@@ -3,7 +3,6 @@
 namespace App\Billing;
 
 use App\Cars\HasLabels;
-use App\Vendors\TariffService;
 
 /** За что деньги: хранение, эвакуация, осмотр, простой, негабарит — стоянка; продажа, подбор, перечисление вендору — сделки. */
 enum ChargeKind: string
@@ -36,20 +35,6 @@ enum ChargeKind: string
             self::Selection => 'Подбор ТС',
             self::Transfer => 'Перечисление вендору',
             self::Other => 'Прочее',
-        };
-    }
-
-    public static function fromService(TariffService $s): self
-    {
-        return match ($s) {
-            TariffService::Storage => self::Storage,
-            TariffService::Tow, TariffService::TowKm => self::Tow,
-            TariffService::Inspection => self::Inspection,
-            TariffService::Idle => self::Idle,
-            TariffService::Oversize => self::Oversize,
-            TariffService::Loading => self::Loading,
-            TariffService::Release => self::Release,
-            TariffService::Other => self::Other,
         };
     }
 }

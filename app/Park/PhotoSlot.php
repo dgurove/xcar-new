@@ -38,10 +38,4 @@ enum PhotoSlot: string
     {
         return in_array($this, [self::FrontLeft, self::FrontRight, self::RearLeft, self::RearRight, self::VinPlate, self::Odometer], true);
     }
-
-    /** Повреждений может быть сколько угодно. */
-    public function repeatable(): bool
-    {
-        return $this === self::Damage;
-    }
 }
