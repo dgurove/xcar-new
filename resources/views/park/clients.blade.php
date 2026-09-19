@@ -40,7 +40,7 @@
                         <x-ui.field name="notes" label="Заметки" type="textarea" :value="$vendor->notes"/>
                         <x-ui.button block>Сохранить</x-ui.button>
                     </form>
-                    <a href="{{ $crm }}/{{ $vendor->id }}" class="btn btn-ghost btn-block mt-3" data-turbo="false">Карточка в CRM</a>
+                    @if (auth()->user()->isStaff())<a href="{{ $crm }}/{{ $vendor->id }}" class="btn btn-ghost btn-block mt-3" data-turbo="false">Карточка в CRM</a>@endif
                 </x-ui.sheet>
             </div>
         @endforeach

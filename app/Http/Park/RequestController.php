@@ -144,7 +144,7 @@ class RequestController
             'zones' => DamageZone::cases(),
             'slots' => PhotoSlot::cases(),
             'shots' => $vehicle->photos()->map(fn ($m) => $m->getCustomProperty('slot'))->filter()->countBy()->all(),
-            'staff' => User::whereJsonContains('access', Section::Park->value)->orWhere('role', 'admin')->orderBy('name')->get(),
+            'staff' => User::where(fn ($q) => $q->whereJsonContains('access', Section::Park->value)->orWhere('role', 'admin'))->whereNotNull('approved_at')->whereNull('rejected_at')->orderBy('name')->get(),
             'towCost' => $req->isTow() ? self::towCost($vehicle, $req->distance_km) : null,
             // Выдача при долге держится, если у вендора не разрешено выдавать без оплаты: показать долг и «выдать с долгом».
             'debt' => $req->type === RequestType::Release ? Ledger::vehicleDebt($vehicle) + Ledger::vehicleUnbilled($vehicle) : 0,
@@ -187,7 +187,7 @@ class RequestController
         $data = $request->validate(['done' => ['required', 'boolean'], 'note' => ['nullable', 'string', 'max:2000']]);
         $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
 
-        return redirect('/')->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
+        return redirect("/cars/{$req->vehicle_id}")->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
     }
 
     public function schedule(Request $request, ParkRequest $req, ScheduleTow $schedule)

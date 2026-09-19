@@ -177,7 +177,8 @@ final class Nav
                 self::link('Стоянки', '/yards'),
                 $user->canManagePark() ? self::link('Реквизиты', '/money/parties') : null,
                 self::link('Уведомления', '/account/notifications'),
-                self::link('Шаблоны', Surface::Crm->url('/settings/templates')),
+                // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.
+                $user->isStaff() ? self::link('Шаблоны', Surface::Crm->url('/settings/templates')) : null,
             ]))];
         }
 

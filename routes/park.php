@@ -88,6 +88,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/yards', [YardController::class, 'index']);
     Route::post('/yards', [YardController::class, 'store'])->middleware('park.manage');
     Route::put('/yards/{yard}', [YardController::class, 'update'])->middleware('park.manage');
+    Route::delete('/yards/{yard}', [YardController::class, 'destroy'])->middleware('park.manage');
     Route::get('/clients', [ClientController::class, 'index']);
     Route::post('/clients', [ClientController::class, 'store'])->middleware('park.manage');
     Route::put('/clients/{client}', [ClientController::class, 'update'])->middleware('park.manage');

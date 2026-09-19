@@ -4,6 +4,7 @@ namespace App\Park\Console;
 
 use App\Park\Events\RequestDue;
 use App\Park\Events\VehicleIdle;
+use App\Park\Idle;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -35,7 +36,7 @@ class TickPark extends Command
             $r->forceFill(['overdue_at' => $now])->save();
             RequestDue::dispatch($r, true);
         }
-        $threshold = (int) config('xcar.park_idle_days', 30);
+        $threshold = Idle::warn();
         $idle = Vehicle::where('state', VehicleState::Stored)->whereNull('idle_noticed_at')
             ->where('accepted_at', '<', $now->copy()->subDays($threshold))
             ->where(fn ($q) => $q->whereNull('offer_id')->orWhereHas('offer', fn ($o) => $o->whereIn('state', ['draft', 'archived'])))->get();

@@ -16,9 +16,9 @@
     @if (!$sections)
         <x-ui.empty class="mt-6">Всё сделано</x-ui.empty>
     @endif
-    @foreach ($sections as [$title, $tone, $items, $kind])
+    @foreach ($sections as [$title, $tone, $items, $kind, $all])
         <section class="mt-8">
-            <h2 class="text-xl {{ $tone === 'danger' ? 'text-danger' : ($tone === 'urgent' ? 'text-urgent' : '') }}">{{ $title }} <span class="nums text-ink-dim">{{ $items->count() }}</span></h2>
+            <h2 class="flex items-baseline gap-2 text-xl {{ $tone === 'danger' ? 'text-danger' : ($tone === 'urgent' ? 'text-urgent' : '') }}">{{ $title }} <span class="nums text-ink-dim">{{ $items->count() }}</span>@if ($all)<a href="{{ $all }}" class="ml-auto text-sm font-normal text-ink-muted">все</a>@endif</h2>
             <div class="mt-3 flex flex-col gap-2">
                 @foreach ($items as $item)
                     @if ($item instanceof Vehicle)

@@ -137,6 +137,10 @@ class Vehicle extends Model implements HasMedia
     public static function takeSpot(Yard $yard, ?string $spot, ?int $exceptId = null): ?string
     {
         $spot = $spot ? mb_strtoupper(trim($spot)) : null;
+        // Места по рядам расписаны и все заняты — принимать некуда; без рядов вместимость только подсказка.
+        if (! $spot && $yard->rows && ! $yard->freeSpots()) {
+            throw ValidationException::withMessages(['spot' => 'На «'.$yard->name.'» свободных мест нет']);
+        }
         if ($spot && self::where('yard_id', $yard->id)->where('spot', $spot)->where('state', VehicleState::Stored)->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))->exists()) {
             throw ValidationException::withMessages(['spot' => 'Место '.$spot.' занято']);
         }
