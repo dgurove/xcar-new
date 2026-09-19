@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Once;
 
 /**
  * Строка прайса. Без вендора — базовый прайс ПРАЙМ, с вендором — его
@@ -65,11 +66,11 @@ class Tariff extends Model
      */
     public static function ladder(?int $vendorId, ?int $yardId, ?Category $category, TariffService $service, ?CarbonInterface $on = null): Collection
     {
-        $rows = self::query()->where('service', $service)->activeOn($on)
-            ->where(fn ($q) => $q->whereNull('vendor_id')->when($vendorId, fn ($q) => $q->orWhere('vendor_id', $vendorId)))
-            ->where(fn ($q) => $q->whereNull('yard_id')->when($yardId, fn ($q) => $q->orWhere('yard_id', $yardId)))
-            ->where(fn ($q) => $q->whereNull('category')->when($category, fn ($q) => $q->orWhere('category', $category)))
-            ->get();
+        $day = ($on ?? now())->toDateString();
+        $rows = self::rows($service)->filter(fn (self $t) => $t->valid_from->toDateString() <= $day && (! $t->valid_to || $t->valid_to->toDateString() >= $day)
+            && ($t->vendor_id === null || $t->vendor_id === $vendorId)
+            && ($t->yard_id === null || $t->yard_id === $yardId)
+            && ($t->category === null || $t->category === $category));
         if ($rows->isEmpty()) {
             return $rows;
         }
@@ -77,6 +78,24 @@ class Tariff extends Model
         $top = $rows->max($level);
 
         return $rows->filter(fn (self $t) => $level($t) === $top)->sortBy('from_day')->values();
+    }
+
+    /**
+     * Все строки услуги одним запросом на время запроса: хранение на лету спрашивает лестницу на каждый день
+     * по каждой ТС, прайс же — десятки строк. Правка прайса сбрасывает память (`booted`), Octane — между запросами.
+     *
+     * @return Collection<int, self>
+     */
+    private static function rows(TariffService $service): Collection
+    {
+        return once(fn () => self::query()->where('service', $service)->get());
+    }
+
+    protected static function booted(): void
+    {
+        $flush = fn () => Once::instance()->flush();
+        static::saved($flush);
+        static::deleted($flush);
     }
 
     /** @return Collection<int, self> */

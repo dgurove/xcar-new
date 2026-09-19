@@ -94,7 +94,9 @@ class MoneyController
         $data = $request->validate(['amount' => ['required', 'numeric', 'min:0.01'], 'paid_at' => ['nullable', 'date'], 'source' => ['required', Rule::enum(PaymentSource::class)], 'ref' => ['nullable', 'string', 'max:60'], 'note' => ['nullable', 'string', 'max:255']]);
         $record($invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, PaymentSource::from($data['source']), $data['ref'] ?? null, $data['note'] ?? null);
 
-        return back()->with('toast', $invoice->fresh()->state === InvoiceState::Paid ? 'Оплачен' : 'Оплата записана');
+        $paid = $invoice->fresh()->state === InvoiceState::Paid;
+
+        return back()->with('toast', $invoice->isOwed() ? ($paid ? 'Перечислено' : 'Перечисление записано') : ($paid ? 'Оплачен' : 'Оплата записана'));
     }
 
     public function unpay(Request $request, Invoice $invoice, Payment $payment, VoidPayment $void)
