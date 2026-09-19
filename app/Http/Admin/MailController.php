@@ -21,6 +21,11 @@ use App\Mail\SendState;
 use App\Mail\Template;
 use App\Mail\Thread;
 use App\Offers\Offer;
+use App\Park\Actions\MarkDoc;
+use App\Park\DocKind;
+use App\Park\DocState;
+use App\Park\Documents\ActPdf;
+use App\Park\InspectionKind;
 use App\Park\Vehicle;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -84,7 +89,7 @@ class MailController
         ]);
     }
 
-    public function compose(Request $request, Composer $composer)
+    public function compose(Request $request, Composer $composer, StoreOutboxFile $outbox, ActPdf $act)
     {
         $accounts = Account::where('scope', $this->scope)->where('is_active', true)->orderBy('title')->get();
         $account = $accounts->firstWhere('slug', $request->query('account')) ?? $accounts->first();
@@ -117,6 +122,15 @@ class MailController
         if ($parent) {
             $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
         }
+        // Письмо о принятой ТС уходит с актом и фото приёма (Альфа и Совкомбанк просят именно их); лишнее снимают в форме.
+        if ($vehicle?->accepted_at && ! $request->old()) {
+            $intake = ! $vehicle->released_at;
+            $defaults['files'][] = $outbox->put($act->filename($vehicle, $intake), $act->render($vehicle, $intake));
+            $shots = $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === ($intake ? 'intake' : 'release'));
+            foreach (($shots->isNotEmpty() ? $shots : $vehicle->visiblePhotos())->take(12) as $i => $m) {
+                $defaults['files'][] = $outbox->put(($intake ? 'priem' : 'vydacha').'-'.($i + 1).'.'.pathinfo($m->file_name, PATHINFO_EXTENSION), file_get_contents($m->getPath()));
+            }
+        }
 
         return view('admin.mail.compose', ['account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults,
             'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base]);
@@ -134,7 +148,7 @@ class MailController
             'defaults' => $defaults, 'mode' => $mode, 'templates' => collect(), 'offer' => $thread->offer, 'vehicle' => $thread->vehicle, 'base' => $this->base]);
     }
 
-    public function send(Request $request, Composer $composer)
+    public function send(Request $request, Composer $composer, MarkDoc $mark)
     {
         $data = $request->validate([
             'account' => ['required', 'exists:mail_accounts,slug'],
@@ -165,6 +179,14 @@ class MailController
         }
         if (! empty($data['vehicle']) && $message->thread && ! $message->thread->vehicle_id) {
             $message->thread->update(['vehicle_id' => $data['vehicle']]);
+        }
+        // Ушёл акт и фото — бумаги «акт хранения» и «фото» вендору отмечаются отправленными этим письмом.
+        if (! empty($data['vehicle']) && ($vehicle = Vehicle::find($data['vehicle']))) {
+            $sent = collect($message->attachments()->pluck('filename'));
+            $kinds = array_filter([$sent->contains(fn ($f) => str_starts_with($f, 'akt-')) ? DocKind::StorageAct : null, $sent->contains(fn ($f) => preg_match('/^(priem|vydacha)-\d+\./', $f)) ? DocKind::Photos : null]);
+            foreach ($vehicle->docs()->where('direction', 'out')->where('state', DocState::Pending)->whereIn('kind', $kinds)->get() as $doc) {
+                $mark($doc, $request->user(), DocState::Sent, threadId: $message->thread_id);
+            }
         }
 
         return redirect("{$this->base}/{$message->thread_id}")->with('toast', 'Письмо в очереди');
@@ -291,9 +313,19 @@ class MailController
     }
 
     /** Подстановки шаблона из машины на стоянке. */
+    /** Повреждения — как в акте: из последнего осмотра при приёме, иначе с карточки ТС. */
+    private static function damagesLine(Vehicle $vehicle): string
+    {
+        $inspection = $vehicle->lastInspection(InspectionKind::Intake);
+        $zones = $inspection?->damages() ?: $vehicle->damages();
+        $note = $inspection?->damage_note ?? $vehicle->damage_note;
+
+        return $zones || $note ? trim(implode(', ', $zones).($note ? '. '.$note : ''), '. ') : 'не обнаружены';
+    }
+
     public static function vehiclePlaceholders(Vehicle $vehicle): array
     {
-        $vehicle->loadMissing(['brand', 'model', 'vendor', 'yard']);
+        $vehicle->loadMissing(['brand', 'model', 'vendor', 'yard', 'inspections']);
 
         return [
             'ref' => $vehicle->ref ?? '',
@@ -304,7 +336,7 @@ class MailController
             'address' => $vehicle->yard?->address ?? '',
             'date' => ($vehicle->released_at ?? $vehicle->accepted_at)?->format('d.m.Y') ?? now()->format('d.m.Y'),
             'days' => (string) ($vehicle->daysStored() ?? ''),
-            'damages' => $vehicle->damages() ? implode(', ', $vehicle->damages()).($vehicle->damage_note ? '. '.$vehicle->damage_note : '') : 'не обнаружены',
+            'damages' => self::damagesLine($vehicle),
             'client' => $vehicle->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),
         ];

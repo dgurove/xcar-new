@@ -12,9 +12,15 @@ final class StoreOutboxFile
 {
     public function __invoke(UploadedFile $file): string
     {
-        $name = mb_substr(trim(preg_replace('/[^\p{L}\p{N}._ -]+/u', '_', $file->getClientOriginalName()) ?: 'file', '_ '), 0, 150) ?: 'file';
+        return $this->put($file->getClientOriginalName(), $file->getContent());
+    }
+
+    /** То же для файла, который сделали сами (акт, фото с диска). */
+    public function put(string $name, string $contents): string
+    {
+        $name = mb_substr(trim(preg_replace('/[^\p{L}\p{N}._ -]+/u', '_', $name) ?: 'file', '_ '), 0, 150) ?: 'file';
         $path = 'outbox/'.Str::uuid().'-'.$name;
-        Storage::disk(Parts::CACHE_DISK)->put($path, $file->getContent());
+        Storage::disk(Parts::CACHE_DISK)->put($path, $contents);
 
         return $path;
     }

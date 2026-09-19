@@ -2,8 +2,7 @@
 
 namespace App\Purchases;
 
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Support\Pdf;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -201,19 +200,7 @@ final class Export
 
     public function pdf(array $tables, Purchase $purchase, string $path): string
     {
-        // Шрифт бренда и логотип — файлами из проекта, кэш шрифтов и временные файлы — в storage: vendor на сервере не для записи.
-        $dir = storage_path('app/private/dompdf');
-        @mkdir($dir, 0775, true);
-        $options = (new Options)
-            ->setIsRemoteEnabled(false)
-            ->setDefaultFont('Onest')
-            ->setDefaultPaperSize('a4')
-            ->setDefaultPaperOrientation('landscape')
-            ->setTempDir($dir)
-            ->setFontCache($dir)
-            ->setChroot([$dir, resource_path('fonts/pdf'), public_path('images')]);
-        $pdf = new Dompdf($options);
-        $pdf->loadHtml(view('admin.purchases.offers-pdf', ['purchase' => $purchase, 'tables' => $tables])->render());
+        $pdf = Pdf::make('admin.purchases.offers-pdf', ['purchase' => $purchase, 'tables' => $tables], 'landscape');
         // dompdf держит кадр на каждую ячейку: две матрицы по 500 машин и 10 человек — полгигабайта.
         $limit = ini_get('memory_limit');
         ini_set('memory_limit', '1G');

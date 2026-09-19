@@ -37,8 +37,8 @@
                         <label class="check py-1"><input type="checkbox" name="forward[]" value="{{ $file->id }}" checked><span class="truncate">{{ $file->filename }} <span class="text-sm text-ink-muted">{{ $file->humanSize() }}</span></span></label>
                     @endforeach
                 @endif
-                @foreach (old('files', []) as $path)
-                    @include('admin.mail.file-row', ['path' => $path, 'name' => \Illuminate\Support\Str::after(basename($path), '-')])
+                @foreach (old('files', $defaults['files'] ?? []) as $path)
+                    @include('admin.mail.file-row', ['path' => $path, 'name' => substr(basename($path), 37)])
                 @endforeach
             </div>
             <input type="file" multiple hidden data-photos-target="input" data-action="change->photos#upload">

@@ -6,6 +6,10 @@
     $shots = $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === ($intake ? 'intake' : 'release'));
     $shots = $shots->isNotEmpty() ? $shots : ($intake ? $vehicle->visiblePhotos() : collect());
     $vendor = $vehicle->vendor;
+    $pdf = $pdf ?? false;
+    $fonts = resource_path('fonts/pdf');
+    // В PDF картинки — файлами с диска (dompdf наружу не ходит), на странице — обычными адресами.
+    $src = fn ($m) => $pdf ? 'file://'.$m->getPath('w640') : \App\Media\MediaUrl::for($m, 'w640');
 @endphp
 <!doctype html>
 <html lang="ru">
@@ -24,21 +28,27 @@
         th { width: 40%; font-weight: 400; color: #808080; }
         .block { margin-bottom: 20px; }
         .block h2 { margin: 0 0 6px; font-size: 14px; font-weight: 500; }
-        .photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .photos img { width: 100%; aspect-ratio: 4/3; object-fit: cover; }
-        .photos figure { margin: 0; }
-        .photos figcaption { font-size: 11px; color: #666; text-align: center; margin-top: 2px; }
+        .photos { table-layout: fixed; }
+        .photos td { width: 33.33%; padding: 4px; text-align: center; vertical-align: top; }
+        .photos img { width: 100%; height: auto; }
+        .photos .cap { font-size: 11px; color: #666; margin-top: 2px; }
+        .sign { margin-top: 40px; }
+        .sign td { width: 50%; padding: 0 16px 0 0; vertical-align: top; }
         .sign .who { font-size: 12px; color: #444; margin-top: 4px; }
-        .sign { display: flex; gap: 32px; margin-top: 40px; }
-        .sign div { flex: 1 1 0; }
         .line { margin-top: 28px; border-top: 1px solid #1d1d1b; padding-top: 4px; color: #808080; font-size: 12px; }
         .print { display: block; max-width: 720px; margin: 0 auto 16px; }
         .print button { font: inherit; padding: 10px 18px; border: 0; border-radius: 12px; background: #97bf0d; color: #fff; }
         @media print { body { padding: 0; background: #fff; } .act { max-width: none; padding: 0; } .print { display: none; } }
+        @if ($pdf)
+        @font-face { font-family: "Onest"; font-weight: 400; src: url("file://{{ $fonts }}/Onest-Regular.ttf"); }
+        @font-face { font-family: "Onest"; font-weight: 500; src: url("file://{{ $fonts }}/Onest-SemiBold.ttf"); }
+        body { padding: 0; background: #fff; font-family: "Onest", sans-serif; font-size: 12px; }
+        .act { max-width: none; padding: 0; }
+        @endif
     </style>
 </head>
 <body>
-    <div class="print"><button type="button" onclick="window.print()">Печать</button></div>
+    @unless ($pdf)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     <article class="act">
         <h1>{{ $title }}</h1>
         <p class="sub">{{ $vehicle->ref ? 'Номер '.$vehicle->ref.', ' : '' }}{{ $at?->format('d.m.Y H:i') }}</p>
@@ -77,13 +87,17 @@
         @if ($shots->isNotEmpty())
             <div class="block">
                 <h2>Фотографии {{ $intake ? 'при приёме' : 'при выдаче' }}</h2>
-                <div class="photos">@foreach ($shots->take(12) as $m)<figure><img src="{{ \App\Media\MediaUrl::for($m, 'w640') }}" alt="">@if ($slot = \App\Park\PhotoSlot::tryFrom((string) $m->getCustomProperty('slot')))<figcaption>{{ $slot->label() }}</figcaption>@endif</figure>@endforeach</div>
+                <table class="photos">
+                    @foreach ($shots->take(12)->chunk(3) as $row)
+                        <tr>@foreach ($row as $m)<td width="33%"><img src="{{ $src($m) }}" alt="">@if ($slot = \App\Park\PhotoSlot::tryFrom((string) $m->getCustomProperty('slot')))<div class="cap">{{ $slot->label() }}</div>@endif</td>@endforeach</tr>
+                    @endforeach
+                </table>
             </div>
         @endif
-        <div class="sign">
-            <div><div class="line">{{ $intake ? 'Сдал' : 'Выдал' }}</div>@if ($intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</div>
-            <div><div class="line">{{ $intake ? 'Принял' : 'Получил' }}</div>@if (!$intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</div>
-        </div>
+        <table class="sign"><tr>
+            <td><div class="line">{{ $intake ? 'Сдал' : 'Выдал' }}</div>@if ($intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
+            <td><div class="line">{{ $intake ? 'Принял' : 'Получил' }}</div>@if (!$intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
+        </tr></table>
     </article>
 </body>
 </html>
