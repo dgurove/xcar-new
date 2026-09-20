@@ -197,6 +197,14 @@ class RequestController
      * Поля ТС приходят той же формой, что и этап заявки: одна кнопка сохраняет всё.
      * Правит их только `park.manage` — «только приёмке» форма показывает их чипами.
      */
+    /** Кто двинул заявку — тот и исполнитель: ставится первым действием, если никого нет. */
+    private function claim(Request $request, ParkRequest $req): void
+    {
+        if (! $req->assignee_id) {
+            app(AssignRequest::class)($req, $request->user(), $request->user());
+        }
+    }
+
     private function saveVehicle(Request $request, Vehicle $vehicle): void
     {
         if (! $request->user()->canManagePark() || ! $request->has('vehicle_form')) {
@@ -211,6 +219,7 @@ class RequestController
     {
         abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16'], 'accepted_at' => ['nullable', 'date']] + self::inspectionRules());
+        $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
         $intake($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, $data, $req, $data['spot'] ?? null);
 
@@ -222,6 +231,7 @@ class RequestController
     {
         abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
+        $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
         $move($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null, $req);
 
@@ -238,6 +248,7 @@ class RequestController
         $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)],
             'fits' => ['required', 'boolean'], 'mismatch_note' => ['exclude_if:fits,1', 'required', 'string', 'max:500'], 'refused' => ['boolean']] + self::inspectionRules());
         $at = isset($data['released_at']) ? Carbon::parse($data['released_at']) : null;
+        $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
         $vehicle = $req->vehicle;
         $data['matches'] = $request->boolean('fits');
@@ -287,6 +298,7 @@ class RequestController
             'carrier' => ['nullable', 'string', 'max:80'], 'distance_km' => ['nullable', 'integer', 'between:0,5000'], 'cost' => ['nullable', 'integer', 'between:0,10000000'],
             'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'],
         ]);
+        $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
         // Страхователь и телефон — поля ТС; заявка берёт их оттуда, если своих не прислали.
         $data += ['contact_name' => $req->vehicle->contact_name, 'contact_phone' => $req->vehicle->contact_phone];
@@ -295,15 +307,6 @@ class RequestController
         return redirect("/cars/{$req->vehicle_id}")->with('toast', match ($data['outcome']) {
             'tow' => 'Эвакуация', 'self' => 'Привезёт сам', default => 'Позвоним снова'
         });
-    }
-
-    /** «Беру» — исполнитель я, без шторки. */
-    public function take(Request $request, ParkRequest $req, AssignRequest $assign)
-    {
-        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
-        $assign($req, $request->user(), $request->user());
-
-        return back()->with('toast', 'Ваша');
     }
 
     public function schedule(Request $request, ParkRequest $req, ScheduleTow $schedule)
@@ -317,6 +320,7 @@ class RequestController
         if (! empty($data['contact_phone'])) {
             $data['contact_phone'] = Phone::format(Phone::normalize($data['contact_phone']) ?? $data['contact_phone']);
         }
+        $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
         $data += ['contact_name' => $req->vehicle->contact_name, 'contact_phone' => $req->vehicle->contact_phone];
         $schedule($req, $request->user(), $data);
@@ -327,6 +331,7 @@ class RequestController
     public function start(Request $request, ParkRequest $req, StartTow $start)
     {
         abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
+        $this->claim($request, $req);
         $start($req, $request->user());
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'В пути');

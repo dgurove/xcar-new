@@ -2,7 +2,6 @@
 
 namespace App\Park;
 
-use App\Support\Money;
 use Illuminate\Support\Collection;
 
 /**
@@ -35,7 +34,7 @@ final class Timeline
         }
 
         if ($ir?->isTow()) {
-            $chips = array_values(array_filter([$ir->planned_at?->translatedFormat('j M, H:i'), $ir->carrier, $ir->cost ? Money::rub($ir->cost) : null]));
+            $chips = array_values(array_filter([$ir->planned_at?->translatedFormat('j M, H:i'), $ir->from_address]));
             [$state, $hint, $plate] = match (true) {
                 $ir->state === RequestState::New => [Step::CURRENT, 'Договориться с эвакуатором о дате и цене', ['kind' => 'submit', 'label' => 'Назначить']],
                 $ir->state === RequestState::Scheduled => [Step::CURRENT, 'Когда эвакуатор погрузит ТС, отметить выезд', ['kind' => 'submit', 'label' => 'Выехали']],

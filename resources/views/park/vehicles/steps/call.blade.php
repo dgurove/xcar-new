@@ -16,12 +16,6 @@
     <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')"/>
     <x-ui.field name="yard_id" label="Куда" :options="$yards" placeholder="—" :value="$req->yard_id"/>
     <x-ui.field name="from_address" label="Откуда" :value="$req->from_address" span="col-span-2"/>
-    <x-ui.field name="carrier" label="Перевозчик" :value="$req->carrier" list="carriers-list"/>
-    <datalist id="carriers-list">@foreach ($carriers as $c)<option value="{{ $c }}">@endforeach</datalist>
-    <div class="grid grid-cols-2 gap-3">
-        <x-ui.field name="distance_km" label="Км" inputmode="numeric" :value="$req->distance_km"/>
-        <x-ui.field name="cost" label="₽" inputmode="numeric" :value="$req->cost ?? $towCost"/>
-    </div>
 </div>
 <div class="mt-3 grid grid-cols-2 gap-3" data-reveal-target="pane" data-reveal-key="self" hidden>
     <x-ui.field name="planned_at" label="Когда привезёт" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')" disabled/>

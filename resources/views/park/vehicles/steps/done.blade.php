@@ -6,7 +6,7 @@
     @if ($step->key === 'tow' && $r)
         <div class="flex flex-wrap gap-1.5">
             @if ($r->from_address)<x-ui.place class="tag">{{ $r->from_address }}</x-ui.place>@endif
-            @if ($r->distance_km)<span class="tag nums">{{ $r->distance_km }} км</span>@endif
+            @if ($r->yard)<x-ui.place class="tag">→ {{ $r->yard->name }}</x-ui.place>@endif
         </div>
     @endif
     @if ($r?->note && $step->key !== 'letter')<p class="whitespace-pre-line text-sm text-ink-muted">{{ $r->note }}</p>@endif
@@ -22,6 +22,6 @@
         </div>
     @endif
     @if ($photos->isNotEmpty())
-        <div data-controller="photos" data-photos-readonly-value="true"><x-ui.photos :photos="$photos" readonly :hide="false" :main="false" id="phase-{{ $step->key }}"/></div>
+        <div data-controller="photos" data-photos-readonly-value="true"><x-ui.photos :photos="$photos" readonly grid :hide="false" :main="false" id="phase-{{ $step->key }}"/></div>
     @endif
 </div>

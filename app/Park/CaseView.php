@@ -7,13 +7,9 @@ use App\Billing\ChargeKind;
 use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Cars\Category;
-use App\Http\Park\RequestController;
 use App\Http\Park\VehicleInvoiceController;
 use App\Mail\Message;
-use App\Mail\Scope as MailScope;
-use App\Mail\Template;
 use App\Mail\Thread;
-use App\Park\Actions\LinkOffer;
 use App\Support\Money;
 use App\Users\Section;
 use App\Users\User;
@@ -51,8 +47,6 @@ final class CaseView
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),
             'slots' => PhotoSlot::cases(),
             'staff' => User::where(fn ($q) => $q->whereJsonContains('access', Section::Park->value)->orWhere('role', 'admin'))->whereNotNull('approved_at')->whereNull('rejected_at')->orderBy('name')->get(),
-            'towCost' => $open?->isTow() ? RequestController::towCost($vehicle, $open->distance_km) : null,
-            'carriers' => $open?->isTow() ? Request::whereNotNull('carrier')->where('carrier', '!=', '')->selectRaw('carrier, count(*) as n')->groupBy('carrier')->orderByDesc('n')->limit(20)->pluck('carrier') : collect(),
             'vendors' => Vendor::where('is_active', true)->orWhere('id', $vehicle->vendor_id)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
             'storageRate' => Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
@@ -66,9 +60,7 @@ final class CaseView
             'payers' => Ledger::payersOf($vehicle),
             'pendingCharges' => $vehicle->charges()->whereNull('invoice_id')->whereNull('voided_at')->get(),
             'chargeKinds' => collect([ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other])->mapWithKeys(fn ($k) => [$k->value => $k->label().(($price = VehicleInvoiceController::priceFor($vehicle, $k)) ? ' — '.Money::rub($price) : '')]),
-            'templates' => Template::where('scope', MailScope::Park)->orderBy('name')->get(),
             'spots' => $vehicle->yard?->freeSpots() ?? [],
-            'offerGuess' => $vehicle->offer_id ? null : LinkOffer::guess($vehicle),
             'canManage' => $user->canManagePark(),
         ];
     }

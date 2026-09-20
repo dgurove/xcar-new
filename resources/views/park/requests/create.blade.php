@@ -69,7 +69,7 @@
         </x-ui.card>
         @if ($mailPhotos->isNotEmpty())
             <x-ui.card title="Из письма" :count="$mailPhotos->count()" data-controller="photos" data-photos-readonly-value="true">
-                <x-ui.photos :photos="$mailPhotos" readonly :hide="false" :main="false" id="mail-gallery"/>
+                <x-ui.photos :photos="$mailPhotos" readonly grid :hide="false" :main="false" id="mail-gallery"/>
             </x-ui.card>
         @endif
     </form>

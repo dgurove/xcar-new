@@ -16,5 +16,5 @@
             @endforeach
         </div>
     @endif
-    <x-ui.photos :photos="$shown" :hide="false" :main="false"/>
+    <x-ui.photos :photos="$shown" :hide="false" :main="false" grid/>
 </div>

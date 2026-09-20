@@ -3,11 +3,12 @@
      серый, главное — первый видимый, порядок перетаскиванием, клик по
      кадру — просмотрщик, файлы можно бросить на карточку. Живёт внутри
      data-controller="photos"; turbo-stream подменяет ряд целиком.
-     readonly — только смотреть (кадры из письма рядом с приёмом): без плитки «добавить» и без действий. --}}
-@props(['photos', 'hide' => true, 'main' => true, 'readonly' => false, 'id' => 'gallery'])
-<div id="{{ $id }}" class="photo-row">
+     readonly — только смотреть (кадры из письма рядом с приёмом): без плитки «добавить» и без действий.
+     grid — сетка квадратов вместо ленты (дело на стоянке: все кадры видны сразу и в узкой колонке). --}}
+@props(['photos', 'hide' => true, 'main' => true, 'readonly' => false, 'id' => 'gallery', 'grid' => false])
+<div id="{{ $id }}" class="{{ $grid ? 'photo-grid' : 'photo-row' }}">
     @unless ($readonly)<button type="button" class="photo-add" data-action="photos#pick" aria-label="Добавить фото"><x-ui.icon name="camera" class="size-7"/></button>@endunless
-    <div class="photo-strip" data-photos-target="grid">
+    <div class="{{ $grid ? 'contents' : 'photo-strip' }}" data-photos-target="grid">
     @php $mainShown = false; @endphp
     @foreach ($photos as $media)
         @php $hidden = $hide && $media->getCustomProperty('hidden', false); @endphp

@@ -20,7 +20,7 @@
 </div>
 @if ($mailPhotos->isNotEmpty())
     <x-ui.card title="Из письма" :count="$mailPhotos->count()" nested class="mt-3" data-controller="photos" data-photos-readonly-value="true">
-        <x-ui.photos :photos="$mailPhotos" readonly :hide="false" :main="false" id="mail-gallery"/>
+        <x-ui.photos :photos="$mailPhotos" readonly grid :hide="false" :main="false" id="mail-gallery"/>
     </x-ui.card>
 @endif
 <x-ui.card title="При приёме" nested class="mt-3" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">

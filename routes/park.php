@@ -33,7 +33,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/{req}/schedule', [RequestController::class, 'schedule']);
     Route::post('/requests/{req}/start', [RequestController::class, 'start']);
     Route::post('/requests/{req}/assign', [RequestController::class, 'assign']);
-    Route::post('/requests/{req}/take', [RequestController::class, 'take']);
     Route::post('/requests/{req}/contact', [RequestController::class, 'contact']);
 
     Route::get('/cars', [VehicleController::class, 'index']);

@@ -35,16 +35,15 @@
             <button type="button" class="pill pill-urgent !min-h-0 !py-1 text-xs nums" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">Продано {{ $vehicle->sold_at->translatedFormat('j M') }}</button>
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->pickup_name ? $vehicle->pickup_name.' ' : 'Заберёт ' }}{{ $vehicle->pickup_phone }}</a>@elseif ($vehicle->pickup_name)<span class="chip">Заберёт {{ $vehicle->pickup_name }}</span>@endif
         @endif
-        {{-- Исполнитель — чип с аватаром (пусто — «Беру»); нажатие — шторка: «Я» первым, строка = выбор. --}}
-        @if ($open)
-            <button type="button" class="chip person" data-action="sheet#open">@if ($req->assignee)<x-ui.avatar :user="$req->assignee" :size="20"/>{{ $req->assignee->shortName() }}@else<x-ui.icon name="user" class="size-4"/> Беру@endif</button>
-            <x-ui.sheet id="assignee" title="Исполнитель">
+        {{-- Исполнитель ставится сам первым действием; чип с аватаром, нажатие — передать другому. --}}
+        @if ($open && $req->assignee)
+            <button type="button" class="chip person" data-action="sheet#open"><x-ui.avatar :user="$req->assignee" :size="20"/>{{ $req->assignee->shortName() }}</button>
+            <x-ui.sheet id="assignee" title="Передать">
                 <form method="post" action="/requests/{{ $req->id }}/assign" class="flex flex-col gap-2">
                     @csrf
-                    @foreach ($staff->sortBy(fn ($u) => $u->id === auth()->id() ? 0 : 1) as $u)
-                        <button name="assignee_id" value="{{ $u->id }}" class="row row-check !py-2 text-left"><x-ui.avatar :user="$u" :size="32"/><span class="min-w-0 flex-1">{{ $u->id === auth()->id() ? 'Я' : $u->name }}</span><span class="check"><input type="radio" tabindex="-1" @checked($req->assignee_id === $u->id) readonly></span></button>
+                    @foreach ($staff as $u)
+                        <button name="assignee_id" value="{{ $u->id }}" class="row row-check !py-2 text-left"><x-ui.avatar :user="$u" :size="32"/><span class="min-w-0 flex-1">{{ $u->name }}</span><span class="check"><input type="radio" tabindex="-1" @checked($req->assignee_id === $u->id) readonly></span></button>
                     @endforeach
-                    <button name="assignee_id" value="" class="row row-check !py-2 text-left"><span class="min-w-0 flex-1 text-ink-muted">Никто</span><span class="check"><input type="radio" tabindex="-1" @checked(!$req->assignee_id) readonly></span></button>
                 </form>
             </x-ui.sheet>
         @endif
@@ -172,8 +171,8 @@
         @if ($canManage && ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty() || $vehicle->accepted_at))
         <x-ui.card title="Деньги" data-controller="sheet">
             <div class="mb-2 flex flex-wrap gap-1.5">
-                @if ($vehicle->contract_kind === 'commission')<button type="button" class="chip nums" data-controller="emit" data-action="emit#send" data-emit-event-param="contract:open">Комиссия{{ $vehicle->assigned_price ? ' '.Money::rub($vehicle->assigned_price) : '' }}</button>@endif
-                @if ($storageRate)<button type="button" class="chip nums" data-controller="emit" data-action="emit#send" data-emit-event-param="contract:open">{{ $storageRate }}</button>@endif
+                {{-- Условия по этой ТС (комиссия или хранение, ставка, ПТС/СТС, комитент) — шторка из чипа. --}}
+                <button type="button" class="chip nums" data-controller="emit" data-action="emit#send" data-emit-event-param="contract:open">{{ $vehicle->contract_kind === 'commission' ? 'Комиссия'.($vehicle->assigned_price ? ' '.Money::rub($vehicle->assigned_price) : '') : ($storageRate ?: 'Условия') }}</button>
                 @foreach ($accrued as $payer => $a)@if ($a['amount'] > 0)<a href="/cars/{{ $vehicle->id }}/invoices/new?payer={{ $payer }}" class="chip nums">не выставлено {{ Money::rub($a['amount']) }} за {{ $a['days'] }} дн{{ count($accrued) > 1 ? ' — '.\App\Billing\Accrual::payerLabel($payer) : '' }}</a>@endif @endforeach
                 @if ($buyerFrom)<span class="chip nums {{ $buyerFrom->isPast() ? 'bg-danger-soft text-danger' : '' }}">покупатель с {{ $buyerFrom->translatedFormat('j M') }}, {{ Money::rub($buyerRate) }}/сут</span>@endif
             </div>
@@ -228,7 +227,7 @@
     {{-- Шторки: договор, продано, действия «⋯», отмена заявки. --}}
     @if ($canManage)
         <div data-controller="sheet" data-action="contract:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="contract" title="Договор" :open="$errors->hasAny(['contract_kind', 'assigned_price', 'accepted_at', 'released_at', 'storage_rate'])">
+            <x-ui.sheet id="contract" title="Условия" :open="$errors->hasAny(['contract_kind', 'assigned_price', 'accepted_at', 'released_at', 'storage_rate'])">
                 <form method="post" action="/cars/{{ $vehicle->id }}" class="flex flex-col gap-3">
                     @csrf @method('put')
                     <div class="grid grid-cols-2 gap-3">
@@ -281,16 +280,10 @@
                     <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="{{ $hadLetters ? 'Вернуть в письма? ТС и заявка исчезнут, письма снова будут ждать в «Из писем»' : 'Удалить заявку и ТС?' }}">@csrf @method('delete')<x-ui.button variant="secondary" block>{{ $hadLetters ? 'Вернуть в письма' : 'Заведена по ошибке' }}</x-ui.button></form>
                 @endif
                 @if ($canManage && $state->isBefore())
-                    <form method="post" action="/cars/{{ $vehicle->id }}/cancel" class="flex items-end gap-2" data-turbo-confirm="ТС не привезут?">@csrf
-                        <x-ui.field name="reason" label="Почему не привезут" span="flex-1"/>
-                        <x-ui.button variant="danger">Не привезут</x-ui.button>
-                    </form>
+                    <form method="post" action="/cars/{{ $vehicle->id }}/cancel" data-turbo-confirm="ТС не привезут?">@csrf<x-ui.button variant="danger" block>Не привезут</x-ui.button></form>
                 @endif
                 @if ($open && $hasChain)
-                    <form method="post" action="/requests/{{ $req->id }}/close" class="flex items-end gap-2" data-turbo-confirm="Закрыть заявку без выполнения?">@csrf<input type="hidden" name="done" value="0"><input type="hidden" name="exit" value="close">
-                        <x-ui.field name="note" label="Почему" span="flex-1"/>
-                        <x-ui.button variant="ghost">Закрыть заявку</x-ui.button>
-                    </form>
+                    <form method="post" action="/requests/{{ $req->id }}/close" data-turbo-confirm="Закрыть заявку без выполнения?">@csrf<input type="hidden" name="done" value="0"><input type="hidden" name="exit" value="close"><x-ui.button variant="ghost" block>Закрыть заявку</x-ui.button></form>
                 @endif
                 @if ($state === VehicleState::Stored)
                     <form method="post" action="/cars/{{ $vehicle->id }}/move" class="grid grid-cols-[minmax(0,1fr)_5rem] items-end gap-2">@csrf
@@ -299,22 +292,12 @@
                         <datalist id="spots-free">@foreach ($spots as $s)<option value="{{ $s }}">@endforeach</datalist>
                         <x-ui.button variant="secondary" class="col-span-full">Переставить</x-ui.button>
                     </form>
-                    @unless ($vehicle->sold_at)<x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">Продано</x-ui.button>@endunless
                     <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую площадку</x-ui.button>
                 @endif
                 @if ($state->isBefore() && ! $open)
                     <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="secondary" block>Забрать эвакуатором</x-ui.button>
                 @endif
                 @if ($canManage)
-                    <x-ui.button type="button" variant="ghost" block data-controller="emit" data-action="emit#send" data-emit-event-param="contract:open">Договор</x-ui.button>
-                    @if ($vehicle->offer)
-                        <form method="post" action="/cars/{{ $vehicle->id }}/offer" data-turbo-confirm="Снять связь с предложением?">@csrf<x-ui.button variant="ghost" block>Отвязать предложение № {{ $vehicle->offer->number }}</x-ui.button></form>
-                    @elseif (! $state->isFinal())
-                        <form method="post" action="/cars/{{ $vehicle->id }}/offer" class="flex items-end gap-2">@csrf
-                            <x-ui.field name="number" label="№ предложения в CRM" inputmode="numeric" :value="$offerGuess?->number" span="flex-1"/>
-                            <x-ui.button variant="secondary">Связать</x-ui.button>
-                        </form>
-                    @endif
                     @if ($vehicle->accepted_at || $pendingCharges->isNotEmpty())<x-ui.button href="/cars/{{ $vehicle->id }}/invoices/new" variant="secondary" block>Счёт</x-ui.button>@endif
                 @endif
                 <div data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers" data-photos-reload-value="true" class="contents">
@@ -322,30 +305,20 @@
                     <div hidden data-photos-target="progress"><div class="mb-1 text-sm text-ink-muted" data-label></div><div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div></div>
                     <x-ui.button type="button" variant="ghost" block data-action="photos#pick"><x-ui.icon name="clip" class="size-4"/> Приложить документ</x-ui.button>
                 </div>
-                @foreach ($templates as $t)
-                    <x-ui.button type="button" variant="ghost" block data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="/mail/new?car={{ $vehicle->id }}&template={{ $t->id }}"><x-ui.icon name="send" class="size-4"/> {{ $t->name }}</x-ui.button>
-                @endforeach
                 @if ($vehicle->accepted_at)<x-ui.button href="/acts/{{ $vehicle->id }}/intake" variant="ghost" block data-turbo="false" target="_blank">Акт приёма</x-ui.button>@endif
                 @if ($release)<x-ui.button href="/acts/{{ $vehicle->id }}/release" variant="ghost" block data-turbo="false" target="_blank">{{ $release->refused ? 'Акт осмотра с отказом' : 'Акт выдачи' }}</x-ui.button>@endif
                 @if ($vehicle->contract_kind === 'commission')
                     <x-ui.button href="/acts/{{ $vehicle->id }}/contract" variant="ghost" block data-turbo="false" target="_blank">Договор комиссии</x-ui.button>
                     <x-ui.button href="/acts/{{ $vehicle->id }}/handover" variant="ghost" block data-turbo="false" target="_blank">Акт приёма-передачи</x-ui.button>
                 @endif
-                @unless ($state->isFinal())<x-ui.button href="/requests/new?type=inspection&car={{ $vehicle->id }}" variant="ghost" block>Осмотр</x-ui.button>@endunless
                 @if ($canManage && $state === VehicleState::Cancelled)
                     <form method="post" action="/cars/{{ $vehicle->id }}/restore" data-turbo-confirm="Снова ждать ТС?">@csrf<x-ui.button variant="secondary" block>Снова ждём</x-ui.button></form>
                 @endif
                 @if ($canManage && UndoIntake::allowed($vehicle))
-                    <form method="post" action="/cars/{{ $vehicle->id }}/undo-intake" class="flex items-end gap-2" data-turbo-confirm="Отменить приём? ТС снова будет ожидаться">@csrf
-                        <x-ui.field name="reason" label="Почему" span="flex-1"/>
-                        <x-ui.button variant="ghost">Принята по ошибке</x-ui.button>
-                    </form>
+                    <form method="post" action="/cars/{{ $vehicle->id }}/undo-intake" data-turbo-confirm="Отменить приём? ТС снова будет ожидаться">@csrf<x-ui.button variant="ghost" block>Принята по ошибке</x-ui.button></form>
                 @endif
                 @if ($canManage && UndoRelease::allowed($vehicle))
-                    <form method="post" action="/cars/{{ $vehicle->id }}/undo-release" class="flex items-end gap-2" data-turbo-confirm="Отменить выдачу? ТС вернётся на стоянку">@csrf
-                        <x-ui.field name="reason" label="Почему" span="flex-1"/>
-                        <x-ui.button variant="ghost">Выдана по ошибке</x-ui.button>
-                    </form>
+                    <form method="post" action="/cars/{{ $vehicle->id }}/undo-release" data-turbo-confirm="Отменить выдачу? ТС вернётся на стоянку">@csrf<x-ui.button variant="ghost" block>Выдана по ошибке</x-ui.button></form>
                 @endif
             </div>
         </x-ui.sheet>

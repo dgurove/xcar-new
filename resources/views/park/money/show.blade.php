@@ -50,15 +50,7 @@
                             <span class="nums text-sm text-ink-muted">{{ $p->paid_at->translatedFormat('j M Y') }}</span>
                             <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
                             @if ($me->canManagePark())
-                                <span class="contents" data-controller="sheet">
-                                    <button type="button" class="btn btn-ghost btn-s px-2 text-ink-muted" data-action="sheet#open" aria-label="Отменить оплату"><x-ui.icon name="x" class="size-4"/></button>
-                                    <x-ui.sheet id="unpay-{{ $p->id }}" :title="'Отменить оплату '.Money::rub($p->amount)">
-                                        <form method="post" action="/money/invoices/{{ $i->id }}/payments/{{ $p->id }}" class="flex flex-col gap-3">@csrf @method('delete')
-                                            <x-ui.field name="reason" label="Почему" type="textarea"/>
-                                            <x-ui.button variant="danger" block>Отменить оплату</x-ui.button>
-                                        </form>
-                                    </x-ui.sheet>
-                                </span>
+                                <form method="post" action="/money/invoices/{{ $i->id }}/payments/{{ $p->id }}" class="contents" data-turbo-confirm="Отменить оплату {{ Money::rub($p->amount) }}?">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Отменить оплату"><x-ui.icon name="x" class="size-4"/></button></form>
                             @endif
                         </div>
                     @endforeach
@@ -85,15 +77,7 @@
                 <x-ui.card title="Сделка"><a href="{{ Surface::Crm->url('/work/deals/'.$i->deal_id) }}" class="font-medium" data-turbo="false">Сделка по № {{ $i->deal->offer?->number }}</a></x-ui.card>
             @endif
             @if ($i->state === InvoiceState::Issued && $i->paid == 0 && $me->canManagePark())
-                <div data-controller="sheet">
-                    <x-ui.button type="button" variant="ghost" block data-action="sheet#open">Аннулировать</x-ui.button>
-                    <x-ui.sheet id="void-invoice" title="Аннулировать счёт">
-                        <form method="post" action="/money/invoices/{{ $i->id }}/void" class="flex flex-col gap-3">@csrf
-                            <x-ui.field name="reason" label="Почему" type="textarea"/>
-                            <x-ui.button variant="danger" block>Аннулировать</x-ui.button>
-                        </form>
-                    </x-ui.sheet>
-                </div>
+                <form method="post" action="/money/invoices/{{ $i->id }}/void" data-turbo-confirm="Аннулировать счёт {{ $i->label() }}?">@csrf<x-ui.button variant="ghost" block>Аннулировать</x-ui.button></form>
             @endif
         </div>
     </div>
