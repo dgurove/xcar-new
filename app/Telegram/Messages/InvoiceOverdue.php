@@ -35,6 +35,6 @@ final class InvoiceOverdue extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Счёт на стоянке', 'url' => Surface::Park->url('/money/invoices/'.$this->invoice->id)];
+        return ['text' => 'Счёт на парковке', 'url' => Surface::Park->url('/money/invoices/'.$this->invoice->id)];
     }
 }

@@ -21,7 +21,7 @@ class TickPark extends Command
 {
     protected $signature = 'park:tick';
 
-    protected $description = 'Сроки заявок стоянки и простой ТС';
+    protected $description = 'Сроки заявок парковки и простой ТС';
 
     public function handle(): int
     {

@@ -110,7 +110,7 @@ class Workflow extends Model
             }
         }
         if ($this->track === Track::Service && $stages->every(fn (Stage $s) => $s->car_place !== CarPlace::Ours)) {
-            $problems[] = 'Ни один этап не доводит автомобиль до нашей площадки';
+            $problems[] = 'Ни один этап не доводит автомобиль до нашей парковки';
         }
 
         return array_values(array_unique($problems));

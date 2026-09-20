@@ -73,7 +73,7 @@
                         <x-ui.field name="senders" label="Отправители: домены и адреса, по одному в строке" type="textarea" :value="implode(PHP_EOL, $vendor->senders ?? [])" span="col-span-2" placeholder="alfastrah.ru"/>
                         <x-ui.field name="parser" label="Разбор писем" :options="Parser::options()" :value="$vendor->parser->value" span="col-span-2"/>
                         <x-ui.field name="mail_account_id" label="Отвечаем с ящика" :options="$accounts" placeholder="Первый активный" :value="$vendor->mail_account_id" span="col-span-2"/>
-                        <x-ui.field name="report_template_id" label="Письмо о приёме" :options="$templates" placeholder="«Приём на стоянку»" :value="$vendor->report_template_id"/>
+                        <x-ui.field name="report_template_id" label="Письмо о приёме" :options="$templates" placeholder="«Приём на парковку»" :value="$vendor->report_template_id"/>
                         <x-ui.field name="refusal_template_id" label="Письмо об отказе" :options="$templates" placeholder="«Отказ от получения»" :value="$vendor->refusal_template_id"/>
                     </div>
                     <x-ui.section-title level="h3" class="!text-lg">После приёма присылаем</x-ui.section-title>

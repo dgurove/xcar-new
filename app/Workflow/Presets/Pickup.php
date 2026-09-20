@@ -23,8 +23,8 @@ final class Pickup extends Route
         return [
             'at_owner' => ['name' => 'Автомобиль у владельца', 'text' => 'Согласовываем передачу с владельцем и готовим документы.'],
             'collecting' => ['name' => 'Вывоз автомобиля', 'text' => 'Выезжаем за автомобилем и проводим осмотр.'],
-            'moving' => ['name' => 'Перегон на площадку', 'text' => 'Автомобиль перемещается на нашу площадку.'],
-            'at_yard' => ['name' => 'Автомобиль на площадке', 'text' => 'Автомобиль находится на нашей площадке.'],
+            'moving' => ['name' => 'Перегон на парковку', 'text' => 'Автомобиль перемещается на нашу парковку.'],
+            'at_yard' => ['name' => 'Автомобиль на парковке', 'text' => 'Автомобиль находится на нашей парковке.'],
         ];
     }
 
@@ -59,9 +59,9 @@ final class Pickup extends Route
             ],
             'transfer' => [
                 'name' => 'Перегон в город присутствия', 'block' => 'moving', 'waits_for' => 'us', 'limit_minutes' => 5 * self::DAY, 'car_place' => 'moving',
-                'exits' => [['Автомобиль на площадке', 'staff', 'at_yard']],
+                'exits' => [['Автомобиль на парковке', 'staff', 'at_yard']],
             ],
-            'at_yard' => ['name' => 'Автомобиль на площадке', 'block' => 'at_yard', 'waits_for' => 'nobody', 'car_place' => 'ours'],
+            'at_yard' => ['name' => 'Автомобиль на парковке', 'block' => 'at_yard', 'waits_for' => 'nobody', 'car_place' => 'ours'],
         ];
     }
 }

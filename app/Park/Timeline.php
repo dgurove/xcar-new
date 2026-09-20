@@ -123,7 +123,7 @@ final class Timeline
             $v->state === VehicleState::InTransit => 'в пути',
             $r->isTow() && $r->state === RequestState::Scheduled => 'эвакуатор назначен'.($r->planned_at ? ' на '.$r->planned_at->translatedFormat('j M') : ''),
             $r->isTow() && $r->state === RequestState::New => 'нужен эвакуатор',
-            $v->state === VehicleState::Stored => 'на стоянке',
+            $v->state === VehicleState::Stored => 'на парковке',
             $r->delivery === Delivery::Self => 'привезёт сам',
             default => null,
         };

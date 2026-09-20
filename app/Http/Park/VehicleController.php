@@ -43,36 +43,43 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class VehicleController
 {
-    public const PRESETS = ['stored' => 'На стоянке', 'expected' => 'Ожидаются', 'in_transit' => 'В пути', 'released' => 'Выданы', 'all' => 'Все'];
-
     public const SORTS = ['longest' => 'Дольше всех стоят', 'fresh' => 'Сначала новые'];
 
+    /**
+     * «Наличие» — что стоит на парковках сейчас: только stored, пилюли по парковкам.
+     * Поиск ищет по всем состояниям (выданную тоже найдёт), `?state=` — явный фильтр для ссылок дайджеста.
+     */
     public function index(Request $request)
     {
         ListPrefs::sync($request, 'park-vehicles');
-        $preset = $request->query('preset', 'stored');
         $q = trim((string) $request->query('q'));
+        $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q === '' ? VehicleState::Stored : null);
+        $yards = Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id');
+        $yardId = $yards->has((int) $request->query('yard')) ? (int) $request->query('yard') : null;
         $vehicles = Scope::vehicles($request->user())->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer', 'requests'])
-            ->when(VehicleState::tryFrom($preset), fn ($v, $s) => $v->where('state', $s))
-            ->when($request->query('yard'), fn ($v, $y) => $v->where('yard_id', $y))
+            ->when($state, fn ($v, $s) => $v->where('state', $s))
+            ->when($yardId, fn ($v, $y) => $v->where('yard_id', $y))
             ->when($request->query('vendor'), fn ($v, $id) => $v->where('vendor_id', $id))
             ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
                 ->orWhere('plate', 'like', '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%')->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
         $request->query('sort') === 'fresh' ? $vehicles->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
 
         $page = ListView::paginate($request, $vehicles);
+        $counts = Scope::vehicles($request->user())->where('state', VehicleState::Stored)->selectRaw('yard_id, count(*) as n')->groupBy('yard_id')->pluck('n', 'yard_id');
 
         return view('park.vehicles.index', [
             'vehicles' => $page,
             'debts' => Ledger::debtsByVehicle($page->pluck('id')->all()),
-            'preset' => $preset,
+            'state' => $state,
             'q' => $q,
             'sort' => $request->query('sort', 'longest'),
-            'counts' => Scope::vehicles($request->user())->selectRaw('state, count(*) as n')->groupBy('state')->pluck('n', 'state')->all(),
-            'yard' => $request->query('yard') ? Yard::find($request->query('yard')) : null,
-            'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            // Пилюли — парковки; при одной парковке пилюль нет.
+            'pills' => $yards->count() > 1 ? ['' => 'Все'] + $yards->all() : [],
+            'pill' => $yardId ?? '',
+            'counts' => ['' => $counts->sum()] + $counts->all(),
+            'yard' => $yardId ? Yard::find($yardId) : null,
             'vendors' => Vendor::whereIn('id', Vehicle::whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
-            // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты площадки.
+            // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты парковки.
             'peek' => $request->query('peek') && $request->query('vid') === ListView::TABLE ? 'vehicle-'.(int) $request->query('peek') : null,
         ]);
     }

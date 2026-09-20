@@ -12,13 +12,13 @@ class ParkDigestCommand extends Command
 {
     protected $signature = 'park:digest';
 
-    protected $description = 'Сводка стоянки владельцу: просрочено, забрать, принять, выдать, стоят долго';
+    protected $description = 'Сводка парковки владельцу: просрочено, забрать, принять, выдать, стоят долго';
 
     public function handle(): int
     {
         $today = Today::build();
         $counts = collect($today['sections'])->mapWithKeys(fn ($s) => [$s[0] => $s[1]->count()])->all()
-            + ['На стоянке' => $today['stored']];
+            + ['На парковке' => $today['stored']];
         if (collect($today['sections'])->sum(fn ($s) => $s[1]->count()) === 0) {
             return self::SUCCESS;
         }

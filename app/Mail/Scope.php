@@ -16,7 +16,7 @@ enum Scope: string
     {
         return match ($this) {
             self::Offers => 'Предложения',
-            self::Park => 'Стоянка',
+            self::Park => 'Парковка',
         };
     }
 }

@@ -19,7 +19,7 @@ enum VehicleState: string
         return match ($this) {
             self::Expected => 'Ожидается',
             self::InTransit => 'В пути',
-            self::Stored => 'На стоянке',
+            self::Stored => 'На парковке',
             self::Released => 'Выдана',
             self::Cancelled => 'Не привезена',
         };

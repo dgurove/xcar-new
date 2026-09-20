@@ -36,6 +36,6 @@ final class ParkSold extends Message
 
     protected function link(): array
     {
-        return ['text' => 'ТС на стоянке', 'url' => Surface::Park->url('/cars/'.$this->vehicle->id)];
+        return ['text' => 'ТС на парковке', 'url' => Surface::Park->url('/cars/'.$this->vehicle->id)];
     }
 }

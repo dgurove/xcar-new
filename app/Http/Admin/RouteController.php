@@ -47,7 +47,7 @@ class RouteController
         $start($offer->load('vendor.workflows'), $request->user(), Track::Service);
         $tow($offer, $request->user());
 
-        return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз запущен, заявка на стоянке');
+        return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз запущен, заявка на парковке');
     }
 
     public function dropPickup(Request $request, Offer $offer, DropRoute $drop, CloseRequest $close)

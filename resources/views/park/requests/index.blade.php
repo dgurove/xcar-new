@@ -11,7 +11,7 @@
         <x-slot:filters>
             <input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Убыток, VIN, госномер, марка" enterkeyhint="search">
             <select name="vendor" class="field-input"><option value="">Все вендоры</option>@foreach ($vendors as $id => $name)<option value="{{ $id }}" @selected((string) request('vendor') === (string) $id)>{{ $name }}</option>@endforeach</select>
-            <select name="yard" class="field-input"><option value="">Все площадки</option>@foreach ($yards as $id => $name)<option value="{{ $id }}" @selected((string) request('yard') === (string) $id)>{{ $name }}</option>@endforeach</select>
+            <select name="yard" class="field-input"><option value="">Все парковки</option>@foreach ($yards as $id => $name)<option value="{{ $id }}" @selected((string) request('yard') === (string) $id)>{{ $name }}</option>@endforeach</select>
             <x-ui.check name="mine" :checked="request()->boolean('mine')">Мои</x-ui.check>
         </x-slot:filters>
     </x-ui.toolbar>
@@ -20,7 +20,7 @@
     @elseif ($view === ListView::TABLE)
         <x-ui.table id="requests" class="mt-6">
             <x-slot:head>
-                <tr><th>Тип</th><th class="grow">Марка, модель</th><th class="hidden sm:table-cell">№ убытка</th><th class="num">Срок</th><th class="hidden sm:table-cell">Исполнитель</th><th class="hidden sm:table-cell">Площадка</th></tr>
+                <tr><th>Тип</th><th class="grow">Марка, модель</th><th class="hidden sm:table-cell">№ убытка</th><th class="num">Срок</th><th class="hidden sm:table-cell">Исполнитель</th><th class="hidden sm:table-cell">Парковка</th></tr>
             </x-slot:head>
             @foreach ($requests as $r)<x-park.request-row :req="$r"/>@endforeach
         </x-ui.table>

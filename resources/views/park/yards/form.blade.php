@@ -12,4 +12,4 @@
     @endif
     <x-ui.button block>{{ $yard ? 'Сохранить' : 'Добавить' }}</x-ui.button>
 </form>
-@if ($yard && ! $yard->stored_vehicles_count)<form method="post" action="/yards/{{ $yard->id }}" class="mt-2" data-turbo-confirm="Убрать площадку «{{ $yard->name }}»?">@csrf @method('delete')<x-ui.button variant="ghost" block>Убрать</x-ui.button></form>@endif
+@if ($yard && ! $yard->stored_vehicles_count)<form method="post" action="/yards/{{ $yard->id }}" class="mt-2" data-turbo-confirm="Убрать парковку «{{ $yard->name }}»?">@csrf @method('delete')<x-ui.button variant="ghost" block>Убрать</x-ui.button></form>@endif

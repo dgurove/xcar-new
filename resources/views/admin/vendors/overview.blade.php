@@ -22,7 +22,7 @@
     </section>
     @if ($vehicles->isNotEmpty())
         <section>
-            <h2 class="text-xl">На стоянке <span class="nums text-ink-dim">{{ $vehicles->count() }}</span></h2>
+            <h2 class="text-xl">На парковке <span class="nums text-ink-dim">{{ $vehicles->count() }}</span></h2>
             <div class="mt-4 flex flex-col gap-2">
                 @foreach ($vehicles as $v)
                     <a href="{{ Surface::Park->url('/cars/'.$v->id) }}" class="row" data-turbo="false">

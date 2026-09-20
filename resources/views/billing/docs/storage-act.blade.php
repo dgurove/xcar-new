@@ -41,7 +41,7 @@
             @if ($v?->vin)<tr><th>VIN</th><td>{{ $v->vin }}</td></tr>@endif
             @if ($v?->plate)<tr><th>Гос. номер</th><td>{{ $v->plate }}</td></tr>@endif
             @if ($v?->ref)<tr><th>Номер убытка</th><td>{{ $v->ref }}</td></tr>@endif
-            @if ($v?->yard)<tr><th>Стоянка</th><td>{{ implode(', ', array_filter([$v->yard->name, $v->yard->address])) }}</td></tr>@endif
+            @if ($v?->yard)<tr><th>Парковка</th><td>{{ implode(', ', array_filter([$v->yard->name, $v->yard->address])) }}</td></tr>@endif
         </table>
         <table>
             <tr><th>Период</th><th class="n">Сутки</th><th class="n">Ставка</th><th class="n">Сумма</th></tr>

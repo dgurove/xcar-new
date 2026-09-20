@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 /** Вендоры глазами стоянки: список тех же компаний, правится только стояночное — контакт по хранению, что прислать после приёма, заметки. Остальное — карточка в CRM. */
 class ClientController
 {
-    public const PRESETS = ['active' => 'Работаем', 'stored' => 'С ТС на стоянке', 'inactive' => 'Не работаем'];
+    public const PRESETS = ['active' => 'Работаем', 'stored' => 'С ТС на парковке', 'inactive' => 'Не работаем'];
 
     public function index(Request $request)
     {

@@ -12,7 +12,7 @@ final class ParkDigest extends Message
 
     protected function title(): string
     {
-        return 'Стоянка сегодня';
+        return 'Парковка сегодня';
     }
 
     protected function lines(): array

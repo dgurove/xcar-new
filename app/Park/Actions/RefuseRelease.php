@@ -23,7 +23,7 @@ final class RefuseRelease
     public function __invoke(Vehicle $vehicle, User $by, ?Carbon $at, string $note, array $inspection = [], ?Request $request = null): Inspection
     {
         if ($vehicle->state !== VehicleState::Stored) {
-            throw ValidationException::withMessages(['state' => 'ТС не на стоянке']);
+            throw ValidationException::withMessages(['state' => 'ТС не на парковке']);
         }
         Nav::forgetStaffCounts();
 

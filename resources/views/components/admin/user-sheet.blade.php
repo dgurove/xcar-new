@@ -24,11 +24,11 @@
             <x-ui.field name="login" label="Логин" :value="$user->login" autocapitalize="none"/>
             <x-ui.field name="role" label="Роль" :options="collect(UserController::ROLES)->mapWithKeys(fn ($r) => [$r->value => $r->label()])" :value="$user->role->value" :disabled="$user->is($me)"/>
             <div class="flex flex-wrap gap-x-6 gap-y-2">
-                <x-ui.check name="park" :checked="in_array(Section::Park->value, $user->access ?? [], true)">Стоянка</x-ui.check>
+                <x-ui.check name="park" :checked="in_array(Section::Park->value, $user->access ?? [], true)">Парковка</x-ui.check>
                 <x-ui.check name="mail" :checked="$user->wantsMail()">Письма о событиях</x-ui.check>
             </div>
             <div class="grid grid-cols-2 gap-3">
-                <x-ui.field name="park_yard_id" label="Своя площадка" :options="\App\Park\Yard::orderBy('name')->pluck('name', 'id')" placeholder="Все" :value="$user->park_yard_id"/>
+                <x-ui.field name="park_yard_id" label="Своя парковка" :options="\App\Park\Yard::orderBy('name')->pluck('name', 'id')" placeholder="Все" :value="$user->park_yard_id"/>
                 <x-ui.check name="park_readonly" :checked="$user->park_readonly" class="self-end">Только приёмка</x-ui.check>
             </div>
         @endif

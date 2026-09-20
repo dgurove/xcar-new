@@ -31,7 +31,7 @@
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <a href="{{ $base }}/{{ $user->id }}" class="truncate font-medium">{{ $user->name }}</a>
                             <x-ui.pill :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')" class="!min-h-0 !py-0.5 text-xs">{{ $user->role->label() }}</x-ui.pill>
-                            @if ($user->canAccess(Section::Park) && !$user->isAdmin())<span class="chip text-xs">Стоянка</span>@endif
+                            @if ($user->canAccess(Section::Park) && !$user->isAdmin())<span class="chip text-xs">Парковка</span>@endif
                             @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
                         </div>
                         <div class="mt-1 flex flex-wrap items-center gap-1.5">

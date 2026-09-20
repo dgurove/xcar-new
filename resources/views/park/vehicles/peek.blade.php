@@ -34,7 +34,7 @@
             @endif
             @if ($state === VehicleState::Stored)
                 <form method="post" action="{{ $href }}/move" class="contents" data-controller="autosubmit">@csrf
-                    <select name="yard_id" class="field-input field-s w-auto" aria-label="Стоянка" data-action="change->autosubmit#submit">
+                    <select name="yard_id" class="field-input field-s w-auto" aria-label="Парковка" data-action="change->autosubmit#submit">
                         @foreach ($yards as $id => $name)<option value="{{ $id }}" @selected($id == $vehicle->yard_id)>{{ $name }}</option>@endforeach
                     </select>
                 </form>

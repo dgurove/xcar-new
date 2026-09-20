@@ -17,7 +17,7 @@ enum CarPlace: string
         return match ($this) {
             self::Owner => 'У владельца',
             self::Moving => 'В пути к нам',
-            self::Ours => 'На нашей площадке',
+            self::Ours => 'На нашей парковке',
         };
     }
 }

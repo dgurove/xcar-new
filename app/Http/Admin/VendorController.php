@@ -213,7 +213,7 @@ class VendorController
     public function destroy(Vendor $vendor)
     {
         if ($vendor->offers()->exists() || $vendor->vehicles()->exists()) {
-            return back()->withErrors(['vendor' => 'У вендора есть предложения или ТС на стоянке']);
+            return back()->withErrors(['vendor' => 'У вендора есть предложения или ТС на парковке']);
         }
         $vendor->delete();
 

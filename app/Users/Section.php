@@ -10,7 +10,7 @@ enum Section: string
     public function label(): string
     {
         return match ($this) {
-            self::Park => 'Стоянка',
+            self::Park => 'Парковка',
         };
     }
 }

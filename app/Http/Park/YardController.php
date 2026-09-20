@@ -61,10 +61,10 @@ class YardController
     public function destroy(Yard $yard)
     {
         if (Vehicle::where('yard_id', $yard->id)->exists() || ParkRequest::where('yard_id', $yard->id)->exists() || Tariff::where('yard_id', $yard->id)->exists() || User::where('park_yard_id', $yard->id)->exists()) {
-            throw ValidationException::withMessages(['name' => 'На площадке есть ТС, заявки, прайс или сотрудники, закройте её']);
+            throw ValidationException::withMessages(['name' => 'На парковке есть ТС, заявки, прайс или сотрудники, закройте её']);
         }
         $yard->delete();
 
-        return redirect('/yards')->with('toast', 'Площадка убрана');
+        return redirect('/yards')->with('toast', 'Парковка убрана');
     }
 }

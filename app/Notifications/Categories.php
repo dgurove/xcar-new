@@ -25,7 +25,7 @@ final class Categories
                 'always' => ['Сделки'],
             ],
             $role->isStaff() => [
-                'on' => ['bids' => 'Подтверждения', 'interest' => 'Интерес', 'deals' => 'Сроки этапов', 'chats' => 'Чаты', 'park' => 'Стоянка'],
+                'on' => ['bids' => 'Подтверждения', 'interest' => 'Интерес', 'deals' => 'Сроки этапов', 'chats' => 'Чаты', 'park' => 'Парковка'],
                 'always' => [],
             ],
             default => ['on' => ['offers' => 'Новые предложения', 'chats' => 'Чаты'], 'always' => []],

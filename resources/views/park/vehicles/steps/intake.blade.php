@@ -1,7 +1,7 @@
 @php use App\Park\{RequestState, ReleasedTo, Inspection}; use App\Support\Money; @endphp
 {{-- Шаг «Приём»: площадка, место, когда, ключи, документы; фото по слотам рядом с кадрами из письма; подпись.     Осмотра пока нет — будет модулем. --}}
 <div class="mt-3 grid grid-cols-2 gap-3" data-controller="spots" data-spots-map-value="{{ json_encode($yardRows) }}">
-    <x-ui.field name="yard_id" label="Стоянка" :options="$yards" :value="$req->yard_id ?? $yards->keys()->first()" required data-spots-target="yard" data-action="change->spots#sync"/>
+    <x-ui.field name="yard_id" label="Парковка" :options="$yards" :value="$req->yard_id ?? $yards->keys()->first()" required data-spots-target="yard" data-action="change->spots#sync"/>
     <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters"/>
     <datalist id="spots-list" data-spots-target="list"></datalist>
     <x-ui.field name="accepted_at" label="Когда" type="datetime-local" :value="now()->format('Y-m-d\TH:i')"/>

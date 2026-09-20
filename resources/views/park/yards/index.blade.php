@@ -1,13 +1,13 @@
 {{-- Площадки в три вида: плитка — название, адрес, чип свободных и карта мест; строка — то же без карты (нажатие —
      шторка с картой и формой); таблица — столбцы и окошко строки. Чип занятых мест ведёт к ТС. Цифр-итогов нет. --}}
 @php use App\Support\ListView; $view = ListView::pick(request(), $yards->count()) ?? ListView::GRID; $free = fn ($y) => $y->capacity ? max(0, $y->capacity - $y->stored_vehicles_count) : null; @endphp
-<x-ui.shell title="Стоянки" :count="$yards->count()">
+<x-ui.shell title="Парковки" :count="$yards->count()">
     <x-ui.toolbar :pills="['open' => 'Открытые', 'all' => 'Все']" :pill="$closed ? 'all' : 'open'" pill-param="closed" :counts="['all' => $closedCount ?: null]" :hidden="array_filter([ListView::PARAM => request(ListView::PARAM)])" name="yards">
         <x-slot:extra>
             <x-ui.view-switch :current="$view"/>
             <span data-controller="sheet" class="contents">
-                <button type="button" class="btn btn-s btn-accent shrink-0 rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Стоянка</span></button>
-                <x-ui.sheet id="yard-new" title="Новая стоянка">@include('park.yards.form', ['yard' => null])</x-ui.sheet>
+                <button type="button" class="btn btn-s btn-accent shrink-0 rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Парковка</span></button>
+                <x-ui.sheet id="yard-new" title="Новая парковка">@include('park.yards.form', ['yard' => null])</x-ui.sheet>
             </span>
         </x-slot:extra>
     </x-ui.toolbar>
@@ -15,7 +15,7 @@
         <x-ui.empty class="mt-6">Площадок нет</x-ui.empty>
     @elseif ($view === ListView::TABLE)
         <x-ui.table id="yards" class="mt-6">
-            <x-slot:head><tr><th class="grow">Стоянка</th><th class="hidden sm:table-cell">Город</th><th class="num">Мест</th><th class="num">Занято</th><th class="num">Свободно</th></tr></x-slot:head>
+            <x-slot:head><tr><th class="grow">Парковка</th><th class="hidden sm:table-cell">Город</th><th class="num">Мест</th><th class="num">Занято</th><th class="num">Свободно</th></tr></x-slot:head>
             @foreach ($yards as $yard)
                 <tr id="yard-{{ $yard->id }}" data-peek-url="/yards/{{ $yard->id }}/peek" data-href="/cars?yard={{ $yard->id }}" tabindex="0" class="{{ $yard->is_active ? '' : 'text-ink-dim' }}">
                     <td class="grow">{{ $yard->name }}@unless ($yard->is_active) <span class="text-ink-dim">закрыта</span>@endunless</td>
@@ -59,7 +59,7 @@
                         <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
                     </div>
                     @if ($yard->rows)<x-park.yard-map :yard="$yard" :occupied="$yard->storedVehicles->whereNotNull('spot')->keyBy('spot')"/>@endif
-                    <x-ui.sheet id="yard-{{ $yard->id }}" title="Стоянка">@include('park.yards.form', ['yard' => $yard])</x-ui.sheet>
+                    <x-ui.sheet id="yard-{{ $yard->id }}" title="Парковка">@include('park.yards.form', ['yard' => $yard])</x-ui.sheet>
                 </div>
             @endforeach
         </div>

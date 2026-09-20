@@ -17,7 +17,7 @@ class CloseMonthCommand extends Command
 {
     protected $signature = 'billing:close-month {--month= : YYYY-MM, по умолчанию прошлый}';
 
-    protected $description = 'Закрытие месяца: дайджест владельцу и сотрудникам стоянки';
+    protected $description = 'Закрытие месяца: дайджест владельцу и сотрудникам парковки';
 
     public function handle(): int
     {

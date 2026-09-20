@@ -48,10 +48,10 @@ final class Nav
         if ($surface === Surface::Park) {
             return array_values(array_filter([
                 self::item('Заявки', '/', ['/', '/requests']),
-                self::item('ТС', '/cars'),
+                self::item('Наличие', '/cars'),
                 $user?->canManagePark() ? self::item('Деньги', '/money') : null,
                 self::item('Почта', '/mail'),
-                self::item('Стоянки', '/yards', tab: false),
+                self::item('Парковки', '/yards', tab: false),
                 self::item('Вендоры', '/clients', tab: false),
             ]));
         }
@@ -145,7 +145,7 @@ final class Nav
         if ($surface === Surface::Crm) {
             return [
                 self::item('На сайт', Surface::Site->url()),
-                self::item('Стоянка', Surface::Park->url()),
+                self::item('Парковка', Surface::Park->url()),
             ];
         }
 
@@ -174,7 +174,7 @@ final class Nav
             return ['' => array_values(array_filter([
                 self::link('Профиль', '/account', exact: true),
                 self::link('Вендоры', '/clients'),
-                self::link('Стоянки', '/yards'),
+                self::link('Парковки', '/yards'),
                 $user->canManagePark() ? self::link('Реквизиты', '/money/parties') : null,
                 self::link('Уведомления', '/account/notifications'),
                 // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.
@@ -197,7 +197,7 @@ final class Nav
                 ],
                 'Переходы' => [
                     self::link('На сайт', Surface::Site->url()),
-                    self::link('Стоянка', Surface::Park->url()),
+                    self::link('Парковка', Surface::Park->url()),
                 ],
             ];
         }
@@ -272,9 +272,7 @@ final class Nav
                     '/yards' => Yard::count(),
                     '/money' => Invoice::where('state', InvoiceState::Issued)->count(),
                     '/mail' => Thread::whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
-                ], 'fresh' => [
-                    '/cars' => Vehicle::where('state', VehicleState::Expected)->count(),
-                ]];
+                ], 'fresh' => []];
             }
             if ($surface === Surface::Crm) {
                 return ['totals' => [

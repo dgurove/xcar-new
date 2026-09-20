@@ -73,7 +73,7 @@ final class SyncOffer
     public function released(VehicleReleased $e): void
     {
         if ($offer = $this->offer($e->vehicle)) {
-            $offer->log(OfferEventType::Note, $e->by, ['text' => 'Выдана со стоянки'.($e->vehicle->yard ? ' «'.$e->vehicle->yard->name.'»' : '')]);
+            $offer->log(OfferEventType::Note, $e->by, ['text' => 'Выдана с парковки'.($e->vehicle->yard ? ' «'.$e->vehicle->yard->name.'»' : '')]);
         }
     }
 

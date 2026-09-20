@@ -40,6 +40,6 @@ final class ParkLetter extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Из писем на стоянке', 'url' => Surface::Park->url('/requests/from-mail')];
+        return ['text' => 'Из писем на парковке', 'url' => Surface::Park->url('/requests/from-mail')];
     }
 }

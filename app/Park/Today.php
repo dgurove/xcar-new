@@ -45,9 +45,9 @@ final class Today
                 ['Принять', $intake->concat($transit), '/requests?preset=intake'],
                 ['Выдать', $release, '/requests?preset=release'],
                 ['Осмотреть, переставить', $other, '/requests?preset=inspection'],
-                ['Ждут без заявки', $orphans, '/cars?preset=expected'],
-                ['Отправить вендору', $docsDue, '/cars?docs=due'],
-                ['Стоят долго', $idle, '/cars?preset=idle'],
+                ['Ждут без заявки', $orphans, '/cars?state=expected'],
+                ['Отправить вендору', $docsDue, '/cars'],
+                ['Стоят долго', $idle, '/cars'],
             ], fn ($s) => $s[1]->isNotEmpty())),
         ];
     }

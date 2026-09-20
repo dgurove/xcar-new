@@ -33,7 +33,7 @@ final class Release
         $vehicle = DB::transaction(function () use ($vehicle, $by, $at, $note, $to, $inspection, $request, $force, $cash) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             if ($vehicle->state !== VehicleState::Stored) {
-                throw ValidationException::withMessages(['state' => 'Выдать можно только ТС на стоянке']);
+                throw ValidationException::withMessages(['state' => 'Выдать можно только ТС на парковке']);
             }
             $at ??= now();
             if ($cash) {

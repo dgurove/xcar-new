@@ -40,7 +40,8 @@
     </div>
     <div class="card-extra">
         @if ($facts)
-            <x-ui.pill :tone="match ($state->tone()) { 'open' => 'open', 'urgent' => 'urgent', default => 'closed' }" class="!min-h-0 !py-0.5 text-xs">{{ $state->label() }}</x-ui.pill>
+            {{-- Стоящей ТС состояние не пишем: в «Наличии» все такие, место говорит само. --}}
+            @if ($state !== VehicleState::Stored)<x-ui.pill :tone="match ($state->tone()) { 'open' => 'open', 'urgent' => 'urgent', default => 'closed' }" class="!min-h-0 !py-0.5 text-xs">{{ $state->label() }}</x-ui.pill>@endif
             @if ($noRequest)<span class="tag text-urgent">без заявки</span>@endif
             @if ($vehicle->ref)<span class="tag nums">{{ $vehicle->ref }}</span>@endif
             @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif

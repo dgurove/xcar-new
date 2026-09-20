@@ -36,7 +36,7 @@
                 </div>
                 <span class="flex shrink-0 flex-col items-end text-sm text-ink-muted tabular-nums">
                     @if ($vendor->offers_count)<span>{{ $vendor->offers_count }}</span>@endif
-                    @if ($vendor->stored_count)<span>{{ $vendor->stored_count }} на стоянке</span>@endif
+                    @if ($vendor->stored_count)<span>{{ $vendor->stored_count }} на парковке</span>@endif
                 </span>
                 <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
             </a>

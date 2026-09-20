@@ -98,7 +98,7 @@
                         <div class="mt-4"><x-ui.button class="w-full sm:w-auto">Переставить</x-ui.button></div>
                     </x-ui.card>
                 @elseif ($req->type === RequestType::Move)
-                    <x-ui.card title="Перестановка"><span class="chip">ТС ещё не на стоянке</span>@if ($req->note)<p class="mt-3 text-sm text-ink-muted">{{ $req->note }}</p>@endif</x-ui.card>
+                    <x-ui.card title="Перестановка"><span class="chip">ТС ещё не на парковке</span>@if ($req->note)<p class="mt-3 text-sm text-ink-muted">{{ $req->note }}</p>@endif</x-ui.card>
                 @else
                     <x-ui.card :title="$req->type->label()">
                         @if ($req->note)<p class="mb-3 whitespace-pre-line text-sm text-ink-muted">{{ $req->note }}</p>@endif
@@ -256,12 +256,12 @@
                 @endif
                 @if ($state === VehicleState::Stored)
                     <form method="post" action="/cars/{{ $vehicle->id }}/move" class="grid grid-cols-[minmax(0,1fr)_5rem] items-end gap-2">@csrf
-                        <x-ui.field name="yard_id" label="Стоянка" :options="$yards" :value="$vehicle->yard_id"/>
+                        <x-ui.field name="yard_id" label="Парковка" :options="$yards" :value="$vehicle->yard_id"/>
                         <x-ui.field name="spot" label="Место" :value="$vehicle->spot" list="spots-free" autocapitalize="characters"/>
                         <datalist id="spots-free">@foreach ($spots as $s)<option value="{{ $s }}">@endforeach</datalist>
                         <x-ui.button variant="secondary" class="col-span-full">Переставить</x-ui.button>
                     </form>
-                    <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую площадку</x-ui.button>
+                    <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую парковку</x-ui.button>
                 @endif
                 @if ($state->isBefore() && ! $open)
                     <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="secondary" block>Забрать эвакуатором</x-ui.button>
@@ -272,7 +272,7 @@
                     <form method="post" action="/cars/{{ $vehicle->id }}/undo-intake" data-turbo-confirm="Отменить приём? ТС снова будет ожидаться">@csrf<x-ui.button variant="ghost" block>Принята по ошибке</x-ui.button></form>
                 @endif
                 @if ($canManage && UndoRelease::allowed($vehicle))
-                    <form method="post" action="/cars/{{ $vehicle->id }}/undo-release" data-turbo-confirm="Отменить выдачу? ТС вернётся на стоянку">@csrf<x-ui.button variant="ghost" block>Выдана по ошибке</x-ui.button></form>
+                    <form method="post" action="/cars/{{ $vehicle->id }}/undo-release" data-turbo-confirm="Отменить выдачу? ТС вернётся на парковку">@csrf<x-ui.button variant="ghost" block>Выдана по ошибке</x-ui.button></form>
                 @endif
             </div>
         </x-ui.sheet>

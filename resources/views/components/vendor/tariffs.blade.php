@@ -23,7 +23,7 @@
 <div class="flex flex-col gap-4">
     @if ($yards->isNotEmpty())
         <div class="flex flex-wrap gap-1.5">
-            <x-ui.pill :href="$link(null)" :current="!$yardId">Все площадки</x-ui.pill>
+            <x-ui.pill :href="$link(null)" :current="!$yardId">Все парковки</x-ui.pill>
             @foreach ($yards as $yard)<x-ui.pill :href="$link($yard->id)" :current="$yardId === $yard->id">{{ $yard->name }}</x-ui.pill>@endforeach
         </div>
     @endif
