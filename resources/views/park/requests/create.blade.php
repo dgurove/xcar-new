@@ -4,13 +4,6 @@
 <x-ui.shell title="Новая заявка">
     <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
     <div class="flex min-w-0 flex-col gap-4">
-    @unless ($letters)
-        <x-ui.pills>
-            @foreach (RequestType::cases() as $t)
-                <x-ui.pill :href="'/requests/new?type='.$t->value.($vehicle ? '&car='.$vehicle->id : '')" :current="$type === $t">{{ $t->label() }}</x-ui.pill>
-            @endforeach
-        </x-ui.pills>
-    @endunless
     @if ($errors->any())<p class="field-error">{{ $errors->first() }}</p>@endif
     <form method="post" action="/requests" id="request-form" data-controller="vin draft" class="flex flex-col gap-4">
         @csrf
@@ -80,7 +73,7 @@
         <x-ui.button form="request-form" class="min-w-0 flex-1">Завести</x-ui.button>
         @if ($letters)
             <x-mail.window-button :count="$messages->count()" :url="'/requests/from-mail/'.$candidate->id.'/letters'" class="shrink-0"/>
-            <form method="post" action="/requests/from-mail/{{ $candidate->id }}/decline" class="contents">@csrf<button class="btn btn-ghost shrink-0" data-turbo-confirm="Не заявка? Письмо уйдёт в «Отклонённые»">Не заявка</button></form>
+            <form method="post" action="/requests/from-mail/{{ $candidate->id }}/decline" class="contents">@csrf<button class="btn btn-ghost shrink-0" data-turbo-confirm="В архив? Письмо уйдёт из «Ждут»">В архив</button></form>
         @endif
     </x-ui.action-bar>
 </x-ui.shell>

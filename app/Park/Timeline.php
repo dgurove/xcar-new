@@ -29,21 +29,21 @@ final class Timeline
                 $ir->delivery?->label(),
                 $ir->next_call_at && ! $ir->contacted_at ? 'перезвонить '.$ir->next_call_at->translatedFormat('j M, H:i') : null,
             ]));
-            $steps[] = new Step('call', 'Звонок', $current ? Step::CURRENT : Step::DONE, $current ? 'Позвонить страхователю, узнать кто и когда привезёт ТС' : null, $ir->contacted_at, $chips,
+            $steps[] = new Step('call', $current ? 'Нужно позвонить' : 'Позвонили', $current ? Step::CURRENT : Step::DONE, $current ? 'Позвонить страхователю, узнать кто и когда привезёт ТС' : null, $ir->contacted_at, $chips,
                 $current ? ['kind' => 'submit', 'label' => 'Назначить эвакуатор'] : null, $ir);
         }
 
         if ($ir?->isTow()) {
             $chips = array_values(array_filter([$ir->planned_at?->translatedFormat('j M, H:i'), $ir->from_address]));
-            [$state, $hint, $plate] = match (true) {
-                $ir->state === RequestState::New => [Step::CURRENT, 'Договориться с эвакуатором о дате и цене', ['kind' => 'submit', 'label' => 'Назначить']],
-                $ir->state === RequestState::Scheduled => [Step::CURRENT, 'Когда эвакуатор погрузит ТС, отметить выезд', ['kind' => 'submit', 'label' => 'Выехали']],
-                default => [Step::DONE, null, null],
+            [$state, $title, $hint, $plate] = match (true) {
+                $ir->state === RequestState::New => [Step::CURRENT, 'Нужен эвакуатор', 'Договориться с эвакуатором о дате', ['kind' => 'submit', 'label' => 'Назначить']],
+                $ir->state === RequestState::Scheduled => [Step::CURRENT, 'Эвакуатор назначен', 'Когда эвакуатор погрузит ТС, отметить выезд', ['kind' => 'submit', 'label' => 'Выехали']],
+                default => [Step::DONE, 'Эвакуатор выехал', null, null],
             };
             if ($state === Step::CURRENT && ($ir->needsCall() || $callAgain)) {
-                $state = Step::NEXT;
+                [$state, $title] = [Step::NEXT, 'Эвакуация'];
             }
-            $steps[] = new Step('tow', 'Эвакуация', $state, $hint, $ir->started_at ?? $ir->planned_at, $state === Step::DONE ? $chips : [], $plate, $ir);
+            $steps[] = new Step('tow', $title, $state, $hint, $ir->started_at ?? $ir->planned_at, $state === Step::DONE ? $chips : [], $plate, $ir);
         }
 
         if ($v->accepted_at) {
@@ -56,14 +56,14 @@ final class Timeline
             $hint = $v->state === VehicleState::InTransit ? 'ТС в пути, принять по приезду: место, 6 фото, подпись' : 'Поставить на место, снять 6 фото, взять подпись';
             // Заявки нет (отменили) — шаг всё равно текущий: «Принять» заводит заявку и открывает форму.
             $orphan = ! $ir?->isOpen() && $v->state === VehicleState::Expected;
-            $steps[] = new Step('intake', 'Приём', $ready || $orphan ? Step::CURRENT : Step::NEXT, $orphan ? 'Заявки нет: принять, когда привезут' : $hint, $ir?->planned_at, [],
+            $steps[] = new Step('intake', $ready || $orphan ? 'Нужно принять' : 'Приём', $ready || $orphan ? Step::CURRENT : Step::NEXT, $orphan ? 'Заявки нет: принять, когда привезут' : $hint, $ir?->planned_at, [],
                 $ready ? ['kind' => 'submit', 'label' => 'Принять'] : ($orphan ? ['kind' => 'spawn', 'label' => 'Принять'] : null), $ir?->isOpen() ? $ir : null);
         }
 
         // Что впереди — серым, чтобы было видно весь путь.
         if (! $v->accepted_at && $v->state !== VehicleState::Cancelled) {
             if ($billable) {
-                $steps[] = new Step('report', 'Отчёт вендору', Step::NEXT);
+                $steps[] = new Step('report', 'Отчёт', Step::NEXT);
             }
             $steps[] = new Step('storage', 'Хранение', Step::NEXT);
             $steps[] = new Step('release', 'Выдача', Step::NEXT);
@@ -71,7 +71,7 @@ final class Timeline
 
         if ($v->accepted_at && $billable) {
             $ok = $sent('Акт приёма');
-            $steps[] = new Step('report', 'Отчёт вендору', $ok ? Step::DONE : Step::CURRENT, $ok ? null : 'Отправить вендору акт приёма и фото', null, [],
+            $steps[] = new Step('report', $ok ? 'Отчёт отправлен' : 'Нужно отправить отчёт', $ok ? Step::DONE : Step::CURRENT, $ok ? null : 'Отправить вендору акт приёма и фото', null, [],
                 $ok ? null : ['kind' => 'window', 'label' => 'Отправить', 'url' => $v->reportUrl('intake', "/cars/{$v->id}")]);
         }
 
@@ -79,17 +79,17 @@ final class Timeline
             $releasing = $release?->isOpen() && $v->state === VehicleState::Stored;
             $storageState = $v->released_at || $releasing ? Step::DONE : ($v->state === VehicleState::Stored ? Step::CURRENT : Step::NEXT);
             $chips = array_values(array_filter([$v->sold_at ? 'продано '.$v->sold_at->translatedFormat('j M') : null, $v->pickup_name ? 'заберёт '.$v->pickup_name : null]));
-            $steps[] = new Step('storage', 'Хранение', $storageState, 'Ждём письмо страховой о продаже', $v->sold_at, $chips,
+            $steps[] = new Step('storage', $storageState === Step::CURRENT ? 'Ждём покупателя' : 'Хранение', $storageState, 'Ждём письмо страховой о продаже', $v->sold_at, $chips,
                 $storageState === Step::CURRENT ? ['kind' => 'spawn', 'label' => 'Выдать'] : null);
 
             $chips = array_values(array_filter([$release?->doneBy?->shortName(), $release?->note]));
-            $steps[] = new Step('release', $v->released_at ? 'Выдана' : 'Выдача', $v->released_at ? Step::DONE : ($releasing ? Step::CURRENT : Step::NEXT),
+            $steps[] = new Step('release', $v->released_at ? 'Выдана' : ($releasing ? 'Нужно выдать' : 'Выдача'), $v->released_at ? Step::DONE : ($releasing ? Step::CURRENT : Step::NEXT),
                 'Проверить долг и документ, снять фото, взять подпись', $v->released_at ?? $release?->planned_at, $v->released_at ? $chips : [],
                 $releasing ? ['kind' => 'submit', 'label' => 'Выдать'] : null, $release?->isOpen() ? $release : ($v->released_at ? $release : null));
 
             if ($v->released_at && $billable) {
                 $ok = $sent('Акт выдачи');
-                $steps[] = new Step('report-release', 'Отчёт вендору', $ok ? Step::DONE : Step::CURRENT, $ok ? null : 'Отправить вендору акт выдачи и фото', null, [],
+                $steps[] = new Step('report-release', $ok ? 'Отчёт отправлен' : 'Нужно отправить отчёт', $ok ? Step::DONE : Step::CURRENT, $ok ? null : 'Отправить вендору акт выдачи и фото', null, [],
                     $ok ? null : ['kind' => 'window', 'label' => 'Отправить', 'url' => $v->reportUrl('release', "/cars/{$v->id}")]);
             }
         }
@@ -119,9 +119,9 @@ final class Timeline
     public static function word(Vehicle $v, Request $r): ?string
     {
         return match (true) {
-            $r->needsCall() => 'звонок',
+            $r->needsCall() => 'нужно позвонить',
             $v->state === VehicleState::InTransit => 'в пути',
-            $r->isTow() && $r->state === RequestState::Scheduled => 'эвакуатор '.($r->planned_at?->translatedFormat('j M') ?? 'назначен'),
+            $r->isTow() && $r->state === RequestState::Scheduled => 'эвакуатор назначен'.($r->planned_at ? ' на '.$r->planned_at->translatedFormat('j M') : ''),
             $r->isTow() && $r->state === RequestState::New => 'нужен эвакуатор',
             $v->state === VehicleState::Stored => 'на стоянке',
             $r->delivery === Delivery::Self => 'привезёт сам',

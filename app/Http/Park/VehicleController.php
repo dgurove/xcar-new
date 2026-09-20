@@ -11,6 +11,7 @@ use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Offers\Offer;
 use App\Park\Actions\CancelVehicle;
+use App\Park\Actions\CloseRequest;
 use App\Park\Actions\LinkOffer;
 use App\Park\Actions\MarkDoc;
 use App\Park\Actions\MarkSold;
@@ -25,8 +26,8 @@ use App\Park\Doc;
 use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\EventType;
-use App\Park\Idle;
 use App\Park\PhotoSlot;
+use App\Park\RequestType;
 use App\Park\Scope;
 use App\Park\Vehicle;
 use App\Park\VehicleFields;
@@ -42,7 +43,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class VehicleController
 {
-    public const PRESETS = ['stored' => 'На стоянке', 'idle' => 'Стоят долго', 'expected' => 'Ожидаются', 'in_transit' => 'В пути', 'released' => 'Выданы', 'cancelled' => 'Не привезены', 'all' => 'Все'];
+    public const PRESETS = ['stored' => 'На стоянке', 'expected' => 'Ожидаются', 'in_transit' => 'В пути', 'released' => 'Выданы', 'all' => 'Все'];
 
     public const SORTS = ['longest' => 'Дольше всех стоят', 'fresh' => 'Сначала новые'];
 
@@ -53,8 +54,6 @@ class VehicleController
         $q = trim((string) $request->query('q'));
         $vehicles = Scope::vehicles($request->user())->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer', 'requests'])
             ->when(VehicleState::tryFrom($preset), fn ($v, $s) => $v->where('state', $s))
-            ->when($preset === 'idle', fn ($v) => $v->where('state', VehicleState::Stored)->where('accepted_at', '<=', now()->subDays(Idle::warn())->startOfDay()))
-            ->when($request->query('docs') === 'due', fn ($v) => $v->whereHas('docs', fn ($d) => $d->where('direction', 'out')->where('state', 'pending')))
             ->when($request->query('yard'), fn ($v, $y) => $v->where('yard_id', $y))
             ->when($request->query('vendor'), fn ($v, $id) => $v->where('vendor_id', $id))
             ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
@@ -69,12 +68,10 @@ class VehicleController
             'preset' => $preset,
             'q' => $q,
             'sort' => $request->query('sort', 'longest'),
-            'counts' => Scope::vehicles($request->user())->selectRaw('state, count(*) as n')->groupBy('state')->pluck('n', 'state')->all()
-                + ['idle' => Scope::vehicles($request->user())->where('state', VehicleState::Stored)->where('accepted_at', '<=', now()->subDays(Idle::warn())->startOfDay())->count()],
+            'counts' => Scope::vehicles($request->user())->selectRaw('state, count(*) as n')->groupBy('state')->pluck('n', 'state')->all(),
             'yard' => $request->query('yard') ? Yard::find($request->query('yard')) : null,
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'vendors' => Vendor::whereIn('id', Vehicle::whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
-            'docsDue' => Scope::vehicles($request->user())->whereHas('docs', fn ($d) => $d->where('direction', 'out')->where('state', 'pending'))->count(),
             // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты площадки.
             'peek' => $request->query('peek') && $request->query('vid') === ListView::TABLE ? 'vehicle-'.(int) $request->query('peek') : null,
         ]);
@@ -241,15 +238,22 @@ class VehicleController
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Не привезена');
     }
 
-    /** «Заведена по ошибке»: ТС и заявки исчезают, письмо возвращается в «Из писем». */
-    public function destroy(Request $request, Vehicle $vehicle, UnwindVehicle $unwind)
+    /**
+     * «Отменить заявку» до приёма: ТС и заявки исчезают, письмо возвращается в «Из писем».
+     * ТС в пути — сначала снять эвакуацию (ТС снова ожидается), потом отменить заведение.
+     */
+    public function destroy(Request $request, Vehicle $vehicle, UnwindVehicle $unwind, CloseRequest $close)
     {
         abort_unless(Scope::allows($request->user(), $vehicle), 404);
+        if ($vehicle->state === VehicleState::InTransit && ($tow = $vehicle->openRequest(RequestType::Tow))) {
+            $close($tow, $request->user(), false);
+            $vehicle->refresh();
+        }
         $candidate = $unwind($vehicle, $request->user());
 
         return $candidate
-            ? redirect('/requests/from-mail')->with('toast', 'Заведение отменено, письмо снова в «Из писем»')
-            : redirect('/requests')->with('toast', 'Заведение отменено');
+            ? redirect('/requests/from-mail')->with('toast', 'Заявка отменена, письмо снова в «Из писем»')
+            : redirect('/requests')->with('toast', 'Заявка отменена');
     }
 
     /** Связать с предложением CRM: по номеру, руками. */

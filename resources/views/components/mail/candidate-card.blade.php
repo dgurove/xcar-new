@@ -1,7 +1,7 @@
 {{-- Кандидат в плитках и строках: та же карточка, что у ТС — кадр из письма (медиатека кандидата, у заведённого — ТС),
      заголовок — номер убытка или марка, чипы: вендор, госномер, город, «2 письма», «📎 27», срок ответа.
      На стоянке кнопок нет: вся строка — форма заведения, справа серым «Завести ›» (у заведённого — «ТС ›»);
-     «Не заявка» — в окошке и в плашке формы. В CRM справа — кнопки «Завести» / «Не заявка», как раньше. --}}
+     «В архив» — в окошке и в плашке формы. В CRM справа — кнопки «Завести» / «Не заявка», как раньше. --}}
 @props(['c', 'base', 'mail', 'park' => false])
 @php
     use App\Mail\CandidateState;
@@ -58,7 +58,7 @@
             @if ($promoted)
                 <a href="/offers/{{ $c->offer?->number }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">№ {{ $c->offer?->number }}</a>
             @else
-                <form method="post" action="{{ $base }}/{{ $c->id }}/decline" class="contents">@csrf<button class="btn btn-s btn-ghost whitespace-nowrap">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Не заявка' }}</button></form>
+                <form method="post" action="{{ $base }}/{{ $c->id }}/decline" class="contents">@csrf<button class="btn btn-s btn-ghost whitespace-nowrap">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'В архив' }}</button></form>
                 <form method="post" action="{{ $base }}/{{ $c->id }}/create" class="contents">@csrf<button class="btn btn-s btn-accent min-w-0 flex-1 whitespace-nowrap">Завести</button></form>
             @endif
         </div>

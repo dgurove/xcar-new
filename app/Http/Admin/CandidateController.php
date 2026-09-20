@@ -20,7 +20,7 @@ use Illuminate\Http\Request;
  */
 class CandidateController
 {
-    public const PRESETS = ['new' => 'Ждут', 'rejected' => 'Отклонённые', 'promoted' => 'Заведённые'];
+    public const PRESETS = ['new' => 'Ждут', 'rejected' => 'Архив', 'promoted' => 'Заведённые'];
 
     public const SORTS = ['fresh' => 'Свежие письма', 'waiting' => 'Дольше ждут', 'answer' => 'По сроку ответа'];
 
@@ -82,7 +82,7 @@ class CandidateController
         $candidate->update(['state' => $candidate->state === CandidateState::Rejected ? CandidateState::New : CandidateState::Rejected]);
         Nav::forgetStaffCounts();
 
-        return back()->with('toast', $candidate->state === CandidateState::Rejected ? 'Не заявка — письмо в «Отклонённых»' : 'Снова ждёт');
+        return back()->with('toast', $candidate->state === CandidateState::Rejected ? 'В архиве' : 'Снова ждёт');
     }
 
     protected function query(): Builder

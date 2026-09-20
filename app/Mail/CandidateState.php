@@ -16,7 +16,7 @@ enum CandidateState: string
     {
         return match ($this) {
             self::New => 'Ждёт',
-            self::Rejected => 'Отклонён',
+            self::Rejected => 'В архиве',
             self::Promoted => 'Заведён',
         };
     }

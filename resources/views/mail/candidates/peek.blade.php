@@ -32,7 +32,7 @@
             @else
                 {{-- «Завести» уводит на форму заявки или на предложение — всей страницей, не в окошко. --}}
                 @if ($park)<a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent" data-turbo-frame="_top">Завести</a>@else<form method="post" action="{{ $base }}/{{ $c->id }}/create" data-turbo-frame="_top">@csrf<button class="btn btn-s btn-accent">Завести</button></form>@endif
-                <form method="post" action="{{ $base }}/{{ $c->id }}/decline">@csrf<button class="pill pill-plain">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Не заявка' }}</button></form>
+                <form method="post" action="{{ $base }}/{{ $c->id }}/decline">@csrf<button class="pill pill-plain">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'В архив' }}</button></form>
             @endif
         </x-slot:actions>
         <div class="mt-4">

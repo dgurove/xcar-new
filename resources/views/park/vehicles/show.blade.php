@@ -117,6 +117,16 @@
     </div>
 
     <div class="flex min-w-0 flex-col gap-4">
+        {{-- Документы — над фото: их обычно немного. Строками, «+ Документ» сверху. --}}
+        <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple hidden data-photos-target="input" data-action="change->photos#upload">
+            <div class="mb-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Документ</x-ui.button></div>
+            <div hidden data-photos-target="progress" class="mb-3">
+                <div class="mb-1 text-sm text-ink-muted" data-label></div>
+                <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
+            </div>
+            @include('park.vehicles.papers')
+        </x-ui.card>
         @if ($vehiclePhoto)
         <x-ui.card title="Фотографии" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
             <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
@@ -128,51 +138,16 @@
         </x-ui.card>
         @endif
 
-        @if ($vehicle->docs->isNotEmpty() || $state === VehicleState::Stored)
-        <x-ui.card title="Бумаги с вендором">
-            {{-- Чип — сама бумага: серый — ещё нет, контур — отправлена, лайм — получена; нажатие открывает шторку с датой, сканом и письмом. --}}
-            <div class="flex flex-wrap gap-1.5">
-                @foreach ($vehicle->docs as $doc)
-                    <span class="contents" data-controller="sheet">
-                        <button type="button" class="chip {{ $doc->state === DocState::Received ? 'bg-accent-soft text-accent-text' : ($doc->state === DocState::Sent ? 'ring-1 ring-inset ring-accent text-accent-text' : '') }}" data-action="sheet#open">
-                            @if ($doc->isDone())<x-ui.icon name="check" class="size-3.5"/>@endif
-                            {{ $doc->kind->label() }}
-                            @if (!$doc->isOut())<span class="font-normal">← ждём</span>@endif
-                            @if ($doc->at)<span class="nums font-normal">{{ $doc->at->translatedFormat('j M') }}</span>@endif
-                        </button>
-                        <x-ui.sheet id="doc-{{ $doc->id }}" :title="$doc->kind->label()">
-                            @include('park.vehicles.doc-form', ['doc' => $doc])
-                        </x-ui.sheet>
-                    </span>
-                @endforeach
-                <span class="contents" data-controller="sheet">
-                    <button type="button" class="chip text-ink-muted" data-action="sheet#open" aria-label="Ещё бумага"><x-ui.icon name="plus" class="size-3.5"/></button>
-                    <x-ui.sheet id="doc-new" title="Бумага">
-                        @include('park.vehicles.doc-form', ['doc' => null])
-                    </x-ui.sheet>
-                </span>
-            </div>
-            @if ($vehicle->vendor?->intake_note)<p class="mt-3 text-sm text-ink-muted">{{ $vehicle->vendor->intake_note }}</p>@endif
-        </x-ui.card>
-        @endif
-
-        @if ($vehicle->papers()->isNotEmpty())
-        <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple hidden data-photos-target="input" data-action="change->photos#upload">
-            <div hidden data-photos-target="progress" class="mb-3">
-                <div class="mb-1 text-sm text-ink-muted" data-label></div>
-                <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-            </div>
-            @include('park.vehicles.papers')
-            <div class="mt-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Документ</x-ui.button></div>
-        </x-ui.card>
-        @endif
 
         @if ($canManage && ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty() || $vehicle->accepted_at))
         <x-ui.card title="Деньги" data-controller="sheet">
             <div class="mb-2 flex flex-wrap gap-1.5">
                 {{-- Условия по этой ТС (комиссия или хранение, ставка, ПТС/СТС, комитент) — шторка из чипа. --}}
                 <button type="button" class="chip nums" data-controller="emit" data-action="emit#send" data-emit-event-param="contract:open">{{ $vehicle->contract_kind === 'commission' ? 'Комиссия'.($vehicle->assigned_price ? ' '.Money::rub($vehicle->assigned_price) : '') : ($storageRate ?: 'Условия') }}</button>
+                @if ($vehicle->contract_kind === 'commission')
+                    <a href="/acts/{{ $vehicle->id }}/contract" class="chip" data-turbo="false" target="_blank">Договор комиссии</a>
+                    <a href="/acts/{{ $vehicle->id }}/handover" class="chip" data-turbo="false" target="_blank">Акт приёма-передачи</a>
+                @endif
                 @foreach ($accrued as $payer => $a)@if ($a['amount'] > 0)<a href="/cars/{{ $vehicle->id }}/invoices/new?payer={{ $payer }}" class="chip nums">не выставлено {{ Money::rub($a['amount']) }} за {{ $a['days'] }} дн{{ count($accrued) > 1 ? ' — '.\App\Billing\Accrual::payerLabel($payer) : '' }}</a>@endif @endforeach
                 @if ($buyerFrom)<span class="chip nums {{ $buyerFrom->isPast() ? 'bg-danger-soft text-danger' : '' }}">покупатель с {{ $buyerFrom->translatedFormat('j M') }}, {{ Money::rub($buyerRate) }}/сут</span>@endif
             </div>
@@ -274,16 +249,10 @@
     <div data-controller="sheet" data-action="actions:open@window->sheet#open" class="contents">
         <x-ui.sheet id="vehicle-actions" title="Транспортное средство">
             <div class="flex flex-col gap-2">
-                {{-- Пока ТС не принята: назад в письма (ТС и заявка исчезают, письма снова в «Из писем»), не привезут, закрыть заявку. --}}
-                @php $onlyOpen = $vehicle->requests->filter(fn ($r) => $r->isOpen())->count() <= 1; $unwind = $canManage && $state->isBefore() && UnwindVehicle::allowed($vehicle); $hadLetters = $vehicle->requests->contains(fn ($r) => $r->thread_id) || $letters; @endphp
-                @if ($unwind)
-                    <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="{{ $hadLetters ? 'Вернуть в письма? ТС и заявка исчезнут, письма снова будут ждать в «Из писем»' : 'Удалить заявку и ТС?' }}">@csrf @method('delete')<x-ui.button variant="secondary" block>{{ $hadLetters ? 'Вернуть в письма' : 'Заведена по ошибке' }}</x-ui.button></form>
-                @endif
+                {{-- Пока ТС не принята: одна отмена — ТС и заявка исчезают, письма снова ждут в «Из писем» (в пути — эвакуация снимается). --}}
+                @php $hadLetters = $vehicle->requests->contains(fn ($r) => $r->thread_id) || $letters; @endphp
                 @if ($canManage && $state->isBefore())
-                    <form method="post" action="/cars/{{ $vehicle->id }}/cancel" data-turbo-confirm="ТС не привезут?">@csrf<x-ui.button variant="danger" block>Не привезут</x-ui.button></form>
-                @endif
-                @if ($open && $hasChain)
-                    <form method="post" action="/requests/{{ $req->id }}/close" data-turbo-confirm="Закрыть заявку без выполнения?">@csrf<input type="hidden" name="done" value="0"><input type="hidden" name="exit" value="close"><x-ui.button variant="ghost" block>Закрыть заявку</x-ui.button></form>
+                    <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="{{ $hadLetters ? 'Отменить заявку? ТС исчезнет, письма вернутся в «Из писем»' : 'Отменить заявку? ТС и заявка исчезнут' }}">@csrf @method('delete')<x-ui.button variant="secondary" block>Отменить заявку</x-ui.button></form>
                 @endif
                 @if ($state === VehicleState::Stored)
                     <form method="post" action="/cars/{{ $vehicle->id }}/move" class="grid grid-cols-[minmax(0,1fr)_5rem] items-end gap-2">@csrf
@@ -298,21 +267,6 @@
                     <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="secondary" block>Забрать эвакуатором</x-ui.button>
                 @endif
                 @if ($canManage)
-                    @if ($vehicle->accepted_at || $pendingCharges->isNotEmpty())<x-ui.button href="/cars/{{ $vehicle->id }}/invoices/new" variant="secondary" block>Счёт</x-ui.button>@endif
-                @endif
-                <div data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers" data-photos-reload-value="true" class="contents">
-                    <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple hidden data-photos-target="input" data-action="change->photos#upload">
-                    <div hidden data-photos-target="progress"><div class="mb-1 text-sm text-ink-muted" data-label></div><div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div></div>
-                    <x-ui.button type="button" variant="ghost" block data-action="photos#pick"><x-ui.icon name="clip" class="size-4"/> Приложить документ</x-ui.button>
-                </div>
-                @if ($vehicle->accepted_at)<x-ui.button href="/acts/{{ $vehicle->id }}/intake" variant="ghost" block data-turbo="false" target="_blank">Акт приёма</x-ui.button>@endif
-                @if ($release)<x-ui.button href="/acts/{{ $vehicle->id }}/release" variant="ghost" block data-turbo="false" target="_blank">{{ $release->refused ? 'Акт осмотра с отказом' : 'Акт выдачи' }}</x-ui.button>@endif
-                @if ($vehicle->contract_kind === 'commission')
-                    <x-ui.button href="/acts/{{ $vehicle->id }}/contract" variant="ghost" block data-turbo="false" target="_blank">Договор комиссии</x-ui.button>
-                    <x-ui.button href="/acts/{{ $vehicle->id }}/handover" variant="ghost" block data-turbo="false" target="_blank">Акт приёма-передачи</x-ui.button>
-                @endif
-                @if ($canManage && $state === VehicleState::Cancelled)
-                    <form method="post" action="/cars/{{ $vehicle->id }}/restore" data-turbo-confirm="Снова ждать ТС?">@csrf<x-ui.button variant="secondary" block>Снова ждём</x-ui.button></form>
                 @endif
                 @if ($canManage && UndoIntake::allowed($vehicle))
                     <form method="post" action="/cars/{{ $vehicle->id }}/undo-intake" data-turbo-confirm="Отменить приём? ТС снова будет ожидаться">@csrf<x-ui.button variant="ghost" block>Принята по ошибке</x-ui.button></form>

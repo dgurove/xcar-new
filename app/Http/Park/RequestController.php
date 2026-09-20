@@ -9,7 +9,6 @@ use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Scope as MailScope;
 use App\Park\Actions\AssignRequest;
-use App\Park\Actions\CancelVehicle;
 use App\Park\Actions\CloseRequest;
 use App\Park\Actions\Contact;
 use App\Park\Actions\CreateRequest;
@@ -20,7 +19,6 @@ use App\Park\Actions\RefuseRelease;
 use App\Park\Actions\Release;
 use App\Park\Actions\ScheduleTow;
 use App\Park\Actions\StartTow;
-use App\Park\Actions\UnwindVehicle;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\Delivery;
 use App\Park\Inspection;
@@ -52,7 +50,6 @@ class RequestController
     {
         ListPrefs::sync($request, 'park-requests');
         $type = $request->query('preset', 'all');
-        $done = $request->boolean('done');
         $qs = trim((string) $request->query('q'));
         $filters = fn ($q) => $q
             ->when($request->query('vendor'), fn ($w, $id) => $w->whereHas('vehicle', fn ($v) => $v->where('vendor_id', $id)))
@@ -64,7 +61,7 @@ class RequestController
         $needsCall = fn ($q) => $q->where('state', RequestState::New)->whereIn('type', [RequestType::Intake, RequestType::Tow])
             ->where(fn ($w) => $w->where(fn ($n) => $n->whereNull('delivery')->whereNull('contacted_at')->whereNull('planned_at'))->orWhere('next_call_at', '<=', now()));
         $q = $filters(Scope::requests($request->user())->with(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee']));
-        $done ? $q->whereNotIn('state', RequestState::open()) : $q->whereIn('state', RequestState::open());
+        $q->whereIn('state', RequestState::open());
         if ($t = RequestType::tryFrom($type)) {
             $q->where('type', $t);
         } elseif ($type === 'call') {
@@ -78,16 +75,16 @@ class RequestController
             default => $q->orderByRaw('planned_at asc nulls last')->latest(),
         };
 
-        $open = $filters(Scope::requests($request->user()))->when($done, fn ($q) => $q->whereNotIn('state', RequestState::open()), fn ($q) => $q->whereIn('state', RequestState::open()))->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
-        $presets = ['all' => 'Все', 'overdue' => 'Просрочено', 'call' => 'Связаться'] + RequestType::options();
+        $open = $filters(Scope::requests($request->user()))->whereIn('state', RequestState::open())->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
+        // Осмотр и перестановка заявками не заводятся: пресеты — только приём, эвакуация, выдача.
+        $presets = ['all' => 'Все', 'overdue' => 'Просрочено', 'call' => 'Нужно позвонить'] + collect([RequestType::Intake, RequestType::Tow, RequestType::Release])->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all();
 
         return view('park.requests.index', [
             'requests' => ListView::paginate($request, $q),
             'preset' => $type,
             'presets' => $presets,
-            'counts' => $open->all() + ['all' => $open->sum(), 'call' => $done ? 0 : $needsCall($filters(Scope::requests($request->user())))->count(),
-                'overdue' => $done ? 0 : $filters(Scope::requests($request->user()))->whereIn('state', RequestState::open())->where('planned_at', '<', now())->count()],
-            'done' => $done,
+            'counts' => $open->all() + ['all' => $open->sum(), 'call' => $needsCall($filters(Scope::requests($request->user())))->count(),
+                'overdue' => $filters(Scope::requests($request->user()))->whereIn('state', RequestState::open())->where('planned_at', '<', now())->count()],
             'sort' => $request->query('sort', 'planned'),
             'q' => $qs,
             'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
@@ -109,8 +106,12 @@ class RequestController
      */
     public function create(Request $request, PromoteCandidate $promote)
     {
+        // Руками заводится только приём новой ТС; эвакуация с ТС (перегон) — по ссылке «Перегнать».
         $type = RequestType::tryFrom($request->query('type', '')) ?? RequestType::Intake;
         $vehicle = $request->query('car') ? Vehicle::find($request->query('car')) : null;
+        if (! in_array($type, [RequestType::Intake, RequestType::Tow], true) || ($type === RequestType::Tow && ! $vehicle)) {
+            $type = RequestType::Intake;
+        }
         $candidate = $request->query('candidate') ? Candidate::where('scope', MailScope::Park)->where('state', '!=', CandidateState::Promoted)->with(['messages.attachments', 'messages.addresses', 'messages.author'])->find($request->query('candidate')) : null;
         $prefill = [];
         if ($candidate) {
@@ -262,29 +263,14 @@ class RequestController
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
     }
 
-    /** Закрыть или отменить; из шторки отмены `exit` — ещё «Не привезут» (CancelVehicle) и «Заведена по ошибке» (UnwindVehicle), причина общая. */
-    public function close(Request $request, ParkRequest $req, CloseRequest $close, CancelVehicle $cancel, UnwindVehicle $unwind)
+    /** Закрыть заявку сделанной (осмотр, перестановка — старые типы); отмена заявки на приём — «Отменить заявку» на деле (UnwindVehicle). */
+    public function close(Request $request, ParkRequest $req, CloseRequest $close)
     {
         abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
-        $data = $request->validate(['done' => ['required', 'boolean'], 'note' => ['nullable', 'string', 'max:2000'], 'exit' => ['nullable', Rule::in(['close', 'cancel', 'unwind'])]]);
-        $exit = $data['exit'] ?? 'close';
-        if ($exit !== 'close') {
-            abort_unless($request->user()->canManagePark(), 403);
-        }
-        if ($exit === 'cancel') {
-            $cancel($req->vehicle, $request->user(), $data['note'] ?? null);
-
-            return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Не привезена');
-        }
-        if ($exit === 'unwind') {
-            $candidate = $unwind($req->vehicle, $request->user());
-
-            return $candidate ? redirect('/requests/from-mail')->with('toast', 'Заведение отменено, письмо снова в «Из писем»') : redirect('/requests')->with('toast', 'Заведение отменено');
-        }
+        $data = $request->validate(['done' => ['required', 'boolean'], 'note' => ['nullable', 'string', 'max:2000']]);
         $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
 
-        // Сделана — дело; отменена — в заявки (ТС в ожидании без заявки видна в «Ожидаются» с меткой).
-        return redirect($data['done'] ? "/cars/{$req->vehicle_id}" : '/requests')->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
+        return redirect("/cars/{$req->vehicle_id}")->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
     }
 
     /** Звонок страхователю: эвакуатор (с полями назначения), привезёт сам (когда), не дозвонились (когда снова). */

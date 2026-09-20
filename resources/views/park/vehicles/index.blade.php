@@ -1,9 +1,6 @@
 @php $view = \App\Support\ListView::pick(request(), $vehicles->total()); @endphp
 <x-ui.shell :title="$yard ? $yard->name : 'ТС'" :count="$vehicles->total()" :back="$yard ? ['Стоянки', '/yards'] : false" :phone-heading="(bool) $yard">
-    <x-ui.toolbar :sorts="\App\Http\Park\VehicleController::SORTS" :sort="$sort" :pills="\App\Http\Park\VehicleController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['yard' => $yard ? request('yard') : null, 'vendor' => request('vendor'), 'docs' => request('docs'), \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)])" name="vehicles">
-        <x-slot:pillsExtra>
-            @if ($docsDue)<x-ui.pill :href="request()->fullUrlWithQuery(['docs' => request('docs') === 'due' ? null : 'due', 'page' => null])" :current="request('docs') === 'due'">Бумаги вендору <span class="nums text-ink-dim">{{ $docsDue }}</span></x-ui.pill>@endif
-        </x-slot:pillsExtra>
+    <x-ui.toolbar :sorts="\App\Http\Park\VehicleController::SORTS" :sort="$sort" :pills="\App\Http\Park\VehicleController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['yard' => $yard ? request('yard') : null, 'vendor' => request('vendor'), \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)])" name="vehicles">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:filters>
             <input type="search" name="q" value="{{ $q }}" placeholder="Номер, VIN, госномер, марка" class="field-input" enterkeyhint="search">

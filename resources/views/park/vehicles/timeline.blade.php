@@ -12,7 +12,7 @@
                         <summary class="step-head">
                             <span class="step-title">{{ $step->title }}</span>
                             @if ($step->at)<span class="tag nums">{{ $step->at->translatedFormat('j M'.($step->key === 'letter' ? '' : ', H:i')) }}</span>@endif
-                            @foreach ($step->chips as $chip)<span class="tag">{{ $chip }}</span>@endforeach
+                            @foreach ($step->chips as $chip)<span class="tag max-w-[14rem] truncate">{{ $chip }}</span>@endforeach
                             @if ($step->hint)<span class="min-w-0 truncate text-sm text-ink-muted">{{ $step->hint }}</span>@endif
                             <x-ui.icon name="chevron-down" class="step-chevron ml-auto size-4 shrink-0 self-center text-ink-dim"/>
                         </summary>
