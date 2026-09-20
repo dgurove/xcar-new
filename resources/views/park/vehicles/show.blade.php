@@ -18,40 +18,27 @@
     $spawn = ! $open ? match ($state) { VehicleState::Expected => ['intake', 'Принять'], VehicleState::Stored => ['release', 'Выдать'], default => null } : null;
     $mailPhotos = $vehicle->photos()->filter(fn ($m) => ($m->getCustomProperty('stage') ?? 'mail') === 'mail');
     $intakePhotos = $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === 'intake');
-    $contractChip = $vehicle->contract_kind === 'commission' ? 'Комиссия'.($vehicle->assigned_price ? ' '.Money::rub($vehicle->assigned_price) : '') : ($storageRate ?: 'Договор');
     $release = $vehicle->lastInspection(InspectionKind::Release);
     $phaseLabel = fn ($r) => match ($r->type) {
-        RequestType::Intake, RequestType::Tow => $r->state === RequestState::Done ? 'Принята' : 'Приём',
-        RequestType::Release => $r->state === RequestState::Done ? 'Выдана' : 'Выдача',
-        RequestType::Move => $r->state === RequestState::Done ? 'Переставлена' : 'Перестановка',
+        RequestType::Intake, RequestType::Tow => 'Принята',
+        RequestType::Release => 'Выдана',
+        RequestType::Move => 'Переставлена',
         default => $r->type->label(),
     };
+    // Поля ТС сверху, пока ТС ожидается (данные из письма надо сверить); после приёма — строкой с раскрытием среди фаз.
+    $vehicleOpen = $state->isBefore();
+    $vehiclePhoto = ! ($intakeForm || $releaseForm) && $vehicle->photos()->isNotEmpty();
 @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
-    {{-- Шапка — один ряд чипов. --}}
+    {{-- Шапка — только положение и люди: состояние с местом и днями, долг, «Продано», исполнитель, письма.
+         Всё, что есть в полях (номер, вендор, телефон) и в «Деньгах» (ставка, начислено), тут не повторяется. --}}
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
-        @if ($vehicle->plate)<span class="chip nums">{{ $vehicle->plate }}</span>@endif
         <x-park.state :vehicle="$vehicle"/>
-        @if ($open)
-            <x-ui.pill :tone="$req->isOverdue() ? 'danger' : 'soft'" class="!min-h-0 !py-1 text-xs">{{ $req->type->label() }}@if ($req->planned_at) <span class="nums font-normal">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif</x-ui.pill>
-            @if ($tow && $req->yard)<x-ui.place class="chip">→ {{ $req->yard->name }}</x-ui.place>@endif
-            @if ($callAgain && !$callForm)<a href="/cars/{{ $vehicle->id }}?call=1" class="chip"><x-ui.icon name="phone" class="size-4"/> {{ $tow ? 'Эвакуатор' : ($req->delivery?->label() ?? 'Связаться') }}</a>@elseif ($req->delivery && !$tow)<span class="chip">{{ $req->delivery->label() }}</span>@endif
-            @if ($req->next_call_at)<span class="chip nums {{ $req->next_call_at->isPast() ? 'text-danger' : '' }}"><x-ui.icon name="phone" class="size-4"/> {{ $req->next_call_at->translatedFormat('j M, H:i') }}</span>@endif
-            @if ($tow && $req->carrier)<span class="chip">{{ $req->carrier }}</span>@endif
-            @if ($tow && $req->cost)<span class="chip nums">{{ Money::rub($req->cost) }}</span>@endif
-        @endif
-        @if ($vehicle->ref)<span class="chip nums">{{ $vehicle->ref }}</span>@endif
-        @if ($vehicle->vendor)<span class="chip">{{ $vehicle->vendor->name }}</span>@endif
-        @if ($canManage)<button type="button" class="chip nums" data-controller="emit" data-action="emit#send" data-emit-event-param="contract:open">{{ $contractChip }}</button>@elseif ($storageRate)<span class="chip nums">{{ $storageRate }}</span>@endif
-        @foreach ($accrued as $payer => $a)@if ($a['amount'] > 0)<a href="/cars/{{ $vehicle->id }}/invoices/new?payer={{ $payer }}" class="chip nums">{{ Money::rub($a['amount']) }} за {{ $a['days'] }} дн{{ count($accrued) > 1 ? ' — '.\App\Billing\Accrual::payerLabel($payer) : '' }}</a>@endif @endforeach
         @if ($debt > 0)<x-ui.pill tone="danger" :href="'/money?preset=all&car='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ Money::rub($debt) }}</x-ui.pill>@endif
-        @if ($vehicle->contact_phone)<a href="tel:+{{ preg_replace('/\D+/', '', $vehicle->contact_phone) }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->contact_name ? \Illuminate\Support\Str::of($vehicle->contact_name)->explode(' ')->first().' ' : '' }}{{ $vehicle->contact_phone }}</a>@endif
         @if ($vehicle->sold_at)
             <button type="button" class="pill pill-urgent !min-h-0 !py-1 text-xs nums" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">Продано {{ $vehicle->sold_at->translatedFormat('j M') }}</button>
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->pickup_name ? $vehicle->pickup_name.' ' : 'Заберёт ' }}{{ $vehicle->pickup_phone }}</a>@elseif ($vehicle->pickup_name)<span class="chip">Заберёт {{ $vehicle->pickup_name }}</span>@endif
-            @if ($buyerFrom)<span class="chip nums {{ $buyerFrom->isPast() ? 'bg-danger-soft text-danger' : '' }}">покупатель с {{ $buyerFrom->translatedFormat('j M') }}, {{ Money::rub($buyerRate) }}/сут</span>@endif
         @endif
-        @if ($vehicle->offer)<a href="{{ Surface::Crm->url('/offers/'.$vehicle->offer->number) }}" class="chip nums" data-turbo="false">№ {{ $vehicle->offer->number }}</a>@endif
         {{-- Исполнитель — чип с аватаром (пусто — «Беру»); нажатие — шторка: «Я» первым, строка = выбор. --}}
         @if ($open)
             <button type="button" class="chip person" data-action="sheet#open">@if ($req->assignee)<x-ui.avatar :user="$req->assignee" :size="20"/>{{ $req->assignee->shortName() }}@else<x-ui.icon name="user" class="size-4"/> Беру@endif</button>
@@ -75,15 +62,7 @@
         @if ($phases->isNotEmpty())
             <div class="flex flex-col gap-1.5">
                 @foreach ($phases as $r)
-                    @php $cancelled = $r->state === RequestState::Cancelled; $insp = $r->state === RequestState::Done && in_array($r->type, [RequestType::Intake, RequestType::Tow, RequestType::Release], true) ? $vehicle->inspections->firstWhere('request_id', $r->id) : null; $stagePhotos = $insp ? $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === ($r->type === RequestType::Release ? 'release' : 'intake')) : collect(); @endphp
-                    @if ($cancelled)
-                        <div class="row !py-2.5">
-                            <span class="chip bg-closed-soft text-closed">{{ $r->type->label() }}, отменена</span>
-                            @if ($r->done_at)<span class="tag nums">{{ $r->done_at->translatedFormat('j M, H:i') }}</span>@endif
-                            @if ($r->cancel_reason)<span class="min-w-0 truncate text-sm text-ink-muted">{{ $r->cancel_reason }}</span>@endif
-                        </div>
-                        @continue
-                    @endif
+                    @php $insp = in_array($r->type, [RequestType::Intake, RequestType::Tow, RequestType::Release], true) ? $vehicle->inspections->firstWhere('request_id', $r->id) : null; $stagePhotos = $insp ? $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === ($r->type === RequestType::Release ? 'release' : 'intake')) : collect(); @endphp
                     <details class="phase">
                         <summary class="row !py-2.5 list-none flex-wrap gap-y-1">
                             <span class="chip bg-accent-soft text-accent-text">{{ $phaseLabel($r) }}</span>
@@ -142,14 +121,13 @@
                 @if ($action === "/requests/{$req->id}/close")<input type="hidden" name="done" value="1">@endif
                 @if ($canManage)
                     <input type="hidden" name="vehicle_form" value="1">
-                    <x-ui.card title="Транспортное средство">
-                        <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/>
-                    </x-ui.card>
+                    @include('park.vehicles.fields-block')
                 @endif
 
                 @if ($callForm)
                     {{-- Звонок: эвакуатор (сразу с назначением), привезёт сам (когда), не дозвонились (когда снова). --}}
                     <x-ui.card title="Звонок">
+                        <x-slot:chips>@if ($req->next_call_at)<span class="chip nums {{ $req->next_call_at->isPast() ? 'bg-danger-soft text-danger' : '' }}"><x-ui.icon name="phone" class="size-4"/> {{ $req->next_call_at->translatedFormat('j M, H:i') }}</span>@endif</x-slot:chips>
                         <div class="grid grid-cols-2 gap-3">
                             <div class="field col-span-full">
                                 <span class="field-label">Как привезут</span>
@@ -182,6 +160,7 @@
                 @elseif ($tow && $req->state === RequestState::New)
                     {{-- Назначить: дата, откуда, куда, перевозчик, километры — стоимость из прайса, поправима. --}}
                     <x-ui.card title="Эвакуация">
+                        <x-slot:chips>@if ($req->delivery && !$tow)<span class="chip">{{ $req->delivery->label() }}</span>@endif</x-slot:chips>
                         <div class="grid grid-cols-2 gap-3">
                             <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')"/>
                             <x-ui.field name="yard_id" label="Куда" :options="$yards" placeholder="—" :value="$req->yard_id"/>
@@ -195,10 +174,10 @@
                         </div>
                     </x-ui.card>
                 @elseif ($tow && $req->state === RequestState::Scheduled)
-                    {{-- Назначена: «Выехали» в плашке; перенести — второй формой внутри карточки. --}}
+                    {{-- Назначена: «Выехали» в плашке. --}}
                     <x-ui.card title="Эвакуация">
+                        <x-slot:chips>@if ($req->planned_at)<span class="chip nums {{ $req->isOverdue() ? 'bg-danger-soft text-danger' : '' }}">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif<a href="/cars/{{ $vehicle->id }}?call=1" class="chip"><x-ui.icon name="phone" class="size-4"/> Перезвонить</a></x-slot:chips>
                         <div class="flex flex-wrap items-center gap-1.5">
-                            @if ($req->planned_at)<span class="chip nums">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif
                             @if ($req->from_address)<x-ui.place class="chip">{{ $req->from_address }}</x-ui.place>@endif
                             @if ($req->yard)<x-ui.place class="chip">→ {{ $req->yard->name }}</x-ui.place>@endif
                             @if ($req->carrier)<span class="chip">{{ $req->carrier }}</span>@endif
@@ -209,6 +188,7 @@
                 @elseif ($intakeForm)
                     {{-- Приём: площадка, место, когда, ключи, документы; фото по слотам рядом с кадрами из письма; подпись. Осмотра пока нет — будет модулем. --}}
                     <x-ui.card title="Приём">
+                        <x-slot:chips>@if ($req->planned_at)<span class="chip nums {{ $req->isOverdue() ? 'bg-danger-soft text-danger' : '' }}">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@if ($req->delivery && !$tow)<span class="chip">{{ $req->delivery->label() }}</span>@endif @endif</x-slot:chips>
                         <div class="grid grid-cols-2 gap-3" data-controller="spots" data-spots-map-value="{{ json_encode($yardRows) }}">
                             <x-ui.field name="yard_id" label="Стоянка" :options="$yards" :value="$req->yard_id ?? $yards->keys()->first()" required data-spots-target="yard" data-action="change->spots#sync"/>
                             <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters"/>
@@ -226,7 +206,6 @@
                                     @foreach (Inspection::DOCS as $k => $label)<label class="choice"><input type="checkbox" switch name="docs[]" value="{{ $k }}" @checked(in_array($k, old('docs', []), true))><span>{{ $label }}</span></label>@endforeach
                                 </div>
                             </div>
-                            @if ($storageRate)<span class="chip nums col-span-full justify-self-start">{{ $storageRate }}</span>@endif
                         </div>
                     </x-ui.card>
                     @if ($mailPhotos->isNotEmpty())
@@ -253,6 +232,7 @@
                     </x-ui.card>
                 @elseif ($releaseForm)
                     <x-ui.card title="Выдача">
+                        <x-slot:chips>@if ($req->planned_at)<span class="chip nums {{ $req->isOverdue() ? 'bg-danger-soft text-danger' : '' }}">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif</x-slot:chips>
                         <div class="grid grid-cols-2 gap-3">
                             <x-ui.field name="released_at" label="Когда" type="datetime-local" :value="now()->format('Y-m-d\TH:i')"/>
                             <div class="field">
@@ -319,10 +299,7 @@
             {{-- Заявки нет: поля ТС правятся своей кнопкой (главная в плашке заводит следующий этап). --}}
             <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin draft">
                 @csrf @method('put')
-                <x-ui.card title="Транспортное средство">
-                    <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/>
-                    <div class="mt-3 flex justify-end"><x-ui.button variant="secondary" size="sm">Сохранить</x-ui.button></div>
-                </x-ui.card>
+                @include('park.vehicles.fields-block', ['save' => true])
             </form>
         @endif
         @if ($spawn)<form method="post" action="/requests" id="spawn-form">@csrf<input type="hidden" name="type" value="{{ $spawn[0] }}"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"></form>@endif
@@ -331,7 +308,7 @@
     </div>
 
     <div class="flex min-w-0 flex-col gap-4">
-        @if ($vehicle->photos()->isNotEmpty() || $state === VehicleState::Stored)
+        @if ($vehiclePhoto)
         <x-ui.card title="Фотографии" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
             <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             <div hidden data-photos-target="progress" class="mb-3">
@@ -370,7 +347,7 @@
         </x-ui.card>
         @endif
 
-        @if ($vehicle->papers()->isNotEmpty() || $state === VehicleState::Stored)
+        @if ($vehicle->papers()->isNotEmpty())
         <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             <div hidden data-photos-target="progress" class="mb-3">
@@ -384,6 +361,12 @@
 
         @if ($canManage && ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty() || $vehicle->accepted_at))
         <x-ui.card title="Деньги" data-controller="sheet">
+            <div class="mb-2 flex flex-wrap gap-1.5">
+                @if ($vehicle->contract_kind === 'commission')<button type="button" class="chip nums" data-controller="emit" data-action="emit#send" data-emit-event-param="contract:open">Комиссия{{ $vehicle->assigned_price ? ' '.Money::rub($vehicle->assigned_price) : '' }}</button>@endif
+                @if ($storageRate)<button type="button" class="chip nums" data-controller="emit" data-action="emit#send" data-emit-event-param="contract:open">{{ $storageRate }}</button>@endif
+                @foreach ($accrued as $payer => $a)@if ($a['amount'] > 0)<a href="/cars/{{ $vehicle->id }}/invoices/new?payer={{ $payer }}" class="chip nums">не выставлено {{ Money::rub($a['amount']) }} за {{ $a['days'] }} дн{{ count($accrued) > 1 ? ' — '.\App\Billing\Accrual::payerLabel($payer) : '' }}</a>@endif @endforeach
+                @if ($buyerFrom)<span class="chip nums {{ $buyerFrom->isPast() ? 'bg-danger-soft text-danger' : '' }}">покупатель с {{ $buyerFrom->translatedFormat('j M') }}, {{ Money::rub($buyerRate) }}/сут</span>@endif
+            </div>
             <div class="flex flex-col divide-y divide-line/40 text-sm">
                 @foreach ($vehicle->invoices as $inv)
                     <a href="/money/invoices/{{ $inv->id }}" class="flex items-center gap-2 py-2"><x-billing.light :invoice="$inv"/><span class="min-w-0 flex-1 truncate">{{ $inv->isOwed() ? 'мы должны' : $inv->label() }} {{ $inv->party->name }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($inv->remaining() > 0 ? $inv->remaining() : $inv->total) }}</span></a>
@@ -507,6 +490,11 @@
                     @endif
                     @if ($vehicle->accepted_at || $pendingCharges->isNotEmpty())<x-ui.button href="/cars/{{ $vehicle->id }}/invoices/new" variant="secondary" block>Счёт</x-ui.button>@endif
                 @endif
+                <div data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers" data-photos-reload-value="true" class="contents">
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple hidden data-photos-target="input" data-action="change->photos#upload">
+                    <div hidden data-photos-target="progress"><div class="mb-1 text-sm text-ink-muted" data-label></div><div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div></div>
+                    <x-ui.button type="button" variant="ghost" block data-action="photos#pick"><x-ui.icon name="clip" class="size-4"/> Приложить документ</x-ui.button>
+                </div>
                 @foreach ($templates as $t)
                     <x-ui.button type="button" variant="ghost" block data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="/mail/new?car={{ $vehicle->id }}&template={{ $t->id }}"><x-ui.icon name="send" class="size-4"/> {{ $t->name }}</x-ui.button>
                 @endforeach

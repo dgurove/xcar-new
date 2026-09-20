@@ -42,7 +42,7 @@ final class CaseView
             'vehicle' => $vehicle,
             'req' => $open,
             'verb' => $open?->verb(),
-            'phases' => $vehicle->requests->filter(fn (Request $r) => ! $r->isOpen())->sortBy(fn (Request $r) => ($r->done_at ?? $r->updated_at)->getTimestamp())->values(),
+            'phases' => $vehicle->requests->filter(fn (Request $r) => $r->state === RequestState::Done)->sortBy(fn (Request $r) => ($r->done_at ?? $r->updated_at)->getTimestamp())->values(),
             'others' => $vehicle->requests->filter(fn (Request $r) => $r->isOpen() && $open && $r->isNot($open))->values(),
             'letters' => $threads->isEmpty() ? 0 : Message::whereIn('thread_id', $threads)->count(),
             'threads' => Thread::where('vehicle_id', $vehicle->id)->orderByDesc('last_message_at')->get(['id', 'subject']),

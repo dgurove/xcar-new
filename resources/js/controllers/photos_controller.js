@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import * as Turbo from '@hotwired/turbo';
 import { confirmSheet } from '../confirm';
 import { loadSortable } from '../lib/sortable';
 
@@ -10,7 +11,7 @@ import { loadSortable } from '../lib/sortable';
 // перестановки, без действий на плитке и в просмотрщике.
 export default class extends Controller {
     static targets = ['input', 'progress', 'grid'];
-    static values = { url: String, collection: { type: String, default: 'photos' }, readonly: Boolean };
+    static values = { url: String, collection: { type: String, default: 'photos' }, readonly: Boolean, reload: Boolean };
 
     connect() {
         if (this.readonlyValue) return;
@@ -103,6 +104,8 @@ export default class extends Controller {
         }
         this.hideProgress();
         this.uploading = false;
+        // Загрузка из шторки «⋯» (документ к делу): списка на странице ещё нет — перечитать страницу.
+        if (this.reloadValue) Turbo.visit(location.href, { action: 'replace' });
     }
 
     pendingCell(file) {
