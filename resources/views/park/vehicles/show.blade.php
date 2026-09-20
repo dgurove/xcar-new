@@ -49,6 +49,7 @@
             </x-ui.sheet>
         @endif
         @if ($letters)<x-mail.window-button :count="$letters" :url="'/cars/'.$vehicle->id.'/letters'" chip/>@endif
+        <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif
 
@@ -95,6 +96,7 @@
                             <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters" :value="$vehicle->spot"/>
                             <datalist id="spots-list" data-spots-target="list"></datalist>
                         </div>
+                        <div class="mt-4"><x-ui.button class="w-full sm:w-auto">Переставить</x-ui.button></div>
                     </x-ui.card>
                 @elseif ($req->type === RequestType::Move)
                     <x-ui.card title="Перестановка"><span class="chip">ТС ещё не на стоянке</span>@if ($req->note)<p class="mt-3 text-sm text-ink-muted">{{ $req->note }}</p>@endif</x-ui.card>
@@ -104,6 +106,7 @@
                         <x-ui.field name="note" label="Что сделано" type="textarea"/>
                     </x-ui.card>
                 @endif
+                @if ($verb && ! $moveForm)<div><x-ui.button class="w-full sm:w-auto">{{ $verb }}</x-ui.button></div>@endif
             </form>
         @endif
         @foreach ($others as $r)
@@ -348,11 +351,4 @@
         </x-ui.sheet>
     </div>
     <x-mail.window :url="$window"/>
-    <x-ui.action-bar>
-        @if ($submit)<x-ui.button form="act-form" id="act-submit" class="min-w-0 flex-1">{{ $submit->plate['label'] }}</x-ui.button>
-        @elseif ($otherForm && $verb)<x-ui.button form="act-form" class="min-w-0 flex-1">{{ $verb }}</x-ui.button>
-        @elseif ($cur?->plate['kind'] === 'window')<x-mail.window-button :url="$cur->plate['url']" :label="$cur->plate['label']" class="btn-accent min-w-0 flex-1"/>
-        @elseif ($spawn)<x-ui.button form="spawn-form" class="min-w-0 flex-1">{{ $spawn[1] }}</x-ui.button>@endif
-        <button type="button" class="btn btn-quiet btn-round shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
-    </x-ui.action-bar>
 </x-ui.shell>

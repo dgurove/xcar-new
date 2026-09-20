@@ -8,7 +8,7 @@
 </div>
 @if ($canManage)
     <div class="mt-3 flex flex-wrap gap-2">
-        <x-ui.button type="button" variant="secondary" size="sm" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->sold_at ? 'Кому выдать' : 'Продано' }}</x-ui.button>
-        <x-ui.button variant="secondary" size="sm" form="spawn-form">Выдать</x-ui.button>
+        <x-ui.button type="button" variant="secondary" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->sold_at ? 'Кому выдать' : 'Продано' }}</x-ui.button>
+        <x-ui.button form="spawn-form">Выдать</x-ui.button>
     </div>
 @endif

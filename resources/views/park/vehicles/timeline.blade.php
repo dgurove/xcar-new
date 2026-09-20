@@ -3,7 +3,7 @@
 @php use App\Park\Step; @endphp
 <div class="steps">
     @foreach ($steps as $step)
-        @php $partial = match ($step->key) { 'report-release' => 'report', default => $step->key }; $r = $step->request; @endphp
+        @php $partial = match (true) { $step->key === 'report-release' => 'report', $step->key === 'intake' && ($step->plate['kind'] ?? null) === 'spawn' => 'intake-spawn', default => $step->key }; $r = $step->request; @endphp
         <div class="step step--{{ $step->state }}{{ $step->danger ? ' step--danger' : '' }}">
             <span class="step-dot">@if ($step->isDone() && ! $step->danger)<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">

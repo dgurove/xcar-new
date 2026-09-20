@@ -30,3 +30,4 @@
 <div class="mt-3" data-reveal-target="pane" data-reveal-key="missed" hidden>
     <x-ui.field name="next_call_at" label="Позвонить снова" type="datetime-local" :value="now()->addHours(2)->format('Y-m-d\TH:i')" disabled/>
 </div>
+<div class="mt-4"><x-ui.button id="act-submit" class="w-full sm:w-auto">Назначить эвакуатор</x-ui.button></div>

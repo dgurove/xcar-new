@@ -55,7 +55,10 @@ final class Timeline
         } else {
             $ready = $ir && $ir->isOpen() && ! $ir->needsCall() && ! $callAgain && (! $ir->isTow() || $ir->state === RequestState::InProgress);
             $hint = $v->state === VehicleState::InTransit ? 'ТС в пути, принять по приезду: место, 6 фото, подпись' : 'Поставить на место, снять 6 фото, взять подпись';
-            $steps[] = new Step('intake', 'Приём', $ready ? Step::CURRENT : Step::NEXT, $hint, $ir?->planned_at, [], $ready ? ['kind' => 'submit', 'label' => 'Принять'] : null, $ir?->isOpen() ? $ir : null);
+            // Заявки нет (отменили) — шаг всё равно текущий: «Принять» заводит заявку и открывает форму.
+            $orphan = ! $ir?->isOpen() && $v->state === VehicleState::Expected;
+            $steps[] = new Step('intake', 'Приём', $ready || $orphan ? Step::CURRENT : Step::NEXT, $orphan ? 'Заявки нет: принять, когда привезут' : $hint, $ir?->planned_at, [],
+                $ready ? ['kind' => 'submit', 'label' => 'Принять'] : ($orphan ? ['kind' => 'spawn', 'label' => 'Принять'] : null), $ir?->isOpen() ? $ir : null);
         }
 
         // Что впереди — серым, чтобы было видно весь путь.

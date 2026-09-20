@@ -56,3 +56,4 @@
         <x-park.signature/>
     </div>
 </x-ui.card>
+<div class="mt-4"><x-ui.button id="act-submit" class="w-full sm:w-auto">Выдать</x-ui.button></div>

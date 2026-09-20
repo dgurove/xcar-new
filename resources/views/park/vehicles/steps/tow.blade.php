@@ -11,6 +11,7 @@
             <x-ui.field name="cost" label="₽" inputmode="numeric" :value="$req->cost ?? $towCost"/>
         </div>
     </div>
+    <div class="mt-4"><x-ui.button id="act-submit" class="w-full sm:w-auto">Назначить</x-ui.button></div>
 @else
     <div class="mt-2 flex flex-wrap items-center gap-1.5">
         @if ($req->planned_at)<span class="chip nums {{ $req->isOverdue() ? 'bg-danger-soft text-danger' : '' }}">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif
@@ -21,4 +22,5 @@
         @if ($req->cost)<span class="chip nums">{{ Money::rub($req->cost) }}</span>@endif
         <a href="/cars/{{ $vehicle->id }}?call=1" class="chip">Перенести</a>
     </div>
+    <div class="mt-4"><x-ui.button id="act-submit" class="w-full sm:w-auto">Выехали</x-ui.button></div>
 @endif
