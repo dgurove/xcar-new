@@ -70,8 +70,9 @@ class Request extends Model
             $this->isTow() && $this->state === RequestState::New => 'Назначить',
             $this->isTow() && $this->state === RequestState::Scheduled => 'Выехали',
             $this->isTow() || $this->type === RequestType::Intake => 'Принять',
-            $this->type === RequestType::Release => 'Выдать',
-            $this->type === RequestType::Move => 'Переставить',
+            // Выдать и переставить можно только ТС на стоянке; иначе главного действия нет — ждём приёма.
+            $this->type === RequestType::Release => $this->vehicle?->state === VehicleState::Stored ? 'Выдать' : null,
+            $this->type === RequestType::Move => $this->vehicle?->state === VehicleState::Stored ? 'Переставить' : null,
             default => $this->type->verb(),
         };
     }

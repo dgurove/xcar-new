@@ -30,6 +30,8 @@ final class Today
         $other = $rest->filter(fn (ParkRequest $r) => in_array($r->type, [RequestType::Inspection, RequestType::Move], true));
 
         $transit = Vehicle::where('state', VehicleState::InTransit)->get();
+        // Ждут без заявки — отменили заявку и забыли: заявка заводится с ТС.
+        $orphans = Vehicle::where('state', VehicleState::Expected)->whereDoesntHave('requests', fn ($q) => $q->whereIn('state', RequestState::open()))->get();
         $stored = Vehicle::where('state', VehicleState::Stored)->with('docs')->get();
         $idle = $stored->filter(fn (Vehicle $v) => ($v->daysStored() ?? 0) >= Idle::warn());
         $docsDue = $stored->filter(fn (Vehicle $v) => $v->docsPending() && $v->accepted_at && $v->accepted_at->lt(now()->subDays(self::docsDays())));
@@ -43,6 +45,7 @@ final class Today
                 ['Принять', $intake->concat($transit), '/requests?preset=intake'],
                 ['Выдать', $release, '/requests?preset=release'],
                 ['Осмотреть, переставить', $other, '/requests?preset=inspection'],
+                ['Ждут без заявки', $orphans, '/cars?preset=expected'],
                 ['Отправить вендору', $docsDue, '/cars?docs=due'],
                 ['Стоят долго', $idle, '/cars?preset=idle'],
             ], fn ($s) => $s[1]->isNotEmpty())),

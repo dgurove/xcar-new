@@ -29,9 +29,12 @@ final class StartTow
                 throw ValidationException::withMessages(['state' => 'ТС уже '.mb_strtolower($vehicle->state->label())]);
             }
             $from = $vehicle->state === VehicleState::Stored ? $vehicle->yard?->name : null;
+            $fromId = $vehicle->state === VehicleState::Stored ? $vehicle->yard_id : null;
+            $fromSpot = $vehicle->state === VehicleState::Stored ? $vehicle->spot : null;
             $vehicle->update(['state' => VehicleState::InTransit, 'transit_started_at' => now(), 'yard_id' => null, 'spot' => null]);
             $request->update(['state' => RequestState::InProgress, 'started_at' => now()]);
-            $vehicle->log(EventType::Departed, $by, array_filter(['carrier' => $request->carrier, 'from' => $from]));
+            // from_id и from_spot — куда вернуть, если перегон отменят.
+            $vehicle->log(EventType::Departed, $by, array_filter(['carrier' => $request->carrier, 'from' => $from, 'from_id' => $fromId, 'from_spot' => $fromSpot]));
 
             return $request->setRelation('vehicle', $vehicle);
         });

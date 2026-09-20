@@ -28,9 +28,11 @@ final class CloseRequest
             }
             if (! $done && $request->isTow() && $request->state === RequestState::InProgress && $request->vehicle->state === VehicleState::InTransit) {
                 $vehicle = $request->vehicle;
-                $back = collect($vehicle->yardTimeline())->last(fn ($t) => $t['yard_id'] !== null);
-                $vehicle->update($vehicle->accepted_at && $back
-                    ? ['state' => VehicleState::Stored, 'yard_id' => $back['yard_id'], 'transit_started_at' => null]
+                // Откуда уехала — в записи погрузки; у старых записей — последняя площадка из ленты.
+                $departed = $vehicle->events()->reorder()->where('type', EventType::Departed)->latest('created_at')->latest('id')->first();
+                $backId = $departed?->payload['from_id'] ?? collect($vehicle->yardTimeline())->last(fn ($t) => $t['yard_id'] !== null)['yard_id'] ?? null;
+                $vehicle->update($vehicle->accepted_at && $backId
+                    ? ['state' => VehicleState::Stored, 'yard_id' => $backId, 'spot' => $departed?->payload['from_spot'] ?? null, 'transit_started_at' => null]
                     : ['state' => VehicleState::Expected, 'transit_started_at' => null]);
                 $vehicle->log(EventType::Note, $by, ['text' => 'Эвакуация отменена'.($note ? ': '.$note : '')]);
             }

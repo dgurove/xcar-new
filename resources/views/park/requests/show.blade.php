@@ -57,6 +57,15 @@
             @if ($req->note)<div class="mt-1 whitespace-pre-line text-ink-muted">{{ $req->note }}</div>@endif
             @if ($req->cancel_reason)<div class="mt-1 text-ink-muted">{{ $req->cancel_reason }}</div>@endif
             @if ($req->done_at)<div class="mt-3 flex flex-wrap items-center gap-1.5"><span class="tag nums">{{ $req->done_at->translatedFormat('j M, H:i') }}</span>@if ($req->doneBy)<x-ui.person :user="$req->doneBy"/>@endif</div>@endif
+            @if ($open && in_array($req->type, [RequestType::Move, RequestType::Release], true) && $vehicle->state !== VehicleState::Stored)<div class="mt-3"><span class="chip">ТС ещё не на стоянке</span></div>@endif
+            {{-- Сделанное можно откатить отсюда же, пока это не стоит денег: приём — пока хранение не выставлено, выдачу — пока не оплачено. --}}
+            @if ($req->state === RequestState::Done && auth()->user()->canManagePark())
+                @if (in_array($req->type, [RequestType::Intake, RequestType::Tow], true) && \App\Park\Actions\UndoIntake::allowed($vehicle))
+                    <form method="post" action="/cars/{{ $vehicle->id }}/undo-intake" class="mt-3 flex items-end gap-2" data-turbo-confirm="Отменить приём? ТС снова будет ожидаться">@csrf<x-ui.field name="reason" label="Почему" span="flex-1"/><x-ui.button variant="ghost" size="sm">Принята по ошибке</x-ui.button></form>
+                @elseif ($req->type === RequestType::Release && \App\Park\Actions\UndoRelease::allowed($vehicle))
+                    <form method="post" action="/cars/{{ $vehicle->id }}/undo-release" class="mt-3 flex items-end gap-2" data-turbo-confirm="Отменить выдачу? ТС вернётся на стоянку">@csrf<x-ui.field name="reason" label="Почему" span="flex-1"/><x-ui.button variant="ghost" size="sm">Выдана по ошибке</x-ui.button></form>
+                @endif
+            @endif
         </x-ui.card>
         <x-ui.sheet id="assignee" title="Исполнитель">
             <form method="post" action="/requests/{{ $req->id }}/assign" class="flex flex-col gap-2">
@@ -288,17 +297,14 @@
         @php $onlyOpen = $vehicle->requests->filter(fn ($r) => $r->isOpen())->count() <= 1; $unwind = $onlyOpen && \App\Park\Actions\UnwindVehicle::allowed($vehicle) && auth()->user()->canManagePark(); $notComing = $onlyOpen && $vehicle->state->isBefore() && auth()->user()->canManagePark(); @endphp
         <div data-controller="sheet" data-action="cancel:open@window->sheet#open" class="contents">
             <x-ui.sheet id="cancel" title="Отменить">
+                {{-- Одна форма и одна причина на все три выхода: кнопка говорит, какой (`exit`). --}}
                 <form method="post" action="/requests/{{ $req->id }}/close" id="cancel-form" class="flex flex-col gap-3">
                     @csrf<input type="hidden" name="done" value="0">
                     <x-ui.field name="note" label="Почему" type="textarea"/>
-                    <x-ui.button variant="secondary" block>Закрыть заявку</x-ui.button>
+                    <x-ui.button variant="secondary" block name="exit" value="close">Закрыть заявку</x-ui.button>
+                    @if ($notComing)<x-ui.button variant="danger" block name="exit" value="cancel" data-turbo-confirm="ТС не привезут?">Не привезут</x-ui.button>@endif
+                    @if ($unwind)<x-ui.button variant="ghost" block name="exit" value="unwind" data-turbo-confirm="Отменить заведение? ТС и заявка исчезнут, письмо вернётся в «Из писем»">Заведена по ошибке</x-ui.button>@endif
                 </form>
-                @if ($notComing || $unwind)
-                    <div class="mt-3 flex flex-col gap-2">
-                        @if ($notComing)<form method="post" action="/cars/{{ $vehicle->id }}/cancel" data-turbo-confirm="ТС не привезут?">@csrf<x-ui.button variant="danger" block>Не привезут</x-ui.button></form>@endif
-                        @if ($unwind)<form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="Отменить заведение? ТС и заявка исчезнут, письмо вернётся в «Из писем»">@csrf @method('delete')<x-ui.button variant="ghost" block>Заведена по ошибке</x-ui.button></form>@endif
-                    </div>
-                @endif
             </x-ui.sheet>
         </div>
     @endif

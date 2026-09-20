@@ -35,6 +35,7 @@
         <div class="card-marks">
             <span class="mark {{ match ($state->tone()) { 'open' => 'mark-accent', 'urgent' => 'mark-urgent', default => 'mark-glass' } }}">{{ $state->label() }}</span>
             @if ($state === \App\Park\VehicleState::Stored)<span class="mark mark-glass nums">{{ $vehicle->daysStored() }} дн</span>@endif
+            @if ($state === \App\Park\VehicleState::Expected && $vehicle->relationLoaded('requests') && ! $vehicle->requests->contains(fn ($r) => $r->isOpen()))<span class="mark mark-urgent">без заявки</span>@endif
         </div>
     </div>
     <div class="card-extra">

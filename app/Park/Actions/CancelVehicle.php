@@ -2,6 +2,8 @@
 
 namespace App\Park\Actions;
 
+use App\Park\Doc;
+use App\Park\DocState;
 use App\Park\Events\VehicleCancelled;
 use App\Park\EventType;
 use App\Park\Request;
@@ -30,6 +32,8 @@ final class CancelVehicle
             $vehicle->update(['state' => VehicleState::Cancelled, 'cancelled_at' => now(), 'cancel_reason' => $reason ?: null, 'transit_started_at' => null]);
             Request::where('vehicle_id', $vehicle->id)->whereIn('state', RequestState::open())
                 ->update(['state' => RequestState::Cancelled, 'done_at' => now(), 'done_by' => $by->id, 'cancel_reason' => $reason ?: 'ТС не привезена']);
+            // Бумаги вендору, которые ещё не отправляли, — уже не дело.
+            Doc::where('vehicle_id', $vehicle->id)->where('state', DocState::Pending)->delete();
             $vehicle->log(EventType::Cancelled, $by, array_filter(['reason' => $reason]));
 
             return $vehicle;

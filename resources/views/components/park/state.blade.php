@@ -11,4 +11,7 @@
     <span class="chip">{{ $vehicle->released_at?->translatedFormat('j M Y') }}</span>
 @elseif ($vehicle->state === \App\Park\VehicleState::Cancelled && $vehicle->cancel_reason)
     <span class="chip">{{ $vehicle->cancel_reason }}</span>
+@elseif ($vehicle->state === \App\Park\VehicleState::Expected && $vehicle->relationLoaded('requests') && ! $vehicle->requests->contains(fn ($r) => $r->isOpen()))
+    {{-- Ждёт, а заявки нет (отменили) — иначе про неё забудут: заявка заводится с ТС или из окошка. --}}
+    <x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">без заявки</x-ui.pill>
 @endif

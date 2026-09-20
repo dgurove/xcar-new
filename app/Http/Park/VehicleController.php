@@ -59,7 +59,7 @@ class VehicleController
         ListPrefs::sync($request, 'park-vehicles');
         $preset = $request->query('preset', 'stored');
         $q = trim((string) $request->query('q'));
-        $vehicles = Scope::vehicles($request->user())->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer'])
+        $vehicles = Scope::vehicles($request->user())->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer', 'requests'])
             ->when(VehicleState::tryFrom($preset), fn ($v, $s) => $v->where('state', $s))
             ->when($preset === 'idle', fn ($v) => $v->where('state', VehicleState::Stored)->where('accepted_at', '<=', now()->subDays(Idle::warn())->startOfDay()))
             ->when($request->query('docs') === 'due', fn ($v) => $v->whereHas('docs', fn ($d) => $d->where('direction', 'out')->where('state', 'pending')))

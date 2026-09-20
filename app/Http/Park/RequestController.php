@@ -13,6 +13,7 @@ use App\Mail\Message;
 use App\Mail\Scope as MailScope;
 use App\Mail\Thread;
 use App\Park\Actions\AssignRequest;
+use App\Park\Actions\CancelVehicle;
 use App\Park\Actions\CloseRequest;
 use App\Park\Actions\Contact;
 use App\Park\Actions\CreateRequest;
@@ -23,6 +24,7 @@ use App\Park\Actions\RefuseRelease;
 use App\Park\Actions\Release;
 use App\Park\Actions\ScheduleTow;
 use App\Park\Actions\StartTow;
+use App\Park\Actions\UnwindVehicle;
 use App\Park\Delivery;
 use App\Park\Inspection;
 use App\Park\PhotoSlot;
@@ -282,10 +284,25 @@ class RequestController
         return redirect($report ?? "/cars/{$req->vehicle_id}")->with('toast', $report ? 'Выдана, письмо вендору готово' : 'Выдана');
     }
 
-    public function close(Request $request, ParkRequest $req, CloseRequest $close)
+    /** Закрыть или отменить; из шторки отмены `exit` — ещё «Не привезут» (CancelVehicle) и «Заведена по ошибке» (UnwindVehicle), причина общая. */
+    public function close(Request $request, ParkRequest $req, CloseRequest $close, CancelVehicle $cancel, UnwindVehicle $unwind)
     {
         abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
-        $data = $request->validate(['done' => ['required', 'boolean'], 'note' => ['nullable', 'string', 'max:2000']]);
+        $data = $request->validate(['done' => ['required', 'boolean'], 'note' => ['nullable', 'string', 'max:2000'], 'exit' => ['nullable', Rule::in(['close', 'cancel', 'unwind'])]]);
+        $exit = $data['exit'] ?? 'close';
+        if ($exit !== 'close') {
+            abort_unless($request->user()->canManagePark(), 403);
+        }
+        if ($exit === 'cancel') {
+            $cancel($req->vehicle, $request->user(), $data['note'] ?? null);
+
+            return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Не привезена');
+        }
+        if ($exit === 'unwind') {
+            $candidate = $unwind($req->vehicle, $request->user());
+
+            return $candidate ? redirect('/requests/from-mail')->with('toast', 'Заведение отменено — письмо снова в «Из писем»') : redirect('/requests')->with('toast', 'Заведение отменено');
+        }
         $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
 
         // Сделана — к ТС; отменена — в заявки (ТС в ожидании без заявки видна в «Ожидаются»).
