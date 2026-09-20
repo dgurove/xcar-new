@@ -45,7 +45,7 @@ abstract class Template
         };
 
         $put('answer_by', self::answerBy($joined, $on));
-        [$name, $phone] = self::insured($joined);
+        [$name, $phone] = self::insured($plain);
         $put('insured_name', $name);
         $put('insured_phone', $phone);
         $put('flags', self::flags($joined));
@@ -103,42 +103,56 @@ abstract class Template
         return $at->toIso8601String();
     }
 
-    /** Страхователь: ФИО рядом с телефоном — после него («79054060396 Кругликов Н. Ю.») или перед («Дроздов Е. Н. 79038744488», «8-963-… Светлана»). */
+    /**
+     * Страхователь: строка с телефоном сразу после слов про клиента («Просьба связаться с клиентом…»).
+     * По 150 письмам Альфы имя стоит в той же строке, до или после номера: «8-985-171-19-90 Александр»,
+     * «Михаил 8-916-987-12-37», «8-903-660-97-52 - Игорь», «Юр. л. Представитель Евгений 8-915-…»,
+     * «Контактное лицо … - Хитров Игорь Игоревич, тел. +79036722323», «8-900-… Анастасия/ 8-950-… Александр».
+     * Подпись сотрудника страховой («Чеченев Руслан / тел. 89653313811») стоит после «С уважением» и не берётся.
+     */
     private static function insured(string $text): array
     {
-        // Телефон страхователя — тот, рядом с которым сказано про клиента; подпись сотрудника страховой не годится.
-        $phone = '((?:\+?7|8)[\s(\-]*\d{3}[\s)\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2})(?!\d)';
-        if (! preg_match('/(?:клиент|страховател|собственник|владел|представител)[^\n]{0,160}?'.$phone.'/iu', $text, $pm, PREG_OFFSET_CAPTURE)) {
+        $phone = '(?:\+?7|8)[\s(\-]*\d{3}[\s)\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}(?!\d)';
+        $lines = array_values(array_filter(array_map('trim', preg_split('/\R/u', $text) ?: [])));
+        $line = null;
+        foreach ($lines as $i => $l) {
+            if (! preg_match('/клиент|страховател|собственник|владел|представител|контакт/iu', $l)) {
+                continue;
+            }
+            // Телефон в этой же строке, строкой выше («8-985-… Анастасия» перед «Как только клиент сдаст ТС») или в трёх следующих; подпись — стоп.
+            foreach (array_slice($lines, max(0, $i - 1), 5) as $cand) {
+                if (preg_match('/^(с\s+уважением|уважением|best regards)/iu', $cand)) {
+                    break;
+                }
+                if (preg_match('/'.$phone.'/u', $cand)) {
+                    $line = $cand;
+                    break 2;
+                }
+            }
+        }
+        if ($line === null) {
             return [null, null];
         }
-        $raw = $pm[1][0];
-        $normalized = Phone::normalize($raw);
-        $offset = $pm[1][1];
+        preg_match('/'.$phone.'/u', $line, $pm, PREG_OFFSET_CAPTURE);
+        $raw = $pm[0][0];
+        $offset = $pm[0][1];
+        $before = substr($line, 0, $offset);
+        $after = substr($line, $offset + strlen($raw));
+        // Хвост после номера — до следующего номера: «Анастасия/ 8-950-… Александр» даёт Анастасию.
+        $after = preg_split('/'.$phone.'/u', $after)[0] ?? '';
+        $noise = '/\b(Юр|л|Л|Представитель(?:ница)?|представител[ья]|собственника|Контактное|лицо|со|стороны|тел|Тел|Контакт|по|доверенности|или|ПАО|ООО|АО|ИП|от|Со)\b\.?/u';
         $word = '[А-ЯЁ][а-яё]{2,}(?:-[А-ЯЁ][а-яё]{2,})?';
-        $stop = ['Тел', 'Телефон', 'Клиент', 'Клиента', 'Просьба', 'Просим', 'Прошу', 'Пожалуйста', 'Документы', 'Добрый', 'День', 'Привет', 'Связаться', 'Договорится', 'Договориться', 'Вывозе', 'Спасибо', 'Уважением', 'Как', 'Когда', 'После', 'При', 'Для'];
-        $clean = function (?string $s) use ($stop) {
-            $words = [];
-            foreach (explode(' ', trim((string) $s)) as $w) {
-                if (in_array($w, $stop, true)) {
-                    if ($words) {
-                        break;
-                    }
+        $clean = fn (string $s) => preg_replace('/[\s"«»,;:\-–—\/()]+/u', ' ', (string) preg_replace($noise, ' ', $s));
+        // После номера — первые слова с заглавной; до номера — последние. Не больше трёх (Фамилия Имя Отчество).
+        $name = null;
+        if (preg_match('/^\s*((?:'.$word.'\s+){0,2}'.$word.')/u', $clean($after), $m)) {
+            $name = $m[1];
+        } elseif (preg_match('/((?:'.$word.'\s+){0,2}'.$word.')\s*$/u', $clean($before), $m)) {
+            $name = $m[1];
+        }
+        $normalized = Phone::normalize($raw);
 
-                    continue;
-                }
-                $words[] = $w;
-            }
-
-            return $words ? implode(' ', array_slice($words, 0, 3)) : null;
-        };
-        $after = mb_strcut($text, $offset + strlen($raw), 80);
-        $before = mb_strcut($text, max(0, $offset - 80), min(80, $offset));
-        $afterName = preg_match('/^\s*[,;:\-–]?\s*((?:'.$word.'\s+){0,2}'.$word.')/u', $after, $m) ? $clean($m[1]) : null;
-        $beforeName = preg_match('/((?:'.$word.'\s+){0,2}'.$word.')\s*[,;:\-–]?\s*(?:тел\.?\s*)?$/iu', $before, $m) ? $clean($m[1]) : null;
-        $pick = fn (?string $n) => $n && substr_count($n, ' ') >= 1 ? $n : null;
-        $name = $pick($afterName) ?? $pick($beforeName) ?? $afterName ?? $beforeName;
-
-        return [$name, $normalized ? Phone::format($normalized) : trim($raw)];
+        return [$name ? trim($name) : null, $normalized ? Phone::format($normalized) : trim($raw)];
     }
 
     /** @return list<string> */
