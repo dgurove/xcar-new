@@ -19,7 +19,8 @@ trait HasPhotos
 
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('photos')->useDisk('media');
+        // Оригиналы на media (HDD, в бэкапе), сжатые версии на hot (SSD, пересчитываемые).
+        $this->addMediaCollection('photos')->useDisk('media')->storeConversionsOnDisk('hot');
         $this->addMediaCollection('papers')->useDisk('private');
     }
 

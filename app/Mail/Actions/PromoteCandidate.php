@@ -27,7 +27,7 @@ final class PromoteCandidate
     {
         if ($offer = $this->existing($candidate)) {
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
-            $candidate->moveMediaTo($offer, $offer->state !== OfferState::Draft ? ['hidden' => true] : []);
+            $candidate->clearMediaCollection('card');
             $this->linkAll($candidate, $offer);
 
             return $offer;
@@ -73,8 +73,7 @@ final class PromoteCandidate
 
             return $offer;
         });
-        // Файлы — после транзакции: откат не должен оставить строки медиа без файлов.
-        $candidate->moveMediaTo($offer);
+        $candidate->clearMediaCollection('card');
 
         return $offer;
     }

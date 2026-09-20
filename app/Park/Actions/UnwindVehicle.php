@@ -4,6 +4,7 @@ namespace App\Park\Actions;
 
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
+use App\Mail\Extraction\CandidateCard;
 use App\Mail\Thread;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -30,7 +31,7 @@ final class UnwindVehicle
     public function __invoke(Vehicle $vehicle, User $by): ?Candidate
     {
         if (! self::allowed($vehicle)) {
-            throw ValidationException::withMessages(['vehicle' => 'У ТС уже есть приём, бумаги или деньги, отменить нельзя, только «Не привезена»']);
+            throw ValidationException::withMessages(['vehicle' => 'У ТС уже есть приём, бумаги или деньги, отменить нельзя']);
         }
         Nav::forgetStaffCounts();
 
@@ -38,12 +39,11 @@ final class UnwindVehicle
             $candidate = Candidate::where('vehicle_id', $vehicle->id)->where('state', CandidateState::Promoted)->latest('id')->first();
             Thread::where('vehicle_id', $vehicle->id)->update(['vehicle_id' => null]);
             if ($candidate) {
-                // Кадры из письма — обратно кандидату; снятое на стоянке (если успели) уходит вместе с ТС.
-                foreach ($vehicle->photos()->filter(fn ($m) => ($m->getCustomProperty('stage') ?? 'mail') === 'mail') as $media) {
-                    $media->copy($candidate, 'photos');
-                    $media->forceDelete();
-                }
+                // Фото ТС уходят вместе с ней (вложения писем закреплены, при новом «Завести» приедут снова), кандидату — кадр карточки.
                 $candidate->update(['state' => CandidateState::New, 'vehicle_id' => null]);
+                if ($candidate->message) {
+                    app(CandidateCard::class)->make($candidate, $candidate->message);
+                }
             }
             // Заявки, события, осмотры — каскадом по FK; медиа — spatie при удалении модели.
             $vehicle->delete();

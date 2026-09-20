@@ -23,6 +23,7 @@ use App\Mail\Scope;
 use App\Mail\SendState;
 use App\Mail\Template;
 use App\Mail\Thread;
+use App\Media\PhotoIngest;
 use App\Offers\Offer;
 use App\Park\Actions\MarkDoc;
 use App\Park\DocKind;
@@ -35,6 +36,7 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Vendors\ContactRole;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /** Почта в админке: ветки, письмо, ответ. Ящики — по scope поверхности. */
@@ -273,13 +275,28 @@ class MailController
         return Stream::view('admin.mail.file-stream', ['path' => $path, 'name' => $request->file('file')->getClientOriginalName()]);
     }
 
-    public function attachment(Attachment $attachment)
+    public function attachment(Request $request, Attachment $attachment, PhotoIngest $photos)
     {
         $attachment->load('message.account');
         abort_unless($attachment->message->account->scope === $this->scope || auth()->user()->isStaff(), 404);
         // Файл — из outbox, из закреплённых или из ящика через кэш; отдаётся с диска, не через память.
         $file = $attachment->file();
         abort_if($file === null, 404, 'Файла нет: письмо удалено из ящика');
+        // ?thumb — миниатюра картинки для сетки в письме: считается раз, живёт в cache/mail (storage:gc чистит по сроку).
+        if ($request->boolean('thumb') && $attachment->isImage() && $attachment->mime !== 'image/svg+xml') {
+            $thumb = Storage::disk('cache')->path("mail/thumb-{$attachment->id}.webp");
+            if (! is_file($thumb)) {
+                try {
+                    $made = $photos->shrink($file, 320);
+                    rename($made, $thumb);
+                } catch (\Throwable) {
+                    // Не пережалось (битый файл) — отдаём как есть.
+                }
+            }
+            if (is_file($thumb)) {
+                return response()->file($thumb, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
+            }
+        }
         // SVG — не картинка, а документ со скриптами: только на скачивание.
         $inline = ($attachment->isImage() && $attachment->mime !== 'image/svg+xml') || $attachment->isPdf();
 

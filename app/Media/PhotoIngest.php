@@ -40,12 +40,12 @@ final class PhotoIngest
         return $this->fromUpload($model, $collection, $request->file('file'), $properties, $max);
     }
 
-    public function fromString(HasMedia $model, string $collection, string $contents, string $name, array $properties = []): Media
+    public function fromString(HasMedia $model, string $collection, string $contents, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
         $temp = tempnam(sys_get_temp_dir(), 'kadr-');
         file_put_contents($temp, $contents);
 
-        return $this->add($model, $collection, $temp, $name, $properties);
+        return $this->add($model, $collection, $temp, $name, $properties, $max);
     }
 
     public function add(HasMedia $model, string $collection, string $path, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media

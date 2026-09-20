@@ -1,4 +1,4 @@
-{{-- Кандидат в плитках и строках: та же карточка, что у ТС — кадр из письма (медиатека кандидата, у заведённого — ТС),
+{{-- Кандидат в плитках и строках: та же карточка, что у ТС — один кадр из письма (`card` на hot, у заведённого — фото ТС),
      заголовок — номер убытка или марка, чипы: вендор, госномер, город, «2 письма», «📎 27», срок ответа.
      На стоянке кнопок нет: вся строка — форма заведения, справа серым «Завести ›» (у заведённого — «ТС ›»);
      «В архив» — в окошке и в плашке формы. В CRM справа — кнопки «Завести» / «Не заявка», как раньше. --}}
@@ -9,19 +9,17 @@
     $files = $c->message?->attachments->reject->is_inline ?? collect();
     $title = $c->code ?: $c->title();
     $car = trim(($v('brand') ?? '').' '.($v('model') ?? '').($v('year') ? ', '.$v('year') : ''));
-    $photos = $c->visiblePhotos()->take(6);
-    if ($photos->isEmpty() && $c->vehicle) { $photos = $c->vehicle->visiblePhotos()->take(6); }
+    $card = $c->card();
+    $main = ! $card && $c->vehicle ? $c->vehicle->mainPhoto() : null;
     $promoted = $c->state === CandidateState::Promoted;
     $href = $park ? ($promoted ? ($c->vehicle_id ? '/cars/'.$c->vehicle_id : null) : '/requests/new?candidate='.$c->id) : $base.'/'.$c->id.'/peek';
     $href ??= $base.'/'.$c->id.'/peek';
 @endphp
 <article id="candidate-{{ $c->id }}" class="card rise group">
-    @if ($photos->isNotEmpty())
-    <div class="card-media relative" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
-        <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
-            @foreach ($photos as $frame)<x-offer.photo :media="$frame" sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw" data-frames-target="frame"/>@endforeach
-        </a>
-    </div>
+    @if ($card)
+    <a href="{{ $href }}" class="card-media relative" tabindex="-1"><img src="{{ \App\Media\MediaUrl::for($card) }}" alt="" loading="lazy" decoding="async"></a>
+    @elseif ($main)
+    <a href="{{ $href }}" class="card-media relative" tabindex="-1"><x-offer.photo :media="$main" sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"/></a>
     @else
     <a href="{{ $href }}" class="card-media card-media--blank relative" tabindex="-1"><x-ui.car-blank/></a>
     @endif

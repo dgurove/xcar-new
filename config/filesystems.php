@@ -62,6 +62,16 @@ return [
             'throw' => false,
         ],
 
+        // Сжатые версии фото (w320/w640/w960/thumb) и кадры кандидатов: пересчитываемое,
+        // на быстром диске (на сервере /srv/xcar/hot на SSD), не бэкапится, Caddy отдаёт по /hot.
+        'hot' => [
+            'driver' => 'local',
+            'root' => storage_path('app/hot'),
+            'url' => env('APP_URL').'/hot',
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

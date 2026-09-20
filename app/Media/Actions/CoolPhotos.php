@@ -2,6 +2,7 @@
 
 namespace App\Media\Actions;
 
+use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -21,7 +22,7 @@ final class CoolPhotos
                 continue;
             }
             // Каталог конверсий целиком: в нём могут лежать и файлы конверсий, которых в коде уже нет.
-            $dir = dirname($m->getPath()).'/conversions';
+            $dir = self::conversionsDir($m);
             foreach (is_dir($dir) ? (array) glob("{$dir}/*") : [] as $path) {
                 $stat['files']++;
                 $stat['bytes'] += (int) filesize($path);
@@ -35,5 +36,11 @@ final class CoolPhotos
         }
 
         return $stat;
+    }
+
+    /** Каталог сжатых версий: на диске конверсий (hot), у старых медиа — рядом с оригиналом. */
+    public static function conversionsDir(Media $m): string
+    {
+        return Storage::disk($m->conversions_disk ?: $m->disk)->path($m->id.'/conversions');
     }
 }

@@ -4,6 +4,8 @@ namespace App\Storage\Console;
 
 use App\Mail\Attachment;
 use App\Mail\Blobs;
+use App\Mail\Candidate;
+use App\Mail\CandidateState;
 use App\Media\Actions\CoolPhotos;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -79,6 +81,16 @@ final class Gc extends Command
             return $stale->count().' шт.';
         });
 
+        $this->step('кадры карточек кандидатов, ушедших в архив больше '.self::UNPINNED_DAYS.' дн. назад', function () {
+            $stale = Candidate::where('state', CandidateState::Rejected)->where('updated_at', '<', now()->subDays(self::UNPINNED_DAYS))
+                ->whereHas('media', fn ($m) => $m->where('collection_name', 'card'))->get();
+            foreach ($stale as $candidate) {
+                $this->dry || $candidate->clearMediaCollection('card');
+            }
+
+            return $stale->count().' шт.';
+        });
+
         $this->step('файлы blobs без ссылок', function () {
             $disk = Storage::disk(Blobs::DISK);
             $orphans = 0;
@@ -117,7 +129,7 @@ final class Gc extends Command
             $count = 0;
             $bytes = 0;
             foreach (Media::whereRaw("generated_conversions::jsonb ?? 'w1440'")->cursor() as $m) {
-                $path = dirname($m->getPath()).'/conversions/'.pathinfo($m->file_name, PATHINFO_FILENAME).'-w1440.webp';
+                $path = CoolPhotos::conversionsDir($m).'/'.pathinfo($m->file_name, PATHINFO_FILENAME).'-w1440.webp';
                 if (is_file($path)) {
                     $count++;
                     $bytes += (int) filesize($path);

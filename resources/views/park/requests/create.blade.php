@@ -1,6 +1,6 @@
 {{-- Новая заявка одной страницей. С кандидатом из письма поля предзаполнены, письма — окном («Письма N» в плашке),
      кадры из письма — лентой под полями, чтобы сверять, не уходя со страницы. Тип «приём» / «эвакуация» решает поле «Доставка». --}}
-@php use App\Park\{RequestType, Delivery}; $p = $p ?? []; $val = fn ($k) => old($k, $p[$k] ?? null); $letters = $candidate !== null; $delivery = $letters ? $val('delivery') : old('delivery', Delivery::Self->value); $mailPhotos = $candidate?->photos() ?? collect(); @endphp
+@php use App\Park\{RequestType, Delivery}; $p = $p ?? []; $val = fn ($k) => old($k, $p[$k] ?? null); $letters = $candidate !== null; $delivery = $letters ? $val('delivery') : old('delivery', Delivery::Self->value); $card = $candidate?->card(); $mailPhotos = $candidate?->photosCount() ?? 0; @endphp
 <x-ui.shell title="Новая заявка">
     <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
     <div class="flex min-w-0 flex-col gap-4">
@@ -60,9 +60,13 @@
                 <x-ui.field name="note" label="Заметка" type="textarea" span="col-span-full" :value="$val('note')"/>
             </div>
         </x-ui.card>
-        @if ($mailPhotos->isNotEmpty())
-            <x-ui.card title="Из письма" :count="$mailPhotos->count()" data-controller="photos" data-photos-readonly-value="true">
-                <x-ui.photos :photos="$mailPhotos" readonly grid :hide="false" :main="false" id="mail-gallery"/>
+        @if ($card || $mailPhotos)
+            {{-- Из письма — один кадр; все фото лежат в письме, откроет окно писем. --}}
+            <x-ui.card title="Из письма">
+                <div class="flex items-start gap-3">
+                    @if ($card)<img src="{{ \App\Media\MediaUrl::for($card) }}" alt="" class="w-40 shrink-0 rounded-(--radius-m) object-cover">@endif
+                    @if ($mailPhotos)<x-mail.window-button chip :url="'/requests/from-mail/'.$candidate->id.'/letters'" :label="$mailPhotos.' фото в письме'"/>@endif
+                </div>
             </x-ui.card>
         @endif
     </form>

@@ -6,7 +6,8 @@
 # `server-setup.sh`): `storage/` — рабочие каталоги Laravel, поверх него
 # `media/` (публичное, Caddy отдаёт сам), `private/` (письма, документы),
 # `cache/` (воспроизводимое, не бэкапится), `postgres/` — база. Так бэкап и
-# `du` видят каждую часть отдельно, а корневой диск занят только системой.
+# `du` видят каждую часть отдельно. Сжатые версии фото — `${XCAR_HOT}` на
+# корневом SSD (пересчитываемое, не бэкапится): списки с фото грузятся с него.
 name: xcar
 
 x-data: &data
@@ -14,6 +15,7 @@ x-data: &data
   - ${XCAR_DATA:-/srv/xcar/data}/media:/app/storage/app/media
   - ${XCAR_DATA:-/srv/xcar/data}/private:/app/storage/app/private
   - ${XCAR_DATA:-/srv/xcar/data}/cache:/app/storage/app/cache
+  - ${XCAR_HOT:-/srv/xcar/hot}:/app/storage/app/hot
 
 x-app: &app
   image: xcar/app:${TAG:?нужен тег образа из deploy.sh}
@@ -55,6 +57,7 @@ services:
       - ${XCAR_DATA:-/srv/xcar/data}/media:/app/storage/app/media
       - ${XCAR_DATA:-/srv/xcar/data}/private:/app/storage/app/private
       - ${XCAR_DATA:-/srv/xcar/data}/cache:/app/storage/app/cache
+  - ${XCAR_HOT:-/srv/xcar/hot}:/app/storage/app/hot
       # Сертификаты. Терять нельзя: Let's Encrypt считает попытки.
       - caddy_data:/data
       - caddy_config:/config

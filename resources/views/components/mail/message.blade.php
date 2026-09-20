@@ -50,12 +50,20 @@
         @endif
     @endif
 
-    @if ($message->files()->isNotEmpty())
+    @php [$pictures, $documents] = $message->files()->partition(fn ($f) => $f->isImage() && $f->mime !== 'image/svg+xml'); @endphp
+    @if ($pictures->isNotEmpty())
+        {{-- Фото письма сеткой квадратов, миниатюры считает ?thumb; клик — оригинал. --}}
+        <div class="photo-grid mt-3">
+            @foreach ($pictures as $file)
+                <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="photo-cell" title="{{ $file->filename }}"><img src="{{ $base }}/attachments/{{ $file->id }}?thumb=1" alt="" loading="lazy" class="h-full w-full object-cover"></a>
+            @endforeach
+        </div>
+    @endif
+    @if ($documents->isNotEmpty())
         <div class="mt-3 flex flex-wrap gap-2">
-            @foreach ($message->files() as $file)
-                {{-- Миниатюра — только у закреплённого файла: незакреплённый лежит в ящике, за ним ходят по клику. --}}
+            @foreach ($documents as $file)
                 <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3">
-                    <x-ui.file-icon :name="$file->filename" :mime="$file->mime" :thumb="$file->isImage() && $file->isPinned() ? $base.'/attachments/'.$file->id : null"/>
+                    <x-ui.file-icon :name="$file->filename" :mime="$file->mime"/>
                     <span class="min-w-0"><span class="block truncate text-sm">{{ $file->filename }}</span><span class="text-xs text-ink-muted">{{ $file->humanSize() }}</span></span>
                 </a>
             @endforeach

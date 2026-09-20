@@ -7,19 +7,17 @@ use App\Live\Topics;
 use App\Mail\Actions\PinThread;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
-use App\Mail\Extraction\AttachmentImporter;
+use App\Mail\Extraction\CandidateCard;
 use App\Mail\Message;
 use App\Mail\Scope;
-use App\Offers\OfferState;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Кадры письма — в медиатеку кандидата «Из писем»: превью в карточке и лента «Из письма» на форме заявки,
- * пока ТС ещё не заведена. Вложения незаведённого кандидата живут только в ящике, поэтому сначала
- * закрепляем их в blobs (одно письмо), потом разбираем: только фото и архивы, документы кандидату не нужны.
- * Что уже лежит — по `sha` — не дублируется; при «Завести» кадры переезжают к ТС.
+ * Письмо кандидата «Из писем»: вложения закрепляются в blobs (иначе живут только в ящике), из первого фото
+ * делается кадр карточки (`CandidateCard`) — заранее, чтобы список открывался сразу. Остальные фото
+ * кандидату не нужны: при «Завести» их к ТС приносит импорт ветки.
  */
 final class ImportCandidateFiles implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -39,7 +37,7 @@ final class ImportCandidateFiles implements ShouldBeUniqueUntilProcessing, Shoul
         return $this->candidateId.':'.$this->messageId;
     }
 
-    public function handle(PinThread $pin, AttachmentImporter $importer, Publisher $publish): void
+    public function handle(PinThread $pin, CandidateCard $card, Publisher $publish): void
     {
         $candidate = Candidate::find($this->candidateId);
         $message = Message::find($this->messageId);
@@ -47,15 +45,8 @@ final class ImportCandidateFiles implements ShouldBeUniqueUntilProcessing, Shoul
             return;
         }
         $pin->message($message);
-        $added = $importer->import($candidate, $importer->attachmentsOf($message->id, null), 'photos', '', ['stage' => 'mail']);
-        // Пока тянули из ящика, кандидата завели — кадры едут туда же, куда уехали первые.
-        $candidate->refresh();
-        if ($candidate->state === CandidateState::Promoted && ($target = $candidate->vehicle ?? $candidate->offer)) {
-            $candidate->moveMediaTo($target, $candidate->offer && $candidate->offer->state !== OfferState::Draft ? ['hidden' => true] : []);
-
-            return;
-        }
-        if ($added['photos']) {
+        $had = $candidate->card() !== null;
+        if ($card->make($candidate, $message) && ! $had) {
             $publish->refresh($candidate->scope === Scope::Park ? Topics::PARK : Topics::STAFF, [$candidate->scope === Scope::Park ? '/requests/from-mail' : '/offers/from-mail']);
         }
     }

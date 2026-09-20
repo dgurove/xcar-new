@@ -162,10 +162,12 @@ if (app()->isLocal()) {
     });
 
     // На сервере медиатеку раздаёт Caddy; artisan serve этого не умеет.
-    Route::get('/media/{path}', function (string $path) {
-        $file = Storage::disk('media')->path($path);
-        abort_unless(is_file($file), 404);
+    foreach (['media', 'hot'] as $disk) {
+        Route::get("/{$disk}/{path}", function (string $path) use ($disk) {
+            $file = Storage::disk($disk)->path($path);
+            abort_unless(is_file($file), 404);
 
-        return response()->file($file, ['Cache-Control' => 'public, max-age=3600']);
-    })->where('path', '.*');
+            return response()->file($file, ['Cache-Control' => 'public, max-age=3600']);
+        })->where('path', '.*');
+    }
 }

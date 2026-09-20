@@ -101,6 +101,8 @@ chown 33:33 storage media private cache backups
 chown 999:999 postgres
 chmod 750 postgres
 df -h "$DATA" | awk 'NR==2{print "    " $2 " всего, " $4 " свободно"}'
+# Сжатые версии фото — на корневом диске (SSD): пересчитываемое, в бэкап не идёт.
+mkdir -p /srv/xcar/hot && chown 33:33 /srv/xcar/hot
 
 [ "$STEP" = all ] || exit 0
 

@@ -18,14 +18,11 @@ final class Report extends Command
     public function handle(): int
     {
         $rows = [];
-        $originals = 0;
         foreach (Media::query()->selectRaw('model_type, collection_name, count(*) as n, sum(size) as bytes')->groupBy('model_type', 'collection_name')->orderByDesc('bytes')->get() as $r) {
             $rows[] = ['медиа '.class_basename($r->model_type).'/'.$r->collection_name, $r->n.' шт.', Gc::human((int) $r->bytes)];
-            $originals += (int) $r->bytes;
         }
-        $mediaDisk = $this->diskBytes('media');
-        $rows[] = ['медиа: конверсии (диск минус оригиналы)', '', Gc::human(max(0, $mediaDisk - $originals))];
-        $rows[] = ['медиа: всего на диске', '', Gc::human($mediaDisk)];
+        $rows[] = ['медиа: всего на диске', '', Gc::human($this->diskBytes('media'))];
+        $rows[] = ['hot: сжатые версии и кадры кандидатов (SSD)', '', Gc::human($this->diskBytes('hot'))];
 
         // Числовые каталоги — медиатека на закрытом диске (документы, файлы просьб): одной строкой.
         $papers = 0;

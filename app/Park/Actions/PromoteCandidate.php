@@ -10,7 +10,7 @@ use App\Park\VehicleState;
 
 /**
  * Письма о хранении → ТС и заявка заводятся формой `/requests/new?candidate=` с полями из письма;
- * здесь — что после этого: кандидат помечен, его кадры переезжают к ТС, все его ветки привязаны, их файлы едут в карточку.
+ * здесь — что после этого: кандидат помечен, кадр карточки больше не нужен, все его ветки привязаны, их файлы едут в дело.
  * Если такую ТС уже завели руками, второй не будет: `existing()` находит её по убытку, VIN, госномеру.
  */
 final class PromoteCandidate
@@ -20,7 +20,7 @@ final class PromoteCandidate
     public function attach(Candidate $candidate, Vehicle $vehicle): void
     {
         $candidate->update(['state' => CandidateState::Promoted, 'vehicle_id' => $vehicle->id]);
-        $candidate->moveMediaTo($vehicle);
+        $candidate->clearMediaCollection('card');
         foreach ($candidate->threads() as $thread) {
             if ($thread->vehicle_id !== $vehicle->id) {
                 ($this->link)($thread, $vehicle);

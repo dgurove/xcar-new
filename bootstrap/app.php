@@ -16,10 +16,11 @@ use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
 use App\Http\Middleware\TouchSeen;
 use App\Live\SubscriberCookie;
-use App\Mail\Console\ImportCandidateFilesCommand;
+use App\Mail\Console\CandidateCardsCommand;
 use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
 use App\Mail\Console\WatchMail;
+use App\Media\Console\MoveConversionsHot;
 use App\Media\Console\MovePapers;
 use App\Media\Console\Restamp;
 use App\Offers\Console\TickOffers;
@@ -54,10 +55,11 @@ return Application::configure(basePath: dirname(__DIR__))
         SyncMail::class,
         WatchMail::class,
         ReconcileMail::class,
-        ImportCandidateFilesCommand::class,
+        CandidateCardsCommand::class,
         MakeKeys::class,
         Restamp::class,
         MovePapers::class,
+        MoveConversionsHot::class,
         Gc::class,
         Report::class,
         Poll::class,

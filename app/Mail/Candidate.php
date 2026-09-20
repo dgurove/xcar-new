@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use App\Mail\Extraction\Code;
-use App\Media\HasPhotos;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Vendors\Vendor;
@@ -13,18 +12,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * Машина, вычитанная из писем страховой: одна ТС — один кандидат, сколько бы писем о ней ни пришло.
  * Тождество — `key`: номер убытка (в любом написании), без него VIN, без VIN госномер, без всего — ветка.
  * `message_id`/`thread_id` — первое письмо и его ветка, все письма — `messages()`.
- * Кадры из писем — своя медиатека `photos` (`ImportCandidateFiles`): превью в карточке и «Из письма» на форме заявки;
- * при «Завести» переезжают к ТС или предложению (`PromoteCandidate`).
+ * Из фото писем у кандидата один кадр карточки `card` (`CandidateCard`, диск `hot`); сами вложения закреплены в blobs,
+ * при «Завести» их к ТС или предложению приносит импорт ветки (`LinkThread` → `ImportThreadFiles`).
  */
 #[Fillable(['scope', 'code', 'key', 'vendor_id', 'message_id', 'thread_id', 'subject', 'state', 'extracted', 'proposed', 'offer_id', 'vehicle_id', 'messages_count', 'last_message_at'])]
 class Candidate extends Model implements HasMedia
 {
-    use HasPhotos;
+    use InteractsWithMedia;
 
     protected $table = 'mail_candidates';
 
@@ -59,26 +60,20 @@ class Candidate extends Model implements HasMedia
         return $this->belongsTo(Vendor::class);
     }
 
-    /**
-     * «Завести»: кадры кандидата переезжают к ТС или предложению (копия с теми же свойствами, старые стираются);
-     * что там уже есть по `sha` — пропускается. Импорт ветки после привязки по `sha` не дублирует.
-     */
-    public function moveMediaTo(HasMedia $target, array $extra = []): int
+    public function registerMediaCollections(): void
     {
-        $moved = 0;
-        foreach ($this->photos() as $media) {
-            $sha = $media->getCustomProperty('sha');
-            if ($sha && $target->hasFile($sha)) {
-                $media->delete();
+        $this->addMediaCollection('card')->useDisk('hot')->singleFile();
+    }
 
-                continue;
-            }
-            $media->copy($target, 'photos', '', '', fn ($adder) => $extra ? $adder->withCustomProperties($extra + $media->custom_properties) : $adder);
-            $media->forceDelete();
-            $moved++;
-        }
+    public function card(): ?Media
+    {
+        return $this->getFirstMedia('card');
+    }
 
-        return $moved;
+    /** Сколько фото во вложениях всех писем кандидата (по описи, без inline-картинок тела). */
+    public function photosCount(): int
+    {
+        return $this->messages->loadMissing('attachments')->flatMap->attachments->filter(fn ($a) => ! $a->is_inline && $a->isImage())->count();
     }
 
     public function offer(): BelongsTo
