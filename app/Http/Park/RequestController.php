@@ -193,10 +193,6 @@ class RequestController
         return redirect("/cars/{$req->vehicle_id}", 301);
     }
 
-    /**
-     * Поля ТС приходят той же формой, что и этап заявки: одна кнопка сохраняет всё.
-     * Правит их только `park.manage` — «только приёмке» форма показывает их чипами.
-     */
     /** Кто двинул заявку — тот и исполнитель: ставится первым действием, если никого нет. */
     private function claim(Request $request, ParkRequest $req): void
     {
@@ -205,6 +201,10 @@ class RequestController
         }
     }
 
+    /**
+     * Поля ТС приходят той же формой, что и этап заявки: одна кнопка сохраняет всё.
+     * Правит их только `park.manage` — «только приёмке» форма показывает их чипами.
+     */
     private function saveVehicle(Request $request, Vehicle $vehicle): void
     {
         if (! $request->user()->canManagePark() || ! $request->has('vehicle_form')) {
