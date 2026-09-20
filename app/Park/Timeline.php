@@ -29,7 +29,7 @@ final class Timeline
                 $ir->delivery?->label(),
                 $ir->next_call_at && ! $ir->contacted_at ? 'перезвонить '.$ir->next_call_at->translatedFormat('j M, H:i') : null,
             ]));
-            $steps[] = new Step('call', $current ? 'Нужно позвонить' : 'Позвонили', $current ? Step::CURRENT : Step::DONE, $current ? 'Позвонить страхователю, узнать кто и когда привезёт ТС' : null, $ir->contacted_at, $chips,
+            $steps[] = new Step('call', $current ? 'Нужно позвонить' : ($ir->contacted_at ? 'Позвонили' : 'Не дозвонились'), $current ? Step::CURRENT : Step::DONE, $current ? 'Позвонить страхователю, узнать кто и когда привезёт ТС' : null, $ir->contacted_at, $chips,
                 $current ? ['kind' => 'submit', 'label' => 'Назначить эвакуатор'] : null, $ir);
         }
 

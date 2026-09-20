@@ -248,6 +248,10 @@ class VehicleController
         if ($vehicle->state === VehicleState::InTransit && ($tow = $vehicle->openRequest(RequestType::Tow))) {
             $close($tow, $request->user(), false);
             $vehicle->refresh();
+            // Перегон между площадками: ТС вернулась на прежнюю площадку, заводить заново нечего.
+            if ($vehicle->state !== VehicleState::Expected) {
+                return redirect("/cars/{$vehicle->id}")->with('toast', 'Перегон отменён');
+            }
         }
         $candidate = $unwind($vehicle, $request->user());
 
