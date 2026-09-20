@@ -85,6 +85,7 @@ final class PromoteCandidate
                 ($this->link)($thread, $offer);
             }
         }
+        $this->link->forOffer($offer);
     }
 
     /** Предложение с тем же убытком или VIN, не в архиве. */

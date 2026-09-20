@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Mail\Actions\ArchiveThread;
 use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
@@ -76,10 +77,12 @@ class CandidateController
         return redirect("/offers/{$offer->number}")->with('toast', $offer->wasRecentlyCreated ? 'Черновик заведён, фото подтягиваются' : 'Письма привязаны к предложению');
     }
 
-    public function reject(Candidate $candidate)
+    public function reject(Candidate $candidate, ArchiveThread $archive)
     {
         abort_if($candidate->scope !== $this->scope, 404);
         $candidate->update(['state' => $candidate->state === CandidateState::Rejected ? CandidateState::New : CandidateState::Rejected]);
+        // Один архив на всё: письма кандидата уходят из «Входящих» вместе с ним и возвращаются вместе.
+        $archive->candidate($candidate, $candidate->state === CandidateState::Rejected);
         Nav::forgetStaffCounts();
 
         return back()->with('toast', $candidate->state === CandidateState::Rejected ? 'В архиве' : 'Снова ждёт');

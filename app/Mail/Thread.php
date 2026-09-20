@@ -11,14 +11,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'unlinked_at'])]
+/**
+ * Ветка писем. `keys` — её номера (code:/vin:/plate:, см. Extraction\Keys), `candidate_id` — кандидат «Из писем»,
+ * `archived_at` — убрана из «Входящих» (как в Gmail: найдётся поиском, новое чужое письмо вернёт).
+ */
+#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'unlinked_at', 'keys', 'candidate_id', 'archived_at'])]
 class Thread extends Model
 {
     protected $table = 'mail_threads';
 
     protected function casts(): array
     {
-        return ['participants' => 'array', 'last_message_at' => 'datetime', 'has_attachments' => 'bool', 'unlinked_at' => 'datetime'];
+        return ['participants' => 'array', 'last_message_at' => 'datetime', 'has_attachments' => 'bool', 'unlinked_at' => 'datetime', 'keys' => 'array', 'archived_at' => 'datetime'];
     }
 
     public function account(): BelongsTo
@@ -50,6 +54,18 @@ class Thread extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class, 'vehicle_id');
+    }
+
+    public function candidate(): BelongsTo
+    {
+        return $this->belongsTo(Candidate::class, 'candidate_id');
+    }
+
+    /** Ветки с любым из номеров (`keys` пересекаются с `$keys`). */
+    public function scopeWithAnyKey($query, array $keys)
+    {
+        // `?|` спорит с плейсхолдерами PDO — та же проверка функцией.
+        return $keys ? $query->whereRaw('jsonb_exists_any(keys, array['.implode(',', array_fill(0, count($keys), '?')).']::text[])', array_values($keys)) : $query->whereRaw('false');
     }
 
     /** Ветка ведётся по машине: файлы её писем закрепляются у нас, а не живут только в ящике. */

@@ -5,6 +5,7 @@ namespace App\Http\Park;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Category;
+use App\Mail\Actions\LinkThread;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Scope as MailScope;
@@ -143,7 +144,7 @@ class RequestController
         ]);
     }
 
-    public function store(Request $request, CreateRequest $create, PromoteCandidate $promote)
+    public function store(Request $request, CreateRequest $create, PromoteCandidate $promote, LinkThread $link)
     {
         $data = $request->validate([
             'type' => ['required', Rule::enum(RequestType::class)],
@@ -183,6 +184,9 @@ class RequestController
         $req = $create($request->user(), $type, $vehicle, $data);
         if ($candidate && $candidate->state !== CandidateState::Promoted) {
             $promote->attach($candidate, $req->vehicle);
+        } elseif (! $vehicle) {
+            // ТС завели руками — письма с её номером, VIN или госномером уже могли прийти.
+            $link->forVehicle($req->vehicle);
         }
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Заявка заведена');

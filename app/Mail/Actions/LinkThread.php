@@ -3,6 +3,7 @@
 namespace App\Mail\Actions;
 
 use App\Mail\Extraction\CodeMatcher;
+use App\Mail\Extraction\Keys;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Jobs\ExtractCandidate;
 use App\Mail\Jobs\ImportThreadFiles;
@@ -26,6 +27,34 @@ final class LinkThread
     {
         $thread->update(($to instanceof Offer ? ['offer_id' => $to->id] : ['vehicle_id' => $to->id]) + ['unlinked_at' => null]);
         ImportThreadFiles::dispatch($thread->id);
+    }
+
+    /**
+     * ТС завели (руками или из письма): все непривязанные ветки с её номером, VIN или госномером — к ней,
+     * включая наши ответы из почтового клиента и письма «ч.2», пришедшие отдельной веткой.
+     */
+    public function forVehicle(Vehicle $vehicle): int
+    {
+        $keys = Keys::ofVehicle($vehicle);
+        $threads = Thread::withAnyKey($keys)->whereNull('vehicle_id')->whereNull('unlinked_at')
+            ->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->get();
+        foreach ($threads as $thread) {
+            $this($thread, $vehicle);
+        }
+
+        return $threads->count();
+    }
+
+    public function forOffer(Offer $offer): int
+    {
+        $keys = Keys::ofOffer($offer);
+        $threads = Thread::withAnyKey($keys)->whereNull('offer_id')->whereNull('unlinked_at')
+            ->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->get();
+        foreach ($threads as $thread) {
+            $this($thread, $offer);
+        }
+
+        return $threads->count();
     }
 
     /** Отвязать руками: ссылка обнуляется, автопривязка по номеру или VIN эту ветку больше не трогает; файлы и blobs остаются. */

@@ -67,8 +67,10 @@ final class Gc extends Command
         $this->step('временные файлы старше суток', fn () => $this->sweep('cache', 'tmp', 1));
 
         $this->step('файлы писем отвязанных веток старше '.self::UNPINNED_DAYS.' дн.', function () {
+            // Ветки кандидатов, которые ещё ждут заведения, не в счёт: их вложения нужны при «Завести».
             $stale = Attachment::whereNotNull('blob_sha')->where('pinned_at', '<', now()->subDays(self::UNPINNED_DAYS))
-                ->whereHas('message', fn ($q) => $q->whereHas('thread', fn ($t) => $t->whereNull('offer_id')->whereNull('vehicle_id')))->get();
+                ->whereHas('message', fn ($q) => $q->whereHas('thread', fn ($t) => $t->whereNull('offer_id')->whereNull('vehicle_id')
+                    ->whereDoesntHave('candidate', fn ($c) => $c->where('state', CandidateState::New))))->get();
             foreach ($stale as $attachment) {
                 if ($this->dry) {
                     continue;

@@ -337,13 +337,13 @@ final class Nav
                     '/' => Request::whereIn('state', RequestState::open())->where('planned_at', '<', now())->count(),
                     '/requests/from-mail' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count(),
                     '/money' => Invoice::where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString())->count(),
-                    '/mail' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
+                    '/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ];
             }
             $badges = [
                 '/' => Bid::where('state', BidState::Active)->count(),
                 '/offers/from-mail' => Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->count(),
-                '/work/mail' => Thread::where('unread_count', '>', 0)->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
+                '/work/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
                 '/work/deals' => Position::where('track', 'sale')
                     ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))

@@ -10,6 +10,7 @@ use App\Mail\Extraction\Extractor;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Message;
 use App\Mail\Scope;
+use App\Mail\Thread;
 use App\Offers\Offer;
 use App\Park\Events\CandidateArrived;
 use App\Park\Vehicle;
@@ -33,51 +34,77 @@ final class ExtractCandidate implements ShouldQueue
         if (! $message || $message->direction !== Direction::In) {
             return;
         }
+        self::run($message, $extractor, force: false);
+    }
+
+    /**
+     * Письмо → кандидат. Сначала ищется открытый кандидат с тем же номером, VIN, госномером или веткой:
+     * письмо «ч.2» без VIN и от неопознанного отправителя всё равно его. Нового кандидата заводим, только
+     * если письмо похоже на заявку (`force` — руками из почты: заводим как есть).
+     */
+    public static function run(Message $message, ?Extractor $extractor = null, bool $force = false, bool $quiet = false): ?Candidate
+    {
+        $extractor ??= app(Extractor::class);
         $park = $message->account->scope === Scope::Park;
         $body = $message->text_body ?: $message->html_body;
         $fields = $park ? (new ParkExtractor)->extract($message->subject, $body, $message->from_email, $message->date_at)
             : $extractor->extract($message->subject, $body, $message->from_email, $message->date_at);
         $code = Code::normalize($fields['code']['value'] ?? null);
-        if ($park ? ! ParkExtractor::looksLikeRequest($fields) : ! Extractor::looksLikeOffer($fields)) {
-            return;
-        }
-        // Машина уже заведена — по номеру, VIN или госномеру: кандидат не нужен, ветку к ней привяжет LinkThread::auto.
-        if (self::known($park, $code, $fields)) {
-            return;
-        }
-
         $scope = $park ? Scope::Park : Scope::Offers;
-        $identities = Candidate::identities($fields, $message->thread_id);
+        $identities = [...Candidate::identities($fields, $message->thread_id), ...($message->thread?->keys ?? [])];
+        $identities = array_values(array_unique($identities));
         // Открытых кандидатов десятки — сверяем тождества в PHP: совпасть может ключ, VIN из полей или ветка любого письма.
         $existing = Candidate::where('scope', $scope)->whereIn('state', [CandidateState::New, CandidateState::Rejected])->with('messages')->get()
             ->map(fn (Candidate $c) => [$c, array_intersect($identities, $c->allIdentities())])
             ->filter(fn ($pair) => $pair[1] !== [])
             ->sortBy(fn ($pair) => min(array_keys($pair[1])))
             ->map(fn ($pair) => $pair[0])->first();
-        if (! $existing) {
-            $candidate = Candidate::create([
-                'scope' => $scope, 'code' => $code, 'key' => $identities[0] ?? 'message:'.$message->id, 'vendor_id' => $fields['vendor_id']['value'] ?? null,
-                'message_id' => $message->id, 'thread_id' => $message->thread_id, 'subject' => $message->subject, 'extracted' => $fields,
-                'messages_count' => 1, 'last_message_at' => $message->date_at ?? now(),
-            ]);
-            $candidate->messages()->attach($message->id, ['created_at' => now()]);
-            ImportCandidateFiles::dispatch($candidate->id, $message->id);
-            if ($park) {
-                CandidateArrived::dispatch($candidate);
+        if ($existing) {
+            if ($existing->messages->contains('id', $message->id)) {
+                return $existing;
             }
+            // Ещё письмо о той же ТС: письмо в список, новые поля дописываются к прежним, свежие ложатся рядом,
+            // ключ поднимается до самого сильного (ветка → VIN → номер). Владельца не дёргаем — ТС та же.
+            $existing->messages()->syncWithoutDetaching([$message->id => ['created_at' => now()]]);
+            $existing->update([
+                'extracted' => $fields + ($existing->extracted ?? []), 'proposed' => $fields,
+                'code' => $existing->code ?? $code, 'key' => Candidate::strongest([$existing->key, ...$identities]),
+                'thread_id' => $existing->thread_id ?? $message->thread_id, 'vendor_id' => $existing->vendor_id ?? ($fields['vendor_id']['value'] ?? null),
+                'messages_count' => $existing->messages()->count(), 'last_message_at' => max($existing->last_message_at, $message->date_at) ?? now(),
+            ]);
+            self::adopt($existing, $message);
+            ImportCandidateFiles::dispatch($existing->id, $message->id);
 
-            return;
+            return $existing;
         }
-        // Ещё письмо о той же ТС: письмо в список, новые поля дописываются к прежним, свежие ложатся рядом,
-        // ключ поднимается до самого сильного (ветка → VIN → номер). Владельца не дёргаем — ТС та же.
-        $existing->messages()->syncWithoutDetaching([$message->id => ['created_at' => now()]]);
-        $existing->update([
-            'extracted' => $fields + ($existing->extracted ?? []), 'proposed' => $fields,
-            'code' => $existing->code ?? $code, 'key' => Candidate::strongest([$existing->key, ...$identities]),
-            'thread_id' => $existing->thread_id ?? $message->thread_id, 'vendor_id' => $existing->vendor_id ?? ($fields['vendor_id']['value'] ?? null),
-            'messages_count' => $existing->messages()->count(), 'last_message_at' => max($existing->last_message_at, $message->date_at) ?? now(),
+        if (! $force && ($park ? ! ParkExtractor::looksLikeRequest($fields) : ! Extractor::looksLikeOffer($fields))) {
+            return null;
+        }
+        // Машина уже заведена — по номеру, VIN или госномеру: кандидат не нужен, ветку к ней привяжет LinkThread.
+        if (! $force && self::known($park, $code, $fields)) {
+            return null;
+        }
+        $candidate = Candidate::create([
+            'scope' => $scope, 'code' => $code, 'key' => Candidate::identities($fields, $message->thread_id)[0] ?? 'message:'.$message->id, 'vendor_id' => $fields['vendor_id']['value'] ?? null,
+            'message_id' => $message->id, 'thread_id' => $message->thread_id, 'subject' => $message->subject, 'extracted' => $fields,
+            'messages_count' => 1, 'last_message_at' => $message->date_at ?? now(),
         ]);
-        ImportCandidateFiles::dispatch($existing->id, $message->id);
+        $candidate->messages()->attach($message->id, ['created_at' => now()]);
+        self::adopt($candidate, $message);
+        ImportCandidateFiles::dispatch($candidate->id, $message->id);
+        if ($park && ! $quiet) {
+            CandidateArrived::dispatch($candidate);
+        }
+
+        return $candidate;
+    }
+
+    /** Ветка письма — за кандидатом (секция в почте); кандидат в архиве — ветка тоже. */
+    private static function adopt(Candidate $candidate, Message $message): void
+    {
+        if ($message->thread_id) {
+            Thread::whereKey($message->thread_id)->whereNull('candidate_id')->update(['candidate_id' => $candidate->id]);
+        }
     }
 
     /** ТС или предложение с таким номером, VIN или госномером уже есть. */

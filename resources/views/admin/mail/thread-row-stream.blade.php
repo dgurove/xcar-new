@@ -1,1 +1,2 @@
-<turbo-stream action="replace" target="thread-{{ $thread->id }}"><template>@include('admin.mail.thread-row')</template></turbo-stream>
+{{-- Смахнули «В архив» (или «Вернуть»): строка уходит из списка. --}}
+<turbo-stream action="remove" target="thread-{{ $thread->id }}"></turbo-stream>

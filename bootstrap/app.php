@@ -18,6 +18,7 @@ use App\Http\Middleware\TouchSeen;
 use App\Live\SubscriberCookie;
 use App\Mail\Console\CandidateCardsCommand;
 use App\Mail\Console\ReconcileMail;
+use App\Mail\Console\RelinkMail;
 use App\Mail\Console\SyncMail;
 use App\Mail\Console\WatchMail;
 use App\Media\Console\MoveConversionsHot;
@@ -56,6 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
         WatchMail::class,
         ReconcileMail::class,
         CandidateCardsCommand::class,
+        RelinkMail::class,
         MakeKeys::class,
         Restamp::class,
         MovePapers::class,

@@ -1,6 +1,6 @@
 {{-- Окно ветки: тема, участники, ТС или предложение, все письма целиком с «Ответить» под каждым;
      привязка к ТС / предложению и «Не прочитано» — тут же. Страницы ветки на стоянке нет; в CRM — ссылка «Ветка». --}}
-@php $park = $base === '/mail'; $who = collect($thread->counterparts())->map(fn ($p) => $p['name'] ?: $p['email'])->take(3); $linked = $park ? $thread->vehicle : $thread->offer; @endphp
+@php $park = $base === '/mail'; $who = collect($thread->counterparts())->map(fn ($p) => $p['name'] ?: $p['email'])->take(3); $linked = $park ? $thread->vehicle : $thread->offer; $thread->loadMissing('candidate'); @endphp
 <turbo-frame id="letters-frame" target="_top">
     <div class="flex flex-col gap-4">
         <div>
@@ -10,6 +10,13 @@
                 @if ($thread->vehicle)<a href="{{ \App\Support\Surface::Park->url('/cars/'.$thread->vehicle->id) }}" class="tag" @unless ($park) data-turbo="false" @endunless>{{ $thread->vehicle->titleWithYear() }}@if ($thread->vehicle->ref && $thread->vehicle->brand_id) <span class="nums text-ink-muted ml-1">{{ $thread->vehicle->ref }}</span>@endif</a>@endif
                 @if ($thread->offer)<a href="{{ \App\Support\Surface::Crm->url('/offers/'.$thread->offer->number) }}" class="tag" @if ($park) data-turbo="false" @endif>{{ $thread->offer->title() }} <span class="nums text-ink-muted">№ {{ $thread->offer->number }}</span></a>@endif
                 <span class="tag">{{ $thread->account->title }}</span>
+                @if ($thread->candidate && ! $linked)
+                    @if ($thread->candidate->state === \App\Mail\CandidateState::Rejected)<span class="chip text-ink-muted">Кандидат в архиве</span>
+                    @elseif ($park)<a href="/requests/new?candidate={{ $thread->candidate->id }}" class="chip" data-turbo-frame="_top">Завести ›</a>
+                    @else<form method="post" action="/offers/from-mail/{{ $thread->candidate->id }}/create" class="contents" data-turbo-frame="_top">@csrf<button class="chip">Завести ›</button></form>@endif
+                @elseif (! $linked)
+                    <form method="post" action="{{ $base }}/{{ $thread->id }}/candidate" class="contents" data-turbo-frame="_top">@csrf<button class="chip">{{ $park ? 'Заявка' : 'Предложение' }} ›</button></form>
+                @endif
                 <details class="contents">
                     <summary class="chip cursor-pointer list-none">{{ $linked ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</summary>
                     <form method="post" action="{{ $base }}/{{ $thread->id }}/link" class="mt-2 flex w-full items-end gap-2" data-turbo-frame="letters-frame">
@@ -23,6 +30,7 @@
                         @if ($linked)<x-ui.button variant="ghost" size="sm" name="{{ $park ? 'vehicle_id' : 'number' }}" value="">Отвязать</x-ui.button>@endif
                     </form>
                 </details>
+                <form method="post" action="{{ $base }}/{{ $thread->id }}/archive" data-turbo-frame="letters-frame" class="contents">@csrf<button class="chip text-ink-muted">{{ $thread->archived_at ? 'Вернуть из архива' : 'В архив' }}</button></form>
                 <form method="post" action="{{ $base }}/{{ $thread->id }}/unread" data-turbo-frame="_top" class="contents">@csrf<button class="chip text-ink-muted">Не прочитано</button></form>
                 @unless ($park)<a href="{{ $base }}/{{ $thread->id }}" class="chip">Ветка</a>@endunless
             </div>

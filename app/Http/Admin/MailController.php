@@ -7,13 +7,17 @@ use App\Billing\Documents\StorageActPdf;
 use App\Billing\Invoice;
 use App\Live\Stream;
 use App\Mail\Account;
+use App\Mail\Actions\ArchiveThread;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
+use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Actions\StoreOutboxFile;
 use App\Mail\Attachment;
 use App\Mail\BodyRenderer;
 use App\Mail\Composer;
 use App\Mail\Direction;
+use App\Mail\Extraction\Keys;
+use App\Mail\Jobs\ExtractCandidate;
 use App\Mail\Jobs\ParseMessage;
 use App\Mail\Jobs\PushFlag;
 use App\Mail\Jobs\SendMessage;
@@ -32,78 +36,126 @@ use App\Park\Documents\ActPdf;
 use App\Park\EventType;
 use App\Park\InspectionKind;
 use App\Park\Vehicle;
-use App\Support\ListPrefs;
-use App\Support\ListView;
 use App\Vendors\ContactRole;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
-/** Почта в админке: ветки, письмо, ответ. Ящики — по scope поверхности. */
+/**
+ * Почта: Входящие · Отправленные · Архив как в Gmail (ветка там, где её последнее письмо), во «Входящих» секции
+ * по ТС (CRM — по предложениям) и кандидатам «Из писем», нераспознанные письма — «Не разобрано» с «Заявка ›».
+ * Поиск — по всем письмам сразу (тема, текст, адреса, файлы, номера). Ящики — по scope поверхности.
+ */
 class MailController
 {
-    public const PRESETS = ['all' => 'Все', 'unread' => 'Непрочитанные', 'files' => 'С вложениями', 'sent' => 'Отправленные', 'linked' => 'По предложениям'];
+    public const BOXES = ['inbox' => 'Входящие', 'sent' => 'Отправленные', 'archive' => 'Архив'];
 
-    public const TABLE_ROWS = 100;
+    public const GROUPS_PER_PAGE = 30;
 
-    public const SORTS = ['fresh' => 'Свежие', 'unanswered' => 'Давно без ответа', 'unread' => 'Непрочитанные первыми'];
-
-    /** Пресеты по поверхности: на стоянке «привязанные» — к ТС, не к предложениям. */
-    public function presets(): array
-    {
-        return $this->scope === Scope::Park ? array_replace(self::PRESETS, ['linked' => 'По ТС']) : self::PRESETS;
-    }
+    public const ROWS_PER_PAGE = 50;
 
     public function __construct(private Scope $scope = Scope::Offers, private string $base = '/work/mail') {}
 
     public function index(Request $request)
     {
-        ListPrefs::sync($request, $this->scope->value.'-mail', rememberTable: true);
-        $view = ListView::fromRequest($request) ?? ListView::TABLE;
         $accounts = Account::where('scope', $this->scope)->orderBy('title')->get();
-        $preset = $request->query('preset', 'all');
-        $slug = $request->query('account');
+        $box = array_key_exists($request->query('box', ''), self::BOXES) ? $request->query('box') : 'inbox';
         $q = trim((string) $request->query('q'));
-        $sort = array_key_exists($request->query('sort', ''), self::SORTS) ? $request->query('sort') : 'fresh';
+        $park = $this->scope === Scope::Park;
+        $with = ['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'candidate.vendor', 'latestMessage'];
 
-        $threads = Thread::query()->with(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'latestMessage'])->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)])
-            ->whereIn('account_id', $accounts->pluck('id'))
-            ->when($slug, fn ($t) => $t->whereHas('account', fn ($a) => $a->where('slug', $slug)))
-            ->when($request->query('car'), fn ($t, $id) => $t->where('vehicle_id', $id))
-            ->when($q !== '', fn ($t) => $t->where(fn ($w) => $w->whereRaw('lower(subject) like ?', ['%'.mb_strtolower($q).'%'])->orWhereRaw('participants::text ilike ?', ['%'.$q.'%'])))
-            ->where('messages_count', '>', 0);
-        match ($preset) {
-            'unread' => $threads->where('unread_count', '>', 0),
-            'files' => $threads->where('has_attachments', true),
-            'sent' => $threads->whereHas('messages', fn ($m) => $m->where('direction', Direction::Out)),
-            'linked' => $this->scope === Scope::Park ? $threads->whereNotNull('vehicle_id') : $threads->whereNotNull('offer_id'),
-            default => null,
-        };
+        $threads = Thread::query()->whereIn('account_id', $accounts->pluck('id'))->where('messages_count', '>', 0);
+        $last = '(select m.direction from mail_messages m where m.thread_id = mail_threads.id order by m.date_at desc limit 1)';
+        $sections = null;
+        if ($q !== '') {
+            // Поиск по всему: пилюли гаснут, список плоский, архив тоже.
+            $threads->where(fn ($w) => $w
+                ->whereHas('messages', fn ($m) => $m->whereRaw("search @@ websearch_to_tsquery('russian', ?)", [$q]))
+                ->orWhereRaw('participants::text ilike ?', ['%'.$q.'%'])
+                ->orWhereHas('attachments', fn ($a) => $a->where('filename', 'ilike', '%'.$q.'%'))
+                ->when(Keys::fromQuery($q), fn ($w, $keys) => $w->orWhere(fn ($k) => $k->withAnyKey($keys))));
+        } else {
+            match ($box) {
+                'sent' => $threads->whereNull('archived_at')->whereRaw("{$last} = 'out'"),
+                'archive' => $threads->whereNotNull('archived_at'),
+                default => $threads->whereNull('archived_at')->whereRaw("{$last} = 'in'"),
+            };
+        }
 
-        match ($sort) {
-            // «Давно без ответа» — последнее письмо ветки входящее: сначала те, кому давно не отвечали.
-            'unanswered' => $threads->whereExists(fn ($s) => $s->selectRaw('1')->from('mail_messages as m')->whereColumn('m.thread_id', 'mail_threads.id')->where('m.direction', Direction::In->value)
-                ->whereRaw('m.date_at = (select max(date_at) from mail_messages where thread_id = mail_threads.id)'))->orderBy('last_message_at'),
-            'unread' => $threads->orderByDesc('unread_count')->orderByDesc('last_message_at'),
-            default => $threads->orderByDesc('last_message_at'),
-        };
+        if ($q === '' && $box === 'inbox') {
+            // Секции: ТС (CRM — предложение) → кандидат → «Не разобрано» одной группой; страницы — по группам.
+            $group = $park
+                ? "coalesce('v:' || vehicle_id::text, 'c:' || candidate_id::text, 'none')"
+                : "coalesce('o:' || offer_id::text, 'c:' || candidate_id::text, 'none')";
+            $groups = (clone $threads)->selectRaw("{$group} as g, max(last_message_at) as at")->groupByRaw($group)->orderByDesc('at');
+            $keys = $groups->get()->pluck('g');
+            $page = max(1, (int) $request->query('page', 1));
+            $slice = $keys->forPage($page, self::GROUPS_PER_PAGE)->values();
+            $paginator = new LengthAwarePaginator($slice, $keys->count(), self::GROUPS_PER_PAGE, $page, ['path' => $request->url(), 'query' => $request->query()]);
+            $rows = $slice->isEmpty() ? collect() : (clone $threads)->with($with)->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)])
+                ->whereRaw("{$group} in (".implode(',', array_fill(0, $slice->count(), '?')).')', $slice->all())->orderByDesc('last_message_at')->get();
+            $byGroup = $rows->groupBy(fn (Thread $t) => $park
+                ? ($t->vehicle_id ? 'v:'.$t->vehicle_id : ($t->candidate_id ? 'c:'.$t->candidate_id : 'none'))
+                : ($t->offer_id ? 'o:'.$t->offer_id : ($t->candidate_id ? 'c:'.$t->candidate_id : 'none')));
+            $order = $slice->contains('none') ? collect(['none'])->merge($slice->reject(fn ($g) => $g === 'none')) : $slice;
+            $sections = $order->map(function (string $g) use ($byGroup) {
+                $list = $byGroup->get($g, collect());
+                $first = $list->first();
+
+                return ['key' => $g, 'threads' => $list, 'vehicle' => str_starts_with($g, 'v:') ? $first?->vehicle : null,
+                    'offer' => str_starts_with($g, 'o:') ? $first?->offer : null, 'candidate' => str_starts_with($g, 'c:') ? $first?->candidate : null];
+            })->filter(fn ($s) => $s['threads']->isNotEmpty())->values();
+            $threads = $paginator;
+        } else {
+            $threads = $threads->with($with)->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)])
+                ->orderByDesc('last_message_at')->paginate(self::ROWS_PER_PAGE)->withQueryString();
+        }
 
         return view('admin.mail.index', [
-            // Таблица — по сто веток на страницу: почта растёт без предела, целиком её не отдать.
-            'threads' => $threads->paginate($view === ListView::TABLE ? self::TABLE_ROWS : ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
-            'view' => $view,
-            'sort' => $sort,
-            'accounts' => $accounts,
-            'preset' => $preset,
-            'slug' => $slug,
+            'threads' => $threads,
+            'sections' => $sections,
+            'box' => $q !== '' ? '' : $box,
             'q' => $q,
+            'accounts' => $accounts,
             'base' => $this->base,
-            'unread' => Thread::whereIn('account_id', $accounts->pluck('id'))->where('unread_count', '>', 0)->count(),
-            'presets' => $this->presets(),
-            'car' => $request->query('car') ? Vehicle::with(['brand', 'model'])->find($request->query('car')) : null,
+            'park' => $park,
+            'unread' => Thread::whereIn('account_id', $accounts->pluck('id'))->whereNull('archived_at')->where('unread_count', '>', 0)->count(),
             // ?window=id — ссылка на ветку: список с открытым окном этой ветки.
             'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window' : null,
         ]);
+    }
+
+    /** «Заявка ›» (CRM: «Предложение ›») у нераспознанного письма: кандидат из ветки как есть, дальше обычная дверь заведения. */
+    public function candidate(Request $request, Thread $thread)
+    {
+        $this->guard($thread);
+        $message = $thread->messages()->with(['thread', 'account'])->where('direction', Direction::In)->orderByDesc('date_at')->first()
+            ?? $thread->messages()->with(['thread', 'account'])->orderByDesc('date_at')->first();
+        abort_if(! $message, 404);
+        $candidate = $thread->candidate ?? ExtractCandidate::run($message, force: true, quiet: true);
+        abort_if(! $candidate, 404);
+        if ($this->scope === Scope::Park) {
+            return redirect('/requests/new?candidate='.$candidate->id);
+        }
+        $offer = app(PromoteCandidate::class)($candidate, $request->user());
+
+        return redirect("/offers/{$offer->number}")->with('toast', $offer->wasRecentlyCreated ? 'Черновик заведён, фото подтягиваются' : 'Письма привязаны к предложению');
+    }
+
+    /** В архив ↔ вернуть. Из списка (свайп) — строка исчезает стримом; из окна — окно перечитывается. */
+    public function archive(Request $request, Thread $thread, ArchiveThread $archive)
+    {
+        $this->guard($thread);
+        $thread->archived_at ? $archive->restoreWithCandidate($thread) : $archive($thread);
+        if ($request->header('Turbo-Frame') === 'letters-frame') {
+            return redirect("{$this->base}/{$thread->id}/window");
+        }
+        if (str_contains((string) $request->header('Accept'), 'turbo-stream')) {
+            return response()->view('admin.mail.thread-row-stream', ['thread' => $thread])->header('Content-Type', 'text/vnd.turbo-stream.html');
+        }
+
+        return back()->with('toast', $thread->archived_at ? 'В архиве' : 'Снова во входящих');
     }
 
     /** Окно ветки (фрейм letters-frame в x-mail.window): все письма целиком, «Ответить» под каждым, привязка. */
@@ -314,18 +366,6 @@ class MailController
         $markRead($thread, false);
 
         return redirect($this->base)->with('toast', 'Не прочитано');
-    }
-
-    /** Смахнули строку: прочитано ↔ не прочитано, ответ — та же строка стримом. */
-    public function toggleRead(Request $request, Thread $thread, MarkThreadRead $markRead)
-    {
-        $this->guard($thread);
-        $markRead($thread, (bool) $thread->unread_count);
-        $thread->refresh()->load(['account', 'offer', 'vehicle']);
-
-        return response()
-            ->view('admin.mail.thread-row-stream', ['thread' => $thread, 'base' => $this->base, 'accounts' => null, 'slug' => null])
-            ->header('Content-Type', 'text/vnd.turbo-stream.html');
     }
 
     public function flag(Message $message)

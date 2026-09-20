@@ -76,7 +76,7 @@
     <x-ui.action-bar>
         <x-ui.button form="request-form" class="min-w-0 flex-1">Завести</x-ui.button>
         @if ($letters)
-            <x-mail.window-button :count="$messages->count()" :url="'/requests/from-mail/'.$candidate->id.'/letters'" class="shrink-0"/>
+            <x-mail.window-button :count="$messages->count()" :url="'/requests/from-mail/'.$candidate->id.'/letters'" class="shrink-0" label="" aria-label="Письма"/>
             <form method="post" action="/requests/from-mail/{{ $candidate->id }}/decline" class="contents">@csrf<button class="btn btn-ghost shrink-0" data-turbo-confirm="В архив? Письмо уйдёт из «Ждут»">В архив</button></form>
         @endif
     </x-ui.action-bar>

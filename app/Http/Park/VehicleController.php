@@ -6,6 +6,7 @@ use App\Billing\Cadence;
 use App\Billing\Ledger;
 use App\Http\Admin\OfferPhotoController;
 use App\Live\Stream;
+use App\Mail\Actions\LinkThread;
 use App\Mail\Thread;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
@@ -117,7 +118,7 @@ class VehicleController
         ]);
     }
 
-    public function update(Request $request, Vehicle $vehicle, UpdateVehicle $update)
+    public function update(Request $request, Vehicle $vehicle, UpdateVehicle $update, LinkThread $link)
     {
         // Поля тождества (VehicleFields) шлёт форма дела; договор — шторка «Договор». Одна дверь на обе.
         $data = $request->validate(VehicleFields::rules() + [
@@ -143,6 +144,8 @@ class VehicleController
         $back = $data['back'] ?? null;
         unset($data['back']);
         $update($vehicle, $data, $request->user());
+        // Вписали номер, VIN или госномер — письма с ними находят дело.
+        $link->forVehicle($vehicle->refresh());
 
         return redirect($back ?: "/cars/{$vehicle->id}")->with('toast', 'Сохранено');
     }

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 /** Ветка для письма: по In-Reply-To/References, иначе по теме и собеседникам за 90 дней, иначе новая. */
 final class Threads
 {
-    public function __construct(private Parser $parser) {}
+    public function __construct(private Parser $parser, private Extraction\Keys $keys) {}
 
     public function resolve(Account $account, array $parsed): Thread
     {
@@ -40,6 +40,7 @@ final class Threads
             'unread_count' => $messages->where('is_seen', false)->where('direction', Direction::In)->count(),
             'has_attachments' => $messages->contains('has_attachments', true),
             'participants' => $participants,
+            'keys' => $this->keys->ofThread($thread),
         ])->save();
     }
 

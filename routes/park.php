@@ -112,7 +112,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/mail/{thread}/window', [MailController::class, 'window']);
     Route::get('/mail/{thread}/reply/{message}', [MailController::class, 'reply']);
     Route::post('/mail/{thread}/unread', [MailController::class, 'unread']);
-    Route::post('/mail/{thread}/read', [MailController::class, 'toggleRead']);
+    Route::post('/mail/{thread}/archive', [MailController::class, 'archive']);
+    Route::post('/mail/{thread}/candidate', [MailController::class, 'candidate']);
     Route::post('/mail/{thread}/link', [MailController::class, 'link']);
 });
 

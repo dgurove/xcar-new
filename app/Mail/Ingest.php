@@ -39,6 +39,10 @@ final class Ingest
                 $message->addresses()->create(['kind' => $a['kind']->value, 'email' => $a['email'], 'name' => $a['name'], 'position' => $a['position']]);
             }
             $this->attachments($message, $parsed['attachments']);
+            // Пришло чужое письмо в архивную ветку — она снова во «Входящих».
+            if ($thread->archived_at && $message->direction === Direction::In) {
+                $thread->forceFill(['archived_at' => null])->saveQuietly();
+            }
             $this->threads->refresh($thread);
         });
 
