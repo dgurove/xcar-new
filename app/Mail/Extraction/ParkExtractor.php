@@ -65,18 +65,20 @@ final class ParkExtractor
     /**
      * Письмо — заявка, если в нём номер убытка, VIN или госномер. Свободный номер из текста (`REFS`:
      * десять-восемь цифр) считается только от известного вендора — иначе рассылка с номером телефона
-     * или счёта становилась кандидатом.
+     * или счёта становилась кандидатом. VIN или госномер без слов о вывозе, передаче, хранении
+     * (`request`) и не от вендора — тоже не заявка: счёт, ответ бухгалтерии, рассылка с VIN.
      */
     public static function looksLikeRequest(array $fields): bool
     {
+        $fromVendor = isset($fields['vendor_id']);
         if (isset($fields['vin']) || isset($fields['plate'])) {
-            return true;
+            return $fromVendor || isset($fields['request']) || isset($fields['code']);
         }
         if (! isset($fields['code'])) {
             return false;
         }
 
-        return ($fields['code']['source'] ?? '') !== 'text' || isset($fields['vendor_id']);
+        return ($fields['code']['source'] ?? '') !== 'text' || $fromVendor;
     }
 
     /**

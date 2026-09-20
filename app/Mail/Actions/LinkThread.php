@@ -11,6 +11,7 @@ use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Offer;
 use App\Park\Vehicle;
+use App\Park\VehicleState;
 
 /**
  * Ветка ↔ машина (оффер или машина стоянки): по коду убытка в теме или теле,
@@ -23,14 +24,14 @@ final class LinkThread
 
     public function __invoke(Thread $thread, Offer|Vehicle $to): void
     {
-        $thread->update($to instanceof Offer ? ['offer_id' => $to->id] : ['vehicle_id' => $to->id]);
+        $thread->update(($to instanceof Offer ? ['offer_id' => $to->id] : ['vehicle_id' => $to->id]) + ['unlinked_at' => null]);
         ImportThreadFiles::dispatch($thread->id);
     }
 
-    /** Отвязать: ссылка обнуляется, уже привезённые файлы и blobs остаются (blobs отпустит storage:gc). */
+    /** Отвязать руками: ссылка обнуляется, автопривязка по номеру или VIN эту ветку больше не трогает; файлы и blobs остаются. */
     public function unlink(Thread $thread): void
     {
-        $thread->update(['offer_id' => null, 'vehicle_id' => null]);
+        $thread->update(['offer_id' => null, 'vehicle_id' => null, 'unlinked_at' => now()]);
     }
 
     public function auto(Message $message): Offer|Vehicle|null
@@ -42,7 +43,7 @@ final class LinkThread
         if ($message->account->scope === Scope::Park) {
             return $this->autoPark($message, $thread);
         }
-        if ($thread->offer_id) {
+        if ($thread->offer_id || $thread->unlinked_at) {
             return null;
         }
         $codes = array_unique([...$this->matcher->findAll($message->subject), ...$this->matcher->findAll($message->text_body ?: $message->html_body)]);
@@ -67,17 +68,19 @@ final class LinkThread
     /** Стоянка: ветка ↔ машина по номеру убытка, VIN или госномеру. */
     private function autoPark(Message $message, Thread $thread): ?Vehicle
     {
-        if ($thread->vehicle_id) {
+        if ($thread->vehicle_id || $thread->unlinked_at) {
             return null;
         }
         $text = $message->subject.' '.($message->text_body ?: $message->html_body);
         $fields = (new ParkExtractor)->extract($message->subject, $message->text_body ?: $message->html_body, $message->from_email);
+        // Только живая ТС: письмо о выданной или отменённой — новый заезд, ему место в «Из писем».
+        $live = fn () => Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->latest();
         $vehicle = null;
         if ($code = $fields['code']['value'] ?? null) {
-            $vehicle = Vehicle::where('ref_key', Vehicle::keyFor($code))->latest()->first();
+            $vehicle = $live()->where('ref_key', Vehicle::keyFor($code))->first();
         }
-        $vehicle ??= ($vin = $this->vin($message)) ? Vehicle::where('vin', $vin)->latest()->first() : null;
-        $vehicle ??= ($plate = $fields['plate']['value'] ?? null) ? Vehicle::where('plate', mb_strtoupper($plate))->latest()->first() : null;
+        $vehicle ??= ($vin = $this->vin($message)) ? $live()->where('vin', $vin)->first() : null;
+        $vehicle ??= ($plate = $fields['plate']['value'] ?? null) ? $live()->where('plate', mb_strtoupper($plate))->first() : null;
         if ($vehicle) {
             $this($thread, $vehicle);
         }

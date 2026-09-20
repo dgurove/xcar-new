@@ -20,6 +20,9 @@ final class ScheduleTow
         if ($request->type !== RequestType::Tow || ! $request->isOpen()) {
             throw ValidationException::withMessages(['state' => 'Заявка не на эвакуацию или уже закрыта']);
         }
+        if (! RequestType::Tow->allowedFor($request->vehicle->state)) {
+            throw ValidationException::withMessages(['state' => 'ТС уже '.mb_strtolower($request->vehicle->state->label()).' — эвакуацию не назначить']);
+        }
         Nav::forgetStaffCounts();
         $request = DB::transaction(function () use ($request, $by, $data) {
             $request->update(array_filter([

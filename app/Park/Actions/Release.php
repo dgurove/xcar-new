@@ -10,6 +10,7 @@ use App\Park\Inspection;
 use App\Park\InspectionKind;
 use App\Park\ReleasedTo;
 use App\Park\Request;
+use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -58,6 +59,9 @@ final class Release
             }
             $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'to' => $to?->label(), 'unpaid' => $debt + $unbilled > 0 ? round($debt + $unbilled, 2) : null]));
             Request::closeOpen($vehicle, [RequestType::Release], $by, $request, $note);
+            // Осмотры, перестановки, перегоны выданной ТС — уже не дела.
+            Request::where('vehicle_id', $vehicle->id)->whereIn('state', RequestState::open())
+                ->update(['state' => RequestState::Cancelled, 'done_at' => now(), 'done_by' => $by->id, 'cancel_reason' => 'ТС выдана']);
 
             return $vehicle;
         });

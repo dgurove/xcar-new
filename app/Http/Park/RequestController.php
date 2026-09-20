@@ -173,7 +173,8 @@ class RequestController
         ]);
         $type = RequestType::from($data['type']);
         // Эвакуатор или сам — решается по телефону; «эвакуатор» и есть заявка на эвакуацию.
-        $delivery = Delivery::tryFrom((string) ($data['delivery'] ?? ''));
+        // Из письма — только подсказка («В письме: вывоз»): заявка ждёт звонка, а не назначения эвакуатора.
+        $delivery = empty($data['candidate_id']) ? Delivery::tryFrom((string) ($data['delivery'] ?? '')) : null;
         if ($type === RequestType::Intake && $delivery === Delivery::Tow) {
             $type = RequestType::Tow;
         } elseif ($type === RequestType::Tow) {
@@ -198,7 +199,7 @@ class RequestController
             $promote->attach($candidate, $req->vehicle);
         }
 
-        return redirect("/requests/{$req->id}")->with('toast', $candidate ? 'Заявка заведена, фото подтягиваются' : 'Заявка заведена');
+        return redirect("/requests/{$req->id}")->with('toast', 'Заявка заведена');
     }
 
     public function show(Request $http, ParkRequest $req)
@@ -236,6 +237,7 @@ class RequestController
 
     public function intake(Request $request, ParkRequest $req, Intake $intake)
     {
+        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16'], 'accepted_at' => ['nullable', 'date'], 'category' => ['nullable', Rule::enum(Category::class)], 'oversize' => ['boolean']] + self::inspectionRules());
         if (! empty($data['category'])) {
             $req->vehicle->update(['category' => $data['category'], 'oversize' => $request->boolean('oversize')]);
@@ -249,6 +251,7 @@ class RequestController
 
     public function move(Request $request, ParkRequest $req, Move $move)
     {
+        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
         $move($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null, $req);
 
@@ -261,6 +264,7 @@ class RequestController
      */
     public function release(Request $request, ParkRequest $req, Release $release, RefuseRelease $refuse)
     {
+        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)],
             'fits' => ['required', 'boolean'], 'mismatch_note' => ['exclude_if:fits,1', 'required', 'string', 'max:500'], 'refused' => ['boolean']] + self::inspectionRules());
         $at = isset($data['released_at']) ? Carbon::parse($data['released_at']) : null;
@@ -280,15 +284,18 @@ class RequestController
 
     public function close(Request $request, ParkRequest $req, CloseRequest $close)
     {
+        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['done' => ['required', 'boolean'], 'note' => ['nullable', 'string', 'max:2000']]);
         $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
 
-        return redirect("/cars/{$req->vehicle_id}")->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
+        // Сделана — к ТС; отменена — в заявки (ТС в ожидании без заявки видна в «Ожидаются»).
+        return redirect($data['done'] ? "/cars/{$req->vehicle_id}" : '/requests')->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
     }
 
     /** Звонок страхователю: эвакуатор (с полями назначения), привезёт сам (когда), не дозвонились (когда снова). */
     public function contact(Request $request, ParkRequest $req, Contact $contact)
     {
+        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate([
             'outcome' => ['required', Rule::in(['tow', 'self', 'missed'])],
             'planned_at' => ['nullable', 'date'], 'next_call_at' => ['nullable', 'date'],
@@ -314,6 +321,7 @@ class RequestController
 
     public function schedule(Request $request, ParkRequest $req, ScheduleTow $schedule)
     {
+        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate([
             'planned_at' => ['nullable', 'date'], 'from_address' => ['nullable', 'string', 'max:255'], 'yard_id' => ['nullable', 'exists:park_yards,id'],
             'carrier' => ['nullable', 'string', 'max:120'], 'distance_km' => ['nullable', 'integer', 'between:0,5000'], 'cost' => ['nullable', 'integer', 'min:0'],
@@ -329,6 +337,7 @@ class RequestController
 
     public function start(Request $request, ParkRequest $req, StartTow $start)
     {
+        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $start($req, $request->user());
 
         return redirect("/requests/{$req->id}")->with('toast', 'В пути');
@@ -336,6 +345,7 @@ class RequestController
 
     public function assign(Request $request, ParkRequest $req, AssignRequest $assign)
     {
+        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['assignee_id' => ['nullable', 'exists:users,id']]);
         $assign($req, ! empty($data['assignee_id']) ? User::find($data['assignee_id']) : null, $request->user());
 

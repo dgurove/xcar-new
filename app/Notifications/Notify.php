@@ -197,7 +197,8 @@ final class Notify
     /** Письмо в ветку привязанной ТС — исполнителю её открытой заявки, без него — всем со стоянки. */
     public function parkMail(LetterArrived $e): void
     {
-        $assignee = $e->vehicle->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
+        // У выданной или отменённой ТС занятого нет — всем со стоянки.
+        $assignee = $e->vehicle->state->isFinal() ? null : $e->vehicle->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
         Notification::send($assignee ? collect([$assignee]) : $this->parkStaff(), ParkNotice::mail($e->vehicle, $e->message));
     }
 

@@ -4,7 +4,9 @@
     $open = $req->isOpen();
     $tow = $req->isTow();
     // Новая заявка на приём без звонка — сначала «Связались»: эвакуатор или сам.
-    $callForm = $open && $req->needsCall();
+    // Позвонить ещё раз можно и после первого решения (?call=1 с чипа доставки): Contact меняет тип в обе стороны.
+    $callAgain = $open && in_array($req->type, [RequestType::Intake, RequestType::Tow], true) && in_array($req->state, [RequestState::New, RequestState::Scheduled], true);
+    $callForm = $open && ($req->needsCall() || ($callAgain && request()->boolean('call')));
     $verb = $req->verb();
     $intakeForm = ! $callForm && $open && (($req->type === RequestType::Intake && $vehicle->state->isBefore()) || ($tow && $req->state === RequestState::InProgress));
     $contactName = $req->contact_name ?? $vehicle->contact_name;
@@ -40,7 +42,7 @@
                 @if ($req->planned_at)<span class="chip nums {{ $req->isOverdue() ? 'text-danger' : '' }}">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif
                 @if ($req->type === RequestType::Move && $req->yard)<x-ui.place class="chip">{{ $req->yard->name }}</x-ui.place>@endif
                 @if ($tow && $req->yard)<x-ui.place class="chip">→ {{ $req->yard->name }}</x-ui.place>@endif
-                @if ($req->delivery && !$tow)<span class="chip">{{ $req->delivery->label() }}</span>@endif
+                @if ($callAgain && !$callForm)<a href="/requests/{{ $req->id }}?call=1" class="chip"><x-ui.icon name="phone" class="size-4"/> {{ $tow ? 'Эвакуатор' : ($req->delivery?->label() ?? 'Связаться') }}</a>@elseif ($req->delivery && !$tow)<span class="chip">{{ $req->delivery->label() }}</span>@endif
                 @if ($req->next_call_at && $open)<span class="chip nums {{ $req->next_call_at->isPast() ? 'text-danger' : '' }}"><x-ui.icon name="phone" class="size-4"/> {{ $req->next_call_at->translatedFormat('j M, H:i') }}</span>@endif
                 @if ($tow && $req->carrier)<span class="chip">{{ $req->carrier }}</span>@endif
                 @if ($tow && $req->distance_km)<span class="chip nums">{{ $req->distance_km }} км</span>@endif
@@ -278,7 +280,26 @@
         <x-ui.action-bar>
             @if ($verb)<x-ui.button form="act-form" class="min-w-0 flex-1">{{ $verb }}</x-ui.button>@endif
             @if ($messages->isNotEmpty())<x-mail.window-button :count="$messages->count()" class="shrink-0"/>@endif
-            @if ($verb)<form method="post" action="/requests/{{ $req->id }}/close" data-turbo-confirm="Отменить заявку?">@csrf<input type="hidden" name="done" value="0"><x-ui.button variant="ghost" class="btn-round" aria-label="Отменить заявку"><x-ui.icon name="x" class="size-5"/></x-ui.button></form>@endif
+            @if ($verb)<button type="button" class="btn btn-ghost btn-round" data-controller="emit" data-action="emit#send" data-emit-event-param="cancel:open" aria-label="Отменить"><x-ui.icon name="x" class="size-5"/></button>@endif
         </x-ui.action-bar>
+    @endif
+    @if ($verb)
+        {{-- Отмена — не одна дверь: закрыть заявку, ТС не привезут, заведена по ошибке (письмо вернётся в «Из писем»). Причина — в ленту. --}}
+        @php $onlyOpen = $vehicle->requests->filter(fn ($r) => $r->isOpen())->count() <= 1; $unwind = $onlyOpen && \App\Park\Actions\UnwindVehicle::allowed($vehicle) && auth()->user()->canManagePark(); $notComing = $onlyOpen && $vehicle->state->isBefore() && auth()->user()->canManagePark(); @endphp
+        <div data-controller="sheet" data-action="cancel:open@window->sheet#open" class="contents">
+            <x-ui.sheet id="cancel" title="Отменить">
+                <form method="post" action="/requests/{{ $req->id }}/close" id="cancel-form" class="flex flex-col gap-3">
+                    @csrf<input type="hidden" name="done" value="0">
+                    <x-ui.field name="note" label="Почему" type="textarea"/>
+                    <x-ui.button variant="secondary" block>Закрыть заявку</x-ui.button>
+                </form>
+                @if ($notComing || $unwind)
+                    <div class="mt-3 flex flex-col gap-2">
+                        @if ($notComing)<form method="post" action="/cars/{{ $vehicle->id }}/cancel" data-turbo-confirm="ТС не привезут?">@csrf<x-ui.button variant="danger" block>Не привезут</x-ui.button></form>@endif
+                        @if ($unwind)<form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="Отменить заведение? ТС и заявка исчезнут, письмо вернётся в «Из писем»">@csrf @method('delete')<x-ui.button variant="ghost" block>Заведена по ошибке</x-ui.button></form>@endif
+                    </div>
+                @endif
+            </x-ui.sheet>
+        </div>
     @endif
 </x-ui.shell>

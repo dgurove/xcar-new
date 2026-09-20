@@ -13,6 +13,7 @@ use App\Mail\Scope;
 use App\Offers\Offer;
 use App\Park\Events\CandidateArrived;
 use App\Park\Vehicle;
+use App\Park\VehicleState;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -85,9 +86,12 @@ final class ExtractCandidate implements ShouldQueue
         $vin = isset($fields['vin']['value']) ? strtoupper((string) $fields['vin']['value']) : null;
         $plate = Candidate::plateKey($fields['plate']['value'] ?? null);
         if ($park) {
-            return ($code && Vehicle::where('ref_key', self::key($code))->exists())
-                || ($vin && Vehicle::where('vin', $vin)->exists())
-                || ($plate && Vehicle::where('plate', $plate)->exists());
+            // Выданная или отменённая ТС не в счёт: второй заезд той же машины — новая заявка.
+            $live = fn () => Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled]);
+
+            return ($code && $live()->where('ref_key', self::key($code))->exists())
+                || ($vin && $live()->where('vin', $vin)->exists())
+                || ($plate && $live()->where('plate', $plate)->exists());
         }
 
         return ($code && Offer::where('claim_ref_key', self::key($code))->exists()) || ($vin && Offer::where('vin', $vin)->exists());

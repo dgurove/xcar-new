@@ -56,6 +56,9 @@ class VehicleEvent extends Model
             EventType::Sold => 'Продано'.(! empty($p['who']) ? ', заберёт '.$p['who'] : ''),
             EventType::ReleaseRefused => 'От получения отказался'.(! empty($p['note']) ? ': '.$p['note'] : ''),
             EventType::ReportSent => ($p['what'] ?? 'Отчёт').' отправлен вендору',
+            EventType::Restored => 'Снова ждём'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
+            EventType::IntakeUndone => 'Приём отменён'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
+            EventType::ReleaseUndone => 'Выдача отменена'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
         };
     }
 }

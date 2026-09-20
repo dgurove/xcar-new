@@ -9,14 +9,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id'])]
+#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'unlinked_at'])]
 class Thread extends Model
 {
     protected $table = 'mail_threads';
 
     protected function casts(): array
     {
-        return ['participants' => 'array', 'last_message_at' => 'datetime', 'has_attachments' => 'bool'];
+        return ['participants' => 'array', 'last_message_at' => 'datetime', 'has_attachments' => 'bool', 'unlinked_at' => 'datetime'];
     }
 
     public function account(): BelongsTo

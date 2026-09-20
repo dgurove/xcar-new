@@ -29,4 +29,7 @@ enum EventType: string
     case Sold = 'sold';
     case ReleaseRefused = 'release_refused';
     case ReportSent = 'report_sent';
+    case Restored = 'restored';
+    case IntakeUndone = 'intake_undone';
+    case ReleaseUndone = 'release_undone';
 }

@@ -47,9 +47,13 @@
     <div class="card-place">@if ($v('location'))<x-ui.place class="truncate text-sm text-ink-dim">{{ $v('location') }}</x-ui.place>@endif</div>
     <div class="card-action">
         @if ($c->state === CandidateState::Promoted)
-            <a href="{{ $park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">{{ $park ? 'ТС' : '№ '.$c->offer?->number }}</a>
+            @php $open = $park ? $c->vehicle?->requests->first(fn ($r) => $r->isOpen()) : null; @endphp
+            @if ($park && !$c->vehicle_id)<span class="btn btn-s btn-quiet w-full whitespace-nowrap opacity-60">ТС нет</span>
+            @else<a href="{{ $park ? ($open ? '/requests/'.$open->id : '/cars/'.$c->vehicle_id) : '/offers/'.$c->offer?->number }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">{{ $park ? ($open ? 'Заявка' : 'ТС') : '№ '.$c->offer?->number }}</a>@endif
         @else
-            @if ($park)<a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent w-full whitespace-nowrap">Завести</a>@else<form method="post" action="{{ $base }}/{{ $c->id }}/create" class="contents">@csrf<button class="btn btn-s btn-accent w-full whitespace-nowrap">Завести</button></form>@endif
+            {{-- «Не заявка» — парсер ошибся: письмо уходит в «Отклонённые», оттуда «Вернуть». --}}
+            <form method="post" action="{{ $base }}/{{ $c->id }}/decline" class="contents">@csrf<button class="btn btn-s btn-ghost whitespace-nowrap">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'Не заявка' }}</button></form>
+            @if ($park)<a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent min-w-0 flex-1 whitespace-nowrap">Завести</a>@else<form method="post" action="{{ $base }}/{{ $c->id }}/create" class="contents">@csrf<button class="btn btn-s btn-accent min-w-0 flex-1 whitespace-nowrap">Завести</button></form>@endif
         @endif
     </div>
 </article>

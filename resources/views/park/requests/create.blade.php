@@ -11,6 +11,7 @@
             @endforeach
         </x-ui.pills>
     @endunless
+    @if ($errors->any())<p class="field-error">{{ $errors->first() }}</p>@endif
     <form method="post" action="/requests" id="request-form" data-controller="vin draft" class="flex flex-col gap-4">
         @csrf
         <input type="hidden" name="type" value="{{ $type->value }}">
@@ -38,7 +39,10 @@
         @endif
         <x-ui.card title="Заявка">
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                @if ($type === RequestType::Intake)
+                @if ($type === RequestType::Intake && $letters)
+                    {{-- Из письма — только подсказка: как привезут, решает звонок страхователю. --}}
+                    @if ($delivery === Delivery::Tow->value)<div class="col-span-full"><span class="chip">В письме: вывоз</span></div>@endif
+                @elseif ($type === RequestType::Intake)
                     {{-- Эвакуатор или сам — узнаём по телефону; «ещё не знаем» оставляет заявку в «Связаться». Руками заводят, когда уже знают — по умолчанию «сам». --}}
                     <div class="field col-span-full">
                         <span class="field-label">Доставка</span>

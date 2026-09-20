@@ -8,6 +8,7 @@ use App\Mail\CandidateState;
 use App\Mail\Scope;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Nav;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -70,13 +71,14 @@ class CandidateController
     {
         abort_if($candidate->scope !== $this->scope, 404);
         $candidate->update(['state' => $candidate->state === CandidateState::Rejected ? CandidateState::New : CandidateState::Rejected]);
+        Nav::forgetStaffCounts();
 
-        return back()->with('toast', $candidate->state === CandidateState::Rejected ? 'Отклонено' : 'Возвращено в ждущие');
+        return back()->with('toast', $candidate->state === CandidateState::Rejected ? 'Не заявка — письмо в «Отклонённых»' : 'Снова ждёт');
     }
 
     protected function query(): Builder
     {
-        return Candidate::query()->with(['message.attachments', 'media', 'vendor', 'offer', 'vehicle.brand', 'vehicle.model', 'vehicle.media'])->where('scope', $this->scope);
+        return Candidate::query()->with(['message.attachments', 'media', 'vendor', 'offer', 'vehicle.brand', 'vehicle.model', 'vehicle.media', 'vehicle.requests'])->where('scope', $this->scope);
     }
 
     /** Адреса поверхности для шаблонов: свой список, свой ящик, стоянка или CRM. */

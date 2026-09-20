@@ -10,6 +10,7 @@ use App\Park\Events\VehicleAccepted;
 use App\Park\Events\VehicleCancelled;
 use App\Park\Events\VehicleDeparted;
 use App\Park\Events\VehicleReleased;
+use App\Park\Events\VehicleRestored;
 use App\Park\Vehicle;
 use App\Users\Role;
 use App\Users\User;
@@ -37,6 +38,7 @@ final class SyncOffer
             VehicleAccepted::class => 'accepted',
             VehicleReleased::class => 'released',
             VehicleCancelled::class => 'cancelled',
+            VehicleRestored::class => 'restored',
         ];
     }
 
@@ -60,6 +62,12 @@ final class SyncOffer
     public function accepted(VehicleAccepted $e): void
     {
         $this->moveTo($e->vehicle, CarPlace::Ours, $e->by);
+    }
+
+    /** Приём отменён или ТС снова ждём: у владельца. */
+    public function restored(VehicleRestored $e): void
+    {
+        $this->moveTo($e->vehicle, CarPlace::Owner, $e->by);
     }
 
     public function released(VehicleReleased $e): void

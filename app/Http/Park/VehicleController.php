@@ -18,12 +18,14 @@ use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Offers\Offer;
 use App\Park\Actions\CancelVehicle;
-use App\Park\Actions\DestroyVehicle;
 use App\Park\Actions\LinkOffer;
 use App\Park\Actions\MarkDoc;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
-use App\Park\Actions\Release;
+use App\Park\Actions\RestoreVehicle;
+use App\Park\Actions\UndoIntake;
+use App\Park\Actions\UndoRelease;
+use App\Park\Actions\UnwindVehicle;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\Doc;
 use App\Park\DocKind;
@@ -31,7 +33,6 @@ use App\Park\DocState;
 use App\Park\EventType;
 use App\Park\Idle;
 use App\Park\PhotoSlot;
-use App\Park\ReleasedTo;
 use App\Park\Scope;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -137,7 +138,22 @@ class VehicleController
             'pts' => ['nullable', 'string', 'max:40'], 'sts' => ['nullable', 'string', 'max:40'], 'owner_party_id' => ['nullable', 'exists:billing_parties,id'], 'storage_rate' => ['nullable', 'numeric', 'min:0'], 'storage_rate_note' => ['nullable', 'string', 'max:120'], 'billing_cadence' => ['nullable', Rule::enum(Cadence::class)],
             'damage_zones' => ['nullable', 'array'], 'damage_zones.*' => [Rule::enum(DamageZone::class)], 'damage_note' => ['nullable', 'string', 'max:2000'], 'notes' => ['nullable', 'string', 'max:5000'],
             'back' => ['nullable', 'string', 'max:200', 'regex:#^/(?!/)#'],
+            'accepted_at' => ['nullable', 'date'], 'released_at' => ['nullable', 'date', 'after_or_equal:accepted_at'],
         ]);
+        // Даты приёма и выдачи — только пока хранение по ним не выставлено: на них считаются сутки.
+        foreach (['accepted_at', 'released_at'] as $key) {
+            if (! array_key_exists($key, $data) || ! $vehicle->{$key}) {
+                unset($data[$key]);
+
+                continue;
+            }
+            if ($data[$key] && ! $vehicle->{$key}->equalTo(Carbon::parse($data[$key])) && $vehicle->storage_billed_until) {
+                return back()->withErrors([$key => 'Хранение уже выставлено — сначала аннулируйте счёт'])->withInput();
+            }
+            if (! $data[$key]) {
+                unset($data[$key]);
+            }
+        }
         // Компактная карточка ТС на заявке шлёт только свои поля: галочки повреждений и негабарит трогаем,
         // лишь когда форма их присылала (`damage_form`, `oversize_form`).
         if ($request->has('damage_form')) {
@@ -160,7 +176,10 @@ class VehicleController
     {
         abort_unless(Scope::allows($request->user(), $vehicle) && $request->user()->canManagePark(), 404);
         if ($request->boolean('clear')) {
-            $vehicle->update(['sold_at' => null, 'sold_message_id' => null, 'pickup_name' => null, 'pickup_phone' => null, 'pickup_note' => null]);
+            $vehicle->update(['sold_at' => null, 'sold_message_id' => null, 'pickup_name' => null, 'pickup_phone' => null, 'pickup_note' => null, 'buyer_party_id' => null]);
+            // Заявка на выдачу, которую завело «продано», ещё никем не взята — снимается вместе с продажей.
+            $vehicle->requests()->where('type', RequestType::Release)->where('state', RequestState::New)->whereNull('assignee_id')
+                ->update(['state' => RequestState::Cancelled, 'done_at' => now(), 'done_by' => $request->user()->id, 'cancel_reason' => 'Не продано']);
             $vehicle->log(EventType::Updated, $request->user(), ['fields' => ['sold_at']]);
 
             return redirect("/cars/{$vehicle->id}")->with('toast', 'Не продано');
@@ -250,11 +269,15 @@ class VehicleController
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Не привезена');
     }
 
-    public function destroy(Vehicle $vehicle, DestroyVehicle $destroy)
+    /** «Заведена по ошибке»: ТС и заявки исчезают, письмо возвращается в «Из писем». */
+    public function destroy(Request $request, Vehicle $vehicle, UnwindVehicle $unwind)
     {
-        $destroy($vehicle);
+        abort_unless(Scope::allows($request->user(), $vehicle), 404);
+        $candidate = $unwind($vehicle, $request->user());
 
-        return redirect('/cars?preset=expected')->with('toast', 'Удалена');
+        return $candidate
+            ? redirect('/requests/from-mail')->with('toast', 'Заведение отменено — письмо снова в «Из писем»')
+            : redirect('/requests')->with('toast', 'Заведение отменено');
     }
 
     /** Связать с предложением CRM: по номеру, руками. */
@@ -283,12 +306,31 @@ class VehicleController
         return back()->with('toast', 'Переставлена');
     }
 
-    public function release(Request $request, Vehicle $vehicle, Release $release)
+    /** «Снова ждём»: отменённая ТС возвращается в ожидание с заявкой на приём. */
+    public function restore(Request $request, Vehicle $vehicle, RestoreVehicle $restore)
     {
-        $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)]]);
-        $release($vehicle, $request->user(), isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), force: $request->boolean('force'), cash: $request->boolean('cash'));
+        abort_unless(Scope::allows($request->user(), $vehicle), 404);
+        $restore($vehicle, $request->user(), $request->input('reason'));
 
-        return back()->with('toast', 'Выдана');
+        return redirect("/cars/{$vehicle->id}")->with('toast', 'Снова ждём');
+    }
+
+    public function undoIntake(Request $request, Vehicle $vehicle, UndoIntake $undo)
+    {
+        abort_unless(Scope::allows($request->user(), $vehicle), 404);
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
+        $undo($vehicle, $request->user(), $data['reason'] ?? null);
+
+        return redirect("/cars/{$vehicle->id}")->with('toast', 'Приём отменён');
+    }
+
+    public function undoRelease(Request $request, Vehicle $vehicle, UndoRelease $undo)
+    {
+        abort_unless(Scope::allows($request->user(), $vehicle), 404);
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
+        $undo($vehicle, $request->user(), $data['reason'] ?? null);
+
+        return redirect("/cars/{$vehicle->id}")->with('toast', 'Выдача отменена');
     }
 
     /** Подсказка для комбобокса: по номеру, VIN, госномеру, марке. */

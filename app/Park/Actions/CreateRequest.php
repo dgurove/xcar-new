@@ -8,6 +8,7 @@ use App\Cars\Vin\RememberVin;
 use App\Park\Delivery;
 use App\Park\EventType;
 use App\Park\Request;
+use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -23,6 +24,10 @@ final class CreateRequest
     {
         if ($vehicle && ! $type->allowedFor($vehicle->state)) {
             throw ValidationException::withMessages(['type' => 'Для ТС «'.mb_strtolower($vehicle->state->label()).'» заявка «'.mb_strtolower($type->label()).'» невозможна']);
+        }
+        // Вторая открытая заявка того же дела на ту же ТС — дубль; осмотров может быть сколько угодно.
+        if ($vehicle && $type !== RequestType::Inspection && ($open = $vehicle->requests()->where('type', $type)->whereIn('state', RequestState::open())->first())) {
+            throw ValidationException::withMessages(['type' => 'Заявка «'.mb_strtolower($type->label()).'» на эту ТС уже есть — № '.$open->id]);
         }
         Nav::forgetStaffCounts();
 

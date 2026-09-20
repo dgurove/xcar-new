@@ -37,18 +37,20 @@
                         @foreach ($yards as $id => $name)<option value="{{ $id }}" @selected($id == $vehicle->yard_id)>{{ $name }}</option>@endforeach
                     </select>
                 </form>
-                <form method="post" action="{{ $href }}/release" class="contents" data-turbo-confirm="{{ $debt > 0 && $debtBlocks ? 'Выдать ТС с долгом '.\App\Support\Money::rub($debt).'?' : 'Выдать ТС?' }}">@csrf
-                    <input type="datetime-local" name="released_at" value="{{ now()->format('Y-m-d\TH:i') }}" class="field-input field-s w-auto" aria-label="Выдача">
-                    @if ($debt > 0 && $debtBlocks)<input type="hidden" name="force" value="1"><span class="pill pill-danger !min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</span>@endif
-                    <button class="btn btn-s btn-accent">Выдать</button>
-                </form>
+                {{-- Выдача — только через заявку с осмотром, подписью и актом; одна дорога. --}}
+                @if ($release = $vehicle->openRequest(\App\Park\RequestType::Release))
+                    <a href="/requests/{{ $release->id }}" class="btn btn-s btn-accent">Выдать</a>
+                @else
+                    <form method="post" action="/requests" class="contents" data-turbo-frame="_top">@csrf<input type="hidden" name="type" value="release"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Выдать</button></form>
+                @endif
+                @if ($debt > 0)<span class="pill pill-danger !min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</span>@endif
                 <a href="/acts/{{ $vehicle->id }}/intake" class="pill pill-plain" data-turbo="false" target="_blank">Акт приёма</a>
             @endif
             @if ($state === VehicleState::Released)
                 <a href="/acts/{{ $vehicle->id }}/intake" class="pill pill-plain" data-turbo="false" target="_blank">Акт приёма</a>
                 <a href="/acts/{{ $vehicle->id }}/release" class="pill pill-plain" data-turbo="false" target="_blank">Акт выдачи</a>
             @endif
-            <a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Новая заявка</a>
+            @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Новая заявка</a>@endunless
         </x-slot:actions>
         @if ($vehicle->requests->isNotEmpty())
             <div class="mt-3 flex flex-wrap gap-1.5">

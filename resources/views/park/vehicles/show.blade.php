@@ -1,5 +1,6 @@
 @php use App\Park\{VehicleState, RequestType, DocKind, DocState, ReleasedTo, InspectionKind}; use App\Support\Money; use App\Support\Surface; $photos = $vehicle->visiblePhotos(); $intake = $vehicle->lastInspection(InspectionKind::Intake); $release = $vehicle->lastInspection(InspectionKind::Release); @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" :back="['ТС', '/cars']" cache="no-cache">
+    @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-park.state :vehicle="$vehicle"/>
         @if ($vehicle->ref)<span class="chip">{{ $vehicle->ref }}</span>@endif
@@ -39,15 +40,12 @@
                         <datalist id="spots-free">@foreach ($spots as $s)<option value="{{ $s }}">@endforeach</datalist>
                         <x-ui.button variant="secondary">Переставить</x-ui.button>
                     </form>
-                    <form method="post" action="/cars/{{ $vehicle->id }}/release" class="flex flex-col gap-2" data-turbo-confirm="Выдать ТС?">@csrf
-                        <div class="flex flex-wrap gap-1.5">@foreach (ReleasedTo::cases() as $to)<label class="choice"><input type="radio" name="to" value="{{ $to->value }}"><span>{{ $to->label() }}</span></label>@endforeach</div>
-                        <div class="flex items-end gap-2">
-                            <x-ui.field name="released_at" label="Выдача" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" span="flex-1"/>
-                            <x-ui.button variant="secondary">Выдать</x-ui.button>
-                        </div>
-                        @if ($buyerDebt > 0)<x-ui.check name="cash">Принял наличными {{ Money::rub($buyerDebt) }}</x-ui.check>@endif
-                        @if ($debt > 0)<x-ui.check name="force">Выдать с долгом {{ Money::rub($debt) }}</x-ui.check>@endif
-                    </form>
+                    {{-- Выдача — только через заявку с осмотром, подписью и актом; одна дорога. --}}
+                    @if ($releaseReq = $vehicle->openRequest(RequestType::Release))
+                        <x-ui.button href="/requests/{{ $releaseReq->id }}" block>Выдать</x-ui.button>
+                    @else
+                        <form method="post" action="/requests" class="contents">@csrf<input type="hidden" name="type" value="release"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><x-ui.button block>Выдать</x-ui.button></form>
+                    @endif
                     @unless ($vehicle->sold_at)<x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">Продано</x-ui.button>@endunless
                     <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую площадку</x-ui.button>
                     <x-ui.button href="/acts/{{ $vehicle->id }}/intake" variant="ghost" block data-turbo="false" target="_blank">Акт приёма</x-ui.button>
@@ -74,8 +72,24 @@
                         <x-ui.button variant="danger">Не привезена</x-ui.button>
                     </form>
                 @endif
-                @if ($canManage && $vehicle->state === VehicleState::Expected && $vehicle->events->count() <= 1 && $photos->isEmpty() && !$vehicle->offer_id && $threads->isEmpty())
-                    <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="Удалить ТС без следов?">@csrf @method('delete')<x-ui.button variant="ghost" block>Удалить</x-ui.button></form>
+                {{-- Обратные ходы: заведена / принята / выдана по ошибке, «не привезена» — передумали. Причина — в ленту. --}}
+                @if ($canManage && \App\Park\Actions\UnwindVehicle::allowed($vehicle))
+                    <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="Отменить заведение? ТС и заявка исчезнут, письмо вернётся в «Из писем»">@csrf @method('delete')<x-ui.button variant="ghost" block>Заведена по ошибке</x-ui.button></form>
+                @endif
+                @if ($canManage && $vehicle->state === VehicleState::Cancelled)
+                    <form method="post" action="/cars/{{ $vehicle->id }}/restore" data-turbo-confirm="Снова ждать ТС?">@csrf<x-ui.button variant="secondary" block>Снова ждём</x-ui.button></form>
+                @endif
+                @if ($canManage && \App\Park\Actions\UndoIntake::allowed($vehicle))
+                    <form method="post" action="/cars/{{ $vehicle->id }}/undo-intake" class="flex items-end gap-2" data-turbo-confirm="Отменить приём? ТС снова будет ожидаться">@csrf
+                        <x-ui.field name="reason" label="Почему" span="flex-1"/>
+                        <x-ui.button variant="ghost">Принята по ошибке</x-ui.button>
+                    </form>
+                @endif
+                @if ($canManage && \App\Park\Actions\UndoRelease::allowed($vehicle))
+                    <form method="post" action="/cars/{{ $vehicle->id }}/undo-release" class="flex items-end gap-2" data-turbo-confirm="Отменить выдачу? ТС вернётся на стоянку">@csrf
+                        <x-ui.field name="reason" label="Почему" span="flex-1"/>
+                        <x-ui.button variant="ghost">Выдана по ошибке</x-ui.button>
+                    </form>
                 @endif
             </div>
         </x-ui.sheet>
@@ -120,6 +134,9 @@
                     <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут" :value="$vehicle->storage_rate" inputmode="numeric"/>
                     <x-ui.field name="storage_rate_note" label="Почему своя" :value="$vehicle->storage_rate_note"/>
                     <x-ui.field name="billing_cadence" label="Счёт за хранение" :options="\App\Billing\Cadence::options()" :placeholder="'Как у вендора'.($vehicle->vendor ? ' — '.mb_strtolower($vehicle->vendor->billing_cadence->label()) : '')" :value="$vehicle->billing_cadence?->value"/>
+                    {{-- Даты приёма и выдачи правятся, пока хранение по ним не выставлено (сервер отобьёт иначе). --}}
+                    @if ($vehicle->accepted_at)<x-ui.field name="accepted_at" label="Принята" type="datetime-local" :value="$vehicle->accepted_at->format('Y-m-d\TH:i')"/>@endif
+                    @if ($vehicle->released_at)<x-ui.field name="released_at" label="Выдана" type="datetime-local" :value="$vehicle->released_at->format('Y-m-d\TH:i')"/>@endif
                 </div>
             </x-ui.card>
             @endif
