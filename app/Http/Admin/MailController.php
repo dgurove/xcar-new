@@ -64,7 +64,7 @@ class MailController
         $q = trim((string) $request->query('q'));
         $sort = array_key_exists($request->query('sort', ''), self::SORTS) ? $request->query('sort') : 'fresh';
 
-        $threads = Thread::query()->with(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'latestMessage'])->withCount('attachments')
+        $threads = Thread::query()->with(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'latestMessage'])->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)])
             ->whereIn('account_id', $accounts->pluck('id'))
             ->when($slug, fn ($t) => $t->whereHas('account', fn ($a) => $a->where('slug', $slug)))
             ->when($request->query('car'), fn ($t, $id) => $t->where('vehicle_id', $id))
@@ -436,7 +436,7 @@ class MailController
             'vehicle' => ['nullable', 'integer'],
             'back' => ['nullable', 'string', 'max:255', 'regex:#^/(?!/)#'], // свой путь, не //host
             'invoice' => ['nullable', 'integer'],
-        ]);
+        ], [], ['to' => 'Кому', 'cc' => 'Копия', 'subject' => 'Тема', 'body' => 'Письмо']);
     }
 
     private function guard(Thread $thread): void

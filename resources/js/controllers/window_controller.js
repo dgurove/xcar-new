@@ -18,8 +18,10 @@ export default class extends Controller {
 
     load(url) {
         const frame = this.frameTarget;
-        if (frame.getAttribute('src') !== url) {
+        // Тот же адрес ещё грузится — не трогаем; загруженный — перечитываем: могло прийти письмо.
+        if (frame.getAttribute('src') !== url || frame.complete) {
             frame.innerHTML = this.skeleton;
+            frame.removeAttribute('src');
             frame.setAttribute('src', url);
         }
         this.sheet?.open();
