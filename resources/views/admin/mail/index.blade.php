@@ -1,4 +1,5 @@
-{{-- Почта: таблица по умолчанию (строка — окошко со всеми письмами ветки), строки со свайпом «прочитано» — по выбору. --}}
+{{-- Почта: таблица по умолчанию, строки со свайпом «прочитано» — по выбору; любая строка открывает окно писем ветки
+     (x-mail.window), страницы ветки нет; ?window=id — открыть окно сразу (ссылки из уведомлений). --}}
 @php use App\Support\ListView; $crm = $base !== '/mail'; @endphp
 <x-ui.shell title="Почта" :heading="false">
     @if ($crm)
@@ -35,7 +36,7 @@
         <x-ui.empty class="mt-6">Писем нет</x-ui.empty>
     @elseif ($view === ListView::TABLE)
         <x-ui.table id="threads" class="mt-6">
-            <x-slot:head><tr><th class="w-4 pr-0"></th><th class="hidden sm:table-cell">От кого</th><th class="grow">Тема</th><th class="hidden sm:table-cell">{{ $crm ? 'Предложение' : 'ТС' }}</th><th class="w-6 pl-0"></th><th class="num">Когда</th></tr></x-slot:head>
+            <x-slot:head><tr><th class="hidden sm:table-cell">От кого</th><th class="grow">Тема</th><th class="hidden sm:table-cell">{{ $crm ? 'Предложение' : 'ТС' }}</th><th class="w-10 pl-0"></th><th class="num">Когда</th></tr></x-slot:head>
             @foreach ($threads as $thread)<x-mail.thread-row :thread="$thread" :base="$base" :accounts="$accounts" :slug="$slug"/>@endforeach
         </x-ui.table>
         @if ($threads->hasPages())<div class="mt-8"><x-ui.pager :of="$threads"/></div>@endif
@@ -47,4 +48,5 @@
         </div>
         <div class="mt-8"><x-ui.pager :of="$threads" :sizes="ListView::PER_ROWS"/></div>
     @endif
+    <x-mail.window :url="$window ?? null"/>
 </x-ui.shell>

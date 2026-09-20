@@ -19,7 +19,6 @@
             <input type="hidden" name="candidate_id" value="{{ $candidate->id }}">
             @foreach ((array) ($p['flags'] ?? []) as $f)<input type="hidden" name="flags[]" value="{{ $f }}">@endforeach
             @foreach ((array) ($p['docs_required'] ?? []) as $d)<input type="hidden" name="docs_required[]" value="{{ $d }}">@endforeach
-            @if ($p['value'] ?? null)<input type="hidden" name="value" value="{{ $p['value'] }}">@endif
         @endif
         @if ($vehicle)
             {{-- ТС уже есть (завели руками или заявка к стоящей): письма и заявка привяжутся к ней. --}}
@@ -30,7 +29,7 @@
             <input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}">
         @elseif (in_array($type, [RequestType::Intake, RequestType::Tow], true))
             <x-ui.card title="Транспортное средство">
-                <x-park.vehicle-fields :values="$p" :brand="$p['brand'] ?? null" :model="$p['model'] ?? null" :vendors="$vendors" :categories="$categories" :oversize="false" cols="grid-cols-2 sm:grid-cols-3"/>
+                <x-park.vehicle-fields :values="$p" :brand="$p['brand'] ?? null" :model="$p['model'] ?? null" :vendors="$vendors" :categories="$categories" cols="grid-cols-2 sm:grid-cols-3"/>
             </x-ui.card>
         @else
             <x-ui.card title="Транспортное средство">
@@ -76,9 +75,12 @@
     </form>
     </div>
     </div>
-    @if ($letters)<x-mail.window :messages="$messages"/>@endif
+    @if ($letters)<x-mail.window/>@endif
     <x-ui.action-bar>
         <x-ui.button form="request-form" class="min-w-0 flex-1">Завести</x-ui.button>
-        @if ($letters)<x-mail.window-button :count="$messages->count()" class="shrink-0"/>@endif
+        @if ($letters)
+            <x-mail.window-button :count="$messages->count()" :url="'/requests/from-mail/'.$candidate->id.'/letters'" class="shrink-0"/>
+            <form method="post" action="/requests/from-mail/{{ $candidate->id }}/decline" class="contents">@csrf<button class="btn btn-ghost shrink-0" data-turbo-confirm="Не заявка? Письмо уйдёт в «Отклонённые»">Не заявка</button></form>
+        @endif
     </x-ui.action-bar>
 </x-ui.shell>

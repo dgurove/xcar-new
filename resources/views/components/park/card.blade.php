@@ -1,14 +1,18 @@
-{{-- Машина стоянки — та же карточка, что у оффера: кадр, название с госномером, пилюли состояния, действие. --}}
-@props(['vehicle', 'href' => null, 'action' => null])
+{{-- ТС стоянки в плитках и строках: кадр, название с госномером, одна строка чипов (состояние, номер, VIN, вендор,
+     место), справа — слот aside: по умолчанию дни на стоянке со светофором простоя и красный долг, у ожидаемой —
+     «Принять ›», у выданной — дата. Кнопок нет: вся карточка — ссылка на дело. facts=false — без чипов ТС (заявки). --}}
+@props(['vehicle', 'href' => null, 'facts' => true, 'debt' => 0, 'aside' => null])
 @php
+    use App\Park\{VehicleState, Idle};
     $href ??= '/cars/'.$vehicle->id;
     $main = $vehicle->mainPhoto();
     $photos = $vehicle->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
-    $hasMedia = $photos->isNotEmpty();
     $state = $vehicle->state;
+    $days = $state === VehicleState::Stored ? $vehicle->daysStored() : null;
+    $noRequest = $state === VehicleState::Expected && $vehicle->relationLoaded('requests') && ! $vehicle->requests->contains(fn ($r) => $r->isOpen());
 @endphp
 <article id="vehicle-{{ $vehicle->id }}" class="card rise group">
-    @if ($hasMedia)
+    @if ($photos->isNotEmpty())
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
             <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
                 @foreach ($photos as $i => $frame)
@@ -30,23 +34,29 @@
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="block min-w-0 flex-1 text-[17px] leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $vehicle->titleWithYear() }}@if ($vehicle->plate) <span class="nums font-normal text-ink-muted">{{ $vehicle->plate }}</span>@endif</span></a>
-        </div>
-        <div class="card-marks">
-            <span class="mark {{ match ($state->tone()) { 'open' => 'mark-accent', 'urgent' => 'mark-urgent', default => 'mark-glass' } }}">{{ $state->label() }}</span>
-            @if ($state === \App\Park\VehicleState::Stored)<span class="mark mark-glass nums">{{ $vehicle->daysStored() }} дн</span>@endif
-            @if ($state === \App\Park\VehicleState::Expected && $vehicle->relationLoaded('requests') && ! $vehicle->requests->contains(fn ($r) => $r->isOpen()))<span class="mark mark-urgent">без заявки</span>@endif
+            <a href="{{ $href }}" class="block min-w-0 flex-1 leading-snug hover:text-accent-text"><span class="line-clamp-1">{{ $vehicle->titleWithYear() }}@if ($vehicle->plate) <span class="nums font-normal text-ink-muted">{{ $vehicle->plate }}</span>@endif</span></a>
         </div>
     </div>
     <div class="card-extra">
-        @if ($vehicle->ref)<span class="tag">{{ $vehicle->ref }}</span>@endif
-        <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
-        @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
-        @if ($state === \App\Park\VehicleState::Released && $vehicle->released_at)<span class="nums text-sm font-normal text-ink-dim">выдана {{ $vehicle->released_at->translatedFormat('j M Y') }}</span>@endif
+        @if ($facts)
+            <x-ui.pill :tone="match ($state->tone()) { 'open' => 'open', 'urgent' => 'urgent', default => 'closed' }" class="!min-h-0 !py-0.5 text-xs">{{ $state->label() }}</x-ui.pill>
+            @if ($noRequest)<span class="tag text-urgent">без заявки</span>@endif
+            @if ($vehicle->ref)<span class="tag nums">{{ $vehicle->ref }}</span>@endif
+            @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
+            @if ($state === VehicleState::Stored && $vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place>@endif
+        @endif
         {{ $slot }}
     </div>
-    <div class="card-place">@if ($state === \App\Park\VehicleState::Stored && $vehicle->yard)<x-ui.place class="truncate text-sm text-ink-dim">{{ $vehicle->yard->name }}</x-ui.place>@endif</div>
-    <div class="card-action">
-        <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">{{ $action ?? ($state === \App\Park\VehicleState::Expected ? 'Принять' : ($state === \App\Park\VehicleState::Stored ? 'Открыть' : 'Карточка')) }}</a>
+    <div class="card-aside">
+        @if ($aside)
+            {{ $aside }}
+        @elseif ($days !== null)
+            <span class="nums text-sm {{ match (Idle::tone($days)) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', default => 'text-ink-muted' } }}">{{ $days }} дн</span>
+            @if ($debt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs nums">{{ \App\Support\Money::rub($debt) }}</x-ui.pill>@endif
+        @elseif ($state === VehicleState::Expected)
+            <a href="{{ $href }}" class="text-sm text-ink-muted">{{ $noRequest ? 'Заявка' : 'Принять' }} ›</a>
+        @elseif ($state === VehicleState::Released && $vehicle->released_at)
+            <span class="nums text-sm text-ink-dim">{{ $vehicle->released_at->translatedFormat('j M') }}</span>
+        @endif
     </div>
 </article>

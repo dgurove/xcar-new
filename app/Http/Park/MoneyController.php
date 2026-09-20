@@ -58,7 +58,7 @@ class MoneyController
         $open = self::scoped($request->user(), Invoice::query())->where('state', InvoiceState::Issued)->get();
 
         return view('park.money.index', [
-            'invoices' => ListView::paginate($request, $q),
+            'invoices' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset, 'presets' => self::PRESETS,
             'sort' => $request->query('sort', 'due'),
             'counts' => [

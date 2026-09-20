@@ -37,6 +37,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     // Из писем: кандидаты в предложения — раньше карточки, иначе iz-pisem примут за номер.
     Route::get('/offers/from-mail', [CandidateController::class, 'index']);
     Route::get('/offers/from-mail/{candidate}/peek', [CandidateController::class, 'peek']);
+    Route::get('/offers/from-mail/{candidate}/letters', [CandidateController::class, 'letters']);
     Route::post('/offers/from-mail/{candidate}/create', [CandidateController::class, 'promote']);
     Route::post('/offers/from-mail/{candidate}/decline', [CandidateController::class, 'reject']);
     Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
@@ -80,7 +81,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::post('/messages/{message}/parse', [MailController::class, 'reparse']);
         Route::post('/messages/{message}/retry', [MailController::class, 'resend']);
         Route::get('/{thread}', [MailController::class, 'show']);
-        Route::get('/{thread}/peek', [MailController::class, 'peek']);
+        Route::get('/{thread}/window', [MailController::class, 'window']);
         Route::get('/{thread}/reply/{message}', [MailController::class, 'reply']);
         Route::post('/{thread}/unread', [MailController::class, 'unread']);
         Route::post('/{thread}/read', [MailController::class, 'toggleRead']);

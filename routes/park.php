@@ -21,6 +21,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/requests/new', [RequestController::class, 'create']);
     Route::get('/requests/from-mail', [ParkCandidateController::class, 'index']);
     Route::get('/requests/from-mail/{candidate}/peek', [ParkCandidateController::class, 'peek']);
+    Route::get('/requests/from-mail/{candidate}/letters', [ParkCandidateController::class, 'letters']);
     Route::post('/requests/from-mail/{candidate}/decline', [ParkCandidateController::class, 'reject']);
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests/{req}', [RequestController::class, 'show']);
@@ -38,6 +39,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/cars', [VehicleController::class, 'index']);
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
     Route::get('/cars/{vehicle}/peek', [VehicleController::class, 'peek']);
+    Route::get('/cars/{vehicle}/letters', [VehicleController::class, 'letters']);
     Route::put('/cars/{vehicle}', [VehicleController::class, 'update'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/media', [VehicleController::class, 'upload']);
     Route::post('/cars/{vehicle}/media/order', [VehicleController::class, 'reorder']);
@@ -90,6 +92,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/acts/{vehicle}/{kind}', [ActController::class, 'show'])->where('kind', 'intake|release|contract|handover');
 
     Route::get('/yards', [YardController::class, 'index']);
+    Route::get('/yards/{yard}/peek', [YardController::class, 'peek']);
     Route::post('/yards', [YardController::class, 'store'])->middleware('park.manage');
     Route::put('/yards/{yard}', [YardController::class, 'update'])->middleware('park.manage');
     Route::delete('/yards/{yard}', [YardController::class, 'destroy'])->middleware('park.manage');
@@ -107,7 +110,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/mail/messages/{message}/parse', [MailController::class, 'reparse']);
     Route::post('/mail/messages/{message}/retry', [MailController::class, 'resend']);
     Route::get('/mail/{thread}', [MailController::class, 'show']);
-    Route::get('/mail/{thread}/peek', [MailController::class, 'peek']);
+    Route::get('/mail/{thread}/window', [MailController::class, 'window']);
     Route::get('/mail/{thread}/reply/{message}', [MailController::class, 'reply']);
     Route::post('/mail/{thread}/unread', [MailController::class, 'unread']);
     Route::post('/mail/{thread}/read', [MailController::class, 'toggleRead']);

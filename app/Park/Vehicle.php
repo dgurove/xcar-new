@@ -217,7 +217,10 @@ class Vehicle extends Model implements HasMedia
 
     public function titleWithYear(): string
     {
-        return trim(($this->brand?->name ?? '').' '.($this->model?->name ?? '')).($this->year ? ", {$this->year}" : '') ?: ($this->ref ?: 'ТС');
+        $name = trim(($this->brand?->name ?? '').' '.($this->model?->name ?? ''));
+
+        // Без марки — номер убытка или госномер: «, 2019» само по себе ничего не говорит.
+        return $name ? $name.($this->year ? ", {$this->year}" : '') : ($this->ref ?: ($this->plate ?: 'ТС'));
     }
 
     /**

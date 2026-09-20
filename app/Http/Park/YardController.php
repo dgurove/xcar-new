@@ -6,6 +6,7 @@ use App\Cars\Settlement;
 use App\Park\Request as ParkRequest;
 use App\Park\Vehicle;
 use App\Park\Yard;
+use App\Support\ListPrefs;
 use App\Users\User;
 use App\Vendors\Tariff;
 use Illuminate\Http\Request;
@@ -15,13 +16,22 @@ class YardController
 {
     public function index(Request $request)
     {
-        $closed = $request->boolean('closed');
+        ListPrefs::sync($request, 'park-yards');
+        $closed = $request->query('closed') === 'all' || $request->boolean('closed');
         $yards = Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand'])->orderByDesc('is_active')->orderBy('name')->get();
 
-        return view('park.yards', [
+        return view('park.yards.index', [
             'yards' => $closed ? $yards : $yards->where('is_active', true), 'closed' => $closed, 'closedCount' => $yards->where('is_active', false)->count(),
             'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id'),
         ]);
+    }
+
+    /** Окошко строки таблицы: карта мест и форма. */
+    public function peek(Yard $yard)
+    {
+        $yard->loadCount('storedVehicles')->load(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand']);
+
+        return view('park.yards.peek', ['yard' => $yard, 'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id')]);
     }
 
     public function store(Request $request)

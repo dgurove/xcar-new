@@ -35,6 +35,7 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Vendors\ContactRole;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /** Почта в админке: ветки, письмо, ответ. Ящики — по scope поверхности. */
 class MailController
@@ -63,7 +64,7 @@ class MailController
         $q = trim((string) $request->query('q'));
         $sort = array_key_exists($request->query('sort', ''), self::SORTS) ? $request->query('sort') : 'fresh';
 
-        $threads = Thread::query()->with(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model'])
+        $threads = Thread::query()->with(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'latestMessage'])->withCount('attachments')
             ->whereIn('account_id', $accounts->pluck('id'))
             ->when($slug, fn ($t) => $t->whereHas('account', fn ($a) => $a->where('slug', $slug)))
             ->when($request->query('car'), fn ($t, $id) => $t->where('vehicle_id', $id))
@@ -98,11 +99,13 @@ class MailController
             'unread' => Thread::whereIn('account_id', $accounts->pluck('id'))->where('unread_count', '>', 0)->count(),
             'presets' => $this->presets(),
             'car' => $request->query('car') ? Vehicle::with(['brand', 'model'])->find($request->query('car')) : null,
+            // ?window=id — ссылка на ветку: список с открытым окном этой ветки.
+            'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window' : null,
         ]);
     }
 
-    /** Окошко строки таблицы: все письма ветки целиком, «Открыть» — на страницу ветки (ответы оттуда). */
-    public function peek(Request $request, Thread $thread, MarkThreadRead $markRead)
+    /** Окно ветки (фрейм letters-frame в x-mail.window): все письма целиком, «Ответить» под каждым, привязка. */
+    public function window(Request $request, Thread $thread, MarkThreadRead $markRead)
     {
         $this->guard($thread);
         $thread->load(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'messages.attachments', 'messages.addresses', 'messages.author']);
@@ -110,7 +113,7 @@ class MailController
             $markRead($thread);
         }
 
-        return view('admin.mail.peek', ['thread' => $thread, 'base' => $this->base, 'crm' => $this->scope !== Scope::Park]);
+        return view('admin.mail.window', ['thread' => $thread, 'base' => $this->base]);
     }
 
     public function show(Request $request, Thread $thread, MarkThreadRead $markRead, BodyRenderer $renderer)
@@ -192,7 +195,8 @@ class MailController
             }
         }
 
-        return view('admin.mail.compose', ['account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'back' => $request->query('back') ?? ($invoice ? '/money/invoices/'.$invoice->id : null), 'invoice' => $invoice,
+        // В окне писем (Turbo-Frame) — тот же редактор во фрейме, без оболочки.
+        return view($request->header('Turbo-Frame') ? 'admin.mail.compose-frame' : 'admin.mail.compose', ['frame' => $request->header('Turbo-Frame'), 'account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'back' => $request->query('back') ?? ($invoice ? '/money/invoices/'.$invoice->id : null), 'invoice' => $invoice,
             'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base]);
     }
 
@@ -204,34 +208,28 @@ class MailController
         $mode = $request->query('mode', 'reply');
         $defaults = $mode === 'forward' ? $composer->forward($message) : $composer->reply($message, $mode === 'all');
 
-        return view('admin.mail.compose', ['account' => $message->account, 'accounts' => collect([$message->account]), 'thread' => $thread, 'parent' => $message,
+        return view($request->header('Turbo-Frame') ? 'admin.mail.compose-frame' : 'admin.mail.compose', ['frame' => $request->header('Turbo-Frame'), 'account' => $message->account, 'accounts' => collect([$message->account]), 'thread' => $thread, 'parent' => $message,
             'defaults' => $defaults, 'mode' => $mode, 'templates' => collect(), 'offer' => $thread->offer, 'vehicle' => $thread->vehicle, 'base' => $this->base]);
     }
 
     public function send(Request $request, Composer $composer, MarkDoc $mark)
     {
-        $data = $request->validate([
-            'account' => ['required', 'exists:mail_accounts,slug'],
-            'parent' => ['nullable', 'integer'],
-            'thread' => ['nullable', 'integer'],
-            'to' => ['required', 'string', 'max:1000'],
-            'cc' => ['nullable', 'string', 'max:1000'],
-            'bcc' => ['nullable', 'string', 'max:1000'],
-            'subject' => ['nullable', 'string', 'max:255'],
-            'body' => ['nullable', 'string', 'max:200000'],
-            'files' => ['nullable', 'array'],
-            'files.*' => ['string'],
-            'forward' => ['nullable', 'array'],
-            'forward.*' => ['integer'],
-            'offer' => ['nullable', 'integer'],
-            'vehicle' => ['nullable', 'integer'],
-            'back' => ['nullable', 'string', 'max:255', 'regex:#^/(?!/)#'], // свой путь, не //host
-            'invoice' => ['nullable', 'integer'],
-        ]);
+        // Из окна писем форма отвечает во фрейм: ошибки — обратно в редактор (retry), успех — ветка в окне.
+        $inWindow = $request->header('Turbo-Frame') === 'letters-frame';
+        $retry = $inWindow && preg_match('#^/(?!/)#', (string) $request->input('retry')) ? $request->input('retry') : null;
+        try {
+            $data = $this->sendRules($request);
+        } catch (ValidationException $e) {
+            if ($retry) {
+                return redirect($retry)->withErrors($e->errors())->withInput();
+            }
+            throw $e;
+        }
         $account = Account::where('slug', $data['account'])->where('scope', $this->scope)->firstOrFail();
         if (! $composer->emails($data['to'])) {
-            return back()->withInput()->withErrors(['to' => 'Нужен хотя бы один адрес']);
+            return redirect($retry ?: url()->previous())->withInput()->withErrors(['to' => 'Нужен хотя бы один адрес']);
         }
+
         $parent = ! empty($data['parent']) ? Message::with(['thread', 'attachments'])->where('account_id', $account->id)->find($data['parent']) : null;
         $thread = ! empty($data['thread']) ? Thread::where('account_id', $account->id)->find($data['thread']) : null;
 
@@ -258,6 +256,10 @@ class MailController
                 $invoice->update(['sent_at' => now()]);
                 $vehicle->log(EventType::ReportSent, $request->user(), ['what' => 'Счёт '.$invoice->label(), 'thread' => $message->thread_id]);
             }
+        }
+
+        if ($inWindow) {
+            return redirect("{$this->base}/{$message->thread_id}/window")->with('toast', 'Письмо в очереди');
         }
 
         return redirect($data['back'] ?? "{$this->base}/{$message->thread_id}")->with('toast', 'Письмо в очереди');
@@ -320,25 +322,27 @@ class MailController
     public function link(Request $request, Thread $thread, LinkThread $link)
     {
         $this->guard($thread);
+        // Из окна писем форма отвечает во фрейм — назад в то же окно.
+        $back = fn () => $request->header('Turbo-Frame') === 'letters-frame' ? redirect("{$this->base}/{$thread->id}/window") : back();
         if ($this->scope === Scope::Park) {
             $vehicle = $request->input('vehicle_id') ? Vehicle::find($request->input('vehicle_id')) : null;
             $vehicle ? $link($thread, $vehicle) : $link->unlink($thread);
 
-            return back()->with('toast', $vehicle ? 'Привязано' : 'Отвязано');
+            return $back()->with('toast', $vehicle ? 'Привязано' : 'Отвязано');
         }
         $number = (int) preg_replace('/\D/', '', (string) $request->input('number'));
         if ($number === 0) {
             $link->unlink($thread);
 
-            return back()->with('toast', 'Отвязано');
+            return $back()->with('toast', 'Отвязано');
         }
         $offer = Offer::where('number', $number)->first();
         if (! $offer) {
-            return back()->withErrors(['number' => 'Нет такого предложения']);
+            return $back()->withErrors(['number' => 'Нет такого предложения']);
         }
         $link($thread, $offer);
 
-        return back()->with('toast', "Привязано к № {$offer->number}");
+        return $back()->with('toast', "Привязано к № {$offer->number}");
     }
 
     public function reparse(Message $message)
@@ -411,6 +415,28 @@ class MailController
             'client' => $vehicle->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),
         ];
+    }
+
+    private function sendRules(Request $request): array
+    {
+        return $request->validate([
+            'account' => ['required', 'exists:mail_accounts,slug'],
+            'parent' => ['nullable', 'integer'],
+            'thread' => ['nullable', 'integer'],
+            'to' => ['required', 'string', 'max:1000'],
+            'cc' => ['nullable', 'string', 'max:1000'],
+            'bcc' => ['nullable', 'string', 'max:1000'],
+            'subject' => ['nullable', 'string', 'max:255'],
+            'body' => ['nullable', 'string', 'max:200000'],
+            'files' => ['nullable', 'array'],
+            'files.*' => ['string'],
+            'forward' => ['nullable', 'array'],
+            'forward.*' => ['integer'],
+            'offer' => ['nullable', 'integer'],
+            'vehicle' => ['nullable', 'integer'],
+            'back' => ['nullable', 'string', 'max:255', 'regex:#^/(?!/)#'], // свой путь, не //host
+            'invoice' => ['nullable', 'integer'],
+        ]);
     }
 
     private function guard(Thread $thread): void

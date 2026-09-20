@@ -80,10 +80,14 @@ function pressFeedback() {
         event.target.closest('.card, .row, .stat, .pill, .btn, .tab, .header-btn')?.classList.add('is-pending');
         const dialog = event.target.closest('dialog[open]');
         if (!dialog?.matches(':modal')) return;
+        const link = event.target.closest('a[href]');
+        // Ссылка во фрейм внутри той же шторки (окно писем: «Ответить», шаблон) — фрейм и грузится, шторка живёт.
+        const frame = link?.closest('turbo-frame');
+        const into = link?.dataset.turboFrame ?? frame?.getAttribute('target') ?? frame?.id;
+        if (frame && dialog.contains(frame) && into && into !== '_top' && dialog.querySelector(`#${CSS.escape(into)}`)) return;
         // Запись шторки в истории снимается до визита, иначе «назад» вернёт на шторку.
         event.preventDefault();
         event.detail.originalEvent.preventDefault();
-        const link = event.target.closest('a[href]');
         closeSheet(dialog).then(() => Turbo.visit(event.detail.url, { action: link?.dataset.turboAction || 'advance' }));
     });
     for (const name of ['turbo:before-render', 'turbo:load', 'turbo:fetch-request-error', 'turbo:before-cache']) document.addEventListener(name, clear);

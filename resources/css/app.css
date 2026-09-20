@@ -619,6 +619,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { a.stat:hover { @apply bg-hover; } }
 }
 
+/* Прошедшая фаза дела: строка-заголовок раскрывается стрелкой, тело — под ней в той же карточке. */
+@layer components {
+  .phase { border-radius: var(--radius-l); background: var(--color-surface); }
+  .phase > summary { background: transparent; }
+  .phase > summary::-webkit-details-marker { display: none; }
+  .phase[open] .phase-chevron { rotate: 180deg; }
+  .phase-chevron { transition: rotate var(--dur-fast); }
+}
+
 /* ------------------------------------------------------------- шторки */
 
 @layer components {
@@ -638,6 +647,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet[open]::backdrop { animation: fade var(--dur) both; }
   .sheet.is-closing { animation: sheet-down var(--dur) var(--ease-in) both; pointer-events: none; }
   .sheet.is-closing::backdrop { animation: fade var(--dur-fast) reverse both; }
+  /* Окно чтения на телефоне — экран целиком: без ручки и скруглений, «‹» слева, крестик спрятан. */
+  @media (max-width: 639.98px) {
+    .sheet-tall { height: 100dvh; max-height: none; border-radius: 0; padding-top: calc(.75rem + env(safe-area-inset-top)); }
+    .sheet-tall::before { display: none; }
+    .sheet-tall .sheet-x { display: none; }
+  }
+  @media (min-width: 640px) { .sheet-tall .sheet-back { display: none; } }
   @keyframes sheet-up   { from { translate: 0 100%; } }
   @keyframes sheet-down { from { translate: 0 var(--from, 0px); } to { translate: 0 110%; } }
   @keyframes dialog-in  { from { transform: translateY(16px); opacity: 0; } }
@@ -1135,6 +1151,30 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     --media-w: 5.5rem; --media-h: 3.75rem; --blank-h: 3.75rem;
   }
 }
+/* Стоянка: строка без кнопок — миниатюра, название и одна строка чипов, справа по центру высоты
+   слово действия («Принять ›»), дни или долг (card-aside). Областей place и action у строки нет. */
+.surface-park .cards {
+  --card-areas: "media body aside" "media extra extra";
+  --card-cols: auto minmax(0, 1fr) auto;
+  --card-align: start; --card-gap: .125rem .625rem; --card-pad: .5rem .625rem .5rem .5rem;
+  --media-w: 3.5rem; --media-h: 2.5rem; --blank-h: 2.5rem;
+  --aside-self: end; --aside-align: center; --aside-pad: 0;
+}
+@media (min-width: 640px) {
+  .surface-park .cards {
+    --card-areas: "media body aside" "media extra aside";
+    --card-cols: auto minmax(0, 1fr) auto;
+    --card-align: center; --card-gap: .125rem .75rem; --card-pad: .5rem .75rem .5rem .5rem;
+    --media-w: 4.5rem; --media-h: 3rem; --blank-h: 3rem;
+  }
+}
+.surface-park .cards .card-aside { flex-direction: column; align-items: flex-end; gap: .25rem; text-align: right; white-space: nowrap; }
+@media (max-width: 639.98px) { .surface-park .cards .card-aside { flex-direction: row; align-items: center; gap: .375rem; padding-top: .125rem; } .surface-park .cards .card-media { align-self: center; } }
+.surface-park .cards .card-body { gap: .125rem; }
+.surface-park .cards .card-marks { flex-wrap: nowrap; overflow: hidden; }
+.surface-park .cards .card-marks:empty { display: none; }
+.surface-park .cards .card-title > a { font-size: .9375rem; line-height: 1.3; }
+.surface-park .cards .card-extra { row-gap: .25rem; }
 .surface-crm .cards--grid, .surface-park .cards--grid {
   --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
   --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
@@ -1167,6 +1207,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     --price-size: 1rem; --price-align: left;
   }
 }
+/* Плитка стоянки: кадр, название, чипы, внизу справа слово действия — кнопки нет. */
+.surface-park .cards--grid { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-self: end; --aside-align: end; --aside-pad: .5rem .75rem .75rem; }
+@media (min-width: 640px) { .surface-park .cards:not(.cards--list) { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-self: end; --aside-align: end; --aside-pad: .5rem .75rem .75rem; } }
+.surface-park .cards--grid .card-aside, .surface-park .cards:not(.cards--list) .card-aside { flex-direction: row; }
 /* Плитки чуть уже и без зазора в 1.25rem — их помещается заметно больше. */
 .surface-crm .cards--grid, .surface-park .cards--grid { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; }
 @media (min-width: 640px) { .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; } }
@@ -1209,6 +1253,9 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .photo-row { @apply -mx-4 flex gap-2 px-4 sm:mx-0 sm:px-0; }
   .photo-strip { @apply -mr-4 flex min-w-0 flex-1 snap-x gap-2 overflow-x-auto pr-4 sm:mr-0 sm:pr-0 sm:pb-1; scrollbar-width: none; }
   @media (hover: hover) { .photo-strip { scrollbar-width: thin; } }
+  /* Внутри карточки лента не вылезает за края: отрицательные поля — только на голой странице. */
+  .box .photo-row, .box-nested .photo-row, .phase .photo-row { @apply mx-0 px-0; }
+  .box .photo-strip, .box-nested .photo-strip, .phase .photo-strip { @apply mr-0 pr-0; }
   .photo-cell { @apply relative h-28 min-w-16 shrink-0 snap-start overflow-hidden rounded-(--radius-m) bg-surface-3 sm:h-36; touch-action: pan-x; }
   .photo-cell img { @apply h-full w-auto max-w-[16rem] cursor-zoom-in object-contain; }
   .photo-cell.is-hidden img { @apply opacity-40 grayscale; }

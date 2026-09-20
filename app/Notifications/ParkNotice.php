@@ -43,17 +43,17 @@ final class ParkNotice extends Notice
 
     public static function assigned(Request $r): self
     {
-        return new self('Вам: '.mb_strtolower($r->type->label()).' — '.$r->vehicle->titleWithYear(), $r->planned_at?->translatedFormat('j M, H:i'), '/requests/'.$r->id, $r->vehicle_id, true);
+        return new self('Вам: '.mb_strtolower($r->type->label()).' — '.$r->vehicle->titleWithYear(), $r->planned_at?->translatedFormat('j M, H:i'), '/cars/'.$r->vehicle_id, $r->vehicle_id, true);
     }
 
     public static function due(Request $r, bool $overdue): self
     {
-        return new self(($overdue ? 'Срок вышел: ' : 'Через два часа: ').mb_strtolower($r->type->label()).' — '.$r->vehicle->titleWithYear(), $r->planned_at?->translatedFormat('j M, H:i'), '/requests/'.$r->id, $r->vehicle_id, $overdue);
+        return new self(($overdue ? 'Срок вышел: ' : 'Через два часа: ').mb_strtolower($r->type->label()).' — '.$r->vehicle->titleWithYear(), $r->planned_at?->translatedFormat('j M, H:i'), '/cars/'.$r->vehicle_id, $r->vehicle_id, $overdue);
     }
 
     public static function call(Request $r): self
     {
-        return new self('Перезвонить: '.$r->vehicle->titleWithYear(), $r->contactLine() ?: null, '/requests/'.$r->id, $r->vehicle_id);
+        return new self('Перезвонить: '.$r->vehicle->titleWithYear(), $r->contactLine() ?: null, '/cars/'.$r->vehicle_id, $r->vehicle_id);
     }
 
     public static function idle(Vehicle $v, int $days): self

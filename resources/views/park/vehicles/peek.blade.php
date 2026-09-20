@@ -26,10 +26,11 @@
         <x-slot:actions>
             @if ($state === VehicleState::Expected)
                 @php $open = $vehicle->openRequest(\App\Park\RequestType::Tow) ?? $vehicle->openRequest(\App\Park\RequestType::Intake); @endphp
-                <a href="{{ $open ? '/requests/'.$open->id : '/requests/new?type=intake&car='.$vehicle->id }}" class="btn btn-s btn-accent">{{ $open?->isTow() ? 'Эвакуация' : 'Принять на стоянку' }}</a>
+                @if ($open)<a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">{{ $open->verb() ?? 'Открыть' }}</a>
+                @else<form method="post" action="/requests" class="contents" data-turbo-frame="_top">@csrf<input type="hidden" name="type" value="intake"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Принять</button></form>@endif
             @endif
             @if ($state === VehicleState::InTransit && ($tow = $vehicle->openRequest(\App\Park\RequestType::Tow)))
-                <a href="/requests/{{ $tow->id }}" class="btn btn-s btn-accent">Принять</a>
+                <a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Принять</a>
             @endif
             @if ($state === VehicleState::Stored)
                 <form method="post" action="{{ $href }}/move" class="contents" data-controller="autosubmit">@csrf
@@ -39,7 +40,7 @@
                 </form>
                 {{-- Выдача — только через заявку с осмотром, подписью и актом; одна дорога. --}}
                 @if ($release = $vehicle->openRequest(\App\Park\RequestType::Release))
-                    <a href="/requests/{{ $release->id }}" class="btn btn-s btn-accent">Выдать</a>
+                    <a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Выдать</a>
                 @else
                     <form method="post" action="/requests" class="contents" data-turbo-frame="_top">@csrf<input type="hidden" name="type" value="release"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Выдать</button></form>
                 @endif
@@ -50,12 +51,12 @@
                 <a href="/acts/{{ $vehicle->id }}/intake" class="pill pill-plain" data-turbo="false" target="_blank">Акт приёма</a>
                 <a href="/acts/{{ $vehicle->id }}/release" class="pill pill-plain" data-turbo="false" target="_blank">Акт выдачи</a>
             @endif
-            @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Новая заявка</a>@endunless
+            @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Осмотр</a>@endunless
         </x-slot:actions>
         @if ($vehicle->requests->isNotEmpty())
             <div class="mt-3 flex flex-wrap gap-1.5">
                 @foreach ($vehicle->requests as $r)
-                    <a href="/requests/{{ $r->id }}" class="chip {{ $r->isOpen() ? 'bg-accent-soft text-accent-text' : 'bg-closed-soft text-closed' }}">{{ $r->type->label() }} <span class="nums font-normal">{{ $r->isOpen() ? ($r->planned_at?->translatedFormat('j M, H:i') ?? 'ждёт') : $r->state->label() }}</span></a>
+                    <a href="/cars/{{ $vehicle->id }}{{ $r->isOpen() ? '?req='.$r->id : '' }}" class="chip {{ $r->isOpen() ? 'bg-accent-soft text-accent-text' : 'bg-closed-soft text-closed' }}">{{ $r->type->label() }} <span class="nums font-normal">{{ $r->isOpen() ? ($r->planned_at?->translatedFormat('j M, H:i') ?? 'ждёт') : $r->state->label() }}</span></a>
                 @endforeach
             </div>
         @endif

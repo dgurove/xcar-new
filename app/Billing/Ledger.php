@@ -68,6 +68,13 @@ final class Ledger
         return round(Invoice::where('vehicle_id', $vehicle->id)->where('direction', 'issued')->where('state', InvoiceState::Issued)->get()->sum(fn (Invoice $i) => $i->remaining()), 2);
     }
 
+    /** Неоплаченное по многим ТС разом — красный чип в строках списка. @return array<int, float> */
+    public static function debtsByVehicle(array $ids): array
+    {
+        return Invoice::whereIn('vehicle_id', $ids)->where('direction', 'issued')->where('state', InvoiceState::Issued)->get()
+            ->groupBy('vehicle_id')->map(fn ($invoices) => round($invoices->sum(fn (Invoice $i) => $i->remaining()), 2))->filter(fn ($d) => $d > 0)->all();
+    }
+
     /** Не выставленное по ТС: хранение по день (по умолчанию — сегодня) и начисления вне счёта. */
     public static function vehicleUnbilled(Vehicle $vehicle, ?CarbonInterface $until = null): float
     {

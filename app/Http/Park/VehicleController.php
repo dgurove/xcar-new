@@ -2,17 +2,10 @@
 
 namespace App\Http\Park;
 
-use App\Billing\Accrual;
 use App\Billing\Cadence;
-use App\Billing\ChargeKind;
 use App\Billing\Ledger;
-use App\Billing\Party;
-use App\Cars\Category;
-use App\Cars\DamageZone;
 use App\Http\Admin\OfferPhotoController;
 use App\Live\Stream;
-use App\Mail\Scope as MailScope;
-use App\Mail\Template;
 use App\Mail\Thread;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
@@ -27,6 +20,7 @@ use App\Park\Actions\UndoIntake;
 use App\Park\Actions\UndoRelease;
 use App\Park\Actions\UnwindVehicle;
 use App\Park\Actions\UpdateVehicle;
+use App\Park\CaseView;
 use App\Park\Doc;
 use App\Park\DocKind;
 use App\Park\DocState;
@@ -35,13 +29,11 @@ use App\Park\Idle;
 use App\Park\PhotoSlot;
 use App\Park\Scope;
 use App\Park\Vehicle;
+use App\Park\VehicleFields;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\ListPrefs;
 use App\Support\ListView;
-use App\Support\Money;
-use App\Vendors\Tariff;
-use App\Vendors\TariffService;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -69,8 +61,11 @@ class VehicleController
                 ->orWhere('plate', 'like', '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%')->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
         $request->query('sort') === 'fresh' ? $vehicles->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
 
+        $page = ListView::paginate($request, $vehicles);
+
         return view('park.vehicles.index', [
-            'vehicles' => ListView::paginate($request, $vehicles),
+            'vehicles' => $page,
+            'debts' => Ledger::debtsByVehicle($page->pluck('id')->all()),
             'preset' => $preset,
             'q' => $q,
             'sort' => $request->query('sort', 'longest'),
@@ -97,46 +92,33 @@ class VehicleController
         ]);
     }
 
+    /** Окно писем ТС (фрейм letters-frame): все ветки, письма целиком, «Ответить» под письмом. */
+    public function letters(Request $request, Vehicle $vehicle)
+    {
+        abort_unless(Scope::allows($request->user(), $vehicle), 404);
+
+        return view('park.vehicles.letters', [
+            'threads' => Thread::where('vehicle_id', $vehicle->id)->with(['messages.attachments', 'messages.addresses', 'messages.author'])->orderByDesc('last_message_at')->get(),
+        ]);
+    }
+
+    /** Дело ТС одной страницей (CaseView); ?window= — открыть окно писем сразу (ветка, письма ТС или черновик вендору). */
     public function show(Request $request, Vehicle $vehicle)
     {
         abort_unless(Scope::allows($request->user(), $vehicle), 404);
-        $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party']);
+        $window = (string) $request->query('window');
 
-        return view('park.vehicles.show', [
-            'vehicle' => $vehicle,
-            'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
-            'vendors' => Vendor::where('is_active', true)->orWhere('id', $vehicle->vendor_id)->orderBy('name')->pluck('name', 'id'),
-            'categories' => Category::options(),
-            'storageRate' => Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
-            'accrued' => Accrual::summary($vehicle),
-            'buyerFrom' => $vehicle->sold_at ? Accrual::buyerFrom($vehicle) : null,
-            'buyerRate' => $vehicle->sold_at ? Accrual::buyerRate($vehicle) : 0,
-            'owners' => Party::where('kind', 'person')->orderBy('name')->pluck('name', 'id'),
-            'debt' => Ledger::vehicleDebt($vehicle),
-            'buyerDebt' => Ledger::buyerDebt($vehicle),
-            'payers' => Ledger::payersOf($vehicle),
-            'pendingCharges' => $vehicle->charges()->whereNull('invoice_id')->whereNull('voided_at')->get(),
-            'chargeKinds' => collect([ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other])->mapWithKeys(fn ($k) => [$k->value => $k->label().(($price = VehicleInvoiceController::priceFor($vehicle, $k)) ? ' — '.Money::rub($price) : '')]),
-            'threads' => Thread::where('vehicle_id', $vehicle->id)->with('messages')->orderByDesc('last_message_at')->get(),
-            'templates' => Template::where('scope', MailScope::Park)->orderBy('name')->get(),
-            'zones' => DamageZone::cases(),
-            'spots' => $vehicle->yard?->freeSpots() ?? [],
-            'offerGuess' => $vehicle->offer_id ? null : LinkOffer::guess($vehicle),
-            'canManage' => $request->user()->canManagePark(),
+        return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null) + [
+            'window' => preg_match('#^/(mail|cars)/#', $window) ? $window : null,
         ]);
     }
 
     public function update(Request $request, Vehicle $vehicle, UpdateVehicle $update)
     {
-        $data = $request->validate([
-            'ref' => ['nullable', 'string', 'max:60'], 'vin' => ['nullable', 'string', 'max:17'], 'plate' => ['nullable', 'string', 'max:12'],
-            'year' => ['nullable', 'integer', 'between:1950,'.(now()->year + 1)], 'color' => ['nullable', 'string', 'max:32'],
-            'brand_id' => ['nullable', 'exists:brands,id'], 'model_id' => ['nullable', 'exists:car_models,id'], 'vendor_id' => ['nullable', 'exists:vendors,id'],
-            'category' => ['nullable', Rule::enum(Category::class)], 'oversize' => ['boolean'],
-            'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'integer', 'min:0'],
+        // Поля тождества (VehicleFields) шлёт форма дела; договор — шторка «Договор». Одна дверь на обе.
+        $data = $request->validate(VehicleFields::rules() + [
             'contract_kind' => ['nullable', Rule::in(['storage', 'commission'])], 'contract_no' => ['nullable', 'string', 'max:60'], 'contract_at' => ['nullable', 'date'], 'assigned_price' => ['nullable', 'integer', 'min:0'],
             'pts' => ['nullable', 'string', 'max:40'], 'sts' => ['nullable', 'string', 'max:40'], 'owner_party_id' => ['nullable', 'exists:billing_parties,id'], 'storage_rate' => ['nullable', 'numeric', 'min:0'], 'storage_rate_note' => ['nullable', 'string', 'max:120'], 'billing_cadence' => ['nullable', Rule::enum(Cadence::class)],
-            'damage_zones' => ['nullable', 'array'], 'damage_zones.*' => [Rule::enum(DamageZone::class)], 'damage_note' => ['nullable', 'string', 'max:2000'], 'notes' => ['nullable', 'string', 'max:5000'],
             'back' => ['nullable', 'string', 'max:200', 'regex:#^/(?!/)#'],
             'accepted_at' => ['nullable', 'date'], 'released_at' => ['nullable', 'date', 'after_or_equal:accepted_at'],
         ]);
@@ -153,16 +135,6 @@ class VehicleController
             if (! $data[$key]) {
                 unset($data[$key]);
             }
-        }
-        // Компактная карточка ТС на заявке шлёт только свои поля: галочки повреждений и негабарит трогаем,
-        // лишь когда форма их присылала (`damage_form`, `oversize_form`).
-        if ($request->has('damage_form')) {
-            $data['damage_zones'] = $data['damage_zones'] ?? [];
-        } else {
-            unset($data['damage_zones']);
-        }
-        if ($request->has('oversize_form')) {
-            $data['oversize'] = $request->boolean('oversize');
         }
         $back = $data['back'] ?? null;
         unset($data['back']);

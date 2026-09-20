@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'unlinked_at'])]
 class Thread extends Model
@@ -27,6 +29,17 @@ class Thread extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class, 'thread_id')->orderBy('date_at');
+    }
+
+    /** Последнее письмо ветки — строке списка нужны его первые слова (`preview`). */
+    public function latestMessage(): HasOne
+    {
+        return $this->hasOne(Message::class, 'thread_id')->latestOfMany('date_at');
+    }
+
+    public function attachments(): HasManyThrough
+    {
+        return $this->hasManyThrough(Attachment::class, Message::class, 'thread_id', 'message_id');
     }
 
     public function offer(): BelongsTo

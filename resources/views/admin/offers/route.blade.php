@@ -63,7 +63,7 @@
             {{-- ТС на стоянке: где стоит, сколько, открытая заявка — на хост стоянки. --}}
             <div class="flex flex-wrap items-center gap-1.5">
                 <a href="{{ \App\Support\Surface::Park->url('/cars/'.$pv->id) }}" class="contents" data-turbo="false"><x-park.state :vehicle="$pv"/></a>
-                @if ($tow = $pv->openRequest(\App\Park\RequestType::Tow))<a href="{{ \App\Support\Surface::Park->url('/requests/'.$tow->id) }}" class="chip" data-turbo="false">Эвакуация: {{ mb_strtolower($tow->state->label()) }}{{ $tow->planned_at ? ', '.$tow->planned_at->translatedFormat('j M') : '' }}</a>@endif
+                @if ($tow = $pv->openRequest(\App\Park\RequestType::Tow))<a href="{{ \App\Support\Surface::Park->url('/cars/'.$pv->id) }}" class="chip" data-turbo="false">Эвакуация: {{ mb_strtolower($tow->state->label()) }}{{ $tow->planned_at ? ', '.$tow->planned_at->translatedFormat('j M') : '' }}</a>@endif
                 @if ($pv->docsPending())<span class="chip">бумаги вендору не отправлены</span>@endif
             </div>
         @endif

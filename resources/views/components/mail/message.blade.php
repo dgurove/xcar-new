@@ -1,7 +1,7 @@
 {{-- Одно письмо: шапка (от кого, кому, когда), тело в песочнице iframe, вложения, «Ответить».
-     На странице ветки — полное (флажок, статус отправки, «Всем», «Переслать»); compact — рядом с формой заявки:
-     без флажка и лишних кнопок, письмо остаётся читаемым и с вложениями. --}}
-@props(['message', 'base' => '/mail', 'compact' => false, 'document' => null])
+     На странице ветки CRM — полное (флажок, статус отправки, «Всем», «Переслать»); compact — в окне писем:
+     без флажка и лишних кнопок, «Ответить» с reply раскрывает редактор во фрейме под письмом. --}}
+@props(['message', 'base' => '/mail', 'compact' => false, 'document' => null, 'reply' => false])
 @php
     use App\Mail\{Direction, ParseState, SendState, BodyRenderer};
     $out = $message->direction === Direction::Out;
@@ -62,13 +62,17 @@
         </div>
     @endif
 
-    <div class="mt-4 flex flex-wrap gap-2">
-        <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="btn btn-quiet btn-s" @if ($compact) data-turbo-frame="_top" @endif>Ответить</a>
-        @unless ($compact)
+    @if ($compact && $reply)
+        <div class="mt-3">
+            <turbo-frame id="reply-{{ $message->id }}" class="block">
+                <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="btn btn-quiet btn-s">Ответить</a>
+            </turbo-frame>
+        </div>
+    @elseif (!$compact)
+        <div class="mt-4 flex flex-wrap gap-2">
+            <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="btn btn-quiet btn-s">Ответить</a>
             <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}?mode=all" class="btn btn-ghost btn-s">Всем</a>
             <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}?mode=forward" class="btn btn-ghost btn-s">Переслать</a>
-        @else
-            <a href="{{ $base }}/{{ $message->thread_id }}" class="btn btn-ghost btn-s" data-turbo-frame="_top">Ветка</a>
-        @endunless
-    </div>
+        </div>
+    @endif
 </x-ui.card>

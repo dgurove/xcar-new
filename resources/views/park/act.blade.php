@@ -58,7 +58,7 @@
             <tr><th>Автомобиль</th><td>{{ $vehicle->titleWithYear() }}</td></tr>
             <tr><th>VIN</th><td>{{ $vehicle->vin ?? '—' }}</td></tr>
             <tr><th>Гос. номер</th><td>{{ $vehicle->plate ?? '—' }}</td></tr>
-            <tr><th>Цвет</th><td>{{ $vehicle->color ?? '—' }}</td></tr>
+            @if ($vehicle->color)<tr><th>Цвет</th><td>{{ $vehicle->color }}</td></tr>@endif
             @if ($vehicle->category)<tr><th>Категория</th><td>{{ $vehicle->category->label() }}{{ $vehicle->oversize ? ', негабарит' : '' }}</td></tr>@endif
             <tr><th>Заказчик</th><td>{{ $vendor?->legal_name ?? $vendor?->name ?? '—' }}{{ $vendor?->inn ? ', ИНН '.$vendor->inn : '' }}</td></tr>
             @if ($vehicle->contact_name || $vehicle->contact_phone)<tr><th>Страхователь</th><td>{{ trim(($vehicle->contact_name ?? '').' '.($vehicle->contact_phone ?? '')) }}</td></tr>@endif

@@ -59,6 +59,15 @@ class CandidateController
         return view('mail.candidates.peek', ['c' => $candidate] + $this->links());
     }
 
+    /** Окно писем кандидата (фрейм letters-frame): все письма целиком с «Ответить». */
+    public function letters(Candidate $candidate)
+    {
+        abort_if($candidate->scope !== $this->scope, 404);
+        $candidate->load(['messages.attachments', 'messages.addresses', 'messages.author']);
+
+        return view('mail.candidates.letters', ['c' => $candidate, 'base' => $this->mail]);
+    }
+
     public function promote(Request $request, Candidate $candidate)
     {
         abort_if($candidate->state === CandidateState::Promoted || $candidate->scope !== $this->scope, 404);

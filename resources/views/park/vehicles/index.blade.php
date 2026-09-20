@@ -30,7 +30,7 @@
             </x-ui.table>
         @else
         <div class="mt-6 {{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
-            @foreach ($vehicles as $vehicle)<x-park.card :vehicle="$vehicle"/>@endforeach
+            @foreach ($vehicles as $vehicle)<x-park.card :vehicle="$vehicle" :debt="$debts[$vehicle->id] ?? 0"/>@endforeach
         </div>
         @endif
         <div class="mt-8"><x-ui.pager :of="$vehicles" :sizes="\App\Support\ListView::perSizes($view)"/></div>

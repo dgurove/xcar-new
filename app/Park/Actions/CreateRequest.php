@@ -37,7 +37,7 @@ final class CreateRequest
                 $model = $brand && ! empty($data['model']) ? CarModel::resolve($brand, $data['model']) : (! empty($data['model_id']) ? CarModel::find($data['model_id']) : null);
                 $vehicle = Vehicle::create([
                     'ref' => $data['ref'] ?? null, 'vin' => $data['vin'] ?? null, 'plate' => $data['plate'] ?? null, 'year' => $data['year'] ?? null,
-                    'color' => $data['color'] ?? null, 'brand_id' => $brand?->id, 'model_id' => $model?->id, 'vendor_id' => $data['vendor_id'] ?? null,
+                    'brand_id' => $brand?->id, 'model_id' => $model?->id, 'vendor_id' => $data['vendor_id'] ?? null,
                     'category' => $data['category'] ?? null,
                     'contact_name' => $data['contact_name'] ?? null, 'contact_phone' => $data['contact_phone'] ?? null,
                     'flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? [], 'value' => $data['value'] ?? null,
