@@ -33,7 +33,7 @@
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 @if ($type === RequestType::Intake && $letters)
                     {{-- Из письма — только подсказка: как привезут, решает звонок страхователю. --}}
-                    @if ($delivery === Delivery::Tow->value)<div class="col-span-full"><span class="chip">В письме: вывоз</span></div>@endif
+                    @if ($val('delivery_hint'))<div class="col-span-full"><span class="chip">В письме: {{ $val('delivery_hint') }}</span></div>@endif
                 @elseif ($type === RequestType::Intake)
                     {{-- Эвакуатор или сам — узнаём по телефону; «ещё не знаем» оставляет заявку в «Связаться». Руками заводят, когда уже знают — по умолчанию «сам». --}}
                     <div class="field col-span-full">
@@ -49,7 +49,7 @@
                 @if ($type === RequestType::Move)
                     <x-ui.field name="yard_id" label="Куда" :options="$yards" placeholder="—"/>
                 @endif
-                <x-ui.field name="planned_at" label="Когда" type="datetime-local"/>
+                <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$val('planned_at')"/>
                 @if ($type === RequestType::Tow || $letters)
                     <x-ui.field name="from_address" label="Откуда" :value="$val('from_address') ?? $vehicle?->offer?->inspection_address" span="col-span-2"/>
                 @endif

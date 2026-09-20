@@ -40,11 +40,11 @@
                             <span class="chip">{{ $o->state->label() }}</span>
                         </div>
                     @elseif ($section['candidate'])
-                        @php $c = $section['candidate']; $cv = fn ($f) => $c->extracted[$f]['value'] ?? null; $car = trim(($cv('brand') ?? '').' '.($cv('model') ?? '')); @endphp
+                        @php $c = $section['candidate']; $cv = fn ($f) => $c->extracted[$f]['value'] ?? null; @endphp
                         <div class="mb-2 flex items-start gap-3">
                             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-                                <span class="font-medium">{{ $c->code ?: ($car ?: $c->title()) }}</span>
-                                @if ($c->code && $car)<span class="text-ink-muted">{{ $car }}</span>@endif
+                                <span class="font-medium">{{ $c->title() }}</span>
+                                @if ($c->code && $c->hasCar())<span class="tag nums">{{ $c->code }}</span>@endif
                                 @if ($cv('plate'))<span class="tag nums">{{ $cv('plate') }}</span>@endif
                                 @if ($c->vendor?->name ?? $cv('vendor'))<span class="tag">{{ $c->vendor?->name ?? $cv('vendor') }}</span>@endif
                             </div>

@@ -47,7 +47,8 @@ final class ExtractCandidate implements ShouldQueue
         $extractor ??= app(Extractor::class);
         $park = $message->account->scope === Scope::Park;
         $body = $message->text_body ?: $message->html_body;
-        $fields = $park ? (new ParkExtractor)->extract($message->subject, $body, $message->from_email, $message->date_at)
+        $message->loadMissing('attachments');
+        $fields = $park ? app(ParkExtractor::class)->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments->pluck('filename')->all(), $message->attachments)
             : $extractor->extract($message->subject, $body, $message->from_email, $message->date_at);
         $code = Code::normalize($fields['code']['value'] ?? null);
         $scope = $park ? Scope::Park : Scope::Offers;

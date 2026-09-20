@@ -7,7 +7,7 @@
     $out = $thread->latestMessage?->direction === \App\Mail\Direction::Out;
     $who = collect($thread->counterparts())->map(fn ($p) => $p['name'] ?: $p['email'])->take(2)->implode(', ') ?: $thread->account->title;
     $files = $thread->attachments_count ?? ($thread->has_attachments ? 1 : 0);
-    $chip = $thread->vehicle ? $thread->vehicle->titleWithYear() : ($thread->offer ? $thread->offer->title() : ($thread->candidate ? ($thread->candidate->code ?: $thread->candidate->title()) : null));
+    $chip = $thread->vehicle ? $thread->vehicle->titleWithYear() : ($thread->offer ? $thread->offer->title() : ($thread->candidate?->title()));
     $when = $thread->last_message_at?->translatedFormat($thread->last_message_at->isToday() ? 'H:i' : ($thread->last_message_at->isCurrentYear() ? 'j M' : 'j M Y'));
 @endphp
 <x-ui.swipe id="thread-{{ $thread->id }}">

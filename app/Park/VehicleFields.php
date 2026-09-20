@@ -20,7 +20,8 @@ final class VehicleFields
         return [
             'ref' => ['nullable', 'string', 'max:60'], 'vin' => ['nullable', 'string', 'max:17'], 'plate' => ['nullable', 'string', 'max:12'],
             'year' => ['nullable', 'integer', 'between:1950,'.(now()->year + 1)],
-            'brand_id' => ['nullable', 'exists:brands,id'], 'model_id' => ['nullable', 'exists:car_models,id'], 'vendor_id' => ['nullable', 'exists:vendors,id'],
+            // Марка и модель обязательны: ТС без имени в списках не нужна, номер убытка человеку ничего не говорит.
+            'brand_id' => ['required', 'exists:brands,id'], 'model_id' => ['required', 'exists:car_models,id'], 'vendor_id' => ['nullable', 'exists:vendors,id'],
             'category' => ['nullable', Rule::enum(Category::class)],
             'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'integer', 'min:0'],
         ];

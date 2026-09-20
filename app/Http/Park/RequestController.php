@@ -127,6 +127,11 @@ class RequestController
                 'contact_name' => $v('insured_name'), 'contact_phone' => $v('insured_phone') ?? ((array) $v('phones'))[0] ?? null,
                 'from_address' => $v('location'), 'note' => $candidate->subject,
                 'delivery' => $v('request') === 'tow' ? Delivery::Tow->value : null,
+                // ВСК пишет, когда и кто привезёт: дата в форму, способ — подсказкой (решает звонок).
+                'planned_at' => $v('planned_at') ? str_replace(' ', 'T', $v('planned_at')) : null,
+                'delivery_hint' => match ($v('delivery')) {
+                    'vendor' => 'привезёт страховая', 'self' => 'привезёт сам', default => ($v('request') === 'tow' ? 'вывоз' : null)
+                },
                 'flags' => $v('flags') ?: [], 'docs_required' => $v('docs_required') ?: [], 'value' => $v('value'),
             ];
             $type = in_array($type, [RequestType::Intake, RequestType::Tow], true) ? RequestType::Intake : $type;

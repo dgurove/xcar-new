@@ -8,6 +8,8 @@ use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Listeners\AttachGuestEnquiry;
 use App\Chats\Listeners\ScheduleAutoReply;
 use App\Live\PublishLiveUpdates;
+use App\Mail\Extraction\AttachmentReader;
+use App\Mail\Extraction\NullAttachmentReader;
 use App\Mail\OnMessage;
 use App\Media\StampOnAdd;
 use App\Notifications\Notify;
@@ -26,7 +28,11 @@ use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        // Сканы и документы из писем пока не читаются; сюда встанет OCR или модель по API.
+        $this->app->bind(AttachmentReader::class, NullAttachmentReader::class);
+    }
 
     public function boot(): void
     {

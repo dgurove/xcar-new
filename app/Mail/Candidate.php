@@ -91,9 +91,16 @@ class Candidate extends Model implements HasMedia
         return $this->extracted[$field]['value'] ?? null;
     }
 
+    /** Марка и модель; без марки — номер убытка, без номера — госномер, без всего — тема. */
     public function title(): string
     {
-        return trim(($this->value('brand') ?? '').' '.($this->value('model') ?? '')) ?: ($this->subject ?: 'Письмо');
+        return trim(($this->value('brand') ?? '').' '.($this->value('model') ?? '')) ?: ($this->code ?: ($this->value('plate') ?: ($this->subject ?: 'Письмо')));
+    }
+
+    /** Есть ли у кандидата имя машины — иначе заголовок несёт номер. */
+    public function hasCar(): bool
+    {
+        return (bool) $this->value('brand');
     }
 
     /** Пришло письмо с полями, которых не было или которые отличаются — карточку стоит перепроверить. */

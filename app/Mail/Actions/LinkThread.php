@@ -101,7 +101,7 @@ final class LinkThread
             return null;
         }
         $text = $message->subject.' '.($message->text_body ?: $message->html_body);
-        $fields = (new ParkExtractor)->extract($message->subject, $message->text_body ?: $message->html_body, $message->from_email);
+        $fields = app(ParkExtractor::class)->extract($message->subject, $message->text_body ?: $message->html_body, $message->from_email, null, $message->attachments->pluck('filename')->all(), $message->attachments);
         // Только живая ТС: письмо о выданной или отменённой — новый заезд, ему место в «Из писем».
         $live = fn () => Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->latest();
         $vehicle = null;

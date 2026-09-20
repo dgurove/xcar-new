@@ -21,9 +21,10 @@ final class Keys
     /** @return list<string> */
     public function ofMessage(Message $message): array
     {
+        $message->loadMissing('attachments');
         $body = $message->text_body ?: $message->html_body;
         $fields = $message->account?->scope === Scope::Park
-            ? (new ParkExtractor)->extract($message->subject, $body, $message->from_email, $message->date_at)
+            ? app(ParkExtractor::class)->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments->pluck('filename')->all())
             : $this->offers->extract($message->subject, $body, $message->from_email, $message->date_at);
 
         return Candidate::identities($fields, null);
@@ -33,7 +34,7 @@ final class Keys
     public function ofThread(Thread $thread): array
     {
         $keys = [];
-        foreach (Message::with('account')->where('thread_id', $thread->id)->get() as $message) {
+        foreach (Message::with(['account', 'attachments'])->where('thread_id', $thread->id)->get() as $message) {
             $keys = [...$keys, ...$this->ofMessage($message)];
         }
 

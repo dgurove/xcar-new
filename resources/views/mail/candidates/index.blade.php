@@ -16,7 +16,7 @@
         <x-ui.table id="candidates" class="mt-6">
             <x-slot:head>
                 <tr>
-                    <th>№ убытка</th><th class="grow">Марка, модель</th><th class="hidden sm:table-cell">VIN</th><th class="hidden sm:table-cell">Вендор</th>
+                    <th class="grow">Марка, модель</th><th>№ убытка</th><th class="hidden sm:table-cell">VIN</th><th class="hidden sm:table-cell">Вендор</th>
                     <th class="num">Писем</th><th class="num">Последнее</th><th class="num hidden sm:table-cell">Ответ до</th>
                 </tr>
             </x-slot:head>

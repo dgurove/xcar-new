@@ -7,8 +7,8 @@
     use App\Mail\CandidateState;
     $v = fn ($f) => $c->extracted[$f]['value'] ?? null;
     $files = $c->message?->attachments->reject->is_inline ?? collect();
-    $title = $c->code ?: $c->title();
-    $car = trim(($v('brand') ?? '').' '.($v('model') ?? '').($v('year') ? ', '.$v('year') : ''));
+    // Заголовок — машина («Changan CS35 Plus, 2023»), номер убытка чипом; без марки заголовком идёт номер.
+    $title = $c->title().($c->hasCar() && $v('year') ? ', '.$v('year') : '');
     $card = $c->card();
     $main = ! $card && $c->vehicle ? $c->vehicle->mainPhoto() : null;
     $promoted = $c->state === CandidateState::Promoted;
@@ -25,14 +25,15 @@
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="block min-w-0 flex-1 leading-snug hover:text-accent-text"><span class="line-clamp-1">{{ $title }}@if ($c->code && $car) <span class="font-normal text-ink-muted">{{ $car }}</span>@endif</span></a>
+            <a href="{{ $href }}" class="block min-w-0 flex-1 leading-snug hover:text-accent-text"><span class="line-clamp-1">{{ $title }}</span></a>
         </div>
     </div>
     <div class="card-extra">
         @if ($c->hasNews())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ещё письмо</x-ui.pill>@endif
         @if ($c->state !== CandidateState::New)<span class="tag">{{ $c->state->label() }}</span>@endif
-        @if ($c->vendor?->name ?? $v('vendor') ?? $v('sender'))<span class="tag">{{ $c->vendor?->name ?? $v('vendor') ?? $v('sender') }}</span>@endif
+        @if ($c->code && $c->hasCar())<span class="tag nums">{{ $c->code }}</span>@endif
         @if ($v('plate'))<span class="tag nums">{{ $v('plate') }}</span>@endif
+        @if ($c->vendor?->name ?? $v('vendor') ?? $v('sender'))<span class="tag">{{ $c->vendor?->name ?? $v('vendor') ?? $v('sender') }}</span>@endif
         @if ($v('location'))<x-ui.place class="tag">{{ $v('location') }}</x-ui.place>@endif
         <span class="tag nums">{{ $c->messages_count }} {{ \App\Support\Plural::of($c->messages_count, ['письмо', 'письма', 'писем']) }}</span>
         @if ($files->isNotEmpty())<span class="tag nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files->count() }}</span>@endif
