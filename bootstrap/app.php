@@ -65,6 +65,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/');
         $middleware->alias(['staff' => EnsureStaff::class, 'manager' => EnsureManager::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
         $middleware->prepend(RedirectLegacyPaths::class);
+        // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
+        $middleware->prependToPriorityList(\Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class, ResolveSurface::class);
         $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, TouchSeen::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
     })

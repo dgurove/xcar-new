@@ -4,6 +4,8 @@ return [
     // Хосты. CRM и стоянка — поддомены того же приложения; сайт — хост app.url.
     'crm_host' => env('CRM_HOST', 'crm.localhost'),
     'park_host' => env('PARK_HOST', 'park.localhost'),
+    // Технические работы на стоянке: телефоны через запятую, кому она открыта; остальным — 503. Пусто — открыта всем.
+    'park_only' => array_filter(array_map('trim', explode(',', (string) env('PARK_ONLY', '')))),
 
     // Наше юрлицо — в актах стоянки. Реквизиты для счетов появятся с деньгами.
     'company' => ['name' => 'ООО «ПРАЙМ»', 'inn' => '5007110932', 'director' => 'Кузнецов А. В.'],
