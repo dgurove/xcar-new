@@ -41,6 +41,8 @@ class MailController
 {
     public const PRESETS = ['all' => 'Все', 'unread' => 'Непрочитанные', 'files' => 'С вложениями', 'sent' => 'Отправленные', 'linked' => 'По предложениям'];
 
+    public const TABLE_ROWS = 100;
+
     public const SORTS = ['fresh' => 'Свежие', 'unanswered' => 'Давно без ответа', 'unread' => 'Непрочитанные первыми'];
 
     /** Пресеты по поверхности: на стоянке «привязанные» — к ТС, не к предложениям. */
@@ -84,7 +86,8 @@ class MailController
         };
 
         return view('admin.mail.index', [
-            'threads' => $view === ListView::TABLE ? $threads->paginate(max($threads->count(), 1))->withQueryString() : $threads->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+            // Таблица — по сто веток на страницу: почта растёт без предела, целиком её не отдать.
+            'threads' => $threads->paginate($view === ListView::TABLE ? self::TABLE_ROWS : ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'view' => $view,
             'sort' => $sort,
             'accounts' => $accounts,

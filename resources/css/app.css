@@ -480,8 +480,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .tag { white-space: nowrap; }
   /* Место (x-ui.place) — метка на карте в размер шрифта перед текстом; VIN (x-ui.vin-code) —
      иконка копирования после, нажатие по всему. Форма — от класса снаружи (tag, chip, mark, текст). */
-  /* Длинный адрес в чипе ужимается многоточием, а не растягивает страницу. */
+  /* Длинный адрес в чипе ужимается многоточием, а не растягивает страницу; в тексте и ячейке — переносится как раньше. */
   .place, .vincode { @apply inline-flex min-w-0 max-w-full items-center gap-1; }
+  .tag.place > .place-text, .chip.place > .place-text, .mark.place > .place-text, .truncate.place > .place-text { @apply truncate; }
   .place > svg, .vincode > svg { @apply size-[1em] shrink-0 text-ink-dim; }
   .tag.place { padding-left: 7px; }
   .tag.vincode { padding-right: 7px; }

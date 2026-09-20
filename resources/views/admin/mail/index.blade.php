@@ -38,6 +38,7 @@
             <x-slot:head><tr><th class="w-4 pr-0"></th><th class="hidden sm:table-cell">От кого</th><th class="grow">Тема</th><th class="hidden sm:table-cell">{{ $crm ? 'Предложение' : 'ТС' }}</th><th class="w-6 pl-0"></th><th class="num">Когда</th></tr></x-slot:head>
             @foreach ($threads as $thread)<x-mail.thread-row :thread="$thread" :base="$base" :accounts="$accounts" :slug="$slug"/>@endforeach
         </x-ui.table>
+        @if ($threads->hasPages())<div class="mt-8"><x-ui.pager :of="$threads"/></div>@endif
     @else
         <div class="mt-6 flex flex-col gap-2" id="threads">
             @foreach ($threads as $thread)

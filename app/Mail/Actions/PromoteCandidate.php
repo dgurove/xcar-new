@@ -69,11 +69,12 @@ final class PromoteCandidate
             ], fn ($x) => $x !== null && $x !== ''), $by);
 
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
-            $candidate->moveMediaTo($offer);
             $this->linkAll($candidate, $offer);
 
             return $offer;
         });
+        // Файлы — после транзакции: откат не должен оставить строки медиа без файлов.
+        $candidate->moveMediaTo($offer);
 
         return $offer;
     }

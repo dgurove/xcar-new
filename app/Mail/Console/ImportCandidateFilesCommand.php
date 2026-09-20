@@ -17,7 +17,8 @@ final class ImportCandidateFilesCommand extends Command
     public function handle(): int
     {
         $n = 0;
-        Candidate::whereIn('state', [CandidateState::New, CandidateState::Rejected])->with('messages')->each(function (Candidate $c) use (&$n) {
+        // Свежие первыми — они наверху списка, их и смотрят.
+        Candidate::whereIn('state', [CandidateState::New, CandidateState::Rejected])->with('messages')->orderByDesc('last_message_at')->orderByDesc('id')->each(function (Candidate $c) use (&$n) {
             foreach ($c->messages as $m) {
                 ImportCandidateFiles::dispatch($c->id, $m->id);
                 $n++;

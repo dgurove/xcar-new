@@ -16,7 +16,8 @@
     <x-ui.field name="color" label="Цвет" :value="$v('color')"/>
     <x-ui.field name="category" label="Категория" :options="$categories" placeholder="—" :value="$vehicle?->category?->value ?? $v('category')"/>
     <x-ui.field name="value" label="Оценка, ₽" :value="$v('value')" inputmode="numeric"/>
-    <x-ui.field name="contact_name" label="Страхователь" :value="$v('contact_name')"/>
-    <x-ui.field name="contact_phone" label="Телефон" type="tel" :value="$v('contact_phone')"/>
+    {{-- Свои id: на странице заявки те же поля есть у формы звонка и эвакуации. --}}
+    <x-ui.field name="contact_name" id="v-contact_name" label="Страхователь" :value="$v('contact_name')"/>
+    <x-ui.field name="contact_phone" id="v-contact_phone" label="Телефон" type="tel" :value="$v('contact_phone')"/>
     @if ($oversize)<input type="hidden" name="oversize_form" value="1"><x-ui.check name="oversize" :checked="(bool) old('oversize', $vehicle?->oversize)" class="self-end">Негабарит</x-ui.check>@endif
 </div>
