@@ -14,14 +14,20 @@ final class VehicleFields
 {
     public const KEYS = ['ref', 'vendor_id', 'brand_id', 'model_id', 'year', 'plate', 'vin', 'category', 'contact_name', 'contact_phone', 'value'];
 
-    /** @return array<string, list<mixed>> */
-    public static function rules(): array
+    /**
+     * Марка и модель обязательны: ТС без имени в списках не нужна, номер убытка человеку ничего не говорит.
+     * `$identity = false` — форма без полей ТС (шторка «Условия» шлёт только договор).
+     *
+     * @return array<string, list<mixed>>
+     */
+    public static function rules(bool $identity = true): array
     {
+        $name = $identity ? 'required' : 'nullable';
+
         return [
             'ref' => ['nullable', 'string', 'max:60'], 'vin' => ['nullable', 'string', 'max:17'], 'plate' => ['nullable', 'string', 'max:12'],
             'year' => ['nullable', 'integer', 'between:1950,'.(now()->year + 1)],
-            // Марка и модель обязательны: ТС без имени в списках не нужна, номер убытка человеку ничего не говорит.
-            'brand_id' => ['required', 'exists:brands,id'], 'model_id' => ['required', 'exists:car_models,id'], 'vendor_id' => ['nullable', 'exists:vendors,id'],
+            'brand_id' => [$name, 'exists:brands,id'], 'model_id' => [$name, 'exists:car_models,id'], 'vendor_id' => ['nullable', 'exists:vendors,id'],
             'category' => ['nullable', Rule::enum(Category::class)],
             'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'integer', 'min:0'],
         ];
