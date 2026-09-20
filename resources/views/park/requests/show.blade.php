@@ -10,12 +10,15 @@
     $contactName = $req->contact_name ?? $vehicle->contact_name;
     $contactPhone = $req->contact_phone ?? $vehicle->contact_phone;
 @endphp
-<x-ui.shell :title="$req->type->label()" :back="['Сегодня', '/']">
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_26rem]">
+{{-- Заявка одной страницей: ТС правится тут же компактной карточкой, звонок / эвакуация / приём / выдача — ниже,
+     письма — окном (x-mail.window), кадры из письма — рядом со слотами приёма, чтобы сравнивать. --}}
+<x-ui.shell :title="$req->type->label()" :back="['Заявки', '/']">
+    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
     <div class="flex min-w-0 flex-col gap-4" data-controller="sheet">
-        <x-park.vehicle-row :vehicle="$vehicle">
+        <x-park.vehicle-row :vehicle="$vehicle" :href="'/cars/'.$vehicle->id">
             <x-park.state :vehicle="$vehicle"/>
             @if ($vehicle->category)<span class="chip">{{ $vehicle->category->label() }}</span>@endif
+            @if ($vehicle->yard && $vehicle->state === VehicleState::Stored)<x-ui.place class="chip">{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place>@endif
         </x-park.vehicle-row>
 
         @if (($tow || $callForm) && ($contactName || $contactPhone))
@@ -42,7 +45,7 @@
                 @if ($tow && $req->carrier)<span class="chip">{{ $req->carrier }}</span>@endif
                 @if ($tow && $req->distance_km)<span class="chip nums">{{ $req->distance_km }} км</span>@endif
                 @if ($tow && $req->cost)<span class="chip nums">{{ Money::rub($req->cost) }}</span>@endif
-                @if ($messages->isNotEmpty())<x-mail.aside-button :count="$messages->count()" chip/>@endif
+                @if ($messages->isNotEmpty())<x-mail.window-button :count="$messages->count()" chip/>@endif
                 @if ($open)
                     <button type="button" class="chip person" data-action="sheet#open">@if ($req->assignee)<x-ui.avatar :user="$req->assignee" :size="20"/>{{ $req->assignee->shortName() }}@else<x-ui.icon name="user" class="size-4"/> Исполнитель@endif</button>
                     @if ($req->assignee_id !== auth()->id())<form method="post" action="/requests/{{ $req->id }}/take" class="contents">@csrf<button class="chip bg-accent-soft text-accent-text">Беру</button></form>@endif
@@ -65,6 +68,18 @@
         </x-ui.sheet>
 
         @if ($errors->any())<p class="field-error">{{ $errors->first() }}</p>@endif
+
+        @if ($open)
+            {{-- ТС правится здесь же: та же форма, что на странице ТС, только без договора и повреждений; возврат сюда. --}}
+            <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin draft">
+                @csrf @method('put')
+                <input type="hidden" name="back" value="/requests/{{ $req->id }}">
+                <x-ui.card title="Транспортное средство">
+                    <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories" cols="grid-cols-2 sm:grid-cols-3"/>
+                    <div class="mt-3 flex justify-end"><x-ui.button variant="secondary" size="sm">Сохранить ТС</x-ui.button></div>
+                </x-ui.card>
+            </form>
+        @endif
 
         @if ($callForm)
             {{-- Звонок: эвакуатор (сразу с назначением), привезёт сам (когда), не дозвонились (когда снова). --}}
@@ -146,28 +161,26 @@
                         <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters"/>
                         <datalist id="spots-list" data-spots-target="list"></datalist>
                         <x-ui.field name="accepted_at" label="Когда" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" span="col-span-2"/>
-                        <div class="field col-span-full">
-                            <span class="field-label">Категория</span>
-                            <div class="flex flex-wrap gap-1.5">
-                                @foreach (\App\Cars\Category::cases() as $c)
-                                    <label class="choice"><input type="radio" name="category" value="{{ $c->value }}" @checked(old('category', $vehicle->category?->value) === $c->value)><span>{{ $c->label() }}</span></label>
-                                @endforeach
-                                <label class="choice"><input type="checkbox" switch name="oversize" value="1" @checked(old('oversize', $vehicle->oversize))><span>Негабарит</span></label>
-                            </div>
-                        </div>
-                        @if ($storageRate)<span class="chip nums col-span-full self-start">{{ $storageRate }}</span>@endif
+                        @if ($storageRate)<span class="chip nums col-span-full justify-self-start">{{ $storageRate }}</span>@endif
                     </div>
                 </x-ui.card>
                 @include('park.requests.inspection-fields', ['transit' => $tow])
-                <x-ui.card title="Фото при приёме" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
+                {{-- Два блока: кадры из письма страховой — только смотреть и сравнивать; при приёме — снимаем по слотам. --}}
+                @php $mailPhotos = $vehicle->photos()->filter(fn ($m) => ($m->getCustomProperty('stage') ?? 'mail') === 'mail'); @endphp
+                @if ($mailPhotos->isNotEmpty())
+                    <x-ui.card :title="'Из письма'" :count="$mailPhotos->count()" data-controller="photos" data-photos-readonly-value="true">
+                        <x-ui.photos :photos="$mailPhotos" readonly :hide="false" :main="false" id="mail-gallery"/>
+                    </x-ui.card>
+                @endif
+                <x-ui.card title="При приёме" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
                     <input type="file" accept="image/*,.heic,.heif" capture="environment" multiple hidden data-photos-target="input" data-action="change->photos#upload">
                     <div hidden data-photos-target="progress" class="mb-3">
                         <div class="mb-1 text-sm text-ink-muted" data-label></div>
                         <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
                     </div>
                     <div id="photo-slots"><x-park.photo-slots :vehicle="$vehicle" stage="intake" :slots="$slots"/></div>
-                    @if ($vehicle->photos()->isNotEmpty())<div class="mt-3">@include('park.vehicles.gallery', ['vehicle' => $vehicle])</div>@endif
                 </x-ui.card>
+                @include('park.requests.signature-fields')
             </form>
         @elseif ($open && $req->type === RequestType::Move && $vehicle->state === VehicleState::Stored)
             <form method="post" action="/requests/{{ $req->id }}/move" id="act-form">
@@ -224,7 +237,13 @@
                     </div>
                 </x-ui.card>
                 @include('park.requests.inspection-fields', ['transit' => false, 'signer' => 'Кто получил'])
-                <x-ui.card title="Фото при выдаче" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
+                @php $intakePhotos = $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === 'intake'); @endphp
+                @if ($intakePhotos->isNotEmpty())
+                    <x-ui.card title="При приёме" :count="$intakePhotos->count()" data-controller="photos" data-photos-readonly-value="true">
+                        <x-ui.photos :photos="$intakePhotos" readonly :hide="false" :main="false" id="intake-gallery"/>
+                    </x-ui.card>
+                @endif
+                <x-ui.card title="При выдаче" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
                     <input type="file" accept="image/*,.heic,.heif" capture="environment" multiple hidden data-photos-target="input" data-action="change->photos#upload">
                     <div hidden data-photos-target="progress" class="mb-3">
                         <div class="mb-1 text-sm text-ink-muted" data-label></div>
@@ -232,6 +251,7 @@
                     </div>
                     <div id="photo-slots"><x-park.photo-slots :vehicle="$vehicle" stage="release" :slots="$slots"/></div>
                 </x-ui.card>
+                @include('park.requests.signature-fields', ['signer' => 'Кто получил'])
             </form>
         @elseif ($open && !$tow && !$callForm)
             <form method="post" action="/requests/{{ $req->id }}/close" id="act-form">
@@ -240,12 +260,25 @@
             </form>
         @endif
     </div>
-    @if ($messages->isNotEmpty())<x-mail.aside :messages="$messages"/>@endif
+    @if ($events->isNotEmpty())
+        <x-ui.card title="История" class="min-w-0 lg:col-start-2 lg:row-start-1">
+            <div class="flex flex-col gap-2 text-sm">
+                @foreach ($events as $event)
+                    <div class="flex gap-3">
+                        <span class="shrink-0 text-ink-dim nums">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
+                        <span class="min-w-0">{{ $event->text() }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </x-ui.card>
+    @endif
     </div>
-    @if ($verb)
+    @if ($messages->isNotEmpty())<x-mail.window :messages="$messages"/>@endif
+    @if ($verb || $messages->isNotEmpty())
         <x-ui.action-bar>
-            <x-ui.button form="act-form" class="min-w-0 flex-1">{{ $verb }}</x-ui.button>
-            <form method="post" action="/requests/{{ $req->id }}/close" data-turbo-confirm="Отменить заявку?">@csrf<input type="hidden" name="done" value="0"><x-ui.button variant="ghost">Отменить</x-ui.button></form>
+            @if ($verb)<x-ui.button form="act-form" class="min-w-0 flex-1">{{ $verb }}</x-ui.button>@endif
+            @if ($messages->isNotEmpty())<x-mail.window-button :count="$messages->count()" class="shrink-0"/>@endif
+            @if ($verb)<form method="post" action="/requests/{{ $req->id }}/close" data-turbo-confirm="Отменить заявку?">@csrf<input type="hidden" name="done" value="0"><x-ui.button variant="ghost" class="btn-round" aria-label="Отменить заявку"><x-ui.icon name="x" class="size-5"/></x-ui.button></form>@endif
         </x-ui.action-bar>
     @endif
 </x-ui.shell>

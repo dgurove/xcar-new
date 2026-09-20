@@ -76,7 +76,7 @@ class CandidateController
 
     protected function query(): Builder
     {
-        return Candidate::query()->with(['message.attachments', 'vendor', 'offer', 'vehicle.brand', 'vehicle.model'])->where('scope', $this->scope);
+        return Candidate::query()->with(['message.attachments', 'media', 'vendor', 'offer', 'vehicle.brand', 'vehicle.model', 'vehicle.media'])->where('scope', $this->scope);
     }
 
     /** Адреса поверхности для шаблонов: свой список, свой ящик, стоянка или CRM. */

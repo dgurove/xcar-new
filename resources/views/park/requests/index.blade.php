@@ -1,8 +1,8 @@
-{{-- Заявки стоянки: пресеты типов и «Готовые», сортировка, поиск по ТС, вендор, площадка и «Мои» в фильтрах;
+{{-- Главная стоянки — заявки: пресеты «Просрочено», «Связаться», типы и «Готовые», сортировка, поиск по ТС, вендор, площадка и «Мои» в фильтрах;
      три вида — плитки/строки x-park.request-card, таблица x-park.request-row с окошком. --}}
 @php use App\Support\ListView; $view = ListView::pick(request(), $requests->total()); @endphp
 <x-ui.shell title="Заявки" :count="$requests->total()" :phone-heading="false">
-    <x-ui.toolbar :sorts="\App\Http\Park\RequestController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['done' => $done ? 1 : null, 'vendor' => request('vendor'), 'yard' => request('yard'), 'mine' => request('mine'), ListView::PARAM => request(ListView::PARAM)])" name="requests">
+    <x-ui.toolbar :sorts="\App\Http\Park\RequestController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['overdue' => !empty($counts['overdue']) ? 'pill-danger' : '']" :hidden="array_filter(['done' => $done ? 1 : null, 'vendor' => request('vendor'), 'yard' => request('yard'), 'mine' => request('mine'), ListView::PARAM => request(ListView::PARAM)])" name="requests">
         <x-slot:pillsExtra>
             <x-ui.pill :href="request()->fullUrlWithQuery(['done' => $done ? null : 1, 'page' => null])" :current="$done">Готовые</x-ui.pill>
         </x-slot:pillsExtra>

@@ -1,6 +1,6 @@
 <x-ui.shell :title="'Файл для закупки № '.$purchase->number" :back="['Закупка', '/purchases/'.$purchase->number]" narrow>
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        @foreach ($stats as $label => $value)<x-ui.stat :value="$value" :label="$label"/>@endforeach
+    <div class="flex flex-wrap gap-1.5">
+        @foreach ($stats as $label => $value)<span class="chip nums">{{ $value }} <span class="font-normal text-ink-muted">{{ $label }}</span></span>@endforeach
     </div>
     @php $bad = array_filter($rows, fn ($r) => $r['dl'] === null || $r['problems']); @endphp
     @if ($bad)

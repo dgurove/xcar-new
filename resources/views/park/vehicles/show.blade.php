@@ -105,21 +105,7 @@
         <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin draft" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @csrf @method('put')
             <x-ui.card title="Транспортное средство" class="order-1">
-                <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                    <x-ui.field name="ref" label="Номер убытка" :value="$vehicle->ref" span="col-span-2 lg:col-span-1"/>
-                    <x-ui.field name="vendor_id" label="Заказчик" :options="$vendors" placeholder="—" :value="$vehicle->vendor_id"/>
-                    <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$vehicle->brand_id" :text="$vehicle->brand?->name" resets="#cb-model_id"/>
-                    <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="$vehicle->model_id" :text="$vehicle->model?->name"/>
-                    <x-ui.field name="year" label="Год" inputmode="numeric" :value="$vehicle->year"/>
-                    <x-ui.field name="plate" label="Госномер" :value="$vehicle->plate" autocapitalize="characters"/>
-                    <x-ui.vin :value="$vehicle->vin" span="col-span-2 lg:col-span-1"/>
-                    <x-ui.field name="color" label="Цвет" :value="$vehicle->color"/>
-                    <x-ui.field name="category" label="Категория" :options="$categories" placeholder="—" :value="$vehicle->category?->value"/>
-                    <x-ui.field name="value" label="Оценка, ₽" :value="$vehicle->value" inputmode="numeric"/>
-                    <x-ui.field name="contact_name" label="Страхователь" :value="$vehicle->contact_name"/>
-                    <x-ui.field name="contact_phone" label="Телефон" type="tel" :value="$vehicle->contact_phone"/>
-                    <x-ui.check name="oversize" :checked="$vehicle->oversize" class="self-end">Негабарит</x-ui.check>
-                </div>
+                <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/>
             </x-ui.card>
             @if ($canManage)
             <x-ui.card title="Договор" class="order-1">
@@ -139,6 +125,7 @@
             @endif
             <x-ui.card title="Повреждения" class="order-1">
                 <div class="grid grid-cols-2 gap-3">
+                    <input type="hidden" name="damage_form" value="1">
                     <div class="field col-span-full">
                         <div class="flex flex-wrap gap-1.5">
                             @foreach ($zones as $zone)
@@ -198,7 +185,6 @@
         </x-ui.card>
 
         <div class="contents lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
-            @if ($vehicle->requests->isNotEmpty())
             @if ($threads->isNotEmpty())
             <x-ui.card title="Письма" class="order-4">
                 <div class="flex flex-col divide-y divide-line/40 text-sm">
@@ -213,6 +199,7 @@
                 </div>
             </x-ui.card>
             @endif
+            @if ($vehicle->requests->isNotEmpty())
             <x-ui.card title="Заявки" class="order-4">
                 <div class="flex flex-col divide-y divide-line/40">
                     @foreach ($vehicle->requests as $r)
@@ -237,10 +224,11 @@
                         @foreach ($insp->docs ?? [] as $d)<span class="tag">{{ \App\Park\Inspection::DOCS[$d] ?? $d }}</span>@endforeach
                         @foreach ($insp->equipment ?? [] as $e)<span class="tag">{{ \App\Park\Inspection::EQUIPMENT[$e] ?? $e }}</span>@endforeach
                         @foreach ($insp->repairMap() as $k => $v)@if ($v !== null)<span class="tag {{ $v ? 'text-danger' : '' }}">{{ \App\Park\Inspection::REPAIR[$k] }}: {{ $v ? 'ремонт' : 'цел' }}</span>@endif @endforeach
-                        @if ($insp->transit_damage)<span class="tag text-danger">при перевозке: {{ $insp->transit_damage }}</span>@endif
-                        @if ($insp->missing_parts)<span class="tag">нет: {{ $insp->missing_parts }}</span>@endif
                         @if ($insp->signer_name)<span class="tag">{{ $insp->signer_name }}</span>@endif
                     </div>
+                    {{-- Длинные записи — текстом, не чипом: чип не переносится и растягивает страницу. --}}
+                    @if ($insp->transit_damage)<p class="mt-1.5 text-sm text-danger">При перевозке: {{ $insp->transit_damage }}</p>@endif
+                    @if ($insp->missing_parts)<p class="mt-1.5 text-sm text-ink-muted">Нет: {{ $insp->missing_parts }}</p>@endif
                 @endforeach
             </x-ui.card>
             @endif

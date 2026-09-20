@@ -1,11 +1,13 @@
 {{-- Деньги вендора: долг в обе стороны, не выставленное хранение по его ТС (кнопка «Счёт» ведёт на стоянку), все счета. --}}
 @php use App\Support\Money; use App\Support\Surface; $unbilledTotal = round($unbilled->sum(), 2); @endphp
-<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-    <x-ui.stat :value="Money::rub($debt['owed_to_us'])" label="Нам должны"/>
-    <x-ui.stat :value="Money::rub($debt['we_owe'])" label="Мы должны"/>
-    <x-ui.stat :value="Money::rub($debt['overdue'])" label="Просрочено" :class="$debt['overdue'] > 0 ? 'text-danger' : ''"/>
-    <x-ui.stat :value="Money::rub($unbilledTotal)" label="Не выставлено"/>
-</div>
+@if ($debt['overdue'] > 0 || $debt['owed_to_us'] > 0 || $debt['we_owe'] > 0 || $unbilledTotal > 0)
+    <div class="flex flex-wrap gap-1.5">
+        @if ($debt['overdue'] > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs nums">просрочено {{ Money::rub($debt['overdue']) }}</x-ui.pill>@endif
+        @if ($debt['owed_to_us'] > 0)<span class="chip nums">нам {{ Money::rub($debt['owed_to_us']) }}</span>@endif
+        @if ($debt['we_owe'] > 0)<span class="chip nums text-urgent">мы должны {{ Money::rub($debt['we_owe']) }}</span>@endif
+        @if ($unbilledTotal > 0)<span class="tag nums">не выставлено {{ Money::rub($unbilledTotal) }}</span>@endif
+    </div>
+@endif
 @if ($stored->isNotEmpty())
     <div class="mt-6 flex flex-col gap-2">
         @foreach ($stored as $v)

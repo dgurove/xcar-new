@@ -16,6 +16,7 @@ use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
 use App\Http\Middleware\TouchSeen;
 use App\Live\SubscriberCookie;
+use App\Mail\Console\ImportCandidateFilesCommand;
 use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
 use App\Mail\Console\WatchMail;
@@ -30,6 +31,7 @@ use App\Storage\Console\Report;
 use App\Telegram\Console\Poll;
 use App\Users\Console\CreateUser;
 use App\Workflow\Console\RefillVendors;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -52,6 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
         SyncMail::class,
         WatchMail::class,
         ReconcileMail::class,
+        ImportCandidateFilesCommand::class,
         MakeKeys::class,
         Restamp::class,
         MovePapers::class,
@@ -66,7 +69,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(['staff' => EnsureStaff::class, 'manager' => EnsureManager::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
         $middleware->prepend(RedirectLegacyPaths::class);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
-        $middleware->prependToPriorityList(\Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class, ResolveSurface::class);
+        $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
         $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, TouchSeen::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
     })

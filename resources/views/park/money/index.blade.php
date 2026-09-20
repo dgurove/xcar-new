@@ -1,5 +1,5 @@
 {{-- Деньги: счета с пресетами, сортировкой, поиском и контрагентом в фильтрах; три вида — плитки x-billing.card,
-     строки x-billing.row, таблица с окошком; «Долги» и «Месяц» — строки над списком; счёт выставляется из ТС. --}}
+     строки x-billing.row, таблица с окошком; «Долги» и «Закрытие месяца» — строки над списком; счёт выставляется из ТС. --}}
 @php use App\Support\ListView; $view = ListView::pick(request(), $invoices->total()); @endphp
 <x-ui.shell :title="$party ? $party->name : 'Деньги'" :count="$invoices->total()" :back="$party ? ['Долги', '/money/debts'] : false" :phone-heading="(bool) $party">
     <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['party' => request('party'), 'car' => request('car'), ListView::PARAM => request(ListView::PARAM)])" name="money">
@@ -13,7 +13,6 @@
         <div class="mt-4 flex flex-col gap-2">
             <a href="/money/debts" class="row !py-3"><span class="min-w-0 flex-1 font-medium">Долги по контрагентам</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
             <a href="/money/closing" class="row !py-3"><span class="min-w-0 flex-1 font-medium">Закрытие месяца</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
-            <a href="/money/summary" class="row !py-3"><span class="min-w-0 flex-1 font-medium">Месяц</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
         </div>
     @endunless
     @if ($invoices->isEmpty())

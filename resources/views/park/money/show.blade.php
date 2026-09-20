@@ -7,25 +7,28 @@
         <span class="chip">{{ $i->kind->label() }}</span>
         <span class="chip">{{ $i->vat ? 'с НДС' : 'без НДС' }}</span>
         @if ($i->external_no)<span class="chip nums">{{ $i->external_no }}</span>@endif
-        @if ($file)<a href="/money/invoices/{{ $i->id }}/pdf" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>PDF</a>@endif
-        @if ($i->kind === \App\Billing\ChargeKind::Storage)<a href="/money/invoices/{{ $i->id }}/act" class="chip" data-turbo="false" target="_blank">Акт хранения</a>@endif
-        @if ($i->number)<a href="/money/invoices/{{ $i->id }}/print" class="chip" data-turbo="false" target="_blank">Печать</a>@endif
         @if ($i->sent_at)<span class="chip nums"><x-ui.icon name="send" class="size-3.5"/>{{ $i->sent_at->translatedFormat('j M') }}</span>@endif
-        @if (!$i->isOwed() && $i->state === InvoiceState::Issued && $i->vehicle && $me->canManagePark())<a href="/mail/new?invoice={{ $i->id }}" class="chip bg-accent-soft text-accent-text"><x-ui.icon name="send" class="size-3.5"/>{{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</a>@endif
-        @if ($i->state === InvoiceState::Issued && $me->canManagePark())
-            <button type="button" class="chip" data-action="sheet#open"><x-ui.icon name="edit" class="size-3.5"/>Изменить</button>
-            <x-ui.sheet id="invoice-edit" title="Счёт" :open="$errors->has('due_at')">
-                <form method="post" action="/money/invoices/{{ $i->id }}" class="flex flex-col gap-3">
-                    @csrf @method('put')
-                    <div class="grid grid-cols-2 gap-3">
-                        <x-ui.field name="due_at" :label="$i->isOwed() ? 'Перечислить до' : 'Оплатить до'" type="date" :value="$i->due_at->toDateString()" required/>
-                        <x-ui.field name="external_no" :label="$i->isOwed() ? '№ у вендора' : 'Чужой номер'" :value="$i->external_no"/>
-                        <x-ui.field name="notes" label="Заметка в счёт" type="textarea" :value="$i->notes" span="col-span-2"/>
-                    </div>
-                    <x-ui.button block>Сохранить</x-ui.button>
-                </form>
-            </x-ui.sheet>
-        @endif
+        {{-- Документы и правка — в шторке «⋯», в ряду только факты: на телефоне ряд из семи кнопок не помещался. --}}
+        <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
+        <x-ui.sheet id="invoice-actions" :title="$i->label()" :open="$errors->has('due_at')">
+            <div class="flex flex-col gap-2">
+                @if (!$i->isOwed() && $i->state === InvoiceState::Issued && $i->vehicle && $me->canManagePark())<x-ui.button href="/mail/new?invoice={{ $i->id }}" block><x-ui.icon name="send" class="size-4"/> {{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</x-ui.button>@endif
+                @if ($file)<x-ui.button href="/money/invoices/{{ $i->id }}/pdf" variant="secondary" block data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-4"/> PDF</x-ui.button>@endif
+                @if ($i->kind === \App\Billing\ChargeKind::Storage)<x-ui.button href="/money/invoices/{{ $i->id }}/act" variant="ghost" block data-turbo="false" target="_blank">Акт хранения</x-ui.button>@endif
+                @if ($i->number)<x-ui.button href="/money/invoices/{{ $i->id }}/print" variant="ghost" block data-turbo="false" target="_blank">Печать</x-ui.button>@endif
+                @if ($i->state === InvoiceState::Issued && $me->canManagePark())
+                    <form method="post" action="/money/invoices/{{ $i->id }}" class="mt-2 flex flex-col gap-3">
+                        @csrf @method('put')
+                        <div class="grid grid-cols-2 gap-3">
+                            <x-ui.field name="due_at" :label="$i->isOwed() ? 'Перечислить до' : 'Оплатить до'" type="date" :value="$i->due_at->toDateString()" required/>
+                            <x-ui.field name="external_no" :label="$i->isOwed() ? '№ у вендора' : 'Чужой номер'" :value="$i->external_no"/>
+                            <x-ui.field name="notes" label="Заметка в счёт" type="textarea" :value="$i->notes" span="col-span-2"/>
+                        </div>
+                        <x-ui.button variant="secondary" block>Сохранить</x-ui.button>
+                    </form>
+                @endif
+            </div>
+        </x-ui.sheet>
     </div>
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="flex flex-col gap-4">

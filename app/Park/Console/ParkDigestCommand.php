@@ -16,10 +16,10 @@ class ParkDigestCommand extends Command
 
     public function handle(): int
     {
-        $today = Today::build(null);
-        $counts = collect($today['sections'])->mapWithKeys(fn ($s) => [$s[0] => $s[2]->count()])->all()
-            + ['На стоянке' => $today['stats']['На стоянке']];
-        if (collect($today['sections'])->sum(fn ($s) => $s[2]->count()) === 0) {
+        $today = Today::build();
+        $counts = collect($today['sections'])->mapWithKeys(fn ($s) => [$s[0] => $s[1]->count()])->all()
+            + ['На стоянке' => $today['stored']];
+        if (collect($today['sections'])->sum(fn ($s) => $s[1]->count()) === 0) {
             return self::SUCCESS;
         }
         NotifyOwner::dispatch(new ParkDigest($counts));

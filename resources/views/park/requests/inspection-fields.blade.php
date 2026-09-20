@@ -45,9 +45,4 @@
         <x-ui.field name="replaced_units" label="Замена агрегатов"/>
     </div>
 </x-ui.card>
-<x-ui.card :title="$signer">
-    <div class="grid grid-cols-2 gap-3">
-        <x-ui.field name="signer_name" label="Имя" span="col-span-full"/>
-        <x-park.signature/>
-    </div>
-</x-ui.card>
+{{-- Подпись — park.requests.signature-fields: после фото, последней. --}}

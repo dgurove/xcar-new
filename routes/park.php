@@ -8,7 +8,6 @@ use App\Http\Park\MoneyController;
 use App\Http\Park\ParkCandidateController;
 use App\Http\Park\PartyController;
 use App\Http\Park\RequestController;
-use App\Http\Park\TodayController;
 use App\Http\Park\VehicleController;
 use App\Http\Park\VehicleInvoiceController;
 use App\Http\Park\YardController;
@@ -16,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 // Стоянка — свой хост того же приложения. Вход общий; пускает раздел «park».
 Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->group(function () {
-    Route::get('/', [TodayController::class, 'index']);
+    Route::get('/', [RequestController::class, 'index']);
     Route::get('/requests', [RequestController::class, 'index']);
 
     Route::get('/requests/new', [RequestController::class, 'create']);
@@ -62,7 +61,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::middleware('park.manage')->group(function () {
         Route::get('/money', [MoneyController::class, 'index']);
         Route::get('/money/debts', [MoneyController::class, 'debts']);
-        Route::get('/money/summary', [MoneyController::class, 'summary']);
         Route::get('/money/closing', [MoneyController::class, 'closing']);
         Route::post('/money/closing', [MoneyController::class, 'close']);
         Route::get('/money/parties', [PartyController::class, 'index']);
@@ -107,6 +105,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/mail/messages/{message}/parse', [MailController::class, 'reparse']);
     Route::post('/mail/messages/{message}/retry', [MailController::class, 'resend']);
     Route::get('/mail/{thread}', [MailController::class, 'show']);
+    Route::get('/mail/{thread}/peek', [MailController::class, 'peek']);
     Route::get('/mail/{thread}/reply/{message}', [MailController::class, 'reply']);
     Route::post('/mail/{thread}/unread', [MailController::class, 'unread']);
     Route::post('/mail/{thread}/read', [MailController::class, 'toggleRead']);

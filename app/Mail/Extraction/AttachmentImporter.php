@@ -91,6 +91,10 @@ final class AttachmentImporter
 
     private function addDocument(HasMedia $model, string $collection, Attachment $document): bool
     {
+        // Пустая коллекция — документы этому получателю не нужны (кандидат: только кадры).
+        if ($collection === '') {
+            return false;
+        }
         $contents = $document->contents();
         if ($contents === null || $model->hasFile($sha = hash('sha256', $contents))) {
             return false;

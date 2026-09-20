@@ -26,10 +26,11 @@ final class BodyRenderer
 
         $images = "'self' data:".($remoteImages ? ' https: http:' : '');
         $csp = "default-src 'none'; img-src {$images}; style-src 'unsafe-inline'; font-src data:; form-action 'none'";
-        $colors = 'background:#fff;color:#1d1d1b';
+        // Письмо — лист: чуть тёплый белый и поле 12px, чтобы текст не липнул к краю рамки в тёмной теме.
+        $colors = 'background:#f7f7f5;color:#1d1d1b';
 
         return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'.$csp.'">'
-            .'<base target="_blank"><style>html,body{margin:0;padding:0;'.$colors.';font-family:Onest,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45;word-break:break-word}'
+            .'<base target="_blank"><style>html{margin:0;padding:0;'.$colors.'}body{margin:0;padding:12px;'.$colors.';font-family:Onest,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45;word-break:break-word}'
             .'img{max-width:100%;height:auto}table{max-width:100%;border-collapse:collapse}a{color:#669709}pre.plain{white-space:pre-wrap;font-family:inherit;margin:0}'
             .'blockquote{margin:0;padding-left:12px;border-left:2px solid #d0d0d0;color:#808080}</style></head><body>'.$body.'</body></html>';
     }

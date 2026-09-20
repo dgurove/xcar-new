@@ -80,6 +80,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::post('/messages/{message}/parse', [MailController::class, 'reparse']);
         Route::post('/messages/{message}/retry', [MailController::class, 'resend']);
         Route::get('/{thread}', [MailController::class, 'show']);
+        Route::get('/{thread}/peek', [MailController::class, 'peek']);
         Route::get('/{thread}/reply/{message}', [MailController::class, 'reply']);
         Route::post('/{thread}/unread', [MailController::class, 'unread']);
         Route::post('/{thread}/read', [MailController::class, 'toggleRead']);

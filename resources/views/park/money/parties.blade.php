@@ -1,6 +1,6 @@
 {{-- Реквизиты: мы первой строкой, дальше контрагенты; строка — шторка с формой; новая — кнопкой внизу. --}}
 @php use App\Billing\PartyKind; @endphp
-<x-ui.shell title="Реквизиты" narrow>
+<x-ui.shell title="Реквизиты">
     <div class="flex flex-col gap-2">
         @foreach ($parties as $p)
             <div class="row" data-controller="sheet">

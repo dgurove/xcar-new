@@ -1,12 +1,6 @@
-{{-- Долги по контрагентам: итоги сверху, сортировка и поиск в тулбаре, строка — нам должны, мы должны, просрочено, не выставлено; ведёт к счетам контрагента. --}}
+{{-- Долги по контрагентам: сортировка и поиск в тулбаре, строка — нам должны, мы должны, просрочено, не выставлено; ведёт к счетам контрагента. --}}
 @php use App\Support\Money; @endphp
-<x-ui.shell title="Долги" :back="['Деньги', '/money']" narrow>
-    <div class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <x-ui.stat :value="Money::rub($totals['owed_to_us'])" label="Нам должны"/>
-        <x-ui.stat :value="Money::rub($totals['we_owe'])" label="Мы должны"/>
-        <x-ui.stat :value="Money::rub($totals['overdue'])" label="Просрочено" :class="$totals['overdue'] > 0 ? 'text-danger' : ''"/>
-        <x-ui.stat :value="Money::rub($totals['unbilled'])" label="Не выставлено"/>
-    </div>
+<x-ui.shell title="Долги" :back="['Деньги', '/money']">
     <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::DEBT_SORTS" :sort="$sort" name="debts">
         <x-slot:filters><input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Контрагент" enterkeyhint="search"></x-slot:filters>
     </x-ui.toolbar>

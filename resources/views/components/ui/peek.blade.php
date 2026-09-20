@@ -4,13 +4,13 @@
      формы, характеристики, описание. row — свежая строка таблицы <tr>, ею
      peek_controller заменяет выделенную после действия; flash-сообщение и просьба
      перейти к следующей (session peek-advance) едут шаблонами — их читает он же.
-     photo — одно фото вместо ленты (старые окошки). --}}
+     photo — одно фото вместо ленты (старые окошки); :photo="false" — без кадра вовсе (ветка почты). --}}
 @props(['href', 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null])
 @if ($photos !== null)
     <x-offer.gallery :photos="$photos" :alt="$title" strip/>
 @endif
 <div class="flex items-start gap-3 {{ $photos !== null ? 'mt-3' : '' }}">
-    @if ($photos === null)<a href="{{ $href }}" class="peek-photo">@if ($photo)<x-offer.photo :media="$photo" sizes="96px" eager/>@else<x-ui.car-blank/>@endif</a>@endif
+    @if ($photos === null && $photo !== false)<a href="{{ $href }}" class="peek-photo">@if ($photo)<x-offer.photo :media="$photo" sizes="96px" eager/>@else<x-ui.car-blank/>@endif</a>@endif
     <div class="min-w-0 flex-1">
         <a href="{{ $href }}" class="block text-[17px] leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}</span></a>
         @if ($marks)<div class="mt-1.5 flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif

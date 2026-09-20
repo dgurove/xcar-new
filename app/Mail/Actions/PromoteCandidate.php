@@ -27,6 +27,7 @@ final class PromoteCandidate
     {
         if ($offer = $this->existing($candidate)) {
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
+            $candidate->moveMediaTo($offer, $offer->state !== OfferState::Draft ? ['hidden' => true] : []);
             $this->linkAll($candidate, $offer);
 
             return $offer;
@@ -68,6 +69,7 @@ final class PromoteCandidate
             ], fn ($x) => $x !== null && $x !== ''), $by);
 
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
+            $candidate->moveMediaTo($offer);
             $this->linkAll($candidate, $offer);
 
             return $offer;

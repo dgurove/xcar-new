@@ -47,7 +47,7 @@ final class Nav
 
         if ($surface === Surface::Park) {
             return array_values(array_filter([
-                self::item('Сегодня', '/', ['/', '/requests']),
+                self::item('Заявки', '/', ['/', '/requests']),
                 self::item('ТС', '/cars'),
                 $user?->canManagePark() ? self::item('Деньги', '/money') : null,
                 self::item('Почта', '/mail'),
@@ -335,7 +335,7 @@ final class Nav
         return Cache::remember("nav.staff:{$surface->value}", 30, function () use ($surface) {
             if ($surface === Surface::Park) {
                 return [
-                    // Бейдж «Сегодня» — просроченные: то, что горит.
+                    // Бейдж «Заявки» — просроченные: то, что горит.
                     '/' => Request::whereIn('state', RequestState::open())->where('planned_at', '<', now())->count(),
                     '/requests/from-mail' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count(),
                     '/money' => Invoice::where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString())->count(),

@@ -13,7 +13,8 @@
     ]);
 @endphp
 <turbo-frame id="peek" target="_top">
-    <x-ui.peek :href="$mail.'/'.$c->thread_id" :title="($c->code ?: $c->title()).($c->code && $car ? ' — '.$car : '')" :facts="$facts" action="">
+    @php $photos = $c->visiblePhotos()->isNotEmpty() ? $c->visiblePhotos() : $c->vehicle?->visiblePhotos(); @endphp
+    <x-ui.peek :href="$mail.'/'.$c->thread_id" :title="($c->code ?: $c->title()).($c->code && $car ? ' — '.$car : '')" :photos="$photos?->isNotEmpty() ? $photos : null" :facts="$facts" action="">
         <x-slot:marks>
             @if ($c->state !== CandidateState::New)<x-ui.pill :tone="$c->state === CandidateState::Promoted ? 'closed' : 'soft'" class="!min-h-0 !py-1 text-xs">{{ $c->state->label() }}</x-ui.pill>@endif
             @if ($c->hasNews())<x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">Пришло ещё письмо — проверьте поля</x-ui.pill>@endif

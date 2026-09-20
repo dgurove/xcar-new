@@ -6,12 +6,14 @@ import { loadSortable } from '../lib/sortable';
 // действия глаз · поворот · корзина на плитке и в просмотрщике.
 // Сервер на каждое действие возвращает turbo-stream с новой полосой; полоса
 // подменяется сразу (не через Turbo), чтобы просмотрщик и Sortable пересобрались
-// на новом узле тут же.
+// на новом узле тут же. readonly — только смотреть (кадры из письма рядом с приёмом): без
+// перестановки, без действий на плитке и в просмотрщике.
 export default class extends Controller {
     static targets = ['input', 'progress', 'grid'];
-    static values = { url: String, collection: { type: String, default: 'photos' } };
+    static values = { url: String, collection: { type: String, default: 'photos' }, readonly: Boolean };
 
     connect() {
+        if (this.readonlyValue) return;
         // Файлы можно бросить на всю карточку — не целясь в плитку.
         this.element.addEventListener('dragover', this.over = (e) => { if (hasFiles(e)) { e.preventDefault(); this.element.classList.add('is-dropping'); } });
         this.element.addEventListener('dragleave', this.leave = (e) => { if (!this.element.contains(e.relatedTarget)) this.element.classList.remove('is-dropping'); });
@@ -24,6 +26,7 @@ export default class extends Controller {
     }
 
     async gridTargetConnected(grid) {
+        if (this.readonlyValue) return;
         const Sortable = await loadSortable();
         if (!grid.isConnected) return;
         this.sortable?.destroy();
@@ -255,8 +258,10 @@ export default class extends Controller {
         const canHide = !!this.gridTarget.querySelector('[data-act="hide"]');
         const toolbar = { prev: 1, zoomOut: 1, zoomIn: 1, next: 1 };
         if (canHide) toolbar.eye = { show: 1, size: 'large', click: () => this.fromViewer('hide') };
-        toolbar.rotate = { show: 1, size: 'large', click: () => this.fromViewer('rotate') };
-        toolbar.trash = { show: 1, size: 'large', click: () => this.fromViewer('udalit', 'Удалить фото?') };
+        if (!this.readonlyValue) {
+            toolbar.rotate = { show: 1, size: 'large', click: () => this.fromViewer('rotate') };
+            toolbar.trash = { show: 1, size: 'large', click: () => this.fromViewer('udalit', 'Удалить фото?') };
+        }
         this.viewer = new this.Viewer(this.gridTarget, {
             url: (img) => img.dataset.full,
             filter: (img) => !!img.dataset.full,

@@ -60,6 +60,7 @@ final class ExtractCandidate implements ShouldQueue
                 'messages_count' => 1, 'last_message_at' => $message->date_at ?? now(),
             ]);
             $candidate->messages()->attach($message->id, ['created_at' => now()]);
+            ImportCandidateFiles::dispatch($candidate->id, $message->id);
             if ($park) {
                 CandidateArrived::dispatch($candidate);
             }
@@ -75,6 +76,7 @@ final class ExtractCandidate implements ShouldQueue
             'thread_id' => $existing->thread_id ?? $message->thread_id, 'vendor_id' => $existing->vendor_id ?? ($fields['vendor_id']['value'] ?? null),
             'messages_count' => $existing->messages()->count(), 'last_message_at' => max($existing->last_message_at, $message->date_at) ?? now(),
         ]);
+        ImportCandidateFiles::dispatch($existing->id, $message->id);
     }
 
     /** ТС или предложение с таким номером, VIN или госномером уже есть. */

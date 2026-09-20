@@ -8,13 +8,15 @@ use App\Mail\Imap;
 use App\Mail\Message;
 use App\Mail\Parts;
 use App\Mail\Thread;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Ветка привязана к машине — её файлы должны пережить чистку ящика.
  * Забираем из ящика каждое ещё не закреплённое вложение и кладём в blobs
- * одним соединением на аккаунт. Возвращает число закреплённых.
+ * одним соединением на аккаунт. Возвращает число закреплённых. `message()` — то же для одного письма:
+ * кандидат «Из писем» ещё ни к чему не привязан, а кадры для превью нужны уже сейчас.
  */
 final class PinThread
 {
@@ -22,8 +24,18 @@ final class PinThread
 
     public function __invoke(Thread $thread): int
     {
-        $pending = Attachment::whereNull('blob_sha')->where('is_inline', false)->whereNotNull('section')
-            ->whereHas('message', fn ($q) => $q->where('thread_id', $thread->id)->whereNotNull('imap_uid')->whereNotNull('folder_id'))
+        return $this->pin(Attachment::whereHas('message', fn ($q) => $q->where('thread_id', $thread->id)));
+    }
+
+    public function message(Message $message): int
+    {
+        return $this->pin(Attachment::where('message_id', $message->id));
+    }
+
+    private function pin(Builder $query): int
+    {
+        $pending = $query->whereNull('blob_sha')->where('is_inline', false)->whereNotNull('section')
+            ->whereHas('message', fn ($q) => $q->whereNotNull('imap_uid')->whereNotNull('folder_id'))
             ->with(['message.folder', 'message.account'])->get();
         if ($pending->isEmpty()) {
             return 0;

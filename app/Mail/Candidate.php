@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Mail\Extraction\Code;
+use App\Media\HasPhotos;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Vendors\Vendor;
@@ -11,15 +12,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
+use Spatie\MediaLibrary\HasMedia;
 
 /**
  * Машина, вычитанная из писем страховой: одна ТС — один кандидат, сколько бы писем о ней ни пришло.
  * Тождество — `key`: номер убытка (в любом написании), без него VIN, без VIN госномер, без всего — ветка.
  * `message_id`/`thread_id` — первое письмо и его ветка, все письма — `messages()`.
+ * Кадры из писем — своя медиатека `photos` (`ImportCandidateFiles`): превью в карточке и «Из письма» на форме заявки;
+ * при «Завести» переезжают к ТС или предложению (`PromoteCandidate`).
  */
 #[Fillable(['scope', 'code', 'key', 'vendor_id', 'message_id', 'thread_id', 'subject', 'state', 'extracted', 'proposed', 'offer_id', 'vehicle_id', 'messages_count', 'last_message_at'])]
-class Candidate extends Model
+class Candidate extends Model implements HasMedia
 {
+    use HasPhotos;
+
     protected $table = 'mail_candidates';
 
     protected function casts(): array
@@ -51,6 +57,28 @@ class Candidate extends Model
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    /**
+     * «Завести»: кадры кандидата переезжают к ТС или предложению (копия с теми же свойствами, старые стираются);
+     * что там уже есть по `sha` — пропускается. Импорт ветки после привязки по `sha` не дублирует.
+     */
+    public function moveMediaTo(HasMedia $target, array $extra = []): int
+    {
+        $moved = 0;
+        foreach ($this->photos() as $media) {
+            $sha = $media->getCustomProperty('sha');
+            if ($sha && $target->hasFile($sha)) {
+                $media->delete();
+
+                continue;
+            }
+            $media->copy($target, 'photos', '', '', fn ($adder) => $extra ? $adder->withCustomProperties($extra + $media->custom_properties) : $adder);
+            $media->forceDelete();
+            $moved++;
+        }
+
+        return $moved;
     }
 
     public function offer(): BelongsTo

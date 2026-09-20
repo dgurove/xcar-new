@@ -1,6 +1,6 @@
 {{-- Вендоры глазами стоянки: контакт по хранению, что прислать после приёма, заметки. Реквизиты, договор, прайс — в CRM. --}}
 @php use App\Vendors\ContactRole; use App\Vendors\Kind; @endphp
-<x-ui.shell title="Вендоры" narrow>
+<x-ui.shell title="Вендоры">
     <x-ui.toolbar :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="clients">
         <x-slot:filters>
             <input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Название, ИНН" enterkeyhint="search">

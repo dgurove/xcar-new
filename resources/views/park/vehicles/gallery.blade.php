@@ -7,7 +7,8 @@
     $shown = $stage && isset($stages[$stage]) ? $all->filter(fn ($m) => (string) ($m->getCustomProperty('stage') ?? 'mail') === $stage) : $all;
 @endphp
 <div id="gallery-wrap">
-    @if ($counts->count() > 1)
+    {{-- Пилюли стадий — всегда, когда кадры есть: «Из письма» должно читаться и при одной стадии. --}}
+    @if ($all->isNotEmpty())
         <div class="mb-3 flex flex-wrap gap-1.5">
             <x-ui.pill :href="request()->fullUrlWithQuery(['stage' => null])" :current="!$stage" class="!min-h-0 !py-1 text-xs" data-turbo-action="replace">Все <span class="nums text-ink-dim">{{ $all->count() }}</span></x-ui.pill>
             @foreach ($stages as $key => $label)

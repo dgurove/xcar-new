@@ -16,12 +16,14 @@ final class ListPrefs
 {
     private const KEYS = ['sort', ListView::PARAM, ListView::PER];
 
-    public static function sync(Request $request, string $list): void
+    public static function sync(Request $request, string $list, bool $rememberTable = false): void
     {
         // Таблица не запоминается: сама она включается только у длинного списка (ListView::pick),
         // а запомненная включалась бы и на трёх строках; вид в адресе — на этот раз.
-        $saved = array_filter(self::all($request)[$list] ?? [], fn ($v, $k) => ! ($k === ListView::PARAM && $v === ListView::TABLE), ARRAY_FILTER_USE_BOTH);
-        $given = array_filter($request->only(self::KEYS), fn ($v, $k) => is_string($v) && $v !== '' && ! ($k === ListView::PARAM && $v === ListView::TABLE), ARRAY_FILTER_USE_BOTH);
+        // rememberTable — у списков, где таблица и есть вид по умолчанию (почта): выбор «строками» и обратно помнится.
+        $table = fn ($v, $k) => ! $rememberTable && $k === ListView::PARAM && $v === ListView::TABLE;
+        $saved = array_filter(self::all($request)[$list] ?? [], fn ($v, $k) => ! $table($v, $k), ARRAY_FILTER_USE_BOTH);
+        $given = array_filter($request->only(self::KEYS), fn ($v, $k) => is_string($v) && $v !== '' && ! $table($v, $k), ARRAY_FILTER_USE_BOTH);
         // Пришли по адресу с параметрами — это выбор, запоминаем.
         if ($given && $given !== array_intersect_key($saved, $given)) {
             self::remember($request, $list, $given + $saved);

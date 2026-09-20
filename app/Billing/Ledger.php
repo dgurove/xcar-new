@@ -131,20 +131,4 @@ final class Ledger
             default => null,
         };
     }
-
-    /** Месяц: принято, выдано, начислено хранения, выставлено, оплачено. @return array<string, int|float> */
-    public static function month(CarbonInterface $month): array
-    {
-        $from = $month->copy()->startOfMonth();
-        $to = $month->copy()->endOfMonth();
-
-        return [
-            'accepted' => Vehicle::whereBetween('accepted_at', [$from, $to])->count(),
-            'released' => Vehicle::whereBetween('released_at', [$from, $to])->count(),
-            'issued' => round((float) Invoice::where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->whereBetween('issued_at', [$from, $to])->sum('total'), 2),
-            'owed' => round((float) Invoice::where('direction', 'owed')->where('state', '!=', InvoiceState::Void)->whereBetween('issued_at', [$from, $to])->sum('total'), 2),
-            'paid' => round((float) Payment::whereNull('voided_at')->whereBetween('paid_at', [$from, $to])->whereHas('invoice', fn ($q) => $q->where('direction', 'issued'))->sum('amount'), 2),
-            'transferred' => round((float) Payment::whereNull('voided_at')->whereBetween('paid_at', [$from, $to])->whereHas('invoice', fn ($q) => $q->where('direction', 'owed'))->sum('amount'), 2),
-        ];
-    }
 }

@@ -1,5 +1,5 @@
-<x-ui.shell :title="match($mode) { 'reply' => 'Ответ', 'all' => 'Ответ всем', 'forward' => 'Пересылка', default => 'Новое письмо' }" narrow>
-    <form method="post" action="{{ $base }}" id="compose" class="flex flex-col gap-4" data-controller="photos draft" data-photos-url-value="{{ $base }}/file">
+<x-ui.shell :title="match($mode) { 'reply' => 'Ответ', 'all' => 'Ответ всем', 'forward' => 'Пересылка', default => 'Новое письмо' }">
+    <form method="post" action="{{ $base }}" id="compose" class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]" data-controller="photos draft" data-photos-url-value="{{ $base }}/file">
         @csrf
         @if ($parent)<input type="hidden" name="parent" value="{{ $parent->id }}">@endif
         @if ($thread)<input type="hidden" name="thread" value="{{ $thread->id }}">@endif
@@ -7,7 +7,7 @@
         @if ($vehicle ?? null)<input type="hidden" name="vehicle" value="{{ $vehicle->id }}">@endif
         @if ($back ?? null)<input type="hidden" name="back" value="{{ $back }}">@endif
         @if ($invoice ?? null)<input type="hidden" name="invoice" value="{{ $invoice->id }}">@endif
-        <x-ui.card>
+        <x-ui.card class="min-w-0">
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 @if ($accounts->count() > 1)
                     <x-ui.field name="account" label="От кого" :options="$accounts->pluck('title', 'slug')" :value="$account->slug" span="sm:col-span-2"/>
@@ -32,7 +32,7 @@
             </div>
         </x-ui.card>
 
-        <x-ui.card title="Вложения">
+        <x-ui.card title="Вложения" class="min-w-0">
             <div id="compose-files" class="flex flex-col gap-1" data-controller="files">
                 @if ($parent && !empty($defaults['forward']))
                     @foreach ($parent->files() as $file)

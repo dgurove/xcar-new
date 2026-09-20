@@ -8,7 +8,7 @@
             @if ($vehicle->plate)<span class="shrink-0 text-sm text-ink-muted">{{ $vehicle->plate }}</span>@endif
         </div>
         <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-            @if ($vehicle->ref)<span class="tag nums">{{ $vehicle->ref }}</span>@endif
+            @if ($vehicle->ref && $vehicle->brand_id)<span class="tag nums">{{ $vehicle->ref }}</span>@endif
             @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
             {{ $slot }}
         </div>

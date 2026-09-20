@@ -27,6 +27,6 @@ final class ParkDigest extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Сегодня на стоянке', 'url' => Surface::Park->url('/')];
+        return ['text' => 'Заявки', 'url' => Surface::Park->url('/')];
     }
 }

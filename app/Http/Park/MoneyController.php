@@ -199,7 +199,6 @@ class MoneyController
         return view('park.money.debts', [
             'debts' => new LengthAwarePaginator($debts->forPage($page, $per), $debts->count(), $per, $page, ['path' => '/money/debts', 'query' => $request->query()]),
             'sort' => $sort, 'q' => $request->query('q', ''),
-            'totals' => ['owed_to_us' => round($debts->sum('owed_to_us'), 2), 'we_owe' => round($debts->sum('we_owe'), 2), 'overdue' => round($debts->sum('overdue'), 2), 'unbilled' => round($debts->sum('unbilled'), 2)],
         ]);
     }
 
@@ -214,7 +213,7 @@ class MoneyController
 
         return view('park.money.closing', [
             'month' => $month, 'items' => $items->groupBy(fn ($i) => $i['party']?->name ?? 'Без плательщика'),
-            'total' => round($items->sum('amount'), 2), 'issued' => $issued,
+            'issued' => $issued,
             'months' => collect(range(0, 5))->map(fn ($n) => now()->subMonths($n)->startOfMonth()),
         ]);
     }
@@ -233,12 +232,5 @@ class MoneyController
     private static function month(Request $request): Carbon
     {
         return $request->query('month') && preg_match('/^\d{4}-\d{2}$/', $request->query('month')) ? Carbon::createFromFormat('Y-m', $request->query('month'))->startOfMonth() : now()->subMonth()->startOfMonth();
-    }
-
-    public function summary(Request $request)
-    {
-        $month = $request->query('month') && preg_match('/^\d{4}-\d{2}$/', $request->query('month')) ? Carbon::createFromFormat('Y-m', $request->query('month')) : now();
-
-        return view('park.money.summary', ['month' => $month, 'stats' => Ledger::month($month), 'debts' => Ledger::debts()]);
     }
 }

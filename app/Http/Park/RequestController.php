@@ -49,7 +49,7 @@ class RequestController
 {
     public const SORTS = ['planned' => 'По сроку', 'fresh' => 'Сначала новые', 'type' => 'По типу'];
 
-    /** Список заявок: пресеты типов и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с окошком строки. */
+    /** Главная стоянки и список заявок: пресеты «Просрочено», «Связаться», типы и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с окошком строки. */
     public function index(Request $request)
     {
         ListPrefs::sync($request, 'park-requests');
@@ -71,6 +71,8 @@ class RequestController
             $q->where('type', $t);
         } elseif ($type === 'call') {
             $needsCall($q);
+        } elseif ($type === 'overdue') {
+            $q->where('planned_at', '<', now());
         }
         match ($request->query('sort')) {
             'fresh' => $q->latest(),
@@ -79,13 +81,14 @@ class RequestController
         };
 
         $open = $filters(Scope::requests($request->user()))->when($done, fn ($q) => $q->whereNotIn('state', RequestState::open()), fn ($q) => $q->whereIn('state', RequestState::open()))->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
-        $presets = ['all' => 'Все', 'call' => 'Связаться'] + RequestType::options();
+        $presets = ['all' => 'Все', 'overdue' => 'Просрочено', 'call' => 'Связаться'] + RequestType::options();
 
         return view('park.requests.index', [
             'requests' => ListView::paginate($request, $q),
             'preset' => $type,
             'presets' => $presets,
-            'counts' => $open->all() + ['all' => $open->sum(), 'call' => $done ? 0 : $needsCall($filters(Scope::requests($request->user())))->count()],
+            'counts' => $open->all() + ['all' => $open->sum(), 'call' => $done ? 0 : $needsCall($filters(Scope::requests($request->user())))->count(),
+                'overdue' => $done ? 0 : $filters(Scope::requests($request->user()))->whereIn('state', RequestState::open())->where('planned_at', '<', now())->count()],
             'done' => $done,
             'sort' => $request->query('sort', 'planned'),
             'q' => $qs,
@@ -200,7 +203,7 @@ class RequestController
 
     public function show(Request $http, ParkRequest $req)
     {
-        $req->load(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.yard', 'vehicle.media', 'vehicle.requests', 'yard', 'thread', 'assignee']);
+        $req->load(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.yard', 'vehicle.media', 'vehicle.requests', 'vehicle.events.user', 'yard', 'thread', 'assignee']);
         abort_unless(Scope::allows($http->user(), $req->vehicle), 404);
         $vehicle = $req->vehicle;
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
@@ -225,6 +228,9 @@ class RequestController
             // Перевозчики — кого уже возили: подсказка в поле, отдельного справочника нет.
             'carriers' => $req->isTow() ? ParkRequest::whereNotNull('carrier')->where('carrier', '!=', '')->selectRaw('carrier, count(*) as n')->groupBy('carrier')->orderByDesc('n')->limit(20)->pluck('carrier') : collect(),
             'storageRate' => Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
+            'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            'categories' => Category::options(),
+            'events' => $vehicle->events->sortByDesc('created_at')->take(12),
         ]);
     }
 

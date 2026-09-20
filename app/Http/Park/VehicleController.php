@@ -29,6 +29,7 @@ use App\Park\Doc;
 use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\EventType;
+use App\Park\Idle;
 use App\Park\PhotoSlot;
 use App\Park\ReleasedTo;
 use App\Park\Scope;
@@ -48,7 +49,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class VehicleController
 {
-    public const PRESETS = ['stored' => 'На стоянке', 'expected' => 'Ожидаются', 'in_transit' => 'В пути', 'released' => 'Выданы', 'cancelled' => 'Не привезены', 'all' => 'Все'];
+    public const PRESETS = ['stored' => 'На стоянке', 'idle' => 'Стоят долго', 'expected' => 'Ожидаются', 'in_transit' => 'В пути', 'released' => 'Выданы', 'cancelled' => 'Не привезены', 'all' => 'Все'];
 
     public const SORTS = ['longest' => 'Дольше всех стоят', 'fresh' => 'Сначала новые'];
 
@@ -59,6 +60,7 @@ class VehicleController
         $q = trim((string) $request->query('q'));
         $vehicles = Scope::vehicles($request->user())->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer'])
             ->when(VehicleState::tryFrom($preset), fn ($v, $s) => $v->where('state', $s))
+            ->when($preset === 'idle', fn ($v) => $v->where('state', VehicleState::Stored)->where('accepted_at', '<=', now()->subDays(Idle::warn())->startOfDay()))
             ->when($request->query('docs') === 'due', fn ($v) => $v->whereHas('docs', fn ($d) => $d->where('direction', 'out')->where('state', 'pending')))
             ->when($request->query('yard'), fn ($v, $y) => $v->where('yard_id', $y))
             ->when($request->query('vendor'), fn ($v, $id) => $v->where('vendor_id', $id))
@@ -71,7 +73,8 @@ class VehicleController
             'preset' => $preset,
             'q' => $q,
             'sort' => $request->query('sort', 'longest'),
-            'counts' => Scope::vehicles($request->user())->selectRaw('state, count(*) as n')->groupBy('state')->pluck('n', 'state')->all(),
+            'counts' => Scope::vehicles($request->user())->selectRaw('state, count(*) as n')->groupBy('state')->pluck('n', 'state')->all()
+                + ['idle' => Scope::vehicles($request->user())->where('state', VehicleState::Stored)->where('accepted_at', '<=', now()->subDays(Idle::warn())->startOfDay())->count()],
             'yard' => $request->query('yard') ? Yard::find($request->query('yard')) : null,
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'vendors' => Vendor::whereIn('id', Vehicle::whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
@@ -133,12 +136,23 @@ class VehicleController
             'contract_kind' => ['nullable', Rule::in(['storage', 'commission'])], 'contract_no' => ['nullable', 'string', 'max:60'], 'contract_at' => ['nullable', 'date'], 'assigned_price' => ['nullable', 'integer', 'min:0'],
             'pts' => ['nullable', 'string', 'max:40'], 'sts' => ['nullable', 'string', 'max:40'], 'owner_party_id' => ['nullable', 'exists:billing_parties,id'], 'storage_rate' => ['nullable', 'numeric', 'min:0'], 'storage_rate_note' => ['nullable', 'string', 'max:120'], 'billing_cadence' => ['nullable', Rule::enum(Cadence::class)],
             'damage_zones' => ['nullable', 'array'], 'damage_zones.*' => [Rule::enum(DamageZone::class)], 'damage_note' => ['nullable', 'string', 'max:2000'], 'notes' => ['nullable', 'string', 'max:5000'],
+            'back' => ['nullable', 'string', 'max:200', 'regex:#^/(?!/)#'],
         ]);
-        $data['damage_zones'] = $data['damage_zones'] ?? [];
-        $data['oversize'] = $request->boolean('oversize');
+        // Компактная карточка ТС на заявке шлёт только свои поля: галочки повреждений и негабарит трогаем,
+        // лишь когда форма их присылала (`damage_form`, `oversize_form`).
+        if ($request->has('damage_form')) {
+            $data['damage_zones'] = $data['damage_zones'] ?? [];
+        } else {
+            unset($data['damage_zones']);
+        }
+        if ($request->has('oversize_form')) {
+            $data['oversize'] = $request->boolean('oversize');
+        }
+        $back = $data['back'] ?? null;
+        unset($data['back']);
         $update($vehicle, $data, $request->user());
 
-        return redirect("/cars/{$vehicle->id}")->with('toast', 'Сохранено');
+        return redirect($back ?: "/cars/{$vehicle->id}")->with('toast', 'Сохранено');
     }
 
     /** Страховая продала ТС: дата и кому выдать — руками или поправить то, что вынул разбор письма. `clear` — не продано. */

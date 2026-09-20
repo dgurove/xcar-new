@@ -53,7 +53,8 @@ class MailController
 
     public function index(Request $request)
     {
-        ListPrefs::sync($request, $this->scope->value.'-mail');
+        ListPrefs::sync($request, $this->scope->value.'-mail', rememberTable: true);
+        $view = ListView::fromRequest($request) ?? ListView::TABLE;
         $accounts = Account::where('scope', $this->scope)->orderBy('title')->get();
         $preset = $request->query('preset', 'all');
         $slug = $request->query('account');
@@ -83,7 +84,8 @@ class MailController
         };
 
         return view('admin.mail.index', [
-            'threads' => $threads->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+            'threads' => $view === ListView::TABLE ? $threads->paginate(max($threads->count(), 1))->withQueryString() : $threads->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+            'view' => $view,
             'sort' => $sort,
             'accounts' => $accounts,
             'preset' => $preset,
@@ -94,6 +96,18 @@ class MailController
             'presets' => $this->presets(),
             'car' => $request->query('car') ? Vehicle::with(['brand', 'model'])->find($request->query('car')) : null,
         ]);
+    }
+
+    /** Окошко строки таблицы: все письма ветки целиком, «Открыть» — на страницу ветки (ответы оттуда). */
+    public function peek(Request $request, Thread $thread, MarkThreadRead $markRead)
+    {
+        $this->guard($thread);
+        $thread->load(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        if (! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
+            $markRead($thread);
+        }
+
+        return view('admin.mail.peek', ['thread' => $thread, 'base' => $this->base, 'crm' => $this->scope !== Scope::Park]);
     }
 
     public function show(Request $request, Thread $thread, MarkThreadRead $markRead, BodyRenderer $renderer)
