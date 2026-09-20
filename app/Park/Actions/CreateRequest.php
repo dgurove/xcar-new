@@ -27,7 +27,7 @@ final class CreateRequest
         }
         // Вторая открытая заявка того же дела на ту же ТС — дубль; осмотров может быть сколько угодно.
         if ($vehicle && $type !== RequestType::Inspection && ($open = $vehicle->requests()->where('type', $type)->whereIn('state', RequestState::open())->first())) {
-            throw ValidationException::withMessages(['type' => 'Заявка «'.mb_strtolower($type->label()).'» на эту ТС уже есть — № '.$open->id]);
+            throw ValidationException::withMessages(['type' => 'Заявка «'.mb_strtolower($type->label()).'» на эту ТС уже есть, № '.$open->id]);
         }
         Nav::forgetStaffCounts();
 

@@ -64,7 +64,7 @@ class VehicleInvoiceController
         $kind = ChargeKind::from($data['kind']);
         $party = ! empty($data['party_id']) ? Party::find($data['party_id']) : ($vehicle->vendor ? Party::forVendor($vehicle->vendor) : null);
         if (! $party) {
-            throw ValidationException::withMessages(['party_id' => 'Кому начислить — у ТС нет вендора']);
+            throw ValidationException::withMessages(['party_id' => 'Некому начислить: у ТС нет вендора']);
         }
         $unit = match ($kind) {
             ChargeKind::Tow => 'pc', ChargeKind::Idle => 'h', ChargeKind::Storage => 'day', default => 'pc'

@@ -40,7 +40,7 @@ final class UndoRelease
         $vehicle = DB::transaction(function () use ($vehicle, $by, $reason) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             if (! self::allowed($vehicle)) {
-                throw ValidationException::withMessages(['state' => 'Выдачу не отменить: счёт при выдаче уже оплачен — сначала снимите оплату']);
+                throw ValidationException::withMessages(['state' => 'Выдачу не отменить: счёт при выдаче уже оплачен, сначала снимите оплату']);
             }
             foreach (Invoice::where('vehicle_id', $vehicle->id)->where('direction', 'issued')->where('state', InvoiceState::Issued)->where('issued_at', '>=', $vehicle->released_at->toDateString())->get() as $invoice) {
                 ($this->void)($invoice, $by, 'Выдача отменена');

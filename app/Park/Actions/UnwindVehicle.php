@@ -30,7 +30,7 @@ final class UnwindVehicle
     public function __invoke(Vehicle $vehicle, User $by): ?Candidate
     {
         if (! self::allowed($vehicle)) {
-            throw ValidationException::withMessages(['vehicle' => 'У ТС уже есть приём, бумаги или деньги — отменить нельзя, только «Не привезена»']);
+            throw ValidationException::withMessages(['vehicle' => 'У ТС уже есть приём, бумаги или деньги, отменить нельзя, только «Не привезена»']);
         }
         Nav::forgetStaffCounts();
 

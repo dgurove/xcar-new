@@ -1,7 +1,7 @@
 {{-- ТС стоянки в плитках и строках: кадр, название с госномером, одна строка чипов (состояние, номер, VIN, вендор,
      место), справа — слот aside: по умолчанию дни на стоянке со светофором простоя и красный долг, у ожидаемой —
      «Принять ›», у выданной — дата. Кнопок нет: вся карточка — ссылка на дело. facts=false — без чипов ТС (заявки). --}}
-@props(['vehicle', 'href' => null, 'facts' => true, 'debt' => 0, 'aside' => null])
+@props(['vehicle', 'href' => null, 'facts' => true, 'debt' => 0, 'aside' => null, 'link' => true])
 @php
     use App\Park\{VehicleState, Idle};
     $href ??= '/cars/'.$vehicle->id;
@@ -12,6 +12,7 @@
     $noRequest = $state === VehicleState::Expected && $vehicle->relationLoaded('requests') && ! $vehicle->requests->contains(fn ($r) => $r->isOpen());
 @endphp
 <article id="vehicle-{{ $vehicle->id }}" class="card rise group">
+    @if ($link)<a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1"></a>@endif
     @if ($photos->isNotEmpty())
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
             <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
@@ -54,7 +55,7 @@
             <span class="nums text-sm {{ match (Idle::tone($days)) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', default => 'text-ink-muted' } }}">{{ $days }} дн</span>
             @if ($debt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs nums">{{ \App\Support\Money::rub($debt) }}</x-ui.pill>@endif
         @elseif ($state === VehicleState::Expected)
-            <a href="{{ $href }}" class="text-sm text-ink-muted">{{ $noRequest ? 'Заявка' : 'Принять' }} ›</a>
+            <span class="text-sm text-ink-muted">{{ $noRequest ? 'без заявки' : 'ожидается' }}</span>
         @elseif ($state === VehicleState::Released && $vehicle->released_at)
             <span class="nums text-sm text-ink-dim">{{ $vehicle->released_at->translatedFormat('j M') }}</span>
         @endif

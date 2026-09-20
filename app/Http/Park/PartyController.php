@@ -40,7 +40,7 @@ class PartyController
         $traces = $party->is_self || $party->invoices()->exists() || Vendor::where('party_id', $party->id)->exists()
             || Vehicle::where('owner_party_id', $party->id)->exists() || User::where('party_id', $party->id)->exists() || Charge::where('party_id', $party->id)->exists();
         if ($traces) {
-            throw ValidationException::withMessages(['name' => 'Контрагент в счетах или у вендора — убрать нельзя']);
+            throw ValidationException::withMessages(['name' => 'Контрагент в счетах или у вендора, убрать нельзя']);
         }
         $party->delete();
 

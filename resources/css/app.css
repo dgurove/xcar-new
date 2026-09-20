@@ -626,6 +626,30 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .phase > summary::-webkit-details-marker { display: none; }
   .phase[open] .phase-chevron { rotate: 180deg; }
   .phase-chevron { transition: rotate var(--dur-fast); }
+
+  /* Таймлайн дела: точки на линии слева, как трекинг посылки. Сделанное — лаймовая точка с галкой и строка
+     с раскрытием; текущее — крупная лаймовая точка, подсказка и форма; будущее — серая точка и серое слово. */
+  .steps { display: flex; flex-direction: column; }
+  .step { position: relative; display: grid; grid-template-columns: 1.5rem minmax(0, 1fr); column-gap: .5rem; }
+  .step::before { content: ''; position: absolute; left: calc(.75rem - 1px); top: 1.25rem; bottom: -.25rem; width: 2px; background: var(--color-line); }
+  .step:last-child::before { display: none; }
+  .step-dot { position: relative; z-index: 1; margin-top: .5rem; justify-self: center; display: flex; align-items: center; justify-content: center; width: .75rem; height: .75rem; border-radius: 999px; background: var(--color-line); color: #fff; }
+  .step--done .step-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-accent); color: #1d1d1b; }
+  .step--danger .step-dot { background: var(--color-danger); }
+  .step--current .step-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-soft); }
+  .step--current::before { background: var(--color-line); }
+  .step-body { min-width: 0; padding-bottom: 1rem; }
+  .step-head { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; min-height: 1.875rem; }
+  .step-title { font-weight: 500; }
+  .step--next .step-title, .step--todo .step-title { color: var(--color-ink-muted); font-weight: 400; }
+  .step--current .step-title { font-size: 1.125rem; }
+  .step-hint { margin-top: .125rem; font-size: .875rem; color: var(--color-ink-muted); }
+  .step-details > summary { cursor: pointer; list-style: none; }
+  .step-details > summary::-webkit-details-marker { display: none; }
+  .step-details[open] .step-chevron { rotate: 180deg; }
+  .step-chevron { transition: rotate var(--dur-fast); }
+  .step--next .step-body, .step--todo .step-body { padding-bottom: .625rem; }
+  .step--done .step-body { padding-bottom: .5rem; }
 }
 
 /* ------------------------------------------------------------- шторки */
@@ -1121,6 +1145,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card-price-from, .card-price-now { white-space: nowrap; }
   .card-price-from { color: var(--color-ink-muted); }
 
+  /* Вся карточка — ссылка: растянутая ссылка поверх, чипы-ссылки и кнопки — над ней. */
+  .card-link::after { content: ''; position: absolute; inset: 0; z-index: 0; }
+  .card:has(.card-link) a:not(.card-link), .card:has(.card-link) button, .card:has(.card-link) form { position: relative; z-index: 1; }
   .card-dot { height: .25rem; width: 1.25rem; border-radius: 999px; background: rgb(255 255 255 / .45); box-shadow: 0 0 3px rgb(0 0 0 / .55); transition: background-color .2s; }
   .card-dot--on { background: #fff; }
   .card-arrow {

@@ -27,7 +27,7 @@ final class CancelVehicle
                 throw ValidationException::withMessages(['state' => 'Отменить можно только ожидаемую или едущую ТС']);
             }
             if ($vehicle->accepted_at) {
-                throw ValidationException::withMessages(['state' => 'ТС уже была на стоянке — примите её на площадку или отмените перегон']);
+                throw ValidationException::withMessages(['state' => 'ТС уже была на стоянке, примите её на площадку или отмените перегон']);
             }
             $vehicle->update(['state' => VehicleState::Cancelled, 'cancelled_at' => now(), 'cancel_reason' => $reason ?: null, 'transit_started_at' => null]);
             Request::where('vehicle_id', $vehicle->id)->whereIn('state', RequestState::open())

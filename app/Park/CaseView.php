@@ -30,7 +30,7 @@ final class CaseView
     /** Какая из открытых заявок — текущий этап: эвакуация и приём раньше выдачи, выдача раньше перестановки и осмотра. */
     private const PRIORITY = [RequestType::Tow, RequestType::Intake, RequestType::Release, RequestType::Move, RequestType::Inspection];
 
-    public static function for(Vehicle $vehicle, User $user, ?int $requestId = null): array
+    public static function for(Vehicle $vehicle, User $user, ?int $requestId = null, bool $callAgain = false): array
     {
         $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'requests.assignee', 'requests.doneBy', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party']);
         $open = ($requestId ? $vehicle->requests->first(fn (Request $r) => $r->id === $requestId && $r->isOpen()) : null) ?? self::current($vehicle);
@@ -44,7 +44,8 @@ final class CaseView
             'verb' => $open?->verb(),
             'phases' => $vehicle->requests->filter(fn (Request $r) => $r->state === RequestState::Done)->sortBy(fn (Request $r) => ($r->done_at ?? $r->updated_at)->getTimestamp())->values(),
             'others' => $vehicle->requests->filter(fn (Request $r) => $r->isOpen() && $open && $r->isNot($open))->values(),
-            'letters' => $threads->isEmpty() ? 0 : Message::whereIn('thread_id', $threads)->count(),
+            'letters' => $letters = $threads->isEmpty() ? 0 : Message::whereIn('thread_id', $threads)->count(),
+            'steps' => Timeline::for($vehicle, $open, $letters > 0 || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $callAgain),
             'threads' => Thread::where('vehicle_id', $vehicle->id)->orderByDesc('last_message_at')->get(['id', 'subject']),
             'yards' => $yards->pluck('name', 'id'),
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),

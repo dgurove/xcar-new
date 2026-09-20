@@ -214,8 +214,8 @@ class RequestController
         $this->saveVehicle($request, $req->vehicle);
         $intake($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, $data, $req, $data['spot'] ?? null);
 
-        // Дальше — дело с окном писем поверх: черновик вендору с актом и фото приёма, отправит сотрудник, проверив.
-        return redirect(self::withReport($req->vehicle->fresh(), 'intake'))->with('toast', 'Принята');
+        // Дальше — дело: шаг «Отчёт вендору» ждёт с черновиком (акт и фото), отправит сотрудник, проверив.
+        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Принята');
     }
 
     public function move(Request $request, ParkRequest $req, Move $move)
@@ -244,11 +244,11 @@ class RequestController
         if (! $data['matches'] && $request->boolean('refused')) {
             $refuse($vehicle, $request->user(), $at, $data['mismatch_note'], $data, $req);
 
-            return redirect(self::withReport($vehicle->fresh(), 'refusal'))->with('toast', 'Отказ записан');
+            return redirect(self::withReport($vehicle->fresh(), 'refusal'))->with('toast', 'Отказ записан, письмо вендору готово');
         }
         $release($vehicle, $request->user(), $at, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req, $request->boolean('force'), $request->boolean('cash'));
 
-        return redirect(self::withReport($vehicle->fresh(), 'release'))->with('toast', 'Выдана');
+        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
     }
 
     /** Закрыть или отменить; из шторки отмены `exit` — ещё «Не привезут» (CancelVehicle) и «Заведена по ошибке» (UnwindVehicle), причина общая. */
@@ -268,7 +268,7 @@ class RequestController
         if ($exit === 'unwind') {
             $candidate = $unwind($req->vehicle, $request->user());
 
-            return $candidate ? redirect('/requests/from-mail')->with('toast', 'Заведение отменено — письмо снова в «Из писем»') : redirect('/requests')->with('toast', 'Заведение отменено');
+            return $candidate ? redirect('/requests/from-mail')->with('toast', 'Заведение отменено, письмо снова в «Из писем»') : redirect('/requests')->with('toast', 'Заведение отменено');
         }
         $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
 

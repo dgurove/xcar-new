@@ -108,7 +108,7 @@ class VehicleController
         abort_unless(Scope::allows($request->user(), $vehicle), 404);
         $window = (string) $request->query('window');
 
-        return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null) + [
+        return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null, $request->boolean('call')) + [
             'window' => preg_match('#^/(mail|cars)/#', $window) ? $window : null,
         ]);
     }
@@ -130,7 +130,7 @@ class VehicleController
                 continue;
             }
             if ($data[$key] && ! $vehicle->{$key}->equalTo(Carbon::parse($data[$key])) && $vehicle->storage_billed_until) {
-                return back()->withErrors([$key => 'Хранение уже выставлено — сначала аннулируйте счёт'])->withInput();
+                return back()->withErrors([$key => 'Хранение уже выставлено, сначала аннулируйте счёт'])->withInput();
             }
             if (! $data[$key]) {
                 unset($data[$key]);
@@ -248,7 +248,7 @@ class VehicleController
         $candidate = $unwind($vehicle, $request->user());
 
         return $candidate
-            ? redirect('/requests/from-mail')->with('toast', 'Заведение отменено — письмо снова в «Из писем»')
+            ? redirect('/requests/from-mail')->with('toast', 'Заведение отменено, письмо снова в «Из писем»')
             : redirect('/requests')->with('toast', 'Заведение отменено');
     }
 

@@ -43,7 +43,7 @@ final class UndoIntake
         $vehicle = DB::transaction(function () use ($vehicle, $by, $reason) {
             $vehicle = Vehicle::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             if (! self::allowed($vehicle)) {
-                throw ValidationException::withMessages(['state' => 'Приём не отменить: хранение уже выставлено или есть оплаты — сначала аннулируйте счета']);
+                throw ValidationException::withMessages(['state' => 'Приём не отменить: хранение уже выставлено или есть оплаты, сначала аннулируйте счета']);
             }
             if (Request::where('vehicle_id', $vehicle->id)->whereIn('type', [RequestType::Release, RequestType::Move, RequestType::Tow])->whereIn('state', RequestState::open())->exists()) {
                 throw ValidationException::withMessages(['state' => 'Сначала отмените открытую выдачу, перестановку или перегон']);
