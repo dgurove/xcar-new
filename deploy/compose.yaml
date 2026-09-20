@@ -57,7 +57,7 @@ services:
       - ${XCAR_DATA:-/srv/xcar/data}/media:/app/storage/app/media
       - ${XCAR_DATA:-/srv/xcar/data}/private:/app/storage/app/private
       - ${XCAR_DATA:-/srv/xcar/data}/cache:/app/storage/app/cache
-  - ${XCAR_HOT:-/srv/xcar/hot}:/app/storage/app/hot
+      - ${XCAR_HOT:-/srv/xcar/hot}:/app/storage/app/hot
       # Сертификаты. Терять нельзя: Let's Encrypt считает попытки.
       - caddy_data:/data
       - caddy_config:/config
