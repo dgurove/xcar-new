@@ -41,9 +41,19 @@ final class OnMessage
         if (! $linked && ! $thread?->offer_id && ! $thread?->vehicle_id && $message->direction === Direction::In) {
             ExtractCandidate::dispatch($message->id, $e->quiet);
         }
-        // Наш ответ (с актом, «подписанный АПП») в ветке кандидата двигает этап цепочки.
-        if ($message->direction === Direction::Out && $thread?->candidate_id && $message->account->scope === Scope::Park) {
-            $this->refreshStages($thread->candidate_id);
+        // Наш ответ (с актом, «подписанный АПП») в ветке кандидата двигает этап цепочки; ответ отдельной веткой
+        // из почтового клиента находит кандидата по номерам ветки.
+        if ($message->direction === Direction::Out && $message->account->scope === Scope::Park) {
+            if (! $thread?->candidate_id && $thread?->keys) {
+                $candidate = Candidate::where('scope', Scope::Park)->whereIn('state', [CandidateState::New, CandidateState::Rejected])
+                    ->get()->first(fn (Candidate $c) => array_intersect($thread->keys, Candidate::identities($c->extracted ?? [], null)) !== []);
+                if ($candidate) {
+                    $thread->forceFill(['candidate_id' => $candidate->id])->saveQuietly();
+                }
+            }
+            if ($thread?->candidate_id) {
+                $this->refreshStages($thread->candidate_id);
+            }
         }
         if ($e->quiet) {
             return; // история ящика: в базу легло, людей не дёргаем

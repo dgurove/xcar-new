@@ -63,6 +63,11 @@ final class ParkExtractor
             $fields['code']['value'] = preg_replace('/[\s\x{00A0}]+/u', '', $fields['code']['value']);
         }
         $this->fromSubject($fields, $subject);
+        // Сначала свои слова письма, потом цитата: в ответе «RE: …, Джили» под цитатой лежит переписка про Фотон.
+        $own = QuotationStripper::ownText($body);
+        if ($own !== '' && $own !== $text) {
+            $this->fromBody($fields, $own);
+        }
         $this->fromBody($fields, $text);
         $this->fromFilenames($fields, $filenames);
         if (! isset($fields['code'])) {
@@ -218,7 +223,8 @@ final class ParkExtractor
             $this->putMatch($fields, 'plate', self::PLATE, $base, 'file');
             if (! isset($fields['brand'])) {
                 // «Альфа акт 1 чанган алсвин 8592» — служебные слова спереди, четыре цифры номера сзади.
-                $part = (string) preg_replace(['/^(?:альфа|вск|акт|скан|заявка|ао|асп|эптс|птс|стс)?[\s_-]*(?:акт\s*\d*)?[\s_-]*/iu', '/[\s_-]+\d{3,4}(?:\s*\(\d+\))?$/u'], '', $base);
+                // «Альфа Эптс воях фри 2290», «Согаз акт выдачи kia sportage 9699» — служебных слов может быть несколько.
+                $part = (string) preg_replace(['/^(?:(?:альфа|вск|согаз|ргс|акт|скан|заявка|ао|асп|эптс|птс|стс|дов|доверенность|разрешение|выдачи?|при[её]ма|апп|отчет|отчёт)\s*\d*[\s_-]*)+/iu', '/[\s_-]+\d{3,5}(?:\s*\(\d+\))?$/u'], '', $base);
                 if ($found = Names::find($part)) {
                     $this->putCar($fields, $found, 'file');
                 }

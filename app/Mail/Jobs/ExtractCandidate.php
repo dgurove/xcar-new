@@ -2,12 +2,14 @@
 
 namespace App\Mail\Jobs;
 
+use App\Mail\Actions\LinkThread;
 use App\Mail\Candidate;
 use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
 use App\Mail\Direction;
 use App\Mail\Extraction\CandidateStages;
 use App\Mail\Extraction\Code;
+use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Extraction\Extractor;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
@@ -63,16 +65,27 @@ final class ExtractCandidate implements ShouldQueue
         $code = Code::normalize($fields['code']['value'] ?? null);
         $scope = $park ? Scope::Park : Scope::Offers;
         $identities = [...Candidate::identities($fields, $message->thread_id), ...($message->thread?->keys ?? [])];
-        $identities = array_values(array_unique($identities));
+        // «Выдать ТС покупателю 7892/046/07439/25 и 7814/046/00123/26» — письмо о нескольких машинах, оно каждой.
+        $codes = $park ? array_map(fn ($c) => 'code:'.Code::key($c), (new CodeMatcher)->findAll($message->subject)) : [];
+        $identities = array_values(array_unique([...$identities, ...$codes]));
         // Открытых кандидатов десятки — сверяем тождества в PHP: совпасть может ключ, VIN из полей или ветка любого письма.
-        $existing = Candidate::where('scope', $scope)->whereIn('state', [CandidateState::New, CandidateState::Rejected])->with('messages')->get()
+        $matches = Candidate::where('scope', $scope)->whereIn('state', [CandidateState::New, CandidateState::Rejected])->with('messages')->get()
             ->map(fn (Candidate $c) => [$c, array_intersect($identities, $c->allIdentities())])
             ->filter(fn ($pair) => $pair[1] !== [])
             ->sortBy(fn ($pair) => min(array_keys($pair[1])))
-            ->map(fn ($pair) => $pair[0])->first();
+            ->map(fn ($pair) => $pair[0])->values();
+        $existing = $matches->first();
         if ($existing) {
             if ($existing->messages->contains('id', $message->id)) {
                 return $existing;
+            }
+            // Остальные машины из письма о нескольких — им письмо тоже в цепочку (этап «продана» у каждой).
+            if (count($codes) > 1) {
+                foreach ($matches->slice(1)->filter(fn (Candidate $c) => $c->code && in_array('code:'.Code::key($c->code), $codes, true)) as $other) {
+                    $other->messages()->syncWithoutDetaching([$message->id => ['created_at' => now()]]);
+                    $other->update(['messages_count' => $other->messages()->count(), 'last_message_at' => max($other->last_message_at, $message->date_at) ?? now()]);
+                    app(CandidateStages::class)->refresh($other);
+                }
             }
             // Ещё письмо о той же ТС: письмо в список, новые поля дописываются к прежним, свежие ложатся рядом,
             // ключ поднимается до самого сильного (ветка → VIN → номер). Владельца не дёргаем — ТС та же.
@@ -84,6 +97,7 @@ final class ExtractCandidate implements ShouldQueue
                 'messages_count' => $existing->messages()->count(), 'last_message_at' => max($existing->last_message_at, $message->date_at) ?? now(),
             ]);
             self::adopt($existing, $message);
+            $park && app(LinkThread::class)->forCandidate($existing->fresh());
             $park && app(CandidateStages::class)->refresh($existing);
             // Выданная цепочка ушла в архив — её файлы на диске не нужны.
             if ($existing->fresh()->stage !== CandidateStage::Released) {
@@ -106,6 +120,7 @@ final class ExtractCandidate implements ShouldQueue
         ]);
         $candidate->messages()->attach($message->id, ['created_at' => now()]);
         self::adopt($candidate, $message);
+        $park && app(LinkThread::class)->forCandidate($candidate);
         $park && app(CandidateStages::class)->refresh($candidate);
         if ($candidate->fresh()->stage !== CandidateStage::Released) {
             ImportCandidateFiles::dispatch($candidate->id, $message->id);

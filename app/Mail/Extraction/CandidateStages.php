@@ -8,6 +8,7 @@ use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
 use App\Mail\Direction;
 use App\Mail\Message;
+use App\Mail\Thread;
 use App\Support\Nav;
 use Illuminate\Support\Collection;
 
@@ -72,7 +73,8 @@ final class CandidateStages
     /** Все письма цепочки по дате: письма кандидата и все письма его веток, у писем без смысла он считается тут же. */
     private function messages(Candidate $candidate): Collection
     {
-        $threadIds = $candidate->messages()->pluck('thread_id')->filter()->unique()->all();
+        $threadIds = $candidate->messages()->pluck('thread_id')->filter()
+            ->merge(Thread::where('candidate_id', $candidate->id)->pluck('id'))->unique()->all();
         $messages = Message::with(['attachments', 'account'])->where(fn ($q) => $q->whereIn('thread_id', $threadIds)->orWhereIn('id', $candidate->messages()->pluck('mail_messages.id')))
             ->orderBy('date_at')->get();
         foreach ($messages as $m) {
@@ -81,6 +83,7 @@ final class CandidateStages
             }
         }
 
-        return $messages;
+        // Бухгалтерия (отчёт-акт со списком машин) — не про эту ТС, этапов не даёт.
+        return $messages->reject(fn (Message $m) => $m->intent === Intent::Billing->value)->values();
     }
 }

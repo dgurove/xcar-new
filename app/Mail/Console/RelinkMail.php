@@ -10,6 +10,7 @@ use App\Mail\Direction;
 use App\Mail\Extraction\Keys;
 use App\Mail\Jobs\ExtractCandidate;
 use App\Mail\Message;
+use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -57,6 +58,13 @@ final class RelinkMail extends Command
             });
         $created = Candidate::count() - $before;
         $this->line('Писем под кандидатами: '.$joined.', новых кандидатов: '.$created);
+
+        // Наши ответы и пересылки отдельной веткой — под кандидата по номерам.
+        $toCandidates = 0;
+        Candidate::where('scope', Scope::Park)->each(function (Candidate $c) use ($link, &$toCandidates) {
+            $toCandidates += $link->forCandidate($c);
+        });
+        $this->line("Веток привязано к кандидатам: {$toCandidates}");
 
         $linked = 0;
         Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->each(function (Vehicle $v) use ($link, &$linked) {

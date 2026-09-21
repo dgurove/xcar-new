@@ -33,6 +33,12 @@ final class Names
         'дэу' => 'daewoo', 'дэо' => 'daewoo', 'ссангйонг' => 'ssangyong', 'санг йонг' => 'ssangyong', 'джип' => 'jeep', 'додж' => 'dodge', 'кадиллак' => 'cadillac', 'крайслер' => 'chrysler',
         'сеат' => 'seat', 'вольцваген' => 'volkswagen', 'акура' => 'acura', 'датсун' => 'datsun', 'равон' => 'ravon', 'хайма' => 'haima', 'фав' => 'faw', 'дунфэн' => 'dongfeng', 'донгфенг' => 'dongfeng',
         'байк' => 'baic', 'джак' => 'jac', 'сяоми' => 'xiaomi', 'бид' => 'byd', 'бюик' => 'buick', 'ягуар' => 'jaguar', 'альфа ромео' => 'alfa-romeo', 'смарт' => 'smart',
+        // Сокращения из имён файлов актов («Альфа акт 1 воях фри 2290», «мб гле», «суб фор») и частые опечатки.
+        'воях' => 'voyah', 'вояхс' => 'voyah', 'джаэко' => 'jaecoo', 'джаэка' => 'jaecoo', 'джаеко' => 'jaecoo', 'мб' => 'mercedes', 'м-б' => 'mercedes', 'm-b' => 'mercedes', 'мерсседес бенц' => 'mercedes', 'mersedes-benz' => 'mercedes', 'mersedes' => 'mercedes',
+        'кроне' => 'krone', 'ситрак' => 'sitrak', 'кайи' => 'kaiyi', 'кайя' => 'kaiyi', 'суб' => 'subaru', 'lambo' => 'lamborghini', 'ламбо' => 'lamborghini', 'донфенг' => 'dongfeng', 'буд' => 'byd', 'бид' => 'byd',
+        'даф' => 'daf', 'daf' => 'daf', 'ман' => 'man', 'man' => 'man', 'krone' => 'krone', 'sitrak' => 'sitrak', 'belava' => 'belava', 'rr' => 'land-rover', 'шеви' => 'chevrolet', 'кадилак' => 'cadillac', 'хэндэ' => 'hyundai', 'хенде' => 'hyundai', 'хундэ' => 'hyundai', 'митсубиши' => 'mitsubishi', 'mitsi' => 'mitsubishi',
+        'фольксавен' => 'volkswagen', 'фольксвагн' => 'volkswagen', 'beelgee' => 'belgee', 'белгее' => 'belgee', 'фхавал' => 'haval', 'нисан' => 'nissan', 'nisan' => 'nissan', 'лендровер' => 'land-rover', 'ленд-ровер' => 'land-rover',
+        'scoda' => 'skoda', 'шкода' => 'skoda', 'infinity' => 'infiniti', 'кия' => 'kia', 'kia' => 'kia', 'черит' => 'chery', 'чанганг' => 'changan', 'джетур' => 'jetour', 'белава' => 'belava', 'ченлонг' => 'chenglong', 'chenglong' => 'chenglong',
     ];
 
     /** Разговорное написание модели → как в справочнике. */
@@ -60,10 +66,22 @@ final class Names
         'газель' => 'ГАЗель', 'газель некст' => 'ГАЗель NEXT', 'соболь' => 'Соболь', 'спорт' => 'Sport', 'рендж ровер спорт' => 'Range Rover Sport', 'рендж ровер' => 'Range Rover', 'дискавери' => 'Discovery', 'дефендер' => 'Defender',
         'с450' => 'C 450', 'е200' => 'E 200', 'е220' => 'E 220', 'глс' => 'GLS', 'гле' => 'GLE', 'глц' => 'GLC', 'глк' => 'GLK', 'гла' => 'GLA', 'мл' => 'ML', 'спринтер' => 'Sprinter', 'вито' => 'Vito', 'в-класс' => 'V-Class',
         'фри' => 'Free', 'дрим' => 'Dream', 'м9' => 'M9', 'м7' => 'M7', 'м5' => 'M5',
+        'фор' => 'Forester', 'сд' => 'SD', 'с7н' => 'C7H', 'джи 8' => 'J8', 'джи8' => 'J8', 'джи 7' => 'J7', 'джи7' => 'J7', 'дашинг' => 'Dashing', 'танг' => 'Tang', 'траверс' => 'Traverse', 'эскалейд' => 'Escalade',
+        'сорлярис' => 'Solaris', 'соларис' => 'Solaris', 'ай30' => 'i30', 'таурег' => 'Touareg', 'велар' => 'Range Rover Velar', 'актрос' => 'Actros', 'в300д' => 'V 300 d', 'x350' => 'X 350',
+    ];
+
+    /** Модели, по которым марка ясна и без неё (имена файлов актов без марки). */
+    private const MODEL_BRANDS = [
+        'джулион' => 'haval', 'джолион' => 'haval', 'дарго' => 'haval', 'тигуан' => 'volkswagen', 'таурег' => 'volkswagen', 'туарег' => 'volkswagen', 'поло' => 'volkswagen', 'пассат' => 'volkswagen',
+        'дашинг' => 'jetour', 'солярис' => 'hyundai', 'соларис' => 'hyundai', 'сорлярис' => 'hyundai', 'крета' => 'hyundai', 'туссан' => 'hyundai', 'элантра' => 'hyundai', 'санта фе' => 'hyundai',
+        'рио' => 'kia', 'спортейдж' => 'kia', 'соренто' => 'kia', 'церато' => 'kia', 'селтос' => 'kia', 'октавия' => 'skoda', 'рапид' => 'skoda', 'кодиак' => 'skoda', 'карок' => 'skoda',
+        'камри' => 'toyota', 'королла' => 'toyota', 'рав4' => 'toyota', 'рав 4' => 'toyota', 'гранта' => 'lada', 'веста' => 'lada', 'ларгус' => 'lada', 'нива' => 'lada', 'кашкай' => 'nissan', 'икстрейл' => 'nissan',
+        'аутлендер' => 'mitsubishi', 'аутбек' => 'subaru', 'форестер' => 'subaru', 'алсвин' => 'changan', 'джолион' => 'haval', 'ф7' => 'haval', 'ф7х' => 'haval', 'дастер' => 'renault', 'логан' => 'renault', 'аркана' => 'renault',
+        'куга' => 'ford', 'фокус' => 'ford', 'тхл' => 'exeed', 'газель' => 'gaz', 'соболь' => 'gaz', 'эскалейд' => 'cadillac', 'траверс' => 'chevrolet', 'спринтер' => 'mercedes', 'вито' => 'mercedes',
     ];
 
     /** Марки, которых в справочнике может не быть: как завести. */
-    private const CREATE = ['moskvich' => 'Москвич', 'exeed' => 'Exeed', 'tonar' => 'Тонар', 'lada' => 'Lada', 'belgee' => 'Belgee', 'tenet' => 'Tenet', 'lixiang' => 'Lixiang', 'aito' => 'Aito', 'voyah' => 'Voyah', 'jaecoo' => 'Jaecoo', 'tank' => 'Tank', 'lynk-co' => 'Lynk & Co', 'jetour' => 'Jetour', 'hongqi' => 'Hongqi', 'zeekr' => 'Zeekr', 'omoda' => 'Omoda', 'kamaz' => 'КАМАЗ', 'uaz' => 'УАЗ', 'gaz' => 'ГАЗ'];
+    private const CREATE = ['krone' => 'Krone', 'sitrak' => 'Sitrak', 'daf' => 'DAF', 'man' => 'MAN', 'belava' => 'Belava', 'chenglong' => 'Chenglong', 'moskvich' => 'Москвич', 'exeed' => 'Exeed', 'tonar' => 'Тонар', 'lada' => 'Lada', 'belgee' => 'Belgee', 'tenet' => 'Tenet', 'lixiang' => 'Lixiang', 'aito' => 'Aito', 'voyah' => 'Voyah', 'jaecoo' => 'Jaecoo', 'tank' => 'Tank', 'lynk-co' => 'Lynk & Co', 'jetour' => 'Jetour', 'hongqi' => 'Hongqi', 'zeekr' => 'Zeekr', 'omoda' => 'Omoda', 'kamaz' => 'КАМАЗ', 'uaz' => 'УАЗ', 'gaz' => 'ГАЗ'];
 
     /** Тот же завод под другим slug в справочнике. */
     private const ALT = ['lada' => 'vaz', 'lixiang' => 'li-auto', 'lynk-co' => 'lynk-and-co', 'mercedes' => 'mercedes-benz'];
@@ -103,6 +121,23 @@ final class Names
                 ];
             }
         }
+        // Марки нет, но модель говорит за неё: «Альфа акт 1 джулион 1234», «тигуан», «дашинг».
+        for ($i = 0; $i < $n; $i++) {
+            for ($len = 3; $len >= 1; $len--) {
+                if ($i + $len > $n) {
+                    continue;
+                }
+                $key = self::key(implode(' ', array_slice($words, $i, $len)));
+                if (isset(self::MODEL_BRANDS[$key]) && ($brand = self::bySlug(self::MODEL_BRANDS[$key]))) {
+                    return [
+                        'brand' => $brand,
+                        'model' => self::MODELS[$key] ?? implode(' ', array_slice($words, $i, $len)),
+                        'before' => self::clean(implode(' ', array_slice($words, 0, $i))),
+                        'after' => self::clean(implode(' ', array_slice($words, $i + $len))),
+                    ];
+                }
+            }
+        }
 
         return null;
     }
@@ -137,7 +172,7 @@ final class Names
             $take[] = $w;
         }
         // «Соболь», «ГАЗель» — марка ГАЗ, модель в самом слове.
-        if (! $take && isset(self::MODELS[self::key($brandPhrase)]) && self::BRANDS[self::key($brandPhrase)] === $brand->slug && self::key($brandPhrase) !== $brand->slug) {
+        if (! $take && isset(self::MODELS[self::key($brandPhrase)]) && (self::BRANDS[self::key($brandPhrase)] ?? null) === $brand->slug && self::key($brandPhrase) !== $brand->slug) {
             return [self::MODELS[self::key($brandPhrase)], 0];
         }
         for ($len = count($take); $len >= 1; $len--) {
