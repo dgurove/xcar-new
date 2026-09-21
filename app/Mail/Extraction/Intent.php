@@ -2,12 +2,12 @@
 
 namespace App\Mail\Extraction;
 
-use App\Mail\Direction;
 use App\Mail\Message;
 
 /**
  * Смысл письма страховой о ТС на парковке: заявка на приём, «реализовано, покупатель заберёт», покупатель хочет
- * осмотреть, просят фото или акт, сообщают, что принято, «не вывезено», вопрос, прочее. По нему цепочка писем
+ * осмотреть, просят фото или акт, сообщают, что принято, выдана («подписанный АПП», «вывез»), бухгалтерия
+ * (отчёт-акт, счета, сверка), «не вывезено», вопрос, прочее. По нему цепочка писем
  * кандидата получает этап (`CandidateStages`), а у ТС в деле появляется шаг «Нужно ответить».
  */
 enum Intent: string
@@ -17,6 +17,8 @@ enum Intent: string
     case Inspect = 'inspect';
     case Docs = 'docs';
     case Accepted = 'accepted';
+    case Released = 'released';
+    case Billing = 'billing';
     case CancelRelease = 'cancel_release';
     case Question = 'question';
     case Other = 'other';
@@ -29,6 +31,13 @@ enum Intent: string
         if (preg_match('/\bне\s+вывезен/iu', $text)) {
             return self::CancelRelease;
         }
+        if (self::billing($subject, $text)) {
+            return self::Billing;
+        }
+        // «Покупатель вчера вывез ГОТС, акт необходимо закрыть» — уже выдана, не «заберёт».
+        if (preg_match('/\bвывез(?:ла|ло)?\b/iu', $text) && ! preg_match('/планиру|ближайш|сегодня|завтра|забер[ёе]т|вывезет|вывезут/iu', $text)) {
+            return self::Released;
+        }
         if (preg_match('/осмотр/iu', $text) && preg_match('/покупател|допустить/iu', $text)) {
             return self::Inspect;
         }
@@ -36,10 +45,10 @@ enum Intent: string
             return self::Sold;
         }
         // Заявка на приём — по устойчивым оборотам страховых; «просьба прислать скан акта» внутри такой заявки — не просьба о бумагах.
-        if (preg_match('/связаться\s+с\s+клиентом|прошу\s+принять|согласован\s+при[её]м|организовать\s+(?:при[её]м|перемещение|эвакуацию)|сам\w*\s+свяжется|готов\w*\s+к\s+передаче|документы\s+для\s+при[её]ма|\bна\s+вывоз|вывоз\s+(?:ГОТС|ТС)|просьба\s+принять/iu', $all)) {
+        if (preg_match('/связаться\s+с\s+клиентом|прошу\s+принять|согласован\s+при[её]м|организовать(?:\s+[\d.]+)?\s+(?:при[её]м|перемещение|эвакуацию|выездной\s+при[её]м)|сам\w*(?:\s+с\s+вами)?\s+свяжется|подъедет\s+в\s+офис|готов\w*\s+к\s+передаче|документы\s+для\s+при[её]ма|\bна\s+вывоз|вывоз\s+(?:ГОТС|ТС)|просьба\s+принять|направление\s+на\s+(?:хранение|стоянку)/iu', $all)) {
             return self::Intake;
         }
-        if (preg_match('/ожида\w*\s+фото|направ\w+[^\n]{0,60}(?:акт|скан|фото|ЭПТС|ПТС)|нет\s+подписи|нет\s+2-й\s+стороны|подтверди\w+[^\n]{0,60}направ|исправленн\w+\s+акт|скан\w*\s+[^\n]{0,30}(?:ЭПТС|ПТС|акт)/iu', $text)) {
+        if (preg_match('/ожида\w*\s+фото|направ\w+[^\n]{0,60}(?:акт|скан|фото|ЭПТС|ПТС)|присла\w+[^\n]{0,40}фото|жд[её]м\s+от\s+вас\s+фото|фото\s+принят|нет\s+подписи|нет\s+2-й\s+стороны|подтверди\w+[^\n]{0,60}направ|исправленн\w+\s+акт|скан\w*\s+[^\n]{0,30}(?:ЭПТС|ПТС|акт)/iu', $text)) {
             return self::Docs;
         }
         if (preg_match('/ГОТС\s+принят|ТС\s+(?:передано|принято|принята)|по\s+принят\w+\s+(?:ТС|ГОТС)/iu', $all)) {
@@ -55,12 +64,30 @@ enum Intent: string
         return self::Other;
     }
 
-    /** Наше письмо: «по принятому ТС», акт во вложении — ТС принята. */
+    /** Бухгалтерия: отчёт-акт, счета, сверка, акты хранения за период — не про одну ТС, ключей и кандидатов не даёт. */
+    public static function billing(?string $subject, string $text): bool
+    {
+        $period = 'за\s+(?:январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр)\w*(?:\s*[-–]\s*\w+)?\s*20\d\d';
+
+        // В теме — и счета; в тексте только отчёты и сверки: «покупатель оплатит счёт за хранение» — ещё выдача, не бухгалтерия.
+        return (bool) preg_match('/отч[её]т-?акт|акт\w*\s+(?:об\s+оказан|выполненн)|акты\s+хранения|\bсч[её]т(?:а|ов)?\b|сверк|согласовани[ея]\s+акт|'.$period.'/iu', (string) $subject)
+            || (bool) preg_match('/отч[её]т-?акт|акт\w*\s+(?:об\s+оказан|выполненн)|акты\s+хранения|сверк|период\s+нахождения|'.$period.'/iu', mb_substr($text, 0, 400));
+    }
+
+    /** Наше письмо: «подписанный АПП», «по выданному ТС», файл «акт выдачи» — ТС выдана; «по принятому ТС», файл с актом — принята. */
     public static function ofOutgoing(?string $subject, ?string $body, array $filenames = []): self
     {
         $text = self::body($body);
-        if (preg_match('/по\s+принят\w+\s+(?:ТС|ГОТС)|принят[аоы]?\s+на\s+(?:хранение|парковку|стоянку)/iu', $text)
-            || collect($filenames)->contains(fn ($f) => preg_match('/\bакт/iu', (string) $f))) {
+        $files = collect($filenames);
+        if (preg_match('/подписанн\w+\s+АПП|по\s+выданн\w+\s+(?:ТС|ГОТС)|закрывающие\s+документы/iu', $text)
+            || $files->contains(fn ($f) => preg_match('/акт\w*\s+выдач|\bапп\b/iu', (string) $f))) {
+            return self::Released;
+        }
+        // Ответ Альфе СПб на «заявку на приём» — без слов, одни фото: это фотоотчёт о принятой ТС.
+        $photos = $files->filter(fn ($f) => preg_match('/\.(?:jpe?g|png|heic)$/iu', (string) $f))->count();
+        if (preg_match('/по\s+принят\w+\s+(?:ТС|ГОТС)|по\s+при[её]му\s+(?:ТС|ГОТС)|принят[аоы]?\s+на\s+(?:хранение|парковку|стоянку)|фотоотч[её]т/iu', $text)
+            || $files->contains(fn ($f) => preg_match('/\bакт/iu', (string) $f))
+            || ($photos >= 4 && mb_strlen($text) < 60)) {
             return self::Accepted;
         }
 
@@ -71,7 +98,7 @@ enum Intent: string
     {
         $body = $message->text_body ?: strip_tags((string) $message->html_body);
 
-        return $message->direction === Direction::Out
+        return $message->isOurs()
             ? self::ofOutgoing($message->subject, $body, $message->attachments->pluck('filename')->all())
             : self::of($message->subject, $body);
     }
@@ -96,6 +123,8 @@ enum Intent: string
             self::Question => 'Вендор спрашивает',
             self::Sold => 'Продано, покупатель заберёт',
             self::Accepted => 'Вендор пишет, что ТС принята',
+            self::Released => 'ТС выдана',
+            self::Billing => 'Бухгалтерия',
             self::Intake => 'Заявка на приём',
             self::Other => 'Письмо',
         };

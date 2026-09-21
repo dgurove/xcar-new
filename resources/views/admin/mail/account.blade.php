@@ -17,6 +17,7 @@
                 <x-ui.field name="from_name" label="Имя отправителя" :value="$account->from_name" placeholder="XCar"/>
                 <x-ui.field name="scope" label="Чей" :options="\App\Mail\Scope::options()" :value="$account->scope?->value"/>
                 <x-ui.field name="sync_from" label="Забирать письма с" type="date" :value="$account->sync_from?->toDateString()"/>
+                <x-ui.field name="files_from" label="Файлы из писем с" type="date" :value="$account->files_from?->toDateString()"/>
                 <div class="flex items-end pb-3"><x-ui.check name="is_active" :checked="$account->is_active">Включён</x-ui.check></div>
             </div>
         </x-ui.card>

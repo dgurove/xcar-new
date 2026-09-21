@@ -98,7 +98,7 @@ class Candidate extends Model implements HasMedia
         return trim(($this->value('brand') ?? '').' '.($this->value('model') ?? '')) ?: ($this->code ?: ($this->value('plate') ?: ($this->subject ?: 'Письмо')));
     }
 
-    /** Этап цепочки по письмам: заявка, принята, продана. @return ?array{stage: string, at: ?string, message_id: int, title: string} */
+    /** Этап цепочки по письмам: заявка, принята, продана, выдана. @return ?array{stage: string, at: ?string, message_id: int, title: string} */
     public function stageOf(CandidateStage $stage): ?array
     {
         foreach ($this->stages ?? [] as $s) {
@@ -110,12 +110,15 @@ class Candidate extends Model implements HasMedia
         return null;
     }
 
-    /** Слово этапа для чипа: «ждёт приёма», «на парковке с 15 сен», «продана, заберёт покупатель». */
+    /** Слово этапа для чипа: «ждёт приёма», «на парковке с 15 сен», «продана, заберёт покупатель», «выдана 12 мая». */
     public function stageLabel(): string
     {
         $stage = $this->stage ?? CandidateStage::Intake;
         if ($stage === CandidateStage::Stored && ($at = $this->stageOf($stage)['at'] ?? null)) {
             return 'на парковке с '.Carbon::parse($at)->translatedFormat('j M');
+        }
+        if ($stage === CandidateStage::Released && ($at = $this->stageOf($stage)['at'] ?? null)) {
+            return 'выдана '.Carbon::parse($at)->translatedFormat('j M');
         }
 
         return $stage->label();

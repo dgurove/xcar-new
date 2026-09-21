@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'slug', 'title', 'email', 'from_name', 'scope', 'imap_host', 'imap_port', 'imap_encryption', 'imap_validate_cert',
     'imap_username', 'imap_password', 'smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password',
-    'signature', 'is_active', 'sync_from',
+    'signature', 'is_active', 'sync_from', 'files_from',
 ])]
 #[Hidden(['imap_password', 'smtp_password'])]
 class Account extends Model
@@ -29,6 +29,7 @@ class Account extends Model
             'smtp_password' => 'encrypted',
             'is_active' => 'bool',
             'sync_from' => 'date',
+            'files_from' => 'date',
             'synced_at' => 'datetime',
             'last_error_at' => 'datetime',
         ];

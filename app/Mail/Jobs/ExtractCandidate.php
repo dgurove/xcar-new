@@ -25,7 +25,7 @@ final class ExtractCandidate implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public int $messageId)
+    public function __construct(public int $messageId, public bool $quiet = false)
     {
         $this->onConnection('database-long')->onQueue('mail');
     }
@@ -36,7 +36,7 @@ final class ExtractCandidate implements ShouldQueue
         if (! $message || $message->direction !== Direction::In) {
             return;
         }
-        self::run($message, $extractor, force: false);
+        self::run($message, $extractor, force: false, quiet: $this->quiet);
     }
 
     /**
@@ -52,6 +52,10 @@ final class ExtractCandidate implements ShouldQueue
         $message->loadMissing('attachments');
         if ($park && $message->intent === null) {
             $message->forceFill(['intent' => Intent::ofMessage($message)->value])->saveQuietly();
+        }
+        // Отчёт-акт, счета, сверка — про десятки машин сразу: ни кандидат, ни письмо к кандидату.
+        if ($park && ! $force && $message->intent === Intent::Billing->value) {
+            return null;
         }
         $fields = $park ? app(ParkExtractor::class)->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments->pluck('filename')->all(), $message->attachments)
             : $extractor->extract($message->subject, $body, $message->from_email, $message->date_at);

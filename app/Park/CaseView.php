@@ -40,7 +40,9 @@ final class CaseView
             ->whereIn('intent', array_map(fn (Intent $i) => $i->value, array_filter(Intent::cases(), fn (Intent $i) => $i->needsReply())))
             ->orderBy('date_at')->get(['id', 'thread_id', 'subject', 'from_name', 'from_email', 'date_at', 'text_body', 'html_body', 'intent']);
         $answeredIds = $vehicle->events->where('type', EventType::LetterAnswered)->pluck('payload.message')->filter()->all();
-        $replied = $asks->isEmpty() ? collect() : Message::whereIn('thread_id', $threads)->where('direction', Direction::Out)->get(['thread_id', 'date_at']);
+        // Ответом считается и письмо сотрудника с личного ящика (Message::ownEmails).
+        $replied = $asks->isEmpty() ? collect() : Message::whereIn('thread_id', $threads)
+            ->where(fn ($q) => $q->where('direction', Direction::Out)->orWhereIn('from_email', Message::ownEmails()))->get(['thread_id', 'date_at']);
         $asks->each(fn (Message $m) => $m->answered = in_array($m->id, $answeredIds, true) || $replied->contains(fn ($r) => $r->thread_id === $m->thread_id && $r->date_at?->gt($m->date_at)));
 
         return [

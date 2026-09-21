@@ -6,14 +6,14 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['account_id', 'path', 'name', 'delimiter', 'kind', 'is_syncable', 'uid_validity', 'uid_next', 'last_uid', 'messages_count', 'unseen_count', 'synced_at'])]
+#[Fillable(['account_id', 'path', 'name', 'delimiter', 'kind', 'is_syncable', 'uid_validity', 'uid_next', 'last_uid', 'backfill_uid', 'messages_count', 'unseen_count', 'synced_at'])]
 class Folder extends Model
 {
     protected $table = 'mail_folders';
 
     protected function casts(): array
     {
-        return ['kind' => FolderKind::class, 'is_syncable' => 'bool', 'synced_at' => 'datetime', 'uid_validity' => 'int', 'uid_next' => 'int', 'last_uid' => 'int'];
+        return ['kind' => FolderKind::class, 'is_syncable' => 'bool', 'synced_at' => 'datetime', 'uid_validity' => 'int', 'uid_next' => 'int', 'last_uid' => 'int', 'backfill_uid' => 'int'];
     }
 
     public function account(): BelongsTo

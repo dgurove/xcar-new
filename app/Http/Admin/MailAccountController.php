@@ -91,6 +91,7 @@ class MailAccountController
             'smtp_password' => [$account ? 'nullable' : 'required', 'string', 'max:200'],
             'signature' => ['nullable', 'string', 'max:5000'],
             'sync_from' => ['nullable', 'date'],
+            'files_from' => ['nullable', 'date'],
         ]);
         $data['is_active'] = $request->boolean('is_active');
         $data['imap_validate_cert'] = true;

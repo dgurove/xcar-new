@@ -102,6 +102,29 @@ final class Sync
         return $stored;
     }
 
+    /**
+     * История папки: письма по списку UID, старше уже забранных, тихо (без уведомлений) и без файлов на диске
+     * (правило `files_from` у ящика). Курсор `backfill_uid` двигается после каждого письма — команду можно
+     * прерывать и запускать снова. Возвращает число записанных.
+     */
+    public function backfill(Account $account, Folder $folder, Imap $imap, array $uids, ?callable $tick = null): int
+    {
+        $snapshot = $imap->status($folder->path) ?? ['uid_validity' => $folder->uid_validity, 'uid_next' => $folder->uid_next, 'messages' => null, 'unseen' => null];
+        $stored = 0;
+        foreach (array_chunk($uids, self::BATCH) as $chunk) {
+            $rows = $imap->structures($folder->path, $chunk);
+            foreach ($chunk as $uid) {
+                if (isset($rows[$uid])) {
+                    $stored += (int) $this->store($account, $folder, $snapshot, $imap, $uid, $rows[$uid], quiet: true);
+                }
+                $folder->forceFill(['backfill_uid' => max($folder->backfill_uid, $uid)])->save();
+                $tick && $tick($uid, $stored);
+            }
+        }
+
+        return $stored;
+    }
+
     public function applyFlags(Message $message, array $flags): void
     {
         $has = fn (string $flag) => (bool) array_filter($flags, fn ($v) => strtolower(ltrim((string) $v, '\\')) === $flag);
@@ -116,7 +139,7 @@ final class Sync
         }
     }
 
-    private function store(Account $account, Folder $folder, array $snapshot, Imap $imap, int $uid, array $row): bool
+    private function store(Account $account, Folder $folder, array $snapshot, Imap $imap, int $uid, array $row, bool $quiet = false): bool
     {
         $existing = Message::where('folder_id', $folder->id)->where('uid_validity', $snapshot['uid_validity'])->where('imap_uid', $uid)->first();
         if ($existing) {
@@ -158,7 +181,7 @@ final class Sync
             'from_name' => $parsed['from_name'],
             'date_at' => $parsed['date'],
         ]));
-        $this->ingest->apply($message, $parsed);
+        $this->ingest->apply($message, $parsed, $quiet);
 
         return true;
     }

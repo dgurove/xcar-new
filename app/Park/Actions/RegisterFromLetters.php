@@ -5,7 +5,6 @@ namespace App\Park\Actions;
 use App\Cars\Vin\RememberVin;
 use App\Mail\Candidate;
 use App\Mail\CandidateStage;
-use App\Mail\Direction;
 use App\Mail\Message;
 use App\Park\DocState;
 use App\Park\EventType;
@@ -57,7 +56,7 @@ final class RegisterFromLetters
             ($this->openDocs)($vehicle);
             // Наш ответ с актом уже ушёл вендору — бумаги «отправлено» тем письмом.
             $reply = ($stored['message_id'] ?? null) ? Message::find($stored['message_id']) : null;
-            if ($reply && $reply->direction === Direction::Out) {
+            if ($reply && $reply->isOurs()) {
                 foreach ($vehicle->docs()->where('direction', 'out')->where('state', DocState::Pending)->get() as $doc) {
                     ($this->markDoc)($doc, $by, DocState::Sent, $reply->date_at, null, $reply->thread_id);
                 }

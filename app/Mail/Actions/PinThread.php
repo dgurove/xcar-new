@@ -36,7 +36,9 @@ final class PinThread
     {
         $pending = $query->whereNull('blob_sha')->where('is_inline', false)->whereNotNull('section')
             ->whereHas('message', fn ($q) => $q->whereNotNull('imap_uid')->whereNotNull('folder_id'))
-            ->with(['message.folder', 'message.account'])->get();
+            ->with(['message.folder', 'message.account'])->get()
+            // История ящика: до даты «Файлы из писем с» файлы остаются в ящике, на диск не ложатся.
+            ->reject(fn (Attachment $a) => $a->message->filesFrozen());
         if ($pending->isEmpty()) {
             return 0;
         }

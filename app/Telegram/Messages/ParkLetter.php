@@ -18,6 +18,7 @@ final class ParkLetter extends Message
 
         return match ($this->candidate->stage) {
             CandidateStage::Sold => 'Продано, покупатель заберёт',
+            CandidateStage::Released => 'ТС выдана',
             CandidateStage::Stored => 'Уже на парковке',
             default => $v('request') === 'tow' ? 'На вывоз' : 'На приём',
         };

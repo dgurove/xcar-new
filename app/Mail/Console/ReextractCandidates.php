@@ -24,9 +24,9 @@ final class ReextractCandidates extends Command
 
     public function handle(ParkExtractor $extractor, Keys $keys, CandidateStages $stagesOf): int
     {
-        // Смысл — всем письмам стоянки, у которых его ещё нет.
+        // Смысл — всем письмам стоянки, у которых его ещё нет; с --all — всем заново (правила смысла меняются).
         $intents = 0;
-        Message::with('attachments')->whereNull('intent')->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->each(function (Message $m) use (&$intents) {
+        Message::with(['attachments', 'account'])->when(! $this->option('all'), fn ($q) => $q->whereNull('intent'))->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->each(function (Message $m) use (&$intents) {
             $m->forceFill(['intent' => Intent::ofMessage($m)->value])->saveQuietly();
             $intents++;
         });

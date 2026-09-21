@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 #[Fillable([
     'account_id', 'folder_id', 'thread_id', 'direction', 'imap_uid', 'uid_validity', 'message_id', 'in_reply_to',
@@ -70,6 +71,26 @@ class Message extends Model
     public function isOutgoing(): bool
     {
         return $this->direction === Direction::Out;
+    }
+
+    /** Наше письмо: отправлено с ящика или своим человеком с личного адреса (Корабельников с mail.ru отвечает вендору как мы). */
+    public function isOurs(): bool
+    {
+        return $this->direction === Direction::Out || in_array(mb_strtolower((string) $this->from_email), self::ownEmails(), true);
+    }
+
+    /** Файлы этого письма на диск не ложатся: оно старше даты «Файлы из писем с» у ящика. */
+    public function filesFrozen(): bool
+    {
+        $from = $this->account?->files_from;
+
+        return $from !== null && $this->date_at !== null && $this->date_at->lt($from);
+    }
+
+    /** @return list<string> */
+    public static function ownEmails(): array
+    {
+        return Cache::remember('mail:own-emails', 60, fn () => User::query()->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->filter()->values()->all());
     }
 
     public function existsOnServer(): bool

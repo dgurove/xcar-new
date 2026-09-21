@@ -16,6 +16,8 @@ use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
 use App\Http\Middleware\TouchSeen;
 use App\Live\SubscriberCookie;
+use App\Mail\Console\ArchiveStaleCandidates;
+use App\Mail\Console\BackfillMail;
 use App\Mail\Console\CandidateCardsCommand;
 use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\ReextractCandidates;
@@ -60,6 +62,8 @@ return Application::configure(basePath: dirname(__DIR__))
         CandidateCardsCommand::class,
         RelinkMail::class,
         ReextractCandidates::class,
+        BackfillMail::class,
+        ArchiveStaleCandidates::class,
         MakeKeys::class,
         Restamp::class,
         MovePapers::class,

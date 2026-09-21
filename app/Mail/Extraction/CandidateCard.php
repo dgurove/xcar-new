@@ -26,6 +26,9 @@ final class CandidateCard
         if ($card = $candidate->card()) {
             return $card;
         }
+        if ($message->filesFrozen()) {
+            return null; // история ящика: кадр не делаем, фото остаются в письме
+        }
         $message->loadMissing('attachments');
         $classified = $this->classifier->classify($message->attachments);
         $source = null;

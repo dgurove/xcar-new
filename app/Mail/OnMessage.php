@@ -38,7 +38,10 @@ final class OnMessage
         $thread = $message->thread;
         // Ветка уже привязана — это переписка по машине, а не новая: кандидатов из неё не делаем.
         if (! $linked && ! $thread?->offer_id && ! $thread?->vehicle_id && $message->direction === Direction::In) {
-            ExtractCandidate::dispatch($message->id);
+            ExtractCandidate::dispatch($message->id, $e->quiet);
+        }
+        if ($e->quiet) {
+            return; // история ящика: в базу легло, людей не дёргаем
         }
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;
         $base = $message->account->scope === Scope::Park ? '/mail' : '/work/mail';

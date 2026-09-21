@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /** Ветка для письма: по In-Reply-To/References, иначе по теме и собеседникам за 90 дней, иначе новая. */
@@ -65,8 +66,11 @@ final class Threads
             return null;
         }
 
+        // Окно от даты письма, не от сегодня: у истории ящика ответы без In-Reply-To иначе не склеиваются.
+        $at = $parsed['date'] ?? now();
+
         return Thread::where('account_id', $account->id)->where('subject_normalized', $parsed['subject_normalized'])
-            ->where('last_message_at', '>=', now()->subDays(90))
+            ->whereBetween('last_message_at', [Carbon::instance($at)->subDays(90), Carbon::instance($at)->addDays(90)])
             ->whereExists(fn ($q) => $q->selectRaw('1')->from('mail_addresses')->join('mail_messages', 'mail_messages.id', '=', 'mail_addresses.message_id')
                 ->whereColumn('mail_messages.thread_id', 'mail_threads.id')->whereIn('mail_addresses.email', $emails))
             ->orderByDesc('last_message_at')->first();

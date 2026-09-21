@@ -85,8 +85,10 @@ final class AttachmentImporter
             return collect();
         }
 
-        return Message::with('attachments')->where(fn ($q) => $q->when($messageId, fn ($q) => $q->whereKey($messageId))->when($threadId, fn ($q) => $q->orWhere('thread_id', $threadId)))
-            ->get()->flatMap(fn (Message $m) => $m->attachments)->unique(fn (Attachment $a) => $a->blob_sha ?? 'id:'.$a->id)->values();
+        // Письма старше «Файлы из писем с» у ящика в дело не едут: их файлы остаются в ящике.
+        return Message::with(['attachments', 'account'])->where(fn ($q) => $q->when($messageId, fn ($q) => $q->whereKey($messageId))->when($threadId, fn ($q) => $q->orWhere('thread_id', $threadId)))
+            ->get()->reject(fn (Message $m) => $m->filesFrozen())
+            ->flatMap(fn (Message $m) => $m->attachments)->unique(fn (Attachment $a) => $a->blob_sha ?? 'id:'.$a->id)->values();
     }
 
     private function addDocument(HasMedia $model, string $collection, Attachment $document): bool

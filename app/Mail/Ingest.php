@@ -11,7 +11,7 @@ final class Ingest
 {
     public function __construct(private Threads $threads) {}
 
-    public function apply(Message $message, array $parsed): Message
+    public function apply(Message $message, array $parsed, bool $quiet = false): Message
     {
         DB::transaction(function () use ($message, $parsed) {
             $thread = $this->threads->resolve($message->account, $parsed);
@@ -49,7 +49,7 @@ final class Ingest
         $message = $message->fresh(['account', 'thread', 'attachments']);
         // Ветка уже привязана — файлы этого письма едут к машине; если привяжется сейчас (OnMessage), LinkThread поставит джобу на всю ветку.
         $linked = $message->thread?->isLinked() ?? false;
-        MessageParsed::dispatch($message);
+        MessageParsed::dispatch($message, $quiet);
         if ($linked) {
             ImportThreadFiles::dispatch($message->thread_id, $message->id);
         }
