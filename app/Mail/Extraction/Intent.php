@@ -22,6 +22,8 @@ enum Intent: string
     case Billing = 'billing';
     case CancelRelease = 'cancel_release';
     case Question = 'question';
+    case Hold = 'hold';
+    case Auto = 'auto';
     case Other = 'other';
 
     public static function of(?string $subject, ?string $body): self
@@ -29,8 +31,16 @@ enum Intent: string
         // Только свои слова письма: цитаты и подпись внизу про другое («ТС продано» в истории переписки).
         $text = self::body($body);
         $all = trim((string) $subject)."\n".$text;
+        // Служебное: автоответ, недоставка, отзыв письма, рассылка — не письмо о ТС.
+        if (preg_match('/^\s*(?:automatic reply|autoreply|undeliverable|отзыв|delivery status|mail delivery|out of office)\b/iu', (string) $subject)
+            || preg_match('/^\s*(?:в данный момент|с \d{2}\.\d{2}\.\d{2,4}[^\n]{0,40}(?:отпуск|отсутству))|нахожусь в отпуске|отсутствую (?:на рабочем месте|в офисе)|доступ к почте ограничен|delivery has failed|хотел бы отозвать сообщение|отписаться от рассылки|unsubscribe|дайджест/iu', $text)) {
+            return self::Auto;
+        }
         if (preg_match('/\bне\s+вывезен/iu', $text)) {
             return self::CancelRelease;
+        }
+        if (preg_match('/не\s+выдавать|выдачу\s+(?:приостановить|отложить)|не\s+передавать\s+(?:ТС|ГОТС|машину)/iu', $text)) {
+            return self::Hold;
         }
         if (self::billing($subject, $text)) {
             return self::Billing;
@@ -39,7 +49,7 @@ enum Intent: string
         if (preg_match('/\bвывез(?:ла|ло)?\b/iu', $text) && ! preg_match('/планиру|ближайш|сегодня|завтра|забер[ёе]т|вывезет|вывезут/iu', $text)) {
             return self::Released;
         }
-        if (preg_match('/осмотр/iu', $text) && preg_match('/покупател|допустить/iu', $text)) {
+        if ((preg_match('/осмотр/iu', $text) && preg_match('/покупател|допустить/iu', $text)) || preg_match('/(?:назначить|организовать|провести|прошу|просьба)\s+(?:\w+\s+){0,2}осмотр/iu', $text)) {
             return self::Inspect;
         }
         if (ParkExtractor::soldNotice($subject, $text)) {
@@ -49,7 +59,7 @@ enum Intent: string
         if (preg_match('/связаться\s+с\s+клиентом|прошу\s+принять|согласован\s+при[её]м|организовать(?:\s+[\d.]+)?\s+(?:при[её]м|перемещение|эвакуацию|выездной\s+при[её]м)|сам\w*(?:\s+с\s+вами)?\s+свяжется|подъедет\s+в\s+офис|готов\w*\s+к\s+передаче|документы\s+для\s+при[её]ма|\bна\s+вывоз|вывоз\s+(?:ГОТС|ТС)|просьба\s+принять|направление\s+на\s+(?:хранение|стоянку)/iu', $all)) {
             return self::Intake;
         }
-        if (preg_match('/ожида\w*\s+фото|направ\w+[^\n]{0,60}(?:акт|скан|фото|ЭПТС|ПТС)|присла\w+[^\n]{0,40}фото|жд[её]м\s+от\s+вас\s+фото|фото\s+принят|нет\s+подписи|нет\s+2-й\s+стороны|подтверди\w+[^\n]{0,60}направ|исправленн\w+\s+акт|скан\w*\s+[^\n]{0,30}(?:ЭПТС|ПТС|акт)/iu', $text)) {
+        if (preg_match('/ожида\w*\s+фото|направ\w+[^\n]{0,60}(?:акт|скан|фото|ЭПТС|ПТС)|присла\w+[^\n]{0,40}(?:фото|скан|ДКП)|жд[её]м\s+от\s+вас\s+фото|фото\s+принят|нет\s+подписи|нет\s+2-й\s+стороны|подтверди\w+[^\n]{0,60}направ|исправленн\w+\s+акт|скан\w*\s+[^\n]{0,30}(?:ЭПТС|ПТС|акт)|заполнить[^\n]{0,30}акт|(?:отсутствует|нет)\s+(?:печат|подпис)|результат\w*\s+при[её]ма/iu', $text)) {
             return self::Docs;
         }
         if (preg_match('/ГОТС\s+принят|ТС\s+(?:передано|принято|принята)|по\s+принят\w+\s+(?:ТС|ГОТС)/iu', $all)) {
@@ -58,7 +68,7 @@ enum Intent: string
         if (preg_match('/\b(?:прием|приём|приемка|приёмка)\s+(?:ГОТС|ТС)\b|вывезти|забрать\s+(?:ТС|ГОТС)|передач[аеи]\s+(?:ТС|ГОТС)/iu', $all)) {
             return self::Intake;
         }
-        if (mb_strlen($text) <= 200 && str_contains($text, '?')) {
+        if (mb_strlen($text) <= 300 && str_contains($text, '?')) {
             return self::Question;
         }
 
@@ -142,6 +152,8 @@ enum Intent: string
             self::Inspect => 'Покупатель хочет осмотреть ТС',
             self::Docs => 'Вендор ждёт документы или фото',
             self::CancelRelease => 'ТС не вывезено, будет новый водитель',
+            self::Hold => 'Вендор просит не выдавать ТС',
+            self::Auto => 'Автоответ',
             self::Question => 'Вендор спрашивает',
             self::Sold => 'Продано, покупатель заберёт',
             self::Accepted => 'Вендор пишет, что ТС принята',
@@ -155,7 +167,7 @@ enum Intent: string
     /** Ждёт нашего ответа в деле ТС. */
     public function needsReply(): bool
     {
-        return in_array($this, [self::Inspect, self::Docs, self::CancelRelease, self::Question], true);
+        return in_array($this, [self::Inspect, self::Docs, self::CancelRelease, self::Hold, self::Question], true);
     }
 
     /** Тело без цитат, пересланных заголовков и подписи. */
@@ -168,6 +180,8 @@ enum Intent: string
             $text = (string) preg_replace('/^\s*(?:От|Кому|Копия|Дата|Тема|From|To|Cc|Date|Subject)\s*:.*$/imu', '', $parts[1]);
         }
         $text = (string) preg_split('/^\s*(?:С\s+уважением|C уважением|Best regards|--\s*$|From:|От кого:|От:|Отправлено из|-------- Пересылаемое)/imu', $text)[0];
+        // Приписка Альфы под каждым письмом — не свои слова.
+        $text = (string) preg_replace('/^\s*\*\s*прошу\s+(?:не\s+изменять|отвечать)[^\n]*$/imu', '', $text);
 
         return trim($text);
     }

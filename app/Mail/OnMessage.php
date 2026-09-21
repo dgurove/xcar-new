@@ -69,7 +69,7 @@ final class OnMessage
             if ($vehicle->state === VehicleState::Stored && ! $vehicle->sold_at && $message->intent === Intent::Sold->value
                 && ($sold = ParkExtractor::soldNotice($message->subject, Intent::excerpt($message->text_body ?: strip_tags((string) $message->html_body), 2000)))) {
                 ($this->sold)($vehicle, null, $message->date_at ?? now(), $sold['name'], $sold['phone'], $sold['note'], $message);
-            } else {
+            } elseif ($message->intent !== Intent::Auto->value) {
                 LetterArrived::dispatch($vehicle, $message);
             }
             $paths[] = "/cars/{$vehicle->id}";

@@ -36,7 +36,7 @@ final class CandidateStages
             $stages[] = ['stage' => CandidateStage::Intake->value, 'at' => $intake->date_at?->toDateTimeString(), 'message_id' => $intake->id, 'title' => 'Заявка на приём'];
         }
         $accepted = $messages->first(fn (Message $m) => $m->isOurs() && $m->intent === Intent::Accepted->value)
-            ?? $messages->first(fn (Message $m) => ! $m->isOurs() && in_array($m->intent, [Intent::Accepted->value, Intent::Inspect->value, Intent::Docs->value, Intent::CancelRelease->value], true));
+            ?? $messages->first(fn (Message $m) => ! $m->isOurs() && in_array($m->intent, [Intent::Accepted->value, Intent::Inspect->value, Intent::Docs->value, Intent::CancelRelease->value, Intent::Hold->value], true));
         $sold = $messages->last(fn (Message $m) => ! $m->isOurs() && $m->intent === Intent::Sold->value);
         $released = $messages->last(fn (Message $m) => $m->intent === Intent::Released->value);
         if ($accepted || $sold || $released) {
@@ -83,7 +83,7 @@ final class CandidateStages
             }
         }
 
-        // Бухгалтерия (отчёт-акт со списком машин) — не про эту ТС, этапов не даёт.
-        return $messages->reject(fn (Message $m) => $m->intent === Intent::Billing->value)->values();
+        // Бухгалтерия (отчёт-акт со списком машин) и автоответы — не про эту ТС, этапов не дают.
+        return $messages->reject(fn (Message $m) => in_array($m->intent, [Intent::Billing->value, Intent::Auto->value], true))->values();
     }
 }

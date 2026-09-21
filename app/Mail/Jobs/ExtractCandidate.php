@@ -109,6 +109,10 @@ final class ExtractCandidate implements ShouldQueue
         if (! $force && ($park ? ! ParkExtractor::looksLikeRequest($fields) : ! Extractor::looksLikeOffer($fields))) {
             return null;
         }
+        // Новый кандидат — из письма о ТС: рассылка, автоответ или «прочее» не от вендора кандидатом не становится.
+        if ($park && ! $force && ! isset($fields['vendor_id']) && in_array($message->intent, [Intent::Other->value, Intent::Auto->value, Intent::Billing->value], true)) {
+            return null;
+        }
         // Машина уже заведена — по номеру, VIN или госномеру: кандидат не нужен, ветку к ней привяжет LinkThread.
         if (! $force && self::known($park, $code, $fields)) {
             return null;
