@@ -32,8 +32,8 @@ enum Intent: string
         $text = self::body($body);
         $all = trim((string) $subject)."\n".$text;
         // Служебное: автоответ, недоставка, отзыв письма, рассылка — не письмо о ТС.
-        if (preg_match('/^\s*(?:automatic reply|autoreply|undeliverable|отзыв|delivery status|mail delivery|out of office)\b/iu', (string) $subject)
-            || preg_match('/^\s*(?:в данный момент|с \d{2}\.\d{2}\.\d{2,4}[^\n]{0,40}(?:отпуск|отсутству))|нахожусь в отпуске|отсутствую (?:на рабочем месте|в офисе)|доступ к почте ограничен|delivery has failed|хотел бы отозвать сообщение|отписаться от рассылки|unsubscribe|дайджест/iu', $text)) {
+        if (preg_match('/^\s*(?:automatic reply|autoreply|undeliverable|отзыв|delivery status|mail delivery|out of office|уведомление о регистрации|ваше сообщение не доставлено|вход с нового устройства|в аккаунт пытаются войти|добавлен номер телефона)\b/iu', (string) $subject)
+            || preg_match('/^\s*(?:в данный момент|с \d{2}\.\d{2}\.\d{2,4}[^\n]{0,40}(?:отпуск|отсутству))|нахожусь в отпуске|отсутствую (?:на рабочем месте|в офисе)|доступ к почте ограничен|delivery has failed|хотел бы отозвать сообщение|отписаться от рассылки|unsubscribe|дайджест|зарегистрировано в автоматическом режиме|письмо создано автоматически/iu', $text)) {
             return self::Auto;
         }
         if (preg_match('/\bне\s+вывезен/iu', $text)) {
@@ -114,7 +114,7 @@ enum Intent: string
         }
         // Ответ Альфе СПб на «заявку на приём» — без слов, одни фото: это фотоотчёт о принятой ТС.
         $photos = $files->filter(fn ($f) => preg_match('/\.(?:jpe?g|png|heic)$/iu', (string) $f))->count();
-        if (preg_match('/по\s+принят\w+\s+(?:ТС|ГОТС)|по\s+при[её]му\s+(?:ТС|ГОТС)|принят[аоы]?\s+на\s+(?:хранение|парковку|стоянку)|фотоотч[её]т/iu', $text)
+        if (preg_match('/по\s+принят\w+\s+(?:ТС|ГОТС)|по\s+при[её]му\s+(?:ТС|ГОТС)|принят[аоы]?\s+на\s+(?:хранение|парковку|стоянку)|фотоотч[её]т|^(?:ТС|ГОТС|машина|автомобиль)\s+принят[аоы]?\b/iu', $text)
             || $files->contains(fn ($f) => preg_match('/\bакт/iu', (string) $f))
             || ($photos >= 4 && mb_strlen($text) < 60)) {
             return self::Accepted;
@@ -125,6 +125,9 @@ enum Intent: string
 
     public static function ofMessage(Message $message): self
     {
+        if (preg_match('/^(?:security|mailer-daemon|no-?reply|postmaster|notification|noreply\w*)@/iu', (string) $message->from_email)) {
+            return self::Auto;
+        }
         $body = $message->text_body ?: strip_tags((string) $message->html_body);
 
         // Свой человек переслал письмо вендора без своих слов — смысл пересланного, а не «наше прочее».
