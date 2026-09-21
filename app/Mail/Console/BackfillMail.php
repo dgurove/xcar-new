@@ -98,7 +98,8 @@ class BackfillMail extends Command
     private function pending(Folder $folder, Imap $imap): array
     {
         $floor = (int) $folder->backfill_uid;
-        $ceiling = Message::where('folder_id', $folder->id)->whereNotNull('imap_uid')->min('imap_uid');
+        // Потолок — первое письмо обычного синка; уже забранная история лежит ниже курсора и не в счёт.
+        $ceiling = Message::where('folder_id', $folder->id)->where('imap_uid', '>', $floor)->min('imap_uid');
         $uids = $imap->uids($folder->path, $floor + 1);
 
         return array_values(array_filter($uids, fn (int $uid) => $ceiling === null || $uid < $ceiling));
