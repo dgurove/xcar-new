@@ -11,6 +11,7 @@ use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Extractor;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
+use App\Mail\Extraction\QuotationStripper;
 use App\Mail\Jobs\ImportCandidateFiles;
 use App\Mail\Message;
 use App\Mail\Reading\ReadLetter;
@@ -111,9 +112,14 @@ final class ChainBuilder
         $live = $messages->reject(fn (Message $m) => in_array($m->intent, [Intent::Billing->value, Intent::Auto->value], true));
         $theirs = $live->filter(fn (Message $m) => ! $m->isOurs());
         $ours = $live->filter(fn (Message $m) => $m->isOurs());
+        // Письмо о нескольких машинах («выдать ТС А и Б») лежит в обеих цепочках — его VIN и госномер про одну из них, полей не даёт.
+        $single = fn (Message $m) => count(array_filter($m->keys(), fn ($k) => str_starts_with($k, 'code:'))) <= 1;
         $fields = [];
-        foreach ($theirs as $m) {
+        foreach ($theirs->filter($single) as $m) {
             $fields += $m->fields();
+        }
+        foreach ($theirs->reject($single) as $m) {
+            $fields += array_diff_key($m->fields(), array_flip(['vin', 'plate', 'brand', 'model', 'year', 'code']));
         }
         foreach ($ours as $m) {
             $fields += array_intersect_key($m->fields(), array_flip(['brand', 'model', 'plate', 'vin', 'year']));
@@ -283,7 +289,15 @@ final class ChainBuilder
                 'title' => $accepted?->isOurs() ? 'Принята, отчёт отправлен' : 'Принята'];
         }
         if ($sold) {
-            $notice = ParkExtractor::soldNotice($sold->subject, $sold->text_body ?: strip_tags((string) $sold->html_body)) ?? [];
+            // Кому выдать: из письма о продаже без подписей (в подписи Альфы «тел.: (495) 788-09-99» — офис), иначе из писем вендора после него.
+            $notice = ParkExtractor::soldNotice($sold->subject, ParkExtractor::beforeSignature(QuotationStripper::strip($sold->text_body ?: strip_tags((string) $sold->html_body)))) ?? [];
+            foreach ($messages->filter(fn (Message $m) => ! $m->isOurs() && $m->date_at > $sold->date_at) as $later) {
+                if (! empty($notice['name']) && ! empty($notice['phone'])) {
+                    break;
+                }
+                $more = ParkExtractor::soldNotice($later->subject, $later->ownText()) ?? [];
+                $notice = array_filter($notice) + array_filter($more);
+            }
             $stages[] = ['stage' => CandidateStage::Sold->value, 'at' => $sold->date_at?->toDateTimeString(), 'message_id' => $sold->id, 'title' => 'Продана',
                 'name' => $notice['name'] ?? null, 'phone' => $notice['phone'] ?? null, 'note' => $notice['note'] ?? null];
         }

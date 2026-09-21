@@ -52,6 +52,10 @@ enum Intent: string
         if ((preg_match('/осмотр/iu', $text) && preg_match('/покупател|допустить/iu', $text)) || preg_match('/(?:назначить|организовать|провести|прошу|просьба)\s+(?:\w+\s+){0,2}осмотр/iu', $text)) {
             return self::Inspect;
         }
+        // «Страхователь планирует передать ТС 06.08» — это приём, хоть и «передать ТС»; продажа — про покупателя.
+        if (preg_match('/(?:страховател|клиент|собственник)\w*[^\n]{0,40}(?:планирует|хочет|готов|сможет|привез|передаст|сдаст)/iu', $text) && ! preg_match('/покупател|реализован|продан/iu', $text)) {
+            return self::Intake;
+        }
         if (ParkExtractor::soldNotice($subject, $text)) {
             return self::Sold;
         }

@@ -28,6 +28,8 @@ class RebuildChains extends Command
     {
         $started = microtime(true);
         if (! $this->option('fold')) {
+            // «Заведена», а ТС или предложения уже нет (стёрты мимо приложения) — снова открытая цепочка.
+            Candidate::where('state', CandidateState::Promoted)->whereNull('vehicle_id')->whereNull('offer_id')->update(['state' => CandidateState::New]);
             $open = Candidate::whereIn('state', [CandidateState::New, CandidateState::Rejected]);
             DB::table('mail_candidate_messages')->whereIn('candidate_id', (clone $open)->select('id'))->delete();
             Thread::whereIn('candidate_id', (clone $open)->select('id'))->update(['candidate_id' => null]);
