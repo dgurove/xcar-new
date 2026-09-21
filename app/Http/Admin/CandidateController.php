@@ -55,7 +55,7 @@ class CandidateController
     public function peek(Candidate $candidate)
     {
         abort_if($candidate->scope !== $this->scope, 404);
-        $candidate->load(['messages.attachments', 'messages.thread', 'vendor', 'offer', 'vehicle.brand', 'vehicle.model']);
+        $candidate->load(['messages.attachments', 'messages.author', 'vendor', 'offer', 'vehicle.brand', 'vehicle.model']);
 
         return view('mail.candidates.peek', ['c' => $candidate] + $this->links());
     }
@@ -90,7 +90,7 @@ class CandidateController
 
     protected function query(): Builder
     {
-        return Candidate::query()->with(['message.attachments', 'media', 'vendor', 'offer', 'vehicle.brand', 'vehicle.model', 'vehicle.media', 'vehicle.requests'])->where('scope', $this->scope);
+        return Candidate::query()->with(['messages.author', 'media', 'vendor', 'offer', 'vehicle.brand', 'vehicle.model', 'vehicle.media', 'vehicle.requests'])->where('scope', $this->scope);
     }
 
     /** Адреса поверхности для шаблонов: свой список, свой ящик, стоянка или CRM. */

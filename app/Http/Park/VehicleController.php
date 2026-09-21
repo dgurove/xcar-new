@@ -8,6 +8,7 @@ use App\Http\Admin\OfferPhotoController;
 use App\Live\Stream;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Message;
+use App\Mail\Candidate;
 use App\Mail\Thread;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
@@ -98,13 +99,16 @@ class VehicleController
         ]);
     }
 
-    /** Окно писем ТС (фрейм letters-frame): все ветки, письма целиком, «Ответить» под письмом. */
+    /** Окно писем ТС (фрейм letters-frame): письма всех веток одной лентой, этапы — из цепочки кандидата этой ТС. */
     public function letters(Request $request, Vehicle $vehicle)
     {
         abort_unless(Scope::allows($request->user(), $vehicle), 404);
+        $threads = Thread::where('vehicle_id', $vehicle->id)->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
 
         return view('park.vehicles.letters', [
-            'threads' => Thread::where('vehicle_id', $vehicle->id)->with(['messages.attachments', 'messages.addresses', 'messages.author'])->orderByDesc('last_message_at')->get(),
+            'vehicle' => $vehicle,
+            'messages' => $threads->flatMap->messages,
+            'candidate' => Candidate::where('vehicle_id', $vehicle->id)->latest('id')->first(),
         ]);
     }
 

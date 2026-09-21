@@ -106,6 +106,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/mail/file', [MailController::class, 'file']);
     Route::post('/mail/sync', [MailController::class, 'sync']);
     Route::get('/mail/attachments/{attachment}', [MailController::class, 'attachment']);
+    Route::get('/mail/messages/{message}/body', [MailController::class, 'body']);
     Route::post('/mail/messages/{message}/flag', [MailController::class, 'flag']);
     Route::post('/mail/messages/{message}/parse', [MailController::class, 'reparse']);
     Route::post('/mail/messages/{message}/retry', [MailController::class, 'resend']);

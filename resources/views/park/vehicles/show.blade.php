@@ -278,5 +278,5 @@
             </div>
         </x-ui.sheet>
     </div>
-    <x-mail.window :url="$window"/>
+    <x-mail.window :url="$window" :title="$vehicle->titleWithYear()"/>
 </x-ui.shell>

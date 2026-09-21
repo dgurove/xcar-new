@@ -50,6 +50,12 @@ class Candidate extends Model implements HasMedia
         return $this->belongsTo(Thread::class, 'thread_id');
     }
 
+    /** Последнее письмо цепочки: его заголовок (`Chains\NodeTitle`) идёт в карточку и строку «Из писем». */
+    public function lastLetter(): ?Message
+    {
+        return $this->messages->sortBy(fn (Message $m) => $m->date_at?->getTimestamp() ?? 0)->last();
+    }
+
     /** Ветки всех писем кандидата, без повторов. @return Collection<int, Thread> */
     public function threads(): Collection
     {
@@ -128,12 +134,6 @@ class Candidate extends Model implements HasMedia
     public function hasCar(): bool
     {
         return (bool) $this->value('brand');
-    }
-
-    /** Пришло письмо с полями, которых не было или которые отличаются — карточку стоит перепроверить. */
-    public function hasNews(): bool
-    {
-        return $this->proposed && $this->proposed !== $this->extracted;
     }
 
     /** Госномер и VIN в письме пишут как попало — ключ одинаков для «а123вс716» и «А 123 ВС 716». */

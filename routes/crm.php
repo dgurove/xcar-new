@@ -77,6 +77,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::post('/file', [MailController::class, 'file']);
         Route::post('/sync', [MailController::class, 'sync']);
         Route::get('/attachments/{attachment}', [MailController::class, 'attachment']);
+        Route::get('/messages/{message}/body', [MailController::class, 'body']);
         Route::post('/messages/{message}/flag', [MailController::class, 'flag']);
         Route::post('/messages/{message}/parse', [MailController::class, 'reparse']);
         Route::post('/messages/{message}/retry', [MailController::class, 'resend']);

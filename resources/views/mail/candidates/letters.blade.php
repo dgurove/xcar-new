@@ -1,4 +1,4 @@
-{{-- Окно писем кандидата: все письма о ТС из ящика, новые сверху, «Ответить» под письмом. --}}
+{{-- Окно писем кандидата: вся цепочка лентой (x-mail.chain), этапы точками, один «Ответить» внизу. --}}
 <turbo-frame id="letters-frame" target="_top">
-    <x-mail.panel :messages="$c->messages" :base="$base" reply/>
+    <x-mail.chain :messages="$c->messages" :base="$base" :candidate="$c" :vehicle="$c->vehicle" reply/>
 </turbo-frame>

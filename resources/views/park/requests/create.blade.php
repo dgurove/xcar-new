@@ -98,7 +98,7 @@
     </form>
     </div>
     </div>
-    @if ($letters)<x-mail.window/>@endif
+    @if ($letters)<x-mail.window :title="$candidate->title()"/>@endif
     <x-ui.action-bar>
         <x-ui.button form="request-form" class="min-w-0 flex-1">Завести</x-ui.button>
         @if ($letters)

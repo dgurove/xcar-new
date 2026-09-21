@@ -258,6 +258,10 @@ class MailController
     {
         $this->guard($thread);
         abort_unless($message->thread_id === $thread->id, 404);
+        // «Отмена» в ленте: вместо редактора снова кнопка в том же фрейме.
+        if ($request->boolean('cancel') && str_starts_with((string) $request->header('Turbo-Frame'), 'reply')) {
+            return view('admin.mail.reply-frame', ['message' => $message, 'base' => $this->base, 'frame' => $request->header('Turbo-Frame')]);
+        }
         $message->load(['account', 'addresses', 'attachments']);
         $mode = $request->query('mode', 'reply');
         $defaults = $mode === 'forward' ? $composer->forward($message) : $composer->reply($message, $mode === 'all');
@@ -366,6 +370,15 @@ class MailController
         $markRead($thread, false);
 
         return redirect($this->base)->with('toast', 'Не прочитано');
+    }
+
+    /** Исходное письмо целиком (фрейм body-{id} в ленте): тело в песочнице iframe, ?images=1 — с картинками из сети. */
+    public function body(Request $request, Message $message, BodyRenderer $renderer)
+    {
+        $this->guard($message->thread);
+
+        return view('admin.mail.body-frame', ['message' => $message, 'base' => $this->base, 'renderer' => $renderer,
+            'document' => $renderer->document($message, $request->boolean('images'), $this->base), 'images' => $request->boolean('images')]);
     }
 
     public function flag(Message $message)

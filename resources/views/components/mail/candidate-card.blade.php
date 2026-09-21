@@ -1,19 +1,21 @@
 {{-- Кандидат в плитках и строках: та же карточка, что у ТС — один кадр из письма (`card` на hot, у заведённого — фото ТС),
-     заголовок — номер убытка или марка, чипы: вендор, госномер, город, «2 письма», «📎 27», срок ответа.
-     На стоянке кнопок нет: вся строка — форма заведения, справа серым «Завести ›» (у заведённого — «ТС ›»);
-     «В архив» — в окошке и в плашке формы. В CRM справа — кнопки «Завести» / «Не заявка», как раньше. --}}
+     заголовок — машина или номер убытка, под ним последнее письмо словами (этап, смысл или первые слова, кто);
+     чипы — только состояние и тождество: этап, номер убытка, госномер, вендор, срок ответа. Непрочитанное — оранжевая точка.
+     На стоянке кнопок нет: справа дата, число писем и «Завести ›» (у заведённого — «ТС ›»). В CRM справа — «Завести» / «В архив». --}}
 @props(['c', 'base', 'mail', 'park' => false])
 @php
     use App\Mail\CandidateState;
+    use App\Mail\Chains\NodeTitle;
     $v = fn ($f) => $c->extracted[$f]['value'] ?? null;
-    $files = $c->message?->attachments->reject->is_inline ?? collect();
-    // Заголовок — машина («Changan CS35 Plus, 2023»), номер убытка чипом; без марки заголовком идёт номер.
     $title = $c->title().($c->hasCar() && $v('year') ? ', '.$v('year') : '');
     $card = $c->card();
     $main = ! $card && $c->vehicle ? $c->vehicle->mainPhoto() : null;
     $promoted = $c->state === CandidateState::Promoted;
     $href = $park ? ($promoted ? ($c->vehicle_id ? '/cars/'.$c->vehicle_id : null) : '/requests/new?candidate='.$c->id) : $base.'/'.$c->id.'/peek';
     $href ??= $base.'/'.$c->id.'/peek';
+    $last = $c->lastLetter();
+    $unread = $c->messages->contains(fn ($m) => ! $m->is_seen && ! $m->isOurs());
+    $by = $v('answer_by') ? \Illuminate\Support\Carbon::parse($v('answer_by'))->timezone('Europe/Moscow') : null;
 @endphp
 <article id="candidate-{{ $c->id }}" class="card rise group">
     @if ($card)
@@ -25,26 +27,22 @@
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="block min-w-0 flex-1 leading-snug hover:text-accent-text"><span class="line-clamp-1">{{ $title }}</span></a>
+            <a href="{{ $href }}" class="block min-w-0 flex-1 leading-snug hover:text-accent-text"><span class="line-clamp-1">@if ($unread)<span class="mr-1.5 inline-block size-2 rounded-full bg-urgent align-[1px]"></span>@endif{{ $title }}</span></a>
         </div>
+        @if ($last)<div class="truncate text-sm {{ $unread ? 'text-ink' : 'text-ink-muted' }}"><span class="text-ink-dim">{{ NodeTitle::who($last) }}:</span> {{ NodeTitle::for($last, $c) }}</div>@endif
     </div>
     <div class="card-extra">
-        @if ($c->hasNews())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ещё письмо</x-ui.pill>@endif
         @if ($c->state !== CandidateState::New)<span class="tag">{{ $c->state->label() }}</span>@endif
-        @if ($park && $c->stage !== \App\Mail\CandidateStage::Intake)<x-ui.pill :tone="$c->stage === \App\Mail\CandidateStage::Sold ? 'urgent' : 'open'" class="!min-h-0 !py-0.5 text-xs">{{ $c->stageLabel() }}</x-ui.pill>@endif
+        @if ($park && $c->stage !== \App\Mail\CandidateStage::Intake)<x-ui.pill :tone="$c->stage === \App\Mail\CandidateStage::Sold ? 'urgent' : ($c->stage === \App\Mail\CandidateStage::Released ? 'closed' : 'open')" class="!min-h-0 !py-0.5 text-xs">{{ $c->stageLabel() }}</x-ui.pill>@endif
+        @if ($by)<x-ui.pill :tone="$by->isPast() ? 'danger' : 'urgent'" class="!min-h-0 !py-0.5 text-xs nums">до {{ $by->translatedFormat('j M H:i') }}</x-ui.pill>@endif
         @if ($c->code && $c->hasCar())<span class="tag nums">{{ $c->code }}</span>@endif
         @if ($v('plate'))<span class="tag nums">{{ $v('plate') }}</span>@endif
         @if ($c->vendor?->name ?? $v('vendor') ?? $v('sender'))<span class="tag">{{ $c->vendor?->name ?? $v('vendor') ?? $v('sender') }}</span>@endif
-        @if ($v('location'))<x-ui.place class="tag">{{ $v('location') }}</x-ui.place>@endif
-        <span class="tag nums">{{ $c->messages_count }} {{ \App\Support\Plural::of($c->messages_count, ['письмо', 'письма', 'писем']) }}</span>
-        @if ($files->isNotEmpty())<span class="tag nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files->count() }}</span>@endif
         @if (! $park && $v('floor_price'))<span class="tag nums font-semibold">{{ \App\Support\Money::rub($v('floor_price')) }}</span>@endif
-        @if ($park && $v('value'))<span class="tag nums">{{ \App\Support\Money::rub($v('value')) }}</span>@endif
-        <x-mail.candidate-facts :v="$v"/>
     </div>
     @if ($park)
         <div class="card-aside">
-            <span class="nums text-xs text-ink-dim">{{ ($c->last_message_at ?? $c->created_at)->translatedFormat('j M, H:i') }}</span>
+            <span class="nums text-xs text-ink-dim">{{ ($c->last_message_at ?? $c->created_at)->translatedFormat('j M') }}@if ($c->messages_count > 1), {{ $c->messages_count }} {{ \App\Support\Plural::of($c->messages_count, ['письмо', 'письма', 'писем']) }}@endif</span>
             @if ($promoted)
                 @if ($c->vehicle_id)<a href="{{ $href }}" class="text-sm text-ink-muted">ТС ›</a>@else<span class="text-sm text-ink-dim">ТС нет</span>@endif
             @elseif ($c->state === CandidateState::Rejected)
