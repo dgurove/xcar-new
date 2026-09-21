@@ -7,6 +7,7 @@ use App\Cars\CarModel;
 use App\Cars\Category;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Candidate;
+use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
 use App\Mail\Scope as MailScope;
 use App\Park\Actions\AssignRequest;
@@ -17,6 +18,7 @@ use App\Park\Actions\Intake;
 use App\Park\Actions\Move;
 use App\Park\Actions\PromoteCandidate;
 use App\Park\Actions\RefuseRelease;
+use App\Park\Actions\RegisterFromLetters;
 use App\Park\Actions\Release;
 use App\Park\Actions\ScheduleTow;
 use App\Park\Actions\StartTow;
@@ -135,6 +137,16 @@ class RequestController
                 'flags' => $v('flags') ?: [], 'docs_required' => $v('docs_required') ?: [], 'value' => $v('value'),
             ];
             $type = in_array($type, [RequestType::Intake, RequestType::Tow], true) ? RequestType::Intake : $type;
+            // По письмам ТС уже принята или продана: этапы менеджеру на проверку, заведётся стоящей.
+            if ($candidate->stage !== CandidateStage::Intake) {
+                $stored = $candidate->stageOf(CandidateStage::Stored);
+                $sold = $candidate->stageOf(CandidateStage::Sold);
+                $prefill['stages'] = [
+                    'stored' => true, 'accepted_at' => ($stored['at'] ?? null) ? substr($stored['at'], 0, 10) : null, 'stored_title' => $stored['title'] ?? 'Принята',
+                    'sold' => (bool) $sold, 'sold_at' => ($sold['at'] ?? null) ? substr($sold['at'], 0, 10) : null,
+                    'pickup_name' => $sold['name'] ?? null, 'pickup_phone' => $sold['phone'] ?? null,
+                ];
+            }
         }
 
         return view('park.requests.create', [
@@ -146,12 +158,16 @@ class RequestController
             'candidate' => $candidate,
             'p' => $prefill,
             'messages' => $candidate?->messages ?? collect(),
+            'yardRows' => Yard::where('is_active', true)->get()->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),
         ]);
     }
 
-    public function store(Request $request, CreateRequest $create, PromoteCandidate $promote, LinkThread $link)
+    public function store(Request $request, CreateRequest $create, PromoteCandidate $promote, LinkThread $link, RegisterFromLetters $register)
     {
         $data = $request->validate([
+            'stages' => ['nullable', 'array'], 'stages.stored' => ['nullable', 'boolean'], 'stages.accepted_at' => ['nullable', 'date'],
+            'stages.yard_id' => ['nullable', 'exists:park_yards,id'], 'stages.spot' => ['nullable', 'string', 'max:10'],
+            'stages.sold' => ['nullable', 'boolean'], 'stages.sold_at' => ['nullable', 'date'], 'stages.pickup_name' => ['nullable', 'string', 'max:80'], 'stages.pickup_phone' => ['nullable', 'string', 'max:20'],
             'type' => ['required', Rule::enum(RequestType::class)],
             'vehicle_id' => ['nullable', 'exists:park_vehicles,id'],
             'candidate_id' => ['nullable', 'exists:mail_candidates,id'],
@@ -185,6 +201,16 @@ class RequestController
                 return redirect("/cars/{$candidate->vehicle_id}")->with('toast', 'Уже заведена');
             }
             $vehicle ??= $promote->existing($candidate);
+            // Менеджер подтвердил: по письмам ТС уже принята (и, может быть, продана) — заводится стоящей, без заявки на приём.
+            if (! $vehicle && ! empty($data['stages']['stored'])) {
+                if (empty($data['stages']['yard_id'])) {
+                    return back()->withInput()->withErrors(['stages.yard_id' => 'Укажите парковку, где стоит ТС']);
+                }
+                $vehicle = $register($request->user(), $candidate, VehicleFields::only($data) + ['flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? []], $data['stages']);
+                $promote->attach($candidate, $vehicle);
+
+                return redirect("/cars/{$vehicle->id}")->with('toast', ! empty($data['stages']['sold']) ? 'Заведена, продана, ждёт выдачи' : 'Заведена стоящей');
+            }
         }
         $req = $create($request->user(), $type, $vehicle, $data);
         if ($candidate && $candidate->state !== CandidateState::Promoted) {

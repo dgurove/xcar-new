@@ -7,6 +7,7 @@ use App\Live\Topics;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
+use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Jobs\ExtractCandidate;
 use App\Park\Actions\MarkSold;
@@ -29,6 +30,10 @@ final class OnMessage
     public function parsed(MessageParsed $e): void
     {
         $message = $e->message;
+        if ($message->account->scope === Scope::Park && $message->intent === null) {
+            $message->loadMissing('attachments');
+            $message->forceFill(['intent' => Intent::ofMessage($message)->value])->saveQuietly();
+        }
         $linked = $this->link->auto($message);
         $thread = $message->thread;
         // Ветка уже привязана — это переписка по машине, а не новая: кандидатов из неё не делаем.
@@ -41,9 +46,10 @@ final class OnMessage
         // Письмо по привязанной ТС — в её ленту и сотруднику, который ею занят.
         $vehicle = $linked instanceof Vehicle ? $linked : $thread?->vehicle;
         if ($vehicle && $message->direction === Direction::In) {
-            $vehicle->log(EventType::Letter, null, ['from' => $message->from_name ?: $message->from_email, 'subject' => $message->subject, 'thread' => $message->thread_id]);
+            $vehicle->log(EventType::Letter, null, ['from' => $message->from_name ?: $message->from_email, 'subject' => $message->subject, 'thread' => $message->thread_id, 'message' => $message->id, 'intent' => $message->intent]);
             // «Продано, заберёт такой-то» по ТС на стоянке — дата продажи и покупатель из письма, заявка на выдачу.
-            if ($vehicle->state === VehicleState::Stored && ! $vehicle->sold_at && ($sold = ParkExtractor::soldNotice($message->subject, $message->text_body ?: strip_tags((string) $message->html_body)))) {
+            if ($vehicle->state === VehicleState::Stored && ! $vehicle->sold_at && $message->intent === Intent::Sold->value
+                && ($sold = ParkExtractor::soldNotice($message->subject, Intent::excerpt($message->text_body ?: strip_tags((string) $message->html_body), 2000)))) {
                 ($this->sold)($vehicle, null, $message->date_at ?? now(), $sold['name'], $sold['phone'], $sold['note'], $message);
             } else {
                 LetterArrived::dispatch($vehicle, $message);

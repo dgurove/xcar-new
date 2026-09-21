@@ -31,6 +31,7 @@
     <div class="card-extra">
         @if ($c->hasNews())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ещё письмо</x-ui.pill>@endif
         @if ($c->state !== CandidateState::New)<span class="tag">{{ $c->state->label() }}</span>@endif
+        @if ($park && $c->stage !== \App\Mail\CandidateStage::Intake)<x-ui.pill :tone="$c->stage === \App\Mail\CandidateStage::Sold ? 'urgent' : 'open'" class="!min-h-0 !py-0.5 text-xs">{{ $c->stageLabel() }}</x-ui.pill>@endif
         @if ($c->code && $c->hasCar())<span class="tag nums">{{ $c->code }}</span>@endif
         @if ($v('plate'))<span class="tag nums">{{ $v('plate') }}</span>@endif
         @if ($c->vendor?->name ?? $v('vendor') ?? $v('sender'))<span class="tag">{{ $c->vendor?->name ?? $v('vendor') ?? $v('sender') }}</span>@endif

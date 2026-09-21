@@ -8,6 +8,8 @@ use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Cars\Category;
 use App\Http\Park\VehicleInvoiceController;
+use App\Mail\Direction;
+use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Support\Money;
@@ -33,6 +35,13 @@ final class CaseView
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
         $release = $open?->type === RequestType::Release;
         $threads = Thread::where('vehicle_id', $vehicle->id)->select('id')->pluck('id');
+        // Письма, которые ждут ответа (осмотр, бумаги, вопрос, «не вывезено»): без нашего письма после них и без «Сделано».
+        $asks = $threads->isEmpty() ? collect() : Message::whereIn('thread_id', $threads)->where('direction', Direction::In)
+            ->whereIn('intent', array_map(fn (Intent $i) => $i->value, array_filter(Intent::cases(), fn (Intent $i) => $i->needsReply())))
+            ->orderBy('date_at')->get(['id', 'thread_id', 'subject', 'from_name', 'from_email', 'date_at', 'text_body', 'html_body', 'intent']);
+        $answeredIds = $vehicle->events->where('type', EventType::LetterAnswered)->pluck('payload.message')->filter()->all();
+        $replied = $asks->isEmpty() ? collect() : Message::whereIn('thread_id', $threads)->where('direction', Direction::Out)->get(['thread_id', 'date_at']);
+        $asks->each(fn (Message $m) => $m->answered = in_array($m->id, $answeredIds, true) || $replied->contains(fn ($r) => $r->thread_id === $m->thread_id && $r->date_at?->gt($m->date_at)));
 
         return [
             'vehicle' => $vehicle,
@@ -41,7 +50,10 @@ final class CaseView
             'phases' => $vehicle->requests->filter(fn (Request $r) => $r->state === RequestState::Done)->sortBy(fn (Request $r) => ($r->done_at ?? $r->updated_at)->getTimestamp())->values(),
             'others' => $vehicle->requests->filter(fn (Request $r) => $r->isOpen() && $open && $r->isNot($open))->values(),
             'letters' => $letters = $threads->isEmpty() ? 0 : Message::whereIn('thread_id', $threads)->count(),
-            'steps' => Timeline::for($vehicle, $open, $letters > 0 || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $callAgain),
+            'steps' => Timeline::for($vehicle, $open, $letters > 0 || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $callAgain, $asks),
+            'ask' => $asks->last(fn (Message $m) => ! $m->answered),
+            // Текст письма о приёме — в шаг «Нужно позвонить»: «клиент сам свяжется», «документы в офисе СК», «со СТОА по адресу…».
+            'letterText' => $open?->thread_id ? Intent::excerpt(Message::where('thread_id', $open->thread_id)->where('direction', Direction::In)->orderBy('date_at')->value('text_body')) : null,
             'threads' => Thread::where('vehicle_id', $vehicle->id)->orderByDesc('last_message_at')->get(['id', 'subject']),
             'yards' => $yards->pluck('name', 'id'),
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),

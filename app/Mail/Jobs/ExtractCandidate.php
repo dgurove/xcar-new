@@ -5,8 +5,10 @@ namespace App\Mail\Jobs;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Direction;
+use App\Mail\Extraction\CandidateStages;
 use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Extractor;
+use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Message;
 use App\Mail\Scope;
@@ -48,6 +50,9 @@ final class ExtractCandidate implements ShouldQueue
         $park = $message->account->scope === Scope::Park;
         $body = $message->text_body ?: $message->html_body;
         $message->loadMissing('attachments');
+        if ($park && $message->intent === null) {
+            $message->forceFill(['intent' => Intent::ofMessage($message)->value])->saveQuietly();
+        }
         $fields = $park ? app(ParkExtractor::class)->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments->pluck('filename')->all(), $message->attachments)
             : $extractor->extract($message->subject, $body, $message->from_email, $message->date_at);
         $code = Code::normalize($fields['code']['value'] ?? null);
@@ -74,6 +79,7 @@ final class ExtractCandidate implements ShouldQueue
                 'messages_count' => $existing->messages()->count(), 'last_message_at' => max($existing->last_message_at, $message->date_at) ?? now(),
             ]);
             self::adopt($existing, $message);
+            $park && app(CandidateStages::class)->refresh($existing);
             ImportCandidateFiles::dispatch($existing->id, $message->id);
 
             return $existing;
@@ -92,6 +98,7 @@ final class ExtractCandidate implements ShouldQueue
         ]);
         $candidate->messages()->attach($message->id, ['created_at' => now()]);
         self::adopt($candidate, $message);
+        $park && app(CandidateStages::class)->refresh($candidate);
         ImportCandidateFiles::dispatch($candidate->id, $message->id);
         if ($park && ! $quiet) {
             CandidateArrived::dispatch($candidate);

@@ -2,6 +2,7 @@
 
 namespace App\Park;
 
+use App\Mail\Extraction\Intent;
 use App\Support\FieldLabels;
 use App\Support\Money;
 use App\Users\User;
@@ -51,7 +52,8 @@ class VehicleEvent extends Model
             EventType::Owed => 'Должны '.($p['party'] ?? '').' '.Money::rub($p['amount'] ?? 0),
             EventType::Paid => 'Оплата '.Money::rub($p['amount'] ?? 0).' по счёту '.($p['label'] ?? '').(($p['left'] ?? 0) > 0 ? ', остаток '.Money::rub($p['left']) : ''),
             EventType::InvoiceVoided => 'Счёт '.($p['label'] ?? '').' аннулирован',
-            EventType::Letter => 'Письмо от '.($p['from'] ?? '').': '.($p['subject'] ?? 'без темы'),
+            EventType::Letter => (isset($p['intent']) && ($i = Intent::tryFrom($p['intent'])) && $i !== Intent::Other ? $i->title() : 'Письмо').' от '.($p['from'] ?? '').': '.($p['subject'] ?? 'без темы'),
+            EventType::LetterAnswered => 'Ответили на письмо'.(isset($p['subject']) ? ': '.$p['subject'] : ''),
             EventType::Called => ! empty($p['reached']) ? 'Дозвонились: '.($p['outcome'] ?? '').(! empty($p['at']) ? ' '.$p['at'] : '') : 'Не дозвонились'.(! empty($p['again']) ? ', снова '.$p['again'] : ''),
             EventType::Sold => 'Продано'.(! empty($p['who']) ? ', заберёт '.$p['who'] : ''),
             EventType::ReleaseRefused => 'От получения отказался'.(! empty($p['note']) ? ': '.$p['note'] : ''),

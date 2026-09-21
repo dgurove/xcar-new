@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -31,7 +32,7 @@ class Candidate extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['scope' => Scope::class, 'state' => CandidateState::class, 'extracted' => 'array', 'proposed' => 'array', 'last_message_at' => 'datetime'];
+        return ['scope' => Scope::class, 'state' => CandidateState::class, 'stage' => CandidateStage::class, 'stages' => 'array', 'extracted' => 'array', 'proposed' => 'array', 'last_message_at' => 'datetime'];
     }
 
     public function message(): BelongsTo
@@ -95,6 +96,29 @@ class Candidate extends Model implements HasMedia
     public function title(): string
     {
         return trim(($this->value('brand') ?? '').' '.($this->value('model') ?? '')) ?: ($this->code ?: ($this->value('plate') ?: ($this->subject ?: 'Письмо')));
+    }
+
+    /** Этап цепочки по письмам: заявка, принята, продана. @return ?array{stage: string, at: ?string, message_id: int, title: string} */
+    public function stageOf(CandidateStage $stage): ?array
+    {
+        foreach ($this->stages ?? [] as $s) {
+            if (($s['stage'] ?? null) === $stage->value) {
+                return $s;
+            }
+        }
+
+        return null;
+    }
+
+    /** Слово этапа для чипа: «ждёт приёма», «на парковке с 15 сен», «продана, заберёт покупатель». */
+    public function stageLabel(): string
+    {
+        $stage = $this->stage ?? CandidateStage::Intake;
+        if ($stage === CandidateStage::Stored && ($at = $this->stageOf($stage)['at'] ?? null)) {
+            return 'на парковке с '.Carbon::parse($at)->translatedFormat('j M');
+        }
+
+        return $stage->label();
     }
 
     /** Есть ли у кандидата имя машины — иначе заголовок несёт номер. */

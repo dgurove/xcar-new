@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Mail\Candidate;
+use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Park\Request;
 use App\Park\Vehicle;
@@ -26,7 +27,11 @@ final class ParkNotice extends Notice
 
     public static function mail(Vehicle $v, Message $m): self
     {
-        return new self('Письмо: '.$v->titleWithYear(), ($m->from_name ?: $m->from_email).' — '.($m->subject ?: 'без темы'), '/mail/'.$m->thread_id, $v->id);
+        // Заголовок — смысл письма («Вендор ждёт документы или фото»), а не тема; у дела — шаг «Нужно ответить».
+        $intent = Intent::tryFrom((string) $m->intent);
+        $title = $intent && $intent->needsReply() ? $intent->title() : 'Письмо';
+
+        return new self($title.': '.$v->titleWithYear(), ($m->from_name ?: $m->from_email).', '.($m->subject ?: 'без темы'), '/cars/'.$v->id, $v->id);
     }
 
     public static function sold(Vehicle $v, ?Message $m = null): self

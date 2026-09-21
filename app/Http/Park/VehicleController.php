@@ -7,6 +7,7 @@ use App\Billing\Ledger;
 use App\Http\Admin\OfferPhotoController;
 use App\Live\Stream;
 use App\Mail\Actions\LinkThread;
+use App\Mail\Message;
 use App\Mail\Thread;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
@@ -221,6 +222,15 @@ class VehicleController
         return back()->with('toast', 'Записано');
     }
 
+    /** «Сделано» у письма, которое ждало ответа (осмотр, бумаги, вопрос): шаг закрывается без письма. */
+    public function letterDone(Request $request, Vehicle $vehicle, Message $message)
+    {
+        abort_unless($message->thread?->vehicle_id === $vehicle->id, 404);
+        $vehicle->log(EventType::LetterAnswered, $request->user(), ['message' => $message->id, 'subject' => $message->subject, 'thread' => $message->thread_id]);
+
+        return redirect("/cars/{$vehicle->id}")->with('toast', 'Сделано');
+    }
+
     /** Бумага вендору: состояние с датой, сканом и письмом. Новая бумага — та же форма без {doc}. */
     public function doc(Request $request, Vehicle $vehicle, MarkDoc $mark, ?Doc $doc = null)
     {
@@ -263,11 +273,12 @@ class VehicleController
                 return redirect("/cars/{$vehicle->id}")->with('toast', 'Перегон отменён');
             }
         }
+        $stored = $vehicle->state === VehicleState::Stored;
         $candidate = $unwind($vehicle, $request->user());
 
         return $candidate
-            ? redirect('/requests/from-mail')->with('toast', 'Заявка отменена, письмо снова в «Из писем»')
-            : redirect('/requests')->with('toast', 'Заявка отменена');
+            ? redirect('/requests/from-mail')->with('toast', $stored ? 'Заведение отменено, письма снова в «Из писем»' : 'Заявка отменена, письмо снова в «Из писем»')
+            : redirect('/requests')->with('toast', $stored ? 'Заведение отменено' : 'Заявка отменена');
     }
 
     /** Связать с предложением CRM: по номеру, руками. */

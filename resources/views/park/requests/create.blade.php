@@ -29,6 +29,31 @@
                 <x-ui.combobox name="vehicle_id" label="Номер убытка, VIN или госномер" url="/reference/cars"/>
             </x-ui.card>
         @endif
+        @if ($p['stages'] ?? null)
+            @php $st = $p['stages']; $sv = fn ($k) => old('stages.'.$k, $st[$k] ?? null); @endphp
+            {{-- По письмам ТС уже принята (и, может быть, продана): этапы менеджеру на проверку, заведётся стоящей. --}}
+            <x-ui.card title="По письмам">
+                <div class="flex flex-col gap-4" data-controller="spots" data-spots-map-value="{{ json_encode($yardRows) }}">
+                    <div class="flex flex-col gap-3">
+                        <x-ui.check name="stages[stored]" :checked="(bool) $sv('stored')">{{ $st['stored_title'] ?? 'Принята' }}</x-ui.check>
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                            <x-ui.field name="stages[accepted_at]" label="Когда" type="date" :value="$sv('accepted_at')"/>
+                            <x-ui.field name="stages[yard_id]" label="Парковка" :options="$yards" :value="$sv('yard_id') ?? $yards->keys()->first()" data-spots-target="yard" data-action="change->spots#sync"/>
+                            <x-ui.field name="stages[spot]" label="Место" list="spots-list" autocapitalize="characters" :value="$sv('spot')"/>
+                            <datalist id="spots-list" data-spots-target="list"></datalist>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <x-ui.check name="stages[sold]" :checked="(bool) $sv('sold')">Продана, покупатель заберёт</x-ui.check>
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                            <x-ui.field name="stages[sold_at]" label="Когда" type="date" :value="$sv('sold_at')"/>
+                            <x-ui.field name="stages[pickup_name]" label="Кому выдать" :value="$sv('pickup_name')"/>
+                            <x-ui.field name="stages[pickup_phone]" label="Телефон" type="tel" :value="$sv('pickup_phone')"/>
+                        </div>
+                    </div>
+                </div>
+            </x-ui.card>
+        @else
         <x-ui.card title="Заявка">
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 @if ($type === RequestType::Intake && $letters)
@@ -60,6 +85,7 @@
                 <x-ui.field name="note" label="Заметка" type="textarea" span="col-span-full" :value="$val('note')"/>
             </div>
         </x-ui.card>
+        @endif
         @if ($card || $mailPhotos)
             {{-- Из письма — один кадр; все фото лежат в письме, откроет окно писем. --}}
             <x-ui.card title="Из письма">

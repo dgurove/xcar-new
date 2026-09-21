@@ -7,7 +7,7 @@
 @endphp
 <tr id="candidate-{{ $c->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}/peek" tabindex="0" class="{{ $c->hasNews() ? 'text-urgent' : '' }}">
     <td class="grow">{{ $c->hasCar() ? $c->title() : '' }}@if ($v('plate')) <span class="nums {{ $c->hasCar() ? 'hidden sm:inline' : '' }} text-ink-muted">{{ $v('plate') }}</span>@endif</td>
-    <td class="nums text-[11px] tracking-tighter text-ink-dim sm:text-[13px] sm:tracking-normal">{{ $c->code }}</td>
+    <td class="nums text-[11px] tracking-tighter text-ink-dim sm:text-[13px] sm:tracking-normal">{{ $c->code }}@if ($c->scope === \App\Mail\Scope::Park && $c->stage !== \App\Mail\CandidateStage::Intake) <span class="tag {{ $c->stage === \App\Mail\CandidateStage::Sold ? 'text-urgent' : '' }}">{{ $c->stageLabel() }}</span>@endif</td>
     <td class="nums hidden text-[11px] text-ink-dim sm:table-cell">{{ $v('vin') }}</td>
     <td class="hidden text-ink-dim sm:table-cell">{{ $c->vendor?->name ?? $v('vendor') }}</td>
     <td class="num nums">{{ $c->messages_count }}</td>

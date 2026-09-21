@@ -111,6 +111,7 @@
         @foreach ($others as $r)
             <a href="/cars/{{ $vehicle->id }}?req={{ $r->id }}" class="row !py-2.5"><span class="chip bg-accent-soft text-accent-text">{{ $r->type->label() }}</span>@if ($r->planned_at)<span class="tag nums">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif<span class="text-sm text-ink-muted">ещё открыта</span></a>
         @endforeach
+        @if ($ask ?? null)<form method="post" action="/cars/{{ $vehicle->id }}/letters/{{ $ask->id }}/done" id="reply-form">@csrf</form>@endif
         @if ($spawn)<form method="post" action="/requests" id="spawn-form">@csrf<input type="hidden" name="type" value="{{ $spawn[0] }}"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"></form>@endif
 
         {{-- На телефоне факты дела идут под формой; на ПК — правая колонка (ниже). --}}
@@ -251,7 +252,7 @@
             <div class="flex flex-col gap-2">
                 {{-- Пока ТС не принята: одна отмена — ТС и заявка исчезают, письма снова ждут в «Из писем» (в пути — эвакуация снимается). --}}
                 @php $hadLetters = $vehicle->requests->contains(fn ($r) => $r->thread_id) || $letters; @endphp
-                @if ($canManage && $state->isBefore())
+                @if ($canManage && ($state->isBefore() || UnwindVehicle::allowed($vehicle)))
                     <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="{{ $hadLetters ? 'Отменить заявку? ТС исчезнет, письма вернутся в «Из писем»' : 'Отменить заявку? ТС и заявка исчезнут' }}">@csrf @method('delete')<x-ui.button variant="secondary" block>Отменить заявку</x-ui.button></form>
                 @endif
                 @if ($state === VehicleState::Stored)

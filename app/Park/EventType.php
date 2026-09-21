@@ -25,6 +25,7 @@ enum EventType: string
     case Paid = 'paid';
     case InvoiceVoided = 'invoice_voided';
     case Letter = 'letter';
+    case LetterAnswered = 'letter_answered';
     case Called = 'called';
     case Sold = 'sold';
     case ReleaseRefused = 'release_refused';

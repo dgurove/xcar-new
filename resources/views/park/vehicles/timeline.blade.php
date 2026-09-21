@@ -3,8 +3,8 @@
 @php use App\Park\Step; @endphp
 <div class="steps">
     @foreach ($steps as $step)
-        @php $partial = match (true) { $step->key === 'report-release' => 'report', $step->key === 'intake' && ($step->plate['kind'] ?? null) === 'spawn' => 'intake-spawn', default => $step->key }; $r = $step->request; @endphp
-        <div class="step step--{{ $step->state }}{{ $step->danger ? ' step--danger' : '' }}">
+        @php $partial = match (true) { $step->key === 'report-release' => 'report', $step->key === 'intake' && ($step->plate['kind'] ?? null) === 'spawn' => 'intake-spawn', str_starts_with($step->key, 'reply') => 'reply', default => $step->key }; $r = $step->request; @endphp
+        <div class="step step--{{ $step->state }}{{ $step->danger ? ' step--danger' : '' }}{{ $step->key === 'reply' ? ' step--ask' : '' }}">
             <span class="step-dot">@if ($step->isDone() && ! $step->danger)<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">
                 @if ($step->isDone())
@@ -26,6 +26,10 @@
                     </div>
                     @if ($step->hint)<p class="step-hint">{{ $step->hint }}</p>@endif
                     @include('park.vehicles.steps.'.$partial, ['req' => $r, 'step' => $step])
+                @elseif ($step->key === 'reply')
+                    {{-- Письмо, которое ждёт ответа: текст и два действия, форма текущего шага при этом на месте. --}}
+                    <div class="step-head"><span class="step-title">{{ $step->title }}</span>@if ($step->at)<span class="tag nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif</div>
+                    @include('park.vehicles.steps.reply')
                 @else
                     <div class="step-head">
                         <span class="step-title">{{ $step->title }}</span>

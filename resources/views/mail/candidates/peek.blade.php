@@ -18,6 +18,7 @@
             @if ($c->state !== CandidateState::New)<x-ui.pill :tone="$c->state === CandidateState::Promoted ? 'closed' : 'soft'" class="!min-h-0 !py-1 text-xs">{{ $c->state->label() }}</x-ui.pill>@endif
             @if ($c->hasNews())<x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">Пришло ещё письмо — проверьте поля</x-ui.pill>@endif
             @if ($c->code && $c->hasCar())<span class="tag nums">{{ $c->code }}</span>@endif
+            @if ($park && $c->stage !== \App\Mail\CandidateStage::Intake)<x-ui.pill :tone="$c->stage === \App\Mail\CandidateStage::Sold ? 'urgent' : 'open'" class="!min-h-0 !py-1 text-xs">{{ $c->stageLabel() }}</x-ui.pill>@endif
             @if ($c->vendor?->name ?? $v('vendor') ?? $v('sender'))<span class="tag">{{ $c->vendor?->name ?? $v('vendor') ?? $v('sender') }}</span>@endif
             <x-ui.vin-code :vin="$v('vin')" class="tag"/>
             @if ($v('plate'))<span class="tag nums">{{ $v('plate') }}</span>@endif

@@ -2,6 +2,7 @@
 
 namespace App\Park;
 
+use App\Mail\Extraction\Intent;
 use Illuminate\Support\Collection;
 
 /**
@@ -12,7 +13,7 @@ use Illuminate\Support\Collection;
 final class Timeline
 {
     /** @return list<Step> */
-    public static function for(Vehicle $v, ?Request $open, bool $hasLetters, Collection $events, bool $callAgain = false): array
+    public static function for(Vehicle $v, ?Request $open, bool $hasLetters, Collection $events, bool $callAgain = false, ?Collection $asks = null): array
     {
         $steps = [];
         $ir = $open && in_array($open->type, [RequestType::Intake, RequestType::Tow], true) ? $open
@@ -98,6 +99,25 @@ final class Timeline
         $currents = array_keys(array_filter($steps, fn (Step $s) => $s->state === Step::CURRENT));
         foreach (array_slice($currents, 0, -1) as $i) {
             $steps[$i]->state = Step::TODO;
+        }
+
+        // Письмо, которое ждёт ответа (осмотр, бумаги, вопрос), — шаг с делом рядом с текущим (текущий с формой остаётся); отвеченные — строками.
+        if ($asks && $asks->isNotEmpty()) {
+            $pending = $asks->last(fn ($m) => ! $m->answered);
+            $done = $asks->filter(fn ($m) => $m->answered || $m->isNot($pending))->map(fn ($m) => new Step('reply-'.$m->id, 'Ответили', Step::DONE, Intent::from($m->intent)->title(), $m->date_at, [$m->from_name ?: $m->from_email]));
+            $pos = count($steps);
+            foreach ($steps as $i => $s) {
+                if ($s->state !== Step::DONE) {
+                    $pos = $i;
+                    break;
+                }
+            }
+            $insert = $done->values()->all();
+            if ($pending) {
+                $insert[] = new Step('reply', Intent::from($pending->intent)->title(), Step::TODO, null, $pending->date_at, [$pending->from_name ?: $pending->from_email],
+                    ['kind' => 'window', 'label' => 'Ответить', 'url' => '/mail/'.$pending->thread_id.'/window']);
+            }
+            array_splice($steps, $pos, 0, $insert);
         }
 
         return $steps;

@@ -6,6 +6,8 @@ use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Extraction\CandidateCard;
 use App\Mail\Thread;
+use App\Park\DocState;
+use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Support\Nav;
@@ -23,8 +25,14 @@ final class UnwindVehicle
 {
     public static function allowed(Vehicle $vehicle): bool
     {
-        return $vehicle->state === VehicleState::Expected
-            && ! $vehicle->docs()->exists() && ! $vehicle->charges()->exists() && ! $vehicle->invoices()->exists() && ! $vehicle->inspections()->exists();
+        // Заведённая стоящей по письмам (без осмотра): пока нет денег и полученных бумаг, ошибку можно откатить.
+        $byLetters = $vehicle->state === VehicleState::Stored && ! $vehicle->inspections()->exists()
+            && $vehicle->events()->where('type', EventType::Accepted)->where('payload->by_letters', true)->exists()
+            && ! $vehicle->docs()->where('state', DocState::Received)->exists();
+
+        return ($vehicle->state === VehicleState::Expected || $byLetters)
+            && ! $vehicle->charges()->exists() && ! $vehicle->invoices()->exists() && ! $vehicle->inspections()->exists()
+            && ($byLetters || ! $vehicle->docs()->exists());
     }
 
     /** @return ?Candidate кандидат, вернувшийся в «Ждут» */

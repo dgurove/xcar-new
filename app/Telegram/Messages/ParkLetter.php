@@ -3,6 +3,7 @@
 namespace App\Telegram\Messages;
 
 use App\Mail\Candidate;
+use App\Mail\CandidateStage;
 use App\Support\Money;
 use App\Support\Surface;
 
@@ -15,7 +16,11 @@ final class ParkLetter extends Message
     {
         $v = fn (string $f) => $this->candidate->extracted[$f]['value'] ?? null;
 
-        return $v('request') === 'tow' ? 'На вывоз' : 'На приём';
+        return match ($this->candidate->stage) {
+            CandidateStage::Sold => 'Продано, покупатель заберёт',
+            CandidateStage::Stored => 'Уже на парковке',
+            default => $v('request') === 'tow' ? 'На вывоз' : 'На приём',
+        };
     }
 
     protected function lines(): array

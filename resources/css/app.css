@@ -637,6 +637,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .step--done .step-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-accent); color: #1d1d1b; }
   .step--danger .step-dot { background: var(--color-danger); }
   .step--current .step-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-soft); }
+  /* Письмо, которое ждёт ответа: точка оранжевая, заголовок обычный — дело есть, но форма у текущего шага. */
+  .step--ask .step-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-urgent); }
+  .step--ask .step-title { color: var(--color-ink); font-weight: 500; }
   .step--current::before { background: var(--color-line); }
   .step-body { min-width: 0; padding-bottom: 1rem; }
   .step-head { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; min-height: 1.875rem; }

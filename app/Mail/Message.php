@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
     'references_header', 'subject', 'subject_normalized', 'from_email', 'from_name', 'to_preview', 'date_at',
     'internal_at', 'size', 'is_seen', 'is_answered', 'is_flagged', 'is_draft', 'is_deleted', 'text_body',
     'html_body', 'preview', 'headers', 'parse_state', 'parse_error', 'send_state', 'send_error', 'send_attempts',
-    'sent_at', 'appended_to_sent_at', 'has_attachments', 'attachments_count', 'created_by',
+    'sent_at', 'appended_to_sent_at', 'has_attachments', 'attachments_count', 'created_by', 'intent',
 ])]
 class Message extends Model
 {

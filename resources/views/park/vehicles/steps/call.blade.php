@@ -7,6 +7,7 @@
         <span class="min-w-0"><span class="block text-lg nums">{{ $phone }}</span>@if ($who)<span class="block truncate text-sm text-ink-muted">{{ $who }}</span>@endif</span>
     </a>
 @endif
+@if ($letterText ?? null)<p class="mb-3 whitespace-pre-line text-sm text-ink-muted">{{ $letterText }}</p>@endif
 <div class="flex flex-wrap gap-1.5">
     <label class="choice"><input type="radio" name="outcome" value="tow" data-action="reveal#pick" data-reveal-label="Назначить эвакуатор" @checked(old('outcome', 'tow') === 'tow')><span>Нужен эвакуатор</span></label>
     <label class="choice"><input type="radio" name="outcome" value="self" data-action="reveal#pick" data-reveal-label="Ждём" @checked(old('outcome') === 'self')><span>Привезёт сам</span></label>
