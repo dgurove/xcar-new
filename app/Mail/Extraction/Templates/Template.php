@@ -4,6 +4,7 @@ namespace App\Mail\Extraction\Templates;
 
 use App\Cars\Category;
 use App\Mail\Extraction\CodeMatcher;
+use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Extraction\QuotationStripper;
 use App\Support\Phone;
 use Carbon\Carbon;
@@ -45,7 +46,7 @@ abstract class Template
         };
 
         $put('answer_by', self::answerBy($joined, $on));
-        [$name, $phone] = self::insured($plain);
+        [$name, $phone] = self::insured(ParkExtractor::beforeSignature($plain));
         $put('insured_name', $name);
         $put('insured_phone', $phone);
         $put('flags', self::flags($joined));

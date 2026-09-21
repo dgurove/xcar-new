@@ -78,13 +78,19 @@ final class ParkExtractor
                 }
             }
         }
-        if ($phones = $this->phones($text)) {
+        if ($phones = $this->phones(self::beforeSignature($text))) {
             $fields['phones'] = ['value' => $phones, 'source' => 'body'];
         }
-        if (preg_match('/цвет\s*:?\s*([а-яё\- ]{3,20})/iu', $text, $m)) {
+        if (preg_match('/\bцвет(?:\s+кузова)?\s*:\s*([а-яё\- ]{3,20})/iu', $text, $m)) {
             $fields['color'] = ['value' => mb_strtolower(trim($m[1])), 'source' => 'body'];
         }
-        $fields += Template::common($subject, $text, $on);
+        // Общие поля — сначала из своих слов письма (в цитате «From: Storage Storage» и телефон из подписи Альфы), потом из всего.
+        $fields += Template::common($subject, $own !== '' ? $own : $text, $on);
+        // Ответственный — только из своих слов (в цитате «From: Storage Storage» — это мы).
+        $fields += array_diff_key(Template::common($subject, $text, $on), ['contact_name' => 1]);
+        if (isset($fields['contact_name']) && preg_match('/storage|xcar|прайм/iu', $fields['contact_name']['value'])) {
+            unset($fields['contact_name']);
+        }
         // Страхователь из темы («Медведев», «ООО "РХС"», «Газпром и Петролес») — когда тело имени не дало.
         if (! isset($fields['insured_name']) && ($who = $this->insuredFromSubject($subject))) {
             $fields['insured_name'] = ['value' => $who, 'source' => 'subject'];
@@ -280,6 +286,9 @@ final class ParkExtractor
         }
         $who = Names::clean($found ? $found['before'] : $part);
         $who = trim((string) preg_replace('/\b(?:и\s+)?(?:ООО|АО|ПАО|ИП|ЗАО)\s*$/u', '', $who));
+        if (preg_match('/направлени|хранени|стоянк|\bvin\b|\bвин\b|заявк|при[её]м|передач|убыт|запрос|срочно/iu', $who)) {
+            return null;
+        }
         $words = $who === '' ? [] : preg_split('/\s+/u', $who);
         if (! $words || count($words) > 6 || preg_match('/\d{4,}/u', $who) || ! preg_match('/^\p{Lu}/u', $who)) {
             return null;
@@ -340,7 +349,8 @@ final class ParkExtractor
         $name = null;
         $tel = null;
         // «покупателю Иванову Ивану Ивановичу», «заберёт Иванов И. И.», «представитель покупателя — Петров Пётр».
-        if (preg_match('/(?i:покупател[ьяюе]м?|заберут|забер[ёе]т|выдать|передать|отдать|представител[ьюя]|получател[ьюя])\s*(?:[—:-]\s*)?(?:ТС\s+)?('.$word.'(?:\s+(?:'.$word.'|[А-ЯЁ]\.)){1,2})/u', $text, $m)) {
+        if (preg_match('/(?i:покупател[ьяюе]м?|заберут|забер[ёе]т|выдать|передать|отдать|представител[ьюя]|получател[ьюя])\s*(?:[—:-]\s*)?(?:ТС\s+)?('.$word.'(?:\s+(?:'.$word.'|[А-ЯЁ]\.)){1,2})/u', $text, $m)
+            && ! Names::find($m[1])) {   // «выдать ТС покупателю: Лада Веста» — это машина, не человек
             $name = $m[1];
         }
         if ($name && preg_match('/'.preg_quote($name, '/').'[^\n]{0,80}?'.$phone.'/u', $text, $pm)) {
@@ -372,6 +382,12 @@ final class ParkExtractor
     }
 
     /** @return list<string> */
+    /** Текст без подписей: «С уважением, … тел.: (495) 788-09-99 доб.» — телефон офиса, не клиента; цитата ниже подписи остаётся. */
+    public static function beforeSignature(string $text): string
+    {
+        return trim((string) preg_replace('/^\s*(?:С\s+уважением|C уважением|Best regards|--\s*$).*?(?=^\s*(?:От|От кого|From|Sent|Отправлено|-{3,})\b|\z)/imsu', '', $text));
+    }
+
     private function phones(string $text): array
     {
         preg_match_all('/(?:\+?7|8)[\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}(?!\d)/u', $text, $m);

@@ -39,6 +39,7 @@ final class ReextractCandidates extends Command
         });
         $this->line("Смысл проставлен: {$intents}");
         $states = $this->option('all') ? CandidateState::cases() : [CandidateState::New, CandidateState::Rejected];
+        $this->line('Дубли слиты: '.$this->mergeDuplicates());
         $stat = ['n' => 0, 'brand' => 0, 'model' => 0, 'year' => 0, 'plate' => 0, 'vin' => 0, 'insured_name' => 0, 'planned_at' => 0];
         $stages = [];
         $filled = 0;
@@ -62,7 +63,8 @@ final class ReextractCandidates extends Command
                 $c->load('messages.attachments', 'messages.account');
                 $detached += $stray->count();
             }
-            $fields = $c->extracted ?? [];
+            // Поля заново с нуля: прежний разбор брал контакт и телефон из цитаты и подписи, эти значения надо не дописать, а заменить.
+            $fields = [];
             foreach ($c->messages as $message) {
                 /** @var Message $message */
                 $new = $extractor->extract($message->subject, $message->text_body ?: $message->html_body, $message->from_email, $message->date_at, $message->attachments->pluck('filename')->all(), $message->attachments);
@@ -85,7 +87,7 @@ final class ReextractCandidates extends Command
                 }
             }
             if ($fields !== ($c->extracted ?? [])) {
-                $c->forceFill(['extracted' => $fields])->saveQuietly();
+                $c->forceFill(['extracted' => $fields, 'proposed' => null])->saveQuietly();
             }
             // Заказчик — по отправителю заново: раньше ответ вендора с цитатой нашего письма отправителем считал наш ящик.
             if (! $c->vendor_id && ($vendor = Vendor::forSender($fields['sender']['value'] ?? $c->message?->from_email))) {
@@ -113,5 +115,30 @@ final class ReextractCandidates extends Command
         $this->line('Этапы: '.collect($stages)->map(fn ($n, $k) => "$k $n")->implode(', '));
 
         return self::SUCCESS;
+    }
+
+    /** Два незаведённых кандидата с одним номером убытка (гонка двух воркеров над письмами одной ветки) — письма к старшему, младший стирается. */
+    private function mergeDuplicates(): int
+    {
+        $merged = 0;
+        $open = Candidate::where('scope', Scope::Park)->whereIn('state', [CandidateState::New, CandidateState::Rejected])->whereNotNull('code')->orderBy('id')->get();
+        foreach ($open->groupBy(fn (Candidate $c) => Code::key($c->code)) as $group) {
+            if ($group->count() < 2) {
+                continue;
+            }
+            /** @var Candidate $keep */
+            $keep = $group->first();
+            foreach ($group->slice(1) as $dup) {
+                $keep->messages()->syncWithoutDetaching($dup->messages()->pluck('mail_messages.id')->all());
+                Thread::where('candidate_id', $dup->id)->update(['candidate_id' => $keep->id]);
+                $dup->messages()->detach();
+                $dup->delete();
+                $merged++;
+            }
+            $keep->update(['messages_count' => $keep->messages()->count(), 'last_message_at' => $keep->messages()->max('date_at') ?? $keep->last_message_at,
+                'state' => $group->contains(fn (Candidate $c) => $c->state === CandidateState::New) ? CandidateState::New : $keep->state]);
+        }
+
+        return $merged;
     }
 }

@@ -22,6 +22,7 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
 
 /** Из входящего письма — кандидат в офферы или на стоянку; письма об одной ТС ложатся в одного кандидата, письмо по уже заведённой ТС кандидатом не становится. */
 final class ExtractCandidate implements ShouldQueue
@@ -39,7 +40,8 @@ final class ExtractCandidate implements ShouldQueue
         if (! $message || $message->direction !== Direction::In) {
             return;
         }
-        self::run($message, $extractor, force: false, quiet: $this->quiet);
+        // Два письма одной ветки на двух воркерах заводили двух кандидатов — по одному письму за раз.
+        Cache::lock('extract-candidate', 60)->block(60, fn () => self::run($message, $extractor, force: false, quiet: $this->quiet));
     }
 
     /**
