@@ -70,6 +70,11 @@ final class ParkExtractor
         }
         $this->fromBody($fields, $text);
         $this->fromFilenames($fields, $filenames);
+        // «Когда привезут» из своих слов: «Планируемая дата передачи ГОТС 11.04.2025 в 11:00», «Прошу принять ТС 25.04.2025 в 12:00»,
+        // «Страхователь планирует передать ТС 20.08.2025 в 16:30», наш «Прием ТС назначен на 15.04.2026 на 15:00», «перенос на 21.05.25, 12:00».
+        if (! isset($fields['planned_at']) && ($at = self::plannedAt($own !== '' ? $own : $text))) {
+            $fields['planned_at'] = ['value' => $at, 'source' => 'body'];
+        }
         if (! isset($fields['code'])) {
             foreach ([$subject, $text] as $haystack) {
                 if ($ref = $this->ref($haystack)) {
@@ -295,6 +300,26 @@ final class ParkExtractor
         }
 
         return $who;
+    }
+
+    /** Дата и время приёма из текста: рядом со словами о приёме, передаче, доставке или в строке про дату. */
+    public static function plannedAt(string $text): ?string
+    {
+        $date = '(\d{1,2})\.(\d{2})\.(\d{4}|\d{2})';
+        $time = '(\d{1,2})[:.](\d{2})';
+        foreach (preg_split('/\R/u', $text) ?: [] as $line) {
+            if (! preg_match('/при[её]м|передач|достав|привез|принять|планиру|перенос|перенес|согласован|дата|забор|вывоз/iu', $line)) {
+                continue;
+            }
+            if (preg_match('/'.$date.'\s*(?:г\.?|года)?\s*,?\s*(?:(?:также|ориентировочно|примерно)\s+)?(?:в|к|на|около)?\s*'.$time.'(?!\d)/u', $line, $m)) {
+                $year = strlen($m[3]) === 2 ? '20'.$m[3] : $m[3];
+                if (checkdate((int) $m[2], (int) $m[1], (int) $year) && (int) $m[4] < 24 && (int) $m[5] < 60) {
+                    return sprintf('%s-%s-%02d %02d:%s', $year, $m[2], (int) $m[1], (int) $m[4], $m[5]);
+                }
+            }
+        }
+
+        return null;
     }
 
     /** Год из 10-го знака VIN — у японцев, корейцев, китайцев и американцев; европейские (S…Z) год не кодируют. */

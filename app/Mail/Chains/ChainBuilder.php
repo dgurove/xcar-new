@@ -122,7 +122,12 @@ final class ChainBuilder
             $fields += array_diff_key($m->fields(), array_flip(['vin', 'plate', 'brand', 'model', 'year', 'code']));
         }
         foreach ($ours as $m) {
-            $fields += array_intersect_key($m->fields(), array_flip(['brand', 'model', 'plate', 'vin', 'year']));
+            $fields += array_intersect_key($m->fields(), array_flip(['brand', 'model', 'plate', 'vin', 'year', 'code']));
+        }
+        // «Когда привезут» — по последнему письму с датой: наш ответ «прием назначен на 15.04 в 15:00» переопределяет дату вендора.
+        $dated = $live->filter(fn (Message $m) => $m->field('planned_at') && in_array($m->intent, [Intent::Intake->value, Intent::Accepted->value], true))->sortBy('date_at')->last();
+        if ($dated) {
+            $fields['planned_at'] = $dated->fields()['planned_at'];
         }
         foreach ($messages->diff($live) as $m) {
             $fields += array_intersect_key($m->fields(), array_flip(['vendor_id', 'vendor'])); // хоть заказчика с автоответа
