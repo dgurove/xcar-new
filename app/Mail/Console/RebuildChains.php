@@ -37,7 +37,7 @@ class RebuildChains extends Command
             $messages = Message::with(['account', 'thread', 'attachments'])->whereNotNull('thread_id')->whereHas('thread', fn ($t) => $t->whereNull('vehicle_id')->whereNull('offer_id'))
                 ->orderBy('date_at')->orderBy('id')->lazy(200);
             foreach ($messages as $m) {
-                $chains->attach($m, quiet: true);
+                $chains->attach($m, quiet: true, files: false);
                 if (++$n % 1000 === 0) {
                     $this->line("  {$n}");
                 }

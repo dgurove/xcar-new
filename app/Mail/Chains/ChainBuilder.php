@@ -22,6 +22,7 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Support\Nav;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -39,12 +40,20 @@ final class ChainBuilder
      * Письмо в цепочку. `force` — руками из почты: цепочка заводится, даже если письмо не похоже на заявку.
      * Возвращает цепочку, куда легло письмо (первую, если о нескольких машинах), или null.
      */
-    public function attach(Message $message, bool $force = false, bool $quiet = false): ?Candidate
+    public function attach(Message $message, bool $force = false, bool $quiet = false, bool $files = true): ?Candidate
     {
         $message->loadMissing(['account', 'thread', 'attachments']);
         if (! $message->isRead()) {
             $this->reader->apply($message);
         }
+
+        // Планировщик и воркер IDLE принимают письма одного ящика параллельно: два письма одной ветки на двух
+        // процессах не найдут цепочку друг друга — по одному письму за раз на ящик.
+        return Cache::lock('chains:'.$message->account_id, 60)->block(60, fn () => $this->place($message, $force, $quiet, $files));
+    }
+
+    private function place(Message $message, bool $force, bool $quiet, bool $files): ?Candidate
+    {
         $park = $message->account->scope === Scope::Park;
         $scope = $park ? Scope::Park : Scope::Offers;
         if (! $park && $message->direction !== Direction::In) {
@@ -78,7 +87,7 @@ final class ChainBuilder
                 $candidate->messages()->attach($message->id, ['created_at' => now()]);
             }
             $this->fold($candidate);
-            if ($candidate->fresh()->stage !== CandidateStage::Released && $message->direction === Direction::In) {
+            if ($files && $candidate->fresh()->stage !== CandidateStage::Released && $message->direction === Direction::In) {
                 ImportCandidateFiles::dispatch($candidate->id, $message->id);
             }
         }
@@ -175,7 +184,8 @@ final class ChainBuilder
         if ($keys) {
             $ids = $ids->merge(DB::table('mail_candidate_messages as cm')->join('mail_message_keys as mk', 'mk.message_id', '=', 'cm.message_id')
                 ->whereIn('mk.key', $keys)->distinct()->pluck('cm.candidate_id'));
-            $ids = $ids->merge($open()->whereIn('key', $keys)->pluck('id'));
+            // И по ключу или прежним номерам самой цепочки: при пересборке состав пуст, а решение «в архив» у строки есть.
+            $ids = $ids->merge($open()->where(fn ($q) => $q->whereIn('key', $keys)->orWhere(fn ($w) => $this->wherePriorKeys($w, $keys)))->pluck('id'));
         }
         if ($threadId) {
             $ids = $ids->merge(DB::table('mail_candidate_messages as cm')->join('mail_messages as m', 'm.id', '=', 'cm.message_id')
@@ -189,6 +199,24 @@ final class ChainBuilder
         }
 
         return $candidates->values();
+    }
+
+    /** Цепочка без писем (пересборка), у которой в прежних полях тот же номер, VIN или госномер. */
+    private function wherePriorKeys($query, array $keys): void
+    {
+        $query->whereDoesntHave('messages');
+        $query->where(function ($q) use ($keys) {
+            $q->whereRaw('false');
+            foreach ($keys as $key) {
+                [$kind, $value] = explode(':', $key, 2) + [null, null];
+                match ($kind) {
+                    'code' => $q->orWhereRaw("lower(regexp_replace(coalesce(code, ''), '[^[:alnum:]]', '', 'g')) = ?", [$value]),
+                    'vin' => $q->orWhereRaw("upper(extracted->'vin'->>'value') = ?", [$value]),
+                    'plate' => $q->orWhereRaw("upper(replace(extracted->'plate'->>'value', ' ', '')) = ?", [$value]),
+                    default => null,
+                };
+            }
+        });
     }
 
     /** Письмо начинает цепочку: заявка от вендора о машине, которой у нас ещё нет. */

@@ -2,16 +2,20 @@
 
 namespace App\Mail\Console;
 
+use App\Mail\Candidate;
+use App\Mail\CandidateState;
+use App\Mail\Chains\ChainBuilder;
 use App\Mail\Message;
 use App\Mail\Reading\ReadLetter;
 use App\Mail\Thread;
 use App\Mail\Threads;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Перечитать письма читалкой текущей версии: после правки правил разбора поднимается `ReadLetter::VERSION`,
  * и команда проходит только письма со старой версией — чанками, можно прерывать, почта не останавливается.
- * После — `mail:rebuild`, если менялись номера-тождества, иначе достаточно свёртки цепочек (`--fold`).
+ * Цепочки перечитанных писем сворачиваются заново; `mail:rebuild` нужен, только если менялись правила группировки.
  */
 class ReadMail extends Command
 {
@@ -19,7 +23,7 @@ class ReadMail extends Command
 
     protected $description = 'Перечитать письма читалкой текущей версии (поля, номера, смысл)';
 
-    public function handle(ReadLetter $reader, Threads $threads): int
+    public function handle(ReadLetter $reader, Threads $threads, ChainBuilder $chains): int
     {
         $query = Message::with(['account', 'attachments'])->whereNotNull('thread_id')->when(! $this->option('all'), fn ($q) => $q->where('parser_version', '<', ReadLetter::VERSION))->orderBy('id');
         $total = (clone $query)->count();
@@ -44,7 +48,17 @@ class ReadMail extends Command
                 $n++;
             }
         }
-        $this->line("Прочитано: {$done}, веток обновлено: {$n}");
+        // Цепочки этих писем — свернуть заново: поля и этапы считаются из прочитанного.
+        $folded = 0;
+        $candidateIds = DB::table('mail_candidate_messages as cm')->join('mail_messages as m', 'm.id', '=', 'cm.message_id')
+            ->whereIn('m.thread_id', array_keys($threadIds))->distinct()->pluck('cm.candidate_id');
+        foreach ($candidateIds->chunk(200) as $chunk) {
+            foreach (Candidate::whereIn('id', $chunk)->whereIn('state', [CandidateState::New, CandidateState::Rejected])->get() as $c) {
+                $chains->fold($c);
+                $folded++;
+            }
+        }
+        $this->line("Прочитано: {$done}, веток обновлено: {$n}, цепочек свёрнуто: {$folded}");
 
         return self::SUCCESS;
     }
