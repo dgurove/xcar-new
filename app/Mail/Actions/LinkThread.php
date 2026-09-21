@@ -2,10 +2,8 @@
 
 namespace App\Mail\Actions;
 
-use App\Mail\Candidate;
 use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Extraction\Keys;
-use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Jobs\ExtractCandidate;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
@@ -44,21 +42,6 @@ final class LinkThread
         }
 
         return $threads->count();
-    }
-
-    /**
-     * Кандидат «Из писем»: непривязанные ветки стоянки с его номером, VIN или госномером — под него
-     * (наш ответ отдельной веткой из почтового клиента, пересылка сотрудника). Ветки ТС не трогаем.
-     */
-    public function forCandidate(Candidate $candidate): int
-    {
-        $keys = array_values(array_filter(Candidate::identities($candidate->extracted ?? [], null), fn ($k) => ! str_starts_with($k, 'thread:')));
-        if (! $keys) {
-            return 0;
-        }
-
-        return Thread::withAnyKey($keys)->whereNull('candidate_id')->whereNull('vehicle_id')
-            ->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->update(['candidate_id' => $candidate->id]);
     }
 
     public function forOffer(Offer $offer): int
@@ -116,8 +99,7 @@ final class LinkThread
         if ($thread->vehicle_id || $thread->unlinked_at) {
             return null;
         }
-        $text = $message->subject.' '.($message->text_body ?: $message->html_body);
-        $fields = app(ParkExtractor::class)->extract($message->subject, $message->text_body ?: $message->html_body, $message->from_email, null, $message->attachments->pluck('filename')->all(), $message->attachments);
+        $fields = $message->fields();
         // Только живая ТС: письмо о выданной или отменённой — новый заезд, ему место в «Из писем».
         $live = fn () => Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->latest();
         $vehicle = null;

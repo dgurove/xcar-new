@@ -16,7 +16,7 @@ final class Sync
 {
     public const BATCH = 50;
 
-    public function __construct(private Receiver $receiver, private Ingest $ingest, private Threads $threads) {}
+    public function __construct(private Receiver $receiver, private Ingest $ingest, private Threads $threads, private Reading\ReadLetter $reader) {}
 
     public function account(Account $account, bool $full = false): int
     {
@@ -168,6 +168,10 @@ final class Sync
             ])->save();
             // Файлы нашего письма теперь лежат в ящике: опись по секциям, локальные копии больше не нужны.
             $this->ingest->attachments($adopted, $parsed['attachments']);
+            $this->reader->apply($adopted->fresh(['account', 'attachments']));
+            if ($adopted->thread) {
+                $this->threads->refresh($adopted->thread);
+            }
             $this->applyFlags($adopted, $row['flags']);
 
             return false;

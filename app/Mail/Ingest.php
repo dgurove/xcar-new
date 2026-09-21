@@ -4,12 +4,13 @@ namespace App\Mail;
 
 use App\Mail\Events\MessageParsed;
 use App\Mail\Jobs\ImportThreadFiles;
+use App\Mail\Reading\ReadLetter;
 use Illuminate\Support\Facades\DB;
 
 /** Разобранное письмо → база: поля, адреса, опись вложений, ветка; дальше — событие и закрепление файлов, если ветка привязана. */
 final class Ingest
 {
-    public function __construct(private Threads $threads) {}
+    public function __construct(private Threads $threads, private ReadLetter $reader) {}
 
     public function apply(Message $message, array $parsed, bool $quiet = false): Message
     {
@@ -39,6 +40,8 @@ final class Ingest
                 $message->addresses()->create(['kind' => $a['kind']->value, 'email' => $a['email'], 'name' => $a['name'], 'position' => $a['position']]);
             }
             $this->attachments($message, $parsed['attachments']);
+            // Письмо читается один раз здесь: поля, номера, смысл — дальше всё считается из `parsed`.
+            $this->reader->apply($message->fresh(['account', 'attachments']));
             // Пришло чужое письмо в архивную ветку — она снова во «Входящих».
             if ($thread->archived_at && $message->direction === Direction::In) {
                 $thread->forceFill(['archived_at' => null])->saveQuietly();

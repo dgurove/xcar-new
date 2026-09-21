@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 /** Ветка для письма: по In-Reply-To/References, иначе по теме и собеседникам за 90 дней, иначе новая. */
 final class Threads
 {
-    public function __construct(private Parser $parser, private Extraction\Keys $keys) {}
+    public function __construct(private Parser $parser) {}
 
     public function resolve(Account $account, array $parsed): Thread
     {
@@ -41,7 +41,8 @@ final class Threads
             'unread_count' => $messages->where('is_seen', false)->where('direction', Direction::In)->count(),
             'has_attachments' => $messages->contains('has_attachments', true),
             'participants' => $participants,
-            'keys' => $this->keys->ofThread($thread),
+            // Номера ветки — объединение номеров её писем из индекса (`ReadLetter`), письма заново не читаются.
+            'keys' => DB::table('mail_message_keys')->whereIn('message_id', $messages->pluck('id'))->distinct()->orderBy('key')->pluck('key')->all(),
         ])->save();
     }
 

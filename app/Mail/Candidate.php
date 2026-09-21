@@ -17,9 +17,9 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * Машина, вычитанная из писем страховой: одна ТС — один кандидат, сколько бы писем о ней ни пришло.
- * Тождество — `key`: номер убытка (в любом написании), без него VIN, без VIN госномер, без всего — ветка.
- * `message_id`/`thread_id` — первое письмо и его ветка, все письма — `messages()`.
+ * Цепочка писем об одной ТС («Из писем»): письма, связанные номером убытка, VIN, госномером или веткой.
+ * Всё вычисляемое (`code`, `key`, `vendor_id`, `extracted`, `stages`) — свёртка `Chains\ChainBuilder::fold` по
+ * `messages()`; рукотворное — `state`, `vehicle_id`/`offer_id`. `message_id`/`thread_id` — первое письмо вендора.
  * Из фото писем у кандидата один кадр карточки `card` (`CandidateCard`, диск `hot`); сами вложения закреплены в blobs,
  * при «Завести» их к ТС или предложению приносит импорт ветки (`LinkThread` → `ImportThreadFiles`).
  */
@@ -152,17 +152,6 @@ class Candidate extends Model implements HasMedia
         usort($keys, fn ($a, $b) => $rank($a) <=> $rank($b));
 
         return $keys[0] ?? null;
-    }
-
-    /** Все тождества кандидата: из его полей и веток всех писем — письмо с одним VIN, но без номера убытка ляжет сюда же. @return list<string> */
-    public function allIdentities(): array
-    {
-        $ids = self::identities($this->extracted ?? [], null);
-        foreach ($this->messages->pluck('thread_id')->filter()->unique() as $threadId) {
-            $ids[] = 'thread:'.$threadId;
-        }
-
-        return array_values(array_unique([$this->key, ...$ids]));
     }
 
     /**

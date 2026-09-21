@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Cache;
     'references_header', 'subject', 'subject_normalized', 'from_email', 'from_name', 'to_preview', 'date_at',
     'internal_at', 'size', 'is_seen', 'is_answered', 'is_flagged', 'is_draft', 'is_deleted', 'text_body',
     'html_body', 'preview', 'headers', 'parse_state', 'parse_error', 'send_state', 'send_error', 'send_attempts',
-    'sent_at', 'appended_to_sent_at', 'has_attachments', 'attachments_count', 'created_by', 'intent',
+    'sent_at', 'appended_to_sent_at', 'has_attachments', 'attachments_count', 'created_by', 'intent', 'parsed', 'parser_version',
 ])]
 class Message extends Model
 {
@@ -28,6 +28,7 @@ class Message extends Model
             'parse_state' => ParseState::class,
             'send_state' => SendState::class,
             'headers' => 'array',
+            'parsed' => 'array',
             'date_at' => 'datetime',
             'internal_at' => 'datetime',
             'sent_at' => 'datetime',
@@ -71,6 +72,34 @@ class Message extends Model
     public function isOutgoing(): bool
     {
         return $this->direction === Direction::Out;
+    }
+
+    /** Поля из разбора письма (`ReadLetter`): марка, номер, VIN, страхователь… */
+    public function fields(): array
+    {
+        return $this->parsed['fields'] ?? [];
+    }
+
+    public function field(string $name): mixed
+    {
+        return $this->parsed['fields'][$name]['value'] ?? null;
+    }
+
+    /** Номера-тождества письма: code:/vin:/plate:. @return list<string> */
+    public function keys(): array
+    {
+        return $this->parsed['keys'] ?? [];
+    }
+
+    /** Свои слова письма без цитат и подписи. */
+    public function ownText(): string
+    {
+        return $this->parsed['own_text'] ?? Extraction\Intent::excerpt($this->text_body ?: strip_tags((string) $this->html_body), 2000);
+    }
+
+    public function isRead(): bool
+    {
+        return (int) $this->parser_version === Reading\ReadLetter::VERSION;
     }
 
     /** Наше письмо: отправлено с ящика или своим человеком с личного адреса (Корабельников с mail.ru отвечает вендору как мы). */
