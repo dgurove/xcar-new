@@ -43,9 +43,11 @@ class BackfillMail extends Command
                 ->when($this->option('folder'), fn ($q, $path) => $q->where('path', $path))->get();
             $total = 0;
             $imap = null;
+            $failed = [];
             try {
                 foreach ($folders as $folder) {
                     // Ящик на mail.ru за часы истории обрывает соединение — переподключаемся и продолжаем с курсора.
+                    $ok = false;
                     for ($attempt = 1; $attempt <= 20; $attempt++) {
                         $imap ??= new Imap($account, 300);
                         try {
@@ -55,6 +57,7 @@ class BackfillMail extends Command
                             }
                             if (! $uids) {
                                 $this->line("{$folder->name}: истории нет");
+                                $ok = true;
                                 break;
                             }
                             $this->line("{$folder->name}: ".count($uids)." писем, uid {$uids[0]}…".end($uids));
@@ -67,6 +70,7 @@ class BackfillMail extends Command
                             });
                             $total += count($uids);
                             $this->line("{$folder->name}: записано {$stored}");
+                            $ok = true;
                             break;
                         } catch (Throwable $e) {
                             $this->warn("{$folder->name}: {$e->getMessage()} — попытка {$attempt}, переподключаюсь");
@@ -79,6 +83,9 @@ class BackfillMail extends Command
                             sleep(min(60, 5 * $attempt));
                         }
                     }
+                    if (! $ok) {
+                        $failed[] = $folder->name;
+                    }
                     if ($limit > 0 && $total >= $limit) {
                         break;
                     }
@@ -88,6 +95,11 @@ class BackfillMail extends Command
                     $imap?->disconnect();
                 } catch (Throwable) {
                 }
+            }
+            if ($failed) {
+                $this->error('Не добрано: '.implode(', ', $failed).' — запустите снова, курсор на месте');
+
+                return self::FAILURE;
             }
 
             return self::SUCCESS;

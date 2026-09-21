@@ -7,6 +7,7 @@ use App\Live\Topics;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
+use App\Mail\Extraction\CandidateStages;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Jobs\ExtractCandidate;
@@ -40,6 +41,10 @@ final class OnMessage
         if (! $linked && ! $thread?->offer_id && ! $thread?->vehicle_id && $message->direction === Direction::In) {
             ExtractCandidate::dispatch($message->id, $e->quiet);
         }
+        // Наш ответ (с актом, «подписанный АПП») в ветке кандидата двигает этап цепочки.
+        if ($message->direction === Direction::Out && $thread?->candidate_id && $message->account->scope === Scope::Park) {
+            $this->refreshStages($thread->candidate_id);
+        }
         if ($e->quiet) {
             return; // история ящика: в базу легло, людей не дёргаем
         }
@@ -66,9 +71,19 @@ final class OnMessage
         }
     }
 
+    private function refreshStages(int $candidateId): void
+    {
+        if ($candidate = Candidate::find($candidateId)) {
+            app(CandidateStages::class)->refresh($candidate);
+        }
+    }
+
     public function sent(MessageSent $e): void
     {
         $park = $e->message->account->scope === Scope::Park;
+        if ($park && $e->message->thread?->candidate_id) {
+            $this->refreshStages($e->message->thread->candidate_id);
+        }
         $this->publish->refresh($park ? Topics::PARK : Topics::STAFF, [($park ? '/mail/' : '/work/mail/').$e->message->thread_id]);
     }
 }

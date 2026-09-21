@@ -24,16 +24,15 @@ final class Keys
         $message->loadMissing('attachments');
         $body = $message->text_body ?: $message->html_body;
         $park = $message->account?->scope === Scope::Park;
-        // Бухгалтерия (отчёт-акт со списком VIN) привязала бы ветку к десяткам цепочек — ключей не даёт; как и любое письмо с кучей номеров.
+        // Бухгалтерия (отчёт-акт со списком VIN) привязала бы ветку к десяткам цепочек — ключей не даёт.
         if ($park && ($message->intent === Intent::Billing->value || ($message->intent === null && Intent::billing($message->subject, QuotationStripper::strip($body))))) {
             return [];
         }
         $fields = $park
             ? app(ParkExtractor::class)->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments->pluck('filename')->all())
             : $this->offers->extract($message->subject, $body, $message->from_email, $message->date_at);
-        $keys = Candidate::identities($fields, null);
 
-        return count($keys) > 3 ? [] : $keys;
+        return Candidate::identities($fields, null);
     }
 
     /** @return list<string> */

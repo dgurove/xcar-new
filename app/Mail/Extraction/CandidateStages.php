@@ -6,6 +6,7 @@ use App\Mail\Actions\ArchiveThread;
 use App\Mail\Candidate;
 use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
+use App\Mail\Direction;
 use App\Mail\Message;
 use App\Support\Nav;
 use Illuminate\Support\Collection;
@@ -27,7 +28,8 @@ final class CandidateStages
     {
         $messages = $this->messages($candidate);
         $stages = [];
-        $intake = $messages->first(fn (Message $m) => ! $m->isOurs() && Intent::from($m->intent ?? 'other') === Intent::Intake)
+        // Заявка — письмо вендора или пересланная своим человеком (смысл intake у неё уже от пересланного).
+        $intake = $messages->first(fn (Message $m) => ($m->intent ?? 'other') === Intent::Intake->value && $m->direction !== Direction::Out)
             ?? $messages->first(fn (Message $m) => ! $m->isOurs());
         if ($intake) {
             $stages[] = ['stage' => CandidateStage::Intake->value, 'at' => $intake->date_at?->toDateTimeString(), 'message_id' => $intake->id, 'title' => 'Заявка на приём'];

@@ -2,6 +2,7 @@
 
 namespace App\Mail\Extraction;
 
+use App\Mail\Direction;
 use App\Mail\Message;
 
 /**
@@ -98,7 +99,10 @@ enum Intent: string
     {
         $body = $message->text_body ?: strip_tags((string) $message->html_body);
 
-        return $message->isOurs()
+        // Свой человек переслал письмо вендора без своих слов — смысл пересланного, а не «наше прочее».
+        $forwarded = $message->direction !== Direction::Out && preg_match('/^\s*(?:fwd?|пересл\w*)\s*:/iu', (string) $message->subject);
+
+        return $message->isOurs() && ! $forwarded
             ? self::ofOutgoing($message->subject, $body, $message->attachments->pluck('filename')->all())
             : self::of($message->subject, $body);
     }

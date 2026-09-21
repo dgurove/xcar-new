@@ -3,6 +3,7 @@
 namespace App\Mail\Jobs;
 
 use App\Mail\Candidate;
+use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
 use App\Mail\Direction;
 use App\Mail\Extraction\CandidateStages;
@@ -84,7 +85,10 @@ final class ExtractCandidate implements ShouldQueue
             ]);
             self::adopt($existing, $message);
             $park && app(CandidateStages::class)->refresh($existing);
-            ImportCandidateFiles::dispatch($existing->id, $message->id);
+            // Выданная цепочка ушла в архив — её файлы на диске не нужны.
+            if ($existing->fresh()->stage !== CandidateStage::Released) {
+                ImportCandidateFiles::dispatch($existing->id, $message->id);
+            }
 
             return $existing;
         }
@@ -103,7 +107,9 @@ final class ExtractCandidate implements ShouldQueue
         $candidate->messages()->attach($message->id, ['created_at' => now()]);
         self::adopt($candidate, $message);
         $park && app(CandidateStages::class)->refresh($candidate);
-        ImportCandidateFiles::dispatch($candidate->id, $message->id);
+        if ($candidate->fresh()->stage !== CandidateStage::Released) {
+            ImportCandidateFiles::dispatch($candidate->id, $message->id);
+        }
         if ($park && ! $quiet) {
             CandidateArrived::dispatch($candidate);
         }
