@@ -279,7 +279,7 @@ final class ChainBuilder
     {
         $messages = $messages->sortBy('date_at')->values();
         $stages = [];
-        $intake = $messages->first(fn (Message $m) => $m->intent === Intent::Intake->value && $m->direction !== Direction::Out)
+        $intake = $messages->first(fn (Message $m) => $m->intent === Intent::Intake->value && ! $m->isOurs())
             ?? $messages->first(fn (Message $m) => ! $m->isOurs());
         if ($intake) {
             $stages[] = ['stage' => CandidateStage::Intake->value, 'at' => $intake->date_at?->toDateTimeString(), 'message_id' => $intake->id, 'title' => 'Заявка на приём'];
