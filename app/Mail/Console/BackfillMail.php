@@ -106,14 +106,14 @@ class BackfillMail extends Command
         });
     }
 
-    /** UID папки, которых в базе нет: выше курсора истории и ниже первого забранного обычным синком. @return list<int> */
+    /** UID папки выше курсора истории, которых в базе ещё нет (обычный синк и прерванные партии не в счёт). @return list<int> */
     private function pending(Folder $folder, Imap $imap): array
     {
         $floor = (int) $folder->backfill_uid;
-        // Потолок — первое письмо обычного синка; уже забранная история лежит ниже курсора и не в счёт.
-        $ceiling = Message::where('folder_id', $folder->id)->where('imap_uid', '>', $floor)->min('imap_uid');
+        $known = Message::where('folder_id', $folder->id)->where('imap_uid', '>', $floor)->pluck('imap_uid')->flip();
         $uids = $imap->uids($folder->path, $floor + 1);
 
-        return array_values(array_filter($uids, fn (int $uid) => $ceiling === null || $uid < $ceiling));
+        // Выше last_uid — свежая почта, её тихо не берём: это дело обычного синка с уведомлениями.
+        return array_values(array_filter($uids, fn (int $uid) => ! isset($known[$uid]) && $uid <= (int) $folder->last_uid));
     }
 }
