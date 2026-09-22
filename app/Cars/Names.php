@@ -83,7 +83,7 @@ final class Names
     ];
 
     /** Марки, которых в справочнике может не быть: как завести. */
-    private const CREATE = ['krone' => 'Krone', 'sitrak' => 'Sitrak', 'daf' => 'DAF', 'man' => 'MAN', 'belava' => 'Belava', 'chenglong' => 'Chenglong', 'moskvich' => 'Москвич', 'exeed' => 'Exeed', 'tonar' => 'Тонар', 'lada' => 'Lada', 'belgee' => 'Belgee', 'tenet' => 'Tenet', 'lixiang' => 'Lixiang', 'aito' => 'Aito', 'voyah' => 'Voyah', 'jaecoo' => 'Jaecoo', 'tank' => 'Tank', 'lynk-co' => 'Lynk & Co', 'jetour' => 'Jetour', 'hongqi' => 'Hongqi', 'zeekr' => 'Zeekr', 'omoda' => 'Omoda', 'kamaz' => 'КАМАЗ', 'uaz' => 'УАЗ', 'gaz' => 'ГАЗ'];
+    private const CREATE = ['krone' => 'Krone', 'sitrak' => 'Sitrak', 'daf' => 'DAF', 'man' => 'MAN', 'belava' => 'Belava', 'chenglong' => 'Chenglong', 'moskvich' => 'Москвич', 'exeed' => 'Exeed', 'tonar' => 'Тонар', 'luidor' => 'Луидор', 'lada' => 'Lada', 'belgee' => 'Belgee', 'tenet' => 'Tenet', 'lixiang' => 'Lixiang', 'aito' => 'Aito', 'voyah' => 'Voyah', 'jaecoo' => 'Jaecoo', 'tank' => 'Tank', 'lynk-co' => 'Lynk & Co', 'jetour' => 'Jetour', 'hongqi' => 'Hongqi', 'zeekr' => 'Zeekr', 'omoda' => 'Omoda', 'kamaz' => 'КАМАЗ', 'uaz' => 'УАЗ', 'gaz' => 'ГАЗ'];
 
     /** Тот же завод под другим slug в справочнике. */
     private const ALT = ['lada' => 'vaz', 'lixiang' => 'li-auto', 'lynk-co' => 'lynk-and-co', 'mercedes' => 'mercedes-benz'];

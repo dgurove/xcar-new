@@ -32,7 +32,7 @@ class VehicleEvent extends Model
         $p = $this->payload ?? [];
 
         return match ($this->type) {
-            EventType::Created => 'Заведена',
+            EventType::Created => ! empty($p['by_fact']) ? 'Заведена по таблице стоянки' : (! empty($p['by_letters']) ? 'Заведена по письмам' : 'Заведена'),
             EventType::Accepted => 'Принята'.(! empty($p['yard']) ? ' на «'.$p['yard'].'»' : ''),
             EventType::Moved => 'Переставлена'.(! empty($p['from']) ? ' с «'.$p['from'].'»' : '').(! empty($p['to']) ? ' на «'.$p['to'].'»' : ''),
             EventType::Inspected => 'Осмотрена'.(! empty($p['note']) ? ': '.$p['note'] : ''),

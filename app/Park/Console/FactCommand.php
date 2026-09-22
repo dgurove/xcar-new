@@ -17,6 +17,7 @@ use App\Mail\Scope;
 use App\Park\Actions\PromoteCandidate;
 use App\Park\Actions\PurgeLetters;
 use App\Park\Actions\RegisterFromLetters;
+use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\Yard;
 use App\Users\Role;
@@ -53,23 +54,41 @@ class FactCommand extends Command
     /** Опечатки таблицы: VIN строки → номер убытка, как он в письмах. */
     private const CODE_FIXES = [
         'LVTDB21B5ND305919' => '0760/046/18841/25', 'LS4ASE2E6RA923631' => '0760/046/10203/26', 'EDEGD34B6SE054383' => '0760/046/12104/26',
-        'X4XVM99420VZ96590' => '0802/046/01541/26', 'EC3DLUFD1TC0112832' => '0760/046/13705/26', 'Z8TXTGF2WKM008517' => '0790/046/07959/26',
+        'X4XVM99420VZ96590' => '0802/046/01541/26', 'EC3DLUFD1TC012832' => '0760/046/13705/26', 'Z8TXTGF2WKM008517' => '0790/046/07959/26',
         'XTAFS025LS1496455' => '0323/046/00832/26', 'LGWFF9A64PM604595' => '7814/046/01294/26',
         'LVVDB21B1PD741502' => '6892/046/01695/26', 'XW8ZZZ5NZKG224768' => '0790/046/13597/25', 'X6D234900M0731819' => '784R/046/00092/25', 'LB3FX1S15RB136181' => '0760/046/13327/26',
     ];
 
-    /** Опечатки VIN. */
-    private const VIN_FIXES = ['LB3FX1S115RB136181' => 'LB3FX1S15RB136181'];
+    /** Опечатки VIN в таблице → VIN из заявки страховой (скан в письме). */
+    private const VIN_FIXES = [
+        'LB3FX1S115RB136181' => 'LB3FX1S15RB136181', 'X7LIJA15BAC1031155' => 'X7LJA15BAC1031155', 'Y4K862ZXPB908157' => 'Y4K8622ZXPB908157',
+        'EDAVGC30TL109357' => 'EDAVGC3B0TL109357', 'HJRPBGF1RB168432' => 'HJRPBGFB1RB168432', 'EC3DLUFD1TC0112832' => 'EC3DLUFD1TC012832',
+    ];
 
     /** Цепочки без номера в таблице: VIN строки → ключ цепочки. */
     private const KEY_FIXES = ['LB3F31038RG041648' => 'vin:XD2374252P3000037'];
 
-    /** Приняты после таблицы (наш фотоотчёт в письмах): ключи цепочек. */
+    /**
+     * Приняты после таблицы (наш фотоотчёт в письмах): ключ цепочки → поля из заявки страховой (скан PDF в письме
+     * прочитан руками: марка, модель, VIN, год, цвет, стоимость) и дата приёма по акту, если письма её не знают.
+     */
     private const LATER = [
-        'code:0383/046/00105/26', 'code:0804/046/01065/26', 'code:0790/046/06547/26', 'code:6807/046/02086/26', 'code:0760/046/12967/26',
-        'code:0730/046/03132/26', 'code:Z691/046/08191/26', 'code:0790/046/09528/26', 'code:Z691/046/01928/26', 'code:0325/046/00567/26',
-        'code:6392/046/00581/26', 'code:11575256', 'code:11561857', 'code:11629426', 'code:11613998', 'code:C2600441', 'code:0020790823',
-        'plate:Т367ВН790',
+        'code:0383/046/00105/26' => ['brand' => 'Haval', 'model' => 'F7', 'vin' => 'XZGFF06A4SA380144', 'year' => 2025, 'color' => 'Синий', 'value' => 1110990],
+        'code:0804/046/01065/26' => ['brand' => 'Ford', 'model' => 'Kuga', 'vin' => 'Z6FAXXESMAHM60960', 'year' => 2017, 'color' => 'Серебристый', 'value' => 641000],
+        'code:0790/046/06547/26' => ['brand' => 'Jetour', 'model' => 'T1', 'vin' => 'LVTDD24B4SDE65665', 'year' => 2025, 'color' => 'Серый', 'value' => 1709000],
+        'code:6807/046/02086/26' => ['brand' => 'Kia', 'model' => 'Sportage', 'vin' => 'XWEPH81ABL0031954', 'year' => 2019, 'color' => 'Черный перламутр', 'value' => 1099000],
+        'code:0760/046/12967/26' => ['brand' => 'Belgee', 'model' => 'X50', 'vin' => 'Y4K8622ZXRB945535', 'year' => 2024, 'color' => 'Черный', 'value' => 990000],
+        'code:0730/046/03132/26' => ['brand' => 'Mercedes-Benz', 'model' => 'V300D', 'vin' => 'W1VVNLTZ4S4530592', 'year' => 2025, 'color' => 'Черный', 'value' => 5685713],
+        'code:Z691/046/08191/26' => ['brand' => 'Changan', 'model' => 'UNI-T', 'vin' => 'LS5A3DKE5SA993257', 'year' => 2024, 'color' => 'Черный', 'value' => 928880],
+        'code:0790/046/09528/26' => ['brand' => 'Tenet', 'model' => 'T7', 'vin' => 'EDXFD32B7TE038197', 'year' => 2026, 'color' => 'Желтый', 'value' => 836990],
+        'code:Z691/046/01928/26' => ['brand' => 'Sollers', 'model' => 'Argo', 'vin' => 'EBKSCX200P0000974', 'year' => 2023, 'color' => 'Белый', 'value' => 224500, 'yard' => 'измайловский лес'],
+        'code:0325/046/00567/26' => ['brand' => 'Scania', 'model' => 'G4X200', 'vin' => 'YS2G4X20002176920', 'year' => 2020, 'color' => 'Белый', 'value' => 1619000, 'yard' => 'измайловский лес'],
+        'code:6392/046/00581/26' => ['flags' => 'заявка Альфы в письме не скачана, поля только из писем'],
+        'code:11575256' => ['notes' => 'VIN из темы письма: LS5A3DKR8RA0091927', 'flags' => 'VIN в теме письма 18 знаков, в заметке'],
+        'code:11561857' => [], 'code:11629426' => [], 'code:11613998' => [],
+        'code:C2600441' => ['brand' => 'Тонар', 'model' => null, 'yard' => 'шоссе энтузиастов', 'accepted_at' => '2026-08-20 17:00', 'flags' => 'модель в письме не названа; дата приёма по письму-заявке Интери, уточнить'],
+        'code:0020790823' => ['brand' => 'Lada (ВАЗ)', 'model' => 'Granta', 'year' => 2024, 'accepted_at' => '2026-08-06', 'flags' => 'дата приёма неизвестна, поставлена по первому письму 06.08.2026'],
+        'plate:Т367ВН790' => ['brand' => 'Nissan', 'model' => 'X-Trail', 'vin' => 'Z8NTAAT32ES130849', 'year' => 2020, 'color' => 'Серый', 'sts' => '9935158646', 'pts' => '164301015974766', 'contact_name' => 'Чабан Алексей Евгеньевич', 'accepted_at' => '2026-09-02 12:20'],
     ];
 
     /** Письма СПб: цепочки не трогаем. */
@@ -199,12 +218,18 @@ class FactCommand extends Command
                 if ($releasedAt) {
                     $purge($vehicle);
                 }
+                $text = 'По таблице стоянки от 21.09.2026: приём '.$draft['accepted_at']?->format('d.m.Y')
+                    .($draft['yard'] ? ', парковка «'.$draft['yard']->name.'»' : ', парковка не указана')
+                    .($releasedAt ? ', выдача '.$releasedAt->format('d.m.Y').(in_array('дата выдачи из письма', $flags, true) ? ' по письму' : '') : '')
+                    .($sold ? ', продана по письму' : '')
+                    .($candidate ? ', письма найдены по '.$this->howWords($how) : ', писем нет');
+                $this->history($vehicle, $text, array_values(array_diff($flags, ['дата выдачи из письма'])));
             }
             $this->row($row, $draft, $candidate, $how, $stage, $letterRelease, $action, $vehicle, $flags);
         }
 
         // Приняты после таблицы — по письмам, без парковки.
-        foreach (self::LATER as $key) {
+        foreach (self::LATER as $key => $known) {
             $candidate = $this->candidateByKey($key);
             if (! $candidate) {
                 $this->warn("Цепочка {$key} не найдена");
@@ -217,17 +242,25 @@ class FactCommand extends Command
             $this->taken[$candidate->id] = 0;
             $stored = $candidate->stageOf(CandidateStage::Stored);
             $first = $candidate->messages()->orderBy('mail_messages.date_at')->first();
-            $acceptedAt = ($stored['at'] ?? null) ? Carbon::parse($stored['at'])->startOfDay() : $first?->date_at?->startOfDay();
+            $acceptedAt = ! empty($known['accepted_at']) ? Carbon::parse($known['accepted_at'])
+                : (($stored['at'] ?? null) ? Carbon::parse($stored['at'])->startOfDay() : $first?->date_at?->startOfDay());
             $soldStage = $candidate->stageOf(CandidateStage::Sold);
-            $draft = $this->draftFromCandidate($candidate);
-            $flag = implode('; ', array_filter([($stored['at'] ?? null) ? null : 'дата приёма = первое письмо, уточнить', $draft['brand'] ? null : 'марки в письмах нет']));
+            $draft = $this->draftFromCandidate($candidate, $known);
+            $flags = array_filter([
+                ($stored['at'] ?? null) || ! empty($known['accepted_at']) ? null : 'дата приёма = первое письмо, уточнить',
+                $draft['brand'] ? null : 'марки в письмах нет', $known['flags'] ?? null,
+            ]);
+            $flag = implode('; ', $flags);
             $exists = $this->existing($draft);
             $vehicle = null;
             if (! $exists && $this->apply) {
-                $stages = array_filter(['accepted_at' => $acceptedAt?->toDateTimeString(), 'source' => 'fact', 'sold' => (bool) $soldStage,
+                $stages = array_filter(['accepted_at' => $acceptedAt?->toDateTimeString(), 'yard_id' => $draft['yard_id'], 'source' => 'fact', 'sold' => (bool) $soldStage,
                     'sold_at' => $soldStage['at'] ?? null, 'pickup_name' => $soldStage['name'] ?? null, 'pickup_phone' => $soldStage['phone'] ?? null]);
                 $vehicle = $register($this->owner, $candidate, $this->data($draft, $candidate), $stages);
                 $promote->attach($candidate, $vehicle);
+                $how = ! empty($known['vin']) ? 'поля из заявки страховой в письме' : 'поля из писем';
+                $when = ! empty($known['accepted_at']) ? 'по документам в письмах' : (($stored['at'] ?? null) ? 'по нашему фотоотчёту' : 'по первому письму');
+                $this->history($vehicle, 'Заведена по письмам при переходе на приложение 22.09.2026: приём '.$acceptedAt?->format('d.m.Y').' '.$when.', '.$how, $flags);
             }
             $stats['later']++;
             $this->report['Приняты после таблицы'][] = ["c{$candidate->id}", $candidate->code, $candidate->title(), $draft['vin'], $draft['plate'], $candidate->vendor?->name, $acceptedAt?->format('d.m.Y'), $soldStage ? 'продана' : '', $exists ? "уже есть ТС #{$exists->id}" : ($vehicle ? "ТС #{$vehicle->id}" : 'завести'), $flag];
@@ -238,8 +271,8 @@ class FactCommand extends Command
         foreach ($rest as $candidate) {
             $sender = $this->firstSender($candidate);
             $line = ["c{$candidate->id}", $candidate->code, $candidate->title(), $candidate->stage->value, $candidate->state->label(), $candidate->last_message_at?->format('d.m.Y'), $sender];
-            // СПб не трогаем; выданные по письмам и уже в архиве — закрываются (по новому правилу свёртки они и так закрытые).
-            if (in_array(mb_strtolower((string) $sender), self::SPB_SENDERS, true) && ! ($candidate->state === CandidateState::Rejected && $candidate->stage === CandidateStage::Released)) {
+            // СПб: выданные по письмам закрываются, заявки и принятые остаются как есть (решение владельца 22.09).
+            if (in_array(mb_strtolower((string) $sender), self::SPB_SENDERS, true) && $candidate->stage !== CandidateStage::Released) {
                 $this->report['СПб оставлены'][] = $line;
                 $stats['spb']++;
 
@@ -312,7 +345,10 @@ class FactCommand extends Command
     {
         $flags = [];
         $vin = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $row['vin']));
-        $vin = self::VIN_FIXES[$vin] ?? $vin;
+        if (isset(self::VIN_FIXES[$vin])) {
+            $flags[] = 'VIN в таблице '.$vin.', по заявке страховой '.self::VIN_FIXES[$vin];
+            $vin = self::VIN_FIXES[$vin];
+        }
         $code = self::CODE_FIXES[$vin] ?? $row['code'];
         $notes = null;
         if (strlen($vin) > 17) {
@@ -324,7 +360,7 @@ class FactCommand extends Command
             $flags[] = 'VIN не 17 знаков';
         }
         if ($code !== $row['code']) {
-            $flags[] = "номер по письмам {$code}";
+            $flags[] = "номер по письмам {$code}, в таблице {$row['code']}";
         }
         $name = trim((string) $row['name']);
         $found = Names::find($name);
@@ -363,19 +399,43 @@ class FactCommand extends Command
     }
 
     /** Цепочка, принятая после таблицы: поля из свёртки писем. */
-    private function draftFromCandidate(Candidate $candidate): array
+    /** @param  array<string, mixed>  $known  что прочитано руками из заявки страховой в письме (`LATER`) */
+    private function draftFromCandidate(Candidate $candidate, array $known = []): array
     {
         // Марка из свёртки, иначе из темы первого письма («0020790823 ТС 2024 ВАЗ/Lada 2190/Granta (С778КТ977)»).
         $found = Names::find(trim(($candidate->value('brand') ?? '').' '.($candidate->value('model') ?? ''))) ?? Names::find(str_replace('/', ' ', (string) $candidate->subject));
         $brand = $found['brand'] ?? ($candidate->value('brand') ? Brand::resolve($candidate->value('brand')) : null);
-        $vin = $candidate->value('vin') ? strtoupper((string) $candidate->value('vin')) : null;
+        $model = $found['model'] ?? $candidate->value('model');
+        if (! empty($known['brand'])) {
+            $brand = Brand::resolve($known['brand']);
+            $model = $known['model'] ?? null;
+        }
+        $vin = $known['vin'] ?? ($candidate->value('vin') ? strtoupper((string) $candidate->value('vin')) : null);
+        $yard = ! empty($known['yard']) ? Yard::whereRaw('lower(name) = ?', [$known['yard']])->first() : null;
 
         return [
-            'line' => 0, 'name' => $candidate->title(), 'brand' => $brand, 'model' => $found['model'] ?? $candidate->value('model'), 'vin' => $vin, 'code' => $candidate->code,
-            'year' => $candidate->value('year'), 'color' => $candidate->value('color') ? mb_ucfirst((string) $candidate->value('color')) : null, 'sts' => null, 'pts' => null,
+            'line' => 0, 'name' => trim(($brand?->name ?? '').' '.$model) ?: $candidate->title(), 'brand' => $brand, 'model' => $model, 'vin' => $vin, 'code' => $candidate->code,
+            'year' => $known['year'] ?? $candidate->value('year'), 'color' => $known['color'] ?? ($candidate->value('color') ? mb_ucfirst((string) $candidate->value('color')) : null),
+            'sts' => $known['sts'] ?? null, 'pts' => $known['pts'] ?? null,
             'plate' => Candidate::plateKey($candidate->value('plate')), 'accepted_at' => null, 'released_at' => null,
-            'vendor_id' => $candidate->vendor_id, 'policy_no' => null, 'value' => $candidate->value('value'), 'yard_id' => null, 'yard' => null, 'flags' => [], 'notes' => null,
+            'vendor_id' => $candidate->vendor_id, 'policy_no' => null, 'value' => $known['value'] ?? $candidate->value('value'), 'yard_id' => $yard?->id, 'yard' => $yard,
+            'flags' => [], 'notes' => $known['notes'] ?? null, 'contact_name' => $known['contact_name'] ?? null,
         ];
+    }
+
+    /** История ТС: как и откуда заведена, что проверить руками. */
+    private function history(Vehicle $vehicle, string $text, array $flags): void
+    {
+        $vehicle->log(EventType::Note, $this->owner, ['text' => $text]);
+        // Поправки таблицы по письмам — отдельно от того, что надо проверить руками.
+        $fixed = array_filter($flags, fn ($f) => str_starts_with($f, 'VIN в таблице') || str_starts_with($f, 'номер по письмам'));
+        $check = array_diff($flags, $fixed);
+        if ($fixed) {
+            $vehicle->log(EventType::Note, $this->owner, ['text' => 'Таблица поправлена по письмам: '.implode('; ', $fixed)]);
+        }
+        if ($check) {
+            $vehicle->log(EventType::Note, $this->owner, ['text' => 'Проверить: '.implode('; ', $check)]);
+        }
     }
 
     /** Поля для `RegisterFromLetters`: таблица главнее, из цепочки — чего в таблице нет. */
@@ -390,7 +450,7 @@ class FactCommand extends Command
             'ref' => $draft['code'], 'vin' => $draft['vin'] ?: $v('vin'), 'plate' => $draft['plate'] ?: Candidate::plateKey($v('plate')), 'year' => $draft['year'] ?: $v('year'),
             'brand_id' => $brand?->id, 'model_id' => $model?->id, 'vendor_id' => $draft['vendor_id'] ?: $v('vendor_id'), 'category' => $category->value,
             'color' => $draft['color'] ?: ($v('color') ? mb_ucfirst((string) $v('color')) : null), 'policy_no' => $draft['policy_no'], 'pts' => $draft['pts'], 'sts' => $draft['sts'],
-            'contact_name' => $v('insured_name'), 'contact_phone' => $v('insured_phone') ?? ((array) $v('phones'))[0] ?? null,
+            'contact_name' => $draft['contact_name'] ?? $v('insured_name'), 'contact_phone' => $v('insured_phone') ?? ((array) $v('phones'))[0] ?? null,
             'flags' => $v('flags') ?: [], 'docs_required' => $v('docs_required') ?: [], 'value' => $draft['value'] ?: $v('value'), 'notes' => $draft['notes'],
         ];
     }
@@ -455,6 +515,18 @@ class FactCommand extends Command
         }
 
         return [null, ''];
+    }
+
+    private function howWords(string $how): string
+    {
+        return match (true) {
+            str_starts_with($how, 'похожий') => 'похожему номеру убытка',
+            str_contains($how, 'code') && str_contains($how, 'vin') => 'номеру убытка и VIN',
+            str_contains($how, 'code') => 'номеру убытка',
+            str_contains($how, 'vin') => 'VIN',
+            str_contains($how, 'plate') => 'госномеру',
+            default => 'номеру',
+        };
     }
 
     private function candidateByKey(string $key): ?Candidate
