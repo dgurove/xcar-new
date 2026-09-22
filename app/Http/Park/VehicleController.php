@@ -188,12 +188,13 @@ class VehicleController
     {
         $request->validate(['file' => ['required', 'file', 'max:65536']]);
         $file = $request->file('file');
+        $papers = $request->input('collection') === 'papers';
+        // Кадр ложится в ту карточку, откуда его добавили; снято в приложении — `source: app`, из письма кадры приносит импорт ветки.
+        $stage = PhotoStage::tryFrom((string) $request->input('stage')) ?? PhotoStage::Intake;
         try {
-            if ($request->input('collection') === 'papers') {
+            if ($papers) {
                 $vehicle->addMedia($file)->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $file->getClientOriginalName()) ?: 'dokument')->toMediaCollection('papers');
             } else {
-                // Кадр ложится в ту карточку, откуда его добавили; снято в приложении — `source: app`, из письма кадры приносит импорт ветки.
-                $stage = PhotoStage::tryFrom((string) $request->input('stage')) ?? PhotoStage::Intake;
                 $slot = PhotoSlot::tryFrom((string) $request->input('slot'))?->value;
                 $ingest->fromPhone($vehicle, 'photos', $request, properties: array_filter(['stage' => $stage->value, 'slot' => $slot, 'source' => 'app']));
             }
@@ -201,18 +202,29 @@ class VehicleController
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return $this->gallery($vehicle, $stage->value);
+        return $papers ? $this->papers($vehicle) : $this->gallery($vehicle, $stage->value);
     }
 
     public function reorder(Request $request, Vehicle $vehicle)
     {
         $order = $request->validate(['order' => ['required', 'array'], 'order.*' => ['integer']])['order'];
         $photos = $vehicle->photos();
-        Media::setNewOrder(array_values(array_intersect($order, $photos->pluck('id')->all())));
-        // Переставляли внутри одной карточки — ей и возвращаем кнопку камеры.
-        $moved = $photos->firstWhere('id', $order[0] ?? null);
+        $ids = array_values(array_intersect($order, $photos->pluck('id')->all()));
+        if (! $ids) {
+            return $this->gallery($vehicle);
+        }
+        // Карточка отдаёт порядок только своей стадии: её кадры встают на свои же места в общей ленте, остальные
+        // не двигаются — иначе перестановка в одной карточке переставила бы всю галерею и сменила главный кадр ТС.
+        $moving = array_flip($ids);
+        $queue = $ids;
+        $full = [];
+        foreach ($photos->pluck('id') as $id) {
+            $full[] = isset($moving[$id]) ? array_shift($queue) : $id;
+        }
+        Media::setNewOrder($full);
 
-        return $this->gallery($vehicle, $moved ? PhotoStage::of($moved)->value : null);
+        // Переставляли внутри одной карточки — ей и возвращаем кнопку камеры.
+        return $this->gallery($vehicle, PhotoStage::of($photos->firstWhere('id', $ids[0]))->value);
     }
 
     public function rotateMedia(Vehicle $vehicle, Media $media, RotatePhoto $rotate)
@@ -220,16 +232,18 @@ class VehicleController
         abort_unless($media->model_id === $vehicle->id && $media->model_type === $vehicle::class, 404);
         $rotate($media);
 
-        return $this->gallery($vehicle, PhotoStage::of($media)->value);
+        return $media->collection_name === 'photos' ? $this->gallery($vehicle, PhotoStage::of($media)->value) : $this->papers($vehicle);
     }
 
     public function destroyMedia(Vehicle $vehicle, Media $media)
     {
         abort_unless($media->model_id === $vehicle->id && $media->model_type === $vehicle::class, 404);
-        $stage = PhotoStage::of($media);
+        // У документа стадии нет: его удаление обновляет «Документы», а карточки кадров не трогает — иначе
+        // читающая карточка «Фото от страховой» вернулась бы с плиткой камеры.
+        $photo = $media->collection_name === 'photos' ? PhotoStage::of($media) : null;
         $media->delete();
 
-        return $this->gallery($vehicle, $stage->value);
+        return $photo ? $this->gallery($vehicle, $photo->value) : $this->papers($vehicle);
     }
 
     public function note(Request $request, Vehicle $vehicle)
@@ -382,5 +396,13 @@ class VehicleController
         $vehicle->unsetRelation('media');
 
         return Stream::view('park.vehicles.photos-stream', ['vehicle' => $vehicle, 'stage' => $stage]);
+    }
+
+    /** Список документов заново: бумаги живут своей карточкой, к стадиям кадров отношения не имеют. */
+    private function papers(Vehicle $vehicle)
+    {
+        $vehicle->unsetRelation('media');
+
+        return Stream::view('park.vehicles.papers-stream', ['vehicle' => $vehicle]);
     }
 }
