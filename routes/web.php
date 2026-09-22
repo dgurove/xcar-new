@@ -122,12 +122,14 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::delete('/account/users/{user}', [UserController::class, 'destroy']);
     Route::post('/account/users/{user}/access', [UserController::class, 'decide']);
     Route::post('/account/users/{user}/password', [UserController::class, 'passwordLink']);
+    Route::put('/account/users/{user}/party', [UserController::class, 'party']);
+    Route::get('/account/users/{user}/statement', [UserController::class, 'statement']);
+    Route::get('/account/users/{user}/export', [UserController::class, 'export']);
 
     // Кабинет менеджера: покупатели, группы, приглашения, показы. Конкретные пути раньше {user}.
     Route::middleware('manager')->group(function () {
         // Деньги менеджера: счета к оплате, вознаграждение, история, реквизиты, акт сверки, выгрузка.
         Route::get('/account/money', [MoneyController::class, 'index']);
-        Route::get('/account/money/history', [MoneyController::class, 'history']);
         Route::get('/account/money/details', [MoneyController::class, 'details']);
         Route::put('/account/money/details', [MoneyController::class, 'saveDetails']);
         Route::get('/account/money/statement', [MoneyController::class, 'statement']);

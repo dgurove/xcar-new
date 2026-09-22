@@ -409,11 +409,18 @@
   (`ClaimPayment`: `billing_payments.state=claimed`, в `paid` не входит) — `AdvanceOnClaim` делает его шаг
   «Платёжное поручение приложено»; сотрудник — `ConfirmPayment` / `RejectPayment` (CRM `/work/money`,
   пресеты заявки · к выплате · не оплачены; карточка счёта общая со стоянкой `billing/invoice-page`,
-  `/work/money/invoices/{id}`; карточка «Деньги» сделки — `x-deal.money`). Кабинет менеджера `/account/money`
-  (пилюля «Деньги»): реквизиты строкой-действием (`PartyKind` юрлицо · ИП · самозанятый · физлицо,
-  `x-billing.party-fields`, `PartyRules`), «К оплате», «Вознаграждение», история `?month=`, счёт с плашкой
-  «Сообщить об оплате», расклад по сделке, акт сверки PDF (`StatementPdf`) и Excel (`ManagerStatement`);
-  одна дверь `Invoice::visibleToManager` (его контрагент или его сделка). Уведомления `MoneyNotice`,
+  `/work/money/invoices/{id}`; карточка «Деньги» сделки — `x-deal.money`). **Кабинет менеджера `/account/money`
+  (пилюля «Деньги») — по сделкам: одна сделка — один расчёт** (`Billing\DealMoney::of` — фраза, число «что
+  сейчас важно», тон, пресет; `ManagerLedger::deals/counts/position`): сверху положение строками-кнопками
+  («Оплатить N», «Вам к выплате N», «Реквизиты не указаны»), пилюли Все · Оплатить · Ждут выплаты · Закрытые,
+  строки `x-money.deal-row`; расчёт `/account/money/deals/{id}` — документ (цена → счёт со строками, оплатами
+  и заявками → вознаграждение → выплаты → история), плашка «Сообщить об оплате»; реквизиты (`PartyKind`
+  юрлицо · ИП · самозанятый · физлицо, `x-billing.party-fields`, `PartyRules`), акт сверки PDF
+  (`StatementPdf`) и Excel (`ManagerStatement`) — в «···» у пилюль; отдельной страницы счёта и ленты истории
+  нет (`/account/money/invoices/{id}` → расчёт); колонка узкая и на компьютере; одна дверь
+  `Invoice::visibleToManager`. CRM `/work/money` — таблица `x-money.table-row` с окошком `admin/money/peek`
+  (действия только там), `/work/money/managers` — сальдо по менеджерам, у менеджера в `/settings/users/{id}`
+  пилюли «Обзор · Деньги» (`admin/users/money`: реквизиты, сделки, акт сверки, Excel). Уведомления `MoneyNotice`,
   Telegram `PaymentClaimed` («Поступило») и `AgentFeeDue` («Выплачено»). Закупки Carcade — без денег.
 - **Машина по имени** (с 21.09.2026): заголовки кандидатов, секций почты, строк и Telegram — марка и модель
   (`Candidate::title()`: без марки — номер убытка, без него госномер; `hasCar()`), номер убытка — чипом; марка и

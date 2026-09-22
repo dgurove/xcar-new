@@ -2,6 +2,11 @@
 
 namespace App\Http\Admin;
 
+use App\Billing\Documents\StatementPdf;
+use App\Billing\Export\ManagerStatement;
+use App\Billing\ManagerLedger;
+use App\Billing\Party;
+use App\Billing\PartyRules;
 use App\Chats\Chat;
 use App\Http\Cabinet\InviteController;
 use App\Offers\Bid;
@@ -20,6 +25,7 @@ use App\Users\Role;
 use App\Users\Section;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -106,8 +112,15 @@ class UserController
         // Пришли из шапки чата — «‹ Чат» вместо «‹ Пользователи».
         $chat = $request->integer('chat') ? Chat::find($request->integer('chat')) : null;
 
+        $pill = $user->isManager() && $request->query('pill') === 'money' ? 'money' : 'overview';
+        $ledger = $pill === 'money' ? new ManagerLedger($user) : null;
+
         return view('admin.users.show', [
             'user' => $user,
+            'pill' => $pill,
+            'position' => $ledger?->position(),
+            'party' => $pill === 'money' ? Party::forUser($user, false) : null,
+            'moneyDeals' => $ledger?->deals() ?? collect(),
             'back' => $chat ? ['Чат', (Surface::current() === Surface::Crm ? '/work/chats/' : '/account/chats/').$chat->id] : null,
             'chats' => $chats,
             'deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->with(['offer.brand', 'offer.model', 'offer.media', 'buyer'])->latest()->get() : collect(),
@@ -117,6 +130,44 @@ class UserController
             'managers' => $me->isAdmin() ? User::where('role', Role::Manager)->orderBy('name')->get() : collect(),
             'link' => session('password_link'),
         ]);
+    }
+
+    /** Реквизиты менеджера — сотрудник правит те же, что менеджер в кабинете. */
+    public function party(Request $request, User $user)
+    {
+        abort_unless($request->user()->isStaff() && $user->isManager(), 404);
+        $data = $request->validate(PartyRules::rules());
+        Party::forUser($user)->update($data + ['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null]);
+
+        return back()->with('toast', 'Реквизиты сохранены');
+    }
+
+    public function statement(Request $request, User $user, StatementPdf $pdf)
+    {
+        abort_unless($request->user()->isStaff() && $user->isManager(), 404);
+        [$from, $to] = $this->period($request);
+        $name = 'akt-sverki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.pdf';
+
+        return response($pdf->render($user, $from, $to), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => ($request->boolean('inline') ? 'inline' : 'attachment').'; filename="'.$name.'"']);
+    }
+
+    public function export(Request $request, User $user, ManagerStatement $xlsx)
+    {
+        abort_unless($request->user()->isStaff() && $user->isManager(), 404);
+        [$from, $to] = $this->period($request);
+        $path = $xlsx->write($user, $from, $to, tempnam(sys_get_temp_dir(), 'sdelki-').'.xlsx');
+
+        return response()->download($path, 'sdelki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.xlsx', [], $request->boolean('inline') ? 'inline' : 'attachment')->deleteFileAfterSend();
+    }
+
+    /** @return array{Carbon, Carbon} */
+    private function period(Request $request): array
+    {
+        $data = $request->validate(['from' => ['nullable', 'date'], 'to' => ['nullable', 'date']]);
+        $from = isset($data['from']) ? Carbon::parse($data['from'])->startOfDay() : now()->startOfYear();
+        $to = isset($data['to']) ? Carbon::parse($data['to'])->endOfDay() : now()->endOfDay();
+
+        return $from->lte($to) ? [$from, $to] : [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
     }
 
     /** Ссылка на новый пароль — админ выдаёт кому угодно: сотруднику без почты, менеджеру, покупателю. */

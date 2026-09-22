@@ -17,21 +17,21 @@ final class MoneyNotice extends Notice
 
     public static function invoiceIssued(Invoice $i): self
     {
-        return new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'), $i->deal?->offer?->titleWithYear(), '/account/money/invoices/'.$i->id, $i->deal?->offer?->number);
+        return new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'), $i->deal?->offer?->titleWithYear(), '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number);
     }
 
     public static function paymentConfirmed(Payment $p): self
     {
         $i = $p->invoice;
 
-        return new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' принята', $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : 'Счёт оплачен', '/account/money/invoices/'.$i->id, $i->deal?->offer?->number);
+        return new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' принята', $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : 'Счёт оплачен', '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number);
     }
 
     public static function paymentRejected(Payment $p): self
     {
         $i = $p->invoice;
 
-        return new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' не поступила', $p->reject_reason ?: 'Проверьте платёж и сообщите снова', '/account/money/invoices/'.$i->id, $i->deal?->offer?->number);
+        return new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' не поступила', $p->reject_reason ?: 'Проверьте платёж и сообщите снова', '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number);
     }
 
     public static function payout(Payment $p): self

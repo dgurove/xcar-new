@@ -10,12 +10,16 @@ use App\Billing\Actions\VoidPayment;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\ManagerLedger;
 use App\Billing\Party;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
+use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Nav;
+use App\Users\Role;
+use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -28,10 +32,21 @@ class MoneyController
 {
     public const PRESETS = ['claims' => 'Сообщили об оплате', 'payouts' => 'К выплате', 'unpaid' => 'Не оплачены', 'paid' => 'Оплачены', 'all' => 'Все'];
 
+    public const SORTS = ['due' => 'По сроку', 'fresh' => 'Сначала новые'];
+
     public function index(Request $request)
     {
+        ListPrefs::sync($request, 'crm-money');
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'claims';
-        $q = Invoice::whereNotNull('deal_id')->with(['party', 'deal.offer.brand', 'deal.offer.model', 'deal.buyer', 'claims.media']);
+        $qs = trim((string) $request->query('q'));
+        $q = Invoice::whereNotNull('deal_id')->with(['party', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer', 'claims'])
+            ->when($request->query('manager'), fn ($w, $id) => $w->whereHas('deal', fn ($d) => $d->where('buyer_id', $id)))
+            ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s
+                ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs)->orWhereHas('deal.offer', fn ($o) => $o->where('number', (int) $qs)))
+                ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', "%{$qs}%"))
+                ->orWhereHas('deal.buyer', fn ($u) => $u->where('name', 'ilike', "%{$qs}%"))
+                ->orWhereHas('deal.offer.brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%"))
+                ->orWhereHas('deal.offer.model', fn ($m) => $m->where('name', 'ilike', "%{$qs}%"))));
         match ($preset) {
             'claims' => $q->whereHas('claims'),
             'payouts' => $q->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued),
@@ -39,17 +54,41 @@ class MoneyController
             'paid' => $q->where('state', InvoiceState::Paid),
             default => $q,
         };
-        $preset === 'paid' ? $q->latest('paid_at')->latest('id') : $q->orderBy('due_at')->orderBy('id');
-        $counts = [
+        $sort = $request->query('sort') === 'fresh' ? 'fresh' : 'due';
+        $sort === 'fresh' ? $q->latest('issued_at')->latest('id') : $q->orderBy('due_at')->orderBy('id');
+
+        return view('admin.money.index', [
+            'invoices' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+            'preset' => $preset, 'sort' => $sort, 'q' => $qs, 'counts' => array_filter(self::counts()),
+        ]);
+    }
+
+    /** Числа пилюль: заявки, к выплате, не оплачены. */
+    public static function counts(): array
+    {
+        return [
             'claims' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereNotNull('deal_id'))->count(),
             'payouts' => Invoice::whereNotNull('deal_id')->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued)->count(),
             'unpaid' => Invoice::whereNotNull('deal_id')->where('direction', 'issued')->where('state', InvoiceState::Issued)->count(),
         ];
+    }
 
-        return view('admin.money.index', [
-            'invoices' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
-            'preset' => $preset, 'counts' => array_filter($counts), 'sources' => PaymentSource::options(),
-        ]);
+    public function peek(Invoice $invoice)
+    {
+        $invoice->load(['party', 'charges', 'payments', 'claims.media', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer']);
+
+        return view('admin.money.peek', ['invoice' => $invoice, 'sources' => PaymentSource::options()]);
+    }
+
+    /** Взаиморасчёты по менеджерам: нам, мы должны, просрочено, заявки — строка ведёт в карточку на «Деньги». */
+    public function managers(Request $request)
+    {
+        $managers = User::where('role', Role::Manager)->orderBy('name')->get()
+            ->map(fn (User $u) => ['user' => $u, 'position' => (new ManagerLedger($u))->position()])
+            ->filter(fn ($m) => $m['position']['pay'] > 0 || $m['position']['payout'] > 0 || $m['position']['paid_out'] > 0 || $m['position']['claimed'] > 0)
+            ->sortByDesc(fn ($m) => [$m['position']['overdue'] > 0, $m['position']['claimed'] > 0, $m['position']['pay'] + $m['position']['payout']])->values();
+
+        return view('admin.money.managers', ['managers' => $managers]);
     }
 
     public function show(Invoice $invoice)

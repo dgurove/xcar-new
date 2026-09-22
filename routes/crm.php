@@ -74,10 +74,12 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
     // Деньги по сделкам: заявки менеджеров об оплате, вознаграждения к выплате, счета; карточка счёта — общая со стоянкой.
     Route::get('/work/money', [MoneyController::class, 'index']);
+    Route::get('/work/money/managers', [MoneyController::class, 'managers']);
     Route::post('/work/payments/{payment}/confirm', [MoneyController::class, 'confirm']);
     Route::post('/work/payments/{payment}/reject', [MoneyController::class, 'reject']);
     Route::prefix('work/money/invoices/{invoice}')->group(function () {
         Route::get('/', [MoneyController::class, 'show']);
+        Route::get('/peek', [MoneyController::class, 'peek']);
         Route::put('/', [MoneyController::class, 'update']);
         Route::get('/pdf', [MoneyController::class, 'file']);
         Route::get('/print', [MoneyController::class, 'print']);
@@ -159,6 +161,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::post('/users/{user}/access', [UserController::class, 'decide']);
         Route::delete('/users/{user}', [UserController::class, 'destroy']);
         Route::post('/users/{user}/password', [UserController::class, 'passwordLink']);
+        Route::put('/users/{user}/party', [UserController::class, 'party']);
+        Route::get('/users/{user}/statement', [UserController::class, 'statement']);
+        Route::get('/users/{user}/export', [UserController::class, 'export']);
         Route::post('/users/invites', [InviteController::class, 'store']);
         Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
         Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);

@@ -3,9 +3,11 @@
 namespace App\Http\Cabinet;
 
 use App\Billing\Actions\ClaimPayment;
+use App\Billing\DealMoney;
 use App\Billing\Documents\StatementPdf;
 use App\Billing\Export\ManagerStatement;
 use App\Billing\Invoice;
+use App\Billing\InvoiceState;
 use App\Billing\ManagerLedger;
 use App\Billing\Party;
 use App\Billing\PartyKind;
@@ -16,9 +18,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 /**
- * «Деньги» менеджера: счета к оплате с заявкой об оплате, вознаграждение по сделкам,
- * история за период, реквизиты, акт сверки и выгрузка. Всё — только своё, одной
- * дверью `Invoice::visibleToManager`; закупочной и «нам» тут нет.
+ * «Деньги» менеджера: положение (оплатить / к выплате), сделки-расчёты по пресетам,
+ * расчёт сделки с заявкой об оплате, реквизиты, акт сверки и выгрузка в «···».
+ * Всё — только своё, одной дверью `Invoice::visibleToManager`; закупочной и «нам» тут нет.
  */
 class MoneyController
 {
@@ -26,32 +28,35 @@ class MoneyController
     {
         $me = $request->user();
         $ledger = new ManagerLedger($me);
-        $party = Party::forUser($me, false);
-        $history = $ledger->history();
+        $preset = array_key_exists($request->query('preset', ''), DealMoney::PRESETS) ? $request->query('preset') : 'all';
 
         return view('cabinet.money.index', [
-            'toPay' => $ledger->toPay(), 'deals' => $ledger->feeDeals(), 'payable' => $ledger->payable(),
-            'party' => $party, 'recent' => $history->take(5), 'total' => $history->count(),
-            'month' => now()->startOfMonth(),
+            'deals' => $ledger->deals($preset), 'counts' => $ledger->counts(), 'preset' => $preset,
+            'position' => $ledger->position(), 'party' => Party::forUser($me, false),
         ]);
     }
 
+    /** Страница счёта у менеджера — это расчёт сделки; старые ссылки и уведомления ведут туда. */
     public function invoice(Request $request, Invoice $invoice)
     {
-        $me = $request->user();
-        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed(), 404);
-        $invoice->load(['party', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media']);
+        abort_unless($invoice->isVisibleToManager($request->user()) && $invoice->deal_id, 404);
 
-        return view('cabinet.money.invoice', ['invoice' => $invoice, 'file' => $invoice->getFirstMedia('file'), 'left' => round($invoice->remaining() - $invoice->claimed(), 2)]);
+        return redirect('/account/money/deals/'.$invoice->deal_id, 301);
     }
 
-    /** Расклад по сделке: цена, счета, вознаграждение и выплаты — только когда счёт уже есть. */
+    /** Расчёт по сделке: цена, счета со строками и оплатами, вознаграждение и выплаты, история. */
     public function deal(Request $request, Deal $deal)
     {
-        abort_unless($deal->buyer_id === $request->user()->id && $deal->showsCommission(), 404);
+        $me = $request->user();
+        abort_unless($deal->buyer_id === $me->id, 404);
         $deal->load(['offer.brand', 'offer.model', 'offer.media', 'agentFee.payments.media']);
+        $invoices = $deal->issuedInvoices()->with(['party', 'charges', 'allPayments.media'])->get();
+        $history = (new ManagerLedger($me))->history()->where('deal', $deal->id)->reverse()->values();
 
-        return view('cabinet.money.deal', ['deal' => $deal, 'offer' => $deal->offer, 'invoices' => $deal->issuedInvoices()->with('party')->get(), 'fee' => $deal->agentFee, 'state' => $deal->commissionState()]);
+        return view('cabinet.money.deal', [
+            'deal' => $deal, 'offer' => $deal->offer, 'invoices' => $invoices, 'fee' => $deal->agentFee, 'state' => $deal->commissionState(), 'history' => $history,
+            'claimable' => $invoices->filter(fn (Invoice $i) => $i->state === InvoiceState::Issued && $i->remaining() - $i->claimed() > 0)->values(),
+        ]);
     }
 
     public function claim(Request $request, Invoice $invoice, ClaimPayment $claim)
@@ -60,19 +65,7 @@ class MoneyController
         $data = $request->validate(['amount' => ['required', 'numeric', 'min:0.01'], 'paid_at' => ['required', 'date'], 'ref' => ['nullable', 'string', 'max:60'], 'slip' => ['required', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic']]);
         $claim($invoice, $request->user(), (float) $data['amount'], Carbon::parse($data['paid_at']), $request->file('slip'), $data['ref'] ?? null);
 
-        return redirect('/account/money/invoices/'.$invoice->id)->with('toast', 'Сообщили, ждём подтверждения');
-    }
-
-    public function history(Request $request)
-    {
-        $ledger = new ManagerLedger($request->user());
-        $month = $request->query('month') && preg_match('/^\d{4}-\d{2}$/', $request->query('month')) ? Carbon::createFromFormat('Y-m', $request->query('month'))->startOfMonth() : null;
-        $rows = $ledger->history($month, $month?->copy()->endOfMonth());
-        // Месяцы для выбора — те, где что-то было, плюс текущий.
-        $months = $ledger->history()->map(fn ($r) => $r['at']->format('Y-m'))->push(now()->format('Y-m'))->unique()->sortDesc()->values()
-            ->mapWithKeys(fn ($m) => [$m => mb_convert_case(Carbon::createFromFormat('Y-m', $m)->translatedFormat('F Y'), MB_CASE_TITLE)]);
-
-        return view('cabinet.money.history', ['rows' => $rows, 'totals' => $ledger->totals($rows), 'month' => $month, 'months' => ['' => 'За всё время'] + $months->all()]);
+        return redirect('/account/money/deals/'.$invoice->deal_id)->with('toast', 'Сообщили, ждём подтверждения');
     }
 
     public function details(Request $request)

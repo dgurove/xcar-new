@@ -209,7 +209,7 @@ final class Nav
             // Интерес и приглашения — про людей: живут внутри «Покупателей»; подтверждения — начало сделки.
             $links[] = self::link('Покупатели', '/account/buyers', also: ['/account/interest', '/account/invites']);
             $links[] = self::link('Сделки', '/account/deals');
-            $links[] = self::link('Деньги', '/account/money');
+            $links[] = self::link('Деньги', '/account/money', also: ['/account/money/details']);
         } elseif ($user->isAdmin()) {
             $links[] = self::link('Пользователи', '/account/users');
             $links[] = self::link('Приглашения', '/account/invites');

@@ -1,5 +1,6 @@
 {{-- Шапка-контакт: кружок слева, имя и чипы фактов рядом, ряд круглых действий с подписью
-     (слот acts) справа — одной компактной строкой и на телефоне, и на десктопе; sidebar — в
+     (слот acts) — на телефоне своей строкой под именем (рядом с тремя чипами имя сжималось до
+     «Мене…», а подписи действий наезжали на чипы), от sm — справа одной строкой; sidebar — в
      правой колонке от lg столбиком в карточке. user — аватар, без него — кружок с иконкой (группа). --}}
 @props(['name', 'user' => null, 'icon' => 'users', 'sidebar' => false])
 @php $col = $sidebar ? ' lg:flex-col lg:items-center lg:text-center lg:rounded-(--radius-xl) lg:bg-surface lg:p-6' : ''; $center = $sidebar ? ' lg:justify-center' : ''; @endphp
@@ -13,5 +14,5 @@
         <h1 class="truncate text-[22px] leading-tight sm:text-[28px]">{{ $name }}</h1>
         @if (isset($chips) && !$chips->isEmpty())<div class="mt-1.5 flex flex-wrap gap-1.5{{ $center }}">{{ $chips }}</div>@endif
     </div>
-    @if (isset($acts) && !$acts->isEmpty())<div class="acts shrink-0{{ $center }}">{{ $acts }}</div>@endif
+    @if (isset($acts) && !$acts->isEmpty())<div class="acts w-full shrink-0 sm:w-auto{{ $center }}">{{ $acts }}</div>@endif
 </div>
