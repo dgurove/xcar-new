@@ -2,6 +2,8 @@
 
 namespace App\Mail;
 
+use App\Cars\Brand;
+use App\Cars\CarModel;
 use App\Mail\Extraction\Code;
 use App\Offers\Offer;
 use App\Park\Vehicle;
@@ -104,6 +106,36 @@ class Candidate extends Model implements HasMedia
         return trim(($this->value('brand') ?? '').' '.($this->value('model') ?? '')) ?: 'Марка не распознана';
     }
 
+    /** Что просят заявкой: вывезти или привезут сами. Одно слово на список «Из писем» и на разбор письма. */
+    public function requestTag(): string
+    {
+        return $this->value('request') === 'tow' ? 'Эвакуация' : 'Приём';
+    }
+
+    /** Марка и модель из письма справочником: `[?Brand, ?CarModel]` — одно место на форму и на автозаведение. */
+    public function cars(): array
+    {
+        $brand = $this->value('brand') ? Brand::resolve($this->value('brand')) : null;
+
+        return [$brand, $brand && $this->value('model') ? CarModel::resolve($brand, $this->value('model')) : null];
+    }
+
+    /** Поля ТС из письма: форма разбора показывает их сотруднику, `StoreByLetters` заводит по ним сам. */
+    public function vehicleData(): array
+    {
+        [$brand, $model] = $this->cars();
+
+        return [
+            'ref' => $this->code, 'vin' => $this->value('vin'), 'plate' => $this->value('plate'), 'year' => $this->value('year'),
+            'brand_id' => $brand?->id, 'model_id' => $model?->id, 'category' => $this->value('category'), 'color' => $this->value('color'),
+            'vendor_id' => $this->value('vendor_id') ?? Vendor::forSender($this->value('sender'))?->id,
+            'contact_name' => $this->value('insured_name'),
+            'contact_phone' => $this->value('insured_phone') ?? ((array) $this->value('phones'))[0] ?? null,
+            'value' => $this->value('value'),
+            'flags' => $this->value('flags') ?: [], 'docs_required' => $this->value('docs_required') ?: [],
+        ];
+    }
+
     /** Этап цепочки по письмам: заявка, принята, продана, выдана. @return ?array{stage: string, at: ?string, message_id: int, title: string} */
     public function stageOf(CandidateStage $stage): ?array
     {
@@ -128,38 +160,6 @@ class Candidate extends Model implements HasMedia
         }
 
         return $stage->label();
-    }
-
-    /**
-     * Что от нас ждут по цепочке, одной строкой для списка «Из писем»: заявка — позвонить страхователю или ждать
-     * привоза; принята по письмам — завести стоящей; продана — завести и выдать; выдана — закрыть.
-     * `phone: false` — там, где номер и так стоит рядом кнопкой звонка (разбор письма).
-     */
-    public function todo(bool $phone = true): string
-    {
-        $stage = $this->stage ?? CandidateStage::Intake;
-        $who = trim(($this->value('insured_name') ?? '').($phone ? ' '.($this->value('insured_phone') ?? ((array) $this->value('phones'))[0] ?? '') : ''));
-        $when = fn (?string $at) => $at ? Carbon::parse($at)->translatedFormat('j M') : null;
-        if ($stage === CandidateStage::Released) {
-            return 'Выдана '.$when($this->stageOf($stage)['at'] ?? null).', в системе не заводилась';
-        }
-        if ($stage === CandidateStage::Sold) {
-            $sold = $this->stageOf($stage) ?? [];
-            $buyer = trim(($sold['name'] ?? '').' '.($sold['phone'] ?? ''));
-
-            return 'Продана '.$when($sold['at'] ?? null).($buyer ? ', заберёт '.$buyer : '').': завести и выдать';
-        }
-        if ($stage === CandidateStage::Stored) {
-            return 'Принята '.$when($this->stageOf($stage)['at'] ?? null).' по письмам, в системе ещё нет: завести стоящей';
-        }
-        $planned = $this->value('planned_at') ? Carbon::parse($this->value('planned_at'))->translatedFormat('j M, H:i') : null;
-
-        return match (true) {
-            $planned !== null => 'Привезут '.$planned.($who ? ', '.$who : ''),
-            $who !== '' => 'Позвонить страхователю '.$who.', договориться о приёме',
-            $this->value('request') === 'tow' => 'Нужен эвакуатор'.($this->value('location') ? ' из '.$this->value('location') : ''),
-            default => 'Заявка на приём, договориться о дате',
-        };
     }
 
     /** Есть ли у кандидата имя машины — иначе заголовок несёт номер. */

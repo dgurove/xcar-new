@@ -13,6 +13,7 @@ use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Reading\ReadLetter;
 use App\Park\Actions\MarkSold;
+use App\Park\Actions\StoreByLetters;
 use App\Park\Events\LetterArrived;
 use App\Park\EventType;
 use App\Park\Vehicle;
@@ -22,7 +23,7 @@ use Illuminate\Events\Dispatcher;
 /** Письмо разобрано: привязать к офферу, иначе — вычитать кандидата; и сказать админке. */
 final class OnMessage
 {
-    public function __construct(private LinkThread $link, private Publisher $publish, private MarkSold $sold, private ChainBuilder $chains, private ReadLetter $reader) {}
+    public function __construct(private LinkThread $link, private Publisher $publish, private MarkSold $sold, private ChainBuilder $chains, private ReadLetter $reader, private StoreByLetters $store) {}
 
     public function subscribe(Dispatcher $events): array
     {
@@ -39,8 +40,9 @@ final class OnMessage
         $thread = $message->thread;
         // Ветка уже привязана — это переписка по машине, а не новая: в цепочки «Из писем» не идёт.
         // Иначе письмо (и наше тоже: ответ с актом двигает этап) — в цепочку по номерам и ветке.
-        if (! $linked && ! $thread?->offer_id && ! $thread?->vehicle_id) {
-            $this->chains->attach($message, quiet: $e->quiet);
+        if (! $linked && ! $thread?->offer_id && ! $thread?->vehicle_id && ($candidate = $this->chains->attach($message, quiet: $e->quiet))) {
+            // Мы уже писали вендору, что приняли: ТС заводится сама, цепочка уходит из «Из писем».
+            ($this->store)($candidate);
         }
         if ($e->quiet) {
             return; // история ящика: в базу легло, людей не дёргаем
@@ -78,8 +80,9 @@ final class OnMessage
         if ($message->thread) {
             app(MarkThreadRead::class)($message->thread);
         }
-        if ($park && ! $message->thread?->vehicle_id && ! $message->thread?->offer_id) {
-            $this->chains->attach($message, quiet: true);
+        if ($park && ! $message->thread?->vehicle_id && ! $message->thread?->offer_id && ($candidate = $this->chains->attach($message, quiet: true))) {
+            // Это письмо и есть «приняли, отчёт отправлен» — дальше ТС заводится сама.
+            ($this->store)($candidate);
         }
         $this->publish->refresh($park ? Topics::PARK : Topics::STAFF, [($park ? '/mail/' : '/work/mail/').$e->message->thread_id]);
     }

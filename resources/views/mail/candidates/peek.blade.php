@@ -1,5 +1,6 @@
-{{-- Окошко кандидата: машина, тождество (убыток, госномер, VIN), состояние (этап, срок ответа, вендор),
-     «Завести» / «В архив», ниже лента писем свёрнутыми строками. Факты из письма (НДС, документы, страхователь) — в форме заведения. --}}
+{{-- Окошко кандидата CRM: машина, тождество (убыток, госномер, VIN), состояние (срок ответа, вендор),
+     «Завести» / «В архив», ниже лента писем свёрнутыми строками. Факты из письма (НДС, документы, страхователь) — в форме заведения.
+     На стоянке окошка нет: там строка ведёт прямо на разбор письма. --}}
 @php
     use App\Mail\CandidateState;
     $v = fn ($f) => $c->extracted[$f]['value'] ?? null;
@@ -13,19 +14,18 @@
             <x-ui.vin-code :vin="$v('vin')" class="tag"/>
             <span class="basis-full"></span>
             @if ($c->state !== CandidateState::New)<x-ui.pill :tone="$c->state === CandidateState::Promoted ? 'closed' : 'soft'" class="!min-h-0 !py-1 text-xs">{{ $c->state->label() }}</x-ui.pill>@endif
-            @if ($park)<x-ui.pill :tone="$c->stage === \App\Mail\CandidateStage::Sold ? 'urgent' : ($c->stage === \App\Mail\CandidateStage::Released ? 'closed' : 'open')" class="!min-h-0 !py-1 text-xs">{{ $c->stageLabel() }}</x-ui.pill>@endif
             @if ($by)<x-ui.pill :tone="$by->isPast() ? 'danger' : 'urgent'" class="!min-h-0 !py-1 text-xs nums">до {{ $by->translatedFormat('j M H:i') }}</x-ui.pill>@endif
             @if ($c->vendor?->name ?? $v('vendor') ?? $v('sender'))<span class="tag">{{ $c->vendor?->name ?? $v('vendor') ?? $v('sender') }}</span>@endif
-            @if (! $park && $v('floor_price'))<span class="tag nums font-semibold">{{ \App\Support\Money::rub($v('floor_price')) }}</span>@endif
+            @if ($v('floor_price'))<span class="tag nums font-semibold">{{ \App\Support\Money::rub($v('floor_price')) }}</span>@endif
         </x-slot:marks>
         <x-slot:actions>
             @if ($c->state === CandidateState::Promoted)
-                <a href="{{ $park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number }}" class="btn btn-s btn-accent">{{ $park ? ($c->vehicle?->titleWithYear() ?? 'ТС') : 'Предложение № '.$c->offer?->number }}</a>
+                <a href="/offers/{{ $c->offer?->number }}" class="btn btn-s btn-accent">Предложение № {{ $c->offer?->number }}</a>
             @elseif ($c->state === CandidateState::Closed)
                 <span class="pill pill-plain">Закрыта{{ $c->closed_at ? ' '.$c->closed_at->translatedFormat('j M') : '' }}</span>
             @else
-                {{-- «Завести» уводит на форму заявки или на предложение — всей страницей, не в окошко. --}}
-                @if ($park)<a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent" data-turbo-frame="_top">Завести</a>@else<form method="post" action="{{ $base }}/{{ $c->id }}/create" data-turbo-frame="_top">@csrf<button class="btn btn-s btn-accent">Завести</button></form>@endif
+                {{-- «Завести» уводит на предложение всей страницей, не в окошко. --}}
+                <form method="post" action="{{ $base }}/{{ $c->id }}/create" data-turbo-frame="_top">@csrf<button class="btn btn-s btn-accent">Завести</button></form>
                 <form method="post" action="{{ $base }}/{{ $c->id }}/decline">@csrf<button class="pill pill-plain">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'В архив' }}</button></form>
             @endif
         </x-slot:actions>

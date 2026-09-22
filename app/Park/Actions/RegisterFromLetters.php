@@ -9,6 +9,7 @@ use App\Mail\Message;
 use App\Park\DocState;
 use App\Park\Events\VehicleReleased;
 use App\Park\EventType;
+use App\Park\Idle;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -22,7 +23,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * ТС, которая уже стоит (или уже выдана), заводится задним числом: по цепочке писем, которую менеджер проверил
  * (наш ответ с актом — принята, «реализовано» — продана, «подписанный АПП» — выдана), или по факту без писем
- * (`park:fact`, `$candidate = null`). Сразу стоящей — с датой приёма, событием приёма (по нему считается хранение),
+ * (`park:fact`, `$candidate = null`), или сама, когда мы уже написали вендору, что приняли (`StoreByLetters`,
+ * `$by = null`). Сразу стоящей — с датой приёма, событием приёма (по нему считается хранение),
  * парковкой и местом, если известны (иначе шаг «Нужно указать парковку»); бумаги вендору открыты и отмечены
  * отправленными нашим ответом; продана — `MarkSold` → заявка на выдачу; выдана — состояние и событие выдачи без
  * осмотра и проверки долга (счета за прошлое выставит закрытие месяца).
@@ -34,7 +36,7 @@ final class RegisterFromLetters
     /**
      * @param  array{accepted_at?: ?string, yard_id?: ?int, spot?: ?string, sold?: bool, sold_at?: ?string, pickup_name?: ?string, pickup_phone?: ?string, released_at?: ?string, released_note?: ?string, source?: string}  $stages
      */
-    public function __invoke(User $by, ?Candidate $candidate, array $data, array $stages): Vehicle
+    public function __invoke(?User $by, ?Candidate $candidate, array $data, array $stages): Vehicle
     {
         Nav::forgetStaffCounts();
         $stored = $candidate?->stageOf(CandidateStage::Stored);
@@ -54,6 +56,8 @@ final class RegisterFromLetters
                 'contact_name' => $data['contact_name'] ?? null, 'contact_phone' => $data['contact_phone'] ?? null,
                 'flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? [], 'value' => $data['value'] ?? null,
                 'state' => VehicleState::Stored, 'yard_id' => $yard?->id, 'spot' => $spot, 'accepted_at' => $acceptedAt ?? now(),
+                // Заводится задним числом: «стоит долго» о ней уже не новость, и пачка таких ТС не должна звонить всем сразу.
+                'idle_noticed_at' => ($acceptedAt ?? now())->lt(now()->subDays(Idle::warn())) ? now() : null,
             ]);
             $intake = $candidate?->stageOf(CandidateStage::Intake);
             $vehicle->log(EventType::Created, $by, $mark + ['letter_at' => $intake['at'] ?? null]);
@@ -95,13 +99,13 @@ final class RegisterFromLetters
     }
 
     /** Выдана задним числом: как `Release`, но без осмотра и проверки долга — выдача уже случилась. */
-    private function release(Vehicle $vehicle, User $by, Carbon $at, ?string $note, array $mark): void
+    private function release(Vehicle $vehicle, ?User $by, Carbon $at, ?string $note, array $mark): void
     {
         DB::transaction(function () use ($vehicle, $by, $at, $note, $mark) {
             $vehicle->update(['state' => VehicleState::Released, 'released_at' => $at, 'spot' => null]);
             $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'day' => $at->toDateString()]) + $mark);
             Request::where('vehicle_id', $vehicle->id)->whereIn('state', RequestState::open())
-                ->update(['state' => RequestState::Done, 'done_at' => now(), 'done_by' => $by->id]);
+                ->update(['state' => RequestState::Done, 'done_at' => now(), 'done_by' => $by?->id]);
         });
         VehicleReleased::dispatch($vehicle, null, $by);
         ($this->purge)($vehicle);

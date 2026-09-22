@@ -68,7 +68,7 @@ class VendorController
     public function show(Request $request, Vendor $vendor)
     {
         $pill = array_key_exists($request->query('pill', ''), self::PILLS) ? $request->query('pill') : 'overview';
-        $vendor->load(['contacts', 'media']);
+        $vendor->load(['contacts.yard', 'media']);
         $data = [
             'vendor' => $vendor,
             'pill' => $pill,
@@ -77,6 +77,7 @@ class VendorController
             'accounts' => Account::where('is_active', true)->orderBy('title')->get()->mapWithKeys(fn ($a) => [$a->id => $a->title.' ('.$a->email.')']),
             'templates' => Template::where('scope', Scope::Park)->orderBy('name')->pluck('name', 'id'),
             'docs' => DocRequirement::cases(),
+            'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
         ];
 
         if ($pill === 'routes') {

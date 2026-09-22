@@ -1,4 +1,5 @@
-{{-- Контакты по ролям: первая строка — новый; сама строка — правка в шторке; звонок и письмо — круглыми справа. --}}
+{{-- Контакты по ролям: первая строка — новый; сама строка — правка в шторке; звонок и письмо — круглыми справа.
+     Парковка в чипе — у кого убытки по городу: машины из его писем заводятся сразу на неё. --}}
 @php use App\Vendors\ContactRole; @endphp
 <div class="flex flex-col gap-2">
     <div data-controller="sheet">
@@ -20,6 +21,7 @@
                         <span class="chip">{{ $c->role->label() }}</span>
                         @if ($c->is_default)<span class="chip">основной</span>@endif
                         @if ($c->always_cc)<span class="chip">в копии</span>@endif
+                        @if ($c->yard)<x-ui.place class="chip">{{ $c->yard->name }}</x-ui.place>@endif
                         @if ($c->title)<span class="text-sm text-ink-muted">{{ $c->title }}</span>@endif
                     </span>
                 </span>

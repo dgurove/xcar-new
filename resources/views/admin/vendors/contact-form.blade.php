@@ -8,6 +8,8 @@
         <x-ui.field name="role" label="По какому вопросу" :options="ContactRole::options()" :value="$contact?->role->value ?? 'claims'" span="col-span-2"/>
         <x-ui.field name="phone" label="Телефон" type="tel" :value="$contact?->phone"/>
         <x-ui.field name="email" label="Почта" type="email" :value="$contact?->email"/>
+        {{-- Парковка: машины из писем этого человека стоят там и заводятся сразу на неё. --}}
+        <x-ui.field name="yard_id" label="Парковка" :options="$yards" placeholder="—" :value="$contact?->yard_id" span="col-span-2"/>
         <x-ui.check name="is_default" :checked="$contact?->is_default ?? false">Основной</x-ui.check>
         <x-ui.check name="always_cc" :checked="$contact?->always_cc ?? false">Всегда в копии</x-ui.check>
         <x-ui.field name="notes" label="Заметки" type="textarea" :value="$contact?->notes" span="col-span-2"/>

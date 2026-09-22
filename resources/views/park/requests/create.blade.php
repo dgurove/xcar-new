@@ -1,6 +1,7 @@
 {{-- Разбор письма (`?candidate=`): слева письма цепочки лентой и скан заявки страховой, справа поля дела — читаешь
-     и тут же переписываешь со скана, не уходя со страницы. Заголовок — сама ТС, под ним что делать и теги, как в
-     почте. Кнопка называет исход: заявка на приём, стоящей, и выдать, привязать письма к уже заведённой ТС.
+     и тут же переписываешь со скана, не уходя со страницы. Заголовок — сама ТС, под ним теги, как в почте;
+     своими словами письмо не пересказывается. Кнопка называет исход: заявка на приём, стоящей, и выдать,
+     привязать письма к уже заведённой ТС.
      Без кандидата это прежняя ручная «Новая заявка» одной колонкой; тип «приём» / «эвакуация» решает «Доставка». --}}
 @php
     use App\Mail\CandidateStage;
@@ -31,8 +32,7 @@
 @endphp
 <x-ui.shell :title="$letters ? 'Разбор письма' : 'Новая заявка'" :heading="$heading" :back="$letters ? ['Из писем', '/requests/from-mail'] : null">
     @if ($letters)
-        <div class="-mt-3 mb-5 flex flex-col gap-2 sm:-mt-4">
-            <p class="text-[17px] leading-snug">{{ $candidate->todo(phone: false) }}</p>
+        <div class="-mt-3 mb-5 sm:-mt-4">
             @include('park.requests.letter-tags', ['candidate' => $candidate, 'letter' => $letter, 'waits' => $waits])
         </div>
     @endif
@@ -84,7 +84,7 @@
                             <x-ui.check name="stages[stored]" :checked="(bool) $sv('stored')">{{ $st['stored_title'] ?? 'Принята' }}</x-ui.check>
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <x-ui.field name="stages[accepted_at]" label="Когда" type="date" :value="$sv('accepted_at')"/>
-                                {{-- Парковка по умолчанию не подставляется: где машина стоит, знает тот, кто её принимал. --}}
+                                {{-- Парковка стоит, только когда её знает адрес отправителя (контакт вендора); иначе пусто. --}}
                                 <x-ui.field name="stages[yard_id]" label="Парковка" :options="$yards" placeholder="—" :value="$sv('yard_id')" data-spots-target="yard" data-action="change->spots#sync"/>
                                 <x-ui.field name="stages[spot]" label="Место" list="spots-list" autocapitalize="characters" :value="$sv('spot')"/>
                                 <datalist id="spots-list" data-spots-target="list"></datalist>

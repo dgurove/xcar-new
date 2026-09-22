@@ -20,7 +20,8 @@ use Illuminate\Http\Request;
 
 /**
  * «Из писем» — один экран на CRM и стоянку: кандидат — одна ТС со всеми письмами о ней;
- * пресеты по состоянию, сортировка, поиск и вендор, три вида с окошком строки.
+ * пресеты по состоянию, сортировка, поиск и вендор. В CRM три вида с окошком строки, на стоянке —
+ * только строки: это очередь новых заявок, машину ещё не видели и фото у неё нет.
  * Стоянка наследует с `Scope::Park` и своим «Завести».
  */
 class CandidateController
@@ -28,6 +29,12 @@ class CandidateController
     public const PRESETS = ['new' => 'Ждут', 'rejected' => 'Архив', 'promoted' => 'Заведённые'];
 
     public const SORTS = ['fresh' => 'Свежие письма', 'waiting' => 'Дольше ждут', 'answer' => 'По сроку ответа'];
+
+    /** На стоянке срок ответа страховые не ставят — сортировать по пустому полю незачем. */
+    protected function sorts(): array
+    {
+        return $this->scope === Scope::Park ? array_diff_key(self::SORTS, ['answer' => null]) : self::SORTS;
+    }
 
     public function __construct(protected Scope $scope = Scope::Offers, protected string $base = '/offers/from-mail', protected string $mail = '/work/mail') {}
 
@@ -37,7 +44,8 @@ class CandidateController
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'new';
         $q = trim((string) $request->query('q'));
         $vendor = $request->query('vendor');
-        $sort = array_key_exists($request->query('sort', ''), self::SORTS) ? $request->query('sort') : 'fresh';
+        $sorts = $this->sorts();
+        $sort = array_key_exists($request->query('sort', ''), $sorts) ? $request->query('sort') : 'fresh';
         // «Архив» — и закрытые (выданные, реализованные): их не вернуть, но прочитать можно.
         $states = $preset === 'rejected' ? [CandidateState::Rejected, CandidateState::Closed] : [CandidateState::from($preset)];
         $list = $this->query()->whereIn('state', $states)
@@ -52,8 +60,11 @@ class CandidateController
         $counts['rejected'] = ($counts['rejected'] ?? 0) + ($counts['closed'] ?? 0);
 
         return view('mail.candidates.index', [
-            'candidates' => ListView::paginate($request, $list),
-            'preset' => $preset, 'presets' => self::PRESETS, 'sort' => $sort, 'q' => $q, 'vendor' => $vendor,
+            // Стоянка всегда строками, поэтому и постраничка строк, а не «сколько решит вид».
+            'candidates' => $this->scope === Scope::Park
+                ? $list->paginate(ListView::perPage($request, ListView::PER_LIST))->withQueryString()
+                : ListView::paginate($request, $list),
+            'preset' => $preset, 'presets' => self::PRESETS, 'sort' => $sort, 'sorts' => $sorts, 'q' => $q, 'vendor' => $vendor,
             'counts' => $counts->all(),
             'vendors' => Vendor::whereIn('id', $this->query()->whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
         ] + $this->links());

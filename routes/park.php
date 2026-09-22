@@ -20,8 +20,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
 
     Route::get('/requests/new', [RequestController::class, 'create']);
     Route::get('/requests/from-mail', [ParkCandidateController::class, 'index']);
-    Route::get('/requests/from-mail/{candidate}/peek', [ParkCandidateController::class, 'peek']);
-    Route::get('/requests/from-mail/{candidate}/letters', [ParkCandidateController::class, 'letters']);
     Route::post('/requests/from-mail/{candidate}/decline', [ParkCandidateController::class, 'reject']);
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests/{req}', [RequestController::class, 'show']);

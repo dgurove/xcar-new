@@ -43,6 +43,7 @@ class VendorContactController
             'role' => ['required', Rule::enum(ContactRole::class)],
             'email' => ['nullable', 'email', 'max:120'],
             'phone' => ['nullable', 'string', 'max:20'],
+            'yard_id' => ['nullable', 'exists:park_yards,id'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]) + ['always_cc' => $request->boolean('always_cc'), 'is_default' => $request->boolean('is_default')];
     }

@@ -13,8 +13,10 @@
 @endphp
 <div class="flex flex-wrap items-center gap-1.5">
     @if ($waits)<span class="tag tag-urgent">Ждёт ответа</span>@endif
-    @if ($intent?->short())<span class="tag {{ $intent->tone() }}">{{ $intent->short() }}</span>@endif
-    @if ($stage !== CandidateStage::Intake)<span class="tag {{ $stage === CandidateStage::Sold ? 'tag-urgent' : '' }}">{{ $c->stageLabel() }}</span>@endif
+    {{-- Пока цепочка на заявке — что просят (вывоз или привоз, то же слово, что в «Из писем»); дальше говорит этап. --}}
+    @if ($stage !== CandidateStage::Intake)<span class="tag {{ $stage === CandidateStage::Sold ? 'tag-urgent' : '' }}">{{ $c->stageLabel() }}</span>
+    @elseif ($intent === null || $intent === Intent::Intake)<span class="tag">{{ $c->requestTag() }}</span>
+    @elseif ($intent->short())<span class="tag {{ $intent->tone() }}">{{ $intent->short() }}</span>@endif
     @if ($by)<span class="tag nums {{ $by->isPast() ? 'tag-danger' : 'tag-urgent' }}">до {{ $by->translatedFormat('j M H:i') }}</span>@endif
     @if ($c->vendor?->name ?? $v('vendor'))<span class="tag">{{ $c->vendor?->name ?? $v('vendor') }}</span>@endif
     @if ($c->code)<x-ui.copy-code class="tag" :value="$c->code"/>@endif

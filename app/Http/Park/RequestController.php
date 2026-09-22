@@ -2,8 +2,6 @@
 
 namespace App\Http\Park;
 
-use App\Cars\Brand;
-use App\Cars\CarModel;
 use App\Cars\Category;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Candidate;
@@ -24,6 +22,7 @@ use App\Park\Actions\RegisterFromLetters;
 use App\Park\Actions\Release;
 use App\Park\Actions\ScheduleTow;
 use App\Park\Actions\StartTow;
+use App\Park\Actions\StoreByLetters;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\Delivery;
 use App\Park\Inspection;
@@ -110,7 +109,7 @@ class RequestController
      * Форма заявки. С `?candidate=` поля предзаполнены из письма, письма кандидата — рядом с формой:
      * сотрудник сверяет и сохраняет. Если такую ТС уже завели руками — форма открывается на неё.
      */
-    public function create(Request $request, PromoteCandidate $promote)
+    public function create(Request $request, PromoteCandidate $promote, StoreByLetters $store)
     {
         // Руками заводится только приём новой ТС; эвакуация с ТС (перегон) — по ссылке «Перегнать».
         $type = RequestType::tryFrom($request->query('type', '')) ?? RequestType::Intake;
@@ -126,18 +125,14 @@ class RequestController
             $vehicle = $promote->existing($candidate)?->loadCount('threads')->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests']);
             // Письма этой цепочки к ТС ещё не привязаны, но они вот, на экране: пилюля «Писем нет» тут соврала бы.
             $vehicle?->setAttribute('threads_count', $vehicle->threads_count + $candidate->threads()->count());
-            $brand = $v('brand') ? Brand::resolve($v('brand')) : null;
-            $model = $brand && $v('model') ? CarModel::resolve($brand, $v('model')) : null;
-            $prefill = [
-                'ref' => $candidate->code, 'vin' => $v('vin'), 'plate' => $v('plate'),
-                'brand' => $brand, 'model' => $model, 'category' => $v('category'), 'color' => $v('color'),
-                'vendor_id' => $v('vendor_id') ?? Vendor::forSender($v('sender'))?->id,
-                'contact_name' => $v('insured_name'), 'contact_phone' => $v('insured_phone') ?? ((array) $v('phones'))[0] ?? null,
+            [$brand, $model] = $candidate->cars();
+            // Поля ТС — те же, по которым цепочка заводится сама (`StoreByLetters`); тут они на глазах у сотрудника.
+            $prefill = $candidate->vehicleData() + [
+                'brand' => $brand, 'model' => $model,
                 'from_address' => $v('location'),
                 'delivery' => $v('request') === 'tow' ? Delivery::Tow->value : null,
-                // ВСК пишет, когда привезут: дата в форму; как именно — решает звонок, в «Что делать» это уже сказано.
+                // ВСК пишет, когда привезут: дата в форму; как именно — решает звонок.
                 'planned_at' => $v('planned_at') ? str_replace(' ', 'T', $v('planned_at')) : null,
-                'flags' => $v('flags') ?: [], 'docs_required' => $v('docs_required') ?: [], 'value' => $v('value'),
             ];
             $type = in_array($type, [RequestType::Intake, RequestType::Tow], true) ? RequestType::Intake : $type;
             // По письмам ТС уже принята или продана: этапы менеджеру на проверку, заведётся стоящей.
@@ -146,6 +141,8 @@ class RequestController
                 $sold = $candidate->stageOf(CandidateStage::Sold);
                 $prefill['stages'] = [
                     'stored' => true, 'accepted_at' => ($stored['at'] ?? null) ? substr($stored['at'], 0, 10) : null, 'stored_title' => $stored['title'] ?? 'Принята',
+                    // Парковку знает тот, кто написал: у питерского эксперта вендора машины стоят в Петербурге.
+                    'yard_id' => $store->yard($candidate)?->id,
                     'sold' => (bool) $sold, 'sold_at' => ($sold['at'] ?? null) ? substr($sold['at'], 0, 10) : null,
                     'pickup_name' => $sold['name'] ?? null, 'pickup_phone' => $sold['phone'] ?? null,
                 ];
