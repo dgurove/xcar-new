@@ -4,6 +4,8 @@
     $fonts = resource_path('fonts/pdf');
     $p = $invoice->party;
     $lines = $invoice->charges;
+    // Удержанное менеджером вознаграждение — зачёт в момент выставления: печатается и «к оплате».
+    $offset = $invoice->payments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount');
 @endphp
 <!doctype html>
 <html lang="ru">
@@ -58,6 +60,7 @@
     <div class="total">
         Итого: <b>{{ Money::nums($invoice->total, 2) }} ₽</b><br>
         {{ $invoice->vat ? 'В том числе НДС '.\App\Billing\Invoice::VAT.' %: '.Money::nums($invoice->vatAmount(), 2).' ₽' : 'НДС не облагается' }}
+        @if ($offset > 0)<br>Зачёт агентского вознаграждения: {{ Money::nums($offset, 2) }} ₽<br>К оплате: <b>{{ Money::nums($invoice->total - $offset, 2) }} ₽</b>@endif
     </div>
     <div class="note">Всего наименований {{ $lines->count() }}, на сумму {{ Money::nums($invoice->total, 2) }} ₽</div>
     @if ($invoice->notes)<div class="note">{{ $invoice->notes }}</div>@endif

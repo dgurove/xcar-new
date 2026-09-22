@@ -2,12 +2,15 @@
 
 namespace App\Http\Admin;
 
+use App\Offers\Actions\UpdateDealMoney;
+use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class DealController
 {
@@ -56,6 +59,15 @@ class DealController
             'events' => $offer->events->where('created_at', '>=', $deal->created_at),
             'dealCard' => false,
         ]);
+    }
+
+    /** Вознаграждение и режим — пока по сделке нет счёта. */
+    public function money(Request $request, Deal $deal, UpdateDealMoney $update)
+    {
+        $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'mode' => ['required', Rule::enum(CommissionMode::class)]]);
+        $update($deal, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, CommissionMode::from($data['mode']));
+
+        return back()->with('toast', 'Сохранено');
     }
 
     public function note(Request $request, Deal $deal)

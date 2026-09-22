@@ -10,9 +10,9 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** Контрагент счёта: юрлицо с реквизитами или физлицо с паспортом. Одна строка `is_self` — мы. */
+/** Контрагент счёта: юрлицо, ИП, самозанятый или физлицо с паспортом. Одна строка `is_self` — мы. */
 #[Fillable(['kind', 'name', 'is_self', 'inn', 'kpp', 'ogrn', 'legal_address', 'director', 'director_basis', 'bank_name', 'bik', 'account', 'corr_account',
-    'passport', 'passport_issued', 'reg_address', 'birth_at', 'phone', 'email', 'payment_purpose', 'notes'])]
+    'passport', 'passport_issued', 'reg_address', 'birth_at', 'phone', 'email', 'card', 'payment_purpose', 'notes'])]
 class Party extends Model
 {
     protected $table = 'billing_parties';
@@ -102,16 +102,35 @@ class Party extends Model
         return $party;
     }
 
-    /** Реквизиты строкой для счёта: ИНН, КПП, адрес — или паспорт и адрес. */
+    /** Реквизиты строкой для счёта: по виду — ИНН, КПП, ОГРН и адрес; ИНН и ОГРНИП; ИНН самозанятого; паспорт и адрес. */
     public function details(): string
     {
-        return implode(', ', array_filter($this->kind === PartyKind::Person
-            ? [$this->passport ? 'паспорт '.$this->passport : null, $this->passport_issued, $this->reg_address]
-            : [$this->inn ? 'ИНН '.$this->inn : null, $this->kpp ? 'КПП '.$this->kpp : null, $this->ogrn ? 'ОГРН '.$this->ogrn : null, $this->legal_address]));
+        return implode(', ', array_filter(match ($this->kind) {
+            PartyKind::Person => [$this->passport ? 'паспорт '.$this->passport : null, $this->passport_issued, $this->reg_address],
+            PartyKind::SelfEmployed => [$this->inn ? 'ИНН '.$this->inn : null, 'самозанятый', $this->reg_address],
+            PartyKind::Entrepreneur => [$this->inn ? 'ИНН '.$this->inn : null, $this->ogrn ? 'ОГРНИП '.$this->ogrn : null, $this->legal_address],
+            default => [$this->inn ? 'ИНН '.$this->inn : null, $this->kpp ? 'КПП '.$this->kpp : null, $this->ogrn ? 'ОГРН '.$this->ogrn : null, $this->legal_address],
+        }));
     }
 
     public function bankDetails(): string
     {
-        return implode(', ', array_filter([$this->bank_name, $this->bik ? 'БИК '.$this->bik : null, $this->account ? 'р/с '.$this->account : null, $this->corr_account ? 'к/с '.$this->corr_account : null]));
+        return implode(', ', array_filter([$this->bank_name, $this->bik ? 'БИК '.$this->bik : null, $this->account ? 'р/с '.$this->account : null, $this->corr_account ? 'к/с '.$this->corr_account : null,
+            ! $this->account && $this->card ? 'карта '.$this->card : null]));
+    }
+
+    /** Есть куда перечислить: счёт с БИК или карта. */
+    public function payoutReady(): bool
+    {
+        return ($this->account && $this->bik) || $this->card;
+    }
+
+    /** Есть чем назвать: для юрлица и ИП — ИНН, для человека — паспорт или карта. Без этого реквизиты «не указаны». */
+    public function filled(): bool
+    {
+        return match ($this->kind) {
+            PartyKind::Company, PartyKind::Entrepreneur, PartyKind::SelfEmployed => (bool) $this->inn,
+            default => (bool) ($this->passport || $this->card || $this->account),
+        };
     }
 }

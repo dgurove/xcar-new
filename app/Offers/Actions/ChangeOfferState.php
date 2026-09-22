@@ -2,6 +2,8 @@
 
 namespace App\Offers\Actions;
 
+use App\Billing\Actions\VoidInvoice;
+use App\Billing\InvoiceState;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\DealState;
@@ -50,7 +52,7 @@ final class ChangeOfferState
             $offer->state = $next;
             $offer->save();
             $offer->log(OfferEventType::StateChanged, $by, ['from' => $from->value, 'to' => $next->value]);
-            $this->settleDeal($offer, $next);
+            $this->settleDeal($offer, $next, $by);
 
             OfferStateChanged::dispatch($offer, $by);
             if ($next === OfferState::Open) {
@@ -91,7 +93,7 @@ final class ChangeOfferState
     }
 
     /** Сделка живёт, пока оффер в сделке: выдан — завершена, всё остальное — сорвалась. */
-    private function settleDeal(Offer $offer, OfferState $next): void
+    private function settleDeal(Offer $offer, OfferState $next, ?User $by = null): void
     {
         $deal = $offer->deal()->first();
         if (! $deal || in_array($next, [OfferState::Sold], true)) {
@@ -103,6 +105,10 @@ final class ChangeOfferState
             Bid::whereKey($deal->bid_id)->update(['state' => BidState::Declined]);
         }
         Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'deal'])]);
+        // Сделка сорвалась — невыплаченное вознаграждение гаснет; выплаченное остаётся историей.
+        if ($state === DealState::Cancelled && ($fee = $deal->agentFee()->first()) && $fee->state === InvoiceState::Issued && $fee->paid == 0) {
+            app(VoidInvoice::class)($fee, $by, 'Сделка отменена');
+        }
         $offer->unsetRelation('deal');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Billing\Listeners;
 
+use App\Billing\ChargeKind;
 use App\Billing\Events\PaymentRecorded;
 use App\Billing\InvoiceState;
 use App\Workflow\Actions\TakeExit;
@@ -16,7 +17,8 @@ final class AdvanceOnPayment
     public function handle(PaymentRecorded $e): void
     {
         $invoice = $e->invoice;
-        if ($invoice->state !== InvoiceState::Paid || ! $invoice->deal_id) {
+        // Вознаграждение от поставщика и наше обязательство менеджеру — не оплата покупателя, маршрут не двигают.
+        if ($invoice->state !== InvoiceState::Paid || ! $invoice->deal_id || $invoice->isOwed() || $invoice->kind === ChargeKind::Reward) {
             return;
         }
         $offer = $invoice->deal?->offer;

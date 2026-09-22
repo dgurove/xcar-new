@@ -31,6 +31,7 @@ export default class extends Controller {
             window.toast?.('Выберите, что выгружать', 'danger');
             return null;
         }
-        return el.action.split('?')[0] + '?' + new URLSearchParams(data);
+        // У кнопки может быть свой formaction (акт сверки и Excel из одной формы).
+        return (submitter?.formAction || el.action).split('?')[0] + '?' + new URLSearchParams(data);
     }
 }

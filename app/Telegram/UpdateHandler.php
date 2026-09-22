@@ -2,11 +2,16 @@
 
 namespace App\Telegram;
 
+use App\Billing\Actions\ConfirmPayment;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\Payment;
 use App\Billing\PaymentSource;
+use App\Billing\PaymentState;
+use App\Telegram\Messages\AgentFeeDue;
 use App\Telegram\Messages\InvoiceOverdue;
+use App\Telegram\Messages\PaymentClaimed;
 use App\Telegram\Messages\Registration;
 use App\Users\Actions\DecideAccess;
 use App\Users\Role;
@@ -54,6 +59,8 @@ final class UpdateHandler
         match ($press->topic) {
             'access' => $this->access($press),
             'invoice' => $this->invoice($press),
+            'fee' => $this->fee($press),
+            'claim' => $this->claim($press),
             default => $this->bot->answer($press->queryId, 'Кнопка устарела.'),
         };
     }
@@ -108,6 +115,50 @@ final class UpdateHandler
         app(RecordPayment::class)($invoice, $owner, $invoice->remaining(), null, PaymentSource::Bank, null, 'из Telegram');
         $this->bot->answer($press->queryId, 'Оплачен.');
         $this->bot->edit($press->chatId, $press->messageId, $message->text('Оплачен '.now()->translatedFormat('j M, H:i')), $message->afterDecision());
+    }
+
+    /** «Выплачено» под вознаграждением — перечисление на весь остаток от имени владельца. */
+    private function fee(Press $press): void
+    {
+        $fee = Invoice::with(['party', 'deal.offer'])->find($press->id);
+        if (! $fee) {
+            $this->bot->answer($press->queryId, 'Обязательство удалено.');
+
+            return;
+        }
+        $message = new AgentFeeDue($fee);
+        if ($fee->state !== InvoiceState::Issued || $fee->remaining() <= 0) {
+            $this->bot->answer($press->queryId, 'Уже '.mb_strtolower($fee->state->label()).'.');
+            $this->bot->edit($press->chatId, $press->messageId, $message->text($fee->state->label()), $message->afterDecision());
+
+            return;
+        }
+        $owner = User::where('role', Role::Admin)->orderBy('id')->firstOrFail();
+        app(RecordPayment::class)($fee, $owner, $fee->remaining(), null, PaymentSource::Bank, null, 'из Telegram');
+        $this->bot->answer($press->queryId, 'Выплачено.');
+        $this->bot->edit($press->chatId, $press->messageId, $message->text('Выплачено '.now()->translatedFormat('j M, H:i')), $message->afterDecision());
+    }
+
+    /** «Поступило» под сообщением менеджера — заявленная оплата становится оплатой. */
+    private function claim(Press $press): void
+    {
+        $payment = Payment::with(['invoice.party', 'invoice.deal.offer', 'invoice.deal.buyer'])->find($press->id);
+        if (! $payment) {
+            $this->bot->answer($press->queryId, 'Заявка удалена.');
+
+            return;
+        }
+        $message = new PaymentClaimed($payment);
+        if ($payment->state !== PaymentState::Claimed) {
+            $this->bot->answer($press->queryId, 'Уже '.mb_strtolower($payment->state->label()).'.');
+            $this->bot->edit($press->chatId, $press->messageId, $message->text($payment->state->label()), $message->afterDecision());
+
+            return;
+        }
+        $owner = User::where('role', Role::Admin)->orderBy('id')->firstOrFail();
+        app(ConfirmPayment::class)($payment, $owner);
+        $this->bot->answer($press->queryId, 'Поступило.');
+        $this->bot->edit($press->chatId, $press->messageId, $message->text('Поступило '.now()->translatedFormat('j M, H:i')), $message->afterDecision());
     }
 
     /** Личное сообщение: пока владелец не задан, бот отвечает chat_id — иначе узнать его нечем. */

@@ -7,6 +7,8 @@ use App\Billing\ChargeKind;
 use App\Billing\Events\InvoiceVoided;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\Payment;
+use App\Billing\PaymentSource;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Support\Nav;
@@ -20,14 +22,16 @@ use Illuminate\Validation\ValidationException;
  */
 final class VoidInvoice
 {
-    public function __invoke(Invoice $invoice, User $by, ?string $reason = null): Invoice
+    public function __invoke(Invoice $invoice, ?User $by, ?string $reason = null): Invoice
     {
         Nav::forgetStaffCounts();
         $invoice = DB::transaction(function () use ($invoice, $by, $reason) {
             $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-            if ($invoice->paid > 0) {
+            // Зачёт удержанного вознаграждения — не деньги: гаснет вместе со счётом. Живые оплаты — отменить сначала.
+            if ($invoice->payments()->where('source', '!=', PaymentSource::Offset)->exists()) {
                 throw ValidationException::withMessages(['invoice' => 'По счёту есть оплаты — сначала отмените их']);
             }
+            Payment::where('invoice_id', $invoice->id)->whereNull('voided_at')->update(['voided_at' => now()]);
             $storage = $invoice->charges()->where('kind', ChargeKind::Storage)->orderBy('period_from')->get();
             Charge::where('invoice_id', $invoice->id)->where('kind', '!=', ChargeKind::Storage)->where('created_at', '<', $invoice->created_at)->update(['invoice_id' => null]);
             Charge::where('invoice_id', $invoice->id)->whereNull('voided_at')->update(['voided_at' => now(), 'void_reason' => $reason]);

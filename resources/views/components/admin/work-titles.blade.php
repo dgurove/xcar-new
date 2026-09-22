@@ -1,9 +1,9 @@
-{{-- Заголовки раздела «Работа»: Сделки, Почта, Чаты. Активный — h1 со
+{{-- Заголовки раздела «Работа»: Сделки, Почта, Чаты, Деньги. Активный — h1 со
      своим числом, у остальных — счётчик из Nav::badges (горящие, непрочитанные). --}}
 @props(['current', 'count' => null])
 @php
     $badges = \App\Support\Nav::badges(auth()->user());
-    $titles = ['deals' => 'Сделки', 'mail' => 'Почта', 'chats' => 'Чаты'];
+    $titles = ['deals' => 'Сделки', 'mail' => 'Почта', 'chats' => 'Чаты', 'money' => 'Деньги'];
 @endphp
 <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
     @foreach ($titles as $key => $label)

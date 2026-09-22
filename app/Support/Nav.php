@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\Payment;
+use App\Billing\PaymentState;
 use App\Chats\Chat;
 use App\Http\Middleware\MarkInstalled;
 use App\Mail\Candidate;
@@ -207,6 +209,7 @@ final class Nav
             // Интерес и приглашения — про людей: живут внутри «Покупателей»; подтверждения — начало сделки.
             $links[] = self::link('Покупатели', '/account/buyers', also: ['/account/interest', '/account/invites']);
             $links[] = self::link('Сделки', '/account/deals');
+            $links[] = self::link('Деньги', '/account/money');
         } elseif ($user->isAdmin()) {
             $links[] = self::link('Пользователи', '/account/users');
             $links[] = self::link('Приглашения', '/account/invites');
@@ -349,8 +352,10 @@ final class Nav
                     ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
                     ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))
                     ->count(),
+                // Деньги горят, когда менеджер сообщил об оплате, а мы ещё не подтвердили.
+                '/work/money' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereNotNull('deal_id'))->count(),
             ];
-            $badges['/work'] = $badges['/work/deals'] + $badges['/work/mail'] + $badges['/work/chats'];
+            $badges['/work'] = $badges['/work/deals'] + $badges['/work/mail'] + $badges['/work/chats'] + $badges['/work/money'];
 
             return $badges;
         });
@@ -381,11 +386,13 @@ final class Nav
         if ($surface === Surface::Site) {
             $paths[] = '/account/chats';
             $paths[] = '/account/deals';
+            $paths[] = '/account/money';
         }
         if ($surface === Surface::Crm) {
             $paths[] = '/work/deals';
             $paths[] = '/work/mail';
             $paths[] = '/work/chats';
+            $paths[] = '/work/money';
             $paths[] = '/offers/from-mail';
         }
         if ($surface === Surface::Park) {
@@ -426,7 +433,7 @@ final class Nav
             }
         }
         if ($surface === Surface::Crm) {
-            array_push($items, self::link('Сделки', '/work/deals'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'));
+            array_push($items, self::link('Сделки', '/work/deals'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Деньги', '/work/money'));
         }
 
         // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен.

@@ -98,7 +98,7 @@ class MoneyController
     public function show(Invoice $invoice)
     {
         self::guard($invoice);
-        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges', 'payments.media', 'deal.offer', 'creator', 'media']);
+        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer', 'deal.buyer', 'creator', 'media']);
 
         return view('park.money.show', ['invoice' => $invoice, 'sources' => PaymentSource::options(), 'file' => $invoice->getFirstMedia('file')]);
     }

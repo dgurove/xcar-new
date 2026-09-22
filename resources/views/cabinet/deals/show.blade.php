@@ -1,7 +1,12 @@
 @php
     use App\Offers\DealState;
+    use App\Offers\CommissionState;
     use App\Workflow\Asks;
     $currentBlock = $position?->stage->block_id;
+    // Шаг «оплатите счёт»: платёжка живёт у счёта в «Деньгах», а не у просьбы — кнопка ведёт туда.
+    $payStep = $requirement && $exits->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
+    $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
+    $feeState = $deal->commissionState();
     $waiting = $position ? match ($position->stage->waits_for) {
         \App\Workflow\WaitsFor::Manager => 'Ваш ход', \App\Workflow\WaitsFor::Supplier => 'ждём поставщика', \App\Workflow\WaitsFor::Us => 'ждём нас', default => null,
     } : null;
@@ -34,9 +39,9 @@
                     @if ($invoices->isNotEmpty())
                         <div class="mt-5 flex flex-col gap-2">
                             @foreach ($invoices as $i)
-                                <a href="/account/invoices/{{ $i->id }}/pdf" class="row !py-3" data-turbo="false" target="_blank">
+                                <a href="/account/money/invoices/{{ $i->id }}" class="row !py-3">
                                     <x-ui.icon name="file" class="size-5 shrink-0 text-ink-muted"/>
-                                    <span class="min-w-0 flex-1">Счёт {{ $i->label() }}{{ $i->state === \App\Billing\InvoiceState::Issued ? ', до '.$i->due_at->translatedFormat('j M') : '' }}</span>
+                                    <span class="min-w-0 flex-1"><span class="whitespace-nowrap">Счёт {{ $i->label() }}</span>{{ $i->state === \App\Billing\InvoiceState::Issued ? ', до '.$i->due_at->translatedFormat('j M') : '' }}{{ $i->claimed() > 0 ? ', ждёт подтверждения' : '' }}</span>
                                     <x-billing.light :invoice="$i"/>
                                     <span class="nums font-semibold">{{ \App\Support\Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
                                 </a>
@@ -51,7 +56,11 @@
                                 <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">до {{ $requirement->due_at->translatedFormat('j M, H:i') }}, <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-done-value="срок вышел"></span></p>
                             @endif
 
-                            @if ($requirement->asks === Asks::Document)
+                            @if ($payStep && $unpaid->isNotEmpty())
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    @foreach ($unpaid as $i)<x-ui.button :href="'/account/money/invoices/'.$i->id" size="s">Сообщить об оплате{{ $unpaid->count() > 1 ? ' '.$i->label() : '' }}</x-ui.button>@endforeach
+                                </div>
+                            @elseif ($requirement->asks === Asks::Document)
                                 <div class="mt-4" data-controller="photos" data-photos-url-value="/account/deals/{{ $deal->id }}/files">
                                     <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-photos-target="input" data-action="change->photos#upload">
                                     @include('cabinet.deals.files', ['requirement' => $requirement])
@@ -64,6 +73,7 @@
                                 </div>
                             @endif
 
+                            @unless ($payStep && $unpaid->isNotEmpty())
                             <form method="post" action="/account/deals/{{ $deal->id }}/reply" class="mt-5 flex flex-col gap-4">
                                 @csrf
                                 @if ($requirement->asks === Asks::Fields)
@@ -78,6 +88,7 @@
                                     @endforeach
                                 </div>
                             </form>
+                            @endunless
                         </div>
                     @endif
                 </div>
@@ -121,6 +132,13 @@
                         <p class="mt-2 text-sm text-ink-muted group-hover:text-accent-text">{{ $offer->titleWithYear() }}</p>
                     </div>
                 </a>
+                @if ($feeState !== CommissionState::Hidden)
+                    {{-- Вознаграждение открывается со счёта; до него менеджер видит только цену. --}}
+                    <a href="/account/money/deals/{{ $deal->id }}" class="mx-6 mb-5 flex items-center gap-2 rounded-(--radius-m) bg-surface-2 px-4 py-3">
+                        <span class="min-w-0 flex-1"><span class="block text-sm text-ink-dim">Агентское вознаграждение</span><span class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</span></span>
+                        <x-ui.pill :tone="$feeState->tone()" class="!min-h-0 !py-1 text-xs">{{ mb_strtolower($feeState->label()) }}</x-ui.pill>
+                    </a>
+                @endif
                 <div class="px-6 pb-6">
                     <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
                         @foreach (['Предложение' => $offer->number, 'Год' => $offer->year, 'VIN' => $offer->vinMasked(), 'Город' => $offer->settlement?->name] as $label => $value)

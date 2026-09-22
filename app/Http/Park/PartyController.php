@@ -4,12 +4,11 @@ namespace App\Http\Park;
 
 use App\Billing\Charge;
 use App\Billing\Party;
-use App\Billing\PartyKind;
+use App\Billing\PartyRules;
 use App\Park\Vehicle;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /** Реквизиты: мы первой строкой, дальше контрагенты — юрлица и физлица. */
@@ -49,13 +48,6 @@ class PartyController
 
     private function data(Request $request): array
     {
-        return $request->validate([
-            'kind' => ['required', Rule::enum(PartyKind::class)], 'name' => ['required', 'string', 'max:200'],
-            'inn' => ['nullable', 'digits_between:10,12'], 'kpp' => ['nullable', 'digits:9'], 'ogrn' => ['nullable', 'digits_between:13,15'],
-            'legal_address' => ['nullable', 'string', 'max:255'], 'director' => ['nullable', 'string', 'max:120'], 'director_basis' => ['nullable', 'string', 'max:120'],
-            'bank_name' => ['nullable', 'string', 'max:120'], 'bik' => ['nullable', 'digits:9'], 'account' => ['nullable', 'digits:20'], 'corr_account' => ['nullable', 'digits:20'],
-            'passport' => ['nullable', 'string', 'max:60'], 'passport_issued' => ['nullable', 'string', 'max:255'], 'reg_address' => ['nullable', 'string', 'max:255'], 'birth_at' => ['nullable', 'date'],
-            'phone' => ['nullable', 'string', 'max:20'], 'email' => ['nullable', 'email', 'max:120'], 'payment_purpose' => ['nullable', 'string', 'max:255'], 'notes' => ['nullable', 'string', 'max:2000'],
-        ]);
+        return $request->validate(PartyRules::rules());
     }
 }

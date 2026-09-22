@@ -10,6 +10,7 @@ use App\Http\Admin\InvoiceController;
 use App\Http\Admin\MailAccountController;
 use App\Http\Admin\MailController;
 use App\Http\Admin\MailTemplateController;
+use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
 use App\Http\Admin\OfferPhotoController;
 use App\Http\Admin\PurchaseCarPhotoController;
@@ -70,6 +71,21 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::get('/work/deals', [DealController::class, 'index']);
     Route::get('/work/deals/{deal}', [DealController::class, 'show']);
     Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
+    Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
+    // Деньги по сделкам: заявки менеджеров об оплате, вознаграждения к выплате, счета; карточка счёта — общая со стоянкой.
+    Route::get('/work/money', [MoneyController::class, 'index']);
+    Route::post('/work/payments/{payment}/confirm', [MoneyController::class, 'confirm']);
+    Route::post('/work/payments/{payment}/reject', [MoneyController::class, 'reject']);
+    Route::prefix('work/money/invoices/{invoice}')->group(function () {
+        Route::get('/', [MoneyController::class, 'show']);
+        Route::put('/', [MoneyController::class, 'update']);
+        Route::get('/pdf', [MoneyController::class, 'file']);
+        Route::get('/print', [MoneyController::class, 'print']);
+        Route::post('/payments', [MoneyController::class, 'pay']);
+        Route::get('/payments/{payment}/slip', [MoneyController::class, 'slip']);
+        Route::delete('/payments/{payment}', [MoneyController::class, 'unpay']);
+        Route::post('/void', [MoneyController::class, 'void']);
+    });
     Route::prefix('work/mail')->group(function () {
         Route::get('/', [MailController::class, 'index']);
         Route::get('/new', [MailController::class, 'compose']);

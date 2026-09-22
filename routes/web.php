@@ -8,6 +8,7 @@ use App\Http\Cabinet\DealController;
 use App\Http\Cabinet\GroupController;
 use App\Http\Cabinet\InviteController;
 use App\Http\Cabinet\ListsController;
+use App\Http\Cabinet\MoneyController;
 use App\Http\Cabinet\NotificationController;
 use App\Http\Cabinet\ProfileController;
 use App\Http\Cabinet\ShowingController;
@@ -88,7 +89,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
 
     Route::get('/account/deals', [DealController::class, 'index']);
     Route::get('/account/deals/{deal}', [DealController::class, 'show']);
-    Route::get('/account/invoices/{invoice}/pdf', [DealController::class, 'invoice']);
+    Route::get('/account/invoices/{invoice}/pdf', [MoneyController::class, 'pdf']);
     Route::post('/account/deals/{deal}/reply', [DealController::class, 'answer']);
     Route::post('/account/deals/{deal}/files', [DealController::class, 'upload']);
     Route::delete('/account/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
@@ -124,6 +125,17 @@ Route::middleware(['auth', 'wall'])->group(function () {
 
     // Кабинет менеджера: покупатели, группы, приглашения, показы. Конкретные пути раньше {user}.
     Route::middleware('manager')->group(function () {
+        // Деньги менеджера: счета к оплате, вознаграждение, история, реквизиты, акт сверки, выгрузка.
+        Route::get('/account/money', [MoneyController::class, 'index']);
+        Route::get('/account/money/history', [MoneyController::class, 'history']);
+        Route::get('/account/money/details', [MoneyController::class, 'details']);
+        Route::put('/account/money/details', [MoneyController::class, 'saveDetails']);
+        Route::get('/account/money/statement', [MoneyController::class, 'statement']);
+        Route::get('/account/money/export', [MoneyController::class, 'export']);
+        Route::get('/account/money/invoices/{invoice}', [MoneyController::class, 'invoice']);
+        Route::post('/account/money/invoices/{invoice}/claims', [MoneyController::class, 'claim']);
+        Route::get('/account/money/invoices/{invoice}/payments/{payment}/slip', [MoneyController::class, 'slip']);
+        Route::get('/account/money/deals/{deal}', [MoneyController::class, 'deal']);
         Route::get('/account/buyers', [BuyerController::class, 'index']);
         Route::get('/account/interest', [BuyerInterestController::class, 'index']);
         Route::post('/account/interest/{interest}', [BuyerInterestController::class, 'update']);

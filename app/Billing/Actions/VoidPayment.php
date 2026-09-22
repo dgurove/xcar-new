@@ -2,6 +2,7 @@
 
 namespace App\Billing\Actions;
 
+use App\Billing\Events\PaymentVoided;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Payment;
@@ -17,7 +18,7 @@ final class VoidPayment
     {
         Nav::forgetStaffCounts();
 
-        return DB::transaction(function () use ($payment, $reason) {
+        $payment = DB::transaction(function () use ($payment, $reason) {
             $invoice = Invoice::whereKey($payment->invoice_id)->lockForUpdate()->firstOrFail();
             $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
             if ($payment->voided_at) {
@@ -28,5 +29,8 @@ final class VoidPayment
 
             return $payment;
         });
+        PaymentVoided::dispatch($payment, $by);
+
+        return $payment;
     }
 }

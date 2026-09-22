@@ -9,8 +9,11 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-/** Оплата по счёту: частями, откуда пришла, номер платёжки и её скан (`slip`); отменённая остаётся с `voided_at`. */
-#[Fillable(['invoice_id', 'party_id', 'amount', 'paid_at', 'source', 'ref', 'note', 'voided_at', 'created_by'])]
+/**
+ * Оплата по счёту: частями, откуда пришла, номер платёжки и её скан (`slip`); отменённая остаётся с `voided_at`.
+ * Заявленная менеджером (`claimed`) в `paid` не входит, пока сотрудник не подтвердит; не поступившая — `rejected`.
+ */
+#[Fillable(['invoice_id', 'party_id', 'amount', 'paid_at', 'source', 'ref', 'note', 'state', 'reject_reason', 'decided_at', 'voided_at', 'created_by'])]
 class Payment extends Model implements HasMedia
 {
     use InteractsWithMedia;
@@ -19,7 +22,7 @@ class Payment extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['amount' => 'float', 'paid_at' => 'date', 'source' => PaymentSource::class, 'voided_at' => 'datetime'];
+        return ['amount' => 'float', 'paid_at' => 'date', 'source' => PaymentSource::class, 'state' => PaymentState::class, 'decided_at' => 'datetime', 'voided_at' => 'datetime'];
     }
 
     public function registerMediaCollections(): void
@@ -35,5 +38,10 @@ class Payment extends Model implements HasMedia
     public function slip(): ?Media
     {
         return $this->getFirstMedia('slip');
+    }
+
+    public function isClaim(): bool
+    {
+        return $this->state === PaymentState::Claimed;
     }
 }

@@ -2,7 +2,15 @@
 
 namespace App\Notifications;
 
+use App\Billing\ChargeKind;
+use App\Billing\Events\AgentFeeDue;
+use App\Billing\Events\InvoiceIssued;
 use App\Billing\Events\InvoiceOverdue;
+use App\Billing\Events\PaymentClaimed;
+use App\Billing\Events\PaymentConfirmed;
+use App\Billing\Events\PaymentRecorded;
+use App\Billing\Events\PaymentRejected;
+use App\Billing\PaymentSource;
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
@@ -22,10 +30,12 @@ use App\Park\Events\VehicleSold;
 use App\Park\RequestState;
 use App\Support\Money;
 use App\Telegram\Jobs\NotifyOwner;
+use App\Telegram\Messages\AgentFeeDue as AgentFeeDueMessage;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
 use App\Telegram\Messages\ParkLetter;
 use App\Telegram\Messages\ParkSold;
+use App\Telegram\Messages\PaymentClaimed as PaymentClaimedMessage;
 use App\Telegram\Messages\Registration;
 use App\Users\Events\AccessDecided;
 use App\Users\Events\BuyerJoined;
@@ -69,6 +79,12 @@ final class Notify
             VehicleIdle::class => 'parkIdle',
             VehicleSold::class => 'parkSold',
             InvoiceOverdue::class => 'invoiceOverdue',
+            InvoiceIssued::class => 'invoiceIssued',
+            PaymentClaimed::class => 'paymentClaimed',
+            PaymentConfirmed::class => 'paymentConfirmed',
+            PaymentRejected::class => 'paymentRejected',
+            PaymentRecorded::class => 'paymentRecorded',
+            AgentFeeDue::class => 'agentFeeDue',
         ];
     }
 
@@ -242,6 +258,60 @@ final class Notify
         Notification::send($this->parkStaff()->filter->isAdmin(), new ParkNotice(
             ($invoice->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$invoice->label().' — '.$invoice->party->name,
             Money::rub($invoice->remaining()), '/money/invoices/'.$invoice->id, $invoice->vehicle_id, true));
+    }
+
+    /** Счёт по сделке выставлен — менеджеру сделки (платит он или его покупатель — всё равно ему). */
+    public function invoiceIssued(InvoiceIssued $e): void
+    {
+        $i = $e->invoice;
+        if ($i->isOwed() || ! $i->deal_id || $i->kind === ChargeKind::Reward) {
+            return;
+        }
+        $i->load(['party', 'deal.offer', 'deal.buyer']);
+        $i->deal?->buyer?->notify(MoneyNotice::invoiceIssued($i));
+    }
+
+    /** Менеджер сообщил об оплате: сотрудникам в ленту, владельцу в Telegram с «Поступило». */
+    public function paymentClaimed(PaymentClaimed $e): void
+    {
+        $p = $e->payment->load(['invoice.party', 'invoice.deal.offer', 'invoice.deal.buyer']);
+        Notification::send($this->staff(), MoneyNotice::claimed($p));
+        NotifyOwner::dispatch(new PaymentClaimedMessage($p));
+    }
+
+    public function paymentConfirmed(PaymentConfirmed $e): void
+    {
+        $p = $e->payment->load(['invoice.deal.offer', 'invoice.deal.buyer']);
+        $p->invoice->deal?->buyer?->notify(MoneyNotice::paymentConfirmed($p));
+    }
+
+    public function paymentRejected(PaymentRejected $e): void
+    {
+        $p = $e->payment->load(['invoice.deal.offer', 'invoice.deal.buyer']);
+        $p->invoice->deal?->buyer?->notify(MoneyNotice::paymentRejected($p));
+    }
+
+    /** Выплата менеджеру записана — ему в ленту. Оплаты покупателя тут не касаются: о них он узнаёт подтверждением заявки. */
+    public function paymentRecorded(PaymentRecorded $e): void
+    {
+        $i = $e->invoice;
+        if (! $i->isAgentFee() || ! $i->deal_id) {
+            return;
+        }
+        $p = $i->payments()->latest('id')->first();
+        if ($p && $p->source !== PaymentSource::Offset) {
+            $i->load(['deal.offer', 'deal.buyer']);
+            $p->setRelation('invoice', $i);
+            $i->deal?->buyer?->notify(MoneyNotice::payout($p));
+        }
+    }
+
+    /** Вознаграждение к выплате: сотрудникам в ленту, владельцу в Telegram с «Выплачено». */
+    public function agentFeeDue(AgentFeeDue $e): void
+    {
+        $fee = $e->fee->load(['party', 'deal.offer']);
+        Notification::send($this->staff(), MoneyNotice::feeDue($fee));
+        NotifyOwner::dispatch(new AgentFeeDueMessage($fee));
     }
 
     private function parkStaff()

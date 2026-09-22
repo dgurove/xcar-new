@@ -2,8 +2,14 @@
 
 namespace App\Providers;
 
+use App\Billing\Events\InvoiceVoided;
+use App\Billing\Events\PaymentClaimed;
 use App\Billing\Events\PaymentRecorded;
+use App\Billing\Events\PaymentVoided;
+use App\Billing\Listeners\AdvanceOnClaim;
 use App\Billing\Listeners\AdvanceOnPayment;
+use App\Billing\Listeners\PayoutWhenPaid;
+use App\Billing\Listeners\RevokeAgentFee;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Listeners\AttachGuestEnquiry;
 use App\Chats\Listeners\ScheduleAutoReply;
@@ -41,6 +47,9 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(OnMessage::class);
         Event::subscribe(SyncOffer::class);
         Event::listen(PaymentRecorded::class, AdvanceOnPayment::class);
+        Event::listen(PaymentRecorded::class, PayoutWhenPaid::class);
+        Event::listen(PaymentClaimed::class, AdvanceOnClaim::class);
+        Event::listen([InvoiceVoided::class, PaymentVoided::class], RevokeAgentFee::class);
         Event::listen(Login::class, AttachGuestEnquiry::class);
         Event::listen(ChatMessagePosted::class, ScheduleAutoReply::class);
         Event::subscribe(Passkeys::class);

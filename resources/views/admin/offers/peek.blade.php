@@ -76,8 +76,11 @@
                         </div>
                         @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
                         @if ($bid->state === BidState::Active)
-                            <div class="mt-2 flex gap-2">
-                                <form method="post" action="/confirmations/{{ $bid->id }}/accept" data-turbo-confirm="Отдать {{ $offer->title() }} менеджеру {{ $bid->user->name }} за {{ \App\Support\Money::rub($bid->amount) }}?{{ $waiting->count() > 1 ? ' Остальные подтверждения будут отклонены.' : '' }}">@csrf<x-ui.button size="sm">Принять</x-ui.button></form>
+                            <div class="mt-2 flex items-start gap-2">
+                                <details class="min-w-0 flex-1" @if ($errors->has('commission') && old('bid') == $bid->id) open @endif>
+                                    <summary class="btn btn-s btn-accent inline-flex cursor-pointer">Принять</summary>
+                                    <div class="mt-3"><x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :note="$waiting->count() > 1 ? 'Остальные подтверждения будут отклонены' : null"><input type="hidden" name="bid" value="{{ $bid->id }}"></x-offer.money-form></div>
+                                </details>
                                 <form method="post" action="/confirmations/{{ $bid->id }}/decline">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>
                             </div>
                         @endif

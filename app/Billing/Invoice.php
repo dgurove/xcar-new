@@ -70,9 +70,49 @@ class Invoice extends Model implements HasMedia
         return $this->hasMany(Charge::class, 'invoice_id')->orderBy('id');
     }
 
+    /** Принятые оплаты — те, что в `paid`. Заявленные и не поступившие — отдельно. */
     public function payments(): HasMany
     {
-        return $this->hasMany(Payment::class, 'invoice_id')->whereNull('voided_at')->orderBy('paid_at');
+        return $this->hasMany(Payment::class, 'invoice_id')->whereNull('voided_at')->where('state', PaymentState::Confirmed)->orderBy('paid_at');
+    }
+
+    /** Заявленные менеджером: платёжка приложена, сотрудник ещё не подтвердил. */
+    public function claims(): HasMany
+    {
+        return $this->hasMany(Payment::class, 'invoice_id')->where('state', PaymentState::Claimed)->orderBy('id');
+    }
+
+    /** Все оплаты для ленты: принятые, заявленные, не поступившие; отменённые — нет. */
+    public function allPayments(): HasMany
+    {
+        return $this->hasMany(Payment::class, 'invoice_id')->whereNull('voided_at')->orderBy('id');
+    }
+
+    /** Сколько заявлено и ждёт подтверждения. */
+    public function claimed(): float
+    {
+        return round((float) $this->claims()->sum('amount'), 2);
+    }
+
+    public function isAgentFee(): bool
+    {
+        return $this->direction === 'owed' && $this->kind === ChargeKind::AgentFee;
+    }
+
+    /**
+     * Что видит менеджер: счета его контрагенту и счета по его сделкам (плательщик —
+     * его покупатель). Одна дверь для списка, страницы, PDF и заявки об оплате.
+     */
+    public function scopeVisibleToManager($q, User $user)
+    {
+        return $q->where(fn ($w) => $w
+            ->when($user->party_id, fn ($x) => $x->where('party_id', $user->party_id), fn ($x) => $x->whereRaw('false'))
+            ->orWhereHas('deal', fn ($d) => $d->where('buyer_id', $user->id)));
+    }
+
+    public function isVisibleToManager(User $user): bool
+    {
+        return ($user->party_id && $this->party_id === $user->party_id) || ($this->deal_id && $this->deal?->buyer_id === $user->id);
     }
 
     public function isOwed(): bool
