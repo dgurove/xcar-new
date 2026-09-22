@@ -2,11 +2,11 @@
      этап цепочки лаймовой точкой, наше письмо серой с рамкой, письмо без нашего ответа оранжевой; автоответы и
      бухгалтерия подряд свёрнуты в один узел «3 служебных». Тема пишется строкой-разделителем, когда меняется
      (subjects). Раскрыты непрочитанные и последнее, к ним и прокрутка (focus). reply — один «Ответить {кому}» внизу,
-     редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов, vehicle — фото уже в галерее.
+     редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов.
      «Ч.2» того же письма (те же слова от того же адреса в сутки) — узел «Ещё файлы к письму» без текста.
      fold — разбор письма: раскрыты только письмо-заявка и то, что ждёт ответа, прочие подряд идущие письма свёрнуты
      в узел «Ещё N писем» на своём месте в ленте. --}}
-@props(['messages', 'base' => '/mail', 'candidate' => null, 'vehicle' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false, 'fold' => false])
+@props(['messages', 'base' => '/mail', 'candidate' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false, 'fold' => false])
 @php
     use App\Mail\Chains\NodeTitle;
     use App\Mail\Extraction\Intent;
@@ -18,8 +18,6 @@
     // Ждёт ответа: письмо вендора с вопросом, после которого мы ничего не писали.
     $lastOurs = $messages->last(fn (Message $m) => $m->isOurs())?->date_at;
     $asks = $messages->filter(fn (Message $m) => ! $m->isOurs() && (Intent::tryFrom((string) $m->intent)?->needsReply() ?? false) && (! $lastOurs || $m->date_at > $lastOurs))->pluck('id')->all();
-    // Фото писем уже в галерее ТС: в ленте вместо сетки чип «N фото в галерее».
-    $inGallery = $vehicle && $vehicle->media()->where('collection_name', 'photos')->where('custom_properties->stage', 'mail')->exists();
     $kind = fn (Message $m) => trim((in_array($m->id, $staged, true) ? 'stage ' : (in_array($m->id, $asks, true) ? 'ask ' : '')).($m->isOurs() ? 'ours' : ''));
     $service = fn (Message $m) => ! in_array($m->id, $staged, true) && in_array($m->intent, [Intent::Auto->value, Intent::Billing->value], true);
     // Разбор письма: на виду только письмо-заявка, то, что ждёт ответа, и то, на чём стоит фокус.
@@ -65,16 +63,16 @@
                     <summary class="letter-head"><span class="letter-who font-normal text-ink-muted">{{ $node['service'] ? $n.' '.\App\Support\Plural::of($n, ['служебное', 'служебных', 'служебных']) : 'Ещё '.$n.' '.\App\Support\Plural::of($n, ['письмо', 'письма', 'писем']) }}</span><span class="letter-when">{{ end($node['items'])->date_at?->translatedFormat('j M') }}</span></summary>
                     <div class="letter-text">
                         @foreach ($node['items'] as $m)
-                            <x-mail.letter :message="$m" :base="$base" :title="NodeTitle::for($m, $candidate)" :titled="NodeTitle::titled($m, $candidate)" :kind="$m->isOurs() ? 'ours' : ''" :reply="$reply" :in-gallery="$inGallery" :vehicle="$vehicle"/>
+                            <x-mail.letter :message="$m" :base="$base" :title="NodeTitle::for($m, $candidate)" :titled="NodeTitle::titled($m, $candidate)" :kind="$m->isOurs() ? 'ours' : ''" :reply="$reply"/>
                         @endforeach
                     </div>
                 </details>
             </div>
         @else
             @if (isset($continued[$node->id]))
-                <x-mail.letter :message="$node" :base="$base" title="Ещё файлы к письму" :kind="$node->isOurs() ? 'ours' : ''" :open="! $node->is_seen || $node->id === $lastId" :focus="$node->id === $focusId" :reply="$reply" :in-gallery="$inGallery" :vehicle="$vehicle" continuation/>
+                <x-mail.letter :message="$node" :base="$base" title="Ещё файлы к письму" :kind="$node->isOurs() ? 'ours' : ''" :open="! $node->is_seen || $node->id === $lastId" :focus="$node->id === $focusId" :reply="$reply" continuation/>
             @else
-                <x-mail.letter :message="$node" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :open="! $node->is_seen || ($fold ? in_array($node->id, $keep, true) : $node->id === $lastId)" :focus="$node->id === $focusId" :reply="$reply" :in-gallery="$inGallery" :vehicle="$vehicle"/>
+                <x-mail.letter :message="$node" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :open="! $node->is_seen || ($fold ? in_array($node->id, $keep, true) : $node->id === $lastId)" :focus="$node->id === $focusId" :reply="$reply"/>
             @endif
         @endif
     @empty

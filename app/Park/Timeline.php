@@ -6,7 +6,8 @@ use App\Mail\Extraction\Intent;
 use Illuminate\Support\Collection;
 
 /**
- * Таймлайн дела: Письмо → Звонок → Эвакуация → Приём → Отчёт вендору → Хранение → Выдача → Отчёт вендору.
+ * Таймлайн дела: Письмо → Звонок → Эвакуация → Приём → Отчёт вендору → Хранение → Выдача → Отчёт вендору;
+ * между хранением и выдачей — отказы покупателей, если они были.
  * Каждый шаг решает своё состояние сам; текущий — последний из «своих текущих», остальные такие — todo
  * (действие есть, но форма не раскрыта). Подсказки — одной строкой, без точек.
  */
@@ -91,9 +92,15 @@ final class Timeline
                 $storageState === Step::CURRENT ? ($v->sold_at ? 'Продана, ждём покупателя за ТС' : 'Страховая пришлёт письмо о продаже, шаг сменится сам; когда за ТС приедут, выдайте') : null,
                 $v->sold_at, $chips, $storageState === Step::CURRENT ? ['kind' => 'spawn', 'label' => 'Выдать'] : null);
 
+            // Покупатель приехал и не взял: продажа снята, ТС снова просто стоит — исход виден шагом, а не заметкой.
+            foreach ($events->where('type', EventType::ReleaseRefused)->sortBy('created_at') as $refusal) {
+                $steps[] = new Step('refused', 'Покупатель отказался', Step::DONE, null, $refusal->created_at,
+                    array_values(array_filter([$refusal->payload['note'] ?? null, $refusal->user?->shortName()])), danger: true);
+            }
+
             $chips = array_values(array_filter([$release?->doneBy?->shortName(), $release?->note]));
             $steps[] = new Step('release', $v->released_at ? 'Выдана' : ($releasing ? 'Нужно выдать' : 'Выдача'), $v->released_at ? Step::DONE : ($releasing ? Step::CURRENT : Step::NEXT),
-                'Проверить долг и документ, снять фото, взять подпись', $v->released_at ?? $release?->planned_at, $v->released_at ? $chips : [],
+                'Проверить долг, взять подпись', $v->released_at ?? $release?->planned_at, $v->released_at ? $chips : [],
                 $releasing ? ['kind' => 'submit', 'label' => 'Выдать'] : null, $release?->isOpen() ? $release : ($v->released_at ? $release : null));
 
             if ($v->released_at && $billable) {

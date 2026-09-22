@@ -57,7 +57,7 @@ final class OnMessage
             // «Продано, заберёт такой-то» по ТС на стоянке — дата продажи и покупатель из письма, заявка на выдачу.
             if ($vehicle->state === VehicleState::Stored && ! $vehicle->sold_at && $message->intent === Intent::Sold->value
                 && ($sold = ParkExtractor::soldNotice($message->subject, $message->ownText()))) {
-                ($this->sold)($vehicle, null, $message->date_at ?? now(), $sold['name'], $sold['phone'], $sold['note'], $message);
+                ($this->sold)($vehicle, null, $message->date_at ?? now(), $sold['name'], $sold['phone'], $message);
             } elseif ($message->intent !== Intent::Auto->value) {
                 LetterArrived::dispatch($vehicle, $message);
             }

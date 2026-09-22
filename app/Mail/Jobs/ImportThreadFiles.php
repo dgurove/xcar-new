@@ -5,11 +5,14 @@ namespace App\Mail\Jobs;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Actions\PinThread;
+use App\Mail\Attachment;
 use App\Mail\Extraction\AttachmentImporter;
+use App\Mail\Extraction\Intent;
 use App\Mail\Thread;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Park\PhotoStage;
 use App\Park\Vehicle;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -61,7 +64,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $report('Читаем письмо');
             $attachments = $importer->attachmentsOf($this->messageId, $this->messageId ? null : $thread->id);
             $hidden = $offer && $offer->state !== OfferState::Draft;
-            $added = $importer->import($model, $attachments, 'photos', 'papers', $hidden ? ['hidden' => true] : ($model instanceof Vehicle ? ['stage' => 'mail'] : []), $report);
+            $added = $importer->import($model, $attachments, 'photos', 'papers', $hidden ? ['hidden' => true] : ($model instanceof Vehicle ? self::stageOf(...) : []), $report);
         } finally {
             $key && Cache::forget($key);
         }
@@ -74,6 +77,22 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $what = array_filter([$added['photos'] ? "фото: {$added['photos']}" : null, $added['documents'] ? "документов: {$added['documents']}" : null]);
             $publish->toast($offer ? Topics::STAFF : Topics::PARK, 'Из письма — '.implode(', ', $what), $offer ? "/offers/{$offer->number}" : "/cars/{$model->id}");
         }
+    }
+
+    /**
+     * Чей кадр: письмо страховой — «от страховой», наше — «при приёме», а наш отчёт о выдаче — «при выдаче».
+     * `source` отличает приехавшее из письма от снятого в приложении: при выдаче первое стирается, второе остаётся.
+     */
+    private static function stageOf(Attachment $attachment): array
+    {
+        $message = $attachment->message;
+        $stage = match (true) {
+            ! $message?->isOurs() => PhotoStage::Vendor,
+            $message->intent === Intent::Released->value => PhotoStage::Release,
+            default => PhotoStage::Intake,
+        };
+
+        return ['stage' => $stage->value, 'source' => 'mail'];
     }
 
     public static function progress(int $offerId): ?array

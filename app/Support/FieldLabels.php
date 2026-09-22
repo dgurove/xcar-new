@@ -16,7 +16,7 @@ final class FieldLabels
         'vendor_id' => 'вендор', 'answer_by' => 'ответ до', 'insured_name' => 'страхователь', 'insured_phone' => 'телефон страхователя', 'flags' => 'признаки', 'holder' => 'держатель',
         'contact_name' => 'контакт', 'contact_phone' => 'телефон', 'contact_email' => 'почта ответственного', 'insurer_deadline_at' => 'срок от вендора',
         'category' => 'категория', 'oversize' => 'негабарит', 'value' => 'заявленная стоимость', 'policy_no' => '№ полиса', 'contract_kind' => 'основание', 'contract_no' => 'номер договора', 'contract_at' => 'дата договора',
-        'assigned_price' => 'назначенная цена', 'pts' => 'ПТС', 'sts' => 'СТС', 'owner_party_id' => 'комитент', 'storage_rate' => 'своя ставка', 'storage_rate_note' => 'почему своя', 'billing_cadence' => 'счёт за хранение', 'sold_at' => 'продано', 'pickup_name' => 'кто заберёт', 'pickup_phone' => 'телефон покупателя', 'pickup_note' => 'документ покупателя',
+        'assigned_price' => 'назначенная цена', 'pts' => 'ПТС', 'sts' => 'СТС', 'owner_party_id' => 'комитент', 'storage_rate' => 'своя ставка', 'storage_rate_note' => 'почему своя', 'billing_cadence' => 'счёт за хранение', 'sold_at' => 'продано', 'pickup_name' => 'кто заберёт', 'pickup_phone' => 'телефон покупателя',
         'notes' => 'заметки', 'yard_id' => 'парковка', 'spot' => 'место', 'docs_required' => 'документы вендору', 'state' => 'состояние', 'offer_id' => 'предложение',
     ];
 

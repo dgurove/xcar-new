@@ -29,7 +29,7 @@
                 <form method="post" action="{{ $base }}/{{ $c->id }}/decline">@csrf<button class="pill pill-plain">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'В архив' }}</button></form>
             @endif
         </x-slot:actions>
-        <x-mail.chain class="mt-4" :messages="$c->messages" :base="$mail" :candidate="$c" :vehicle="$c->vehicle" :focus="false"/>
+        <x-mail.chain class="mt-4" :messages="$c->messages" :base="$mail" :candidate="$c" :focus="false"/>
         <x-slot:row><x-mail.candidate-row :c="$c" :base="$base"/></x-slot:row>
     </x-ui.peek>
 </turbo-frame>

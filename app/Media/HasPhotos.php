@@ -53,10 +53,13 @@ trait HasPhotos
         return $this->visiblePhotos()->first();
     }
 
-    /** Такой файл уже есть в медиатеке — по отпечатку исходника (custom property `sha`). */
+    /**
+     * Такой файл уже есть в медиатеке. Отпечатков у кадра два: `sha` — исходника до ужатия, `sent_sha` — тех
+     * байтов, что ушли во вложении письма. Без второго наш же кадр, вернувшийся с письмом, лёг бы вторым разом.
+     */
     public function hasFile(string $sha): bool
     {
-        return $this->media()->where('custom_properties->sha', $sha)->exists();
+        return $this->media()->where(fn ($q) => $q->where('custom_properties->sha', $sha)->orWhere('custom_properties->sent_sha', $sha))->exists();
     }
 
     /** @return Collection<int, Media> */

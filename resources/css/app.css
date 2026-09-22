@@ -723,7 +723,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .letter-link:hover { color: var(--color-ink); }
   .letter-link::-webkit-details-marker { display: none; }
   .chain-reply { padding-top: .5rem; }
-  .photo-cell .photo-more { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgb(18 18 18 / .55); color: #fff; font-size: 1.125rem; font-weight: 500; }
 }
 
 /* ------------------------------------------------------------- шторки */

@@ -20,8 +20,12 @@ final class AttachmentImporter
 {
     public function __construct(private AttachmentClassifier $classifier, private ArchivePhotoExtractor $archives, private PageScanCropper $cropper, private PhotoIngest $photos) {}
 
-    /** @return array{photos: int, documents: int} сколько добавлено */
-    public function import(HasMedia $model, Collection $attachments, string $photosCollection, string $documentsCollection, array $photoProperties = [], ?callable $progress = null): array
+    /**
+     * @param  array|callable(Attachment): array  $photoProperties  свойства кадра: одни на всех (оффер) либо по письму
+     *                                                              вложения (стоянка: чьё письмо — такая и стадия)
+     * @return array{photos: int, documents: int} сколько добавлено
+     */
+    public function import(HasMedia $model, Collection $attachments, string $photosCollection, string $documentsCollection, array|callable $photoProperties = [], ?callable $progress = null): array
     {
         $added = ['photos' => 0, 'documents' => 0];
         if ($attachments->isEmpty()) {
@@ -31,10 +35,11 @@ final class AttachmentImporter
         foreach ($classified['documents'] as $document) {
             $added['documents'] += (int) $this->addDocument($model, $documentsCollection, $document);
         }
+        $propertiesOf = is_array($photoProperties) ? fn () => $photoProperties : $photoProperties;
         $sources = [];
         foreach ($classified['photos'] as $photo) {
             if (($contents = $photo->contents()) !== null) {
-                $sources[] = ['name' => $photo->filename, 'contents' => $contents];
+                $sources[] = ['name' => $photo->filename, 'contents' => $contents, 'properties' => $propertiesOf($photo)];
             }
         }
         foreach ($classified['archives'] as $i => $archive) {
@@ -45,22 +50,23 @@ final class AttachmentImporter
 
                 continue;
             }
+            // Кадры из архива и вырезки из листа — свойства того вложения, в котором они приехали.
             foreach ($extracted as $photo) {
-                $sources[] = ['name' => $photo['name'], 'contents' => $photo['contents']];
+                $sources[] = ['name' => $photo['name'], 'contents' => $photo['contents'], 'properties' => $propertiesOf($archive)];
             }
         }
         foreach ($sources as $i => $photo) {
             $progress && $progress('Разбираем фотографии', $i, count($sources));
-            $this->guard(function () use ($model, $photosCollection, $photo, $photoProperties, &$added) {
+            $this->guard(function () use ($model, $photosCollection, $photo, &$added) {
                 $cropped = $this->cropper->crop($photo['contents']);
                 if (! $cropped) {
-                    $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $photo['contents'], $photo['name'], $photoProperties);
+                    $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $photo['contents'], $photo['name'], $photo['properties']);
 
                     return;
                 }
                 $base = pathinfo($photo['name'], PATHINFO_FILENAME);
                 foreach ($cropped as $n => $contents) {
-                    $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $contents, $base.(count($cropped) > 1 ? '-'.($n + 1) : '').'.jpg', $photoProperties);
+                    $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $contents, $base.(count($cropped) > 1 ? '-'.($n + 1) : '').'.jpg', $photo['properties']);
                 }
             });
         }
@@ -88,7 +94,9 @@ final class AttachmentImporter
         // Письма старше «Файлы из писем с» у ящика в дело не едут: их файлы остаются в ящике.
         return Message::with(['attachments', 'account'])->where(fn ($q) => $q->when($messageId, fn ($q) => $q->whereKey($messageId))->when($threadId, fn ($q) => $q->orWhere('thread_id', $threadId)))
             ->get()->reject(fn (Message $m) => $m->filesFrozen())
-            ->flatMap(fn (Message $m) => $m->attachments)->unique(fn (Attachment $a) => $a->blob_sha ?? 'id:'.$a->id)->values();
+            // Письмо остаётся при вложении: по нему видно, чей это кадр.
+            ->flatMap(fn (Message $m) => $m->attachments->each(fn (Attachment $a) => $a->setRelation('message', $m)))
+            ->unique(fn (Attachment $a) => $a->blob_sha ?? 'id:'.$a->id)->values();
     }
 
     private function addDocument(HasMedia $model, string $collection, Attachment $document): bool

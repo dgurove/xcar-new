@@ -217,7 +217,7 @@ class RequestController
                 $soldStage = $candidate->stageOf(CandidateStage::Sold);
                 if ($soldStage && ! $vehicle->sold_at) {
                     $markSold($vehicle, $request->user(), Carbon::parse($soldStage['at'] ?? now()), $soldStage['name'] ?? null, $soldStage['phone'] ?? null,
-                        $soldStage['note'] ?? null, Message::find($soldStage['message_id'] ?? null));
+                        Message::find($soldStage['message_id'] ?? null));
                 }
 
                 return redirect("/cars/{$vehicle->id}")->with('toast', $soldStage && $vehicle->state === VehicleState::Stored ? 'Письма привязаны, ждёт выдачи' : 'Письма привязаны к ТС');
@@ -293,28 +293,27 @@ class RequestController
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Переставлена');
     }
 
-    /**
-     * Выдача с осмотром: «соответствует / не соответствует» — в акт; «не соответствует» и «не забрал» — акт с отказом,
-     * ТС остаётся; дальше в обоих случаях редактор письма вендору с актом выдачи.
-     */
-    public function release(Request $request, ParkRequest $req, Release $release, RefuseRelease $refuse)
+    /** Выдача: когда, кому, ключи и документы в акт, подпись; дальше редактор письма вендору с актом выдачи. */
+    public function release(Request $request, ParkRequest $req, Release $release)
     {
         abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
-        $data = $request->validate(['released_at' => ['nullable', 'date'], 'note' => ['nullable', 'string', 'max:2000'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)],
-            'fits' => ['required', 'boolean'], 'mismatch_note' => ['exclude_if:fits,1', 'required', 'string', 'max:500'], 'refused' => ['boolean']] + self::inspectionRules());
+        $data = $request->validate(['released_at' => ['nullable', 'date'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)]] + self::inspectionRules());
         $at = isset($data['released_at']) ? Carbon::parse($data['released_at']) : null;
         $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
-        $vehicle = $req->vehicle;
-        $data['matches'] = $request->boolean('fits');
-        if (! $data['matches'] && $request->boolean('refused')) {
-            $refuse($vehicle, $request->user(), $at, $data['mismatch_note'], $data, $req);
-
-            return redirect(self::withReport($vehicle->fresh(), 'refusal'))->with('toast', 'Отказ записан, письмо вендору готово');
-        }
-        $release($vehicle, $request->user(), $at, $data['note'] ?? null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req, $request->boolean('force'), $request->boolean('cash'));
+        $release($req->vehicle, $request->user(), $at, null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req, $request->boolean('force'), $request->boolean('cash'));
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
+    }
+
+    /** Покупатель приехал и не взял: продажа снимается, ТС остаётся стоять, вендору уходит письмо об отказе. */
+    public function refuse(Request $request, ParkRequest $req, RefuseRelease $refuse)
+    {
+        abort_unless(Scope::allows($request->user(), $req->vehicle) && $request->user()->canManagePark(), 404);
+        $reason = $request->validate(['reason' => ['required', 'string', 'max:500']])['reason'];
+        $refuse($req->vehicle, $request->user(), $reason);
+
+        return redirect(self::withReport($req->vehicle->fresh(), 'refusal'))->with('toast', 'Отказ записан, письмо вендору готово');
     }
 
     /** Закрыть заявку сделанной (осмотр, перестановка — старые типы); отмена заявки на приём — «Отменить заявку» на деле (UnwindVehicle). */

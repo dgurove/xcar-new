@@ -33,7 +33,7 @@ use Spatie\MediaLibrary\HasMedia;
     'contact_name', 'contact_phone', 'flags', 'docs_required', 'value', 'policy_no',
     'cancelled_at', 'cancel_reason', 'spot', 'transit_started_at', 'mileage', 'fuel', 'idle_noticed_at',
     'owner_party_id', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'storage_rate', 'storage_rate_note', 'storage_billed_until', 'pts', 'sts',
-    'sold_at', 'sold_message_id', 'pickup_name', 'pickup_phone', 'pickup_note', 'buyer_party_id', 'billing_cadence'])]
+    'sold_at', 'sold_message_id', 'pickup_name', 'pickup_phone', 'buyer_party_id', 'billing_cadence'])]
 class Vehicle extends Model implements HasMedia
 {
     use HasPhotos;

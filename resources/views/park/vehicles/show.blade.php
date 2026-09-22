@@ -2,7 +2,7 @@
      (поля ТС + этап), справа на ПК факты (фото, бумаги, документы, деньги, история). Плашка — глагол этапа и «⋯».
      Письма — блоком над таймлайном (letters-card) и окном (x-mail.window); после приёма и выдачи окно открыто с черновиком вендору. --}}
 @php
-    use App\Park\{RequestType, RequestState, VehicleState, ReleasedTo, DocState, EventType, Inspection, InspectionKind};
+    use App\Park\{RequestType, RequestState, VehicleState, EventType, PhotoStage};
     use App\Park\Actions\{UndoIntake, UndoRelease, UnwindVehicle};
     use App\Support\{Money, Surface};
     $state = $vehicle->state;
@@ -17,13 +17,11 @@
     // Нет открытой заявки: у ожидаемой — «Принять», у стоящей — «Выдать» (POST /requests заводит заявку и показывает её форму).
     $hasChain = $open && in_array($req->type, [RequestType::Intake, RequestType::Tow, RequestType::Release], true);
     $spawn = ! $hasChain ? match ($state) { VehicleState::Expected => ['intake', 'Принять'], VehicleState::Stored => ['release', 'Выдать'], default => null } : null;
-    $mailPhotos = $vehicle->photos()->filter(fn ($m) => ($m->getCustomProperty('stage') ?? 'mail') === 'mail');
-    $intakePhotos = $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === 'intake');
-    $release = $vehicle->lastInspection(InspectionKind::Release);
     // Поля ТС сверху, пока ТС ожидается (данные из письма надо сверить); после приёма — строкой с раскрытием среди фаз.
     $vehicleOpen = $state->isBefore();
     $cur = App\Park\Timeline::current($steps);
-    $vehiclePhoto = ! in_array($cur?->key, ['intake', 'release'], true) && $vehicle->photos()->isNotEmpty();
+    // Блок кадров стоит в ленте того шага, на котором их снимают, и справа на всех остальных: видны всегда.
+    $shooting = match ($cur?->key) { 'intake' => PhotoStage::Intake, 'release' => PhotoStage::Release, default => null };
 @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
     {{-- Шапка — только положение и люди: состояние с местом и днями, долг, «Продано», исполнитель, письма.
@@ -130,17 +128,12 @@
             </div>
             @include('park.vehicles.papers')
         </x-ui.card>
-        @if ($vehiclePhoto)
-        <x-ui.card title="Фотографии" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
-            <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
-            <div hidden data-photos-target="progress" class="mb-3">
-                <div class="mb-1 text-sm text-ink-muted" data-label></div>
-                <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-            </div>
-            @include('park.vehicles.gallery')
-        </x-ui.card>
-        @endif
-
+        {{-- Кадры стадиями: от страховой, при приёме, при выдаче. Та, что сейчас снимается, стоит в ленте шага. --}}
+        @foreach (PhotoStage::cases() as $one)
+            @if ($one !== $shooting && $vehicle->photos()->contains(fn ($m) => PhotoStage::of($m) === $one))
+                <x-park.photos :vehicle="$vehicle" :stage="$one"/>
+            @endif
+        @endforeach
 
         @if ($canManage && ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty() || $vehicle->accepted_at))
         <x-ui.card title="Деньги" data-controller="sheet">
@@ -245,12 +238,24 @@
                         <x-ui.field name="sold_at" label="Дата продажи" type="date" :value="($vehicle->sold_at ?? now())->toDateString()" required/>
                         <x-ui.field name="pickup_phone" label="Телефон" type="tel" :value="$vehicle->pickup_phone"/>
                         <x-ui.field name="pickup_name" label="Кто заберёт" :value="$vehicle->pickup_name" span="col-span-2"/>
-                        <x-ui.field name="pickup_note" label="По какому документу" :value="$vehicle->pickup_note" span="col-span-2" placeholder="Доверенность, ДКП №"/>
                     </div>
                     <div class="flex gap-2">
                         <x-ui.button class="flex-1">{{ $vehicle->sold_at ? 'Сохранить' : 'Записать' }}</x-ui.button>
                         @if ($vehicle->sold_at)<x-ui.button variant="ghost" name="clear" value="1" data-turbo-confirm="Не продано?">Не продано</x-ui.button>@endif
                     </div>
+                </form>
+            </x-ui.sheet>
+        </div>
+    @endif
+
+    @if ($canManage && $vehicle->sold_at && $state === VehicleState::Stored && $req?->type === RequestType::Release)
+        <div data-controller="sheet" data-action="refusal:open@window->sheet#open" class="contents">
+            <x-ui.sheet id="refusal" title="Покупатель отказался" :open="$errors->has('reason')">
+                {{-- Приехал, посмотрел и не взял: продажа снимается, ТС снова просто стоит, дальше письмо вендору. --}}
+                <form method="post" action="/requests/{{ $req->id }}/refuse" class="flex flex-col gap-3">
+                    @csrf
+                    <x-ui.field name="reason" label="Почему отказался" type="textarea" required/>
+                    <x-ui.button block>Записать отказ</x-ui.button>
                 </form>
             </x-ui.sheet>
         </div>

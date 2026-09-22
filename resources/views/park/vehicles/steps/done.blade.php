@@ -1,5 +1,5 @@
 @php use App\Park\{RequestState, ReleasedTo, Inspection}; use App\Support\Money; @endphp
-{{-- Раскрытие сделанного шага: что записали, фото, подпись, акт; звонок — «Позвонить снова», письмо — окно. --}}@php $r = $step->request; $insp = $r ? $vehicle->inspections->firstWhere('request_id', $r->id) : null; $stage = $step->key === 'release' ? 'release' : 'intake'; $photos = in_array($step->key, ['intake', 'release'], true) ? $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === $stage) : collect(); @endphp
+{{-- Раскрытие сделанного шага: что записали, фото, подпись, акт; звонок — «Позвонить снова», письмо — окно. --}}@php $r = $step->request; $insp = $r ? $vehicle->inspections->firstWhere('request_id', $r->id) : null; $stage = $step->key === 'release' ? 'release' : 'intake'; $photos = in_array($step->key, ['intake', 'release'], true) ? $vehicle->photos()->filter(fn ($m) => \App\Park\PhotoStage::of($m)->value === $stage) : collect(); @endphp
 <div class="flex flex-col gap-3 pb-2 pt-1">
     @if ($step->key === 'letter' && $letters)<div><x-mail.window-button :count="$letters" :url="'/cars/'.$vehicle->id.'/letters'" chip/></div>@endif
     @if ($step->key === 'call' && $r?->isOpen())<div><a href="/cars/{{ $vehicle->id }}?call=1" class="chip"><x-ui.icon name="phone" class="size-4"/> Позвонить снова</a></div>@endif
@@ -14,8 +14,6 @@
         <div class="flex flex-wrap items-center gap-1.5">
             @if ($insp->keys_count !== null)<span class="tag nums">ключей {{ $insp->keys_count }}</span>@endif
             @foreach ($insp->docs ?? [] as $d)<span class="tag">{{ Inspection::DOCS[$d] ?? $d }}</span>@endforeach
-            @if ($insp->matches === false)<span class="tag text-danger">не соответствует{{ $insp->mismatch_note ? ': '.$insp->mismatch_note : '' }}</span>@endif
-            @if ($insp->refused)<span class="tag text-danger">не забрал</span>@endif
             @if ($insp->signer_name)<span class="tag">{{ $insp->signer_name }}</span>@endif
             @if ($sig = $insp->signatureDataUrl())<img src="{{ $sig }}" alt="Подпись" class="h-10 rounded bg-white px-2">@endif
             <a href="/acts/{{ $vehicle->id }}/{{ $stage }}" class="tag" data-turbo="false" target="_blank">Акт</a>

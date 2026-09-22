@@ -1,9 +1,9 @@
 @php
     $at = $intake ? $vehicle->accepted_at : $vehicle->released_at;
-    $title = $intake ? 'Акт приёма автомобиля на хранение' : ($inspection?->refused ? 'Акт осмотра при выдаче — от получения отказался' : 'Акт выдачи автомобиля с хранения');
+    $title = $intake ? 'Акт приёма автомобиля на хранение' : 'Акт выдачи автомобиля с хранения';
     $damages = $inspection?->damages() ?: $vehicle->damages();
     $note = $inspection?->damage_note ?? $vehicle->damage_note;
-    $shots = $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === ($intake ? 'intake' : 'release'));
+    $shots = $vehicle->photos()->filter(fn ($m) => \App\Park\PhotoStage::of($m)->value === ($intake ? 'intake' : 'release'));
     $shots = $shots->isNotEmpty() ? $shots : ($intake ? $vehicle->visiblePhotos() : collect());
     $vendor = $vehicle->vendor;
     $pdf = $pdf ?? false;
@@ -66,14 +66,9 @@
             <tr><th>Парковка</th><td>{{ implode(', ', array_filter([$vehicle->yard?->name ?? '—', $vehicle->yard?->settlement?->name, $vehicle->yard?->address, $vehicle->spot ? 'место '.$vehicle->spot : null])) }}</td></tr>
             <tr><th>Принят на хранение</th><td>{{ $vehicle->accepted_at?->format('d.m.Y H:i') ?? '—' }}</td></tr>
             @unless ($intake)
-                @if ($inspection?->refused)
-                    <tr><th>Осмотр</th><td>{{ $inspection->at?->format('d.m.Y H:i') }}</td></tr>
-                @else
-                    <tr><th>Выдан</th><td>{{ $vehicle->released_at?->format('d.m.Y H:i') ?? '—' }}</td></tr>
-                    <tr><th>Срок хранения</th><td>{{ $vehicle->daysStored() }} дн</td></tr>
-                @endif
-                @if ($vehicle->pickup_name)<tr><th>Получатель</th><td>{{ trim($vehicle->pickup_name.' '.($vehicle->pickup_phone ?? '')) }}{{ $vehicle->pickup_note ? ', '.$vehicle->pickup_note : '' }}</td></tr>@endif
-                @if ($inspection?->matches !== null)<tr><th>Соответствие акту приёма</th><td>{{ $inspection->matches ? 'соответствует' : 'не соответствует: '.$inspection->mismatch_note }}</td></tr>@endif
+                <tr><th>Выдан</th><td>{{ $vehicle->released_at?->format('d.m.Y H:i') ?? '—' }}</td></tr>
+                <tr><th>Срок хранения</th><td>{{ $vehicle->daysStored() }} дн</td></tr>
+                @if ($vehicle->pickup_name)<tr><th>Получатель</th><td>{{ trim($vehicle->pickup_name.' '.($vehicle->pickup_phone ?? '')) }}</td></tr>@endif
             @endunless
             @if ($inspection)
                 @if ($inspection->mileage !== null)<tr><th>Пробег</th><td>{{ number_format($inspection->mileage, 0, '', ' ') }} км</td></tr>@endif
@@ -105,7 +100,7 @@
         <table class="sign"><tr>
             @php $sig = $inspection?->signatureDataUrl(); @endphp
             <td><div class="box">@if ($intake && $sig)<img src="{{ $sig }}" alt="">@endif</div><div class="line">{{ $intake ? 'Сдал' : 'Выдал' }}</div>@if ($intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
-            <td><div class="box">@if (!$intake && $sig)<img src="{{ $sig }}" alt="">@endif</div><div class="line">{{ $intake ? 'Принял' : ($inspection?->refused ? 'Осмотрел' : 'Получил') }}</div>@if (!$intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
+            <td><div class="box">@if (!$intake && $sig)<img src="{{ $sig }}" alt="">@endif</div><div class="line">{{ $intake ? 'Принял' : 'Получил' }}</div>@if (!$intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
         </tr></table>
     </article>
 </body>

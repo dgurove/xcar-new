@@ -92,7 +92,7 @@ class Party extends Model
         if (! $vehicle->pickup_name) {
             return null;
         }
-        $party = self::make(['kind' => PartyKind::Person, 'name' => $vehicle->pickup_name, 'phone' => $vehicle->pickup_phone, 'notes' => $vehicle->pickup_note]);
+        $party = self::make(['kind' => PartyKind::Person, 'name' => $vehicle->pickup_name, 'phone' => $vehicle->pickup_phone]);
         if ($create) {
             $party->save();
             $vehicle->update(['buyer_party_id' => $party->id]);

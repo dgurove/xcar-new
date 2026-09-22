@@ -1,9 +1,9 @@
 {{-- Письмо в ленте: свёрнуто — строка «кто, заголовок, скрепка, когда» (заголовок — этап, смысл или первые свои слова,
-     непрочитанное полужирным); раскрыто — свои слова письма без цитат и подписи, вложения (фото четыре кадра и «+N»,
-     документы строкой), «Исходное письмо» грузит тело в iframe только по раскрытию, «Ответить на это» — редактор
+     непрочитанное полужирным); раскрыто — свои слова письма без цитат и подписи, вложения (фото лентой, документы
+     строкой), «Исходное письмо» грузит тело в iframe только по раскрытию, «Ответить на это» — редактор
      во фрейме под письмом. kind: stage (этап, лаймовая точка), ask (без нашего ответа, оранжевая), ours (наше). --}}
 {{-- continuation — «ч.2» того же письма (те же слова, другие файлы): текст не повторяется, только вложения. --}}
-@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'inGallery' => false, 'vehicle' => null, 'continuation' => false])
+@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false])
 @php
     use App\Mail\{ParseState, SendState};
     $m = $message;
@@ -50,21 +50,7 @@
                     </div>
                 </details>
             @else
-            @if ($pictures->isNotEmpty())
-                @if ($inGallery && $vehicle)
-                    <a href="/cars/{{ $vehicle->id }}/gallery" class="chip mt-3" data-turbo-frame="_top"><x-ui.icon name="photo" class="size-4"/>{{ $pictures->count() }} фото в галерее</a>
-                @else
-                    {{-- Четыре кадра и «+N»; нажатие на «+N» открывает остальные тут же. --}}
-                    <div class="photo-grid mt-3" data-controller="more">
-                        @foreach ($pictures as $i => $file)
-                            <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="photo-cell {{ $i >= 4 ? 'hidden' : '' }}" title="{{ $file->filename }}" @if ($i >= 4) data-more-target="item" @endif>
-                                <img src="{{ $base }}/attachments/{{ $file->id }}?thumb=1" alt="" loading="lazy" class="h-full w-full object-cover">
-                                @if ($i === 3 && $pictures->count() > 4)<button type="button" class="photo-more nums" data-action="more#show" data-more-target="button">+{{ $pictures->count() - 4 }}</button>@endif
-                            </a>
-                        @endforeach
-                    </div>
-                @endif
-            @endif
+            @if ($pictures->isNotEmpty())<x-mail.photo-strip :files="$pictures" :base="$base"/>@endif
             @if ($documents->isNotEmpty())
                 <div class="mt-3 flex flex-wrap gap-2">
                     @foreach ($documents as $file)

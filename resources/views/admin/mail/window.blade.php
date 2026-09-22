@@ -42,6 +42,6 @@
             </form>
             @if ($errors->any())<p class="field-error mt-2">{{ $errors->first() }}</p>@endif
         </div>
-        <x-mail.chain :messages="$thread->messages" :base="$base" :candidate="$thread->candidate" :vehicle="$thread->vehicle" :subjects="false" reply/>
+        <x-mail.chain :messages="$thread->messages" :base="$base" :candidate="$thread->candidate" :subjects="false" reply/>
     </div>
 </turbo-frame>

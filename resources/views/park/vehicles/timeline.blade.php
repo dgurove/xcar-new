@@ -7,7 +7,14 @@
         <div class="step step--{{ $step->state }}{{ $step->danger ? ' step--danger' : '' }}{{ $step->key === 'reply' ? ' step--ask' : '' }}">
             <span class="step-dot">@if ($step->isDone() && ! $step->danger)<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">
-                @if ($step->isDone())
+                @if ($step->key === 'refused')
+                    {{-- Отказ покупателя: раскрывать нечего, причина и кто записал стоят чипами прямо в строке. --}}
+                    <div class="step-head">
+                        <span class="step-title">{{ $step->title }}</span>
+                        @if ($step->at)<span class="tag nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif
+                        @foreach ($step->chips as $chip)<span class="tag max-w-[14rem] truncate">{{ $chip }}</span>@endforeach
+                    </div>
+                @elseif ($step->isDone())
                     <details class="step-details">
                         <summary class="step-head">
                             <span class="step-title">{{ $step->title }}</span>

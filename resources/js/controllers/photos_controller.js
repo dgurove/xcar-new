@@ -11,7 +11,7 @@ import { loadSortable } from '../lib/sortable';
 // перестановки, без действий на плитке и в просмотрщике.
 export default class extends Controller {
     static targets = ['input', 'progress', 'grid'];
-    static values = { url: String, collection: { type: String, default: 'photos' }, readonly: Boolean, reload: Boolean };
+    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean };
 
     connect() {
         if (this.readonlyValue) return;
@@ -162,6 +162,8 @@ export default class extends Controller {
             form.append('file', file);
             if (sha) form.append('sha', sha);
             form.append('collection', this.collectionValue);
+            // Стадия карточки: кадр ложится туда, откуда его добавили. Слоты приёма шлют свою через extra.
+            if (this.stageValue) form.append('stage', this.stageValue);
             for (const [k, v] of Object.entries(this.extra || {})) if (v) form.append(k, v);
             form.append('_token', this.token);
             xhr.open('POST', this.urlValue);

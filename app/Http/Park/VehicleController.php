@@ -33,6 +33,7 @@ use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\EventType;
 use App\Park\PhotoSlot;
+use App\Park\PhotoStage;
 use App\Park\RequestType;
 use App\Park\Scope;
 use App\Park\Vehicle;
@@ -171,16 +172,14 @@ class VehicleController
     {
         abort_unless(Scope::allows($request->user(), $vehicle) && $request->user()->canManagePark(), 404);
         if ($request->boolean('clear')) {
-            $vehicle->update(['sold_at' => null, 'sold_message_id' => null, 'pickup_name' => null, 'pickup_phone' => null, 'pickup_note' => null, 'buyer_party_id' => null]);
-            // Заявка на выдачу, которую завело «продано», ещё никем не взята — снимается вместе с продажей.
-            $vehicle->requests()->where('type', RequestType::Release)->where('state', RequestState::New)->whereNull('assignee_id')
-                ->update(['state' => RequestState::Cancelled, 'done_at' => now(), 'done_by' => $request->user()->id, 'cancel_reason' => 'Не продано']);
+            // Заявка на выдачу, которую завело «продано», снимается вместе с продажей.
+            $sold->clear($vehicle, $request->user(), 'Не продано');
             $vehicle->log(EventType::Updated, $request->user(), ['fields' => ['sold_at']]);
 
             return redirect("/cars/{$vehicle->id}")->with('toast', 'Не продано');
         }
-        $data = $request->validate(['sold_at' => ['required', 'date'], 'pickup_name' => ['nullable', 'string', 'max:120'], 'pickup_phone' => ['nullable', 'string', 'max:20'], 'pickup_note' => ['nullable', 'string', 'max:255']]);
-        $sold($vehicle, $request->user(), Carbon::parse($data['sold_at']), $data['pickup_name'] ?? null, $data['pickup_phone'] ?? null, $data['pickup_note'] ?? null);
+        $data = $request->validate(['sold_at' => ['required', 'date'], 'pickup_name' => ['nullable', 'string', 'max:120'], 'pickup_phone' => ['nullable', 'string', 'max:20']]);
+        $sold($vehicle, $request->user(), Carbon::parse($data['sold_at']), $data['pickup_name'] ?? null, $data['pickup_phone'] ?? null);
 
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Продано');
     }
@@ -193,24 +192,27 @@ class VehicleController
             if ($request->input('collection') === 'papers') {
                 $vehicle->addMedia($file)->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $file->getClientOriginalName()) ?: 'dokument')->toMediaCollection('papers');
             } else {
-                // Без стадии — снято на стоянке; «из письма» ставит только импорт ветки.
-                $stage = in_array($request->input('stage'), ['intake', 'release', 'pickup', 'storage'], true) ? $request->input('stage') : 'storage';
+                // Кадр ложится в ту карточку, откуда его добавили; снято в приложении — `source: app`, из письма кадры приносит импорт ветки.
+                $stage = PhotoStage::tryFrom((string) $request->input('stage')) ?? PhotoStage::Intake;
                 $slot = PhotoSlot::tryFrom((string) $request->input('slot'))?->value;
-                $ingest->fromPhone($vehicle, 'photos', $request, properties: array_filter(['stage' => $stage, 'slot' => $slot]));
+                $ingest->fromPhone($vehicle, 'photos', $request, properties: array_filter(['stage' => $stage->value, 'slot' => $slot, 'source' => 'app']));
             }
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return $this->gallery($vehicle, $request->input('stage'));
+        return $this->gallery($vehicle, $stage->value);
     }
 
     public function reorder(Request $request, Vehicle $vehicle)
     {
         $order = $request->validate(['order' => ['required', 'array'], 'order.*' => ['integer']])['order'];
-        Media::setNewOrder(array_values(array_intersect($order, $vehicle->photos()->pluck('id')->all())));
+        $photos = $vehicle->photos();
+        Media::setNewOrder(array_values(array_intersect($order, $photos->pluck('id')->all())));
+        // Переставляли внутри одной карточки — ей и возвращаем кнопку камеры.
+        $moved = $photos->firstWhere('id', $order[0] ?? null);
 
-        return $this->gallery($vehicle);
+        return $this->gallery($vehicle, $moved ? PhotoStage::of($moved)->value : null);
     }
 
     public function rotateMedia(Vehicle $vehicle, Media $media, RotatePhoto $rotate)
@@ -218,15 +220,16 @@ class VehicleController
         abort_unless($media->model_id === $vehicle->id && $media->model_type === $vehicle::class, 404);
         $rotate($media);
 
-        return $this->gallery($vehicle);
+        return $this->gallery($vehicle, PhotoStage::of($media)->value);
     }
 
     public function destroyMedia(Vehicle $vehicle, Media $media)
     {
         abort_unless($media->model_id === $vehicle->id && $media->model_type === $vehicle::class, 404);
+        $stage = PhotoStage::of($media);
         $media->delete();
 
-        return $this->gallery($vehicle);
+        return $this->gallery($vehicle, $stage->value);
     }
 
     public function note(Request $request, Vehicle $vehicle)
@@ -373,10 +376,11 @@ class VehicleController
         return response()->json($vehicles->map(fn ($v) => ['id' => $v->id, 'label' => $v->titleWithYear(), 'hint' => implode(', ', array_filter([$v->ref, $v->plate, $v->vin]))]));
     }
 
+    /** Карточки кадров заново; `$stage` — та, из которой пришёл запрос: только ей возвращается кнопка камеры. */
     private function gallery(Vehicle $vehicle, ?string $stage = null)
     {
         $vehicle->unsetRelation('media');
 
-        return Stream::view('park.vehicles.gallery-stream', ['vehicle' => $vehicle, 'stage' => $stage]);
+        return Stream::view('park.vehicles.photos-stream', ['vehicle' => $vehicle, 'stage' => $stage]);
     }
 }

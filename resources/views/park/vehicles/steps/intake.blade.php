@@ -1,5 +1,5 @@
 @php use App\Park\{RequestState, ReleasedTo, Inspection}; use App\Support\Money; @endphp
-{{-- Шаг «Приём»: площадка, место, когда, ключи, документы; фото по слотам рядом с кадрами из письма; подпись.     Осмотра пока нет — будет модулем. --}}
+{{-- Шаг «Приём»: площадка, место, когда, ключи, документы; фото по слотам; подпись. Осмотра пока нет — будет модулем. --}}
 <div class="mt-3 grid grid-cols-2 gap-3" data-controller="spots" data-spots-map-value="{{ json_encode($yardRows) }}">
     <x-ui.field name="yard_id" label="Парковка" :options="$yards" :value="$req->yard_id ?? $yards->keys()->first()" required data-spots-target="yard" data-action="change->spots#sync"/>
     <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters"/>
@@ -18,12 +18,9 @@
         </div>
     </div>
 </div>
-@if ($mailPhotos->isNotEmpty())
-    <x-ui.card title="Из письма" :count="$mailPhotos->count()" nested class="mt-3" data-controller="photos" data-photos-readonly-value="true">
-        <x-ui.photos :photos="$mailPhotos" readonly grid :hide="false" :main="false" id="mail-gallery"/>
-    </x-ui.card>
-@endif
-<x-ui.card title="При приёме" nested class="mt-3" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media">
+{{-- Кадры от страховой — карточкой справа (на телефоне под формой): они видны на любом шаге, не только тут.
+     Своего `id` у карточки нет: тут не лента кадров, а чек-лист слотов, и обновляется он отдельным потоком. --}}
+<x-ui.card title="Фото при приёме" nested class="mt-3" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-stage-value="intake">
     <input type="file" accept="image/*,.heic,.heif" capture="environment" multiple hidden data-photos-target="input" data-action="change->photos#upload">
     <div hidden data-photos-target="progress" class="mb-3">
         <div class="mb-1 text-sm text-ink-muted" data-label></div>

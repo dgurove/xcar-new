@@ -36,6 +36,7 @@ use App\Park\DocState;
 use App\Park\Documents\ActPdf;
 use App\Park\EventType;
 use App\Park\InspectionKind;
+use App\Park\PhotoStage;
 use App\Park\Vehicle;
 use App\Vendors\ContactRole;
 use App\Vendors\Vendor;
@@ -304,9 +305,18 @@ class MailController
         } elseif ($vehicle?->accepted_at && ! $request->old()) {
             $intake = $request->query('act') ? $request->query('act') !== 'release' : ! $vehicle->released_at;
             $defaults['files'][] = $outbox->put($act->filename($vehicle, $intake), $act->render($vehicle, $intake));
-            $shots = $vehicle->photos()->filter(fn ($m) => $m->getCustomProperty('stage') === ($intake ? 'intake' : 'release'));
+            $stage = $intake ? PhotoStage::Intake : PhotoStage::Release;
+            // Сначала снятое на парковке, потом приехавшее из писем: вендору нужны наши кадры, а не его же.
+            $shots = $vehicle->photos()->filter(fn ($m) => PhotoStage::of($m) === $stage)
+                ->sortBy(fn ($m) => $m->getCustomProperty('source') === 'mail' ? 1 : 0)->values();
             foreach (($shots->isNotEmpty() ? $shots : $vehicle->visiblePhotos())->take(12) as $i => $m) {
-                $defaults['files'][] = $outbox->put(($intake ? 'priem' : 'vydacha').'-'.($i + 1).'.'.pathinfo($m->file_name, PATHINFO_EXTENSION), file_get_contents($m->getPath()));
+                $contents = file_get_contents($m->getPath());
+                // Во вложение уходит ужатый кадр, а `sha` у него от исходника: запоминаем отпечаток отправленного,
+                // иначе это же письмо из «Отправленных» принесёт наши фото обратно вторым экземпляром.
+                if ($m->getCustomProperty('sent_sha') !== ($sha = hash('sha256', $contents))) {
+                    $m->setCustomProperty('sent_sha', $sha)->save();
+                }
+                $defaults['files'][] = $outbox->put(($intake ? 'priem' : 'vydacha').'-'.($i + 1).'.'.pathinfo($m->file_name, PATHINFO_EXTENSION), $contents);
             }
         }
 

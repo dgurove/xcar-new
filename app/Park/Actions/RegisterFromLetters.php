@@ -88,7 +88,7 @@ final class RegisterFromLetters
         if (! empty($stages['sold'])) {
             $soldAt = ! empty($stages['sold_at']) ? Carbon::parse($stages['sold_at']) : (($soldStage['at'] ?? null) ? Carbon::parse($soldStage['at']) : now());
             $message = ($soldStage['message_id'] ?? null) ? Message::find($soldStage['message_id']) : null;
-            ($this->sold)($vehicle, $by, $soldAt, $stages['pickup_name'] ?? null, $stages['pickup_phone'] ?? null, $soldStage['note'] ?? null, $message);
+            ($this->sold)($vehicle, $by, $soldAt, $stages['pickup_name'] ?? null, $stages['pickup_phone'] ?? null, $message);
         }
 
         if ($releasedAt) {

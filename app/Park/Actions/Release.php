@@ -54,8 +54,7 @@ final class Release
             $vehicle->update(['state' => VehicleState::Released, 'released_at' => $at, 'spot' => null]);
             if ($inspection) {
                 Inspection::create(['vehicle_id' => $vehicle->id, 'request_id' => $request?->id, 'kind' => InspectionKind::Release, 'at' => $at, 'user_id' => $by->id,
-                    'damage_zones' => array_values($inspection['damage_zones'] ?? []),
-                    'matches' => isset($inspection['matches']) ? (bool) $inspection['matches'] : null, 'mismatch_note' => ($inspection['mismatch_note'] ?? null) ?: null] + Intake::fields($inspection));
+                    'damage_zones' => array_values($inspection['damage_zones'] ?? [])] + Intake::fields($inspection));
             }
             $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'to' => $to?->label(), 'unpaid' => $debt + $unbilled > 0 ? round($debt + $unbilled, 2) : null]));
             Request::closeOpen($vehicle, [RequestType::Release], $by, $request, $note);

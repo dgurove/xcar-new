@@ -27,6 +27,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/{req}/intake', [RequestController::class, 'intake']);
     Route::post('/requests/{req}/move', [RequestController::class, 'move']);
     Route::post('/requests/{req}/release', [RequestController::class, 'release']);
+    Route::post('/requests/{req}/refuse', [RequestController::class, 'refuse'])->middleware('park.manage');
     Route::post('/requests/{req}/close', [RequestController::class, 'close']);
     Route::post('/requests/{req}/schedule', [RequestController::class, 'schedule']);
     Route::post('/requests/{req}/start', [RequestController::class, 'start']);
