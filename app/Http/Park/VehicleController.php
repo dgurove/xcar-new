@@ -7,6 +7,7 @@ use App\Billing\Ledger;
 use App\Http\Admin\OfferPhotoController;
 use App\Live\Stream;
 use App\Mail\Actions\LinkThread;
+use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Candidate;
 use App\Mail\Message;
 use App\Mail\Thread;
@@ -239,6 +240,7 @@ class VehicleController
     {
         abort_unless($message->thread?->vehicle_id === $vehicle->id, 404);
         $vehicle->log(EventType::LetterAnswered, $request->user(), ['message' => $message->id, 'subject' => $message->subject, 'thread' => $message->thread_id]);
+        app(MarkThreadRead::class)($message->thread);
 
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Сделано');
     }

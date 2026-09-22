@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Actions\LinkThread;
+use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Chains\ChainBuilder;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
@@ -73,6 +74,10 @@ final class OnMessage
         // Наше письмо из приложения: прочитать и, если ветка не за ТС, положить в цепочку (этап «принята» / «выдана»).
         $message = $e->message->fresh(['account', 'thread', 'attachments']);
         $this->reader->apply($message);
+        // Ответили — ветка обработана: входящие прочитаны.
+        if ($message->thread) {
+            app(MarkThreadRead::class)($message->thread);
+        }
         if ($park && ! $message->thread?->vehicle_id && ! $message->thread?->offer_id) {
             $this->chains->attach($message, quiet: true);
         }

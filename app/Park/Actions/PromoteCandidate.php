@@ -3,6 +3,7 @@
 namespace App\Park\Actions;
 
 use App\Mail\Actions\LinkThread;
+use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Park\Vehicle;
@@ -15,7 +16,7 @@ use App\Park\VehicleState;
  */
 final class PromoteCandidate
 {
-    public function __construct(private LinkThread $link) {}
+    public function __construct(private LinkThread $link, private MarkThreadRead $read) {}
 
     public function attach(Candidate $candidate, Vehicle $vehicle): void
     {
@@ -27,6 +28,8 @@ final class PromoteCandidate
             if ($thread->vehicle_id !== $vehicle->id) {
                 ($this->link)($thread, $vehicle, $files);
             }
+            // Заведена — письма обработаны, непрочитанных в ветке не остаётся.
+            ($this->read)($thread);
         }
         // Письма с тем же номером, которые кандидату не достались (наши ответы, «ч.2» до разбора), тоже к ТС.
         $this->link->forVehicle($vehicle, $files);

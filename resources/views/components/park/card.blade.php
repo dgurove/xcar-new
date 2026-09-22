@@ -1,7 +1,8 @@
 {{-- ТС стоянки в плитках и строках: кадр, название с госномером, одна строка чипов (состояние, номер, VIN, вендор,
      место), справа — слот aside: по умолчанию дни на стоянке со светофором простоя и красный долг, у ожидаемой —
      «Принять ›», у выданной — дата. Кнопок нет: вся карточка — ссылка на дело. facts=false — без чипов ТС (заявки). --}}
-@props(['vehicle', 'href' => null, 'facts' => true, 'debt' => 0, 'aside' => null, 'link' => true])
+{{-- note — строка под названием: что делать по заявке (x-park.request-card). --}}
+@props(['vehicle', 'href' => null, 'facts' => true, 'debt' => 0, 'aside' => null, 'link' => true, 'note' => null])
 @php
     use App\Park\{VehicleState, Idle};
     $href ??= '/cars/'.$vehicle->id;
@@ -37,6 +38,7 @@
         <div class="card-title">
             <a href="{{ $href }}" class="block min-w-0 flex-1 leading-snug hover:text-accent-text"><span class="line-clamp-1">{{ $vehicle->titleWithYear() }}@if ($vehicle->plate) <span class="nums font-normal text-ink-muted">{{ $vehicle->plate }}</span>@endif</span></a>
         </div>
+        @if ($note)<div class="truncate text-sm">{{ $note }}</div>@endif
     </div>
     <div class="card-extra">
         @if ($facts)

@@ -77,6 +77,31 @@ class Request extends Model
         };
     }
 
+    /** Что делать по заявке, одной строкой для списка: кому звонить, когда привезут, кому выдать, куда переставить. */
+    public function todo(): ?string
+    {
+        if (! $this->isOpen()) {
+            return null;
+        }
+        $v = $this->vehicle;
+        $when = $this->planned_at?->translatedFormat('j M, H:i');
+        $contact = $this->contactLine();
+
+        return match (true) {
+            $this->needsCall() => 'Позвонить страхователю'.($contact ? ' '.$contact : '').', договориться о приёме',
+            $this->isTow() && $this->state === RequestState::New => 'Назначить эвакуатор'.($this->from_address ? ' из '.$this->from_address : ''),
+            $this->isTow() && $this->state === RequestState::Scheduled => 'Эвакуатор '.($this->carrier ? $this->carrier.' ' : '').($when ? 'на '.$when : 'назначен').', отметить выезд',
+            $v?->state === VehicleState::InTransit => 'В пути, принять по приезде',
+            $this->type === RequestType::Intake => ($when ? 'Привезут '.$when : 'Привезут, дата не назначена').($this->delivery === Delivery::Self ? ' сами' : '').': принять',
+            $this->type === RequestType::Release => $v?->state === VehicleState::Stored
+                ? 'Выдать'.(($buyer = trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? '')) ?: $contact) ? ' покупателю '.$buyer : '').($v->sold_at ? ', продана '.$v->sold_at->translatedFormat('j M') : '')
+                : 'Выдать после приёма',
+            $this->type === RequestType::Move => 'Переставить'.($this->yard ? ' на «'.$this->yard->name.'»' : ''),
+            $this->type === RequestType::Inspection => 'Осмотр'.($when ? ' '.$when : '').($contact ? ', '.$contact : ''),
+            default => $this->type->label(),
+        };
+    }
+
     public function contactLine(): ?string
     {
         return trim(($this->contact_name ?? '').' '.($this->contact_phone ?? '')) ?: null;

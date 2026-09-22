@@ -1,6 +1,7 @@
 {{-- Строка почты: кружок отправителя (наше письмо — сотрудник), имя и тег вендора, справа дата; второй строкой тег смысла
      последнего входящего (наше последнее — «Мы ответили», пересланное сотрудником с личного ящика — «От сотрудника»), тема и первые слова, скрепка и число писем.
-     Непрочитанное — полужирным с оранжевой точкой. Нажатие — окно писем ветки; свайп влево — в архив (из архива — вернуть).
+     Оранжевое — только «Ждёт ответа» (вопрос, документы, осмотр без нашего ответа). Непрочитанное — полужирным с оранжевой
+     точкой: обработанная ветка (ответили, завели, «Сделано», в архив) читается сама. Нажатие — окно писем ветки; свайп влево — в архив (из архива — вернуть).
      linked — чип ТС / предложения / кандидата третьей строкой (плоские списки: поиск, «Ждут ответа», «Прочее», архив). --}}
 @props(['thread', 'base', 'park' => true, 'linked' => false])
 @php
@@ -14,7 +15,9 @@
     $files = $thread->attachments_count ?? ($thread->has_attachments ? 1 : 0);
     $intent = ! $ours ? Intent::tryFrom((string) ($thread->latestIncoming?->intent ?? $last?->intent)) : null;
     $tag = $ours ? ($out ? 'Мы ответили' : 'От сотрудника') : $intent?->short();
-    $tone = $ours ? 'tag-dim' : ($intent?->tone() ?? '');
+    $tone = $ours ? 'tag-dim' : ($intent === Intent::Intake ? 'tag-accent' : (in_array($intent, [Intent::Billing, Intent::Auto], true) ? 'tag-dim' : ''));
+    // Оранжевое — только то, что ждёт нас: вопрос, документы, осмотр без нашего ответа.
+    $waits = ! $ours && $intent?->needsReply();
     $chip = $thread->vehicle ? $thread->vehicle->titleWithYear() : ($thread->offer ? $thread->offer->title() : ($thread->candidate?->title()));
     $when = $thread->last_message_at?->translatedFormat($thread->last_message_at->isToday() ? 'H:i' : ($thread->last_message_at->isCurrentYear() ? 'j M' : 'j M Y'));
     $unread = $thread->unread_count > 0;
@@ -35,6 +38,7 @@
                 <span class="nums shrink-0 text-sm text-ink-dim">{{ $when }}</span>
             </div>
             <div class="mt-0.5 flex items-center gap-2">
+                @if ($waits)<span class="tag tag-urgent shrink-0">Ждёт ответа</span>@endif
                 @if ($tag)<span class="tag {{ $tone }} shrink-0">{{ $tag }}</span>@endif
                 <span class="min-w-0 flex-1 truncate {{ $unread ? 'font-medium' : 'text-ink-muted' }}">{{ $thread->subject ?: '(без темы)' }}@if ($last?->preview) <span class="hidden font-normal text-ink-dim sm:inline">{{ $last->preview }}</span>@endif</span>
                 <span class="nums inline-flex shrink-0 items-center gap-1.5 text-sm text-ink-dim">@if ($files)<span class="inline-flex items-center gap-0.5"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif @if ($thread->messages_count > 1)<span>{{ $thread->messages_count }}</span>@endif</span>

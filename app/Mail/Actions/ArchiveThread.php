@@ -17,6 +17,9 @@ final class ArchiveThread
     public function __invoke(Thread $thread, bool $archive = true): void
     {
         $thread->forceFill(['archived_at' => $archive ? now() : null])->saveQuietly();
+        if ($archive) {
+            app(MarkThreadRead::class)($thread); // в архив — значит обработана
+        }
         Nav::forgetStaffCounts();
     }
 

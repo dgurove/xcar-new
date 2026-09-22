@@ -1,5 +1,5 @@
 {{-- Кандидат в плитках и строках: та же карточка, что у ТС — один кадр из письма (`card` на hot, у заведённого — фото ТС),
-     заголовок — машина или номер убытка, под ним последнее письмо словами (этап, смысл или первые слова, кто);
+     заголовок — машина или номер убытка, под ним на стоянке — что от нас ждут (`Candidate::todo`), в CRM — последнее письмо словами;
      чипы — только состояние и тождество: этап, номер убытка, госномер, вендор, срок ответа. Непрочитанное — оранжевая точка.
      На стоянке кнопок нет: справа дата, число писем и «Завести ›» (у заведённого — «ТС ›»). В CRM справа — «Завести» / «В архив». --}}
 @props(['c', 'base', 'mail', 'park' => false])
@@ -29,7 +29,11 @@
         <div class="card-title">
             <a href="{{ $href }}" class="block min-w-0 flex-1 leading-snug hover:text-accent-text"><span class="line-clamp-1">@if ($unread)<span class="mr-1.5 inline-block size-2 rounded-full bg-urgent align-[1px]"></span>@endif{{ $title }}</span></a>
         </div>
-        @if ($last)<div class="truncate text-sm {{ $unread ? 'text-ink' : 'text-ink-muted' }}"><span class="text-ink-dim">{{ NodeTitle::who($last) }}:</span> {{ NodeTitle::for($last, $c) }}</div>@endif
+        @if ($park && ! $promoted)
+            <div class="truncate text-sm {{ $unread ? 'text-ink' : 'text-ink-muted' }}">{{ $c->todo() }}</div>
+        @elseif ($last)
+            <div class="truncate text-sm {{ $unread ? 'text-ink' : 'text-ink-muted' }}"><span class="text-ink-dim">{{ NodeTitle::who($last) }}:</span> {{ NodeTitle::for($last, $c) }}</div>
+        @endif
     </div>
     <div class="card-extra">
         @if ($c->state !== CandidateState::New)<span class="tag">{{ $c->state->label() }}</span>@endif

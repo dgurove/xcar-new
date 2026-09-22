@@ -130,6 +130,37 @@ class Candidate extends Model implements HasMedia
         return $stage->label();
     }
 
+    /**
+     * Что от нас ждут по цепочке, одной строкой для списка «Из писем»: заявка — позвонить страхователю или ждать
+     * привоза; принята по письмам — завести стоящей; продана — завести и выдать; выдана — закрыть.
+     */
+    public function todo(): string
+    {
+        $stage = $this->stage ?? CandidateStage::Intake;
+        $who = trim(($this->value('insured_name') ?? '').' '.($this->value('insured_phone') ?? ((array) $this->value('phones'))[0] ?? ''));
+        $when = fn (?string $at) => $at ? Carbon::parse($at)->translatedFormat('j M') : null;
+        if ($stage === CandidateStage::Released) {
+            return 'Выдана '.$when($this->stageOf($stage)['at'] ?? null).', в системе не заводилась';
+        }
+        if ($stage === CandidateStage::Sold) {
+            $sold = $this->stageOf($stage) ?? [];
+            $buyer = trim(($sold['name'] ?? '').' '.($sold['phone'] ?? ''));
+
+            return 'Продана '.$when($sold['at'] ?? null).($buyer ? ', заберёт '.$buyer : '').': завести и выдать';
+        }
+        if ($stage === CandidateStage::Stored) {
+            return 'Принята '.$when($this->stageOf($stage)['at'] ?? null).' по письмам, в системе ещё нет: завести стоящей';
+        }
+        $planned = $this->value('planned_at') ? Carbon::parse($this->value('planned_at'))->translatedFormat('j M, H:i') : null;
+
+        return match (true) {
+            $planned !== null => 'Привезут '.$planned.($who ? ', '.$who : ''),
+            $who !== '' => 'Позвонить страхователю '.$who.', договориться о приёме',
+            $this->value('request') === 'tow' => 'Нужен эвакуатор'.($this->value('location') ? ' из '.$this->value('location') : ''),
+            default => 'Заявка на приём, договориться о дате',
+        };
+    }
+
     /** Есть ли у кандидата имя машины — иначе заголовок несёт номер. */
     public function hasCar(): bool
     {

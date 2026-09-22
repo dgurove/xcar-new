@@ -19,7 +19,8 @@
         <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span class="font-medium">@if ($waits)<span class="mr-1.5 inline-block size-2 rounded-full bg-urgent align-[1px]"></span>@endif{{ NodeTitle::who($m) }}</span>
-                @if ($intent?->short())<span class="tag {{ $ours ? 'tag-dim' : $intent->tone() }}">{{ $intent->short() }}</span>@endif
+                @if ($waits)<span class="tag tag-urgent">Ждёт ответа</span>@endif
+                @if ($intent?->short())<span class="tag {{ $ours ? 'tag-dim' : ($intent === Intent::Intake ? 'tag-accent' : '') }}">{{ $intent->short() }}</span>@endif
                 <span class="nums text-sm text-ink-dim">{{ $m->date_at?->translatedFormat($m->date_at->isToday() ? 'H:i' : 'j M, H:i') }}</span>
             </div>
             @if ($title && $title !== $intent?->short())<div class="mt-1 text-sm text-ink-muted">{{ $title }}</div>@endif

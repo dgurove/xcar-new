@@ -4,6 +4,8 @@ namespace App\Mail\Actions;
 
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
+use App\Mail\Message;
+use App\Mail\Threads;
 use App\Support\Nav;
 
 /**
@@ -23,6 +25,11 @@ final class CloseChain
         $candidate->forceFill(['state' => CandidateState::Closed, 'closed_at' => now(), 'proposed' => null])->saveQuietly();
         $candidate->clearMediaCollection('card');
         $this->archive->candidate($candidate);
+        // Закрыта — обработана: непрочитанных не остаётся (без флага в ящик, письма старые).
+        Message::whereIn('id', $candidate->messages()->pluck('mail_messages.id'))->where('is_seen', false)->update(['is_seen' => true]);
+        foreach ($candidate->threads() as $thread) {
+            app(Threads::class)->refresh($thread);
+        }
         $this->freeze->freeze($candidate->messages()->pluck('mail_messages.id')->all());
         Nav::forgetStaffCounts();
     }
