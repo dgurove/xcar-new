@@ -3,6 +3,8 @@
 namespace App\Mail\Chains;
 
 use App\Mail\Actions\ArchiveThread;
+use App\Mail\Actions\CloseChain;
+use App\Mail\Actions\FreezeMessages;
 use App\Mail\Candidate;
 use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
@@ -21,7 +23,6 @@ use App\Offers\Offer;
 use App\Park\Events\CandidateArrived;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
-use App\Support\Nav;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -31,11 +32,13 @@ use Illuminate\Support\Facades\DB;
  * убытка, VIN, госномером или веткой, лежат в одной цепочке (`mail_candidate_messages`); её поля, номер,
  * заказчик и этапы — свёртка `fold()` по этим письмам. Ничего не «дописывается» и не «чинится»: новое письмо
  * находит цепочки по индексу `mail_message_keys`, объединяет их, если связало две, и цепочка сворачивается заново.
- * Рукотворное — состояние (ждёт / архив / заведена), ТС, архив веток — свёртка не трогает.
+ * Рукотворное — состояние (ждёт / архив / заведена), ТС, архив веток — свёртка не трогает. Закрытая цепочка
+ * (`closed`: выдана или реализована) — конечная: её письма заморожены (`FreezeMessages`), в пересборку не идут,
+ * новое письмо о той же машине начинает новую цепочку.
  */
 final class ChainBuilder
 {
-    public function __construct(private ReadLetter $reader, private ArchiveThread $archive) {}
+    public function __construct(private ReadLetter $reader, private ArchiveThread $archive, private CloseChain $close, private FreezeMessages $freeze) {}
 
     /**
      * Письмо в цепочку. `force` — руками из почты: цепочка заводится, даже если письмо не похоже на заявку.
@@ -88,7 +91,8 @@ final class ChainBuilder
                 $candidate->messages()->attach($message->id, ['created_at' => now()]);
             }
             $this->fold($candidate);
-            if ($files && $candidate->fresh()->stage !== CandidateStage::Released && $message->direction === Direction::In) {
+            $candidate = $candidate->fresh();
+            if ($files && $candidate->stage !== CandidateStage::Released && $candidate->state !== CandidateState::Closed && $message->direction === Direction::In) {
                 ImportCandidateFiles::dispatch($candidate->id, $message->id);
             }
         }
@@ -106,8 +110,13 @@ final class ChainBuilder
     public function fold(Candidate $candidate): void
     {
         $messages = $candidate->messages()->with(['account', 'attachments'])->get();
-        if ($messages->isEmpty()) {
+        if ($messages->isEmpty() || $candidate->state === CandidateState::Closed) {
             return;
+        }
+        // Цепочка из архива снова живая (новое письмо вендора): её письма замораживались — читаются заново.
+        if ($messages->whereNotNull('frozen_at')->isNotEmpty()) {
+            $this->freeze->thaw($messages->whereNotNull('frozen_at')->pluck('id')->all());
+            $messages = $candidate->messages()->with(['account', 'attachments'])->get();
         }
         $live = $messages->reject(fn (Message $m) => in_array($m->intent, [Intent::Billing->value, Intent::Auto->value], true));
         $theirs = $live->filter(fn (Message $m) => ! $m->isOurs());
@@ -154,11 +163,9 @@ final class ChainBuilder
         Thread::whereIn('id', $messages->pluck('thread_id')->filter()->unique())->whereNull('candidate_id')->whereNull('vehicle_id')->whereNull('offer_id')
             ->update(['candidate_id' => $candidate->id]);
 
-        // Выдана и вендор после не писал — заводить нечего, цепочка в архив.
-        if ($last === CandidateStage::Released->value && ($candidate->state ?? CandidateState::New) === CandidateState::New) {
-            $candidate->forceFill(['state' => CandidateState::Rejected])->saveQuietly();
-            $this->archive->candidate($candidate);
-            Nav::forgetStaffCounts();
+        // Выдана и вендор после не писал — заводить нечего, цепочка закрыта: письма заморожены, в пересборку не идут.
+        if ($last === CandidateStage::Released->value && in_array($candidate->state ?? CandidateState::New, [CandidateState::New, CandidateState::Rejected], true)) {
+            ($this->close)($candidate, 'released');
         }
     }
 

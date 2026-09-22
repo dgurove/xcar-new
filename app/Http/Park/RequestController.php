@@ -124,7 +124,7 @@ class RequestController
             $model = $brand && $v('model') ? CarModel::resolve($brand, $v('model')) : null;
             $prefill = [
                 'ref' => $candidate->code, 'vin' => $v('vin'), 'plate' => $v('plate'),
-                'brand' => $brand, 'model' => $model, 'category' => $v('category'),
+                'brand' => $brand, 'model' => $model, 'category' => $v('category'), 'color' => $v('color'),
                 'vendor_id' => $v('vendor_id') ?? Vendor::forSender($v('sender'))?->id,
                 'contact_name' => $v('insured_name'), 'contact_phone' => $v('insured_phone') ?? ((array) $v('phones'))[0] ?? null,
                 'from_address' => $v('location'), 'note' => $candidate->subject,
@@ -203,9 +203,6 @@ class RequestController
             $vehicle ??= $promote->existing($candidate);
             // Менеджер подтвердил: по письмам ТС уже принята (и, может быть, продана) — заводится стоящей, без заявки на приём.
             if (! $vehicle && ! empty($data['stages']['stored'])) {
-                if (empty($data['stages']['yard_id'])) {
-                    return back()->withInput()->withErrors(['stages.yard_id' => 'Укажите парковку, где стоит ТС']);
-                }
                 $vehicle = $register($request->user(), $candidate, VehicleFields::only($data) + ['flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? []], $data['stages']);
                 $promote->attach($candidate, $vehicle);
 

@@ -7,12 +7,12 @@ use Illuminate\Validation\Rule;
 
 /**
  * Поля тождества ТС — те, что приходят в письме: убыток, вендор, марка, модель, год, госномер, VIN,
- * категория, страхователь с телефоном, оценка. Одна форма на дело и на новую заявку, одни правила.
- * Цвет, негабарит, повреждения и показания не спрашиваются — осмотр будет отдельным модулем.
+ * категория, цвет, № полиса, страхователь с телефоном, заявленная стоимость. Одна форма на дело и на новую заявку,
+ * одни правила. Негабарит, повреждения и показания не спрашиваются — осмотр будет отдельным модулем.
  */
 final class VehicleFields
 {
-    public const KEYS = ['ref', 'vendor_id', 'brand_id', 'model_id', 'year', 'plate', 'vin', 'category', 'contact_name', 'contact_phone', 'value'];
+    public const KEYS = ['ref', 'vendor_id', 'brand_id', 'model_id', 'year', 'plate', 'vin', 'color', 'category', 'policy_no', 'contact_name', 'contact_phone', 'value'];
 
     /**
      * Марка и модель обязательны: ТС без имени в списках не нужна, номер убытка человеку ничего не говорит.
@@ -28,7 +28,7 @@ final class VehicleFields
             'ref' => ['nullable', 'string', 'max:60'], 'vin' => ['nullable', 'string', 'max:17'], 'plate' => ['nullable', 'string', 'max:12'],
             'year' => ['nullable', 'integer', 'between:1950,'.(now()->year + 1)],
             'brand_id' => [$name, 'exists:brands,id'], 'model_id' => [$name, 'exists:car_models,id'], 'vendor_id' => ['nullable', 'exists:vendors,id'],
-            'category' => ['nullable', Rule::enum(Category::class)],
+            'category' => ['nullable', Rule::enum(Category::class)], 'color' => ['nullable', 'string', 'max:32'], 'policy_no' => ['nullable', 'string', 'max:60'],
             'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'integer', 'min:0'],
         ];
     }

@@ -33,6 +33,7 @@ class Message extends Model
             'internal_at' => 'datetime',
             'sent_at' => 'datetime',
             'appended_to_sent_at' => 'datetime',
+            'frozen_at' => 'datetime',
             'is_seen' => 'bool', 'is_answered' => 'bool', 'is_flagged' => 'bool', 'is_draft' => 'bool', 'is_deleted' => 'bool',
             'has_attachments' => 'bool',
             'imap_uid' => 'int', 'uid_validity' => 'int',
@@ -108,9 +109,15 @@ class Message extends Model
         return $this->direction === Direction::Out || in_array(mb_strtolower((string) $this->from_email), self::ownEmails(), true);
     }
 
-    /** Файлы этого письма на диск не ложатся: оно старше даты «Файлы из писем с» у ящика. */
+    /**
+     * Файлы этого письма на диск не ложатся: оно старше даты «Файлы из писем с» у ящика или заморожено
+     * (`frozen_at`: цепочка закрыта или ТС выдана — распарсенное и файлы сняты, письмо не читается и не пересобирается).
+     */
     public function filesFrozen(): bool
     {
+        if ($this->frozen_at !== null) {
+            return true;
+        }
         $from = $this->account?->files_from;
 
         return $from !== null && $this->date_at !== null && $this->date_at->lt($from);

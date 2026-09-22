@@ -21,6 +21,8 @@
         <x-slot:actions>
             @if ($c->state === CandidateState::Promoted)
                 <a href="{{ $park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number }}" class="btn btn-s btn-accent">{{ $park ? ($c->vehicle?->titleWithYear() ?? 'ТС') : 'Предложение № '.$c->offer?->number }}</a>
+            @elseif ($c->state === CandidateState::Closed)
+                <span class="pill pill-plain">Закрыта{{ $c->closed_at ? ' '.$c->closed_at->translatedFormat('j M') : '' }}</span>
             @else
                 {{-- «Завести» уводит на форму заявки или на предложение — всей страницей, не в окошко. --}}
                 @if ($park)<a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent" data-turbo-frame="_top">Завести</a>@else<form method="post" action="{{ $base }}/{{ $c->id }}/create" data-turbo-frame="_top">@csrf<button class="btn btn-s btn-accent">Завести</button></form>@endif

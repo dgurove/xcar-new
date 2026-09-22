@@ -48,8 +48,8 @@
                                 @if ($cv('plate'))<span class="tag nums">{{ $cv('plate') }}</span>@endif
                                 @if ($c->vendor?->name ?? $cv('vendor'))<span class="tag">{{ $c->vendor?->name ?? $cv('vendor') }}</span>@endif
                             </div>
-                            @if ($c->state === \App\Mail\CandidateState::Rejected)
-                                <span class="shrink-0 text-sm text-ink-dim">В архиве</span>
+                            @if ($c->state === \App\Mail\CandidateState::Rejected || $c->state === \App\Mail\CandidateState::Closed)
+                                <span class="shrink-0 text-sm text-ink-dim">{{ $c->state->label() }}</span>
                             @elseif ($c->state === \App\Mail\CandidateState::Promoted)
                                 <a href="{{ $park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number }}" class="shrink-0 text-sm text-ink-muted hover:text-accent-text">{{ $park ? 'ТС' : 'Предложение' }} ›</a>
                             @elseif ($park)

@@ -25,7 +25,8 @@ class ReadMail extends Command
 
     public function handle(ReadLetter $reader, Threads $threads, ChainBuilder $chains): int
     {
-        $query = Message::with(['account', 'attachments'])->whereNotNull('thread_id')->when(! $this->option('all'), fn ($q) => $q->where('parser_version', '<', ReadLetter::VERSION))->orderBy('id');
+        // Замороженные письма (закрытые цепочки, выданные ТС) не перечитываются: их распарсенное никому не нужно.
+        $query = Message::with(['account', 'attachments'])->whereNotNull('thread_id')->whereNull('frozen_at')->when(! $this->option('all'), fn ($q) => $q->where('parser_version', '<', ReadLetter::VERSION))->orderBy('id');
         $total = (clone $query)->count();
         $this->line("Писем к чтению: {$total}");
         $done = 0;

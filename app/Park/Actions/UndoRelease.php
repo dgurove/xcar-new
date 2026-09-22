@@ -26,7 +26,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class UndoRelease
 {
-    public function __construct(private VoidInvoice $void) {}
+    public function __construct(private VoidInvoice $void, private PurgeLetters $purge) {}
 
     public static function allowed(Vehicle $vehicle): bool
     {
@@ -57,6 +57,8 @@ final class UndoRelease
             return $vehicle;
         });
         VehicleAccepted::dispatch($vehicle, null, $by);
+        // Письма веток читаются заново, кадры и документы из писем возвращаются в дело из ящика.
+        $this->purge->undo($vehicle);
 
         return $vehicle;
     }

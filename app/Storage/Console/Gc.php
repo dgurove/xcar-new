@@ -9,6 +9,7 @@ use App\Mail\CandidateState;
 use App\Media\Actions\CoolPhotos;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Park\VehicleState;
 use App\Purchases\Car;
 use App\Purchases\PurchaseState;
 use Illuminate\Console\Command;
@@ -68,8 +69,10 @@ final class Gc extends Command
 
         $this->step('файлы писем отвязанных веток старше '.self::UNPINNED_DAYS.' дн.', function () {
             // Ветки кандидатов, которые ещё ждут заведения, не в счёт: их вложения нужны при «Завести».
+            // Ветки выданных и отменённых ТС — тоже: их письма замораживает выдача, это страховка.
             $stale = Attachment::whereNotNull('blob_sha')->where('pinned_at', '<', now()->subDays(self::UNPINNED_DAYS))
-                ->whereHas('message', fn ($q) => $q->whereHas('thread', fn ($t) => $t->whereNull('offer_id')->whereNull('vehicle_id')
+                ->whereHas('message', fn ($q) => $q->whereHas('thread', fn ($t) => $t->whereNull('offer_id')
+                    ->where(fn ($w) => $w->whereNull('vehicle_id')->orWhereHas('vehicle', fn ($v) => $v->whereIn('state', [VehicleState::Released, VehicleState::Cancelled])))
                     ->whereDoesntHave('candidate', fn ($c) => $c->where('state', CandidateState::New))))->get();
             foreach ($stale as $attachment) {
                 if ($this->dry) {
@@ -84,7 +87,7 @@ final class Gc extends Command
         });
 
         $this->step('кадры карточек кандидатов, ушедших в архив больше '.self::UNPINNED_DAYS.' дн. назад', function () {
-            $stale = Candidate::where('state', CandidateState::Rejected)->where('updated_at', '<', now()->subDays(self::UNPINNED_DAYS))
+            $stale = Candidate::whereIn('state', [CandidateState::Rejected, CandidateState::Closed])->where('updated_at', '<', now()->subDays(self::UNPINNED_DAYS))
                 ->whereHas('media', fn ($m) => $m->where('collection_name', 'card'))->get();
             foreach ($stale as $candidate) {
                 $this->dry || $candidate->clearMediaCollection('card');

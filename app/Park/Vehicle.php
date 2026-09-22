@@ -28,7 +28,7 @@ use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\HasMedia;
 
 #[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id',
-    'contact_name', 'contact_phone', 'flags', 'docs_required', 'value',
+    'contact_name', 'contact_phone', 'flags', 'docs_required', 'value', 'policy_no',
     'cancelled_at', 'cancel_reason', 'spot', 'transit_started_at', 'mileage', 'fuel', 'idle_noticed_at',
     'owner_party_id', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'storage_rate', 'storage_rate_note', 'storage_billed_until', 'pts', 'sts',
     'sold_at', 'sold_message_id', 'pickup_name', 'pickup_phone', 'pickup_note', 'buyer_party_id', 'billing_cadence'])]
@@ -175,9 +175,13 @@ class Vehicle extends Model implements HasMedia
     }
 
     /** Место на площадке: заглавными, без пробелов по краям; занятое другой ТС на стоянке — ошибка формы. */
-    public static function takeSpot(Yard $yard, ?string $spot, ?int $exceptId = null): ?string
+    public static function takeSpot(?Yard $yard, ?string $spot, ?int $exceptId = null): ?string
     {
         $spot = $spot ? mb_strtoupper(trim($spot)) : null;
+        // Без парковки (заведена по письмам или по факту) — места нет, его укажут вместе с парковкой.
+        if (! $yard) {
+            return null;
+        }
         // Места по рядам расписаны и все заняты — принимать некуда; без рядов вместимость только подсказка.
         if (! $spot && $yard->rows && ! $yard->freeSpots()) {
             throw ValidationException::withMessages(['spot' => 'На «'.$yard->name.'» свободных мест нет']);
@@ -227,7 +231,9 @@ class Vehicle extends Model implements HasMedia
      * Где ТС стояла по дням — из ленты: приём и перестановка дают площадку, погрузка — «в пути» (null).
      * Для хранения на лету: сутки в пути между площадками не считаются, ставка — по площадке того дня.
      *
-     * @return list<array{day: Carbon, yard_id: ?int}>
+     * Принята без парковки (по письмам или по факту) — площадка неизвестна (`yard_id` null), но ТС стоит, не в пути (`transit`).
+     *
+     * @return list<array{day: Carbon, yard_id: ?int, transit: bool}>
      */
     public function yardTimeline(): array
     {
@@ -237,7 +243,7 @@ class Vehicle extends Model implements HasMedia
             $day = ! empty($p['day']) ? Carbon::parse($p['day'])->startOfDay() : $e->created_at->copy()->startOfDay();
             // Старые записи без yard_id — площадка нынешняя: до 22.09.2026 в ленте было только имя.
             $yardId = $e->type === EventType::Departed ? null : ($p['yard_id'] ?? $this->yard_id);
-            $out[] = ['day' => $day, 'yard_id' => $yardId ? (int) $yardId : null];
+            $out[] = ['day' => $day, 'yard_id' => $yardId ? (int) $yardId : null, 'transit' => $e->type === EventType::Departed];
         }
         usort($out, fn ($a, $b) => $a['day'] <=> $b['day']);
 

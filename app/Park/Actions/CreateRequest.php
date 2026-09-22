@@ -38,7 +38,7 @@ final class CreateRequest
                 $vehicle = Vehicle::create([
                     'ref' => $data['ref'] ?? null, 'vin' => $data['vin'] ?? null, 'plate' => $data['plate'] ?? null, 'year' => $data['year'] ?? null,
                     'brand_id' => $brand?->id, 'model_id' => $model?->id, 'vendor_id' => $data['vendor_id'] ?? null,
-                    'category' => $data['category'] ?? null,
+                    'category' => $data['category'] ?? null, 'color' => $data['color'] ?? null, 'policy_no' => $data['policy_no'] ?? null,
                     'contact_name' => $data['contact_name'] ?? null, 'contact_phone' => $data['contact_phone'] ?? null,
                     'flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? [], 'value' => $data['value'] ?? null,
                     'state' => VehicleState::Expected,

@@ -4,6 +4,7 @@ namespace App\Mail\Actions;
 
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
+use App\Mail\Chains\ChainBuilder;
 use App\Mail\Thread;
 use App\Support\Nav;
 
@@ -33,6 +34,7 @@ final class ArchiveThread
         $this($thread, false);
         if ($thread->candidate_id && ($candidate = Candidate::find($thread->candidate_id)) && $candidate->state === CandidateState::Rejected) {
             $candidate->update(['state' => CandidateState::New]);
+            app(ChainBuilder::class)->fold($candidate); // письма архива заморожены — свёртка прочитает их заново
         }
     }
 }

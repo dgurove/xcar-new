@@ -22,23 +22,26 @@ final class LinkThread
 {
     public function __construct(private CodeMatcher $matcher) {}
 
-    public function __invoke(Thread $thread, Offer|Vehicle $to): void
+    /** `files: false` — привязать без импорта файлов (ТС уже выдана: из писем ничего не хранится). */
+    public function __invoke(Thread $thread, Offer|Vehicle $to, bool $files = true): void
     {
         $thread->update(($to instanceof Offer ? ['offer_id' => $to->id] : ['vehicle_id' => $to->id]) + ['unlinked_at' => null]);
-        ImportThreadFiles::dispatch($thread->id);
+        if ($files) {
+            ImportThreadFiles::dispatch($thread->id);
+        }
     }
 
     /**
      * ТС завели (руками или из письма): все непривязанные ветки с её номером, VIN или госномером — к ней,
      * включая наши ответы из почтового клиента и письма «ч.2», пришедшие отдельной веткой.
      */
-    public function forVehicle(Vehicle $vehicle): int
+    public function forVehicle(Vehicle $vehicle, bool $files = true): int
     {
         $keys = Keys::ofVehicle($vehicle);
         $threads = Thread::withAnyKey($keys)->whereNull('vehicle_id')->whereNull('unlinked_at')
             ->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->get();
         foreach ($threads as $thread) {
-            $this($thread, $vehicle);
+            $this($thread, $vehicle, $files);
         }
 
         return $threads->count();

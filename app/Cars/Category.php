@@ -31,23 +31,24 @@ enum Category: string
         };
     }
 
-    /** Подсказка по словам письма: «Тип ТС грузовики», «полуприцеп», «Газель». */
+    /** Подсказка по словам письма или по марке: «Тип ТС грузовики», «полуприцеп», «Газель», «КАМАЗ», «Sitrak». */
     public static function guess(?string $text): ?self
     {
         $t = mb_strtolower(str_replace('ё', 'е', (string) $text));
         if ($t === '') {
             return null;
         }
+        $has = fn (string ...$words) => array_any($words, fn ($w) => str_contains($t, $w));
 
         return match (true) {
-            str_contains($t, 'полуприцеп') || str_contains($t, 'длинномер') || str_contains($t, 'фура') || str_contains($t, 'автопоезд') => self::Long,
-            str_contains($t, 'прицеп') => self::Trailer,
-            str_contains($t, 'погрузчик') || str_contains($t, 'спецтехник') || str_contains($t, 'экскаватор') || str_contains($t, 'кран') => self::Special,
-            str_contains($t, 'мотоцикл') || str_contains($t, 'мототехник') || str_contains($t, 'скутер') || str_contains($t, 'квадроцикл') => self::Moto,
-            str_contains($t, 'газель') || str_contains($t, 'микроавтобус') || str_contains($t, 'фургон') || str_contains($t, 'легкий коммерческий') => self::Light,
-            str_contains($t, 'тягач') => self::Long,
-            str_contains($t, 'грузов') || str_contains($t, 'автобус') || str_contains($t, 'самосвал') => self::Truck,
-            str_contains($t, 'легков') => self::Passenger,
+            $has('полуприцеп', 'длинномер', 'фура', 'автопоезд', 'тонар', 'кроне', 'krone', 'schmitz', 'шмитц') => self::Long,
+            $has('прицеп') => self::Trailer,
+            $has('погрузчик', 'спецтехник', 'экскаватор', 'кран', 'бетономешалка', 'бетоносмесител', 'манипулятор') => self::Special,
+            $has('мотоцикл', 'мототехник', 'скутер', 'квадроцикл') => self::Moto,
+            $has('газель', 'микроавтобус', 'фургон', 'легкий коммерческий', 'соболь', 'газ 2', 'gaz 2', 'газ 3', 'луидор', 'luidor', '3009', 'toano', 'jac n', 'белава', 'belava', 'boxer', 'transit', 'транзит', 'sprinter', 'спринтер', 'largus фургон', 'daily', 'isuzu clw', 'nqr', 'npr') => self::Light,
+            $has('тягач') => self::Long,
+            $has('грузов', 'автобус', 'самосвал', 'камаз', 'kamaz', 'sitrak', 'ситрак', 'actros', 'актрос', 'man gpm', 'man tg', 'shacman', 'faw j', 'howo', 'маз ', 'урал', 'isuzu') => self::Truck,
+            $has('легков') => self::Passenger,
             default => null,
         };
     }

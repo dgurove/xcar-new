@@ -7,8 +7,8 @@ use App\Billing\Ledger;
 use App\Http\Admin\OfferPhotoController;
 use App\Live\Stream;
 use App\Mail\Actions\LinkThread;
-use App\Mail\Message;
 use App\Mail\Candidate;
+use App\Mail\Message;
 use App\Mail\Thread;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
@@ -20,6 +20,7 @@ use App\Park\Actions\MarkDoc;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
 use App\Park\Actions\RestoreVehicle;
+use App\Park\Actions\SetYard;
 use App\Park\Actions\UndoIntake;
 use App\Park\Actions\UndoRelease;
 use App\Park\Actions\UnwindVehicle;
@@ -59,9 +60,12 @@ class VehicleController
         $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q === '' ? VehicleState::Stored : null);
         $yards = Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id');
         $yardId = $yards->has((int) $request->query('yard')) ? (int) $request->query('yard') : null;
+        // «Без парковки» — заведены по письмам или по факту, где стоят, ещё не сказали.
+        $noYard = $request->query('yard') === 'none';
         $vehicles = Scope::vehicles($request->user())->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer', 'requests'])
             ->when($state, fn ($v, $s) => $v->where('state', $s))
             ->when($yardId, fn ($v, $y) => $v->where('yard_id', $y))
+            ->when($noYard, fn ($v) => $v->whereNull('yard_id'))
             ->when($request->query('vendor'), fn ($v, $id) => $v->where('vendor_id', $id))
             ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
                 ->orWhere('plate', 'like', '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%')->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
@@ -77,9 +81,9 @@ class VehicleController
             'q' => $q,
             'sort' => $request->query('sort', 'longest'),
             // Пилюли — парковки; при одной парковке пилюль нет.
-            'pills' => $yards->count() > 1 ? ['' => 'Все'] + $yards->all() : [],
-            'pill' => $yardId ?? '',
-            'counts' => ['' => $counts->sum()] + $counts->all(),
+            'pills' => ($yards->count() > 1 ? ['' => 'Все'] + $yards->all() : []) + ($counts->has('') ? ['none' => 'Без парковки'] : []),
+            'pill' => $noYard ? 'none' : ($yardId ?? ''),
+            'counts' => ['' => $counts->sum(), 'none' => $counts[''] ?? 0] + $counts->all(),
             'yard' => $yardId ? Yard::find($yardId) : null,
             'vendors' => Vendor::whereIn('id', Vehicle::whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
             // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты парковки.
@@ -309,6 +313,18 @@ class VehicleController
         $move($vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);
 
         return back()->with('toast', 'Переставлена');
+    }
+
+    /** Парковка у ТС, заведённой без неё: со дня приёма, не перестановка. Форма шага несёт и поля ТС. */
+    public function yard(Request $request, Vehicle $vehicle, SetYard $setYard)
+    {
+        $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
+        if ($request->has('vehicle_form')) {
+            app(UpdateVehicle::class)($vehicle, VehicleFields::only($request->validate(VehicleFields::rules())), $request->user());
+        }
+        $setYard($vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);
+
+        return redirect("/cars/{$vehicle->id}")->with('toast', 'Парковка указана');
     }
 
     /** «Снова ждём»: отменённая ТС возвращается в ожидание с заявкой на приём. */

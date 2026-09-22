@@ -28,6 +28,7 @@ use App\Media\Console\MoveConversionsHot;
 use App\Media\Console\MovePapers;
 use App\Media\Console\Restamp;
 use App\Offers\Console\TickOffers;
+use App\Park\Console\FactCommand;
 use App\Park\Console\ParkDigestCommand;
 use App\Park\Console\TickPark;
 use App\Push\Console\MakeKeys;
@@ -54,6 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
         RefillVendors::class,
         TickPark::class,
         ParkDigestCommand::class,
+        FactCommand::class,
         TickBilling::class,
         CloseMonthCommand::class,
         SyncMail::class,

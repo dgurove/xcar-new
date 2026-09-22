@@ -3,9 +3,13 @@
 namespace App\Http\Admin;
 
 use App\Mail\Actions\ArchiveThread;
+use App\Mail\Actions\FreezeMessages;
 use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
+use App\Mail\Chains\ChainBuilder;
+use App\Mail\Direction;
+use App\Mail\Jobs\ImportCandidateFiles;
 use App\Mail\Scope;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -34,7 +38,9 @@ class CandidateController
         $q = trim((string) $request->query('q'));
         $vendor = $request->query('vendor');
         $sort = array_key_exists($request->query('sort', ''), self::SORTS) ? $request->query('sort') : 'fresh';
-        $list = $this->query()->where('state', CandidateState::from($preset))
+        // «Архив» — и закрытые (выданные, реализованные): их не вернуть, но прочитать можно.
+        $states = $preset === 'rejected' ? [CandidateState::Rejected, CandidateState::Closed] : [CandidateState::from($preset)];
+        $list = $this->query()->whereIn('state', $states)
             ->when($vendor, fn ($w, $id) => $w->where('vendor_id', $id))
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s->where('code', 'ilike', "%{$q}%")->orWhere('key', 'ilike', '%'.strtoupper($q).'%')->orWhere('subject', 'ilike', "%{$q}%")));
         match ($sort) {
@@ -43,6 +49,7 @@ class CandidateController
             default => $list->orderByDesc('last_message_at')->orderByDesc('id'),
         };
         $counts = $this->query()->selectRaw('state, count(*) as n')->groupBy('state')->pluck('n', 'state');
+        $counts['rejected'] = ($counts['rejected'] ?? 0) + ($counts['closed'] ?? 0);
 
         return view('mail.candidates.index', [
             'candidates' => ListView::paginate($request, $list),
@@ -77,12 +84,21 @@ class CandidateController
         return redirect("/offers/{$offer->number}")->with('toast', $offer->wasRecentlyCreated ? 'Черновик заведён, фото подтягиваются' : 'Письма привязаны к предложению');
     }
 
-    public function reject(Candidate $candidate, ArchiveThread $archive)
+    public function reject(Candidate $candidate, ArchiveThread $archive, FreezeMessages $freeze, ChainBuilder $chains)
     {
-        abort_if($candidate->scope !== $this->scope, 404);
+        abort_if($candidate->scope !== $this->scope || ! in_array($candidate->state, [CandidateState::New, CandidateState::Rejected], true), 404);
         $candidate->update(['state' => $candidate->state === CandidateState::Rejected ? CandidateState::New : CandidateState::Rejected]);
         // Один архив на всё: письма кандидата уходят из «Входящих» вместе с ним и возвращаются вместе.
         $archive->candidate($candidate, $candidate->state === CandidateState::Rejected);
+        if ($candidate->state === CandidateState::Rejected) {
+            // В архиве распарсенное и файлы не хранятся; «Вернуть» прочитает письма заново (свёртка размораживает).
+            $freeze->freeze($candidate->messages()->pluck('mail_messages.id')->all());
+        } else {
+            $chains->fold($candidate);
+            if ($last = $candidate->messages()->where('mail_messages.direction', Direction::In)->orderByDesc('mail_messages.date_at')->first()) {
+                ImportCandidateFiles::dispatch($candidate->id, $last->id);
+            }
+        }
         Nav::forgetStaffCounts();
 
         return back()->with('toast', $candidate->state === CandidateState::Rejected ? 'В архиве' : 'Снова ждёт');

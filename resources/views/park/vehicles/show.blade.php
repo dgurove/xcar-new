@@ -62,6 +62,7 @@
                 'tow' => $submit->request->state === RequestState::New ? "/requests/{$submit->request->id}/schedule" : "/requests/{$submit->request->id}/start",
                 'intake' => "/requests/{$submit->request->id}/intake",
                 'release' => "/requests/{$submit->request->id}/release",
+                'yard' => "/cars/{$vehicle->id}/yard",
             } : null;
             $confirm = $submit?->key === 'tow' && $submit->request->state === RequestState::Scheduled ? 'Эвакуатор погрузил ТС?' : null;
         @endphp

@@ -76,9 +76,16 @@ final class Timeline
                 $ok ? null : ['kind' => 'window', 'label' => 'Отправить', 'url' => $v->reportUrl('intake', "/cars/{$v->id}")]);
         }
 
+        // Заведена без парковки (по письмам или по факту): сначала сказать, где стоит — хранение считается по площадке.
+        // Продана и ждёт выдачи — выдача важнее, парковка остаётся делом без формы.
+        $noYard = $v->state === VehicleState::Stored && ! $v->yard_id;
+        if ($noYard) {
+            $steps[] = new Step('yard', 'Нужно указать парковку', Step::CURRENT, 'Где стоит ТС', null, [], ['kind' => 'submit', 'label' => 'Указать']);
+        }
+
         if ($v->accepted_at) {
             $releasing = $release?->isOpen() && $v->state === VehicleState::Stored;
-            $storageState = $v->released_at || $releasing ? Step::DONE : ($v->state === VehicleState::Stored ? Step::CURRENT : Step::NEXT);
+            $storageState = $v->released_at || $releasing ? Step::DONE : ($v->state === VehicleState::Stored && ! $noYard ? Step::CURRENT : Step::NEXT);
             $chips = array_values(array_filter([$v->sold_at ? 'продано '.$v->sold_at->translatedFormat('j M') : null, $v->pickup_name ? 'заберёт '.$v->pickup_name : null]));
             $steps[] = new Step('storage', $storageState === Step::CURRENT ? 'Ждём покупателя' : 'Хранение', $storageState, 'Ждём письмо страховой о продаже', $v->sold_at, $chips,
                 $storageState === Step::CURRENT ? ['kind' => 'spawn', 'label' => 'Выдать'] : null);

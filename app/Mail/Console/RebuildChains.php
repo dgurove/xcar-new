@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Цепочки «Из писем» заново из прочитанных писем: состав незаведённых цепочек стирается, письма по дате
  * проходят через `ChainBuilder::attach`, цепочки сворачиваются. Состояние (ждёт / архив) остаётся у цепочек,
- * которые нашлись по прежнему ключу; опустевшие стираются. Заведённые (с ТС или предложением) не трогаются.
+ * которые нашлись по прежнему ключу; опустевшие стираются. Заведённые (с ТС или предложением) и закрытые не
+ * трогаются, замороженные письма не проходятся.
  * `--fold` — только пересвернуть существующие цепочки без пересборки состава.
  */
 class RebuildChains extends Command
@@ -36,7 +37,8 @@ class RebuildChains extends Command
             $this->line('Состав открытых цепочек сброшен: '.(clone $open)->count());
             $n = 0;
             // По дате: цепочку начинает заявка вендора, наш ответ раньше неё в цепочку бы не лёг.
-            $messages = Message::with(['account', 'thread', 'attachments'])->whereNotNull('thread_id')->whereHas('thread', fn ($t) => $t->whereNull('vehicle_id')->whereNull('offer_id'))
+            // Замороженные (закрытые цепочки, выданные ТС) — мимо: их распарсенного нет, и они никуда не лягут.
+            $messages = Message::with(['account', 'thread', 'attachments'])->whereNotNull('thread_id')->whereNull('frozen_at')->whereHas('thread', fn ($t) => $t->whereNull('vehicle_id')->whereNull('offer_id'))
                 ->orderBy('date_at')->orderBy('id')->lazy(200);
             foreach ($messages as $m) {
                 $chains->attach($m, quiet: true, files: false);

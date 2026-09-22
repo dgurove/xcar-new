@@ -110,7 +110,7 @@ final class Accrual
      * Площадка на день по ленте: последняя запись не позже дня; погрузка в этот же день — ещё на прежней
      * площадке, раньше — ТС в пути (false). Без ленты — нынешняя площадка.
      *
-     * @param  list<array{day: Carbon, yard_id: ?int}>  $timeline
+     * @param  list<array{day: Carbon, yard_id: ?int, transit?: bool}>  $timeline
      */
     private static function yardOn(array $timeline, Carbon $day, ?int $current): int|null|false
     {
@@ -120,9 +120,10 @@ final class Accrual
             if ($e['day']->gt($day)) {
                 break;
             }
-            if ($e['yard_id'] === null) {
+            if ($e['transit'] ?? $e['yard_id'] === null) {
                 $yard = $e['day']->eq($day) ? $previous : false;
             } else {
+                // Принята без парковки — стоит, площадка неизвестна: ставка по прайсу без площадки.
                 $previous = $yard = $e['yard_id'];
             }
         }

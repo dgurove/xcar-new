@@ -45,6 +45,8 @@
             <span class="nums text-xs text-ink-dim">{{ ($c->last_message_at ?? $c->created_at)->translatedFormat('j M') }}@if ($c->messages_count > 1), {{ $c->messages_count }} {{ \App\Support\Plural::of($c->messages_count, ['письмо', 'письма', 'писем']) }}@endif</span>
             @if ($promoted)
                 @if ($c->vehicle_id)<a href="{{ $href }}" class="text-sm text-ink-muted">ТС ›</a>@else<span class="text-sm text-ink-dim">ТС нет</span>@endif
+            @elseif ($c->state === CandidateState::Closed)
+                <span class="text-sm text-ink-dim">Закрыта</span>
             @elseif ($c->state === CandidateState::Rejected)
                 <form method="post" action="{{ $base }}/{{ $c->id }}/decline" class="contents">@csrf<button class="text-sm text-ink-muted">Вернуть ›</button></form>
             @else
@@ -55,6 +57,8 @@
         <div class="card-action">
             @if ($promoted)
                 <a href="/offers/{{ $c->offer?->number }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">№ {{ $c->offer?->number }}</a>
+            @elseif ($c->state === CandidateState::Closed)
+                <span class="text-sm text-ink-dim">Закрыта</span>
             @else
                 <form method="post" action="{{ $base }}/{{ $c->id }}/decline" class="contents">@csrf<button class="btn btn-s btn-ghost whitespace-nowrap">{{ $c->state === CandidateState::Rejected ? 'Вернуть' : 'В архив' }}</button></form>
                 <form method="post" action="{{ $base }}/{{ $c->id }}/create" class="contents">@csrf<button class="btn btn-s btn-accent min-w-0 flex-1 whitespace-nowrap">Завести</button></form>

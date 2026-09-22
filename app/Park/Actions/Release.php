@@ -24,7 +24,7 @@ use Illuminate\Validation\ValidationException;
 /** Выдача — зеркало приёма: осмотр при выдаче, кому выдана, дата не раньше постановки, заявка закрывается. */
 final class Release
 {
-    public function __construct(private SettleStorage $settle) {}
+    public function __construct(private SettleStorage $settle, private PurgeLetters $purge) {}
 
     /** `cash` — хранение по день выдачи выставляется тут же, счёт покупателю гасится наличными; долга не остаётся. */
     public function __invoke(Vehicle $vehicle, User $by, ?Carbon $at, ?string $note = null, ?ReleasedTo $to = null, array $inspection = [], ?Request $request = null, bool $force = false, bool $cash = false): Vehicle
@@ -66,6 +66,8 @@ final class Release
             return $vehicle;
         });
         VehicleReleased::dispatch($vehicle, $request, $by);
+        // Из писем больше ничего не хранится: кадры и документы из писем стёрты, письма веток заморожены.
+        ($this->purge)($vehicle);
 
         return $vehicle;
     }

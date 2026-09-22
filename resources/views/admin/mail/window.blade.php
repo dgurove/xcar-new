@@ -23,6 +23,7 @@
                 <span class="tag">{{ $thread->account->title }}</span>
                 @if ($thread->candidate && ! $linked)
                     @if ($thread->candidate->state === \App\Mail\CandidateState::Rejected)<span class="chip text-ink-muted">Кандидат в архиве</span>
+                    @elseif ($thread->candidate->state === \App\Mail\CandidateState::Closed)<span class="chip text-ink-muted">Цепочка закрыта</span>
                     @elseif ($park)<a href="/requests/new?candidate={{ $thread->candidate->id }}" class="chip" data-turbo-frame="_top">Завести ›</a>
                     @else<form method="post" action="/offers/from-mail/{{ $thread->candidate->id }}/create" class="contents" data-turbo-frame="_top">@csrf<button class="chip">Завести ›</button></form>@endif
                 @elseif (! $linked)

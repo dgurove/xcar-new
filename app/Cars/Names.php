@@ -38,7 +38,9 @@ final class Names
         'кроне' => 'krone', 'ситрак' => 'sitrak', 'кайи' => 'kaiyi', 'кайя' => 'kaiyi', 'суб' => 'subaru', 'lambo' => 'lamborghini', 'ламбо' => 'lamborghini', 'донфенг' => 'dongfeng', 'буд' => 'byd', 'бид' => 'byd',
         'даф' => 'daf', 'daf' => 'daf', 'ман' => 'man', 'man' => 'man', 'krone' => 'krone', 'sitrak' => 'sitrak', 'belava' => 'belava', 'rr' => 'land-rover', 'шеви' => 'chevrolet', 'кадилак' => 'cadillac', 'хэндэ' => 'hyundai', 'хенде' => 'hyundai', 'хундэ' => 'hyundai', 'митсубиши' => 'mitsubishi', 'mitsi' => 'mitsubishi',
         'фольксавен' => 'volkswagen', 'фольксвагн' => 'volkswagen', 'beelgee' => 'belgee', 'белгее' => 'belgee', 'фхавал' => 'haval', 'нисан' => 'nissan', 'nisan' => 'nissan', 'лендровер' => 'land-rover', 'ленд-ровер' => 'land-rover',
-        'scoda' => 'skoda', 'шкода' => 'skoda', 'infinity' => 'infiniti', 'кия' => 'kia', 'kia' => 'kia', 'черит' => 'chery', 'чанганг' => 'changan', 'джетур' => 'jetour', 'белава' => 'belava', 'ченлонг' => 'chenglong', 'chenglong' => 'chenglong',
+        'scoda' => 'skoda', 'шкода' => 'skoda', 'infinity' => 'infiniti', 'кия' => 'kia', 'kia' => 'kia', 'kio' => 'kia',
+        // Опечатки из таблицы стоянки: «Mercedes-Benc GLE», «Mercedes-AMG», «Сhevrolet» с русской С, «Луидор».
+        'mercedes-benc' => 'mercedes', 'mercedes-bens' => 'mercedes', 'mercedes-amg' => 'mercedes', 'сhevrolet' => 'chevrolet', 'луидор' => 'luidor', 'luidor' => 'luidor', 'черит' => 'chery', 'чанганг' => 'changan', 'джетур' => 'jetour', 'белава' => 'belava', 'ченлонг' => 'chenglong', 'chenglong' => 'chenglong',
     ];
 
     /** Разговорное написание модели → как в справочнике. */

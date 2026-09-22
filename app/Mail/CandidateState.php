@@ -11,6 +11,7 @@ enum CandidateState: string
     case New = 'new';
     case Rejected = 'rejected';
     case Promoted = 'promoted';
+    case Closed = 'closed';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum CandidateState: string
             self::New => 'Ждёт',
             self::Rejected => 'В архиве',
             self::Promoted => 'Заведён',
+            self::Closed => 'Закрыта',
         };
     }
 }
