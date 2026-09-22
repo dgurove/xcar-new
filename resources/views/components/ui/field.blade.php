@@ -34,8 +34,8 @@
     @elseif ($copy)
         <div class="vin-box" data-controller="copy" data-copy-done-value="В буфере">
             <input id="{{ $id }}" name="{{ $name }}" type="{{ $type }}" placeholder="{{ $placeholder }}" value="{{ $bound }}" data-copy-target="field"
-                {{ $attributes->except('id')->merge(['class' => 'field-input'] + $keys) }}>
-            <button type="button" class="vin-magic field-copy" data-action="copy#copy" aria-label="Скопировать" title="Скопировать"><x-ui.icon name="copy" class="size-5"/></button>
+                {{ $attributes->except('id')->merge(['class' => 'field-input', 'data-action' => 'input->copy#sync'] + $keys) }}>
+            <button type="button" class="vin-magic field-copy" data-copy-target="button" data-action="copy#copy" aria-label="Скопировать" title="Скопировать"><x-ui.icon name="copy" class="size-5"/></button>
         </div>
     @else
         <input id="{{ $id }}" name="{{ $name }}" type="{{ $type }}" placeholder="{{ $placeholder }}"

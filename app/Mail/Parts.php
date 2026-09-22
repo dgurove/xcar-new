@@ -18,6 +18,20 @@ final class Parts
 
     public const CACHE_DISK = 'cache';
 
+    /** Файл уже на диске (закреплён или в кэше) — в ящик не ходим: для рамки скана на экране. */
+    public function local(Attachment $attachment): ?string
+    {
+        if ($attachment->path && Storage::disk(self::CACHE_DISK)->exists($attachment->path)) {
+            return Storage::disk(self::CACHE_DISK)->path($attachment->path);
+        }
+        if ($attachment->blob_sha && ($blob = Blobs::absolute($attachment->blob_sha))) {
+            return $blob;
+        }
+        $cached = "mail/{$attachment->id}";
+
+        return Storage::disk(self::CACHE_DISK)->exists($cached) ? Storage::disk(self::CACHE_DISK)->path($cached) : null;
+    }
+
     /** Абсолютный путь к файлу вложения; null — файла нет нигде. */
     public function file(Attachment $attachment): ?string
     {

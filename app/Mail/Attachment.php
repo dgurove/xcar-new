@@ -51,6 +51,12 @@ class Attachment extends Model
         return app(Parts::class)->contents($this);
     }
 
+    /** Файл лежит на диске — можно показать рамкой, не дожидаясь похода в ящик. */
+    public function isOnDisk(): bool
+    {
+        return app(Parts::class)->local($this) !== null;
+    }
+
     public function isPinned(): bool
     {
         return $this->blob_sha !== null;

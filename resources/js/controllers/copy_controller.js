@@ -6,11 +6,17 @@ import { Controller } from '@hotwired/stimulus';
 // на Android теряют, а внутри текста ссылка остаётся кликабельной везде.
 // done — свой текст тоста (VIN, номер), по умолчанию про ссылку. Цель field — копируется то, что сейчас в поле.
 export default class extends Controller {
-    static targets = ['share', 'message', 'field'];
+    static targets = ['share', 'message', 'field', 'button'];
     static values = { text: String, title: String, done: String };
 
     connect() {
         if (this.hasShareTarget && !navigator.share) this.shareTarget.hidden = true;
+        this.sync();
+    }
+
+    // Копировать нечего — кнопки нет: у пустого поля зелёная иконка только сбивает.
+    sync() {
+        if (this.hasFieldTarget && this.hasButtonTarget) this.buttonTarget.hidden = this.fieldTarget.value.trim() === '';
     }
 
     payload() {

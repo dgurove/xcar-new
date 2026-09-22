@@ -98,10 +98,10 @@ class Candidate extends Model implements HasMedia
         return $this->extracted[$field]['value'] ?? null;
     }
 
-    /** Марка и модель; без марки — номер убытка, без номера — госномер, без всего — тема. */
+    /** Марка и модель; без них заголовок так и говорит — номер убытка и госномер идут чипами рядом. */
     public function title(): string
     {
-        return trim(($this->value('brand') ?? '').' '.($this->value('model') ?? '')) ?: ($this->code ?: ($this->value('plate') ?: ($this->subject ?: 'Письмо')));
+        return trim(($this->value('brand') ?? '').' '.($this->value('model') ?? '')) ?: 'Марка не распознана';
     }
 
     /** Этап цепочки по письмам: заявка, принята, продана, выдана. @return ?array{stage: string, at: ?string, message_id: int, title: string} */
@@ -133,11 +133,12 @@ class Candidate extends Model implements HasMedia
     /**
      * Что от нас ждут по цепочке, одной строкой для списка «Из писем»: заявка — позвонить страхователю или ждать
      * привоза; принята по письмам — завести стоящей; продана — завести и выдать; выдана — закрыть.
+     * `phone: false` — там, где номер и так стоит рядом кнопкой звонка (разбор письма).
      */
-    public function todo(): string
+    public function todo(bool $phone = true): string
     {
         $stage = $this->stage ?? CandidateStage::Intake;
-        $who = trim(($this->value('insured_name') ?? '').' '.($this->value('insured_phone') ?? ((array) $this->value('phones'))[0] ?? ''));
+        $who = trim(($this->value('insured_name') ?? '').($phone ? ' '.($this->value('insured_phone') ?? ((array) $this->value('phones'))[0] ?? '') : ''));
         $when = fn (?string $at) => $at ? Carbon::parse($at)->translatedFormat('j M') : null;
         if ($stage === CandidateStage::Released) {
             return 'Выдана '.$when($this->stageOf($stage)['at'] ?? null).', в системе не заводилась';

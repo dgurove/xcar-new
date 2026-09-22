@@ -8,7 +8,7 @@
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="$mail.'/'.$c->thread_id" :title="$c->title().($c->hasCar() && $v('year') ? ', '.$v('year') : '')" :photo="$c->card() ?? $c->vehicle?->mainPhoto()" action="">
         <x-slot:marks>
-            @if ($c->code && $c->hasCar())<x-ui.copy-code class="tag" :value="$c->code"/>@endif
+            @if ($c->code)<x-ui.copy-code class="tag" :value="$c->code"/>@endif
             @if ($v('plate'))<span class="tag nums">{{ $v('plate') }}</span>@endif
             <x-ui.vin-code :vin="$v('vin')" class="tag"/>
             <span class="basis-full"></span>

@@ -20,6 +20,7 @@ use App\Park\Actions\LinkOffer;
 use App\Park\Actions\MarkDoc;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
+use App\Park\Actions\PromoteCandidate;
 use App\Park\Actions\RestoreVehicle;
 use App\Park\Actions\SetYard;
 use App\Park\Actions\UndoIntake;
@@ -132,7 +133,7 @@ class VehicleController
         ]);
     }
 
-    public function update(Request $request, Vehicle $vehicle, UpdateVehicle $update, LinkThread $link)
+    public function update(Request $request, Vehicle $vehicle, UpdateVehicle $update, LinkThread $link, PromoteCandidate $promote)
     {
         // Поля тождества (VehicleFields) шлёт форма дела; договор — шторка «Договор». Одна дверь на обе.
         $data = $request->validate(VehicleFields::rules(identity: $request->hasAny(['brand_id', 'model_id', 'ref', 'vin', 'plate'])) + [
@@ -158,8 +159,9 @@ class VehicleController
         $back = $data['back'] ?? null;
         unset($data['back']);
         $update($vehicle, $data, $request->user());
-        // Вписали номер, VIN или госномер — письма с ними находят дело.
+        // Вписали номер, VIN или госномер — письма с ними находят дело, а цепочка о той же ТС уходит из «Из писем».
         $link->forVehicle($vehicle->refresh());
+        $promote->forVehicle($vehicle);
 
         return redirect($back ?: "/cars/{$vehicle->id}")->with('toast', 'Сохранено');
     }

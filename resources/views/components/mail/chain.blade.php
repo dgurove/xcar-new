@@ -3,8 +3,10 @@
      бухгалтерия подряд свёрнуты в один узел «3 служебных». Тема пишется строкой-разделителем, когда меняется
      (subjects). Раскрыты непрочитанные и последнее, к ним и прокрутка (focus). reply — один «Ответить {кому}» внизу,
      редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов, vehicle — фото уже в галерее.
-     «Ч.2» того же письма (те же слова от того же адреса в сутки) — узел «Ещё файлы к письму» без текста. --}}
-@props(['messages', 'base' => '/mail', 'candidate' => null, 'vehicle' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false])
+     «Ч.2» того же письма (те же слова от того же адреса в сутки) — узел «Ещё файлы к письму» без текста.
+     fold — разбор письма: раскрыты только письмо-заявка и то, что ждёт ответа, прочие подряд идущие письма свёрнуты
+     в узел «Ещё N писем» на своём месте в ленте. --}}
+@props(['messages', 'base' => '/mail', 'candidate' => null, 'vehicle' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false, 'fold' => false])
 @php
     use App\Mail\Chains\NodeTitle;
     use App\Mail\Extraction\Intent;
@@ -20,6 +22,9 @@
     $inGallery = $vehicle && $vehicle->media()->where('collection_name', 'photos')->where('custom_properties->stage', 'mail')->exists();
     $kind = fn (Message $m) => trim((in_array($m->id, $staged, true) ? 'stage ' : (in_array($m->id, $asks, true) ? 'ask ' : '')).($m->isOurs() ? 'ours' : ''));
     $service = fn (Message $m) => ! in_array($m->id, $staged, true) && in_array($m->intent, [Intent::Auto->value, Intent::Billing->value], true);
+    // Разбор письма: на виду только письмо-заявка, то, что ждёт ответа, и то, на чём стоит фокус.
+    $keep = $fold ? (array_values(array_filter(array_unique([$candidate?->message_id, ...$asks, $focusId]))) ?: array_filter([$lastId])) : [];
+    $hidden = fn (Message $m) => $m->id !== $focusId && ($service($m) || ($fold && ! in_array($m->id, $keep, true)));
     // «Ч.2» того же письма: тот же адрес и те же слова не позже суток — продолжение, текст не повторяется, только файлы.
     $continued = [];
     $prev = null;
@@ -30,17 +35,18 @@
             $prev = $m;
         }
     }
-    // Группы: письмо или пачка служебных подряд.
+    // Группы: письмо или пачка свёрнутых подряд (служебные, а при fold — и всё, что не на виду).
     $nodes = [];
     foreach ($messages as $m) {
-        if ($service($m) && $m->id !== $focusId && ($last = end($nodes)) && is_array($last) && ($last['service'] ?? false)) {
+        if ($hidden($m) && ($last = end($nodes)) && is_array($last)) {
             $nodes[key($nodes)]['items'][] = $m;
+            $nodes[key($nodes)]['service'] = $last['service'] && $service($m);
             continue;
         }
-        $nodes[] = $service($m) && $m->id !== $focusId ? ['service' => true, 'items' => [$m]] : $m;
+        $nodes[] = $hidden($m) ? ['service' => $service($m), 'items' => [$m]] : $m;
     }
-    // Одно служебное письмо подряд — обычный узел.
-    $nodes = array_map(fn ($n) => is_array($n) && count($n['items']) === 1 ? $n['items'][0] : $n, $nodes);
+    // Одно служебное письмо подряд — обычный узел; при fold свёрнутое остаётся свёрнутым и в одиночку.
+    $nodes = array_map(fn ($n) => is_array($n) && count($n['items']) === 1 && ! $fold ? $n['items'][0] : $n, $nodes);
     $replyTo = $reply ? ($messages->last(fn (Message $m) => ! $m->isOurs()) ?? $messages->last()) : null;
     $subject = null;
 @endphp
@@ -55,7 +61,8 @@
             <div class="letter letter--service">
                 <span class="letter-dot"></span>
                 <details class="letter-body">
-                    <summary class="letter-head"><span class="letter-who font-normal text-ink-muted">{{ count($node['items']) }} {{ \App\Support\Plural::of(count($node['items']), ['служебное', 'служебных', 'служебных']) }}</span><span class="letter-when">{{ end($node['items'])->date_at?->translatedFormat('j M') }}</span></summary>
+                    @php $n = count($node['items']); @endphp
+                    <summary class="letter-head"><span class="letter-who font-normal text-ink-muted">{{ $node['service'] ? $n.' '.\App\Support\Plural::of($n, ['служебное', 'служебных', 'служебных']) : 'Ещё '.$n.' '.\App\Support\Plural::of($n, ['письмо', 'письма', 'писем']) }}</span><span class="letter-when">{{ end($node['items'])->date_at?->translatedFormat('j M') }}</span></summary>
                     <div class="letter-text">
                         @foreach ($node['items'] as $m)
                             <x-mail.letter :message="$m" :base="$base" :title="NodeTitle::for($m, $candidate)" :titled="NodeTitle::titled($m, $candidate)" :kind="$m->isOurs() ? 'ours' : ''" :reply="$reply" :in-gallery="$inGallery" :vehicle="$vehicle"/>
@@ -67,7 +74,7 @@
             @if (isset($continued[$node->id]))
                 <x-mail.letter :message="$node" :base="$base" title="Ещё файлы к письму" :kind="$node->isOurs() ? 'ours' : ''" :open="! $node->is_seen || $node->id === $lastId" :focus="$node->id === $focusId" :reply="$reply" :in-gallery="$inGallery" :vehicle="$vehicle" continuation/>
             @else
-                <x-mail.letter :message="$node" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :open="! $node->is_seen || $node->id === $lastId" :focus="$node->id === $focusId" :reply="$reply" :in-gallery="$inGallery" :vehicle="$vehicle"/>
+                <x-mail.letter :message="$node" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :open="! $node->is_seen || ($fold ? in_array($node->id, $keep, true) : $node->id === $lastId)" :focus="$node->id === $focusId" :reply="$reply" :in-gallery="$inGallery" :vehicle="$vehicle"/>
             @endif
         @endif
     @empty

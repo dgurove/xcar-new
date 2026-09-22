@@ -52,7 +52,7 @@
                         <div class="mb-2 flex items-start gap-3">
                             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                                 <span class="font-medium">{{ $c->title() }}</span>
-                                @if ($c->code && $c->hasCar())<x-ui.copy-code class="tag" :value="$c->code"/>@endif
+                                @if ($c->code)<x-ui.copy-code class="tag" :value="$c->code"/>@endif
                                 @if ($cv('plate'))<span class="tag nums">{{ $cv('plate') }}</span>@endif
                                 @if ($c->vendor?->name ?? $cv('vendor'))<span class="tag">{{ $c->vendor?->name ?? $cv('vendor') }}</span>@endif
                             </div>

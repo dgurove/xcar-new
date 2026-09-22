@@ -9,12 +9,14 @@ use App\Mail\Actions\LinkThread;
 use App\Mail\Candidate;
 use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
+use App\Mail\Message;
 use App\Mail\Scope as MailScope;
 use App\Park\Actions\AssignRequest;
 use App\Park\Actions\CloseRequest;
 use App\Park\Actions\Contact;
 use App\Park\Actions\CreateRequest;
 use App\Park\Actions\Intake;
+use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
 use App\Park\Actions\PromoteCandidate;
 use App\Park\Actions\RefuseRelease;
@@ -32,6 +34,7 @@ use App\Park\RequestType;
 use App\Park\Scope;
 use App\Park\Vehicle;
 use App\Park\VehicleFields;
+use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -119,7 +122,10 @@ class RequestController
         $prefill = [];
         if ($candidate) {
             $v = fn (string $f) => $candidate->value($f);
-            $vehicle = $promote->existing($candidate);
+            // Такую ТС уже завели (редкость: письма о заведённой цепочку не начинают) — в форме она показывается целиком.
+            $vehicle = $promote->existing($candidate)?->loadCount('threads')->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests']);
+            // Письма этой цепочки к ТС ещё не привязаны, но они вот, на экране: пилюля «Писем нет» тут соврала бы.
+            $vehicle?->setAttribute('threads_count', $vehicle->threads_count + $candidate->threads()->count());
             $brand = $v('brand') ? Brand::resolve($v('brand')) : null;
             $model = $brand && $v('model') ? CarModel::resolve($brand, $v('model')) : null;
             $prefill = [
@@ -127,13 +133,10 @@ class RequestController
                 'brand' => $brand, 'model' => $model, 'category' => $v('category'), 'color' => $v('color'),
                 'vendor_id' => $v('vendor_id') ?? Vendor::forSender($v('sender'))?->id,
                 'contact_name' => $v('insured_name'), 'contact_phone' => $v('insured_phone') ?? ((array) $v('phones'))[0] ?? null,
-                'from_address' => $v('location'), 'note' => $candidate->subject,
+                'from_address' => $v('location'),
                 'delivery' => $v('request') === 'tow' ? Delivery::Tow->value : null,
-                // ВСК пишет, когда и кто привезёт: дата в форму, способ — подсказкой (решает звонок).
+                // ВСК пишет, когда привезут: дата в форму; как именно — решает звонок, в «Что делать» это уже сказано.
                 'planned_at' => $v('planned_at') ? str_replace(' ', 'T', $v('planned_at')) : null,
-                'delivery_hint' => match ($v('delivery')) {
-                    'vendor' => 'привезёт страховая', 'self' => 'привезёт сам', default => ($v('request') === 'tow' ? 'вывоз' : null)
-                },
                 'flags' => $v('flags') ?: [], 'docs_required' => $v('docs_required') ?: [], 'value' => $v('value'),
             ];
             $type = in_array($type, [RequestType::Intake, RequestType::Tow], true) ? RequestType::Intake : $type;
@@ -149,8 +152,17 @@ class RequestController
             }
         }
 
+        // Письмо-заявка — то, с которого цепочка началась: оно раскрыто в ленте, из него же берётся скан.
+        $letter = $candidate?->message ?? $candidate?->messages->first(fn ($m) => ! $m->isOurs());
+        // Скан заявки страховой: у Альфы Москва в нём марка, модель, VIN, год, цвет и стоимость — рисует браузер.
+        $scans = $candidate === null ? collect() : $candidate->messages->reject(fn ($m) => $m->isOurs())
+            ->flatMap->attachments->filter(fn ($a) => ! $a->is_inline && $a->isPdf() && $a->isOnDisk())
+            ->sortByDesc(fn ($a) => $a->message_id === $letter?->id ? 1 : 0)->values();
+
         return view('park.requests.create', [
             'type' => $type,
+            'letter' => $letter,
+            'scans' => $scans,
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
@@ -162,7 +174,7 @@ class RequestController
         ]);
     }
 
-    public function store(Request $request, CreateRequest $create, PromoteCandidate $promote, LinkThread $link, RegisterFromLetters $register)
+    public function store(Request $request, CreateRequest $create, PromoteCandidate $promote, LinkThread $link, RegisterFromLetters $register, MarkSold $markSold)
     {
         $data = $request->validate([
             'stages' => ['nullable', 'array'], 'stages.stored' => ['nullable', 'boolean'], 'stages.accepted_at' => ['nullable', 'date'],
@@ -201,6 +213,18 @@ class RequestController
                 return redirect("/cars/{$candidate->vehicle_id}")->with('toast', 'Уже заведена');
             }
             $vehicle ??= $promote->existing($candidate);
+            // ТС уже завели: заявка на приём нужна, только пока машины нет на парковке — иначе письма просто идут к делу.
+            if ($vehicle && ! ($candidate->stage === CandidateStage::Intake && RequestType::Intake->allowedFor($vehicle->state))) {
+                $promote->attach($candidate, $vehicle);
+                // Письмо о продаже цепочка уже разобрала: без этого ТС так и стояла бы «на хранении», без заявки на выдачу.
+                $soldStage = $candidate->stageOf(CandidateStage::Sold);
+                if ($soldStage && ! $vehicle->sold_at) {
+                    $markSold($vehicle, $request->user(), Carbon::parse($soldStage['at'] ?? now()), $soldStage['name'] ?? null, $soldStage['phone'] ?? null,
+                        $soldStage['note'] ?? null, Message::find($soldStage['message_id'] ?? null));
+                }
+
+                return redirect("/cars/{$vehicle->id}")->with('toast', $soldStage && $vehicle->state === VehicleState::Stored ? 'Письма привязаны, ждёт выдачи' : 'Письма привязаны к ТС');
+            }
             // Менеджер подтвердил: по письмам ТС уже принята (и, может быть, продана) — заводится стоящей, без заявки на приём.
             if (! $vehicle && ! empty($data['stages']['stored'])) {
                 $vehicle = $register($request->user(), $candidate, VehicleFields::only($data) + ['flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? []], $data['stages']);
@@ -213,8 +237,9 @@ class RequestController
         if ($candidate && $candidate->state !== CandidateState::Promoted) {
             $promote->attach($candidate, $req->vehicle);
         } elseif (! $vehicle) {
-            // ТС завели руками — письма с её номером, VIN или госномером уже могли прийти.
+            // ТС завели руками — письма с её номером, VIN или госномером уже могли прийти, а о ней самой могла ждать цепочка.
             $link->forVehicle($req->vehicle);
+            $promote->forVehicle($req->vehicle);
         }
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Заявка заведена');

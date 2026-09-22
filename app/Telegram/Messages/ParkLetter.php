@@ -31,7 +31,7 @@ final class ParkLetter extends Message
         return [
             $v('vendor') ?? $v('sender'),
             trim($this->candidate->title().($this->candidate->hasCar() && $v('year') ? ', '.$v('year') : '')),
-            $this->candidate->hasCar() ? $this->candidate->code : null,
+            $this->candidate->code,
             $v('location'),
             $v('insured_name') || $v('insured_phone') ? trim(($v('insured_name') ?? '').' '.($v('insured_phone') ?? '')) : null,
             $v('value') ? 'Оценка '.Money::rub($v('value')) : null,
