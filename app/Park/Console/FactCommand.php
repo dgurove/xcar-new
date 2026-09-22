@@ -254,7 +254,7 @@ class FactCommand extends Command
             $exists = $this->existing($draft);
             $vehicle = null;
             if (! $exists && $this->apply) {
-                $stages = array_filter(['accepted_at' => $acceptedAt?->toDateTimeString(), 'yard_id' => $draft['yard_id'], 'source' => 'fact', 'sold' => (bool) $soldStage,
+                $stages = array_filter(['accepted_at' => $acceptedAt?->toDateTimeString(), 'yard_id' => $draft['yard_id'], 'source' => 'letters', 'sold' => (bool) $soldStage,
                     'sold_at' => $soldStage['at'] ?? null, 'pickup_name' => $soldStage['name'] ?? null, 'pickup_phone' => $soldStage['phone'] ?? null]);
                 $vehicle = $register($this->owner, $candidate, $this->data($draft, $candidate), $stages);
                 $promote->attach($candidate, $vehicle);
