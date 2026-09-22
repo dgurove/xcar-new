@@ -43,7 +43,9 @@
             {{-- Стоящей ТС состояние не пишем: в «Наличии» все такие, место говорит само. --}}
             @if ($state !== VehicleState::Stored)<x-ui.pill :tone="match ($state->tone()) { 'open' => 'open', 'urgent' => 'urgent', default => 'closed' }" class="!min-h-0 !py-0.5 text-xs">{{ $state->label() }}</x-ui.pill>@endif
             @if ($noRequest)<span class="tag text-urgent">без заявки</span>@endif
-            @if ($vehicle->ref)<span class="tag nums">{{ $vehicle->ref }}</span>@endif
+            @if ($state === VehicleState::Stored && ! $vehicle->yard_id)<span class="tag tag-urgent">Парковка не указана</span>@endif
+            @if (! $state->isFinal() && $vehicle->vinProblem())<span class="tag tag-danger">{{ $vehicle->vinProblem() }}</span>@endif
+            @if ($vehicle->ref)<x-ui.copy-code class="tag" :value="$vehicle->ref"/>@endif
             @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
             @if ($state === VehicleState::Stored && $vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place>@endif
         @endif

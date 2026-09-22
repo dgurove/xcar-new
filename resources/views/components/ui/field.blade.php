@@ -1,4 +1,5 @@
-@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null])
+{{-- copy — иконка внутри поля справа: кладёт в буфер то, что сейчас введено (номер убытка, госномер, ПТС). --}}
+@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false])
 @php
     $id = $attributes->get('id', 'f-'.str_replace(['[', ']'], ['-', ''], $name));
     $error = $errors->first($name);
@@ -30,6 +31,12 @@
         </select>
     @elseif ($type === 'textarea')
         <textarea id="{{ $id }}" name="{{ $name }}" placeholder="{{ $placeholder }}" {{ $attributes->except('id')->merge(['class' => 'field-input']) }}>{{ $bound }}</textarea>
+    @elseif ($copy)
+        <div class="vin-box" data-controller="copy" data-copy-done-value="В буфере">
+            <input id="{{ $id }}" name="{{ $name }}" type="{{ $type }}" placeholder="{{ $placeholder }}" value="{{ $bound }}" data-copy-target="field"
+                {{ $attributes->except('id')->merge(['class' => 'field-input'] + $keys) }}>
+            <button type="button" class="vin-magic field-copy" data-action="copy#copy" aria-label="Скопировать" title="Скопировать"><x-ui.icon name="copy" class="size-5"/></button>
+        </div>
     @else
         <input id="{{ $id }}" name="{{ $name }}" type="{{ $type }}" placeholder="{{ $placeholder }}"
             @if ($type !== 'password' && $type !== 'file') value="{{ $bound }}" @endif

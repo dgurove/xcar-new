@@ -8,6 +8,7 @@ use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Cars\Category;
 use App\Http\Park\VehicleInvoiceController;
+use App\Mail\Candidate;
 use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
@@ -57,6 +58,9 @@ final class CaseView
             // Текст письма о приёме — в шаг «Нужно позвонить»: «клиент сам свяжется», «документы в офисе СК», «со СТОА по адресу…».
             'letterText' => $open?->thread_id ? Intent::excerpt(Message::where('thread_id', $open->thread_id)->where('direction', Direction::In)->orderBy('date_at')->value('text_body')) : null,
             'threads' => Thread::where('vehicle_id', $vehicle->id)->orderByDesc('last_message_at')->get(['id', 'subject']),
+            // Блок «Письма» над таймлайном: последнее письмо словами, этапы — из цепочки кандидата этой ТС.
+            'lastLetter' => $threads->isEmpty() ? null : Message::whereIn('thread_id', $threads)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),
+            'candidate' => $threads->isEmpty() ? null : Candidate::where('vehicle_id', $vehicle->id)->latest('id')->first(),
             'yards' => $yards->pluck('name', 'id'),
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),
             'slots' => PhotoSlot::cases(),

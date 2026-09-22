@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -41,9 +42,20 @@ final class Threads
             'unread_count' => $messages->where('is_seen', false)->where('direction', Direction::In)->count(),
             'has_attachments' => $messages->contains('has_attachments', true),
             'participants' => $participants,
+            // Вендор ветки — по первому чужому адресу: фильтр «Вендор», бейдж в строке, правило «Прочее».
+            'vendor_id' => self::vendorOf($thread, $participants)?->id,
             // Номера ветки — объединение номеров её писем из индекса (`ReadLetter`), письма заново не читаются.
             'keys' => DB::table('mail_message_keys')->whereIn('message_id', $messages->pluck('id'))->distinct()->orderBy('key')->pluck('key')->all(),
         ])->save();
+    }
+
+    /** Вендор по первому адресу, который не наш ящик и не сотрудник. */
+    public static function vendorOf(Thread $thread, array $participants): ?Vendor
+    {
+        $own = [mb_strtolower((string) $thread->account?->email), ...Message::ownEmails()];
+        $email = collect($participants)->pluck('email')->first(fn ($e) => $e && ! in_array(mb_strtolower((string) $e), $own, true));
+
+        return $email ? Vendor::forSender($email) : null;
     }
 
     private function byReferences(Account $account, array $parsed): ?Thread

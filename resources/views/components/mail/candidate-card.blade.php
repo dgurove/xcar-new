@@ -35,7 +35,7 @@
         @if ($c->state !== CandidateState::New)<span class="tag">{{ $c->state->label() }}</span>@endif
         @if ($park && $c->stage !== \App\Mail\CandidateStage::Intake)<x-ui.pill :tone="$c->stage === \App\Mail\CandidateStage::Sold ? 'urgent' : ($c->stage === \App\Mail\CandidateStage::Released ? 'closed' : 'open')" class="!min-h-0 !py-0.5 text-xs">{{ $c->stageLabel() }}</x-ui.pill>@endif
         @if ($by)<x-ui.pill :tone="$by->isPast() ? 'danger' : 'urgent'" class="!min-h-0 !py-0.5 text-xs nums">до {{ $by->translatedFormat('j M H:i') }}</x-ui.pill>@endif
-        @if ($c->code && $c->hasCar())<span class="tag nums">{{ $c->code }}</span>@endif
+        @if ($c->code && $c->hasCar())<x-ui.copy-code class="tag" :value="$c->code"/>@endif
         @if ($v('plate'))<span class="tag nums">{{ $v('plate') }}</span>@endif
         @if ($c->vendor?->name ?? $v('vendor') ?? $v('sender'))<span class="tag">{{ $c->vendor?->name ?? $v('vendor') ?? $v('sender') }}</span>@endif
         @if (! $park && $v('floor_price'))<span class="tag nums font-semibold">{{ \App\Support\Money::rub($v('floor_price')) }}</span>@endif

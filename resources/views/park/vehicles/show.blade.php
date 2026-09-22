@@ -47,7 +47,6 @@
                 </form>
             </x-ui.sheet>
         @endif
-        @if ($letters)<x-mail.window-button :count="$letters" :url="'/cars/'.$vehicle->id.'/letters'" chip/>@endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif
@@ -74,6 +73,7 @@
                     <input type="hidden" name="vehicle_form" value="1">
                     @include('park.vehicles.fields-block')
                 @endif
+                @if ($lastLetter)@include('park.vehicles.letters-card')@endif
                 @include('park.vehicles.timeline')
             </form>
         @else
@@ -83,6 +83,7 @@
                     @include('park.vehicles.fields-block', ['save' => true])
                 </form>
             @endif
+            @if ($lastLetter)@include('park.vehicles.letters-card')@endif
             @include('park.vehicles.timeline')
         @endif
         @if ($otherForm)
@@ -212,8 +213,8 @@
                         <x-ui.field name="contract_no" label="Номер договора" :value="$vehicle->contract_no" :placeholder="$vehicle->ref"/>
                         <x-ui.field name="contract_at" label="Дата" type="date" :value="$vehicle->contract_at?->toDateString()"/>
                         <x-ui.field name="assigned_price" label="Назначенная цена, ₽" :value="$vehicle->assigned_price" inputmode="numeric"/>
-                        <x-ui.field name="pts" label="ПТС" :value="$vehicle->pts"/>
-                        <x-ui.field name="sts" label="СТС" :value="$vehicle->sts"/>
+                        <x-ui.field name="pts" label="ПТС" :value="$vehicle->pts" copy/>
+                        <x-ui.field name="sts" label="СТС" :value="$vehicle->sts" copy/>
                         <x-ui.field name="owner_party_id" label="Комитент" :options="$owners" placeholder="—" :value="$vehicle->owner_party_id" span="col-span-2"/>
                         <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут" :value="$vehicle->storage_rate" inputmode="numeric"/>
                         <x-ui.field name="storage_rate_note" label="Почему своя" :value="$vehicle->storage_rate_note"/>

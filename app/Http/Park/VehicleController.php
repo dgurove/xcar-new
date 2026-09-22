@@ -55,7 +55,11 @@ class VehicleController
      */
     public function index(Request $request)
     {
-        ListPrefs::sync($request, 'park-vehicles');
+        // «Наличие» — таблицей по умолчанию (решение владельца 22.09.2026); выбор строк или плиток помнится.
+        ListPrefs::sync($request, 'park-vehicles', rememberTable: true);
+        if (! $request->query->has(ListView::PARAM)) {
+            $request->query->set(ListView::PARAM, ListView::TABLE);
+        }
         $q = trim((string) $request->query('q'));
         $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q === '' ? VehicleState::Stored : null);
         $yards = Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id');

@@ -10,6 +10,7 @@ use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Category;
 use App\Cars\DamageZone;
+use App\Cars\Vin\VinDecoder;
 use App\Mail\Extraction\Code;
 use App\Mail\Template;
 use App\Media\HasPhotos;
@@ -217,6 +218,25 @@ class Vehicle extends Model implements HasMedia
     public function events(): HasMany
     {
         return $this->hasMany(VehicleEvent::class, 'vehicle_id')->latest('created_at');
+    }
+
+    /**
+     * Что не так с VIN, словом для тега: «VIN отсутствует», «Ошибка в VIN» (не 17 знаков, буквы I/O/Q, у VIN
+     * с контрольной цифрой — не сходится: северная Америка, WMI 1–5, и Китай на 9-й позиции). Null — VIN в порядке.
+     */
+    public function vinProblem(): ?string
+    {
+        if (! $this->vin) {
+            return 'VIN отсутствует';
+        }
+        if (! VinDecoder::looksValid($this->vin)) {
+            return 'Ошибка в VIN';
+        }
+        if (in_array($this->vin[0], ['1', '2', '3', '4', '5'], true) && VinDecoder::expectedCheckChar($this->vin) !== $this->vin[8]) {
+            return 'Ошибка в VIN';
+        }
+
+        return null;
     }
 
     public function titleWithYear(): string

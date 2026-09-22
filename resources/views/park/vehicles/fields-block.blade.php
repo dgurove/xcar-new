@@ -10,9 +10,9 @@
     <details class="phase">
         <summary class="row !py-2.5 list-none flex-wrap gap-y-1">
             <span class="chip">Транспортное средство</span>
-            @if ($vehicle->ref)<span class="tag nums">{{ $vehicle->ref }}</span>@endif
+            @if ($vehicle->ref)<x-ui.copy-code class="tag" :value="$vehicle->ref"/>@endif
             @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
-            @if ($vehicle->plate)<span class="tag nums">{{ $vehicle->plate }}</span>@endif
+            @if ($vehicle->plate)<x-ui.copy-code class="tag" :value="$vehicle->plate" done="Госномер в буфере"/>@endif
             <x-ui.icon name="chevron-down" class="phase-chevron ml-auto size-5 shrink-0 self-center text-ink-dim"/>
         </summary>
         <div class="phase-body px-3 pb-3 pt-1">

@@ -16,6 +16,7 @@ use App\Mail\Attachment;
 use App\Mail\BodyRenderer;
 use App\Mail\Composer;
 use App\Mail\Direction;
+use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\Keys;
 use App\Mail\Jobs\ExtractCandidate;
 use App\Mail\Jobs\ParseMessage;
@@ -37,19 +38,23 @@ use App\Park\EventType;
 use App\Park\InspectionKind;
 use App\Park\Vehicle;
 use App\Vendors\ContactRole;
+use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Почта: Входящие · Отправленные · Архив как в Gmail (ветка там, где её последнее письмо), во «Входящих» секции
- * по ТС (CRM — по предложениям) и кандидатам «Из писем», нераспознанные письма — «Не разобрано» с «Заявка ›».
- * Поиск — по всем письмам сразу (тема, текст, адреса, файлы, номера). Ящики — по scope поверхности.
+ * Почта: Входящие · Ждут ответа · Прочее · Отправленные · Архив (ветка там, где её последнее письмо, как в Gmail).
+ * Во «Входящих» секции по ТС (CRM — по предложениям) и кандидатам «Из писем», письма вендоров без тождества —
+ * последней секцией; автоответы, рассылки и не-вендоры — в «Прочее». Строка несёт аватар отправителя, вендора и смысл
+ * последнего письма тегом. Фильтры (вендор, смысл, непрочитанные, с файлами) и поиск — плоский список по всем письмам.
  */
 class MailController
 {
-    public const BOXES = ['inbox' => 'Входящие', 'sent' => 'Отправленные', 'archive' => 'Архив'];
+    public const BOXES = ['inbox' => 'Входящие', 'waiting' => 'Ждут ответа', 'other' => 'Прочее', 'sent' => 'Отправленные', 'archive' => 'Архив'];
+
+    public const SORTS = ['fresh' => 'Свежие', 'waiting' => 'Дольше ждут'];
 
     public const GROUPS_PER_PAGE = 30;
 
@@ -57,16 +62,42 @@ class MailController
 
     public function __construct(private Scope $scope = Scope::Offers, private string $base = '/work/mail') {}
 
+    /** Направление и смысл последнего письма ветки — для пилюль и тегов без загрузки писем. */
+    private const LAST_DIRECTION = '(select m.direction from mail_messages m where m.thread_id = mail_threads.id order by m.date_at desc limit 1)';
+
+    private const LAST_INTENT = "(select m.intent from mail_messages m where m.thread_id = mail_threads.id and m.direction = 'in' order by m.date_at desc limit 1)";
+
+    /** «Прочее»: без ТС, кандидата и предложения, и при этом не вендор или автоответ. */
+    private function noise($query): void
+    {
+        $query->whereNull('vehicle_id')->whereNull('candidate_id')->whereNull('offer_id')
+            ->where(fn ($w) => $w->whereNull('vendor_id')->orWhereRaw(self::LAST_INTENT." = 'auto'"));
+    }
+
+    private function notNoise($query): void
+    {
+        $query->where(fn ($w) => $w->whereNotNull('vehicle_id')->orWhereNotNull('candidate_id')->orWhereNotNull('offer_id')
+            ->orWhere(fn ($v) => $v->whereNotNull('vendor_id')->whereRaw('coalesce('.self::LAST_INTENT.", '') <> 'auto'")));
+    }
+
     public function index(Request $request)
     {
         $accounts = Account::where('scope', $this->scope)->orderBy('title')->get();
         $box = array_key_exists($request->query('box', ''), self::BOXES) ? $request->query('box') : 'inbox';
+        $sort = array_key_exists($request->query('sort', ''), self::SORTS) ? $request->query('sort') : 'fresh';
         $q = trim((string) $request->query('q'));
+        $filter = array_filter([
+            'vendor' => (int) $request->query('vendor') ?: null,
+            'intent' => Intent::tryFrom((string) $request->query('intent'))?->value,
+            'unread' => $request->boolean('unread') ?: null,
+            'files' => $request->boolean('files') ?: null,
+        ]);
         $park = $this->scope === Scope::Park;
-        $with = ['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'candidate.vendor', 'latestMessage'];
+        $with = ['account', 'vendor', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
+        $needsReply = array_map(fn (Intent $i) => $i->value, array_filter(Intent::cases(), fn (Intent $i) => $i->needsReply()));
 
-        $threads = Thread::query()->whereIn('account_id', $accounts->pluck('id'))->where('messages_count', '>', 0);
-        $last = '(select m.direction from mail_messages m where m.thread_id = mail_threads.id order by m.date_at desc limit 1)';
+        $all = Thread::query()->whereIn('account_id', $accounts->pluck('id'))->where('messages_count', '>', 0);
+        $threads = clone $all;
         $sections = null;
         if ($q !== '') {
             // Поиск по всему: пилюли гаснут, список плоский, архив тоже.
@@ -77,29 +108,37 @@ class MailController
                 ->when(Keys::fromQuery($q), fn ($w, $keys) => $w->orWhere(fn ($k) => $k->withAnyKey($keys))));
         } else {
             match ($box) {
-                'sent' => $threads->whereNull('archived_at')->whereRaw("{$last} = 'out'"),
+                'sent' => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'out'"),
                 'archive' => $threads->whereNotNull('archived_at'),
-                default => $threads->whereNull('archived_at')->whereRaw("{$last} = 'in'"),
+                'waiting' => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->whereRaw(self::LAST_INTENT.' in ('.implode(',', array_fill(0, count($needsReply), '?')).')', $needsReply),
+                'other' => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->where(fn ($w) => $this->noise($w)),
+                default => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->where(fn ($w) => $this->notNoise($w)),
             };
         }
+        $threads->when($filter['vendor'] ?? null, fn ($t, $id) => $t->where('vendor_id', $id))
+            ->when($filter['intent'] ?? null, fn ($t, $i) => $t->whereRaw(self::LAST_INTENT.' = ?', [$i]))
+            ->when($filter['unread'] ?? null, fn ($t) => $t->where('unread_count', '>', 0))
+            ->when($filter['files'] ?? null, fn ($t) => $t->where('has_attachments', true));
+        $order = fn ($t) => $sort === 'waiting' ? $t->orderBy('last_message_at') : $t->orderByDesc('last_message_at');
 
-        if ($q === '' && $box === 'inbox') {
-            // Секции: ТС (CRM — предложение) → кандидат → «Не разобрано» одной группой; страницы — по группам.
+        if ($q === '' && ! $filter && $box === 'inbox') {
+            // Секции: ТС (CRM — предложение) → кандидат по свежести, письма вендоров без тождества — последней; страницы — по группам.
             $group = $park
                 ? "coalesce('v:' || vehicle_id::text, 'c:' || candidate_id::text, 'none')"
                 : "coalesce('o:' || offer_id::text, 'c:' || candidate_id::text, 'none')";
-            $groups = (clone $threads)->selectRaw("{$group} as g, max(last_message_at) as at")->groupByRaw($group)->orderByDesc('at');
+            $groups = (clone $threads)->selectRaw("{$group} as g, max(last_message_at) as at")->groupByRaw($group);
+            $sort === 'waiting' ? $groups->orderBy('at') : $groups->orderByDesc('at');
             $keys = $groups->get()->pluck('g');
+            $keys = $keys->contains('none') ? $keys->reject(fn ($g) => $g === 'none')->push('none')->values() : $keys;
             $page = max(1, (int) $request->query('page', 1));
             $slice = $keys->forPage($page, self::GROUPS_PER_PAGE)->values();
             $paginator = new LengthAwarePaginator($slice, $keys->count(), self::GROUPS_PER_PAGE, $page, ['path' => $request->url(), 'query' => $request->query()]);
-            $rows = $slice->isEmpty() ? collect() : (clone $threads)->with($with)->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)])
-                ->whereRaw("{$group} in (".implode(',', array_fill(0, $slice->count(), '?')).')', $slice->all())->orderByDesc('last_message_at')->get();
+            $rows = $slice->isEmpty() ? collect() : $order((clone $threads)->with($with)->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)])
+                ->whereRaw("{$group} in (".implode(',', array_fill(0, $slice->count(), '?')).')', $slice->all()))->get();
             $byGroup = $rows->groupBy(fn (Thread $t) => $park
                 ? ($t->vehicle_id ? 'v:'.$t->vehicle_id : ($t->candidate_id ? 'c:'.$t->candidate_id : 'none'))
                 : ($t->offer_id ? 'o:'.$t->offer_id : ($t->candidate_id ? 'c:'.$t->candidate_id : 'none')));
-            $order = $slice->contains('none') ? collect(['none'])->merge($slice->reject(fn ($g) => $g === 'none')) : $slice;
-            $sections = $order->map(function (string $g) use ($byGroup) {
+            $sections = $slice->map(function (string $g) use ($byGroup) {
                 $list = $byGroup->get($g, collect());
                 $first = $list->first();
 
@@ -108,22 +147,44 @@ class MailController
             })->filter(fn ($s) => $s['threads']->isNotEmpty())->values();
             $threads = $paginator;
         } else {
-            $threads = $threads->with($with)->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)])
-                ->orderByDesc('last_message_at')->paginate(self::ROWS_PER_PAGE)->withQueryString();
+            $threads = $order($threads->with($with)->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)]))->paginate(self::ROWS_PER_PAGE)->withQueryString();
         }
+
+        $open = fn () => (clone $all)->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'");
+        $counts = [
+            'inbox' => $open()->where(fn ($w) => $this->notNoise($w))->where('unread_count', '>', 0)->count(),
+            'waiting' => $open()->whereRaw(self::LAST_INTENT.' in ('.implode(',', array_fill(0, count($needsReply), '?')).')', $needsReply)->count(),
+            'other' => $open()->where(fn ($w) => $this->noise($w))->count(),
+        ];
 
         return view('admin.mail.index', [
             'threads' => $threads,
             'sections' => $sections,
             'box' => $q !== '' ? '' : $box,
+            'sort' => $sort,
             'q' => $q,
+            'filter' => $filter,
+            'flat' => $sections === null,
             'accounts' => $accounts,
             'base' => $this->base,
             'park' => $park,
-            'unread' => Thread::whereIn('account_id', $accounts->pluck('id'))->whereNull('archived_at')->where('unread_count', '>', 0)->count(),
+            'counts' => array_filter($counts),
+            'vendors' => Vendor::whereIn('id', (clone $all)->whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
             // ?window=id — ссылка на ветку: список с открытым окном этой ветки.
             'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window' : null,
         ]);
+    }
+
+    /** «Всё в архив» у «Прочего»: автоответы и рассылки уходят из входящих разом. */
+    public function archiveOther(ArchiveThread $archive)
+    {
+        $accounts = Account::where('scope', $this->scope)->pluck('id');
+        $threads = Thread::whereIn('account_id', $accounts)->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->where(fn ($w) => $this->noise($w))->get();
+        foreach ($threads as $thread) {
+            $archive($thread);
+        }
+
+        return redirect($this->base)->with('toast', 'В архиве: '.$threads->count());
     }
 
     /** «Заявка ›» (CRM: «Предложение ›») у нераспознанного письма: кандидат из ветки как есть, дальше обычная дверь заведения. */

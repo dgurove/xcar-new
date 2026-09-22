@@ -3,7 +3,7 @@
      бухгалтерия подряд свёрнуты в один узел «3 служебных». Тема пишется строкой-разделителем, когда меняется
      (subjects). Раскрыты непрочитанные и последнее, к ним и прокрутка (focus). reply — один «Ответить {кому}» внизу,
      редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов, vehicle — фото уже в галерее. --}}
-@props(['messages', 'base' => '/mail', 'candidate' => null, 'vehicle' => null, 'reply' => false, 'subjects' => true, 'focus' => true])
+@props(['messages', 'base' => '/mail', 'candidate' => null, 'vehicle' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false])
 @php
     use App\Mail\Chains\NodeTitle;
     use App\Mail\Extraction\Intent;
@@ -59,6 +59,6 @@
         <x-ui.empty>Писем нет</x-ui.empty>
     @endforelse
     @if ($replyTo)
-        <div class="chain-reply"><x-mail.reply-button :message="$replyTo" :base="$base"/></div>
+        <div class="chain-reply"><x-mail.reply-button :message="$replyTo" :base="$base" :open="$replyOpen"/></div>
     @endif
 </div>

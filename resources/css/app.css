@@ -404,6 +404,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     transition: background-color .2s, color .2s;
   }
   .vin-magic:disabled { opacity: .6; }
+  /* Копирование из поля: тихая иконка, по наведению — чернила. */
+  .field-copy { cursor: pointer; }
+  @media (hover: hover) { .field-copy:hover { color: var(--color-ink); } }
   .vin-magic:not(:disabled) { color: var(--color-chrome); background: var(--color-accent); cursor: pointer; }
   @media (hover: hover) { .vin-magic:not(:disabled):hover { background: var(--color-accent-hover); } }
   .vin-magic.is-busy, .vin-magic.is-busy:hover { color: var(--color-accent); background: var(--color-chrome); }
@@ -478,6 +481,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   /* Чип — одно слово-факт: не ломается посередине, переносится целиком. */
   .tag { white-space: nowrap; }
+  /* Тона тега: смысл письма (заявка, продано, ждёт ответа), ошибка данных, служебное. */
+  .tag-accent { --tag-bg: var(--color-accent-soft); --tag-text: var(--color-accent-text); --tag-bg-d: var(--color-accent-soft); --tag-text-d: var(--color-accent-text); }
+  .tag-urgent { --tag-bg: var(--color-urgent-soft); --tag-text: var(--color-urgent); --tag-bg-d: var(--color-urgent-soft); --tag-text-d: var(--color-urgent); }
+  .tag-danger { --tag-bg: var(--color-danger-soft); --tag-text: var(--color-danger); --tag-bg-d: var(--color-danger-soft); --tag-text-d: var(--color-danger); }
+  .tag-dim { --tag-text: var(--color-ink-dim); --tag-text-d: var(--color-ink-dim); }
   /* Место (x-ui.place) — метка на карте в размер шрифта перед текстом; VIN (x-ui.vin-code) —
      иконка копирования после, нажатие по всему. Форма — от класса снаружи (tag, chip, mark, текст). */
   /* Длинный адрес в чипе ужимается многоточием, а не растягивает страницу; в тексте и ячейке — переносится как раньше. */
@@ -602,6 +610,23 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Аватар: фото или инициалы. */
   .avatar { @apply inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-3 text-ink-muted font-semibold select-none; }
   .avatar img { @apply size-full object-cover; }
+  /* Отправитель без пользователя (почта): восемь приглушённых тонов по хэшу адреса, чтобы люди различались с первого взгляда. */
+  .avatar-hue-1 { background: oklch(0.9 0.05 25); color: oklch(0.45 0.12 25); }
+  .avatar-hue-2 { background: oklch(0.9 0.05 70); color: oklch(0.45 0.11 70); }
+  .avatar-hue-3 { background: oklch(0.9 0.05 130); color: oklch(0.42 0.11 130); }
+  .avatar-hue-4 { background: oklch(0.9 0.05 190); color: oklch(0.42 0.1 190); }
+  .avatar-hue-5 { background: oklch(0.9 0.05 240); color: oklch(0.45 0.12 240); }
+  .avatar-hue-6 { background: oklch(0.9 0.05 290); color: oklch(0.45 0.12 290); }
+  .avatar-hue-7 { background: oklch(0.9 0.05 330); color: oklch(0.45 0.12 330); }
+  .avatar-hue-8 { background: oklch(0.9 0.04 100); color: oklch(0.42 0.1 100); }
+  .dark .avatar-hue-1 { background: oklch(0.3 0.06 25); color: oklch(0.85 0.08 25); }
+  .dark .avatar-hue-2 { background: oklch(0.3 0.06 70); color: oklch(0.85 0.08 70); }
+  .dark .avatar-hue-3 { background: oklch(0.3 0.06 130); color: oklch(0.85 0.08 130); }
+  .dark .avatar-hue-4 { background: oklch(0.3 0.06 190); color: oklch(0.85 0.07 190); }
+  .dark .avatar-hue-5 { background: oklch(0.3 0.06 240); color: oklch(0.85 0.08 240); }
+  .dark .avatar-hue-6 { background: oklch(0.3 0.06 290); color: oklch(0.85 0.08 290); }
+  .dark .avatar-hue-7 { background: oklch(0.3 0.06 330); color: oklch(0.85 0.08 330); }
+  .dark .avatar-hue-8 { background: oklch(0.3 0.05 100); color: oklch(0.85 0.07 100); }
 
   /* Файл строкой: квадрат с расширением, имя, размер, действия. */
   .file-row { @apply flex items-center gap-3 py-1.5; }
@@ -1651,7 +1676,9 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
     -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
   }
   img, a { -webkit-user-drag: none; }
-  .card input, .card textarea, .row input, .sheet input, .sheet textarea { -webkit-user-select: text; user-select: text; }
+  .card input, .card textarea, .row input, .sheet input, .sheet textarea, .field-input, .phase-body { -webkit-user-select: text; user-select: text; }
+  /* Номера — данные, не хром: выделяются и копируются. */
+  .tag.nums, .chip.nums, .vincode { -webkit-user-select: text; user-select: text; }
 }
 
 /* ------------------------------------------------------------- нажатие */

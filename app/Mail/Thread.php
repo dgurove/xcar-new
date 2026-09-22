@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Offers\Offer;
 use App\Park\Vehicle;
+use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * Ветка писем. `keys` — её номера (code:/vin:/plate:, см. Extraction\Keys), `candidate_id` — кандидат «Из писем»,
  * `archived_at` — убрана из «Входящих» (как в Gmail: найдётся поиском, новое чужое письмо вернёт).
  */
-#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'unlinked_at', 'keys', 'candidate_id', 'archived_at'])]
+#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'unlinked_at', 'keys', 'candidate_id', 'archived_at', 'vendor_id'])]
 class Thread extends Model
 {
     protected $table = 'mail_threads';
@@ -39,6 +40,17 @@ class Thread extends Model
     public function latestMessage(): HasOne
     {
         return $this->hasOne(Message::class, 'thread_id')->latestOfMany('date_at');
+    }
+
+    /** Последнее входящее — его смысл идёт тегом в строку почты и решает, ждёт ли ветка ответа. */
+    public function latestIncoming(): HasOne
+    {
+        return $this->hasOne(Message::class, 'thread_id')->ofMany(['date_at' => 'max'], fn ($q) => $q->where('direction', Direction::In));
+    }
+
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Vendor::class);
     }
 
     public function attachments(): HasManyThrough

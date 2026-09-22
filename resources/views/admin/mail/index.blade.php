@@ -1,8 +1,9 @@
-{{-- Почта: Входящие · Отправленные · Архив (ветка там, где её последнее письмо, как в Gmail). Во «Входящих» секции:
-     «Не разобрано» (письма без ТС и кандидата, справа «Заявка ›»), кандидаты «Из писем» (справа «Завести ›»), ТС
-     (CRM — предложения). Поиск — по всем письмам сразу, список плоский. Любая строка открывает окно писем ветки
+{{-- Почта: Входящие · Ждут ответа · Прочее · Отправленные · Архив (ветка там, где её последнее письмо, как в Gmail).
+     Во «Входящих» секции: ТС (CRM — предложения) и кандидаты «Из писем» («Завести ›»), письма вендоров без тождества —
+     последней секцией «Без тождества»; автоответы, рассылки и не-вендоры — в «Прочее» («Всё в архив»). Фильтры в шторке
+     (вендор, смысл, непрочитанные, с файлами) и поиск — плоский список. Любая строка открывает окно писем ветки
      (x-mail.window); ?window=id — открыть окно сразу (ссылки из уведомлений). --}}
-@php $crm = ! $park; @endphp
+@php $crm = ! $park; $filtered = $q !== '' || $filter; @endphp
 <x-ui.shell title="Почта" :heading="false">
     @if ($crm)
         <x-admin.work-titles current="mail" :count="$threads->total()"/>
@@ -10,19 +11,26 @@
         <x-ui.section-title level="h1" :count="$threads->total()">Почта</x-ui.section-title>
     @endif
 
-    <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\MailController::BOXES" :pill="$box" pill-param="box" :counts="['inbox' => $unread]" :pill-default="$q === ''" name="mail">
+    <x-ui.toolbar class="mt-5" :sorts="\App\Http\Admin\MailController::SORTS" :sort="$sort" :pills="\App\Http\Admin\MailController::BOXES" :pill="$box" pill-param="box" :counts="$counts" :tones="['waiting' => ! empty($counts['waiting']) ? 'pill-urgent' : '']" :pill-default="$q === ''" name="mail">
         <x-slot:extra>
+            @if ($box === 'other' && $threads->total())
+                <form method="post" action="{{ $base }}/archive-other" class="contents" data-turbo-confirm="Убрать всё «Прочее» в архив?">@csrf<button class="btn btn-s btn-quiet shrink-0 rounded-full"><x-ui.icon name="archive" class="size-4"/><span class="hidden sm:inline">Всё в архив</span></button></form>
+            @endif
             <a href="{{ $base }}/new" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">Написать</span></a>
         </x-slot:extra>
         <x-slot:filters>
             <input type="search" name="q" value="{{ $q }}" placeholder="Тема, текст, адрес, файл, номер, VIN, госномер" class="field-input field-s" enterkeyhint="search">
+            <select name="vendor" class="field-input"><option value="">Все вендоры</option>@foreach ($vendors as $id => $name)<option value="{{ $id }}" @selected(($filter['vendor'] ?? null) === $id)>{{ $name }}</option>@endforeach</select>
+            <select name="intent" class="field-input"><option value="">Любой смысл письма</option>@foreach (\App\Mail\Extraction\Intent::cases() as $i)@if ($i->short())<option value="{{ $i->value }}" @selected(($filter['intent'] ?? null) === $i->value)>{{ $i->title() }}</option>@endif @endforeach</select>
+            <x-ui.check name="unread" :checked="! empty($filter['unread'])">Только непрочитанные</x-ui.check>
+            <x-ui.check name="files" :checked="! empty($filter['files'])">С файлами</x-ui.check>
         </x-slot:filters>
     </x-ui.toolbar>
 
     @if ($accounts->isEmpty())
         @if ($crm)<x-ui.empty class="mt-6" href="/settings/mailboxes/new" link="Завести ящик">Ящиков ещё нет</x-ui.empty>@else<x-ui.empty class="mt-6">Ящиков ещё нет</x-ui.empty>@endif
     @elseif ($threads->isEmpty())
-        <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Писем нет' }}</x-ui.empty>
+        <x-ui.empty class="mt-6">{{ $filtered ? 'Ничего не нашлось' : match ($box) { 'waiting' => 'Все письма отвечены', 'other' => 'Прочего нет', default => 'Писем нет' } }}</x-ui.empty>
     @elseif ($sections !== null)
         <div class="mt-6 flex flex-col gap-6" id="threads">
             @foreach ($sections as $section)
@@ -44,7 +52,7 @@
                         <div class="mb-2 flex items-start gap-3">
                             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                                 <span class="font-medium">{{ $c->title() }}</span>
-                                @if ($c->code && $c->hasCar())<span class="tag nums">{{ $c->code }}</span>@endif
+                                @if ($c->code && $c->hasCar())<x-ui.copy-code class="tag" :value="$c->code"/>@endif
                                 @if ($cv('plate'))<span class="tag nums">{{ $cv('plate') }}</span>@endif
                                 @if ($c->vendor?->name ?? $cv('vendor'))<span class="tag">{{ $c->vendor?->name ?? $cv('vendor') }}</span>@endif
                             </div>
@@ -59,11 +67,11 @@
                             @endif
                         </div>
                     @else
-                        <div class="mb-2 text-sm text-ink-muted">Не разобрано</div>
+                        <div class="mb-2 text-sm text-ink-muted">Без тождества</div>
                     @endif
                     <div class="flex flex-col gap-2">
                         @foreach ($section['threads'] as $thread)
-                            <x-mail.thread-row :thread="$thread" :base="$base" :park="$park" :action="$section['key'] === 'none'"/>
+                            <x-mail.thread-row :thread="$thread" :base="$base" :park="$park"/>
                         @endforeach
                     </div>
                 </section>

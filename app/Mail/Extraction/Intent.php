@@ -178,6 +178,36 @@ enum Intent: string
         };
     }
 
+    /** Слово для тега в строке почты и в блоке писем дела; «прочее» тега не даёт. */
+    public function short(): ?string
+    {
+        return match ($this) {
+            self::Intake => 'Заявка',
+            self::Sold => 'Продано',
+            self::Inspect => 'Осмотр',
+            self::Docs => 'Документы',
+            self::Accepted => 'Принята',
+            self::Released => 'Выдана',
+            self::Billing => 'Бухгалтерия',
+            self::CancelRelease => 'Не вывезено',
+            self::Hold => 'Не выдавать',
+            self::Question => 'Вопрос',
+            self::Auto => 'Автоответ',
+            self::Other => null,
+        };
+    }
+
+    /** Тон тега: заявка лаймовая, ждущее ответа и продажа оранжевые, служебное приглушённое. */
+    public function tone(): string
+    {
+        return match (true) {
+            $this === self::Intake => 'tag-accent',
+            $this === self::Sold, $this->needsReply() => 'tag-urgent',
+            in_array($this, [self::Billing, self::Auto], true) => 'tag-dim',
+            default => '',
+        };
+    }
+
     /** Ждёт нашего ответа в деле ТС. */
     public function needsReply(): bool
     {

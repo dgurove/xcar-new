@@ -5,11 +5,13 @@
     use App\Park\VehicleState;
     $href = '/cars/'.$vehicle->id;
     $state = $vehicle->state;
+    $noYard = $state === VehicleState::Stored && ! $vehicle->yard_id;
+    $vinProblem = $state->isFinal() ? null : $vehicle->vinProblem();
 @endphp
 <tr id="vehicle-{{ $vehicle->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
-    <td class="nums text-[11px] tracking-tighter text-ink-dim sm:text-[13px] sm:tracking-normal">{{ $vehicle->ref }}</td>
+    <td class="nums text-[11px] tracking-tighter text-ink-dim sm:text-[13px] sm:tracking-normal">@if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</td>
     <td class="grow">{{ $vehicle->titleWithYear() }}@if ($vehicle->plate) <span class="nums hidden text-ink-muted sm:inline">{{ $vehicle->plate }}</span>@endif</td>
-    <td class="text-[11px] sm:text-[13px]"><span class="dot {{ match ($state->tone()) { 'open' => 'dot-open', 'urgent' => 'dot-urgent', default => '' } }}"></span>{{ $state->label() }}@if ($state === VehicleState::Expected && $vehicle->relationLoaded('requests') && ! $vehicle->requests->contains(fn ($r) => $r->isOpen())) <span class="text-urgent">без заявки</span>@endif</td>
+    <td class="text-[11px] sm:text-[13px]"><span class="dot {{ match ($state->tone()) { 'open' => 'dot-open', 'urgent' => 'dot-urgent', default => '' } }}"></span>{{ $state->label() }}@if ($state === VehicleState::Expected && $vehicle->relationLoaded('requests') && ! $vehicle->requests->contains(fn ($r) => $r->isOpen())) <span class="text-urgent">без заявки</span>@endif @if ($noYard) <span class="text-urgent">парковка не указана</span>@endif @if ($vinProblem) <span class="text-danger">{{ mb_lcfirst($vinProblem) }}</span>@endif</td>
     <td class="hidden text-ink-dim sm:table-cell"><x-ui.place>{{ $vehicle->yard?->name }}</x-ui.place></td>
     <td class="hidden text-ink-dim sm:table-cell">{{ $vehicle->vendor?->name }}</td>
     <td class="num nums text-ink-dim">
