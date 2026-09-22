@@ -39,6 +39,11 @@ final class Names
         'даф' => 'daf', 'daf' => 'daf', 'ман' => 'man', 'man' => 'man', 'krone' => 'krone', 'sitrak' => 'sitrak', 'belava' => 'belava', 'rr' => 'land-rover', 'шеви' => 'chevrolet', 'кадилак' => 'cadillac', 'хэндэ' => 'hyundai', 'хенде' => 'hyundai', 'хундэ' => 'hyundai', 'митсубиши' => 'mitsubishi', 'mitsi' => 'mitsubishi',
         'фольксавен' => 'volkswagen', 'фольксвагн' => 'volkswagen', 'beelgee' => 'belgee', 'белгее' => 'belgee', 'фхавал' => 'haval', 'нисан' => 'nissan', 'nisan' => 'nissan', 'лендровер' => 'land-rover', 'ленд-ровер' => 'land-rover',
         'scoda' => 'skoda', 'шкода' => 'skoda', 'infinity' => 'infiniti', 'кия' => 'kia', 'kia' => 'kia', 'kio' => 'kia',
+        // Написания из имён файлов актов Альфы и тем писем, которых словарь не знал.
+        'ликсианг' => 'lixiang', 'ликсиан' => 'lixiang', 'лихсианг' => 'lixiang', 'лехус' => 'lexus', 'лексуз' => 'lexus',
+        'хуиндай' => 'hyundai', 'хундай' => 'hyundai', 'субар' => 'subaru', 'субару' => 'subaru', 'аккура' => 'acura',
+        'лэен ровер' => 'land-rover', 'ленд ровер' => 'land-rover', 'соллерс' => 'sollers', 'солерс' => 'sollers',
+        'эволют' => 'evolute', 'эвалют' => 'evolute',
         // Опечатки из таблицы стоянки: «Mercedes-Benc GLE», «Mercedes-AMG», «Сhevrolet» с русской С, «Луидор».
         'mercedes-benc' => 'mercedes', 'mercedes-bens' => 'mercedes', 'mercedes-amg' => 'mercedes', 'сhevrolet' => 'chevrolet', 'луидор' => 'luidor', 'luidor' => 'luidor', 'черит' => 'chery', 'чанганг' => 'changan', 'джетур' => 'jetour', 'белава' => 'belava', 'ченлонг' => 'chenglong', 'chenglong' => 'chenglong',
     ];
@@ -69,6 +74,11 @@ final class Names
         'с450' => 'C 450', 'е200' => 'E 200', 'е220' => 'E 220', 'глс' => 'GLS', 'гле' => 'GLE', 'глц' => 'GLC', 'глк' => 'GLK', 'гла' => 'GLA', 'мл' => 'ML', 'спринтер' => 'Sprinter', 'вито' => 'Vito', 'в-класс' => 'V-Class',
         'фри' => 'Free', 'дрим' => 'Dream', 'м9' => 'M9', 'м7' => 'M7', 'м5' => 'M5',
         'фор' => 'Forester', 'сд' => 'SD', 'с7н' => 'C7H', 'джи 8' => 'J8', 'джи8' => 'J8', 'джи 7' => 'J7', 'джи7' => 'J7', 'дашинг' => 'Dashing', 'танг' => 'Tang', 'траверс' => 'Traverse', 'эскалейд' => 'Escalade',
+        // Модели из имён файлов актов Альфы: «хундай тускон», «ниссан терано», «чанган юни к», «джили монджаро».
+        'тускон' => 'Tucson', 'терано' => 'Terrano', 'серато' => 'Cerato', 'йети' => 'Yeti', 'рдх' => 'RDX',
+        'юни к' => 'UNI-K', 'юни т' => 'UNI-T', 'юни в' => 'UNI-V', 'х трейл' => 'X-Trail', 'х трайл' => 'X-Trail',
+        'хантер плюс' => 'Hunter Plus', 'хантер' => 'Hunter', 'монджаро' => 'Monjaro', 'кулрей' => 'Coolray',
+        'атлас' => 'Atlas', 'тугелла' => 'Tugella', 'ай про' => 'i-Pro', 'атлант' => 'Атлант',
         'сорлярис' => 'Solaris', 'соларис' => 'Solaris', 'ай30' => 'i30', 'таурег' => 'Touareg', 'велар' => 'Range Rover Velar', 'актрос' => 'Actros', 'в300д' => 'V 300 d', 'x350' => 'X 350',
     ];
 
@@ -83,13 +93,13 @@ final class Names
     ];
 
     /** Марки, которых в справочнике может не быть: как завести. */
-    private const CREATE = ['krone' => 'Krone', 'sitrak' => 'Sitrak', 'daf' => 'DAF', 'man' => 'MAN', 'belava' => 'Belava', 'chenglong' => 'Chenglong', 'moskvich' => 'Москвич', 'exeed' => 'Exeed', 'tonar' => 'Тонар', 'luidor' => 'Луидор', 'lada' => 'Lada', 'belgee' => 'Belgee', 'tenet' => 'Tenet', 'lixiang' => 'Lixiang', 'aito' => 'Aito', 'voyah' => 'Voyah', 'jaecoo' => 'Jaecoo', 'tank' => 'Tank', 'lynk-co' => 'Lynk & Co', 'jetour' => 'Jetour', 'hongqi' => 'Hongqi', 'zeekr' => 'Zeekr', 'omoda' => 'Omoda', 'kamaz' => 'КАМАЗ', 'uaz' => 'УАЗ', 'gaz' => 'ГАЗ'];
+    private const CREATE = ['sollers' => 'Sollers', 'evolute' => 'Evolute', 'krone' => 'Krone', 'sitrak' => 'Sitrak', 'daf' => 'DAF', 'man' => 'MAN', 'belava' => 'Belava', 'chenglong' => 'Chenglong', 'moskvich' => 'Москвич', 'exeed' => 'Exeed', 'tonar' => 'Тонар', 'luidor' => 'Луидор', 'lada' => 'Lada', 'belgee' => 'Belgee', 'tenet' => 'Tenet', 'lixiang' => 'Lixiang', 'aito' => 'Aito', 'voyah' => 'Voyah', 'jaecoo' => 'Jaecoo', 'tank' => 'Tank', 'lynk-co' => 'Lynk & Co', 'jetour' => 'Jetour', 'hongqi' => 'Hongqi', 'zeekr' => 'Zeekr', 'omoda' => 'Omoda', 'kamaz' => 'КАМАЗ', 'uaz' => 'УАЗ', 'gaz' => 'ГАЗ'];
 
     /** Тот же завод под другим slug в справочнике. */
     private const ALT = ['lada' => 'vaz', 'lixiang' => 'li-auto', 'lynk-co' => 'lynk-and-co', 'mercedes' => 'mercedes-benz'];
 
-    /** Год, госномер, VIN, скобка, тире, служебные слова — на них модель заканчивается. */
-    private const STOP = '/^(?:\(|[-–—]|,|;|:|фото|гос\.?|госномер|vin|вин|г\.?в\.?|(?:19|20)\d{2}|\d{2}\.\d{2}\.\d{2,4}|[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}|[АВЕКМНОРСТУХ]{2}\d{4}\d{2,3}|[A-HJ-NPR-Z0-9]{17}|на|в|по|для|от|и)$/iu';
+    /** Год, номер акта, госномер, VIN, скобка, тире, служебные слова — на них модель заканчивается. */
+    private const STOP = '/^(?:\(|[-–—]|,|;|:|фото|гос\.?|госномер|vin|вин|г\.?в\.?|\d{4}|\d{2}\.\d{2}\.\d{2,4}|[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}|[АВЕКМНОРСТУХ]{2}\d{4}\d{2,3}|[A-HJ-NPR-Z0-9]{17}|на|в|по|для|от|и)$/iu';
 
     /**
      * Первая марка в строке и модель за ней. @return array{brand: Brand, model: ?string, before: string, after: string}|null
