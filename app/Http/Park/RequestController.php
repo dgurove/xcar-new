@@ -63,7 +63,7 @@ class RequestController
         // Связаться — то же условие, что `Request::needsCall()`, но запросом.
         $needsCall = fn ($q) => $q->where('state', RequestState::New)->whereIn('type', [RequestType::Intake, RequestType::Tow])
             ->where(fn ($w) => $w->where(fn ($n) => $n->whereNull('delivery')->whereNull('contacted_at')->whereNull('planned_at'))->orWhere('next_call_at', '<=', now()));
-        $q = $filters(Scope::requests($request->user())->with(['vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee']));
+        $q = $filters(Scope::requests($request->user())->with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee']));
         $q->whereIn('state', RequestState::open());
         if ($t = RequestType::tryFrom($type)) {
             $q->where('type', $t);
@@ -178,7 +178,7 @@ class RequestController
             'note' => ['nullable', 'string', 'max:2000'],
             'flags' => ['nullable', 'array'], 'flags.*' => ['string', 'max:20'],
             'docs_required' => ['nullable', 'array'], 'docs_required.*' => ['string', 'max:20'],
-        ] + VehicleFields::rules());
+        ] + VehicleFields::rules(identity: ! $request->filled('vehicle_id')));  // у существующей ТС поля не спрашиваются («Выдать» шлёт только тип и ТС)
         $type = RequestType::from($data['type']);
         // Эвакуатор или сам — решается по телефону; «эвакуатор» и есть заявка на эвакуацию.
         // Из письма — только подсказка («В письме: вывоз»): заявка ждёт звонка, а не назначения эвакуатора.

@@ -31,7 +31,7 @@ final class CaseView
 
     public static function for(Vehicle $vehicle, User $user, ?int $requestId = null, bool $callAgain = false): array
     {
-        $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'requests.assignee', 'requests.doneBy', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party']);
+        $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'requests.assignee', 'requests.doneBy', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party'])->loadCount('threads');
         $open = ($requestId ? $vehicle->requests->first(fn (Request $r) => $r->id === $requestId && $r->isOpen()) : null) ?? self::current($vehicle);
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
         $release = $open?->type === RequestType::Release;

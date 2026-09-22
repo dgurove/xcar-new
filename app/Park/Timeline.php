@@ -87,8 +87,9 @@ final class Timeline
             $releasing = $release?->isOpen() && $v->state === VehicleState::Stored;
             $storageState = $v->released_at || $releasing ? Step::DONE : ($v->state === VehicleState::Stored && ! $noYard ? Step::CURRENT : Step::NEXT);
             $chips = array_values(array_filter([$v->sold_at ? 'продано '.$v->sold_at->translatedFormat('j M') : null, $v->pickup_name ? 'заберёт '.$v->pickup_name : null]));
-            $steps[] = new Step('storage', $storageState === Step::CURRENT ? 'Ждём покупателя' : 'Хранение', $storageState, 'Ждём письмо страховой о продаже', $v->sold_at, $chips,
-                $storageState === Step::CURRENT ? ['kind' => 'spawn', 'label' => 'Выдать'] : null);
+            $steps[] = new Step('storage', $storageState === Step::CURRENT ? 'На хранении' : 'Хранение', $storageState,
+                $storageState === Step::CURRENT ? ($v->sold_at ? 'Продана, ждём покупателя за ТС' : 'Страховая пришлёт письмо о продаже, шаг сменится сам; когда за ТС приедут, выдайте') : null,
+                $v->sold_at, $chips, $storageState === Step::CURRENT ? ['kind' => 'spawn', 'label' => 'Выдать'] : null);
 
             $chips = array_values(array_filter([$release?->doneBy?->shortName(), $release?->note]));
             $steps[] = new Step('release', $v->released_at ? 'Выдана' : ($releasing ? 'Нужно выдать' : 'Выдача'), $v->released_at ? Step::DONE : ($releasing ? Step::CURRENT : Step::NEXT),

@@ -13,6 +13,7 @@ use App\Cars\DamageZone;
 use App\Cars\Vin\VinDecoder;
 use App\Mail\Extraction\Code;
 use App\Mail\Template;
+use App\Mail\Thread;
 use App\Media\HasPhotos;
 use App\Offers\Flag;
 use App\Offers\Offer;
@@ -215,6 +216,12 @@ class Vehicle extends Model implements HasMedia
         return $this->hasMany(Request::class, 'vehicle_id')->latest();
     }
 
+    /** Ветки писем ТС; `threads_count` — тег «Писем нет». */
+    public function threads(): HasMany
+    {
+        return $this->hasMany(Thread::class, 'vehicle_id');
+    }
+
     public function events(): HasMany
     {
         return $this->hasMany(VehicleEvent::class, 'vehicle_id')->latest('created_at');
@@ -224,6 +231,12 @@ class Vehicle extends Model implements HasMedia
      * Что не так с VIN, словом для тега: «VIN отсутствует», «Ошибка в VIN» (не 17 знаков, буквы I/O/Q, у VIN
      * с контрольной цифрой — не сходится: северная Америка, WMI 1–5, и Китай на 9-й позиции). Null — VIN в порядке.
      */
+    /** Писем к ТС не привязано — тревожный знак: заведена руками или тождество в письмах другое. */
+    public function noLetters(): bool
+    {
+        return ($this->threads_count ?? $this->threads()->count()) === 0;
+    }
+
     public function vinProblem(): ?string
     {
         if (! $this->vin) {

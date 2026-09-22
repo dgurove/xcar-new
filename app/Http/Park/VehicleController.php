@@ -66,7 +66,7 @@ class VehicleController
         $yardId = $yards->has((int) $request->query('yard')) ? (int) $request->query('yard') : null;
         // «Без парковки» — заведены по письмам или по факту, где стоят, ещё не сказали.
         $noYard = $request->query('yard') === 'none';
-        $vehicles = Scope::vehicles($request->user())->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer', 'requests'])
+        $vehicles = Scope::vehicles($request->user())->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer', 'requests'])->withCount('threads')
             ->when($state, fn ($v, $s) => $v->where('state', $s))
             ->when($yardId, fn ($v, $y) => $v->where('yard_id', $y))
             ->when($noYard, fn ($v) => $v->whereNull('yard_id'))
@@ -98,7 +98,7 @@ class VehicleController
     /** Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка. */
     public function peek(Vehicle $vehicle)
     {
-        $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user']);
+        $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user'])->loadCount('threads');
 
         return view('park.vehicles.peek', [
             'vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),

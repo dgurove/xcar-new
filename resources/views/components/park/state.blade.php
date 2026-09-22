@@ -15,4 +15,5 @@
     {{-- Ждёт, а заявки нет (отменили) — иначе про неё забудут: заявка заводится с ТС или из окошка. --}}
     <x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">без заявки</x-ui.pill>
 @endif
+@if (! $vehicle->state->isFinal() && $vehicle->noLetters())<x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">Писем нет</x-ui.pill>@endif
 @if (! $vehicle->state->isFinal() && $vehicle->vinProblem())<x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs">{{ $vehicle->vinProblem() }}</x-ui.pill>@endif

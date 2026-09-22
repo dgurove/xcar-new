@@ -2,7 +2,8 @@
      этап цепочки лаймовой точкой, наше письмо серой с рамкой, письмо без нашего ответа оранжевой; автоответы и
      бухгалтерия подряд свёрнуты в один узел «3 служебных». Тема пишется строкой-разделителем, когда меняется
      (subjects). Раскрыты непрочитанные и последнее, к ним и прокрутка (focus). reply — один «Ответить {кому}» внизу,
-     редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов, vehicle — фото уже в галерее. --}}
+     редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов, vehicle — фото уже в галерее.
+     «Ч.2» того же письма (те же слова от того же адреса в сутки) — узел «Ещё файлы к письму» без текста. --}}
 @props(['messages', 'base' => '/mail', 'candidate' => null, 'vehicle' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false])
 @php
     use App\Mail\Chains\NodeTitle;
@@ -19,6 +20,16 @@
     $inGallery = $vehicle && $vehicle->media()->where('collection_name', 'photos')->where('custom_properties->stage', 'mail')->exists();
     $kind = fn (Message $m) => trim((in_array($m->id, $staged, true) ? 'stage ' : (in_array($m->id, $asks, true) ? 'ask ' : '')).($m->isOurs() ? 'ours' : ''));
     $service = fn (Message $m) => ! in_array($m->id, $staged, true) && in_array($m->intent, [Intent::Auto->value, Intent::Billing->value], true);
+    // «Ч.2» того же письма: тот же адрес и те же слова не позже суток — продолжение, текст не повторяется, только файлы.
+    $continued = [];
+    $prev = null;
+    foreach ($messages as $m) {
+        if ($prev && $prev->from_email === $m->from_email && trim($m->ownText()) !== '' && trim($m->ownText()) === trim($prev->ownText()) && $m->date_at && $prev->date_at && $m->date_at->diffInHours($prev->date_at, true) <= 24) {
+            $continued[$m->id] = true;
+        } else {
+            $prev = $m;
+        }
+    }
     // Группы: письмо или пачка служебных подряд.
     $nodes = [];
     foreach ($messages as $m) {
@@ -36,7 +47,7 @@
 <div {{ $attributes->merge(['class' => 'chain']) }} @if ($focusId) data-controller="chain" @endif>
     @forelse ($nodes as $node)
         @php $first = is_array($node) ? $node['items'][0] : $node; @endphp
-        @if ($subjects && $first->subject_normalized !== $subject)
+        @if ($subjects && $first->subject_normalized !== $subject && ! isset($continued[$first->id]))
             @php $subject = $first->subject_normalized; @endphp
             <div class="chain-subject"><span class="truncate">{{ $first->subject ?: '(без темы)' }}</span></div>
         @endif
@@ -53,7 +64,11 @@
                 </details>
             </div>
         @else
-            <x-mail.letter :message="$node" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :open="! $node->is_seen || $node->id === $lastId" :focus="$node->id === $focusId" :reply="$reply" :in-gallery="$inGallery" :vehicle="$vehicle"/>
+            @if (isset($continued[$node->id]))
+                <x-mail.letter :message="$node" :base="$base" title="Ещё файлы к письму" :kind="$node->isOurs() ? 'ours' : ''" :open="! $node->is_seen || $node->id === $lastId" :focus="$node->id === $focusId" :reply="$reply" :in-gallery="$inGallery" :vehicle="$vehicle" continuation/>
+            @else
+                <x-mail.letter :message="$node" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :open="! $node->is_seen || $node->id === $lastId" :focus="$node->id === $focusId" :reply="$reply" :in-gallery="$inGallery" :vehicle="$vehicle"/>
+            @endif
         @endif
     @empty
         <x-ui.empty>Писем нет</x-ui.empty>

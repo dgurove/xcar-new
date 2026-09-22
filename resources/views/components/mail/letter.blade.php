@@ -2,7 +2,8 @@
      непрочитанное полужирным); раскрыто — свои слова письма без цитат и подписи, вложения (фото четыре кадра и «+N»,
      документы строкой), «Исходное письмо» грузит тело в iframe только по раскрытию, «Ответить на это» — редактор
      во фрейме под письмом. kind: stage (этап, лаймовая точка), ask (без нашего ответа, оранжевая), ours (наше). --}}
-@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'inGallery' => false, 'vehicle' => null])
+{{-- continuation — «ч.2» того же письма (те же слова, другие файлы): текст не повторяется, только вложения. --}}
+@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'inGallery' => false, 'vehicle' => null, 'continuation' => false])
 @php
     use App\Mail\{ParseState, SendState};
     $m = $message;
@@ -33,6 +34,7 @@
                 <div class="mb-2 flex flex-wrap items-center gap-2"><span class="chip bg-danger-soft text-danger">Не разобралось</span><span class="text-sm text-ink-muted">{{ $m->parse_error }}</span></div>
             @elseif ($m->parse_state === ParseState::Pending)
                 <div class="text-sm text-ink-muted">Разбирается…</div>
+            @elseif ($continuation)
             @elseif ($text !== '')
                 <div class="whitespace-pre-line break-words">{{ $text }}</div>
             @else

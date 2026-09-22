@@ -542,6 +542,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* ------------------------------------------------------------- секции */
 
   .box { @apply rounded-(--radius-xl) bg-surface p-5 sm:p-6; }
+  /* Заметка в истории дела: реплика на подложке, отличима от событий-строк. */
+  .history-note { @apply rounded-(--radius-m) bg-surface-2 px-3 py-2; }
   .box-nested { @apply rounded-(--radius-l) bg-surface-2 p-4; }
   .box-urgent { @apply bg-urgent-soft; }
 

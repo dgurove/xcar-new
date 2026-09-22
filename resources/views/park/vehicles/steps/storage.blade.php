@@ -1,5 +1,5 @@
 @php use App\Park\{RequestState, ReleasedTo, Inspection}; use App\Support\Money; @endphp
-{{-- Шаг «Хранение»: сколько стоит, продано ли; исходы — «Продано» (шторка) и «Выдать» (заявка на выдачу, форма spawn-form). --}}<div class="mt-2 flex flex-wrap items-center gap-1.5">
+{{-- Шаг «На хранении»: сколько стоит, продано ли; исходы — «Покупатель» (шторка: кто заберёт, обычно приходит письмом страховой) и «Выдать» (заявка на выдачу, форма spawn-form). --}}<div class="mt-2 flex flex-wrap items-center gap-1.5">
     @if ($vehicle->daysStored() !== null)<span class="chip nums">{{ $vehicle->daysStored() }} дн</span>@endif
     @if ($storageRate)<span class="chip nums">{{ $storageRate }}</span>@endif
     @if ($vehicle->sold_at)<span class="chip nums bg-urgent-soft text-urgent">продано {{ $vehicle->sold_at->translatedFormat('j M') }}</span>@endif
@@ -8,7 +8,7 @@
 </div>
 @if ($canManage)
     <div class="mt-3 flex flex-wrap gap-2">
-        <x-ui.button type="button" variant="secondary" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->sold_at ? 'Кому выдать' : 'Продано' }}</x-ui.button>
+        <x-ui.button type="button" variant="secondary" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->sold_at ? 'Изменить покупателя' : 'Покупатель' }}</x-ui.button>
         <x-ui.button form="spawn-form">Выдать</x-ui.button>
     </div>
 @endif

@@ -1,8 +1,8 @@
 {{-- Дело ТС одной страницей: шапка чипами, прошедшие фазы строками с раскрытием, текущая заявка — одна форма
      (поля ТС + этап), справа на ПК факты (фото, бумаги, документы, деньги, история). Плашка — глагол этапа и «⋯».
-     Письма — окном (x-mail.window): «Письма N» в шапке, после приёма и выдачи окно открыто с черновиком вендору. --}}
+     Письма — блоком над таймлайном (letters-card) и окном (x-mail.window); после приёма и выдачи окно открыто с черновиком вендору. --}}
 @php
-    use App\Park\{RequestType, RequestState, VehicleState, ReleasedTo, DocState, Inspection, InspectionKind};
+    use App\Park\{RequestType, RequestState, VehicleState, ReleasedTo, DocState, EventType, Inspection, InspectionKind};
     use App\Park\Actions\{UndoIntake, UndoRelease, UnwindVehicle};
     use App\Support\{Money, Surface};
     $state = $vehicle->state;
@@ -189,12 +189,19 @@
                 <input name="text" class="field-input flex-1" placeholder="Заметка" required>
                 <x-ui.button size="sm" variant="secondary">Записать</x-ui.button>
             </form>
-            <div class="flex flex-col gap-2 text-sm">
+            {{-- Дата и время одной узкой колонкой в две строки; заметка — реплика с аватаром на подложке, событие — строкой. --}}
+            <div class="flex flex-col gap-2.5 text-sm">
                 @foreach ($vehicle->events as $event)
                     <div class="flex gap-3">
-                        <span class="shrink-0 text-ink-dim nums">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
-                        <span class="min-w-0">{{ $event->text() }}</span>
-                        @if ($event->user)<span class="ml-auto shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
+                        <span class="w-12 shrink-0 leading-tight text-ink-dim nums"><span class="block">{{ $event->created_at->translatedFormat('j M') }}</span><span class="block text-xs">{{ $event->created_at->format('H:i') }}</span></span>
+                        @if ($event->type === EventType::Note)
+                            <div class="history-note min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5 text-xs text-ink-muted"><x-ui.avatar :user="$event->user" :size="18"/>{{ $event->user?->shortName() ?? 'Система' }}</div>
+                                <div class="mt-1 whitespace-pre-line">{{ $event->text() }}</div>
+                            </div>
+                        @else
+                            <div class="min-w-0 flex-1 leading-tight"><span>{{ $event->text() }}</span>@if ($event->user) <span class="text-xs text-ink-dim">{{ $event->user->shortName() }}</span>@endif</div>
+                        @endif
                     </div>
                 @endforeach
             </div>
@@ -230,7 +237,7 @@
     @endif
     @if ($canManage && in_array($state, [VehicleState::Stored, VehicleState::InTransit], true) || $vehicle->sold_at)
         <div data-controller="sheet" data-action="sold:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="sold" title="Продано" :open="$errors->hasAny(['sold_at', 'pickup_name', 'pickup_phone'])">
+            <x-ui.sheet id="sold" title="Покупатель" :open="$errors->hasAny(['sold_at', 'pickup_name', 'pickup_phone'])">
                 {{-- Страховая продала ТС: дата письма, кому выдать; дальше дни за счёт вендора и покупатель по множителю. --}}
                 <form method="post" action="/cars/{{ $vehicle->id }}/sold" class="flex flex-col gap-3">
                     @csrf
@@ -241,7 +248,7 @@
                         <x-ui.field name="pickup_note" label="По какому документу" :value="$vehicle->pickup_note" span="col-span-2" placeholder="Доверенность, ДКП №"/>
                     </div>
                     <div class="flex gap-2">
-                        <x-ui.button class="flex-1">{{ $vehicle->sold_at ? 'Сохранить' : 'Продано' }}</x-ui.button>
+                        <x-ui.button class="flex-1">{{ $vehicle->sold_at ? 'Сохранить' : 'Записать' }}</x-ui.button>
                         @if ($vehicle->sold_at)<x-ui.button variant="ghost" name="clear" value="1" data-turbo-confirm="Не продано?">Не продано</x-ui.button>@endif
                     </div>
                 </form>
