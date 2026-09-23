@@ -42,8 +42,10 @@ final class ImportCandidateFiles implements ShouldBeUniqueUntilProcessing, Shoul
         if (! $candidate || ! $message || $candidate->state === CandidateState::Promoted) {
             return;
         }
-        $pin->message($message);
-        // Файлы доехали — экран «Из писем» перечитывается: в ленте писем миниатюры появляются только теперь.
-        $publish->refresh($candidate->scope === Scope::Park ? Topics::PARK : Topics::STAFF, [$candidate->scope === Scope::Park ? '/requests/from-mail' : '/offers/from-mail']);
+        // Перечитать экран стоит только когда файлы действительно доехали: у писем истории вложения
+        // заморожены и закреплять нечего, а тихий разбор ящика иначе дёргал бы список на каждое письмо.
+        if ($pin->message($message) > 0) {
+            $publish->refresh($candidate->scope === Scope::Park ? Topics::PARK : Topics::STAFF, [$candidate->scope === Scope::Park ? '/requests/from-mail' : '/offers/from-mail']);
+        }
     }
 }

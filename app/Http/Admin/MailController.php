@@ -263,12 +263,14 @@ class MailController
     public function archiveCase(Request $request, string $kind, int $id, ArchiveThread $archive, FreezeMessages $freeze, ChainBuilder $chains)
     {
         $restore = $request->boolean('restore');
-        if ($kind === 'c') {
-            $candidate = Candidate::where('scope', $this->scope)->findOrFail($id);
+        // Состояние двигается только у живой цепочки: «закрыта» — конечное, а заведённую свайп по письмам
+        // отклонять не должен. У таких дел свайп остаётся просто архивом писем.
+        $candidate = $kind === 'c' ? Candidate::where('scope', $this->scope)->findOrFail($id) : null;
+        if ($candidate && in_array($candidate->state, [CandidateState::New, CandidateState::Rejected], true)) {
             $this->toggleChain($candidate, $restore, $archive, $freeze, $chains);
         } else {
             $column = match ($kind) {
-                'v' => 'vehicle_id', 'o' => 'offer_id', default => 'id'
+                'v' => 'vehicle_id', 'o' => 'offer_id', 'c' => 'candidate_id', default => 'id'
             };
             $threads = Thread::whereIn('account_id', Account::where('scope', $this->scope)->select('id'))->where($column, $id)->get();
             abort_if($threads->isEmpty(), 404);
