@@ -11,6 +11,7 @@ use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Candidate;
 use App\Mail\Message;
 use App\Mail\Thread;
+use App\Mail\Threads;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Offers\Offer;
@@ -261,11 +262,17 @@ class VehicleController
         return back()->with('toast', 'Записано');
     }
 
-    /** «Сделано» у письма, которое ждало ответа (осмотр, бумаги, вопрос): шаг закрывается без письма. */
-    public function letterDone(Request $request, Vehicle $vehicle, Message $message)
+    /**
+     * «Сделано» у письма, которое ждало ответа (осмотр, бумаги, вопрос): вопрос закрыт без письма — позвонили.
+     * Метка ложится на ветку (`answered_at`), и её видят одинаково дело, почта и лента; новое письмо вендора
+     * снова откроет вопрос (`Threads::refresh` сравнивает даты).
+     */
+    public function letterDone(Request $request, Vehicle $vehicle, Message $message, Threads $threads)
     {
         abort_unless($message->thread?->vehicle_id === $vehicle->id, 404);
         $vehicle->log(EventType::LetterAnswered, $request->user(), ['message' => $message->id, 'subject' => $message->subject, 'thread' => $message->thread_id]);
+        $message->thread->forceFill(['answered_at' => now()])->save();
+        $threads->refresh($message->thread);
         app(MarkThreadRead::class)($message->thread);
 
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Сделано');

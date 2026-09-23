@@ -560,6 +560,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   /* Пока список сужен набранным, скрытые строки просто не рисуются — без анимации и скачка. */
   [data-live-hidden] { display: none !important; }
+
+  /* Дело в почте: письма одной машины одной секцией. Требует нас — полоска слева: лаймовая у того, что надо
+     завести, оранжевая у того, что ждёт ответа. Больше цветного в списке нет. */
+  .case--register, .case--reply { position: relative; padding-left: .625rem; }
+  .case--register::before, .case--reply::before {
+    content: ''; position: absolute; left: 0; top: .125rem; bottom: .125rem; width: 3px; border-radius: 999px;
+  }
+  .case--register::before { background: var(--color-accent); }
+  .case--reply::before { background: var(--color-urgent); }
   .pill {
     @apply inline-flex shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1.5 text-sm text-ink-muted transition-colors;
     min-height: 2.25rem;

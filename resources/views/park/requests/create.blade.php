@@ -17,9 +17,8 @@
     $makesRequest = ! $letters || ! $vehicle || ($stage === CandidateStage::Intake && RequestType::Intake->allowedFor($vehicle->state));
     $heading = $letters ? $candidate->title().($candidate->hasCar() && $v('year') ? ', '.$v('year') : '') : 'Новая заявка';
     // Письмо вендора без нашего ответа после него — от нас ждут слов, а не только заведения.
-    $waits = $letters && ($last = $messages->last(fn ($m) => ! $m->isOurs()))
-        && (Intent::tryFrom((string) $last->intent)?->needsReply() ?? false)
-        && ! $messages->contains(fn ($m) => $m->isOurs() && $m->date_at > $last->date_at);
+    // То же правило, что в почте и в деле: ветка с `needs_reply_at` ждёт от нас слов, а не только заведения.
+    $waits = $letters && \App\Mail\Thread::whereIn('id', $messages->pluck('thread_id')->filter()->unique())->whereNotNull('needs_reply_at')->exists();
     $act = match (true) {
         ! $letters => 'Завести',
         $vehicle && $makesRequest => 'Добавить заявку на приём',

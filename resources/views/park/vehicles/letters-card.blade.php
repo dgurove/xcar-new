@@ -8,7 +8,7 @@
     $m = $lastLetter;
     $ours = $m->isOurs();
     $intent = Intent::tryFrom((string) $m->intent);
-    $waits = $ask && $ask->id === $m->id;
+    $waits = ($asks ?? collect())->contains(fn ($a) => $a->id === $m->id);
     $text = $m->ownText();
     $files = $m->files()->count();
     $title = NodeTitle::titled($m, $candidate) ? NodeTitle::for($m, $candidate) : null;

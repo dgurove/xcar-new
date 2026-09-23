@@ -35,16 +35,14 @@ final class CaseView
         $open = ($requestId ? $vehicle->requests->first(fn (Request $r) => $r->id === $requestId && $r->isOpen()) : null) ?? self::current($vehicle);
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
         $release = $open?->type === RequestType::Release;
-        $threads = Thread::where('vehicle_id', $vehicle->id)->select('id')->pluck('id');
-        // Письма, которые ждут ответа (осмотр, бумаги, вопрос, «не вывезено»): без нашего письма после них и без «Сделано».
-        $asks = $threads->isEmpty() ? collect() : Message::whereIn('thread_id', $threads)->where('direction', Direction::In)
-            ->whereIn('intent', array_map(fn (Intent $i) => $i->value, array_filter(Intent::cases(), fn (Intent $i) => $i->needsReply())))
-            ->orderBy('date_at')->get(['id', 'thread_id', 'subject', 'from_name', 'from_email', 'date_at', 'text_body', 'html_body', 'intent']);
-        $answeredIds = $vehicle->events->where('type', EventType::LetterAnswered)->pluck('payload.message')->filter()->all();
-        // Ответом считается и письмо сотрудника с личного ящика (Message::ownEmails).
-        $replied = $asks->isEmpty() ? collect() : Message::whereIn('thread_id', $threads)
-            ->where(fn ($q) => $q->where('direction', Direction::Out)->orWhereIn('from_email', Message::ownEmails()))->get(['thread_id', 'date_at']);
-        $asks->each(fn (Message $m) => $m->answered = in_array($m->id, $answeredIds, true) || $replied->contains(fn ($r) => $r->thread_id === $m->thread_id && $r->date_at?->gt($m->date_at)));
+        $threads = Thread::where('vehicle_id', $vehicle->id)->get(['id', 'needs_reply_at']);
+        $ids = $threads->pluck('id');
+        // Ждёт ответа — одно правило на почту, дело и ленту: последнее письмо ветки их, с вопросом, и после него
+        // мы не писали и не нажимали «Сделано» (`Threads::refresh` → `needs_reply_at`). Само письмо — последнее входящее.
+        $waiting = $threads->whereNotNull('needs_reply_at')->pluck('id');
+        $asks = $waiting->isEmpty() ? collect() : Message::whereIn('thread_id', $waiting)->where('direction', Direction::In)
+            ->orderBy('date_at')->orderBy('id')->get(['id', 'thread_id', 'subject', 'from_name', 'from_email', 'date_at', 'text_body', 'html_body', 'intent'])
+            ->groupBy('thread_id')->map->last()->sortBy('date_at')->values();
 
         return [
             'vehicle' => $vehicle,
@@ -52,14 +50,14 @@ final class CaseView
             'verb' => $open?->verb(),
             'phases' => $vehicle->requests->filter(fn (Request $r) => $r->state === RequestState::Done)->sortBy(fn (Request $r) => ($r->done_at ?? $r->updated_at)->getTimestamp())->values(),
             'others' => $vehicle->requests->filter(fn (Request $r) => $r->isOpen() && $open && $r->isNot($open))->values(),
-            'letters' => $letters = $threads->isEmpty() ? 0 : Message::whereIn('thread_id', $threads)->count(),
+            'letters' => $letters = $ids->isEmpty() ? 0 : Message::whereIn('thread_id', $ids)->count(),
             'steps' => Timeline::for($vehicle, $open, $letters > 0 || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $callAgain, $asks),
-            'ask' => $asks->last(fn (Message $m) => ! $m->answered),
+            'asks' => $asks,
             // Текст письма о приёме — в шаг «Нужно позвонить»: «клиент сам свяжется», «документы в офисе СК», «со СТОА по адресу…».
             'letterText' => $open?->thread_id ? Intent::excerpt(Message::where('thread_id', $open->thread_id)->where('direction', Direction::In)->orderBy('date_at')->value('text_body')) : null,
             'threads' => Thread::where('vehicle_id', $vehicle->id)->orderByDesc('last_message_at')->get(['id', 'subject']),
             // Блок «Письма» над таймлайном: последнее письмо словами, этапы — из цепочки кандидата этой ТС.
-            'lastLetter' => $threads->isEmpty() ? null : Message::whereIn('thread_id', $threads)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),
+            'lastLetter' => $ids->isEmpty() ? null : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),
             'candidate' => $threads->isEmpty() ? null : Candidate::where('vehicle_id', $vehicle->id)->latest('id')->first(),
             'yards' => $yards->pluck('name', 'id'),
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),

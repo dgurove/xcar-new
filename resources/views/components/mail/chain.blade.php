@@ -15,9 +15,10 @@
     $lastId = $messages->last()?->id;
     $focusId = $focus ? ($messages->first(fn (Message $m) => ! $m->is_seen && ! $m->isOurs())?->id ?? $lastId) : null;
     $staged = collect($candidate?->stages ?? [])->pluck('message_id')->all();
-    // Ждёт ответа: письмо вендора с вопросом, после которого мы ничего не писали.
-    $lastOurs = $messages->last(fn (Message $m) => $m->isOurs())?->date_at;
-    $asks = $messages->filter(fn (Message $m) => ! $m->isOurs() && (Intent::tryFrom((string) $m->intent)?->needsReply() ?? false) && (! $lastOurs || $m->date_at > $lastOurs))->pluck('id')->all();
+    // Ждёт ответа — одно правило на почту, дело и ленту: ветка с `needs_reply_at`, письмо — её последнее входящее.
+    $waiting = \App\Mail\Thread::whereIn('id', $messages->pluck('thread_id')->filter()->unique())->whereNotNull('needs_reply_at')->pluck('id')->all();
+    $asks = $messages->filter(fn (Message $m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())
+        ->groupBy('thread_id')->map->last()->pluck('id')->all();
     $kind = fn (Message $m) => trim((in_array($m->id, $staged, true) ? 'stage ' : (in_array($m->id, $asks, true) ? 'ask ' : '')).($m->isOurs() ? 'ours' : ''));
     $service = fn (Message $m) => ! in_array($m->id, $staged, true) && in_array($m->intent, [Intent::Auto->value, Intent::Billing->value], true);
     // Разбор письма: на виду только письмо-заявка, то, что ждёт ответа, и то, на чём стоит фокус.

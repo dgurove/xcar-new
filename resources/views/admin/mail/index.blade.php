@@ -1,9 +1,10 @@
-{{-- Почта: Входящие · Ждут ответа · Прочее · Отправленные · Архив (ветка там, где её последнее письмо, как в Gmail).
-     Во «Входящих» секции: ТС (CRM — предложения) и кандидаты «Из писем» («Завести ›»), письма вендоров без тождества —
-     последней секцией «Без тождества»; автоответы, рассылки и не-вендоры — в «Прочее» («Всё в архив»). Верх — заголовок
-     с «Написать» справа и одна строка: поиск, пилюли, сортировка и фильтры круглыми кнопками. Поиск ищет по ходу набора
-     внутри текущей пилюли и фильтров и адрес не меняет. Любая строка открывает окно писем ветки (x-mail.window);
-     ?window=id — открыть окно сразу (ссылки из уведомлений). --}}
+{{-- Почта — рабочий список дел: Требуют внимания · Все · Прочее · Отправленные · Архив. Дело — машина, цепочка
+     «Из писем» или предложение; секция стоит целиком в любой пилюле, потому что действие требуется от дела, а не
+     от одного письма. «Требуют внимания» — завести цепочку, ответить на вопрос, разобрать заявку без тождества.
+     Автоответы, рассылки, не-вендоры и бухгалтерия без машины — в «Прочее» («Всё в архив»). Верх — заголовок с
+     «Написать» справа и одна строка: поиск, пилюли, сортировка и фильтры круглыми кнопками. Поиск ищет по ходу
+     набора внутри текущей пилюли и фильтров и адрес не меняет. Любая строка открывает окно писем ветки
+     (x-mail.window); ?window=id — открыть окно сразу (ссылки из уведомлений). --}}
 <x-ui.shell title="Почта" :count="$crm ? null : $threads->total()" :heading="$crm ? false : 'Почта'">
     {{-- Кнопка стоит в строке заголовка и на телефоне: своей строки она не стоит. --}}
     <x-slot:actions class="!ml-auto !w-auto">
@@ -15,7 +16,7 @@
 
     @if ($crm)<x-admin.work-titles current="mail" :count="$threads->total()"/>@endif
 
-    <x-ui.toolbar :class="$crm ? 'mt-4' : ''" :sorts="\App\Http\Admin\MailController::SORTS" :sort="$sort" :pills="\App\Http\Admin\MailController::BOXES" :pill="$box" pill-param="box" :counts="$counts" :tones="['waiting' => ! empty($counts['waiting']) ? 'pill-urgent' : '']" name="mail"
+    <x-ui.toolbar :class="$crm ? 'mt-4' : ''" :sorts="\App\Http\Admin\MailController::SORTS" :sort="$sort" :pills="\App\Http\Admin\MailController::BOXES" :pill="$box" pill-param="box" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" name="mail"
                   search="Найти письмо" search-target="#threads" :q="$q">
         <x-slot:filters>
             <select name="vendor" class="field-input"><option value="">Все вендоры</option>@foreach ($vendors as $id => $name)<option value="{{ $id }}" @selected(($filter['vendor'] ?? null) === $id)>{{ $name }}</option>@endforeach</select>

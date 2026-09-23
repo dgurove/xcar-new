@@ -202,7 +202,8 @@ enum Intent: string
     {
         return match (true) {
             $this === self::Intake => 'tag-accent',
-            $this === self::Sold, $this->needsReply() => 'tag-urgent',
+            // Оранжевое — только то, что ждёт нашего ответа; «Продано» ответа не ждёт, это факт.
+            $this->needsReply() => 'tag-urgent',
             in_array($this, [self::Billing, self::Auto], true) => 'tag-dim',
             default => '',
         };

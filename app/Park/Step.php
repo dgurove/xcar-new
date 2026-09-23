@@ -2,6 +2,7 @@
 
 namespace App\Park;
 
+use App\Mail\Message;
 use Illuminate\Support\Carbon;
 
 /** Шаг таймлайна дела: что сделано, что делать сейчас, что впереди. */
@@ -29,6 +30,8 @@ final class Step
         public ?array $plate = null,
         public ?Request $request = null,
         public bool $danger = false,
+        /** Письмо, которое ждёт ответа: у шага `reply` своё, у остальных пусто. */
+        public ?Message $ask = null,
     ) {}
 
     public function isCurrent(): bool

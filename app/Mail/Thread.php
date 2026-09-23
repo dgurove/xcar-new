@@ -23,7 +23,8 @@ class Thread extends Model
 
     protected function casts(): array
     {
-        return ['participants' => 'array', 'last_message_at' => 'datetime', 'has_attachments' => 'bool', 'unlinked_at' => 'datetime', 'keys' => 'array', 'archived_at' => 'datetime'];
+        return ['participants' => 'array', 'last_message_at' => 'datetime', 'has_attachments' => 'bool', 'unlinked_at' => 'datetime', 'keys' => 'array', 'archived_at' => 'datetime',
+            'needs_reply_at' => 'datetime', 'answered_at' => 'datetime'];
     }
 
     public function account(): BelongsTo

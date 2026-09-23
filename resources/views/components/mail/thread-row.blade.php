@@ -16,8 +16,8 @@
     $intent = ! $ours ? Intent::tryFrom((string) ($thread->latestIncoming?->intent ?? $last?->intent)) : null;
     $tag = $ours ? ($out ? 'Мы ответили' : 'От сотрудника') : $intent?->short();
     $tone = $ours ? 'tag-dim' : ($intent === Intent::Intake ? 'tag-accent' : (in_array($intent, [Intent::Billing, Intent::Auto], true) ? 'tag-dim' : ''));
-    // Оранжевое — только то, что ждёт нас: вопрос, документы, осмотр без нашего ответа.
-    $waits = ! $ours && $intent?->needsReply();
+    // Оранжевое — только то, что ждёт нас; признак один на все экраны — `Threads::refresh` → `needs_reply_at`.
+    $waits = $thread->needs_reply_at !== null;
     $chip = $thread->vehicle ? $thread->vehicle->titleWithYear() : ($thread->offer ? $thread->offer->title() : ($thread->candidate?->title()));
     $when = $thread->last_message_at?->translatedFormat($thread->last_message_at->isToday() ? 'H:i' : ($thread->last_message_at->isCurrentYear() ? 'j M' : 'j M Y'));
     $unread = $thread->unread_count > 0;

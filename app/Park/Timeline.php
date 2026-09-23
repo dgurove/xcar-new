@@ -116,10 +116,9 @@ final class Timeline
             $steps[$i]->state = Step::TODO;
         }
 
-        // Письмо, которое ждёт ответа (осмотр, бумаги, вопрос), — шаг с делом рядом с текущим (текущий с формой остаётся); отвеченные — строками.
+        // Ветка, которая ждёт ответа (осмотр, бумаги, вопрос), — шаг с делом рядом с текущим; текущий с формой
+        // остаётся на месте. Правило одно на почту и дело: последнее письмо ветки их и без нашего ответа.
         if ($asks && $asks->isNotEmpty()) {
-            $pending = $asks->last(fn ($m) => ! $m->answered);
-            $done = $asks->filter(fn ($m) => $m->answered || $m->isNot($pending))->map(fn ($m) => new Step('reply-'.$m->id, 'Ответили', Step::DONE, Intent::from($m->intent)->title(), $m->date_at, [$m->from_name ?: $m->from_email]));
             $pos = count($steps);
             foreach ($steps as $i => $s) {
                 if ($s->state !== Step::DONE) {
@@ -127,11 +126,8 @@ final class Timeline
                     break;
                 }
             }
-            $insert = $done->values()->all();
-            if ($pending) {
-                $insert[] = new Step('reply', Intent::from($pending->intent)->title(), Step::TODO, null, $pending->date_at, [$pending->from_name ?: $pending->from_email],
-                    ['kind' => 'window', 'label' => 'Ответить', 'url' => '/mail/'.$pending->thread_id.'/window']);
-            }
+            $insert = $asks->map(fn ($m) => new Step('reply', Intent::from($m->intent)->title(), Step::TODO, null, $m->date_at, [$m->from_name ?: $m->from_email],
+                ['kind' => 'window', 'label' => 'Ответить', 'url' => '/mail/'.$m->thread_id.'/window'], ask: $m))->values()->all();
             array_splice($steps, $pos, 0, $insert);
         }
 

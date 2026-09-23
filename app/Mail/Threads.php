@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Mail\Extraction\Intent;
 use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,7 @@ final class Threads
 
     public function refresh(Thread $thread): void
     {
-        $messages = Message::where('thread_id', $thread->id)->get(['id', 'subject', 'is_seen', 'has_attachments', 'date_at', 'direction', 'intent']);
+        $messages = Message::where('thread_id', $thread->id)->get(['id', 'subject', 'is_seen', 'has_attachments', 'date_at', 'direction', 'intent', 'from_email']);
         if ($messages->isEmpty()) {
             $thread->delete();
 
@@ -42,6 +43,9 @@ final class Threads
             'last_message_at' => $messages->max('date_at'),
             'last_direction' => $sorted->last()?->direction?->value,
             'last_intent' => $sorted->last(fn (Message $m) => $m->direction === Direction::In)?->intent,
+            // Ждёт ответа — одно правило на почту, дело ТС и ленту: последнее письмо ветки их, с вопросом,
+            // и после него мы не писали и не нажимали «Сделано».
+            'needs_reply_at' => self::waiting($thread, $sorted->last()),
             'messages_count' => $messages->count(),
             'unread_count' => $messages->where('is_seen', false)->where('direction', Direction::In)->count(),
             'has_attachments' => $messages->contains('has_attachments', true),
@@ -53,6 +57,20 @@ final class Threads
             // Номера ветки — объединение номеров её писем из индекса (`ReadLetter`), письма заново не читаются.
             'keys' => DB::table('mail_message_keys')->whereIn('message_id', $messages->pluck('id'))->distinct()->orderBy('key')->pluck('key')->all(),
         ])->save();
+    }
+
+    /** Дата письма, которое ждёт нашего ответа, или null: считается один раз здесь и живёт в `needs_reply_at`. */
+    private static function waiting(Thread $thread, ?Message $last): ?Carbon
+    {
+        if (! $last || $last->direction !== Direction::In || $last->isOurs()) {
+            return null;
+        }
+        if (! (Intent::tryFrom((string) $last->intent)?->needsReply() ?? false)) {
+            return null;
+        }
+
+        // «Сделано» на деле ТС закрывает вопрос без письма; новое письмо вендора снова его открывает.
+        return $thread->answered_at?->gte($last->date_at) ? null : $last->date_at;
     }
 
     /** Вендор по первому адресу, который не наш ящик и не сотрудник. */
