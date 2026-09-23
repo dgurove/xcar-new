@@ -81,15 +81,26 @@ class RequestController
         };
 
         $open = $filters(Scope::requests($request->user()))->whereIn('state', RequestState::open())->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
-        // Осмотр и перестановка заявками не заводятся: пресеты — только приём, эвакуация, выдача.
-        $presets = ['all' => 'Все', 'overdue' => 'Просрочено', 'call' => 'Нужно позвонить'] + collect([RequestType::Intake, RequestType::Tow, RequestType::Release])->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all();
+        $counts = $open->all() + ['all' => $open->sum(), 'call' => $needsCall($filters(Scope::requests($request->user())))->count(),
+            'overdue' => $filters(Scope::requests($request->user()))->whereIn('state', RequestState::open())->where('planned_at', '<', now())->count()];
+        // Пилюля есть, пока есть заявки: «Перестановка» появляется от первой такой и исчезает с последней.
+        // Выбранная остаётся и с нулём, иначе активная пилюля исчезала бы из ряда вместе со списком.
+        $presets = collect(['all' => 'Все', 'overdue' => 'Просрочено', 'call' => 'Нужно позвонить'] + collect(RequestType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all())
+            ->filter(fn ($label, $key) => $key === 'all' || $key === $type || ! empty($counts[$key]))->all();
+        $paginator = ListView::paginate($request, $q);
+        $data = [
+            'requests' => $paginator,
+            'view' => ListView::pick($request, $paginator->total()),
+        ];
+        // Лента просит только список: тот же кусок, что рисует страницу.
+        if ($request->header('X-List')) {
+            return response()->view('park.requests.list', $data);
+        }
 
-        return view('park.requests.index', [
-            'requests' => ListView::paginate($request, $q),
+        return view('park.requests.index', $data + [
             'preset' => $type,
             'presets' => $presets,
-            'counts' => $open->all() + ['all' => $open->sum(), 'call' => $needsCall($filters(Scope::requests($request->user())))->count(),
-                'overdue' => $filters(Scope::requests($request->user()))->whereIn('state', RequestState::open())->where('planned_at', '<', now())->count()],
+            'counts' => $counts,
             'sort' => $request->query('sort', 'planned'),
             'q' => $qs,
             'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),

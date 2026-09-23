@@ -13,7 +13,7 @@
         <x-slot:marks>
             <x-ui.pill :tone="$state->tone()" class="!min-h-0 !py-1 text-xs">{{ $state->label() }}</x-ui.pill>
             @if ($vehicle->plate)<span class="tag nums">{{ $vehicle->plate }}</span>@endif
-            @if ($vehicle->ref)<span class="tag">{{ $vehicle->ref }}</span>@endif
+            @if ($vehicle->ref)<x-ui.copy-code class="tag" :value="$vehicle->ref"/>@endif
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
             @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
             @if ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
