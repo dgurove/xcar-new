@@ -1,5 +1,5 @@
-{{-- Заявка в плитках и строках: карточка ТС целиком нажимается. Две строки: название и ряд чипов — номер убытка
-     (копируется), шаг словом, где он не дублирует дело, вендор, телефон, исполнитель; справа тип заявки пилюлей
+{{-- Заявка в плитках и строках: карточка ТС целиком нажимается. Две строки: название и ряд чипов — вендор тегом,
+     дальше номер убытка текстом (копируется), шаг словом, телефон, исполнитель; справа тип пилюлей
      (красная при просрочке) и срок. Пересказа под названием нет: «Выдать, продана 18 сен» — это то же, что тип
      справа и телефон рядом, а из-за третьей строки на экран влезало вдвое меньше заявок. Кнопок нет. --}}
 @props(['req'])
@@ -13,10 +13,11 @@
         : $req->state->label();
 @endphp
 <x-park.card :vehicle="$v" :href="'/cars/'.$v->id" :facts="false" link>
-    @if ($v->ref)<x-ui.copy-code class="tag" :value="$v->ref"/>@endif
+    @if ($v->vendor)<span class="tag tag-shrink">{{ $v->vendor->name }}</span>@endif
+    {{-- Номер убытка — текстом, а не чипом: чип держит подложку, а это не метка, а номер, который копируют. --}}
+    @if ($v->ref)<x-ui.copy-code class="text-xs text-ink-dim" :value="$v->ref"/>@endif
     @if ($word)<span class="tag">{{ $word }}</span>@endif
     @if ($req->type === RequestType::Move && $req->yard)<x-ui.place class="tag">{{ $req->yard->name }}</x-ui.place>@endif
-    @if ($v->vendor)<span class="tag">{{ $v->vendor->name }}</span>@endif
     @if ($req->contact_phone)<a href="tel:+{{ preg_replace('/\D+/', '', $req->contact_phone) }}" class="tag nums"><x-ui.icon name="phone" class="size-3.5 shrink-0"/>{{ $req->contact_phone }}</a>@endif
     @if ($req->assignee)<x-ui.person :user="$req->assignee" class="tag"/>@endif
     <x-slot:aside>

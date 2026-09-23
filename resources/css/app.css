@@ -1335,6 +1335,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 .surface-park .cards:not(.cards--grid) .card-extra { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 .surface-park .cards:not(.cards--grid) .card-extra::-webkit-scrollbar { display: none; }
 .surface-park .cards:not(.cards--grid) .card-extra > * { flex: none; }
+/* Место в ряду уступает вендор, а не номер убытка: номер читают и копируют, вендор узнаётся по началу. */
+.surface-park .cards:not(.cards--grid) .card-extra > .tag-shrink {
+  display: inline-block; flex: 0 1 auto; min-width: 2.5rem; overflow: hidden; text-overflow: ellipsis;
+}
 .surface-crm .cards--grid, .surface-park .cards--grid {
   --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
   --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
