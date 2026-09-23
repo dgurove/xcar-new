@@ -41,7 +41,8 @@
             </div>
         </div>
     @else
-        <div class="flex-1"></div>
+        {{-- Без пилюль поиск уже растянут: на телефоне пустая распорка отняла бы у него половину строки. --}}
+        <div class="hidden flex-1 md:block"></div>
     @endif
 
     {{ $extra ?? '' }}

@@ -6,12 +6,14 @@
 @php use App\Mail\CandidateState; @endphp
 @if ($threads->isEmpty())
     <x-ui.empty class="py-6">{{ $q !== '' || $filter ? 'Ничего не нашлось' : match ($box) {
-        'attention' => 'Дел нет', 'other' => 'Прочего нет', 'sent' => 'Отправленных нет', 'archive' => 'Архив пуст', default => 'Писем нет' } }}</x-ui.empty>
+        'attention' => 'Дел нет', 'register' => 'Заводить нечего', 'other' => 'Прочего нет', 'sent' => 'Отправленных нет', 'archive' => 'Архив пуст', default => 'Писем нет' } }}</x-ui.empty>
 @else
     <div class="flex flex-col gap-4">
         @foreach ($sections as $section)
             @php $plain = ! $section['vehicle'] && ! $section['offer'] && ! $section['candidate']; @endphp
-            <section class="case {{ $section['attention'] ? 'case--'.$section['attention'] : '' }}" data-search-group>
+            {{-- Смахивается дело целиком: архивировать одно письмо из цепочки смысла нет. --}}
+            <x-ui.swipe id="case-{{ $section['kind'] }}-{{ $section['id'] }}" data-search-group>
+            <section class="case {{ $section['attention'] ? 'case--'.$section['attention'] : '' }}">
                 @if ($section['vehicle'])
                     @php $v = $section['vehicle']; @endphp
                     <div class="case-head">
@@ -37,12 +39,14 @@
                             <span class="tag {{ $c->stage === \App\Mail\CandidateStage::Sold ? 'tag-urgent' : '' }}">{{ $c->stage === \App\Mail\CandidateStage::Intake ? $c->requestTag() : $c->stageLabel() }}</span>
                             @if ($c->vendor?->name)<span class="tag">{{ $c->vendor->name }}</span>@endif
                         </div>
-                        <span class="shrink-0">
+                        <span class="flex shrink-0 items-center gap-1.5">
                             @if ($c->state === CandidateState::New)
+                                {{-- На телефоне цепочку отклоняет свайп, на компьютере свайпа нет — там кнопка. --}}
+                                <form method="post" action="{{ $queue }}/{{ $c->id }}/decline" class="hidden md:contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do">Не заявка</button></form>
                                 @if ($park)
                                     <a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent case-do">Завести</a>
                                 @else
-                                    <form method="post" action="/offers/from-mail/{{ $c->id }}/create">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
+                                    <form method="post" action="{{ $queue }}/{{ $c->id }}/create" class="contents">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                                 @endif
                             @elseif ($c->state === CandidateState::Promoted)
                                 <a href="{{ $park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number }}" class="case-go"><span class="tag">{{ $c->state->label() }}</span><span aria-hidden="true">›</span></a>
@@ -65,6 +69,13 @@
                     @endforeach
                 </div>
             </section>
+            <x-slot:actions>
+                <form method="post" action="{{ $base }}/case/{{ $section['kind'] }}/{{ $section['id'] }}/archive" data-queue>@csrf
+                    @if ($box === 'archive')<input type="hidden" name="restore" value="1">@endif
+                    <button type="submit" class="swipe-btn swipe-btn-accent" aria-label="{{ $box === 'archive' ? 'Вернуть' : 'В архив' }}"><x-ui.icon :name="$box === 'archive' ? 'undo' : 'archive'" class="size-5"/></button>
+                </form>
+            </x-slot:actions>
+            </x-ui.swipe>
         @endforeach
     </div>
 @endif

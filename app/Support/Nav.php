@@ -8,8 +8,7 @@ use App\Billing\Payment;
 use App\Billing\PaymentState;
 use App\Chats\Chat;
 use App\Http\Middleware\MarkInstalled;
-use App\Mail\Candidate;
-use App\Mail\CandidateState;
+use App\Mail\Boxes;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Bid;
@@ -338,14 +337,15 @@ final class Nav
                 return [
                     // Бейдж «Заявки» — просроченные: то, что горит.
                     '/' => Request::whereIn('state', RequestState::open())->where('planned_at', '<', now())->count(),
-                    '/requests/from-mail' => Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)->count(),
+                    // Бейдж «Из писем» — число дел, которые надо завести: у одинокого письма-заявки цепочки нет.
+                    '/requests/from-mail' => Boxes::registerCount(Scope::Park),
                     '/money' => Invoice::where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString())->count(),
                     '/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ];
             }
             $badges = [
                 '/' => Bid::where('state', BidState::Active)->count(),
-                '/offers/from-mail' => Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->count(),
+                '/offers/from-mail' => Boxes::registerCount(Scope::Offers),
                 '/work/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
                 '/work/deals' => Position::where('track', 'sale')

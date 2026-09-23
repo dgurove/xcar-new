@@ -2,7 +2,8 @@
      («Заявка», «Продано»; наше последнее — «Мы ответили», пересланное сотрудником с личного ящика — «От сотрудника»)
      и дата; второй строкой тема с первыми словами, скрепка и число писем — теги над ними не висят, иначе темы не видно.
      Оранжевое — только «Ждёт ответа» (вопрос, документы, осмотр без нашего ответа). Непрочитанное — полужирным с оранжевой
-     точкой: обработанная ветка (ответили, завели, «Сделано», в архив) читается сама. Нажатие — окно писем ветки; свайп влево — в архив (из архива — вернуть).
+     точкой: обработанная ветка (ответили, завели, «Сделано», в архив) читается сама. Нажатие — окно писем ветки;
+     свайпом уходит всё дело, а не строка (смахивание висит на секции), «В архив» одной ветки — в окне письма.
      linked — плоский список (поиск, «Ждут ответа», «Прочее», архив): там нет заголовка секции, поэтому вендор и ТС — чипами в строке. --}}
 @props(['thread', 'base', 'park' => true, 'linked' => false])
 @php
@@ -22,7 +23,7 @@
     $when = $thread->last_message_at?->translatedFormat($thread->last_message_at->isToday() ? 'H:i' : ($thread->last_message_at->isCurrentYear() ? 'j M' : 'j M Y'));
     $unread = $thread->unread_count > 0;
 @endphp
-<x-ui.swipe id="thread-{{ $thread->id }}" data-search-row>
+<div id="thread-{{ $thread->id }}" data-search-row>
     <div class="row items-center">
         @if ($ours && $last?->author)
             <x-ui.avatar :user="$last->author" :size="32"/>
@@ -46,7 +47,4 @@
             @if ($linked && $chip)<span class="mt-1 inline-flex max-w-full items-center gap-1 tag truncate"><x-ui.icon :name="$thread->vehicle ? 'car' : 'mail'" class="size-3 text-ink-dim"/>{{ $chip }}</span>@endif
         </button>
     </div>
-    <x-slot:actions>
-        <form method="post" action="{{ $base }}/{{ $thread->id }}/archive" data-queue>@csrf<button type="submit" class="swipe-btn swipe-btn-accent" aria-label="{{ $thread->archived_at ? 'Вернуть' : 'В архив' }}"><x-ui.icon :name="$thread->archived_at ? 'undo' : 'archive'" class="size-5"/></button></form>
-    </x-slot:actions>
-</x-ui.swipe>
+</div>

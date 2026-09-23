@@ -4,7 +4,6 @@ namespace App\Park\Actions;
 
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
-use App\Mail\Extraction\CandidateCard;
 use App\Mail\Thread;
 use App\Park\DocState;
 use App\Park\EventType;
@@ -47,11 +46,8 @@ final class UnwindVehicle
             $candidate = Candidate::where('vehicle_id', $vehicle->id)->where('state', CandidateState::Promoted)->latest('id')->first();
             Thread::where('vehicle_id', $vehicle->id)->update(['vehicle_id' => null]);
             if ($candidate) {
-                // Фото ТС уходят вместе с ней (вложения писем закреплены, при новом «Завести» приедут снова), кандидату — кадр карточки.
+                // Фото ТС уходят вместе с ней: вложения писем закреплены, при новом «Завести» приедут снова.
                 $candidate->update(['state' => CandidateState::New, 'vehicle_id' => null]);
-                if ($candidate->message) {
-                    app(CandidateCard::class)->make($candidate, $candidate->message);
-                }
             }
             // Заявки, события, осмотры — каскадом по FK; медиа — spatie при удалении модели.
             $vehicle->delete();

@@ -23,7 +23,6 @@ final class CloseChain
             return;
         }
         $candidate->forceFill(['state' => CandidateState::Closed, 'closed_at' => now(), 'proposed' => null])->saveQuietly();
-        $candidate->clearMediaCollection('card');
         $this->archive->candidate($candidate);
         // Закрыта — обработана: непрочитанных не остаётся (без флага в ящик, письма старые).
         Message::whereIn('id', $candidate->messages()->pluck('mail_messages.id'))->where('is_seen', false)->update(['is_seen' => true]);

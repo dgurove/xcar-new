@@ -8,19 +8,23 @@ use App\Billing\Invoice;
 use App\Live\Stream;
 use App\Mail\Account;
 use App\Mail\Actions\ArchiveThread;
+use App\Mail\Actions\FreezeMessages;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Actions\StoreOutboxFile;
 use App\Mail\Attachment;
 use App\Mail\BodyRenderer;
+use App\Mail\Boxes;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
+use App\Mail\Chains\ChainBuilder;
 use App\Mail\Composer;
 use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\Keys;
 use App\Mail\Jobs\ExtractCandidate;
+use App\Mail\Jobs\ImportCandidateFiles;
 use App\Mail\Jobs\ParseMessage;
 use App\Mail\Jobs\PushFlag;
 use App\Mail\Jobs\SendMessage;
@@ -40,6 +44,7 @@ use App\Park\EventType;
 use App\Park\InspectionKind;
 use App\Park\PhotoStage;
 use App\Park\Vehicle;
+use App\Support\Nav;
 use App\Vendors\ContactRole;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
@@ -48,66 +53,45 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Почта: Входящие · Ждут ответа · Прочее · Отправленные · Архив (ветка там, где её последнее письмо, как в Gmail).
- * Во «Входящих» секции по ТС (CRM — по предложениям) и кандидатам «Из писем», письма вендоров без тождества —
- * последней секцией; автоответы, рассылки и не-вендоры — в «Прочее». Строка несёт аватар отправителя, вендора и смысл
- * последнего письма тегом. Фильтры (вендор, смысл, непрочитанные, с файлами) и поиск — плоский список по всем письмам.
+ * Почта — рабочий список дел: Требуют внимания · Все · Прочее · Отправленные · Архив (ветка там, где её последнее
+ * письмо, как в Gmail). Дело — ТС (в CRM предложение), цепочка «Из писем» или письмо без машины; пилюля выбирает
+ * дела, а в секции стоят все письма дела. Тем же экраном стоит «Из писем» (`fromMail`) — с вшитой выборкой
+ * «надо завести» и без пилюль. Правила выборок — `Mail\Boxes`, их же читает бейдж раздела.
  */
 class MailController
 {
-    /** Пилюли — дела, а не письма: сначала то, что требует нас, дальше вся переписка и хвосты. */
-    public const BOXES = ['attention' => 'Требуют внимания', 'all' => 'Все', 'other' => 'Прочее', 'sent' => 'Отправленные', 'archive' => 'Архив'];
-
-    public const SORTS = ['fresh' => 'Свежие', 'waiting' => 'Дольше ждут'];
-
     public const GROUPS_PER_PAGE = 30;
 
     public const ROWS_PER_PAGE = 50;
 
-    public function __construct(private Scope $scope = Scope::Offers, private string $base = '/work/mail') {}
-
-    /** Направление и смысл последнего письма ветки — колонки, их держит `Threads::refresh` (было подзапросом на строку). */
-    private const LAST_DIRECTION = 'mail_threads.last_direction';
-
-    private const LAST_INTENT = 'mail_threads.last_intent';
-
-    /**
-     * «Прочее» — не про машину: без ТС, кандидата и предложения, и при этом либо не вендор, либо автоответ,
-     * либо бухгалтерия (акты, счета, сверка — это переписка бухгалтерий, а не дело по машине).
-     */
-    private function noise($query): void
-    {
-        $query->whereNull('vehicle_id')->whereNull('candidate_id')->whereNull('offer_id')
-            ->where(fn ($w) => $w->whereNull('vendor_id')->orWhereRaw(self::LAST_INTENT." in ('auto', 'billing')"));
-    }
-
-    private function notNoise($query): void
-    {
-        $query->where(fn ($w) => $w->whereNotNull('vehicle_id')->orWhereNotNull('candidate_id')->orWhereNotNull('offer_id')
-            ->orWhere(fn ($v) => $v->whereNotNull('vendor_id')->whereRaw('coalesce('.self::LAST_INTENT.", '') not in ('auto', 'billing')")));
-    }
-
-    /**
-     * Дело требует нас, если хоть что-то из трёх: цепочка «Из писем» ещё не заведена; у ветки висит вопрос
-     * (`needs_reply_at` — одно правило на почту, дело ТС и ленту); письмо-заявка от вендора, которое парсер
-     * не привязал ни к чему — такое заводят руками из окна ветки.
-     */
-    private function attention($query, bool $park): void
-    {
-        $own = $park ? 'vehicle_id' : 'offer_id';
-        $query->whereNotNull('needs_reply_at')
-            ->orWhere(fn ($w) => $w->whereNull($own)->whereIn('candidate_id', Candidate::where('scope', $this->scope)->where('state', CandidateState::New)->select('id')))
-            ->orWhere(fn ($w) => $w->whereNull('vehicle_id')->whereNull('offer_id')->whereNull('candidate_id')
-                ->whereNotNull('vendor_id')->whereRaw(self::LAST_INTENT." = 'intake'"));
-    }
+    /** `$queue` — адрес «Из писем»: оттуда же идут «Завести» и «Не заявка» у цепочки. */
+    public function __construct(
+        private Scope $scope = Scope::Offers,
+        private string $base = '/work/mail',
+        private string $queue = '/offers/from-mail',
+    ) {}
 
     public function index(Request $request)
     {
+        return $this->screen($request);
+    }
+
+    /**
+     * «Из писем» — та же почта, но выборка вшита: только дела, которые надо завести. Пилюль на экране нет и
+     * снять выборку нечем — раздел про одно дело, а не про переключение коробок.
+     */
+    public function fromMail(Request $request)
+    {
+        return $this->screen($request, 'register');
+    }
+
+    private function screen(Request $request, ?string $forced = null)
+    {
         $accounts = Account::where('scope', $this->scope)->orderBy('title')->get();
         // Открывается «Все» — почта прежде всего почта; «Требуют внимания» стоит первой пилюлей рядом.
-        $box = array_key_exists($request->query('box', ''), self::BOXES) ? $request->query('box') : 'all';
+        $box = $forced ?? (array_key_exists($request->query('box', ''), Boxes::BOXES) ? $request->query('box') : 'all');
         // В делах, требующих нас, сверху самое старое: свежее и так на виду.
-        $sort = array_key_exists($request->query('sort', ''), self::SORTS) ? $request->query('sort') : ($box === 'attention' ? 'waiting' : 'fresh');
+        $sort = array_key_exists($request->query('sort', ''), Boxes::SORTS) ? $request->query('sort') : (in_array($box, ['attention', 'register'], true) ? 'waiting' : 'fresh');
         $q = trim((string) $request->query('q'));
         $filter = array_filter([
             'vendor' => (int) $request->query('vendor') ?: null,
@@ -122,11 +106,12 @@ class MailController
         // Ветки пилюли: по ним выбираются дела. Письма дела потом берутся все — действие требуется от дела,
         // а не от одного письма, поэтому секция не должна разваливаться под фильтром.
         $pick = fn (string $box) => match ($box) {
-            'sent' => (clone $all)->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'out'"),
+            'sent' => (clone $all)->whereNull('archived_at')->whereRaw(Boxes::LAST_DIRECTION." = 'out'"),
             'archive' => (clone $all)->whereNotNull('archived_at'),
-            'attention' => (clone $all)->whereNull('archived_at')->where(fn ($w) => $this->attention($w, $this->scope === Scope::Park)),
-            'other' => (clone $all)->whereNull('archived_at')->where(fn ($w) => $this->noise($w)),
-            default => (clone $all)->whereNull('archived_at')->where(fn ($w) => $this->notNoise($w)),
+            'attention' => (clone $all)->whereNull('archived_at')->where(fn ($w) => Boxes::attention($w, $this->scope)),
+            'register' => (clone $all)->whereNull('archived_at')->where(fn ($w) => Boxes::register($w, $this->scope)),
+            'other' => (clone $all)->whereNull('archived_at')->where(fn ($w) => Boxes::noise($w)),
+            default => (clone $all)->whereNull('archived_at')->where(fn ($w) => Boxes::notNoise($w)),
         };
         $threads = $pick($box);
         // Поиск — не фильтр: он сужает то, что уже выбрано пилюлей и фильтрами, и адрес не меняет.
@@ -139,15 +124,14 @@ class MailController
                 ->when(Keys::fromQuery($q), fn ($w, $keys) => $w->orWhere(fn ($k) => $k->withAnyKey($keys))));
         }
         $threads->when($filter['vendor'] ?? null, fn ($t, $id) => $t->where('vendor_id', $id))
-            ->when($filter['intent'] ?? null, fn ($t, $i) => $t->whereRaw(self::LAST_INTENT.' = ?', [$i]))
+            ->when($filter['intent'] ?? null, fn ($t, $i) => $t->whereRaw(Boxes::LAST_INTENT.' = ?', [$i]))
             ->when($filter['unread'] ?? null, fn ($t) => $t->where('unread_count', '>', 0))
             ->when($filter['files'] ?? null, fn ($t) => $t->where('has_attachments', true));
         $order = fn ($t) => $sort === 'waiting' ? $t->orderBy('last_message_at') : $t->orderByDesc('last_message_at');
 
         // Дело — машина, цепочка «Из писем» или предложение. Письмо, которому парсер не нашёл машину, — дело само
         // по себе: заголовка у такой секции нет (нечего писать), вендор стоит в строке.
-        $own = $park ? "'v:' || vehicle_id::text" : "'o:' || offer_id::text";
-        $group = "coalesce({$own}, 'c:' || candidate_id::text, 't:' || mail_threads.id::text)";
+        $group = Boxes::group($this->scope);
         $groups = (clone $threads)->selectRaw("{$group} as g, max(last_message_at) as at")->groupByRaw($group);
         $sort === 'waiting' ? $groups->orderBy('at') : $groups->orderByDesc('at');
         $keys = $groups->get()->pluck('g');
@@ -165,7 +149,9 @@ class MailController
             $list = $byGroup->get($g, collect());
             $first = $list->first();
 
-            return ['key' => $g, 'threads' => $list, 'vehicle' => str_starts_with($g, 'v:') ? $first?->vehicle : null,
+            [$kind, $id] = explode(':', $g, 2);
+
+            return ['key' => $g, 'kind' => $kind, 'id' => $id, 'threads' => $list, 'vehicle' => str_starts_with($g, 'v:') ? $first?->vehicle : null,
                 'offer' => str_starts_with($g, 'o:') ? $first?->offer : null, 'candidate' => str_starts_with($g, 'c:') ? $first?->candidate : null,
                 // Чего ждёт дело: по нему рисуется полоска слева и кнопка в заголовке.
                 'attention' => $list->contains(fn (Thread $t) => $t->needs_reply_at !== null) ? 'reply'
@@ -182,9 +168,11 @@ class MailController
             'q' => $q,
             'filter' => $filter,
             'base' => $this->base,
+            'queue' => $this->queue,
             'park' => $park,
             'crm' => ! $park,
             'box' => $box,
+            'forced' => $forced,
         ];
         if ($request->header('X-List')) {
             return response()->view('admin.mail.list', $data);
@@ -192,7 +180,7 @@ class MailController
 
         // Счётчики пилюль — число дел, одним правилом на все (раньше «Входящие» считали ветки с непрочитанными,
         // а «Ждут ответа» — все ветки, и числа были несравнимы).
-        $counts = [
+        $counts = $forced ? [] : [
             'attention' => (int) $pick('attention')->selectRaw('count(distinct '.$group.') as n')->value('n'),
             // В «Прочем» дело — само письмо: тождества у него нет, собирать нечего.
             'other' => $pick('other')->count(),
@@ -228,7 +216,7 @@ class MailController
     public function archiveOther(ArchiveThread $archive)
     {
         $accounts = Account::where('scope', $this->scope)->pluck('id');
-        $threads = Thread::whereIn('account_id', $accounts)->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->where(fn ($w) => $this->noise($w))->get();
+        $threads = Thread::whereIn('account_id', $accounts)->whereNull('archived_at')->whereRaw(Boxes::LAST_DIRECTION." = 'in'")->where(fn ($w) => Boxes::noise($w))->get();
         foreach ($threads as $thread) {
             $archive($thread);
         }
@@ -253,7 +241,10 @@ class MailController
         return redirect("/offers/{$offer->number}")->with('toast', $offer->wasRecentlyCreated ? 'Черновик заведён, фото подтягиваются' : 'Письма привязаны к предложению');
     }
 
-    /** В архив ↔ вернуть. Из списка (свайп) — строка исчезает стримом; из окна — окно перечитывается. */
+    /**
+     * В архив ↔ вернуть одну ветку. Это «В архив» из окна письма: окно про ту ветку, которую открыли, и это
+     * единственный способ убрать из дела автоответ или бухгалтерию. Свайп в списке архивирует дело целиком.
+     */
     public function archive(Request $request, Thread $thread, ArchiveThread $archive)
     {
         $this->guard($thread);
@@ -261,11 +252,72 @@ class MailController
         if ($request->header('Turbo-Frame') === 'letters-frame') {
             return redirect("{$this->base}/{$thread->id}/window");
         }
-        if (str_contains((string) $request->header('Accept'), 'turbo-stream')) {
-            return response()->view('admin.mail.thread-row-stream', ['thread' => $thread])->header('Content-Type', 'text/vnd.turbo-stream.html');
-        }
 
         return back()->with('toast', $thread->archived_at ? 'В архиве' : 'Снова во входящих');
+    }
+
+    /**
+     * Свайп дела: в архив уходят все его ветки, а не одно письмо — архивировать одно письмо из цепочки смысла
+     * нет. Цепочка «Из писем» едет вместе с письмами: в архив — «не заявка», обратно — снова ждёт.
+     */
+    public function archiveCase(Request $request, string $kind, int $id, ArchiveThread $archive, FreezeMessages $freeze, ChainBuilder $chains)
+    {
+        $restore = $request->boolean('restore');
+        if ($kind === 'c') {
+            $candidate = Candidate::where('scope', $this->scope)->findOrFail($id);
+            $this->toggleChain($candidate, $restore, $archive, $freeze, $chains);
+        } else {
+            $column = match ($kind) {
+                'v' => 'vehicle_id', 'o' => 'offer_id', default => 'id'
+            };
+            $threads = Thread::whereIn('account_id', Account::where('scope', $this->scope)->select('id'))->where($column, $id)->get();
+            abort_if($threads->isEmpty(), 404);
+            foreach ($threads as $thread) {
+                $restore ? $archive->restoreWithCandidate($thread) : $archive($thread);
+            }
+        }
+        if (str_contains((string) $request->header('Accept'), 'turbo-stream')) {
+            return response()->view('admin.mail.case-stream', ['kind' => $kind, 'id' => $id])->header('Content-Type', 'text/vnd.turbo-stream.html');
+        }
+
+        return back()->with('toast', $restore ? 'Снова во входящих' : 'В архиве');
+    }
+
+    /** «Завести» у цепочки в CRM: черновик предложения из писем (на стоянке вместо этого открывается разбор письма). */
+    public function promote(Request $request, Candidate $candidate)
+    {
+        abort_if($candidate->state === CandidateState::Promoted || $candidate->scope !== $this->scope, 404);
+        $offer = app(PromoteCandidate::class)($candidate, $request->user());
+
+        return redirect("/offers/{$offer->number}")->with('toast', $offer->wasRecentlyCreated ? 'Черновик заведён, фото подтягиваются' : 'Письма привязаны к предложению');
+    }
+
+    /** «Не заявка» ↔ «Снова ждёт»: решение человека, свёртка его не трогает. */
+    public function decline(Candidate $candidate, ArchiveThread $archive, FreezeMessages $freeze, ChainBuilder $chains)
+    {
+        abort_if($candidate->scope !== $this->scope || ! in_array($candidate->state, [CandidateState::New, CandidateState::Rejected], true), 404);
+        $rejected = $this->toggleChain($candidate, $candidate->state === CandidateState::Rejected, $archive, $freeze, $chains);
+
+        return back()->with('toast', $rejected ? 'В архиве' : 'Снова ждёт');
+    }
+
+    /** Цепочка и её письма ходят в архив вместе; вернулась — письма читаются заново (свёртка размораживает). */
+    private function toggleChain(Candidate $candidate, bool $restore, ArchiveThread $archive, FreezeMessages $freeze, ChainBuilder $chains): bool
+    {
+        $candidate->update(['state' => $restore ? CandidateState::New : CandidateState::Rejected]);
+        $archive->candidate($candidate, ! $restore);
+        if ($restore) {
+            $chains->fold($candidate);
+            if ($last = $candidate->messages()->where('mail_messages.direction', Direction::In)->orderByDesc('mail_messages.date_at')->first()) {
+                ImportCandidateFiles::dispatch($candidate->id, $last->id);
+            }
+        } else {
+            // В архиве распарсенное и файлы не хранятся: «Вернуть» прочитает письма заново.
+            $freeze->freeze($candidate->messages()->pluck('mail_messages.id')->all());
+        }
+        Nav::forgetStaffCounts();
+
+        return ! $restore;
     }
 
     /** Окно ветки (фрейм letters-frame в x-mail.window): все письма целиком, «Ответить» под каждым, привязка. */

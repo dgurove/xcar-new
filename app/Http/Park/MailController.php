@@ -13,7 +13,7 @@ class MailController extends \App\Http\Admin\MailController
 {
     public function __construct()
     {
-        parent::__construct(Scope::Park, '/mail');
+        parent::__construct(Scope::Park, '/mail', '/requests/from-mail');
     }
 
     /** Ссылка на ветку (уведомление, закладка) — список с открытым окном этой ветки. */

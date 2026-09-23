@@ -3,7 +3,6 @@
 namespace App\Park\Actions;
 
 use App\Mail\Actions\FreezeMessages;
-use App\Mail\Candidate;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
 use App\Mail\Thread;
@@ -25,9 +24,6 @@ final class PurgeLetters
         }
         foreach ($vehicle->media()->where('collection_name', 'papers')->where('custom_properties->source', 'mail')->get() as $media) {
             $media->delete();
-        }
-        foreach (Candidate::where('vehicle_id', $vehicle->id)->get() as $candidate) {
-            $candidate->clearMediaCollection('card');
         }
         $threads = Thread::where('vehicle_id', $vehicle->id)->pluck('id');
 

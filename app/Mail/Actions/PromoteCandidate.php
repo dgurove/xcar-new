@@ -27,7 +27,6 @@ final class PromoteCandidate
     {
         if ($offer = $this->existing($candidate)) {
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
-            $candidate->clearMediaCollection('card');
             $this->linkAll($candidate, $offer);
 
             return $offer;
@@ -73,7 +72,6 @@ final class PromoteCandidate
 
             return $offer;
         });
-        $candidate->clearMediaCollection('card');
 
         return $offer;
     }

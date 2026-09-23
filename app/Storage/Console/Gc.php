@@ -4,7 +4,6 @@ namespace App\Storage\Console;
 
 use App\Mail\Attachment;
 use App\Mail\Blobs;
-use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Media\Actions\CoolPhotos;
 use App\Offers\Offer;
@@ -81,16 +80,6 @@ final class Gc extends Command
                 $sha = $attachment->blob_sha;
                 $attachment->forceFill(['blob_sha' => null, 'pinned_at' => null])->save();
                 Blobs::release($sha);
-            }
-
-            return $stale->count().' шт.';
-        });
-
-        $this->step('кадры карточек кандидатов, ушедших в архив больше '.self::UNPINNED_DAYS.' дн. назад', function () {
-            $stale = Candidate::whereIn('state', [CandidateState::Rejected, CandidateState::Closed])->where('updated_at', '<', now()->subDays(self::UNPINNED_DAYS))
-                ->whereHas('media', fn ($m) => $m->where('collection_name', 'card'))->get();
-            foreach ($stale as $candidate) {
-                $this->dry || $candidate->clearMediaCollection('card');
             }
 
             return $stale->count().' шт.';

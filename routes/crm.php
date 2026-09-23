@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Admin\BidController;
-use App\Http\Admin\CandidateController;
 use App\Http\Admin\ChatController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\GalleryController;
@@ -35,12 +34,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::get('/', [OfferController::class, 'index'])->name('crm.offers');
     Route::get('/offers', fn () => redirect('/'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
     Route::post('/offers', [OfferController::class, 'store']);
-    // Из писем: кандидаты в предложения — раньше карточки, иначе iz-pisem примут за номер.
-    Route::get('/offers/from-mail', [CandidateController::class, 'index']);
-    Route::get('/offers/from-mail/{candidate}/peek', [CandidateController::class, 'peek']);
-    Route::get('/offers/from-mail/{candidate}/letters', [CandidateController::class, 'letters']);
-    Route::post('/offers/from-mail/{candidate}/create', [CandidateController::class, 'promote']);
-    Route::post('/offers/from-mail/{candidate}/decline', [CandidateController::class, 'reject']);
+    // Из писем: та же почта с вшитой выборкой «надо завести» — раньше `/offers/{offer}`, иначе from-mail примут за номер.
+    Route::get('/offers/from-mail', [MailController::class, 'fromMail']);
+    Route::post('/offers/from-mail/{candidate}/create', [MailController::class, 'promote']);
+    Route::post('/offers/from-mail/{candidate}/decline', [MailController::class, 'decline']);
     Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
     Route::get('/offers/{offer}/peek', [OfferController::class, 'peek']);
     Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
@@ -105,6 +102,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::post('/{thread}/unread', [MailController::class, 'unread']);
         Route::post('/archive-other', [MailController::class, 'archiveOther']);
         Route::post('/{thread}/archive', [MailController::class, 'archive']);
+        Route::post('/case/{kind}/{id}/archive', [MailController::class, 'archiveCase'])->whereIn('kind', ['o', 'c', 't'])->whereNumber('id');
         Route::post('/{thread}/candidate', [MailController::class, 'candidate']);
         Route::post('/{thread}/link', [MailController::class, 'link']);
     });

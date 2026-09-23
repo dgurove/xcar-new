@@ -5,7 +5,6 @@ use App\Http\Park\ActController;
 use App\Http\Park\ClientController;
 use App\Http\Park\MailController;
 use App\Http\Park\MoneyController;
-use App\Http\Park\ParkCandidateController;
 use App\Http\Park\PartyController;
 use App\Http\Park\RequestController;
 use App\Http\Park\VehicleController;
@@ -19,8 +18,9 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/requests', [RequestController::class, 'index']);
 
     Route::get('/requests/new', [RequestController::class, 'create']);
-    Route::get('/requests/from-mail', [ParkCandidateController::class, 'index']);
-    Route::post('/requests/from-mail/{candidate}/decline', [ParkCandidateController::class, 'reject']);
+    // Из писем: та же почта с вшитой выборкой «надо завести»; «Завести» ведёт в разбор письма `/requests/new`.
+    Route::get('/requests/from-mail', [MailController::class, 'fromMail']);
+    Route::post('/requests/from-mail/{candidate}/decline', [MailController::class, 'decline']);
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests/{req}', [RequestController::class, 'show']);
     Route::get('/requests/{req}/peek', [RequestController::class, 'peek']);
@@ -116,6 +116,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/mail/{thread}/unread', [MailController::class, 'unread']);
     Route::post('/mail/archive-other', [MailController::class, 'archiveOther']);
     Route::post('/mail/{thread}/archive', [MailController::class, 'archive']);
+    Route::post('/mail/case/{kind}/{id}/archive', [MailController::class, 'archiveCase'])->whereIn('kind', ['v', 'c', 't'])->whereNumber('id');
     Route::post('/mail/{thread}/candidate', [MailController::class, 'candidate']);
     Route::post('/mail/{thread}/link', [MailController::class, 'link']);
 });

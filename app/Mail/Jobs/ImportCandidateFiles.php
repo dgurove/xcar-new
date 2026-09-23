@@ -7,7 +7,6 @@ use App\Live\Topics;
 use App\Mail\Actions\PinThread;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
-use App\Mail\Extraction\CandidateCard;
 use App\Mail\Message;
 use App\Mail\Scope;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
@@ -15,9 +14,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Письмо кандидата «Из писем»: вложения закрепляются в blobs (иначе живут только в ящике), из первого фото
- * делается кадр карточки (`CandidateCard`) — заранее, чтобы список открывался сразу. Остальные фото
- * кандидату не нужны: при «Завести» их к ТС приносит импорт ветки.
+ * Письмо цепочки «Из писем»: вложения закрепляются в blobs, иначе живут только в ящике и лента миниатюр в
+ * окне писем каждый раз тянула бы их оттуда. Своих фото у цепочки нет: к ТС их приносит импорт ветки.
  */
 final class ImportCandidateFiles implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -37,7 +35,7 @@ final class ImportCandidateFiles implements ShouldBeUniqueUntilProcessing, Shoul
         return $this->candidateId.':'.$this->messageId;
     }
 
-    public function handle(PinThread $pin, CandidateCard $card, Publisher $publish): void
+    public function handle(PinThread $pin, Publisher $publish): void
     {
         $candidate = Candidate::find($this->candidateId);
         $message = Message::find($this->messageId);
@@ -45,9 +43,7 @@ final class ImportCandidateFiles implements ShouldBeUniqueUntilProcessing, Shoul
             return;
         }
         $pin->message($message);
-        $had = $candidate->card() !== null;
-        if ($card->make($candidate, $message) && ! $had) {
-            $publish->refresh($candidate->scope === Scope::Park ? Topics::PARK : Topics::STAFF, [$candidate->scope === Scope::Park ? '/requests/from-mail' : '/offers/from-mail']);
-        }
+        // Файлы доехали — экран «Из писем» перечитывается: в ленте писем миниатюры появляются только теперь.
+        $publish->refresh($candidate->scope === Scope::Park ? Topics::PARK : Topics::STAFF, [$candidate->scope === Scope::Park ? '/requests/from-mail' : '/offers/from-mail']);
     }
 }

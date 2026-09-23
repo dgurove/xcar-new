@@ -26,7 +26,6 @@ final class PromoteCandidate
         // У выданной (заведена по факту уже выданной) файлы из писем не нужны — ветки привязываются без импорта.
         $files = $vehicle->state !== VehicleState::Released;
         $candidate->update(['state' => CandidateState::Promoted, 'vehicle_id' => $vehicle->id, 'closed_at' => null]);
-        $candidate->clearMediaCollection('card');
         foreach ($candidate->threads() as $thread) {
             if ($thread->vehicle_id !== $vehicle->id) {
                 ($this->link)($thread, $vehicle, $files);
