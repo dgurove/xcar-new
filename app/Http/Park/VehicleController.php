@@ -71,12 +71,14 @@ class VehicleController
         $yardId = $yards->has((int) $request->query('yard')) ? (int) $request->query('yard') : null;
         // «Без парковки» — заведены по письмам или по факту, где стоят, ещё не сказали.
         $noYard = $request->query('yard') === 'none';
-        $noRate = $this->noRate($request);
-        // Лента площадок, бумаги и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
+        $gap = $request->query('gap') === 'rate';
+        // «Без ставки» считаем, только когда она нужна: для фильтра или для пилюли на странице, но не в живом поиске.
+        $noRate = $gap ? $this->noRate($request, $yardId, $noYard) : null;
+        // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
         $vehicles = Scope::vehicles($request->user())->withCount('threads')
             ->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer.deal', 'requests',
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
-            ->when($request->query('gap') === 'rate', fn ($v) => $v->whereIn('id', $noRate))
+            ->when($gap, fn ($v) => $v->whereIn('id', $noRate))
             ->when($state, fn ($v, $s) => $v->where('state', $s))
             ->when($yardId, fn ($v, $y) => $v->where('yard_id', $y))
             ->when($noYard, fn ($v) => $v->whereNull('yard_id'))
@@ -111,8 +113,8 @@ class VehicleController
             'counts' => ['' => $counts->sum(), 'none' => $counts[''] ?? 0] + $counts->all(),
             'yard' => $yardId ? Yard::find($yardId) : null,
             // Пилюля «Без ставки» — пока такие ТС есть: считать по ним нечем, пока не заполнят тип, стоимость или прайс.
-            'noRate' => count($noRate),
-            'gap' => $request->query('gap') === 'rate' ? 'rate' : null,
+            'noRate' => count($noRate ??= $this->noRate($request, $yardId, $noYard)),
+            'gap' => $gap ? 'rate' : null,
             'vendors' => Vendor::whereIn('id', Vehicle::whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
         ]);
     }
@@ -120,12 +122,15 @@ class VehicleController
     /**
      * ТС, по которым ставку взять негде: нет типа, нет заявленной стоимости при тарифе по стоимости или у
      * вендора нет прайса. Пилюля «Без ставки» и её фильтр — чтобы дырки правили списком, а не по одной.
+     * Считается в границах выбранной парковки, как и остальные числа в ряду пилюль.
      *
      * @return list<int>
      */
-    private function noRate(Request $request): array
+    private function noRate(Request $request, ?int $yardId, bool $noYard): array
     {
         return Scope::vehicles($request->user())->where('state', VehicleState::Stored)
+            ->when($yardId, fn ($q, $y) => $q->where('yard_id', $y))
+            ->when($noYard, fn ($q) => $q->whereNull('yard_id'))
             ->with('vendor')->get(['id', 'vendor_id', 'yard_id', 'category', 'value', 'storage_rate'])
             ->reject(fn (Vehicle $v) => Accrual::hasRate($v))->pluck('id')->all();
     }

@@ -29,7 +29,13 @@
     @endif
     <div class="flex flex-col gap-2">
         @foreach ($groups as $catValue => $catLabel)
-            @php $catValue = $catValue === '' ? null : $catValue; $own = $rows->filter(fn ($t) => ($t->category?->value ?? null) === $catValue && $t->vendor_id === $vendorId && $t->yard_id === $yardId)->sortBy(fn ($t) => [$t->service->value, $t->from_value ?? -1, $t->from_day]); @endphp
+            @php
+                $catValue = $catValue === '' ? null : $catValue;
+                $own = $rows->filter(fn ($t) => ($t->category?->value ?? null) === $catValue && $t->vendor_id === $vendorId && $t->yard_id === $yardId)->sortBy(fn ($t) => [$t->service->value, $t->from_value ?? -1, $t->from_day]);
+                // В форме новой услуги — только те, которых в ячейке ещё нет: заведённая лестница правится своей формой.
+                $has = $own->pluck('service')->map(fn ($s) => $s->value)->all();
+                $available = collect($services)->reject(fn ($s) => in_array($s->value, $has, true))->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all();
+            @endphp
             <div class="row" data-controller="sheet">
                 <button type="button" class="contents text-left" data-action="sheet#open">
                     <span class="min-w-0 flex-1">
@@ -49,7 +55,7 @@
                         @foreach ($own->groupBy(fn ($t) => $t->service->value) as $steps)
                             <x-vendor.tariff-ladder :service="$steps->first()->service" :rows="$steps->values()" :vendor-id="$vendorId" :yard-id="$yardId" :cat-value="$catValue"/>
                         @endforeach
-                        <x-vendor.tariff-ladder :vendor-id="$vendorId" :yard-id="$yardId" :cat-value="$catValue"/>
+                        @if ($available)<x-vendor.tariff-ladder :available="$available" :vendor-id="$vendorId" :yard-id="$yardId" :cat-value="$catValue"/>@endif
                     </div>
                 </x-ui.sheet>
             </div>

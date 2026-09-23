@@ -36,6 +36,9 @@ class Tariff extends Model
 
     private static array $steps = [];
 
+    /** Та самая память `once()`, на которой кэши построены: Octane меняет её между запросами (`FlushOnce`). */
+    private static ?Once $seen = null;
+
     protected function casts(): array
     {
         return [
@@ -137,6 +140,7 @@ class Tariff extends Model
      */
     private static function cell(?int $vendorId, ?int $yardId, ?Category $category, TariffService $service): array
     {
+        self::warm();
         $key = $vendorId.'|'.$yardId.'|'.$category?->value.'|'.$service->value;
         if (isset(self::$cells[$key])) {
             return self::$cells[$key];
@@ -172,7 +176,8 @@ class Tariff extends Model
         $top = max(array_map($level, $live));
         $live = array_values(array_filter($live, fn (self $t) => $level($t) === $top));
         $live = self::step($live, $value);
-        usort($live, fn (self $a, self $b) => $a->from_day <=> $b->from_day);
+        // При равных сутках ступень по стоимости идёт после строки «на любую» — она и победит в `rateOnDay`.
+        usort($live, fn (self $a, self $b) => [$a->from_day, $a->from_value ?? -1] <=> [$b->from_day, $b->from_value ?? -1]);
 
         return collect($live);
     }
@@ -200,7 +205,9 @@ class Tariff extends Model
             }
         }
 
-        return array_values(array_filter($rows, fn (self $t) => $t->from_value === $at));
+        // Строки без стоимости остаются рядом со ступенью: у вендора это бесплатные первые дни или общая
+        // ставка, и они живут ступенями по суткам, а не вместо ступени по стоимости.
+        return array_values(array_filter($rows, fn (self $t) => $t->from_value === $at || $t->from_value === null));
     }
 
     /**
@@ -214,13 +221,33 @@ class Tariff extends Model
         return once(fn () => self::query()->where('service', $service)->get());
     }
 
+    /**
+     * Кэши живут ровно столько, сколько строки прайса под `once()`: сверяем саму память запроса, а не её
+     * номер (номер объекта переиспользуется). Иначе воркер Octane отдавал бы цены, заведённые до правки,
+     * пока не перезапустится, — а прайс правят в CRM, а считают на стоянке, это разные воркеры.
+     */
+    private static function warm(): void
+    {
+        $once = Once::instance();
+        if (self::$seen !== $once) {
+            self::$seen = $once;
+            self::forget();
+        }
+    }
+
+    /** Забыть посчитанное: правка строки прайса и смена памяти запроса. */
+    public static function forget(): void
+    {
+        self::$cells = [];
+        self::$memo = [];
+        self::$steps = [];
+    }
+
     protected static function booted(): void
     {
         $flush = function () {
-            self::$cells = [];
-            self::$memo = [];
-            self::$steps = [];
-            Once::instance()->flush();
+            self::forget();
+            Once::flush();
         };
         static::saved($flush);
         static::deleted($flush);
@@ -259,12 +286,20 @@ class Tariff extends Model
         }
         $service = $ladder->first()->service;
         if ($service->tiered()) {
-            $steps = $ladder->pluck('from_value')->filter(fn ($v) => $v !== null)->unique();
-            if ($steps->count() > 1) {
+            $steps = $ladder->filter(fn (self $t) => $t->from_value !== null);
+            if ($steps->isNotEmpty()) {
                 // Вся лестница по стоимости одним чипом: ступени видно в шторке, в строке важен разброс.
-                $prices = $ladder->filter(fn (self $t) => $t->from_value !== null && $t->price > 0)->pluck('price');
+                // Одна ступень — пишем её порог: иначе чип обещал бы цену и тем ТС, что дешевле порога.
+                $prices = $steps->where('price', '>', 0)->pluck('price');
+                if ($prices->isEmpty()) {
+                    return 'бесплатно';
+                }
+                if ($steps->pluck('from_value')->unique()->count() > 1) {
+                    return Money::nums($prices->min()).'…'.Money::rub($prices->max()).'/сут по стоимости';
+                }
+                $one = $steps->first(fn (self $t) => $t->price > 0);
 
-                return Money::nums($prices->min()).'…'.Money::rub($prices->max()).'/сут по стоимости';
+                return Money::rub($one->price).'/сут'.($one->from_day > 1 ? ' с '.$one->from_day.' дн' : '').' от '.Money::rub($one->from_value);
             }
             $paid = $ladder->first(fn (self $t) => $t->price > 0);
             if (! $paid) {
