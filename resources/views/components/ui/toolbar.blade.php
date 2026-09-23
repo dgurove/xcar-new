@@ -6,17 +6,13 @@
      pills: ключ → подпись; counts: ключ → число; tones: ключ → класс пилюли (pill-danger у «Просрочено»); hidden: поля, которые переживают фильтр;
      pillDefault=false — первая пилюля («Все») не выделяется: зелёное только у сужающего фильтра;
      search — подсказка в поле поиска (пусто — поля нет), searchTarget — что подменять ответом;
-     слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»).
+     слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»);
+     слот extra — кнопки экрана слева (переключатель вида), слот actions — у правого края («+», «Из писем»).
      Сортировка — только исходы словами, по строке на исход: «Сначала дешёвые», «Дольше ждут».
      Направления как отдельной кнопки нет — у каталога это два ключа («price» и «-price»): стрелку
      вверх-вниз никто не находил, а «по возрастанию» ни о чём не говорит. --}}
 @props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'counts' => [], 'tones' => [], 'hidden' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => null, 'q' => ''])
 @php
-    // На телефоне пилюли уходят своей строкой, и во второй растягивать нечего: без отступа круглые кнопки
-    // прилипали к левому краю, а справа оставалась пустота. Прижимаем отступом, а не распоркой — распорка
-    // добавила бы ещё один gap, и последняя кнопка уехала бы на третью строку. Когда у экрана есть свои
-    // кнопки (`extra`), отступ ставит им он сам: вид остаётся слева, остальное уезжает вправо.
-    $right = $pills && ! $search && ! isset($extra) ? 'max-md:ml-auto' : '';
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
     $url = fn (array $set) => $action.'?'.http_build_query(array_filter(array_merge($query, $set), fn ($v) => $v !== null && $v !== ''));
@@ -55,7 +51,7 @@
     @if ($norm->isNotEmpty())
         {{-- Сортировка — круглая кнопка со шторкой, одинаково на телефоне и на компьютере. --}}
         <div class="contents" data-controller="sheet">
-            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 {{ $right }}" data-action="sheet#open" aria-label="Сортировка: {{ $norm[$current] ?? 'по умолчанию' }}" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
+            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Сортировка: {{ $norm[$current] ?? 'по умолчанию' }}" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
             <x-ui.sheet id="sort-{{ $name }}" title="Сортировка">
                 <div class="space-y-2">
                     @foreach ($norm as $key => $label)
@@ -71,7 +67,7 @@
 
     @isset($filters)
         <div class="contents" data-controller="sheet">
-            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 {{ $norm->isEmpty() ? $right : '' }}" data-action="sheet#open" aria-label="Фильтры" aria-controls="filters-{{ $name }}"><x-ui.icon name="filter" class="size-5"/></button>
+            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Фильтры" aria-controls="filters-{{ $name }}"><x-ui.icon name="filter" class="size-5"/></button>
             <x-ui.sheet id="filters-{{ $name }}" title="Фильтры">
                 <form method="get" action="{{ $action }}" class="space-y-3" data-turbo-action="replace">
                     @if ($sort !== '' && $sort !== null)<input type="hidden" name="{{ $sortParam }}" value="{{ $sort }}">@endif
@@ -85,5 +81,11 @@
                 </form>
             </x-ui.sheet>
         </div>
+    @endisset
+
+    @isset($actions)
+        {{-- Действия экрана («+», «Из писем») — у правого края: добавление ищут справа, а вид, сортировка
+             и фильтры остаются слева. Отступ, а не распорка: лишний gap ронял последнюю кнопку на строку ниже. --}}
+        <div class="ml-auto flex shrink-0 items-center gap-2">{{ $actions }}</div>
     @endisset
 </div>

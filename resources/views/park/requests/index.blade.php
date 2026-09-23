@@ -6,11 +6,12 @@
     <x-ui.toolbar :sorts="\App\Http\Park\RequestController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['overdue' => !empty($counts['overdue']) ? 'pill-danger' : '']" :hidden="array_filter(['vendor' => request('vendor'), 'yard' => request('yard'), 'mine' => request('mine'), ListView::PARAM => request(ListView::PARAM)])" name="requests">
         <x-slot:extra>
             <x-ui.view-switch :current="$view"/>
-            {{-- Вид списка слева, всё остальное справа: добавление и фильтры — там, где их ищут. --}}
-            {{-- «+» кружком понятен и без слова, а «Из писем» названо словами: на телефоне два слова в ряд не влезали. --}}
-            <a href="/requests/new" class="btn btn-s btn-accent btn-round shrink-0 max-md:ml-auto" aria-label="Новая заявка"><x-ui.icon name="plus" class="size-5"/></a>
-            <a href="/requests/from-mail" class="btn btn-s btn-quiet relative shrink-0 rounded-full"><x-ui.icon name="mail" class="size-4"/>Из писем<x-ui.badge href="/requests/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>
         </x-slot:extra>
+        {{-- «+» кружком понятен и без слова, а «Из писем» названо словами: на телефоне два слова в ряд не влезали. --}}
+        <x-slot:actions>
+            <a href="/requests/from-mail" class="btn btn-s btn-quiet relative shrink-0 rounded-full"><x-ui.icon name="mail" class="size-4"/>Из писем<x-ui.badge href="/requests/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>
+            <a href="/requests/new" class="btn btn-s btn-accent btn-round shrink-0" aria-label="Новая заявка"><x-ui.icon name="plus" class="size-5"/></a>
+        </x-slot:actions>
         <x-slot:filters>
             <input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Убыток, VIN, госномер, марка" enterkeyhint="search">
             <select name="vendor" class="field-input"><option value="">Все вендоры</option>@foreach ($vendors as $id => $name)<option value="{{ $id }}" @selected((string) request('vendor') === (string) $id)>{{ $name }}</option>@endforeach</select>
