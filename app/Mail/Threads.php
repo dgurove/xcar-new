@@ -45,6 +45,8 @@ final class Threads
             'messages_count' => $messages->count(),
             'unread_count' => $messages->where('is_seen', false)->where('direction', Direction::In)->count(),
             'has_attachments' => $messages->contains('has_attachments', true),
+            // Число файлов ветки — колонкой: подзапрос на строку списка стоил секунду на экран.
+            'attachments_count' => DB::table('mail_attachments')->whereIn('message_id', $messages->pluck('id'))->where('is_inline', false)->count(),
             'participants' => $participants,
             // Вендор ветки — по первому чужому адресу: фильтр «Вендор», бейдж в строке, правило «Прочее».
             'vendor_id' => self::vendorOf($thread, $participants)?->id,

@@ -134,7 +134,7 @@ class MailController
             $page = max(1, (int) $request->query('page', 1));
             $slice = $keys->forPage($page, self::GROUPS_PER_PAGE)->values();
             $paginator = new LengthAwarePaginator($slice, $keys->count(), self::GROUPS_PER_PAGE, $page, ['path' => $request->url(), 'query' => $request->query()]);
-            $rows = $slice->isEmpty() ? collect() : $order((clone $threads)->with($with)->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)])
+            $rows = $slice->isEmpty() ? collect() : $order((clone $threads)->with($with)
                 ->whereRaw("{$group} in (".implode(',', array_fill(0, $slice->count(), '?')).')', $slice->all()))->get();
             $byGroup = $rows->groupBy(fn (Thread $t) => $park
                 ? ($t->vehicle_id ? 'v:'.$t->vehicle_id : ($t->candidate_id ? 'c:'.$t->candidate_id : 'none'))
@@ -148,7 +148,7 @@ class MailController
             })->filter(fn ($s) => $s['threads']->isNotEmpty())->values();
             $threads = $paginator;
         } else {
-            $threads = $order($threads->with($with)->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)]))->paginate(self::ROWS_PER_PAGE)->withQueryString();
+            $threads = $order($threads->with($with))->paginate(self::ROWS_PER_PAGE)->withQueryString();
         }
 
         // Список отдельным куском — им отвечает живой поиск, им же рисуется страница.
