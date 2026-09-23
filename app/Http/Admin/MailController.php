@@ -63,10 +63,10 @@ class MailController
 
     public function __construct(private Scope $scope = Scope::Offers, private string $base = '/work/mail') {}
 
-    /** Направление и смысл последнего письма ветки — для пилюль и тегов без загрузки писем. */
-    private const LAST_DIRECTION = '(select m.direction from mail_messages m where m.thread_id = mail_threads.id order by m.date_at desc limit 1)';
+    /** Направление и смысл последнего письма ветки — колонки, их держит `Threads::refresh` (было подзапросом на строку). */
+    private const LAST_DIRECTION = 'mail_threads.last_direction';
 
-    private const LAST_INTENT = "(select m.intent from mail_messages m where m.thread_id = mail_threads.id and m.direction = 'in' order by m.date_at desc limit 1)";
+    private const LAST_INTENT = 'mail_threads.last_intent';
 
     /** «Прочее»: без ТС, кандидата и предложения, и при этом не вендор или автоответ. */
     private function noise($query): void

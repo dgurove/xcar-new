@@ -27,7 +27,7 @@ final class Threads
 
     public function refresh(Thread $thread): void
     {
-        $messages = Message::where('thread_id', $thread->id)->get(['id', 'subject', 'is_seen', 'has_attachments', 'date_at', 'direction']);
+        $messages = Message::where('thread_id', $thread->id)->get(['id', 'subject', 'is_seen', 'has_attachments', 'date_at', 'direction', 'intent']);
         if ($messages->isEmpty()) {
             $thread->delete();
 
@@ -35,9 +35,13 @@ final class Threads
         }
         $participants = Address::whereIn('message_id', $messages->pluck('id'))->whereIn('kind', ['from', 'to', 'cc'])
             ->get(['email', 'name'])->unique('email')->take(20)->map(fn ($a) => ['email' => $a->email, 'name' => $a->name])->values()->all();
+        // Последнее письмо ветки — колонками: по ним стоят пилюли почты и поиск, подзапросом это была секунда.
+        $sorted = $messages->sortBy([['date_at', 'asc'], ['id', 'asc']])->values();
         $thread->forceFill([
-            'subject' => $thread->subject ?: $messages->sortBy('date_at')->first()?->subject,
+            'subject' => $thread->subject ?: $sorted->first()?->subject,
             'last_message_at' => $messages->max('date_at'),
+            'last_direction' => $sorted->last()?->direction?->value,
+            'last_intent' => $sorted->last(fn (Message $m) => $m->direction === Direction::In)?->intent,
             'messages_count' => $messages->count(),
             'unread_count' => $messages->where('is_seen', false)->where('direction', Direction::In)->count(),
             'has_attachments' => $messages->contains('has_attachments', true),
