@@ -12,6 +12,10 @@
      вверх-вниз никто не находил, а «по возрастанию» ни о чём не говорит. --}}
 @props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'counts' => [], 'tones' => [], 'hidden' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => null, 'q' => ''])
 @php
+    // На телефоне пилюли уходят своей строкой, и во второй растягивать нечего: сортировка с фильтрами
+    // прилипали к действиям слева, а справа оставалась пустота. Прижимаем их отступом, а не распоркой —
+    // распорка добавила бы ещё один gap, и последняя кнопка уехала бы на третью строку.
+    $right = $pills && ! $search ? 'max-md:ml-auto' : '';
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
     $url = fn (array $set) => $action.'?'.http_build_query(array_filter(array_merge($query, $set), fn ($v) => $v !== null && $v !== ''));
@@ -50,7 +54,7 @@
     @if ($norm->isNotEmpty())
         {{-- Сортировка — круглая кнопка со шторкой, одинаково на телефоне и на компьютере. --}}
         <div class="contents" data-controller="sheet">
-            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Сортировка: {{ $norm[$current] ?? 'по умолчанию' }}" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
+            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 {{ $right }}" data-action="sheet#open" aria-label="Сортировка: {{ $norm[$current] ?? 'по умолчанию' }}" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
             <x-ui.sheet id="sort-{{ $name }}" title="Сортировка">
                 <div class="space-y-2">
                     @foreach ($norm as $key => $label)
@@ -66,7 +70,7 @@
 
     @isset($filters)
         <div class="contents" data-controller="sheet">
-            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Фильтры" aria-controls="filters-{{ $name }}"><x-ui.icon name="filter" class="size-5"/></button>
+            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 {{ $norm->isEmpty() ? $right : '' }}" data-action="sheet#open" aria-label="Фильтры" aria-controls="filters-{{ $name }}"><x-ui.icon name="filter" class="size-5"/></button>
             <x-ui.sheet id="filters-{{ $name }}" title="Фильтры">
                 <form method="get" action="{{ $action }}" class="space-y-3" data-turbo-action="replace">
                     @if ($sort !== '' && $sort !== null)<input type="hidden" name="{{ $sortParam }}" value="{{ $sort }}">@endif
