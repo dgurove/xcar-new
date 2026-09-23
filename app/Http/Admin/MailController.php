@@ -104,7 +104,8 @@ class MailController
     public function index(Request $request)
     {
         $accounts = Account::where('scope', $this->scope)->orderBy('title')->get();
-        $box = array_key_exists($request->query('box', ''), self::BOXES) ? $request->query('box') : 'attention';
+        // Открывается «Все» — почта прежде всего почта; «Требуют внимания» стоит первой пилюлей рядом.
+        $box = array_key_exists($request->query('box', ''), self::BOXES) ? $request->query('box') : 'all';
         // В делах, требующих нас, сверху самое старое: свежее и так на виду.
         $sort = array_key_exists($request->query('sort', ''), self::SORTS) ? $request->query('sort') : ($box === 'attention' ? 'waiting' : 'fresh');
         $q = trim((string) $request->query('q'));

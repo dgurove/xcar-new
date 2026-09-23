@@ -23,7 +23,7 @@
     $unread = $thread->unread_count > 0;
 @endphp
 <x-ui.swipe id="thread-{{ $thread->id }}" data-search-row>
-    <div class="row items-start">
+    <div class="row items-center">
         @if ($ours && $last?->author)
             <x-ui.avatar :user="$last->author" :size="32"/>
         @elseif ($ours)

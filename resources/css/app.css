@@ -569,6 +569,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   .case--register::before { background: var(--color-accent); }
   .case--reply::before { background: var(--color-urgent); }
+  /* Заголовок дела: имя с тегами слева переносится на вторую строку, действие справа остаётся по середине
+     этих строк — иначе на телефоне вторая строка съезжала под кнопку. Кнопка в списке ростом не с форму. */
+  .case-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .375rem; }
+  .case-name { display: flex; min-width: 0; flex: 1; flex-wrap: wrap; align-items: center; gap: .375rem; }
+  .btn-s.case-do { height: 1.875rem; padding-inline: .875rem; border-radius: 999px; }
   .pill {
     @apply inline-flex shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1.5 text-sm text-ink-muted transition-colors;
     min-height: 2.25rem;
