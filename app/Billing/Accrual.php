@@ -2,6 +2,7 @@
 
 namespace App\Billing;
 
+use App\Cars\Category;
 use App\Park\Vehicle;
 use App\Vendors\Tariff;
 use App\Vendors\TariffService;
@@ -55,6 +56,7 @@ final class Accrual
         $endDay = $end->toDateString();
         $anchor = strtotime($from->toDateString().' 12:00:00 UTC');
         $index = (int) $first->diffInDays($from) + 1;
+        $car = self::car($vehicle);
         $segments = collect();
         $current = null;
         for ($step = 0; ($day = gmdate('Y-m-d', $anchor + 86400 * $step)) <= $endDay; $step++, $index++) {
@@ -63,10 +65,10 @@ final class Accrual
                 continue;
             }
             $payer = $buyerDay && $day >= $buyerDay ? 'buyer' : $payerRule;
-            $rate = $payer === 'nobody' ? 0.0 : (self::rateOn($vehicle, $yard, $day, $index, false, $today) ?? 0.0);
+            $rate = $payer === 'nobody' ? 0.0 : (self::rateOn($car, $yard, $day, $index, false, $today) ?? 0.0);
             if ($payer === 'buyer') {
                 // Покупатель платит по ставке вендора (нет — по базовому прайсу), умноженной на множитель вендора.
-                $rate = ($rate ?: (self::rateOn($vehicle, $yard, $day, $index, true, $today) ?? 0.0)) * $multiplier;
+                $rate = ($rate ?: (self::rateOn($car, $yard, $day, $index, true, $today) ?? 0.0)) * $multiplier;
             }
             if ($current && $current['payer'] === $payer && abs($current['rate'] - $rate) < 0.005) {
                 $current['to'] = $day;
@@ -114,7 +116,8 @@ final class Accrual
     {
         $index = $vehicle->accepted_at ? (int) $vehicle->accepted_at->copy()->startOfDay()->diffInDays(now()->startOfDay()) + 1 : 1;
         $day = now()->toDateString();
-        $rate = self::rateOn($vehicle, $vehicle->yard_id, $day, $index, false) ?: (self::rateOn($vehicle, $vehicle->yard_id, $day, $index, true) ?? 0.0);
+        $car = self::car($vehicle);
+        $rate = self::rateOn($car, $vehicle->yard_id, $day, $index, false) ?: (self::rateOn($car, $vehicle->yard_id, $day, $index, true) ?? 0.0);
 
         return $rate * (float) ($vehicle->vendor?->buyer_rate_multiplier ?? 3);
     }
@@ -144,28 +147,61 @@ final class Accrual
         return $yard;
     }
 
-    /** Ставка на конкретный день: персональная, иначе лестница прайса (покупателю — базовый прайс), плюс негабарит. */
-    private static function rateOn(Vehicle $vehicle, ?int $yard, string $day, int $index, bool $base, ?string $today = null): ?float
+    /**
+     * Что из ТС нужно ставке — простыми значениями: цикл по дням читал бы поля модели десятки тысяч раз.
+     *
+     * @return array{vendor_id: ?int, category: ?Category, value: ?int, oversize: bool, storage_rate: ?float}
+     */
+    private static function car(Vehicle $vehicle): array
+    {
+        return ['vendor_id' => $vehicle->vendor_id, 'category' => $vehicle->category, 'value' => $vehicle->value,
+            'oversize' => (bool) $vehicle->oversize, 'storage_rate' => $vehicle->storage_rate === null ? null : (float) $vehicle->storage_rate];
+    }
+
+    /**
+     * Ставка на конкретный день: персональная, иначе лестница прайса (покупателю — базовый прайс), плюс негабарит.
+     *
+     * @param  array{vendor_id: ?int, category: ?Category, value: ?int, oversize: bool, storage_rate: ?float}  $car
+     */
+    private static function rateOn(array $car, ?int $yard, string $day, int $index, bool $base, ?string $today = null): ?float
     {
         $today ??= now()->toDateString();
-        if ($vehicle->storage_rate !== null && ! $base) {
-            $rate = (float) $vehicle->storage_rate;
+        $vendorId = $base ? null : $car['vendor_id'];
+        if ($car['storage_rate'] !== null && ! $base) {
+            $rate = $car['storage_rate'];
         } else {
             // Прайс, заведённый позже приёма, действует и на прошлые невыставленные дни: цены обычно вносят задним числом.
-            $ladder = Tariff::ladderOn($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Storage, $day, $vehicle->value);
-            if ($ladder->isEmpty() && $day < $today) {
-                $ladder = Tariff::ladderOn($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Storage, $today, $vehicle->value);
+            $steps = Tariff::stepsOn($vendorId, $yard, $car['category'], TariffService::Storage, $day, $car['value']);
+            if (! $steps && $day < $today) {
+                $steps = Tariff::stepsOn($vendorId, $yard, $car['category'], TariffService::Storage, $today, $car['value']);
             }
-            $found = Tariff::rateOnDay($ladder, $index);
+            $found = self::stepRate($steps, $index);
             if ($found === null) {
                 // Прайса на эту ТС нет: считать нечем, а не бесплатно (в списке — тег «Нет тарифа»).
                 return null;
             }
-            $rate = (float) $found;
+            $rate = $found;
         }
-        if ($vehicle->oversize) {
-            $extra = Tariff::ladderOn($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Oversize, $day, $vehicle->value);
-            $rate += (float) (Tariff::rateOnDay($extra, $index) ?? 0);
+        if ($car['oversize']) {
+            $extra = Tariff::stepsOn($vendorId, $yard, $car['category'], TariffService::Oversize, $day, $car['value']);
+            $rate += self::stepRate($extra, $index) ?? 0.0;
+        }
+
+        return $rate;
+    }
+
+    /**
+     * Ставка на N-е сутки по ступеням: последняя, чей `from_day` не больше N.
+     *
+     * @param  list<array{0: int, 1: float}>  $steps
+     */
+    private static function stepRate(array $steps, int $index): ?float
+    {
+        $rate = null;
+        foreach ($steps as [$fromDay, $price]) {
+            if ($fromDay <= $index) {
+                $rate = $price;
+            }
         }
 
         return $rate;
@@ -200,10 +236,11 @@ final class Accrual
         }
         $index = (int) $first->diffInDays($day) + 1;
         $on = $day->toDateString();
+        $car = self::car($vehicle);
         if ($payer !== 'buyer') {
-            return self::rateOn($vehicle, $vehicle->yard_id, $on, $index, false);
+            return self::rateOn($car, $vehicle->yard_id, $on, $index, false);
         }
-        $rate = self::rateOn($vehicle, $vehicle->yard_id, $on, $index, false) ?: self::rateOn($vehicle, $vehicle->yard_id, $on, $index, true);
+        $rate = self::rateOn($car, $vehicle->yard_id, $on, $index, false) ?: self::rateOn($car, $vehicle->yard_id, $on, $index, true);
 
         return $rate === null ? null : $rate * (float) ($vehicle->vendor?->buyer_rate_multiplier ?? 3);
     }

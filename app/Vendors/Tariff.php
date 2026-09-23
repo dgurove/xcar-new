@@ -34,6 +34,8 @@ class Tariff extends Model
 
     private static array $memo = [];
 
+    private static array $steps = [];
+
     protected function casts(): array
     {
         return [
@@ -87,8 +89,36 @@ class Tariff extends Model
     public static function ladderOn(?int $vendorId, ?int $yardId, ?Category $category, TariffService $service, string $day, ?int $value = null): Collection
     {
         $cell = self::cell($vendorId, $yardId, $category, $service);
-        // Дни между двумя правками прайса дают одну и ту же лестницу, поэтому в ключ идёт не сам день, а
-        // промежуток между датами, в которые набор строк меняется: хранение спрашивает ставку на каждый день.
+
+        return self::$memo[self::key($cell, $day, $value)] ??= self::pick($cell['rows'], $day, $value);
+    }
+
+    /**
+     * Ступени лестницы простыми числами `[[from_day, price], …]` — для расчёта хранения: ставку спрашивают на
+     * каждый день по каждой ТС, и чтение полей модели в таком цикле обходится дороже самого отбора.
+     *
+     * @return list<array{0: int, 1: float}>
+     */
+    public static function stepsOn(?int $vendorId, ?int $yardId, ?Category $category, TariffService $service, string $day, ?int $value = null): array
+    {
+        $cell = self::cell($vendorId, $yardId, $category, $service);
+        $key = self::key($cell, $day, $value);
+        if (isset(self::$steps[$key])) {
+            return self::$steps[$key];
+        }
+        $ladder = self::$memo[$key] ??= self::pick($cell['rows'], $day, $value);
+
+        return self::$steps[$key] = $ladder->map(fn (self $t) => [(int) $t->from_day, (float) $t->price])->all();
+    }
+
+    /**
+     * Дни между двумя правками прайса дают одну и ту же лестницу, поэтому в ключ идёт не сам день, а
+     * промежуток между датами, в которые набор строк меняется.
+     *
+     * @param  array{key: string, rows: list<self>, marks: list<string>}  $cell
+     */
+    private static function key(array $cell, string $day, ?int $value): string
+    {
         $span = 0;
         foreach ($cell['marks'] as $mark) {
             if ($day < $mark) {
@@ -97,7 +127,7 @@ class Tariff extends Model
             $span++;
         }
 
-        return self::$memo[$cell['key'].'|'.$value.'|'.$span] ??= self::pick($cell['rows'], $day, $value);
+        return $cell['key'].'|'.$value.'|'.$span;
     }
 
     /**
@@ -189,6 +219,7 @@ class Tariff extends Model
         $flush = function () {
             self::$cells = [];
             self::$memo = [];
+            self::$steps = [];
             Once::instance()->flush();
         };
         static::saved($flush);
