@@ -1,6 +1,7 @@
 {{-- Список дел: секция — машина, цепочка «Из писем» или предложение; письма дела стоят все, даже если под
      пилюлю подошло одно из них — действие требуется от дела. Заголовок говорит, что с делом: не заведено —
-     лаймовая «Завести», заведено — состояние ТС и «Дело ›». У дела, которое требует нас, полоска слева.
+     лаймовая «Завести», заведено — состояние ТС и «Дело ›». У дела, которое требует нас, полоска слева;
+     в «Из писем» её нет — там всё до последней строки надо завести, и красить нечего.
      Этим же куском отвечает живой поиск (X-List) — он подменяет содержимое #threads целиком; data-search-row
      и data-search-group — то, что live_search прячет на первом же знаке, пока не пришёл ответ сервера. --}}
 @php use App\Mail\CandidateState; @endphp
@@ -10,10 +11,14 @@
 @else
     <div class="flex flex-col gap-4">
         @foreach ($sections as $section)
-            @php $plain = ! $section['vehicle'] && ! $section['offer'] && ! $section['candidate']; @endphp
+            @php
+                $plain = ! $section['vehicle'] && ! $section['offer'] && ! $section['candidate'];
+                // В «Из писем» полоски нет: там каждая строка — то, что надо завести, и выделять нечего.
+                $mark = $forced ? null : $section['attention'];
+            @endphp
             {{-- Смахивается дело целиком: архивировать одно письмо из цепочки смысла нет. --}}
             <x-ui.swipe id="case-{{ $section['kind'] }}-{{ $section['id'] }}" data-search-group>
-            <section class="case {{ $section['attention'] ? 'case--'.$section['attention'] : '' }}">
+            <section class="case {{ $mark ? 'case--'.$mark : '' }}">
                 @if ($section['vehicle'])
                     @php $v = $section['vehicle']; @endphp
                     <div class="case-head">
