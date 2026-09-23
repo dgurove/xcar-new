@@ -359,7 +359,7 @@ final class ParkExtractor
      * Письмо страховой «ТС продано, заберёт такой-то»: дата продажи — дата письма, из текста — кому выдать
      * (ФИО рядом с «покупател / заберёт / выдать / передать», телефон, доверенность или ДКП). Не о продаже — null.
      *
-     * @return array{name: ?string, phone: ?string, note: ?string}|null
+     * @return array{name: ?string, phone: ?string, note: ?string, free_until: ?string}|null
      */
     public static function soldNotice(?string $subject, ?string $body): ?array
     {
@@ -383,6 +383,13 @@ final class ParkExtractor
         } elseif (preg_match('/(?:покупател|заберут|забер[ёе]т|получател|тел)[^\n]{0,120}?'.$phone.'/iu', $text, $pm)) {
             $tel = $pm[1];
         }
+        // «Клиент должен забрать ТС до 24.04.2025 включительно» — с 25-го хранение оплачивает покупатель.
+        // Так пишет Альфа СПб; дальше срок живёт на ТС (`buyer_free_until`) и включает тройной тариф.
+        $free = null;
+        if (preg_match('/(?:должен|должна|должны|обязан\w*)\s+(?:был[аи]?\s+)?(?:забрать|вывезти|получить)[^\n]{0,60}?\bдо\s+(\d{1,2})[.\/](\d{1,2})[.\/](\d{2,4})/iu', $text, $dm)) {
+            $year = (int) $dm[3] < 100 ? 2000 + (int) $dm[3] : (int) $dm[3];
+            $free = checkdate((int) $dm[2], (int) $dm[1], $year) ? sprintf('%04d-%02d-%02d', $year, (int) $dm[2], (int) $dm[1]) : null;
+        }
         $notes = [];
         if (preg_match('/по\s+доверенности[^\n.]{0,60}/iu', $text, $nm)) {
             $notes[] = trim($nm[0]);
@@ -391,7 +398,8 @@ final class ParkExtractor
             $notes[] = 'ДКП № '.$nm[1];
         }
 
-        return ['name' => $name, 'phone' => $tel ? Phone::format(Phone::normalize($tel) ?? $tel) : null, 'note' => $notes ? implode(', ', $notes) : null];
+        return ['name' => $name, 'phone' => $tel ? Phone::format(Phone::normalize($tel) ?? $tel) : null,
+            'note' => $notes ? implode(', ', $notes) : null, 'free_until' => $free];
     }
 
     private function ref(string $text): ?string

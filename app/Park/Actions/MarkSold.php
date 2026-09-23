@@ -22,13 +22,16 @@ final class MarkSold
 {
     public function __construct(private CreateRequest $create) {}
 
-    public function __invoke(Vehicle $vehicle, ?User $by, CarbonInterface $soldAt, ?string $name, ?string $phone, ?Message $message = null): Vehicle
+    public function __invoke(Vehicle $vehicle, ?User $by, CarbonInterface $soldAt, ?string $name, ?string $phone, ?Message $message = null, ?string $freeUntil = null): Vehicle
     {
         $fresh = ! $vehicle->sold_at;
         Nav::forgetStaffCounts();
-        DB::transaction(function () use ($vehicle, $by, $soldAt, $name, $phone, $message, $fresh) {
+        // Срок «забрать до …» из письма — только там, где опоздавший покупатель платит (ВСК, Альфа СПб);
+        // у остальных он ничего не значит, а пустой не стирает вписанное руками.
+        $free = $freeUntil && ($vehicle->vendor?->buyer_pays_late ?? false) ? $freeUntil : null;
+        DB::transaction(function () use ($vehicle, $by, $soldAt, $name, $phone, $message, $fresh, $free) {
             $vehicle->update(array_filter([
-                'sold_at' => $soldAt->toDateString(), 'sold_message_id' => $message?->id,
+                'sold_at' => $soldAt->toDateString(), 'sold_message_id' => $message?->id, 'buyer_free_until' => $free,
                 'pickup_name' => $name, 'pickup_phone' => $phone,
             ], fn ($v) => $v !== null) + ($fresh ? [] : ['pickup_name' => $name, 'pickup_phone' => $phone]));
             // Новому покупателю — новый контрагент, если прежнему уже выставляли счета: переименовать значило бы

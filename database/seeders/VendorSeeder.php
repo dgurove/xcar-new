@@ -21,7 +21,9 @@ class VendorSeeder extends Seeder
     /** имя, отправители, разбор, маршрут продажи, вывоз с каждым предложением */
     public const VENDORS = [
         ['Т-Страхование', ['tinsurance.ru', 'tinkoffinsurance.ru', 'tbank.ru'], Parser::Tinkoff, Preset::TBank, false],
-        ['АльфаСтрахование', ['alfastrah.ru'], Parser::Generic, Preset::Alfa, false],
+        // Альфа — два вендора: в Питере опоздавший покупатель платит сам, в Москве хранение целиком на страховой.
+        ['АльфаСтрахование Москва', ['alfastrah.ru'], Parser::Generic, Preset::Alfa, false],
+        ['АльфаСтрахование СПб', ['kolbasinamp@alfastrah.ru', 'filippovaiaiu@alfastrah.ru'], Parser::Generic, Preset::Alfa, false],
         // Совкомбанк обязывает вывозить каждую машину — вывоз идёт параллельно продаже.
         ['Совкомбанк Страхование', ['sovcomins.ru'], Parser::Sovcombank, Preset::Sovcombank, true],
         ['Энергогарант', ['msk-garant.ru', 'energogarant.ru'], Parser::Energogarant, null, false],
@@ -29,6 +31,8 @@ class VendorSeeder extends Seeder
         ['Абсолют Страхование', ['absolutins.ru'], Parser::Generic, null, false],
         ['ВСК', ['vsk.ru'], Parser::Generic, null, false],
         ['СОГАЗ', ['sogaz.ru'], Parser::Generic, null, false],
+        ['Росгосстрах', ['rgs.ru'], Parser::Generic, null, false],
+        ['Интери', ['interi-sk.ru'], Parser::Generic, null, false],
     ];
 
     /**
@@ -36,12 +40,22 @@ class VendorSeeder extends Seeder
      * стоимости и выше». Заводятся один раз, пока у вендора нет прайса; дальше правятся в его карточке.
      */
     public const STORAGE_RATES = [
-        'ВСК' => ['passenger' => 120, 'light' => 150, 'truck' => 180, 'long' => 200],
+        // Ставки ВСК; СОГАЗу, Интери и Росгосстраху они же, пока нет своих договоров (решение владельца 23.09.2026).
+        'ВСК' => self::VSK,
+        'СОГАЗ' => self::VSK,
+        'Интери' => self::VSK,
+        'Росгосстрах' => self::VSK,
         // Договор АльфаСтрахования (без НДС): легковые — по заявленной стоимости, остальной транспорт — по типу.
-        'АльфаСтрахование' => [
-            'passenger' => [[0, 250], [500_000, 300], [1_500_000, 350], [3_000_000, 400], [5_000_000, 450]],
-            'light' => 450, 'long' => 800, 'truck' => 900, 'trailer' => 900,
-        ],
+        // Спецтехники в договоре нет, её считаем по цене грузового.
+        'АльфаСтрахование Москва' => self::ALFA,
+        'АльфаСтрахование СПб' => self::ALFA,
+    ];
+
+    private const VSK = ['passenger' => 120, 'light' => 150, 'truck' => 180, 'long' => 200, 'special' => 180];
+
+    private const ALFA = [
+        'passenger' => [[0, 250], [500_000, 300], [1_500_000, 350], [3_000_000, 400], [5_000_000, 450]],
+        'light' => 450, 'long' => 800, 'truck' => 900, 'trailer' => 900, 'special' => 900,
     ];
 
     public function run(ApplyPreset $apply): void
