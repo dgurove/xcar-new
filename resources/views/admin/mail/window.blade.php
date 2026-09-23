@@ -27,7 +27,8 @@
                     @elseif ($park)<a href="/requests/new?candidate={{ $thread->candidate->id }}" class="chip" data-turbo-frame="_top">Завести ›</a>
                     @else<form method="post" action="/offers/from-mail/{{ $thread->candidate->id }}/create" class="contents" data-turbo-frame="_top">@csrf<button class="chip">Завести ›</button></form>@endif
                 @elseif (! $linked)
-                    <form method="post" action="{{ $base }}/{{ $thread->id }}/candidate" class="contents" data-turbo-frame="_top">@csrf<button class="chip">{{ $park ? 'Заявка' : 'Предложение' }} ›</button></form>
+                    {{-- Одно действие — одно слово: «Завести» и у цепочки, и у письма, которому машину не нашли. --}}
+                    <form method="post" action="{{ $base }}/{{ $thread->id }}/candidate" class="contents" data-turbo-frame="_top">@csrf<button class="chip">Завести ›</button></form>
                 @endif
             </div>
             <form method="post" action="{{ $base }}/{{ $thread->id }}/link" class="mt-3 flex items-end gap-2" data-turbo-frame="letters-frame" data-unhide-target="block" @unless ($errors->any()) hidden @endunless>

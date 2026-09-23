@@ -42,7 +42,7 @@
                         <span class="flex shrink-0 items-center gap-1.5">
                             @if ($c->state === CandidateState::New)
                                 {{-- На телефоне цепочку отклоняет свайп, на компьютере свайпа нет — там кнопка. --}}
-                                <form method="post" action="{{ $queue }}/{{ $c->id }}/decline" class="hidden md:contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do">Не заявка</button></form>
+                                <form method="post" action="{{ $queue }}/{{ $c->id }}/decline" class="hidden md:contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do"><span class="opacity-70">Не заявка</span></button></form>
                                 @if ($park)
                                     <a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent case-do">Завести</a>
                                 @else
@@ -55,12 +55,14 @@
                             @endif
                         </span>
                     </div>
-                @elseif ($section['attention'] === 'register')
-                    {{-- Заявка, которой парсер не нашёл машину: завести цепочку руками. Вендор — в строке письма.
+                @elseif ($section['register'])
+                    {{-- Заявка, которой парсер не нашёл машину: заводится руками. Вендор — в строке письма.
                          У прочих писем без машины заголовка нет: писать в него нечего. --}}
                     <div class="case-head">
                         <div class="case-name"><span class="font-medium text-ink-muted">Машину в письме не нашли</span></div>
-                        <form method="post" action="{{ $base }}/{{ $section['threads']->first()->id }}/candidate" class="shrink-0">@csrf<button class="btn btn-s btn-accent case-do">Завести цепочку</button></form>
+                        {{-- «Не заявка» здесь — просто архив письма: цепочки у него ещё нет, отклонять нечего. --}}
+                        <form method="post" action="{{ $base }}/case/t/{{ $section['id'] }}/archive" class="hidden md:contents" data-turbo-confirm="Не заявка? Письмо уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do"><span class="opacity-70">Не заявка</span></button></form>
+                        <form method="post" action="{{ $base }}/{{ $section['threads']->first()->id }}/candidate" class="shrink-0">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                     </div>
                 @endif
                 <div class="flex flex-col gap-1.5">

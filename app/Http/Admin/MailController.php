@@ -150,13 +150,17 @@ class MailController
             $first = $list->first();
 
             [$kind, $id] = explode(':', $g, 2);
+            // Дело надо завести — то же правило, что у выборки (`Boxes::register`). Признак отдельный от тона:
+            // письмо-заявка бывает и с вопросом, и тогда полоска оранжевая, а кнопка «Завести» всё равно нужна.
+            $register = $kind === 'c'
+                ? $first?->candidate?->state === CandidateState::New
+                : $kind === 't' && $first?->vendor_id && $first?->last_intent === Intent::Intake->value;
 
-            return ['key' => $g, 'kind' => $kind, 'id' => $id, 'threads' => $list, 'vehicle' => str_starts_with($g, 'v:') ? $first?->vehicle : null,
-                'offer' => str_starts_with($g, 'o:') ? $first?->offer : null, 'candidate' => str_starts_with($g, 'c:') ? $first?->candidate : null,
-                // Чего ждёт дело: по нему рисуется полоска слева и кнопка в заголовке.
-                'attention' => $list->contains(fn (Thread $t) => $t->needs_reply_at !== null) ? 'reply'
-                    : (str_starts_with($g, 'c:') && $first?->candidate?->state === CandidateState::New ? 'register'
-                        : (str_starts_with($g, 't:') && $first?->vendor_id && $first?->last_intent === Intent::Intake->value ? 'register' : null)),
+            return ['key' => $g, 'kind' => $kind, 'id' => $id, 'threads' => $list, 'vehicle' => $kind === 'v' ? $first?->vehicle : null,
+                'offer' => $kind === 'o' ? $first?->offer : null, 'candidate' => $kind === 'c' ? $first?->candidate : null,
+                'register' => $register,
+                // Чего ждёт дело: по нему рисуется полоска слева.
+                'attention' => $list->contains(fn (Thread $t) => $t->needs_reply_at !== null) ? 'reply' : ($register ? 'register' : null),
             ];
         })->filter(fn ($s) => $s['threads']->isNotEmpty())->values();
         $threads = $paginator;
