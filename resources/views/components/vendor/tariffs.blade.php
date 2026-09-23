@@ -29,7 +29,7 @@
     @endif
     <div class="flex flex-col gap-2">
         @foreach ($groups as $catValue => $catLabel)
-            @php $catValue = $catValue === '' ? null : $catValue; $own = $rows->filter(fn ($t) => ($t->category?->value ?? null) === $catValue && $t->vendor_id === $vendorId && $t->yard_id === $yardId)->sortBy(fn ($t) => [$t->service->value, $t->from_day]); @endphp
+            @php $catValue = $catValue === '' ? null : $catValue; $own = $rows->filter(fn ($t) => ($t->category?->value ?? null) === $catValue && $t->vendor_id === $vendorId && $t->yard_id === $yardId)->sortBy(fn ($t) => [$t->service->value, $t->from_value ?? -1, $t->from_day]); @endphp
             <div class="row" data-controller="sheet">
                 <button type="button" class="contents text-left" data-action="sheet#open">
                     <span class="min-w-0 flex-1">
@@ -43,12 +43,13 @@
                     </span>
                     <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
                 </button>
-                <x-ui.sheet id="tariff-{{ $catValue ?? 'any' }}" :title="$catLabel" wide :open="$errors->any() && old('category') === $catValue && old('_sheet') === ($catValue ?? 'any')">
+                {{-- Шторка остаётся открытой после сохранения (session('sheet')): прайс вводят лестницу за лестницей. --}}
+                <x-ui.sheet id="tariff-{{ $catValue ?? 'any' }}" :title="$catLabel" wide :open="session('sheet') === ($catValue ?? 'any') || ($errors->any() && old('sheet') === ($catValue ?? 'any'))">
                     <div class="flex flex-col gap-3">
-                        @foreach ($own as $t)
-                            @include('components.vendor.tariff-form', ['t' => $t, 'catValue' => $catValue])
+                        @foreach ($own->groupBy(fn ($t) => $t->service->value) as $steps)
+                            <x-vendor.tariff-ladder :service="$steps->first()->service" :rows="$steps->values()" :vendor-id="$vendorId" :yard-id="$yardId" :cat-value="$catValue"/>
                         @endforeach
-                        @include('components.vendor.tariff-form', ['t' => null, 'catValue' => $catValue])
+                        <x-vendor.tariff-ladder :vendor-id="$vendorId" :yard-id="$yardId" :cat-value="$catValue"/>
                     </div>
                 </x-ui.sheet>
             </div>

@@ -2,8 +2,11 @@
 @props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false])
 @php
     $id = $attributes->get('id', 'f-'.str_replace(['[', ']'], ['-', ''], $name));
-    $error = $errors->first($name);
-    $bound = old($name, $value);
+    // Поле набора (`rows[0][price]`): ошибки и old() лежат под точками — иначе строка лестницы прайса
+    // после ошибки теряла введённое и не подсвечивалась.
+    $path = str_replace(['[', ']'], ['.', ''], $name);
+    $error = $errors->first($name) ?: $errors->first($path);
+    $bound = old($path, old($name, $value));
     // Клавиатура по смыслу поля: цифры для цен и пробега, заглавные без автозамены
     // для VIN и госномера, свой тип для телефона и почты. Явные атрибуты важнее.
     $base = strtolower(preg_replace('/\[.*$/', '', $name));

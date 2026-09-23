@@ -31,9 +31,17 @@ class VendorSeeder extends Seeder
         ['СОГАЗ', ['sogaz.ru'], Parser::Generic, null, false],
     ];
 
-    /** Договорные цены хранения в сутки по категориям — со слов владельца; заводятся один раз, пока у вендора нет прайса. */
+    /**
+     * Договорные цены хранения в сутки: число — ставка на категорию, список — ступени «от заявленной
+     * стоимости и выше». Заводятся один раз, пока у вендора нет прайса; дальше правятся в его карточке.
+     */
     public const STORAGE_RATES = [
         'ВСК' => ['passenger' => 120, 'light' => 150, 'truck' => 180, 'long' => 200],
+        // Договор АльфаСтрахования (без НДС): легковые — по заявленной стоимости, остальной транспорт — по типу.
+        'АльфаСтрахование' => [
+            'passenger' => [[0, 250], [500_000, 300], [1_500_000, 350], [3_000_000, 400], [5_000_000, 450]],
+            'light' => 450, 'long' => 800, 'truck' => 900, 'trailer' => 900,
+        ],
     ];
 
     public function run(ApplyPreset $apply): void
@@ -49,7 +57,10 @@ class VendorSeeder extends Seeder
             }
             if (isset(self::STORAGE_RATES[$name]) && ! $vendor->tariffs()->exists()) {
                 foreach (self::STORAGE_RATES[$name] as $category => $price) {
-                    $vendor->tariffs()->create(['category' => $category, 'service' => TariffService::Storage, 'from_day' => 1, 'price' => $price, 'valid_from' => now()->toDateString()]);
+                    foreach (is_array($price) ? $price : [[null, $price]] as [$from, $rate]) {
+                        $vendor->tariffs()->create(['category' => $category, 'service' => TariffService::Storage, 'from_day' => 1,
+                            'from_value' => $from, 'price' => $rate, 'valid_from' => now()->toDateString()]);
+                    }
                 }
                 $this->command?->info("{$name}: прайс хранения");
             }

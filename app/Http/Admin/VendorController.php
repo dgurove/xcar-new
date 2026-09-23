@@ -92,7 +92,8 @@ class VendorController
                     ->selectRaw('stage_id, count(*) as n')->groupBy('stage_id')->pluck('n', 'stage_id'),
             ];
         } elseif ($pill === 'tariffs') {
-            $data += self::tariffData($request, $vendor);
+            // Прайсу площадки нужны моделями (id и имя), а в $data они уже списком для форм — берём его версию.
+            $data = self::tariffData($request, $vendor) + $data;
         } elseif ($pill === 'money') {
             // Контрагент на чтение не создаётся: без счетов долг — только не выставленное хранение по ТС вендора.
             $party = Party::forVendor($vendor, false);

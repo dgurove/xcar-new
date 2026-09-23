@@ -1,9 +1,10 @@
 {{-- ТС стоянки в плитках и строках: кадр, название с госномером, одна строка чипов (состояние, номер, VIN, вендор,
      место), справа — слот aside: по умолчанию дни на стоянке со светофором простоя и красный долг, у ожидаемой —
      «Принять ›», у выданной — дата. Кнопок нет: вся карточка — ссылка на дело. facts=false — без чипов ТС (заявки). --}}
-@props(['vehicle', 'href' => null, 'facts' => true, 'debt' => 0, 'aside' => null, 'link' => true])
+@props(['vehicle', 'href' => null, 'facts' => true, 'debt' => 0, 'total' => null, 'aside' => null, 'link' => true])
 @php
     use App\Park\{VehicleState, Idle};
+    use App\Support\Money;
     $href ??= '/cars/'.$vehicle->id;
     $main = $vehicle->mainPhoto();
     $photos = $vehicle->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
@@ -42,13 +43,11 @@
         @if ($facts)
             {{-- Стоящей ТС состояние не пишем: в «Наличии» все такие, место говорит само. --}}
             @if ($state !== VehicleState::Stored)<x-ui.pill :tone="match ($state->tone()) { 'open' => 'open', 'urgent' => 'urgent', default => 'closed' }" class="!min-h-0 !py-0.5 text-xs">{{ $state->label() }}</x-ui.pill>@endif
-            @if ($noRequest)<span class="tag text-urgent">без заявки</span>@endif
-            @if ($state === VehicleState::Stored && ! $vehicle->yard_id)<span class="tag tag-urgent">Парковка не указана</span>@endif
-            @if (! $state->isFinal() && $vehicle->noLetters())<span class="tag tag-urgent">Писем нет</span>@endif
-            @if (! $state->isFinal() && $vehicle->vinProblem())<span class="tag tag-danger">{{ $vehicle->vinProblem() }}</span>@endif
+            <x-park.alerts :vehicle="$vehicle"/>
             @if ($vehicle->ref)<x-ui.copy-code class="tag" :value="$vehicle->ref"/>@endif
             @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
             @if ($state === VehicleState::Stored && $vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place>@endif
+            @if ($total && $total['rate'])<span class="tag nums">{{ Money::rub($total['rate']) }}/сут</span>@endif
         @endif
         {{ $slot }}
     </div>
@@ -57,7 +56,8 @@
             {{ $aside }}
         @elseif ($days !== null)
             <span class="nums text-sm {{ match (Idle::tone($days)) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', default => 'text-ink-muted' } }}">{{ $days }} дн</span>
-            @if ($debt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs nums">{{ \App\Support\Money::rub($debt) }}</x-ui.pill>@endif
+            @if ($total && $total['amount'] > 0)<span class="nums text-sm font-medium">{{ Money::rub($total['amount']) }}</span>@endif
+            @if ($debt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs nums">{{ Money::rub($debt) }}</x-ui.pill>@endif
         @elseif ($state === VehicleState::Expected)
             <span class="text-sm text-ink-muted">{{ $noRequest ? 'без заявки' : 'ожидается' }}</span>
         @elseif ($state === VehicleState::Released && $vehicle->released_at)

@@ -183,9 +183,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::put('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'update']);
         Route::delete('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'destroy']);
         Route::get('/tariffs', [TariffController::class, 'index']);
-        Route::post('/tariffs', [TariffController::class, 'store']);
-        Route::put('/tariffs/{tariff}', [TariffController::class, 'update']);
-        Route::delete('/tariffs/{tariff}', [TariffController::class, 'destroy']);
+        Route::post('/tariffs/ladder', [TariffController::class, 'save']);
 
         Route::post('/workflows/{workflow}/enable', [WorkflowController::class, 'activate']);
         Route::post('/workflows/{workflow}/launch', [WorkflowController::class, 'autoStart']);

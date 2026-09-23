@@ -25,14 +25,14 @@ use Illuminate\Support\Collection;
 final class Accrual
 {
     /** @return Collection<int, Segment> */
-    public static function storage(Vehicle $vehicle, ?CarbonInterface $until = null): Collection
+    public static function storage(Vehicle $vehicle, ?CarbonInterface $until = null, bool $fromStart = false): Collection
     {
         if (! $vehicle->accepted_at) {
             return collect();
         }
         $vehicle->loadMissing(['vendor', 'offer.deal']);
         $first = $vehicle->accepted_at->copy()->startOfDay();
-        $from = $vehicle->storage_billed_until ? $vehicle->storage_billed_until->copy()->addDay()->startOfDay() : $first->copy();
+        $from = $vehicle->storage_billed_until && ! $fromStart ? $vehicle->storage_billed_until->copy()->addDay()->startOfDay() : $first->copy();
         // Конец периода — день выдачи, но не позже `until` (закрытие месяца считает по конец месяца).
         $end = Carbon::instance($until ?? $vehicle->released_at ?? now())->startOfDay();
         if ($vehicle->released_at && $vehicle->released_at->copy()->startOfDay()->lt($end)) {
@@ -44,26 +44,32 @@ final class Accrual
 
         $vendor = $vehicle->vendor;
         $payerRule = $vendor?->storage_payer ?? 'vendor';
-        $buyerFrom = self::buyerFrom($vehicle);
+        $buyerDay = self::buyerFrom($vehicle)?->toDateString();
         $multiplier = (float) ($vendor?->buyer_rate_multiplier ?? 3);
 
-        $timeline = $vehicle->yardTimeline();
+        // Дни идут строками «2026-09-23», а не объектами Carbon: у ТС бывает больше тысячи суток, и по
+        // списку это десятки тысяч дней — Carbon на каждый день считал дольше, чем сам отбор по прайсу.
+        // Полдень по UTC в опоре — чтобы шаг ровно в сутки не сбился ни в одном часовом поясе.
+        $timeline = array_map(fn (array $e) => ['day' => $e['day']->toDateString(), 'yard_id' => $e['yard_id'], 'transit' => $e['transit'] ?? $e['yard_id'] === null], $vehicle->yardTimeline());
+        $today = now()->toDateString();
+        $endDay = $end->toDateString();
+        $anchor = strtotime($from->toDateString().' 12:00:00 UTC');
+        $index = (int) $first->diffInDays($from) + 1;
         $segments = collect();
         $current = null;
-        for ($day = $from->copy(); $day->lte($end); $day->addDay()) {
+        for ($step = 0; ($day = gmdate('Y-m-d', $anchor + 86400 * $step)) <= $endDay; $step++, $index++) {
             $yard = self::yardOn($timeline, $day, $vehicle->yard_id);
             if ($yard === false) {
                 continue;
             }
-            $index = (int) $first->diffInDays($day) + 1;
-            $payer = $buyerFrom && $day->gte($buyerFrom) ? 'buyer' : $payerRule;
-            $rate = $payer === 'nobody' ? 0.0 : self::rateOn($vehicle, $yard, $day, $index, false);
+            $payer = $buyerDay && $day >= $buyerDay ? 'buyer' : $payerRule;
+            $rate = $payer === 'nobody' ? 0.0 : (self::rateOn($vehicle, $yard, $day, $index, false, $today) ?? 0.0);
             if ($payer === 'buyer') {
                 // Покупатель платит по ставке вендора (нет — по базовому прайсу), умноженной на множитель вендора.
-                $rate = ($rate ?: self::rateOn($vehicle, $yard, $day, $index, true)) * $multiplier;
+                $rate = ($rate ?: (self::rateOn($vehicle, $yard, $day, $index, true, $today) ?? 0.0)) * $multiplier;
             }
             if ($current && $current['payer'] === $payer && abs($current['rate'] - $rate) < 0.005) {
-                $current['to'] = $day->copy();
+                $current['to'] = $day;
                 $current['days']++;
                 $current['amount'] = round($current['days'] * $current['rate'], 2);
 
@@ -72,13 +78,19 @@ final class Accrual
             if ($current) {
                 $segments->push($current);
             }
-            $current = ['payer' => $payer, 'from' => $day->copy(), 'to' => $day->copy(), 'days' => 1, 'rate' => $rate, 'amount' => round($rate, 2)];
+            $current = ['payer' => $payer, 'from' => $day, 'to' => $day, 'days' => 1, 'rate' => $rate, 'amount' => round($rate, 2)];
         }
         if ($current) {
             $segments->push($current);
         }
 
-        return $segments;
+        // Наружу отрезки отдаются датами: их считанные единицы, здесь Carbon уже ничего не стоит.
+        return $segments->map(function (array $s) {
+            $s['from'] = Carbon::parse($s['from']);
+            $s['to'] = Carbon::parse($s['to']);
+
+            return $s;
+        });
     }
 
     /**
@@ -101,7 +113,8 @@ final class Accrual
     public static function buyerRate(Vehicle $vehicle): float
     {
         $index = $vehicle->accepted_at ? (int) $vehicle->accepted_at->copy()->startOfDay()->diffInDays(now()->startOfDay()) + 1 : 1;
-        $rate = self::rateOn($vehicle, $vehicle->yard_id, now(), $index, false) ?: self::rateOn($vehicle, $vehicle->yard_id, now(), $index, true);
+        $day = now()->toDateString();
+        $rate = self::rateOn($vehicle, $vehicle->yard_id, $day, $index, false) ?: (self::rateOn($vehicle, $vehicle->yard_id, $day, $index, true) ?? 0.0);
 
         return $rate * (float) ($vehicle->vendor?->buyer_rate_multiplier ?? 3);
     }
@@ -110,18 +123,18 @@ final class Accrual
      * Площадка на день по ленте: последняя запись не позже дня; погрузка в этот же день — ещё на прежней
      * площадке, раньше — ТС в пути (false). Без ленты — нынешняя площадка.
      *
-     * @param  list<array{day: Carbon, yard_id: ?int, transit?: bool}>  $timeline
+     * @param  list<array{day: string, yard_id: ?int, transit: bool}>  $timeline
      */
-    private static function yardOn(array $timeline, Carbon $day, ?int $current): int|null|false
+    private static function yardOn(array $timeline, string $day, ?int $current): int|null|false
     {
         $yard = $current;
         $previous = $current;
         foreach ($timeline as $e) {
-            if ($e['day']->gt($day)) {
+            if ($e['day'] > $day) {
                 break;
             }
-            if ($e['transit'] ?? $e['yard_id'] === null) {
-                $yard = $e['day']->eq($day) ? $previous : false;
+            if ($e['transit']) {
+                $yard = $e['day'] === $day ? $previous : false;
             } else {
                 // Принята без парковки — стоит, площадка неизвестна: ставка по прайсу без площадки.
                 $previous = $yard = $e['yard_id'];
@@ -132,24 +145,85 @@ final class Accrual
     }
 
     /** Ставка на конкретный день: персональная, иначе лестница прайса (покупателю — базовый прайс), плюс негабарит. */
-    private static function rateOn(Vehicle $vehicle, ?int $yard, Carbon $day, int $index, bool $base): float
+    private static function rateOn(Vehicle $vehicle, ?int $yard, string $day, int $index, bool $base, ?string $today = null): ?float
     {
+        $today ??= now()->toDateString();
         if ($vehicle->storage_rate !== null && ! $base) {
             $rate = (float) $vehicle->storage_rate;
         } else {
             // Прайс, заведённый позже приёма, действует и на прошлые невыставленные дни: цены обычно вносят задним числом.
-            $ladder = Tariff::ladder($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Storage, $day);
-            if ($ladder->isEmpty() && $day->lt(now()->startOfDay())) {
-                $ladder = Tariff::ladder($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Storage);
+            $ladder = Tariff::ladderOn($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Storage, $day, $vehicle->value);
+            if ($ladder->isEmpty() && $day < $today) {
+                $ladder = Tariff::ladderOn($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Storage, $today, $vehicle->value);
             }
-            $rate = (float) (Tariff::rateOnDay($ladder, $index) ?? 0);
+            $found = Tariff::rateOnDay($ladder, $index);
+            if ($found === null) {
+                // Прайса на эту ТС нет: считать нечем, а не бесплатно (в списке — тег «Нет тарифа»).
+                return null;
+            }
+            $rate = (float) $found;
         }
         if ($vehicle->oversize) {
-            $extra = Tariff::ladder($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Oversize, $day);
+            $extra = Tariff::ladderOn($base ? null : $vehicle->vendor_id, $yard, $vehicle->category, TariffService::Oversize, $day, $vehicle->value);
             $rate += (float) (Tariff::rateOnDay($extra, $index) ?? 0);
         }
 
         return $rate;
+    }
+
+    /** Есть ли чем считать сутки: персональная ставка или лестница прайса. Пилюля «Без ставки» и тег причины. */
+    public static function hasRate(Vehicle $vehicle): bool
+    {
+        return $vehicle->storage_rate !== null || Tariff::ladderFor($vehicle, TariffService::Storage)->isNotEmpty();
+    }
+
+    /**
+     * Ставка на сегодня (у выданной — на день выдачи) по нынешнему плательщику: чип и столбец «₽/сут».
+     * null — прайса на эту ТС нет: не заполнена категория, не заполнена стоимость при тарифе по стоимости
+     * или у вендора нет прайса вовсе.
+     */
+    public static function rateToday(Vehicle $vehicle): ?float
+    {
+        if (! $vehicle->accepted_at) {
+            return null;
+        }
+        $vehicle->loadMissing(['vendor', 'offer.deal']);
+        $first = $vehicle->accepted_at->copy()->startOfDay();
+        $day = $vehicle->released_at && $vehicle->released_at->startOfDay()->lt(now()->startOfDay()) ? $vehicle->released_at->copy()->startOfDay() : now()->startOfDay();
+        if ($day->lt($first)) {
+            $day = $first->copy();
+        }
+        $buyerFrom = self::buyerFrom($vehicle);
+        $payer = $buyerFrom && $day->gte($buyerFrom) ? 'buyer' : ($vehicle->vendor?->storage_payer ?? 'vendor');
+        if ($payer === 'nobody') {
+            return 0.0;
+        }
+        $index = (int) $first->diffInDays($day) + 1;
+        $on = $day->toDateString();
+        if ($payer !== 'buyer') {
+            return self::rateOn($vehicle, $vehicle->yard_id, $on, $index, false);
+        }
+        $rate = self::rateOn($vehicle, $vehicle->yard_id, $on, $index, false) ?: self::rateOn($vehicle, $vehicle->yard_id, $on, $index, true);
+
+        return $rate === null ? null : $rate * (float) ($vehicle->vendor?->buyer_rate_multiplier ?? 3);
+    }
+
+    /**
+     * Ставка и набежавшее за всё время по многим ТС разом — столбцы списка «Наличия». Считается от дня
+     * приёма (`fromStart`), а не от выставленного: владельцу нужна вся сумма, что набила машина.
+     *
+     * @param  iterable<Vehicle>  $vehicles
+     * @return array<int, array{rate: ?float, days: int, amount: float}>
+     */
+    public static function totals(iterable $vehicles): array
+    {
+        $out = [];
+        foreach ($vehicles as $v) {
+            $segments = self::storage($v, null, true);
+            $out[$v->id] = ['rate' => self::rateToday($v), 'days' => (int) $segments->sum('days'), 'amount' => round((float) $segments->sum('amount'), 2)];
+        }
+
+        return $out;
     }
 
     /** Сколько начислено и не выставлено — по плательщикам, для чипов. @return array<string, array{days: int, amount: float}> */

@@ -17,11 +17,14 @@
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
             @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
             @if ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
+            @if ($total && $total['rate'])<span class="tag nums">{{ \App\Support\Money::rub($total['rate']) }}/сут</span>@endif
+            <x-park.alerts :vehicle="$vehicle"/>
             @if ($vehicle->accepted_at)<span class="tag nums">принята {{ $vehicle->accepted_at->translatedFormat('j M Y') }}</span>@endif
             @if ($state === VehicleState::Released && $vehicle->released_at)<span class="tag nums">выдана {{ $vehicle->released_at->translatedFormat('j M Y') }}</span>@endif
         </x-slot:marks>
         <x-slot:aside>
             @if ($state === VehicleState::Stored && $vehicle->daysStored() !== null)<span class="nums whitespace-nowrap text-lg font-bold">{{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
+            @if ($total && $total['amount'] > 0)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ \App\Support\Money::rub($total['amount']) }}</span>@endif
         </x-slot:aside>
         <x-slot:actions>
             @if ($state === VehicleState::Expected)
@@ -75,6 +78,6 @@
                 @endforeach
             </div>
         @endif
-        <x-slot:row><x-park.table-row :vehicle="$vehicle"/></x-slot:row>
+        <x-slot:row><x-park.table-row :vehicle="$vehicle" :total="$total"/></x-slot:row>
     </x-ui.peek>
 </turbo-frame>

@@ -270,8 +270,13 @@ class Vehicle extends Model implements HasMedia
      */
     public function yardTimeline(): array
     {
+        $types = [EventType::Accepted, EventType::Moved, EventType::Departed];
+        // Список «Наличия» и закрытие месяца грузят ленту заранее: запрос на каждую ТС — это сотня запросов на страницу.
+        $events = $this->relationLoaded('events')
+            ? $this->events->filter(fn ($e) => in_array($e->type, $types, true))->sortBy([['created_at', 'asc'], ['id', 'asc']])
+            : $this->events()->reorder()->whereIn('type', $types)->oldest('created_at')->oldest('id')->get();
         $out = [];
-        foreach ($this->events()->reorder()->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])->oldest('created_at')->oldest('id')->get() as $e) {
+        foreach ($events as $e) {
             $p = $e->payload ?? [];
             $day = ! empty($p['day']) ? Carbon::parse($p['day'])->startOfDay() : $e->created_at->copy()->startOfDay();
             // Старые записи без yard_id — площадка нынешняя: до 22.09.2026 в ленте было только имя.
@@ -285,7 +290,8 @@ class Vehicle extends Model implements HasMedia
 
     public function daysStored(): ?int
     {
-        return $this->accepted_at ? (int) $this->accepted_at->diffInDays($this->released_at ?? now()) : null;
+        // День приёма — первые сутки, как в начислении: иначе «Дней» в списке на единицу меньше, чем в счёте.
+        return $this->accepted_at ? (int) $this->accepted_at->diffInDays($this->released_at ?? now()) + 1 : null;
     }
 
     public function damages(): array

@@ -2,6 +2,7 @@
 
 namespace App\Http\Park;
 
+use App\Billing\Accrual;
 use App\Billing\Cadence;
 use App\Billing\Ledger;
 use App\Http\Admin\OfferPhotoController;
@@ -70,7 +71,12 @@ class VehicleController
         $yardId = $yards->has((int) $request->query('yard')) ? (int) $request->query('yard') : null;
         // «Без парковки» — заведены по письмам или по факту, где стоят, ещё не сказали.
         $noYard = $request->query('yard') === 'none';
-        $vehicles = Scope::vehicles($request->user())->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer', 'requests'])->withCount('threads')
+        $noRate = $this->noRate($request);
+        // Лента площадок, бумаги и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
+        $vehicles = Scope::vehicles($request->user())->withCount('threads')
+            ->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer.deal', 'requests',
+                'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
+            ->when($request->query('gap') === 'rate', fn ($v) => $v->whereIn('id', $noRate))
             ->when($state, fn ($v, $s) => $v->where('state', $s))
             ->when($yardId, fn ($v, $y) => $v->where('yard_id', $y))
             ->when($noYard, fn ($v) => $v->whereNull('yard_id'))
@@ -83,6 +89,8 @@ class VehicleController
         $data = [
             'vehicles' => $page,
             'debts' => Ledger::debtsByVehicle($page->pluck('id')->all()),
+            // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
+            'totals' => Accrual::totals($page->getCollection()),
             'q' => $q,
             'view' => ListView::pick($request, $page->total()),
             // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты парковки.
@@ -102,17 +110,34 @@ class VehicleController
             'pill' => $noYard ? 'none' : ($yardId ?? ''),
             'counts' => ['' => $counts->sum(), 'none' => $counts[''] ?? 0] + $counts->all(),
             'yard' => $yardId ? Yard::find($yardId) : null,
+            // Пилюля «Без ставки» — пока такие ТС есть: считать по ним нечем, пока не заполнят тип, стоимость или прайс.
+            'noRate' => count($noRate),
+            'gap' => $request->query('gap') === 'rate' ? 'rate' : null,
             'vendors' => Vendor::whereIn('id', Vehicle::whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
         ]);
+    }
+
+    /**
+     * ТС, по которым ставку взять негде: нет типа, нет заявленной стоимости при тарифе по стоимости или у
+     * вендора нет прайса. Пилюля «Без ставки» и её фильтр — чтобы дырки правили списком, а не по одной.
+     *
+     * @return list<int>
+     */
+    private function noRate(Request $request): array
+    {
+        return Scope::vehicles($request->user())->where('state', VehicleState::Stored)
+            ->with('vendor')->get(['id', 'vendor_id', 'yard_id', 'category', 'value', 'storage_rate'])
+            ->reject(fn (Vehicle $v) => Accrual::hasRate($v))->pluck('id')->all();
     }
 
     /** Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка. */
     public function peek(Vehicle $vehicle)
     {
-        $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user'])->loadCount('threads');
+        $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user', 'offer.deal'])->loadCount('threads');
 
         return view('park.vehicles.peek', [
             'vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
             'debt' => $vehicle->state === VehicleState::Stored ? Ledger::vehicleDebt($vehicle) + Ledger::vehicleUnbilled($vehicle) : 0,
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
         ]);
