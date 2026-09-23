@@ -18,10 +18,14 @@
             @foreach ($items as $partyName => $rows)
                 @php $party = $rows->first()['party']; @endphp
                 <section>
-                    <h2 class="mb-2 flex flex-wrap items-baseline gap-x-3 text-lg">{{ $partyName }} <span class="nums text-base text-ink-muted">{{ Money::rub($rows->sum('amount')) }}</span></h2>
+                    {{-- Плательщик один на всю группу: и «некому выставить», и «нет реквизитов» — про него, в заголовке. --}}
+                    <h2 class="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1.5 text-lg">{{ $partyName }} <span class="nums text-base text-ink-muted">{{ Money::rub($rows->sum('amount')) }}</span>
+                        @if (! $party)<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">некому выставить</x-ui.pill>
+                        @elseif (! $rows->first()['ready'])<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">нет реквизитов</x-ui.pill>@endif
+                    </h2>
                     <div class="flex flex-col gap-2">
                         @foreach ($rows as $r)
-                            @php $v = $r['vehicle']; $can = $party && $me->canManagePark(); @endphp
+                            @php $v = $r['vehicle']; $can = $r['ready'] && $me->canManagePark(); @endphp
                             <label class="row row-check {{ $can ? '' : 'opacity-60' }}">
                                 <span class="min-w-0 flex-1">
                                     <span class="block font-medium"><a href="/cars/{{ $v->id }}" class="hover:underline">{{ $v->titleWithYear() }}</a>@if ($v->ref) <span class="nums text-ink-muted">{{ $v->ref }}</span>@endif</span>
@@ -31,7 +35,6 @@
                                         @if ($r['cadence'] === Cadence::Release)<span class="tag">после выдачи</span>@endif
                                         @if ($r['payer'] === 'buyer')<span class="tag">покупатель</span>@elseif ($r['payer'] === 'owner')<span class="tag">страхователь</span>@endif
                                         @if ($r['charges'])<span class="tag">+ начисления</span>@endif
-                                        @unless ($party)<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">некому выставить</x-ui.pill>@endunless
                                     </span>
                                 </span>
                                 <span class="nums font-medium">{{ Money::rub($r['amount']) }}</span>

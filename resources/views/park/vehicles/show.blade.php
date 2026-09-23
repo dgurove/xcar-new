@@ -147,6 +147,8 @@
                 @endif
                 @foreach ($accrued as $payer => $a)@if ($a['amount'] > 0)<a href="/cars/{{ $vehicle->id }}/invoices/new?payer={{ $payer }}" class="chip nums">не выставлено {{ Money::rub($a['amount']) }} за {{ $a['days'] }} дн{{ count($accrued) > 1 ? ' — '.\App\Billing\Accrual::payerLabel($payer) : '' }}</a>@endif @endforeach
                 @if ($buyerFrom)<span class="chip nums {{ $buyerFrom->isPast() ? 'bg-danger-soft text-danger' : '' }}">покупатель с {{ $buyerFrom->translatedFormat('j M') }}, {{ Money::rub($buyerRate) }}/сут</span>@endif
+                {{-- До какого дня хранение выставлено: дальше счёт считается с этого дня, и это единственное место, где видно. --}}
+                @if ($vehicle->storage_billed_until)<span class="chip nums">выставлено по {{ $vehicle->storage_billed_until->translatedFormat('j M') }}</span>@endif
             </div>
             <div class="flex flex-col divide-y divide-line/40 text-sm">
                 @foreach ($vehicle->invoices as $inv)
@@ -163,13 +165,13 @@
                 @if ($vehicle->accepted_at || $pendingCharges->isNotEmpty())<a href="/cars/{{ $vehicle->id }}/invoices/new" class="btn btn-ghost btn-s">Счёт</a>@endif
             </div>
             <x-ui.sheet id="charge" title="Начислить" :open="$errors->has('price')">
-                <form method="post" action="/cars/{{ $vehicle->id }}/charges" class="flex flex-col gap-3">
+                <form method="post" action="/cars/{{ $vehicle->id }}/charges" class="flex flex-col gap-3" data-controller="price" data-price-prices-value="{{ json_encode($chargePrices) }}">
                     @csrf
-                    <x-ui.field name="kind" label="За что" :options="$chargeKinds"/>
+                    <x-ui.field name="kind" label="За что" :options="$chargeKinds" data-price-target="kind" data-action="change->price#sync"/>
                     @if (count($payers) > 1)<x-ui.field name="party_id" label="Кому" :options="$payers" :value="array_key_first($payers)"/>@endif
                     <div class="grid grid-cols-2 gap-3">
                         <x-ui.field name="qty" label="Сколько" value="1" inputmode="decimal"/>
-                        <x-ui.field name="price" label="Цена, ₽" inputmode="numeric" required/>
+                        <x-ui.field name="price" label="Цена, ₽" inputmode="numeric" required data-price-target="price"/>
                     </div>
                     <x-ui.field name="title" label="Как назвать в счёте"/>
                     <x-ui.button block>Начислить</x-ui.button>

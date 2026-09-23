@@ -11,6 +11,10 @@
                 <a href="{{ $gap ? request()->fullUrlWithoutQuery(['gap', 'page']) : request()->fullUrlWithQuery(['gap' => 'rate', 'page' => null]) }}" class="pill {{ $gap ? '' : 'pill-danger' }}" data-turbo-action="replace" @if ($gap) aria-current="true" @endif>Без ставки <span class="nums opacity-70">{{ $noRate }}</span></a>
             </x-slot:pillsExtra>
         @endif
+        @if ($noRate)
+            {{-- Дозаполнить типы и стоимость списком: по одной в деле ТС это день работы. --}}
+            <x-slot:actions><a href="/cars/gaps" class="btn btn-s btn-quiet shrink-0 rounded-full">Дозаполнить</a></x-slot:actions>
+        @endif
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:filters>
             <select name="vendor" class="field-input"><option value="">Все вендоры</option>@foreach ($vendors as $id => $name)<option value="{{ $id }}" @selected((string) request('vendor') === (string) $id)>{{ $name }}</option>@endforeach</select>

@@ -126,6 +126,15 @@ class Party extends Model
     }
 
     /** Есть чем назвать: для юрлица и ИП — ИНН, для человека — паспорт или карта. Без этого реквизиты «не указаны». */
+    /**
+     * Можно ли выставлять счёт: у юрлица нужны ИНН и банк, у человека — паспорт, карта или счёт. Иначе счёт
+     * напечатается с прочерками вместо реквизитов, а бухгалтерия вендора его не примет.
+     */
+    public function billable(): bool
+    {
+        return $this->filled() && ($this->kind === PartyKind::Person || ! $this->bankMissing());
+    }
+
     public function filled(): bool
     {
         return match ($this->kind) {

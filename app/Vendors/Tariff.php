@@ -299,7 +299,8 @@ class Tariff extends Model
                 }
                 $one = $steps->first(fn (self $t) => $t->price > 0);
 
-                return Money::rub($one->price).'/сут'.($one->from_day > 1 ? ' с '.$one->from_day.' дн' : '').' от '.Money::rub($one->from_value);
+                // «от 0 ₽» не пишем: это самая нижняя ступень, порог там ничего не говорит.
+                return Money::rub($one->price).'/сут'.($one->from_day > 1 ? ' с '.$one->from_day.' дн' : '').($one->from_value > 0 ? ' от '.Money::rub($one->from_value) : '');
             }
             $paid = $ladder->first(fn (self $t) => $t->price > 0);
             if (! $paid) {

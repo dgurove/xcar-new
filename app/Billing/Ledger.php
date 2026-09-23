@@ -84,6 +84,26 @@ final class Ledger
         return round($storage + $charges, 2);
     }
 
+    /**
+     * Невыставленные дни покупателя: при выдаче их берут наличными на месте, поэтому они держат выдачу.
+     */
+    public static function buyerUnbilled(Vehicle $vehicle, ?CarbonInterface $until = null): float
+    {
+        return round((float) Accrual::storage($vehicle, $until)->where('payer', 'buyer')->sum('amount'), 2);
+    }
+
+    /**
+     * Невыставленное вендору и страхователю: хранение по день выдачи и начисления вне счёта. Выдачу это не
+     * держит — страховая платит по счёту раз в месяц, — но сумму показываем при выдаче словами.
+     */
+    public static function vendorUnbilled(Vehicle $vehicle, ?CarbonInterface $until = null): float
+    {
+        $storage = (float) Accrual::storage($vehicle, $until)->where('payer', '!=', 'buyer')->sum('amount');
+        $charges = (float) Charge::where('vehicle_id', $vehicle->id)->whereNull('invoice_id')->whereNull('voided_at')->sum('amount');
+
+        return round($storage + $charges, 2);
+    }
+
     /** Кому можно начислить по ТС: вендор, страхователь, покупатель — те, у кого есть контрагент (для чтения не создаются). @return array<int, string> */
     public static function payersOf(Vehicle $vehicle): array
     {

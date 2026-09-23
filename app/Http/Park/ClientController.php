@@ -21,7 +21,7 @@ class ClientController
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'active';
         $q = trim((string) $request->query('q'));
         $kind = Kind::tryFrom((string) $request->query('kind'));
-        $vendors = Vendor::with('contacts')->when($kind, fn ($w) => $w->where('kind', $kind))->withCount(['vehicles', 'vehicles as stored_count' => fn ($q) => $q->where('state', 'stored')])
+        $vendors = Vendor::with(['contacts', 'party'])->when($kind, fn ($w) => $w->where('kind', $kind))->withCount(['vehicles', 'vehicles as stored_count' => fn ($q) => $q->where('state', 'stored')])
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s->where('name', 'ilike', "%{$q}%")->orWhere('legal_name', 'ilike', "%{$q}%")->orWhere('inn', 'like', "%{$q}%")))
             ->orderBy('name')->get();
         $counts = ['active' => $vendors->where('is_active', true)->count(), 'stored' => $vendors->where('stored_count', '>', 0)->count(), 'inactive' => $vendors->where('is_active', false)->count()];

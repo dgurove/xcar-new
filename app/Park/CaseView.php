@@ -29,6 +29,9 @@ final class CaseView
     /** Какая из открытых заявок — текущий этап: эвакуация и приём раньше выдачи, выдача раньше перестановки и осмотра. */
     private const PRIORITY = [RequestType::Tow, RequestType::Intake, RequestType::Release, RequestType::Move, RequestType::Inspection];
 
+    /** Что начисляют руками: хранение считается само, негабарит входит в суточную ставку. */
+    private const CHARGES = [ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other];
+
     public static function for(Vehicle $vehicle, User $user, ?int $requestId = null, bool $callAgain = false): array
     {
         $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'requests.assignee', 'requests.doneBy', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party'])->loadCount('threads');
@@ -65,17 +68,22 @@ final class CaseView
             'staff' => User::where(fn ($q) => $q->whereJsonContains('access', Section::Park->value)->orWhere('role', 'admin'))->whereNotNull('approved_at')->whereNull('rejected_at')->orderBy('name')->get(),
             'vendors' => Vendor::where('is_active', true)->orWhere('id', $vehicle->vendor_id)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
-            'storageRate' => Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
+            // Персональная ставка важнее прайса: `Accrual` считает по ней, а чип показывал бы лестницу вендора.
+            'storageRate' => $vehicle->storage_rate !== null ? 'своя '.Money::rub($vehicle->storage_rate).'/сут' : Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
             'accrued' => Accrual::summary($vehicle),
             'buyerFrom' => $vehicle->sold_at ? Accrual::buyerFrom($vehicle) : null,
             'buyerRate' => $vehicle->sold_at ? Accrual::buyerRate($vehicle) : 0,
             'owners' => Party::where('kind', 'person')->orderBy('name')->pluck('name', 'id'),
-            'debt' => Ledger::vehicleDebt($vehicle) + ($release ? Ledger::vehicleUnbilled($vehicle) : 0),
-            'buyerDebt' => $release ? Ledger::buyerDebt($vehicle) : 0,
+            // «Долг» — только неоплаченные счета: набежавшее вендору идёт отдельной строкой и выдачу не держит.
+            'debt' => Ledger::vehicleDebt($vehicle),
+            'cashDue' => $release ? Ledger::buyerUnbilled($vehicle) : 0,
+            'vendorDue' => $release ? Ledger::vendorUnbilled($vehicle) : 0,
             'debtBlocks' => $release && ! ($vehicle->vendor?->release_without_payment ?? false),
             'payers' => Ledger::payersOf($vehicle),
             'pendingCharges' => $vehicle->charges()->whereNull('invoice_id')->whereNull('voided_at')->get(),
-            'chargeKinds' => collect([ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other])->mapWithKeys(fn ($k) => [$k->value => $k->label().(($price = VehicleInvoiceController::priceFor($vehicle, $k)) ? ' — '.Money::rub($price) : '')]),
+            'chargeKinds' => collect(self::CHARGES)->mapWithKeys(fn ($k) => [$k->value => $k->label().(($price = VehicleInvoiceController::priceFor($vehicle, $k)) ? ' '.Money::rub($price) : '')]),
+            // Цена из прайса подставляется в поле при выборе вида: суммы, которые есть в прайсе, руками не набирают.
+            'chargePrices' => collect(self::CHARGES)->mapWithKeys(fn ($k) => [$k->value => VehicleInvoiceController::priceFor($vehicle, $k)])->filter()->all(),
             'spots' => $vehicle->yard?->freeSpots() ?? [],
             'canManage' => $user->canManagePark(),
         ];

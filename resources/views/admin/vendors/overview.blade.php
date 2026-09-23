@@ -16,6 +16,7 @@
             @if ($vendor->legal_name)<span class="tag">{{ $vendor->legal_name }}</span>@endif
             @if ($vendor->inn)<span class="tag nums">ИНН {{ $vendor->inn }}</span>@endif
             @if ($vendor->bank_account)<span class="tag nums">р/с {{ $vendor->bank_account }}</span>@endif
+            @if ($vendor->kind->billable() && ! \App\Billing\Party::forVendor($vendor, false)->billable())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Нет реквизитов для счёта</x-ui.pill>@endif
             @foreach ($vendor->senders ?? [] as $s)<span class="tag">{{ $s }}</span>@endforeach
             @if ($vendor->mailAccount)<span class="tag">с ящика {{ $vendor->mailAccount->email }}</span>@endif
         </div>

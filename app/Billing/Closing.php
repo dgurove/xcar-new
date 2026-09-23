@@ -19,7 +19,7 @@ use Throwable;
  * если выбыла раньше); ТС «после выдачи» — за весь период, когда выбыла; покупатель — свой отрезок отдельно.
  * Ничего не выставляет само: строки с галочками на экране, «Выставить выбранные» — `issue()`.
  *
- * @phpstan-type Item array{key: string, vehicle: Vehicle, payer: string, party: ?Party, cadence: Cadence, from: Carbon, to: Carbon, days: int, amount: float, charges: list<int>, reason: string}
+ * @phpstan-type Item array{key: string, vehicle: Vehicle, payer: string, party: ?Party, ready: bool, cadence: Cadence, from: Carbon, to: Carbon, days: int, amount: float, charges: list<int>, reason: string}
  */
 final class Closing
 {
@@ -28,6 +28,7 @@ final class Closing
     {
         // Текущий месяц — по сегодня: будущие дни не выставляются.
         $end = min(Carbon::instance($month)->endOfMonth()->startOfDay(), now()->startOfDay());
+        $begin = Carbon::instance($month)->startOfMonth()->startOfDay();
         $vehicles = Vehicle::whereIn('state', [VehicleState::Stored, VehicleState::InTransit, VehicleState::Released])->whereNotNull('accepted_at')
             ->where(fn ($q) => $q->whereNull('storage_billed_until')->orWhereColumn('storage_billed_until', '<', 'released_at')->orWhere(fn ($w) => $w->whereNull('released_at')->where('storage_billed_until', '<', $end)))
             ->with(['brand', 'model', 'vendor', 'yard', 'ownerParty', 'buyerParty', 'offer.deal.buyer',
@@ -64,8 +65,11 @@ final class Closing
                 // Начисления вне счёта того же контрагента — в его первый счёт.
                 $charges = $party?->id ? $pending->where('party_id', $party->id) : collect();
                 $pending = $pending->diff($charges);
-                $items->push(['key' => $v->id.':'.$n, 'vehicle' => $v, 'payer' => $g['payer'], 'party' => $party, 'cadence' => $cadence, 'from' => $g['from'], 'to' => $g['to'], 'days' => $g['days'],
-                    'amount' => round($g['amount'] + $charges->sum('amount'), 2), 'charges' => $charges->pluck('id')->values()->all(), 'reason' => $reason]);
+                $items->push(['key' => $v->id.':'.$n, 'vehicle' => $v, 'payer' => $g['payer'], 'party' => $party, 'ready' => (bool) $party?->billable(), 'cadence' => $cadence, 'from' => $g['from'], 'to' => $g['to'], 'days' => $g['days'],
+                    'amount' => round($g['amount'] + $charges->sum('amount'), 2), 'charges' => $charges->pluck('id')->values()->all(),
+                    // Хранение по этой ТС не выставлялось ни разу: период идёт с приёма, и «за сентябрь» врало бы.
+                    // Сам период стоит рядом отдельным чипом, поэтому здесь — только почему сумма такая.
+                    'reason' => $g['from']->lt($begin) ? 'с приёма' : $reason]);
             }
         }
 

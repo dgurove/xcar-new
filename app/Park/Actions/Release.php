@@ -26,7 +26,7 @@ final class Release
 {
     public function __construct(private SettleStorage $settle, private PurgeLetters $purge) {}
 
-    /** `cash` — хранение по день выдачи выставляется тут же, счёт покупателю гасится наличными; долга не остаётся. */
+    /** `cash` — хранение по день выдачи выставляется тут же, счёт покупателю гасится наличными на месте. */
     public function __invoke(Vehicle $vehicle, User $by, ?Carbon $at, ?string $note = null, ?ReleasedTo $to = null, array $inspection = [], ?Request $request = null, bool $force = false, bool $cash = false): Vehicle
     {
         Nav::forgetStaffCounts();
@@ -36,17 +36,19 @@ final class Release
                 throw ValidationException::withMessages(['state' => 'Выдать можно только ТС на парковке']);
             }
             $at ??= now();
+            // Выдачу держат неоплаченные счета и невыставленные дни покупателя (их берут наличными на месте).
+            // Набежавшее вендору не держит: страховая платит по счёту раз в месяц, иначе каждая выдача
+            // требовала бы подтверждения. Считается до `SettleStorage` — иначе счёт, выставленный этим же
+            // действием, блокировал бы выдачу сам.
+            $debt = Ledger::vehicleDebt($vehicle);
+            $cashDue = $cash ? 0.0 : Ledger::buyerUnbilled($vehicle, $at);
+            $vehicle->loadMissing('vendor');
+            if ($debt + $cashDue > 0 && ! $force && ! ($vehicle->vendor?->release_without_payment ?? false)) {
+                throw ValidationException::withMessages(['state' => implode(', ', array_filter([$debt > 0 ? 'не оплачено '.Money::rub($debt) : null, $cashDue > 0 ? 'с покупателя '.Money::rub($cashDue) : null])).' — выдача после оплаты или с подтверждением']);
+            }
             if ($cash) {
                 ($this->settle)($vehicle, $by, $at, cash: true);
                 $vehicle->refresh();
-            }
-            // Долг по ТС — неоплаченные счета и то, что ещё не выставлено (хранение по день выдачи, начисления), — держит
-            // выдачу, если у вендора не разрешено выдавать без оплаты; обход — с подтверждением, и это остаётся в ленте.
-            $debt = Ledger::vehicleDebt($vehicle);
-            $unbilled = Ledger::vehicleUnbilled($vehicle, $at);
-            $vehicle->loadMissing('vendor');
-            if ($debt + $unbilled > 0 && ! $force && ! ($vehicle->vendor?->release_without_payment ?? false)) {
-                throw ValidationException::withMessages(['state' => implode(', ', array_filter([$debt > 0 ? 'не оплачено '.Money::rub($debt) : null, $unbilled > 0 ? 'не выставлено '.Money::rub($unbilled) : null])).' — выдача после оплаты или с подтверждением']);
             }
             if ($vehicle->accepted_at && $at->lt($vehicle->accepted_at)) {
                 throw ValidationException::withMessages(['released_at' => 'Выдача раньше приёма']);
@@ -56,7 +58,7 @@ final class Release
                 Inspection::create(['vehicle_id' => $vehicle->id, 'request_id' => $request?->id, 'kind' => InspectionKind::Release, 'at' => $at, 'user_id' => $by->id,
                     'damage_zones' => array_values($inspection['damage_zones'] ?? [])] + Intake::fields($inspection));
             }
-            $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'to' => $to?->label(), 'unpaid' => $debt + $unbilled > 0 ? round($debt + $unbilled, 2) : null]));
+            $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'to' => $to?->label(), 'unpaid' => $debt + $cashDue > 0 ? round($debt + $cashDue, 2) : null]));
             Request::closeOpen($vehicle, [RequestType::Release], $by, $request, $note);
             // Осмотры, перестановки, перегоны выданной ТС — уже не дела.
             Request::where('vehicle_id', $vehicle->id)->whereIn('state', RequestState::open())

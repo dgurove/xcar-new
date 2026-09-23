@@ -5,6 +5,7 @@ namespace App\Http\Park;
 use App\Billing\Accrual;
 use App\Billing\Cadence;
 use App\Billing\Ledger;
+use App\Cars\Category;
 use App\Http\Admin\OfferPhotoController;
 use App\Live\Stream;
 use App\Mail\Actions\LinkThread;
@@ -29,6 +30,7 @@ use App\Park\Actions\UndoIntake;
 use App\Park\Actions\UndoRelease;
 use App\Park\Actions\UnwindVehicle;
 use App\Park\Actions\UpdateVehicle;
+use App\Park\Alerts;
 use App\Park\CaseView;
 use App\Park\Doc;
 use App\Park\DocKind;
@@ -135,6 +137,46 @@ class VehicleController
             ->reject(fn (Vehicle $v) => Accrual::hasRate($v))->pluck('id')->all();
     }
 
+    /**
+     * Дозаполнить списком то, из-за чего ТС не считается: тип и заявленную стоимость. Тип предзаполнен
+     * догадкой по марке и модели — у 45 ТС из выгрузки его нет вовсе, а по одной в деле это день работы.
+     */
+    public function gaps(Request $request)
+    {
+        $ids = $this->noRate($request, null, false);
+
+        return view('park.vehicles.gaps', [
+            // Только те, где дело в данных: у вендора без прайса тип и стоимость ничего не изменят.
+            'vehicles' => Vehicle::whereIn('id', $ids)->with(['brand', 'model', 'vendor', 'yard'])->orderBy('accepted_at')
+                ->get()->filter(fn (Vehicle $v) => Alerts::fixableHere($v))->values(),
+            'categories' => Category::options(),
+        ]);
+    }
+
+    public function fillGaps(Request $request, UpdateVehicle $update)
+    {
+        $data = $request->validate([
+            'cars' => ['array'],
+            'cars.*.category' => ['nullable', Rule::enum(Category::class)],
+            'cars.*.value' => ['nullable', 'integer', 'min:0'],
+        ]);
+        $rows = collect($data['cars'] ?? []);
+        $vehicles = Scope::vehicles($request->user())->whereIn('id', $rows->keys())->get()->keyBy('id');
+        $done = 0;
+        foreach ($rows as $id => $row) {
+            $vehicle = $vehicles[(int) $id] ?? null;
+            $fields = array_filter(['category' => $row['category'] ?? null, 'value' => $row['value'] ?? null], fn ($v) => $v !== null && $v !== '');
+            if (! $vehicle || ! $fields) {
+                continue;
+            }
+            $before = $vehicle->only(array_keys($fields));
+            $update($vehicle, $fields, $request->user());
+            $done += $vehicle->only(array_keys($fields)) === $before ? 0 : 1;
+        }
+
+        return redirect('/cars?gap=rate')->with('toast', $done ? 'Заполнено ТС: '.$done : 'Ничего не изменилось');
+    }
+
     /** Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка. */
     public function peek(Vehicle $vehicle)
     {
@@ -143,7 +185,8 @@ class VehicleController
         return view('park.vehicles.peek', [
             'vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
-            'debt' => $vehicle->state === VehicleState::Stored ? Ledger::vehicleDebt($vehicle) + Ledger::vehicleUnbilled($vehicle) : 0,
+            // «Долг» в окошке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
+            'debt' => Ledger::vehicleDebt($vehicle),
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
         ]);
     }

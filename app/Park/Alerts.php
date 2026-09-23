@@ -14,6 +14,9 @@ use App\Vendors\TariffService;
  */
 final class Alerts
 {
+    /** У вендора нет прайса на эту ТС — списком не починить, нужны цены из договора. */
+    public const NO_TARIFF = 'Нет тарифа';
+
     /** @return list<array{label: string, tone: string}> */
     public static function of(Vehicle $vehicle): array
     {
@@ -40,11 +43,17 @@ final class Alerts
         return $out;
     }
 
+    /** Дырка в данных этой ТС, а не отсутствие прайса: такие правятся списком на `/cars/gaps`. */
+    public static function fixableHere(Vehicle $vehicle): bool
+    {
+        return ! Accrual::hasRate($vehicle) && self::whyNoRate($vehicle) !== self::NO_TARIFF;
+    }
+
     /**
      * Почему сутки не считаются: тариф вендора берётся по категории, а у легковых АльфаСтрахования ещё и по
      * заявленной стоимости. Причина всегда одна, самая точная — чинить надо именно её.
      */
-    private static function whyNoRate(Vehicle $vehicle): string
+    public static function whyNoRate(Vehicle $vehicle): string
     {
         if (! $vehicle->category) {
             return 'Нет типа';
@@ -52,6 +61,6 @@ final class Alerts
         $byValue = $vehicle->value === null
             && Tariff::ladder($vehicle->vendor_id, $vehicle->yard_id, $vehicle->category, TariffService::Storage, null, PHP_INT_MAX)->isNotEmpty();
 
-        return $byValue ? 'Нет стоимости' : 'Нет тарифа';
+        return $byValue ? 'Нет стоимости' : self::NO_TARIFF;
     }
 }

@@ -11,11 +11,14 @@
         </div>
     </div>
     @if ($vehicle->pickup_name || $vehicle->pickup_phone)<div class="col-span-full flex flex-wrap gap-1.5"><span class="tag">{{ $vehicle->pickup_name }}</span>@if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="tag nums">{{ $vehicle->pickup_phone }}</a>@endif</div>@endif
-    @if ($debt > 0)
+    @php $hold = $debt + $cashDue; @endphp
+    @if ($hold > 0 || $vendorDue > 0)
+        {{-- Держат выдачу только неоплаченные счета и наличные с покупателя; набежавшее вендору уйдёт счётом. --}}
         <div class="col-span-full flex flex-wrap items-center gap-2">
-            @if ($debt - $buyerDebt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs nums">{{ $buyerDebt > 0 ? 'вендор ' : 'долг ' }}{{ Money::rub($debt - $buyerDebt) }}</x-ui.pill>@endif
-            @if ($buyerDebt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs nums">покупатель {{ Money::rub($buyerDebt) }}</x-ui.pill><x-ui.check name="cash">Принял наличными {{ Money::rub($buyerDebt) }}</x-ui.check>@endif
-            @if ($debtBlocks)<x-ui.check name="force">Выдать с долгом</x-ui.check>@else<span class="tag">вендору можно выдавать без оплаты</span>@endif
+            @if ($debt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs nums">не оплачено {{ Money::rub($debt) }}</x-ui.pill>@endif
+            @if ($cashDue > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs nums">покупатель {{ Money::rub($cashDue) }}</x-ui.pill><x-ui.check name="cash">Принял наличными {{ Money::rub($cashDue) }}</x-ui.check>@endif
+            @if ($vendorDue > 0)<span class="tag nums">вендору {{ Money::rub($vendorDue) }} выставим счётом</span>@endif
+            @if ($hold > 0)@if ($debtBlocks)<x-ui.check name="force">Выдать с долгом</x-ui.check>@else<span class="tag">вендору можно выдавать без оплаты</span>@endif @endif
         </div>
     @endif
 </div>

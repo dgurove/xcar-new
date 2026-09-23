@@ -20,6 +20,8 @@
                         <span class="block font-medium">{{ $vendor->name }} @if ($vendor->stored_count)<span class="text-sm text-ink-muted tabular-nums">{{ $vendor->stored_count }}</span>@endif</span>
                         <span class="row-sub mt-1.5 flex flex-wrap items-center gap-1.5">
                             @unless ($vendor->is_active)<span class="chip">не работаем</span>@endunless
+                            {{-- Реквизиты правятся в CRM, а видеть дырку надо там, где работают: без них счёт печатается с прочерками. --}}
+                            @if ($vendor->stored_count && $vendor->kind->billable() && ! \App\Billing\Party::forVendor($vendor, false)->billable())<span class="tag tag-urgent">Нет реквизитов для счёта</span>@endif
                             @if ($vendor->kind !== Kind::Insurer)<span class="tag">{{ $vendor->kind->label() }}</span>@endif
                             @if ($c?->name)<span class="tag">{{ $c->name }}</span>@endif
                             @if ($c?->phone)<span class="tag nums">{{ $c->phoneFormatted() }}</span>@endif
