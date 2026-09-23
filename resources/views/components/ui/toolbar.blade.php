@@ -1,12 +1,13 @@
-{{-- Тулбар списка одной строкой: сортировка (select на десктопе, шторка на
-     телефоне), полоса пилюль, слот extra (переключатель вида, «Новый»), фильтры
-     в шторке с GET-формой. Всё состояние — в адресе. sortSide=right — сортировка
-     справа, у фильтров: слева остаются одни пилюли.
+{{-- Тулбар списка одной строкой: слева поиск (у кого он есть), дальше полоса пилюль (листается вбок),
+     справа две круглые кнопки — сортировка и фильтры, обе шторками. На телефоне пилюли идут своей
+     строкой сверху, во второй остаются поиск и кнопки. Всё состояние — в адресе, кроме поиска:
+     поиск не фильтр, адрес он не меняет (live_search_controller подменяет список на месте).
      sorts: ключ → [подпись, есть ли направление] или ключ → подпись;
      pills: ключ → подпись; counts: ключ → число; tones: ключ → класс пилюли (pill-danger у «Просрочено»); hidden: поля, которые переживают фильтр;
      pillDefault=false — первая пилюля («Все») не выделяется: зелёное только у сужающего фильтра;
+     search — подсказка в поле поиска (пусто — поля нет), searchTarget — что подменять ответом;
      слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»). --}}
-@props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'sortSide' => 'left', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'counts' => [], 'tones' => [], 'hidden' => [], 'name' => 'list', 'action' => null])
+@props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'counts' => [], 'tones' => [], 'hidden' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => null, 'q' => ''])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -18,38 +19,14 @@
     // Ссылка на критерий: активный с направлением — переворот, чужой — своё направление по умолчанию (убывание).
     $sortUrl = fn (string $key) => $url([$sortParam => $key === $currentKey ? ($norm[$key][1] ? ($desc ? $key : '-'.$key) : $key) : ($norm[$key][1] ? '-'.$key : $key), 'page' => null]);
 @endphp
-<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-3 max-md:gap-x-2 max-md:gap-y-3 max-md:justify-end'.($sortSide === 'right' ? ' toolbar--sort-right' : '')]) }}>
-    @if ($sortSide === 'left')
-    @if ($norm->isNotEmpty())
-        {{-- Десктоп: select + направление --}}
-        <form method="get" action="{{ $action }}" class="hidden shrink-0 items-center gap-2 sm:flex" data-controller="autosubmit" data-turbo-action="replace">
-            @foreach ($query as $k => $v)@if ($k !== $sortParam && $k !== 'page' && !is_array($v))<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endif @endforeach
-            <select name="{{ $sortParam }}" class="field-input field-s !w-auto !bg-surface !pr-9" data-action="autosubmit#submit" aria-label="Сортировка">
-                @foreach ($norm as $key => [$label, $dir])
-                    <option value="{{ $key === $currentKey ? $sort : ($dir ? '-'.$key : $key) }}" @selected($key === $currentKey)>{{ $label }}</option>
-                @endforeach
-            </select>
-            @if ($hasDir)
-                <a href="{{ $url([$sortParam => $desc ? $currentKey : '-'.$currentKey, 'page' => null]) }}" class="btn btn-s btn-quiet btn-round" data-turbo-action="replace" aria-label="{{ $desc ? 'По возрастанию' : 'По убыванию' }}">
-                    <x-ui.icon name="arrow-up" class="size-5 transition-transform {{ $desc ? 'rotate-180' : '' }}"/>
-                </a>
-            @endif
+<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-2 max-md:gap-y-3']) }}>
+    @if ($search)
+        <form class="toolbar-search" role="search" data-controller="live-search" data-live-search-target-value="{{ $searchTarget ?? '#threads' }}" data-action="submit->live-search#stop">
+            <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>
+            <input type="search" name="q" value="{{ $q }}" placeholder="{{ $search }}" autocomplete="off" enterkeyhint="search" aria-label="{{ $search }}"
+                   data-live-search-target="input" data-action="input->live-search#input keydown.esc->live-search#clear">
+            <button type="button" class="toolbar-search-x" data-live-search-target="clear" data-action="live-search#clear" aria-label="Очистить" hidden><x-ui.icon name="x" class="size-4"/></button>
         </form>
-        {{-- Телефон: кнопка с именем сортировки → шторка --}}
-        <div class="contents sm:hidden" data-controller="sheet">
-            <button type="button" class="toolbar-sort btn btn-s btn-quiet gap-1.5 rounded-full" data-action="sheet#open" aria-label="Сортировка" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5 shrink-0"/><span class="truncate">{{ $norm[$currentKey][0] ?? 'Сортировка' }}</span>@if ($hasDir)<x-ui.icon name="arrow-up" class="size-4 shrink-0 {{ $desc ? 'rotate-180' : '' }}"/>@endif</button>
-            <x-ui.sheet id="sort-{{ $name }}" title="Сортировка">
-                <div class="space-y-2">
-                    @foreach ($norm as $key => [$label, $dir])
-                        <a href="{{ $sortUrl($key) }}" data-turbo-action="replace" class="flex items-center justify-between rounded-full px-4 py-2.5 text-sm transition-colors active:bg-surface-3 {{ $key === $currentKey ? 'bg-accent text-white' : 'bg-surface-2 text-ink hover:bg-surface-3' }}">
-                            {{ $label }}
-                            @if ($key === $currentKey && $dir)<x-ui.icon name="arrow-up" class="size-4 {{ $desc ? 'rotate-180' : '' }}"/>@endif
-                        </a>
-                    @endforeach
-                </div>
-            </x-ui.sheet>
-        </div>
-    @endif
     @endif
 
     @if ($pills)
@@ -69,25 +46,10 @@
 
     {{ $extra ?? '' }}
 
-    @if ($sortSide === 'right')
     @if ($norm->isNotEmpty())
-        {{-- Десктоп: select + направление --}}
-        <form method="get" action="{{ $action }}" class="hidden shrink-0 items-center gap-2 sm:flex" data-controller="autosubmit" data-turbo-action="replace">
-            @foreach ($query as $k => $v)@if ($k !== $sortParam && $k !== 'page' && !is_array($v))<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endif @endforeach
-            <select name="{{ $sortParam }}" class="field-input field-s !w-auto !bg-surface !pr-9" data-action="autosubmit#submit" aria-label="Сортировка">
-                @foreach ($norm as $key => [$label, $dir])
-                    <option value="{{ $key === $currentKey ? $sort : ($dir ? '-'.$key : $key) }}" @selected($key === $currentKey)>{{ $label }}</option>
-                @endforeach
-            </select>
-            @if ($hasDir)
-                <a href="{{ $url([$sortParam => $desc ? $currentKey : '-'.$currentKey, 'page' => null]) }}" class="btn btn-s btn-quiet btn-round" data-turbo-action="replace" aria-label="{{ $desc ? 'По возрастанию' : 'По убыванию' }}">
-                    <x-ui.icon name="arrow-up" class="size-5 transition-transform {{ $desc ? 'rotate-180' : '' }}"/>
-                </a>
-            @endif
-        </form>
-        {{-- Телефон: кнопка с именем сортировки → шторка --}}
-        <div class="contents sm:hidden" data-controller="sheet">
-            <button type="button" class="toolbar-sort btn btn-s btn-quiet gap-1.5 rounded-full" data-action="sheet#open" aria-label="Сортировка" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5 shrink-0"/><span class="truncate">{{ $norm[$currentKey][0] ?? 'Сортировка' }}</span>@if ($hasDir)<x-ui.icon name="arrow-up" class="size-4 shrink-0 {{ $desc ? 'rotate-180' : '' }}"/>@endif</button>
+        {{-- Сортировка — круглая кнопка со шторкой, одинаково на телефоне и на компьютере. --}}
+        <div class="contents" data-controller="sheet">
+            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Сортировка: {{ $norm[$currentKey][0] ?? 'по умолчанию' }}" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
             <x-ui.sheet id="sort-{{ $name }}" title="Сортировка">
                 <div class="space-y-2">
                     @foreach ($norm as $key => [$label, $dir])
@@ -99,7 +61,6 @@
                 </div>
             </x-ui.sheet>
         </div>
-    @endif
     @endif
 
     @isset($filters)

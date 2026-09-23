@@ -22,28 +22,28 @@
     $when = $thread->last_message_at?->translatedFormat($thread->last_message_at->isToday() ? 'H:i' : ($thread->last_message_at->isCurrentYear() ? 'j M' : 'j M Y'));
     $unread = $thread->unread_count > 0;
 @endphp
-<x-ui.swipe id="thread-{{ $thread->id }}">
+<x-ui.swipe id="thread-{{ $thread->id }}" data-search-row>
     <div class="row items-start">
         @if ($ours && $last?->author)
-            <x-ui.avatar :user="$last->author" :size="44"/>
+            <x-ui.avatar :user="$last->author" :size="32"/>
         @elseif ($ours)
-            <x-chat.avatar :user="null" :size="44"/>
+            <x-chat.avatar :user="null" :size="32"/>
         @else
-            <x-ui.avatar :name="$party['name'] ?? null" :email="$party['email'] ?? null" :size="44"/>
+            <x-ui.avatar :name="$party['name'] ?? null" :email="$party['email'] ?? null" :size="32"/>
         @endif
         <button type="button" class="min-w-0 flex-1 text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $base }}/{{ $thread->id }}/window">
             <div class="flex items-baseline gap-2">
                 <span class="min-w-0 flex-1 truncate {{ $unread ? 'font-medium' : '' }}">@if ($unread)<span class="mr-1.5 inline-block size-2 rounded-full bg-urgent align-[1px]"></span>@endif{{ $out ? 'Кому: ' : '' }}{{ $who }}@if ($others) <span class="font-normal text-ink-dim">+{{ $others }}</span>@endif</span>
                 @if ($thread->vendor)<span class="tag hidden sm:inline-flex">{{ $thread->vendor->name }}</span>@endif
-                <span class="nums shrink-0 text-sm text-ink-dim">{{ $when }}</span>
+                <span class="nums shrink-0 text-xs text-ink-dim">{{ $when }}</span>
             </div>
             <div class="mt-0.5 flex items-center gap-2">
                 @if ($waits)<span class="tag tag-urgent shrink-0">Ждёт ответа</span>@endif
                 @if ($tag)<span class="tag {{ $tone }} shrink-0">{{ $tag }}</span>@endif
                 <span class="min-w-0 flex-1 truncate {{ $unread ? 'font-medium' : 'text-ink-muted' }}">{{ $thread->subject ?: '(без темы)' }}@if ($last?->preview) <span class="hidden font-normal text-ink-dim sm:inline">{{ $last->preview }}</span>@endif</span>
-                <span class="nums inline-flex shrink-0 items-center gap-1.5 text-sm text-ink-dim">@if ($files)<span class="inline-flex items-center gap-0.5"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif @if ($thread->messages_count > 1)<span>{{ $thread->messages_count }}</span>@endif</span>
+                <span class="nums inline-flex shrink-0 items-center gap-1.5 text-xs text-ink-dim">@if ($files)<span class="inline-flex items-center gap-0.5"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif @if ($thread->messages_count > 1)<span>{{ $thread->messages_count }}</span>@endif</span>
             </div>
-            @if ($linked && $chip)<span class="mt-1.5 inline-flex max-w-full items-center gap-1 chip truncate"><x-ui.icon :name="$thread->vehicle ? 'car' : 'mail'" class="size-3.5 text-ink-dim"/>{{ $chip }}</span>@endif
+            @if ($linked && $chip)<span class="mt-1 inline-flex max-w-full items-center gap-1 tag truncate"><x-ui.icon :name="$thread->vehicle ? 'car' : 'mail'" class="size-3 text-ink-dim"/>{{ $chip }}</span>@endif
         </button>
     </div>
     <x-slot:actions>

@@ -24,7 +24,7 @@
             @unless ($car->is_published)<span class="tag">скрыта</span>@endunless
         </x-slot:marks>
         <x-slot:aside>
-            @if ($car->price_final)<span class="nums whitespace-nowrap text-[17px] font-bold">{{ \App\Support\Money::rub($car->price_final) }}</span>@endif
+            @if ($car->price_final)<span class="nums whitespace-nowrap text-lg font-bold">{{ \App\Support\Money::rub($car->price_final) }}</span>@endif
         </x-slot:aside>
         <x-slot:actions>
             <form method="post" action="{{ $href }}/estimate" class="flex w-full gap-2" data-controller="bid" data-bid-asking-value="0">

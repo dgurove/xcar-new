@@ -30,10 +30,10 @@
                 @if ($site && !$installed)<x-ui.crumbs :trail="$trail"/>@endif
                 @if ($heading || isset($actions) || ($back && $backRow))
                     {{-- Без заголовка и действий ряд нужен только ради круглой «‹» на десктопе: на телефоне она в шапке. --}}
-                    <div @class(['has-back mb-6 flex-wrap items-center gap-x-4 gap-y-2', 'flex' => $heading || isset($actions), 'hidden sm:flex' => !$heading && !isset($actions), 'max-md:hidden' => !$phoneHeading])>
+                    <div @class(['has-back mb-4 flex-wrap items-center gap-x-4 gap-y-2', 'flex' => $heading || isset($actions), 'hidden sm:flex' => !$heading && !isset($actions), 'max-md:hidden' => !$phoneHeading])>
                         @if ($back)<x-ui.back :back="$back"/>@endif
-                        @if ($heading)<h1 class="text-[28px] sm:text-[34px]">{{ $heading }}@if ($count !== null) <span class="nums ml-2 text-lg font-normal text-ink-dim">{{ $count }}</span>@endif</h1>@endif
-                        @isset($actions)<div class="flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2">{{ $actions }}</div>@endisset
+                        @if ($heading)<h1 class="text-xl sm:text-2xl">{{ $heading }}@if ($count !== null) <span class="nums ml-2 text-base font-normal text-ink-dim">{{ $count }}</span>@endif</h1>@endif
+                        @isset($actions)<div {{ $actions->attributes->merge(['class' => 'flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2']) }}>{{ $actions }}</div>@endisset
                     </div>
                 @endif
                 {{ $slot }}

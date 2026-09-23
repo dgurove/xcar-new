@@ -54,7 +54,7 @@
 
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="block min-w-0 flex-1 text-[17px] leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
+            <a href="{{ $href }}" class="block min-w-0 flex-1 text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
         </div>
         @if ($hasMarks)
             <div class="card-marks"><x-offer.marks :offer="$offer" :admin="$admin"/></div>

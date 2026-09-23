@@ -27,7 +27,7 @@
             @if ($at)<span class="ml-auto shrink-0 text-xs text-ink-dim nums">{{ $at->translatedFormat($at->isToday() ? 'H:i' : ($at->year === now()->year ? 'j M' : 'd.m.y')) }}</span>@endif
         </div>
         @if ($staff && $chat->manager)<div class="mt-0.5 flex"><x-ui.person :user="$chat->manager" prefix="→"/></div>@endif
-        @if ($chat->offer || $staff || $chat->isCounterpart($me))<div class="truncate text-[13px] text-ink-muted">{{ $chat->offer ? $chat->offer->titleWithYear() : 'Обращение с сайта' }}</div>@endif
+        @if ($chat->offer || $staff || $chat->isCounterpart($me))<div class="truncate text-sm text-ink-muted">{{ $chat->offer ? $chat->offer->titleWithYear() : 'Обращение с сайта' }}</div>@endif
         <div class="flex items-center gap-2">
             <span class="truncate text-sm {{ $unread ? '' : 'text-ink-muted' }}">{{ $chat->lastPreview($me) }}</span>
             @if ($unread)<span class="badge ml-auto">{{ $unread }}</span>@endif

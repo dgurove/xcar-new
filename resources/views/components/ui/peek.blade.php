@@ -12,7 +12,7 @@
 <div class="flex items-start gap-3 {{ $photos !== null ? 'mt-3' : '' }}">
     @if ($photos === null && $photo !== false)<a href="{{ $href }}" class="peek-photo">@if ($photo)<x-offer.photo :media="$photo" sizes="96px" eager/>@else<x-ui.car-blank/>@endif</a>@endif
     <div class="min-w-0 flex-1">
-        <a href="{{ $href }}" class="block text-[17px] leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}</span></a>
+        <a href="{{ $href }}" class="block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}</span></a>
         @if ($marks)<div class="mt-1.5 flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
     </div>
     @if ($aside && $photos !== null)<div class="shrink-0 text-right">{{ $aside }}</div>@endif

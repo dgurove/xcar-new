@@ -21,8 +21,8 @@
             @if ($car->fssp)<span class="tag">Ограничения ФССП</span>@endif
         </x-slot:marks>
         <x-slot:aside>
-            @if ($staff && $best)<span class="nums whitespace-nowrap text-[17px] font-bold">{{ \App\Support\Money::rub($best->amount) }}</span> <span class="text-sm text-ink-dim">{{ $best->user->shortName() }}</span>
-            @elseif ($mine)<span class="nums whitespace-nowrap text-[17px] font-bold text-accent-text">{{ \App\Support\Money::rub($mine->amount) }}</span>
+            @if ($staff && $best)<span class="nums whitespace-nowrap text-lg font-bold">{{ \App\Support\Money::rub($best->amount) }}</span> <span class="text-sm text-ink-dim">{{ $best->user->shortName() }}</span>
+            @elseif ($mine)<span class="nums whitespace-nowrap text-lg font-bold text-accent-text">{{ \App\Support\Money::rub($mine->amount) }}</span>
             @elseif (!$staff)<span class="tag" style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d">Без цены</span>@endif
         </x-slot:aside>
         <x-slot:actions>

@@ -2,7 +2,7 @@
 <x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/purchases']" :back-row="false">
     <div class="has-back mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
         <x-ui.back :back="['Закупки', '/purchases']"/>
-        <h1 class="text-[28px] sm:text-[34px]">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
+        <h1 class="text-xl sm:text-2xl">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto shrink-0 sm:order-1" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <span class="flex flex-wrap items-center gap-1.5">
             @if ($purchase->closed())
@@ -66,7 +66,7 @@
     @if ($errors->any())<x-ui.flash tone="danger" class="mb-4">{{ $errors->first() }}</x-ui.flash>@endif
 
     @php $kindPills = count($kinds) > 1 ? ['' => 'Все'] + collect(Kind::cases())->filter(fn ($k) => isset($kinds[$k->value]))->mapWithKeys(fn ($k) => [$k->value => $k->label()])->all() : []; @endphp
-    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" sort-side="right" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :pill-default="false" :counts="['' => array_sum($kinds)] + $kinds" :hidden="['preset' => $preset, 'kind' => $kind?->value, 'user' => $user?->id, \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)]" name="purchase">
+    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :pill-default="false" :counts="['' => array_sum($kinds)] + $kinds" :hidden="['preset' => $preset, 'kind' => $kind?->value, 'user' => $user?->id, \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)]" name="purchase">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:filters><input name="q" value="{{ $q }}" placeholder="ДЛ, VIN, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>

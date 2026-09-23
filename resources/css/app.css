@@ -21,6 +21,11 @@
   10. Фраза в интерфейсе — без точки в конце: подписи, подсказки, пустые
       состояния, тосты, подтверждения. Точки — только внутри текста из
       нескольких предложений (описание, письмо).
+  11. Размеров текста шесть: 22/26 заголовок экрана, 17 заголовок блока
+      (карточка, шторка, текущий шаг), 15 текст, 13 вторичное (подсказка,
+      дата, подпись поля), 12 метка (тег, счётчик), 11 хром (таб-бар,
+      значок). Вложенное не крупнее вмещающего. Размер задаётся классом
+      кита, не по месту: `text-[18px]` в разметке — ошибка.
 
    Тёмная тема — класс .dark на <html>; всё тематическое описано здесь через
    `.dark …`, утилиты dark: не используются.
@@ -61,6 +66,16 @@
      шапка, поля, кнопки, пилюли, шторки, тосты набраны тем же, чем и сама система.
      Содержимое — заголовки, названия, цены, тексты — остаётся Onest. */
   --font-ui: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Шкала (правило 11). Переопределяет тайлвиндовскую, чтобы уже расставленные утилиты сами
+     встали на ступени: text-xs метка, text-sm вторичное, text-base текст, text-lg заголовок
+     блока, text-xl/2xl заголовок экрана. Поля остаются 16px — ниже iOS зумит страницу. */
+  --text-xs: .75rem;
+  --text-sm: .8125rem;
+  --text-base: .9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.625rem;
 
   --color-chrome: #121212;
   --color-chrome-light: #1d1d1b;
@@ -180,6 +195,7 @@
     background-color: var(--color-ground);
     color: var(--color-ink);
     font-family: var(--font-sans);
+    font-size: var(--text-base);
     font-feature-settings: "ss01" 1;
     -webkit-font-smoothing: antialiased;
     overscroll-behavior-y: none;
@@ -187,9 +203,15 @@
   }
 
   h1, h2, h3, h4 { font-weight: 500; line-height: 1.14; letter-spacing: -.025em; }
+  /* Заголовок блока — один размер на карточку, шторку и окно; вложенный блок не крупнее текста,
+     иначе он спорит с шагом, внутрь которого вложен. Разметка размера не ставит. */
+  .box > h2, .box > div > h2 { font-size: var(--text-lg); }
+  .box-nested > h2, .box-nested > div > h2, .box-nested summary h2 { font-size: var(--text-base); }
 
-  /* 16px — ниже iOS приближает страницу при фокусе в поле. */
-  input, select, textarea, button { font: inherit; font-size: 16px; }
+  /* 16px — ниже iOS приближает страницу при фокусе в поле. Кнопке это не нужно: она не поле,
+     а её текст живёт по шкале (строка списка целиком бывает кнопкой). */
+  input, select, textarea { font: inherit; font-size: 16px; }
+  button { font: inherit; }
 
   ::selection { background: var(--color-accent-soft); }
   :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
@@ -377,17 +399,18 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      много и полей десятки: поле 44/40 px, подпись 13 px, карточка теснее. */
   /* .form-dense — та же плотность для формы в кабинете сайта (профиль). */
   .surface-crm .field, .surface-park .field, .form-dense .field { gap: .25rem; }
-  .surface-crm .field-label, .surface-park .field-label, .form-dense .field-label { font-size: 13px; line-height: 1.25; }
+  .surface-crm .field-label, .surface-park .field-label, .form-dense .field-label { line-height: 1.25; }
   .surface-crm .field-input, .surface-park .field-input, .form-dense .field-input { padding-block: .5rem; padding-inline: .75rem; min-height: 2.75rem; }
   .surface-crm select.field-input, .surface-park select.field-input, .form-dense select.field-input { padding-right: 2rem; background-position: right 10px center; }
   .surface-crm textarea.field-input, .surface-park textarea.field-input, .form-dense textarea.field-input { min-height: 5rem; }
   .surface-crm .tri span, .surface-park .tri span { padding-block: .375rem; }
   .surface-crm .choice span, .surface-park .choice span { padding: .375rem .75rem; }
   .surface-crm .box, .surface-park .box { padding: 1rem; }
-  .surface-crm .box > h2:first-child, .surface-park .box > h2:first-child { font-size: 1.125rem; margin-bottom: .75rem; }
+  /* Строка списка тоже плотнее: в почте она была вдвое выше карточки «Из писем». */
+  .surface-crm .row, .surface-park .row { padding: .5rem .75rem; gap: .5rem; }
   .surface-crm .box-nested, .surface-park .box-nested { padding: .75rem; }
   @media (min-width: 640px) {
-    .surface-crm .field-input, .surface-park .field-input, .form-dense .field-input { font-size: 14px; min-height: 2.5rem; }
+    .surface-crm .field-input, .surface-park .field-input, .form-dense .field-input { font-size: var(--text-sm); min-height: 2.5rem; }
     .surface-crm .box, .surface-park .box { padding: 1.25rem; }
     .surface-crm .btn-s, .surface-park .btn-s { height: 2.25rem; }
   }
@@ -517,11 +540,26 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .toolbar-pills .pill { padding-inline: 1.25rem; min-height: 2.75rem; }
     /* В кабинете разделы уже названы своей лентой пилюль — пилюли тулбара остаются обычными. */
     [data-title-anchor] .toolbar-pills .pill { padding-inline: .875rem; min-height: 2.25rem; }
-    .toolbar .toolbar-sort { flex: 1 1 0; min-width: 0; max-width: max-content; margin-right: auto; padding-inline: .875rem; }
-    .toolbar--sort-right .toolbar-sort { margin-right: 0; margin-left: auto; }
     /* Кнопка с подписью, спрятанной на телефоне («+ Новый», «Из писем») — круглая, как соседи. */
     .toolbar .btn:has(> .hidden) { width: 2.75rem; padding: 0; }
   }
+
+  /* Поиск в тулбаре: не фильтр, а поле — стоит слева, растёт до своей доли строки, крестик
+     появляется с первым знаком. Ищет по ходу набора (live_search_controller), адрес не меняет. */
+  .toolbar-search {
+    @apply flex min-w-0 flex-1 items-center gap-2 rounded-full bg-surface px-3.5 text-ink;
+    min-height: 2.25rem; max-width: 22rem;
+  }
+  .toolbar-search input { @apply min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-dim; }
+  .toolbar-search input::-webkit-search-cancel-button { display: none; }
+  .toolbar-search-x { @apply -mr-1.5 flex size-6 shrink-0 items-center justify-center rounded-full text-ink-dim transition-colors hover:text-ink; }
+  .toolbar-search.is-busy { box-shadow: inset 0 0 0 1px var(--color-line); }
+  @media (max-width: 767px) {
+    .toolbar-search { min-height: 2.75rem; max-width: none; }
+    .toolbar-search input { font-size: 16px; }
+  }
+  /* Пока список сужен набранным, скрытые строки просто не рисуются — без анимации и скачка. */
+  [data-live-hidden] { display: none !important; }
   .pill {
     @apply inline-flex shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1.5 text-sm text-ink-muted transition-colors;
     min-height: 2.25rem;
@@ -670,10 +708,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .step--current::before { background: var(--color-line); }
   .step-body { min-width: 0; padding-bottom: 1rem; }
   .step-head { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; min-height: 1.875rem; }
-  .step-title { font-weight: 500; }
+  .step-title { font-weight: 500; font-size: var(--text-base); }
   .step--next .step-title, .step--todo .step-title { color: var(--color-ink-muted); font-weight: 400; }
-  .step--current .step-title { font-size: 1.125rem; }
-  .step-hint { margin-top: .125rem; font-size: .875rem; color: var(--color-ink-muted); }
+  .step--current .step-title { font-size: var(--text-lg); }
+  .step-hint { margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .step-details > summary { cursor: pointer; list-style: none; }
   .step-details > summary::-webkit-details-marker { display: none; }
   .step-details[open] .step-chevron { rotate: 180deg; }
@@ -687,7 +725,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .chain-subject, .letter { position: relative; display: grid; grid-template-columns: 1.5rem minmax(0, 1fr); column-gap: .5rem; }
   .chain-subject::before, .letter::before { content: ''; position: absolute; left: calc(.75rem - 1px); top: 0; bottom: 0; width: 2px; background: var(--color-line); }
   .chain-subject:first-child::before, .letter:not(:has(~ .letter))::before { display: none; }
-  .chain-subject > span { grid-column: 2; padding: .25rem 0 .375rem; font-size: .8125rem; color: var(--color-ink-dim); }
+  .chain-subject > span { grid-column: 2; padding: .25rem 0 .375rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
   .chain-subject:not(:first-child) > span { padding-top: .75rem; }
   .letter-dot { position: relative; z-index: 1; margin-top: .5rem; justify-self: center; width: .75rem; height: .75rem; border-radius: 999px; background: var(--color-line); }
   .letter--ours .letter-dot { background: var(--color-surface); box-shadow: inset 0 0 0 2px var(--color-line); }
@@ -699,9 +737,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .letter-head::-webkit-details-marker { display: none; }
   .letter-who { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
   .letter--ours .letter-who { color: var(--color-ink-muted); }
-  .letter-when { grid-column: 2; grid-row: 1; font-size: .875rem; color: var(--color-ink-dim); white-space: nowrap; }
+  .letter-when { grid-column: 2; grid-row: 1; font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; }
   .letter-title { grid-column: 1; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
-  .letter-clip { grid-column: 2; grid-row: 2; justify-self: end; display: inline-flex; align-items: center; gap: .125rem; font-size: .875rem; color: var(--color-ink-dim); }
+  .letter-clip { grid-column: 2; grid-row: 2; justify-self: end; display: inline-flex; align-items: center; gap: .125rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
   .letter--stage .letter-title, .letter--ask .letter-title, .letter--unread .letter-title { color: var(--color-ink); }
   .letter--unread .letter-title { font-weight: 500; }
   .letter-body[open] > .letter-head .letter-title { white-space: normal; }
@@ -712,14 +750,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .letter-title { flex: 1 1 12rem; }
     .letter-when { margin-left: auto; }
   }
-  .letter-text { font-size: .9375rem; line-height: 1.45; }
+  .letter-text { font-size: var(--text-base); line-height: 1.45; }
   .letter--ours .letter-text { padding: .75rem; border-radius: var(--radius-l); background: var(--color-surface-2); }
   .letter--service .letter-body { padding-bottom: .5rem; }
   .letter--service .letter { grid-template-columns: 0 minmax(0, 1fr); column-gap: 0; }
   .letter--service .letter::before, .letter--service .letter .letter-dot { display: none; }
   .letter--service .letter .letter-body { padding-bottom: .25rem; }
   .letter-foot { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem 1rem; margin-top: .5rem; }
-  .letter-link { cursor: pointer; list-style: none; font-size: .8125rem; color: var(--color-ink-dim); }
+  .letter-link { cursor: pointer; list-style: none; font-size: var(--text-sm); color: var(--color-ink-dim); }
   .letter-link:hover { color: var(--color-ink); }
   .letter-link::-webkit-details-marker { display: none; }
   .chain-reply { padding-top: .5rem; }
@@ -869,7 +907,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .header.is-scrolled:not(.header--over)::after { opacity: 1; }
   .header-title {
     position: absolute; left: 50%; top: 50%; translate: -50% calc(-50% + 6px); max-width: 45%; pointer-events: none;
-    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 17px; font-weight: 500; line-height: 1.2;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--text-lg); font-weight: 500; line-height: 1.2;
     opacity: 0; transition: opacity var(--dur-fast), translate var(--dur-fast) var(--ease-out);
   }
   .header.is-past-title .header-title { opacity: 1; translate: -50% -50%; }
@@ -896,7 +934,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { .header-btn-cta:hover { background: var(--color-accent-hover); } }
 
   /* «‹ Раздел» слева на телефоне: капсула под палец, подпись обрезается. */
-  .header-back { height: 2.5rem; max-width: 11rem; padding: 0 .875rem 0 .5rem; border-radius: 9999px; font-size: 15px; }
+  .header-back { height: 2.5rem; max-width: 11rem; padding: 0 .875rem 0 .5rem; border-radius: 9999px; font-size: var(--text-base); }
 
   /* «‹» у заголовка на десктопе: в потоке перед h1, а когда у контейнера есть
      поля — в левом поле, чтобы заголовок не уходил с линии содержимого. */
@@ -1273,7 +1311,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 .surface-park .cards .card-body { gap: .125rem; }
 .surface-park .cards .card-marks { flex-wrap: nowrap; overflow: hidden; }
 .surface-park .cards .card-marks:empty { display: none; }
-.surface-park .cards .card-title > a { font-size: .9375rem; line-height: 1.3; }
+.surface-park .cards .card-title > a { font-size: var(--text-base); line-height: 1.3; }
 .surface-park .cards .card-extra { row-gap: .25rem; }
 .surface-crm .cards--grid, .surface-park .cards--grid {
   --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;

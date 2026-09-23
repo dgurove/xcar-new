@@ -100,21 +100,21 @@ class MailController
         $all = Thread::query()->whereIn('account_id', $accounts->pluck('id'))->where('messages_count', '>', 0);
         $threads = clone $all;
         $sections = null;
+        match ($box) {
+            'sent' => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'out'"),
+            'archive' => $threads->whereNotNull('archived_at'),
+            'waiting' => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->whereRaw(self::LAST_INTENT.' in ('.implode(',', array_fill(0, count($needsReply), '?')).')', $needsReply),
+            'other' => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->where(fn ($w) => $this->noise($w)),
+            default => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->where(fn ($w) => $this->notNoise($w)),
+        };
+        // Поиск — не фильтр: он сужает то, что уже выбрано пилюлей и фильтрами, и адрес не меняет.
         if ($q !== '') {
-            // Поиск по всему: пилюли гаснут, список плоский, архив тоже.
+            $tsquery = self::tsquery($q);
             $threads->where(fn ($w) => $w
-                ->whereHas('messages', fn ($m) => $m->whereRaw("search @@ websearch_to_tsquery('russian', ?)", [$q]))
+                ->when($tsquery, fn ($w, $ts) => $w->whereHas('messages', fn ($m) => $m->whereRaw("search @@ to_tsquery('russian', ?)", [$ts])))
                 ->orWhereRaw('participants::text ilike ?', ['%'.$q.'%'])
                 ->orWhereHas('attachments', fn ($a) => $a->where('filename', 'ilike', '%'.$q.'%'))
                 ->when(Keys::fromQuery($q), fn ($w, $keys) => $w->orWhere(fn ($k) => $k->withAnyKey($keys))));
-        } else {
-            match ($box) {
-                'sent' => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'out'"),
-                'archive' => $threads->whereNotNull('archived_at'),
-                'waiting' => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->whereRaw(self::LAST_INTENT.' in ('.implode(',', array_fill(0, count($needsReply), '?')).')', $needsReply),
-                'other' => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->where(fn ($w) => $this->noise($w)),
-                default => $threads->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'")->where(fn ($w) => $this->notNoise($w)),
-            };
         }
         $threads->when($filter['vendor'] ?? null, fn ($t, $id) => $t->where('vendor_id', $id))
             ->when($filter['intent'] ?? null, fn ($t, $i) => $t->whereRaw(self::LAST_INTENT.' = ?', [$i]))
@@ -122,7 +122,7 @@ class MailController
             ->when($filter['files'] ?? null, fn ($t) => $t->where('has_attachments', true));
         $order = fn ($t) => $sort === 'waiting' ? $t->orderBy('last_message_at') : $t->orderByDesc('last_message_at');
 
-        if ($q === '' && ! $filter && $box === 'inbox') {
+        if (! $filter && $box === 'inbox') {
             // Секции: ТС (CRM — предложение) → кандидат по свежести, письма вендоров без тождества — последней; страницы — по группам.
             $group = $park
                 ? "coalesce('v:' || vehicle_id::text, 'c:' || candidate_id::text, 'none')"
@@ -151,6 +151,22 @@ class MailController
             $threads = $order($threads->with($with)->withCount(['attachments' => fn ($a) => $a->where('is_inline', false)]))->paginate(self::ROWS_PER_PAGE)->withQueryString();
         }
 
+        // Список отдельным куском — им отвечает живой поиск, им же рисуется страница.
+        $data = [
+            'threads' => $threads,
+            'sections' => $sections,
+            'q' => $q,
+            'filter' => $filter,
+            'flat' => $sections === null,
+            'base' => $this->base,
+            'park' => $park,
+            'crm' => ! $park,
+            'box' => $box,
+        ];
+        if ($request->header('X-List')) {
+            return response()->view('admin.mail.list', $data);
+        }
+
         $open = fn () => (clone $all)->whereNull('archived_at')->whereRaw(self::LAST_DIRECTION." = 'in'");
         $counts = [
             'inbox' => $open()->where(fn ($w) => $this->notNoise($w))->where('unread_count', '>', 0)->count(),
@@ -158,22 +174,30 @@ class MailController
             'other' => $open()->where(fn ($w) => $this->noise($w))->count(),
         ];
 
-        return view('admin.mail.index', [
-            'threads' => $threads,
-            'sections' => $sections,
-            'box' => $q !== '' ? '' : $box,
+        return view('admin.mail.index', $data + [
             'sort' => $sort,
-            'q' => $q,
-            'filter' => $filter,
-            'flat' => $sections === null,
             'accounts' => $accounts,
-            'base' => $this->base,
-            'park' => $park,
             'counts' => array_filter($counts),
             'vendors' => Vendor::whereIn('id', (clone $all)->whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
             // ?window=id — ссылка на ветку: список с открытым окном этой ветки.
             'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window' : null,
         ]);
+    }
+
+    /**
+     * Запрос для полнотекста. `websearch_to_tsquery` ищет только целые слова, а при наборе последнее
+     * слово почти всегда неполное — оно уходит с префиксом, и «колбас» находит «Колбасина». Строка
+     * разбирается здесь, а не в SQL: `to_tsquery` падает на любом постороннем знаке.
+     */
+    private static function tsquery(string $q): ?string
+    {
+        $words = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($q), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if (! $words) {
+            return null;
+        }
+        $last = array_key_last($words);
+
+        return implode(' & ', array_map(fn ($w, $i) => $w.($i === $last ? ':*' : ''), $words, array_keys($words)));
     }
 
     /** «Всё в архив» у «Прочего»: автоответы и рассылки уходят из входящих разом. */

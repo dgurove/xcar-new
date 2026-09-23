@@ -13,14 +13,14 @@
     @if ($collapsed)
         <details class="step-details" @if ($n) open @endif>
             <summary class="flex items-center gap-2">
-                <h2 class="text-xl">{{ $stage->label() }}@if ($n) <span class="nums text-base font-normal text-ink-dim">{{ $n }}</span>@endif</h2>
+                <h2>{{ $stage->label() }}@if ($n) <span class="nums text-sm font-normal text-ink-dim">{{ $n }}</span>@endif</h2>
                 <x-ui.icon name="chevron-down" class="step-chevron size-5 text-ink-dim"/>
             </summary>
             <div class="mt-4">@include('park.vehicles.photo-body')</div>
         </details>
     @else
-        <div class="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <h2 class="text-xl">{{ $stage->label() }}@if ($n) <span class="nums text-base font-normal text-ink-dim">{{ $n }}</span>@endif</h2>
+        <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <h2>{{ $stage->label() }}@if ($n) <span class="nums text-sm font-normal text-ink-dim">{{ $n }}</span>@endif</h2>
         </div>
         @include('park.vehicles.photo-body')
     @endif

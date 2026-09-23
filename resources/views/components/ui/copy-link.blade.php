@@ -3,7 +3,7 @@
      текстом сообщения, его можно поправить; в буфер и в лист уходят текст и ссылка вместе. --}}
 @props(['url', 'title' => null, 'message' => null])
 <div {{ $attributes->merge(['class' => 'flex flex-col gap-3']) }} data-controller="copy" data-copy-text-value="{{ $url }}" data-copy-title-value="{{ $title }}">
-    <div class="box-nested nums break-all text-[15px] leading-snug select-all" data-action="click->copy#select">{{ $url }}</div>
+    <div class="box-nested nums break-all text-base leading-snug select-all" data-action="click->copy#select">{{ $url }}</div>
     @if ($message !== null)
         <textarea class="field-input" rows="3" aria-label="Сообщение" data-copy-target="message">{{ $message }}</textarea>
     @endif

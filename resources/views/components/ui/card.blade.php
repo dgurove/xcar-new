@@ -3,8 +3,8 @@
 @props(['title' => null, 'nested' => false, 'count' => null])
 <section {{ $attributes->merge(['class' => $nested ? 'box-nested' : 'box']) }}>
     @if ($title)
-        <div class="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <h2 class="text-xl">{{ $title }}@if ($count !== null) <span class="nums text-base font-normal text-ink-dim">{{ $count }}</span>@endif</h2>
+        <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <h2>{{ $title }}@if ($count !== null) <span class="nums text-sm font-normal text-ink-dim">{{ $count }}</span>@endif</h2>
             @if (isset($chips) && trim($chips) !== '')<div class="flex flex-wrap items-center gap-1.5">{{ $chips }}</div>@endif
         </div>
     @endif

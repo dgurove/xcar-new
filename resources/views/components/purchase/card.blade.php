@@ -34,7 +34,7 @@
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="block min-w-0 flex-1 text-[17px] leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $car->titleWithYear() }}</span></a>
+            <a href="{{ $href }}" class="block min-w-0 flex-1 text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $car->titleWithYear() }}</span></a>
         </div>
         @if ($car->fssp)
             <div class="card-marks"><span class="mark mark-glass">Ограничения ФССП</span></div>

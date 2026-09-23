@@ -15,7 +15,7 @@
             <x-chat.avatar :user="$other" :size="36" :online="$seen === 'в сети'"/>
             <div class="min-w-0 flex-1">
                 <div class="truncate font-medium leading-tight">{{ $name }}</div>
-                <div class="truncate text-[13px] leading-tight text-ink-muted" data-chat-status>{{ $seen }}</div>
+                <div class="truncate text-sm leading-tight text-ink-muted" data-chat-status>{{ $seen }}</div>
             </div>
         @if ($link)</a>@elseif ($sheet)</button>@else</div>@endif
         @if ($readonly && $chat?->manager)
