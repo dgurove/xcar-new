@@ -28,7 +28,7 @@
     @if ($accounts->isEmpty())
         @if ($crm)<x-ui.empty class="mt-6" href="/settings/mailboxes/new" link="Завести ящик">Ящиков ещё нет</x-ui.empty>@else<x-ui.empty class="mt-6">Ящиков ещё нет</x-ui.empty>@endif
     @else
-        <div class="mt-4" id="threads">@include('admin.mail.list')</div>
+        <div class="mt-4" id="threads" data-controller="endless">@include('admin.mail.list')</div>
     @endif
     <x-mail.window :url="$window ?? null"/>
 </x-ui.shell>

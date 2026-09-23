@@ -79,13 +79,22 @@ class VehicleController
         $request->query('sort') === 'fresh' ? $vehicles->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
 
         $page = ListView::paginate($request, $vehicles);
-        $counts = Scope::vehicles($request->user())->where('state', VehicleState::Stored)->selectRaw('yard_id, count(*) as n')->groupBy('yard_id')->pluck('n', 'yard_id');
-
-        return view('park.vehicles.index', [
+        $data = [
             'vehicles' => $page,
             'debts' => Ledger::debtsByVehicle($page->pluck('id')->all()),
-            'state' => $state,
             'q' => $q,
+            'view' => ListView::pick($request, $page->total()),
+            // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты парковки.
+            'peek' => $request->query('peek') && $request->query('vid') === ListView::TABLE ? 'vehicle-'.(int) $request->query('peek') : null,
+        ];
+        // Живой поиск просит только список: тот же кусок, что рисует страницу.
+        if ($request->header('X-List')) {
+            return response()->view('park.vehicles.list', $data);
+        }
+        $counts = Scope::vehicles($request->user())->where('state', VehicleState::Stored)->selectRaw('yard_id, count(*) as n')->groupBy('yard_id')->pluck('n', 'yard_id');
+
+        return view('park.vehicles.index', $data + [
+            'state' => $state,
             'sort' => $request->query('sort', 'longest'),
             // Пилюли — парковки; при одной парковке пилюль нет.
             'pills' => ($yards->count() > 1 ? ['' => 'Все'] + $yards->all() : []) + ($counts->has('') ? ['none' => 'Без парковки'] : []),
@@ -93,8 +102,6 @@ class VehicleController
             'counts' => ['' => $counts->sum(), 'none' => $counts[''] ?? 0] + $counts->all(),
             'yard' => $yardId ? Yard::find($yardId) : null,
             'vendors' => Vendor::whereIn('id', Vehicle::whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
-            // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты парковки.
-            'peek' => $request->query('peek') && $request->query('vid') === ListView::TABLE ? 'vehicle-'.(int) $request->query('peek') : null,
         ]);
     }
 

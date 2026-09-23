@@ -12,11 +12,15 @@ use Illuminate\Database\Eloquent\Builder;
 final class CatalogQuery
 {
     /** ключ → [подпись, есть ли направление] */
+    /** Исходы словами, по ключу на исход: минус — по убыванию. Стрелки-переключателя направления нет. */
     public const SORTS = [
-        'published' => ['Дата публикации', true],
-        'price' => ['Стоимость', true],
-        'year' => ['Год выпуска', true],
-        'closing' => ['Скоро закрытие', false],
+        '-published' => 'Сначала новые',
+        'published' => 'Сначала старые',
+        'price' => 'Сначала дешёвые',
+        '-price' => 'Сначала дорогие',
+        '-year' => 'Сначала свежий год',
+        'year' => 'Сначала старый год',
+        'closing' => 'Скоро закрытие',
     ];
 
     public const VIEWS = ['' => 'Все', 'recommended' => 'Рекомендуем', 'fresh' => 'Новые', 'ending' => 'Горящие', 'favorite' => 'Избранное'];
@@ -87,15 +91,14 @@ final class CatalogQuery
     public static function sort(array $filters, bool $gallery = false, bool $prices = true, ?User $user = null): string
     {
         $sort = $filters['sort'] ?? self::DEFAULT_SORT;
-        $key = ltrim($sort, '-');
 
-        return isset(self::allowedSorts($gallery, $prices, $user)[$key]) ? $sort : self::DEFAULT_SORT;
+        return isset(self::allowedSorts($gallery, $prices, $user)[$sort]) ? $sort : self::DEFAULT_SORT;
     }
 
     /** Сортировки для тулбара: в галерее ни цены, ни срока; покупатель не торгуется — срока у него нет. */
     public static function allowedSorts(bool $gallery, bool $prices, ?User $user = null): array
     {
-        return array_filter(self::SORTS, fn ($_, $key) => match ($key) {
+        return array_filter(self::SORTS, fn ($_, $key) => match (ltrim($key, '-')) {
             'price' => $prices,
             'closing' => ! $gallery && ! $user?->isBuyer(),
             default => true,

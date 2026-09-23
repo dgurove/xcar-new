@@ -10,9 +10,12 @@
             <section data-search-group>
                 @if ($section['vehicle'])
                     @php $v = $section['vehicle']; @endphp
+                    {{-- Над письмами машины — только имя, состояние и вендор: номера, парковка и ошибки данных
+                         живут в «Наличии» и в деле, а номер убытка и так стоит в темах писем. --}}
                     <div class="mb-1.5 flex flex-wrap items-center gap-1.5">
-                        <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="font-medium hover:text-accent-text" @if ($crm) data-turbo="false" @endif>{{ $v->titleWithYear() }}@if ($v->plate) <span class="nums font-normal text-ink-muted">{{ $v->plate }}</span>@endif</a>
-                        <x-park.state :vehicle="$v"/>
+                        <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="font-medium hover:text-accent-text" @if ($crm) data-turbo="false" @endif>{{ $v->titleWithYear() }}</a>
+                        <x-park.state :vehicle="$v" only/>
+                        @if ($v->vendor)<span class="tag">{{ $v->vendor->name }}</span>@endif
                     </div>
                 @elseif ($section['offer'])
                     @php $o = $section['offer']; @endphp
@@ -25,8 +28,6 @@
                     <div class="mb-1.5 flex items-start gap-2">
                         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                             <span class="font-medium">{{ $c->title() }}</span>
-                            @if ($c->code)<x-ui.copy-code class="tag" :value="$c->code"/>@endif
-                            @if ($cv('plate'))<span class="tag nums">{{ $cv('plate') }}</span>@endif
                             @if ($c->vendor?->name ?? $cv('vendor'))<span class="tag">{{ $c->vendor?->name ?? $cv('vendor') }}</span>@endif
                         </div>
                         @if ($c->state === \App\Mail\CandidateState::Rejected || $c->state === \App\Mail\CandidateState::Closed)
@@ -57,4 +58,7 @@
         @endforeach
     </div>
 @endif
-@if ($threads->hasPages())<div class="mt-6"><x-ui.pager :of="$threads"/></div>@endif
+{{-- Страниц у почты нет: хвост с адресом следующей порции, его ловит endless_controller. --}}
+@if ($threads->hasMorePages())
+    <div class="py-6 text-center text-sm text-ink-dim" data-endless-next="{{ $threads->appends(request()->query())->nextPageUrl() }}">Ещё письма…</div>
+@endif

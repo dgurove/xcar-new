@@ -6,18 +6,18 @@
      pills: ключ → подпись; counts: ключ → число; tones: ключ → класс пилюли (pill-danger у «Просрочено»); hidden: поля, которые переживают фильтр;
      pillDefault=false — первая пилюля («Все») не выделяется: зелёное только у сужающего фильтра;
      search — подсказка в поле поиска (пусто — поля нет), searchTarget — что подменять ответом;
-     слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»). --}}
+     слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»).
+     Сортировка — только исходы словами, по строке на исход: «Сначала дешёвые», «Дольше ждут».
+     Направления как отдельной кнопки нет — у каталога это два ключа («price» и «-price»): стрелку
+     вверх-вниз никто не находил, а «по возрастанию» ни о чём не говорит. --}}
 @props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'counts' => [], 'tones' => [], 'hidden' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => null, 'q' => ''])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
     $url = fn (array $set) => $action.'?'.http_build_query(array_filter(array_merge($query, $set), fn ($v) => $v !== null && $v !== ''));
-    $norm = collect($sorts)->map(fn ($v) => is_array($v) ? $v : [$v, false]);
-    $currentKey = ltrim((string) $sort, '-');
-    $desc = str_starts_with((string) $sort, '-');
-    $hasDir = (bool) ($norm[$currentKey][1] ?? false);
-    // Ссылка на критерий: активный с направлением — переворот, чужой — своё направление по умолчанию (убывание).
-    $sortUrl = fn (string $key) => $url([$sortParam => $key === $currentKey ? ($norm[$key][1] ? ($desc ? $key : '-'.$key) : $key) : ($norm[$key][1] ? '-'.$key : $key), 'page' => null]);
+    $norm = collect($sorts)->map(fn ($v) => is_array($v) ? $v[0] : $v);
+    $current = (string) $sort;
+    $sortUrl = fn (string $key) => $url([$sortParam => $key, 'page' => null]);
 @endphp
 <div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-2 max-md:gap-y-3']) }}>
     @if ($search)
@@ -49,13 +49,13 @@
     @if ($norm->isNotEmpty())
         {{-- Сортировка — круглая кнопка со шторкой, одинаково на телефоне и на компьютере. --}}
         <div class="contents" data-controller="sheet">
-            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Сортировка: {{ $norm[$currentKey][0] ?? 'по умолчанию' }}" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
+            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Сортировка: {{ $norm[$current] ?? 'по умолчанию' }}" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
             <x-ui.sheet id="sort-{{ $name }}" title="Сортировка">
                 <div class="space-y-2">
-                    @foreach ($norm as $key => [$label, $dir])
-                        <a href="{{ $sortUrl($key) }}" data-turbo-action="replace" class="flex items-center justify-between rounded-full px-4 py-2.5 text-sm transition-colors active:bg-surface-3 {{ $key === $currentKey ? 'bg-accent text-white' : 'bg-surface-2 text-ink hover:bg-surface-3' }}">
+                    @foreach ($norm as $key => $label)
+                        <a href="{{ $sortUrl($key) }}" data-turbo-action="replace" class="flex items-center justify-between rounded-full px-4 py-2.5 text-sm transition-colors active:bg-surface-3 {{ (string) $key === $current ? 'bg-accent text-white' : 'bg-surface-2 text-ink hover:bg-surface-3' }}">
                             {{ $label }}
-                            @if ($key === $currentKey && $dir)<x-ui.icon name="arrow-up" class="size-4 {{ $desc ? 'rotate-180' : '' }}"/>@endif
+                            @if ((string) $key === $current)<x-ui.icon name="check" class="size-4"/>@endif
                         </a>
                     @endforeach
                 </div>
