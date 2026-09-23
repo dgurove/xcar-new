@@ -32,7 +32,7 @@
                                     <span class="row-sub mt-1.5 flex flex-wrap items-center gap-1.5">
                                         <span class="tag nums">{{ $r['from']->translatedFormat('j M') }} – {{ $r['to']->translatedFormat('j M') }}, {{ $r['days'] }} сут</span>
                                         <span class="tag">{{ $r['reason'] }}</span>
-                                        @if ($r['cadence'] === Cadence::Release)<span class="tag">после выдачи</span>@endif
+                                        @if ($r['cadence'] === Cadence::Release)<span class="tag">по выбытию</span>@endif
                                         @if ($r['payer'] === 'buyer')<span class="tag">покупатель</span>@elseif ($r['payer'] === 'owner')<span class="tag">страхователь</span>@endif
                                         @if ($r['charges'])<span class="tag">+ начисления</span>@endif
                                     </span>

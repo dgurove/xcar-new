@@ -259,8 +259,13 @@ class VehicleController
 
             return redirect("/cars/{$vehicle->id}")->with('toast', 'Не продано');
         }
-        $data = $request->validate(['sold_at' => ['required', 'date'], 'pickup_name' => ['nullable', 'string', 'max:120'], 'pickup_phone' => ['nullable', 'string', 'max:20']]);
+        $data = $request->validate(['sold_at' => ['required', 'date'], 'pickup_name' => ['nullable', 'string', 'max:120'], 'pickup_phone' => ['nullable', 'string', 'max:20'],
+            'buyer_free_until' => ['nullable', 'date', 'after_or_equal:sold_at']]);
         $sold($vehicle, $request->user(), Carbon::parse($data['sold_at']), $data['pickup_name'] ?? null, $data['pickup_phone'] ?? null);
+        // Срок хранения за счёт вендора приходит письмом и живёт только руками: пустое поле его снимает.
+        if ($vehicle->vendor?->buyer_pays_late) {
+            $vehicle->update(['buyer_free_until' => $data['buyer_free_until'] ?? null]);
+        }
 
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Продано');
     }

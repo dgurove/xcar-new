@@ -163,7 +163,7 @@ class VendorController
             'silence_means_buy' => ['boolean'],
             'binding_days' => ['nullable', 'integer', 'between:1,365'],
             'storage_payer' => ['required', Rule::in(['vendor', 'owner', 'nobody'])],
-            'buyer_storage_after_days' => ['nullable', 'integer', 'between:0,365'],
+            'buyer_pays_late' => ['boolean'],
             'release_without_payment' => ['boolean'],
             'buyer_rate_multiplier' => ['required', 'numeric', 'between:0,20'],
             'billing_cadence' => ['required', Rule::enum(Cadence::class)],

@@ -33,7 +33,7 @@ use Spatie\MediaLibrary\HasMedia;
     'contact_name', 'contact_phone', 'flags', 'docs_required', 'value', 'policy_no',
     'cancelled_at', 'cancel_reason', 'spot', 'transit_started_at', 'mileage', 'fuel', 'idle_noticed_at',
     'owner_party_id', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'storage_rate', 'storage_rate_note', 'storage_billed_until', 'pts', 'sts',
-    'sold_at', 'sold_message_id', 'pickup_name', 'pickup_phone', 'buyer_party_id', 'billing_cadence'])]
+    'sold_at', 'sold_message_id', 'buyer_free_until', 'pickup_name', 'pickup_phone', 'buyer_party_id', 'billing_cadence'])]
 class Vehicle extends Model implements HasMedia
 {
     use HasPhotos;
@@ -44,7 +44,7 @@ class Vehicle extends Model implements HasMedia
     {
         return ['state' => VehicleState::class, 'category' => Category::class, 'oversize' => 'bool', 'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',
             'accepted_at' => 'datetime', 'released_at' => 'datetime', 'cancelled_at' => 'datetime', 'transit_started_at' => 'datetime', 'idle_noticed_at' => 'datetime', 'year' => 'int',
-            'contract_at' => 'date', 'storage_billed_until' => 'date', 'storage_rate' => 'float', 'sold_at' => 'date', 'billing_cadence' => Cadence::class];
+            'contract_at' => 'date', 'storage_billed_until' => 'date', 'storage_rate' => 'float', 'sold_at' => 'date', 'buyer_free_until' => 'date', 'billing_cadence' => Cadence::class];
     }
 
     public function setRefAttribute(?string $value): void

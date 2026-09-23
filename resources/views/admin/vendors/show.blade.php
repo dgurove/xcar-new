@@ -61,12 +61,18 @@
                         <x-ui.check name="silence_means_buy" :checked="$vendor->silence_means_buy">Молчание — обязанность купить</x-ui.check>
                     </div>
                     <x-ui.section-title level="h3" class="!text-lg">Хранение</x-ui.section-title>
-                    <div class="{{ $g }}">
+                    {{-- Опоздавший покупатель платит только там, где так в договоре (ВСК): срок хранения за счёт
+                         вендора вписывают на самой ТС из письма страховой, множитель нужен только при этой галке. --}}
+                    <div class="{{ $g }} buyer-rule">
                         <x-ui.field name="storage_payer" label="Хранение платит" :options="['vendor' => 'Вендор', 'owner' => 'Страхователь', 'nobody' => 'Никто']" :value="$vendor->storage_payer"/>
                         <x-ui.field name="billing_cadence" label="Счёт за хранение" :options="Cadence::options()" :value="$vendor->billing_cadence->value"/>
-                        <x-ui.field name="buyer_storage_after_days" label="После продажи за счёт вендора, дней" :value="$vendor->buyer_storage_after_days" inputmode="numeric"/>
-                        <x-ui.field name="buyer_rate_multiplier" label="Покупатель платит, × прайс" :value="rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.')" inputmode="decimal"/>
-                        <x-ui.check name="release_without_payment" :checked="$vendor->release_without_payment" class="col-span-2">Выдавать без оплаты</x-ui.check>
+                        <div class="col-span-2 flex flex-wrap items-center gap-x-6 gap-y-3">
+                            <x-ui.check name="buyer_pays_late" :checked="$vendor->buyer_pays_late">Опоздавший покупатель платит</x-ui.check>
+                            <x-ui.check name="release_without_payment" :checked="$vendor->release_without_payment">Выдавать без оплаты</x-ui.check>
+                        </div>
+                        <div data-late>
+                            <x-ui.field name="buyer_rate_multiplier" label="Опоздавший платит, × прайс" :value="rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.')" inputmode="decimal"/>
+                        </div>
                     </div>
                     <x-ui.section-title level="h3" class="!text-lg">Почта</x-ui.section-title>
                     <div class="{{ $g }}">

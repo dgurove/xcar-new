@@ -377,6 +377,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row-check .check { @apply ml-auto shrink-0; }
   .row-check:has(input:checked) { @apply bg-accent-soft; }
   .row-check:has(input:disabled) { @apply cursor-default opacity-60; }
+  /* Множитель опоздавшего покупателя виден только там, где правило включено галкой. */
+  .buyer-rule:has(input[name="buyer_pays_late"]:not(:checked)) [data-late] { display: none !important; }
   /* Ссылка админа: блок «для покупателя» виден только при роли «покупателю». */
   .invite-form:has(select[name="role"] option:checked:not([value="buyer"])) [data-buyer] { display: none !important; }
   .invite-form:has(select[name="role"] option[value="buyer"]:checked) [data-once] { display: none !important; }

@@ -96,19 +96,19 @@ final class Accrual
     }
 
     /**
-     * С какого дня хранение платит покупатель: продажа (письмо страховой или сделка CRM) плюс дни за счёт вендора.
-     * Без даты продажи или без правила у вендора — никогда.
+     * С какого дня хранение платит опоздавший покупатель: со следующего дня после срока, до которого оно за
+     * счёт вендора (`buyer_free_until` — дата из письма страховой, её вписывают на ТС). Правило включается
+     * галкой у вендора (`buyer_pays_late`): у Альфы и СОГАЗа покупатель не платит, у ВСК платит. Срок не
+     * вписан — не начисляем (решение владельца: лишнего счёта человеку не выставляем).
      */
     public static function buyerFrom(Vehicle $vehicle): ?Carbon
     {
-        $vehicle->loadMissing(['vendor', 'offer.deal']);
-        $days = $vehicle->vendor?->buyer_storage_after_days;
-        if ($days === null) {
+        $vehicle->loadMissing('vendor');
+        if (! ($vehicle->vendor?->buyer_pays_late ?? false) || ! $vehicle->buyer_free_until) {
             return null;
         }
-        $sold = $vehicle->sold_at?->copy() ?? (($deal = $vehicle->offer?->deal) && $deal->buyer_id ? $deal->created_at->copy() : null);
 
-        return $sold?->startOfDay()->addDays($days);
+        return $vehicle->buyer_free_until->copy()->addDay()->startOfDay();
     }
 
     /** Ставка покупателя на сегодня — для чипа «покупатель с …, N ₽/сут». */

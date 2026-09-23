@@ -69,7 +69,7 @@ final class Closing
                     'amount' => round($g['amount'] + $charges->sum('amount'), 2), 'charges' => $charges->pluck('id')->values()->all(),
                     // Хранение по этой ТС не выставлялось ни разу: период идёт с приёма, и «за сентябрь» врало бы.
                     // Сам период стоит рядом отдельным чипом, поэтому здесь — только почему сумма такая.
-                    'reason' => $g['from']->lt($begin) ? 'с приёма' : $reason]);
+                    'reason' => $cadence !== Cadence::Release && $g['from']->lt($begin) ? 'с приёма' : $reason]);
             }
         }
 

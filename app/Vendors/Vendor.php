@@ -29,7 +29,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
     'bank_name', 'bank_account', 'bank_corr', 'bank_bic', 'payment_purpose',
     'agreement_number', 'agreement_date', 'agreement_until',
     'deal_format', 'reward_kind', 'reward_value', 'payment_days', 'vat_included', 'answer_hours', 'silence_means_buy', 'binding_days',
-    'storage_payer', 'buyer_storage_after_days', 'release_without_payment', 'buyer_rate_multiplier', 'billing_cadence',
+    'storage_payer', 'buyer_pays_late', 'release_without_payment', 'buyer_rate_multiplier', 'billing_cadence',
     'senders', 'parser', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id',
     'intake_docs', 'intake_note',
 ])]
@@ -49,6 +49,7 @@ class Vendor extends Model implements HasMedia
             'vat_included' => 'bool',
             'silence_means_buy' => 'bool',
             'release_without_payment' => 'bool',
+            'buyer_pays_late' => 'bool',
             'buyer_rate_multiplier' => 'float',
             'billing_cadence' => Cadence::class,
             'senders' => 'array',

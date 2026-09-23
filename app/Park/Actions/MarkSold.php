@@ -65,7 +65,7 @@ final class MarkSold
         DB::transaction(function () use ($vehicle, $by, $reason) {
             // Контрагент-покупатель остаётся, если ему уже выставляли счета: иначе его неоплаченное перестало бы
             // считаться долгом покупателя (`Ledger::buyerDebt` ищет по контрагенту) и показывалось бы вендорским.
-            $vehicle->update(['sold_at' => null, 'sold_message_id' => null, 'pickup_name' => null, 'pickup_phone' => null,
+            $vehicle->update(['sold_at' => null, 'sold_message_id' => null, 'pickup_name' => null, 'pickup_phone' => null, 'buyer_free_until' => null,
                 'buyer_party_id' => self::billed($vehicle) ? $vehicle->buyer_party_id : null]);
             $vehicle->requests()->where('type', RequestType::Release)->whereIn('state', [RequestState::New, RequestState::Scheduled, RequestState::InProgress])
                 ->update(['state' => RequestState::Cancelled, 'done_at' => now(), 'done_by' => $by?->id, 'cancel_reason' => $reason]);

@@ -241,6 +241,9 @@
                         <x-ui.field name="sold_at" label="Дата продажи" type="date" :value="($vehicle->sold_at ?? now())->toDateString()" required/>
                         <x-ui.field name="pickup_phone" label="Телефон" type="tel" :value="$vehicle->pickup_phone"/>
                         <x-ui.field name="pickup_name" label="Кто заберёт" :value="$vehicle->pickup_name" span="col-span-2"/>
+                        {{-- Срок из письма страховой: опоздал — дальше сутки идут покупателю по множителю вендора.
+                             Поле только у вендоров с этим правилом (ВСК): у остальных платит страховая, сколько бы ни стояло. --}}
+                        @if ($vehicle->vendor?->buyer_pays_late)<x-ui.field name="buyer_free_until" label="Хранение за счёт вендора до" type="date" :value="$vehicle->buyer_free_until?->toDateString()" span="col-span-2"/>@endif
                     </div>
                     <div class="flex gap-2">
                         <x-ui.button class="flex-1">{{ $vehicle->sold_at ? 'Сохранить' : 'Записать' }}</x-ui.button>
