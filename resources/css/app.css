@@ -574,6 +574,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .case-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .375rem; }
   .case-name { display: flex; min-width: 0; flex: 1; flex-wrap: wrap; align-items: center; gap: .375rem; }
   .btn-s.case-do { height: 1.875rem; padding-inline: .875rem; border-radius: 999px; }
+  /* Переход в дело — само состояние: слова «Дело» рядом с каждой машиной не говорят ничего. */
+  .case-go { display: inline-flex; flex-shrink: 0; align-items: center; gap: .25rem; color: var(--color-ink-muted); }
+  .case-go > [aria-hidden] { font-size: var(--text-sm); color: var(--color-ink-dim); }
+  @media (hover: hover) { .case-go:hover { color: var(--color-ink); } .case-go:hover > [aria-hidden] { color: var(--color-accent-text); } }
   .pill {
     @apply inline-flex shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1.5 text-sm text-ink-muted transition-colors;
     min-height: 2.25rem;

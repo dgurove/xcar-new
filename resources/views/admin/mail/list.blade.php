@@ -17,19 +17,17 @@
                     <div class="case-head">
                         <div class="case-name">
                             <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="font-medium hover:text-accent-text" @if ($crm) data-turbo="false" @endif>{{ $v->titleWithYear() }}</a>
-                            <x-park.state :vehicle="$v" only/>
                             @if ($v->vendor)<span class="tag">{{ $v->vendor->name }}</span>@endif
                         </div>
-                        <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="shrink-0 text-sm text-ink-muted hover:text-accent-text" @if ($crm) data-turbo="false" @endif>Дело ›</a>
+                        <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="case-go" @if ($crm) data-turbo="false" @endif><x-park.state :vehicle="$v" only/><span aria-hidden="true">›</span></a>
                     </div>
                 @elseif ($section['offer'])
                     @php $o = $section['offer']; @endphp
                     <div class="case-head">
                         <div class="case-name">
                             <a href="/offers/{{ $o->number }}" class="font-medium hover:text-accent-text">{{ $o->title() }} <span class="nums font-normal text-ink-muted">№ {{ $o->number }}</span></a>
-                            <span class="tag">{{ $o->state->label() }}</span>
                         </div>
-                        <a href="/offers/{{ $o->number }}" class="shrink-0 text-sm text-ink-muted hover:text-accent-text">Предложение ›</a>
+                        <a href="/offers/{{ $o->number }}" class="case-go"><span class="tag">{{ $o->state->label() }}</span><span aria-hidden="true">›</span></a>
                     </div>
                 @elseif ($section['candidate'])
                     @php $c = $section['candidate']; @endphp
@@ -47,7 +45,7 @@
                                     <form method="post" action="/offers/from-mail/{{ $c->id }}/create">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                                 @endif
                             @elseif ($c->state === CandidateState::Promoted)
-                                <a href="{{ $park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number }}" class="text-sm text-ink-muted hover:text-accent-text">{{ $park ? 'Дело' : 'Предложение' }} ›</a>
+                                <a href="{{ $park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number }}" class="case-go"><span class="tag">{{ $c->state->label() }}</span><span aria-hidden="true">›</span></a>
                             @else
                                 <span class="text-sm text-ink-dim">{{ $c->state->label() }}</span>
                             @endif
