@@ -1,9 +1,11 @@
 {{-- Деньги: счета с пресетами, сортировкой, поиском и контрагентом в фильтрах — только таблицей с окошком
      (плиток и строк у счетов нет); «Долги» и «Закрытие месяца» — одной плашкой над списком; счёт выставляется
      из ТС. --}}
-@php use App\Support\ListView; @endphp
+@php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
 <x-ui.shell :title="$party ? $party->name : 'Деньги'" :count="$invoices->total()" :back="$party ? ['Долги', '/money/debts'] : false" :phone-heading="(bool) $party">
     <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['party' => request('party'), 'car' => request('car')])" name="money">
+        {{-- Счета — только таблицей; на телефоне её можно развернуть в подробную. --}}
+        <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::WIDE]" :current="$view"/></x-slot:extra>
         <x-slot:filters>
             <input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Номер, контрагент, убыток, VIN" enterkeyhint="search">
             @if ($parties->isNotEmpty())<select name="party" class="field-input"><option value="">Все контрагенты</option>@foreach ($parties as $id => $name)<option value="{{ $id }}" @selected((string) request('party') === (string) $id)>{{ $name }}</option>@endforeach</select>@endif
@@ -18,7 +20,7 @@
     @if ($invoices->isEmpty())
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Счетов нет' }}</x-ui.empty>
     @else
-        <x-ui.table id="invoices" class="mt-6">
+        <x-ui.table id="invoices" class="mt-6" :view="$view">
             <x-slot:head><tr><th class="grow">Контрагент</th><th class="cell-dim hidden sm:table-cell">№</th><th class="cell-dim col-peek-hide hidden lg:table-cell">За что</th><th class="hidden sm:table-cell">Срок</th><th class="num">Сумма</th><th class="num hidden sm:table-cell">Остаток</th></tr></x-slot:head>
             @foreach ($invoices as $i)<x-billing.table-row :invoice="$i"/>@endforeach
         </x-ui.table>

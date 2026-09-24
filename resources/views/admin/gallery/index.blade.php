@@ -14,8 +14,8 @@
         @if ($offers->isEmpty())
             <x-ui.empty>В галерее пусто</x-ui.empty>
         @else
-            @if ($view === \App\Support\ListView::TABLE)
-                <x-ui.table id="gallery">
+            @if (\App\Support\ListView::isTable($view))
+                <x-ui.table id="gallery" :view="$view">
                     <x-slot:head><x-offer.table-head gallery/></x-slot:head>
                     @foreach ($offers as $offer)<x-offer.table-row :offer="$offer" gallery/>@endforeach
                 </x-ui.table>

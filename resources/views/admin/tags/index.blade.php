@@ -3,7 +3,7 @@
 @endphp
 {{-- Метки: первая строка — новая, ниже список, который переставляют за ручку (строка «новая» вне сортируемого). --}}
 <x-ui.cabinet title="Метки">
-    <div class="flex flex-col gap-2">
+    <div class="list">
         <div data-controller="sheet" class="contents">
             <button type="button" class="row w-full text-left" data-action="sheet#open">
                 <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
@@ -18,7 +18,7 @@
                 </form>
             </x-ui.sheet>
         </div>
-    <div class="flex flex-col gap-2" data-controller="order" data-order-url-value="/settings/tags/order">
+    <div class="list" data-controller="order" data-order-url-value="/settings/tags/order">
         @foreach ($tags as $tag)
             <div class="row" data-id="{{ $tag->id }}" data-controller="sheet">
                 <span class="cursor-grab touch-none text-ink-dim" data-handle><x-ui.icon name="grip" class="size-5"/></span>

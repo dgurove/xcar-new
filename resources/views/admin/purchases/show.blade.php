@@ -78,24 +78,23 @@
             <x-ui.choose name="user" :options="['' => 'Все менеджеры'] + $managers->mapWithKeys(fn ($u) => [$u->id => $u->shortName()])->all()" :value="$user?->id ?? ''" default="" :counts="$offered->all()" title="Менеджер" id="user-purchase"/>
         @endif
         {{-- Оценка идёт в окошке таблицы: первая без нашей цены открывается сразу, «Дальше» ведёт по строкам. --}}
-        @if ($counts['unfinal'] > 0 && !($preset === 'unfinal' && $view === \App\Support\ListView::TABLE))
+        @if ($counts['unfinal'] > 0 && !($preset === 'unfinal' && \App\Support\ListView::isTable($view)))
             <a href="/purchases/{{ $n }}?preset=unfinal&vid=table&peek=first{{ $kind ? '&kind='.$kind->value : '' }}" class="btn btn-s btn-accent ml-auto" data-turbo-action="replace">Оценить</a>
         @endif
     </div>
 
     @if ($cars->isEmpty())
         <x-ui.empty class="mt-4">Ничего не нашлось</x-ui.empty>
-    @elseif ($view === \App\Support\ListView::TABLE)
-        <x-ui.table id="cars" class="mt-4" :open="$peek">
+    @elseif (\App\Support\ListView::isTable($view))
+        <x-ui.table id="cars" class="mt-4" :view="$view" :open="$peek">
             <x-slot:head>
                 <tr>
-                    <th>ДЛ</th>
                     <th class="grow">Марка, модель</th>
-                    <th class="hidden sm:table-cell">Тип</th>
+                    <th class="cell-dim hidden sm:table-cell">ДЛ</th>
+                    <th class="cell-dim col-peek-hide hidden lg:table-cell">Тип</th>
                     <th class="num hidden sm:table-cell">Размещение</th>
-                    <th class="num"><span class="hidden sm:inline">Предложения</span></th>
+                    <th class="num hidden sm:table-cell">Предложения</th>
                     <th class="num">Наша цена</th>
-                    <th class="hidden sm:table-cell"></th>
                 </tr>
             </x-slot:head>
             @foreach ($cars as $car)<x-purchase.table-row :car="$car" :purchase="$purchase"/>@endforeach
@@ -105,7 +104,7 @@
         @foreach ($cars as $car)<x-purchase.card :car="$car" :purchase="$purchase" :show-kind="count($kinds) > 1"/>@endforeach
     </div>
     @else
-    <div class="mt-4 flex flex-col gap-2">
+    <div class="list mt-4">
         @foreach ($cars as $car)
             <x-purchase.crm-row :car="$car" :purchase="$purchase" :highlight="$user?->id" price/>
         @endforeach

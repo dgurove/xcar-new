@@ -27,7 +27,7 @@
             @foreach ($yards as $yard)<x-ui.pill :href="$link($yard->id)" :current="$yardId === $yard->id">{{ $yard->name }}</x-ui.pill>@endforeach
         </div>
     @endif
-    <div class="flex flex-col gap-2">
+    <div class="list">
         @foreach ($groups as $catValue => $catLabel)
             @php
                 $catValue = $catValue === '' ? null : $catValue;
@@ -39,11 +39,12 @@
             <div class="row" data-controller="sheet">
                 <button type="button" class="contents text-left" data-action="sheet#open">
                     <span class="min-w-0 flex-1">
-                        <span class="block font-medium">{{ $catLabel }}</span>
-                        <span class="row-sub mt-1 flex flex-wrap gap-1.5">
+                        <span class="block truncate">{{ $catLabel }}</span>
+                        {{-- Цены по услугам одной строкой; базовая цена там, где своей строки нет, — тусклым. --}}
+                        <span class="row-sub">
                             @foreach ($services as $service)
                                 @php [$ladder, $isOwn] = $cell($catValue, $service); $label = Tariff::ladderLabel($ladder); @endphp
-                                @if ($label)<span class="chip nums {{ $isOwn ? '' : 'text-ink-dim' }}">{{ $service->label() }} {{ $label }}</span>@endif
+                                @if ($label)<span class="nums {{ $isOwn ? 'text-ink' : 'text-ink-dim' }}">{{ $service->label() }} {{ $label }}</span>@endif
                             @endforeach
                         </span>
                     </span>

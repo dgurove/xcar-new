@@ -59,7 +59,7 @@
             @if ($deals->isNotEmpty())
                 <section class="mt-8">
                     <h2 class="text-xl">Сделки <span class="nums text-ink-dim">{{ $deals->count() }}</span></h2>
-                    <div class="mt-4 flex flex-col gap-2">
+                    <div class="list mt-3">
                         @foreach ($deals as $deal)
                             @include('admin.deals.row', ['deal' => $deal, 'person' => false])
                         @endforeach
@@ -70,17 +70,17 @@
             @if ($interests->isNotEmpty())
                 <section class="mt-8">
                     <h2 class="text-xl">Интерес <span class="nums text-ink-dim">{{ $interests->count() }}</span></h2>
-                    <div class="mt-4 flex flex-col gap-2">
+                    <div class="list mt-3">
                         @foreach ($interests as $interest)
                             @php $offer = $interest->offer; $price = \App\Offers\PriceView::for($offer, $me); @endphp
                             <a href="/offers/{{ $offer->number }}" class="row">
                                 <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
                                 <span class="min-w-0 flex-1">
-                                    <span class="flex items-center gap-2">
-                                        <span class="truncate font-medium">{{ $offer->titleWithYear() }}</span>
-                                        @if ($interest->state !== \App\Offers\InterestState::New)<x-ui.pill tone="closed" class="!min-h-0 !py-0.5 text-xs">{{ $interest->state->label() }}</x-ui.pill>@endif
+                                    <span class="block truncate">{{ $offer->titleWithYear() }}</span>
+                                    <span class="row-sub">
+                                        @if ($interest->state !== \App\Offers\InterestState::New)<span>{{ mb_strtolower($interest->state->label()) }}</span>@endif
+                                        @if ($price->shown())<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
                                     </span>
-                                    @if ($price->shown())<span class="row-sub"><span class="nums font-semibold">{{ $price::money($price->to) }}&nbsp;₽</span></span>@endif
                                     @if ($interest->comment)<span class="mt-1.5 block text-sm">{{ $interest->comment }}</span>@endif
                                 </span>
                                 <span class="nums shrink-0 text-sm text-ink-dim">{{ $interest->created_at->translatedFormat($interest->created_at->isToday() ? 'H:i' : 'j M') }}</span>

@@ -1,5 +1,5 @@
 <x-ui.shell title="Кому что не показывать" narrow>
-    <div class="flex flex-col gap-2">
+    <div class="list">
         @foreach ($users as $user)
             @php $hidden = $restrictions[$user->id]->hidden_kinds ?? []; @endphp
             <form method="post" action="/purchases/limits/{{ $user->id }}" class="row flex-wrap items-center" data-controller="autosubmit">

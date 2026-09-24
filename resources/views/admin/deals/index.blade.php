@@ -5,7 +5,7 @@
     @if ($deals->isEmpty())
         <x-ui.empty class="mt-6">Сделок нет</x-ui.empty>
     @else
-        <div class="mt-6 flex flex-col gap-2">
+        <div class="list mt-6">
             @foreach ($deals as $deal)
                 @include('admin.deals.row', ['deal' => $deal])
             @endforeach

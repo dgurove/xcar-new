@@ -20,6 +20,11 @@
         isset($items['grid']) => ['list' => 'sm:hidden', 'grid' => 'hidden sm:inline-flex'],
         default => ['list' => ''],
     };
+    // Кроме подробной выбирать нечего (счета — только таблицей) — на ПК, где подробной нет, кнопки нет вовсе.
+    $phoneOnly = count(array_diff(array_keys($items), [ListView::WIDE])) < 2;
+    if ($phoneOnly) {
+        $shown = [$current === ListView::WIDE ? ListView::WIDE : ListView::TABLE => 'sm:hidden'];
+    }
     $id = 'view-'.substr(md5($path), 0, 6);
 @endphp
 <div class="contents" data-controller="menu">

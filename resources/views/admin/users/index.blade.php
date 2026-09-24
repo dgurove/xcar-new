@@ -23,28 +23,27 @@
     @elseif ($users->isEmpty())
         <x-ui.empty class="mt-6">{{ $preset === 'buyers' ? 'Покупателей пока нет — они приходят по ссылкам менеджеров.' : 'Никого нет.' }}</x-ui.empty>
     @else
-        <div class="mt-6 flex flex-col gap-2">
+        <div class="list mt-6">
             @foreach ($users as $user)
                 <div class="row" data-controller="sheet">
-                    <x-ui.avatar :user="$user" :size="40"/>
+                    <x-ui.avatar :user="$user" :size="36"/>
                     <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                            <a href="{{ $base }}/{{ $user->id }}" class="truncate font-medium">{{ $user->name }}</a>
-                            <x-ui.pill :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')" class="!min-h-0 !py-0.5 text-xs">{{ $user->role->label() }}</x-ui.pill>
-                            @if ($user->canAccess(Section::Park) && !$user->isAdmin())<span class="chip text-xs">Парковка</span>@endif
-                            @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
-                        </div>
-                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                            @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}?preset=buyers&manager={{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
-                            @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif
-                            @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="tag nums">{{ $user->phoneFormatted() }}</a>@endif
-                            @if ($user->email)<a href="mailto:{{ $user->email }}" class="tag">{{ $user->email }}</a>@endif
-                            @if ($user->isManager() && isset($user->buyers_count))<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="tag">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
-                            @if ($user->isPending() || $user->isBuyer())<span class="tag nums">с {{ $user->created_at->translatedFormat('j M') }}</span>@endif
+                        <a href="{{ $base }}/{{ $user->id }}" class="block truncate">{{ $user->name }}</a>
+                        {{-- Всё о человеке одной строкой текста: роль, чей покупатель, логин, телефон, почта, покупатели. --}}
+                        <div class="row-sub">
+                            <span class="{{ $user->isAdmin() ? 'text-accent-text' : '' }}">{{ mb_strtolower($user->role->label()) }}</span>
+                            @if ($user->canAccess(Section::Park) && !$user->isAdmin())<span>парковка</span>@endif
+                            @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}?preset=buyers&manager={{ $user->manager_id }}" class="text-ink">{{ $user->manager->shortName() }}</a>@endif
+                            @if ($user->login)<span>{{ $user->login }}</span>@endif
+                            @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="nums">{{ $user->phoneFormatted() }}</a>@endif
+                            @if ($user->email)<a href="mailto:{{ $user->email }}">{{ $user->email }}</a>@endif
+                            @if ($user->isManager() && isset($user->buyers_count))<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="text-ink">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
+                            @if ($user->isPending() || $user->isBuyer())<span class="nums">с {{ $user->created_at->translatedFormat('j M') }}</span>@endif
                             {{-- Сотрудник или менеджер пришёл по одноразовой ссылке — чьей: без этого непонятно, кто его позвал. --}}
-                            @if (! $user->isBuyer() && $user->invite?->creator)<x-ui.person :user="$user->invite->creator" full prefix="по ссылке"/>@endif
+                            @if (! $user->isBuyer() && $user->invite?->creator)<span>по ссылке {{ $user->invite->creator->shortName() }}</span>@endif
                         </div>
                     </div>
+                    @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 shrink-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 shrink-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
                     @if (!$user->isApproved() && !$user->is($me))
                         <x-admin.user-access :user="$user" :base="$base"/>
                     @endif
