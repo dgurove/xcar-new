@@ -82,9 +82,10 @@ final class Release
             }
             $vehicle->update(['state' => VehicleState::Released, 'released_at' => $at, 'spot' => null]);
             if ($inspection) {
-                // Имя и подпись получателя в приложении не вводятся: подпись — ручкой на бумаге, имя — из пропуска
-                // (кто выпустил QR) или из письма о продаже.
-                $inspection['signer_name'] = ($inspection['signer_name'] ?? null) ?: ($pass?->name ?? $vehicle->pass()?->name ?? $vehicle->pickup_name);
+                // Имя и подпись получателя в приложении не вводятся: подпись — ручкой на бумаге, имя — из пропуска, по
+                // которому выдали. Без QR пропуску не верим (приехать мог другой человек): имя из письма о продаже, у
+                // выдачи по QR без него — пусто, строку в акте заполнят ручкой.
+                $inspection['signer_name'] = ($inspection['signer_name'] ?? null) ?: ($pass?->name ?? ($withoutQr === null ? $vehicle->pickup_name : null));
                 Inspection::create(['vehicle_id' => $vehicle->id, 'request_id' => $request?->id, 'kind' => InspectionKind::Release, 'at' => $at, 'user_id' => $by->id,
                     'damage_zones' => array_values($inspection['damage_zones'] ?? [])] + Intake::fields($inspection));
             }

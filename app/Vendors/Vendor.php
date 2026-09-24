@@ -92,15 +92,25 @@ class Vendor extends Model implements HasMedia
 
     /**
      * Ставка хранения по категориям ТС словами («250…450 ₽/сут по стоимости») — сводка для условий вендора:
-     * тот же отбор, что у начисления (договорной прайс поверх базового), по всем парковкам. Нет ставки — null.
+     * тот же отбор, что у начисления (договорной прайс поверх базового). Договорные цены бывают заданы по
+     * парковкам (у Альфы СПб — только Краснопутиловская), поэтому смотрим и каждую такую парковку: цена одна —
+     * пишем её, разные — «по парковкам» (подробности в пилюле «Тарифы»). Нет ставки нигде — null.
      *
      * @return array<string, ?string> категория => ставка
      */
     public function storageRates(): array
     {
-        return collect(Category::cases())
-            ->mapWithKeys(fn ($c) => [$c->label() => Tariff::ladderLabel(Tariff::ladderWhole($this->id, null, $c, TariffService::Storage))])
-            ->all();
+        $yards = Tariff::where('vendor_id', $this->id)->whereNotNull('yard_id')->distinct()->pluck('yard_id');
+
+        return collect(Category::cases())->mapWithKeys(function (Category $c) use ($yards) {
+            $labels = collect([null, ...$yards])
+                ->map(fn (?int $yard) => Tariff::ladderLabel(Tariff::ladderWhole($this->id, $yard, $c, TariffService::Storage)))
+                ->filter()->unique()->values();
+
+            return [$c->label() => match ($labels->count()) {
+                0 => null, 1 => $labels->first(), default => 'по парковкам'
+            }];
+        })->all();
     }
 
     public function party(): BelongsTo

@@ -144,41 +144,41 @@
         <x-ui.card title="Деньги" data-controller="sheet">
             {{-- Одна плашка строками: условия (открывают шторку «Условия»), что набежало и не выставлено (ведёт в счёт),
                  с какого дня платит покупатель, по какой день выставлено; ниже — счета и невыставленные начисления. --}}
-            @php $payers = collect($accrued)->filter(fn ($a) => $a['amount'] > 0); @endphp
+            @php $unbilledBy = collect($accrued)->filter(fn ($a) => $a['amount'] > 0); @endphp
             <div class="list">
-                <button type="button" class="pass-row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="contract:open">
+                <button type="button" class="row justify-between w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="contract:open">
                     <span class="min-w-0"><span class="block">{{ $vehicle->contract_kind === 'commission' ? 'Комиссия' : 'Хранение' }}</span><span class="nums block text-sm text-ink-muted">{{ $vehicle->contract_kind === 'commission' ? ($vehicle->assigned_price ? Money::rub($vehicle->assigned_price) : 'Условия не заданы') : ($storageRate ?: 'Ставка не задана') }}</span></span>
                     <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
                 </button>
-                @foreach ($payers as $payer => $a)
-                    <a href="/cars/{{ $vehicle->id }}/invoices/new?payer={{ $payer }}" class="pass-row">
-                        <span class="min-w-0"><span class="block">Не выставлено{{ $payers->count() > 1 ? ', '.mb_strtolower(\App\Billing\Accrual::payerLabel($payer)) : '' }}</span><span class="block text-sm text-ink-muted">за {{ $a['days'] }} дн</span></span>
+                @foreach ($unbilledBy as $payer => $a)
+                    <a href="/cars/{{ $vehicle->id }}/invoices/new?payer={{ $payer }}" class="row justify-between">
+                        <span class="min-w-0"><span class="block">Не выставлено{{ $unbilledBy->count() > 1 ? ', '.mb_strtolower(\App\Billing\Accrual::payerLabel($payer)) : '' }}</span><span class="block text-sm text-ink-muted">за {{ $a['days'] }} дн</span></span>
                         <span class="flex shrink-0 items-center gap-1"><span class="nums font-semibold">{{ Money::rub($a['amount']) }}</span><x-ui.icon name="chevron-right" class="size-4 text-ink-dim"/></span>
                     </a>
                 @endforeach
                 @if ($buyerFrom)
-                    <div class="pass-row"><span class="{{ $buyerFrom->isPast() ? 'text-danger' : 'text-ink-muted' }}">Покупатель платит с {{ $buyerFrom->translatedFormat('j M') }}</span><span class="nums">{{ Money::rub($buyerRate) }}/сут</span></div>
+                    <div class="row justify-between"><span class="{{ $buyerFrom->isPast() ? 'text-danger' : 'text-ink-muted' }}">Покупатель платит с {{ $buyerFrom->translatedFormat('j M') }}</span><span class="nums">{{ Money::rub($buyerRate) }}/сут</span></div>
                 @endif
                 {{-- До какого дня хранение выставлено: дальше счёт считается с этого дня, и это единственное место, где видно. --}}
                 @if ($vehicle->storage_billed_until)
-                    <div class="pass-row"><span class="text-ink-muted">Выставлено по</span><span class="nums">{{ $vehicle->storage_billed_until->translatedFormat('j F') }}</span></div>
+                    <div class="row justify-between"><span class="text-ink-muted">Выставлено по</span><span class="nums">{{ $vehicle->storage_billed_until->translatedFormat('j F') }}</span></div>
                 @endif
                 @if ($vehicle->contract_kind === 'commission')
-                    <a href="/acts/{{ $vehicle->id }}/contract" class="pass-row" data-turbo="false" target="_blank"><span>Договор комиссии</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></a>
-                    <a href="/acts/{{ $vehicle->id }}/handover" class="pass-row" data-turbo="false" target="_blank"><span>Акт приёма-передачи</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></a>
+                    <a href="/acts/{{ $vehicle->id }}/contract" class="row justify-between" data-turbo="false" target="_blank"><span>Договор комиссии</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></a>
+                    <a href="/acts/{{ $vehicle->id }}/handover" class="row justify-between" data-turbo="false" target="_blank"><span>Акт приёма-передачи</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></a>
                 @endif
             </div>
             @if ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty())
                 <div class="list mt-3">
                     @foreach ($vehicle->invoices as $inv)
-                        <a href="/money/invoices/{{ $inv->id }}" class="pass-row">
+                        <a href="/money/invoices/{{ $inv->id }}" class="row justify-between">
                             <span class="flex min-w-0 items-center gap-2.5"><x-billing.light :invoice="$inv"/><span class="min-w-0"><span class="block truncate">{{ $inv->isOwed() ? 'Мы должны' : \Illuminate\Support\Str::ucfirst($inv->label()) }}</span><span class="block truncate text-sm text-ink-muted">{{ $inv->party->name }}</span></span></span>
                             <span class="nums shrink-0 font-semibold">{{ Money::rub($inv->remaining() > 0 ? $inv->remaining() : $inv->total) }}</span>
                         </a>
                     @endforeach
                     @foreach ($pendingCharges as $c)
                         <form method="post" action="/cars/{{ $vehicle->id }}/charges/{{ $c->id }}" data-turbo-confirm="Снять начисление «{{ $c->title }}»?">@csrf @method('delete')
-                            <button class="pass-row w-full text-left"><span class="min-w-0"><span class="block truncate">{{ $c->title }}</span><span class="block text-sm text-ink-muted">не выставлено</span></span><span class="flex shrink-0 items-center gap-2"><span class="nums">{{ Money::rub($c->amount) }}</span><x-ui.icon name="x" class="size-4 text-ink-dim"/></span></button>
+                            <button class="row justify-between w-full text-left"><span class="min-w-0"><span class="block truncate">{{ $c->title }}</span><span class="block text-sm text-ink-muted">не выставлено</span></span><span class="flex shrink-0 items-center gap-2"><span class="nums">{{ Money::rub($c->amount) }}</span><x-ui.icon name="x" class="size-4 text-ink-dim"/></span></button>
                         </form>
                     @endforeach
                 </div>
@@ -299,7 +299,7 @@
                 <form method="post" action="/cars/{{ $vehicle->id }}/buyer/reject" class="flex flex-col gap-3">
                     @csrf
                     <div class="list">
-                        <div class="pass-row"><span class="min-w-0"><span class="block truncate">{{ $pass->name }}</span><span class="block text-sm text-ink-muted">анкета {{ $pass->submitted_at?->translatedFormat('j M, H:i') }}</span></span></div>
+                        <div class="row justify-between"><span class="min-w-0"><span class="block truncate">{{ $pass->name }}</span><span class="block text-sm text-ink-muted">анкета {{ $pass->submitted_at?->translatedFormat('j M, H:i') }}</span></span></div>
                     </div>
                     <x-ui.field name="reason" label="Что ответила страховая" type="textarea" required/>
                     <x-ui.button block variant="danger">Погасить пропуск</x-ui.button>
@@ -316,7 +316,7 @@
                      кнопка оживает на 20 знаках. --}}
                 <div class="flex flex-col gap-3" data-controller="min-length" data-min-length-min-value="20">
                     <div class="list">
-                        <div class="pass-row"><span class="min-w-0"><span class="block truncate">{{ $vehicle->titleWithYear() }}</span>@if ($vehicle->pickup_name)<span class="block truncate text-sm text-ink-muted">{{ $vehicle->pickup_name }}</span>@endif</span></div>
+                        <div class="row justify-between"><span class="min-w-0"><span class="block truncate">{{ $vehicle->titleWithYear() }}</span>@if ($vehicle->pickup_name)<span class="block truncate text-sm text-ink-muted">{{ $vehicle->pickup_name }}</span>@endif</span></div>
                     </div>
                     <div class="field {{ $errors->has('without_qr_reason') ? 'field-invalid' : '' }}">
                         <label for="without-qr-reason" class="field-label">Почему выдаёте без QR</label>

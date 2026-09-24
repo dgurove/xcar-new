@@ -18,6 +18,8 @@
 
         return [collect(), true];
     };
+    // «Только приёмка» прайс видит, но не правит: POST /tariffs/ladder — под park.manage.
+    $manage = (bool) auth()->user()?->canManagePark();
     $groups = [null => 'Любая категория'] + collect($categories)->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all();
 @endphp
 <div class="flex flex-col gap-4">
@@ -38,7 +40,7 @@
                 $available = collect($services)->reject(fn ($s) => in_array($s->value, $has, true))->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all();
             @endphp
             <div class="row" data-controller="sheet">
-                <button type="button" class="contents text-left" data-action="sheet#open">
+                <button type="button" class="contents text-left" @if ($manage) data-action="sheet#open" @endif>
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $catLabel }}</span>
                         {{-- Цены по услугам одной строкой; базовая цена там, где своей строки нет, — тусклым. --}}
@@ -49,8 +51,9 @@
                             @endforeach
                         </span>
                     </span>
-                    <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                    @if ($manage)<x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>@endif
                 </button>
+                @if ($manage)
                 {{-- Шторка остаётся открытой после сохранения (session('sheet')): прайс вводят лестницу за лестницей. --}}
                 <x-ui.sheet id="tariff-{{ $catValue ?? 'any' }}" :title="$catLabel" wide :open="session('sheet') === ($catValue ?? 'any') || ($errors->any() && old('sheet') === ($catValue ?? 'any'))">
                     <div class="flex flex-col gap-3">
@@ -60,6 +63,7 @@
                         @if ($available)<x-vendor.tariff-ladder :available="$available" :vendor-id="$vendorId" :yard-id="$yardId" :cat-value="$catValue"/>@endif
                     </div>
                 </x-ui.sheet>
+                @endif
             </div>
         @endforeach
     </div>

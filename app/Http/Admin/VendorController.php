@@ -59,7 +59,6 @@ class VendorController
     public function show(Request $request, Vendor $vendor)
     {
         $pill = array_key_exists($request->query('pill', ''), self::PILLS) ? $request->query('pill') : 'overview';
-        $vendor->load(['contacts.yard', 'media']);
         $data = [
             'vendor' => $vendor,
             'pill' => $pill,

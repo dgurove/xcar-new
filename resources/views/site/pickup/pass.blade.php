@@ -18,14 +18,14 @@
         @endif
     </div>
     <div class="list mt-4">
-        <div class="pass-row"><span class="text-ink-muted">Когда</span><span>{{ \Illuminate\Support\Str::ucfirst($pass->pickup_on->translatedFormat('l, j F')) }}</span></div>
+        <div class="row justify-between"><span class="text-ink-muted">Когда</span><span>{{ \Illuminate\Support\Str::ucfirst($pass->pickup_on->translatedFormat('l, j F')) }}</span></div>
         <x-pickup.yard :yard="$vehicle->yard"/>
-        <div class="pass-row"><span class="text-ink-muted">Получатель</span><span class="text-right">{{ $pass->name }}</span></div>
+        <div class="row justify-between"><span class="text-ink-muted">Получатель</span><span class="text-right">{{ $pass->name }}</span></div>
     </div>
     @if ($pass->isLive())
         <div class="list mt-4">
-            <a href="/pickup/{{ $code }}?edit=1" class="pass-row"><span>{{ $pass->isConfirmed() ? 'Изменить дату' : 'Изменить данные или дату' }}</span><x-ui.icon name="chevron-right" class="size-4 text-ink-dim"/></a>
-            <form method="post" action="/pickup/{{ $code }}/resend">@csrf<button type="submit" class="pass-row w-full text-left"><span class="min-w-0"><span class="block">Отправить на почту ещё раз</span><span class="block truncate text-sm text-ink-muted">{{ $pass->email }}</span></span><x-ui.icon name="send" class="size-4 shrink-0 text-ink-dim"/></button></form>
+            <a href="/pickup/{{ $code }}?edit=1" class="row justify-between"><span>{{ $pass->isConfirmed() ? 'Изменить дату' : 'Изменить данные или дату' }}</span><x-ui.icon name="chevron-right" class="size-4 text-ink-dim"/></a>
+            <form method="post" action="/pickup/{{ $code }}/resend">@csrf<button type="submit" class="row justify-between w-full text-left"><span class="min-w-0"><span class="block">Отправить на почту ещё раз</span><span class="block truncate text-sm text-ink-muted">{{ $pass->email }}</span></span><x-ui.icon name="send" class="size-4 shrink-0 text-ink-dim"/></button></form>
         </div>
     @endif
 </x-pickup.layout>

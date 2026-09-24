@@ -16,7 +16,6 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\Surface;
-use App\Vendors\ContactRole;
 use App\Vendors\DocRequirement;
 use App\Vendors\Kind;
 use App\Vendors\Parser;
@@ -77,7 +76,6 @@ class VendorController
             'templates' => Template::where('scope', Scope::Park)->orderBy('name')->pluck('name', 'id'),
             'docs' => DocRequirement::cases(),
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
-            'claims' => $vendor->defaultContact(ContactRole::Storage, ContactRole::Claims),
         ];
 
         if ($pill === 'tariffs') {

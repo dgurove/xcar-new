@@ -4,6 +4,9 @@
 @php
     $today = now()->startOfDay();
     $picked = old('pickup_on', $pass?->pickup_on?->toDateString());
+    // Подписи дней и месяцев своими: у Carbon «птн», «сбт», у браузера «пт», «сент.» — в одной ленте разнобой.
+    $wd = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+    $mon = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
     $days = collect(range(0, 13))->map(fn ($i) => $today->copy()->addDays($i));
     $later = $picked && ! $days->contains(fn ($d) => $d->toDateString() === $picked) ? \Illuminate\Support\Carbon::parse($picked) : null;
     $fields = [
@@ -18,7 +21,7 @@
     @if ($closed)
         <div class="pass-state pass-state--closed mt-4 rounded-(--radius-l)"><x-ui.icon name="check-circle" class="size-5"/>ТС уже не на парковке</div>
     @else
-        <form method="post" action="/pickup/{{ $vehicle->pickup_code }}" class="mt-2" data-controller="pickup-date">
+        <form method="post" action="/pickup/{{ $vehicle->pickup_code }}" class="mt-2" data-controller="pickup-date" data-pickup-date-weekdays-value='@json($wd)' data-pickup-date-months-value='@json($mon)'>
             @csrf
             <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true">
             @unless ($dateOnly)
@@ -37,14 +40,14 @@
             <div class="day-strip">
                 @foreach ($days as $i => $d)
                     <label class="day-pick"><input type="radio" name="pickup_on" value="{{ $d->toDateString() }}" @checked($picked === $d->toDateString()) required>
-                        <span><small>{{ [0 => 'сегодня', 1 => 'завтра'][$i] ?? $d->translatedFormat('D') }}</small><b class="nums">{{ $d->day }}</b><small>{{ $d->translatedFormat('M') }}</small></span>
+                        <span><small>{{ [0 => 'сегодня', 1 => 'завтра'][$i] ?? $wd[$d->dayOfWeekIso - 1] }}</small><b class="nums">{{ $d->day }}</b><small>{{ $mon[$d->month - 1] }}</small></span>
                     </label>
                 @endforeach
                 {{-- «Позже»: календарь поверх карточки — нажатие попадает прямо в системный выбор даты (iOS
                      не открывает его программно у скрытого поля). --}}
                 <label class="day-pick">
                     <input type="radio" name="pickup_on" value="{{ $later?->toDateString() }}" @checked($later) data-pickup-date-target="later">
-                    <span data-pickup-date-target="laterLabel">@if ($later)<small>{{ $later->translatedFormat('D') }}</small><b class="nums">{{ $later->day }}</b><small>{{ $later->translatedFormat('M') }}</small>@else<small>&nbsp;</small><x-ui.icon name="plus" class="size-6"/><small>позже</small>@endif</span>
+                    <span data-pickup-date-target="laterLabel">@if ($later)<small>{{ $wd[$later->dayOfWeekIso - 1] }}</small><b class="nums">{{ $later->day }}</b><small>{{ $mon[$later->month - 1] }}</small>@else<small>&nbsp;</small><x-ui.icon name="plus" class="size-6"/><small>позже</small>@endif</span>
                     <input type="date" class="day-pick-date" min="{{ $today->toDateString() }}" max="{{ $today->copy()->addMonths(6)->toDateString() }}" value="{{ $later?->toDateString() }}" aria-label="Другой день" data-action="change->pickup-date#pick">
                 </label>
             </div>

@@ -18,33 +18,33 @@
     @error('pass')<p class="field-error mt-2">{{ $message }}</p>@enderror
 @endif
 <div class="list release-list mt-3">
-    <label class="pass-row">
+    <label class="row justify-between">
         <span class="text-ink-muted">Когда</span>
         <input type="datetime-local" name="released_at" value="{{ old('released_at', now()->format('Y-m-d\TH:i')) }}" class="release-when">
     </label>
     @error('released_at')<p class="field-error px-4 pb-2">{{ $message }}</p>@enderror
     @if (! $qr && $who)
-        <div class="pass-row">
+        <div class="row justify-between">
             <span class="min-w-0"><span class="block truncate">{{ $who }}</span>@if ($vehicle->pickup_phone)<span class="nums block text-sm text-ink-muted">{{ $vehicle->pickup_phone }}</span>@endif</span>
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
         </div>
     @endif
     {{-- Держат выдачу только неоплаченные счета и наличные с покупателя; набежавшее вендору уйдёт счётом. --}}
     @if ($debt > 0)
-        <div class="pass-row"><span class="text-danger">Не оплачено</span><span class="nums text-danger">{{ Money::rub($debt) }}</span></div>
+        <div class="row justify-between"><span class="text-danger">Не оплачено</span><span class="nums text-danger">{{ Money::rub($debt) }}</span></div>
     @endif
     @if ($cashDue > 0)
-        <label class="pass-row cursor-pointer"><span class="min-w-0"><span class="block">Наличными с покупателя</span><span class="nums block text-sm text-danger">{{ Money::rub($cashDue) }}</span></span><input type="checkbox" switch name="cash" value="1" @checked(old('cash')) class="switch shrink-0" aria-label="Принял наличными"></label>
+        <label class="row justify-between cursor-pointer"><span class="min-w-0"><span class="block">Наличными с покупателя</span><span class="nums block text-sm text-danger">{{ Money::rub($cashDue) }}</span></span><input type="checkbox" switch name="cash" value="1" @checked(old('cash')) class="switch shrink-0" aria-label="Принял наличными"></label>
     @endif
     @if ($hold > 0)
         @if ($debtBlocks)
-            <label class="pass-row cursor-pointer"><span>Выдать с долгом</span><input type="checkbox" switch name="force" value="1" @checked(old('force')) class="switch shrink-0"></label>
+            <label class="row justify-between cursor-pointer"><span>Выдать с долгом</span><input type="checkbox" switch name="force" value="1" @checked(old('force')) class="switch shrink-0"></label>
         @else
-            <div class="pass-row"><span class="text-ink-muted">Вендору можно выдавать без оплаты</span></div>
+            <div class="row justify-between"><span class="text-ink-muted">Вендору можно выдавать без оплаты</span></div>
         @endif
     @endif
     @if ($vendorDue > 0)
-        <div class="pass-row"><span class="text-ink-muted">Вендору выставим счётом</span><span class="nums text-ink-muted">{{ Money::rub($vendorDue) }}</span></div>
+        <div class="row justify-between"><span class="text-ink-muted">Вендору выставим счётом</span><span class="nums text-ink-muted">{{ Money::rub($vendorDue) }}</span></div>
     @endif
 </div>
 <x-park.photos :vehicle="$vehicle" :stage="PhotoStage::Release" nested collapsed edit class="mt-3"/>

@@ -623,7 +623,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row { @apply flex items-center gap-3 rounded-(--radius-l) bg-surface p-3 sm:p-4; }
   .row-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 4.5rem; height: 3.25rem; }
   .row-photo img { @apply size-full object-cover; }
-  @media (hover: hover) { a.row:hover, .row:has(> a:hover) { @apply bg-hover; } }
+  @media (hover: hover) { a.row:hover, button.row:hover, .row:has(> a:hover) { @apply bg-hover; } }
   .row[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--color-accent); }
 
   /* Сгруппированный список (как «Настройки» iOS): одна скруглённая плашка на группу, строки внутри без своего
@@ -730,7 +730,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .pickup-main { @apply mx-auto flex min-h-dvh w-full max-w-md flex-col px-4; padding-top: calc(env(safe-area-inset-top) + 1.25rem); padding-bottom: calc(env(safe-area-inset-bottom) + 2rem); }
   .pickup-logo { @apply mb-6 self-center; }
 
-  /* Пропуск: QR на плашке, состояние полосой сверху; факты и действия — плашками .list строками .pass-row. */
+  /* Пропуск: QR на плашке, состояние полосой сверху; факты и действия — плашками .list строками .row. */
   .pass-card { @apply overflow-clip rounded-(--radius-xl) bg-surface; }
   .pass-state { @apply flex items-center gap-2 px-4 py-3 font-medium; }
   .pass-state--open { @apply bg-open-soft text-open; }
@@ -767,8 +767,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .day-pick-date { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 1; }
   .day-pick span > svg { @apply my-[3px] text-ink-muted; }
   .day-pick input:focus-visible + span { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .pass-row { @apply flex min-h-14 items-center justify-between gap-3 px-4 py-2.5; }
-  @media (hover: hover) { a.pass-row:hover, button.pass-row:hover { @apply bg-hover; } }
 
   /* Сканер QR (resources/js/qr/scanner.js), как камера iOS: видео во весь экран, окно с лаймовыми уголками и
      затемнением вокруг (код всё равно ищется по всему кадру — окно только подсказка глазу), сверху «закрыть» и
@@ -817,7 +815,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .qr-scan-tile-icon { @apply flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20; }
   .release-when { @apply min-w-0 bg-transparent text-right text-ink outline-none; font-size: 16px; }
   .release-when::-webkit-calendar-picker-indicator { opacity: .5; }
-  .release-list .pass-row { min-height: 3.25rem; }
+  .release-list .row { min-height: 3.25rem; }
   .qr-result { @apply flex items-start gap-3 rounded-(--radius-l) p-4; }
   .qr-result[hidden] { display: none; }
   .qr-result-icon { @apply flex size-10 shrink-0 items-center justify-center rounded-full text-white; }

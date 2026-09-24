@@ -2,17 +2,17 @@
 @php use App\Support\Money; use App\Vendors\RewardKind; @endphp
 <div class="flex flex-col gap-2">
     <div class="list">
-        <div class="pass-row"><span class="text-ink-muted">Формат сделки</span><span>{{ $vendor->deal_format->label() }}</span></div>
-        @if ($vendor->reward_kind)<div class="pass-row"><span class="text-ink-muted">Вознаграждение</span><span class="nums">{{ $vendor->reward_kind === RewardKind::Difference ? 'Разница цен' : ($vendor->reward_kind === RewardKind::Percent ? $vendor->reward_value.' %' : Money::rub($vendor->reward_value)) }}</span></div>@endif
-        @if ($vendor->answer_hours)<div class="pass-row"><span class="text-ink-muted">Ответ</span><span class="nums">{{ $vendor->answer_hours }} ч</span></div>@endif
-        @if ($vendor->binding_days)<div class="pass-row"><span class="text-ink-muted">Предложение держим</span><span class="nums">{{ $vendor->binding_days }} дн</span></div>@endif
-        <a href="{{ $park }}" class="pass-row" data-turbo="false"><span class="text-accent-text">Реквизиты, хранение, контакты, прайс</span><span class="text-accent-text">↗</span></a>
+        <div class="row justify-between"><span class="text-ink-muted">Формат сделки</span><span>{{ $vendor->deal_format->label() }}</span></div>
+        @if ($vendor->reward_kind)<div class="row justify-between"><span class="text-ink-muted">Вознаграждение</span><span class="nums">{{ $vendor->reward_kind === RewardKind::Difference ? 'Разница цен' : ($vendor->reward_kind === RewardKind::Percent ? $vendor->reward_value.' %' : Money::rub($vendor->reward_value)) }}</span></div>@endif
+        @if ($vendor->answer_hours)<div class="row justify-between"><span class="text-ink-muted">Ответ</span><span class="nums">{{ $vendor->answer_hours }} ч</span></div>@endif
+        @if ($vendor->binding_days)<div class="row justify-between"><span class="text-ink-muted">Предложение держим</span><span class="nums">{{ $vendor->binding_days }} дн</span></div>@endif
+        <a href="{{ $park }}" class="row justify-between" data-turbo="false"><span class="text-accent-text">Реквизиты, хранение, контакты, прайс</span><span class="text-accent-text">↗</span></a>
     </div>
     @if ($offers->isNotEmpty())
         <div class="list-head">Предложения <span class="nums">{{ $offersTotal }}</span></div>
         <div class="list">
             @foreach ($offers as $o)
-                <a href="/offers/{{ $o->number }}" class="pass-row">
+                <a href="/offers/{{ $o->number }}" class="row justify-between">
                     <span class="min-w-0"><span class="block truncate">{{ $o->titleWithYear() }}</span><span class="block truncate text-sm text-ink-muted">№ {{ $o->number }}, {{ mb_strtolower($o->state->label()) }}@if ($o->answer_by), до {{ $o->answer_by->translatedFormat('j M H:i') }}@endif</span></span>
                     @if ($o->floor_price)<span class="nums shrink-0 font-semibold">{{ Money::rub($o->floor_price) }}</span>@endif
                 </a>
