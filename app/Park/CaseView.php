@@ -14,7 +14,6 @@ use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Support\Money;
-use App\Users\Section;
 use App\Users\User;
 use App\Vendors\Tariff;
 use App\Vendors\TariffService;
@@ -67,7 +66,7 @@ final class CaseView
             'yards' => $yards->pluck('name', 'id'),
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),
             'slots' => PhotoSlot::cases(),
-            'staff' => User::where(fn ($q) => $q->whereJsonContains('access', Section::Park->value)->orWhere('role', 'admin'))->whereNotNull('approved_at')->whereNull('rejected_at')->orderBy('name')->get(),
+            'staff' => User::parkStaff()->whereNotNull('approved_at')->whereNull('rejected_at')->orderBy('name')->get(),
             'vendors' => Vendor::where(fn ($q) => $q->onPark()->where('is_active', true))->orWhere('id', $vehicle->vendor_id)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
             // Персональная ставка важнее прайса: `Accrual` считает по ней, а чип показывал бы лестницу вендора.

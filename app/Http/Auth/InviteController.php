@@ -3,6 +3,7 @@
 namespace App\Http\Auth;
 
 use App\Support\Phone;
+use App\Support\Surface;
 use App\Users\Actions\AcceptInvite;
 use App\Users\Invite;
 use Illuminate\Http\Request;
@@ -68,6 +69,10 @@ class InviteController
         $user = $accept($invite, $data, $request->file('avatar'));
         Auth::login($user, true);
         $request->session()->regenerate();
+
+        if ($user->isParking()) {
+            return redirect()->away(Surface::Park->url());
+        }
 
         return redirect($user->isManager() ? '/account' : '/')->with('toast', 'Добро пожаловать, '.$user->name);
     }

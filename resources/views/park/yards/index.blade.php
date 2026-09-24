@@ -1,14 +1,17 @@
 {{-- Площадки в три вида: плитка — название, адрес, чип свободных и карта мест; строка — то же без карты (нажатие —
      шторка с картой и формой); таблица — столбцы и окошко строки. Чип занятых мест ведёт к ТС. Цифр-итогов нет. --}}
-@php use App\Support\ListView; $view = ListView::pick(request(), $yards->count()) ?? ListView::GRID; $free = fn ($y) => $y->capacity ? max(0, $y->capacity - $y->stored_vehicles_count) : null; @endphp
+@php use App\Support\ListView; $admin = auth()->user()->isAdmin(); $view = ListView::pick(request(), $yards->count()) ?? ListView::GRID; $free = fn ($y) => $y->capacity ? max(0, $y->capacity - $y->stored_vehicles_count) : null; @endphp
 <x-ui.shell title="Парковки" :count="$yards->count()">
     <x-ui.toolbar :pills="['open' => 'Открытые', 'all' => 'Все']" :pill="$closed ? 'all' : 'open'" pill-param="closed" :counts="['all' => $closedCount ?: null]" :hidden="array_filter([ListView::PARAM => request(ListView::PARAM)])" name="yards">
         <x-slot:extra>
             <x-ui.view-switch :current="$view"/>
+            {{-- Заводит и правит парковки только админ: управляющему это настройки. --}}
+            @if ($admin)
             <span data-controller="sheet" class="contents">
                 <button type="button" class="btn btn-s btn-accent shrink-0 rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Парковка</span></button>
                 <x-ui.sheet id="yard-new" title="Новая парковка">@include('park.yards.form', ['yard' => null])</x-ui.sheet>
             </span>
+            @endif
         </x-slot:extra>
     </x-ui.toolbar>
     @if ($yards->isEmpty())
@@ -43,7 +46,7 @@
                     </button>
                     <x-ui.sheet id="yard-{{ $yard->id }}" :title="$yard->name" wide>
                         @if ($yard->rows)<div class="mb-4"><x-park.yard-map :yard="$yard" :occupied="$yard->storedVehicles->whereNotNull('spot')->keyBy('spot')"/></div>@endif
-                        @include('park.yards.form', ['yard' => $yard])
+                        @if ($admin)@include('park.yards.form', ['yard' => $yard])@endif
                     </x-ui.sheet>
                 </div>
             @endforeach
@@ -60,10 +63,10 @@
                                 @if ($yard->capacity)<a href="/cars?yard={{ $yard->id }}" class="tag nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) }} свободно</a>@else<a href="/cars?yard={{ $yard->id }}" class="tag nums">{{ $yard->stored_vehicles_count }} ТС</a>@endif
                             </div>
                         </div>
-                        <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
+                        @if ($admin)<button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>@endif
                     </div>
                     @if ($yard->rows)<x-park.yard-map :yard="$yard" :occupied="$yard->storedVehicles->whereNotNull('spot')->keyBy('spot')"/>@endif
-                    <x-ui.sheet id="yard-{{ $yard->id }}" title="Парковка">@include('park.yards.form', ['yard' => $yard])</x-ui.sheet>
+                    @if ($admin)<x-ui.sheet id="yard-{{ $yard->id }}" title="Парковка">@include('park.yards.form', ['yard' => $yard])</x-ui.sheet>@endif
                 </div>
             @endforeach
         </div>

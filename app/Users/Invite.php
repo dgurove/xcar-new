@@ -16,14 +16,14 @@ use Illuminate\Support\Str;
  * регистрации). Админ зовёт менеджеров — такая ссылка одноразовая (`max_uses` 1):
  * пришедший сразу становится менеджером — и покупателей от имени менеджера.
  */
-#[Fillable(['manager_id', 'role', 'created_by', 'code', 'label', 'fields', 'group_id', 'max_uses', 'expires_at', 'disabled_at'])]
+#[Fillable(['manager_id', 'role', 'created_by', 'code', 'label', 'fields', 'group_id', 'max_uses', 'expires_at', 'disabled_at', 'access', 'park_yard_id', 'park_readonly'])]
 class Invite extends Model
 {
     public const FIELDS = ['phone' => 'Телефон', 'email' => 'Почта'];
 
     protected function casts(): array
     {
-        return ['fields' => 'array', 'disabled_at' => 'datetime', 'expires_at' => 'datetime', 'role' => Role::class];
+        return ['fields' => 'array', 'disabled_at' => 'datetime', 'expires_at' => 'datetime', 'role' => Role::class, 'access' => 'array', 'park_readonly' => 'bool'];
     }
 
     public function getRouteKeyName(): string
@@ -79,6 +79,7 @@ class Invite extends Model
             Role::Manager => 'менеджеру',
             Role::Moderator => 'модератору',
             Role::Admin => 'администратору',
+            Role::Parking => 'управляющему парковкой',
             default => $this->role->label(),
         };
     }
@@ -97,6 +98,7 @@ class Invite extends Model
             Role::Manager => 'менеджером',
             Role::Moderator => 'модератором',
             Role::Admin => 'администратором',
+            Role::Parking => 'управляющим парковкой',
             default => mb_strtolower($this->role->label()),
         }.'. Ссылка одноразовая';
         if ($this->expires_at) {

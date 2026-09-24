@@ -6,6 +6,7 @@ use App\Billing\Party;
 use App\Chats\Chat;
 use App\Media\MediaUrl;
 use App\Offers\Interest;
+use App\Park\Area;
 use App\Park\Yard;
 use App\Support\Phone;
 use Database\Factories\UserFactory;
@@ -158,10 +159,28 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return ! $this->isApproved() && ! $this->isRejected();
     }
 
-    /** Стоянка: править вендоров, площадки, реквизиты ТС, отменять и удалять — не «только приёмка». */
+    /** Стоянка: реквизиты ТС, отмена, удаление, выдача по QR — не «только приёмка». Настройки — `isAdmin`. */
     public function canManagePark(): bool
     {
-        return $this->isAdmin() || ($this->canAccess(Section::Park) && ! $this->park_readonly);
+        return $this->isAdmin() || ($this->isParking() && ! $this->park_readonly);
+    }
+
+    /** Управляющий парковкой: только park.xcar, без продаж и настроек. */
+    public function isParking(): bool
+    {
+        return $this->role === Role::Parking;
+    }
+
+    /** Раздел парковки сверх основы (деньги, почта): админу — всё, управляющему — отмеченное. */
+    public function canPark(Area $area): bool
+    {
+        return $this->isAdmin() || ($this->isParking() && in_array($area->value, $this->access ?? [], true));
+    }
+
+    /** Кто работает на парковке: админы и управляющие — список «Кто ведёт», уведомления, закрытие месяца. */
+    public function scopeParkStaff($query)
+    {
+        return $query->whereIn('role', [Role::Admin, Role::Parking]);
     }
 
     public function party(): BelongsTo
@@ -174,9 +193,10 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->belongsTo(Yard::class, 'park_yard_id');
     }
 
+    /** Парковка — админам и управляющим (роль «Парковка»); менеджерам, покупателям и модераторам её нет. */
     public function canAccess(Section $section): bool
     {
-        return $this->isAdmin() || in_array($section->value, $this->access ?? [], true);
+        return $this->isAdmin() || ($section === Section::Park && $this->isParking());
     }
 
     public function wantsMail(): bool

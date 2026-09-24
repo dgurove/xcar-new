@@ -23,6 +23,10 @@ class SiteWall
         if (! $user) {
             return $request->expectsJson() ? abort(401) : redirect()->guest('/login');
         }
+        // Управляющему парковкой сайта нет: его место — park.xcar, туда и уводим.
+        if ($user->isParking()) {
+            return $request->expectsJson() ? abort(403) : redirect()->away(Surface::Park->url());
+        }
         if ($user->isApproved()) {
             return $next($request);
         }

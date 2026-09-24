@@ -220,7 +220,6 @@ class MoneyController
 
     public function close(Request $request, IssueInvoice $issue, StorageActPdf $act)
     {
-        abort_unless($request->user()->canManagePark(), 403);
         $data = $request->validate(['month' => ['required', 'date_format:Y-m'], 'items' => ['required', 'array'], 'items.*' => ['string', 'max:20']]);
         $result = Closing::issue(Carbon::createFromFormat('Y-m', $data['month']), $data['items'], $request->user(), $issue, $act);
         $sum = Money::rub($result['issued']->sum('total'));

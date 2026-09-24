@@ -6,6 +6,8 @@
     use App\Park\Actions\{UndoIntake, UndoRelease, UnwindVehicle};
     use App\Support\{Money, Surface};
     $state = $vehicle->state;
+    // Деньги дела (счета, начисления, долг) — тем, кому они открыты на парковке (галка «Деньги» у управляющего).
+    $money = auth()->user()->canPark(\App\Park\Area::Money);
     $open = $req !== null;
     $tow = $req?->isTow() ?? false;
     // Новая заявка на приём без звонка — сначала «Связались»; ?call=1 с чипа доставки — позвонить ещё раз (Contact меняет тип в обе стороны).
@@ -28,7 +30,7 @@
          Всё, что есть в полях (номер, вендор, телефон) и в «Деньгах» (ставка, начислено), тут не повторяется. --}}
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-park.state :vehicle="$vehicle"/>
-        @if ($debt > 0)<x-ui.pill tone="danger" :href="'/money?preset=all&car='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ Money::rub($debt) }}</x-ui.pill>@endif
+        @if ($debt > 0 && $money)<x-ui.pill tone="danger" :href="'/money?preset=all&car='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ Money::rub($debt) }}</x-ui.pill>@endif
         @if ($vehicle->sold_at)
             <button type="button" class="pill pill-urgent !min-h-0 !py-1 text-xs nums" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">Продано {{ $vehicle->sold_at->translatedFormat('j M') }}</button>
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->pickup_name ? $vehicle->pickup_name.' ' : 'Заберёт ' }}{{ $vehicle->pickup_phone }}</a>@elseif ($vehicle->pickup_name)<span class="chip">Заберёт {{ $vehicle->pickup_name }}</span>@endif
@@ -140,7 +142,7 @@
             @endif
         @endforeach
 
-        @if ($canManage && ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty() || $vehicle->accepted_at))
+        @if ($money && ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty() || $vehicle->accepted_at))
         <x-ui.card title="Деньги" data-controller="sheet">
             {{-- Одна плашка строками: условия (открывают шторку «Условия»), что набежало и не выставлено (ведёт в счёт),
                  с какого дня платит покупатель, по какой день выставлено; ниже — счета и невыставленные начисления. --}}

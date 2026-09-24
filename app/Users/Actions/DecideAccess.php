@@ -6,7 +6,6 @@ use App\Push\Subscription;
 use App\Users\Events\AccessDecided;
 use App\Users\Invite;
 use App\Users\Role;
-use App\Users\Section;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
@@ -21,11 +20,8 @@ final class DecideAccess
 {
     public function approve(User $user, Role $role, ?User $by = null): User
     {
-        $access = $user->access ?? [];
-        if ($role->isStaff() && ! in_array(Section::Park->value, $access, true)) {
-            $access[] = Section::Park->value;
-        }
-        $user->forceFill(['role' => $role, 'access' => $access, 'approved_at' => now(), 'approved_by' => $by?->id, 'rejected_at' => null])->save();
+        // Парковка — не часть роли сотрудника: её открывает только роль «Парковка» (или админ).
+        $user->forceFill(['role' => $role, 'approved_at' => now(), 'approved_by' => $by?->id, 'rejected_at' => null])->save();
         AccessDecided::dispatch($user, true, $by);
 
         return $user;

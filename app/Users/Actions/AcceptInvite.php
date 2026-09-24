@@ -6,6 +6,7 @@ use App\Media\PhotoIngest;
 use App\Users\Events\BuyerJoined;
 use App\Users\Events\ManagerJoined;
 use App\Users\Invite;
+use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +41,10 @@ final class AcceptInvite
                 'contact_fields' => $buyer ? $invite->contactFields() : [],
                 'approved_at' => now(),
                 'approved_by' => $invite->created_by,
+                // Управляющий парковкой получает доступ, заданный в ссылке.
+                'access' => $invite->role === Role::Parking ? ($invite->access ?? []) : [],
+                'park_yard_id' => $invite->role === Role::Parking ? $invite->park_yard_id : null,
+                'park_readonly' => $invite->role === Role::Parking && $invite->park_readonly,
             ]);
             if ($buyer && $invite->group_id) {
                 $user->groups()->attach($invite->group_id, ['created_at' => now()]);

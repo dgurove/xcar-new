@@ -1,7 +1,7 @@
 {{-- Карточка человека для сотрудников: контакт как у покупателя в кабинете (кружок, имя, чипы, ряд действий),
      ниже его чаты, у менеджера сделки, у покупателя интерес. Админу — «Изменить» тем же шитом, что в списке,
      ждущему — форма допуска. Из шапки чата открывается с «‹ Чат». --}}
-@php use App\Users\Section; use App\Http\Admin\UserController; $me = auth()->user(); $base = UserController::base(); $crm = \App\Support\Surface::current() === \App\Support\Surface::Crm; $link = ($link['user'] ?? null) === $user->id ? $link : null; @endphp
+@php use App\Http\Admin\UserController; $me = auth()->user(); $base = UserController::base(); $crm = \App\Support\Surface::current() === \App\Support\Surface::Crm; $link = ($link['user'] ?? null) === $user->id ? $link : null; @endphp
 <x-ui.cabinet :title="$user->name" :back="$back">
 
     <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
@@ -9,7 +9,6 @@
             <x-ui.contact :name="$user->name" :user="$user" sidebar>
                 <x-slot:chips>
                     <x-ui.pill :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')" class="!min-h-0 !py-0.5 text-xs">{{ $user->role->label() }}</x-ui.pill>
-                    @if ($user->canAccess(Section::Park) && !$user->isAdmin())<span class="chip text-xs">Парковка</span>@endif
                     @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
                     @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}/{{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
                     @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif

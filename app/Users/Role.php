@@ -9,6 +9,7 @@ enum Role: string
     case Manager = 'manager';     // внешний партнёр: цены, подтверждения, закупки, сделки, свои покупатели
     case Moderator = 'moderator'; // сотрудник: панель
     case Admin = 'admin';         // владелец: всё
+    case Parking = 'parking';     // управляющий парковкой: только park.xcar, разделы — по галкам (Park\Area), без настроек
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum Role: string
             self::Manager => 'Менеджер',
             self::Moderator => 'Модератор',
             self::Admin => 'Администратор',
+            self::Parking => 'Парковка',
         };
     }
 
@@ -47,7 +49,7 @@ enum Role: string
     /** Галерея «скоро в продаже» — для тех, кто торгуется, и посетителя; покупателю только открытое ему. */
     public function canSeeGallery(): bool
     {
-        return $this !== self::Buyer;
+        return ! in_array($this, [self::Buyer, self::Parking], true);
     }
 
     /** Чат по предложению: менеджер и посетитель — с площадкой, покупатель — со своим менеджером (нужен manager_id, см. User::canChat). */
@@ -59,7 +61,7 @@ enum Role: string
     /** Поделиться PDF — всем, кроме покупателя: его цена — не для пересылки дальше. */
     public function canShare(): bool
     {
-        return $this !== self::Buyer;
+        return ! in_array($this, [self::Buyer, self::Parking], true);
     }
 
     /** Проявляет интерес тот, кто не подтверждает ценой: покупатель и посетитель. */

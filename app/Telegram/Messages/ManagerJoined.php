@@ -12,7 +12,7 @@ final class ManagerJoined extends Message
 
     protected function title(): string
     {
-        return 'Новый '.mb_strtolower($this->manager->role->label());
+        return $this->manager->isParking() ? 'Новый управляющий парковкой' : 'Новый '.mb_strtolower($this->manager->role->label());
     }
 
     protected function lines(): array
@@ -35,6 +35,8 @@ final class ManagerJoined extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Менеджеры в CRM', 'url' => Surface::Crm->url('/settings/users?preset=managers')];
+        return $this->manager->isParking()
+            ? ['text' => 'Парковка в CRM', 'url' => Surface::Crm->url('/settings/users?preset=park')]
+            : ['text' => 'Менеджеры в CRM', 'url' => Surface::Crm->url('/settings/users?preset=managers')];
     }
 }

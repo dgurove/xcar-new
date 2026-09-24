@@ -13,6 +13,7 @@ use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Park\Area;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Phone;
@@ -22,7 +23,6 @@ use App\Users\Actions\IssuePasswordLink;
 use App\Users\Actions\TransferBuyer;
 use App\Users\Invite;
 use App\Users\Role;
-use App\Users\Section;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -33,10 +33,10 @@ use Illuminate\Validation\ValidationException;
 /** Пользователи: список и правки — администратору, карточка человека — любому сотруднику. */
 class UserController
 {
-    public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
+    public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'park' => 'Парковка', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
 
     /** Роли, которые админ выставляет в списке; заводят людей только пригласительной ссылкой. */
-    public const ROLES = [Role::Moderator, Role::Admin, Role::Manager];
+    public const ROLES = [Role::Moderator, Role::Admin, Role::Manager, Role::Parking];
 
     /** Один экран на двух хостах: в CRM /settings/users, в кабинете сайта /account/users. */
     public static function base(): string
@@ -58,6 +58,7 @@ class UserController
             'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->reorder('created_at', 'desc'),
             'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
             'managers' => $q->where('role', Role::Manager)->withCount('buyers'),
+            'park' => $q->where('role', Role::Parking),
             'buyers' => $q->where('role', Role::Buyer)->reorder('created_at', 'desc'),
             'visitors' => $q->where('role', Role::Visitor)->whereNotNull('approved_at'),
             'invites' => $q->whereRaw('false'),
@@ -74,6 +75,7 @@ class UserController
         $counts = [
             'staff' => User::whereIn('role', [Role::Admin, Role::Moderator])->count(),
             'managers' => User::where('role', Role::Manager)->count(),
+            'park' => User::where('role', Role::Parking)->count(),
             'buyers' => User::where('role', Role::Buyer)->count(),
             'invites' => Invite::whereNull('disabled_at')->where(fn ($w) => $w->whereNull('max_uses')->orWhereColumn('uses_count', '<', 'max_uses'))->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count(),
             'waiting' => User::whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->count(),
@@ -269,9 +271,12 @@ class UserController
         $data['phone'] = $data['phone'] ?: null;
         $data['login'] = $data['login'] ?? null;
         $data['role'] = $self ? Role::Admin : Role::from($data['role']);
-        $data['access'] = $request->boolean('park') ? [Section::Park->value] : [];
-        $data['park_yard_id'] = $request->boolean('park') && $request->filled('park_yard_id') ? (int) $request->input('park_yard_id') : null;
-        $data['park_readonly'] = $request->boolean('park') && $request->boolean('park_readonly');
+        // Доступ к парковке — только у роли «Парковка»: что открыто сверх основы, своя парковка, только приёмка.
+        $park = $data['role'] === Role::Parking;
+        $request->validate(['areas' => ['nullable', 'array'], 'areas.*' => [Rule::in(Area::values())], 'park_yard_id' => ['nullable', Rule::exists('park_yards', 'id')]]);
+        $data['access'] = $park ? array_values(array_intersect(Area::values(), (array) $request->input('areas', []))) : [];
+        $data['park_yard_id'] = $park && $request->filled('park_yard_id') ? (int) $request->input('park_yard_id') : null;
+        $data['park_readonly'] = $park && $request->boolean('park_readonly');
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
 
         return $data;
@@ -280,7 +285,7 @@ class UserController
     private function presetOf(Role $role): string
     {
         return match ($role) {
-            Role::Manager => 'managers', Role::Visitor => 'visitors', default => 'staff'
+            Role::Manager => 'managers', Role::Visitor => 'visitors', Role::Parking => 'park', default => 'staff'
         };
     }
 }

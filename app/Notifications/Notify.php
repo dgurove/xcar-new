@@ -44,7 +44,6 @@ use App\Users\Events\BuyerJoined;
 use App\Users\Events\ManagerJoined;
 use App\Users\Events\UserRegistered;
 use App\Users\Role;
-use App\Users\Section;
 use App\Users\User;
 use App\Workflow\Events\StageDue;
 use App\Workflow\Events\StageEntered;
@@ -334,7 +333,7 @@ final class Notify
 
     private function parkStaff()
     {
-        return User::where(fn ($q) => $q->where('role', Role::Admin)->orWhereJsonContains('access', Section::Park->value))->whereNotNull('approved_at')->get();
+        return User::parkStaff()->whereNotNull('approved_at')->get();
     }
 
     private function staff()

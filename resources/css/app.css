@@ -382,6 +382,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Ссылка админа: блок «для покупателя» виден только при роли «покупателю». */
   .invite-form:has(select[name="role"] option:checked:not([value="buyer"])) [data-buyer] { display: none !important; }
   .invite-form:has(select[name="role"] option[value="buyer"]:checked) [data-once] { display: none !important; }
+  /* Доступ управляющего парковкой — только при роли «Парковка» (ссылка админа и карточка человека). */
+  :is(.invite-form, .user-form):has(select[name="role"] option:checked:not([value="parking"])) [data-park] { display: none !important; }
   .row-sub { @apply mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted; }
 
   /* Режим выбора в ленте менеджера: кружок на каждой карточке, отмеченная — с обводкой.

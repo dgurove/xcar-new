@@ -20,6 +20,7 @@ use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Park\Area;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -50,10 +51,11 @@ final class Nav
             return array_values(array_filter([
                 self::item('Заявки', '/', ['/', '/requests']),
                 self::item('Наличие', '/cars'),
-                $user?->canManagePark() ? self::item('Деньги', '/money') : null,
-                self::item('Почта', '/mail'),
+                $user?->canPark(Area::Money) ? self::item('Деньги', '/money') : null,
+                $user?->canPark(Area::Mail) ? self::item('Почта', '/mail') : null,
                 self::item('Парковки', '/yards', tab: false),
-                self::item('Вендоры', '/vendors', tab: false),
+                // Вендоры — настройки: управляющему (роль «Парковка») их нет.
+                $user?->isAdmin() ? self::item('Вендоры', '/vendors', tab: false) : null,
             ]));
         }
 
@@ -197,8 +199,7 @@ final class Nav
         if ($surface === Surface::Park) {
             return ['' => array_values(array_filter([
                 self::link('Профиль', '/account', exact: true),
-                self::link('Вендоры', '/vendors'),
-                self::link('Тарифы', '/tariffs'),
+                ...($user->isAdmin() ? [self::link('Вендоры', '/vendors'), self::link('Тарифы', '/tariffs')] : []),
                 self::link('Парковки', '/yards'),
                 self::link('Уведомления', '/account/notifications'),
                 // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.

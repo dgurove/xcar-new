@@ -72,6 +72,7 @@ class LoginController
             Surface::Site => true,
         };
 
-        return $allowed ? $surface->home() : Surface::Site->url();
+        // Управляющий парковкой, вошедший на сайте или в CRM, — сразу на парковку.
+        return $allowed && ! ($user?->isParking() && $surface !== Surface::Park) ? $surface->home() : ($user?->isParking() ? Surface::Park->url() : Surface::Site->url());
     }
 }

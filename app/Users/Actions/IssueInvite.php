@@ -2,6 +2,7 @@
 
 namespace App\Users\Actions;
 
+use App\Park\Area;
 use App\Users\Invite;
 use App\Users\Role;
 use App\Users\User;
@@ -17,7 +18,7 @@ use Illuminate\Validation\Rule;
 final class IssueInvite
 {
     /** Кем может стать пришедший по ссылке админа. */
-    public const ROLES = [Role::Manager, Role::Moderator, Role::Admin, Role::Buyer];
+    public const ROLES = [Role::Manager, Role::Moderator, Role::Admin, Role::Parking, Role::Buyer];
 
     public function __invoke(User $by, array $data): Invite
     {
@@ -48,6 +49,12 @@ final class IssueInvite
             'max_uses' => $once ? 1 : null,
             'expires_at' => $once ? ($data['expires_at'] ?? null) : null,
             'fields' => $once ? ['phone' => true, 'email' => true] : $fields,
+            // Управляющему парковкой доступ задан в самой ссылке: что открыто сверх основы, какая парковка, только приёмка.
+            ...($role === Role::Parking ? [
+                'access' => array_values($data['areas'] ?? []),
+                'park_yard_id' => ($data['park_yard_id'] ?? null) ?: null,
+                'park_readonly' => (bool) ($data['park_readonly'] ?? false),
+            ] : []),
         ]);
     }
 
@@ -59,6 +66,10 @@ final class IssueInvite
             $rules['role'] = ['required', Rule::in(array_map(fn ($r) => $r->value, self::ROLES))];
             $rules['manager_id'] = ['required_if:role,buyer', 'nullable', Rule::exists('users', 'id')->where('role', Role::Manager->value)];
             $rules['expires_at'] = ['exclude_if:role,buyer', 'required', 'date', 'after:now'];
+            $rules['areas'] = ['exclude_unless:role,parking', 'nullable', 'array'];
+            $rules['areas.*'] = [Rule::in(Area::values())];
+            $rules['park_yard_id'] = ['exclude_unless:role,parking', 'nullable', Rule::exists('park_yards', 'id')];
+            $rules['park_readonly'] = ['exclude_unless:role,parking', 'boolean'];
         } else {
             $rules['group_id'] = ['nullable', Rule::exists('buyer_groups', 'id')->where('manager_id', $by->id)];
         }

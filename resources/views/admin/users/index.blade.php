@@ -1,4 +1,4 @@
-@php use App\Users\{Role, Section}; use App\Http\Admin\UserController; $me = auth()->user(); $link = session('password_link'); $base = UserController::base(); @endphp
+@php use App\Users\Role; use App\Http\Admin\UserController; $me = auth()->user(); $link = session('password_link'); $base = UserController::base(); @endphp
 {{-- Пользователи; пилюля «Ссылки» — все пригласительные ссылки тем же списком, что в кабинете
      (x-invites.list): первая строка — новая, менеджеру или покупателю от имени менеджера. --}}
 <x-ui.cabinet title="Пользователи">
@@ -32,7 +32,6 @@
                         {{-- Всё о человеке одной строкой текста: роль, чей покупатель, логин, телефон, почта, покупатели. --}}
                         <div class="row-sub">
                             <span class="{{ $user->isAdmin() ? 'text-accent-text' : '' }}">{{ mb_strtolower($user->role->label()) }}</span>
-                            @if ($user->canAccess(Section::Park) && !$user->isAdmin())<span>парковка</span>@endif
                             @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}?preset=buyers&manager={{ $user->manager_id }}" class="text-ink">{{ $user->manager->shortName() }}</a>@endif
                             @if ($user->login)<span>{{ $user->login }}</span>@endif
                             @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="nums">{{ $user->phoneFormatted() }}</a>@endif

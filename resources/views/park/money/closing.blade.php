@@ -25,7 +25,7 @@
                     </h2>
                     <div class="list">
                         @foreach ($rows as $r)
-                            @php $v = $r['vehicle']; $can = $r['ready'] && $me->canManagePark(); @endphp
+                            @php $v = $r['vehicle']; $can = $r['ready'] && $me->canPark(\App\Park\Area::Money); @endphp
                             <label class="row row-check {{ $can ? '' : 'opacity-60' }}">
                                 <span class="min-w-0 flex-1">
                                     <span class="block truncate"><a href="/cars/{{ $v->id }}" class="hover:underline">{{ $v->titleWithYear() }}</a></span>
@@ -45,7 +45,7 @@
                     </div>
                 </section>
             @endforeach
-            @if ($me->canManagePark())
+            @if ($me->canPark(\App\Park\Area::Money))
                 <x-ui.action-bar><x-ui.button class="min-w-0 flex-1" data-turbo-confirm="Выставить выбранные счета?"><span data-sum-target="label">Выставить</span></x-ui.button></x-ui.action-bar>
             @endif
         </form>

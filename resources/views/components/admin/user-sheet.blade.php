@@ -1,14 +1,14 @@
 {{-- Шит «Изменить» человека (админ): имя, у покупателя менеджер, у остальных контакты, роль и доступ;
      ниже ссылка на новый пароль, закрыть доступ или удалить. Открывается сам, если ссылка только что выдана. --}}
 @props(['user', 'managers', 'link' => null, 'base', 'me'])
-@php use App\Users\{Role, Section}; use App\Http\Admin\UserController; @endphp
+@php use App\Http\Admin\UserController; @endphp
 <x-ui.sheet id="user-{{ $user->id }}" :title="$user->name" :open="($link['user'] ?? null) === $user->id">
     @if (($link['user'] ?? null) === $user->id)
         <x-ui.copy-link :url="$link['url']" title="Ссылка для нового пароля" class="mb-6">
             <p class="text-sm text-ink-muted">Действует сутки, один раз. Отдайте её {{ $user->shortName() }} любым способом.</p>
         </x-ui.copy-link>
     @endif
-    <form method="post" action="{{ $base }}/{{ $user->id }}" class="flex flex-col gap-4">
+    <form method="post" action="{{ $base }}/{{ $user->id }}" class="user-form flex flex-col gap-4">
         @csrf @method('put')
         <x-ui.field name="name" label="Имя" :value="$user->name" required/>
         @if ($user->isBuyer())
@@ -23,14 +23,11 @@
             <x-ui.field name="email" label="Почта" type="email" :value="$user->email"/>
             <x-ui.field name="login" label="Логин" :value="$user->login" autocapitalize="none"/>
             <x-ui.field name="role" label="Роль" :options="collect(UserController::ROLES)->mapWithKeys(fn ($r) => [$r->value => $r->label()])" :value="$user->role->value" :disabled="$user->is($me)"/>
-            <div class="flex flex-wrap gap-x-6 gap-y-2">
-                <x-ui.check name="park" :checked="in_array(Section::Park->value, $user->access ?? [], true)">Парковка</x-ui.check>
-                <x-ui.check name="mail" :checked="$user->wantsMail()">Письма о событиях</x-ui.check>
+            {{-- Парковка — не галка у любой роли, а роль «Парковка» со своим доступом; админу открыто всё. --}}
+            <div data-park class="flex flex-col gap-3">
+                <x-park.access-fields :areas="$user->isParking() ? ($user->access ?? []) : []" :yard="$user->park_yard_id" :readonly="$user->park_readonly"/>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-                <x-ui.field name="park_yard_id" label="Своя парковка" :options="\App\Park\Yard::orderBy('name')->pluck('name', 'id')" placeholder="Все" :value="$user->park_yard_id"/>
-                <x-ui.check name="park_readonly" :checked="$user->park_readonly" class="self-end">Только приёмка</x-ui.check>
-            </div>
+            <x-ui.check name="mail" :checked="$user->wantsMail()">Письма о событиях</x-ui.check>
         @endif
         <x-ui.button block>Сохранить</x-ui.button>
     </form>
