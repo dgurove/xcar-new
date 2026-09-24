@@ -19,5 +19,5 @@
             <x-ui.check name="mine" :checked="request()->boolean('mine')">Мои</x-ui.check>
         </x-slot:filters>
     </x-ui.toolbar>
-    <div id="requests" class="mt-6 {{ $view === ListView::TABLE ? '' : ListView::containerClass($view) }}" data-controller="endless ticker">@include('park.requests.list')</div>
+    <div id="requests" class="mt-6 {{ ListView::isTable($view) ? '' : ListView::containerClass($view) }}" data-controller="endless ticker">@include('park.requests.list')</div>
 </x-ui.shell>

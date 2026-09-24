@@ -17,21 +17,21 @@
 @if ($vehicles->isEmpty())
     <x-ui.empty class="py-6">{{ $q !== '' ? 'Ничего не нашлось' : 'ТС нет' }}</x-ui.empty>
 @else
-    @if ($view === ListView::TABLE)
-        <x-ui.table id="vehicles" class="table-wrap--park" :open="$peek">
+    @if (ListView::isTable($view))
+        <x-ui.table id="vehicles" :view="$view" :open="$peek">
             <x-slot:head>
                 <tr>
                     <th class="grow">Марка, модель</th>
-                    <th class="park-ref hidden sm:table-cell">№ убытка</th>
-                    <th class="park-vendor hidden lg:table-cell">Вендор</th>
+                    <th class="cell-dim hidden sm:table-cell">№ убытка</th>
+                    <th class="cell-dim col-peek-hide hidden lg:table-cell">Вендор</th>
                     <th class="num"><a href="{{ $sortBy('longest') }}" data-turbo-action="replace" @if ($sort === 'longest') aria-current="true" @endif>Дней</a></th>
-                    <th class="num hidden sm:table-cell">₽/сут</th>
+                    <th class="num hidden sm:table-cell">₽/д</th>
                     <th class="num"><a href="{{ $sortBy('amount') }}" data-turbo-action="replace" @if ($sort === 'amount') aria-current="true" @endif>Начислено</a></th>
                 </tr>
             </x-slot:head>
             @foreach ($groups as $yardId => $group)
                 @if ($grouped)
-                    <tr class="table-group"><th colspan="6">{{ $yardId ? $group->first()->yard->name : 'Без парковки' }} <span class="nums">{{ $group->count() }}</span></th></tr>
+                    <tr class="table-group"><th colspan="6"><span class="table-group-name">{{ $yardId ? $group->first()->yard->name : 'Без парковки' }} <span class="nums">{{ $group->count() }}</span></span></th></tr>
                 @endif
                 @foreach ($group as $vehicle)<x-park.table-row :vehicle="$vehicle" :total="$totals[$vehicle->id] ?? null" :debt="$debts[$vehicle->id] ?? 0" :place="$q !== ''"/>@endforeach
             @endforeach

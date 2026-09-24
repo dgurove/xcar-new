@@ -21,7 +21,7 @@ final class ListPrefs
         // Таблица не запоминается: сама она включается только у длинного списка (ListView::pick),
         // а запомненная включалась бы и на трёх строках; вид в адресе — на этот раз.
         // rememberTable — у списков, где таблица и есть вид по умолчанию (почта): выбор «строками» и обратно помнится.
-        $table = fn ($v, $k) => ! $rememberTable && $k === ListView::PARAM && $v === ListView::TABLE;
+        $table = fn ($v, $k) => ! $rememberTable && $k === ListView::PARAM && ListView::isTable($v);
         $saved = array_filter(self::all($request)[$list] ?? [], fn ($v, $k) => ! $table($v, $k), ARRAY_FILTER_USE_BOTH);
         $given = array_filter($request->only(self::KEYS), fn ($v, $k) => is_string($v) && $v !== '' && ! $table($v, $k), ARRAY_FILTER_USE_BOTH);
         // Пришли по адресу с параметрами — это выбор, запоминаем.

@@ -104,7 +104,7 @@ class VehicleController
             'q' => $q,
             'view' => ListView::pick($request, $page->total()),
             // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты парковки.
-            'peek' => $request->query('peek') && $request->query('vid') === ListView::TABLE ? 'vehicle-'.(int) $request->query('peek') : null,
+            'peek' => $request->query('peek') && ListView::isTable($request->query('vid')) ? 'vehicle-'.(int) $request->query('peek') : null,
         ];
         // Живой поиск просит только список: тот же кусок, что рисует страницу.
         if ($request->header('X-List')) {

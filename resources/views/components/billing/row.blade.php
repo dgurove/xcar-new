@@ -1,17 +1,29 @@
-{{-- Счёт строкой: контрагент, за что, светофор, сумма. --}}
+{{-- Счёт строкой сгруппированного списка: контрагент, под ним номер, за что и ТС словами; справа сумма, под ней
+     светофор словом. --}}
 @props(['invoice'])
-@php use App\Support\Money; $i = $invoice; @endphp
+@php
+    use App\Billing\InvoiceState;
+    use App\Support\Money;
+    $i = $invoice;
+    [$word, $tone] = match (true) {
+        $i->state === InvoiceState::Void => ['аннулирован', 'text-ink-dim'],
+        $i->state === InvoiceState::Paid => ['оплачен', 'text-accent-text'],
+        $i->isOverdue() => ['просрочен '.$i->overdueDays().' дн', 'text-danger'],
+        $i->isPartial() => ['частично', 'text-urgent'],
+        default => ['до '.$i->due_at->translatedFormat('j M'), $i->light() === 'urgent' ? 'text-urgent' : 'text-ink-muted'],
+    };
+@endphp
 <a href="/money/invoices/{{ $i->id }}" class="row">
     <div class="min-w-0 flex-1">
-        <div class="flex items-baseline gap-2"><span class="truncate font-medium">{{ $i->party->name }}</span><span class="nums shrink-0 text-sm text-ink-muted">{{ $i->isOwed() ? 'мы должны' : $i->label() }}</span></div>
-        <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <x-billing.light :invoice="$i"/>
-            <span class="chip">{{ $i->kind->label() }}</span>
-            @if ($i->vehicle)<span class="tag">{{ $i->vehicle->titleWithYear() }}</span>@endif
+        <div class="truncate">{{ $i->party->name }}</div>
+        <div class="row-sub">
+            <span class="nums {{ $i->isOwed() ? 'text-urgent' : '' }}">{{ $i->isOwed() ? 'мы должны' : $i->label() }}</span>
+            <span>{{ $i->kind->label() }}</span>
+            @if ($i->vehicle)<span>{{ $i->vehicle->titleWithYear() }}</span>@endif
         </div>
     </div>
     <div class="shrink-0 text-right">
-        <div class="nums font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</div>
-        @if ($i->isPartial())<div class="nums text-xs text-ink-muted">из {{ Money::rub($i->total) }}</div>@endif
+        <div class="nums">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</div>
+        <div class="text-sm {{ $tone }}">{{ $word }}</div>
     </div>
 </a>

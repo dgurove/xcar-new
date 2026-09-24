@@ -626,83 +626,101 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { a.row:hover, .row:has(> a:hover) { @apply bg-hover; } }
   .row[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--color-accent); }
 
-  /* Таблица (третий вид списка): плотно, сотни строк; обводок нет — чётные
-     строки заливкой, шапка прилипает под шапку страницы, выбранная строка —
-     лаймовая заливка (её окошко внизу, .peek). Лишние столбцы на телефоне —
-     hidden sm:table-cell в разметке. */
+  /* Сгруппированный список (как «Настройки» iOS): одна скруглённая плашка на группу, строки внутри без своего
+     фона и зазора, между ними волосяная линия с отступом слева. Под названием строки — одна строка тусклого
+     текста (.row-sub в .list — текст, а не ряд чипов), справа одно главное: сумма, счётчик или одна пилюля.
+     Детьми плашки бывают и обёртки строки (шторка, свайп) — разделитель рисует сам ребёнок. .list-head —
+     заголовок группы над плашкой. */
+  .list { @apply flex flex-col overflow-clip rounded-(--radius-l) bg-surface; }
+  .sheet .list, .box .list { @apply bg-surface-2; }
+  .list .row { border-radius: 0; background: transparent; min-height: 3.5rem; padding: .625rem 1rem; gap: .75rem; }
+  .list > * + * { position: relative; }
+  .list > * + *::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
+  .list .row-sub { display: block; margin-top: .125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list .row-sub > * + * { margin-left: .5rem; }
+  .list-head { @apply flex items-baseline gap-1.5 px-1 pb-2 pt-3 text-lg font-medium text-ink; }
+  .list-head .nums { @apply font-normal text-ink-dim; }
+
+  /* Таблица (вид списка «Таблицей»): читают с телефона весь день, поэтому она устроена как список iOS.
+     Первый столбец — название в два этажа (.cell-title 15, под ним .cell-sub 13 тусклым: номер, факты,
+     состояние словом), справа главное число столбиком. На телефоне шапки нет и таблица от края до края;
+     столбцы, которых на телефоне нет, — hidden sm:table-cell в разметке, а то, что вместо них стоит во
+     второй строке, — sm:hidden. Зебры нет — волосяные разделители; группы — строки .table-group, липнут
+     под шапкой. Размеры — по шкале: 17 группа, 15 название и цифры, 13 вторичное, 12 шапка. */
   .table-wrap { @apply min-w-0; }
-  /* Столбцы по содержимому — номер, состояние, цена не режутся никогда; режется
-     только название: столбец .grow забирает остаток ширины. */
-  .table { @apply w-full border-collapse text-xs leading-tight sm:text-[13px]; table-layout: auto; }
+  .table { @apply w-full border-collapse; table-layout: auto; font-size: var(--text-base); line-height: 1.25; }
+  @media (max-width: 639.98px) { .table-box { margin-inline: -1rem; border-radius: 0 !important; } }
+  /* Режется только название: столбец .grow забирает остаток ширины, цифры — ровно по содержимому. */
   .table th.grow { width: 100%; }
   .table td.grow { max-width: 0; }
-  .table th, .table td { @apply px-1 py-1.5 text-left align-middle sm:px-2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .table th:first-child, .table td:first-child { @apply pl-2.5 sm:pl-3; }
-  .table th:last-child, .table td:last-child { @apply pr-2.5 sm:pr-3; }
-  .table thead th { @apply sticky z-10 bg-surface text-xs font-normal text-ink-muted; top: calc(var(--spacing-header) + env(safe-area-inset-top)); }
-  .table tbody tr { @apply cursor-pointer; height: 2.25rem; }
-  .table tbody tr:nth-child(even) { background: var(--color-ground); }
+  .table th, .table td { @apply text-left align-middle; padding: .5625rem .25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .table th:first-child, .table td:first-child { padding-left: 1rem; }
+  .table th:last-child, .table td:last-child { padding-right: 1rem; }
+  .table .num { @apply text-right; width: 1%; padding-left: .75rem; }
+  .table td.cell-dim { font-size: var(--text-sm); color: var(--color-ink-muted); }
+  @media (min-width: 640px) { .table .num { padding-left: 2rem; } .table .cell-dim { padding-left: 1.5rem; } }
+  .table thead th { @apply sticky z-10 bg-surface; top: calc(var(--spacing-header) + env(safe-area-inset-top)); height: 2rem; padding-block: 0; font-size: var(--text-xs); font-weight: 400; color: var(--color-ink-dim); }
+  @media (max-width: 639.98px) { .table thead { display: none; } }
+  .table thead a { display: inline-block; padding-block: .5rem; }
+  .table thead a[aria-current] { color: var(--color-ink); }
+  @media (hover: hover) { .table thead a:hover { color: var(--color-ink); } }
+  .table tbody tr { @apply cursor-pointer; height: 3.5rem; }
+  @media (min-width: 640px) { .table tbody tr { height: 2.75rem; } }
+  .table tbody tr + tr > * { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
+  .table tbody tr.table-group + tr > *, .table tbody tr + tr.table-group > * { border-top: 0; }
   @media (hover: hover) { .table tbody tr:hover { background: var(--color-hover); } }
   .table tbody tr[aria-selected="true"], .table tbody tr[aria-selected="true"]:hover { background: var(--color-accent-soft); }
   .table tbody tr:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
-  .table .num { @apply text-right; }
+  .table tbody tr.table-group, .table tbody tr.table-group:hover { height: auto; cursor: default; background: var(--color-surface); }
+  .table tr.table-group > th {
+    position: sticky; z-index: 9; top: calc(var(--spacing-header) + env(safe-area-inset-top));
+    padding-top: 1rem; padding-bottom: .375rem; background: var(--color-surface);
+    font-size: var(--text-lg); font-weight: 500; color: var(--color-ink);
+  }
+  .table tbody tr.table-group:first-child > th { padding-top: .75rem; }
+  @media (min-width: 640px) { .table tr.table-group > th { top: calc(var(--spacing-header) + env(safe-area-inset-top) + 2rem); } }
+  .table tr.table-group .nums { margin-left: .25rem; font-weight: 400; color: var(--color-ink-dim); }
+  /* Ячейка в два этажа; от 640 второй этаж встаёт в линию за названием. */
+  .cell-title, .cell-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cell-sub { margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .cell-sub > * + * { margin-left: .375rem; }
+  @media (min-width: 640px) {
+    .table td.grow > .cell-title, .table td.grow > .cell-sub { display: inline; }
+    .table td.grow > .cell-sub { margin: 0 0 0 .5rem; }
+    .table td.grow > .cell-sub:empty { display: none; }
+  }
+  /* Копирование номера — по наведению: иконка в каждой строке была шумом. На телефоне — в окошке. */
+  .table .cell-dim .vincode > svg { opacity: 0; transition: opacity var(--dur-fast); }
+  @media (hover: hover) { .table tr:hover .cell-dim .vincode > svg { opacity: 1; } }
+  /* Окошко встало панелью справа — такой столбец уже написан в нём, а название снова читается целиком. */
+  @media (min-width: 1024px) { .table-wrap:has(.peek:not([hidden])) .col-peek-hide { display: none !important; } }
   .table .dot { @apply mr-1.5 inline-block size-2 shrink-0 rounded-full bg-line align-[1px]; }
   .table .dot-open { background: var(--color-accent); }
   .table .dot-urgent { background: var(--color-urgent); }
   .table .dot-danger { background: var(--color-danger); }
-
-  /* «Наличие» (x-park.table-row): таблица, которую читают с телефона весь день. Ячейка ТС в два этажа —
-     название 15, под ним 12 тусклым госномер и номер убытка (как Почта и Акции в iOS), поэтому на телефоне
-     три столбца и ничего не уезжает вбок; от 640 второй этаж встаёт в линию за названием. Зебры нет —
-     волосяные разделители; парковки — заголовками групп, липнут под шапкой таблицы. */
-  /* Размеры — по шкале: 15 название и цифры, 13 всё вторичное (госномер, номер, вендор, ставка), 12 шапка.
-     На ПК так же: одинаковые 13 по всей строке не давали глазу за что зацепиться. */
-  .table-wrap--park .table { font-size: var(--text-base); line-height: 1.25; }
-  /* На телефоне — от края до края, как простой список iOS: поля экрана стали полями строки, и номер
-     убытка во второй строке влезает целиком. */
-  @media (max-width: 639.98px) { .table-wrap--park .table-box { margin-inline: -1rem; border-radius: 0; } }
-  .table-wrap--park .table th, .table-wrap--park .table td { padding-block: .5625rem; }
-  .table-wrap--park .table th:first-child, .table-wrap--park .table td:first-child { padding-left: 1rem; }
-  .table-wrap--park .table th:last-child, .table-wrap--park .table td:last-child { padding-right: 1rem; }
-  /* Столбцы цифр — ровно по содержимому (width: 1%), всё остальное отдаётся названию. */
-  .table-wrap--park .table .num { width: 1%; padding-left: .75rem; padding-right: 0; }
-  @media (min-width: 640px) { .table-wrap--park .table .num { padding-left: 2rem; } .table-wrap--park .table .park-ref { padding-left: 1.5rem; } }
-  .table-wrap--park .table thead th { height: 2rem; padding-block: 0; font-size: var(--text-xs); color: var(--color-ink-dim); }
-  /* На телефоне шапки нет: три столбца читаются и так, а сортировка — кнопкой в тулбаре. */
-  @media (max-width: 639.98px) { .table-wrap--park .table thead { display: none; } }
-  .table-wrap--park .table thead a { display: inline-block; padding-block: .5rem; }
-  .table-wrap--park .table thead a[aria-current] { color: var(--color-ink); }
-  @media (hover: hover) { .table-wrap--park .table thead a:hover { color: var(--color-ink); } }
-  .table-wrap--park .table tbody tr { height: 3.5rem; }
-  @media (min-width: 640px) { .table-wrap--park .table tbody tr { height: 2.75rem; } }
-  .table-wrap--park .table tbody tr:nth-child(even) { background: none; }
-  .table-wrap--park .table tbody tr + tr > * { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
-  .table-wrap--park .table tbody tr.table-group + tr > *, .table-wrap--park .table tbody tr + tr.table-group > * { border-top: 0; }
-  .table-wrap--park .table tbody tr.table-group { height: auto; cursor: default; background: var(--color-surface); }
-  .table-wrap--park .table tr.table-group > th {
-    position: sticky; z-index: 9; top: calc(var(--spacing-header) + env(safe-area-inset-top));
-    padding-top: 1rem; padding-bottom: .375rem; background: var(--color-surface);
-    font-size: var(--text-base); font-weight: 500; color: var(--color-ink);
+  /* «Подробной таблицей» (?vid=wide, x-ui.table view): на телефоне шапка и все столбцы, что видны на ПК,
+     таблица листается вбок, название и имя группы стоят на месте. То, что стояло во второй строке вместо
+     столбцов (sm:hidden), здесь лишнее. Шапка при этом вниз не липнет: липкость считается от ближайшего
+     прокручиваемого блока, а им стала таблица. На ПК подробная совпадает с краткой. */
+  @media (max-width: 639.98px) {
+    .table-wrap.is-wide .table-box { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+    .table-wrap.is-wide .table { width: max-content; min-width: 100%; }
+    .table-wrap.is-wide .table thead { display: table-header-group; }
+    .table-wrap.is-wide .table thead th { position: static; top: auto; }
+    .table-wrap.is-wide .table th.hidden, .table-wrap.is-wide .table td.hidden { display: table-cell !important; }
+    .table-wrap.is-wide .cell-sub .sm\:hidden, .table-wrap.is-wide .cell-sub.sm\:hidden { display: none; }
+    .table-wrap.is-wide .table .grow { width: 10.5rem; min-width: 10.5rem; max-width: 10.5rem; }
+    .table-wrap.is-wide .table td:not(:first-child), .table-wrap.is-wide .table th:not(:first-child) { padding-left: 1.25rem; }
+    .table-wrap.is-wide .table td.cell-dim { max-width: 12rem; }
+    .table-wrap.is-wide .table tr > :first-child:not([colspan]) {
+      position: sticky; left: 0; z-index: 2; background: var(--color-surface);
+      box-shadow: inset -1px 0 0 color-mix(in oklab, var(--color-line) 70%, transparent);
+    }
+    .table-wrap.is-wide .table thead tr > :first-child { z-index: 11; }
+    .table-wrap.is-wide .table tr[aria-selected="true"] > :first-child { background: linear-gradient(var(--color-accent-soft), var(--color-accent-soft)), var(--color-surface); }
+    .table-wrap.is-wide .table tr.table-group > th { position: static; overflow: visible; }
+    .table-wrap.is-wide .table-group-name { display: inline-block; position: sticky; left: 1rem; }
   }
-  .table-wrap--park .table tbody tr.table-group:first-child > th { padding-top: .75rem; }
-  @media (min-width: 640px) { .table-wrap--park .table tr.table-group > th { top: calc(var(--spacing-header) + env(safe-area-inset-top) + 2rem); } }
-  .table-wrap--park .table tr.table-group .nums { margin-left: .25rem; font-weight: 400; color: var(--color-ink-dim); }
-  @media (hover: hover) { .table-wrap--park .table tbody tr.table-group:hover { background: var(--color-surface); } }
-  .park-title, .park-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .park-sub { margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
-  .table-wrap--park .park-ref, .table-wrap--park .park-vendor, .table-wrap--park .park-rate { font-size: var(--text-sm); }
-  .table-wrap--park .park-sum { font-weight: 500; }
-  .park-sub > * + * { margin-left: .375rem; }
-  @media (min-width: 640px) {
-    .table-wrap--park td.grow > .park-title, .table-wrap--park td.grow > .park-sub { display: inline; }
-    .table-wrap--park td.grow > .park-sub { margin: 0 0 0 .5rem; }
-  }
-  .table-wrap--park .park-ref { color: var(--color-ink-muted); }
-  /* Окошко встало панелью справа — вендор уже написан в нём, а без столбца название снова читается целиком. */
-  @media (min-width: 1024px) { .table-wrap--park:has(.peek:not([hidden])) .park-vendor { display: none !important; } }
-  /* Копирование номера — по наведению: иконка в каждой строке была шумом. */
-  .table-wrap--park .park-ref .vincode > svg { opacity: 0; transition: opacity var(--dur-fast); }
-  @media (hover: hover) { .table-wrap--park tr:hover .park-ref .vincode > svg { opacity: 1; } }
 
   /* Меню под кнопкой (вид списка): popover в top layer, место ставит menu_controller. */
   .menu { @apply rounded-(--radius-l) bg-surface p-1.5 text-ink shadow-(--shadow-drop); position: fixed; inset: auto; margin: 0; border: 0; min-width: 11rem; }
@@ -1393,6 +1411,20 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* Место в ряду уступает вендор, а не номер убытка: номер читают и копируют, вендор узнаётся по началу. */
 .surface-park .cards:not(.cards--grid) .card-extra > .tag-shrink {
   display: inline-block; flex: 0 1 auto; min-width: 2.5rem; overflow: hidden; text-overflow: ellipsis;
+}
+/* Факты под названием — одной строкой текста (.card-sub), как во второй строке таблицы, а не рядом чипов. */
+.card-sub { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-ink-muted); }
+.card-sub > * + * { margin-left: .5rem; }
+.surface-park .cards:not(.cards--grid) .card-extra > .card-sub { flex: 1 1 auto; }
+/* Строки стоянки и CRM — сгруппированным списком, как «Настройки» iOS: одна плашка, строки без зазора и
+   своего скругления, между ними волосяная линия. Плитки остаются плитками. */
+.surface-crm .cards--list, .surface-park .cards--list { gap: 0; border-radius: var(--radius-l); overflow: clip; background: var(--color-surface); }
+.surface-crm .cards--list > .card, .surface-park .cards--list > .card { border-radius: 0; }
+.surface-crm .cards--list > .card + .card, .surface-park .cards--list > .card + .card { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
+@media (max-width: 639.98px) {
+  .surface-crm .cards:not(.cards--grid), .surface-park .cards:not(.cards--grid) { gap: 0; border-radius: var(--radius-l); overflow: clip; background: var(--color-surface); }
+  .surface-crm .cards:not(.cards--grid) > .card, .surface-park .cards:not(.cards--grid) > .card { border-radius: 0; }
+  .surface-crm .cards:not(.cards--grid) > .card + .card, .surface-park .cards:not(.cards--grid) > .card + .card { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
 }
 .surface-crm .cards--grid, .surface-park .cards--grid {
   --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;

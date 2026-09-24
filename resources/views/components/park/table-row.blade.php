@@ -15,8 +15,8 @@
 @endphp
 <tr id="vehicle-{{ $vehicle->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="park-title">{{ $vehicle->titleWithYear() }}</span>
-        <span class="park-sub">
+        <span class="cell-title">{{ $vehicle->titleWithYear() }}</span>
+        <span class="cell-sub">
             @if ($state !== VehicleState::Stored)<span>{{ mb_strtolower($state->label()) }}</span>@endif
             <x-park.alerts :vehicle="$vehicle" plain :place="$place"/>
             @if ($vehicle->plate)<span>{{ $vehicle->plate }}</span>@endif
@@ -24,8 +24,8 @@
             @if ($place && $vehicle->yard)<span>{{ $vehicle->yard->name }}</span>@endif
         </span>
     </td>
-    <td class="park-ref hidden sm:table-cell">@if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</td>
-    <td class="park-vendor hidden text-ink-muted lg:table-cell"><span class="block max-w-44 truncate">{{ $vehicle->vendor?->name }}</span></td>
+    <td class="cell-dim hidden sm:table-cell">@if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</td>
+    <td class="cell-dim col-peek-hide hidden lg:table-cell"><span class="block max-w-44 truncate">{{ $vehicle->vendor?->name }}</span></td>
     <td class="num nums">
         @if ($state === VehicleState::Released && $vehicle->released_at)
             <time class="text-ink-muted" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ $vehicle->released_at->translatedFormat('j M') }}</time>
@@ -33,10 +33,10 @@
             <span class="{{ match (Idle::tone($days)) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', default => '' } }}">{{ $days }}</span>
         @endif
     </td>
-    <td class="park-rate num nums hidden text-ink-muted sm:table-cell">@if ($rate){{ Money::nums($rate) }}@endif</td>
+    <td class="cell-dim num nums hidden sm:table-cell">@if ($rate){{ Money::nums($rate) }}@endif</td>
     <td class="num nums">
-        @if ($amount > 0)<span class="park-sum block">{{ Money::nums($amount) }}</span>@endif
-        @if ($debt > 0)<span class="park-sub text-danger">долг {{ Money::nums($debt) }}</span>
-        @elseif ($rate)<span class="park-sub sm:hidden">{{ Money::nums($rate) }}/сут</span>@endif
+        @if ($amount > 0)<span class="block">{{ Money::nums($amount) }}</span>@endif
+        @if ($debt > 0)<span class="cell-sub text-danger">долг {{ Money::nums($debt) }}</span>
+        @elseif ($rate)<span class="cell-sub sm:hidden">{{ Money::nums($rate) }}/д</span>@endif
     </td>
 </tr>

@@ -11,24 +11,24 @@
         </x-slot:filters>
     </x-ui.toolbar>
     @if ($vendors->isEmpty())<x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Вендоров нет' }}</x-ui.empty>@endif
-    <div class="mt-6 flex flex-col gap-2">
+    <div class="list mt-6">
         @foreach ($vendors as $vendor)
             @php $c = $vendor->contacts->firstWhere('role', ContactRole::Storage) ?? $vendor->contacts->first(); @endphp
             <div class="row" data-controller="sheet">
                 <button type="button" class="contents text-left" data-action="sheet#open">
                     <span class="min-w-0 flex-1">
-                        <span class="block font-medium">{{ $vendor->name }} @if ($vendor->stored_count)<span class="text-sm text-ink-muted tabular-nums">{{ $vendor->stored_count }}</span>@endif</span>
-                        <span class="row-sub mt-1.5 flex flex-wrap items-center gap-1.5">
-                            @unless ($vendor->is_active)<span class="chip">не работаем</span>@endunless
+                        <span class="block truncate">{{ $vendor->name }}</span>
+                        <span class="row-sub">
+                            @unless ($vendor->is_active)<span class="text-ink">не работаем</span>@endunless
                             {{-- Реквизиты правятся в CRM, а видеть дырку надо там, где работают: без них счёт печатается с прочерками. --}}
-                            @if ($vendor->stored_count && $vendor->kind->billable() && ! \App\Billing\Party::forVendor($vendor, false)->billable())<span class="tag tag-urgent">Нет реквизитов для счёта</span>@endif
-                            @if ($vendor->kind !== Kind::Insurer)<span class="tag">{{ $vendor->kind->label() }}</span>@endif
-                            @if ($c?->name)<span class="tag">{{ $c->name }}</span>@endif
-                            @if ($c?->phone)<span class="tag nums">{{ $c->phoneFormatted() }}</span>@endif
-                            @if ($c?->email)<span class="tag">{{ $c->email }}</span>@endif
-                            @foreach ($vendor->intake_docs ?? [] as $d)@if ($doc = \App\Vendors\DocRequirement::tryFrom($d))<span class="chip">{{ $doc->label() }}</span>@endif @endforeach
+                            @if ($vendor->stored_count && $vendor->kind->billable() && ! \App\Billing\Party::forVendor($vendor, false)->billable())<span class="text-urgent">нет реквизитов для счёта</span>@endif
+                            @if ($vendor->kind !== Kind::Insurer)<span>{{ $vendor->kind->label() }}</span>@endif
+                            @if ($c?->name)<span>{{ $c->name }}</span>@endif
+                            @if ($c?->phone)<span class="nums">{{ $c->phoneFormatted() }}</span>@endif
+                            @if ($c?->email)<span>{{ $c->email }}</span>@endif
                         </span>
                     </span>
+                    @if ($vendor->stored_count)<span class="nums shrink-0 text-ink-dim">{{ $vendor->stored_count }}</span>@endif
                 </button>
                 @if ($c?->phone)<a href="tel:+{{ $c->phoneDigits() }}" class="btn btn-quiet btn-round btn-s" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
                 <x-ui.sheet id="vendor-{{ $vendor->id }}" :title="$vendor->name">
@@ -54,7 +54,8 @@
                 </x-ui.sheet>
             </div>
         @endforeach
-        <div data-controller="sheet">
+    </div>
+    <div class="mt-3" data-controller="sheet">
             <x-ui.button type="button" variant="secondary" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Вендор</x-ui.button>
             <x-ui.sheet id="vendor-new" title="Новый вендор" :open="$errors->has('name')">
                 <form method="post" action="/clients" class="flex flex-col gap-4">
@@ -64,6 +65,5 @@
                     <x-ui.button block>Добавить</x-ui.button>
                 </form>
             </x-ui.sheet>
-        </div>
     </div>
 </x-ui.shell>

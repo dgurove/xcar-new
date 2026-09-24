@@ -13,28 +13,32 @@
     </x-ui.toolbar>
     @if ($yards->isEmpty())
         <x-ui.empty class="mt-6">Площадок нет</x-ui.empty>
-    @elseif ($view === ListView::TABLE)
-        <x-ui.table id="yards" class="mt-6">
-            <x-slot:head><tr><th class="grow">Парковка</th><th class="hidden sm:table-cell">Город</th><th class="num">Мест</th><th class="num">Занято</th><th class="num">Свободно</th></tr></x-slot:head>
+    @elseif (ListView::isTable($view))
+        <x-ui.table id="yards" class="mt-6" :view="$view">
+            <x-slot:head><tr><th class="grow">Парковка</th><th class="cell-dim hidden sm:table-cell">Город</th><th class="num hidden sm:table-cell">Мест</th><th class="num">Занято</th><th class="num">Свободно</th></tr></x-slot:head>
             @foreach ($yards as $yard)
                 <tr id="yard-{{ $yard->id }}" data-peek-url="/yards/{{ $yard->id }}/peek" data-href="/cars?yard={{ $yard->id }}" tabindex="0" class="{{ $yard->is_active ? '' : 'text-ink-dim' }}">
-                    <td class="grow">{{ $yard->name }}@unless ($yard->is_active) <span class="text-ink-dim">закрыта</span>@endunless</td>
-                    <td class="hidden sm:table-cell"><x-ui.place>{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</x-ui.place></td>
-                    <td class="num nums">{{ $yard->capacity ?: '—' }}</td>
+                    <td class="grow">
+                        <span class="cell-title">{{ $yard->name }}</span>
+                        <span class="cell-sub">@unless ($yard->is_active)<span>закрыта</span>@endunless<span class="sm:hidden">{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</span></span>
+                    </td>
+                    <td class="cell-dim hidden sm:table-cell">{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</td>
+                    <td class="num nums hidden sm:table-cell">{{ $yard->capacity ?: '' }}</td>
                     <td class="num nums">{{ $yard->stored_vehicles_count }}</td>
-                    <td class="num nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) ?? '—' }}</td>
+                    <td class="num nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) ?? '' }}</td>
                 </tr>
             @endforeach
         </x-ui.table>
     @elseif ($view === ListView::LIST)
-        <div class="mt-6 flex flex-col gap-2">
+        <div class="list mt-6">
             @foreach ($yards as $yard)
-                <div data-controller="sheet" class="contents">
+                <div data-controller="sheet">
                     <button type="button" class="row w-full text-left" data-action="sheet#open">
                         <div class="min-w-0 flex-1">
-                            <div class="font-medium">{{ $yard->name }}@unless ($yard->is_active) <span class="font-normal text-ink-dim">закрыта</span>@endunless</div>
-                            <div class="row-sub"><x-ui.place class="tag">{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</x-ui.place>@if ($yard->capacity)<span class="tag nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) }} свободно</span>@endif<span class="tag nums">{{ $yard->stored_vehicles_count }} ТС</span></div>
+                            <div class="truncate">{{ $yard->name }}</div>
+                            <div class="row-sub">@unless ($yard->is_active)<span class="text-ink">закрыта</span>@endunless<span>{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</span>@if ($yard->capacity)<span class="nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) }} свободно</span>@endif</div>
                         </div>
+                        <span class="nums shrink-0 text-ink-dim">{{ $yard->stored_vehicles_count }}</span>
                         <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
                     </button>
                     <x-ui.sheet id="yard-{{ $yard->id }}" :title="$yard->name" wide>

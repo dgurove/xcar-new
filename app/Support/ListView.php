@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 /**
  * Вид списка: без выбора — строки на телефоне и плитки от 640 (решает CSS),
- * `?vid=list`, `?vid=grid` и `?vid=table` — явный выбор, он живёт в адресе;
+ * `?vid=list`, `?vid=grid`, `?vid=table` и `?vid=wide` (подробная таблица) — явный выбор, он живёт в адресе;
  * без выбора список длиннее 20 строк открывается таблицей (pick).
  * Таблица — своя разметка (x-ui.table), не .cards.
  * Сколько на странице — `?per=` из набора вида (perPage): плиткам 24 / 48 / 96 (три колонки по
@@ -34,7 +34,16 @@ final class ListView
 
     public const TABLE = 'table';
 
-    public const ALL = [self::GRID, self::LIST, self::TABLE];
+    /** Подробная таблица: на телефоне все столбцы, что видны на ПК, с прокруткой вбок; на ПК — как TABLE. */
+    public const WIDE = 'wide';
+
+    public const ALL = [self::GRID, self::LIST, self::TABLE, self::WIDE];
+
+    /** Таблица любого вида — краткая или подробная: одна разметка, одна страница, одно окошко. */
+    public static function isTable(?string $view): bool
+    {
+        return $view === self::TABLE || $view === self::WIDE;
+    }
 
     public static function fromRequest(Request $request): ?string
     {
@@ -47,7 +56,7 @@ final class ListView
     public static function perSizes(?string $view): array
     {
         return match ($view) {
-            self::TABLE => [],
+            self::TABLE, self::WIDE => [],
             self::LIST => self::PER_LIST,
             default => self::PER_GRID,
         };
@@ -69,7 +78,7 @@ final class ListView
     {
         $count = $q->count();
         $view = self::pick($request, $count);
-        $per = $view === self::TABLE ? max($count, 1) : self::perPage($request, self::perSizes($view));
+        $per = self::isTable($view) ? max($count, 1) : self::perPage($request, self::perSizes($view));
 
         return $q->paginate($per)->withQueryString();
     }
@@ -87,7 +96,7 @@ final class ListView
     public static function sizes(?string $view): string
     {
         return match ($view) {
-            self::LIST, self::TABLE => '(min-width: 640px) 6rem, 4.5rem',
+            self::LIST, self::TABLE, self::WIDE => '(min-width: 640px) 6rem, 4.5rem',
             self::GRID => '(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw',
             default => '(min-width: 1024px) 320px, (min-width: 640px) 45vw, 4.5rem',
         };

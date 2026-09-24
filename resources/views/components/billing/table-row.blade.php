@@ -1,15 +1,33 @@
-{{-- Строка таблицы счетов: номер, контрагент, за что, срок со светофором, сумма, остаток. Нажатие — окошко. --}}
+{{-- Строка таблицы счетов. Ячейка в два этажа: контрагент, под ним срок светофором («до 25 сен», «оплачен»),
+     номер и за что; от 640 номер, «за что» и срок встают своими столбцами. «Мы должны» — словом, у всех ширин.
+     Справа сумма (у частично оплаченного — остаток), под ней на телефоне «из N». Нажатие — окошко. --}}
 @props(['invoice'])
-@php use App\Support\Money; $i = $invoice; $href = '/money/invoices/'.$i->id; @endphp
-<tr id="invoice-{{ $i->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0" class="{{ $i->isOwed() ? 'text-urgent' : '' }}">
-    <td class="nums text-[11px] text-ink-dim sm:text-[13px]">{{ $i->isOwed() ? '→ ' : '' }}{{ $i->label() }}</td>
-    {{-- На телефоне срок и «за что» — под контрагентом, столбцы «Срок» и «Остаток» от 640. --}}
-    @php $due = $i->state === \App\Billing\InvoiceState::Issued ? $i->due_at->translatedFormat('j M') : $i->state->label(); $dot = match ($i->light()) { 'open' => 'dot-open', 'urgent', 'danger' => 'dot-urgent', default => '' }; @endphp
+@php
+    use App\Billing\InvoiceState;
+    use App\Support\Money;
+    $i = $invoice;
+    $href = '/money/invoices/'.$i->id;
+    $due = $i->state === InvoiceState::Issued ? 'до '.$i->due_at->translatedFormat('j M') : mb_strtolower($i->state->label());
+    $tone = match ($i->light()) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => '' };
+    $what = $i->vehicle ? $i->vehicle->titleWithYear() : ($i->deal ? 'сделка' : $i->kind->label());
+    $left = $i->remaining();
+@endphp
+<tr id="invoice-{{ $i->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="block truncate">{{ $i->party->name }}<span class="hidden text-ink-muted sm:inline"> {{ $i->vehicle ? $i->vehicle->titleWithYear() : ($i->deal ? 'сделка' : $i->kind->label()) }}</span></span>
-        <span class="block truncate text-[11px] text-ink-dim sm:hidden"><span class="dot {{ $dot }}"></span>{{ $due }} {{ $i->vehicle ? $i->vehicle->titleWithYear() : $i->kind->label() }}</span>
+        <span class="cell-title">{{ $i->party->name }}</span>
+        <span class="cell-sub">
+            @if ($i->isOwed())<span class="text-urgent">мы должны</span>@endif
+            <span class="sm:hidden {{ $tone }}">{{ $due }}</span>
+            <span class="sm:hidden">{{ $i->label() }}</span>
+            <span class="sm:hidden">{{ $what }}</span>
+        </span>
     </td>
-    <td class="hidden text-[13px] sm:table-cell"><span class="dot {{ $dot }}"></span>{{ $due }}</td>
-    <td class="num nums {{ $i->remaining() > 0 ? 'font-semibold' : '' }}">{{ Money::rub($i->remaining() > 0 && $i->remaining() < $i->total ? $i->remaining() : $i->total) }}</td>
-    <td class="num nums hidden sm:table-cell {{ $i->remaining() > 0 ? 'font-semibold' : 'text-ink-dim' }}">{{ $i->remaining() > 0 ? Money::rub($i->remaining()) : '—' }}</td>
+    <td class="cell-dim hidden sm:table-cell">{{ $i->label() }}</td>
+    <td class="cell-dim col-peek-hide hidden lg:table-cell"><span class="block max-w-56 truncate">{{ $what }}</span></td>
+    <td class="hidden sm:table-cell {{ $tone }}">{{ $due }}</td>
+    <td class="num nums">
+        {{ Money::nums($i->isPartial() ? $left : $i->total) }}
+        @if ($i->isPartial())<span class="cell-sub sm:hidden">из {{ Money::nums($i->total) }}</span>@endif
+    </td>
+    <td class="cell-dim num nums hidden sm:table-cell">@if ($left > 0 && $i->state === InvoiceState::Issued){{ Money::nums($left) }}@endif</td>
 </tr>

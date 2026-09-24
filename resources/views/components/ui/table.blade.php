@@ -4,9 +4,10 @@
      x-ui.peek строки; формы внутри отвечают в окошко (PeekBack), строка таблицы
      обновляется из ответа. Строка — <tr data-peek-url data-href tabindex="0">:
      нажатие — окошко, двойное или ⌘Enter — на страницу, Enter — раскрыть/свернуть,
-     ↑/↓ и стрелки у счётчика — по строкам; open — id строки, которую открыть сразу (?peek=). --}}
-@props(['head', 'id' => null, 'open' => null])
-<div {{ $attributes->merge(['class' => 'table-wrap']) }} data-controller="peek" data-action="keydown->peek#key turbo:frame-load->peek#loaded turbo:before-fetch-request->peek#request" @if ($open) data-peek-open-value="{{ $open }}" @endif @if ($id) id="{{ $id }}" @endif>
+     ↑/↓ и стрелки у счётчика — по строкам; open — id строки, которую открыть сразу (?peek=);
+     view — вид списка: подробная (wide) на телефоне показывает все столбцы и листается вбок. --}}
+@props(['head', 'id' => null, 'open' => null, 'view' => null])
+<div {{ $attributes->merge(['class' => 'table-wrap'.($view === \App\Support\ListView::WIDE ? ' is-wide' : '')]) }} data-controller="peek" data-action="keydown->peek#key turbo:frame-load->peek#loaded turbo:before-fetch-request->peek#request" @if ($open) data-peek-open-value="{{ $open }}" @endif @if ($id) id="{{ $id }}" @endif>
     <div class="table-box">
         <table class="table">
             <thead>{{ $head }}</thead>
