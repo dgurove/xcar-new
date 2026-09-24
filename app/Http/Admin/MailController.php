@@ -393,6 +393,11 @@ class MailController
                 ? ($vehicle->vendor?->email(ContactRole::Accounting, ContactRole::Storage, ContactRole::Claims) ?? $parent?->replyToAddress() ?? '')
                 : ($parent?->replyToAddress() ?? $vehicle->vendor?->email(ContactRole::Storage, ContactRole::Claims) ?? '')];
         }
+        // Письмо о приёме у вендора с выдачей по QR — со ссылкой на анкету покупателя: в шаблоне её нет — абзацем
+        // перед подписью (шаблоны в базе заведены раньше, чем появилась выдача по QR).
+        if ($vehicle && $template && $vehicle->releasesByQr() && $request->query('act') === 'intake' && ! str_contains((string) $template->body, 'pickup_link')) {
+            $template = (clone $template)->forceFill(['body' => self::withPickupNotice((string) $template->body)]);
+        }
         $defaults = $composer->fresh($account, $template, $values);
         if ($parent) {
             $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
@@ -645,6 +650,14 @@ class MailController
         return $zones || $note ? trim(implode(', ', $zones).($note ? '. '.$note : ''), '. ') : 'не обнаружены';
     }
 
+    /** Абзац про выдачу по QR — перед «С уважением», а без него — в конец. */
+    private static function withPickupNotice(string $body): string
+    {
+        $at = mb_strpos($body, 'С уважением');
+
+        return $at === false ? rtrim($body)."\n\n".Template::PICKUP_NOTICE : rtrim(mb_substr($body, 0, $at))."\n\n".Template::PICKUP_NOTICE."\n\n".mb_substr($body, $at);
+    }
+
     public static function vehiclePlaceholders(Vehicle $vehicle): array
     {
         $vehicle->loadMissing(['brand', 'model', 'vendor', 'yard', 'inspections']);
@@ -661,6 +674,7 @@ class MailController
             'damages' => self::damagesLine($vehicle),
             'client' => $vehicle->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),
+            'pickup_link' => $vehicle->releasesByQr() ? $vehicle->pickupUrl() : '',
         ];
     }
 

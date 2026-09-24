@@ -13,6 +13,7 @@
             <span class="tag">счёт {{ mb_strtolower($vendor->billing_cadence->label()) }}</span>
             @if ($vendor->buyer_pays_late)<span class="tag nums">опоздавший покупатель ×{{ rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.') }}</span>@endif
             @if ($vendor->release_without_payment)<span class="tag">выдача без оплаты</span>@endif
+            @if ($vendor->release_by_qr)<span class="tag">выдача по QR</span>@endif
             @if ($vendor->legal_name)<span class="tag">{{ $vendor->legal_name }}</span>@endif
             @if ($vendor->inn)<span class="tag nums">ИНН {{ $vendor->inn }}</span>@endif
             @if ($vendor->bank_account)<span class="tag nums">р/с {{ $vendor->bank_account }}</span>@endif

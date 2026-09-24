@@ -51,8 +51,9 @@ class ClientController
             'contact_name' => ['nullable', 'string', 'max:80'], 'phone' => ['nullable', 'string', 'max:20'], 'email' => ['nullable', 'email', 'max:120'],
             'intake_docs' => ['nullable', 'array'], 'intake_docs.*' => [Rule::enum(DocRequirement::class)],
             'intake_note' => ['nullable', 'string', 'max:2000'], 'notes' => ['nullable', 'string', 'max:2000'],
+            'release_by_qr' => ['boolean'],
         ]);
-        $client->update(['kind' => $data['kind'], 'intake_docs' => array_values($data['intake_docs'] ?? []), 'intake_note' => $data['intake_note'] ?? null, 'notes' => $data['notes'] ?? null]);
+        $client->update(['kind' => $data['kind'], 'intake_docs' => array_values($data['intake_docs'] ?? []), 'intake_note' => $data['intake_note'] ?? null, 'notes' => $data['notes'] ?? null, 'release_by_qr' => $request->boolean('release_by_qr')]);
         $contact = $client->contacts->firstWhere('role', ContactRole::Storage);
         $fields = ['name' => $data['contact_name'] ?? null, 'phone' => $data['phone'] ?? null, 'email' => $data['email'] ?? null];
         if (array_filter($fields)) {

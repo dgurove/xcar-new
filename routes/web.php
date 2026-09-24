@@ -23,6 +23,7 @@ use App\Http\Site\FavoriteController;
 use App\Http\Site\FileController;
 use App\Http\Site\InterestController;
 use App\Http\Site\OfferController;
+use App\Http\Site\PickupController;
 use App\Http\Site\PurchaseController;
 use App\Http\Site\ShareController;
 use App\Support\LegacyAdmin;
@@ -44,6 +45,13 @@ Route::post('/contacts', [EnquiryController::class, 'store'])->middleware('throt
 Route::view('/privacy', 'site.pages.obrabotka-dannyh');
 Route::view('/terms', 'site.pages.soglashenie');
 Route::view('/consent', 'site.pages.soglasie');
+// Выдача по QR: анкета покупателя по ссылке от страховой и страница, которую открывает камера по QR пропуска.
+Route::get('/pickup/{code}', [PickupController::class, 'show'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:60,1');
+Route::post('/pickup/{code}', [PickupController::class, 'store'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:5,1');
+Route::post('/pickup/{code}/resend', [PickupController::class, 'resend'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:3,10');
+// В QR адрес заглавными (буквенно-цифровой режим, крупные модули) — путь /P/…, руками набирают /p/….
+Route::get('/p/{code}', [PickupController::class, 'scanned'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:60,1');
+Route::get('/P/{code}', [PickupController::class, 'scanned'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:60,1');
 // Лента чата открыта и гостю с обращением — право решает Chat::allows по cookie.
 Route::get('/chats/{chat}/messages', [ChatController::class, 'messages'])->middleware('throttle:120,1');
 Route::post('/chats/{chat}/messages', [ChatController::class, 'post'])->middleware('throttle:30,1');

@@ -37,7 +37,7 @@ class VehicleEvent extends Model
             EventType::Moved => 'Переставлена'.(! empty($p['from']) ? ' с «'.$p['from'].'»' : '').(! empty($p['to']) ? ' на «'.$p['to'].'»' : ''),
             EventType::Inspected => 'Осмотрена'.(! empty($p['note']) ? ': '.$p['note'] : ''),
             EventType::Towed => 'Эвакуация'.(! empty($p['note']) ? ': '.$p['note'] : ''),
-            EventType::Released => 'Выдана'.(! empty($p['to']) ? ' — '.$p['to'] : '').(! empty($p['unpaid']) ? ', с долгом '.Money::rub($p['unpaid']) : ''),
+            EventType::Released => 'Выдана'.(! empty($p['to']) ? ' — '.$p['to'] : '').(! empty($p['pass']) ? ', по QR' : '').(! empty($p['without_qr']) ? ', без QR: '.$p['without_qr'] : '').(! empty($p['unpaid']) ? ', с долгом '.Money::rub($p['unpaid']) : ''),
             EventType::Note => (string) ($p['text'] ?? ''),
             EventType::Updated => 'Изменена: '.FieldLabels::list($p['fields'] ?? []),
             EventType::DocSent => ($p['direction'] ?? 'out') === 'in' ? 'Получено от вендора: '.($p['doc'] ?? '') : 'Отправлено вендору: '.($p['doc'] ?? ''),
@@ -61,6 +61,10 @@ class VehicleEvent extends Model
             EventType::Restored => 'Снова ждём'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
             EventType::IntakeUndone => 'Приём отменён'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
             EventType::ReleaseUndone => 'Выдача отменена'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
+            EventType::PickupLinkSent => 'Ссылка на анкету покупателя отправлена вендору',
+            EventType::BuyerForm => 'Покупатель заполнил анкету: '.($p['name'] ?? '').(! empty($p['date']) ? ', заберёт '.$p['date'] : ''),
+            EventType::BuyerConfirmed => 'Покупатель подтверждён'.(! empty($p['name']) ? ': '.$p['name'] : '').(! empty($p['note']) ? ', '.$p['note'] : ''),
+            EventType::BuyerRejected => 'Не покупатель'.(! empty($p['name']) ? ': '.$p['name'] : '').(! empty($p['reason']) ? ', '.$p['reason'] : ''),
         };
     }
 }

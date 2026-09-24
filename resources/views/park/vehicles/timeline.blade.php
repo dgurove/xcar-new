@@ -33,6 +33,14 @@
                     </div>
                     @if ($step->hint)<p class="step-hint">{{ $step->hint }}</p>@endif
                     @include('park.vehicles.steps.'.$partial, ['req' => $r, 'step' => $step])
+                @elseif ($step->key === 'buyer' && $step->state === Step::TODO)
+                    {{-- Анкета покупателя (выдача по QR): не текущий шаг, но с делом — ссылка или «Страховая подтвердила». --}}
+                    <div class="step-head">
+                        <span class="step-title">{{ $step->title }}</span>
+                        @if ($step->at)<span class="tag nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif
+                        @foreach ($step->chips as $chip)<span class="tag">{{ $chip }}</span>@endforeach
+                    </div>
+                    @include('park.vehicles.steps.buyer')
                 @elseif ($step->key === 'reply')
                     {{-- Письмо, которое ждёт ответа: текст и два действия, форма текущего шага при этом на месте. --}}
                     <div class="step-head"><span class="step-title">{{ $step->title }}</span>@if ($step->at)<span class="tag nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif</div>

@@ -113,6 +113,10 @@
         @endforeach
         {{-- «Сделано» у каждого ждущего письма своё: форма не может лежать внутри act-form. --}}
         @foreach ($asks ?? [] as $a)<form method="post" action="/cars/{{ $vehicle->id }}/letters/{{ $a->id }}/done" id="reply-form-{{ $a->id }}">@csrf</form>@endforeach
+        @if ($byQr ?? false)
+            <form method="post" action="/cars/{{ $vehicle->id }}/pickup-link" id="pickup-link-form">@csrf</form>
+            <form method="post" action="/cars/{{ $vehicle->id }}/buyer/confirm" id="buyer-confirm-form">@csrf</form>
+        @endif
         @if ($spawn)<form method="post" action="/requests" id="spawn-form">@csrf<input type="hidden" name="type" value="{{ $spawn[0] }}"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"></form>@endif
 
         {{-- На телефоне факты дела идут под формой; на ПК — правая колонка (ниже). --}}
@@ -263,6 +267,36 @@
                     <x-ui.field name="reason" label="Почему отказался" type="textarea" required/>
                     <x-ui.button block>Записать отказ</x-ui.button>
                 </form>
+            </x-ui.sheet>
+        </div>
+    @endif
+
+    @if ($canManage && ($pass ?? null)?->isLive() && ! $pass->isConfirmed())
+        <div data-controller="sheet" data-action="buyer-reject:open@window->sheet#open" class="contents">
+            <x-ui.sheet id="buyer-reject" title="Не покупатель">
+                {{-- Страховая не подтвердила: пропуск гаснет, та же ссылка снова открывает пустую анкету. --}}
+                <form method="post" action="/cars/{{ $vehicle->id }}/buyer/reject" class="flex flex-col gap-3">
+                    @csrf
+                    <x-ui.field name="reason" label="Что ответила страховая" type="textarea" required/>
+                    <x-ui.button block variant="danger">Погасить пропуск</x-ui.button>
+                </form>
+            </x-ui.sheet>
+        </div>
+    @endif
+
+    @if ($canManage && ($byQr ?? false) && $state === VehicleState::Stored && $req?->type === RequestType::Release)
+        <div data-controller="sheet" data-action="without-qr:open@window->sheet#open" class="contents">
+            <x-ui.sheet id="without-qr" title="Выдать без QR-кода?" :open="$errors->has('without_qr_reason')">
+                {{-- Крайний случай: причина от 20 знаков уходит в историю ТС, в акт и владельцу в Telegram. Поле связано с
+                     формой выдачи (form="act-form"): дата, подпись и остальное берутся оттуда. --}}
+                <div class="flex flex-col gap-3" data-controller="min-length" data-min-length-min-value="20">
+                    <div class="field {{ $errors->has('without_qr_reason') ? 'field-invalid' : '' }}">
+                        <label for="without-qr-reason" class="field-label">Почему выдаёте без QR</label>
+                        <textarea id="without-qr-reason" name="without_qr_reason" form="act-form" rows="4" class="field-input" data-min-length-target="input" data-action="input->min-length#check">{{ old('without_qr_reason') }}</textarea>
+                        <p class="field-error {{ $errors->has('without_qr_reason') ? '' : 'hidden' }}" data-min-length-target="error">{{ $errors->first('without_qr_reason') ?: 'Опишите причину подробнее, от 20 знаков' }}</p>
+                    </div>
+                    <button type="submit" form="act-form" name="without_qr" value="1" class="btn btn-danger btn-block" data-action="min-length#guard" data-turbo-confirm="Выдать ТС без QR-кода? Об этом узнает владелец">Выдать без QR</button>
+                </div>
             </x-ui.sheet>
         </div>
     @endif

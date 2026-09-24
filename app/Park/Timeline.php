@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Mail\Extraction\Intent;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -98,9 +99,23 @@ final class Timeline
                     array_values(array_filter([$refusal->payload['note'] ?? null, $refusal->user?->shortName()])), danger: true);
             }
 
+            // Выдача по QR: покупатель заполняет анкету по ссылке, страховая подтверждает — шаг между хранением и выдачей.
+            // Никогда не текущий: форма выдачи остаётся на месте, а шаг показывает, где анкета, и даёт «Страховая подтвердила».
+            if ($v->releasesByQr() && ($v->sold_at || $releasing || $v->released_at)) {
+                $pass = $v->pass();
+                $linkAt = $events->where('type', EventType::PickupLinkSent)->max('created_at');
+                $steps[] = match (true) {
+                    ! $pass => new Step('buyer', 'Ждём анкету покупателя', $v->released_at ? Step::NEXT : Step::TODO, null, null,
+                        $linkAt ? ['ссылка отправлена '.Carbon::parse($linkAt)->translatedFormat('j M')] : []),
+                    $pass->isConfirmed() => new Step('buyer', 'Покупатель подтверждён', Step::DONE, null, $pass->confirmed_at,
+                        array_values(array_filter([$pass->name, 'заберёт '.$pass->pickup_on->translatedFormat('j M'), $pass->confirm_note, $pass->confirmer?->shortName()]))),
+                    default => new Step('buyer', 'Покупатель заполнил анкету', Step::TODO, null, $pass->submitted_at),
+                };
+            }
+
             $chips = array_values(array_filter([$release?->doneBy?->shortName(), $release?->note]));
             $steps[] = new Step('release', $v->released_at ? 'Выдана' : ($releasing ? 'Нужно выдать' : 'Выдача'), $v->released_at ? Step::DONE : ($releasing ? Step::CURRENT : Step::NEXT),
-                'Проверить долг, взять подпись', $v->released_at ?? $release?->planned_at, $v->released_at ? $chips : [],
+                $v->releasesByQr() ? 'Отсканировать QR покупателя, проверить долг, взять подпись' : 'Проверить долг, взять подпись', $v->released_at ?? $release?->planned_at, $v->released_at ? $chips : [],
                 $releasing ? ['kind' => 'submit', 'label' => 'Выдать'] : null, $release?->isOpen() ? $release : ($v->released_at ? $release : null));
 
             if ($v->released_at && $billable) {

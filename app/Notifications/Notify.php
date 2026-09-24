@@ -20,8 +20,10 @@ use App\Offers\Events\BidPlaced;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
+use App\Park\Events\BuyerFormSubmitted;
 use App\Park\Events\CandidateArrived;
 use App\Park\Events\LetterArrived;
+use App\Park\Events\ReleasedWithoutQr;
 use App\Park\Events\RequestAssigned;
 use App\Park\Events\RequestCall;
 use App\Park\Events\RequestDue;
@@ -78,6 +80,8 @@ final class Notify
             RequestCall::class => 'parkCall',
             VehicleIdle::class => 'parkIdle',
             VehicleSold::class => 'parkSold',
+            BuyerFormSubmitted::class => 'parkBuyerForm',
+            ReleasedWithoutQr::class => 'parkWithoutQr',
             InvoiceOverdue::class => 'invoiceOverdue',
             InvoiceIssued::class => 'invoiceIssued',
             PaymentClaimed::class => 'paymentClaimed',
@@ -237,6 +241,20 @@ final class Notify
         $assignee = $v->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
         Notification::send($assignee ? collect([$assignee]) : $this->parkStaff(), ParkNotice::sold($v, $e->message));
         NotifyOwner::dispatch(new ParkSold($v));
+    }
+
+    /** Покупатель заполнил анкету: тому, кто ведёт выдачу (иначе всем на стоянке) — прочитать ответ страховой и подтвердить. */
+    public function parkBuyerForm(BuyerFormSubmitted $e): void
+    {
+        $v = $e->pass->vehicle->load(['brand', 'model']);
+        $assignee = $v->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
+        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff(),
+            new ParkNotice('Покупатель заполнил анкету: '.$v->titleWithYear(), $e->pass->name.', заберёт '.$e->pass->pickup_on->translatedFormat('j M'), '/cars/'.$v->id, $v->id));
+    }
+
+    public function parkWithoutQr(ReleasedWithoutQr $e): void
+    {
+        NotifyOwner::dispatch(new \App\Telegram\Messages\ReleasedWithoutQr($e->vehicle->load(['brand', 'model', 'vendor']), $e->by, $e->reason));
     }
 
     public function parkDue(RequestDue $e): void

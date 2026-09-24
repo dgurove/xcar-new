@@ -23,6 +23,18 @@ class Yard extends Model
         return $this->belongsTo(Settlement::class);
     }
 
+    /** Адрес для людей: город и улица; без адреса — название парковки. */
+    public function fullAddress(): string
+    {
+        return trim(($this->settlement?->name ?? '').', '.($this->address ?? ''), ', ') ?: $this->name;
+    }
+
+    /** Ссылка на карту — покупателю, который едет забирать ТС. */
+    public function mapUrl(): string
+    {
+        return 'https://yandex.ru/maps/?text='.rawurlencode($this->fullAddress());
+    }
+
     public function vehicles(): HasMany
     {
         return $this->hasMany(Vehicle::class, 'yard_id');

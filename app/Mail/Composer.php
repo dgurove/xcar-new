@@ -54,7 +54,9 @@ final class Composer
     }
 
     /**
-     * @param  array{to: string, cc?: string, bcc?: string, subject: string, body: string, files?: list<string>, forward?: list<int>}  $data
+     * inline — картинки в теле письма (QR пропуска): путь в outbox => Content-ID, на который ссылается `<img src="cid:…">`.
+     *
+     * @param  array{to: string, cc?: string, bcc?: string, subject: string, body: string, files?: list<string>, forward?: list<int>, inline?: array<string, string>}  $data
      */
     public function create(Account $account, array $data, ?Message $parent, ?User $by, ?Thread $thread = null): Message
     {
@@ -119,7 +121,8 @@ final class Composer
     {
         $disk = Storage::disk(Parts::CACHE_DISK);
         $position = 0;
-        foreach ((array) ($data['files'] ?? []) as $path) {
+        $inline = (array) ($data['inline'] ?? []);
+        foreach ([...(array) ($data['files'] ?? []), ...array_keys($inline)] as $path) {
             if (! str_starts_with((string) $path, 'outbox/') || ! $disk->exists($path)) {
                 continue;
             }
@@ -128,6 +131,8 @@ final class Composer
                 'mime' => $disk->mimeType($path) ?: null,
                 'size' => $disk->size($path),
                 'path' => $path,
+                'content_id' => $inline[$path] ?? null,
+                'is_inline' => isset($inline[$path]),
                 'position' => $position++,
             ]);
         }

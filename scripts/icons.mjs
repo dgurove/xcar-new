@@ -126,4 +126,7 @@ const WM = { width: 1200, pad: 16, body: '#DCDCDC', bodyAlpha: 0.38, haloBlur: 3
         .png({ compressionLevel: 9 }).toFile(at('../resources/images/watermark.png'));
 }
 
+// Знак для писем (пропуск покупателю): почтовики SVG не показывают, нужен PNG. Вставляется в письмо по Content-ID.
+await sharp(at('../public/images/xcar.svg'), { density: 300 }).resize({ width: 360 }).png({ compressionLevel: 9 }).toFile(at('../public/images/xcar-mail.png'));
+
 console.log('иконки, экраны запуска и водяной знак готовы');

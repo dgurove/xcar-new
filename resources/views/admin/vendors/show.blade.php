@@ -69,6 +69,7 @@
                         <div class="col-span-2 flex flex-wrap items-center gap-x-6 gap-y-3">
                             <x-ui.check name="buyer_pays_late" :checked="$vendor->buyer_pays_late">Опоздавший покупатель платит</x-ui.check>
                             <x-ui.check name="release_without_payment" :checked="$vendor->release_without_payment">Выдавать без оплаты</x-ui.check>
+                            <x-ui.check name="release_by_qr" :checked="$vendor->release_by_qr">Выдача по QR</x-ui.check>
                         </div>
                         <div data-late>
                             <x-ui.field name="buyer_rate_multiplier" label="Опоздавший платит, × прайс" :value="rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.')" inputmode="decimal"/>

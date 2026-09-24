@@ -6,6 +6,7 @@ use App\Http\Park\ClientController;
 use App\Http\Park\MailController;
 use App\Http\Park\MoneyController;
 use App\Http\Park\PartyController;
+use App\Http\Park\PassController;
 use App\Http\Park\RequestController;
 use App\Http\Park\VehicleController;
 use App\Http\Park\VehicleInvoiceController;
@@ -50,6 +51,11 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/offer', [VehicleController::class, 'link'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/cancel', [VehicleController::class, 'cancel'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/sold', [VehicleController::class, 'sold'])->middleware('park.manage');
+    // Выдача по QR: проверка кода при выдаче, подтверждение покупателя, ссылка страховой ещё раз.
+    Route::post('/cars/{vehicle}/pass-check', [PassController::class, 'check'])->middleware(['park.manage', 'throttle:60,1']);
+    Route::post('/cars/{vehicle}/buyer/confirm', [PassController::class, 'confirm'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/buyer/reject', [PassController::class, 'reject'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/pickup-link', [PassController::class, 'link'])->middleware(['park.manage', 'throttle:5,1']);
     Route::delete('/cars/{vehicle}', [VehicleController::class, 'destroy'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/move', [VehicleController::class, 'move']);
     Route::post('/cars/{vehicle}/yard', [VehicleController::class, 'yard']);

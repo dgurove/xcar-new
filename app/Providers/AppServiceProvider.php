@@ -19,6 +19,8 @@ use App\Mail\Extraction\NullAttachmentReader;
 use App\Mail\OnMessage;
 use App\Media\StampOnAdd;
 use App\Notifications\Notify;
+use App\Park\Actions\SendPickupLink;
+use App\Park\Events\VehicleSold;
 use App\Park\Listeners\SyncOffer;
 use App\Users\Auth\WebAuthnProvider;
 use App\Users\Passkeys;
@@ -46,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);
         Event::subscribe(SyncOffer::class);
+        Event::listen(VehicleSold::class, SendPickupLink::class);
         Event::listen(PaymentRecorded::class, AdvanceOnPayment::class);
         Event::listen(PaymentRecorded::class, PayoutWhenPaid::class);
         Event::listen(PaymentClaimed::class, AdvanceOnClaim::class);

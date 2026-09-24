@@ -165,6 +165,7 @@ class VendorController
             'storage_payer' => ['required', Rule::in(['vendor', 'owner', 'nobody'])],
             'buyer_pays_late' => ['boolean'],
             'release_without_payment' => ['boolean'],
+            'release_by_qr' => ['boolean'],
             'buyer_rate_multiplier' => ['required', 'numeric', 'between:0,20'],
             'billing_cadence' => ['required', Rule::enum(Cadence::class)],
             'report_template_id' => ['nullable', 'exists:mail_templates,id'],
@@ -191,6 +192,7 @@ class VendorController
             'vat_included' => $request->boolean('vat_included'),
             'silence_means_buy' => $request->boolean('silence_means_buy'),
             'release_without_payment' => $request->boolean('release_without_payment'),
+            'release_by_qr' => $request->boolean('release_by_qr'),
         ]));
 
         return back()->with('toast', 'Сохранено');

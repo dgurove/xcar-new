@@ -86,6 +86,10 @@ final class CaseView
             'chargePrices' => collect(self::CHARGES)->mapWithKeys(fn ($k) => [$k->value => VehicleInvoiceController::priceFor($vehicle, $k)])->filter()->all(),
             'spots' => $vehicle->yard?->freeSpots() ?? [],
             'canManage' => $user->canManagePark(),
+            // Выдача по QR: живой пропуск (анкета покупателя), код из адреса — отсканировали камерой телефона.
+            'byQr' => $byQr = $vehicle->releasesByQr(),
+            'pass' => $byQr ? $vehicle->pass() : null,
+            'scannedPass' => $byQr && $release ? Pass::codeFrom((string) request()->query('pass')) : null,
         ];
     }
 

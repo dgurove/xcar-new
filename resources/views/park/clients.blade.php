@@ -46,6 +46,7 @@
                                 @endforeach
                             </div>
                         </div>
+                        <x-ui.check name="release_by_qr" :checked="$vendor->release_by_qr">Выдача по QR</x-ui.check>
                         <x-ui.field name="intake_note" label="Что ещё просит" type="textarea" :value="$vendor->intake_note"/>
                         <x-ui.field name="notes" label="Заметки" type="textarea" :value="$vendor->notes"/>
                         <x-ui.button block>Сохранить</x-ui.button>

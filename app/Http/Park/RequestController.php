@@ -308,11 +308,19 @@ class RequestController
     public function release(Request $request, ParkRequest $req, Release $release)
     {
         abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
-        $data = $request->validate(['released_at' => ['nullable', 'date'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)]] + self::inspectionRules());
+        $data = $request->validate(['released_at' => ['nullable', 'date'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)],
+            // Выдача по QR: код из сканера или причина выдачи без него (от 20 знаков — отписку «так надо» не примем).
+            'pass' => ['nullable', 'string', 'max:200'], 'pass_confirm' => ['nullable', 'boolean'],
+            'without_qr_reason' => [Rule::requiredIf($request->boolean('without_qr')), 'nullable', 'string', 'min:20', 'max:500'],
+        ] + self::inspectionRules(), [
+            'without_qr_reason.required' => 'Напишите, почему выдаёте без QR',
+            'without_qr_reason.min' => 'Опишите причину подробнее, от 20 знаков',
+        ]);
         $at = isset($data['released_at']) ? Carbon::parse($data['released_at']) : null;
         $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
-        $release($req->vehicle, $request->user(), $at, null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req, $request->boolean('force'), $request->boolean('cash'));
+        $qr = $request->boolean('without_qr') ? ['without' => $data['without_qr_reason']] : ['pass' => $data['pass'] ?? null, 'confirm' => $request->boolean('pass_confirm')];
+        $release($req->vehicle, $request->user(), $at, null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req, $request->boolean('force'), $request->boolean('cash'), $qr);
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
     }

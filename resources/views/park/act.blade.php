@@ -68,7 +68,19 @@
             @unless ($intake)
                 <tr><th>Выдан</th><td>{{ $vehicle->released_at?->format('d.m.Y H:i') ?? '—' }}</td></tr>
                 <tr><th>Срок хранения</th><td>{{ $vehicle->daysStored() }} дн</td></tr>
-                @if ($vehicle->pickup_name)<tr><th>Получатель</th><td>{{ trim($vehicle->pickup_name.' '.($vehicle->pickup_phone ?? '')) }}</td></tr>@endif
+                @php
+                    // Выдача по QR: кому — по пропуску, как — строкой в акте (по QR с подтверждением страховой или без QR с причиной).
+                    $released = $vehicle->events->where('type', \App\Park\EventType::Released)->sortByDesc('id')->first();
+                    $usedPass = ($released?->payload['pass'] ?? null) ? \App\Park\Pass::find($released->payload['pass']) : null;
+                    $withoutQr = $released?->payload['without_qr'] ?? null;
+                @endphp
+                @if ($usedPass)
+                    <tr><th>Получатель</th><td>{{ $usedPass->name }}, {{ $usedPass->phone }}</td></tr>
+                    <tr><th>Основание</th><td>по QR-коду, покупатель подтверждён страховой{{ $usedPass->confirm_note ? ' ('.$usedPass->confirm_note.')' : '' }} {{ $usedPass->confirmed_at?->format('d.m.Y') }}</td></tr>
+                @else
+                    @if ($vehicle->pickup_name)<tr><th>Получатель</th><td>{{ trim($vehicle->pickup_name.' '.($vehicle->pickup_phone ?? '')) }}</td></tr>@endif
+                    @if ($withoutQr)<tr><th>Основание</th><td>без QR-кода: {{ $withoutQr }}</td></tr>@endif
+                @endif
             @endunless
             @if ($inspection)
                 @if ($inspection->mileage !== null)<tr><th>Пробег</th><td>{{ number_format($inspection->mileage, 0, '', ' ') }} км</td></tr>@endif

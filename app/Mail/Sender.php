@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Mail;
 use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Component\Mime\Address as MimeAddress;
 use Symfony\Component\Mime\Email;
+use Symfony\Component\Mime\Part\DataPart;
 use Throwable;
 
 /** Отправка по SMTP ящика и копия в «Отправленные» через APPEND: mail.ru сам её не кладёт. */
@@ -69,6 +70,12 @@ final class Sender
             $contents = $attachment->contents();
             if ($contents === null) {
                 Log::warning('Почта: вложения нет ни у нас, ни в ящике', ['message' => $message->id, 'attachment' => $attachment->id]);
+
+                continue;
+            }
+            // Картинка в теле (QR пропуска) — частью письма по Content-ID, а не файлом: так её показывают почтовики.
+            if ($attachment->is_inline && $attachment->content_id) {
+                $email->addPart((new DataPart($contents, $attachment->filename, $attachment->mime ?: 'image/png'))->asInline()->setContentId($attachment->content_id));
 
                 continue;
             }

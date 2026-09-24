@@ -29,9 +29,27 @@
         <x-park.signature/>
     </div>
 </x-ui.card>
+@if ($byQr ?? false)
+    {{-- Выдача по QR: главная кнопка — сканер; код подошёл — «Выдать». Без QR — маленькой серой кнопкой, шторкой с причиной. --}}
+    <div class="mt-4" data-controller="qr-release" data-qr-release-check-url-value="/cars/{{ $vehicle->id }}/pass-check" data-qr-release-preset-value="{{ $scannedPass }}">
+        <input type="hidden" name="pass" data-qr-release-target="pass">
+        <input type="hidden" name="pass_confirm" value="" data-qr-release-target="confirm">
+        <div data-qr-release-target="result" hidden></div>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+            <button type="button" class="btn btn-accent w-full sm:w-auto" data-qr-release-target="scan" data-action="qr-release#open"><x-ui.icon name="qr" class="size-5"/>Сканировать QR</button>
+            <x-ui.button id="act-submit" class="w-full sm:w-auto" data-qr-release-target="submit" hidden>Выдать</x-ui.button>
+            @if ($vehicle->sold_at && $canManage)
+                <button type="button" class="btn btn-quiet w-full sm:w-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="refusal:open">Покупатель отказался</button>
+            @endif
+        </div>
+        @if ($canManage)<button type="button" class="mt-3 text-sm text-ink-dim underline-offset-4 hover:underline" data-controller="emit" data-action="emit#send" data-emit-event-param="without-qr:open">Выдать без QR</button>@endif
+        @error('pass')<p class="field-error mt-2">{{ $message }}</p>@enderror
+    </div>
+@else
 <div class="mt-4 flex flex-wrap items-center gap-3">
     <x-ui.button id="act-submit" class="w-full sm:w-auto">Выдать</x-ui.button>
     @if ($vehicle->sold_at && $canManage)
         <button type="button" class="btn btn-quiet w-full sm:w-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="refusal:open">Покупатель отказался</button>
     @endif
 </div>
+@endif

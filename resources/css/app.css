@@ -726,6 +726,39 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table-wrap.is-wide .table-group-name { display: inline-block; position: sticky; left: 1rem; }
   }
 
+  /* Сканер QR (resources/js/qr/scanner.js): видео во весь экран, тонкая рамка-подсказка без затемнения (код читается
+     в любом месте кадра), крестик сверху, фонарик и смена объектива в нижних углах, 44 px. */
+  .qr-scanner { position: fixed; inset: 0; z-index: 90; background: #000; color: #fff; touch-action: none; overscroll-behavior: contain; }
+  .qr-scanner-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: center; }
+  .qr-scanner-guide { position: absolute; left: 50%; top: 50%; width: min(72vw, 320px); aspect-ratio: 1; translate: -50% -50%; border-radius: 28px; box-shadow: 0 0 0 1.5px rgb(255 255 255 / .85); pointer-events: none; }
+  .qr-scanner-top { position: absolute; inset: 0 0 auto 0; display: flex; align-items: center; gap: .75rem; padding: calc(env(safe-area-inset-top) + .75rem) 1rem .75rem 1.25rem; background: linear-gradient(rgb(0 0 0 / .55), transparent); }
+  .qr-scanner-title { flex: 1; font-size: var(--text-base); font-weight: 500; }
+  .qr-scanner-btn { display: inline-flex; width: 2.75rem; height: 2.75rem; align-items: center; justify-content: center; border-radius: 999px; background: rgb(0 0 0 / .45); color: #fff; backdrop-filter: blur(8px); }
+  .qr-scanner-btn svg { width: 1.375rem; height: 1.375rem; }
+  .qr-scanner-btn.is-on { background: #fff; color: #000; }
+  .qr-scanner-torch, .qr-scanner-lens { position: absolute; bottom: calc(env(safe-area-inset-bottom) + 1.5rem); }
+  .qr-scanner-torch { left: 1.25rem; }
+  .qr-scanner-lens { right: 1.25rem; }
+  .qr-scanner-hint { position: absolute; left: 1rem; right: 1rem; top: calc(50% + min(36vw, 160px) + 1.25rem); text-align: center; font-size: var(--text-sm); color: rgb(255 255 255 / .85); text-shadow: 0 1px 2px rgb(0 0 0 / .6); }
+  .qr-scanner-error { position: absolute; left: 1.25rem; right: 1.25rem; top: 50%; translate: 0 -50%; display: flex; flex-direction: column; align-items: center; gap: .75rem; padding: 1.5rem; border-radius: var(--radius-xl); background: rgb(28 28 28 / .92); text-align: center; }
+  .qr-scanner-error[hidden] { display: none; }
+  .qr-scanner:has(.qr-scanner-error:not([hidden])) .qr-scanner-guide { display: none; }
+  .qr-scanner-error-title { font-size: var(--text-lg); font-weight: 500; }
+  .qr-scanner-error-hint { font-size: var(--text-sm); color: rgb(255 255 255 / .7); }
+  .qr-scanner-error-hint:empty { display: none; }
+
+  /* Итог проверки QR в форме выдачи: зелёный — выдавать, оранжевый — страховая не подтвердила, красный — не тот код. */
+  .qr-result { border-radius: var(--radius-l); padding: .875rem 1rem; }
+  .qr-result-title { font-weight: 500; }
+  .qr-result-text { margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .qr-result--open { background: var(--color-accent-soft); }
+  .qr-result--open .qr-result-title { color: var(--color-accent-text); }
+  .qr-result--urgent { background: var(--color-urgent-soft); }
+  .qr-result--urgent .qr-result-title { color: var(--color-urgent); }
+  .qr-result--danger { background: var(--color-danger-soft); }
+  .qr-result--danger .qr-result-title { color: var(--color-danger); }
+  .qr-result--wait { background: var(--color-surface-2); }
+
   /* Меню под кнопкой (вид списка): popover в top layer, место ставит menu_controller. */
   .menu { @apply rounded-(--radius-l) bg-surface p-1.5 text-ink shadow-(--shadow-drop); position: fixed; inset: auto; margin: 0; border: 0; min-width: 11rem; }
   .menu:popover-open { animation: dialog-in var(--dur) var(--ease-out); }

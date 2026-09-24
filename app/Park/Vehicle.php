@@ -18,6 +18,7 @@ use App\Media\HasPhotos;
 use App\Offers\Flag;
 use App\Offers\Offer;
 use App\Support\Phone;
+use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\DocRequirement;
 use App\Vendors\Vendor;
@@ -33,7 +34,7 @@ use Spatie\MediaLibrary\HasMedia;
     'contact_name', 'contact_phone', 'flags', 'docs_required', 'value', 'policy_no',
     'cancelled_at', 'cancel_reason', 'spot', 'transit_started_at', 'mileage', 'fuel', 'idle_noticed_at',
     'owner_party_id', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'storage_rate', 'storage_rate_note', 'storage_billed_until', 'pts', 'sts',
-    'sold_at', 'sold_message_id', 'buyer_free_until', 'pickup_name', 'pickup_phone', 'buyer_party_id', 'billing_cadence'])]
+    'sold_at', 'sold_message_id', 'buyer_free_until', 'pickup_name', 'pickup_phone', 'pickup_code', 'buyer_party_id', 'billing_cadence'])]
 class Vehicle extends Model implements HasMedia
 {
     use HasPhotos;
@@ -132,6 +133,42 @@ class Vehicle extends Model implements HasMedia
         };
 
         return '/mail/new?'.http_build_query(['car' => $this->id, 'template' => $template, 'act' => $act === 'intake' ? 'intake' : 'release', 'back' => $back]);
+    }
+
+    /** Выдача только по QR — у вендора включено. */
+    public function releasesByQr(): bool
+    {
+        return (bool) $this->vendor?->release_by_qr;
+    }
+
+    /** Ссылка на анкету покупателя: одна на ТС, код заводится при первой нужде и живёт до выдачи. */
+    public function pickupUrl(): string
+    {
+        if (! $this->pickup_code) {
+            do {
+                $code = Pass::freshCode();
+            } while (self::where('pickup_code', $code)->exists());
+            $this->forceFill(['pickup_code' => $code])->saveQuietly();
+        }
+
+        return Surface::Site->url('/pickup/'.$this->pickup_code);
+    }
+
+    public function passes(): HasMany
+    {
+        return $this->hasMany(Pass::class)->latest('id');
+    }
+
+    /** Живой пропуск: последний не отозванный (выданный тоже — он и показывает «Выдан»). */
+    public function pass(): ?Pass
+    {
+        return $this->passes()->whereNull('revoked_at')->first();
+    }
+
+    /** Отказ покупателя, «не продано», «не покупатель»: пропуск гаснет, анкета по той же ссылке снова пустая. */
+    public function revokePass(string $reason): void
+    {
+        $this->passes()->whereNull('revoked_at')->whereNull('used_at')->update(['revoked_at' => now(), 'revoke_reason' => mb_substr($reason, 0, 255)]);
     }
 
     /** Телефон покупателя для `tel:` — нормализованный или как записан. */
