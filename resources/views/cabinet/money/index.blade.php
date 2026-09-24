@@ -6,7 +6,7 @@
     <div class="flex max-w-[30rem] flex-col gap-6">
 
         @if ($position['pay'] > 0 || $position['payout'] > 0 || ($needDetails && ($position['payout'] > 0 || $position['paid_out'] > 0)))
-            <div class="flex flex-col gap-2">
+            <div class="list">
                 @if ($position['pay'] > 0)
                     @php $overdue = $position['overdue'] > 0 && $position['claimed'] < $position['overdue']; @endphp
                     <a href="/account/money?preset=pay" class="row {{ $overdue ? 'bg-urgent-soft' : '' }}" data-turbo-action="replace">
@@ -43,7 +43,7 @@
                     <div class="ml-1 shrink-0 self-center" data-controller="sheet">
                         <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Реквизиты и документы"><x-ui.icon name="more" class="size-5"/></button>
                         <x-ui.sheet id="money-more" title="Деньги">
-                            <div class="flex flex-col gap-2">
+                            <div class="list">
                                 <a href="/account/money/details" class="row">
                                     <span class="min-w-0 flex-1">
                                         <span class="block font-medium">Реквизиты</span>
@@ -68,7 +68,7 @@
             @if ($deals->isEmpty())
                 <x-ui.empty>{{ match ($preset) { 'pay' => 'Платить нечего', 'payout' => 'Выплат не ждёт', 'closed' => 'Закрытых ещё нет', default => 'Сделок с деньгами пока нет' } }}</x-ui.empty>
             @else
-                <div class="flex flex-col gap-2">
+                <div class="list">
                     @foreach ($deals as $deal)
                         <x-money.deal-row :deal="$deal" :href="'/account/money/deals/'.$deal->id"/>
                     @endforeach

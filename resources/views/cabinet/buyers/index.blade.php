@@ -9,7 +9,7 @@
     </form>
 
     @unless ($term)
-        <div class="flex flex-col gap-2">
+        <div class="list">
             <a href="/account/interest" class="row">
                 <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="flag" class="size-5"/></span>
                 <span class="min-w-0 flex-1 font-medium">Интерес</span>
@@ -29,7 +29,7 @@
 
         <section>
             @if ($groups->isNotEmpty())<h2 class="text-xl">Группы</h2>@endif
-            <div class="{{ $groups->isNotEmpty() ? 'mt-4 ' : '' }}flex flex-col gap-2">
+            <div class="{{ $groups->isNotEmpty() ? 'mt-4 ' : '' }}list">
                 @foreach ($groups as $g)
                     <a href="/account/buyers/groups/{{ $g->id }}" class="row">
                         <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="users" class="size-5"/></span>
@@ -69,7 +69,7 @@
                 <x-ui.empty class="mt-4" href="/account/invites" link="Сделать ссылку">Покупатели приходят по вашей ссылке</x-ui.empty>
             @endif
         @else
-            <div class="mt-4 flex flex-col gap-2">
+            <div class="mt-4 list">
                 @foreach ($buyers as $buyer)
                     <div class="row relative">
                         <a href="/account/buyers/{{ $buyer->id }}" class="absolute inset-0 rounded-(--radius-l)" aria-label="{{ $buyer->name }}"></a>

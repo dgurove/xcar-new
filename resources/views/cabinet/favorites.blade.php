@@ -4,8 +4,8 @@
         <x-ui.empty href="/" link="В предложения">Пока пусто</x-ui.empty>
     @else
         <div class="flex justify-end"><x-ui.view-switch :current="$view"/></div>
-        @if ($view === \App\Support\ListView::TABLE)
-        <x-ui.table>
+        @if (\App\Support\ListView::isTable($view))
+        <x-ui.table :view="$view">
             <x-slot:head><x-offer.site-table-head/></x-slot:head>
             @foreach ($offers as $offer)<x-offer.site-table-row :offer="$offer"/>@endforeach
         </x-ui.table>

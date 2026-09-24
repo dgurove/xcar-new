@@ -638,6 +638,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .list > * + *::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
   .list .row-sub { display: block; margin-top: .125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .list .row-sub > * + * { margin-left: .5rem; }
+  /* Факт-тег во второй строке списка — просто текст: подложка на каждом факте и давала стену чипов. Цвет тега
+     (срочно, опасно, лайм) остаётся цветом текста. */
+  .list .row-sub .tag, .list .row-sub .chip { display: inline; padding: 0; border-radius: 0; background: none; font-size: inherit; font-weight: inherit; color: var(--tag-text, inherit); }
+  .dark .list .row-sub .tag, .dark .list .row-sub .chip { background: none; color: var(--tag-text-d, inherit); }
   .list-head { @apply flex items-baseline gap-1.5 px-1 pb-2 pt-3 text-lg font-medium text-ink; }
   .list-head .nums { @apply font-normal text-ink-dim; }
 

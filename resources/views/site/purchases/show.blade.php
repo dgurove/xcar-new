@@ -38,14 +38,14 @@
         @if ($cars->isEmpty())
             <x-ui.empty :href="'/purchases/'.$purchase->number.($group ? '?group='.$group->value : '')" link="Сбросить фильтры">По этим условиям ничего не нашлось</x-ui.empty>
         @else
-            @if ($view === \App\Support\ListView::TABLE)
-            <x-ui.table id="cars">
+            @if (\App\Support\ListView::isTable($view))
+            <x-ui.table id="cars" :view="$view">
                 <x-slot:head>
                     <tr>
-                        <th>№</th>
                         <th class="grow">Марка, модель</th>
-                        @if (count($kinds) > 1)<th class="hidden sm:table-cell">Тип</th>@endif
-                        <th class="hidden sm:table-cell">Город</th>
+                        <th class="cell-dim hidden sm:table-cell">№</th>
+                        @if (count($kinds) > 1)<th class="cell-dim hidden sm:table-cell">Тип</th>@endif
+                        <th class="cell-dim col-peek-hide hidden sm:table-cell">Город</th>
                         <th class="num">Цена</th>
                     </tr>
                 </x-slot:head>

@@ -3,7 +3,7 @@
     @if ($interests->isEmpty())
         <x-ui.empty href="/" link="В предложения">Вы ещё ничего не отметили</x-ui.empty>
     @else
-        <div class="flex flex-col gap-2">
+        <div class="list">
             @foreach ($interests as $interest)
                 @php
                     $offer = $interest->offer;

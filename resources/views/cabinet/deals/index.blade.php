@@ -5,7 +5,7 @@
         {{-- Что ждёт ответа — строками на оранжевой подложке, первыми. --}}
         <section>
             <h2 class="text-xl">От Вас ждут</h2>
-            <div class="mt-4 flex flex-col gap-2">
+            <div class="mt-4 list">
                 @foreach ($debts as $deal)
                     @php $req = $deal->openRequirement; @endphp
                     <a href="/account/deals/{{ $deal->id }}" class="row bg-urgent-soft">
@@ -24,7 +24,7 @@
     @if ($pending->isNotEmpty())
         <section>
             <h2 class="text-xl">Ждут решения</h2>
-            <div class="mt-4 flex flex-col gap-2">
+            <div class="mt-4 list">
                 @foreach ($pending as $bid)
                     @include('cabinet.deals.bid-row', ['bid' => $bid, 'state' => false])
                 @endforeach
@@ -37,7 +37,7 @@
     @elseif ($deals->isNotEmpty())
         <section>
         @if ($sections)<h2 class="text-xl">Сделки <span class="nums text-ink-dim">{{ $deals->total() }}</span></h2>@endif
-        <div class="{{ $sections ? 'mt-4 ' : '' }}flex flex-col gap-2">
+        <div class="{{ $sections ? 'mt-4 ' : '' }}list">
             @foreach ($deals as $deal)
                 @php $offer = $deal->offer; $position = $offer->position(); $alarm = $position?->isOverdue() ?? false; @endphp
                 <a href="/account/deals/{{ $deal->id }}" class="row">
@@ -67,7 +67,7 @@
     @if ($lost->isNotEmpty())
         <section>
             <h2 class="text-xl">Не состоялись</h2>
-            <div class="mt-4 flex flex-col gap-2">
+            <div class="mt-4 list">
                 @foreach ($lost as $bid)
                     @include('cabinet.deals.bid-row', ['bid' => $bid, 'state' => true])
                 @endforeach
