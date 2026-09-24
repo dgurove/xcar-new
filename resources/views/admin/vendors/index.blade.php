@@ -30,7 +30,6 @@
                     {{-- Маршруты словами: включённый — лаймовым, выключенный — тусклым. --}}
                     <div class="row-sub">
                         @unless ($vendor->is_active)<span class="text-ink">выключен</span>@endunless
-                        @if ($vendor->agreementExpired())<span class="text-danger">договор истёк</span>@endif
                         @if ($vendor->kind !== Kind::Insurer)<span>{{ $vendor->kind->label() }}</span>@endif
                         @foreach (Track::cases() as $track)
                             @php $w = $vendor->workflow($track); @endphp
@@ -40,7 +39,6 @@
                 </div>
                 <span class="flex shrink-0 flex-col items-end text-sm text-ink-muted tabular-nums">
                     @if ($vendor->offers_count)<span>{{ $vendor->offers_count }} предл.</span>@endif
-                    @if ($vendor->stored_count)<span>{{ $vendor->stored_count }} на парковке</span>@endif
                 </span>
                 <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
             </a>

@@ -161,7 +161,7 @@ class VehicleController
     public function letters(Request $request, Vehicle $vehicle)
     {
         abort_unless(Scope::allows($request->user(), $vehicle), 404);
-        $threads = Thread::where('vehicle_id', $vehicle->id)->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
+        $threads = Thread::where('vehicle_id', $vehicle->id)->park()->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
 
         return view('park.vehicles.letters', [
             'vehicle' => $vehicle,

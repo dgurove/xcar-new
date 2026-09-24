@@ -79,7 +79,7 @@ final class Threads
         $own = [mb_strtolower((string) $thread->account?->email), ...Message::ownEmails()];
         $email = collect($participants)->pluck('email')->first(fn ($e) => $e && ! in_array(mb_strtolower((string) $e), $own, true));
 
-        return $email ? Vendor::forSender($email) : null;
+        return $email && $thread->account ? Vendor::forSender($email, $thread->account->scope) : null;
     }
 
     private function byReferences(Account $account, array $parsed): ?Thread

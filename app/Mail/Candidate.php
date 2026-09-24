@@ -107,7 +107,7 @@ class Candidate extends Model
         return [
             'ref' => $this->code, 'vin' => $this->value('vin'), 'plate' => $this->value('plate'), 'year' => $this->value('year'),
             'brand_id' => $brand?->id, 'model_id' => $model?->id, 'category' => $this->value('category'), 'color' => $this->value('color'),
-            'vendor_id' => $this->value('vendor_id') ?? Vendor::forSender($this->value('sender'))?->id,
+            'vendor_id' => $this->value('vendor_id') ?? Vendor::forSender($this->value('sender'), Scope::Park)?->id,
             'contact_name' => $this->value('insured_name'),
             'contact_phone' => $this->value('insured_phone') ?? ((array) $this->value('phones'))[0] ?? null,
             'value' => $this->value('value'),

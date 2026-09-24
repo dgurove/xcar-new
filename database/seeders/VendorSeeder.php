@@ -63,7 +63,7 @@ class VendorSeeder extends Seeder
         foreach (self::VENDORS as [$name, $senders, $parser, $sale, $autoPickup]) {
             $vendor = Vendor::firstOrCreate(['name' => $name]);
             if (! $vendor->senders) {
-                $vendor->update(['senders' => $senders, 'parser' => $parser]);
+                $vendor->update(['senders' => $senders, 'parser' => $parser, 'park_senders' => $senders, 'park_parser' => $parser]);
             }
             if ($sale) {
                 $this->fill($vendor->workflowOrNew(Track::Sale), $sale, true, $apply);

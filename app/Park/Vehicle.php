@@ -256,7 +256,7 @@ class Vehicle extends Model implements HasMedia
     /** Ветки писем ТС; `threads_count` — тег «Писем нет». */
     public function threads(): HasMany
     {
-        return $this->hasMany(Thread::class, 'vehicle_id');
+        return $this->hasMany(Thread::class, 'vehicle_id')->park();
     }
 
     public function events(): HasMany

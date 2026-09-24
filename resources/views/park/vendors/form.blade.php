@@ -1,8 +1,8 @@
-{{-- «Изменить» вендора — одна шторка по группам: основное, реквизиты, договор, хранение, почта, после приёма.
-     Открывается кнопкой в ряду заголовка (событие vendor-form:open). --}}
+{{-- «Изменить» вендора — одна шторка по группам: основное, реквизиты, договор, хранение, заявки и письма парковки,
+     после приёма. Открывается кнопкой в ряду заголовка (событие vendor-form:open). Почта продажи — в CRM. --}}
 @php use App\Vendors\{Kind, Parser}; use App\Billing\Cadence; @endphp
 <div data-controller="sheet" data-action="vendor-form:open@window->sheet#open" class="contents">
-    <x-ui.sheet id="vendor-form" title="Вендор" wide :open="$errors->hasAny(['name', 'inn', 'kpp', 'bank_account', 'bank_corr', 'bank_bic', 'senders', 'agreement_until', 'buyer_rate_multiplier'])">
+    <x-ui.sheet id="vendor-form" title="Вендор" wide :open="$errors->hasAny(['name', 'inn', 'kpp', 'bank_account', 'bank_corr', 'bank_bic', 'park_senders', 'agreement_until', 'buyer_rate_multiplier'])">
         <form method="post" action="{{ $base }}" class="flex flex-col gap-4">
             @csrf @method('put')
             @php $g = 'grid grid-cols-2 gap-3'; @endphp
@@ -29,7 +29,7 @@
                 <x-ui.field name="agreement_date" label="Дата" type="date" :value="$vendor->agreement_date?->toDateString()"/>
                 <x-ui.field name="agreement_until" label="Действует до" type="date" :value="$vendor->agreement_until?->toDateString()"/>
                 <x-ui.field name="payment_days" label="Оплата, рабочих дней" :value="$vendor->payment_days" inputmode="numeric"/>
-                <div class="flex items-end pb-3.5"><x-ui.check name="vat_included" :checked="$vendor->vat_included">Цены с НДС</x-ui.check></div>
+                <div class="flex items-end pb-3.5"><x-ui.check name="vat_included" :checked="$vendor->vat_included">Хранение с НДС</x-ui.check></div>
             </div>
             <div class="list-head">Хранение</div>
             {{-- Опоздавший покупатель платит только там, где так в договоре: срок за счёт вендора вписывают на самой ТС,
@@ -44,11 +44,10 @@
                     <x-ui.check name="release_by_qr" :checked="$vendor->release_by_qr">Выдача по QR</x-ui.check>
                 </div>
             </div>
-            <div class="list-head">Почта</div>
+            <div class="list-head">Заявки на приёмку</div>
             <div class="{{ $g }}">
-                <x-ui.field name="senders" label="Письма от: домены и адреса, по одному в строке" type="textarea" :value="implode(PHP_EOL, $vendor->senders ?? [])" span="col-span-2" placeholder="alfastrah.ru"/>
-                <x-ui.field name="parser" label="Разбор писем" :options="Parser::options()" :value="$vendor->parser->value" span="col-span-2"/>
-                <x-ui.field name="mail_account_id" label="Отвечаем с ящика" :options="$accounts" placeholder="Первый активный" :value="$vendor->mail_account_id" span="col-span-2"/>
+                <x-ui.field name="park_senders" label="Приходят от: домены и адреса, по одному в строке" type="textarea" :value="implode(PHP_EOL, $vendor->park_senders ?? [])" span="col-span-2" placeholder="alfastrah.ru"/>
+                <x-ui.field name="park_parser" label="Разбор заявок" :options="Parser::options()" :value="$vendor->park_parser->value" span="col-span-2"/>
                 <x-ui.field name="report_template_id" label="Письмо о приёме" :options="$templates" placeholder="«Приём на парковку»" :value="$vendor->report_template_id"/>
                 <x-ui.field name="refusal_template_id" label="Письмо об отказе" :options="$templates" placeholder="«Отказ от получения»" :value="$vendor->refusal_template_id"/>
             </div>

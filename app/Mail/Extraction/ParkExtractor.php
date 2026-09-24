@@ -5,6 +5,7 @@ namespace App\Mail\Extraction;
 use App\Cars\Names;
 use App\Mail\Extraction\Templates\Generic;
 use App\Mail\Extraction\Templates\Template;
+use App\Mail\Scope;
 use App\Support\Phone;
 use App\Vendors\Vendor;
 use Carbon\Carbon;
@@ -41,8 +42,8 @@ final class ParkExtractor
     {
         $text = QuotationStripper::strip($body);
         $sender = QuotationStripper::forwardedSender($body) ?? $fromEmail;
-        $vendor = Vendor::forSender($sender);
-        $class = $vendor?->parser?->templateClass() ?? Generic::class;
+        $vendor = Vendor::forSender($sender, Scope::Park);
+        $class = $vendor?->park_parser?->templateClass() ?? Generic::class;
         $subject = trim((string) (QuotationStripper::forwardedSubject($body) ?? $subject));
         $fields = (new $class)->extract($subject, $text);
         if (isset($fields['floor_price'])) {

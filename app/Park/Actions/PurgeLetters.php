@@ -25,7 +25,7 @@ final class PurgeLetters
         foreach ($vehicle->media()->where('collection_name', 'papers')->where('custom_properties->source', 'mail')->get() as $media) {
             $media->delete();
         }
-        $threads = Thread::where('vehicle_id', $vehicle->id)->pluck('id');
+        $threads = Thread::where('vehicle_id', $vehicle->id)->park()->pluck('id');
 
         return $threads->isEmpty() ? 0 : $this->freeze->freeze(Message::whereIn('thread_id', $threads)->pluck('id')->all());
     }
@@ -33,7 +33,7 @@ final class PurgeLetters
     /** Выдачу вернули: письма читаются заново, файлы и кадры едут в дело из ящика. */
     public function undo(Vehicle $vehicle): void
     {
-        $threads = Thread::where('vehicle_id', $vehicle->id)->pluck('id');
+        $threads = Thread::where('vehicle_id', $vehicle->id)->park()->pluck('id');
         if ($threads->isEmpty()) {
             return;
         }

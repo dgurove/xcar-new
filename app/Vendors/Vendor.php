@@ -6,12 +6,14 @@ use App\Billing\Cadence;
 use App\Billing\Party;
 use App\Cars\Category;
 use App\Mail\Account;
+use App\Mail\Scope;
 use App\Mail\Template;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Workflow\Track;
 use App\Workflow\Workflow;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,19 +21,20 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * Вендор — страховая, лизинг или банк, откуда приходят машины: письма
- * привязываются к нему по адресам и доменам отправителей (`senders`), у него
- * маршруты по веткам, контакты по ролям, реквизиты, условия и договорной прайс.
- * Одна дверь `forSender` заменяет карту доменов в разборе и заказчика стоянки.
+ * Вендор — страховая, лизинг или банк, откуда приходят машины. Две стороны: CRM (продажа предложений — условия
+ * сделки, маршруты, ящик, «Реализация», адреса и разбор писем с предложениями `senders`/`parser`, НДС цен
+ * предложений) и парковка (реквизиты, договор, хранение, прайс, контакты по убыткам и хранению, адреса и разбор
+ * заявок на приёмку `park_senders`/`park_parser`). Общие — имя, тип и «работаем».
+ * Одна дверь `forSender` находит вендора письма по адресам своей стороны.
  */
 #[Fillable([
     'name', 'kind', 'is_active', 'notes',
     'legal_name', 'inn', 'kpp', 'legal_address',
     'bank_name', 'bank_account', 'bank_corr', 'bank_bic', 'payment_purpose',
     'agreement_number', 'agreement_date', 'agreement_until',
-    'deal_format', 'reward_kind', 'reward_value', 'payment_days', 'vat_included', 'answer_hours', 'silence_means_buy', 'binding_days',
+    'deal_format', 'reward_kind', 'reward_value', 'payment_days', 'vat_included', 'offers_include_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
     'storage_payer', 'buyer_pays_late', 'release_without_payment', 'release_by_qr', 'buyer_rate_multiplier', 'billing_cadence',
-    'senders', 'parser', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id',
+    'senders', 'parser', 'park_senders', 'park_parser', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id',
     'intake_docs', 'intake_note',
 ])]
 class Vendor extends Model implements HasMedia
@@ -48,6 +51,7 @@ class Vendor extends Model implements HasMedia
             'deal_format' => DealFormat::class,
             'reward_kind' => RewardKind::class,
             'vat_included' => 'bool',
+            'offers_include_vat' => 'bool',
             'silence_means_buy' => 'bool',
             'release_without_payment' => 'bool',
             'release_by_qr' => 'bool',
@@ -56,6 +60,8 @@ class Vendor extends Model implements HasMedia
             'billing_cadence' => Cadence::class,
             'senders' => 'array',
             'parser' => Parser::class,
+            'park_senders' => 'array',
+            'park_parser' => Parser::class,
             'intake_docs' => 'array',
         ];
     }
@@ -147,11 +153,15 @@ class Vendor extends Model implements HasMedia
         return $workflow;
     }
 
-    /** Кому писать: сначала по роли, потом основной, потом любой с почтой. */
+    /**
+     * Кому писать: сначала по роли, потом основной, потом любой с почтой — только среди контактов той же стороны,
+     * что и роли (без ролей — парковка): письмо о хранении не уйдёт в реализацию, предложение — в убытки.
+     */
     public function defaultContact(?ContactRole ...$roles): ?Contact
     {
-        $contacts = $this->contacts;
-        foreach (array_filter($roles) as $role) {
+        $roles = array_values(array_filter($roles));
+        $contacts = $this->sideContacts(($roles[0] ?? null)?->isSale() ?? false);
+        foreach ($roles as $role) {
             if ($c = $contacts->first(fn (Contact $c) => $c->role === $role && $c->email)) {
                 return $c;
             }
@@ -165,10 +175,16 @@ class Vendor extends Model implements HasMedia
         return $this->defaultContact(...$roles)?->email;
     }
 
-    /** @return list<string> адреса, которые вендор всегда держит в копии */
-    public function ccEmails(): array
+    /** @return list<string> адреса, которые вендор всегда держит в копии, — среди контактов своей стороны */
+    public function ccEmails(bool $sale = false): array
     {
-        return $this->contacts->where('always_cc', true)->pluck('email')->filter()->values()->all();
+        return $this->sideContacts($sale)->where('always_cc', true)->pluck('email')->filter()->values()->all();
+    }
+
+    /** Контакты стороны: «Реализация» — CRM, остальные роли — парковка. */
+    public function sideContacts(bool $sale): Collection
+    {
+        return $this->contacts->filter(fn (Contact $c) => $c->role?->isSale() === $sale)->values();
     }
 
     /** Договор истёк — на карточке это тревожный чип. */
@@ -177,17 +193,35 @@ class Vendor extends Model implements HasMedia
         return $this->agreement_until !== null && $this->agreement_until->isPast();
     }
 
-    /** Адрес или домен отправителя → вендор. Точный адрес важнее домена: tbank.ru — целый банк. */
-    public static function forSender(?string $email): ?self
+    /** Адрес или домен отправителя → вендор по спискам стороны ящика. Точный адрес важнее домена: tbank.ru — целый банк. */
+    public static function forSender(?string $email, Scope $scope): ?self
     {
+        $column = self::sendersColumn($scope);
         $email = mb_strtolower(trim((string) $email));
         if ($email === '' || ! str_contains($email, '@')) {
             return null;
         }
         $domain = (string) preg_replace('/.*@/u', '', $email);
 
-        return self::whereJsonContains('senders', $email)->first()
-            ?? self::whereJsonContains('senders', $domain)->first();
+        return self::whereJsonContains($column, $email)->first()
+            ?? self::whereJsonContains($column, $domain)->first();
+    }
+
+    public static function sendersColumn(Scope $scope): string
+    {
+        return $scope === Scope::Park ? 'park_senders' : 'senders';
+    }
+
+    /** Адрес уже в списке другого вендора той же стороны — текст ошибки формы, иначе null. */
+    public static function takenSender(array $senders, Scope $scope, self $except): ?string
+    {
+        foreach ($senders as $sender) {
+            if ($other = self::whereJsonContains(self::sendersColumn($scope), $sender)->whereKeyNot($except->id)->first()) {
+                return "{$sender} уже у «{$other->name}»";
+            }
+        }
+
+        return null;
     }
 
     /** Строки «домен или адрес» из формы → список без дублей и пустот. */

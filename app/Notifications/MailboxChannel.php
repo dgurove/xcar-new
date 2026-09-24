@@ -22,7 +22,8 @@ final class MailboxChannel
     {
         $slug = config('xcar.notify_account');
 
-        return ($slug ? Account::where('slug', $slug)->where('is_active', true)->first() : null)
+        // Только ящик парковки: уведомление не уйдёт от offer@ или deal@, даже если их вписали в XCAR_NOTIFY_ACCOUNT.
+        return ($slug ? Account::where('slug', $slug)->where('scope', Scope::Park)->where('is_active', true)->first() : null)
             ?? Account::where('scope', Scope::Park)->where('is_active', true)->orderBy('id')->first();
     }
 

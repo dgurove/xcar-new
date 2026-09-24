@@ -4,6 +4,7 @@ namespace App\Mail\Extraction;
 
 use App\Mail\Extraction\Templates\Generic;
 use App\Mail\Extraction\Templates\Template;
+use App\Mail\Scope;
 use App\Vendors\Vendor;
 
 /** Машина из письма: настоящий отправитель → вендор по адресу или домену → его шаблон разбора. */
@@ -13,7 +14,7 @@ final class Extractor
     {
         $text = QuotationStripper::strip($body);
         $sender = QuotationStripper::forwardedSender($body) ?? $fromEmail;
-        $vendor = Vendor::forSender($sender);
+        $vendor = Vendor::forSender($sender, Scope::Offers);
         $class = $vendor?->parser?->templateClass() ?? Generic::class;
         /** @var Template $template */
         $template = new $class;

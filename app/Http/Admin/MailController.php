@@ -50,6 +50,7 @@ use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -361,11 +362,13 @@ class MailController
         $accounts = Account::where('scope', $this->scope)->where('is_active', true)->orderBy('title')->get();
         $account = $accounts->firstWhere('slug', $request->query('account')) ?? $accounts->first();
         abort_unless($account, 404);
-        $template = $request->query('template') ? Template::find($request->query('template')) : null;
-        $offer = $request->query('offer') ? Offer::where('number', $request->query('offer'))->first() : null;
-        $vehicle = $request->query('car') ? Vehicle::find($request->query('car')) : null;
+        $template = $request->query('template') ? Template::where('scope', $this->scope)->find($request->query('template')) : null;
+        // Предложение — письмо CRM, машина и счёт — письма парковки: чужая сторона их не подставляет.
+        $sale = $this->scope === Scope::Offers;
+        $offer = $sale && $request->query('offer') ? Offer::where('number', $request->query('offer'))->first() : null;
+        $vehicle = ! $sale && $request->query('car') ? Vehicle::find($request->query('car')) : null;
         // Счёт за хранение вендору: ТС счёта, шаблон «Счёт за хранение», PDF счёта и акта, адресат — бухгалтерия вендора.
-        $invoice = $request->query('invoice') ? Invoice::with(['vehicle', 'party'])->find($request->query('invoice')) : null;
+        $invoice = ! $sale && $request->query('invoice') ? Invoice::with(['vehicle', 'party'])->find($request->query('invoice')) : null;
         if ($invoice?->vehicle) {
             $vehicle = $invoice->vehicle;
             $template ??= Template::park('invoice');
@@ -374,11 +377,11 @@ class MailController
         $parent = null;
         $values = [];
         if ($offer) {
-            // Адресат — ответственный по убытку, иначе контакт вендора по реализации или убыткам; кого он держит в копии — в cc.
+            // Адресат — ответственный по убытку, иначе контакт вендора по реализации (контакты CRM); его копии — в cc.
             $offer->loadMissing('vendor.contacts');
             $values = self::placeholders($offer) + [
-                'to' => $offer->contact_email ?? $offer->vendor?->email(ContactRole::Sales, ContactRole::Claims) ?? '',
-                'cc' => implode(', ', $offer->vendor?->ccEmails() ?? []),
+                'to' => $offer->contact_email ?? $offer->vendor?->email(ContactRole::Sales) ?? '',
+                'cc' => implode(', ', $offer->vendor?->ccEmails(sale: true) ?? []),
             ];
             if (! $request->query('account') && $offer->vendor?->mail_account_id) {
                 $account = $accounts->firstWhere('id', $offer->vendor->mail_account_id) ?? $account;
@@ -387,7 +390,7 @@ class MailController
         if ($vehicle) {
             // Письмо о машине отвечает в ту ветку, которой приехала заявка.
             // Ветка письма покупателю (пропуск по QR) — не переписка с вендором.
-            $thread = Thread::where('vehicle_id', $vehicle->id)->where('buyer', false)->orderByDesc('last_message_at')->first();
+            $thread = Thread::where('vehicle_id', $vehicle->id)->park()->where('buyer', false)->orderByDesc('last_message_at')->first();
             $parent = $thread?->messages()->where('direction', Direction::In)->orderByDesc('date_at')->first();
             $vehicle->loadMissing('vendor.contacts');
             $values = self::vehiclePlaceholders($vehicle) + ['to' => $invoice
@@ -475,14 +478,14 @@ class MailController
         $thread = ! empty($data['thread']) ? Thread::where('account_id', $account->id)->find($data['thread']) : null;
 
         $message = $composer->create($account, $data, $parent, $request->user(), $thread);
-        if (! empty($data['offer']) && $message->thread && ! $message->thread->offer_id) {
+        if ($this->scope === Scope::Offers && ! empty($data['offer']) && $message->thread && ! $message->thread->offer_id) {
             $message->thread->update(['offer_id' => $data['offer']]);
         }
-        if (! empty($data['vehicle']) && $message->thread && ! $message->thread->vehicle_id) {
+        if ($this->scope === Scope::Park && ! empty($data['vehicle']) && $message->thread && ! $message->thread->vehicle_id) {
             $message->thread->update(['vehicle_id' => $data['vehicle']]);
         }
         // Ушёл акт и фото — бумаги «акты» и «фото» вендору отмечаются отправленными этим письмом, в ленте ТС — отчёт.
-        if (! empty($data['vehicle']) && ($vehicle = Vehicle::find($data['vehicle']))) {
+        if ($this->scope === Scope::Park && ! empty($data['vehicle']) && ($vehicle = Vehicle::find($data['vehicle']))) {
             $sent = collect($message->attachments()->pluck('filename'));
             $act = $sent->first(fn ($f) => str_starts_with($f, 'akt-'));
             $kinds = array_filter([$act ? DocKind::HandoverAct : null, $act ? DocKind::StorageAct : null, $sent->contains(fn ($f) => preg_match('/^(priem|vydacha)-\d+\./', $f)) ? DocKind::Photos : null]);
@@ -517,7 +520,7 @@ class MailController
     public function attachment(Request $request, Attachment $attachment, PhotoIngest $photos)
     {
         $attachment->load('message.account');
-        abort_unless($attachment->message->account->scope === $this->scope || auth()->user()->isStaff(), 404);
+        $this->guardMessage($attachment->message);
         // Файл — из outbox, из закреплённых или из ящика через кэш; отдаётся с диска, не через память.
         $file = $attachment->file();
         abort_if($file === null, 404, 'Файла нет: письмо удалено из ящика');
@@ -566,6 +569,7 @@ class MailController
 
     public function flag(Message $message)
     {
+        $this->guardMessage($message);
         $message->forceFill(['is_flagged' => ! $message->is_flagged])->save();
         PushFlag::dispatch($message->id, '\\Flagged', $message->is_flagged);
 
@@ -600,6 +604,7 @@ class MailController
 
     public function reparse(Message $message)
     {
+        $this->guardMessage($message);
         ParseMessage::dispatch($message->id);
 
         return back()->with('toast', 'Разбор поставлен в очередь');
@@ -607,6 +612,7 @@ class MailController
 
     public function resend(Message $message)
     {
+        $this->guardMessage($message);
         abort_unless($message->isOutgoing() && $message->send_state === SendState::Failed, 404);
         $message->forceFill(['send_state' => SendState::Queued, 'send_error' => null])->save();
         SendMessage::dispatch($message->id);
@@ -682,7 +688,8 @@ class MailController
     private function sendRules(Request $request): array
     {
         return $request->validate([
-            'account' => ['required', 'exists:mail_accounts,slug'],
+            // Ящик — только своей стороны: с парковки не уйдёт письмо от offer@ или deal@.
+            'account' => ['required', Rule::exists('mail_accounts', 'slug')->where('scope', $this->scope->value)],
             'parent' => ['nullable', 'integer'],
             'thread' => ['nullable', 'integer'],
             'to' => ['required', 'string', 'max:1000'],
@@ -704,5 +711,11 @@ class MailController
     private function guard(Thread $thread): void
     {
         abort_unless($thread->account->scope === $this->scope, 404);
+    }
+
+    /** Письмо — только из ящика своей стороны: повтор, флажок, разбор и вложения чужих ящиков — 404. */
+    private function guardMessage(Message $message): void
+    {
+        abort_unless($message->account?->scope === $this->scope, 404);
     }
 }

@@ -7,6 +7,7 @@ use App\Cars\CarModel;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Jobs\ExtractCandidate;
+use App\Mail\Scope;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
@@ -36,7 +37,7 @@ final class PromoteCandidate
             $brand = $v('brand') ? Brand::resolve($this->clean($v('brand'))) : null;
             $model = $brand && $v('model') ? CarModel::resolve($brand, $this->clean($v('model'))) : null;
             // Кандидаты до вендоров несли только имя страховой — старым ещё нужен поиск по нему.
-            $vendor = $v('vendor_id') ? Vendor::find($v('vendor_id')) : Vendor::forSender($v('sender'))
+            $vendor = $v('vendor_id') ? Vendor::find($v('vendor_id')) : Vendor::forSender($v('sender'), Scope::Offers)
                 ?? ($v('insurer') ? Vendor::whereRaw('lower(name) = ?', [mb_strtolower($v('insurer'))])->first() : null);
 
             $offer = ($this->create)($by);
@@ -55,7 +56,7 @@ final class PromoteCandidate
                 'inspection_address' => $v('location'),
                 'claim_ref' => $candidate->code,
                 'vendor_id' => $vendor?->id,
-                'prices_include_vat' => $v('vat') ?? $vendor?->vat_included,
+                'prices_include_vat' => $v('vat') ?? $vendor?->offers_include_vat,
                 'answer_by' => $v('answer_by'),
                 'insured_name' => $v('insured_name'),
                 'insured_phone' => $v('insured_phone'),

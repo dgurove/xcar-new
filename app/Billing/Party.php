@@ -4,6 +4,7 @@ namespace App\Billing;
 
 use App\Park\Vehicle;
 use App\Users\User;
+use App\Vendors\ContactRole;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -55,11 +56,11 @@ class Party extends Model
         }
         // Вендор-физлицо — контрагент-человек: без ИНН и банка, с телефоном контакта.
         $party = self::make($vendor->kind === Kind::Person
-            ? ['kind' => PartyKind::Person, 'name' => $vendor->name, 'phone' => $vendor->contacts->first(fn ($c) => $c->phone)?->phone, 'email' => $vendor->email(), 'legal_address' => $vendor->legal_address]
+            ? ['kind' => PartyKind::Person, 'name' => $vendor->name, 'phone' => $vendor->contacts->first(fn ($c) => $c->phone)?->phone, 'email' => $vendor->email(ContactRole::Accounting), 'legal_address' => $vendor->legal_address]
             : [
                 'kind' => PartyKind::Company, 'name' => $vendor->legal_name ?: $vendor->name, 'inn' => $vendor->inn, 'kpp' => $vendor->kpp,
                 'legal_address' => $vendor->legal_address, 'bank_name' => $vendor->bank_name, 'bik' => $vendor->bank_bic, 'account' => $vendor->bank_account,
-                'corr_account' => $vendor->bank_corr, 'payment_purpose' => $vendor->payment_purpose, 'email' => $vendor->email(),
+                'corr_account' => $vendor->bank_corr, 'payment_purpose' => $vendor->payment_purpose, 'email' => $vendor->email(ContactRole::Accounting),
             ]);
         if ($create) {
             $party->save();

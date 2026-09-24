@@ -30,7 +30,7 @@
     @if ($vendors->isNotEmpty())
         <div class="list mt-6">
             @foreach ($vendors as $vendor)
-                @php $c = $vendor->contacts->firstWhere('role', ContactRole::Storage) ?? $vendor->contacts->first(); @endphp
+                @php $cs = $vendor->sideContacts(false); $c = $cs->firstWhere("role", ContactRole::Storage) ?? $cs->first(); @endphp
                 <a href="/vendors/{{ $vendor->id }}" class="row">
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $vendor->name }}</span>

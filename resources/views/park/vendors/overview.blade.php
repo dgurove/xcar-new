@@ -1,4 +1,4 @@
-{{-- Обзор вендора: хранение (кто платит, счёт, ставки за сутки по категориям), реквизиты, договор, почта, что
+{{-- Обзор вендора: хранение (кто платит, счёт, ставки за сутки по категориям), реквизиты, договор, заявки, что
      присылаем после приёма, заметки, ТС на парковке. Строками плашек, пустое не рисуется. --}}
 @php
     use App\Support\Money;
@@ -10,7 +10,7 @@
     <div class="list">
         <div class="row justify-between"><span class="text-ink-muted">Платит</span><span>{{ $payer }}</span></div>
         <div class="row justify-between"><span class="text-ink-muted">Счёт</span><span class="text-right">{{ $vendor->billing_cadence->label() }}</span></div>
-        <div class="row justify-between"><span class="text-ink-muted">НДС</span><span>{{ $vendor->vat_included ? 'Цены с НДС' : 'Без НДС' }}</span></div>
+        <div class="row justify-between"><span class="text-ink-muted">НДС</span><span>{{ $vendor->vat_included ? 'Хранение с НДС' : 'Без НДС' }}</span></div>
         @if ($vendor->payment_days !== null)<div class="row justify-between"><span class="text-ink-muted">Оплата</span><span class="nums">{{ $vendor->payment_days }} раб. дн</span></div>@endif
         @if ($vendor->buyer_pays_late)<div class="row justify-between"><span class="text-ink-muted">Опоздавший покупатель</span><span class="nums">× {{ rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.') }} прайса</span></div>@endif
         @if ($vendor->release_without_payment)<div class="row justify-between"><span class="text-ink-muted">Выдача</span><span>Без оплаты</span></div>@endif
@@ -51,11 +51,10 @@
         @endif
     </div>
 
-    @if ($vendor->senders || $vendor->mailAccount)
-        <div class="list-head">Почта</div>
+    @if ($vendor->park_senders)
+        <div class="list-head">Заявки на приёмку</div>
         <div class="list">
-            @if ($vendor->senders)<div class="row justify-between"><span class="shrink-0 text-ink-muted">Письма от</span><span class="min-w-0 text-right">{{ implode(', ', $vendor->senders) }}</span></div>@endif
-            @if ($vendor->mailAccount)<div class="row justify-between"><span class="shrink-0 text-ink-muted">Отвечаем с</span><span class="min-w-0 truncate">{{ $vendor->mailAccount->email }}</span></div>@endif
+            <div class="row justify-between"><span class="shrink-0 text-ink-muted">Приходят от</span><span class="min-w-0 text-right">{{ implode(', ', $vendor->park_senders) }}</span></div>
         </div>
     @endif
 

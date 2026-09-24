@@ -74,6 +74,12 @@ class Thread extends Model
         return $this->belongsTo(Candidate::class, 'candidate_id');
     }
 
+    /** Ветки ящиков парковки: письма CRM (offer@, deal@) в деле ТС не показываются, даже если к нему привязаны. */
+    public function scopePark($query)
+    {
+        return $query->whereHas('account', fn ($q) => $q->where('scope', Scope::Park));
+    }
+
     /** Ветки с любым из номеров (`keys` пересекаются с `$keys`). */
     public function scopeWithAnyKey($query, array $keys)
     {

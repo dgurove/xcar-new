@@ -9,7 +9,6 @@ use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Cars\Category;
 use App\Http\Admin\OfferPhotoController;
-use App\Mail\Account;
 use App\Mail\Scope;
 use App\Mail\Template;
 use App\Park\Vehicle;
@@ -26,9 +25,10 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Вендоры на парковке (с 24.09.2026 — решение владельца: «настройка вендоров должна быть в park»): список, карточка
- * с пилюлями Обзор · Контакты · Тарифы · Деньги и «Изменить» шторкой — реквизиты, договор, хранение, почта, что
- * присылаем после приёма. В CRM у вендора остались только условия продажи предложений и маршруты.
+ * Вендоры на парковке (решение владельца 24.09.2026): список, карточка с пилюлями Обзор, Контакты, Тарифы, Деньги
+ * и «Изменить» шторкой — реквизиты, договор, хранение, адреса и разбор заявок на приёмку, письма парковки, что
+ * присылаем после приёма. Всё продажное — условия сделки, маршруты, ящик offer@/deal@, «Реализация», адреса писем
+ * с предложениями, НДС цен предложений — в CRM (`Admin\VendorController`); парковка его не видит и не правит.
  */
 class VendorController
 {
@@ -65,14 +65,13 @@ class VendorController
     public function show(Request $request, Vendor $vendor)
     {
         $pill = array_key_exists($request->query('pill', ''), self::PILLS) ? $request->query('pill') : 'overview';
-        $vendor->load(['contacts.yard', 'media', 'mailAccount']);
+        $vendor->load(['contacts.yard', 'media']);
         $data = [
             'vendor' => $vendor,
             'pill' => $pill,
             'pills' => self::PILLS,
             'base' => "/vendors/{$vendor->id}",
             'crm' => Surface::Crm->url("/settings/vendors/{$vendor->id}"),
-            'accounts' => Account::where('is_active', true)->orderBy('title')->get()->mapWithKeys(fn ($a) => [$a->id => $a->title.' ('.$a->email.')']),
             'templates' => Template::where('scope', Scope::Park)->orderBy('name')->pluck('name', 'id'),
             'docs' => DocRequirement::cases(),
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
@@ -147,25 +146,21 @@ class VendorController
             'release_by_qr' => ['boolean'],
             'buyer_rate_multiplier' => ['required', 'numeric', 'between:0,20'],
             'billing_cadence' => ['required', Rule::enum(Cadence::class)],
-            'report_template_id' => ['nullable', 'exists:mail_templates,id'],
-            'refusal_template_id' => ['nullable', 'exists:mail_templates,id'],
-            'senders' => ['nullable', 'string', 'max:2000'],
-            'parser' => ['required', Rule::enum(Parser::class)],
-            'mail_account_id' => ['nullable', 'exists:mail_accounts,id'],
+            'report_template_id' => ['nullable', Rule::exists('mail_templates', 'id')->where('scope', Scope::Park->value)],
+            'refusal_template_id' => ['nullable', Rule::exists('mail_templates', 'id')->where('scope', Scope::Park->value)],
+            'park_senders' => ['nullable', 'string', 'max:2000'],
+            'park_parser' => ['required', Rule::enum(Parser::class)],
             'intake_docs' => ['nullable', 'array'],
             'intake_docs.*' => [Rule::enum(DocRequirement::class)],
             'intake_note' => ['nullable', 'string', 'max:2000'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
-        $senders = Vendor::parseSenders($data['senders'] ?? null);
-        foreach ($senders as $sender) {
-            $other = Vendor::whereJsonContains('senders', $sender)->where('id', '!=', $vendor->id)->first();
-            if ($other) {
-                return back()->withInput()->withErrors(['senders' => "{$sender} уже у «{$other->name}»"]);
-            }
+        $senders = Vendor::parseSenders($data['park_senders'] ?? null);
+        if ($taken = Vendor::takenSender($senders, Scope::Park, $vendor)) {
+            return back()->withInput()->withErrors(['park_senders' => $taken]);
         }
         $vendor->update(array_merge($data, [
-            'senders' => $senders,
+            'park_senders' => $senders,
             'intake_docs' => array_values($data['intake_docs'] ?? []),
             'is_active' => $request->boolean('is_active'),
             'vat_included' => $request->boolean('vat_included'),
