@@ -1,6 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import { QrScanner } from '../qr/scanner';
 import { haptic } from '../qr/haptics';
+import { confirmSheet } from '../confirm';
 
 // Выдача по QR в деле ТС: «Сканировать QR» открывает сканер, прочитанный код проверяет сервер (`/cars/{id}/pass-check`),
 // ответ рисуется плашкой на месте кнопки. Код подошёл — в форму встаёт скрытое `pass`, кнопка становится «Выдать».
@@ -18,8 +19,8 @@ export default class extends Controller {
         new QrScanner({ onScan: (text) => this.check(text) }).open();
     }
 
-    confirmOrally() {
-        if (!window.confirm('Страховая подтвердила покупателя устно? Это запишется в историю ТС')) return;
+    async confirmOrally(event) {
+        if (!(await confirmSheet('Страховая подтвердила покупателя устно?', { submitter: event.currentTarget }))) return;
         this.confirmTarget.value = '1';
         this.ready({ code: this.last.code, title: 'Подтверждено устно: ' + this.last.name, text: this.last.text });
     }
@@ -34,6 +35,11 @@ export default class extends Controller {
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token ?? '' },
                 body: JSON.stringify({ code: text, confirm }),
             });
+            if (!response.ok) {
+                this.render('danger', response.status === 419 ? 'Сессия устарела, обновите страницу' : 'Ошибка сервера, попробуйте ещё раз');
+                haptic('error');
+                return;
+            }
             data = await response.json();
         } catch {
             this.render('danger', 'Нет связи, попробуйте ещё раз');
@@ -47,7 +53,7 @@ export default class extends Controller {
         this.submitTarget.hidden = true;
         this.scanTarget.hidden = false;
         if (data.status === 'unconfirmed') {
-            this.render('urgent', data.title, data.text, '<button type="button" class="btn btn-s btn-accent mt-3" data-action="qr-release#confirmOrally">Страховая подтвердила устно, выдаю</button>');
+            this.render('urgent', data.title, data.text, '<button type="button" class="btn btn-s btn-accent mt-3" data-action="qr-release#confirmOrally">Подтвердила устно, выдаю</button>');
             this.passTarget.value = data.code;
             return;
         }

@@ -74,7 +74,7 @@ class PickupController
     /** QR отсканировали обычной камерой телефона. */
     public function scanned(Request $request, string $code)
     {
-        $pass = Pass::where('code', strtoupper($code))->with(['vehicle.yard.settlement', 'vehicle.brand', 'vehicle.model'])->first();
+        $pass = Pass::byCode($code)?->load(['vehicle.yard.settlement', 'vehicle.brand', 'vehicle.model']);
         $user = $request->user();
         if ($pass && $user?->canAccess(Section::Park)) {
             return redirect()->away(Surface::Park->url('/cars/'.$pass->vehicle_id.'?pass='.$pass->code));

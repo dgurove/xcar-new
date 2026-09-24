@@ -386,7 +386,8 @@ class MailController
         }
         if ($vehicle) {
             // Письмо о машине отвечает в ту ветку, которой приехала заявка.
-            $thread = Thread::where('vehicle_id', $vehicle->id)->orderByDesc('last_message_at')->first();
+            // Ветка письма покупателю (пропуск по QR) — не переписка с вендором.
+            $thread = Thread::where('vehicle_id', $vehicle->id)->where('buyer', false)->orderByDesc('last_message_at')->first();
             $parent = $thread?->messages()->where('direction', Direction::In)->orderByDesc('date_at')->first();
             $vehicle->loadMissing('vendor.contacts');
             $values = self::vehiclePlaceholders($vehicle) + ['to' => $invoice

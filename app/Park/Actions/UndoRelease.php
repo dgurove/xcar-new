@@ -9,6 +9,7 @@ use App\Park\Events\VehicleAccepted;
 use App\Park\EventType;
 use App\Park\Inspection;
 use App\Park\InspectionKind;
+use App\Park\Pass;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\RequestType;
@@ -50,6 +51,11 @@ final class UndoRelease
             $moved = $vehicle->events()->reorder()->whereIn('type', [EventType::Accepted, EventType::Moved])->latest('created_at')->latest('id')->first();
             Inspection::where('vehicle_id', $vehicle->id)->where('kind', InspectionKind::Release)->delete();
             $vehicle->update(['state' => VehicleState::Stored, 'released_at' => null, 'yard_id' => $last['yard_id'] ?? $vehicle->yard_id, 'spot' => $moved?->payload['spot'] ?? null]);
+            // Выдали по QR — пропуск снова действует: ТС стоит, покупатель приедет с тем же кодом.
+            $released = $vehicle->events()->reorder()->where('type', EventType::Released)->latest('id')->first();
+            if ($passId = $released?->payload['pass'] ?? null) {
+                Pass::whereKey($passId)->update(['used_at' => null, 'used_by' => null]);
+            }
             $vehicle->log(EventType::ReleaseUndone, $by, array_filter(['reason' => $reason]));
             $req = Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Release)->where('state', RequestState::Done)->latest('done_at')->first();
             $req?->update(['state' => RequestState::New, 'done_at' => null, 'done_by' => null]);

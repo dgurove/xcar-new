@@ -39,6 +39,8 @@ final class CaseView
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
         $release = $open?->type === RequestType::Release;
         $threads = Thread::where('vehicle_id', $vehicle->id)->get(['id', 'needs_reply_at']);
+        // Выдача по QR: живой пропуск (анкета покупателя) — один запрос на экран и таймлайн.
+        $pass = $vehicle->releasesByQr() ? $vehicle->pass() : null;
         $ids = $threads->pluck('id');
         // Ждёт ответа — одно правило на почту, дело и ленту: последнее письмо ветки их, с вопросом, и после него
         // мы не писали и не нажимали «Сделано» (`Threads::refresh` → `needs_reply_at`). Само письмо — последнее входящее.
@@ -54,7 +56,7 @@ final class CaseView
             'phases' => $vehicle->requests->filter(fn (Request $r) => $r->state === RequestState::Done)->sortBy(fn (Request $r) => ($r->done_at ?? $r->updated_at)->getTimestamp())->values(),
             'others' => $vehicle->requests->filter(fn (Request $r) => $r->isOpen() && $open && $r->isNot($open))->values(),
             'letters' => $letters = $ids->isEmpty() ? 0 : Message::whereIn('thread_id', $ids)->count(),
-            'steps' => Timeline::for($vehicle, $open, $letters > 0 || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $callAgain, $asks),
+            'steps' => Timeline::for($vehicle, $open, $letters > 0 || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $callAgain, $asks, $pass),
             'asks' => $asks,
             // Текст письма о приёме — в шаг «Нужно позвонить»: «клиент сам свяжется», «документы в офисе СК», «со СТОА по адресу…».
             'letterText' => $open?->thread_id ? Intent::excerpt(Message::where('thread_id', $open->thread_id)->where('direction', Direction::In)->orderBy('date_at')->value('text_body')) : null,
@@ -87,9 +89,9 @@ final class CaseView
             'spots' => $vehicle->yard?->freeSpots() ?? [],
             'canManage' => $user->canManagePark(),
             // Выдача по QR: живой пропуск (анкета покупателя), код из адреса — отсканировали камерой телефона.
-            'byQr' => $byQr = $vehicle->releasesByQr(),
-            'pass' => $byQr ? $vehicle->pass() : null,
-            'scannedPass' => $byQr && $release ? Pass::codeFrom((string) request()->query('pass')) : null,
+            'byQr' => $vehicle->releasesByQr(),
+            'pass' => $pass,
+            'scannedPass' => $vehicle->releasesByQr() && $release ? Pass::codeFrom((string) request()->query('pass')) : null,
         ];
     }
 

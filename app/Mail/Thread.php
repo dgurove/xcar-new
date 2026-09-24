@@ -16,14 +16,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * Ветка писем. `keys` — её номера (code:/vin:/plate:, см. Extraction\Keys), `candidate_id` — кандидат «Из писем»,
  * `archived_at` — убрана из «Входящих» (как в Gmail: найдётся поиском, новое чужое письмо вернёт).
  */
-#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'unlinked_at', 'keys', 'candidate_id', 'archived_at', 'vendor_id'])]
+#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'buyer', 'unlinked_at', 'keys', 'candidate_id', 'archived_at', 'vendor_id'])]
 class Thread extends Model
 {
     protected $table = 'mail_threads';
 
     protected function casts(): array
     {
-        return ['participants' => 'array', 'last_message_at' => 'datetime', 'has_attachments' => 'bool', 'unlinked_at' => 'datetime', 'keys' => 'array', 'archived_at' => 'datetime',
+        return ['participants' => 'array', 'last_message_at' => 'datetime', 'has_attachments' => 'bool', 'buyer' => 'bool', 'unlinked_at' => 'datetime', 'keys' => 'array', 'archived_at' => 'datetime',
             'needs_reply_at' => 'datetime', 'answered_at' => 'datetime'];
     }
 

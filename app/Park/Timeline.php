@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
 final class Timeline
 {
     /** @return list<Step> */
-    public static function for(Vehicle $v, ?Request $open, bool $hasLetters, Collection $events, bool $callAgain = false, ?Collection $asks = null): array
+    public static function for(Vehicle $v, ?Request $open, bool $hasLetters, Collection $events, bool $callAgain = false, ?Collection $asks = null, ?Pass $pass = null): array
     {
         $steps = [];
         $ir = $open && in_array($open->type, [RequestType::Intake, RequestType::Tow], true) ? $open
@@ -101,8 +101,8 @@ final class Timeline
 
             // Выдача по QR: покупатель заполняет анкету по ссылке, страховая подтверждает — шаг между хранением и выдачей.
             // Никогда не текущий: форма выдачи остаётся на месте, а шаг показывает, где анкета, и даёт «Страховая подтвердила».
-            if ($v->releasesByQr() && ($v->sold_at || $releasing || $v->released_at)) {
-                $pass = $v->pass();
+            // У выданной без QR ждать анкету уже нечего — шага нет.
+            if ($v->releasesByQr() && ($v->sold_at || $releasing || ($v->released_at && $pass))) {
                 $linkAt = $events->where('type', EventType::PickupLinkSent)->max('created_at');
                 $steps[] = match (true) {
                     ! $pass => new Step('buyer', 'Ждём анкету покупателя', $v->released_at ? Step::NEXT : Step::TODO, null, null,

@@ -20,7 +20,9 @@ final class SendPickupLink
 
     public function handle(VehicleSold $e): void
     {
-        if ($e->message && $e->vehicle->releasesByQr() && $e->vehicle->state === VehicleState::Stored) {
+        // Только на свежее «продано»: ТС, заведённые задним числом по старым письмам (StoreByLetters, загрузка истории
+        // ящика), тоже проходят через MarkSold — отвечать страховой на письмо полугодовой давности незачем.
+        if ($e->message && $e->message->date_at?->gt(now()->subDays(7)) && $e->vehicle->releasesByQr() && $e->vehicle->state === VehicleState::Stored) {
             $this->send($e->vehicle, $e->message);
         }
     }

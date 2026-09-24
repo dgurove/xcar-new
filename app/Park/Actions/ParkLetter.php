@@ -33,7 +33,8 @@ final class ParkLetter
     public function toVendor(Vehicle $vehicle, string $templateKey, array $values = [], ?Message $parent = null): ?Message
     {
         $account = self::account();
-        $parent ??= Message::whereIn('thread_id', Thread::where('vehicle_id', $vehicle->id)->select('id'))
+        // Ветки писем покупателю (пропуск) — не переписка с вендором: ответ туда ушёл бы покупателю.
+        $parent ??= Message::whereIn('thread_id', Thread::where('vehicle_id', $vehicle->id)->where('buyer', false)->select('id'))
             ->where('direction', Direction::In)->orderByDesc('date_at')->first();
         $vehicle->loadMissing('vendor.contacts');
         $to = $parent?->replyToAddress() ?? $vehicle->vendor?->email(ContactRole::Storage, ContactRole::Claims);
@@ -65,7 +66,7 @@ final class ParkLetter
             return null;
         }
         $message = $this->composer->create($account, ['to' => $to, 'subject' => $subject, 'body' => $html, 'inline' => $inline], null, null);
-        $message->thread->update(['vehicle_id' => $vehicle->id]);
+        $message->thread->update(['vehicle_id' => $vehicle->id, 'buyer' => true]);
 
         return $message;
     }
