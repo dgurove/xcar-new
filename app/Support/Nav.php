@@ -53,7 +53,7 @@ final class Nav
                 $user?->canManagePark() ? self::item('Деньги', '/money') : null,
                 self::item('Почта', '/mail'),
                 self::item('Парковки', '/yards', tab: false),
-                self::item('Вендоры', '/clients', tab: false),
+                self::item('Вендоры', '/vendors', tab: false),
             ]));
         }
 
@@ -174,7 +174,8 @@ final class Nav
         if ($surface === Surface::Park) {
             return ['' => array_values(array_filter([
                 self::link('Профиль', '/account', exact: true),
-                self::link('Вендоры', '/clients'),
+                self::link('Вендоры', '/vendors'),
+                self::link('Тарифы', '/tariffs'),
                 self::link('Парковки', '/yards'),
                 $user->canManagePark() ? self::link('Реквизиты', '/money/parties') : null,
                 self::link('Уведомления', '/account/notifications'),
@@ -190,7 +191,6 @@ final class Nav
                     self::link('Профиль', '/settings', exact: true),
                     ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users')] : []),
                     self::link('Вендоры', '/settings/vendors'),
-                    self::link('Тарифы', '/settings/tariffs'),
                     self::link('Ящики', '/settings/mailboxes'),
                     self::link('Шаблоны', '/settings/templates'),
                     self::link('Метки', '/settings/tags'),

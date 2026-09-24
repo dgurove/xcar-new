@@ -22,10 +22,11 @@
 @endphp
 <div class="flex flex-col gap-4">
     @if ($yards->isNotEmpty())
-        <div class="flex flex-wrap gap-1.5">
-            <x-ui.pill :href="$link(null)" :current="!$yardId">Все парковки</x-ui.pill>
-            @foreach ($yards as $yard)<x-ui.pill :href="$link($yard->id)" :current="$yardId === $yard->id">{{ $yard->name }}</x-ui.pill>@endforeach
-        </div>
+        {{-- Парковки — лентой, не переносом: на телефоне шесть пилюль в три ряда съедали экран. --}}
+        <x-ui.pills>
+            <x-ui.pill :href="$link(null)" :current="!$yardId" data-turbo-action="replace">Все парковки</x-ui.pill>
+            @foreach ($yards as $yard)<x-ui.pill :href="$link($yard->id)" :current="$yardId === $yard->id" data-turbo-action="replace">{{ $yard->name }}</x-ui.pill>@endforeach
+        </x-ui.pills>
     @endif
     <div class="list">
         @foreach ($groups as $catValue => $catLabel)

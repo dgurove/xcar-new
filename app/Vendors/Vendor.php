@@ -99,7 +99,7 @@ class Vendor extends Model implements HasMedia
     public function storageRates(): array
     {
         return collect(Category::cases())
-            ->mapWithKeys(fn ($c) => [$c->label() => Tariff::ladderLabel(Tariff::ladder($this->id, null, $c, TariffService::Storage))])
+            ->mapWithKeys(fn ($c) => [$c->label() => Tariff::ladderLabel(Tariff::ladderWhole($this->id, null, $c, TariffService::Storage))])
             ->all();
     }
 

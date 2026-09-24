@@ -10,7 +10,7 @@
     // Ключ ошибки — со своей категорией и услугой: в шторках их несколько, общий ключ показал бы её во всех.
     $error = 'ladder.'.($catValue ?? 'any').'.'.($service?->value ?? 'new');
 @endphp
-<form method="post" action="/settings/tariffs/ladder" class="box-nested flex flex-col gap-3" data-controller="tariff-form repeater">
+<form method="post" action="/tariffs/ladder" class="box-nested flex flex-col gap-3" data-controller="tariff-form repeater">
     @csrf
     <input type="hidden" name="vendor_id" value="{{ $vendorId }}">
     <input type="hidden" name="yard_id" value="{{ $yardId }}">

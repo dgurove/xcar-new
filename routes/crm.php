@@ -17,9 +17,7 @@ use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RouteController;
 use App\Http\Admin\TagController;
-use App\Http\Admin\TariffController;
 use App\Http\Admin\UserController;
-use App\Http\Admin\VendorContactController;
 use App\Http\Admin\VendorController;
 use App\Http\Admin\WorkflowController;
 use App\Http\Cabinet\InviteController;
@@ -27,6 +25,7 @@ use App\Http\Cabinet\ProfileController;
 use App\Http\Site\ShareController;
 use App\Purchases\Car;
 use App\Purchases\Purchase;
+use App\Support\Surface;
 use Illuminate\Support\Facades\Route;
 
 // CRM — свой хост того же приложения, только для сотрудников.
@@ -176,14 +175,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::post('/vendors', [VendorController::class, 'store']);
         Route::get('/vendors/{vendor}', [VendorController::class, 'show']);
         Route::put('/vendors/{vendor}', [VendorController::class, 'update']);
-        Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy']);
-        Route::post('/vendors/{vendor}/contract', [VendorController::class, 'contract']);
-        Route::delete('/vendors/{vendor}/contract', [VendorController::class, 'dropContract']);
-        Route::post('/vendors/{vendor}/contacts', [VendorContactController::class, 'store']);
-        Route::put('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'update']);
-        Route::delete('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'destroy']);
-        Route::get('/tariffs', [TariffController::class, 'index']);
-        Route::post('/tariffs/ladder', [TariffController::class, 'save']);
+        // Парковочное у вендора (реквизиты, хранение, контакты, прайс, деньги) — на парковке с 24.09.2026.
+        Route::get('/tariffs', fn () => redirect()->away(Surface::Park->url('/tariffs'), 301));
 
         Route::post('/workflows/{workflow}/enable', [WorkflowController::class, 'activate']);
         Route::post('/workflows/{workflow}/launch', [WorkflowController::class, 'autoStart']);

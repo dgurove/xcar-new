@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Admin;
+namespace App\Http\Park;
 
 use App\Vendors\Contact;
 use App\Vendors\ContactRole;

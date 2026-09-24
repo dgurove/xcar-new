@@ -2,14 +2,16 @@
 
 use App\Http\Admin\ReferenceController;
 use App\Http\Park\ActController;
-use App\Http\Park\ClientController;
 use App\Http\Park\MailController;
 use App\Http\Park\MoneyController;
 use App\Http\Park\PartyController;
 use App\Http\Park\PassController;
 use App\Http\Park\RequestController;
+use App\Http\Park\TariffController;
 use App\Http\Park\VehicleController;
 use App\Http\Park\VehicleInvoiceController;
+use App\Http\Park\VendorContactController;
+use App\Http\Park\VendorController;
 use App\Http\Park\YardController;
 use Illuminate\Support\Facades\Route;
 
@@ -102,9 +104,22 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/yards', [YardController::class, 'store'])->middleware('park.manage');
     Route::put('/yards/{yard}', [YardController::class, 'update'])->middleware('park.manage');
     Route::delete('/yards/{yard}', [YardController::class, 'destroy'])->middleware('park.manage');
-    Route::get('/clients', [ClientController::class, 'index']);
-    Route::post('/clients', [ClientController::class, 'store'])->middleware('park.manage');
-    Route::put('/clients/{client}', [ClientController::class, 'update'])->middleware('park.manage');
+    // Вендоры и прайс — на парковке (с 24.09.2026); прежний адрес /clients — 301.
+    Route::get('/clients', fn () => redirect('/vendors', 301));
+    Route::get('/vendors', [VendorController::class, 'index']);
+    Route::get('/vendors/{vendor}', [VendorController::class, 'show']);
+    Route::middleware('park.manage')->group(function () {
+        Route::post('/vendors', [VendorController::class, 'store']);
+        Route::put('/vendors/{vendor}', [VendorController::class, 'update']);
+        Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy']);
+        Route::post('/vendors/{vendor}/contract', [VendorController::class, 'contract']);
+        Route::delete('/vendors/{vendor}/contract', [VendorController::class, 'dropContract']);
+        Route::post('/vendors/{vendor}/contacts', [VendorContactController::class, 'store']);
+        Route::put('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'update']);
+        Route::delete('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'destroy']);
+        Route::post('/tariffs/ladder', [TariffController::class, 'save']);
+    });
+    Route::get('/tariffs', [TariffController::class, 'index']);
 
     Route::get('/mail', [MailController::class, 'index']);
     Route::get('/mail/new', [MailController::class, 'compose']);

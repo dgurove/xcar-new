@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Admin;
+namespace App\Http\Park;
 
 use App\Cars\Category;
 use App\Vendors\Tariff;
@@ -13,12 +13,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-/** Прайс: базовый на `/settings/tariffs`, договорной — строки с `vendor_id` из карточки вендора; форма одна. */
+/** Прайс на парковке: базовый на `/tariffs`, договорной — строки с `vendor_id` из карточки вендора `/vendors/{id}`; форма одна. */
 class TariffController
 {
     public function index(Request $request)
     {
-        return view('admin.tariffs', VendorController::tariffData($request, null) + ['base' => '/settings/tariffs']);
+        return view('park.tariffs', VendorController::tariffData($request, null) + ['base' => '/tariffs']);
     }
 
     /**

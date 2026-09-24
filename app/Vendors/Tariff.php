@@ -97,6 +97,26 @@ class Tariff extends Model
     }
 
     /**
+     * Лестница целиком, со всеми ступенями по стоимости, — для сводки условий вендора («250…450 ₽/сут по
+     * стоимости»): тот же уровень, что у начисления, но без выбора ступени под стоимость конкретной ТС.
+     *
+     * @return Collection<int, self>
+     */
+    public static function ladderWhole(?int $vendorId, ?int $yardId, ?Category $category, TariffService $service): Collection
+    {
+        $day = now()->toDateString();
+        $rows = self::cell($vendorId, $yardId, $category, $service)['rows'];
+        $live = array_values(array_filter($rows, fn (self $t) => $t->valid_from->toDateString() <= $day && (! $t->valid_to || $t->valid_to->toDateString() >= $day)));
+        if (! $live) {
+            return collect();
+        }
+        $level = fn (self $t) => ($t->vendor_id ? 4 : 0) + ($t->yard_id ? 2 : 0) + ($t->category ? 1 : 0);
+        $top = max(array_map($level, $live));
+
+        return collect($live)->filter(fn (self $t) => $level($t) === $top)->sortBy(fn (self $t) => [$t->from_day, $t->from_value ?? -1])->values();
+    }
+
+    /**
      * Ступени лестницы простыми числами `[[from_day, price], …]` — для расчёта хранения: ставку спрашивают на
      * каждый день по каждой ТС, и чтение полей модели в таком цикле обходится дороже самого отбора.
      *
