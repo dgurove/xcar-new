@@ -9,7 +9,7 @@
         </div>
         <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
             @if ($vehicle->ref && $vehicle->brand_id)<span class="tag nums">{{ $vehicle->ref }}</span>@endif
-            @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
+            @if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
             {{ $slot }}
         </div>
     </div>

@@ -24,7 +24,7 @@
                     <div class="case-head">
                         <div class="case-name">
                             <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="font-medium hover:text-accent-text" @if ($crm) data-turbo="false" @endif>{{ $v->titleWithYear() }}</a>
-                            @if ($v->vendor)<span class="tag">{{ $v->vendor->name }}</span>@endif
+                            @if ($v->vendor)<x-vendor.name :vendor="$v->vendor" class="tag"/>@endif
                         </div>
                         <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="case-go" @if ($crm) data-turbo="false" @endif><x-park.state :vehicle="$v" only/><span aria-hidden="true">›</span></a>
                     </div>
@@ -42,7 +42,7 @@
                         <div class="case-name">
                             <span class="font-medium {{ $c->hasCar() ? '' : 'text-ink-muted' }}">{{ $c->title() }}</span>
                             <span class="tag {{ $c->stage === \App\Mail\CandidateStage::Sold ? 'tag-urgent' : '' }}">{{ $c->stage === \App\Mail\CandidateStage::Intake ? $c->requestTag() : $c->stageLabel() }}</span>
-                            @if ($c->vendor?->name)<span class="tag">{{ $c->vendor->name }}</span>@endif
+                            @if ($c->vendor)<x-vendor.name :vendor="$c->vendor" class="tag"/>@endif
                         </div>
                         <span class="flex shrink-0 items-center gap-1.5">
                             @if ($c->state === CandidateState::New)

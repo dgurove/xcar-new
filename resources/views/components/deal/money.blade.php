@@ -41,7 +41,7 @@
             @foreach ($invoices as $i)
                 <div class="row !py-2.5 {{ $i->claims->isNotEmpty() ? 'bg-urgent-soft' : '' }}">
                     <a href="/work/money/invoices/{{ $i->id }}" class="min-w-0 flex-1">
-                        <span class="block truncate">{{ $i->isOwed() ? 'Вознаграждение менеджеру' : 'Счёт '.$i->label() }}@unless ($i->isOwed())<span class="text-ink-muted"> {{ $i->party->name }}</span>@endunless</span>
+                        <span class="block truncate">{{ $i->isOwed() ? 'Вознаграждение менеджеру' : 'Счёт '.$i->label() }}@unless ($i->isOwed())<span class="text-ink-muted"> <x-vendor.name :party="$i->party"/></span>@endunless</span>
                         <span class="row-sub"><x-billing.light :invoice="$i"/>@if ($i->isPartial())<span class="tag nums">из {{ Money::rub($i->total) }}</span>@endif</span>
                     </a>
                     <span class="flex shrink-0 flex-col items-end gap-1.5">

@@ -2,7 +2,7 @@
      Крошки и подвал — только на сайте: CRM и стоянка не для поисковиков, на
      телефоне вместо подвала — отступ под таб-бар.
      heading по умолчанию равен title; :heading="false" — без заголовка.
-     Слот actions — ряд справа от h1 (поделиться, закладка, стрелки).
+     Слот actions — ряд справа от h1 (поделиться, закладка, стрелки); lead — перед текстом h1 (логотип вендора).
      back — ['Предложения', '/']: на телефоне слева в шапке «‹ Назад», на
      десктопе круглая «‹» слева от заголовка (x-ui.back). Вложенному экрану шелл ставит его сам: ПК — Nav::backFor,
      телефон — Nav::phoneBack (экран из меню кабинета — назад в кабинет, на ПК он раздел шапки);
@@ -15,6 +15,7 @@
     $heading = $heading === false ? null : ($heading ?? $title);
     // Пустой слот (кабинет передаёт его всегда) — всё равно что нет.
     if (isset($actions) && $actions->isEmpty()) { unset($actions); }
+    if (isset($lead) && $lead->isEmpty()) { unset($lead); }
     $site = \App\Support\Surface::current() === \App\Support\Surface::Site;
     // Подвал и крошки — веб-мебель: в установленном приложении их нет (документы — в кабинете).
     $installed = \App\Http\Middleware\MarkInstalled::installed(request());
@@ -36,7 +37,7 @@
                     {{-- Без заголовка и действий ряд нужен только ради круглой «‹» на десктопе: на телефоне она в шапке. --}}
                     <div @class(['has-back mb-4 flex-wrap items-center gap-x-4 gap-y-2', 'flex' => $heading || isset($actions), 'hidden md:flex' => !$heading && !isset($actions), 'max-md:hidden' => !$phoneHeading, 'md:hidden' => !$desktopHeading])>
                         @if ($back)<x-ui.back :back="$back"/>@endif
-                        @if ($heading)<h1 class="text-xl sm:text-2xl">{{ $heading }}@if ($count !== null) <span class="nums ml-2 text-base font-normal text-ink-dim">{{ $count }}</span>@endif</h1>@endif
+                        @if ($heading)<h1 class="text-xl sm:text-2xl">@isset($lead){{ $lead }} @endisset{{ $heading }}@if ($count !== null) <span class="nums ml-2 text-base font-normal text-ink-dim">{{ $count }}</span>@endif</h1>@endif
                         @isset($actions)<div {{ $actions->attributes->merge(['class' => 'flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2']) }}>{{ $actions }}</div>@endisset
                     </div>
                 @endif

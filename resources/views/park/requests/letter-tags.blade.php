@@ -18,7 +18,7 @@
     @elseif ($intent === null || $intent === Intent::Intake)<span class="tag">{{ $c->requestTag() }}</span>
     @elseif ($intent->short())<span class="tag {{ $intent->tone() }}">{{ $intent->short() }}</span>@endif
     @if ($by)<span class="tag nums {{ $by->isPast() ? 'tag-danger' : 'tag-urgent' }}">до {{ $by->translatedFormat('j M H:i') }}</span>@endif
-    @if ($c->vendor?->name ?? $v('vendor'))<span class="tag">{{ $c->vendor?->name ?? $v('vendor') }}</span>@endif
+    @if ($c->vendor)<x-vendor.name :vendor="$c->vendor" class="tag"/>@elseif ($v('vendor'))<span class="tag">{{ $v('vendor') }}</span>@endif
     @if ($c->code)<x-ui.copy-code class="tag" :value="$c->code"/>@endif
     @if ($v('plate'))<x-ui.copy-code class="tag" :value="$v('plate')" done="Госномер в буфере" title="Скопировать госномер"/>@endif
     <x-ui.vin-code :vin="$v('vin')" class="tag"/>

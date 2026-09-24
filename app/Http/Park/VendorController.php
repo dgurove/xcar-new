@@ -15,6 +15,7 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\Surface;
+use App\Vendors\Actions\SetLogo;
 use App\Vendors\DocRequirement;
 use App\Vendors\Kind;
 use App\Vendors\Parser;
@@ -130,7 +131,7 @@ class VendorController
         ];
     }
 
-    public function update(Request $request, Vendor $vendor)
+    public function update(Request $request, Vendor $vendor, SetLogo $setLogo)
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:80', 'unique:vendors,name,'.$vendor->id],
@@ -164,7 +165,7 @@ class VendorController
             'intake_docs.*' => [Rule::enum(DocRequirement::class)],
             'intake_note' => ['nullable', 'string', 'max:2000'],
             'notes' => ['nullable', 'string', 'max:2000'],
-        ]);
+        ] + SetLogo::RULES);
         $senders = Vendor::parseSenders($data['park_senders'] ?? null);
         if ($taken = Vendor::takenSender($senders, Scope::Park, $vendor)) {
             return back()->withInput()->withErrors(['park_senders' => $taken]);
@@ -178,6 +179,8 @@ class VendorController
             'release_without_payment' => $request->boolean('release_without_payment'),
             'release_by_qr' => $request->boolean('release_by_qr'),
         ]));
+
+        $setLogo($vendor, $request);
 
         return back()->with('toast', 'Сохранено');
     }

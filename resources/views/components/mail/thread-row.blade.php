@@ -37,7 +37,7 @@
                 <span class="min-w-0 max-w-max shrink truncate {{ $unread ? 'font-medium' : '' }}">@if ($unread)<span class="mr-1.5 inline-block size-2 rounded-full bg-urgent align-[1px]"></span>@endif{{ $out ? 'Кому: ' : '' }}{{ $who }}</span>
                 @if ($waits)<span class="tag tag-urgent shrink-0">Ждёт ответа</span>@endif
                 @if ($tag)<span class="tag {{ $tone }} shrink-0">{{ $tag }}</span>@endif
-                @if ($linked && $thread->vendor)<span class="tag hidden shrink-0 sm:inline-flex">{{ $thread->vendor->name }}</span>@endif
+                @if ($linked && $thread->vendor)<x-vendor.name :vendor="$thread->vendor" class="tag hidden shrink-0 sm:inline-flex"/>@endif
                 <span class="nums ml-auto shrink-0 text-xs text-ink-dim">{{ $when }}</span>
             </div>
             <div class="mt-0.5 flex items-center gap-2">

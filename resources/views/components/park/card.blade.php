@@ -36,13 +36,13 @@
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="block min-w-0 flex-1 leading-snug hover:text-accent-text"><span class="line-clamp-1">{{ $vehicle->titleWithYear() }}@if (! $facts && $vehicle->plate) <span class="font-normal text-ink-muted">{{ $vehicle->plate }}</span>@endif</span></a>
+            <a href="{{ $href }}" class="flex min-w-0 flex-1 items-center gap-[.35em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $vehicle->titleWithYear() }}@if (! $facts && $vehicle->plate) <span class="font-normal text-ink-muted">{{ $vehicle->plate }}</span>@endif</span>@if ($vehicle->vendor)<x-vendor.logo :vendor="$vehicle->vendor"/>@endif</a>
         </div>
     </div>
     <div class="card-extra">
         @if ($facts)
             {{-- Одна строка текста вместо ряда чипов, как в таблице: состояние (кроме стоящей), что не так,
-                 госномер, номер убытка, парковка. Вендор и ставка — в окошке и деле. --}}
+                 госномер, номер убытка, парковка. Вендор — логотипом за названием, ставка — в окошке и деле. --}}
             <span class="card-sub">
                 @if ($state !== VehicleState::Stored)<span class="text-ink">{{ mb_strtolower($state->label()) }}</span>@endif
                 <x-park.alerts :vehicle="$vehicle" plain/>

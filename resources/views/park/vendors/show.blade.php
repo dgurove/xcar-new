@@ -6,6 +6,7 @@
     $noBank = $vendor->kind->billable() && ! \App\Billing\Party::forVendor($vendor, false)->billable();
 @endphp
 <x-ui.shell :title="$vendor->name" :back="['Вендоры', '/vendors']">
+    <x-slot:lead><x-vendor.logo :vendor="$vendor"/></x-slot:lead>
     <div class="max-w-3xl">
         <div class="-mt-2 mb-4 flex items-center gap-1.5">
             <div class="flex min-w-0 flex-1 flex-wrap gap-1.5">

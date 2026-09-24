@@ -12,7 +12,7 @@
             @foreach ($debts as $d)
                 <a href="{{ $d['party']->id ? '/money?preset=all&party='.$d['party']->id : '/money' }}" class="row">
                     <div class="min-w-0 flex-1">
-                        <div class="truncate">{{ $d['party']->name }}</div>
+                        <div class="truncate"><x-vendor.name :party="$d['party']"/></div>
                         <div class="row-sub">
                             @if ($d['overdue'] > 0)<span class="text-danger">просрочено</span>@endif
                             @if ($d['overdue'] > 0 && $d['owed_to_us'] > $d['overdue'])<span class="nums">нам {{ Money::rub($d['owed_to_us']) }}</span>@endif

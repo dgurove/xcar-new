@@ -8,6 +8,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Support\Surface;
 use App\Users\Section;
+use App\Vendors\Actions\SetLogo;
 use App\Vendors\DealFormat;
 use App\Vendors\Kind;
 use App\Vendors\Parser;
@@ -103,7 +104,7 @@ class VendorController
         return view('admin.vendors.show', $data);
     }
 
-    public function update(Request $request, Vendor $vendor)
+    public function update(Request $request, Vendor $vendor, SetLogo $setLogo)
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:80', 'unique:vendors,name,'.$vendor->id],
@@ -120,7 +121,7 @@ class VendorController
             'mail_account_id' => ['nullable', Rule::exists('mail_accounts', 'id')->where('scope', Scope::Offers->value)],
             'senders' => ['nullable', 'string', 'max:2000'],
             'parser' => ['required', Rule::enum(Parser::class)],
-        ]);
+        ] + SetLogo::RULES);
         $senders = Vendor::parseSenders($data['senders'] ?? null);
         if ($taken = Vendor::takenSender($senders, Scope::Offers, $vendor)) {
             return back()->withInput()->withErrors(['senders' => $taken]);
@@ -131,6 +132,8 @@ class VendorController
             'silence_means_buy' => $request->boolean('silence_means_buy'),
             'offers_include_vat' => $request->boolean('offers_include_vat'),
         ]));
+
+        $setLogo($vendor, $request);
 
         return back()->with('toast', 'Сохранено');
     }

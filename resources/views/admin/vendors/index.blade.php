@@ -25,6 +25,7 @@
         </div>
         @foreach ($vendors as $vendor)
             <a href="/settings/vendors/{{ $vendor->id }}" class="row">
+                <x-vendor.logo :vendor="$vendor" class="size-9"/>
                 <div class="min-w-0 flex-1">
                     <div class="truncate">{{ $vendor->name }}</div>
                     {{-- Маршруты словами: включённый — лаймовым, выключенный — тусклым. --}}

@@ -15,7 +15,7 @@
             @if ($vehicle->plate)<span class="tag nums">{{ $vehicle->plate }}</span>@endif
             @if ($vehicle->ref)<x-ui.copy-code class="tag" :value="$vehicle->ref"/>@endif
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
-            @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
+            @if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
             @if ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
             @if ($total && $total['rate'])<span class="tag nums">{{ \App\Support\Money::rub($total['rate']) }}/д</span>@endif
             <x-park.alerts :vehicle="$vehicle"/>

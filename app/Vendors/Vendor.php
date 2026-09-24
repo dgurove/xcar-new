@@ -8,6 +8,7 @@ use App\Cars\Category;
 use App\Mail\Account;
 use App\Mail\Scope;
 use App\Mail\Template;
+use App\Media\MediaUrl;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Workflow\Track;
@@ -70,6 +71,31 @@ class Vendor extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('contract')->useDisk('private');
+        $this->addMediaCollection('logo')->useDisk('media')->singleFile();
+    }
+
+    /**
+     * Все вендоры с логотипами одним запросом на запрос страницы: логотип стоит перед каждым упоминанием вендора
+     * (строки, чипы, счета его контрагента), и без этого каждая строка списка ходила бы в медиатеку сама.
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public static function badges(): \Illuminate\Support\Collection
+    {
+        return once(fn () => self::with(['media' => fn ($q) => $q->where('collection_name', 'logo')])->get(['id', 'name', 'party_id'])->keyBy('id'));
+    }
+
+    /** Вендор, чей это контрагент счёта, — для логотипа перед именем контрагента. */
+    public static function ofParty(?int $partyId): ?self
+    {
+        return $partyId ? self::badges()->firstWhere('party_id', $partyId) : null;
+    }
+
+    public function logoUrl(): ?string
+    {
+        $media = (self::badges()->get($this->id) ?? $this)->getFirstMedia('logo');
+
+        return $media ? MediaUrl::for($media) : null;
     }
 
     /** Вендоры парковки: были ТС или свой прайс, или заведён на парковке. Вендоры одной продажи — только в CRM. */

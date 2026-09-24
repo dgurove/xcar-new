@@ -14,7 +14,7 @@
 @endphp
 <tr id="invoice-{{ $i->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="cell-title">{{ $i->party->name }}</span>
+        <span class="cell-title"><x-vendor.name :party="$i->party"/></span>
         <span class="cell-sub">
             @if ($i->isOwed())<span class="text-urgent">мы должны</span>@endif
             <span class="sm:hidden {{ $tone }}">{{ $due }}</span>

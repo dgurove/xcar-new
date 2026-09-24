@@ -174,7 +174,7 @@
                 <div class="list mt-3">
                     @foreach ($vehicle->invoices as $inv)
                         <a href="/money/invoices/{{ $inv->id }}" class="row justify-between">
-                            <span class="flex min-w-0 items-center gap-2.5"><x-billing.light :invoice="$inv"/><span class="min-w-0"><span class="block truncate">{{ $inv->isOwed() ? 'Мы должны' : \Illuminate\Support\Str::ucfirst($inv->label()) }}</span><span class="block truncate text-sm text-ink-muted">{{ $inv->party->name }}</span></span></span>
+                            <span class="flex min-w-0 items-center gap-2.5"><x-billing.light :invoice="$inv"/><span class="min-w-0"><span class="block truncate">{{ $inv->isOwed() ? 'Мы должны' : \Illuminate\Support\Str::ucfirst($inv->label()) }}</span><span class="block truncate text-sm text-ink-muted"><x-vendor.name :party="$inv->party"/></span></span></span>
                             <span class="nums shrink-0 font-semibold">{{ Money::rub($inv->remaining() > 0 ? $inv->remaining() : $inv->total) }}</span>
                         </a>
                     @endforeach

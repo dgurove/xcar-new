@@ -32,6 +32,7 @@
             @foreach ($vendors as $vendor)
                 @php $cs = $vendor->sideContacts(false); $c = $cs->firstWhere("role", ContactRole::Storage) ?? $cs->first(); @endphp
                 <a href="/vendors/{{ $vendor->id }}" class="row">
+                    <x-vendor.logo :vendor="$vendor" class="size-9"/>
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $vendor->name }}</span>
                         <span class="row-sub">

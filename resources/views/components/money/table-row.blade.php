@@ -15,7 +15,7 @@
 @endphp
 <tr id="invoice-{{ $i->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="cell-title">{{ $i->deal?->buyer?->name ?? $i->party->name }}</span>
+        <span class="cell-title">@if ($i->deal?->buyer){{ $i->deal->buyer->name }}@else<x-vendor.name :party="$i->party"/>@endif</span>
         <span class="cell-sub">
             @if ($claim)<span class="text-urgent">сообщил об оплате</span>@endif
             @if ($i->isOwed())<span class="text-urgent">к выплате</span>@endif

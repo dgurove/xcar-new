@@ -6,7 +6,7 @@
     <div data-controller="sheet">
         <div class="flex items-start gap-3">
             <div class="min-w-0 flex-1">
-                <h1 class="text-2xl leading-tight">{{ $vendor->name }}</h1>
+                <h1 class="text-2xl leading-tight"><x-vendor.name :vendor="$vendor"/></h1>
                 <div class="mt-2 flex flex-wrap gap-1.5">
                     <x-ui.pill :tone="$vendor->is_active ? 'plain' : 'closed'" class="!min-h-0 !py-0.5 text-xs">{{ $vendor->is_active ? $vendor->kind->label() : 'выключен' }}</x-ui.pill>
                     <span class="chip text-xs">{{ $vendor->deal_format->label() }}</span>
@@ -15,11 +15,11 @@
             </div>
             <button type="button" class="btn btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
         </div>
-        <x-ui.sheet id="vendor-form" title="Продажа" wide :open="$errors->hasAny(['name', 'deal_format', 'reward_value', 'answer_hours', 'binding_days', 'senders', 'mail_account_id'])">
-            <form method="post" action="{{ $base }}" class="flex flex-col gap-4">
+        <x-ui.sheet id="vendor-form" title="Продажа" wide :open="$errors->hasAny(['name', 'logo', 'deal_format', 'reward_value', 'answer_hours', 'binding_days', 'senders', 'mail_account_id'])">
+            <form method="post" action="{{ $base }}" enctype="multipart/form-data" class="flex flex-col gap-4">
                 @csrf @method('put')
                 <div class="grid grid-cols-2 gap-3">
-                    <x-ui.field name="name" label="Название" :value="$vendor->name" required span="col-span-2"/>
+                    <div class="col-span-2 flex flex-col gap-3"><x-vendor.logo-field :vendor="$vendor"><x-ui.field name="name" label="Название" :value="$vendor->name" required/></x-vendor.logo-field></div>
                     <x-ui.field name="kind" label="Тип" :options="Kind::options()" :value="$vendor->kind->value"/>
                     <div class="flex items-end pb-3.5"><x-ui.check name="is_active" :checked="$vendor->is_active">Работаем</x-ui.check></div>
                 </div>

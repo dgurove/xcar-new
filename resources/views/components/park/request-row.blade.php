@@ -9,7 +9,7 @@
 @endphp
 <tr id="request-{{ $req->id }}" data-peek-url="/requests/{{ $req->id }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="cell-title">{{ $v->titleWithYear() }}</span>
+        <span class="cell-title">{{ $v->titleWithYear() }}@if ($v->vendor) <x-vendor.logo :vendor="$v->vendor"/>@endif</span>
         <span class="cell-sub">
             <span class="sm:hidden {{ $late ? 'text-danger' : 'text-ink' }}">{{ mb_strtolower($req->type->label()) }}</span>
             @if ($req->needsCall())<span class="text-urgent">позвонить</span>@endif

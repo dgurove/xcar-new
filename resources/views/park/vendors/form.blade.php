@@ -2,12 +2,12 @@
      после приёма. Открывается кнопкой в ряду заголовка (событие vendor-form:open). Почта продажи — в CRM. --}}
 @php use App\Vendors\{Kind, Parser}; use App\Billing\Cadence; @endphp
 <div data-controller="sheet" data-action="vendor-form:open@window->sheet#open" class="contents">
-    <x-ui.sheet id="vendor-form" title="Вендор" wide :open="$errors->hasAny(['name', 'inn', 'kpp', 'bank_account', 'bank_corr', 'bank_bic', 'park_senders', 'agreement_until', 'buyer_rate_multiplier'])">
-        <form method="post" action="{{ $base }}" class="flex flex-col gap-4">
+    <x-ui.sheet id="vendor-form" title="Вендор" wide :open="$errors->hasAny(['name', 'logo', 'inn', 'kpp', 'bank_account', 'bank_corr', 'bank_bic', 'park_senders', 'agreement_until', 'buyer_rate_multiplier'])">
+        <form method="post" action="{{ $base }}" enctype="multipart/form-data" class="flex flex-col gap-4">
             @csrf @method('put')
             @php $g = 'grid grid-cols-2 gap-3'; @endphp
             <div class="{{ $g }}">
-                <x-ui.field name="name" label="Название" :value="$vendor->name" required span="col-span-2"/>
+                <div class="col-span-2 flex flex-col gap-3"><x-vendor.logo-field :vendor="$vendor"><x-ui.field name="name" label="Название" :value="$vendor->name" required/></x-vendor.logo-field></div>
                 <x-ui.field name="kind" label="Тип" :options="Kind::options()" :value="$vendor->kind->value"/>
                 <div class="flex items-end pb-3.5"><x-ui.check name="is_active" :checked="$vendor->is_active">Работаем</x-ui.check></div>
             </div>

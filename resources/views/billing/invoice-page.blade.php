@@ -93,7 +93,7 @@
         </div>
         <div class="flex flex-col gap-4">
             <x-ui.card :title="$i->isOwed() ? 'Кому должны' : 'Плательщик'">
-                <div class="font-medium">{{ $i->party->name }}</div>
+                <div class="font-medium"><x-vendor.name :party="$i->party"/></div>
                 @if ($i->party->details())<div class="mt-1 text-sm text-ink-muted">{{ $i->party->details() }}</div>@endif
                 @if ($i->party->bankDetails())<div class="mt-1 text-sm text-ink-muted">{{ $i->party->bankDetails() }}</div>@endif
                 @if ($i->isOwed() && ! $i->party->payoutReady())<x-ui.pill tone="urgent" class="mt-2">Реквизитов для выплаты нет</x-ui.pill>@endif

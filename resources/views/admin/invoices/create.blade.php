@@ -6,7 +6,7 @@
         <div class="mb-4 flex flex-col gap-2">
             @foreach ($existing as $i)
                 <a href="/work/money/invoices/{{ $i->id }}" class="row">
-                    <span class="min-w-0 flex-1">{{ $i->label() }} {{ $i->party->name }}</span><x-billing.light :invoice="$i"/><span class="nums font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
+                    <span class="min-w-0 flex-1">{{ $i->label() }} <x-vendor.name :party="$i->party"/></span><x-billing.light :invoice="$i"/><span class="nums font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
                 </a>
             @endforeach
         </div>

@@ -15,7 +15,7 @@
 @endphp
 <a href="/money/invoices/{{ $i->id }}" class="row">
     <div class="min-w-0 flex-1">
-        <div class="truncate">{{ $i->party->name }}</div>
+        <div class="truncate"><x-vendor.name :party="$i->party"/></div>
         <div class="row-sub">
             <span class="nums {{ $i->isOwed() ? 'text-urgent' : '' }}">{{ $i->isOwed() ? 'мы должны' : $i->label() }}</span>
             <span>{{ $i->kind->label() }}</span>

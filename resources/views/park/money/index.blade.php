@@ -3,6 +3,7 @@
      из ТС. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
 <x-ui.shell :title="$party ? $party->name : 'Деньги'" :count="$invoices->total()" :back="$party ? ['Долги', '/money/debts'] : false" :phone-heading="(bool) $party">
+    <x-slot:lead>@if ($partyVendor = $party ? \App\Vendors\Vendor::ofParty($party->id) : null)<x-vendor.logo :vendor="$partyVendor"/>@endif</x-slot:lead>
     <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['party' => request('party'), 'car' => request('car')])" name="money">
         {{-- Счета — только таблицей; на телефоне её можно развернуть в подробную. --}}
         <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::WIDE]" :current="$view"/></x-slot:extra>

@@ -6,7 +6,7 @@
             <div class="row" data-controller="sheet">
                 <button type="button" class="contents text-left" data-action="sheet#open">
                     <span class="min-w-0 flex-1">
-                        <span class="block truncate">{{ $p->name }}@if ($p->is_self) <span class="text-ink-dim">мы</span>@endif</span>
+                        <span class="block truncate"><x-vendor.name :party="$p"/>@if ($p->is_self) <span class="text-ink-dim">мы</span>@endif</span>
                         <span class="row-sub">
                             <span>{{ $p->kind->label() }}</span>
                             @if ($p->inn)<span class="nums">ИНН {{ $p->inn }}</span>@endif

@@ -700,6 +700,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { .table tr:hover .cell-dim .vincode > svg { opacity: 1; } }
   /* Окошко встало панелью справа — такой столбец уже написан в нём, а название снова читается целиком. */
   @media (min-width: 1024px) { .table-wrap:has(.peek:not([hidden])) .col-peek-hide { display: none !important; } }
+  /* Обратное: видно, пока столбцов col-peek-hide нет (логотип вендора за названием, когда его столбец спрятан). */
+  @media (min-width: 1024px) { .table-wrap:not(:has(.peek:not([hidden]))) .col-peek-show { display: none !important; } }
   .table .dot { @apply mr-1.5 inline-block size-2 shrink-0 rounded-full bg-line align-[1px]; }
   .table .dot-open { background: var(--color-accent); }
   .table .dot-urgent { background: var(--color-urgent); }
@@ -860,6 +862,20 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Аватар: фото или инициалы. */
   .avatar { @apply inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-3 text-ink-muted font-semibold select-none; }
   .avatar img { @apply size-full object-cover; }
+  /* Логотип вендора — квадрат в размер шрифта перед именем (x-vendor.logo), логотип вписан целиком; крупнее — утилитой
+     size-* снаружи. Буква без логотипа — от размера клетки (container query), клетка у всех одна. */
+  .vendor-logo { @apply inline-flex shrink-0 items-center justify-center overflow-hidden select-none; width: 1.2em; height: 1.2em; border-radius: 23%; vertical-align: -.22em; container-type: size; }
+  .vendor-logo img { @apply size-full object-contain; }
+  .vendor-logo.is-letter { @apply bg-surface-3 font-semibold text-ink-muted; }
+  .vendor-logo.is-letter > span { font-size: 62cqh; line-height: 1; }
+  .tag .vendor-logo.is-letter { background: var(--color-surface); }
+  /* Логотипы рисуют под белый фон: тёмно-синий СОГАЗ на тёмном не виден. */
+  .dark .vendor-logo:not(.is-letter), .dark .vendor-logo-pick:has(img) { background: #fff; }
+  .vendor-name { @apply inline-flex min-w-0 max-w-full items-center; gap: .4em; vertical-align: bottom; }
+  .vendor-name-text { @apply truncate; }
+  .tag.vendor-name { padding-left: 4px; }
+  .vendor-logo-pick { @apply flex size-[52px] items-center justify-center overflow-hidden rounded-xl bg-surface-3 text-ink-muted; }
+  .vendor-logo-pick img { @apply size-full object-contain; }
   /* Отправитель без пользователя (почта): восемь приглушённых тонов по хэшу адреса, чтобы люди различались с первого взгляда. */
   .avatar-hue-1 { background: oklch(0.9 0.05 25); color: oklch(0.45 0.12 25); }
   .avatar-hue-2 { background: oklch(0.9 0.05 70); color: oklch(0.45 0.11 70); }
