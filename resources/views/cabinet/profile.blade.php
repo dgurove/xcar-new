@@ -1,7 +1,7 @@
 {{-- Профиль — корень кабинета: карточка человека (аватар сбоку, поля, факты чипами, «Сохранить» сразу
      под полями) и список действий строками, как настройки в приложении. Заголовков и коробок под
      каждую кнопку нет. --}}
-<x-ui.cabinet title="Профиль">
+<x-ui.cabinet title="Профиль" root>
     <form method="post" action="/account" enctype="multipart/form-data" class="box form-dense grid grid-cols-[auto_1fr] gap-4 sm:gap-6" data-controller="avatar">
         @csrf @method('put')
         {{-- Аватар — кружок с камерой: нажатие открывает выбор файла, фото сразу встаёт в кружок. --}}
@@ -29,6 +29,27 @@
             <x-ui.button size="s" class="w-full sm:w-fit">Сохранить</x-ui.button>
         </div>
     </form>
+
+    {{-- Телефон: разделы кабинета меню строками — всё, чего нет в таб-баре (на ПК это пилюли и шапка). Переход
+         обычный, не заменой: «Назад» на экране раздела вернёт сюда историей. --}}
+    @php $menu = \App\Support\Nav::cabinetFor($user, 'phone'); $badges = \App\Support\Nav::badges($user); @endphp
+    @if ($menu)
+        <nav class="flex flex-col md:hidden" aria-label="Разделы кабинета">
+            @foreach ($menu as $group => $links)
+                @if ($group !== '')<div class="list-head">{{ $group }}</div>@endif
+                <div class="list">
+                    @foreach ($links as $link)
+                        @php $external = str_starts_with($link['href'], 'http'); @endphp
+                        <a href="{{ $link['href'] }}" class="row" @if ($external) data-turbo="false" @endif>
+                            <span class="min-w-0 flex-1 truncate">{{ $link['label'] }}</span>
+                            <x-ui.badge :href="$link['href']" :badges="$badges"/>
+                            @if ($external)<span class="shrink-0 text-ink-dim">↗</span>@else<x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>@endif
+                        </a>
+                    @endforeach
+                </div>
+            @endforeach
+        </nav>
+    @endif
 
     <div class="flex flex-col gap-2">
         @if ($manager)

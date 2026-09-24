@@ -63,8 +63,9 @@ final class Nav
                 self::item('Галерея', '/gallery'),
                 self::item('Работа', '/work'),
                 self::item('Закупки', '/purchases'),
-                // Кабинет CRM — это «Настройки»: профиль первой пилюлей, уведомления — под /account.
-                self::item('Настройки', '/settings', ['/settings', '/account'], tab: false),
+                // Кабинет CRM — это «Настройки»: профиль первой пилюлей, уведомления — под /account. В шапке ПК его
+                // ведёт аватар, на телефоне — последний таб: отдельной капсулой он был бы вторым входом рядом.
+                self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
             ];
         }
 
@@ -82,7 +83,7 @@ final class Nav
             return [
                 self::item('Галерея', '/gallery', tab: false),
                 self::item('Закупки', '/purchases'),
-                self::item('Покупатели', '/account/buyers'),
+                self::item('Покупатели', '/account/buyers', ['/account/buyers', '/account/interest', '/account/invites']),
                 self::item('Сделки', '/account/deals', tab: false),
                 self::item('Уведомления', '/account/notifications', capsule: false),
             ];
@@ -110,22 +111,44 @@ final class Nav
         return [];
     }
 
-    /** Пункты таб-бара: до четырёх разделов и «Кабинет». */
+    /**
+     * Пункты таб-бара: до четырёх разделов и «Кабинет». Кабинет горит и на экранах своего меню
+     * (Вендоры, Сделки, Тарифы — на телефоне они живут в кабинете, а не в таб-баре).
+     */
     public static function tabs(?User $user, ?Surface $surface = null): array
     {
         $surface ??= Surface::current();
-        $tabs = array_values(array_filter(self::sections($user, $surface), fn ($i) => $i['tab']));
-        $tabs = array_slice($tabs, 0, 4);
+        $tabs = self::sectionTabs($user, $surface);
         if ($surface === Surface::Site && $user && ! $user->isApproved()) {
             return [self::item('Контакты', '/contacts'), self::item('Выйти', '/logout', capsule: false) + ['logout' => true]];
         }
-        $tabs[] = match (true) {
-            ! $user => self::item('Войти', '/login'),
-            $surface === Surface::Crm => self::item('Настройки', '/settings', ['/settings', '/account']),
-            default => self::item('Кабинет', '/account'),
-        };
+        if (! $user) {
+            return [...$tabs, self::item('Войти', '/login')];
+        }
+        $root = self::cabinetRoot($surface);
+        $match = [$root, ...($surface === Surface::Crm ? ['/account'] : [])];
+        foreach (self::cabinetFor($user, 'phone', $surface) as $links) {
+            foreach ($links as $l) {
+                if (! str_starts_with($l['href'], 'http')) {
+                    array_push($match, $l['href'], ...$l['also']);
+                }
+            }
+        }
+        $tabs[] = self::item($surface === Surface::Crm ? 'Настройки' : 'Кабинет', $root, array_values(array_unique($match)));
 
         return $tabs;
+    }
+
+    /** Разделы таб-бара без последнего пункта — первые четыре с tab=true. */
+    private static function sectionTabs(?User $user, Surface $surface): array
+    {
+        return array_slice(array_values(array_filter(self::sections($user, $surface), fn ($i) => $i['tab'])), 0, 4);
+    }
+
+    /** Корень кабинета: в CRM это «Настройки». */
+    public static function cabinetRoot(?Surface $surface = null): string
+    {
+        return ($surface ?? Surface::current()) === Surface::Crm ? '/settings' : '/account';
     }
 
     /** Капсулы второго ряда шапки. */
@@ -177,7 +200,6 @@ final class Nav
                 self::link('Вендоры', '/vendors'),
                 self::link('Тарифы', '/tariffs'),
                 self::link('Парковки', '/yards'),
-                $user->canManagePark() ? self::link('Реквизиты', '/money/parties') : null,
                 self::link('Уведомления', '/account/notifications'),
                 // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.
                 $user->isStaff() ? self::link('Шаблоны', Surface::Crm->url('/settings/templates')) : null,
@@ -227,6 +249,68 @@ final class Nav
         }
 
         return ['' => $links];
+    }
+
+    /**
+     * Кабинет для одного вида: на ПК без пунктов, что уже стоят в шапке (капсулы и верхний ряд), на телефоне —
+     * без пунктов таб-бара и без «Профиля» (корень кабинета — сам профиль). Пустые группы выпадают.
+     *
+     * @param  'desktop'|'phone'  $mode
+     */
+    public static function cabinetFor(User $user, string $mode, ?Surface $surface = null): array
+    {
+        $surface ??= Surface::current();
+        // Корень кабинета на ПК остаётся первой пилюлей, даже если он и капсула шапки («Настройки» в CRM).
+        $taken = $mode === 'desktop'
+            ? array_diff(array_column([...self::capsules($user, $surface), ...self::top($user, $surface)], 'href'), [self::cabinetRoot($surface)])
+            : [...array_column(self::sectionTabs($user, $surface), 'href'), self::cabinetRoot($surface)];
+
+        return array_filter(array_map(
+            fn (array $links) => array_values(array_filter($links, fn (array $l) => ! in_array($l['href'], $taken, true))),
+            self::cabinet($user, $surface),
+        ));
+    }
+
+    /** Экран пункта кабинета этого вида (для подсветки аватара на ПК и пилюль). */
+    public static function inCabinet(string $path, ?User $user, string $mode, ?Surface $surface = null): bool
+    {
+        if (! $user) {
+            return false;
+        }
+        foreach (self::cabinetFor($user, $mode, $surface) as $links) {
+            foreach ($links as $l) {
+                if (self::isCurrentLink($l, $path)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * «Назад» в шапке телефона: как на ПК, а корень пункта из меню кабинета (Вендоры, Сделки) — назад в кабинет:
+     * на ПК это раздел шапки или пилюля, на телефоне — экран, куда пришли из кабинета.
+     */
+    public static function phoneBack(string $path, ?User $user, ?Surface $surface = null): ?array
+    {
+        $surface ??= Surface::current();
+        if ($back = self::backFor($path, $user, $surface)) {
+            return $back;
+        }
+        $path = rtrim($path, '/') ?: '/';
+        if (! $user || $path === self::cabinetRoot($surface)) {
+            return null;
+        }
+        foreach (self::cabinetFor($user, 'phone', $surface) as $links) {
+            foreach ($links as $l) {
+                if ($l['href'] === $path) {
+                    return [$surface === Surface::Crm ? 'Настройки' : 'Кабинет', self::cabinetRoot($surface)];
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

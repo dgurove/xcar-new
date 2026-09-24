@@ -13,7 +13,7 @@
     $top = \App\Support\Nav::top($user);
     $badges = \App\Support\Nav::badges($user);
     $searchAction = $park ? '/cars' : '/';
-    $cabinet = \App\Support\Surface::current() === \App\Support\Surface::Crm ? '/settings' : '/account';
+    $cabinet = \App\Support\Nav::cabinetRoot();
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
 @endphp
 <header id="header" class="header{{ $overHero ? ' header--over' : '' }}">
@@ -88,7 +88,7 @@
                 <a href="{{ $item['href'] }}" class="header-btn header-h flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>{{ $item['label'] }}@if (str_starts_with($item['href'], 'http')) ↗@endif</a>
             @endforeach
             @if ($user)
-                <a href="{{ $cabinet }}" class="header-btn header-h ml-auto max-w-[11rem] gap-2 px-4 text-sm" @if (str_starts_with($path, $cabinet)) aria-current="page" @endif>
+                <a href="{{ $cabinet }}" class="header-btn header-h ml-auto max-w-[11rem] gap-2 px-4 text-sm" @if (\App\Support\Nav::inCabinet($path, $user, 'desktop')) aria-current="page" @endif>
                     <x-ui.avatar :user="$user" :size="20"/><span class="truncate">{{ $user->shortName() }}</span>
                 </a>
                 <form method="post" action="/logout" class="contents header-sq-wrap">@csrf

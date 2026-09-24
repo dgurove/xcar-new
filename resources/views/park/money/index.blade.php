@@ -1,5 +1,5 @@
 {{-- Деньги: счета с пресетами, сортировкой, поиском и контрагентом в фильтрах — только таблицей с окошком
-     (плиток и строк у счетов нет); «Долги» и «Закрытие месяца» — одной плашкой над списком; счёт выставляется
+     (плиток и строк у счетов нет); «Долги», «Закрытие месяца» и «Реквизиты» — одной плашкой над списком; счёт выставляется
      из ТС. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
 <x-ui.shell :title="$party ? $party->name : 'Деньги'" :count="$invoices->total()" :back="$party ? ['Долги', '/money/debts'] : false" :phone-heading="(bool) $party">
@@ -15,6 +15,7 @@
         <div class="list mt-4">
             <a href="/money/debts" class="row"><span class="min-w-0 flex-1">Долги по контрагентам</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
             <a href="/money/closing" class="row"><span class="min-w-0 flex-1">Закрытие месяца</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
+            <a href="/money/parties" class="row"><span class="min-w-0 flex-1">Реквизиты</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
         </div>
     @endunless
     @if ($invoices->isEmpty())
