@@ -274,9 +274,13 @@
     @if ($canManage && ($pass ?? null)?->isLive() && ! $pass->isConfirmed())
         <div data-controller="sheet" data-action="buyer-reject:open@window->sheet#open" class="contents">
             <x-ui.sheet id="buyer-reject" title="Не покупатель">
-                {{-- Страховая не подтвердила: пропуск гаснет, та же ссылка снова открывает пустую анкету. --}}
+                {{-- Страховая не подтвердила: пропуск гаснет, та же ссылка снова открывает пустую анкету. Сверху — чья
+                     анкета, чтобы не погасить не того. --}}
                 <form method="post" action="/cars/{{ $vehicle->id }}/buyer/reject" class="flex flex-col gap-3">
                     @csrf
+                    <div class="list">
+                        <div class="pass-row"><span class="min-w-0"><span class="block truncate">{{ $pass->name }}</span><span class="block text-sm text-ink-muted">анкета {{ $pass->submitted_at?->translatedFormat('j M, H:i') }}</span></span></div>
+                    </div>
                     <x-ui.field name="reason" label="Что ответила страховая" type="textarea" required/>
                     <x-ui.button block variant="danger">Погасить пропуск</x-ui.button>
                 </form>
@@ -288,14 +292,21 @@
         <div data-controller="sheet" data-action="without-qr:open@window->sheet#open" class="contents">
             <x-ui.sheet id="without-qr" title="Выдать без QR-кода?" :open="$errors->has('without_qr_reason')">
                 {{-- Крайний случай: причина от 20 знаков уходит в историю ТС, в акт и владельцу в Telegram. Поле связано с
-                     формой выдачи (form="act-form"): дата, подпись и остальное берутся оттуда. --}}
+                     формой выдачи (form="act-form"): дата, подпись и остальное берутся оттуда. Счётчик — внутри поля,
+                     кнопка оживает на 20 знаках. --}}
                 <div class="flex flex-col gap-3" data-controller="min-length" data-min-length-min-value="20">
+                    <div class="list">
+                        <div class="pass-row"><span class="min-w-0"><span class="block truncate">{{ $vehicle->titleWithYear() }}</span>@if ($vehicle->pickup_name)<span class="block truncate text-sm text-ink-muted">{{ $vehicle->pickup_name }}</span>@endif</span></div>
+                    </div>
                     <div class="field {{ $errors->has('without_qr_reason') ? 'field-invalid' : '' }}">
                         <label for="without-qr-reason" class="field-label">Почему выдаёте без QR</label>
-                        <textarea id="without-qr-reason" name="without_qr_reason" form="act-form" rows="4" class="field-input" data-min-length-target="input" data-action="input->min-length#check">{{ old('without_qr_reason') }}</textarea>
-                        <p class="field-error {{ $errors->has('without_qr_reason') ? '' : 'hidden' }}" data-min-length-target="error">{{ $errors->first('without_qr_reason') ?: 'Опишите причину подробнее, от 20 знаков' }}</p>
+                        <div class="relative">
+                            <textarea id="without-qr-reason" name="without_qr_reason" form="act-form" rows="4" class="field-input pb-8" data-min-length-target="input" data-action="input->min-length#check">{{ old('without_qr_reason') }}</textarea>
+                            <span class="nums pointer-events-none absolute bottom-2.5 right-3.5 text-xs text-ink-dim" data-min-length-target="counter"></span>
+                        </div>
+                        @error('without_qr_reason')<p class="field-error">{{ $message }}</p>@enderror
                     </div>
-                    <button type="submit" form="act-form" name="without_qr" value="1" class="btn btn-danger btn-block" data-action="min-length#guard" data-turbo-confirm="Выдать ТС без QR-кода? Об этом узнает владелец">Выдать без QR</button>
+                    <button type="submit" form="act-form" name="without_qr" value="1" class="btn btn-danger btn-block disabled:opacity-50" data-min-length-target="submit" data-action="min-length#guard" data-turbo-confirm="Выдать ТС без QR-кода? Об этом узнает владелец">Выдать без QR</button>
                 </div>
             </x-ui.sheet>
         </div>

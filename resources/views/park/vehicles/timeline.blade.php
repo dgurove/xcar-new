@@ -4,7 +4,7 @@
 <div class="steps">
     @foreach ($steps as $step)
         @php $partial = match (true) { $step->key === 'report-release' => 'report', $step->key === 'intake' && ($step->plate['kind'] ?? null) === 'spawn' => 'intake-spawn', str_starts_with($step->key, 'reply') => 'reply', default => $step->key }; $r = $step->request; @endphp
-        <div class="step step--{{ $step->state }}{{ $step->danger ? ' step--danger' : '' }}{{ $step->key === 'reply' ? ' step--ask' : '' }}">
+        <div class="step step--{{ $step->state }}{{ $step->danger ? ' step--danger' : '' }}{{ $step->key === 'reply' || ($step->key === 'buyer' && $step->state === Step::TODO && $step->at) ? ' step--ask' : '' }}">
             <span class="step-dot">@if ($step->isDone() && ! $step->danger)<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">
                 @if ($step->key === 'refused')

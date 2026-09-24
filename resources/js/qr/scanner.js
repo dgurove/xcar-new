@@ -103,10 +103,14 @@ const ICONS = {
     x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
     torch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8l-1 6H9L8 2ZM9 8l1 14h4l1-14"/></svg>',
     lens: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+    cameraOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M9.5 5h5l1.5 2h3a2 2 0 0 1 2 2v8.5M17.5 19H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2M9.9 10.4a3 3 0 0 0 4.1 4.2"/></svg>',
 };
+// Отклик «нашёл»: окно вспыхивает лаймом с галкой, сканер закрывается после.
+const FOUND_FLASH_MS = 320;
 
 export class QrScanner {
-    constructor({ onScan, onClose = () => {}, title = 'Наведите камеру на QR-код' } = {}) {
+    constructor({ onScan, onClose = () => {}, title = 'Сканировать QR' } = {}) {
         this.onScan = onScan;
         this.onClose = onClose;
         this.title = title;
@@ -165,19 +169,25 @@ export class QrScanner {
         root.innerHTML = `
             <video class="qr-scanner-video" autoplay muted playsinline></video>
             <canvas hidden></canvas>
-            <div class="qr-scanner-guide" aria-hidden="true"></div>
+            <div class="qr-scanner-guide" aria-hidden="true"><i></i><i></i><i></i><i></i>${ICONS.check}</div>
             <div class="qr-scanner-top">
-                <span class="qr-scanner-title"></span>
                 <button type="button" class="qr-scanner-btn" data-act="close" aria-label="Закрыть">${ICONS.x}</button>
+                <span class="qr-scanner-title"></span>
             </div>
             <p class="qr-scanner-hint">Открываю камеру…</p>
             <div class="qr-scanner-error" hidden>
+                <span class="qr-scanner-error-icon">${ICONS.cameraOff}</span>
                 <p class="qr-scanner-error-title"></p>
                 <p class="qr-scanner-error-hint"></p>
-                <button type="button" class="btn btn-accent" data-act="retry">Повторить</button>
+                <div class="qr-scanner-error-acts">
+                    <button type="button" class="btn btn-quiet" data-act="close">Закрыть</button>
+                    <button type="button" class="btn btn-accent" data-act="retry">Повторить</button>
+                </div>
             </div>
-            <button type="button" class="qr-scanner-btn qr-scanner-torch" data-act="torch" aria-label="Фонарик" hidden>${ICONS.torch}</button>
-            <button type="button" class="qr-scanner-btn qr-scanner-lens" data-act="lens" aria-label="Другая камера" hidden>${ICONS.lens}</button>`;
+            <div class="qr-scanner-bottom">
+                <label class="qr-scanner-tool" data-tool="torch" hidden><button type="button" class="qr-scanner-btn" data-act="torch" aria-label="Фонарик">${ICONS.torch}</button>Фонарик</label>
+                <label class="qr-scanner-tool" data-tool="lens" hidden><button type="button" class="qr-scanner-btn" data-act="lens" aria-label="Другая камера">${ICONS.lens}</button>Камера</label>
+            </div>`;
         root.querySelector('.qr-scanner-title').textContent = this.title;
         root.addEventListener('click', (e) => {
             const act = e.target.closest('[data-act]')?.dataset.act;
@@ -260,17 +270,17 @@ export class QrScanner {
         const track = this.track();
         const capabilities = readCapabilities(track);
         await requestAutofocus(track, capabilities);
-        this.root.querySelector('[data-act="torch"]').hidden = !capabilities?.torch;
+        this.root.querySelector('[data-tool="torch"]').hidden = !capabilities?.torch;
         this.torchOn = false;
         const zoom = capabilities?.zoom;
         this.zoomRange = zoom && zoom.max > zoom.min ? { min: zoom.min, max: zoom.max } : null;
         this.zoom = 1;
         this.cameras = await listBackCameras();
-        this.root.querySelector('[data-act="lens"]').hidden = this.cameras.length < 2;
+        this.root.querySelector('[data-tool="lens"]').hidden = this.cameras.length < 2;
         try { this.imageCapture = window.ImageCapture && track ? new window.ImageCapture(track) : null; } catch { this.imageCapture = null; }
         await detectorReady;
         if (session !== this.session) return;
-        this.hint.textContent = 'Ищу код…';
+        this.hint.textContent = 'Наведите на QR-код';
         clearTimeout(this.hintTimer);
         this.hintTimer = setTimeout(() => { if (this.hint) this.hint.textContent = 'Не читается? Поднесите ближе, уберите блик с экрана'; }, SEARCH_HINT_AFTER_MS);
         this.misses = 0;
@@ -366,8 +376,14 @@ export class QrScanner {
         this.scanned = true;
         haptic('tap');
         const onScan = this.onScan;
-        this.close();
-        onScan?.(text);
+        const root = this.root;
+        root?.classList.add('is-found');
+        if (this.hint) this.hint.hidden = true;
+        setTimeout(() => {
+            if (this.root !== root) return; // закрыли во время вспышки — код не нужен
+            this.close();
+            onScan?.(text);
+        }, FOUND_FLASH_MS);
     }
 
     async toggleTorch() {

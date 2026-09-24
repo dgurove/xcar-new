@@ -1,45 +1,63 @@
-{{-- Анкета покупателя по ссылке от страховой: ФИО, телефон, почта, когда заберёт. После отправки — сразу пропуск с QR
-     и он же на почте; страховой уходит запрос на подтверждение. После подтверждения меняется только дата. --}}
+{{-- Анкета покупателя по ссылке от страховой: ФИО, телефон, почта одной плашкой, день — лентой на две недели
+     (дальше — «Позже» с системным календарём). После отправки — сразу пропуск с QR и он же на почте; страховой
+     уходит запрос на подтверждение. После подтверждения меняется только день. --}}
 @php
     $today = now()->startOfDay();
     $picked = old('pickup_on', $pass?->pickup_on?->toDateString());
-    $quick = [$today->copy()->addDay()->toDateString() => 'Завтра', $today->copy()->addDays(2)->toDateString() => 'Послезавтра'];
-    $other = $picked && ! isset($quick[$picked]);
+    $days = collect(range(0, 13))->map(fn ($i) => $today->copy()->addDays($i));
+    $later = $picked && ! $days->contains(fn ($d) => $d->toDateString() === $picked) ? \Illuminate\Support\Carbon::parse($picked) : null;
+    $fields = [
+        ['name', 'ФИО', 'text', 'name', 'Фамилия, имя, отчество', 'autocapitalize="words"'],
+        ['phone', 'Телефон', 'tel', 'tel', '+7', 'inputmode="tel"'],
+        ['email', 'Почта', 'email', 'email', 'На неё придёт QR-код', 'inputmode="email" autocapitalize="none" spellcheck="false"'],
+    ];
 @endphp
-<x-ui.auth :title="$dateOnly ? 'Когда заберёте' : 'Получение ТС'">
-    @include('site.pickup.vehicle', ['vehicle' => $vehicle])
+<x-pickup.layout :title="$dateOnly ? 'Другой день' : 'Получение'">
+    <x-pickup.title :vehicle="$vehicle" :eyebrow="$pass ? 'Пропуск на получение' : 'Анкета получателя'"/>
+    @if ($vehicle->yard)<div class="list mt-4"><x-pickup.yard :yard="$vehicle->yard"/></div>@endif
     @if ($closed)
-        <p class="mt-5 text-ink-muted">ТС уже не на парковке</p>
+        <div class="pass-state pass-state--closed mt-4 rounded-(--radius-l)"><x-ui.icon name="check-circle" class="size-5"/>ТС уже не на парковке</div>
     @else
-        <form method="post" action="/pickup/{{ $vehicle->pickup_code }}" class="mt-6 space-y-3" data-controller="pickup-date">
+        <form method="post" action="/pickup/{{ $vehicle->pickup_code }}" class="mt-2" data-controller="pickup-date">
             @csrf
             <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true">
             @unless ($dateOnly)
-                <input name="name" required autocomplete="name" autocapitalize="words" class="field-input" placeholder="Фамилия, имя, отчество" value="{{ old('name', $pass?->name) }}">
-                <input name="phone" type="tel" required inputmode="tel" autocomplete="tel" class="field-input" placeholder="Телефон" value="{{ old('phone', $pass?->phone) }}">
-                <input name="email" type="email" required inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" class="field-input" placeholder="Почта, на неё придёт QR-код" value="{{ old('email', $pass?->email) }}">
-            @endunless
-            <div class="pt-2">
-                <div class="mb-2 text-sm text-ink-muted">Когда заберёте</div>
-                <div class="flex flex-wrap gap-2">
-                    @foreach ($quick as $date => $label)
-                        <label class="choice"><input type="radio" name="pickup_pick" value="{{ $date }}" @checked($picked === $date) data-action="pickup-date#pick"><span>{{ $label }}, {{ \Illuminate\Support\Carbon::parse($date)->translatedFormat('j M') }}</span></label>
+                <div class="list-head">Кто заберёт</div>
+                <div class="list">
+                    @foreach ($fields as [$n, $label, $type, $ac, $ph, $extra])
+                        <label class="form-row {{ $errors->has($n) ? 'is-invalid' : '' }}">
+                            <span class="form-row-label">{{ $label }}</span>
+                            <input name="{{ $n }}" type="{{ $type }}" required autocomplete="{{ $ac }}" {!! $extra !!} class="form-row-input" placeholder="{{ $ph }}" value="{{ old($n, $pass?->{$n}) }}">
+                            @error($n)<span class="form-row-error">{{ $message }}</span>@enderror
+                        </label>
                     @endforeach
-                    <label class="choice"><input type="radio" name="pickup_pick" value="" @checked($other) data-action="pickup-date#other"><span>Другой день</span></label>
                 </div>
-                <input type="date" name="pickup_on" min="{{ $today->toDateString() }}" max="{{ $today->copy()->addMonths(6)->toDateString() }}" value="{{ $picked }}" class="field-input mt-3 {{ $other ? '' : 'hidden' }}" data-pickup-date-target="date">
+            @endunless
+            <div class="list-head">Когда заберёте</div>
+            <div class="day-strip">
+                @foreach ($days as $i => $d)
+                    <label class="day-pick"><input type="radio" name="pickup_on" value="{{ $d->toDateString() }}" @checked($picked === $d->toDateString()) required>
+                        <span><small>{{ [0 => 'сегодня', 1 => 'завтра'][$i] ?? $d->translatedFormat('D') }}</small><b class="nums">{{ $d->day }}</b><small>{{ $d->translatedFormat('M') }}</small></span>
+                    </label>
+                @endforeach
+                {{-- «Позже»: календарь поверх карточки — нажатие попадает прямо в системный выбор даты (iOS
+                     не открывает его программно у скрытого поля). --}}
+                <label class="day-pick">
+                    <input type="radio" name="pickup_on" value="{{ $later?->toDateString() }}" @checked($later) data-pickup-date-target="later">
+                    <span data-pickup-date-target="laterLabel">@if ($later)<small>{{ $later->translatedFormat('D') }}</small><b class="nums">{{ $later->day }}</b><small>{{ $later->translatedFormat('M') }}</small>@else<small>&nbsp;</small><x-ui.icon name="plus" class="size-6"/><small>позже</small>@endif</span>
+                    <input type="date" class="day-pick-date" min="{{ $today->toDateString() }}" max="{{ $today->copy()->addMonths(6)->toDateString() }}" value="{{ $later?->toDateString() }}" aria-label="Другой день" data-action="change->pickup-date#pick">
+                </label>
             </div>
-            @foreach (['name', 'phone', 'email', 'pickup_on', 'consent'] as $field)
-                @error($field)<p class="text-sm text-danger">{{ $message }}</p>@enderror
-            @endforeach
+            @error('pickup_on')<p class="field-error mt-2">{{ $message }}</p>@enderror
             @unless ($dateOnly)
-                <label class="flex items-start gap-2.5 px-1 pt-1 text-sm text-ink-muted">
-                    <span class="check mt-0.5"><input type="checkbox" name="consent" value="1" required @checked(old('consent', (bool) $pass))></span>
+                <label class="check mt-6 items-start px-1 text-sm text-ink-muted">
+                    <input type="checkbox" name="consent" value="1" required @checked(old('consent', (bool) $pass))>
                     <span>Даю <a href="/consent" class="text-accent-text hover:underline">согласие на обработку персональных данных</a></span>
                 </label>
+                @error('consent')<p class="field-error mt-2">{{ $message }}</p>@enderror
             @endunless
-            <button type="submit" class="btn btn-accent w-full">{{ $pass ? 'Сохранить' : 'Получить QR-код' }}</button>
-            @if ($pass)<a href="/pickup/{{ $vehicle->pickup_code }}" class="btn btn-quiet w-full">Назад к пропуску</a>@endif
+            <button type="submit" class="btn btn-accent mt-6 w-full">{{ $pass ? 'Сохранить' : 'Получить QR-код' }}</button>
+            @if ($pass)<a href="/pickup/{{ $vehicle->pickup_code }}" class="btn btn-ghost mt-2 w-full">Назад к пропуску</a>@endif
         </form>
     @endif
-</x-ui.auth>
+</x-pickup.layout>

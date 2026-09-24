@@ -1,25 +1,33 @@
 import { Controller } from '@hotwired/stimulus';
 
-// Поле с нижней границей длины (причина выдачи без QR): короткий текст не уходит — поле подсвечивается и
-// говорит, сколько нужно. Сервер проверяет то же самое.
+// Поле с нижней границей длины (причина выдачи без QR): внутри поля счётчик «12 / 20», кнопка неактивна, пока
+// текста мало. Дошёл до границы — счётчик гаснет, кнопка оживает. Сервер проверяет то же самое.
 export default class extends Controller {
-    static targets = ['input', 'error'];
+    static targets = ['input', 'counter', 'submit'];
     static values = { min: Number };
 
+    connect() {
+        this.check();
+    }
+
     guard(event) {
-        if (this.inputTarget.value.trim().length >= this.minValue) return;
+        if (this.enough()) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        this.show(true);
         this.inputTarget.focus();
     }
 
     check() {
-        if (this.inputTarget.value.trim().length >= this.minValue) this.show(false);
+        const length = this.inputTarget.value.trim().length;
+        const ok = this.enough();
+        if (this.hasCounterTarget) {
+            this.counterTarget.textContent = `${length} / ${this.minValue}`;
+            this.counterTarget.hidden = ok;
+        }
+        if (this.hasSubmitTarget) this.submitTarget.disabled = !ok;
     }
 
-    show(on) {
-        this.inputTarget.closest('.field')?.classList.toggle('field-invalid', on);
-        this.errorTarget.classList.toggle('hidden', !on);
+    enough() {
+        return this.inputTarget.value.trim().length >= this.minValue;
     }
 }

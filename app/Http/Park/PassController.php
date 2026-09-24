@@ -19,17 +19,17 @@ class PassController
     {
         $pass = Pass::byCode((string) $request->input('code'));
         $pass?->load(['vehicle.yard', 'vehicle.brand', 'vehicle.model']);
-        $when = fn (Pass $p) => 'Заберёт '.$p->pickup_on->translatedFormat('j F').'. Сверьте с паспортом';
+        $when = fn (Pass $p) => 'Заберёт '.$p->pickup_on->translatedFormat('j F').', сверьте с паспортом';
 
         return response()->json(match (true) {
             ! $pass => ['status' => 'unknown', 'title' => 'Это не пропуск XCar', 'text' => 'Попросите показать QR-код из письма'],
-            $pass->vehicle_id !== $vehicle->id => ['status' => 'other', 'title' => 'QR для другого ТС',
-                'text' => $pass->vehicle->titleWithYear().($pass->vehicle->yard ? ', парковка '.$pass->vehicle->yard->name : ''), 'url' => '/cars/'.$pass->vehicle_id],
-            (bool) $pass->used_at => ['status' => 'used', 'title' => 'По этому QR ТС уже выдано', 'text' => $pass->used_at->translatedFormat('j F, H:i')],
-            (bool) $pass->revoked_at => ['status' => 'revoked', 'title' => 'Пропуск погашен', 'text' => $pass->revoke_reason ?: 'Покупатель сменился'],
-            ! $pass->isConfirmed() => ['status' => 'unconfirmed', 'code' => $pass->code, 'name' => $pass->name, 'title' => 'Страховая ещё не подтвердила покупателя',
-                'text' => $pass->name.'. '.$when($pass)],
-            default => ['status' => 'ok', 'code' => $pass->code, 'name' => $pass->name, 'title' => 'QR подтверждён: '.$pass->name, 'text' => $when($pass)],
+            $pass->vehicle_id !== $vehicle->id => ['status' => 'other', 'title' => 'QR для другого ТС', 'person' => $pass->vehicle->titleWithYear(),
+                'text' => $pass->vehicle->yard ? 'Парковка '.$pass->vehicle->yard->name : '', 'url' => '/cars/'.$pass->vehicle_id],
+            (bool) $pass->used_at => ['status' => 'used', 'title' => 'По этому QR ТС уже выдано', 'person' => $pass->name, 'text' => $pass->used_at->translatedFormat('j F, H:i')],
+            (bool) $pass->revoked_at => ['status' => 'revoked', 'title' => 'Пропуск погашен', 'person' => $pass->name, 'text' => $pass->revoke_reason ?: 'Покупатель сменился'],
+            ! $pass->isConfirmed() => ['status' => 'unconfirmed', 'code' => $pass->code, 'name' => $pass->name, 'title' => 'Страховая не подтвердила',
+                'person' => $pass->name, 'text' => $when($pass)],
+            default => ['status' => 'ok', 'code' => $pass->code, 'name' => $pass->name, 'title' => 'Можно выдавать', 'person' => $pass->name, 'text' => $when($pass)],
         });
     }
 
