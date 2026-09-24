@@ -269,7 +269,10 @@ class Tariff extends Model
             self::forget();
             Once::flush();
         };
-        static::saved($flush);
+        static::saved(function (self $t) use ($flush) {
+            $flush();
+            Vendor::markOnPark($t->vendor_id);
+        });
         static::deleted($flush);
     }
 

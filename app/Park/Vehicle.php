@@ -41,6 +41,12 @@ class Vehicle extends Model implements HasMedia
 
     protected $table = 'park_vehicles';
 
+    protected static function booted(): void
+    {
+        // ТС вендора на парковке — вендор становится её вендором (раздел «Вендоры» парковки).
+        static::saved(fn (self $v) => $v->wasChanged('vendor_id') || $v->wasRecentlyCreated ? Vendor::markOnPark($v->vendor_id) : null);
+    }
+
     protected function casts(): array
     {
         return ['state' => VehicleState::class, 'category' => Category::class, 'oversize' => 'bool', 'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',

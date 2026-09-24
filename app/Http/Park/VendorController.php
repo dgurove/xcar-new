@@ -41,7 +41,7 @@ class VendorController
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'active';
         $q = trim((string) $request->query('q'));
         $kind = Kind::tryFrom((string) $request->query('kind'));
-        $vendors = Vendor::with(['contacts', 'party'])->when($kind, fn ($w) => $w->where('kind', $kind))->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
+        $vendors = Vendor::onPark()->with(['contacts', 'party'])->when($kind, fn ($w) => $w->where('kind', $kind))->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s->where('name', 'ilike', "%{$q}%")->orWhere('legal_name', 'ilike', "%{$q}%")->orWhere('inn', 'like', "%{$q}%")))
             ->orderBy('name')->get();
         $counts = ['active' => $vendors->where('is_active', true)->count(), 'stored' => $vendors->where('stored_count', '>', 0)->count(), 'inactive' => $vendors->where('is_active', false)->count()];
@@ -56,14 +56,24 @@ class VendorController
 
     public function store(Request $request)
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:80', 'unique:vendors,name'], 'kind' => ['required', Rule::enum(Kind::class)]]);
-        $vendor = Vendor::create($data);
+        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'kind' => ['required', Rule::enum(Kind::class)]]);
+        // Вендор уже есть в CRM (пишет нам о продаже) — парковка начинает работать с ним же, второй не заводится.
+        if ($vendor = Vendor::whereRaw('lower(name) = ?', [mb_strtolower(trim($data['name']))])->first()) {
+            if ($vendor->on_park) {
+                return back()->withInput()->withErrors(['name' => 'Такой вендор уже есть']);
+            }
+            $vendor->update(['on_park' => true]);
+
+            return redirect("/vendors/{$vendor->id}")->with('toast', 'Добавлен');
+        }
+        $vendor = Vendor::create($data + ['on_park' => true]);
 
         return redirect("/vendors/{$vendor->id}")->with('toast', 'Добавлен');
     }
 
     public function show(Request $request, Vendor $vendor)
     {
+        abort_unless($vendor->on_park, 404);
         $pill = array_key_exists($request->query('pill', ''), self::PILLS) ? $request->query('pill') : 'overview';
         $vendor->load(['contacts.yard', 'media']);
         $data = [

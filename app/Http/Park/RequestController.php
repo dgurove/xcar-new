@@ -103,7 +103,7 @@ class RequestController
             'counts' => $counts,
             'sort' => $request->query('sort', 'planned'),
             'q' => $qs,
-            'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            'vendors' => Vendor::onPark()->where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
         ]);
     }
@@ -172,7 +172,7 @@ class RequestController
             'letter' => $letter,
             'scans' => $scans,
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
-            'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            'vendors' => Vendor::onPark()->where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
             'vehicle' => $vehicle,
             'candidate' => $candidate,

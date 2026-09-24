@@ -26,13 +26,6 @@ class ResolveSurface
             abort_unless($own || in_array($first, self::SHARED, true), 404);
 
             $user = $request->user();
-            // Технические работы: стоянка открыта только тем, кто в PARK_ONLY; вход и служебное — всем.
-            $only = config('xcar.park_only');
-            if ($surface === Surface::Park && $only && ! in_array($first, self::ANYONE, true) && ! in_array((string) $user?->phone, $only, true)) {
-                abort_if($request->expectsJson(), 503);
-
-                return response()->view('park.closed', [], 503)->header('X-Robots-Tag', 'noindex, nofollow');
-            }
 
             // Чужой вошедший упирается в стену без шапки и разделов; гостя `auth` уводит на /login этого хоста.
             $allowed = $surface === Surface::Crm ? $user?->isStaff() : $user?->canAccess(Section::Park);

@@ -885,11 +885,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .file-icon-doc { @apply bg-accent-soft text-accent-text; }
   .file-icon-zip { @apply bg-closed-soft text-closed; }
 
-  /* Плитка-число: сколько чего, ссылкой в раздел. */
-  .stat { @apply flex flex-col gap-1 rounded-(--radius-xl) bg-surface p-4; }
-  .stat-value { @apply text-2xl font-bold leading-none tabular-nums; }
-  .stat-label { @apply text-sm text-ink-muted; }
-  @media (hover: hover) { a.stat:hover { @apply bg-hover; } }
 }
 
 /* Прошедшая фаза дела: строка-заголовок раскрывается стрелкой, тело — под ней в той же карточке. */
@@ -1926,7 +1921,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
 
 @layer components {
   .tabbar, .header-btn, .header-back, .header-title, .btn, .pill, .field-input, .field-label, .field-error, .choice span, .check,
-  .chip, .tag, .mark, .badge, .sheet, .toast, .action-bar, .combobox-list, .swipe-btn, .net, .crumbs, .stat-label, .empty {
+  .chip, .tag, .mark, .badge, .sheet, .toast, .action-bar, .combobox-list, .swipe-btn, .net, .crumbs, .empty {
     font-family: var(--font-ui);
     letter-spacing: normal;
   }

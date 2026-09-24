@@ -28,7 +28,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * Одна дверь `forSender` находит вендора письма по адресам своей стороны.
  */
 #[Fillable([
-    'name', 'kind', 'is_active', 'notes',
+    'name', 'kind', 'is_active', 'on_park', 'notes',
     'legal_name', 'inn', 'kpp', 'legal_address',
     'bank_name', 'bank_account', 'bank_corr', 'bank_bic', 'payment_purpose',
     'agreement_number', 'agreement_date', 'agreement_until',
@@ -46,6 +46,7 @@ class Vendor extends Model implements HasMedia
         return [
             'kind' => Kind::class,
             'is_active' => 'bool',
+            'on_park' => 'bool',
             'agreement_date' => 'date',
             'agreement_until' => 'date',
             'deal_format' => DealFormat::class,
@@ -69,6 +70,20 @@ class Vendor extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('contract')->useDisk('private');
+    }
+
+    /** Вендоры парковки: были ТС или свой прайс, или заведён на парковке. Вендоры одной продажи — только в CRM. */
+    public function scopeOnPark($query)
+    {
+        return $query->where('on_park', true);
+    }
+
+    /** С вендором начала работать парковка (пришла ТС, завели прайс) — он появляется в её «Вендорах». */
+    public static function markOnPark(?int $id): void
+    {
+        if ($id) {
+            self::whereKey($id)->where('on_park', false)->update(['on_park' => true]);
+        }
     }
 
     public function workflows(): HasMany
