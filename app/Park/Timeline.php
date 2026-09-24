@@ -115,7 +115,7 @@ final class Timeline
 
             $chips = array_values(array_filter([$release?->doneBy?->shortName(), $release?->note]));
             $steps[] = new Step('release', $v->released_at ? 'Выдана' : ($releasing ? 'Нужно выдать' : 'Выдача'), $v->released_at ? Step::DONE : ($releasing ? Step::CURRENT : Step::NEXT),
-                $v->releasesByQr() ? 'Отсканировать QR покупателя, проверить долг, взять подпись' : 'Проверить долг, взять подпись', $v->released_at ?? $release?->planned_at, $v->released_at ? $chips : [],
+                $v->releasesByQr() ? 'Отсканировать QR покупателя и проверить долг' : 'Проверить долг', $v->released_at ?? $release?->planned_at, $v->released_at ? $chips : [],
                 $releasing ? ['kind' => 'submit', 'label' => 'Выдать'] : null, $release?->isOpen() ? $release : ($v->released_at ? $release : null));
 
             if ($v->released_at && $billable) {

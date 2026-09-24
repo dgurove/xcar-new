@@ -320,7 +320,7 @@ class RequestController
         $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
         $qr = $request->boolean('without_qr') ? ['without' => $data['without_qr_reason']] : ['pass' => $data['pass'] ?? null, 'confirm' => $request->boolean('pass_confirm')];
-        $release($req->vehicle, $request->user(), $at, null, ReleasedTo::tryFrom($data['to'] ?? ''), $data, $req, $request->boolean('force'), $request->boolean('cash'), $qr);
+        $release($req->vehicle, $request->user(), $at, null, ReleasedTo::tryFrom($data['to'] ?? '') ?? ($req->vehicle->sold_at ? ReleasedTo::Buyer : null), $data, $req, $request->boolean('force'), $request->boolean('cash'), $qr);
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
     }

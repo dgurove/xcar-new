@@ -9,7 +9,6 @@
 @else
     <details class="phase">
         <summary class="row !py-2.5 list-none flex-wrap gap-y-1">
-            <span class="chip">Транспортное средство</span>
             @if ($vehicle->ref)<x-ui.copy-code class="tag" :value="$vehicle->ref"/>@endif
             @if ($vehicle->vendor)<span class="tag">{{ $vehicle->vendor->name }}</span>@endif
             @if ($vehicle->plate)<x-ui.copy-code class="tag" :value="$vehicle->plate" done="Госномер в буфере"/>@endif
