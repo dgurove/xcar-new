@@ -208,20 +208,20 @@
                 <input name="text" class="field-input flex-1" placeholder="Заметка" required>
                 <x-ui.button size="sm" variant="secondary">Записать</x-ui.button>
             </form>
-            {{-- Строка истории: сверху мелко дата и время, справа — кто; ниже текст во всю ширину. Заметка — тот же
-                 заголовок, текст на подложке. --}}
+            {{-- Строка истории: сверху мелко дата и время, ниже текст во всю ширину и справа от него — кто. Заметка —
+                 текст на подложке. --}}
             <div class="flex flex-col gap-3 text-sm">
                 @foreach ($vehicle->events as $event)
                     <div>
-                        <div class="flex items-center justify-between gap-3 text-xs text-ink-dim">
-                            <span class="nums">{{ $event->created_at->translatedFormat('j M, H:i') }}</span>
-                            @if ($event->user)<x-ui.person :user="$event->user"/>@elseif ($event->type === EventType::Note)<span>Система</span>@endif
+                        <div class="nums text-xs text-ink-dim">{{ $event->created_at->translatedFormat('j M, H:i') }}</div>
+                        <div class="mt-0.5 flex items-start justify-between gap-3">
+                            @if ($event->type === EventType::Note)
+                                <div class="history-note min-w-0 flex-1 whitespace-pre-line">{{ $event->text() }}</div>
+                            @else
+                                <div class="min-w-0 flex-1 leading-snug">{{ $event->text() }}</div>
+                            @endif
+                            @if ($event->user)<x-ui.person :user="$event->user" class="shrink-0"/>@elseif ($event->type === EventType::Note)<span class="shrink-0 text-xs text-ink-dim">Система</span>@endif
                         </div>
-                        @if ($event->type === EventType::Note)
-                            <div class="history-note mt-1 whitespace-pre-line">{{ $event->text() }}</div>
-                        @else
-                            <div class="mt-0.5 leading-snug">{{ $event->text() }}</div>
-                        @endif
                     </div>
                 @endforeach
             </div>

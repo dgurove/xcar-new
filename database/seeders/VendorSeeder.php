@@ -22,7 +22,7 @@ class VendorSeeder extends Seeder
     public const VENDORS = [
         ['Т-Страхование', ['tinsurance.ru', 'tinkoffinsurance.ru', 'tbank.ru'], Parser::Tinkoff, Preset::TBank, false],
         // Альфа — два вендора: в Питере опоздавший покупатель платит сам, в Москве хранение целиком на страховой.
-        ['АльфаСтрахование Москва', ['alfastrah.ru'], Parser::Generic, Preset::Alfa, false],
+        ['АльфаСтрахование', ['alfastrah.ru'], Parser::Generic, Preset::Alfa, false],
         ['АльфаСтрахование СПб', ['kolbasinamp@alfastrah.ru', 'filippovaiaiu@alfastrah.ru'], Parser::Generic, Preset::Alfa, false],
         // Совкомбанк обязывает вывозить каждую машину — вывоз идёт параллельно продаже.
         ['Совкомбанк Страхование', ['sovcomins.ru'], Parser::Sovcombank, Preset::Sovcombank, true],
@@ -47,7 +47,7 @@ class VendorSeeder extends Seeder
         'Росгосстрах' => self::VSK,
         // Договор АльфаСтрахования (без НДС): легковые — по заявленной стоимости, остальной транспорт — по типу.
         // Спецтехники в договоре нет, её считаем по цене грузового.
-        'АльфаСтрахование Москва' => self::ALFA,
+        'АльфаСтрахование' => self::ALFA,
         'АльфаСтрахование СПб' => self::ALFA,
     ];
 

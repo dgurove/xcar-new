@@ -75,6 +75,7 @@
                             <x-ui.field name="buyer_rate_multiplier" label="Опоздавший платит, × прайс" :value="rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.')" inputmode="decimal"/>
                         </div>
                     </div>
+                    @if ($vendor->kind->billable())<x-vendor.rates :vendor="$vendor" :edit="$base.'?pill=tariffs'"/>@endif
                     <x-ui.section-title level="h3" class="!text-lg">Почта</x-ui.section-title>
                     <div class="{{ $g }}">
                         <x-ui.field name="senders" label="Отправители: домены и адреса, по одному в строке" type="textarea" :value="implode(PHP_EOL, $vendor->senders ?? [])" span="col-span-2" placeholder="alfastrah.ru"/>

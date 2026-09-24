@@ -4,6 +4,7 @@ namespace App\Vendors;
 
 use App\Billing\Cadence;
 use App\Billing\Party;
+use App\Cars\Category;
 use App\Mail\Account;
 use App\Mail\Template;
 use App\Offers\Offer;
@@ -87,6 +88,19 @@ class Vendor extends Model implements HasMedia
     public function tariffs(): HasMany
     {
         return $this->hasMany(Tariff::class);
+    }
+
+    /**
+     * Ставка хранения по категориям ТС словами («250…450 ₽/сут по стоимости») — сводка для условий вендора:
+     * тот же отбор, что у начисления (договорной прайс поверх базового), по всем парковкам. Нет ставки — null.
+     *
+     * @return array<string, ?string> категория => ставка
+     */
+    public function storageRates(): array
+    {
+        return collect(Category::cases())
+            ->mapWithKeys(fn ($c) => [$c->label() => Tariff::ladderLabel(Tariff::ladder($this->id, null, $c, TariffService::Storage))])
+            ->all();
     }
 
     public function party(): BelongsTo

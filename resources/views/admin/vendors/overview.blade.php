@@ -21,6 +21,10 @@
             @foreach ($vendor->senders ?? [] as $s)<span class="tag">{{ $s }}</span>@endforeach
             @if ($vendor->mailAccount)<span class="tag">с ящика {{ $vendor->mailAccount->email }}</span>@endif
         </div>
+        @if ($vendor->kind->billable())
+            <div class="list-head mt-2">Хранение за сутки</div>
+            <x-vendor.rates :vendor="$vendor" :edit="$base.'?pill=tariffs'"/>
+        @endif
     </section>
     @if ($vehicles->isNotEmpty())
         <section>
