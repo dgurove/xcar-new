@@ -651,6 +651,59 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .table .dot-urgent { background: var(--color-urgent); }
   .table .dot-danger { background: var(--color-danger); }
 
+  /* «Наличие» (x-park.table-row): таблица, которую читают с телефона весь день. Ячейка ТС в два этажа —
+     название 15, под ним 12 тусклым госномер и номер убытка (как Почта и Акции в iOS), поэтому на телефоне
+     три столбца и ничего не уезжает вбок; от 640 второй этаж встаёт в линию за названием. Зебры нет —
+     волосяные разделители; парковки — заголовками групп, липнут под шапкой таблицы. */
+  /* Размеры — по шкале: 15 название и цифры, 13 всё вторичное (госномер, номер, вендор, ставка), 12 шапка.
+     На ПК так же: одинаковые 13 по всей строке не давали глазу за что зацепиться. */
+  .table-wrap--park .table { font-size: var(--text-base); line-height: 1.25; }
+  /* На телефоне — от края до края, как простой список iOS: поля экрана стали полями строки, и номер
+     убытка во второй строке влезает целиком. */
+  @media (max-width: 639.98px) { .table-wrap--park .table-box { margin-inline: -1rem; border-radius: 0; } }
+  .table-wrap--park .table th, .table-wrap--park .table td { padding-block: .5625rem; }
+  .table-wrap--park .table th:first-child, .table-wrap--park .table td:first-child { padding-left: 1rem; }
+  .table-wrap--park .table th:last-child, .table-wrap--park .table td:last-child { padding-right: 1rem; }
+  /* Столбцы цифр — ровно по содержимому (width: 1%), всё остальное отдаётся названию. */
+  .table-wrap--park .table .num { width: 1%; padding-left: .75rem; padding-right: 0; }
+  @media (min-width: 640px) { .table-wrap--park .table .num { padding-left: 2rem; } .table-wrap--park .table .park-ref { padding-left: 1.5rem; } }
+  .table-wrap--park .table thead th { height: 2rem; padding-block: 0; font-size: var(--text-xs); color: var(--color-ink-dim); }
+  /* На телефоне шапки нет: три столбца читаются и так, а сортировка — кнопкой в тулбаре. */
+  @media (max-width: 639.98px) { .table-wrap--park .table thead { display: none; } }
+  .table-wrap--park .table thead a { display: inline-block; padding-block: .5rem; }
+  .table-wrap--park .table thead a[aria-current] { color: var(--color-ink); }
+  @media (hover: hover) { .table-wrap--park .table thead a:hover { color: var(--color-ink); } }
+  .table-wrap--park .table tbody tr { height: 3.5rem; }
+  @media (min-width: 640px) { .table-wrap--park .table tbody tr { height: 2.75rem; } }
+  .table-wrap--park .table tbody tr:nth-child(even) { background: none; }
+  .table-wrap--park .table tbody tr + tr > * { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
+  .table-wrap--park .table tbody tr.table-group + tr > *, .table-wrap--park .table tbody tr + tr.table-group > * { border-top: 0; }
+  .table-wrap--park .table tbody tr.table-group { height: auto; cursor: default; background: var(--color-surface); }
+  .table-wrap--park .table tr.table-group > th {
+    position: sticky; z-index: 9; top: calc(var(--spacing-header) + env(safe-area-inset-top));
+    padding-top: 1rem; padding-bottom: .375rem; background: var(--color-surface);
+    font-size: var(--text-base); font-weight: 500; color: var(--color-ink);
+  }
+  .table-wrap--park .table tbody tr.table-group:first-child > th { padding-top: .75rem; }
+  @media (min-width: 640px) { .table-wrap--park .table tr.table-group > th { top: calc(var(--spacing-header) + env(safe-area-inset-top) + 2rem); } }
+  .table-wrap--park .table tr.table-group .nums { margin-left: .25rem; font-weight: 400; color: var(--color-ink-dim); }
+  @media (hover: hover) { .table-wrap--park .table tbody tr.table-group:hover { background: var(--color-surface); } }
+  .park-title, .park-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .park-sub { margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .table-wrap--park .park-ref, .table-wrap--park .park-vendor, .table-wrap--park .park-rate { font-size: var(--text-sm); }
+  .table-wrap--park .park-sum { font-weight: 500; }
+  .park-sub > * + * { margin-left: .375rem; }
+  @media (min-width: 640px) {
+    .table-wrap--park td.grow > .park-title, .table-wrap--park td.grow > .park-sub { display: inline; }
+    .table-wrap--park td.grow > .park-sub { margin: 0 0 0 .5rem; }
+  }
+  .table-wrap--park .park-ref { color: var(--color-ink-muted); }
+  /* Окошко встало панелью справа — вендор уже написан в нём, а без столбца название снова читается целиком. */
+  @media (min-width: 1024px) { .table-wrap--park:has(.peek:not([hidden])) .park-vendor { display: none !important; } }
+  /* Копирование номера — по наведению: иконка в каждой строке была шумом. */
+  .table-wrap--park .park-ref .vincode > svg { opacity: 0; transition: opacity var(--dur-fast); }
+  @media (hover: hover) { .table-wrap--park tr:hover .park-ref .vincode > svg { opacity: 1; } }
+
   /* Меню под кнопкой (вид списка): popover в top layer, место ставит menu_controller. */
   .menu { @apply rounded-(--radius-l) bg-surface p-1.5 text-ink shadow-(--shadow-drop); position: fixed; inset: auto; margin: 0; border: 0; min-width: 11rem; }
   .menu:popover-open { animation: dialog-in var(--dur) var(--ease-out); }

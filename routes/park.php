@@ -35,9 +35,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/{req}/contact', [RequestController::class, 'contact']);
 
     Route::get('/cars', [VehicleController::class, 'index']);
-    // Дозаполнение типа и стоимости списком — до `{vehicle}`, иначе «gaps» уедет в поиск ТС.
-    Route::get('/cars/gaps', [VehicleController::class, 'gaps'])->middleware('park.manage');
-    Route::post('/cars/gaps', [VehicleController::class, 'fillGaps'])->middleware('park.manage');
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
     Route::get('/cars/{vehicle}/peek', [VehicleController::class, 'peek']);
     Route::get('/cars/{vehicle}/letters', [VehicleController::class, 'letters']);

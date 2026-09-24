@@ -5,7 +5,6 @@ namespace App\Http\Park;
 use App\Billing\Accrual;
 use App\Billing\Cadence;
 use App\Billing\Ledger;
-use App\Cars\Category;
 use App\Http\Admin\OfferPhotoController;
 use App\Live\Stream;
 use App\Mail\Actions\LinkThread;
@@ -30,7 +29,6 @@ use App\Park\Actions\UndoIntake;
 use App\Park\Actions\UndoRelease;
 use App\Park\Actions\UnwindVehicle;
 use App\Park\Actions\UpdateVehicle;
-use App\Park\Alerts;
 use App\Park\CaseView;
 use App\Park\Doc;
 use App\Park\DocKind;
@@ -54,7 +52,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class VehicleController
 {
-    public const SORTS = ['longest' => 'Дольше всех стоят', 'fresh' => 'Сначала новые'];
+    public const SORTS = ['longest' => 'Дольше всех стоят', 'fresh' => 'Сначала новые', 'amount' => 'Больше набежало'];
 
     /**
      * «Наличие» — что стоит на парковках сейчас: только stored, пилюли по парковкам.
@@ -90,11 +88,19 @@ class VehicleController
         $request->query('sort') === 'fresh' ? $vehicles->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
 
         $page = ListView::paginate($request, $vehicles);
+        // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
+        $totals = Accrual::totals($page->getCollection());
+        // «Больше набежало» — по посчитанному: в базе этой суммы нет. Таблица целиком на одной странице,
+        // так что сортировка в памяти честная; у карточек — в пределах страницы.
+        if ($request->query('sort') === 'amount') {
+            $page->setCollection($page->getCollection()->sortByDesc(fn (Vehicle $v) => $totals[$v->id]['amount'] ?? 0)->values());
+        }
         $data = [
             'vehicles' => $page,
             'debts' => Ledger::debtsByVehicle($page->pluck('id')->all()),
-            // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
-            'totals' => Accrual::totals($page->getCollection()),
+            'totals' => $totals,
+            // На «Все» без поиска строки собраны под заголовками парковок.
+            'grouped' => ! $yardId && ! $noYard && $q === '' && ! $state?->isFinal(),
             'q' => $q,
             'view' => ListView::pick($request, $page->total()),
             // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты парковки.
@@ -135,46 +141,6 @@ class VehicleController
             ->when($noYard, fn ($q) => $q->whereNull('yard_id'))
             ->with('vendor')->get(['id', 'vendor_id', 'yard_id', 'category', 'value', 'storage_rate'])
             ->reject(fn (Vehicle $v) => Accrual::hasRate($v))->pluck('id')->all();
-    }
-
-    /**
-     * Дозаполнить списком то, из-за чего ТС не считается: тип и заявленную стоимость. Тип предзаполнен
-     * догадкой по марке и модели — у 45 ТС из выгрузки его нет вовсе, а по одной в деле это день работы.
-     */
-    public function gaps(Request $request)
-    {
-        $ids = $this->noRate($request, null, false);
-
-        return view('park.vehicles.gaps', [
-            // Только те, где дело в данных: у вендора без прайса тип и стоимость ничего не изменят.
-            'vehicles' => Vehicle::whereIn('id', $ids)->with(['brand', 'model', 'vendor', 'yard'])->orderBy('accepted_at')
-                ->get()->filter(fn (Vehicle $v) => Alerts::fixableHere($v))->values(),
-            'categories' => Category::options(),
-        ]);
-    }
-
-    public function fillGaps(Request $request, UpdateVehicle $update)
-    {
-        $data = $request->validate([
-            'cars' => ['array'],
-            'cars.*.category' => ['nullable', Rule::enum(Category::class)],
-            'cars.*.value' => ['nullable', 'integer', 'min:0'],
-        ]);
-        $rows = collect($data['cars'] ?? []);
-        $vehicles = Scope::vehicles($request->user())->whereIn('id', $rows->keys())->get()->keyBy('id');
-        $done = 0;
-        foreach ($rows as $id => $row) {
-            $vehicle = $vehicles[(int) $id] ?? null;
-            $fields = array_filter(['category' => $row['category'] ?? null, 'value' => $row['value'] ?? null], fn ($v) => $v !== null && $v !== '');
-            if (! $vehicle || ! $fields) {
-                continue;
-            }
-            $before = $vehicle->only(array_keys($fields));
-            $update($vehicle, $fields, $request->user());
-            $done += $vehicle->only(array_keys($fields)) === $before ? 0 : 1;
-        }
-
-        return redirect('/cars?gap=rate')->with('toast', $done ? 'Заполнено ТС: '.$done : 'Ничего не изменилось');
     }
 
     /** Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка. */

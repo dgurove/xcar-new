@@ -43,12 +43,6 @@ final class Alerts
         return $out;
     }
 
-    /** Дырка в данных этой ТС, а не отсутствие прайса: такие правятся списком на `/cars/gaps`. */
-    public static function fixableHere(Vehicle $vehicle): bool
-    {
-        return ! Accrual::hasRate($vehicle) && self::whyNoRate($vehicle) !== self::NO_TARIFF;
-    }
-
     /**
      * Почему сутки не считаются: тариф вендора берётся по категории, а у легковых АльфаСтрахования ещё и по
      * заявленной стоимости. Причина всегда одна, самая точная — чинить надо именно её.
