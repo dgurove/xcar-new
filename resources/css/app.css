@@ -869,8 +869,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .vendor-logo.is-letter { @apply bg-surface-3 font-semibold text-ink-muted; }
   .vendor-logo.is-letter > span { font-size: 62cqh; line-height: 1; }
   .tag .vendor-logo.is-letter { background: var(--color-surface); }
-  /* Логотипы рисуют под белый фон: тёмно-синий СОГАЗ на тёмном не виден. */
-  .dark .vendor-logo:not(.is-letter), .dark .vendor-logo-pick:has(img) { background: #fff; }
   .vendor-name { @apply inline-flex min-w-0 max-w-full items-center; gap: .4em; vertical-align: bottom; }
   .vendor-name-text { @apply truncate; }
   .tag.vendor-name { padding-left: 4px; }
