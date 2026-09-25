@@ -1244,7 +1244,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Знак раздела — капсула с числом позиций: серая по содержимому, у текущего лаймовая и не уже
      2.75rem — одной ширины под три цифры; бейдж нового — сверху справа капсулы, у текущего тёмный.
      Аватар кабинета и точка без позиций — той же высоты, чтобы подписи стояли в линию. */
-  .tab-mark { position: relative; display: flex; align-items: center; justify-content: center; height: 22px; }
+  /* Место под капсулу — одной ширины у всех табов (как у текущей, 2.75rem): иначе выбранная капсула шире и раздвигает соседей. */
+  .tab-mark { position: relative; display: flex; align-items: center; justify-content: center; height: 22px; min-width: 2.75rem; }
   .tab-count {
     display: inline-flex; align-items: center; justify-content: center; height: 20px; min-width: 22px; padding-inline: 6px;
     border-radius: 10px; background: var(--color-surface-3); color: var(--color-ink-muted);
