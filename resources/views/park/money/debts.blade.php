@@ -1,6 +1,6 @@
 {{-- Долги по контрагентам: сортировка и поиск в тулбаре, строка — нам должны, мы должны, просрочено, не выставлено; ведёт к счетам контрагента. --}}
 @php use App\Support\Money; @endphp
-<x-ui.shell title="Долги" :back="['Деньги', '/money']">
+<x-ui.shell title="Долги" :back="['Оплаты', '/money']">
     <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::DEBT_SORTS" :sort="$sort" name="debts">
         <x-slot:filters><input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Контрагент" enterkeyhint="search"></x-slot:filters>
     </x-ui.toolbar>

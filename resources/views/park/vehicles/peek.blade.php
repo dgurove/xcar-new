@@ -12,7 +12,7 @@
     <x-ui.peek :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
         <x-slot:marks>
             <x-ui.pill :tone="$state->tone()" class="!min-h-0 !py-1 text-xs">{{ $state->label() }}</x-ui.pill>
-            @if ($vehicle->plate)<span class="tag nums">{{ $vehicle->plate }}</span>@endif
+            @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif
             @if ($vehicle->ref)<x-ui.copy-code class="tag" :value="$vehicle->ref"/>@endif
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
             @if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif

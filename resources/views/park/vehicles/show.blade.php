@@ -143,7 +143,7 @@
         @endforeach
 
         @if ($money && ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty() || $vehicle->accepted_at))
-        <x-ui.card title="Деньги" data-controller="sheet">
+        <x-ui.card title="Оплаты" data-controller="sheet">
             {{-- Одна плашка строками: условия (открывают шторку «Условия»), что набежало и не выставлено (ведёт в счёт),
                  с какого дня платит покупатель, по какой день выставлено; ниже — счета и невыставленные начисления. --}}
             @php $unbilledBy = collect($accrued)->filter(fn ($a) => $a['amount'] > 0); @endphp

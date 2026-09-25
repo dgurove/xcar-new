@@ -5,7 +5,7 @@
     <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">
             <span class="truncate font-medium">{{ $vehicle->titleWithYear() }}</span>
-            @if ($vehicle->plate)<span class="shrink-0 text-sm text-ink-muted">{{ $vehicle->plate }}</span>@endif
+            @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="text-sm"/>@endif
         </div>
         <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
             @if ($vehicle->ref && $vehicle->brand_id)<span class="tag nums">{{ $vehicle->ref }}</span>@endif

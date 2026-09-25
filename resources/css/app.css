@@ -541,9 +541,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      текста и урезается, когда кнопок много) с auto-margin отжимает остальные кнопки к краю. */
   @media (max-width: 767px) {
     .toolbar { flex-wrap: wrap; }
-    .toolbar-pills .pill { padding-inline: 1.25rem; min-height: 2.75rem; }
+    .toolbar-pills .pill { padding-inline: 1rem; }
     /* В кабинете разделы уже названы своей лентой пилюль — пилюли тулбара остаются обычными. */
-    [data-title-anchor] .toolbar-pills .pill { padding-inline: .875rem; min-height: 2.25rem; }
+    [data-title-anchor] .toolbar-pills .pill { padding-inline: .875rem; }
     /* Кнопка с подписью, спрятанной на телефоне («+ Новый», «Из писем») — круглая, как соседи. */
     .toolbar .btn:has(> .hidden) { width: 2.75rem; padding: 0; }
   }
@@ -583,11 +583,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .case-go > [aria-hidden] { font-size: var(--text-sm); color: var(--color-ink-dim); }
   @media (hover: hover) { .case-go:hover { color: var(--color-ink); } .case-go:hover > [aria-hidden] { color: var(--color-accent-text); } }
   .pill {
-    @apply inline-flex shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1.5 text-sm text-ink-muted transition-colors;
-    min-height: 2.25rem;
+    @apply inline-flex shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1 text-sm text-ink-muted transition-colors;
+    /* Высота кнопок разделов в шапке (.header-h): пилюли и капсулы — одного роста. */
+    min-height: 1.875rem;
   }
   @media (hover: hover) { a.pill:hover, button.pill:hover { @apply bg-hover text-ink; } }
-  .pill-lg { @apply px-5; min-height: 2.75rem; }
+  .pill-lg { @apply px-4; }
   .pill[aria-current="true"], .pill[aria-current="page"], .pill-accent { @apply bg-accent font-medium text-white; }
   @media (hover: hover) { a.pill[aria-current="true"]:hover, a.pill[aria-current="page"]:hover, a.pill-accent:hover { @apply bg-accent-hover text-white; } }
   .pill-open   { @apply bg-open-soft text-open; }
@@ -872,6 +873,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .vendor-name { @apply inline-flex min-w-0 max-w-full items-center; gap: .4em; vertical-align: bottom; }
   .vendor-name-text { @apply truncate; }
   .tag.vendor-name { padding-left: 4px; }
+  /* Госномер (x-ui.plate): плашка на подложке, цифры табличные, регион за волосяной чертой — намёк на табличку. */
+  .plate { @apply inline-flex shrink-0 items-center rounded-[.3em] bg-surface-3 font-medium text-ink; padding: 0 .35em; line-height: 1.4; font-variant-numeric: tabular-nums; letter-spacing: .03em; }
+  .plate-reg { margin-left: .3em; padding-left: .3em; border-left: 1px solid var(--color-line, currentColor); font-size: .85em; }
   .vendor-logo-pick { @apply flex size-[52px] items-center justify-center overflow-hidden rounded-xl bg-surface-3 text-ink-muted; }
   .vendor-logo-pick img { @apply size-full object-contain; }
   /* Отправитель без пользователя (почта): восемь приглушённых тонов по хэшу адреса, чтобы люди различались с первого взгляда. */

@@ -15,7 +15,7 @@ enum Area: string
     public function label(): string
     {
         return match ($this) {
-            self::Money => 'Деньги: счета, оплаты, начисления',
+            self::Money => 'Оплаты: счета, начисления',
             self::Mail => 'Почта парковки',
         };
     }

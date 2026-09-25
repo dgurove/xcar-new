@@ -2,7 +2,7 @@
      галочки, кнопка считает выбранное: «Выставить 3 счета на 2 900 ₽» (счета с актами). Ниже — что уже выставлено за месяц.
      Письма — вручную с каждого счёта. --}}
 @php use App\Support\Money; use App\Billing\Cadence; $me = auth()->user(); $n = $items->flatten(1)->count(); @endphp
-<x-ui.shell :title="'Закрытие '.mb_strtolower($month->translatedFormat('F Y'))" :back="['Деньги', '/money']" cache="no-cache">
+<x-ui.shell :title="'Закрытие '.mb_strtolower($month->translatedFormat('F Y'))" :back="['Оплаты', '/money']" cache="no-cache">
     <x-ui.pills class="mb-4">
         @foreach ($months as $m)
             <x-ui.pill :href="'/money/closing?month='.$m->format('Y-m')" :current="$m->format('Y-m') === $month->format('Y-m')">{{ $m->translatedFormat('F') }}</x-ui.pill>

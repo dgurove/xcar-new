@@ -35,7 +35,7 @@ class VendorController
 {
     public const PRESETS = ['active' => 'Работаем', 'stored' => 'С ТС на парковке', 'inactive' => 'Не работаем'];
 
-    public const PILLS = ['overview' => 'Обзор', 'contacts' => 'Контакты', 'tariffs' => 'Тарифы', 'money' => 'Деньги'];
+    public const PILLS = ['overview' => 'Обзор', 'contacts' => 'Контакты', 'tariffs' => 'Тарифы', 'money' => 'Оплаты'];
 
     public function index(Request $request)
     {

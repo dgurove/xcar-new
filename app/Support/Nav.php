@@ -51,7 +51,7 @@ final class Nav
             return array_values(array_filter([
                 self::item('Заявки', '/', ['/', '/requests']),
                 self::item('Наличие', '/cars'),
-                $user?->canPark(Area::Money) ? self::item('Деньги', '/money') : null,
+                $user?->canPark(Area::Money) ? self::item('Оплаты', '/money') : null,
                 $user?->canPark(Area::Mail) ? self::item('Почта', '/mail') : null,
                 self::item('Парковки', '/yards', tab: false),
                 // Вендоры — настройки: управляющему (роль «Парковка») их нет.

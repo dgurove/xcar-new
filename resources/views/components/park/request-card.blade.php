@@ -17,6 +17,7 @@
          за названием (x-park.card). --}}
     <span class="card-sub">
         @if ($word)<span class="text-ink">{{ mb_strtolower($word) }}</span>@endif
+        @if ($v->plate)<x-ui.plate :value="$v->plate"/>@endif
         @if ($v->ref)<span>{{ $v->ref }}</span>@endif
         @if ($req->contact_phone)<a href="tel:+{{ preg_replace('/\D+/', '', $req->contact_phone) }}" class="text-accent-text">{{ $req->contact_phone }}</a>@endif
         @if ($req->assignee)<span>{{ $req->assignee->shortName() }}</span>@endif

@@ -3,12 +3,12 @@
      only — одна пилюля состояния, без места, дней и предупреждений: в почте рядом с названием машины
      нужен статус, а не всё про неё («номера и парковку я увижу в „Наличии“»). --}}
 @props(['vehicle', 'only' => false])
-@php $days = $vehicle->daysStored(); $idle = \App\Park\Idle::tone($vehicle->state === \App\Park\VehicleState::Stored ? $days : null); @endphp
+@php $days = $vehicle->daysStored(); @endphp
 <x-ui.pill :tone="match ($vehicle->state->tone()) { 'open' => 'open', 'urgent' => 'urgent', default => 'closed' }" class="!min-h-0 !py-1 text-xs">{{ $vehicle->state->label() }}</x-ui.pill>
 @if ($only)
 @elseif ($vehicle->state === \App\Park\VehicleState::Stored)
     @if ($vehicle->yard)<x-ui.place class="chip">{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place>@endif
-    <span class="chip nums font-normal {{ $idle === 'danger' ? 'bg-danger-soft text-danger' : ($idle === 'urgent' ? 'bg-urgent-soft text-urgent' : '') }}">{{ $days }} дн</span>
+    <span class="chip nums font-normal">{{ $days }}д</span>
 @elseif ($vehicle->state === \App\Park\VehicleState::InTransit && $vehicle->daysInTransit() !== null)
     <span class="chip nums font-normal">{{ $vehicle->daysInTransit() }} дн в пути</span>
 @elseif ($vehicle->state === \App\Park\VehicleState::Released)
