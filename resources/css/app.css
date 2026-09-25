@@ -875,7 +875,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .tag.vendor-name { padding-left: 4px; }
   /* Госномер (x-ui.plate): тот же шрифт и базовая линия, что у текста рядом (номер убытка), — только подложка и регион за
      волосяной чертой, намёк на табличку. Инлайн, а не flex: иначе плашка садится выше соседей. */
-  .plate { display: inline; white-space: nowrap; border-radius: .25em; background: var(--color-surface-3); color: var(--color-ink-muted); padding: .1em .3em; font-variant-numeric: tabular-nums; letter-spacing: .02em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  .plate { display: inline; white-space: nowrap; border-radius: .25em; background: var(--color-surface-3); color: var(--color-ink-muted); padding: .1em .3em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
   .plate-reg { margin-left: .3em; padding-left: .3em; border-left: 1px solid var(--color-line); }
   .vendor-logo-pick { @apply flex size-[52px] items-center justify-center overflow-hidden rounded-xl bg-surface-3 text-ink-muted; }
   .vendor-logo-pick img { @apply size-full object-contain; }
