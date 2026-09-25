@@ -1516,7 +1516,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* Стоянка: строка без кнопок — миниатюра, название и одна строка чипов, справа по центру высоты
    слово действия («Принять ›»), дни или долг (card-aside). Областей place и action у строки нет. */
 .surface-park .cards {
-  --card-areas: "media body aside" "media extra extra";
+  --card-areas: "media body aside" "media extra aside";
   --card-cols: auto minmax(0, 1fr) auto;
   --card-align: start; --card-gap: .125rem .625rem; --card-pad: .5rem .625rem .5rem .5rem;
   --media-w: 3rem; --media-h: 2.25rem; --blank-h: 2.25rem;
@@ -1531,7 +1531,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
 }
 .surface-park .cards .card-aside { flex-direction: column; align-items: flex-end; gap: .25rem; text-align: right; white-space: nowrap; }
-@media (max-width: 639.98px) { .surface-park .cards .card-aside { flex-direction: row; align-items: center; gap: .375rem; padding-top: .125rem; } .surface-park .cards .card-media { align-self: center; } }
+@media (max-width: 639.98px) { .surface-park .cards .card-media { align-self: center; } }
 .surface-park .cards .card-body { gap: .125rem; }
 .surface-park .cards .card-marks { flex-wrap: nowrap; overflow: hidden; }
 .surface-park .cards .card-marks:empty { display: none; }
