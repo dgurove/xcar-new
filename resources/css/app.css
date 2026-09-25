@@ -874,8 +874,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .vendor-name-text { @apply truncate; }
   .tag.vendor-name { padding-left: 4px; }
   /* Госномер (x-ui.plate): плашка на подложке, цифры табличные, регион за волосяной чертой — намёк на табличку. */
-  .plate { @apply inline-flex shrink-0 items-center rounded-[.3em] bg-surface-3 font-medium text-ink; padding: 0 .35em; line-height: 1.4; font-variant-numeric: tabular-nums; letter-spacing: .03em; }
-  .plate-reg { margin-left: .3em; padding-left: .3em; border-left: 1px solid var(--color-line, currentColor); font-size: .85em; }
+  .plate { @apply inline-flex shrink-0 items-center rounded-[.25em] bg-surface-3 text-ink-muted; padding: 0 .3em; font-size: .92em; line-height: 1.3; font-variant-numeric: tabular-nums; }
+  .plate-reg { margin-left: .25em; padding-left: .25em; border-left: 1px solid var(--color-line); font-size: .85em; }
   .vendor-logo-pick { @apply flex size-[52px] items-center justify-center overflow-hidden rounded-xl bg-surface-3 text-ink-muted; }
   .vendor-logo-pick img { @apply size-full object-contain; }
   /* Отправитель без пользователя (почта): восемь приглушённых тонов по хэшу адреса, чтобы люди различались с первого взгляда. */

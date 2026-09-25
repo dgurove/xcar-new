@@ -8,7 +8,7 @@
 @if ($only)
 @elseif ($vehicle->state === \App\Park\VehicleState::Stored)
     @if ($vehicle->yard)<x-ui.place class="chip">{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place>@endif
-    <span class="chip nums font-normal">{{ $days }}д</span>
+    <span class="chip nums font-normal">{{ $days }}&nbsp;д</span>
 @elseif ($vehicle->state === \App\Park\VehicleState::InTransit && $vehicle->daysInTransit() !== null)
     <span class="chip nums font-normal">{{ $vehicle->daysInTransit() }} дн в пути</span>
 @elseif ($vehicle->state === \App\Park\VehicleState::Released)

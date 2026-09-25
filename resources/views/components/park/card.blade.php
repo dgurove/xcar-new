@@ -57,7 +57,7 @@
         @if ($aside)
             {{ $aside }}
         @elseif ($days !== null)
-            <span class="nums text-sm">{{ $days }}д</span>
+            <span class="nums text-sm">{{ $days }}&nbsp;д</span>
             @if ($total && $total['amount'] > 0)<span class="nums">{{ Money::rub($total['amount']) }}</span>@endif
             @if ($debt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs nums">{{ Money::rub($debt) }}</x-ui.pill>@endif
         @elseif ($state === VehicleState::Expected)
