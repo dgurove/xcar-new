@@ -1,6 +1,9 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 
+// Ключ памяти табов; «tab:» — прежний, в нём могли остаться чужие адреса, его не читаем.
+const KEY = 'tabs:';
+
 // Прокрутка, которую надо вернуть после ближайшего рендера (контроллер к тому моменту новый).
 let restoreScroll;
 document.addEventListener('turbo:load', () => {
@@ -29,6 +32,9 @@ document.addEventListener('turbo:before-morph-attribute', (event) => {
 // своя память (sessionStorage): экран и прокрутка, на которых его оставили.
 export default class extends Controller {
     static targets = ['bar'];
+    // Таб страницы, что на экране, — от сервера. aria-current загорается под пальцем раньше ответа: пока медленная
+    // страница едет, текущим по нему был бы уже новый таб, и в его память лёг бы чужой адрес («Наличие» → Заявки).
+    static values = { shown: String };
 
     connect() {
         this.onFocusIn = (e) => { if (this.isField(e.target)) this.element.classList.add('is-hidden'); };
@@ -46,7 +52,7 @@ export default class extends Controller {
         const link = event.currentTarget;
         const current = this.element.querySelector('.tab[aria-current="page"]');
         if (current !== link) {
-            this.remember(current);
+            this.remember(this.shownValue);
             for (const tab of this.element.querySelectorAll('.tab[aria-current]')) tab.removeAttribute('aria-current');
             link.setAttribute('aria-current', 'page');
             const saved = this.recall(link);
@@ -67,21 +73,21 @@ export default class extends Controller {
         Turbo.visit(link.href, { action: 'replace' });
     }
 
-    remember(tab) {
-        if (!tab?.href) return;
-        try { sessionStorage.setItem('tab:' + new URL(tab.href).pathname, JSON.stringify({ url: location.href, y: scrollY })); } catch {}
+    remember(href) {
+        if (!href) return;
+        try { sessionStorage.setItem(KEY + new URL(href, location.origin).pathname, JSON.stringify({ url: location.href, y: scrollY })); } catch {}
     }
 
     recall(tab) {
         try {
-            const saved = JSON.parse(sessionStorage.getItem('tab:' + new URL(tab.href).pathname) || 'null');
+            const saved = JSON.parse(sessionStorage.getItem(KEY + new URL(tab.href).pathname) || 'null');
             if (!saved || new URL(saved.url).origin !== location.origin) return null;
             return saved.url !== tab.href || saved.y > 0 ? saved : null;
         } catch { return null; }
     }
 
     forget(tab) {
-        try { sessionStorage.removeItem('tab:' + new URL(tab.href).pathname); } catch {}
+        try { sessionStorage.removeItem(KEY + new URL(tab.href).pathname); } catch {}
     }
 
     isField(el) {

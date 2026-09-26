@@ -10,7 +10,7 @@
     // Активен самый точный пункт: «Сделки» в /account/deals, а не «Кабинет».
     $current = collect($tabs)->filter(fn ($t) => \App\Support\Nav::isCurrent($t, $path))->sortByDesc(fn ($t) => \App\Support\Nav::matchLength($t, $path))->first()['href'] ?? null;
 @endphp
-<nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-target="bar">
+<nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-target="bar" data-tabbar-shown-value="{{ $current }}">
     @foreach ($tabs as $tab)
         @if ($tab['logout'] ?? false)
             <form method="post" action="/logout" class="contents">@csrf<button type="submit" class="tab"><span class="tab-mark"><span class="tab-dot"></span></span><span>{{ $tab['label'] }}</span></button></form>
