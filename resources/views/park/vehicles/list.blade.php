@@ -24,7 +24,7 @@
                     <th class="grow">Марка, модель</th>
                     <th class="hidden sm:table-cell">№ убытка</th>
                     <th class="col-peek-hide hidden lg:table-cell">Вендор</th>
-                    <th class="col-peek-hide hidden lg:table-cell">Принята</th>
+                    <th class="num col-peek-hide hidden lg:table-cell">Принята</th>
                     <th class="num"><a href="{{ $sortBy('longest') }}" data-turbo-action="replace" @if ($sort === 'longest') aria-current="true" @endif>Дней</a></th>
                     <th class="num hidden sm:table-cell">Ставка</th>
                     <th class="num"><a href="{{ $sortBy('amount') }}" data-turbo-action="replace" @if ($sort === 'amount') aria-current="true" @endif>Начислено</a></th>

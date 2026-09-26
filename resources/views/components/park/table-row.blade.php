@@ -27,7 +27,7 @@
     </td>
     <td class="hidden sm:table-cell">@if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</td>
     <td class="col-peek-hide hidden lg:table-cell">@if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="max-w-44"/>@endif</td>
-    <td class="col-peek-hide hidden nums lg:table-cell">{{ $vehicle->accepted_at?->translatedFormat('j M Y') }}</td>
+    <td class="num nums col-peek-hide hidden text-ink-muted lg:table-cell">{{ $vehicle->accepted_at?->translatedFormat('j M Y') }}</td>
     <td class="num nums">
         @if ($state === VehicleState::Released && $vehicle->released_at)
             <time class="text-ink-muted" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ $vehicle->released_at->translatedFormat('j M') }}</time>
