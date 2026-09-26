@@ -34,6 +34,7 @@ enum EventType: string
     case IntakeUndone = 'intake_undone';
     case ReleaseUndone = 'release_undone';
     case PickupLinkSent = 'pickup_link_sent';
+    case PickupLinkRenewed = 'pickup_link_renewed';
     case BuyerForm = 'buyer_form';
     case BuyerConfirmed = 'buyer_confirmed';
     case BuyerRejected = 'buyer_rejected';

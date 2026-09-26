@@ -13,6 +13,7 @@ use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Reading\ReadLetter;
 use App\Park\Actions\MarkSold;
+use App\Park\Actions\ReleaseByLetters;
 use App\Park\Actions\StoreByLetters;
 use App\Park\Events\LetterArrived;
 use App\Park\EventType;
@@ -52,6 +53,10 @@ final class OnMessage
         $paths = [$base, "{$base}/{$message->thread_id}", '/offers/from-mail', '/requests/from-mail', '/'];
         // Письмо по привязанной ТС — в её ленту и сотруднику, который ею занят.
         $vehicle = $linked instanceof Vehicle ? $linked : $thread?->vehicle;
+        // Наше письмо о выдаче, отправленное не из приложения (ящик в почтовой программе), — так же выдаёт.
+        if ($vehicle && $message->account->scope === Scope::Park && $message->intent === Intent::Released->value && $message->isOurs()) {
+            app(ReleaseByLetters::class)($vehicle);
+        }
         if ($vehicle && $message->direction === Direction::In) {
             $vehicle->log(EventType::Letter, null, ['from' => $message->from_name ?: $message->from_email, 'subject' => $message->subject, 'thread' => $message->thread_id, 'message' => $message->id, 'intent' => $message->intent]);
             // «Продано, заберёт такой-то» по ТС на стоянке — дата продажи и покупатель из письма, заявка на выдачу.
@@ -83,6 +88,10 @@ final class OnMessage
         if ($park && ! $message->thread?->vehicle_id && ! $message->thread?->offer_id && ($candidate = $this->chains->attach($message, quiet: true))) {
             // Это письмо и есть «приняли, отчёт отправлен» — дальше ТС заводится сама.
             ($this->store)($candidate);
+        }
+        // Наше «подписанный АПП» по стоящей ТС — выдана с этого дня.
+        if ($park && $message->thread?->vehicle && $message->intent === Intent::Released->value) {
+            app(ReleaseByLetters::class)($message->thread->vehicle);
         }
         $this->publish->refresh($park ? Topics::PARK : Topics::STAFF, [($park ? '/mail/' : '/work/mail/').$e->message->thread_id]);
     }

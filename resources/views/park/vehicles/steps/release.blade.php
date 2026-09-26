@@ -16,6 +16,9 @@
     <button type="button" class="qr-scan-tile mt-3" data-qr-release-target="scan" data-action="qr-release#open"><span class="qr-scan-tile-icon"><x-ui.icon name="qr" class="size-6"/></span>Сканировать QR</button>
     <div data-qr-release-target="result" hidden></div>
     @error('pass')<p class="field-error mt-2">{{ $message }}</p>@enderror
+@elseif ($vehicle->vendor)
+    {{-- Вендор без выдачи по QR: сканировать нечего — так и написано, чтобы не искали плитку. --}}
+    <div class="mt-3 flex items-center gap-2 text-sm"><x-vendor.name :vendor="$vehicle->vendor"/><span class="text-ink-muted">выдача без QR</span></div>
 @endif
 <div class="list release-list mt-3">
     <label class="row justify-between">

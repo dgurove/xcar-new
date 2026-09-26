@@ -1,18 +1,7 @@
-{{-- Шаг «Покупатель» (выдача по QR). Анкеты нет — плашка: ссылка для покупателя (нажатие копирует) и «Отправить
-     страховой ещё раз». Анкета есть — плашка-контакт: кто и когда заберёт с кнопкой звонка, почта, запрос страховой
+{{-- Шаг «Покупатель» (выдача по QR). Ссылка на анкету — своим блоком справа (pickup-card). Анкета есть — плашка-контакт: кто и когда заберёт с кнопкой звонка, почта, запрос страховой
      (открывает письма); под ней «Страховая подтвердила» главной во всю ширину и «Не покупатель» красным текстом. Формы — вне act-form
      (show.blade.php), кнопки ссылаются на них атрибутом form. --}}
-@if (! $pass)
-    <div class="list mt-2">
-        <button type="button" class="row justify-between w-full text-left" data-controller="copy" data-copy-text-value="{{ $vehicle->pickupUrl() }}" data-copy-done-value="Ссылка в буфере" data-action="copy#copy:prevent">
-            <span class="min-w-0"><span class="block">Ссылка для покупателя</span><span class="block truncate text-sm text-ink-muted">{{ preg_replace('~^https?://~', '', $vehicle->pickupUrl()) }}</span></span>
-            <x-ui.icon name="copy" class="size-5 shrink-0 text-ink-dim"/>
-        </button>
-        @if ($canManage)
-            <button type="submit" form="pickup-link-form" class="row justify-between w-full text-left" data-turbo-confirm="Отправить страховой ссылку для покупателя ещё раз?"><span>Отправить страховой ещё раз</span><x-ui.icon name="send" class="size-5 shrink-0 text-ink-dim"/></button>
-        @endif
-    </div>
-@else
+@if ($pass)
     <div class="list mt-2">
         <div class="row justify-between">
             <span class="min-w-0"><span class="block">{{ $pass->name }}</span><span class="block text-sm text-ink-muted">заберёт {{ $pass->pickup_on->translatedFormat('j F') }}</span></span>

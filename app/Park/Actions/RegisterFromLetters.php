@@ -7,11 +7,8 @@ use App\Mail\Candidate;
 use App\Mail\CandidateStage;
 use App\Mail\Message;
 use App\Park\DocState;
-use App\Park\Events\VehicleReleased;
 use App\Park\EventType;
 use App\Park\Idle;
-use App\Park\Request;
-use App\Park\RequestState;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
@@ -31,7 +28,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class RegisterFromLetters
 {
-    public function __construct(private OpenDocs $openDocs, private MarkSold $sold, private MarkDoc $markDoc, private PurgeLetters $purge) {}
+    public function __construct(private OpenDocs $openDocs, private MarkSold $sold, private MarkDoc $markDoc, private ReleasePast $releasePast) {}
 
     /**
      * @param  array{accepted_at?: ?string, yard_id?: ?int, spot?: ?string, sold?: bool, sold_at?: ?string, pickup_name?: ?string, pickup_phone?: ?string, released_at?: ?string, released_note?: ?string, source?: string}  $stages
@@ -92,22 +89,9 @@ final class RegisterFromLetters
         }
 
         if ($releasedAt) {
-            $this->release($vehicle, $by, $releasedAt->lt($vehicle->accepted_at) ? $vehicle->accepted_at : $releasedAt, $stages['released_note'] ?? null, $mark);
+            ($this->releasePast)($vehicle, $by, $releasedAt, $stages['released_note'] ?? null, $mark);
         }
 
         return $vehicle->refresh();
-    }
-
-    /** Выдана задним числом: как `Release`, но без осмотра и проверки долга — выдача уже случилась. */
-    private function release(Vehicle $vehicle, ?User $by, Carbon $at, ?string $note, array $mark): void
-    {
-        DB::transaction(function () use ($vehicle, $by, $at, $note, $mark) {
-            $vehicle->update(['state' => VehicleState::Released, 'released_at' => $at, 'spot' => null]);
-            $vehicle->log(EventType::Released, $by, array_filter(['note' => $note, 'day' => $at->toDateString()]) + $mark);
-            Request::where('vehicle_id', $vehicle->id)->whereIn('state', RequestState::open())
-                ->update(['state' => RequestState::Done, 'done_at' => now(), 'done_by' => $by?->id]);
-        });
-        VehicleReleased::dispatch($vehicle, null, $by);
-        ($this->purge)($vehicle);
     }
 }

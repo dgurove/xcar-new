@@ -147,7 +147,7 @@ class Vehicle extends Model implements HasMedia
         return (bool) $this->vendor?->release_by_qr;
     }
 
-    /** Ссылка на анкету покупателя: одна на ТС, код заводится при первой нужде и живёт до выдачи. */
+    /** Ссылка на анкету покупателя: одна на ТС, код заводится при первой нужде; заменить — `RenewPickupLink`. */
     public function pickupUrl(): string
     {
         if (! $this->pickup_code) {
@@ -158,6 +158,12 @@ class Vehicle extends Model implements HasMedia
         }
 
         return Surface::Site->url('/pickup/'.$this->pickup_code);
+    }
+
+    /** Ссылка на анкету, если она уже есть, — без заведения кода (блок «Ссылка на анкету» в деле). */
+    public function pickupLink(): ?string
+    {
+        return $this->pickup_code ? Surface::Site->url('/pickup/'.$this->pickup_code) : null;
     }
 
     public function passes(): HasMany

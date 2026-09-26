@@ -4,9 +4,11 @@ namespace App\Http\Site;
 
 use App\Park\Actions\MailPass;
 use App\Park\Actions\SubmitBuyerForm;
+use App\Park\EventType;
 use App\Park\Pass;
 use App\Park\PassQr;
 use App\Park\Vehicle;
+use App\Park\VehicleEvent;
 use App\Park\VehicleState;
 use App\Support\Surface;
 use App\Users\Section;
@@ -86,6 +88,10 @@ class PickupController
     private function vehicle(string $code): Vehicle
     {
         $vehicle = Vehicle::where('pickup_code', strtoupper($code))->with(['yard.settlement', 'brand', 'model', 'vendor'])->first();
+        // Ссылку заменили («Отключить и выдать новую») — говорим это, а не «не найдено».
+        if (! $vehicle && VehicleEvent::where('type', EventType::PickupLinkRenewed)->where('payload->old', strtoupper($code))->exists()) {
+            abort(response()->view('site.pickup.gone', [], 410));
+        }
         abort_unless($vehicle, 404);
 
         return $vehicle;

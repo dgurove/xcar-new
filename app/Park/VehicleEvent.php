@@ -62,6 +62,7 @@ class VehicleEvent extends Model
             EventType::IntakeUndone => 'Приём отменён'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
             EventType::ReleaseUndone => 'Выдача отменена'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
             EventType::PickupLinkSent => 'Ссылка на анкету покупателя отправлена вендору',
+            EventType::PickupLinkRenewed => 'Ссылка на анкету покупателя заменена, прежняя отключена',
             EventType::BuyerForm => 'Покупатель заполнил анкету: '.($p['name'] ?? '').(! empty($p['date']) ? ', заберёт '.$p['date'] : ''),
             EventType::BuyerConfirmed => 'Покупатель подтверждён'.(! empty($p['name']) ? ': '.$p['name'] : '').(! empty($p['note']) ? ', '.$p['note'] : ''),
             EventType::BuyerRejected => 'Не покупатель'.(! empty($p['name']) ? ': '.$p['name'] : '').(! empty($p['reason']) ? ', '.$p['reason'] : ''),

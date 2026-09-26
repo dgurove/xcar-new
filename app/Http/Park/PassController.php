@@ -3,6 +3,7 @@
 namespace App\Http\Park;
 
 use App\Park\Actions\ConfirmBuyer;
+use App\Park\Actions\RenewPickupLink;
 use App\Park\Actions\SendPickupLink;
 use App\Park\Pass;
 use App\Park\Vehicle;
@@ -10,7 +11,7 @@ use Illuminate\Http\Request;
 
 /**
  * Выдача по QR, сторона парковки: проверка отсканированного кода при выдаче, «Страховая подтвердила»,
- * «Не покупатель», повторная отправка ссылки страховой. Сама выдача — RequestController::release.
+ * «Не покупатель», ссылка на анкету: завести, отправить страховой, отключить и выдать новую. Сама выдача — RequestController::release.
  */
 class PassController
 {
@@ -55,5 +56,20 @@ class PassController
     public function link(Request $request, Vehicle $vehicle, SendPickupLink $send)
     {
         return back()->with('toast', $send->send($vehicle, null, $request->user()) ? 'Ссылка отправлена страховой' : 'Не нашли, кому писать: нет письма страховой и адреса у вендора');
+    }
+
+    /** Завести ссылку, не отправляя: скопировать и переслать самим. */
+    public function create(Vehicle $vehicle)
+    {
+        $vehicle->pickupUrl();
+
+        return back()->with('toast', 'Ссылка готова');
+    }
+
+    public function renew(Request $request, Vehicle $vehicle, RenewPickupLink $renew)
+    {
+        $renew($vehicle, $request->user());
+
+        return back()->with('toast', 'Прежняя ссылка отключена, новая готова');
     }
 }

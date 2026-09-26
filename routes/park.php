@@ -58,6 +58,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/buyer/confirm', [PassController::class, 'confirm'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/buyer/reject', [PassController::class, 'reject'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/pickup-link', [PassController::class, 'link'])->middleware(['park.manage', 'throttle:5,1']);
+    Route::post('/cars/{vehicle}/pickup-link/create', [PassController::class, 'create'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/pickup-link/renew', [PassController::class, 'renew'])->middleware(['park.manage', 'throttle:5,1']);
     Route::delete('/cars/{vehicle}', [VehicleController::class, 'destroy'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/move', [VehicleController::class, 'move']);
     Route::post('/cars/{vehicle}/yard', [VehicleController::class, 'yard']);

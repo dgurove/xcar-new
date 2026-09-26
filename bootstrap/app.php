@@ -31,6 +31,7 @@ use App\Media\Console\Restamp;
 use App\Offers\Console\TickOffers;
 use App\Park\Console\FactCommand;
 use App\Park\Console\ParkDigestCommand;
+use App\Park\Console\ReleaseByLettersCommand;
 use App\Park\Console\StoreByLettersCommand;
 use App\Park\Console\TickPark;
 use App\Push\Console\MakeKeys;
@@ -59,6 +60,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ParkDigestCommand::class,
         FactCommand::class,
         StoreByLettersCommand::class,
+        ReleaseByLettersCommand::class,
         TickBilling::class,
         CloseMonthCommand::class,
         SyncMail::class,

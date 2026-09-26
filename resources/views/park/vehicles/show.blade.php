@@ -116,7 +116,6 @@
         {{-- «Сделано» у каждого ждущего письма своё: форма не может лежать внутри act-form. --}}
         @foreach ($asks ?? [] as $a)<form method="post" action="/cars/{{ $vehicle->id }}/letters/{{ $a->id }}/done" id="reply-form-{{ $a->id }}">@csrf</form>@endforeach
         @if ($byQr ?? false)
-            <form method="post" action="/cars/{{ $vehicle->id }}/pickup-link" id="pickup-link-form">@csrf</form>
             <form method="post" action="/cars/{{ $vehicle->id }}/buyer/confirm" id="buyer-confirm-form">@csrf</form>
         @endif
         @if ($spawn)<form method="post" action="/requests" id="spawn-form">@csrf<input type="hidden" name="type" value="{{ $spawn[0] }}"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"></form>@endif
@@ -125,6 +124,7 @@
     </div>
 
     <div class="flex min-w-0 flex-col gap-4">
+        @if (($byQr ?? false) && $vehicle->state === \App\Park\VehicleState::Stored)@include('park.vehicles.pickup-card')@endif
         {{-- Документы — над фото: их обычно немного. Строками, «+ Документ» сверху. --}}
         <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple hidden data-photos-target="input" data-action="change->photos#upload">

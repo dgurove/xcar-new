@@ -2,6 +2,7 @@
 
 namespace App\Park\Console;
 
+use App\Park\Actions\ReleaseByLetters;
 use App\Park\Actions\StoreByLetters;
 use App\Park\Events\RequestCall;
 use App\Park\Events\RequestDue;
@@ -26,7 +27,7 @@ class TickPark extends Command
 
     protected $description = 'Сроки заявок парковки и простой ТС';
 
-    public function handle(StoreByLetters $store): int
+    public function handle(StoreByLetters $store, ReleaseByLetters $release): int
     {
         $now = now();
         $soon = Request::whereIn('state', RequestState::open())->whereNull('reminded_at')
@@ -58,7 +59,8 @@ class TickPark extends Command
             Nav::forgetStaffCounts();
         }
         $stored = $store->all();
-        $this->info("напомнено {$soon->count()}, перезвонить {$calls->count()}, просрочено {$late->count()}, стоят долго {$idle->count()}, заведено по письмам {$stored}");
+        $released = $release->all();
+        $this->info("напомнено {$soon->count()}, перезвонить {$calls->count()}, просрочено {$late->count()}, стоят долго {$idle->count()}, заведено по письмам {$stored}, выдано по письмам {$released}");
 
         return self::SUCCESS;
     }
