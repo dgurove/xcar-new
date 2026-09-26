@@ -875,7 +875,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Столбец «Вендор, № убытка»: логотип с именем и номер в одну строку. Логотип перед названием ТС — только пока
      этого столбца нет (краткая таблица телефона). */
   .vendor-ref { display: inline-flex; align-items: center; gap: .5em; min-width: 0; max-width: 100%; }
-  @media (min-width: 640px) { .col-vendor-lead { display: none; } }
+  @media (min-width: 640px) { .col-vendor-lead, .vendor-tip.col-vendor-lead { display: none; } }
   /* Имя вендора подсказкой у логотипа: наведение на ПК, нажатие на телефоне (кнопка — окошко строки не открывается).
      Справа от логотипа поверх номера, а не сверху: ячейка таблицы режет всё, что выходит за её высоту. */
   .vendor-tip { position: relative; display: inline-flex; line-height: 1; cursor: default; -webkit-tap-highlight-color: transparent; }
@@ -888,12 +888,18 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .vendor-tip:focus-visible::after, .vendor-tip:focus::after { opacity: 1; }
   @media (hover: hover) { .vendor-tip:hover::after { opacity: 1; } }
   .vendor-tip:focus { outline: none; }
+  /* Статус ТС (Park\Status): ждём — надпись приглушённая; нужно действие — кружок лаймом перед словами, просрочено — красным. */
+  .status-cell { display: inline-flex; align-items: center; gap: .4em; color: var(--color-ink-muted); }
+  .status-cell.is-act { color: var(--color-ink); }
+  .status-cell.is-act::before { content: ''; flex-shrink: 0; width: .5em; height: .5em; border-radius: 50%; background: var(--color-accent); }
+  .status-cell.is-late::before { background: var(--color-danger); }
   /* Тип ТС серой миниатюрой перед названием (Category::icon) — клетка одной ширины и без иконки, чтобы названия
      стояли ровно; в краткой таблице телефона её нет — там узко. */
   .cat-icon { display: inline-block; width: 1.25em; height: 1.25em; margin-right: .3em; vertical-align: -.25em; --cat: oklch(0.58 0.15 var(--cat-h)); color: color-mix(in oklab, var(--cat) 70%, transparent); }
   .dark .cat-icon { color: color-mix(in oklab, var(--cat) 80%, transparent); }
   /* Цвета типов (вариант C, решение владельца 26.09.2026): легковой — лайм бренда, остальные холодные одной светлоты. */
   .cat-passenger { color: color-mix(in oklab, var(--color-accent) 65%, transparent) !important; }
+  .cat-unknown { color: var(--color-ink-dim) !important; opacity: .55; }
   .cat-light { --cat-h: 190; } .cat-truck { --cat-h: 225; } .cat-long { --cat-h: 255; } .cat-trailer { --cat-h: 285; } .cat-special { --cat-h: 210; } .cat-moto { --cat-h: 310; }
   @media (max-width: 639.98px) { .table-wrap:not(.is-wide) .cat-icon { display: none; } }
   /* Госномер (x-ui.plate): тот же шрифт и базовая линия, что у текста рядом (номер убытка), — только подложка и регион за

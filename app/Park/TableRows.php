@@ -24,7 +24,7 @@ final class TableRows
         $common = Accrual::mark('park_tariffs').'|'.self::templates();
         $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.row:'.md5(implode('|', [
             $common, $v->id, $v->updated_at?->getTimestamp(), $v->threads_count, $v->waiting_count ?? 0,
-            $v->requests->map(fn ($r) => $r->id.':'.$r->updated_at?->getTimestamp())->implode(','),
+            $v->requests->map(fn ($r) => $r->id.':'.$r->updated_at?->getTimestamp())->implode(','), today()->toDateString(),
             $v->vendor?->name, $v->vendor?->logoUrl(), $v->yard?->name,
             json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place]),
         ]))])->all();
@@ -51,7 +51,7 @@ final class TableRows
      */
     private static function templates(): string
     {
-        return once(fn () => implode(',', array_map(fn ($f) => @filemtime(resource_path("views/components/{$f}.blade.php")) ?: 0,
+        return once(fn () => (@filemtime(app_path('Park/Status.php')) ?: 0).','.implode(',', array_map(fn ($f) => @filemtime(resource_path("views/components/{$f}.blade.php")) ?: 0,
             ['park/table-row', 'park/alerts', 'ui/plate', 'ui/copy-code', 'ui/icon', 'vendor/logo', 'vendor/name'])));
     }
 }
