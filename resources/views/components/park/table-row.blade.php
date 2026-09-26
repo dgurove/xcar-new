@@ -27,7 +27,7 @@
     </td>
     <td class="hidden text-sm sm:table-cell">@if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</td>
     <td class="col-peek-hide hidden text-sm lg:table-cell">@if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="max-w-44"/>@endif</td>
-    <td class="num nums text-sm">
+    <td class="num nums">
         @if ($state === VehicleState::Released && $vehicle->released_at)
             <time class="text-ink-muted" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ $vehicle->released_at->translatedFormat('j M') }}</time>
         @elseif ($days !== null)
@@ -35,7 +35,7 @@
         @endif
     </td>
     <td class="num nums hidden text-sm sm:table-cell">@if ($rate){{ Money::rub($rate) }}/д@endif</td>
-    <td class="num nums text-sm">
+    <td class="num nums">
         @if ($amount > 0)<span class="block">{{ Money::rub($amount) }}</span>@endif
         @if ($debt > 0)<span class="cell-sub text-danger">долг {{ Money::nums($debt) }}</span>
         @elseif ($rate)<span class="cell-sub sm:hidden">{{ Money::rub($rate) }}/д</span>@endif

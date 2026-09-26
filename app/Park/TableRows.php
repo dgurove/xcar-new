@@ -21,7 +21,7 @@ final class TableRows
         if ($vehicles->isEmpty()) {
             return [];
         }
-        $common = Accrual::mark('park_tariffs');
+        $common = Accrual::mark('park_tariffs').'|'.self::templates();
         $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.row:'.md5(implode('|', [
             $common, $v->id, $v->updated_at?->getTimestamp(), $v->threads_count,
             $v->requests->map(fn ($r) => $r->id.':'.$r->updated_at?->getTimestamp())->implode(','),
@@ -43,5 +43,15 @@ final class TableRows
         }
 
         return $rows;
+    }
+
+    /**
+     * Шаблоны, из которых собрана строка: поправили вёрстку — ключ другой, иначе до конца дня отдавались бы строки
+     * старого вида. Время правки файлов (в образе — время коммита из `git archive`).
+     */
+    private static function templates(): string
+    {
+        return once(fn () => implode(',', array_map(fn ($f) => @filemtime(resource_path("views/components/{$f}.blade.php")) ?: 0,
+            ['park/table-row', 'park/alerts', 'ui/plate', 'ui/copy-code', 'vendor/logo', 'vendor/name'])));
     }
 }
