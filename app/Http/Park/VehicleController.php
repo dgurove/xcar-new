@@ -76,7 +76,7 @@ class VehicleController
         $noRate = $gap ? $this->noRate($request, $yardId, $noYard) : null;
         // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
         $vehicles = Scope::vehicles($request->user())->withCount('threads')
-            ->with(['brand', 'model', 'vendor', 'yard', 'media', 'offer.deal', 'requests',
+            ->with(['brand', 'model', 'vendor', 'yard', 'offer.deal', 'requests',
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
             ->when($gap, fn ($v) => $v->whereIn('id', $noRate))
             ->when($state, fn ($v, $s) => $v->where('state', $s))
@@ -87,9 +87,11 @@ class VehicleController
                 ->orWhere('plate', 'like', '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%')->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
         $request->query('sort') === 'fresh' ? $vehicles->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
 
+        // Кадры нужны плиткам и строкам; таблице — нет (миниатюр в ней нет, окошко грузит своё).
+        $vehicles->when(! ListView::isTable(ListView::fromRequest($request)), fn ($v) => $v->with('media'));
         $page = ListView::paginate($request, $vehicles);
         // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
-        $totals = Accrual::totals($page->getCollection());
+        $totals = Accrual::cachedTotals($page->getCollection());
         // «Больше набежало» — по посчитанному: в базе этой суммы нет. Таблица целиком на одной странице,
         // так что сортировка в памяти честная; у карточек — в пределах страницы.
         if ($request->query('sort') === 'amount') {

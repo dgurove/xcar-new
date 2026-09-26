@@ -9,6 +9,8 @@ use App\Vendors\TariffService;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Хранение на лету: сутки — календарный день, день приёма — первые сутки, день
@@ -261,6 +263,33 @@ final class Accrual
         }
 
         return $out;
+    }
+
+    /**
+     * `totals` для списков («Наличие»): расчёт по каждому дню каждой ТС на слабом сервере стоил больше секунды на
+     * открытие. Кэш до конца дня, ключ — отпечаток всего, от чего зависит сумма: ТС (ставка, стоимость, выставлено
+     * по), события приёма и перестановок, прайс, правила вендора, сделки. Что-то поменялось — отпечаток другой.
+     *
+     * @param  Collection<int, Vehicle>  $vehicles
+     */
+    public static function cachedTotals(Collection $vehicles): array
+    {
+        if ($vehicles->isEmpty()) {
+            return [];
+        }
+        $key = 'park.totals:'.md5(self::fingerprint().'|'.$vehicles->pluck('id')->sort()->implode(','));
+
+        return Cache::remember($key, now()->endOfDay(), fn () => self::totals($vehicles));
+    }
+
+    private static function fingerprint(): string
+    {
+        $mark = fn (string $table, string $column = 'updated_at') => DB::table($table)->selectRaw("count(*) || '-' || coalesce(max({$column})::text, '')")->value('?column?');
+
+        return implode('|', [
+            today()->toDateString(),
+            $mark('park_vehicles'), $mark('park_vehicle_events', 'id'), $mark('park_tariffs'), $mark('vendors'), $mark('deals'),
+        ]);
     }
 
     /** Сколько начислено и не выставлено — по плательщикам, для чипов. @return array<string, array{days: int, amount: float}> */
