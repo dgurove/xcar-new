@@ -282,14 +282,20 @@ final class Accrual
         return Cache::remember($key, now()->endOfDay(), fn () => self::totals($vehicles));
     }
 
-    private static function fingerprint(): string
+    public static function fingerprint(): string
     {
-        $mark = fn (string $table, string $column = 'updated_at') => DB::table($table)->selectRaw("count(*) || '-' || coalesce(max({$column})::text, '')")->value('?column?');
+        $mark = self::mark(...);
 
         return implode('|', [
             today()->toDateString(),
             $mark('park_vehicles'), $mark('park_vehicle_events', 'id'), $mark('park_tariffs'), $mark('vendors'), $mark('deals'),
         ]);
+    }
+
+    /** Метка таблицы для отпечатка: число строк и последняя правка — меняется от любой вставки, правки и удаления. */
+    public static function mark(string $table, string $column = 'updated_at'): string
+    {
+        return (string) DB::table($table)->selectRaw("count(*) || '-' || coalesce(max({$column})::text, '')")->value('?column?');
     }
 
     /** Сколько начислено и не выставлено — по плательщикам, для чипов. @return array<string, array{days: int, amount: float}> */

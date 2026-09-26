@@ -29,11 +29,12 @@
                     <th class="num"><a href="{{ $sortBy('amount') }}" data-turbo-action="replace" @if ($sort === 'amount') aria-current="true" @endif>Начислено</a></th>
                 </tr>
             </x-slot:head>
+            @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $q !== ''); @endphp
             @foreach ($groups as $yardId => $group)
                 @if ($grouped)
                     <tr class="table-group"><th colspan="6"><span class="table-group-name">{{ $yardId ? $group->first()->yard->name : 'Без парковки' }} <span class="nums">{{ $group->count() }}</span></span></th></tr>
                 @endif
-                @foreach ($group as $vehicle)<x-park.table-row :vehicle="$vehicle" :total="$totals[$vehicle->id] ?? null" :debt="$debts[$vehicle->id] ?? 0" :place="$q !== ''"/>@endforeach
+                @foreach ($group as $vehicle){!! $rows[$vehicle->id] !!}@endforeach
             @endforeach
         </x-ui.table>
     @else
