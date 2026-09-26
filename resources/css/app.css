@@ -694,7 +694,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .cell-sub > * + * { margin-left: .375rem; }
   @media (min-width: 640px) {
     .table td.grow > .cell-title, .table td.grow > .cell-sub { display: inline; }
-    .table td.grow > .cell-sub { margin: 0 0 0 .5rem; }
+    /* Второй этаж в линию за названием — flex с ровным шагом: скрытые на ПК куски (sm:hidden) и пробелы разметки
+       не дают лишнего отступа, как давали margin соседей. */
+    .table td.grow > .cell-sub { display: inline-flex; align-items: baseline; gap: .375rem; margin: 0 0 0 .125rem; vertical-align: baseline; }
+    .table td.grow > .cell-sub > * + * { margin-left: 0; }
     .table td.grow > .cell-sub:empty { display: none; }
   }
   /* Копирование номера — по наведению: иконка в каждой строке была шумом. На телефоне — в окошке. */
