@@ -27,8 +27,8 @@
             @if ($place && $vehicle->yard)<span>{{ $vehicle->yard->name }}</span>@endif
         </span>
     </td>
-    {{-- Вендор и номер убытка одним столбцом: логотип, имя приглушённым, номер обычным с копированием. --}}
-    <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="max-w-56 text-ink-muted"/>@endif @if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</span></td>
+    {{-- Вендор и номер убытка одним столбцом: логотип (имя — подсказкой по наведению или нажатию), номер с копированием. --}}
+    <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vehicle->vendor)<button type="button" class="vendor-tip" data-tip="{{ $vehicle->vendor->name }}" aria-label="{{ $vehicle->vendor->name }}"><x-vendor.logo :vendor="$vehicle->vendor"/></button>@endif @if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</span></td>
     <td class="num nums col-peek-hide hidden text-ink-muted lg:table-cell">{{ $vehicle->accepted_at?->translatedFormat('j M Y') }}</td>
     <td class="num nums">
         @if ($state === VehicleState::Released && $vehicle->released_at)

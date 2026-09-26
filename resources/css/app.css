@@ -876,6 +876,18 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      этого столбца нет (краткая таблица телефона). */
   .vendor-ref { display: inline-flex; align-items: center; gap: .5em; min-width: 0; max-width: 100%; }
   @media (min-width: 640px) { .col-vendor-lead { display: none; } }
+  /* Имя вендора подсказкой у логотипа: наведение на ПК, нажатие на телефоне (кнопка — окошко строки не открывается).
+     Справа от логотипа поверх номера, а не сверху: ячейка таблицы режет всё, что выходит за её высоту. */
+  .vendor-tip { position: relative; display: inline-flex; line-height: 1; cursor: default; -webkit-tap-highlight-color: transparent; }
+  .vendor-tip::after {
+    content: attr(data-tip); position: absolute; left: calc(100% + .375rem); top: 50%; z-index: 5; translate: 0 -50%;
+    padding: .25rem .5rem; border-radius: .5rem; background: var(--color-ink); color: var(--color-surface);
+    font-size: var(--text-xs); font-weight: 500; line-height: 1.2; white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: opacity var(--dur-fast);
+  }
+  .vendor-tip:focus-visible::after, .vendor-tip:focus::after { opacity: 1; }
+  @media (hover: hover) { .vendor-tip:hover::after { opacity: 1; } }
+  .vendor-tip:focus { outline: none; }
   /* Тип ТС серой миниатюрой перед названием (Category::icon) — клетка одной ширины и без иконки, чтобы названия
      стояли ровно; в краткой таблице телефона её нет — там узко. */
   .cat-icon { display: inline-block; width: 1.25em; height: 1.25em; margin-right: .3em; vertical-align: -.25em; --cat: oklch(0.58 0.15 var(--cat-h)); color: color-mix(in oklab, var(--cat) 70%, transparent); }
