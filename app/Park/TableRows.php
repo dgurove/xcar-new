@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Готовый HTML строк таблицы «Наличия» (`x-park.table-row`): полторы сотни строк по пять-шесть компонентов в каждой
  * слабый сервер рисовал больше полусекунды. Строка берётся из кэша, пока не поменялось то, из чего она собрана:
- * ТС, её события, прайс и вендор (отпечаток начислений), ветки писем и заявки (теги «что не так»), логотипы, а
- * также её сумма, долг и вид (с парковкой словом или без) — они прямо в ключе. Все строки — одним чтением кэша.
+ * сама ТС, её заявки и число веток писем (теги «что не так»), прайс («Нет тарифа»), имя и логотип вендора,
+ * парковка, сумма, долг и вид (с парковкой словом или без). Ключ у каждой строки свой: правка одной ТС
+ * перерисовывает только её. Все строки — одним чтением кэша.
  */
 final class TableRows
 {
@@ -20,8 +21,13 @@ final class TableRows
         if ($vehicles->isEmpty()) {
             return [];
         }
-        $fingerprint = implode('|', [Accrual::fingerprint(), Accrual::mark('mail_threads'), Accrual::mark('park_requests'), Accrual::mark('media', 'id')]);
-        $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.row:'.md5($fingerprint.'|'.$v->id.'|'.json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place]))])->all();
+        $common = Accrual::mark('park_tariffs');
+        $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.row:'.md5(implode('|', [
+            $common, $v->id, $v->updated_at?->getTimestamp(), $v->threads_count,
+            $v->requests->map(fn ($r) => $r->id.':'.$r->updated_at?->getTimestamp())->implode(','),
+            $v->vendor?->name, $v->vendor?->logoUrl(), $v->yard?->name,
+            json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place]),
+        ]))])->all();
         $cached = Cache::many(array_values($keys));
         $rows = $fresh = [];
         foreach ($vehicles as $v) {

@@ -267,8 +267,9 @@ final class Accrual
 
     /**
      * `totals` для списков («Наличие»): расчёт по каждому дню каждой ТС на слабом сервере стоил больше секунды на
-     * открытие. Кэш до конца дня, ключ — отпечаток всего, от чего зависит сумма: ТС (ставка, стоимость, выставлено
-     * по), события приёма и перестановок, прайс, правила вендора, сделки. Что-то поменялось — отпечаток другой.
+     * открытие. Кэш до конца дня по каждой ТС отдельно, ключ — всё, от чего зависит её сумма: сама ТС (ставка,
+     * стоимость, выставлено по), её события приёма и перестановок, сделка, правила вендора, прайс. Правка одной
+     * ТС пересчитывает только её. Все ТС — одним чтением кэша.
      *
      * @param  Collection<int, Vehicle>  $vehicles
      */
@@ -277,19 +278,22 @@ final class Accrual
         if ($vehicles->isEmpty()) {
             return [];
         }
-        $key = 'park.totals:'.md5(self::fingerprint().'|'.$vehicles->pluck('id')->sort()->implode(','));
+        $common = today()->toDateString().'|'.self::mark('park_tariffs').'|'.self::mark('vendors');
+        $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.total:'.md5($common.'|'.$v->id.'|'.$v->updated_at?->getTimestamp()
+            .'|'.$v->events->map(fn ($e) => $e->id.':'.md5(json_encode($e->payload)))->implode(',').'|'.$v->offer?->deal?->updated_at?->getTimestamp())])->all();
+        $cached = Cache::many(array_values($keys));
+        $out = $fresh = [];
+        foreach ($vehicles as $v) {
+            $out[$v->id] = $cached[$keys[$v->id]] ?? null;
+            if ($out[$v->id] === null) {
+                $out[$v->id] = $fresh[$keys[$v->id]] = self::totals([$v])[$v->id];
+            }
+        }
+        if ($fresh) {
+            Cache::putMany($fresh, now()->endOfDay());
+        }
 
-        return Cache::remember($key, now()->endOfDay(), fn () => self::totals($vehicles));
-    }
-
-    public static function fingerprint(): string
-    {
-        $mark = self::mark(...);
-
-        return implode('|', [
-            today()->toDateString(),
-            $mark('park_vehicles'), $mark('park_vehicle_events', 'id'), $mark('park_tariffs'), $mark('vendors'), $mark('deals'),
-        ]);
+        return $out;
     }
 
     /** Метка таблицы для отпечатка: число строк и последняя правка — меняется от любой вставки, правки и удаления. */
