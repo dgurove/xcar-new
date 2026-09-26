@@ -23,7 +23,7 @@ final class TableRows
         }
         $common = Accrual::mark('park_tariffs').'|'.self::templates();
         $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.row:'.md5(implode('|', [
-            $common, $v->id, $v->updated_at?->getTimestamp(), $v->threads_count,
+            $common, $v->id, $v->updated_at?->getTimestamp(), $v->threads_count, $v->waiting_count ?? 0,
             $v->requests->map(fn ($r) => $r->id.':'.$r->updated_at?->getTimestamp())->implode(','),
             $v->vendor?->name, $v->vendor?->logoUrl(), $v->yard?->name,
             json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place]),

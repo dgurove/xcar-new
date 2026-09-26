@@ -75,7 +75,7 @@ class VehicleController
         // «Без ставки» считаем, только когда она нужна: для фильтра или для пилюли на странице, но не в живом поиске.
         $noRate = $gap ? $this->noRate($request, $yardId, $noYard) : null;
         // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
-        $vehicles = Scope::vehicles($request->user())->withCount('threads')
+        $vehicles = Scope::vehicles($request->user())->withCount(['threads', 'threads as waiting_count' => fn ($t) => $t->whereNotNull('needs_reply_at')])
             ->with(['brand', 'model', 'vendor', 'yard', 'offer.deal', 'requests',
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
             ->when($gap, fn ($v) => $v->whereIn('id', $noRate))

@@ -18,6 +18,9 @@
     <td class="grow">
         <span class="cell-title"><span class="cat-icon {{ $vehicle->category ? 'cat-'.$vehicle->category->value : '' }}" @if ($vehicle->category) title="{{ $vehicle->category->label() }}" @endif>@if ($vehicle->category)<x-ui.icon :name="$vehicle->category->icon()" class="size-full"/>@endif</span>@if ($vehicle->vendor)<x-vendor.logo :vendor="$vehicle->vendor" class="col-peek-show mr-[.25em]"/>@endif{{ $vehicle->titleWithYear() }}</span>
         <span class="cell-sub">
+            {{-- Продана и ждёт выдачи, по делу ждут нашего ответа — чипами первыми: это то, что надо сделать сегодня. --}}
+            @if ($state === VehicleState::Stored && $vehicle->sold_at)<span class="tag tag-accent">продана</span>@endif
+            @if ($vehicle->waiting_count ?? 0)<span class="tag tag-urgent">ждёт ответа</span>@endif
             @if ($state !== VehicleState::Stored)<span>{{ mb_strtolower($state->label()) }}</span>@endif
             <x-park.alerts :vehicle="$vehicle" plain :place="$place"/>
             @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif
