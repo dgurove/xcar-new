@@ -24,6 +24,7 @@
                     <th class="grow">Марка, модель</th>
                     <th class="hidden sm:table-cell">№ убытка</th>
                     <th class="col-peek-hide hidden lg:table-cell">Вендор</th>
+                    <th class="col-peek-hide hidden lg:table-cell">Принята</th>
                     <th class="num"><a href="{{ $sortBy('longest') }}" data-turbo-action="replace" @if ($sort === 'longest') aria-current="true" @endif>Дней</a></th>
                     <th class="num hidden sm:table-cell">Ставка</th>
                     <th class="num"><a href="{{ $sortBy('amount') }}" data-turbo-action="replace" @if ($sort === 'amount') aria-current="true" @endif>Начислено</a></th>
@@ -32,7 +33,7 @@
             @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $q !== ''); @endphp
             @foreach ($groups as $yardId => $group)
                 @if ($grouped)
-                    <tr class="table-group"><th colspan="6"><span class="table-group-name">{{ $yardId ? $group->first()->yard->name : 'Без парковки' }} <span class="nums">{{ $group->count() }}</span></span></th></tr>
+                    <tr class="table-group"><th colspan="7"><span class="table-group-name">{{ $yardId ? $group->first()->yard->name : 'Без парковки' }} <span class="nums">{{ $group->count() }}</span></span></th></tr>
                 @endif
                 @foreach ($group as $vehicle){!! $rows[$vehicle->id] !!}@endforeach
             @endforeach

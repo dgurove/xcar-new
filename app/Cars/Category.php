@@ -18,6 +18,20 @@ enum Category: string
     case Special = 'special';
     case Moto = 'moto';
 
+    /** Иконка типа (x-ui.icon) — серой миниатюрой перед названием в таблице «Наличия». */
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Passenger => 'cat-car',
+            self::Light => 'cat-van',
+            self::Truck => 'cat-truck',
+            self::Long => 'cat-long',
+            self::Trailer => 'cat-trailer',
+            self::Special => 'cat-special',
+            self::Moto => 'cat-moto',
+        };
+    }
+
     public function label(): string
     {
         return match ($this) {

@@ -708,7 +708,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .table .dot-urgent { background: var(--color-urgent); }
   .table .dot-danger { background: var(--color-danger); }
   /* «Подробной таблицей» (?vid=wide, x-ui.table view): на телефоне шапка и все столбцы, что видны на ПК,
-     таблица листается вбок, название и имя группы стоят на месте. То, что стояло во второй строке вместо
+     таблица листается вбок целиком, имя группы стоит на месте. То, что стояло во второй строке вместо
      столбцов (sm:hidden), здесь лишнее. Шапка при этом вниз не липнет: липкость считается от ближайшего
      прокручиваемого блока, а им стала таблица. На ПК подробная совпадает с краткой. */
   @media (max-width: 639.98px) {
@@ -718,17 +718,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table-wrap.is-wide .table thead th { position: static; top: auto; }
     .table-wrap.is-wide .table th.hidden, .table-wrap.is-wide .table td.hidden { display: table-cell !important; }
     .table-wrap.is-wide .cell-sub .sm\:hidden, .table-wrap.is-wide .cell-sub.sm\:hidden { display: none; }
-    .table-wrap.is-wide .table .grow { width: 10.5rem; min-width: 10.5rem; max-width: 10.5rem; }
+    /* Название целиком: столбец не закреплён, и узкая ширина только резала бы его. */
+    .table-wrap.is-wide .table .grow { width: auto; min-width: 12rem; max-width: none; }
     .table-wrap.is-wide .table td:not(:first-child), .table-wrap.is-wide .table th:not(:first-child) { padding-left: 1.25rem; }
     .table-wrap.is-wide .table td.cell-dim { max-width: 12rem; }
-    .table-wrap.is-wide .table tr > :first-child:not([colspan]) {
-      position: sticky; left: 0; z-index: 2; background: var(--color-surface);
-      box-shadow: inset -1px 0 0 color-mix(in oklab, var(--color-line) 70%, transparent);
-    }
-    .table-wrap.is-wide .table thead tr > :first-child { z-index: 11; }
-    .table-wrap.is-wide .table tr[aria-selected="true"] > :first-child { background: linear-gradient(var(--color-accent-soft), var(--color-accent-soft)), var(--color-surface); }
+    /* Первый столбец не закреплён (26.09.2026, решение владельца): таблица листается вбок целиком. */
     .table-wrap.is-wide .table tr.table-group > th { position: static; overflow: visible; }
     .table-wrap.is-wide .table-group-name { display: inline-block; position: sticky; left: 1rem; }
+    /* Вендор здесь своим столбцом — логотип перед названием лишний. */
+    .table-wrap.is-wide .col-peek-show { display: none !important; }
   }
 
   /* Страницы покупателя (x-pickup.layout): колонка до 28rem на фоне страницы, знак сверху. */
@@ -873,6 +871,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .vendor-name { @apply inline-flex min-w-0 max-w-full items-center; gap: .4em; vertical-align: bottom; }
   .vendor-name-text { @apply truncate; }
   .tag.vendor-name { padding-left: 4px; }
+  /* Тип ТС серой миниатюрой перед названием (Category::icon) — клетка одной ширины и без иконки, чтобы названия
+     стояли ровно; в краткой таблице телефона её нет — там узко. */
+  .cat-icon { display: inline-block; width: 1.25em; height: 1.25em; margin-right: .45em; vertical-align: -.25em; color: var(--color-ink-dim); }
+  @media (max-width: 639.98px) { .table-wrap:not(.is-wide) .cat-icon { display: none; } }
   /* Госномер (x-ui.plate): тот же шрифт и базовая линия, что у текста рядом (номер убытка), — только подложка и регион за
      волосяной чертой, намёк на табличку. Инлайн, а не flex: иначе плашка садится выше соседей. */
   .plate { display: inline; white-space: nowrap; border-radius: .25em; background: var(--color-surface-3); color: var(--color-ink-muted); padding: .1em .3em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }

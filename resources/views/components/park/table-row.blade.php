@@ -16,7 +16,7 @@
 @endphp
 <tr id="vehicle-{{ $vehicle->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="cell-title">@if ($vehicle->vendor)<x-vendor.logo :vendor="$vehicle->vendor" class="col-peek-show mr-[.4em]"/>@endif{{ $vehicle->titleWithYear() }}</span>
+        <span class="cell-title"><span class="cat-icon" @if ($vehicle->category) title="{{ $vehicle->category->label() }}" @endif>@if ($vehicle->category)<x-ui.icon :name="$vehicle->category->icon()" class="size-full"/>@endif</span>@if ($vehicle->vendor)<x-vendor.logo :vendor="$vehicle->vendor" class="col-peek-show mr-[.4em]"/>@endif{{ $vehicle->titleWithYear() }}</span>
         <span class="cell-sub">
             @if ($state !== VehicleState::Stored)<span>{{ mb_strtolower($state->label()) }}</span>@endif
             <x-park.alerts :vehicle="$vehicle" plain :place="$place"/>
@@ -25,8 +25,9 @@
             @if ($place && $vehicle->yard)<span>{{ $vehicle->yard->name }}</span>@endif
         </span>
     </td>
-    <td class="hidden text-sm sm:table-cell">@if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</td>
-    <td class="col-peek-hide hidden text-sm lg:table-cell">@if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="max-w-44"/>@endif</td>
+    <td class="hidden sm:table-cell">@if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</td>
+    <td class="col-peek-hide hidden lg:table-cell">@if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="max-w-44"/>@endif</td>
+    <td class="col-peek-hide hidden nums lg:table-cell">{{ $vehicle->accepted_at?->translatedFormat('j M Y') }}</td>
     <td class="num nums">
         @if ($state === VehicleState::Released && $vehicle->released_at)
             <time class="text-ink-muted" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ $vehicle->released_at->translatedFormat('j M') }}</time>
@@ -34,7 +35,7 @@
             <span>{{ $days }}&nbsp;д</span>
         @endif
     </td>
-    <td class="num nums hidden text-sm sm:table-cell">@if ($rate){{ Money::rub($rate) }}/д@endif</td>
+    <td class="num nums hidden sm:table-cell">@if ($rate){{ Money::rub($rate) }}/д@endif</td>
     <td class="num nums">
         @if ($amount > 0)<span class="block">{{ Money::rub($amount) }}</span>@endif
         @if ($debt > 0)<span class="cell-sub text-danger">долг {{ Money::nums($debt) }}</span>
