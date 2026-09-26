@@ -38,7 +38,7 @@
                         @endforeach
                     </div>
                 </div>
-                <span class="flex shrink-0 flex-col items-end text-sm text-ink-muted tabular-nums">
+                <span class="flex shrink-0 flex-col items-end text-sm text-ink-muted">
                     @if ($vendor->offers_count)<span>{{ $vendor->offers_count }} предл.</span>@endif
                 </span>
                 <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
