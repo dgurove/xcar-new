@@ -16,7 +16,7 @@
 @endphp
 <tr id="vehicle-{{ $vehicle->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="cell-title"><span class="cat-icon" @if ($vehicle->category) title="{{ $vehicle->category->label() }}" @endif>@if ($vehicle->category)<x-ui.icon :name="$vehicle->category->icon()" class="size-full"/>@endif</span>@if ($vehicle->vendor)<x-vendor.logo :vendor="$vehicle->vendor" class="col-peek-show mr-[.4em]"/>@endif{{ $vehicle->titleWithYear() }}</span>
+        <span class="cell-title"><span class="cat-icon {{ $vehicle->category ? 'cat-'.$vehicle->category->value : '' }}" @if ($vehicle->category) title="{{ $vehicle->category->label() }}" @endif>@if ($vehicle->category)<x-ui.icon :name="$vehicle->category->icon()" class="size-full"/>@endif</span>@if ($vehicle->vendor)<x-vendor.logo :vendor="$vehicle->vendor" class="col-peek-show mr-[.25em]"/>@endif{{ $vehicle->titleWithYear() }}</span>
         <span class="cell-sub">
             @if ($state !== VehicleState::Stored)<span>{{ mb_strtolower($state->label()) }}</span>@endif
             <x-park.alerts :vehicle="$vehicle" plain :place="$place"/>
