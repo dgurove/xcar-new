@@ -32,8 +32,10 @@ final class ReleaseByLetters
             return null;
         }
         $messages = Message::whereIn('thread_id', Thread::park()->where('vehicle_id', $vehicle->id)->select('id'))
-            ->where('date_at', '>=', $vehicle->accepted_at->copy()->startOfDay())->orderBy('date_at')->get();
-        $released = $messages->last(fn (Message $m) => $m->intent === Intent::Released->value && $m->isOurs());
+            ->where('date_at', '>=', $vehicle->accepted_at->copy()->startOfDay())->with('attachments')->orderBy('date_at')->get();
+        // Смысл перепроверяется по нынешним правилам: письмо могли прочитать старой версией (приём СОГАЗа с файлом «Апп»).
+        $released = $messages->last(fn (Message $m) => $m->intent === Intent::Released->value && $m->isOurs()
+            && Intent::ofMessage($m) === Intent::Released);
         if (! $released) {
             return null;
         }
