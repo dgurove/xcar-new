@@ -45,7 +45,7 @@
                  госномер, логотип страховой с номером убытка, парковка; не влезает — строка ужимается шрифтом (fit). Ставка — в окошке и деле. --}}
             <span class="card-sub" data-controller="fitline">
                 @if ($state !== VehicleState::Stored)<span class="text-ink">{{ mb_strtolower($state->label()) }}</span>@endif
-                <span class="fit-core">@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif<x-park.ref :vehicle="$vehicle"/></span>
+                <span class="fit-core"><x-ui.plate :value="$vehicle->plate"/><x-park.ref :vehicle="$vehicle"/></span>
                 <x-park.alerts :vehicle="$vehicle" plain/>
                 @if ($state === VehicleState::Stored && $vehicle->yard)<span>{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</span>@endif
             </span>

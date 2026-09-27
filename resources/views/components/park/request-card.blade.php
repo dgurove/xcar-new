@@ -16,7 +16,7 @@
     {{-- Одна строка текста: госномер, логотип страховой с номером убытка (не влезают — строка ужимается,
          fitline), шаг словом, телефон, исполнитель, парковка перестановки. --}}
     <span class="card-sub" data-controller="fitline">
-        <span class="fit-core">@if ($v->plate)<x-ui.plate :value="$v->plate"/>@endif<x-park.ref :vehicle="$v"/></span>
+        <span class="fit-core"><x-ui.plate :value="$v->plate"/><x-park.ref :vehicle="$v"/></span>
         @if ($word)<span class="text-ink">{{ mb_strtolower($word) }}</span>@endif
         @if ($req->contact_phone)<a href="tel:+{{ preg_replace('/\D+/', '', $req->contact_phone) }}" class="text-accent-text">{{ $req->contact_phone }}</a>@endif
         @if ($req->assignee)<span>{{ $req->assignee->shortName() }}</span>@endif
