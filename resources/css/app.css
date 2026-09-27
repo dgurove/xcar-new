@@ -691,13 +691,18 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Ячейка в два этажа; от 640 второй этаж встаёт в линию за названием. */
   .cell-title, .cell-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cell-sub { margin-top: 0; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  /* Ровный шаг строк ячейки: у каждой своя высота строки, а иконка типа, логотип и плашка номера её не распирают —
+     иначе расстояние от первой строки до второй было не таким, как от второй до третьей. */
+  .cell-title { line-height: 1.25rem; }
+  .cell-sub, .cell-extra { line-height: 1.125rem; }
+  .cell-sub .fit-core, .cell-sub .plate, .cell-sub .ref-line, .cell-title .cat-icon { vertical-align: middle; }
   .cell-sub > * + * { margin-left: .375rem; }
   /* Третья строка краткой таблицы телефона: задача чипом, ошибки данных словами. Во второй строке эти ошибки тогда
      не повторяются; на ПК и в подробной таблице — наоборот, ошибки во второй строке, третьей нет. */
   .cell-extra { display: none; }
   .alerts-inline { display: contents; }
   @media (max-width: 639.98px) {
-    .table-wrap:not(.is-wide) .cell-extra { display: flex; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; align-items: center; gap: .25rem .375rem; margin-top: .1875rem; font-size: var(--text-sm); }
+    .table-wrap:not(.is-wide) .cell-extra { display: flex; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; align-items: center; gap: .25rem .375rem; margin-top: 0; font-size: var(--text-sm); }
     .table-wrap:not(.is-wide) .cell-extra .tag { padding: 0 .4375rem; line-height: 1.35; }
     .table-wrap:not(.is-wide) .alerts-inline { display: none; }
     .table-wrap.is-wide .alerts-inline > * { margin-left: .375rem; }

@@ -10,6 +10,9 @@ export default class extends Controller {
         this.observer = new ResizeObserver(() => this.fit());
         this.observer.observe(this.element.parentElement);
         this.fit();
+        // Первый замер мог пройти до загрузки Onest — по запасному шрифту, который шире: без пересчёта строка так и
+        // оставалась ужатой при свободном месте справа.
+        document.fonts?.ready.then(() => this.element.isConnected && this.fit());
     }
 
     disconnect() {
