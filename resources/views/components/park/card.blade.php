@@ -36,18 +36,17 @@
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text">@if ($vehicle->vendor)<x-vendor.logo :vendor="$vehicle->vendor"/>@endif<span class="line-clamp-1 min-w-0">{{ $vehicle->titleWithYear() }}</span></a>
+            <a href="{{ $href }}" class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $vehicle->titleWithYear() }}</span></a>
         </div>
     </div>
     <div class="card-extra">
         @if ($facts)
             {{-- Одна строка текста вместо ряда чипов, как в таблице: состояние (кроме стоящей), что не так,
-                 госномер, номер убытка, парковка. Вендор — логотипом за названием, ставка — в окошке и деле. --}}
-            <span class="card-sub">
+                 госномер, логотип страховой с номером убытка, парковка; не влезает — строка ужимается шрифтом (fit). Ставка — в окошке и деле. --}}
+            <span class="card-sub" data-controller="fitline">
                 @if ($state !== VehicleState::Stored)<span class="text-ink">{{ mb_strtolower($state->label()) }}</span>@endif
+                <span class="fit-core">@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif<x-park.ref :vehicle="$vehicle"/></span>
                 <x-park.alerts :vehicle="$vehicle" plain/>
-                @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif
-                @if ($vehicle->ref)<span>{{ $vehicle->ref }}</span>@endif
                 @if ($state === VehicleState::Stored && $vehicle->yard)<span>{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</span>@endif
             </span>
         @endif

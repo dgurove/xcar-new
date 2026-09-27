@@ -9,15 +9,14 @@
 @endphp
 <tr id="request-{{ $req->id }}" data-peek-url="/requests/{{ $req->id }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="cell-title">@if ($v->vendor)<x-vendor.logo :vendor="$v->vendor" class="mr-[.25em]"/>@endif{{ $v->titleWithYear() }}</span>
-        <span class="cell-sub">
+        <span class="cell-title">{{ $v->titleWithYear() }}</span>
+        <span class="cell-sub" data-controller="fitline">
             <span class="sm:hidden {{ $late ? 'text-danger' : 'text-ink' }}">{{ mb_strtolower($req->type->label()) }}</span>
             @if ($req->needsCall())<span class="text-urgent">позвонить</span>@endif
-            @if ($v->plate)<x-ui.plate :value="$v->plate"/>@endif
-            @if ($v->ref)<span class="sm:hidden">{{ $v->ref }}</span>@endif
+            <span class="fit-core">@if ($v->plate)<x-ui.plate :value="$v->plate"/>@endif<x-park.ref :vehicle="$v" class="sm:hidden"/></span>
         </span>
     </td>
-    <td class="cell-dim hidden sm:table-cell">@if ($v->ref)<x-ui.copy-code :value="$v->ref"/>@endif</td>
+    <td class="cell-dim hidden sm:table-cell"><span class="vendor-ref">@if ($v->vendor)<button type="button" class="vendor-tip" data-tip="{{ $v->vendor->name }}" aria-label="{{ $v->vendor->name }}"><x-vendor.logo :vendor="$v->vendor"/></button>@endif @if ($v->ref)<x-ui.copy-code :value="$v->ref"/>@endif</span></td>
     <td class="hidden sm:table-cell {{ $late ? 'text-danger' : '' }}">{{ $req->type->label() }}</td>
     <td class="num nums">
         @if ($req->planned_at)

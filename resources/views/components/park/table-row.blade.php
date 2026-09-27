@@ -17,12 +17,11 @@
 @endphp
 <tr id="vehicle-{{ $vehicle->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="cell-title"><span class="cat-icon {{ $vehicle->category ? 'cat-'.$vehicle->category->value : 'cat-unknown' }}" title="{{ $vehicle->category?->label() ?? 'Тип не указан' }}"><x-ui.icon :name="$vehicle->category?->icon() ?? 'cat-unknown'" class="size-full"/></span>@if ($vehicle->vendor)<button type="button" class="vendor-tip col-vendor-lead mr-[.25em] align-[-.2em]" data-tip="{{ $vehicle->vendor->name }}" aria-label="{{ $vehicle->vendor->name }}"><x-vendor.logo :vendor="$vehicle->vendor"/></button>@endif{{ $vehicle->titleWithYear() }}</span>
-        <span class="cell-sub">
+        <span class="cell-title"><span class="cat-icon {{ $vehicle->category ? 'cat-'.$vehicle->category->value : 'cat-unknown' }}" title="{{ $vehicle->category?->label() ?? 'Тип не указан' }}"><x-ui.icon :name="$vehicle->category?->icon() ?? 'cat-unknown'" class="size-full"/></span>{{ $vehicle->titleWithYear() }}</span>
+        <span class="cell-sub" data-controller="fitline">
             {{-- Номера, потом ошибки данных («нет VIN», «нет тарифа»); тип не указан — знак вопроса вместо иконки, не слово.
                  Статус — своим столбцом; в краткой таблице телефона его нет, там то, что требует действия, — третьей строкой. --}}
-            @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif
-            @if ($vehicle->ref)<span class="sm:hidden">{{ $vehicle->ref }}</span>@endif
+            <span class="fit-core">@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif<x-park.ref :vehicle="$vehicle" class="sm:hidden"/></span>
             @if ($hasAlerts)<span class="alerts-inline"><x-park.alerts :vehicle="$vehicle" plain :place="$place" :skip="['Нет типа']"/></span>@endif
             @if ($place && $vehicle->yard)<span>{{ $vehicle->yard->name }}</span>@endif
         </span>

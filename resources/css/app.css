@@ -901,6 +901,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .vendor-tip:focus-visible::after, .vendor-tip:focus::after { opacity: 1; }
   @media (hover: hover) { .vendor-tip:hover::after { opacity: 1; } }
   .vendor-tip:focus { outline: none; }
+  /* Логотип страховой с номером убытка (x-park.ref): пробел между ними, вместе не разрываются. */
+  .ref-line { display: inline-flex; align-items: center; gap: .25em; white-space: nowrap; }
+  .ref-line .vendor-logo { vertical-align: 0; }
+  /* Номера строки (fitline_controller): госномер и логотип с номером убытка — одним неразрывным куском. */
+  .fit-core { display: inline-flex; align-items: center; gap: .375rem; white-space: nowrap; }
+  .fit-core:empty { display: none; }
   /* Статус ТС (Park\Status): ждём — надпись приглушённая; нужно действие — кружок лаймом перед словами, просрочено — красным. */
   .status-cell { display: inline-flex; align-items: center; gap: .4em; color: var(--color-ink-muted); }
   .status-cell.is-act { color: var(--color-ink); }
