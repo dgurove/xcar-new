@@ -695,7 +695,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      иначе расстояние от первой строки до второй было не таким, как от второй до третьей. */
   .cell-title { line-height: 1.25rem; }
   .cell-sub, .cell-extra { line-height: 1.125rem; }
-  .cell-sub .fit-core, .cell-sub .plate, .cell-sub .ref-line, .cell-title .cat-icon { vertical-align: middle; }
+  .cell-sub .fit-core, .cell-sub .plate, .cell-sub .ref-line { vertical-align: middle; }
+  /* Иконка типа — по центру заглавных букв названия (высота заглавной около .7em), а не по middle: тот считает от
+     строчных, и иконка у «Scania», «Mercedes» уезжала вниз. */
+  .cell-title .cat-icon { vertical-align: -.28em; }
   .cell-sub > * + * { margin-left: .375rem; }
   /* Третья строка краткой таблицы телефона: задача чипом, ошибки данных словами. Во второй строке эти ошибки тогда
      не повторяются; на ПК и в подробной таблице — наоборот, ошибки во второй строке, третьей нет. */
