@@ -25,10 +25,10 @@
             @if ($hasAlerts)<span class="alerts-inline"><x-park.alerts :vehicle="$vehicle" plain :place="$place" :skip="['Нет типа']"/></span>@endif
             @if ($place && $vehicle->yard)<span>{{ $vehicle->yard->name }}</span>@endif
         </span>
-        {{-- Краткая таблица телефона: задача чипом и ошибки данных словами — третьей строкой, вторая остаётся номерам. --}}
+        {{-- Краткая таблица телефона: задача с точкой, как в столбце «Статус», и ошибки данных словами — третьей строкой. --}}
         @if ($status['act'] || $hasAlerts)
             <span class="cell-extra">
-                @if ($status['act'])<span class="tag {{ $status['late'] ? 'tag-danger' : 'tag-accent' }}">{{ $status['label'] }}</span>@endif
+                @if ($status['act'])<span @class(['status-cell', 'is-act', 'is-late' => $status['late']])>{{ $status['label'] }}</span>@endif
                 @if ($hasAlerts)<x-park.alerts :vehicle="$vehicle" plain :place="$place" :skip="['Нет типа']"/>@endif
             </span>
         @endif
