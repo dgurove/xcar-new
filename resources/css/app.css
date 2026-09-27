@@ -692,6 +692,16 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .cell-title, .cell-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cell-sub { margin-top: 0; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .cell-sub > * + * { margin-left: .375rem; }
+  /* Третья строка краткой таблицы телефона: задача чипом, ошибки данных словами. Во второй строке эти ошибки тогда
+     не повторяются; на ПК и в подробной таблице — наоборот, ошибки во второй строке, третьей нет. */
+  .cell-extra { display: none; }
+  .alerts-inline { display: contents; }
+  @media (max-width: 639.98px) {
+    .table-wrap:not(.is-wide) .cell-extra { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .375rem; margin-top: .1875rem; font-size: var(--text-sm); }
+    .table-wrap:not(.is-wide) .cell-extra .tag { padding: 0 .4375rem; line-height: 1.35; }
+    .table-wrap:not(.is-wide) .alerts-inline { display: none; }
+    .table-wrap.is-wide .alerts-inline > * { margin-left: .375rem; }
+  }
   @media (min-width: 640px) {
     .table td.grow > .cell-title, .table td.grow > .cell-sub { display: inline; }
     /* Второй этаж в линию за названием — flex с ровным шагом: скрытые на ПК куски (sm:hidden) и пробелы разметки

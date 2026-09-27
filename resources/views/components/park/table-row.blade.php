@@ -13,6 +13,7 @@
     $rate = $total['rate'] ?? null;
     $amount = $total['amount'] ?? 0;
     $status = \App\Park\Status::of($vehicle);
+    $hasAlerts = collect(\App\Park\Alerts::of($vehicle))->reject(fn ($a) => $a['label'] === 'Нет типа' || (! $place && $a['label'] === 'Нет парковки'))->isNotEmpty();
 @endphp
 <tr id="vehicle-{{ $vehicle->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
@@ -22,10 +23,16 @@
                  Статус — своим столбцом; в краткой таблице телефона его нет, там то, что требует действия, — третьей строкой. --}}
             @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif
             @if ($vehicle->ref)<span class="sm:hidden">{{ $vehicle->ref }}</span>@endif
-            <x-park.alerts :vehicle="$vehicle" plain :place="$place" :skip="['Нет типа']"/>
+            @if ($hasAlerts)<span class="alerts-inline"><x-park.alerts :vehicle="$vehicle" plain :place="$place" :skip="['Нет типа']"/></span>@endif
             @if ($place && $vehicle->yard)<span>{{ $vehicle->yard->name }}</span>@endif
         </span>
-        @if ($status['act'])<span class="cell-sub sm:hidden {{ $status['late'] ? 'text-danger' : 'text-accent-text' }}">{{ $status['label'] }}</span>@endif
+        {{-- Краткая таблица телефона: задача чипом и ошибки данных словами — третьей строкой, вторая остаётся номерам. --}}
+        @if ($status['act'] || $hasAlerts)
+            <span class="cell-extra">
+                @if ($status['act'])<span class="tag {{ $status['late'] ? 'tag-danger' : 'tag-accent' }}">{{ $status['label'] }}</span>@endif
+                @if ($hasAlerts)<x-park.alerts :vehicle="$vehicle" plain :place="$place" :skip="['Нет типа']"/>@endif
+            </span>
+        @endif
     </td>
     {{-- Вендор и номер убытка одним столбцом: логотип (имя — подсказкой по наведению или нажатию), номер с копированием. --}}
     <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vehicle->vendor)<button type="button" class="vendor-tip" data-tip="{{ $vehicle->vendor->name }}" aria-label="{{ $vehicle->vendor->name }}"><x-vendor.logo :vendor="$vehicle->vendor"/></button>@endif @if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</span></td>
