@@ -923,8 +923,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (max-width: 639.98px) { .table-wrap:not(.is-wide) .cat-icon { display: none; } }
   /* Госномер (x-ui.plate): тот же шрифт и базовая линия, что у текста рядом (номер убытка), — только подложка и регион за
      волосяной чертой, намёк на табличку. Инлайн, а не flex: иначе плашка садится выше соседей. */
-  .plate { display: inline; white-space: nowrap; border-radius: .25em; background: var(--color-surface-3); color: var(--color-ink-muted); padding: .1em .3em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
-  .plate-reg { margin-left: .3em; padding-left: .3em; border-left: 1px solid var(--color-line); }
+  .plate { display: inline; white-space: nowrap; border-radius: .25em; background: var(--color-surface-3); color: var(--color-ink-muted); padding: .1em .15em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  /* Клетки под самый широкий номер в Onest («М888ММ» 4.45em, «888» 1.87em): у всех плашек одна ширина. */
+  .plate-main { display: inline-block; width: 4.45em; text-align: center; }
+  .plate-reg { display: inline-block; width: 2.2em; text-align: center; margin-left: .2em; padding-left: .2em; border-left: 1px solid var(--color-line); }
   .vendor-logo-pick { @apply flex size-[52px] items-center justify-center overflow-hidden rounded-xl bg-surface-3 text-ink-muted; }
   .vendor-logo-pick img { @apply size-full object-contain; }
   /* Отправитель без пользователя (почта): восемь приглушённых тонов по хэшу адреса, чтобы люди различались с первого взгляда. */
