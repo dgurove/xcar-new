@@ -9,11 +9,11 @@
 @endphp
 <tr id="request-{{ $req->id }}" data-peek-url="/requests/{{ $req->id }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="cell-title">{{ $v->titleWithYear() }}</span>
+        <span class="cell-title"><span class="cell-name">{{ $v->titleWithYear() }}</span><x-ui.plate :value="$v->plate" class="title-plate"/></span>
         <span class="cell-sub" data-controller="fitline">
             <span class="sm:hidden {{ $late ? 'text-danger' : 'text-ink' }}">{{ mb_strtolower($req->type->label()) }}</span>
             @if ($req->needsCall())<span class="text-urgent">позвонить</span>@endif
-            <span class="fit-core"><x-park.ref :vehicle="$v" class="sm:hidden"/><x-ui.plate :value="$v->plate"/></span>
+            <span class="fit-core"><x-park.ref :vehicle="$v" class="sm:hidden"/><x-ui.plate :value="$v->plate" class="sub-plate"/></span>
         </span>
     </td>
     <td class="cell-dim hidden sm:table-cell"><span class="vendor-ref">@if ($v->vendor)<button type="button" class="vendor-tip" data-tip="{{ $v->vendor->name }}" aria-label="{{ $v->vendor->name }}"><x-vendor.logo :vendor="$v->vendor"/></button>@endif @if ($v->ref)<x-ui.copy-code :value="$v->ref"/>@endif</span></td>

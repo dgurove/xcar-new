@@ -695,6 +695,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      иначе расстояние от первой строки до второй было не таким, как от второй до третьей. */
   .cell-title { line-height: 1.25rem; }
   .cell-sub, .cell-extra { line-height: 1.125rem; }
+  /* Госномер на телефоне — в строке названия через пробел: название режется многоточием, номер виден всегда. На ПК
+     второй этаж и так в линию за названием — там номер во втором этаже, в названии его нет. */
+  .cell-title > .title-plate { display: none; }
+  @media (max-width: 639.98px) {
+    .table td.grow > .cell-title:has(> .title-plate) { display: flex; align-items: center; }
+    .cell-title > .cell-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cell-title > .title-plate { display: inline; flex-shrink: 0; margin-left: .3em; font-size: var(--text-sm); }
+    .cell-sub .sub-plate { display: none; }
+  }
   .cell-sub .fit-core, .cell-sub .plate, .cell-sub .ref-line { vertical-align: middle; }
   /* Иконка типа — по центру заглавных букв названия (высота заглавной около .7em), а не по middle: тот считает от
      строчных, и иконка у «Scania», «Mercedes» уезжала вниз. */

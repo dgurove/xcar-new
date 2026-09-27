@@ -36,7 +36,7 @@
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $vehicle->titleWithYear() }}</span></a>
+            <a href="{{ $href }}" class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $vehicle->titleWithYear() }}</span><x-ui.plate :value="$vehicle->plate" class="shrink-0 text-sm font-normal"/></a>
         </div>
     </div>
     <div class="card-extra">
@@ -45,7 +45,7 @@
                  госномер, логотип страховой с номером убытка, парковка; не влезает — строка ужимается шрифтом (fit). Ставка — в окошке и деле. --}}
             <span class="card-sub" data-controller="fitline">
                 @if ($state !== VehicleState::Stored)<span class="text-ink">{{ mb_strtolower($state->label()) }}</span>@endif
-                <span class="fit-core"><x-park.ref :vehicle="$vehicle"/><x-ui.plate :value="$vehicle->plate"/></span>
+                <span class="fit-core"><x-park.ref :vehicle="$vehicle"/></span>
                 <x-park.alerts :vehicle="$vehicle" plain/>
                 @if ($state === VehicleState::Stored && $vehicle->yard)<span>{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</span>@endif
             </span>
