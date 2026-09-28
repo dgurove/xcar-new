@@ -3,8 +3,8 @@
 @php use App\Support\ListView; $admin = auth()->user()->isAdmin(); $view = ListView::pick(request(), $yards->count()) ?? ListView::GRID; $free = fn ($y) => $y->capacity ? max(0, $y->capacity - $y->stored_vehicles_count) : null; @endphp
 <x-ui.shell title="Парковки" :count="$yards->count()">
     <x-ui.toolbar :pills="['open' => 'Открытые', 'all' => 'Все']" :pill="$closed ? 'all' : 'open'" pill-param="closed" :counts="['all' => $closedCount ?: null]" :hidden="array_filter([ListView::PARAM => request(ListView::PARAM)])" name="yards">
-        <x-slot:extra>
-            <x-ui.view-switch :current="$view"/>
+        <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
+        <x-slot:actions>
             {{-- Заводит и правит парковки только админ: управляющему это настройки. --}}
             @if ($admin)
             <span data-controller="sheet" class="contents">
@@ -12,7 +12,7 @@
                 <x-ui.sheet id="yard-new" title="Новая парковка">@include('park.yards.form', ['yard' => null])</x-ui.sheet>
             </span>
             @endif
-        </x-slot:extra>
+        </x-slot:actions>
     </x-ui.toolbar>
     @if ($yards->isEmpty())
         <x-ui.empty class="mt-6">Площадок нет</x-ui.empty>

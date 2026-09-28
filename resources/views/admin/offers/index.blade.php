@@ -1,11 +1,11 @@
 @php $view = \App\Support\ListView::pick(request(), $offers->total()); @endphp
 <x-ui.shell title="Предложения" :count="$offers->total()" :phone-heading="false">
     <x-ui.toolbar :sorts="\App\Http\Admin\OfferController::SORTS" :sort="$sort" :pills="\App\Http\Admin\OfferController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" name="offers">
-        <x-slot:extra>
-            <x-ui.view-switch :current="$view"/>
-            <form method="post" action="/offers" class="shrink-0">@csrf<button type="submit" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Новый</span></button></form>
+        <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
+        <x-slot:actions>
             <a href="/offers/from-mail" class="btn btn-s btn-quiet relative shrink-0 rounded-full" aria-label="Из писем"><x-ui.icon name="mail" class="size-4"/><span class="hidden sm:inline">Из писем</span><x-ui.badge href="/offers/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>
-        </x-slot:extra>
+            <form method="post" action="/offers" class="shrink-0">@csrf<button type="submit" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Новый</span></button></form>
+        </x-slot:actions>
         <x-slot:filters>
             <input name="q" value="{{ request('q') }}" placeholder="Номер, марка, VIN" class="field-input field-s">
         </x-slot:filters>
