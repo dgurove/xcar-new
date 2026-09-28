@@ -142,7 +142,7 @@ final class SberApi
         $cert = (string) config('xcar.sber.cert');
         $options = ['verify' => config('xcar.sber.ca') ?: true, 'cert' => config('xcar.sber.cert_password') ? [$cert, config('xcar.sber.cert_password')] : $cert];
         if (preg_match('/\.(p12|pfx)$/i', $cert)) {
-            $options['curl'] = [CURLOPT_SSLCERTTYPE => 'P12'];
+            $options['cert_type'] = 'P12';
         }
 
         return Http::withOptions($options)->acceptJson()->timeout(40)->connectTimeout(10);
