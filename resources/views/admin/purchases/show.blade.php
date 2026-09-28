@@ -96,7 +96,6 @@
                 <tr>
                     <th class="grow">Марка, модель</th>
                     <th class="cell-dim hidden sm:table-cell">ДЛ</th>
-                    <th class="cell-dim col-peek-hide hidden lg:table-cell">Тип</th>
                     <th class="num hidden sm:table-cell">Размещение</th>
                     <th class="num hidden sm:table-cell">Предложения</th>
                     <th class="num">Наша цена</th>

@@ -1,5 +1,6 @@
-{{-- Строка таблицы машин закупки (CRM). Ячейка в два этажа: название, под ним ДЛ, тип и то, что не так
-     (флаг данных, «фото едут», «скрыта»); от 640 ДЛ, тип, размещение и флаг встают столбцами. Справа наша
+{{-- Строка таблицы машин закупки (CRM). Ячейка в два этажа: иконка типа и название, под ним ДЛ и то, что не так
+     (флаг данных, «фото едут», «скрыта»); от 640 ДЛ и размещение встают столбцами. Тип — только иконкой: словом и
+     столбцом он повторял её. Логотипа лизинговой перед ДЛ нет — у всей таблицы он один, это закупка одного вендора. Справа наша
      цена или лаймовое «оценить», под ней предложения менеджеров числом. Нажатие — окошко, в нём и оценка;
      data-unpriced — без нашей цены, по ним окошко идёт «Дальше». Ушедшая в предложение — справа его номер. --}}
 @props(['car', 'purchase'])
@@ -16,15 +17,13 @@
 @endphp
 <tr id="car-{{ $car->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0" class="{{ $car->is_published ? '' : 'text-ink-muted' }}" @if (!$car->price_final && !$car->offer_id) data-unpriced @endif>
     <td class="grow">
-        <span class="cell-title">{{ $car->titleWithYear() }}</span>
+        <span class="cell-title"><x-ui.cat-icon :category="$car->kind->category()"/>{{ $car->titleWithYear() }}</span>
         <span class="cell-sub">
             @if ($note)<span class="{{ $flag ? 'text-urgent' : '' }}">{{ $note }}</span>@endif
             <span class="sm:hidden">{{ $car->dl }}</span>
-            <span class="sm:hidden">{{ mb_strtolower($car->kind->label()) }}</span>
         </span>
     </td>
     <td class="cell-dim hidden sm:table-cell">{{ $car->dl }}</td>
-    <td class="cell-dim col-peek-hide hidden lg:table-cell">{{ $car->kind->label() }}</td>
     <td class="cell-dim num nums hidden sm:table-cell">{{ $car->price_listing ? Money::nums($car->price_listing) : '' }}</td>
     <td class="num nums hidden sm:table-cell">@if ($offers->isNotEmpty()){{ $offers->count() }} <span class="ml-1 text-sm text-ink-muted">до {{ Money::nums($best) }}</span>@endif</td>
     <td class="num nums">

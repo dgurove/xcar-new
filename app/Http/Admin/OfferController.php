@@ -39,7 +39,7 @@ class OfferController
         ListPrefs::sync($request, 'crm-offers');
         $sort = $request->query('sort', 'fresh');
 
-        $q = Offer::query()->with(['brand', 'model', 'media'])->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
+        $q = Offer::query()->with(['brand', 'model', 'media', 'parkVehicle:id,offer_id,category'])->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
         match ($preset) {
             'recommended' => $q->where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),

@@ -4,6 +4,7 @@ namespace App\Offers;
 
 use App\Cars\Body;
 use App\Cars\Brand;
+use App\Cars\Category;
 use App\Cars\CarModel;
 use App\Cars\DamageCause;
 use App\Cars\Drive;
@@ -254,6 +255,18 @@ class Offer extends Model implements HasMedia
     public function titleWithYear(): string
     {
         return $this->title().($this->year ? ", {$this->year}" : '');
+    }
+
+    /**
+     * Тип ТС для иконки перед названием в таблице CRM: по кузову, иначе как у этой ТС на парковке (только если связь
+     * подгружена — в списке это одна выборка), иначе по марке и модели («Газель», «КАМАЗ»); не понять — легковой.
+     */
+    public function category(): Category
+    {
+        return $this->body?->category()
+            ?? ($this->relationLoaded('parkVehicle') ? $this->parkVehicle?->category : null)
+            ?? Category::guess($this->title())
+            ?? Category::Passenger;
     }
 
     /** Строка фактов под названием: год, пробег, коробка, привод. */
