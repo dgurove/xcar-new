@@ -58,6 +58,7 @@ final class Export
         }
         $keepPriced = in_array('priced', $parts, true);
         $keepUnpriced = in_array('unpriced', $parts, true);
+        $moved = $purchase->cars()->whereNotNull('offer_id')->pluck('dl')->map(fn ($d) => mb_strtolower(trim($d)))->all();
         $highest = $sheet->getHighestDataRow();
         for ($r = $highest; $r > $headerRow; $r--) {
             $dl = mb_strtolower(trim((string) $sheet->getCell([$dlCol, $r])->getValue()));
@@ -65,7 +66,8 @@ final class Export
                 continue;
             }
             $priced = isset($cars[$dl]) && $cars[$dl]->activeOfferList()->isNotEmpty();
-            if ($priced ? ! $keepPriced : ! $keepUnpriced) {
+            // Ушедшие в предложения по контрпредложению из закупки исключены — и из файла тоже.
+            if (in_array($dl, $moved, true) || ($priced ? ! $keepPriced : ! $keepUnpriced)) {
                 $sheet->removeRow($r);
             }
         }
@@ -116,7 +118,7 @@ final class Export
         $sheet->setTitle('Цены');
         $sheet->fromArray(['ДЛ', 'Наша цена'], null, 'A1');
         $sheet->getStyle('A1:B1')->getFont()->setBold(true);
-        $rows = $purchase->cars()->whereNotNull('price_final')->orderBy('dl')->get(['dl', 'price_final'])->map(fn (Car $c) => [$c->dl, $c->price_final])->all();
+        $rows = $purchase->cars()->whereNull('offer_id')->whereNotNull('price_final')->orderBy('dl')->get(['dl', 'price_final'])->map(fn (Car $c) => [$c->dl, $c->price_final])->all();
         if ($rows) {
             $sheet->fromArray($rows, null, 'A2');
             $sheet->getStyle('B2:B'.(count($rows) + 1))->getNumberFormat()->setFormatCode('#,##0');

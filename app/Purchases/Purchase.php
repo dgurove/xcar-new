@@ -3,12 +3,13 @@
 namespace App\Purchases;
 
 use App\Users\User;
+use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['number', 'title', 'supplier', 'state', 'offers_close_at', 'hide_priced', 'source_file', 'imported_at', 'imported_by'])]
+#[Fillable(['number', 'title', 'supplier', 'vendor_id', 'state', 'offers_close_at', 'hide_priced', 'source_file', 'imported_at', 'imported_by'])]
 class Purchase extends Model
 {
     protected function casts(): array
@@ -26,6 +27,12 @@ class Purchase extends Model
         return $this->hasMany(Car::class);
     }
 
+    /** Вендор поставщика: он же вендор предложений, в которые уходят строки контрпредложения. */
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Vendor::class);
+    }
+
     public function importer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'imported_by');
@@ -34,12 +41,12 @@ class Purchase extends Model
     /** Машины, которые видит витрина: опубликованные и, если так решено в закупке, ещё без нашей цены. */
     public function carsOnSite(): HasMany
     {
-        return $this->cars()->where('is_published', true)->when($this->hide_priced, fn ($q) => $q->whereNull('price_final'));
+        return $this->cars()->whereNull('offer_id')->where('is_published', true)->when($this->hide_priced, fn ($q) => $q->whereNull('price_final'));
     }
 
     public function showsOnSite(Car $car): bool
     {
-        return $car->is_published && ! ($this->hide_priced && $car->price_final !== null);
+        return ! $car->offer_id && $car->is_published && ! ($this->hide_priced && $car->price_final !== null);
     }
 
     /** Наружу — номер, группа и месяц: по названию с именем лизинговой компании покупатель уйдёт искать те же машины у неё. */

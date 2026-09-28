@@ -50,6 +50,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::put('/offers/{offer}', [OfferController::class, 'update']);
     Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
     Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
+    Route::post('/offers/{offer}/publish', [OfferController::class, 'publish']);
     Route::post('/offers/{offer}/garage', [OfferController::class, 'garage']);
     Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
     Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
@@ -144,6 +145,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::get('/purchases/{purchase}/import', [PurchaseController::class, 'preview']);
     Route::post('/purchases/{purchase}/import', [PurchaseController::class, 'import']);
     Route::get('/purchases/{purchase}/export', [PurchaseController::class, 'export']);
+    Route::post('/purchases/{purchase}/counter', [PurchaseController::class, 'counterUpload']);
+    Route::get('/purchases/{purchase}/counter', [PurchaseController::class, 'counterPreview']);
+    Route::post('/purchases/{purchase}/counter/move', [PurchaseController::class, 'counterMove']);
     Route::redirect('/purchases/{purchase}/offers', '/purchases/{purchase}', 301);
     Route::get('/purchases/{purchase}/{car}/peek', [PurchaseController::class, 'peek']);
     Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car']);

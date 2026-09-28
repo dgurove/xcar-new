@@ -61,8 +61,14 @@ class OfferController
             default => $q->orderByDesc('updated_at'),
         };
 
+        $offers = ListView::paginate($request, $q);
+        // ?peek=номер (или first) — открыть окошко этой строки сразу: так «Оценить» ведёт по черновикам.
+        $peek = $request->query('peek') ? $offers->first(fn ($o) => $request->query('peek') === 'first' || (string) $o->number === (string) $request->query('peek')) : null;
+
         return view('admin.offers.index', [
-            'offers' => ListView::paginate($request, $q),
+            'offers' => $offers,
+            'peek' => $peek ? 'admin-offer-'.$peek->number : null,
+            'unpriced' => Offer::where('state', OfferState::Draft)->whereNull('asking_price')->count(),
             'preset' => $preset,
             'sort' => $sort,
             'counts' => [
@@ -144,6 +150,22 @@ class OfferController
         $take($offer, $data['manager_id'] ? User::findOrFail($data['manager_id']) : null, $data['cost'] ?? null, $request->user(), $data['note'] ?? null);
 
         return redirect("/offers/{$offer->number}")->with('toast', 'В гараже');
+    }
+
+    /**
+     * «Оценить» черновик из окошка: цена продажи и сразу в продажу, окошко само переходит к следующему черновику
+     * без цены. Пустое поле — просто дальше. Не хватает для публикации (фото ещё едут) — цена остаётся, ошибка в окошке.
+     */
+    public function publish(Request $request, Offer $offer, UpdateOffer $update, ChangeOfferState $change)
+    {
+        $raw = preg_replace('/\D+/', '', (string) ($request->validate(['asking_price' => ['nullable', 'string', 'max:20']])['asking_price'] ?? ''));
+        if ($raw === '' || $offer->state !== OfferState::Draft) {
+            return back()->with('peek-advance', true);
+        }
+        $update($offer, ['asking_price' => (int) $raw], $request->user());
+        $change($offer->refresh(), OfferState::Open, $request->user());
+
+        return back()->with('peek-advance', true)->with('toast', 'В продаже № '.$offer->number);
     }
 
     public function state(Request $request, Offer $offer, ChangeOfferState $change)

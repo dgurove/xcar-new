@@ -7,9 +7,11 @@ use App\Purchases\Actions\ChangePurchaseState;
 use App\Purchases\Actions\ChooseOffer;
 use App\Purchases\Actions\CreatePurchase;
 use App\Purchases\Actions\ImportFile;
+use App\Purchases\Actions\MoveToOffers;
 use App\Purchases\Actions\UnchooseOffer;
 use App\Purchases\Actions\UpdateCar;
 use App\Purchases\Car;
+use App\Purchases\CounterReader;
 use App\Purchases\Export;
 use App\Purchases\Importer;
 use App\Purchases\Kind;
@@ -22,23 +24,24 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Users\Role;
 use App\Users\User;
+use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class PurchaseController
 {
-    public const PRESETS = ['all' => 'Все ТС', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений', 'unfinal' => 'Без нашей цены', 'final' => 'С нашей ценой', 'attention' => 'Требуют внимания', 'nophoto' => 'Без фото', 'hidden' => 'Скрытые'];
+    public const PRESETS = ['all' => 'Все ТС', 'priced' => 'С предложениями', 'unpriced' => 'Без предложений', 'unfinal' => 'Без нашей цены', 'final' => 'С нашей ценой', 'attention' => 'Требуют внимания', 'nophoto' => 'Без фото', 'hidden' => 'Скрытые', 'moved' => 'В предложениях'];
 
     /** Пресеты группами в выборе «Все ТС ▾»: из каждой группы выбирают один ответ. */
-    public const PRESET_GROUPS = ['' => ['all'], 'Предложения менеджеров' => ['priced', 'unpriced'], 'Наша цена' => ['unfinal', 'final'], 'Служебное' => ['attention', 'nophoto', 'hidden']];
+    public const PRESET_GROUPS = ['' => ['all'], 'Предложения менеджеров' => ['priced', 'unpriced'], 'Наша цена' => ['unfinal', 'final'], 'Служебное' => ['attention', 'nophoto', 'hidden'], 'Контрпредложение' => ['moved']];
 
     public const SORTS = ['dl' => 'По порядку файла', 'best' => 'Лучшая цена', 'final' => 'Наша цена', 'fresh' => 'Сначала новые'];
 
     public function index()
     {
         return view('admin.purchases.index', [
-            'purchases' => Purchase::withCount('cars')->orderByDesc('number')->get(),
+            'purchases' => Purchase::withCount(['cars' => fn ($c) => $c->whereNull('offer_id')])->orderByDesc('number')->get(),
             'restricted' => Restriction::count(),
         ]);
     }
@@ -62,11 +65,12 @@ class PurchaseController
         $preset = array_key_exists($request->query('preset', 'all'), self::PRESETS) ? $request->query('preset', 'all') : 'all';
         $sort = array_key_exists($request->query('sort', 'dl'), self::SORTS) ? $request->query('sort', 'dl') : 'dl';
         $kind = Kind::tryFrom((string) $request->query('kind'));
-        $pending = $purchase->cars()->where(fn ($w) => $w->whereIn('specs_state', ['pending', 'running'])->orWhereIn('photos_state', ['pending', 'running']))->count();
+        $pending = $purchase->cars()->whereNull('offer_id')->where(fn ($w) => $w->whereIn('specs_state', ['pending', 'running'])->orWhereIn('photos_state', ['pending', 'running']))->count();
 
         // Числа — один проход по лёгкой выборке всей закупки, без поиска; перекрёстные: у каждого
         // фильтра число считается при двух других применённых, так они сходятся между собой.
-        $all = $purchase->cars()->with('offers:id,car_id,user_id,state')->get(['id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state']);
+        // ТС, ушедшие в предложения по контрпредложению, из закупки исключены — видны только в «В предложениях».
+        $all = $purchase->cars()->with('offers:id,car_id,user_id,state')->get(['id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state', 'offer_id']);
         $managers = User::where('role', Role::Manager)->orWhereIn('id', $all->flatMap(fn ($c) => $c->activeOfferList()->pluck('user_id'))->unique())->get();
         $user = $managers->firstWhere('id', (int) $request->query('user'));
         $match = [
@@ -79,6 +83,7 @@ class PurchaseController
             'nophoto' => fn ($c) => $c->photos_count === 0,
             'hidden' => fn ($c) => ! $c->is_published,
         ];
+        $match = array_map(fn ($f) => fn ($c) => ! $c->offer_id && $f($c), $match) + ['moved' => fn ($c) => (bool) $c->offer_id];
         $byKind = fn ($c) => ! $kind || $c->kind === $kind;
         $byUser = fn ($c) => ! $user || $c->activeOfferList()->contains('user_id', $user->id);
         $counts = array_map(fn ($f) => $all->filter($byKind)->filter($byUser)->filter($f)->count(), $match);
@@ -88,7 +93,8 @@ class PurchaseController
         $managers = $managers->sortBy([fn ($a, $b) => $offered[$b->id] <=> $offered[$a->id], fn ($a, $b) => strcmp($a->name, $b->name)])->values();
 
         $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen]);
-        $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user'])
+        $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user', 'offer:id,number,state'])
+            ->when($preset === 'moved', fn ($c) => $c->whereNotNull('offer_id'), fn ($c) => $c->whereNull('offer_id'))
             ->when($q !== '', $this->search($q))
             ->when($kind, fn ($c) => $c->where('kind', $kind))
             ->when($user, fn ($c) => $c->whereHas('offers', fn ($o) => $live($o)->where('user_id', $user->id)));
@@ -117,6 +123,7 @@ class PurchaseController
             'purchase' => $purchase, 'q' => $q, 'pending' => $pending, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state),
             'cars' => $cars, 'preset' => $preset, 'sort' => $sort, 'peek' => $peek ? 'car-'.$peek->id : null,
             'counts' => $counts, 'kind' => $kind, 'kinds' => $kinds, 'managers' => $managers, 'offered' => $offered, 'user' => $user,
+            'vendors' => Vendor::where('is_active', true)->orWhere('id', $purchase->vendor_id)->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 
@@ -127,7 +134,12 @@ class PurchaseController
 
     public function update(Request $request, Purchase $purchase)
     {
-        $purchase->update($request->validate(['title' => ['nullable', 'string', 'max:120'], 'supplier' => ['nullable', 'string', 'max:80'], 'offers_close_at' => ['nullable', 'date'], 'hide_priced' => ['sometimes', 'boolean']]));
+        $data = $request->validate(['title' => ['nullable', 'string', 'max:120'], 'vendor_id' => ['sometimes', 'nullable', 'exists:vendors,id'], 'offers_close_at' => ['nullable', 'date'], 'hide_priced' => ['sometimes', 'boolean']]);
+        // Поставщик — вендор; подпись `supplier` идёт за ним, чтобы старые места показывали то же имя.
+        if (array_key_exists('vendor_id', $data)) {
+            $data['supplier'] = $data['vendor_id'] ? Vendor::find($data['vendor_id'])->name : null;
+        }
+        $purchase->update($data);
 
         return back()->with('toast', 'Сохранено');
     }
@@ -181,6 +193,60 @@ class PurchaseController
         $purchase->update(['source_file' => $path]);
 
         return redirect("/purchases/{$purchase->number}")->with('toast', "Новых {$result['created']}, обновлено {$result['updated']}".($result['skipped'] ? ", пропущено {$result['skipped']}" : ''));
+    }
+
+    // ---------------------------------------------------------------- контрпредложение
+
+    /** Ответ поставщика: файл сохраняется и читается сразу — не прочитался, дальше предпросмотра не пускаем. */
+    public function counterUpload(Request $request, Purchase $purchase, CounterReader $reader)
+    {
+        $request->validate(['file' => ['required', 'file', 'mimes:xlsx', 'max:20480']]);
+        $path = $request->file('file')->storeAs("purchases/{$purchase->id}", 'counter-'.now()->format('Ymd-His').'.xlsx', 'private');
+        try {
+            $reader->read(Storage::disk('private')->path($path));
+        } catch (\Throwable $e) {
+            Storage::disk('private')->delete($path);
+
+            return back()->withErrors(['file' => $e->getMessage()]);
+        }
+
+        return redirect("/purchases/{$purchase->number}/counter?".http_build_query(['path' => $path]));
+    }
+
+    /** Что станет предложениями: строки файла, разложенные по тому, что с ними будет. */
+    public function counterPreview(Request $request, Purchase $purchase, CounterReader $reader)
+    {
+        $path = $this->counterPath($purchase, (string) $request->query('path', ''));
+        $rows = $reader->read(Storage::disk('private')->path($path));
+        $cars = $purchase->cars()->with(['brand', 'model', 'media', 'offer:id,number'])->get()->keyBy(fn (Car $c) => mb_strtolower(trim($c->dl)));
+        $groups = ['move' => [], 'moved' => [], 'unpriced' => [], 'missing' => []];
+        foreach ($rows as $row) {
+            $car = $cars[mb_strtolower(trim($row['dl']))] ?? null;
+            $groups[match (true) {
+                ! $car => 'missing',
+                (bool) $car->offer_id => 'moved',
+                ! $row['price'] => 'unpriced',
+                default => 'move',
+            }][] = $row + ['car' => $car];
+        }
+
+        return view('admin.purchases.counter', ['purchase' => $purchase->load('vendor'), 'path' => $path, 'groups' => $groups,
+            'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id')]);
+    }
+
+    public function counterMove(Request $request, Purchase $purchase, CounterReader $reader, MoveToOffers $move)
+    {
+        $path = $this->counterPath($purchase, (string) $request->validate(['path' => ['required', 'string']])['path']);
+        $count = $move($purchase, $reader->read(Storage::disk('private')->path($path)), $request->user());
+
+        return redirect('/?preset=draft&vid=table&peek=first')->with('toast', 'Черновиков: '.$count);
+    }
+
+    private function counterPath(Purchase $purchase, string $path): string
+    {
+        abort_unless(str_starts_with($path, "purchases/{$purchase->id}/counter-") && ! str_contains($path, '..') && Storage::disk('private')->exists($path), 404);
+
+        return $path;
     }
 
     /** Единственная выгрузка: файл Carcade с нашей ценой, галки — что ещё в него положить; Excel или PDF. */
@@ -244,7 +310,7 @@ class PurchaseController
     public function peek(Purchase $purchase, Car $car)
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
-        $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
+        $car->load(['brand', 'model', 'settlement', 'media', 'offers.user', 'offer:id,number']);
 
         return view('admin.purchases.peek', ['purchase' => $purchase, 'car' => $car]);
     }

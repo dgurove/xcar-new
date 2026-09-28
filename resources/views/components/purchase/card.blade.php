@@ -1,4 +1,4 @@
-{{-- Машина закупки: та же карточка, что у оффера; вся карточка — ссылка. --}}
+{{-- Машина закупки: та же карточка, что у оффера; вся карточка — ссылка. Ушедшая в предложение — кнопкой на него. --}}
 @props(['car', 'purchase', 'query' => '', 'showKind' => false])
 @php
     $staff = auth()->user()?->isStaff() ?? false;
@@ -48,7 +48,9 @@
     <span class="card-aside"><span class="nums text-sm font-normal text-ink-dim">{{ $car->dl }}</span></span>
     <div class="card-place">@if ($car->settlement?->name ?? $car->city)<x-ui.place class="truncate text-sm text-ink-dim">{{ $car->settlement?->name ?? $car->city }}</x-ui.place>@endif</div>
     <div class="card-action">
-        @if ($staff)
+        @if ($car->offer_id)
+            <a href="/offers/{{ $car->offer?->number }}" class="btn btn-s btn-accent nums w-full whitespace-nowrap">Предложение № {{ $car->offer?->number }}</a>
+        @elseif ($staff)
             @if ($best)
                 <a href="{{ $href }}" class="btn btn-s {{ $best->state === \App\Purchases\OfferState::Chosen ? 'btn-accent' : 'btn-quiet' }} w-full gap-2 whitespace-nowrap"><span class="nums">{{ \App\Support\Money::rub($best->amount) }}</span><span class="truncate font-normal opacity-80">{{ $best->user->shortName() }}{{ $active->count() > 1 ? ' +'.($active->count() - 1) : '' }}</span></a>
             @else

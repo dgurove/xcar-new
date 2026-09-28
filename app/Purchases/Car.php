@@ -22,7 +22,7 @@ use Spatie\MediaLibrary\HasMedia;
     'engine_volume', 'engine_power', 'color', 'steering', 'keys', 'settlement_id', 'address', 'city', 'condition', 'encumbrance',
     'fssp', 'vehicle_type', 'kind', 'stage', 'price_revalued', 'price_listing', 'price_final', 'site_url', 'cloud_url', 'cloud_leftovers',
     'specs_state', 'specs_error', 'specs_at', 'photos_state', 'photos_error', 'photos_at', 'photos_count', 'locked_fields',
-    'is_published', 'description', 'share_locked',
+    'is_published', 'description', 'share_locked', 'offer_id', 'announced_at',
 ])]
 class Car extends Model implements HasMedia
 {
@@ -36,7 +36,7 @@ class Car extends Model implements HasMedia
             'kind' => Kind::class, 'transmission' => Transmission::class, 'fuel' => Fuel::class,
             'specs_state' => ImportState::class, 'photos_state' => ImportState::class,
             'specs_at' => 'datetime', 'photos_at' => 'datetime', 'cloud_leftovers' => 'array', 'locked_fields' => 'array',
-            'is_published' => 'bool', 'share_locked' => 'bool', 'fssp' => 'bool', 'year' => 'int',
+            'is_published' => 'bool', 'share_locked' => 'bool', 'announced_at' => 'datetime', 'fssp' => 'bool', 'year' => 'int',
         ];
     }
 
@@ -63,6 +63,12 @@ class Car extends Model implements HasMedia
     public function settlement(): BelongsTo
     {
         return $this->belongsTo(Settlement::class);
+    }
+
+    /** Предложение, в которое ТС ушла по контрпредложению поставщика: из закупки она с этого момента исключена. */
+    public function offer(): BelongsTo
+    {
+        return $this->belongsTo(\App\Offers\Offer::class);
     }
 
     public function offers(): HasMany

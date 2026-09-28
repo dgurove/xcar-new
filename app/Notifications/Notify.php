@@ -32,6 +32,8 @@ use App\Park\Events\RequestDue;
 use App\Park\Events\VehicleIdle;
 use App\Park\Events\VehicleSold;
 use App\Park\RequestState;
+use App\Purchases\Car as PurchaseCar;
+use App\Purchases\OfferState as PurchaseOfferState;
 use App\Support\Money;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\AgentFeeDue as AgentFeeDueMessage;
@@ -120,9 +122,21 @@ final class Notify
         }
     }
 
+    /**
+     * Новое предложение — всем менеджерам круга. Вышло из закупки по контрпредложению — тем, кто называл за ТС
+     * цену в закупке, вместо общего своё «ТС из закупки в продаже», один раз на ТС.
+     */
     public function offerPublished(OfferPublished $e): void
     {
-        Notification::send($e->offer->allowedManagers(), new OfferPublishedNotice($e->offer));
+        $managers = $e->offer->allowedManagers();
+        $car = PurchaseCar::where('offer_id', $e->offer->id)->whereNull('announced_at')->first();
+        if ($car) {
+            $priced = $car->offers()->where('state', '!=', PurchaseOfferState::Withdrawn)->pluck('user_id')->all();
+            [$ours, $managers] = $managers->partition(fn ($u) => in_array($u->id, $priced, true));
+            Notification::send($ours, new PurchaseCarOnSaleNotice($e->offer));
+            $car->update(['announced_at' => now()]);
+        }
+        Notification::send($managers, new OfferPublishedNotice($e->offer));
     }
 
     /** Покупателям — одно уведомление на пачку: «открыл вам 3 автомобиля». */

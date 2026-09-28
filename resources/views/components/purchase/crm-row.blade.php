@@ -5,7 +5,7 @@
 @php
     use App\Purchases\{OfferState, ImportState};
     $n = $purchase->number;
-    $offers = $car->activeOfferList()->sortBy([fn ($a, $b) => ($b->user_id === $highlight) <=> ($a->user_id === $highlight), fn ($a, $b) => $b->amount <=> $a->amount])->values();
+    $offers = ($car->offer_id ? collect() : $car->activeOfferList())->sortBy([fn ($a, $b) => ($b->user_id === $highlight) <=> ($a->user_id === $highlight), fn ($a, $b) => $b->amount <=> $a->amount])->values();
 @endphp
 <div class="row flex-col items-stretch sm:flex-row sm:items-center sm:gap-x-6">
     <div class="flex min-w-0 items-start gap-3">
@@ -29,7 +29,9 @@
         @foreach ($offers as $offer)
             <x-purchase.offer-chip :offer="$offer" :car="$car" :highlight="$highlight"/>
         @endforeach
-        @if ($price)
+        @if ($car->offer_id)
+            <a href="/offers/{{ $car->offer?->number }}" class="chip nums whitespace-nowrap bg-accent-soft text-accent-text">№ {{ $car->offer?->number }}</a>
+        @elseif ($price)
             <a href="/purchases/{{ $n }}?{{ $car->price_final ? '' : 'preset=unfinal&' }}vid=table&peek={{ $car->ref }}" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? \App\Support\Money::rub($car->price_final) : 'оценить' }}</a>
         @endif
     </div>

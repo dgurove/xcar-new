@@ -24,7 +24,7 @@
             <form method="post" action="/purchases/{{ $n }}" class="flex flex-col gap-3">
                 @csrf @method('put')
                 <x-ui.field name="title" label="Название для нас" :value="$purchase->title"/>
-                <x-ui.field name="supplier" label="Поставщик" :value="$purchase->supplier"/>
+                <x-ui.field name="vendor_id" label="Поставщик" :options="$vendors->all()" placeholder="Не выбран" :value="$purchase->vendor_id"/>
                 <x-ui.field name="offers_close_at" label="Цены до" type="datetime-local" :value="$purchase->offers_close_at?->format('Y-m-d\TH:i')"/>
                 <x-ui.button block variant="secondary">Сохранить</x-ui.button>
             </form>
@@ -43,6 +43,11 @@
                 <form method="post" action="/purchases/{{ $n }}/file" enctype="multipart/form-data" data-controller="autosubmit">
                     @csrf
                     <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="plus" class="size-5"/> Загрузить файл поставщика<input type="file" name="file" accept=".xlsx" hidden data-action="change->autosubmit#submit"></label>
+                </form>
+                {{-- Ответ поставщика с итоговыми ценами: строки с ценой станут черновиками предложений. --}}
+                <form method="post" action="/purchases/{{ $n }}/counter" enctype="multipart/form-data" data-controller="autosubmit">
+                    @csrf
+                    <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="file" class="size-5"/> Загрузить контрпредложение<input type="file" name="file" accept=".xlsx" hidden data-action="change->autosubmit#submit"></label>
                 </form>
                 @if ($purchase->cars()->exists())
                     {{-- Файл — через file: в установленном приложении download открывает Quick Look без выхода, системный лист закрывается. --}}

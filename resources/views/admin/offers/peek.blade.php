@@ -35,9 +35,22 @@
                 @if ($price->declared)<span class="text-xs text-ink-dim nums">заявлена {{ $price::money($price->declared) }}</span>@endif
             @elseif ($gallery)
                 <span class="text-sm text-accent-text">Скоро в продаже</span>
+            @elseif ($offer->floor_price)
+                <span class="nums block whitespace-nowrap text-lg font-bold">{{ $price::money($offer->floor_price) }}&nbsp;₽</span>
+                <span class="text-xs text-ink-dim">закупочная</span>
             @endif
         </x-slot:aside>
         <x-slot:actions>
+            @if ($offer->state === OfferState::Draft)
+                {{-- «Оценить»: цена продажи и сразу в продажу, окошко переходит к следующему черновику; пустое поле — просто дальше. --}}
+                <form method="post" action="/offers/{{ $n }}/publish" class="flex w-full gap-2" data-controller="bid" data-bid-asking-value="0">
+                    @csrf
+                    <input type="hidden" name="asking_price" data-bid-target="amount" value="{{ $offer->asking_price }}">
+                    <input type="text" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
+                        data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-peek-focus>
+                    <button type="submit" class="btn btn-s btn-accent shrink-0">В продажу</button>
+                </form>
+            @endif
             @if ($offer->state === OfferState::Open && $offer->bids_close_at)
                 @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
                     <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>

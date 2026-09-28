@@ -29,7 +29,7 @@ class OfferEvent extends Model
         $p = $this->payload ?? [];
 
         return match ($this->type) {
-            OfferEventType::Created => 'Создан',
+            OfferEventType::Created => isset($p['purchase']) ? "Создан из закупки № {$p['purchase']}, ДЛ {$p['dl']}" : 'Создан',
             OfferEventType::Updated => 'Изменён: '.FieldLabels::list($p['fields'] ?? []),
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
             OfferEventType::StateChanged => OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),

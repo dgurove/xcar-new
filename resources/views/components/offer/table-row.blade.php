@@ -1,6 +1,7 @@
 {{-- Строка таблицы предложений (CRM). Ячейка в два этажа: название с «рекомендуем», под ним номер, приём
      (таймер или состояние, цветом по тону) и подтверждения; от 640 они встают своими столбцами. Справа цена
-     «до», под ней на телефоне сколько прошло. В галерее вместо подтверждений — интерес. Нажатие — окошко. --}}
+     «до», под ней на телефоне сколько прошло. В галерее вместо подтверждений — интерес. Нажатие — окошко; data-unpriced — черновик без цены продажи,
+     по ним окошко идёт «Дальше» («Оценить»). --}}
 @props(['offer', 'gallery' => false])
 @php
     use App\Offers\OfferState;
@@ -14,7 +15,7 @@
     $timer = $left !== null && $left > 0;
     $stateWord = $offer->state === OfferState::Open ? 'приём' : mb_strtolower($offer->state->label());
 @endphp
-<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0">
+<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0" @if ($offer->state === OfferState::Draft && ! $offer->asking_price) data-unpriced @endif>
     <td class="grow">
         <span class="cell-title">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
         <span class="cell-sub">

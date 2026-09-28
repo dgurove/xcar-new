@@ -58,6 +58,10 @@ class PurchaseController
 
     public function car(Request $request, Purchase $purchase, Car $car)
     {
+        // ТС ушла в предложение: старая ссылка (из уведомления, из закладки) ведёт туда, если оно человеку открыто.
+        if ($car->purchase_id === $purchase->id && $car->offer?->isVisibleTo($request->user())) {
+            return redirect('/offers/'.$car->offer->number);
+        }
         abort_unless($purchase->state->isPublic() && $car->purchase_id === $purchase->id && $purchase->showsOnSite($car), 404);
         abort_if(in_array($car->kind->value, Restriction::hiddenFor($request->user()), true), 404);
         $car->load(['brand', 'model', 'settlement', 'media', 'offers']);

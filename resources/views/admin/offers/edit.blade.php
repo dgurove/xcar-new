@@ -210,7 +210,7 @@
             <x-ui.card title="Вендор" class="order-2">
                 <div class="{{ $grid }}">
                     <x-ui.field name="vendor_id" label="Вендор" :options="$vendors" placeholder="—" :value="$offer->vendor_id"/>
-                    <x-ui.field name="claim_ref" label="Номер убытка" :value="$offer->claim_ref"/>
+                    <x-ui.field name="claim_ref" :label="$offer->vendor?->kind === \App\Vendors\Kind::Leasing ? 'Номер ДЛ' : 'Номер убытка'" :value="$offer->claim_ref"/>
                     <x-ui.field name="answer_by" label="Ответ до" type="datetime-local" :value="$offer->answer_by?->timezone('Europe/Moscow')->format('Y-m-d\TH:i')"/>
                     <x-ui.field name="insurer_deadline_at" label="Продать до" type="date" :value="$offer->insurer_deadline_at?->toDateString()"/>
                     <x-ui.field name="insured_name" label="Страхователь" :value="$offer->insured_name"/>

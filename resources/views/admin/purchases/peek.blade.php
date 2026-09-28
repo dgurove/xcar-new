@@ -3,7 +3,8 @@
      к следующей без цены; пустое поле — просто дальше), ниже предложения менеджеров
      (выбрать/отменить прямо тут), описание. Цены Carcade — подписями под полем,
      характеристики — метками и фактами наверху, отдельных блоков нет: окошко — полэкрана.
-     Формы отвечают в окошко (PeekBack), строка таблицы — свежей из row. --}}
+     Формы отвечают в окошко (PeekBack), строка таблицы — свежей из row. ТС, ушедшая в предложение по
+     контрпредложению, оценки и цен менеджеров не показывает — только ссылку на предложение. --}}
 @php
     use App\Purchases\ImportState;
     $n = $purchase->number;
@@ -24,27 +25,33 @@
             @unless ($car->is_published)<span class="tag">скрыта</span>@endunless
         </x-slot:marks>
         <x-slot:aside>
-            @if ($car->price_final)<span class="nums whitespace-nowrap text-lg font-bold">{{ \App\Support\Money::rub($car->price_final) }}</span>@endif
+            @if ($car->price_final && ! $car->offer)<span class="nums whitespace-nowrap text-lg font-bold">{{ \App\Support\Money::rub($car->price_final) }}</span>@endif
         </x-slot:aside>
         <x-slot:actions>
-            <form method="post" action="{{ $href }}/estimate" class="flex w-full gap-2" data-controller="bid" data-bid-asking-value="0">
-                @csrf
-                <input type="hidden" name="price_final" data-bid-target="amount" value="{{ $car->price_final }}">
-                <input type="text" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Наша цена, ₽" aria-label="Наша цена, ₽"
-                    data-bid-target="display" data-action="input->bid#input" value="{{ $car->price_final ? \App\Support\Money::nums($car->price_final) : '' }}" data-peek-focus>
-                <button type="submit" class="btn btn-s btn-accent shrink-0">Дальше</button>
-            </form>
-            @error('price_final')<p class="w-full text-sm text-danger">{{ $message }}</p>@enderror
-            {{-- Цены Carcade — под полем, подписями: это ориентир для нашей цены, а не характеристика ТС. --}}
-            @if ($car->price_revalued || $car->price_listing)
-                <dl class="flex w-full gap-6">
-                    @foreach (['С учётом переоценки' => $car->price_revalued, 'Для размещения' => $car->price_listing] as $label => $value)
-                        @if ($value)<div><dt class="text-xs text-ink-dim">{{ $label }}</dt><dd class="nums text-sm font-medium">{{ \App\Support\Money::rub($value) }}</dd></div>@endif
-                    @endforeach
-                </dl>
+            @if ($car->offer)
+                <x-ui.pill tone="open" href="/offers/{{ $car->offer->number }}">Предложение № {{ $car->offer->number }}</x-ui.pill>
+            @else
+                <form method="post" action="{{ $href }}/estimate" class="flex w-full gap-2" data-controller="bid" data-bid-asking-value="0">
+                    @csrf
+                    <input type="hidden" name="price_final" data-bid-target="amount" value="{{ $car->price_final }}">
+                    <input type="text" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Наша цена, ₽" aria-label="Наша цена, ₽"
+                        data-bid-target="display" data-action="input->bid#input" value="{{ $car->price_final ? \App\Support\Money::nums($car->price_final) : '' }}" data-peek-focus>
+                    <button type="submit" class="btn btn-s btn-accent shrink-0">Дальше</button>
+                </form>
+                @error('price_final')<p class="w-full text-sm text-danger">{{ $message }}</p>@enderror
+                {{-- Цены Carcade — под полем, подписями: это ориентир для нашей цены, а не характеристика ТС. --}}
+                @if ($car->price_revalued || $car->price_listing)
+                    <dl class="flex w-full gap-6">
+                        @foreach (['С учётом переоценки' => $car->price_revalued, 'Для размещения' => $car->price_listing] as $label => $value)
+                            @if ($value)<div><dt class="text-xs text-ink-dim">{{ $label }}</dt><dd class="nums text-sm font-medium">{{ \App\Support\Money::rub($value) }}</dd></div>@endif
+                        @endforeach
+                    </dl>
+                @endif
             @endif
         </x-slot:actions>
-        @if ($offers->isNotEmpty())
+        @if ($car->offer)
+            {{-- Цены менеджеров и наша цена после контрпредложения не нужны: ТС живёт в предложении. --}}
+        @elseif ($offers->isNotEmpty())
             <div class="mt-3 flex flex-wrap items-center gap-1.5">
                 @foreach ($offers as $offer)<x-purchase.offer-chip :offer="$offer" :car="$car"/>@endforeach
             </div>

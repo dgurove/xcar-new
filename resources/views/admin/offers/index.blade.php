@@ -11,12 +11,16 @@
         </x-slot:filters>
     </x-ui.toolbar>
 
+    {{-- Черновики без цены продажи (из контрпредложения поставщика) оцениваются в окошке таблицы: цена → «В продажу», и сразу следующий. --}}
+    @if ($unpriced && !($preset === 'draft' && \App\Support\ListView::isTable($view)))
+        <div class="mt-3 flex"><a href="/?preset=draft&vid=table&peek=first" class="btn btn-s btn-accent ml-auto" data-turbo-action="replace">Оценить {{ $unpriced }}</a></div>
+    @endif
     <div class="mt-6">
         @if ($offers->isEmpty())
             <x-ui.empty>Предложений нет</x-ui.empty>
         @else
             @if (\App\Support\ListView::isTable($view))
-                <x-ui.table id="offers" :view="$view">
+                <x-ui.table id="offers" :view="$view" :open="$peek">
                     <x-slot:head><x-offer.table-head/></x-slot:head>
                     @foreach ($offers as $offer)<x-offer.table-row :offer="$offer"/>@endforeach
                 </x-ui.table>
