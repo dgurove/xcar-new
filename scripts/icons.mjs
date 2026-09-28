@@ -86,7 +86,7 @@ for (const name of SURFACES) {
     }
 }
 
-// Знаки CRM, P и Г для шапки: без фона, обрезаны по знаку, в двух цветах (как xcar.svg / xcar-white.svg).
+// Знаки CRM, P и гаража для шапки: без фона, обрезаны по знаку, в двух цветах (как xcar.svg / xcar-white.svg).
 for (const name of ['crm', 'park', 'garage']) {
     const svg = readFileSync(at(`../resources/icons/${name}.svg`), 'utf8');
     const { info } = await sharp(Buffer.from(svg)).trim().toBuffer({ resolveWithObject: true });

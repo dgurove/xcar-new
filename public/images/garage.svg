@@ -1,4 +1,6 @@
-<svg width="951" height="1024" viewBox="331 238 951 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M565.4 238H1281.9V470.771H565.4V238Z" fill="#97BF0D"/>
-<path d="M331.806 238H565.4V1262H331.806V238Z" fill="black"/>
+<svg width="1024" height="1024" viewBox="238 238 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" d="M750 238L1262 526V1262H1070V708H430V1262H238V526L750 238Z" fill="black"/>
+<path d="M500 778H1000V868H500V778Z" fill="#97BF0D"/>
+<path d="M500 928H1000V1018H500V928Z" fill="#97BF0D"/>
+<path d="M500 1078H1000V1168H500V1078Z" fill="#97BF0D"/>
 </svg>

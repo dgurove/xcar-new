@@ -1,5 +1,5 @@
 {{-- Логотип приложения в шапке — знак с его иконки, в цвете темы: CRM — надпись CRM,
-     стоянка — P, гараж — Г, сайт — знак xcar на десктопе и широкий логотип на телефоне (wide).
+     стоянка — P, гараж — ворота гаража, сайт — знак xcar на десктопе и широкий логотип на телефоне (wide).
      Высота — классом (h-10 / h-16). --}}
 @props(['class' => 'h-10', 'wide' => false])
 @php
@@ -7,7 +7,7 @@
     [$name, $w, $h] = match ($surface) {
         \App\Support\Surface::Crm => ['crm', 1300, 335],
         \App\Support\Surface::Park => ['park', 960, 1024],
-        \App\Support\Surface::Garage => ['garage', 951, 1024],
+        \App\Support\Surface::Garage => ['garage', 1024, 1024],
         default => $wide ? ['xcar', 180, 45] : ['xcar-mark', 64, 64],
     };
 @endphp
