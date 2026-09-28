@@ -2,8 +2,11 @@
 
 namespace App\Support;
 
+use App\Users\Section;
+use App\Users\User;
+
 /**
- * Поверхность — одно из трёх приложений на своём хосте: сайт, CRM, стоянка.
+ * Поверхность — одно из четырёх приложений на своём хосте: сайт, CRM, стоянка, гараж.
  * Определяется по хосту запроса в ResolveSurface; вне запроса — сайт.
  */
 enum Surface: string
@@ -11,12 +14,14 @@ enum Surface: string
     case Site = 'site';
     case Crm = 'crm';
     case Park = 'park';
+    case Garage = 'garage';
 
     public static function fromHost(string $host): self
     {
         return match ($host) {
             config('xcar.crm_host') => self::Crm,
             config('xcar.park_host') => self::Park,
+            config('xcar.garage_host') => self::Garage,
             default => self::Site,
         };
     }
@@ -37,6 +42,7 @@ enum Surface: string
             self::Site => parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost',
             self::Crm => config('xcar.crm_host'),
             self::Park => config('xcar.park_host'),
+            self::Garage => config('xcar.garage_host'),
         };
     }
 
@@ -49,12 +55,27 @@ enum Surface: string
         return ($app['scheme'] ?? 'http').'://'.$this->host().$port.'/'.ltrim($path, '/');
     }
 
+    /**
+     * Кому хост открыт: CRM — сотрудникам, стоянка — по разделу, гараж — сотрудникам и
+     * менеджерам (машины в гараже есть только у них). Одна дверь на ResolveSurface и вход.
+     */
+    public function opensFor(?User $user): bool
+    {
+        return match ($this) {
+            self::Site => true,
+            self::Crm => (bool) $user?->isStaff(),
+            self::Park => (bool) $user?->canAccess(Section::Park),
+            self::Garage => (bool) ($user?->isStaff() || $user?->isManager()),
+        };
+    }
+
     public function label(): string
     {
         return match ($this) {
             self::Site => 'XCar',
             self::Crm => 'CRM XCar',
             self::Park => 'Park XCar',
+            self::Garage => 'Гараж XCar',
         };
     }
 

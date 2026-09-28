@@ -1,6 +1,6 @@
-// Иконки трёх приложений и экраны запуска iOS. node scripts/icons.mjs — один раз, результат лежит в git.
+// Иконки четырёх приложений и экраны запуска iOS. node scripts/icons.mjs — один раз, результат лежит в git.
 //
-// Исходники — resources/icons/{site,crm,park}.svg: чёрный квадрат 1500×1500, знак белым и лаймом.
+// Исходники — resources/icons/{site,crm,park,garage}.svg: чёрный квадрат 1500×1500, знак белым и лаймом.
 // Иконка отдаётся квадратом во весь холст без скруглений, бликов и теней — на iOS 26 стекло
 // (Liquid Glass) кладёт сама система, на Android маску кладёт лаунчер. Для лаунчера отдельно
 // maskable (знак в безопасной зоне 80 %), для тем Android 13 и бейджа уведомлений — белый силуэт.
@@ -11,7 +11,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const at = (p) => new URL(p, import.meta.url).pathname;
 const BLACK = '#000000';
-const SURFACES = ['site', 'crm', 'park'];
+const SURFACES = ['site', 'crm', 'park', 'garage'];
 
 // Ярлыки манифеста (PwaController) → иконки кита.
 const SHORTCUT_ICONS = ['car', 'deal', 'bell', 'photo', 'cart', 'flag', 'park'];
@@ -38,13 +38,17 @@ function ico(pngs) {
     return Buffer.concat([head, ...pngs.map((p) => p.buf)]);
 }
 
-// Заливки кита: блок $filled из icon.blade.php.
+// Заливки кита из icon.blade.php: $filled в сетке 24 и $solid (Phosphor) в сетке 256, где у
+// каждой иконки пара — берём обычную. Иконка кита предпочитает $solid, здесь так же: иначе
+// ярлык отличался бы от того, что человек видит на экране.
 function kitIcons() {
     const blade = readFileSync(at('../resources/views/components/ui/icon.blade.php'), 'utf8');
-    const block = blade.slice(blade.indexOf('$filled = ['));
-    const paths = {};
-    for (const [, name, d] of block.matchAll(/'([\w-]+)' => '([^']+)'/g)) paths[name] ??= d;
-    return paths;
+    const icons = {};
+    const filled = blade.slice(blade.indexOf('$filled = ['), blade.indexOf('$solid = ['));
+    for (const [, name, d] of filled.matchAll(/'([\w-]+)' => '([^']+)'/g)) icons[name] ??= { box: 24, d };
+    const solid = blade.slice(blade.indexOf('$solid = ['));
+    for (const [, name, d] of solid.matchAll(/'([\w-]+)' => \['([^']+)'/g)) icons[name] = { box: 256, d };
+    return icons;
 }
 
 const kit = kitIcons();
@@ -74,15 +78,16 @@ for (const name of SURFACES) {
 
     // Ярлыки: заливка кита в безопасной зоне на чёрном.
     for (const icon of SHORTCUT_ICONS) {
-        const d = kit[icon];
-        if (!d) throw new Error(`нет заливки «${icon}» в icon.blade.php`);
-        const s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96"><rect width="24" height="24" fill="${BLACK}"/><g transform="translate(5.4 5.4) scale(.55)"><path fill="white" d="${d}"/></g></svg>`;
+        const kitIcon = kit[icon];
+        if (!kitIcon) throw new Error(`нет заливки «${icon}» в icon.blade.php`);
+        const { box, d } = kitIcon;
+        const s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box} ${box}" width="96" height="96"><rect width="${box}" height="${box}" fill="${BLACK}"/><g transform="translate(${box * 0.225} ${box * 0.225}) scale(.55)"><path fill="white" d="${d}"/></g></svg>`;
         await sharp(Buffer.from(s)).png().toFile(out(`shortcut-${icon}.png`));
     }
 }
 
-// Знаки CRM и P для шапки: без фона, обрезаны по знаку, в двух цветах (как xcar.svg / xcar-white.svg).
-for (const name of ['crm', 'park']) {
+// Знаки CRM, P и Г для шапки: без фона, обрезаны по знаку, в двух цветах (как xcar.svg / xcar-white.svg).
+for (const name of ['crm', 'park', 'garage']) {
     const svg = readFileSync(at(`../resources/icons/${name}.svg`), 'utf8');
     const { info } = await sharp(Buffer.from(svg)).trim().toBuffer({ resolveWithObject: true });
     const box = `${-info.trimOffsetLeft} ${-info.trimOffsetTop} ${info.width} ${info.height}`;

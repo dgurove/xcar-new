@@ -1,9 +1,10 @@
 <?php
 
 return [
-    // Хосты. CRM и стоянка — поддомены того же приложения; сайт — хост app.url.
+    // Хосты. CRM, стоянка и гараж — поддомены того же приложения; сайт — хост app.url.
     'crm_host' => env('CRM_HOST', 'crm.localhost'),
     'park_host' => env('PARK_HOST', 'park.localhost'),
+    'garage_host' => env('GARAGE_HOST', 'garage.localhost'),
 
     // Наше юрлицо — в актах стоянки. Реквизиты для счетов появятся с деньгами.
     'company' => ['name' => 'ООО «ПРАЙМ»', 'inn' => '5007110932', 'director' => 'Кузнецов А. В.'],

@@ -6,6 +6,7 @@
 @php
     $surface = \App\Support\Surface::current();
     $park = $surface === \App\Support\Surface::Park;
+    $garage = $surface === \App\Support\Surface::Garage;
     $site = $surface === \App\Support\Surface::Site;
     $user = auth()->user();
     $path = '/'.ltrim(request()->path(), '/');
@@ -13,6 +14,7 @@
     $top = \App\Support\Nav::top($user);
     $badges = \App\Support\Nav::badges($user);
     $searchAction = $park ? '/cars' : '/';
+    $searchHint = match (true) { $park => 'VIN, госномер, марка', $garage => 'Марка, модель, номер', default => 'Поиск объявления…' };
     $cabinet = \App\Support\Nav::cabinetRoot();
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
 @endphp
@@ -82,7 +84,7 @@
         <div class="header-row">
             <form method="get" action="{{ $searchAction }}" class="header-btn header-h header-search relative justify-start px-3" role="search" data-turbo-action="replace">
                 <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>
-                <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" placeholder="{{ $park ? 'VIN, госномер, марка' : 'Поиск объявления…' }}" class="w-28 sm:w-36 lg:w-52" aria-label="Поиск">
+                <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" placeholder="{{ $searchHint }}" class="w-28 sm:w-36 lg:w-52" aria-label="Поиск">
             </form>
             @foreach ($top as $item)
                 <a href="{{ $item['href'] }}" class="header-btn header-h flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>{{ $item['label'] }}@if (str_starts_with($item['href'], 'http')) ↗@endif</a>

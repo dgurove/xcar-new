@@ -3,16 +3,15 @@
 namespace App\Http\Middleware;
 
 use App\Support\Surface;
-use App\Users\Section;
 use Closure;
 use Illuminate\Http\Request;
 
-/** Поверхность по хосту. На CRM и стоянке отвечают только их маршруты и общие пути: вход, кабинет, чаты, live, PWA, редирект со старого /admin. */
+/** Поверхность по хосту. На CRM, стоянке и в гараже отвечают только их маршруты и общие пути: вход, кабинет, чаты, live, PWA, редирект со старого /admin. */
 class ResolveSurface
 {
     private const SHARED = ['login', 'logout', 'register', 'password', 'passkey', 'up', 'media', 'live', 'chats', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'deals', 'admin', 'mail', 'files'];
 
-    /** Что открыто на CRM и стоянке тому, кому туда нельзя: выйти и служебное. */
+    /** Что открыто на чужом хосте тому, кому туда нельзя: выйти и служебное. */
     private const ANYONE = ['login', 'logout', 'password', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'admin'];
 
     public function handle(Request $request, Closure $next)
@@ -28,7 +27,7 @@ class ResolveSurface
             $user = $request->user();
 
             // Чужой вошедший упирается в стену без шапки и разделов; гостя `auth` уводит на /login этого хоста.
-            $allowed = $surface === Surface::Crm ? $user?->isStaff() : $user?->canAccess(Section::Park);
+            $allowed = $surface->opensFor($user);
             // Управляющего парковкой из CRM — сразу к себе, а не в стену.
             if ($user?->isParking() && $surface === Surface::Crm && ! in_array($first, self::ANYONE, true) && ! $request->expectsJson()) {
                 return redirect()->away(Surface::Park->url());

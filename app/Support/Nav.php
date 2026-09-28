@@ -59,6 +59,13 @@ final class Nav
             ]));
         }
 
+        // Гараж: машины вне продажи у менеджеров. Разделы добавляются по мере готовности экранов.
+        if ($surface === Surface::Garage) {
+            return [
+                self::item('Машины', '/', ['/', '/cars']),
+            ];
+        }
+
         if ($surface === Surface::Crm) {
             return [
                 self::item('Предложения', '/', ['/', '/offers']),
@@ -168,10 +175,15 @@ final class Nav
             return [self::item('На сайт', Surface::Site->url())];
         }
 
+        if ($surface === Surface::Garage) {
+            return [self::item('На сайт', Surface::Site->url())];
+        }
+
         if ($surface === Surface::Crm) {
             return [
                 self::item('На сайт', Surface::Site->url()),
                 self::item('Парковка', Surface::Park->url()),
+                self::item('Гараж', Surface::Garage->url()),
             ];
         }
 
@@ -207,6 +219,14 @@ final class Nav
             ]))];
         }
 
+        if ($surface === Surface::Garage) {
+            return ['' => [
+                self::link('Профиль', '/account', exact: true),
+                self::link('Уведомления', '/account/notifications'),
+                self::link('На сайт', Surface::Site->url()),
+            ]];
+        }
+
         if ($surface === Surface::Crm) {
             // Один раздел «Настройки»: профиль — его первый пункт, как /account на сайте.
             return [
@@ -222,6 +242,7 @@ final class Nav
                 'Переходы' => [
                     self::link('На сайт', Surface::Site->url()),
                     self::link('Парковка', Surface::Park->url()),
+                    self::link('Гараж', Surface::Garage->url()),
                 ],
             ];
         }
@@ -361,6 +382,9 @@ final class Nav
                     '/mail' => Thread::whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ], 'fresh' => []];
             }
+            if ($surface === Surface::Garage) {
+                return ['totals' => [], 'fresh' => []];
+            }
             if ($surface === Surface::Crm) {
                 return ['totals' => [
                     '/' => Offer::whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
@@ -394,6 +418,11 @@ final class Nav
 
         if ($surface === Surface::Park || $surface === Surface::Crm) {
             return array_filter($badges + self::staffCounts($surface));
+        }
+
+        // В гараже своих бейджей пока нет: только непрочитанные уведомления.
+        if ($surface === Surface::Garage) {
+            return array_filter($badges);
         }
 
         if ($user->isManager()) {
@@ -449,9 +478,8 @@ final class Nav
     /** Сброс общих счётчиков сотрудников — бейджей и итогов таб-бара; личные живут свои полминуты. */
     public static function forgetStaffCounts(): void
     {
-        Cache::forget('nav.staff:crm');
-        Cache::forget('nav.staff:park');
         foreach (Surface::cases() as $surface) {
+            Cache::forget("nav.staff:{$surface->value}");
             Cache::forget("nav.counts:{$surface->value}:staff");
         }
     }

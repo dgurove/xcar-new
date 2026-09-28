@@ -4,7 +4,6 @@ namespace App\Http\Auth;
 
 use App\Support\Phone;
 use App\Support\Surface;
-use App\Users\Section;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -66,11 +65,7 @@ class LoginController
     {
         $surface = Surface::current();
         $user = Auth::user();
-        $allowed = match ($surface) {
-            Surface::Crm => $user?->isStaff(),
-            Surface::Park => $user?->canAccess(Section::Park),
-            Surface::Site => true,
-        };
+        $allowed = $surface->opensFor($user);
 
         // Управляющий парковкой, вошедший на сайте или в CRM, — сразу на парковку.
         return $allowed && ! ($user?->isParking() && $surface !== Surface::Park) ? $surface->home() : ($user?->isParking() ? Surface::Park->url() : Surface::Site->url());

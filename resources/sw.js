@@ -89,8 +89,8 @@ async function trim(cache, limit) {
 
 // Пуш. Основной формат — Declarative Web Push (iOS 18.4+ показывает без
 // воркера); здесь тот же JSON разбирается для Android.
-// Поверхность по хосту service worker: иконка уведомления — своя у сайта, CRM и стоянки.
-const surface = () => (location.hostname.startsWith('crm.') ? 'crm' : location.hostname.startsWith('park.') ? 'park' : 'site');
+// Поверхность по хосту service worker: иконка уведомления — своя у каждого приложения.
+const surface = () => ['crm', 'park', 'garage'].find((name) => location.hostname.startsWith(`${name}.`)) ?? 'site';
 
 // Страница просит забыть экраны: выход.
 self.addEventListener('message', (event) => {

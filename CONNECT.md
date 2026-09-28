@@ -24,10 +24,10 @@ check, журналы контейнеров за день — в `logs/ГГГГ
 files [каталог]`, посмотреть снимки — `restore.sh snapshots`.
 Перед миграцией `deploy.sh` снимает только локальный дамп.
 
-Три приложения на трёх именах: `https://xcar.ru`, `https://crm.xcar.ru`,
-`https://park.xcar.ru` (с 12.09.2026; сертификаты Caddy выпускает сам, ACME
-на `dev@dgurov.com`). `api.xcar.ru`, голый IP и имена nip.io — 301 на
-`https://xcar.ru`. Cookie сессии на `.xcar.ru` — один вход на всех трёх.
+Четыре приложения на четырёх именах: `https://xcar.ru`, `https://crm.xcar.ru`,
+`https://park.xcar.ru` (с 12.09.2026) и `https://garage.xcar.ru` (с 28.09.2026);
+сертификаты Caddy выпускает сам, ACME на `dev@dgurov.com`. `api.xcar.ru`, голый IP
+и имена nip.io — 301 на `https://xcar.ru`. Cookie сессии на `.xcar.ru` — один вход на всех.
 `www.xcar.ru` в DNS пока нет — когда появится, дописать в `REDIRECT_ADDRESSES`.
 
 Telegram-бот владельца (регистрации с кнопками решения): `TELEGRAM_BOT_TOKEN`,
