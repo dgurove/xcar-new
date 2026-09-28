@@ -102,14 +102,33 @@
 - **Гараж:** «Оплатить», ссылка, строка в деньгах машины.
 - **Тест** `tests/Feature/MoneyArrivesOnceTest.php`: повтор уведомления, выписка против заявки, ЮMoney.
 
+## Ревью и выкладка (28.09.2026, вечер)
+
+По ревью исправлено:
+- переплата учитывается и сверх частично закрытого счёта (`applied`, `overpaid()`); «Вернуть» по переплате возвращает только её, оплату счёта не трогает;
+- номер счёта в назначении — только отдельным словом: «расчёт», «счёт-фактура», «р/сч 4070…» не ловятся;
+- телефон без кода страны дополняется семёркой — иначе чек без контакта, и ЮKassa отклоняла платёж;
+- счёт вендору (вознаграждение от поставщика) не оплачивается ссылкой и не попадает в «Оплатить»;
+- ошибка телефона видна в форме ссылки в CRM; менеджер отменяет и ссылки, заведённые сотрудником;
+- две загрузки выписки разом не падают на уникальном id (`createOrFirst`), сбой пишет сам `ImportStatement`;
+- запись подключения банка — через `ConnectSber` и `SetBankAccount`, не из контроллера;
+- `PassQr` пользуется общим `Support\Qr`; запрос к ЮKassa — вне транзакции.
+
+Выложено `dg-20260928-190217` (коммит `9a21d7d`). На проде: сертификат клиента и набор корневых СберCA
+(`sberca-root-ext`, `sberca-ext`, `Sberbank Root CA`, `sberapi-*`) в `/srv/xcar/data/storage/secrets/`
+(www-data, 600); TLS до `fintech.sberbank.ru:9443` из контейнера проверяется (`verify=0`). В `.env.app`:
+`SBER_CLIENT_ID=90418`, `SBER_CERT`, `SBER_CA`; расчётный счёт `40702810340000004750` вписан в подключение.
+Сервер `sbi.sberbank.ru` (вход директора) подписан иначе — к нему ходит только браузер.
+
 ## Что нужно для боевого включения
 
 1. **Владелец:**
    - подключает ЮKassa в СберБизнесе и включает «Чеки от ЮKassa»;
    - присылает shopId и секретный ключ;
    - в кабинете ЮKassa вписывает уведомления `https://xcar.ru/hooks/yookassa` (payment.succeeded, payment.canceled).
-2. **Sber API:**
-   - redirect URI `https://crm.xcar.ru/settings/bank/callback`, scope `openid GET_STATEMENT_ACCOUNT`;
+2. **Sber API** (приложение 5007110932_B2BSaaS, client_id 90418):
+   - **пароль к `.p12`** и точный client_secret (в присланном `"S`+l54p` кавычка и обратный апостроф выглядят обрезанными) → `SBER_CERT_PASSWORD`, `SBER_CLIENT_SECRET` в `.env.app`;
+   - в настройках приложения Redirect_uri сейчас пустой (`https://`) — вписать `https://crm.xcar.ru/settings/bank/callback`; scope `openid GET_STATEMENT_ACCOUNT` в выданном списке есть;
    - сертификат p12 и корневой «Russian Trusted Root CA» (pem) — в `/srv/xcar/data/storage/secrets/` (внутри `/app/storage/secrets`, владелец www-data);
    - в env прода — `SBER_*` (`SBER_CERT=/app/storage/secrets/…p12`, `SBER_CA=/app/storage/secrets/russian_trusted_root_ca.pem`).
 3. **После выкладки:**
