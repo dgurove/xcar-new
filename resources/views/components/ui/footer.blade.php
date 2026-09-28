@@ -16,7 +16,7 @@
                     <a href="/terms" class="header-btn header-h min-w-0 flex-1 px-4 text-sm sm:px-5"><span class="truncate">Соглашение</span></a>
                 </div>
                 <a href="/" class="row-span-2 flex size-16 items-center justify-center" aria-label="XCar"><x-ui.logo mark class="size-16"/></a>
-                <div class="header-row header-row--mark">
+                <div class="header-row header-row--mark header-row--square">
                     <a href="/privacy" class="header-btn header-h min-w-0 flex-1 px-4 text-sm sm:px-5"><span class="truncate">Обработка данных</span></a>
                 </div>
             </div>

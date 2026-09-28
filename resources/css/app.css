@@ -1254,6 +1254,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .header-row > :is(.header-btn-square, .header-sq-wrap) + .header-sq-wrap > .header-btn { border-top-left-radius: 0; border-bottom-left-radius: 0; }
   /* Ряд, упирающийся в знак вне ряда (подвал на телефоне: знак в две строки справа), — прямой край к знаку. */
   .header-row--mark > :last-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  /* Вторая строка подвала на телефоне — прямоугольник: прямые углы с обеих сторон. */
+  .header-row--square > * { border-radius: 0 !important; }
 
   /* Состояние связи в шапке: html[data-net=offline|reconnecting] ставят net.js и live.js. */
   .net { display: none; align-items: center; gap: .375rem; margin-right: .25rem; font-size: 12px; color: var(--color-ink-muted); white-space: nowrap; }
