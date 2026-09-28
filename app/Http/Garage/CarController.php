@@ -19,7 +19,7 @@ class CarController
     public function index(Request $request)
     {
         $cars = Car::of($request->user())
-            ->with(['offer.brand', 'offer.model', 'offer.media', 'manager', 'costs'])
+            ->with(['offer.brand', 'offer.model', 'offer.media', 'manager', 'costs', 'invoice'])
             ->orderByRaw('case when state = ? then 0 else 1 end', [CarState::Repair->value])
             ->orderByDesc('taken_at')
             ->get();
@@ -45,6 +45,7 @@ class CarController
     public function updateCost(Request $request, Cost $cost, UpdateCost $update)
     {
         $this->car($request, $cost->car->offer);
+        abort_unless($cost->editableBy($request->user()), 403);
         $update($cost, $this->costData($request));
 
         return back()->with('toast', 'Сохранено');
@@ -53,6 +54,7 @@ class CarController
     public function destroyCost(Request $request, Cost $cost, RemoveCost $remove)
     {
         $this->car($request, $cost->car->offer);
+        abort_unless($cost->editableBy($request->user()), 403);
         $remove($cost);
 
         return back()->with('toast', 'Расход убран');
@@ -70,7 +72,8 @@ class CarController
     /** Машина этого человека или любая — сотруднику; чужая для менеджера не существует. */
     private function car(Request $request, Offer $offer): Car
     {
-        $car = Car::where('offer_id', $offer->id)->with(['offer.brand', 'offer.model', 'offer.media', 'manager', 'costs.author'])->firstOrFail();
+        $car = Car::where('offer_id', $offer->id)->with(['offer.brand', 'offer.model', 'offer.media', 'manager', 'costs.author', 'invoice'])->firstOrFail();
+        $car->costs->each->setRelation('car', $car);
         abort_unless($request->user()->isStaff() || $car->manager_id === $request->user()->id, 404);
 
         return $car;
@@ -84,6 +87,6 @@ class CarController
             'title' => ['required', 'string', 'max:120'],
             'amount' => ['required', 'numeric', 'min:0.01', 'max:99999999'],
             'spent_at' => ['nullable', 'date', 'before_or_equal:today'],
-        ]) + ['spent_at' => now()->toDateString()];
+        ]);
     }
 }

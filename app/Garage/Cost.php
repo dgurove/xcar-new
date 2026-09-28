@@ -18,6 +18,21 @@ class Cost extends Model
         return ['amount' => 'float', 'spent_at' => 'date', 'payer' => Payer::class];
     }
 
+    /**
+     * Кто может поправить строку: сотрудник — любую, менеджер — только свою и только пока машина
+     * не продана (иначе задним числом «вспомненный» расход уменьшает то, что он нам отдаёт).
+     * После счёта — никто: сумма уже в документе.
+     */
+    public function editableBy(User $user): bool
+    {
+        $car = $this->car;
+        if ($car->isFrozen()) {
+            return false;
+        }
+
+        return $user->isStaff() || ($this->payer === Payer::Manager && ! $car->isSold() && $car->manager_id === $user->id);
+    }
+
     public function car(): BelongsTo
     {
         return $this->belongsTo(Car::class, 'garage_car_id');

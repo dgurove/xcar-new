@@ -3,6 +3,7 @@
 namespace App\Telegram\Messages;
 
 use App\Billing\Payment;
+use App\Garage\Car;
 use App\Support\Money;
 use App\Support\Surface;
 
@@ -24,7 +25,7 @@ final class PaymentClaimed extends Message
         return [
             'Счёт '.$i->label().', '.$i->party->name,
             Money::rub($p->amount).' от '.$p->paid_at->translatedFormat('j M').($p->ref ? ', п/п № '.$p->ref : '').($p->slip() ? ', платёжка приложена' : ''),
-            $i->deal?->offer?->titleWithYear(),
+            $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(),
         ];
     }
 
@@ -35,6 +36,11 @@ final class PaymentClaimed extends Message
 
     protected function link(): array
     {
+        // Гаражный счёт живёт на машине в гараже: в «Деньгах» CRM только счета сделок.
+        if ($car = Car::ofInvoice($this->payment->invoice)) {
+            return ['text' => 'Машина в гараже', 'url' => $car->url()];
+        }
+
         return ['text' => 'Счёт в CRM', 'url' => Surface::Crm->url('/work/money/invoices/'.$this->payment->invoice_id)];
     }
 }

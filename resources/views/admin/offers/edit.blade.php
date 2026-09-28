@@ -18,7 +18,11 @@
         <span class="order-last ml-auto flex items-center gap-1">
             @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" icon/>@endif
         </span>
-        <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
+        @if ($garage)
+            <x-ui.pill tone="plain" :href="\App\Support\Surface::Garage->url('/cars/'.$n)" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }} ↗</x-ui.pill>
+        @else
+            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
+        @endif
         @if ($offer->closed())
             <x-ui.pill tone="closed">Приём закрыт с {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</x-ui.pill>
         @elseif ($offer->bids_close_at && $offer->state === OfferState::Open)
@@ -257,18 +261,13 @@
     </div>
 
     {{-- Гараж: машина уходит из продажи менеджеру на ремонт — нужен человек и цена, поэтому своя шторка. --}}
-    @if ($garage)
-        <div class="mt-6">
-            <a href="{{ \App\Support\Surface::Garage->url('/cars/'.$n) }}" class="btn btn-quiet" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }} ↗</a>
-        </div>
-    @elseif ($offer->state->allows(OfferState::Garage))
+    @if (! $garage && $offer->state->allows(OfferState::Garage))
         <div data-controller="sheet" data-action="garage:open@window->sheet#open" class="contents">
             <x-ui.sheet id="offer-garage" title="Отдать в гараж">
                 <form method="post" action="/offers/{{ $n }}/garage" class="flex flex-col gap-4">
                     @csrf
                     <x-ui.field name="manager_id" label="Кому" :options="$managers->pluck('name', 'id')" placeholder="Взяли под себя"/>
                     <x-ui.field name="cost" label="Отдали за, ₽" :value="$offer->floor_price"/>
-                    <x-ui.field name="note" label="Заметка" type="textarea" rows="2"/>
                     <x-ui.button type="submit" variant="primary" block>Отдать в гараж</x-ui.button>
                 </form>
             </x-ui.sheet>

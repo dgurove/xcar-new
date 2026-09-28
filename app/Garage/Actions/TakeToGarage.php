@@ -3,7 +3,11 @@
 namespace App\Garage\Actions;
 
 use App\Garage\Car;
+use App\Garage\Events\GarageChanged;
 use App\Offers\Actions\ChangeOfferState;
+use App\Offers\Bid;
+use App\Offers\BidState;
+use App\Offers\Events\BidDeclined;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Users\User;
@@ -26,8 +30,13 @@ final class TakeToGarage
 
         return DB::transaction(function () use ($offer, $manager, $cost, $by, $note) {
             ($this->state)($offer, OfferState::Garage, $by);
+            // Машина ушла из продажи — ждущие подтверждения менеджеров закрываются, как при принятии чужого.
+            $offer->bids()->where('state', BidState::Active)->get()->each(function (Bid $bid) use ($by) {
+                $bid->update(['state' => BidState::Declined, 'decided_at' => now(), 'decided_by' => $by->id]);
+                BidDeclined::dispatch($bid, $by);
+            });
 
-            return Car::create([
+            $car = Car::create([
                 'offer_id' => $offer->id,
                 'manager_id' => $manager?->id,
                 'taken_at' => now(),
@@ -35,6 +44,9 @@ final class TakeToGarage
                 'note' => $note,
                 'created_by' => $by->id,
             ]);
+            GarageChanged::dispatch($car);
+
+            return $car;
         });
     }
 }

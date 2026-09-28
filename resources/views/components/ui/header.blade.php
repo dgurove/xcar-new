@@ -87,7 +87,7 @@
                 <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" placeholder="{{ $searchHint }}" class="w-28 sm:w-36 lg:w-52" aria-label="Поиск">
             </form>
             @foreach ($top as $item)
-                <a href="{{ $item['href'] }}" class="header-btn header-h flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>{{ $item['label'] }}@if (str_starts_with($item['href'], 'http')) ↗@endif</a>
+                <a href="{{ $item['href'] }}" class="header-btn header-h {{ count($top) > 1 ? 'flex-1' : '' }} px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>{{ $item['label'] }}@if (str_starts_with($item['href'], 'http')) ↗@endif</a>
             @endforeach
             @if ($user)
                 <a href="{{ $cabinet }}" class="header-btn header-h ml-auto max-w-[11rem] gap-2 px-4 text-sm" @if (\App\Support\Nav::inCabinet($path, $user, 'desktop')) aria-current="page" @endif>
@@ -104,8 +104,9 @@
             </button>
         </div>
         <div class="header-row">
+            {{-- Капсулы делят ряд поровну; одна-единственная (гараж) — по своей ширине, а не полосой во весь экран. --}}
             @foreach ($capsules as $item)
-                <a href="{{ $item['href'] }}" class="header-btn header-h relative flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>
+                <a href="{{ $item['href'] }}" class="header-btn header-h relative {{ count($capsules) > 1 ? 'flex-1' : '' }} px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>
                     {{ $item['label'] }}<x-ui.badge :href="$item['href']" :badges="$badges"/>
                 </a>
             @endforeach

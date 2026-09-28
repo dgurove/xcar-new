@@ -4,6 +4,7 @@ namespace App\Garage;
 
 use App\Billing\Invoice;
 use App\Offers\Offer;
+use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -80,7 +81,25 @@ class Car extends Model
     /** Сколько дней машина в гараже; проданная — по день продажи. */
     public function days(): int
     {
-        return (int) $this->taken_at->startOfDay()->diffInDays(($this->sold_at ?? now())->startOfDay()) + 1;
+        return (int) $this->taken_at->copy()->startOfDay()->diffInDays(($this->sold_at ?? now())->copy()->startOfDay()) + 1;
+    }
+
+    /** Расходы и итог заморожены: по машине выставлен счёт. Поправить — аннулировать счёт. */
+    public function isFrozen(): bool
+    {
+        return $this->invoice_id !== null || $this->state === CarState::Settled;
+    }
+
+    /** Машина, по которой выставлен этот счёт: уведомления о гаражном счёте ведут к ней, а не в сделки. */
+    public static function ofInvoice(Invoice $invoice): ?self
+    {
+        return $invoice->deal_id ? null : self::with(['offer.brand', 'offer.model', 'manager'])->where('invoice_id', $invoice->id)->first();
+    }
+
+    /** Адрес машины в гараже — из уведомлений, писем и Telegram, откуда бы ни открыли. */
+    public function url(): string
+    {
+        return Surface::Garage->url('/cars/'.$this->offer->number);
     }
 
     public function isSold(): bool

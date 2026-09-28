@@ -10,7 +10,6 @@ use App\Garage\Actions\ClearGarageSold;
 use App\Garage\Actions\MarkGarageSold;
 use App\Garage\Actions\SettleGarageCar;
 use App\Garage\Car;
-use App\Garage\CarState;
 use App\Offers\Offer;
 use App\Support\Money;
 use Illuminate\Http\Request;
@@ -19,16 +18,6 @@ use Illuminate\Support\Carbon;
 /** Итог по машине и расчёт с менеджером: продажа, вознаграждение, счёт и оплата. */
 class SettlementController
 {
-    /** Расчёты: машины, где деньги уже считаются. Менеджеру — свои. */
-    public function index(Request $request)
-    {
-        $cars = Car::of($request->user())->whereIn('state', [CarState::Sold, CarState::Settled])
-            ->with(['offer.brand', 'offer.model', 'manager', 'costs', 'invoice'])
-            ->orderByDesc('sold_at')->get();
-
-        return view('garage.money.index', ['cars' => $cars]);
-    }
-
     public function sold(Request $request, Offer $offer, MarkGarageSold $sold)
     {
         $car = $this->staffCar($request, $offer);
@@ -37,7 +26,6 @@ class SettlementController
             'sold_at' => ['nullable', 'date', 'before_or_equal:today'],
             'buyer_name' => ['nullable', 'string', 'max:120'],
             'buyer_phone' => ['nullable', 'string', 'max:32'],
-            'commission' => ['nullable', 'integer', 'min:0'],
         ]);
         $sold($car, $data + ['sold_at' => now()], $request->user());
 
@@ -54,7 +42,8 @@ class SettlementController
     public function settle(Request $request, Offer $offer, SettleGarageCar $settle)
     {
         $car = $this->staffCar($request, $offer);
-        $invoice = $settle($car, $request->user(), $request->boolean('vat'));
+        $commission = $request->validate(['commission' => ['nullable', 'integer', 'min:0']])['commission'] ?? null;
+        $invoice = $settle($car, $request->user(), $commission, $request->boolean('vat'));
 
         return back()->with('toast', $invoice ? 'Счёт '.$invoice->label() : 'Расчёт закрыт');
     }

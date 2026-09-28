@@ -4,22 +4,17 @@ namespace App\Garage\Actions;
 
 use App\Garage\Car;
 use App\Garage\CarState;
-use App\Garage\Payer;
+use App\Garage\Events\GarageChanged;
 use App\Users\User;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Итог по машине вносим мы: за сколько продана и сколько из этого — менеджеру.
- * Деньги покупателя у него на руках, поэтому он оставляет себе свои расходы и
- * вознаграждение, а остальное отдаёт нам.
- */
+/** Итог продажи вносим мы: за сколько, когда и кому. Вознаграждение — при расчёте, в шторке счёта. */
 final class MarkGarageSold
 {
     public function __invoke(Car $car, array $data, User $by): Car
     {
-        $base = round($data['sold_price'] - $car->spent(Payer::Manager), 2);
-        if ($car->manager && ($data['commission'] ?? 0) > $base) {
-            throw ValidationException::withMessages(['commission' => 'Вознаграждение больше, чем менеджер нам отдаёт']);
+        if ($car->isFrozen()) {
+            throw ValidationException::withMessages(['sold_price' => 'По машине выставлен счёт: сначала аннулируйте его']);
         }
 
         $car->update([
@@ -27,9 +22,9 @@ final class MarkGarageSold
             'sold_at' => $data['sold_at'] ?? now(),
             'buyer_name' => $data['buyer_name'] ?? null,
             'buyer_phone' => $data['buyer_phone'] ?? null,
-            'commission' => $data['commission'] ?? null,
             'state' => CarState::Sold,
         ]);
+        GarageChanged::dispatch($car);
 
         return $car;
     }

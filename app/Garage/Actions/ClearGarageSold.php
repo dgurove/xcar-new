@@ -4,6 +4,7 @@ namespace App\Garage\Actions;
 
 use App\Garage\Car;
 use App\Garage\CarState;
+use App\Garage\Events\GarageChanged;
 use Illuminate\Validation\ValidationException;
 
 /** «Не продана»: итог снимается, машина снова чинится. После счёта — только через его аннулирование. */
@@ -16,5 +17,6 @@ final class ClearGarageSold
         }
 
         $car->update(['sold_price' => null, 'sold_at' => null, 'buyer_name' => null, 'buyer_phone' => null, 'commission' => null, 'state' => CarState::Repair]);
+        GarageChanged::dispatch($car);
     }
 }

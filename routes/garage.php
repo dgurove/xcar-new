@@ -15,7 +15,8 @@ Route::domain(config('xcar.garage_host'))->middleware('auth')->group(function ()
     Route::delete('/costs/{cost}', [CarController::class, 'destroyCost']);
 
     // Расчёт: итог продажи и счёт менеджеру вносим мы, об оплате сообщает он.
-    Route::get('/money', [SettlementController::class, 'index']);
+    // «Расчёты» слились со списком машин: там группы по этапу.
+    Route::get('/money', fn () => redirect('/', 301));
     Route::post('/cars/{offer}/sold', [SettlementController::class, 'sold']);
     Route::delete('/cars/{offer}/sold', [SettlementController::class, 'unsold']);
     Route::post('/cars/{offer}/settle', [SettlementController::class, 'settle']);

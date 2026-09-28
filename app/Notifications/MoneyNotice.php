@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Billing\Invoice;
 use App\Billing\Payment;
+use App\Garage\Car;
 use App\Support\Money;
 use App\Support\Surface;
 
@@ -20,32 +21,45 @@ final class MoneyNotice extends Notice
         return new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'), $i->deal?->offer?->titleWithYear(), '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number);
     }
 
+    /** Расчёт по машине в гараже: счёт к оплате или то, что мы должны ему, — ведёт на машину. */
+    public static function garageInvoice(Invoice $i, Car $car): self
+    {
+        return new self($i->isOwed() ? 'Вам к выплате '.Money::exact($i->remaining()).' за '.$car->offer->titleWithYear() : 'Счёт '.$i->label().' на '.Money::exact($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'),
+            $car->offer->titleWithYear(), $car->url(), $car->offer->number);
+    }
+
     public static function paymentConfirmed(Payment $p): self
     {
         $i = $p->invoice;
 
-        return new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' принята', $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : 'Счёт оплачен', '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number);
+        return new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' принята', $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : 'Счёт оплачен', self::path($i), $i->deal?->offer?->number);
+    }
+
+    /** Куда вести менеджера по счёту: расчёт сделки на сайте или машина в гараже. */
+    private static function path(Invoice $i): string
+    {
+        return Car::ofInvoice($i)?->url() ?? '/account/money/deals/'.$i->deal_id;
     }
 
     public static function paymentRejected(Payment $p): self
     {
         $i = $p->invoice;
 
-        return new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' не поступила', $p->reject_reason ?: 'Проверьте платёж и сообщите снова', '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number);
+        return new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' не поступила', $p->reject_reason ?: 'Проверьте платёж и сообщите снова', self::path($i), $i->deal?->offer?->number);
     }
 
     public static function payout(Payment $p): self
     {
         $i = $p->invoice;
 
-        return new self('Выплачено '.Money::rub($p->amount).($i->remaining() > 0 ? ', осталось '.Money::rub($i->remaining()) : ''), $i->deal?->offer?->titleWithYear(), '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number);
+        return new self('Выплачено '.Money::rub($p->amount).($i->remaining() > 0 ? ', осталось '.Money::rub($i->remaining()) : ''), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), self::path($i), $i->deal?->offer?->number);
     }
 
     public static function claimed(Payment $p): self
     {
         $i = $p->invoice;
 
-        return new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' по счёту '.$i->label(), $i->deal?->offer?->titleWithYear(), '/work/money', $i->deal?->offer?->number, true);
+        return new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' по счёту '.$i->label(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), Car::ofInvoice($i)?->url() ?? '/work/money', $i->deal?->offer?->number, true);
     }
 
     public static function feeDue(Invoice $fee): self
@@ -65,7 +79,8 @@ final class MoneyNotice extends Notice
 
     public function href(): string
     {
-        return $this->toStaff ? Surface::Crm->url($this->path) : $this->path;
+        // Абсолютный адрес — гаражная машина: хост уже выбран, CRM к нему не приклеивать.
+        return $this->toStaff && ! str_starts_with($this->path, 'http') ? Surface::Crm->url($this->path) : $this->path;
     }
 
     public function offerNumber(): ?int

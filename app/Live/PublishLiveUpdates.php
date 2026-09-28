@@ -6,6 +6,7 @@ use App\Chats\Chat;
 use App\Chats\Events\ChatMessageChanged;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Events\ChatRead;
+use App\Garage\Events\GarageChanged;
 use App\Notifications\ChatNotice;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
@@ -42,6 +43,7 @@ final class PublishLiveUpdates
             ChatMessagePosted::class => 'chat',
             ChatMessageChanged::class => 'chatChanged',
             ChatRead::class => 'chatRead',
+            GarageChanged::class => 'garage',
         ];
     }
 
@@ -161,6 +163,17 @@ final class PublishLiveUpdates
     private function allSides(Chat $chat): array
     {
         return array_unique([$this->otherSide($chat), $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id), Topics::STAFF]);
+    }
+
+    /** Гараж: машину перечитывают менеджер и сотрудники; список машин — только менеджер (у сотрудников «/» — ещё и предложения CRM). */
+    public function garage(GarageChanged $e): void
+    {
+        $car = $e->car;
+        $paths = ['/cars/'.$car->offer->number];
+        $this->publish->refresh(Topics::STAFF, $paths);
+        if ($car->manager_id) {
+            $this->publish->refresh(Topics::user($car->manager_id), [...$paths, '/']);
+        }
     }
 
     public function notification(NotificationSent $e): void

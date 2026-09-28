@@ -14,6 +14,7 @@ use App\Billing\PaymentSource;
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
+use App\Garage\Car as GarageCar;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
@@ -299,27 +300,28 @@ final class Notify
     public function paymentConfirmed(PaymentConfirmed $e): void
     {
         $p = $e->payment->load(['invoice.deal.offer', 'invoice.deal.buyer']);
-        $p->invoice->deal?->buyer?->notify(MoneyNotice::paymentConfirmed($p));
+        ($p->invoice->deal?->buyer ?? GarageCar::ofInvoice($p->invoice)?->manager)?->notify(MoneyNotice::paymentConfirmed($p));
     }
 
     public function paymentRejected(PaymentRejected $e): void
     {
         $p = $e->payment->load(['invoice.deal.offer', 'invoice.deal.buyer']);
-        $p->invoice->deal?->buyer?->notify(MoneyNotice::paymentRejected($p));
+        ($p->invoice->deal?->buyer ?? GarageCar::ofInvoice($p->invoice)?->manager)?->notify(MoneyNotice::paymentRejected($p));
     }
 
     /** Выплата менеджеру записана — ему в ленту. Оплаты покупателя тут не касаются: о них он узнаёт подтверждением заявки. */
     public function paymentRecorded(PaymentRecorded $e): void
     {
         $i = $e->invoice;
-        if (! $i->isAgentFee() || ! $i->deal_id) {
+        $garage = $i->deal_id ? null : GarageCar::ofInvoice($i);
+        if (! $i->isAgentFee() || (! $i->deal_id && ! $garage)) {
             return;
         }
         $p = $i->payments()->latest('id')->first();
         if ($p && $p->source !== PaymentSource::Offset) {
             $i->load(['deal.offer', 'deal.buyer']);
             $p->setRelation('invoice', $i);
-            $i->deal?->buyer?->notify(MoneyNotice::payout($p));
+            ($i->deal?->buyer ?? $garage?->manager)?->notify(MoneyNotice::payout($p));
         }
     }
 
