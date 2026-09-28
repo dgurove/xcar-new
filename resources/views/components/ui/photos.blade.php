@@ -13,7 +13,7 @@
     @foreach ($photos as $media)
         @php $hidden = $hide && $media->getCustomProperty('hidden', false); @endphp
         <div class="photo-cell {{ $hidden ? 'is-hidden' : '' }}" data-id="{{ $media->id }}" data-hidden="{{ $hidden ? 1 : 0 }}">
-            <img src="{{ \App\Media\MediaUrl::for($media, 'w320') }}" data-full="{{ \App\Media\MediaUrl::for($media) }}" alt="" loading="lazy" data-action="click->photos#open">
+            <img src="{{ \App\Media\MediaUrl::for($media, 'w320') }}" data-full="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" alt="" loading="lazy" data-action="click->photos#open">
             @if ($main && !$hidden && !$mainShown)<span class="mark mark-accent photo-main">Главное</span>@php $mainShown = true; @endphp@endif
             @unless ($readonly)
             <div class="photo-actions">

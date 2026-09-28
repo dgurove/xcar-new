@@ -2,7 +2,10 @@
 // подставляется из хэша сборки, так что после каждой выкладки кэш свежий сам.
 // HTML — только из сети (страницы живые), при обрыве — /offline; запрос HTML
 // уходит параллельно старту воркера (navigation preload). Сборка, шрифт и
-// картинки — из кэша, картинок не больше ~30 МБ: у iOS потолок около 50.
+// картинки — из кэша. Картинки — только сжатые версии (/hot/: w320…w960, ~30–80 КБ), до 300 штук
+// (~15 МБ): у iOS потолок около 50. Оригиналы (/media/, ~200–400 КБ) не храним — их открывают редко
+// (увеличение, «Скачать»), хватает HTTP-кэша браузера. При установке качаем только сам app.js, app.css,
+// шрифт и /offline: сканер QR (1 МБ), редактор и прочие куски лягут в кэш при первом использовании.
 // Кэш — только ускорение: не записался (место кончилось) — ответ всё равно из
 // сети, а кэш картинок сбрасывается. Раньше отказ записи ронял сам ответ: у
 // телефона с полным хранилищем не грузились стили и новые фото.
@@ -10,7 +13,7 @@ const VERSION = '__VERSION__';
 const STATIC = `static-${VERSION}`;
 const MEDIA = `media-${VERSION}`;
 const PAGES = `pages-${VERSION}`;
-const MEDIA_LIMIT = 150;
+const MEDIA_LIMIT = 300;
 const PAGES_LIMIT = 30;
 // Экраны, которые нельзя показывать из кэша: вход, выход, служебное.
 const NO_PAGE_CACHE = /^\/(login|logout|register|password|passkey|i|offline|dev|live|up)(\/|$)/;
@@ -21,7 +24,8 @@ self.addEventListener('install', (event) => {
         let assets = [];
         try {
             const manifest = await (await fetch('/build/manifest.json', { cache: 'no-cache' })).json();
-            assets = Object.values(manifest).map((e) => '/build/' + e.file);
+            // Только точки входа (app.js, app.css) и их css — не каждый кусок сборки.
+            assets = Object.values(manifest).filter((e) => e.isEntry).flatMap((e) => [e.file, ...(e.css || [])]).map((f) => '/build/' + f);
         } catch {}
         const precache = () => cache.addAll(['/offline', '/fonts/onest-var.woff2', ...assets]);
         // Места нет — освобождаем картинки и экраны прошлых версий и пробуем ещё раз; не вышло — ставимся без
@@ -53,7 +57,7 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(cacheFirst(STATIC, request));
         return;
     }
-    if (url.pathname.startsWith('/media/')) {
+    if (url.pathname.startsWith('/hot/')) {
         event.respondWith(cacheFirst(MEDIA, request, MEDIA_LIMIT));
         return;
     }

@@ -53,7 +53,7 @@ export default class extends Controller {
         const index = event.currentTarget.dataset.index === undefined ? this.index() : Number(event.currentTarget.dataset.index);
         const items = [...this.stripTarget.querySelectorAll('a[href]')].map((a) => {
             const img = a.querySelector('img');
-            return { src: a.href, el: img, thumb: img?.currentSrc || img?.src };
+            return { src: a.href, mid: a.dataset.mid, el: img, thumb: img?.currentSrc || img?.src };
         });
         this.viewer = await openLightbox({
             items, index,

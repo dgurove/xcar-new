@@ -48,7 +48,12 @@ export default class extends Controller {
         if (next && next.loading === 'lazy') next.loading = 'eager';
     }
 
-    next() { if (!this.stopped && this.element.getBoundingClientRect().bottom > 0) this.show(this.i + 1); }
+    // Сам листается только кадр на экране: карточки ниже не качают свои кадры, пока до них не долистали.
+    next() {
+        if (this.stopped) return;
+        const r = this.element.getBoundingClientRect();
+        if (r.bottom > 0 && r.top < innerHeight) this.show(this.i + 1);
+    }
 
     manual(event) {
         event.preventDefault(); event.stopPropagation();

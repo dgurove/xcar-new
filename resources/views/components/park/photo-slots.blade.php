@@ -17,7 +17,7 @@
                 {{-- Снятый слот: нажатие — кадр во весь экран (все кадры слота подряд), камера в углу — доснять. --}}
                 <div class="photo-slot is-filled">
                     @foreach ($shots->reverse()->values() as $k => $shot)
-                        <img src="{{ \App\Media\MediaUrl::for($shot, 'w320') }}" alt="" data-full="{{ \App\Media\MediaUrl::for($shot) }}" data-id="{{ $shot->id }}" @if ($k) hidden loading="lazy" @else data-action="click->photos#open" @endif>
+                        <img src="{{ \App\Media\MediaUrl::for($shot, 'w320') }}" alt="" data-full="{{ \App\Media\MediaUrl::for($shot) }}" data-mid="{{ \App\Media\MediaUrl::for($shot, 'w960') }}" data-id="{{ $shot->id }}" @if ($k) hidden loading="lazy" @else data-action="click->photos#open" @endif>
                     @endforeach
                     @if ($shots->count() > 1)<span class="mark nums">{{ $shots->count() }}</span>@endif
                     <button type="button" class="photo-slot-camera" data-action="photo-slot#pick" data-slot="{{ $slot->value }}" aria-label="Доснять"><x-ui.icon name="camera" class="size-4"/></button>

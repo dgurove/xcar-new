@@ -13,11 +13,28 @@ import { longPressMenu } from './longpress';
 const application = Application.start();
 window.Stimulus = application;
 
-const controllers = import.meta.glob('./controllers/*_controller.js', { eager: true });
-for (const [path, module] of Object.entries(controllers)) {
-    const name = path.match(/\/([\w-]+)_controller\.js$/)[1].replace(/_/g, '-');
-    application.register(name, module.default);
-}
+// Контроллеры, нужные только на своих экранах (чат, фото, сканер QR, подпись, редактор…), — отдельными кусками:
+// грузятся, когда на странице появился их data-controller. Остальные — в основной сборке, сразу.
+const controllerName = (path) => path.match(/\/([\w-]+)_controller\.js$/)[1].replace(/_/g, '-');
+const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,photo_slot,qr_release,signature,share,passkey,vin,draft,editor,combobox}_controller.js'], { eager: true });
+for (const [path, module] of Object.entries(controllers)) application.register(controllerName(path), module.default);
+const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,photo_slot,qr_release,signature,share,passkey,vin,draft,editor,combobox}_controller.js')).map(([path, load]) => [controllerName(path), load]));
+const loadLazy = (root) => {
+    for (const [name, load] of lazy) {
+        const selector = `[data-controller~="${name}"]`;
+        if (!root.matches?.(selector) && !root.querySelector?.(selector)) continue;
+        lazy.delete(name);
+        load().then((module) => application.register(name, module.default));
+    }
+};
+loadLazy(document.documentElement);
+new MutationObserver((records) => {
+    if (!lazy.size) return;
+    for (const r of records) {
+        if (r.type === 'attributes') loadLazy(r.target);
+        else r.addedNodes.forEach((node) => node.nodeType === 1 && loadLazy(node));
+    }
+}).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-controller'] });
 
 // Полоса — только у долгих визитов: с префетчем на touchstart быстрые укладываются в 400 мс.
 Turbo.config.drive.progressBarDelay = 400;

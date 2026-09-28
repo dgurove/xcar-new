@@ -18,7 +18,7 @@
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
             <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
                 @foreach ($photos as $i => $frame)
-                    <x-offer.photo :media="$frame" sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw" data-frames-target="frame"/>
+                    <x-offer.photo :media="$frame" :sizes="\App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request()))" data-frames-target="frame"/>
                 @endforeach
             </a>
             @if ($photos->count() > 1)

@@ -6,8 +6,11 @@
 //
 // Размеров кадров в базе нет: пропорцию даёт миниатюра, длинная сторона — 1600 (столько после
 // PhotoIngest). Кадр, чья пропорция не сошлась с полным файлом, перерисовывается по нему.
+// На телефоне кадр — сжатая версия (mid, w960): оригинал вдвое-втрое тяжелее и на экране не отличим;
+// он подгружается, только когда кадр увеличили, и отдаётся «Скачать».
 
 const LONG = 1600;
+const phone = () => matchMedia('(max-width: 1023.98px)').matches;
 const sizes = new Map(); // адрес миниатюры → { w, h }
 let loaded = null;
 const load = () => (loaded ??= Promise.all([import('photoswipe'), import('photoswipe/style.css')]).then(([m]) => m.default));
@@ -84,8 +87,9 @@ function unwind() {
 }
 
 /**
- * items: [{ src, thumb?, el?, download? }] — полный кадр, миниатюра (для пропорции), элемент-миниатюра
- *   на странице (кадр вырастает из него и уходит в него), адрес «Скачать» (по умолчанию src).
+ * items: [{ src, mid?, thumb?, el?, download? }] — полный кадр, сжатая версия для телефона, миниатюра (для
+ *   пропорции), элемент-миниатюра на странице (кадр вырастает из него и уходит в него), адрес «Скачать»
+ *   (по умолчанию src).
  * actions: [{ name, icon, title, run(index), iconFor?(index), titleFor?(index), shown?(index) }] — свои кнопки в верхней полосе.
  * download: кнопка «Скачать». onChange(index) — кадр сменился. onClose(index) — просмотр закрыт.
  * Возвращает { items, index, refresh(items, index), close(), destroy() }.
@@ -98,7 +102,7 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
     const view = { index, items, pswp: null, closed: false, host: null };
     const data = (list) => list.map((it) => {
         const s = sizes.get(it.thumb || it.src);
-        return { src: it.src, width: s?.w || LONG, height: s?.h || Math.round(LONG * .75), msrc: it.el?.currentSrc || it.thumb, element: it.el, sized: !!s, item: it };
+        return { src: (phone() && it.mid) || it.src, full: it.src, width: s?.w || LONG, height: s?.h || Math.round(LONG * .75), msrc: it.el?.currentSrc || it.thumb, element: it.el, sized: !!s, item: it };
     });
     const measure = (i) => {
         const it = view.items[i];
@@ -145,7 +149,7 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
                     onInit: (el, p) => {
                         el.setAttribute('download', '');
                         el.target = '_blank';
-                        const sync = () => { const d = p.currSlide?.data; if (d) el.href = d.item.download || d.src; };
+                        const sync = () => { const d = p.currSlide?.data; if (d) el.href = d.item.download || d.full; };
                         p.on('change', sync);
                         sync();
                     },
@@ -176,6 +180,16 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
             Object.assign(d, { width: s.w, height: s.h, sized: true });
             pswp.refreshSlideContent(content.index);
         });
+        // Увеличили кадр сверх «по экрану» — подменить сжатую версию оригиналом (размеры те же, кадр не дёрнется).
+        const sharpen = () => {
+            const slide = pswp.currSlide, d = slide?.data, img = slide?.content?.element;
+            if (!d || d.src === d.full || d.sharp || !img || slide.currZoomLevel <= slide.zoomLevels.fit * 1.05) return;
+            d.sharp = true;
+            const full = new Image();
+            full.onload = () => { if (img.isConnected) img.src = d.full; };
+            full.src = d.full;
+        };
+        pswp.on('zoomPanUpdate', sharpen);
         // Шторка подтверждения поверх просмотра (фокус ушёл в неё): Esc и стрелки — её.
         pswp.on('keydown', (e) => {
             const a = document.activeElement;
