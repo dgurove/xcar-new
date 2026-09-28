@@ -21,7 +21,8 @@ export default class extends Controller {
 
     disconnect() {
         this.media?.removeEventListener('change', this.onMedia);
-        if (this.dialogTarget.open) this.dialogTarget.close();
+        // Turbo сносит поддерево целиком — диалога может уже не быть, и обращение к цели роняло консоль.
+        if (this.hasDialogTarget && this.dialogTarget.open) this.dialogTarget.close();
     }
 
 

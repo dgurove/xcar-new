@@ -40,6 +40,10 @@
             </div>
         </div>
 
+        @if ($car->isSold())
+            @include('garage.cars.settlement')
+        @endif
+
         <div>
             <h2 class="mb-2 text-lg">Расходы</h2>
             @if ($car->costs->isEmpty())
@@ -76,7 +80,10 @@
         @unless ($car->isSold() && ! $staff)
             <div data-controller="sheet">
                 <x-ui.action-bar>
-                    <button type="button" class="btn btn-accent w-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Записать расход</button>
+                    <button type="button" class="btn {{ $staff && ! $car->isSold() ? 'btn-quiet' : 'btn-accent' }} min-w-0 flex-1" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Записать расход</button>
+                    @if ($staff && ! $car->isSold())
+                        <button type="button" class="btn btn-accent min-w-0 flex-1" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">Продана</button>
+                    @endif
                 </x-ui.action-bar>
                 <x-ui.sheet id="cost-new" title="Записать расход" :open="$errors->any()">
                     <form method="post" action="/cars/{{ $offer->number }}/costs" class="flex flex-col gap-4">
@@ -87,6 +94,21 @@
                 </x-ui.sheet>
             </div>
         @endunless
+
+        @if ($staff && ! $car->isSold())
+            <div data-controller="sheet" data-action="sold:open@window->sheet#open" class="contents">
+                <x-ui.sheet id="sold" title="Продана" :open="$errors->has('sold_price')">
+                    <form method="post" action="/cars/{{ $offer->number }}/sold" class="flex flex-col gap-4">
+                        @csrf
+                        <x-ui.field name="sold_price" label="За сколько, ₽" :value="old('sold_price')"/>
+                        <x-ui.field name="sold_at" label="Когда" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
+                        <x-ui.field name="buyer_name" label="Покупатель" :value="old('buyer_name')" placeholder="Кому продал"/>
+                        <x-ui.field name="buyer_phone" label="Телефон" :value="old('buyer_phone')"/>
+                        <x-ui.button type="submit" variant="primary" block>Продана</x-ui.button>
+                    </form>
+                </x-ui.sheet>
+            </div>
+        @endif
 
         @if ($staff && ! $car->isSold() && $car->costs->isEmpty())
             <form method="post" action="/cars/{{ $offer->number }}" data-turbo-confirm="Вернуть машину в черновики?">

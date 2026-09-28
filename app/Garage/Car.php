@@ -2,6 +2,7 @@
 
 namespace App\Garage;
 
+use App\Billing\Invoice;
 use App\Offers\Offer;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -36,6 +37,12 @@ class Car extends Model
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    /** Счёт менеджеру по этой машине; нет — расчёт ещё не выставлен. */
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     /** Расходы, свежие первыми: их и читают сверху вниз. */

@@ -76,10 +76,9 @@ class CarController
         return $car;
     }
 
-    /** «15 000», «15000,50» и «15 000.50» — одно и то же число: люди пишут как привыкли. */
     private function costData(Request $request): array
     {
-        $request->merge(['amount' => str_replace(',', '.', preg_replace('/[^\d.,]/u', '', (string) $request->input('amount')))]);
+        $request->merge(['amount' => Money::parse($request->input('amount'))]);
 
         return $request->validate([
             'title' => ['required', 'string', 'max:120'],

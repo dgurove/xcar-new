@@ -63,6 +63,7 @@ final class Nav
         if ($surface === Surface::Garage) {
             return [
                 self::item('Машины', '/', ['/', '/cars']),
+                self::item('Расчёты', '/money'),
             ];
         }
 

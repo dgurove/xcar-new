@@ -24,6 +24,12 @@ final class Money
         return $value === null || $value === '' ? '' : self::nums($value, $decimals).self::NBSP.'₽';
     }
 
+    /** «15 000,50», «15000.5», «15 000 ₽» — одно число: люди пишут суммы как привыкли. */
+    public static function parse(?string $value): string
+    {
+        return str_replace(',', '.', preg_replace('/[^\d.,]/u', '', (string) $value));
+    }
+
     /** Копейки — только когда они есть: «15 000,50 ₽» и «15 000 ₽». Округлять чужие траты нельзя. */
     public static function exact(int|float|string|null $value): string
     {
