@@ -4,7 +4,6 @@ namespace App\Purchases\Actions;
 
 use App\Offers\Actions\CreateOffer;
 use App\Purchases\Car;
-use App\Purchases\Jobs\CopyPhotosToOffer;
 use App\Purchases\Purchase;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +12,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Строки контрпредложения → черновики предложений. Закупочная — итоговая цена поставщика как есть,
  * заявленная пустая (равна закупочной), цену продажи ставят руками в «Оценить». Цены менеджеров и наша
- * цена закупки не переносятся: они были нужны только для файла поставщику. ТС с предложением из закупки
+ * цена закупки не переносятся: они были нужны только для файла поставщику. Фото переходят к предложению
+ * записью в базе — файлы, конверсии, порядок и скрытые кадры остаются как были. ТС с предложением из закупки
  * исключается; повторная загрузка того же файла её пропускает.
  */
 final class MoveToOffers
@@ -38,9 +38,10 @@ final class MoveToOffers
                     'share_locked' => $car->share_locked, 'vendor_id' => $vendor->id, 'prices_include_vat' => (bool) $vendor->offers_include_vat,
                     'floor_price' => $prices[mb_strtolower(trim($car->dl))], 'claim_ref' => $car->dl,
                 ], ['purchase' => $purchase->number, 'dl' => $car->dl]);
-                $car->update(['offer_id' => $offer->id]);
+                // Фото не копируются, а переходят: путь файла у spatie — по id кадра, модель в нём не участвует.
+                $car->media()->where('collection_name', 'photos')->update(['model_type' => $offer->getMorphClass(), 'model_id' => $offer->id]);
+                $car->update(['offer_id' => $offer->id, 'photos_count' => 0]);
             });
-            CopyPhotosToOffer::dispatch($car->id);
         }
 
         return $cars->count();
