@@ -44,10 +44,11 @@
     <td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>
     <td class="num nums">
         @if ($unpriced)
+            {{-- Закупочная — во всех видах (и в подробной, и на ПК): без неё «оценить» не с чем сравнить. --}}
             <span class="text-accent-text">оценить</span>
-            <span class="cell-sub sm:hidden">@if ($offer->floor_price){{ \App\Support\Money::nums($offer->floor_price) }}@else{!! \App\Support\Ago::time($since) !!}@endif</span>
+            @if ($offer->floor_price)<span class="cell-sub">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@else<span class="cell-sub sm:hidden">{!! \App\Support\Ago::time($since) !!}</span>@endif
         @else
-            @if ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
+            @if ($price->shown())@if ($price->withFrom())<span class="price-from hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
             <span class="cell-sub sm:hidden">{!! \App\Support\Ago::time($since) !!}</span>
         @endif
     </td>

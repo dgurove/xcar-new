@@ -758,6 +758,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table-wrap.is-wide .table-group-name { display: inline-block; position: sticky; left: .75rem; }
     /* Вендор здесь своим столбцом — логотип перед названием лишний. */
     .table-wrap.is-wide .col-vendor-lead { display: none !important; }
+    /* Цена «от → до» целиком, как на широком ПК: столбцу здесь места хватает, таблица листается. */
+    .table-wrap.is-wide .price-from { display: inline !important; }
   }
 
   /* Страницы покупателя (x-pickup.layout): колонка до 28rem на фоне страницы, знак сверху. */
