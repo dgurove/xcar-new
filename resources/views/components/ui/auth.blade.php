@@ -15,6 +15,12 @@
             {{ $slot }}
         </div>
         @isset($footer)<p class="mt-5 text-center text-sm text-white/70">{{ $footer }}</p>@endisset
+        {{-- Реквизиты и документы открыты и до входа: их проверяют банк и платёжный сервис. --}}
+        <nav class="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-white/70">
+            <a href="/company" class="hover:text-white">О компании</a>
+            <a href="/terms" class="hover:text-white">Соглашение</a>
+            <a href="/privacy" class="hover:text-white">Обработка данных</a>
+        </nav>
     </main>
     <x-ui.toasts/>
 </x-ui.layout>

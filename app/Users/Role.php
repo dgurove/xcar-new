@@ -10,6 +10,7 @@ enum Role: string
     case Moderator = 'moderator'; // сотрудник: панель
     case Admin = 'admin';         // владелец: всё
     case Parking = 'parking';     // управляющий парковкой: только park.xcar, разделы — по галкам (Park\Area), без настроек
+    case Reviewer = 'reviewer';   // проверяющий (модерация ЮKassa): открытые предложения с ценой продажи, действий нет
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum Role: string
             self::Moderator => 'Модератор',
             self::Admin => 'Администратор',
             self::Parking => 'Парковка',
+            self::Reviewer => 'Проверяющий',
         };
     }
 
@@ -32,7 +34,7 @@ enum Role: string
     /** Цену продажи видят все, кроме посетителя; что стоит перед стрелкой — решает PriceView. */
     public function canSeePrices(): bool
     {
-        return in_array($this, [self::Buyer, self::Manager, self::Moderator, self::Admin], true);
+        return in_array($this, [self::Buyer, self::Manager, self::Moderator, self::Admin, self::Reviewer], true);
     }
 
     /** Подтверждает предложение своей ценой менеджер и сотрудник. Покупатель — только интерес. */
@@ -49,7 +51,7 @@ enum Role: string
     /** Галерея «скоро в продаже» — для тех, кто торгуется, и посетителя; покупателю только открытое ему. */
     public function canSeeGallery(): bool
     {
-        return ! in_array($this, [self::Buyer, self::Parking], true);
+        return ! in_array($this, [self::Buyer, self::Parking, self::Reviewer], true);
     }
 
     /** Чат по предложению: менеджер и посетитель — с площадкой, покупатель — со своим менеджером (нужен manager_id, см. User::canChat). */
@@ -61,7 +63,7 @@ enum Role: string
     /** Поделиться PDF — всем, кроме покупателя: его цена — не для пересылки дальше. */
     public function canShare(): bool
     {
-        return ! in_array($this, [self::Buyer, self::Parking], true);
+        return ! in_array($this, [self::Buyer, self::Parking, self::Reviewer], true);
     }
 
     /** Проявляет интерес тот, кто не подтверждает ценой: покупатель и посетитель. */

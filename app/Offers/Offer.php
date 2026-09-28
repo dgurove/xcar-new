@@ -220,6 +220,10 @@ class Offer extends Model implements HasMedia
             return $q->whereIn('state', [OfferState::Open, OfferState::Gallery])
                 ->where(fn ($w) => $w->where('managers_limited', false)->orWhereHas('managers', fn ($m) => $m->whereKey($user->id)));
         }
+        // Проверяющий: все открытые предложения общего круга, без показов и менеджера.
+        if ($user->role === Role::Reviewer) {
+            return $q->where('state', OfferState::Open)->where('managers_limited', false);
+        }
         if ($user->role === Role::Buyer) {
             if (! $user->manager_id) {
                 return $q->whereRaw('false');

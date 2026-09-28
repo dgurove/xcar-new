@@ -45,6 +45,7 @@ Route::get('/contacts', [EnquiryController::class, 'show']);
 Route::post('/contacts', [EnquiryController::class, 'store'])->middleware('throttle:5,1');
 Route::view('/privacy', 'site.pages.obrabotka-dannyh');
 Route::view('/terms', 'site.pages.soglashenie');
+Route::view('/company', 'site.pages.o-kompanii');
 Route::view('/consent', 'site.pages.soglasie');
 // Выдача по QR: анкета покупателя по ссылке от страховой и страница, которую открывает камера по QR пропуска.
 Route::get('/pickup/{code}', [PickupController::class, 'show'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:60,1');
