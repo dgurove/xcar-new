@@ -1,31 +1,31 @@
 {{-- Карточка оффера — одна разметка на строку и плитку, раскладку задаёт контейнер .cards
      (сетка областей: media, body, extra, star, aside, place, action). Закладка, цена и город —
      прямые дети карточки: закладка в правом верхнем углу, под ней цена, внизу кнопка, город
-     слева вровень с кнопкой. Якорь живых обновлений: id и data-offer-number. --}}
-@props(['offer', 'context' => null, 'admin' => false])
+     слева вровень с кнопкой. Якорь живых обновлений: id и data-offer-number. Витрина; в CRM — x-offer.crm-card. --}}
+@props(['offer', 'context' => null])
 @php
     $user = auth()->user();
     $n = $offer->number;
     $gallery = $offer->isGallery();
     $price = \App\Offers\PriceView::for($offer, $user);
     $prices = $price->visible;
-    $href = $admin ? "/offers/{$n}" : ($context?->offerUrl($offer) ?? "/offers/{$n}");
+    $href = $context?->offerUrl($offer) ?? "/offers/{$n}";
     $main = $offer->mainPhoto();
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $hasMedia = $photos->isNotEmpty();
-    $canBid = !$admin && ($user?->role->canBid() ?? false) && $offer->bidsOpen();
+    $canBid = ($user?->role->canBid() ?? false) && $offer->bidsOpen();
     // Покупатель: интерес уже отмечен? Каталог грузит его интерес одним запросом, иначе — точечно.
-    $myInterest = !$admin && $user?->isBuyer() ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
-    $seen = !$admin && $user?->isManager() && !$gallery ? \App\Offers\Showing::remembered($offer->id) : null;
+    $myInterest = $user?->isBuyer() ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
+    $seen = $user?->isManager() && !$gallery ? \App\Offers\Showing::remembered($offer->id) : null;
     $sizes = \App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request()));
     // Первые две карточки страницы — кадр с высоким приоритетом (счётчик на запросе).
     $nth = request()->attributes->get('card.nth', 0);
     request()->attributes->set('card.nth', $nth + 1);
     $eager = $nth < 2;
-    $bidder = $admin || ($user?->role->canBid() ?? false);
-    $hasMarks = $admin || $offer->car_place || (!$gallery && ($offer->isFresh() || ($bidder && ($offer->isEndingSoon() || !$offer->bidsOpen() || $offer->secondsLeft()))));
+    $bidder = $user?->role->canBid() ?? false;
+    $hasMarks = $offer->car_place || (!$gallery && ($offer->isFresh() || ($bidder && ($offer->isEndingSoon() || !$offer->bidsOpen() || $offer->secondsLeft()))));
 @endphp
-<article id="{{ $admin ? 'admin-offer-' : 'offer-' }}{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card rise group']) }}>
+<article id="offer-{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card rise group']) }}>
     @if ($hasMedia)
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
             <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
@@ -46,8 +46,8 @@
     @else
         <a href="{{ $href }}" class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
     @endif
-    @if ($user && !$admin)<x-offer.favorite :offer="$offer"/>@endif
-    @if (!$admin && !$gallery && $user?->isManager())
+    @if ($user)<x-offer.favorite :offer="$offer"/>@endif
+    @if (!$gallery && $user?->isManager())
         {{-- Кружок режима выбора: в разметке всегда, виден только когда лента в режиме (selection). --}}
         <label class="card-check"><input type="checkbox" value="{{ $offer->id }}" aria-label="Выбрать"><span><x-ui.icon name="check" class="size-4"/></span></label>
     @endif
@@ -57,12 +57,7 @@
             <a href="{{ $href }}" class="block min-w-0 flex-1 text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
         </div>
         @if ($hasMarks)
-            <div class="card-marks"><x-offer.marks :offer="$offer" :admin="$admin"/></div>
-        @endif
-        @if ($admin && $gallery && ($offer->interests_count ?? 0))
-            <div class="mt-1 text-sm text-accent-text">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</div>
-        @elseif ($admin && !$gallery && ($offer->active_bids_count ?? 0))
-            <div class="mt-1 text-sm text-urgent">{{ $offer->active_bids_count }} {{ \App\Support\Plural::of($offer->active_bids_count, ['подтверждение', 'подтверждения', 'подтверждений']) }}@if ($offer->top_bid) <span class="tag nums">до {{ \App\Support\Money::rub($offer->top_bid) }}</span>@endif</div>
+            <div class="card-marks"><x-offer.marks :offer="$offer"/></div>
         @endif
     </div>
 
@@ -71,8 +66,8 @@
         @if ($seen)<span class="tag nums">видят {{ $seen }}</span>@endif
     </div>
     <span class="card-aside">
-        @if ($prices || $admin)
-            @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@elseif ($admin && $offer->asking_price)<span class="card-price nums" data-controller="fit">@if ($offer->floor_price)<span class="card-price-from">{{ \App\Support\Money::nums($offer->floor_price) }}&nbsp;→</span> @endif<span class="card-price-now">{{ \App\Support\Money::nums($offer->asking_price) }}&nbsp;₽</span></span>@endif
+        @if ($prices)
+            @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@endif
             @if ($price->declared)<span class="tag nums">заявлена {{ $price::money($price->declared) }}</span>@endif
         @elseif ($gallery)
             <span class="text-sm text-accent-text">Скоро в продаже</span>
@@ -82,7 +77,6 @@
     </span>
     <div class="card-place">@if ($offer->settlement)<x-ui.place class="truncate text-sm text-ink-dim">{{ $offer->settlement->name }}</x-ui.place>@endif</div>
 
-    @unless ($admin)
     <div class="card-action">
         @if ($user?->isBuyer())
             {{-- Кнопка ведёт на страницу и сразу открывает форму интереса (?interes=1). --}}
@@ -98,5 +92,4 @@
             <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-s btn-quiet btn-round" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-5"/></a>
         @endif
     </div>
-    @endunless
 </article>

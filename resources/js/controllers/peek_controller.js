@@ -37,15 +37,28 @@ export default class extends Controller {
         document.addEventListener('turbo:click', this.onClick);
         document.addEventListener('submit', this.onSubmit, true);
         try { this.full = localStorage.getItem('peek:full') === '1'; } catch { this.full = false; }
+        this.linked = true;
         // Открыть сразу (?peek=): при первой загрузке контроллер подключается, пока
         // таблица ещё парсится и окошка внизу нет — ждём конца разбора.
         if (this.openValue) {
-            const open = () => { const row = this.bodyTarget.querySelector(`#${CSS.escape(this.openValue)}`); if (row) this.show(row, { focus: 'fine' }); };
+            const open = () => this.openRow(this.openValue);
             document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', open, { once: true }) : open();
         }
     }
 
+    // Тот же адрес с другим ?peek= («Оценить» из «Все» в «Черновики») Turbo не перерисовывает, а морфит: контроллер
+    // не переподключается, меняется только значение — открываем по нему.
+    openValueChanged(id, old) {
+        if (this.linked && id && id !== old) this.openRow(id);
+    }
+
+    openRow(id) {
+        const row = this.bodyTarget.querySelector(`#${CSS.escape(id)}`);
+        if (row && row !== this.current) this.show(row, { focus: 'fine' });
+    }
+
     disconnect() {
+        this.linked = false;
         removeEventListener('keydown', this.onKey, true);
         removeEventListener('popstate', this.onPop);
         document.removeEventListener('turbo:visit', this.onVisit);

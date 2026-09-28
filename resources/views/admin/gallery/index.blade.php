@@ -21,7 +21,7 @@
                 </x-ui.table>
             @else
             <div id="gallery" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
-                @foreach ($offers as $offer)<x-offer.card :offer="$offer" admin/>@endforeach
+                @foreach ($offers as $offer)<x-offer.crm-card :offer="$offer" gallery/>@endforeach
             </div>
             @endif
             <div class="mt-8"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>

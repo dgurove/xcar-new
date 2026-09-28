@@ -8,15 +8,22 @@
 @props(['href', 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null])
 @if ($photos !== null)
     <x-offer.gallery :photos="$photos" :alt="$title" strip/>
-@endif
-<div class="flex items-start gap-3 {{ $photos !== null ? 'mt-3' : '' }}">
-    @if ($photos === null && $photo !== false)<a href="{{ $href }}" class="peek-photo">@if ($photo)<x-offer.photo :media="$photo" sizes="96px" eager/>@else<x-ui.car-blank/>@endif</a>@endif
+    {{-- Шапка с лентой: название, справа цена, под названием метки; на телефоне цена — своей строкой под названием,
+         метки — во всю ширину рядом (узкая колонка рядом с ценой ставила их столбиком). --}}
+    <div class="peek-head mt-3">
+        <a href="{{ $href }}" class="peek-title block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}</span></a>
+        @if ($aside)<div class="peek-aside">{{ $aside }}</div>@endif
+        @if ($marks)<div class="peek-marks flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
+    </div>
+@else
+<div class="flex items-start gap-3">
+    @if ($photo !== false)<a href="{{ $href }}" class="peek-photo">@if ($photo)<x-offer.photo :media="$photo" sizes="96px" eager/>@else<x-ui.car-blank/>@endif</a>@endif
     <div class="min-w-0 flex-1">
         <a href="{{ $href }}" class="block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}</span></a>
         @if ($marks)<div class="mt-1.5 flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
     </div>
-    @if ($aside && $photos !== null)<div class="shrink-0 text-right">{{ $aside }}</div>@endif
 </div>
+@endif
 @if ($facts = array_filter($facts))<div class="mt-3 flex flex-wrap gap-1.5">@foreach ($facts as $fact)<span class="tag nums">{{ $fact }}</span>@endforeach</div>@endif
 @if ($actions)
     <div class="mt-3 flex flex-wrap items-center gap-2">{{ $actions }}</div>

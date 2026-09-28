@@ -20,7 +20,7 @@
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         <x-slot:marks>
-            <span class="tag nums">№ {{ $n }}</span>
+            @unless ($offer->state === OfferState::Draft)<span class="tag nums">№ {{ $n }}</span>@endunless
             <x-ui.pill :tone="$offer->state->tone()" class="!min-h-0 !py-1 text-xs">{{ $offer->state->label() }}</x-ui.pill>
             @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
             @elseif (!$gallery && $offer->closed())<span class="tag">приём закрыт</span>@endif

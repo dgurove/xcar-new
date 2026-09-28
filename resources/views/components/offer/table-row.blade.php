@@ -1,7 +1,9 @@
 {{-- Строка таблицы предложений (CRM), по образцу «Наличия» парковки. Ячейка в два этажа: иконка типа ТС и название с
      «рекомендуем», под ним логотип страховой с номером убытка, номер предложения, приём (таймер или состояние, цветом
      по тону) и подтверждения; от 640 они встают своими столбцами (вендор с номером убытка — одним). Справа цена
-     «до», под ней на телефоне сколько прошло. В галерее вместо подтверждений — интерес. Нажатие — окошко; data-unpriced — черновик без цены продажи,
+     «до», под ней на телефоне сколько прошло; у черновика без цены продажи — лаймовое «оценить», под ним закупочная.
+     У черновика нет ни номера (он ещё не выставлен), ни слова «черновик»: его и так видно по «оценить» и цене.
+     В галерее вместо подтверждений — интерес. Нажатие — окошко; data-unpriced — черновик без цены продажи,
      по ним окошко идёт «Дальше» («Оценить»). --}}
 @props(['offer', 'gallery' => false])
 @php
@@ -18,29 +20,36 @@
     // Логотип — из одной выборки вендоров на страницу, а не связью на каждую строку.
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
     $offer->loadMissing('parkVehicle:id,offer_id,category');
+    $draft = $offer->state === OfferState::Draft;
+    $unpriced = $draft && ! $offer->asking_price;
 @endphp
-<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0" @if ($offer->state === OfferState::Draft && ! $offer->asking_price) data-unpriced @endif>
+<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0" @if ($unpriced) data-unpriced @endif>
     <td class="grow">
         <span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
         <span class="cell-sub" data-controller="fitline">
             {{-- Номера — одним неразрывным куском: не влезают — строка ужимается (fitline), а не переносится. --}}
-            <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/><span>№ {{ $n }}</span></span>
+            <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/>@unless ($draft)<span>№ {{ $n }}</span>@endunless</span>
             @if ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт"></span>
-            @else<span class="sm:hidden {{ $tone }}">{{ $stateWord }}</span>@endif
+            @elseif (! $draft)<span class="sm:hidden {{ $tone }}">{{ $stateWord }}</span>@endif
             @if ($count)<span class="sm:hidden {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $countWord }}</span>@endif
         </span>
     </td>
     {{-- Вендор и номер убытка одним столбцом, как в «Наличии»: логотип (имя — подсказкой), номер с копированием. --}}
     <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</span></td>
-    <td class="cell-dim nums hidden sm:table-cell">{{ $n }}</td>
+    <td class="cell-dim nums hidden sm:table-cell">@unless ($draft){{ $n }}@endunless</td>
     <td class="hidden sm:table-cell">
         @if ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
         @else<span class="{{ $tone }}">{{ $offer->state === OfferState::Open ? 'Приём' : $offer->state->label() }}</span>@endif
     </td>
     <td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>
     <td class="num nums">
-        @if ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
-        <span class="cell-sub sm:hidden">{!! \App\Support\Ago::time($since) !!}</span>
+        @if ($unpriced)
+            <span class="text-accent-text">оценить</span>
+            <span class="cell-sub sm:hidden">@if ($offer->floor_price){{ \App\Support\Money::nums($offer->floor_price) }}@else{!! \App\Support\Ago::time($since) !!}@endif</span>
+        @else
+            @if ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
+            <span class="cell-sub sm:hidden">{!! \App\Support\Ago::time($since) !!}</span>
+        @endif
     </td>
     <td class="cell-dim num col-peek-hide hidden sm:table-cell">{!! \App\Support\Ago::time($since) !!}</td>
 </tr>

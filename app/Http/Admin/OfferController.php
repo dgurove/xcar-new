@@ -62,8 +62,14 @@ class OfferController
         };
 
         $offers = ListView::paginate($request, $q);
-        // ?peek=номер (или first) — открыть окошко этой строки сразу: так «Оценить» ведёт по черновикам.
-        $peek = $request->query('peek') ? $offers->first(fn ($o) => $request->query('peek') === 'first' || (string) $o->number === (string) $request->query('peek')) : null;
+        // ?peek=номер (или first) — открыть окошко этой строки сразу: так «Оценить» ведёт по черновикам — first значит
+        // первый неоценённый черновик страницы, а нет таких — первая строка.
+        $want = (string) $request->query('peek');
+        $peek = match (true) {
+            $want === '' => null,
+            $want === 'first' => $offers->first(fn ($o) => $o->state === OfferState::Draft && ! $o->asking_price) ?? $offers->first(),
+            default => $offers->first(fn ($o) => (string) $o->number === $want),
+        };
 
         return view('admin.offers.index', [
             'offers' => $offers,

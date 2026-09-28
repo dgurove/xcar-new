@@ -11,9 +11,10 @@
         </x-slot:filters>
     </x-ui.toolbar>
 
-    {{-- Черновики без цены продажи (из контрпредложения поставщика) оцениваются в окошке таблицы: цена → «В продажу», и сразу следующий. --}}
-    @if ($unpriced && !($preset === 'draft' && \App\Support\ListView::isTable($view)))
-        <div class="mt-3 flex"><a href="/?preset=draft&vid=table&peek=first" class="btn btn-s btn-accent ml-auto" data-turbo-action="replace">Оценить {{ $unpriced }}</a></div>
+    {{-- Черновики без цены продажи оцениваются в окошке таблицы: цена → «В продажу», и сразу следующий. Кнопка есть, пока
+         есть что оценивать, в любом пресете и виде: открывает окошко первого неоценённого. --}}
+    @if ($unpriced)
+        <div class="mt-3 flex"><a href="/?preset=draft&vid=table&peek=first" class="btn btn-s btn-accent w-full sm:ml-auto sm:w-auto" data-turbo-action="replace">Оценить {{ $unpriced }}</a></div>
     @endif
     <div class="mt-6">
         @if ($offers->isEmpty())
@@ -26,7 +27,7 @@
                 </x-ui.table>
             @else
             <div id="offers" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
-                @foreach ($offers as $offer)<x-offer.card :offer="$offer" admin/>@endforeach
+                @foreach ($offers as $offer)<x-offer.crm-card :offer="$offer"/>@endforeach
             </div>
             @endif
             <div class="mt-8"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>

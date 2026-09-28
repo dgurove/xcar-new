@@ -1131,6 +1131,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .peek-close { @apply relative z-10 flex size-8 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   .peek-body { @apply block min-h-0 overflow-y-auto px-4 pb-4 pt-1; overscroll-behavior: contain; transition: opacity var(--dur-fast); }
   .peek-body[aria-busy="true"] { opacity: .45; }
+  /* Шапка окошка с лентой: название и цена рядом, метки под названием; до 640 цена — своей строкой под названием, метки
+     во всю ширину (узкая колонка рядом с ценой ставила теги столбиком). */
+  .peek-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .75rem; align-items: start; }
+  .peek-aside { grid-column: 2; grid-row: 1 / span 2; text-align: right; }
+  .peek-marks { grid-column: 1; margin-top: .375rem; }
+  @media (max-width: 639.98px) {
+    .peek-aside { grid-column: 1 / -1; grid-row: auto; text-align: left; margin-top: .125rem; }
+    .peek-marks { grid-column: 1 / -1; }
+  }
   .peek-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 6rem; height: 4.5rem; }
   .peek-photo img { @apply size-full object-cover; }
   /* Лента кадров в окошке: несколько в ряд, тап — во весь экран (Viewer). */
@@ -1585,9 +1594,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     --media-w: 5.5rem; --media-h: 3.75rem; --blank-h: 3.75rem;
   }
 }
-/* Стоянка: строка без кнопок — миниатюра, название и одна строка чипов, справа по центру высоты
+/* Стоянка и предложения CRM: строка без кнопок — миниатюра, название и одна строка чипов, справа по центру высоты
    слово действия («Принять ›»), дни или долг (card-aside). Областей place и action у строки нет. */
-.surface-park .cards {
+.surface-crm .cards, .surface-park .cards {
   --card-areas: "media body aside" "media extra aside";
   --card-cols: auto minmax(0, 1fr) auto;
   --card-align: start; --card-gap: .125rem .625rem; --card-pad: .5rem .625rem .5rem .5rem;
@@ -1595,32 +1604,32 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   --aside-self: end; --aside-align: center; --aside-pad: 0;
 }
 @media (min-width: 640px) {
-  .surface-park .cards {
+  .surface-crm .cards, .surface-park .cards {
     --card-areas: "media body aside" "media extra aside";
     --card-cols: auto minmax(0, 1fr) auto;
     --card-align: center; --card-gap: .125rem .75rem; --card-pad: .5rem .75rem .5rem .5rem;
     --media-w: 3.75rem; --media-h: 2.5rem; --blank-h: 2.5rem;
   }
 }
-.surface-park .cards .card-aside { flex-direction: column; align-items: flex-end; gap: .25rem; text-align: right; white-space: nowrap; }
-@media (max-width: 639.98px) { .surface-park .cards .card-media { align-self: center; } }
-.surface-park .cards .card-body { gap: .125rem; }
-.surface-park .cards .card-marks { flex-wrap: nowrap; overflow: hidden; }
-.surface-park .cards .card-marks:empty { display: none; }
-.surface-park .cards .card-title > a { font-size: var(--text-base); line-height: 1.3; }
+.surface-crm .cards .card-aside, .surface-park .cards .card-aside { flex-direction: column; align-items: flex-end; gap: .25rem; text-align: right; white-space: nowrap; }
+@media (max-width: 639.98px) { .surface-crm .cards .card-media, .surface-park .cards .card-media { align-self: center; } }
+.surface-crm .cards .card-body, .surface-park .cards .card-body { gap: .125rem; }
+.surface-crm .cards .card-marks, .surface-park .cards .card-marks { flex-wrap: nowrap; overflow: hidden; }
+.surface-crm .cards .card-marks:empty, .surface-park .cards .card-marks:empty { display: none; }
+.surface-crm .cards .card-title > a, .surface-park .cards .card-title > a { font-size: var(--text-base); line-height: 1.3; }
 /* Строка стоянки — ровно две строки: чипы не переносятся, а листаются пальцем. Иначе номер убытка вместе с
    вендором уводили ряд на третью строку, и на экран влезало вдвое меньше заявок. */
-.surface-park .cards:not(.cards--grid) .card-extra { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
-.surface-park .cards:not(.cards--grid) .card-extra::-webkit-scrollbar { display: none; }
-.surface-park .cards:not(.cards--grid) .card-extra > * { flex: none; }
+.surface-crm .cards:not(.cards--grid) .card-extra, .surface-park .cards:not(.cards--grid) .card-extra { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.surface-crm .cards:not(.cards--grid) .card-extra::-webkit-scrollbar, .surface-park .cards:not(.cards--grid) .card-extra::-webkit-scrollbar { display: none; }
+.surface-crm .cards:not(.cards--grid) .card-extra > *, .surface-park .cards:not(.cards--grid) .card-extra > * { flex: none; }
 /* Место в ряду уступает вендор, а не номер убытка: номер читают и копируют, вендор узнаётся по началу. */
-.surface-park .cards:not(.cards--grid) .card-extra > .tag-shrink {
+.surface-crm .cards:not(.cards--grid) .card-extra > .tag-shrink, .surface-park .cards:not(.cards--grid) .card-extra > .tag-shrink {
   display: inline-block; flex: 0 1 auto; min-width: 2.5rem; overflow: hidden; text-overflow: ellipsis;
 }
 /* Факты под названием — одной строкой текста (.card-sub), как во второй строке таблицы, а не рядом чипов. */
 .card-sub { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-ink-muted); }
 .card-sub > * + * { margin-left: .5rem; }
-.surface-park .cards:not(.cards--grid) .card-extra > .card-sub { flex: 1 1 auto; }
+.surface-crm .cards:not(.cards--grid) .card-extra > .card-sub, .surface-park .cards:not(.cards--grid) .card-extra > .card-sub { flex: 1 1 auto; }
 /* Строки стоянки и CRM — сгруппированным списком, как «Настройки» iOS: одна плашка, строки без зазора и
    своего скругления, между ними волосяная линия. Плитки остаются плитками. */
 .surface-crm .cards--list, .surface-park .cards--list { gap: 0; border-radius: var(--radius-l); overflow: clip; background: var(--color-surface); }
@@ -1663,10 +1672,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     --price-size: 1rem; --price-align: left;
   }
 }
-/* Плитка стоянки: кадр, название, чипы, внизу справа слово действия — кнопки нет. */
-.surface-park .cards--grid { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-self: end; --aside-align: end; --aside-pad: .5rem .75rem .75rem; }
-@media (min-width: 640px) { .surface-park .cards:not(.cards--list) { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-self: end; --aside-align: end; --aside-pad: .5rem .75rem .75rem; } }
-.surface-park .cards--grid .card-aside, .surface-park .cards:not(.cards--list) .card-aside { flex-direction: row; }
+/* Плитка стоянки и предложений CRM: кадр, название, чипы, внизу справа слово действия — кнопки нет. */
+.surface-crm .cards--grid, .surface-park .cards--grid { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-self: end; --aside-align: end; --aside-pad: .5rem .75rem .75rem; }
+@media (min-width: 640px) { .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-self: end; --aside-align: end; --aside-pad: .5rem .75rem .75rem; } }
+.surface-crm .cards--grid .card-aside, .surface-crm .cards:not(.cards--list) .card-aside, .surface-park .cards--grid .card-aside, .surface-park .cards:not(.cards--list) .card-aside { flex-direction: row; }
 /* Плитки чуть уже и без зазора в 1.25rem — их помещается заметно больше. */
 .surface-crm .cards--grid, .surface-park .cards--grid { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; }
 @media (min-width: 640px) { .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; } }
