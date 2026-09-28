@@ -5,7 +5,7 @@
 @php
     use App\Support\ListView;
     $sort ??= request('sort', 'planned');
-    $groups = collect([null => $requests->getCollection()]);
+    $groups = collect(['' => $requests->getCollection()]);
     if (ListView::isTable($view) && $sort === 'planned') {
         $today = now()->startOfDay();
         $groups = $requests->getCollection()->groupBy(fn ($r) => match (true) {

@@ -112,7 +112,7 @@ class VehicleController
         if ($request->header('X-List')) {
             return response()->view('park.vehicles.list', $data);
         }
-        $counts = Scope::vehicles($request->user())->where('state', VehicleState::Stored)->selectRaw('yard_id, count(*) as n')->groupBy('yard_id')->pluck('n', 'yard_id');
+        $counts = Scope::vehicles($request->user())->where('state', VehicleState::Stored)->selectRaw("coalesce(yard_id::text, '') as yard, count(*) as n")->groupBy('yard_id')->pluck('n', 'yard');
 
         return view('park.vehicles.index', $data + [
             'state' => $state,

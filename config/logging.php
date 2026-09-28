@@ -131,6 +131,13 @@ return [
             'handler' => NullHandler::class,
         ],
 
+        // Канал предупреждений об устаревшем. Laravel добавляет его на лету, но Octane между запросами
+        // возвращает конфиг без него — и каждое предупреждение шло в laravel.log «аварийным логгером».
+        'deprecations' => [
+            'driver' => 'monolog',
+            'handler' => NullHandler::class,
+        ],
+
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
