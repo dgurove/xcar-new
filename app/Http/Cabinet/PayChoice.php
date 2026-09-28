@@ -1,0 +1,63 @@
+<?php
+
+namespace App\Http\Cabinet;
+
+use App\Billing\Acquiring\Actions\CreatePayLink;
+use App\Billing\Acquiring\Gateway;
+use App\Billing\Acquiring\PayerKind;
+use App\Billing\Acquiring\PayLink;
+use App\Billing\Actions\ClaimPayment;
+use App\Billing\Invoice;
+use App\Billing\PaymentSource;
+use App\Support\Money;
+use App\Users\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Шторка «Оплатить» — одна обработка на кабинет и гараж: ссылкой (кто платит и сумма), по счёту
+ * («я оплатил», платёжка по желанию) или наличными. Пустая сумма — весь остаток к оплате.
+ * Возвращает тост и новую ссылку (её шторка откроется сама); счёт уже проверен вызывающим на «свой».
+ */
+final class PayChoice
+{
+    public function __construct(private CreatePayLink $link, private ClaimPayment $claim) {}
+
+    /** @return array{string, ?PayLink} */
+    public function __invoke(Request $request, Invoice $invoice, User $me): array
+    {
+        $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
+        $data = $request->validate([
+            'way' => ['required', Rule::in(['link', 'transfer', 'cash'])],
+            'amount' => ['nullable', 'numeric', 'min:0.01'],
+            'payer' => ['exclude_unless:way,link', 'required', Rule::in(['self', 'buyer', 'other'])],
+            'payer_user_id' => ['exclude_unless:payer,buyer', 'required', Rule::exists('users', 'id')->where('manager_id', $me->id)],
+            'name' => ['exclude_unless:payer,other', 'required', 'string', 'max:160'],
+            'phone' => ['exclude_unless:payer,other', 'required', 'string', 'max:20', 'regex:/^[\d\s()+\-]{10,20}$/'],
+            'paid_at' => ['exclude_if:way,link', 'nullable', 'date', 'before_or_equal:today'],
+            'ref' => ['exclude_unless:way,transfer', 'nullable', 'string', 'max:60'],
+            'slip' => ['exclude_unless:way,transfer', 'nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic'],
+        ], [
+            'payer_user_id.required' => 'Выберите покупателя', 'name.required' => 'Укажите, кто платит', 'phone.required' => 'Нужен телефон: на него придёт чек',
+            'phone.regex' => 'Проверьте номер телефона',
+        ]);
+        $amount = isset($data['amount']) ? (float) $data['amount'] : round($invoice->remaining() - $invoice->claimed(), 2);
+        if ($amount <= 0) {
+            throw ValidationException::withMessages(['amount' => 'По счёту платить нечего']);
+        }
+
+        if ($data['way'] === 'link') {
+            abort_unless(app(Gateway::class)->configured(), 422, 'Оплата по ссылке не подключена');
+            $kind = PayerKind::from($data['payer']);
+            $link = ($this->link)($invoice, $me, $amount, $kind, $kind === PayerKind::Buyer ? User::find($data['payer_user_id']) : null, $data['name'] ?? null, $data['phone'] ?? null);
+
+            return ['Ссылка готова', $link];
+        }
+        $at = isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null;
+        ($this->claim)($invoice, $me, $amount, $at, $request->file('slip'), $data['ref'] ?? null, $data['way'] === 'cash' ? PaymentSource::Cash : PaymentSource::Bank);
+
+        return [$data['way'] === 'cash' ? 'Сообщили, что отдали наличными' : 'Сообщили об оплате, ждём поступления', null];
+    }
+}

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Admin\BankController;
 use App\Http\Admin\BidController;
 use App\Http\Admin\ChatController;
 use App\Http\Admin\DealController;
@@ -12,6 +13,7 @@ use App\Http\Admin\MailTemplateController;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
 use App\Http\Admin\OfferPhotoController;
+use App\Http\Admin\PayLinkController;
 use App\Http\Admin\PurchaseCarPhotoController;
 use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
@@ -75,6 +77,13 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::get('/work/money/managers', [MoneyController::class, 'managers']);
     Route::post('/work/payments/{payment}/confirm', [MoneyController::class, 'confirm']);
     Route::post('/work/payments/{payment}/reject', [MoneyController::class, 'reject']);
+    Route::post('/work/money/invoices/{invoice}/links', [PayLinkController::class, 'store']);
+    Route::delete('/work/money/links/{link}', [PayLinkController::class, 'destroy']);
+    Route::post('/work/money/acquiring/{attempt}/refund', [PayLinkController::class, 'refund']);
+    Route::get('/work/money/bank', [BankController::class, 'index']);
+    Route::get('/work/money/bank/{transaction}/peek', [BankController::class, 'peek']);
+    Route::post('/work/money/bank/{transaction}/match', [BankController::class, 'match']);
+    Route::post('/work/money/bank/{transaction}/ignore', [BankController::class, 'ignore']);
     Route::prefix('work/money/invoices/{invoice}')->group(function () {
         Route::get('/', [MoneyController::class, 'show']);
         Route::get('/peek', [MoneyController::class, 'peek']);
@@ -204,6 +213,12 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::delete('/mailboxes/{account}', [MailAccountController::class, 'destroy']);
         Route::post('/mailboxes/{account}/check', [MailAccountController::class, 'test']);
         Route::post('/mailboxes/{account}/sync', [MailAccountController::class, 'sync']);
+
+        Route::get('/bank', [BankController::class, 'settings']);
+        Route::post('/bank/connect', [BankController::class, 'connect']);
+        Route::get('/bank/callback', [BankController::class, 'callback']);
+        Route::put('/bank', [BankController::class, 'save']);
+        Route::post('/bank/sync', [BankController::class, 'sync']);
 
         Route::get('/templates', [MailTemplateController::class, 'index']);
         Route::get('/templates/new', [MailTemplateController::class, 'create']);

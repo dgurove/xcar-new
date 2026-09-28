@@ -40,7 +40,7 @@ final class ManagerLedger
     {
         $deals = Deal::where('buyer_id', $this->manager->id)
             ->where(fn ($q) => $q->where('state', DealState::Active)->orWhereHas('invoices'))
-            ->with(['offer.brand', 'offer.model', 'offer.media', 'invoices.claims', 'agentFee'])->latest()->get();
+            ->with(['offer.brand', 'offer.model', 'offer.media', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
         $deals->each(fn (Deal $d) => $d->setAttribute('money', DealMoney::of($d)));
         $deals = $deals->filter(fn (Deal $d) => match ($preset) {
             'pay', 'payout', 'closed' => $d->money->preset === $preset,

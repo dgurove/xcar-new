@@ -6,6 +6,7 @@ use App\Billing\ChargeKind;
 use App\Billing\Events\AgentFeeDue;
 use App\Billing\Events\InvoiceIssued;
 use App\Billing\Events\InvoiceOverdue;
+use App\Billing\Events\PaidOnline;
 use App\Billing\Events\PaymentClaimed;
 use App\Billing\Events\PaymentConfirmed;
 use App\Billing\Events\PaymentRecorded;
@@ -89,6 +90,7 @@ final class Notify
             PaymentRejected::class => 'paymentRejected',
             PaymentRecorded::class => 'paymentRecorded',
             AgentFeeDue::class => 'agentFeeDue',
+            PaidOnline::class => 'paidOnline',
         ];
     }
 
@@ -323,6 +325,14 @@ final class Notify
             $p->setRelation('invoice', $i);
             ($i->deal?->buyer ?? $garage?->manager)?->notify(MoneyNotice::payout($p));
         }
+    }
+
+    /** Оплатили по ссылке: менеджеру счёта и сотрудникам в «Деньги». */
+    public function paidOnline(PaidOnline $e): void
+    {
+        $p = $e->payment->load(['invoice.party', 'invoice.deal.offer', 'invoice.deal.buyer']);
+        ($p->invoice->deal?->buyer ?? GarageCar::ofInvoice($p->invoice)?->manager)?->notify(MoneyNotice::paidOnline($e->link, $p));
+        Notification::send($this->staff(), MoneyNotice::paidOnlineStaff($e->link, $p));
     }
 
     /** Вознаграждение к выплате: сотрудникам в ленту, владельцу в Telegram с «Выплачено». */

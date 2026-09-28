@@ -21,7 +21,8 @@ Route::domain(config('xcar.garage_host'))->middleware('auth')->group(function ()
     Route::delete('/cars/{offer}/sold', [SettlementController::class, 'unsold']);
     Route::post('/cars/{offer}/settle', [SettlementController::class, 'settle']);
     Route::post('/cars/{offer}/payments', [SettlementController::class, 'pay']);
-    Route::post('/cars/{offer}/claims', [SettlementController::class, 'claim']);
+    Route::post('/cars/{offer}/checkout', [SettlementController::class, 'checkout']);
+    Route::delete('/cars/{offer}/links/{link}', [SettlementController::class, 'cancelLink']);
     Route::get('/cars/{offer}/invoice/pdf', [SettlementController::class, 'pdf']);
     Route::delete('/cars/{offer}/invoice', [SettlementController::class, 'voidInvoice']);
 });

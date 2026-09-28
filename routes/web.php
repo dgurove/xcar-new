@@ -23,6 +23,7 @@ use App\Http\Site\FavoriteController;
 use App\Http\Site\FileController;
 use App\Http\Site\InterestController;
 use App\Http\Site\OfferController;
+use App\Http\Site\PayController;
 use App\Http\Site\PickupController;
 use App\Http\Site\PurchaseController;
 use App\Http\Site\ShareController;
@@ -52,6 +53,10 @@ Route::post('/pickup/{code}/resend', [PickupController::class, 'resend'])->where
 // В QR адрес заглавными (буквенно-цифровой режим, крупные модули) — путь /P/…, руками набирают /p/….
 Route::get('/p/{code}', [PickupController::class, 'scanned'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:60,1');
 Route::get('/P/{code}', [PickupController::class, 'scanned'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:60,1');
+// Оплата по ссылке: страница плательщика без входа и уведомления ЮKassa (без CSRF — `hooks/*` в исключениях).
+Route::get('/pay/{code}', [PayController::class, 'show'])->where('code', '[2-9a-z]{12}')->middleware('throttle:60,1');
+Route::post('/pay/{code}', [PayController::class, 'go'])->where('code', '[2-9a-z]{12}')->middleware('throttle:10,1');
+Route::post('/hooks/yookassa', [PayController::class, 'hook'])->middleware('throttle:120,1');
 // Лента чата открыта и гостю с обращением — право решает Chat::allows по cookie.
 Route::get('/chats/{chat}/messages', [ChatController::class, 'messages'])->middleware('throttle:120,1');
 Route::post('/chats/{chat}/messages', [ChatController::class, 'post'])->middleware('throttle:30,1');
@@ -143,7 +148,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/account/money/statement', [MoneyController::class, 'statement']);
         Route::get('/account/money/export', [MoneyController::class, 'export']);
         Route::get('/account/money/invoices/{invoice}', [MoneyController::class, 'invoice']);
-        Route::post('/account/money/invoices/{invoice}/claims', [MoneyController::class, 'claim']);
+        Route::post('/account/money/deals/{deal}/pay', [MoneyController::class, 'pay']);
+        Route::delete('/account/money/links/{link}', [MoneyController::class, 'cancelLink']);
         Route::get('/account/money/invoices/{invoice}/payments/{payment}/slip', [MoneyController::class, 'slip']);
         Route::get('/account/money/deals/{deal}', [MoneyController::class, 'deal']);
         Route::get('/account/buyers', [BuyerController::class, 'index']);

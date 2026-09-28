@@ -18,15 +18,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Менеджер сообщает об оплате: сумма, дата, платёжка. В `paid` не входит, пока
- * сотрудник не подтвердит; заявить можно не больше, чем остаток за вычетом уже заявленного.
+ * Менеджер сообщает об оплате: сумма, дата, переводом (платёжка по желанию — поступление найдётся
+ * по выписке) или наличными. В `paid` не входит, пока сотрудник или выписка не подтвердят;
+ * заявить можно не больше, чем остаток за вычетом уже заявленного.
  */
 final class ClaimPayment
 {
-    public function __invoke(Invoice $invoice, User $by, float $amount, ?CarbonInterface $at, UploadedFile $slip, ?string $ref = null): Payment
+    public function __invoke(Invoice $invoice, User $by, float $amount, ?CarbonInterface $at, ?UploadedFile $slip = null, ?string $ref = null, PaymentSource $source = PaymentSource::Bank): Payment
     {
         Nav::forgetStaffCounts();
-        $payment = DB::transaction(function () use ($invoice, $by, $amount, $at, $slip, $ref) {
+        $payment = DB::transaction(function () use ($invoice, $by, $amount, $at, $slip, $ref, $source) {
             $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             if ($invoice->state !== InvoiceState::Issued || $invoice->isOwed()) {
                 throw ValidationException::withMessages(['amount' => 'Счёт '.mb_strtolower($invoice->state->label())]);
@@ -38,9 +39,11 @@ final class ClaimPayment
             }
             $payment = Payment::create([
                 'invoice_id' => $invoice->id, 'party_id' => $invoice->party_id, 'amount' => $amount, 'paid_at' => Carbon::instance($at ?? now())->toDateString(),
-                'source' => PaymentSource::Bank, 'ref' => $ref, 'state' => PaymentState::Claimed, 'created_by' => $by->id,
+                'source' => $source, 'ref' => $ref, 'state' => PaymentState::Claimed, 'created_by' => $by->id,
             ]);
-            $payment->addMedia($slip)->toMediaCollection('slip');
+            if ($slip) {
+                $payment->addMedia($slip)->toMediaCollection('slip');
+            }
 
             return $payment;
         });

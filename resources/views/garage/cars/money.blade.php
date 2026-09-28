@@ -20,6 +20,9 @@
         <span class="nums text-[32px] leading-none font-bold {{ $tone }}">{{ Money::exact($value) }}</span>
         @if ($claimed > 0)<span class="mt-1 text-sm text-urgent">Сообщили об оплате {{ Money::exact($claimed) }}, ждём подтверждения</span>@endif
     </div>
+    @if ($unpaid && ! $invoice->isOwed() && ($link = $invoice->openLink()))
+        <x-billing.pay-link :link="$link" :cancel="'/cars/'.$car->offer->number.'/links/'.$link->id"/>
+    @endif
 
     @if ($car->isSold() && $label !== 'Продана за')
         <div class="{{ $row }}"><span>Продана за</span><span class="nums">{{ Money::rub($car->sold_price) }}</span></div>

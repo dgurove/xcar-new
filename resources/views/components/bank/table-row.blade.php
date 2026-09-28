@@ -1,0 +1,17 @@
+{{-- Строка поступления: плательщик, под ним состояние цветным словом и счёт, к которому легло, на телефоне ещё дата;
+     назначение столбцом на широком экране, сумма справа. Нажатие — окошко. --}}
+@props(['tx'])
+@php use App\Support\Money; $href = '/work/money/bank/'.$tx->id; @endphp
+<tr id="tx-{{ $tx->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}/peek" tabindex="0">
+    <td class="grow">
+        <span class="cell-title">{{ $tx->counterparty ?: 'Плательщик не указан' }}</span>
+        <span class="cell-sub">
+            <span class="text-{{ $tx->tone() }}">{{ mb_strtolower($tx->stateLabel()) }}</span>
+            @if ($tx->invoice)<span>счёт {{ $tx->invoice->label() }}</span>@elseif ($tx->note)<span>{{ mb_strtolower($tx->note) }}</span>@endif
+            <span class="sm:hidden">{{ $tx->booked_at->translatedFormat('j M') }}</span>
+        </span>
+    </td>
+    <td class="cell-dim col-peek-hide hidden lg:table-cell"><span class="block max-w-96 truncate">{{ $tx->purpose }}</span></td>
+    <td class="hidden sm:table-cell">{{ $tx->booked_at->translatedFormat('j M') }}</td>
+    <td class="num nums">{{ Money::nums($tx->amount, 2) }}</td>
+</tr>

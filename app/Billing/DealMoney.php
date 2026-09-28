@@ -39,6 +39,9 @@ final class DealMoney
             if ($unpaid->claimed() > 0) {
                 return new self('Оплата ждёт подтверждения', $left, 'muted', 'pay');
             }
+            if ($unpaid->openLink()) {
+                return new self('Ссылка отправлена, ждём оплату', $left, 'muted', 'pay');
+            }
             if ($unpaid->isOverdue()) {
                 return new self('Просрочен на '.$unpaid->overdueDays().' дн', $left, 'urgent', 'pay');
             }

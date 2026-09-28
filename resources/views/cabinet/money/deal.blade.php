@@ -1,5 +1,5 @@
 {{-- Расчёт по сделке — как документ сверху вниз: цена → счета со строками, оплатами и заявками → агентское
-     вознаграждение → выплаты; ниже история этой сделки. Плашка «Сообщить об оплате» — пока есть что платить.
+     вознаграждение → выплаты; ниже история этой сделки. Плашка «Оплатить» (ссылкой, по счёту, наличными) — пока есть что платить.
      Закупочной и «нам» здесь нет. --}}
 @php
     use App\Support\Money; use App\Offers\CommissionState; use App\Billing\InvoiceState; use App\Billing\PaymentState; use App\Billing\PaymentSource;
@@ -30,14 +30,20 @@
                             @endforeach
                             @foreach ($i->allPayments as $p)
                                 @php [$text, $cls] = match (true) {
-                                    $p->state === PaymentState::Claimed => ['Сообщили об оплате '.$p->paid_at->translatedFormat('j M').', ждёт подтверждения', 'text-urgent'],
+                                    $p->state === PaymentState::Claimed && $p->source === PaymentSource::Cash => ['Отдали наличными '.$p->paid_at->translatedFormat('j M').', ждёт подтверждения', 'text-urgent'],
+                                    $p->state === PaymentState::Claimed => ['Сообщили об оплате '.$p->paid_at->translatedFormat('j M').', ждёт поступления', 'text-urgent'],
                                     $p->state === PaymentState::Rejected => ['Не поступила'.($p->reject_reason ? ': '.$p->reject_reason : ''), 'text-ink-muted line-through'],
                                     $p->source === PaymentSource::Offset => ['Удержано агентское вознаграждение', 'text-ink-muted'],
+                                    $p->source === PaymentSource::Acquiring => ['Оплачено по ссылке '.$p->paid_at->translatedFormat('j M'), ''],
+                                    $p->source === PaymentSource::Cash => ['Приняты наличные '.$p->paid_at->translatedFormat('j M'), ''],
                                     default => ['Оплачено '.$p->paid_at->translatedFormat('j M'), ''],
                                 }; @endphp
                                 <div class="flex items-baseline justify-between gap-3 py-1 {{ $cls }}"><span class="min-w-0">{{ $text }}@if ($p->slip()) <a href="/account/money/invoices/{{ $i->id }}/payments/{{ $p->id }}/slip" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>платёжка</a>@endif</span><span class="nums shrink-0">{{ Money::rub($p->amount) }}</span></div>
                             @endforeach
                             @if ($i->state === InvoiceState::Issued && $i->remaining() > 0)
+                                @foreach ($links->where('invoice_id', $i->id) as $link)
+                                    <div class="list my-2"><x-billing.pay-link :link="$link" :cancel="'/account/money/links/'.$link->id"/></div>
+                                @endforeach
                                 <div class="flex items-baseline justify-between gap-3 py-1 {{ $i->isOverdue() ? 'text-urgent' : '' }}"><span class="font-medium">Остаток{{ $i->isOverdue() ? ', просрочен на '.$i->overdueDays().' дн' : ', до '.$i->due_at->translatedFormat('j M') }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining()) }}</span></div>
                             @endif
                         </div>
@@ -77,23 +83,8 @@
 
     @if ($claimable->isNotEmpty())
         <div data-controller="sheet">
-            <x-ui.action-bar><x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Сообщить об оплате</x-ui.button></x-ui.action-bar>
-            <x-ui.sheet id="claim" title="Сообщить об оплате" :open="$errors->any()">
-                @php $first = $claimable->first(); @endphp
-                <form method="post" action="/account/money/invoices/{{ $first->id }}/claims" enctype="multipart/form-data" class="flex flex-col gap-3" data-controller="claim-target">
-                    @csrf
-                    @if ($claimable->count() > 1)
-                        <x-ui.field name="invoice" label="Счёт" :options="$claimable->mapWithKeys(fn ($i) => [$i->id => $i->label().', остаток '.Money::rub($i->remaining() - $i->claimed())])->all()" data-action="claim-target#pick"/>
-                    @endif
-                    <div class="grid grid-cols-2 gap-3">
-                        <x-ui.field name="amount" label="Сумма, ₽" :value="rtrim(rtrim(number_format($first->remaining() - $first->claimed(), 2, '.', ''), '0'), '.')" inputmode="decimal" required/>
-                        <x-ui.field name="paid_at" label="Дата оплаты" type="date" :value="now()->toDateString()" required/>
-                        <x-ui.field name="ref" label="№ платёжки"/>
-                        <x-ui.field name="slip" label="Платёжное поручение" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic" required/>
-                    </div>
-                    <x-ui.button block>Отправить</x-ui.button>
-                </form>
-            </x-ui.sheet>
+            <x-ui.action-bar><x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Оплатить</x-ui.button></x-ui.action-bar>
+            <x-billing.pay-sheet :invoices="$claimable" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf" :buyers="$buyers" :open="$errors->any()"/>
         </div>
     @endif
 </x-ui.cabinet>

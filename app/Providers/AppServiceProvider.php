@@ -2,12 +2,15 @@
 
 namespace App\Providers;
 
+use App\Billing\Acquiring\Gateway;
+use App\Billing\Acquiring\YooKassa;
 use App\Billing\Events\InvoiceVoided;
 use App\Billing\Events\PaymentClaimed;
 use App\Billing\Events\PaymentRecorded;
 use App\Billing\Events\PaymentVoided;
 use App\Billing\Listeners\AdvanceOnClaim;
 use App\Billing\Listeners\AdvanceOnPayment;
+use App\Billing\Listeners\CloseLinksWhenSettled;
 use App\Billing\Listeners\PayoutWhenPaid;
 use App\Billing\Listeners\RevokeAgentFee;
 use App\Chats\Events\ChatMessagePosted;
@@ -42,6 +45,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Сканы и документы из писем пока не читаются; сюда встанет OCR или модель по API.
         $this->app->bind(AttachmentReader::class, NullAttachmentReader::class);
+        // Эквайринг — ЮKassa, подключённая в СберБизнесе.
+        $this->app->bind(Gateway::class, YooKassa::class);
     }
 
     public function boot(): void
@@ -55,6 +60,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(PaymentRecorded::class, PayoutWhenPaid::class);
         Event::listen(PaymentRecorded::class, CloseWhenPaid::class);
         Event::listen(PaymentClaimed::class, AdvanceOnClaim::class);
+        Event::listen([PaymentRecorded::class, InvoiceVoided::class], CloseLinksWhenSettled::class);
         Event::listen([InvoiceVoided::class, PaymentVoided::class], RevokeAgentFee::class);
         Event::listen([InvoiceVoided::class, PaymentVoided::class], ReopenWhenVoided::class);
         Event::listen(Login::class, AttachGuestEnquiry::class);

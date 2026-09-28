@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Billing\Bank\Transaction as BankTransaction;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Payment;
@@ -234,6 +235,7 @@ final class Nav
                     self::link('Профиль', '/settings', exact: true),
                     ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users')] : []),
                     self::link('Вендоры', '/settings/vendors'),
+                    ...($user->isAdmin() ? [self::link('Банк', '/settings/bank')] : []),
                     self::link('Ящики', '/settings/mailboxes'),
                     self::link('Шаблоны', '/settings/templates'),
                     self::link('Метки', '/settings/tags'),
@@ -469,7 +471,8 @@ final class Nav
                     ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))
                     ->count(),
                 // Деньги горят, когда менеджер сообщил об оплате, а мы ещё не подтвердили.
-                '/work/money' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereNotNull('deal_id'))->count(),
+                '/work/money' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereNotNull('deal_id'))->count()
+                    + BankTransaction::where('state', BankTransaction::UNMATCHED)->count(),
             ];
             $badges['/work'] = $badges['/work/deals'] + $badges['/work/mail'] + $badges['/work/chats'] + $badges['/work/money'];
 

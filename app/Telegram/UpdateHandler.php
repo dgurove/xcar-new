@@ -9,6 +9,7 @@ use App\Billing\InvoiceState;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
+use App\Billing\Robot;
 use App\Telegram\Messages\AgentFeeDue;
 use App\Telegram\Messages\InvoiceOverdue;
 use App\Telegram\Messages\PaymentClaimed;
@@ -111,7 +112,7 @@ final class UpdateHandler
 
             return;
         }
-        $owner = User::where('role', Role::Admin)->orderBy('id')->firstOrFail();
+        $owner = Robot::user();
         app(RecordPayment::class)($invoice, $owner, $invoice->remaining(), null, PaymentSource::Bank, null, 'из Telegram');
         $this->bot->answer($press->queryId, 'Оплачен.');
         $this->bot->edit($press->chatId, $press->messageId, $message->text('Оплачен '.now()->translatedFormat('j M, H:i')), $message->afterDecision());
@@ -133,7 +134,7 @@ final class UpdateHandler
 
             return;
         }
-        $owner = User::where('role', Role::Admin)->orderBy('id')->firstOrFail();
+        $owner = Robot::user();
         app(RecordPayment::class)($fee, $owner, $fee->remaining(), null, PaymentSource::Bank, null, 'из Telegram');
         $this->bot->answer($press->queryId, 'Выплачено.');
         $this->bot->edit($press->chatId, $press->messageId, $message->text('Выплачено '.now()->translatedFormat('j M, H:i')), $message->afterDecision());
@@ -155,7 +156,7 @@ final class UpdateHandler
 
             return;
         }
-        $owner = User::where('role', Role::Admin)->orderBy('id')->firstOrFail();
+        $owner = Robot::user();
         app(ConfirmPayment::class)($payment, $owner);
         $this->bot->answer($press->queryId, 'Поступило.');
         $this->bot->edit($press->chatId, $press->messageId, $message->text('Поступило '.now()->translatedFormat('j M, H:i')), $message->afterDecision());

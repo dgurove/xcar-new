@@ -2,10 +2,13 @@
 
 namespace App\Live;
 
+use App\Billing\Events\PaymentClaimed;
+use App\Billing\Events\PaymentRecorded;
 use App\Chats\Chat;
 use App\Chats\Events\ChatMessageChanged;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Events\ChatRead;
+use App\Garage\Car as GarageCar;
 use App\Garage\Events\GarageChanged;
 use App\Notifications\ChatNotice;
 use App\Offers\Events\BidAccepted;
@@ -44,6 +47,8 @@ final class PublishLiveUpdates
             ChatMessageChanged::class => 'chatChanged',
             ChatRead::class => 'chatRead',
             GarageChanged::class => 'garage',
+            PaymentRecorded::class => 'payment',
+            PaymentClaimed::class => 'payment',
         ];
     }
 
@@ -173,6 +178,17 @@ final class PublishLiveUpdates
         $this->publish->refresh(Topics::STAFF, $paths);
         if ($car->manager_id) {
             $this->publish->refresh(Topics::user($car->manager_id), [...$paths, '/']);
+        }
+    }
+
+    /** Оплата по счёту (по ссылке, из выписки, руками) или заявка — перечитать деньги у сотрудников и расчёт у менеджера. */
+    public function payment(PaymentRecorded|PaymentClaimed $e): void
+    {
+        $invoice = $e instanceof PaymentClaimed ? $e->payment->invoice : $e->invoice;
+        $this->publish->refresh(Topics::STAFF, ['/work/money', '/work/money/bank', '/work/deals']);
+        $manager = $invoice->deal?->buyer_id ?? GarageCar::ofInvoice($invoice)?->manager_id;
+        if ($manager) {
+            $this->publish->refresh(Topics::user($manager), ['/account/money', $invoice->deal_id ? '/account/money/deals/'.$invoice->deal_id : '/']);
         }
     }
 

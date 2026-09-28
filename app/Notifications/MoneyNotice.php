@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Billing\Acquiring\PayLink;
 use App\Billing\Invoice;
 use App\Billing\Payment;
 use App\Garage\Car;
@@ -60,6 +61,30 @@ final class MoneyNotice extends Notice
         $i = $p->invoice;
 
         return new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' по счёту '.$i->label(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), Car::ofInvoice($i)?->url() ?? '/work/money', $i->deal?->offer?->number, true);
+    }
+
+    /** Оплатили по ссылке — менеджеру: его счёт закрылся или уменьшился сам. */
+    public static function paidOnline(PayLink $link, Payment $p): self
+    {
+        $i = $p->invoice;
+
+        return new self('Оплачено по ссылке '.Money::rub($p->amount).', счёт '.$i->label(), $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : ($i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear()),
+            self::path($i), $i->deal?->offer?->number);
+    }
+
+    /** Оплатили по ссылке — сотрудникам в «Деньги». */
+    public static function paidOnlineStaff(PayLink $link, Payment $p): self
+    {
+        $i = $p->invoice;
+
+        return new self('По ссылке оплачено '.Money::rub($p->amount).', счёт '.$i->label().', платил '.$link->payerLabel(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(),
+            Car::ofInvoice($i)?->url() ?? '/work/money?preset=paid', $i->deal?->offer?->number, true);
+    }
+
+    /** Из выписки пришли деньги, которые сами к счёту не легли. */
+    public static function bankUnmatched(int $count, float $sum): self
+    {
+        return new self($count === 1 ? 'Поступление без счёта на '.Money::rub($sum) : 'Поступления без счёта: '.$count.' на '.Money::rub($sum), null, '/work/money/bank', null, true);
     }
 
     public static function feeDue(Invoice $fee): self

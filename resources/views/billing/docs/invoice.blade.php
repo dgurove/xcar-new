@@ -6,6 +6,8 @@
     $lines = $invoice->charges;
     // Удержанное менеджером вознаграждение — зачёт в момент выставления: печатается и «к оплате».
     $offset = $invoice->payments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount');
+    // QR для приложения банка: реквизиты, сумма к оплате и назначение, по которому выписка найдёт счёт.
+    $qr = \App\Billing\Documents\PaymentQr::text($invoice, $self);
 @endphp
 <!doctype html>
 <html lang="ru">
@@ -33,6 +35,9 @@
         .sign td { padding: 6px 0; }
         .line { border-bottom: 1px solid #111; height: 22px; width: 220px; display: inline-block; }
         .print { position: fixed; top: 12px; right: 12px; }
+        .qr { margin-top: 18px; }
+        .qr td { vertical-align: middle; padding: 0 12px 0 0; }
+        .qr img { width: 140px; height: 140px; }
         @media print { .print { display: none; } }
     </style>
 </head>
@@ -64,6 +69,12 @@
     </div>
     <div class="note">Всего наименований {{ $lines->count() }}, на сумму {{ Money::nums($invoice->total, 2) }} ₽</div>
     @if ($invoice->notes)<div class="note">{{ $invoice->notes }}</div>@endif
+    @if ($qr)
+        <table class="qr" style="width:auto"><tr>
+            <td><img src="{{ \App\Support\Qr::pngDataUri($qr) }}" alt=""></td>
+            <td class="note" style="margin:0">Оплата по QR в приложении банка<br>Назначение: {{ \App\Billing\Documents\PaymentQr::purpose($invoice) }}</td>
+        </tr></table>
+    @endif
     <table class="sign">
         <tr><td>Руководитель <span class="line"></span> {{ $self->director ?? '' }}</td></tr>
     </table>

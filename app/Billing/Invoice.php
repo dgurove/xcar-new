@@ -2,6 +2,8 @@
 
 namespace App\Billing;
 
+use App\Billing\Acquiring\PayLink;
+use App\Billing\Acquiring\PayLinkState;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Park\Vehicle;
@@ -92,6 +94,17 @@ class Invoice extends Model implements HasMedia
     public function claimed(): float
     {
         return round((float) $this->claims()->sum('amount'), 2);
+    }
+
+    /** Ссылки на оплату; открытая у счёта одна. */
+    public function payLinks(): HasMany
+    {
+        return $this->hasMany(PayLink::class, 'invoice_id')->orderBy('id');
+    }
+
+    public function openLink(): ?PayLink
+    {
+        return $this->relationLoaded('payLinks') ? $this->payLinks->first->isOpen() : $this->payLinks()->where('state', PayLinkState::Open)->first();
     }
 
     public function isAgentFee(): bool

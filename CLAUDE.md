@@ -646,6 +646,16 @@
   (действия только там), `/work/money/managers` — сальдо по менеджерам, у менеджера в `/settings/users/{id}`
   пилюли «Обзор · Деньги» (`admin/users/money`: реквизиты, сделки, акт сверки, Excel). Уведомления `MoneyNotice`,
   Telegram `PaymentClaimed` («Поступило») и `AgentFeeDue` («Выплачено»). Закупки Carcade — без денег.
+  **Оплата по ссылке и выписка Сбера** (с 28.09.2026, `notes/oplata-po-ssylke-2026-09-28.md`): «Оплатить» у менеджера
+  (кабинет, гараж) — шторка `x-billing.pay-sheet`: ссылкой (кто платит, сумма), по счёту (PDF с QR ГОСТ Р 56042,
+  платёжка по желанию), наличными (`claimed`, `source=cash`). Ссылка — `Acquiring\PayLink`, `xcar.ru/pay/{code}`, одна
+  открытая на счёт; за ней попытки `AcquiringPayment` у ЮKassa (`Gateway` → `YooKassa`, подключена в СберБизнесе, чеки
+  её же); статус только из API (`SettleAcquiring` под замком, `/hooks/yookassa` + `acquiring:sync`) → `RecordPayment`
+  источником «Эквайринг» от `Billing\Robot`; возврат — `RefundAcquiring`; комиссия наша. Выписка — `Bank\SberApi`
+  (OAuth СберБизнес ID, mTLS, токены в `billing_bank_connections`), `bank:sync`, `Bank\Transaction`; `MatchTransaction`
+  кладёт в счёт только наверняка (номер в назначении или один счёт ИНН на ровно эту сумму), заявку подтверждает ею же,
+  ЮMoney — «не наше»; остальное — CRM «Поступления» `/work/money/bank`. Страница `/pay` строк счёта и вознаграждения
+  не показывает. Поле формы не зовётся `method` — перекрывает `form.method`.
 - **Машина по имени** (с 21.09.2026): заголовки кандидатов, секций почты, строк и Telegram — марка и модель
   (`Candidate::title()`: без марки — номер убытка, без него госномер; `hasCar()`), номер убытка — чипом; марка и
   модель в форме заведения обязательны (`VehicleFields::rules`). Словарь `Cars\Names` — разговорные и русские

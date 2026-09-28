@@ -7,6 +7,10 @@ Schedule::command('park:tick')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('park:digest')->weekdays()->dailyAt('09:00');
 Schedule::command('billing:tick')->dailyAt('09:05');
 Schedule::command('billing:close-month')->monthlyOn(1, '06:00');
+// Оплаты по ссылкам — подстраховка уведомлений ЮKassa; выписка Сбера — днём сегодняшняя, утром вчерашняя целиком и сводка.
+Schedule::command('acquiring:sync')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('bank:sync')->everyTenMinutes()->between('7:00', '23:00')->withoutOverlapping()->runInBackground();
+Schedule::command('bank:sync --days=1 --digest')->dailyAt('06:10')->withoutOverlapping();
 Schedule::command('mail:sync')->everyMinute()->withoutOverlapping()->runInBackground();
 Schedule::command('telegram:poll')->everyMinute()->withoutOverlapping(10)->runInBackground();
 Schedule::command('mail:reconcile')->dailyAt('04:10');

@@ -2,7 +2,10 @@
 
 namespace App\Http\Cabinet;
 
-use App\Billing\Actions\ClaimPayment;
+use App\Billing\Acquiring\Actions\CancelPayLink;
+use App\Billing\Acquiring\PayLink;
+use App\Billing\Acquiring\PayLinkState;
+use App\Billing\ChargeKind;
 use App\Billing\DealMoney;
 use App\Billing\Documents\StatementPdf;
 use App\Billing\Export\ManagerStatement;
@@ -13,6 +16,7 @@ use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Billing\PartyRules;
 use App\Billing\Payment;
+use App\Garage\Car as GarageCar;
 use App\Offers\Deal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -36,12 +40,15 @@ class MoneyController
         ]);
     }
 
-    /** Страница счёта у менеджера — это расчёт сделки; старые ссылки и уведомления ведут туда. */
+    /** Страница счёта у менеджера — это расчёт сделки (или машина в гараже); старые ссылки и уведомления ведут туда. */
     public function invoice(Request $request, Invoice $invoice)
     {
-        abort_unless($invoice->isVisibleToManager($request->user()) && $invoice->deal_id, 404);
+        abort_unless($invoice->isVisibleToManager($request->user()), 404);
+        // Гаражный счёт без сделки — расчёт живёт на машине в гараже.
+        $url = $invoice->deal_id ? '/account/money/deals/'.$invoice->deal_id : GarageCar::ofInvoice($invoice)?->url();
+        abort_unless($url, 404);
 
-        return redirect('/account/money/deals/'.$invoice->deal_id, 301);
+        return redirect($url, 301);
     }
 
     /** Расчёт по сделке: цена, счета со строками и оплатами, вознаграждение и выплаты, история. */
@@ -52,20 +59,36 @@ class MoneyController
         $deal->load(['offer.brand', 'offer.model', 'offer.media', 'agentFee.payments.media']);
         $invoices = $deal->issuedInvoices()->with(['party', 'charges', 'allPayments.media'])->get();
         $history = (new ManagerLedger($me))->history()->where('deal', $deal->id)->reverse()->values();
+        $links = PayLink::whereIn('invoice_id', $invoices->pluck('id'))->where('state', PayLinkState::Open)->with(['invoice', 'payerUser', 'creator'])->get();
 
         return view('cabinet.money.deal', [
             'deal' => $deal, 'offer' => $deal->offer, 'invoices' => $invoices, 'fee' => $deal->agentFee, 'state' => $deal->commissionState(), 'history' => $history,
-            'claimable' => $invoices->filter(fn (Invoice $i) => $i->state === InvoiceState::Issued && $i->remaining() - $i->claimed() > 0)->values(),
+            // Счёт вендору (вознаграждение от поставщика) платит не менеджер: его в «Оплатить» нет.
+            'claimable' => $invoices->filter(fn (Invoice $i) => $i->state === InvoiceState::Issued && $i->kind !== ChargeKind::Reward && $i->remaining() - $i->claimed() > 0)->values(),
+            'links' => $links, 'buyers' => $me->buyers()->orderBy('name')->get(),
         ]);
     }
 
-    public function claim(Request $request, Invoice $invoice, ClaimPayment $claim)
+    /** «Оплатить»: ссылкой, по счёту или наличными — одной шторкой. */
+    public function pay(Request $request, Deal $deal, PayChoice $choice)
     {
-        abort_unless($invoice->isVisibleToManager($request->user()) && ! $invoice->isOwed(), 404);
-        $data = $request->validate(['amount' => ['required', 'numeric', 'min:0.01'], 'paid_at' => ['required', 'date'], 'ref' => ['nullable', 'string', 'max:60'], 'slip' => ['required', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic']]);
-        $claim($invoice, $request->user(), (float) $data['amount'], Carbon::parse($data['paid_at']), $request->file('slip'), $data['ref'] ?? null);
+        $me = $request->user();
+        abort_unless($deal->buyer_id === $me->id, 404);
+        $invoice = $deal->issuedInvoices()->whereKey((int) $request->input('invoice'))->firstOrFail();
+        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed() && $invoice->kind !== ChargeKind::Reward, 404);
 
-        return redirect('/account/money/deals/'.$invoice->deal_id)->with('toast', 'Сообщили, ждём подтверждения');
+        [$toast, $link] = $choice($request, $invoice, $me);
+
+        return redirect('/account/money/deals/'.$deal->id)->with('toast', $toast)->with('open-link', $link?->id);
+    }
+
+    public function cancelLink(Request $request, PayLink $link, CancelPayLink $cancel)
+    {
+        // Отменить можно любую ссылку своего счёта, и ту, что завёл сотрудник.
+        abort_unless($link->invoice->isVisibleToManager($request->user()) && ! $link->invoice->isOwed(), 404);
+        $cancel($link, $request->user());
+
+        return back()->with('toast', 'Ссылка отменена');
     }
 
     public function details(Request $request)

@@ -1,5 +1,8 @@
 <?php
 
+use App\Billing\Acquiring\Console\SyncAcquiring;
+use App\Billing\Bank\Console\PerpetualSecret;
+use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\LearnVins;
@@ -79,6 +82,9 @@ return Application::configure(basePath: dirname(__DIR__))
         Report::class,
         Poll::class,
         LearnVins::class,
+        SyncAcquiring::class,
+        SyncBank::class,
+        PerpetualSecret::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');
@@ -89,6 +95,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
         $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, TouchSeen::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
+        // Уведомления провайдеров: подписи у ЮKassa нет, статус перечитывается по API (`PayController::hook`).
+        $middleware->validateCsrfTokens(except: ['hooks/*']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

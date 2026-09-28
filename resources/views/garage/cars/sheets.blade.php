@@ -76,16 +76,8 @@
     </div>
 @endif
 
-@if (! $staff && $unpaid && ! $invoice->isOwed())
-    <div {!! $wrap('claim') !!}>
-        <x-ui.sheet id="claim" title="Сообщить об оплате" :open="$errors->has('slip') || $errors->has('amount')">
-            <form method="post" action="/cars/{{ $n }}/claims" class="flex flex-col gap-4" enctype="multipart/form-data">
-                @csrf
-                <x-ui.field name="amount" label="Сколько заплатили, ₽" :value="$sum($invoice->remaining() - $invoice->claimed())" inputmode="decimal"/>
-                <x-ui.field name="paid_at" label="Когда" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
-                <x-ui.field name="slip" label="Фото платёжки" type="file" accept="image/*,application/pdf"/>
-                <x-ui.button type="submit" variant="primary" block>Отправить</x-ui.button>
-            </form>
-        </x-ui.sheet>
+@if (! $staff && $unpaid && ! $invoice->isOwed() && $invoice->remaining() - $invoice->claimed() > 0)
+    <div {!! $wrap('pay') !!}>
+        <x-billing.pay-sheet :invoices="collect([$invoice])" :action="'/cars/'.$n.'/checkout'" :pdf="'/cars/'.$n.'/invoice/pdf'" :buyers="$user->buyers()->orderBy('name')->get()" :open="$errors->any()" :other-name="$car->buyer_name" :other-phone="$car->buyer_phone"/>
     </div>
 @endif

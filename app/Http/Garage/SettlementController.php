@@ -2,7 +2,8 @@
 
 namespace App\Http\Garage;
 
-use App\Billing\Actions\ClaimPayment;
+use App\Billing\Acquiring\Actions\CancelPayLink;
+use App\Billing\Acquiring\PayLink;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\PaymentSource;
@@ -10,6 +11,7 @@ use App\Garage\Actions\ClearGarageSold;
 use App\Garage\Actions\MarkGarageSold;
 use App\Garage\Actions\SettleGarageCar;
 use App\Garage\Car;
+use App\Http\Cabinet\PayChoice;
 use App\Offers\Offer;
 use App\Support\Money;
 use Illuminate\Http\Request;
@@ -58,25 +60,29 @@ class SettlementController
             'amount' => ['required', 'numeric', 'min:0.01'],
             'paid_at' => ['nullable', 'date', 'before_or_equal:today'],
         ]);
-        $record($car->invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, PaymentSource::Bank, null, null, $car->invoice->claims()->first());
+        $claim = $car->invoice->claims()->first();
+        $record($car->invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, $claim?->source ?? PaymentSource::Bank, null, null, $claim);
 
         return back()->with('toast', 'Поступило '.Money::exact($data['amount']));
     }
 
-    /** Менеджер сообщает об оплате: сумма, дата и платёжка. */
-    public function claim(Request $request, Offer $offer, ClaimPayment $claim)
+    /** «Оплатить» у менеджера: ссылкой, по счёту или наличными — та же шторка, что в кабинете. */
+    public function checkout(Request $request, Offer $offer, PayChoice $choice)
     {
         $car = $this->car($request, $offer);
-        abort_unless($car->invoice && $car->manager_id === $request->user()->id, 404);
-        $request->merge(['amount' => Money::parse($request->input('amount'))]);
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'paid_at' => ['nullable', 'date', 'before_or_equal:today'],
-            'slip' => ['required', 'file', 'max:16384'],
-        ]);
-        $claim($car->invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, $request->file('slip'));
+        abort_unless($car->invoice && ! $car->invoice->isOwed() && $car->manager_id === $request->user()->id, 404);
+        [$toast, $link] = $choice($request, $car->invoice, $request->user());
 
-        return back()->with('toast', 'Сообщили об оплате');
+        return back()->with('toast', $toast)->with('open-link', $link?->id);
+    }
+
+    public function cancelLink(Request $request, Offer $offer, PayLink $link, CancelPayLink $cancel)
+    {
+        $car = $this->car($request, $offer);
+        abort_unless($link->invoice_id === $car->invoice_id, 404);
+        $cancel($link, $request->user());
+
+        return back()->with('toast', 'Ссылка отменена');
     }
 
     public function voidInvoice(Request $request, Offer $offer, VoidInvoice $void)

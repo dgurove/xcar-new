@@ -9,6 +9,8 @@
     </x-ui.toolbar>
     <div class="list mt-4">
         <a href="/work/money/managers" class="row"><span class="min-w-0 flex-1">Взаиморасчёты по менеджерам</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
+        @php $unmatched = \App\Billing\Bank\Transaction::where('state', \App\Billing\Bank\Transaction::UNMATCHED)->count(); @endphp
+        <a href="/work/money/bank" class="row"><span class="min-w-0 flex-1">Поступления</span>@if ($unmatched)<span class="badge nums">{{ $unmatched }}</span>@endif<x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
     </div>
     @if ($invoices->isEmpty())
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : match ($preset) { 'claims' => 'Никто об оплате не сообщал', 'payouts' => 'Выплачивать нечего', default => 'Счетов нет' } }}</x-ui.empty>
