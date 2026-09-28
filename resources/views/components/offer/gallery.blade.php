@@ -8,7 +8,7 @@
     <div class="peek-strip" data-controller="gallery" data-gallery-target="strip">
         @foreach ($photos as $i => $media)
             <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" class="peek-strip-frame" data-action="click->gallery#open" data-index="{{ $i }}">
-                <x-offer.photo :media="$media" sizes="108px" :eager="$i < 4" class="size-full object-cover"/>
+                <x-offer.photo :media="$media" sizes="108px" :eager="$i < 2" class="size-full object-cover"/>
             </a>
         @endforeach
     </div>

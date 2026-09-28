@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { openLightbox } from '../lightbox';
+import { liveOpen } from '../live';
 
 // Чат по офферу. Лента дополняется фрагментами «всё после N», где N —
 // последний номер на экране: догон после обрыва идемпотентен; старое
@@ -22,8 +23,8 @@ export default class extends Controller {
         document.addEventListener('visibilitychange', this.onVisible);
         window.addEventListener('chat:open', this.onOpen);
         window.addEventListener('online', this.onOnline);
-        // Страховка без живого канала: раз в 20 секунд, пока лента на экране.
-        this.timer = setInterval(() => this.fetch(), 20000);
+        // Страховка без живого канала: раз в 20 секунд, пока лента на экране и канал оборван.
+        this.timer = setInterval(() => { if (!liveOpen() && !document.hidden) this.fetch(); }, 20000);
         this.watchTop();
         this.scroll(this.listTarget.querySelector('#chat-new'));
         this.status = document.querySelector('[data-chat-status]');

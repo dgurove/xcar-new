@@ -69,6 +69,21 @@
 		file_server
 	}
 
+	# Шрифт — месяц; картинки и значки приложения без хэша в имени (логотип меняли на месте) — сутки,
+	# дальше браузер показывает сохранённое и сверяется в фоне. Раньше заголовка не было вовсе.
+	handle /fonts/* {
+		header Cache-Control "public, max-age=2592000"
+		file_server
+	}
+	handle /images/* {
+		header Cache-Control "public, max-age=86400, stale-while-revalidate=604800"
+		file_server
+	}
+	handle /pwa/* {
+		header Cache-Control "public, max-age=86400, stale-while-revalidate=604800"
+		file_server
+	}
+
 	php_server {
 		index frankenphp-worker.php
 		try_files {path} frankenphp-worker.php

@@ -39,7 +39,7 @@ class OfferController
         ListPrefs::sync($request, 'crm-offers');
         $sort = $request->query('sort', 'fresh');
 
-        $q = Offer::query()->with(['brand', 'model', 'media', 'parkVehicle:id,offer_id,category'])->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
+        $q = Offer::query()->with(['brand', 'model', 'parkVehicle:id,offer_id,category'])->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
         match ($preset) {
             'recommended' => $q->where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),
@@ -62,6 +62,10 @@ class OfferController
         };
 
         $offers = ListView::paginate($request, $q);
+        // Кадры нужны плиткам и строкам, в таблице их нет — там это лишние сотни записей медиатеки.
+        if (! ListView::isTable(ListView::pick($request, $offers->total()))) {
+            $offers->loadMissing('media');
+        }
         // ?peek=номер (или first) — открыть окошко этой строки сразу: так «Оценить» ведёт по черновикам — first значит
         // первый неоценённый черновик страницы, а нет таких — первая строка.
         $want = (string) $request->query('peek');

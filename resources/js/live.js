@@ -21,6 +21,9 @@ let attempts = 0;
 let timer = null;
 let openedAt = 0;
 
+// Канал живой — страницам не нужно опрашивать сервер самим (чат).
+export const liveOpen = () => source?.readyState === EventSource.OPEN;
+
 export function live() {
     document.addEventListener('turbo:load', retopic);
     document.addEventListener('visibilitychange', () => {

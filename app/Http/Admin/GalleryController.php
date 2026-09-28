@@ -18,7 +18,7 @@ class GalleryController
     {
         ListPrefs::sync($request, 'crm-gallery');
         $sort = $request->query('sort', 'fresh');
-        $q = Offer::query()->where('state', OfferState::Gallery)->with(['brand', 'model', 'media', 'parkVehicle:id,offer_id,category'])->withCount(['activeBids', 'interests']);
+        $q = Offer::query()->where('state', OfferState::Gallery)->with(['brand', 'model', 'parkVehicle:id,offer_id,category'])->withCount(['activeBids', 'interests']);
         if ($term = trim((string) $request->query('q'))) {
             $q->search($term);
         }
@@ -28,8 +28,14 @@ class GalleryController
             default => $q->orderByRaw('published_at desc nulls last'),
         };
 
+        $offers = ListView::paginate($request, $q);
+        // Кадры нужны плиткам и строкам, в таблице их нет.
+        if (! ListView::isTable(ListView::pick($request, $offers->total()))) {
+            $offers->loadMissing('media');
+        }
+
         return view('admin.gallery.index', [
-            'offers' => ListView::paginate($request, $q),
+            'offers' => $offers,
             'sort' => $sort,
         ]);
     }
