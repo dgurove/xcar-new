@@ -19,8 +19,14 @@ final class Money
     }
 
     /** То же со знаком рубля: «4 170 000 ₽». */
-    public static function rub(int|float|string|null $value): string
+    public static function rub(int|float|string|null $value, int $decimals = 0): string
     {
-        return $value === null || $value === '' ? '' : self::nums($value).self::NBSP.'₽';
+        return $value === null || $value === '' ? '' : self::nums($value, $decimals).self::NBSP.'₽';
+    }
+
+    /** Копейки — только когда они есть: «15 000,50 ₽» и «15 000 ₽». Округлять чужие траты нельзя. */
+    public static function exact(int|float|string|null $value): string
+    {
+        return $value === null || $value === '' ? '' : self::rub($value, fmod((float) $value, 1) === 0.0 ? 0 : 2);
     }
 }

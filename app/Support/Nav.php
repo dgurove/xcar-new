@@ -253,6 +253,8 @@ final class Nav
             $links[] = self::link('Покупатели', '/account/buyers', also: ['/account/interest', '/account/invites']);
             $links[] = self::link('Сделки', '/account/deals');
             $links[] = self::link('Деньги', '/account/money', also: ['/account/money/details']);
+            // Гараж — своё приложение: машины на ремонте и расходы по ним.
+            $links[] = self::link('Гараж', Surface::Garage->url());
         } elseif ($user->isAdmin()) {
             $links[] = self::link('Пользователи', '/account/users');
             $links[] = self::link('Приглашения', '/account/invites');

@@ -2,7 +2,11 @@
     use App\Cars\{Body, Transmission, Drive, Fuel, DamageCause, DamageZone, Papers};
     use App\Offers\{OfferState, BidState, InterestState};
     $n = $offer->number;
-    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && $s !== OfferState::Delivered);
+    // «В гараже» ставит не кнопка состояния, а «Отдать в гараж»: там выбирают менеджера и цену.
+    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage], true));
+    $garage = $offer->state === OfferState::Garage ? \App\Garage\Car::with('manager')->where('offer_id', $offer->id)->first() : null;
+    // Машину из гаража уводит только «Отдали по ошибке» там же: кнопки состояния тут отбились бы ошибкой.
+    if ($garage) $transitions = collect();
     // Подтверждения: ждущие по сумме вниз, потом решённые.
     $bids = $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]);
     $waiting = $offer->bids->where('state', BidState::Active);
@@ -252,6 +256,25 @@
         </x-ui.card>
     </div>
 
+    {{-- Гараж: машина уходит из продажи менеджеру на ремонт — нужен человек и цена, поэтому своя шторка. --}}
+    @if ($garage)
+        <div class="mt-6">
+            <a href="{{ \App\Support\Surface::Garage->url('/cars/'.$n) }}" class="btn btn-quiet" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }} ↗</a>
+        </div>
+    @elseif ($offer->state->allows(OfferState::Garage))
+        <div data-controller="sheet" data-action="garage:open@window->sheet#open" class="contents">
+            <x-ui.sheet id="offer-garage" title="Отдать в гараж">
+                <form method="post" action="/offers/{{ $n }}/garage" class="flex flex-col gap-4">
+                    @csrf
+                    <x-ui.field name="manager_id" label="Кому" :options="$managers->pluck('name', 'id')" placeholder="Взяли под себя"/>
+                    <x-ui.field name="cost" label="Отдали за, ₽" :value="$offer->floor_price"/>
+                    <x-ui.field name="note" label="Заметка" type="textarea" rows="2"/>
+                    <x-ui.button type="submit" variant="primary" block>Отдать в гараж</x-ui.button>
+                </form>
+            </x-ui.sheet>
+        </div>
+    @endif
+
     <x-ui.action-bar data-controller="sheet">
         <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @if ($transitions->isNotEmpty())
@@ -267,6 +290,9 @@
                                 OfferState::Sold => 'В сделку', OfferState::Cancelled => 'Снять с продажи', OfferState::Archived => 'В архив', default => $next->label() } }}</x-ui.button>
                         </form>
                     @endforeach
+                    @if (! $garage && $offer->state->allows(OfferState::Garage))
+                        <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="garage:open">Отдать в гараж</x-ui.button>
+                    @endif
                 </div>
             </x-ui.sheet>
         @endif

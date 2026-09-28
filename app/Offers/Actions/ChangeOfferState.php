@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\InvoiceState;
+use App\Garage\Car as GarageCar;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\DealState;
@@ -36,6 +37,10 @@ final class ChangeOfferState
             }
             if (! $from->allows($next)) {
                 throw ValidationException::withMessages(['state' => "Из «{$from->label()}» нельзя в «{$next->label()}»"]);
+            }
+            // Машину из гаража уводит только «Отдали по ошибке»: иначе строка гаража с расходами осталась бы без хозяина.
+            if ($from === OfferState::Garage && GarageCar::where('offer_id', $offer->id)->exists()) {
+                throw ValidationException::withMessages(['state' => 'Машина в гараже: сначала «Отдали по ошибке»']);
             }
             if ($next === OfferState::Open) {
                 $this->readyToPublish($offer);

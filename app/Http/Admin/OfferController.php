@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Cars\Settlement;
 use App\Chats\Chat;
 use App\Chats\Message as ChatMessage;
+use App\Garage\Actions\TakeToGarage;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
@@ -130,6 +131,19 @@ class OfferController
         $offer = $update($offer, ['bids_close_at' => $from->copy()->addMinutes($minutes)], $request->user());
 
         return back()->with('toast', 'Приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'));
+    }
+
+    /** Отдать машину менеджеру в гараж: из продажи она уходит, дальше её ведут там. */
+    public function garage(Request $request, Offer $offer, TakeToGarage $take)
+    {
+        $data = $request->validate([
+            'manager_id' => ['nullable', 'exists:users,id'],
+            'cost' => ['nullable', 'integer', 'min:0'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+        $take($offer, $data['manager_id'] ? User::findOrFail($data['manager_id']) : null, $data['cost'] ?? null, $request->user(), $data['note'] ?? null);
+
+        return redirect("/offers/{$offer->number}")->with('toast', 'В гараже');
     }
 
     public function state(Request $request, Offer $offer, ChangeOfferState $change)

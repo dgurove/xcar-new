@@ -11,6 +11,7 @@ enum OfferState: string
     case Draft = 'draft';
     case Gallery = 'gallery';       // «скоро в продаже»: без цены, принимаем интерес
     case Open = 'open';             // в каталоге; подтверждения принимаются, пока не прошёл bids_close_at
+    case Garage = 'garage';         // отдана менеджеру в гараж: из продажи ушла, на витрину не вернётся
     case Sold = 'sold';             // идёт сделка
     case Delivered = 'delivered';
     case Cancelled = 'cancelled';
@@ -22,6 +23,7 @@ enum OfferState: string
             self::Draft => 'Черновик',
             self::Gallery => 'В галерее',
             self::Open => 'Приём подтверждений',
+            self::Garage => 'В гараже',
             self::Sold => 'Идёт сделка',
             self::Delivered => 'Выдан',
             self::Cancelled => 'Снят',
@@ -36,7 +38,7 @@ enum OfferState: string
             self::Open => 'open',
             self::Sold => 'urgent',
             self::Cancelled => 'danger',
-            self::Draft, self::Gallery => 'plain',
+            self::Draft, self::Gallery, self::Garage => 'plain',
             default => 'closed',
         };
     }
@@ -59,9 +61,11 @@ enum OfferState: string
     public function allows(self $next): bool
     {
         return in_array($next, match ($this) {
-            self::Draft => [self::Gallery, self::Open, self::Sold, self::Cancelled, self::Archived],
-            self::Gallery => [self::Draft, self::Open, self::Sold, self::Cancelled, self::Archived],
-            self::Open => [self::Draft, self::Sold, self::Cancelled, self::Archived],
+            self::Draft => [self::Gallery, self::Open, self::Sold, self::Garage, self::Cancelled, self::Archived],
+            self::Gallery => [self::Draft, self::Open, self::Sold, self::Garage, self::Cancelled, self::Archived],
+            self::Open => [self::Draft, self::Sold, self::Garage, self::Cancelled, self::Archived],
+            // Из гаража машина на витрину не возвращается: «отдали по ошибке» — обратно в черновик.
+            self::Garage => [self::Draft, self::Archived],
             self::Sold => [self::Delivered, self::Cancelled, self::Open],
             self::Archived => [self::Draft],
             self::Delivered, self::Cancelled => [self::Archived],
