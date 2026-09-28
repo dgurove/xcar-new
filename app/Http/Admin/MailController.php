@@ -524,19 +524,21 @@ class MailController
         // Файл — из outbox, из закреплённых или из ящика через кэш; отдаётся с диска, не через память.
         $file = $attachment->file();
         abort_if($file === null, 404, 'Файла нет: письмо удалено из ящика');
-        // ?thumb — миниатюра картинки для сетки в письме: считается раз, живёт в cache/mail (storage:gc чистит по сроку).
-        if ($request->boolean('thumb') && $attachment->isImage() && $attachment->mime !== 'image/svg+xml') {
-            $thumb = Storage::disk('cache')->path("mail/thumb-{$attachment->id}.webp");
-            if (! is_file($thumb)) {
+        // ?thumb — миниатюра для ленты в письме, ?large — кадр для просмотра во весь экран (1600, как у медиатеки:
+        // с камеры приходят мегабайты). Считаются раз, живут в cache/mail (storage:gc чистит по сроку).
+        $size = $request->boolean('thumb') ? 320 : ($request->boolean('large') ? PhotoIngest::MAX_DIMENSION : null);
+        if ($size && $attachment->isImage() && $attachment->mime !== 'image/svg+xml') {
+            $small = Storage::disk('cache')->path('mail/'.($size === 320 ? 'thumb' : 'large')."-{$attachment->id}.webp");
+            if (! is_file($small)) {
                 try {
-                    $made = $photos->shrink($file, 320);
-                    rename($made, $thumb);
+                    $made = $photos->shrink($file, $size);
+                    rename($made, $small);
                 } catch (\Throwable) {
-                    // Не пережалось (битый файл) — отдаём как есть.
+                    // Не пережалось (битый файл, HEIC) — отдаём как есть.
                 }
             }
-            if (is_file($thumb)) {
-                return response()->file($thumb, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
+            if (is_file($small)) {
+                return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
             }
         }
         // SVG — не картинка, а документ со скриптами: только на скачивание.

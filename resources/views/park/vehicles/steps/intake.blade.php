@@ -20,7 +20,7 @@
 </div>
 {{-- Кадры от страховой — карточкой справа (на телефоне под формой): они видны на любом шаге, не только тут.
      Своего `id` у карточки нет: тут не лента кадров, а чек-лист слотов, и обновляется он отдельным потоком. --}}
-<x-ui.card title="Фото при приёме" nested class="mt-3" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-stage-value="intake">
+<x-ui.card title="Фото при приёме" nested class="mt-3" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-stage-value="intake" data-photos-group-value="car-{{ $vehicle->id }}" data-photos-order="1">
     <input type="file" accept="image/*,.heic,.heif" capture="environment" multiple hidden data-photos-target="input" data-action="change->photos#upload">
     <div hidden data-photos-target="progress" class="mb-3">
         <div class="mb-1 text-sm text-ink-muted" data-label></div>

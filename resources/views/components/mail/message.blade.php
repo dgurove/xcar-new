@@ -51,10 +51,10 @@
 
     @php [$pictures, $documents] = $message->files()->partition(fn ($f) => $f->isImage() && $f->mime !== 'image/svg+xml'); @endphp
     @if ($pictures->isNotEmpty())
-        {{-- Фото письма сеткой квадратов, миниатюры считает ?thumb; клик — оригинал. --}}
-        <div class="photo-grid mt-3">
+        {{-- Фото письма сеткой квадратов, миниатюры считает ?thumb; клик — просмотр во весь экран (?large), «Скачать» — оригинал. --}}
+        <div class="photo-grid mt-3" data-controller="photos" data-photos-readonly-value="true">
             @foreach ($pictures as $file)
-                <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="photo-cell" title="{{ $file->filename }}"><img src="{{ $base }}/attachments/{{ $file->id }}?thumb=1" alt="" loading="lazy" class="h-full w-full object-cover"></a>
+                <div class="photo-cell" title="{{ $file->filename }}"><img src="{{ $base }}/attachments/{{ $file->id }}?thumb=1" data-full="{{ $base }}/attachments/{{ $file->id }}?large=1" data-download="{{ $base }}/attachments/{{ $file->id }}" alt="" loading="lazy" data-action="click->photos#open"></div>
             @endforeach
         </div>
     @endif

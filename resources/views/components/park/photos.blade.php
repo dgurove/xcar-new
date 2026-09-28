@@ -7,7 +7,7 @@
     $photos = $vehicle->photos()->filter(fn ($m) => PhotoStage::of($m) === $stage)->values();
     $n = $photos->count();
 @endphp
-<x-ui.card :nested="$nested" :id="'photos-'.$stage->value" {{ $attributes->merge(['data-controller' => 'photos'] + ($edit
+<x-ui.card :nested="$nested" :id="'photos-'.$stage->value" {{ $attributes->merge(['data-controller' => 'photos', 'data-photos-group-value' => 'car-'.$vehicle->id, 'data-photos-order' => array_search($stage, PhotoStage::cases(), true)] + ($edit
     ? ['data-photos-url-value' => '/cars/'.$vehicle->id.'/media', 'data-photos-stage-value' => $stage->value]
     : ['data-photos-readonly-value' => 'true'])) }}>
     @if ($collapsed)

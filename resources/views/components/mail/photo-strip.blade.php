@@ -5,7 +5,7 @@
     <div class="photo-strip" data-photos-target="grid">
         @foreach ($files as $file)
             <div class="photo-cell" title="{{ $file->filename }}">
-                <img src="{{ $base }}/attachments/{{ $file->id }}?thumb=1" data-full="{{ $base }}/attachments/{{ $file->id }}" alt="" loading="lazy" data-action="click->photos#open">
+                <img src="{{ $base }}/attachments/{{ $file->id }}?thumb=1" data-full="{{ $base }}/attachments/{{ $file->id }}?large=1" data-download="{{ $base }}/attachments/{{ $file->id }}" alt="" loading="lazy" data-action="click->photos#open">
             </div>
         @endforeach
     </div>

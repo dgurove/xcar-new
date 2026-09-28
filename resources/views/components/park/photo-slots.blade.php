@@ -1,5 +1,5 @@
-{{-- Чек-лист кадров: плитка на слот, пустая — контур с камерой, заполненная — кадр; нажатие открывает
-     камеру именно на этот слот. Счётчик обязательных — в заголовке карточки. Живёт внутри
+{{-- Чек-лист кадров: плитка на слот, пустая — контур с камерой (нажатие открывает камеру именно на этот
+     слот), заполненная — кадр: нажатие показывает его во весь экран, камера в углу — доснять. Счётчик обязательных — в заголовке карточки. Живёт внутри
      data-controller="photos" карточки: загрузка тем же контроллером, слот и стадия — полями формы. --}}
 @props(['vehicle', 'stage', 'slots', 'shots' => []])
 @php
@@ -13,15 +13,22 @@
     <div class="grid grid-cols-3 gap-2">
         @foreach ($slots as $slot)
             @php $shots = $bySlot->get($slot->value, collect()); $last = $shots->last(); @endphp
-            <button type="button" class="photo-slot {{ $last ? 'is-filled' : '' }} {{ $slot->required() && !$last ? 'is-required' : '' }}" data-action="photo-slot#pick" data-slot="{{ $slot->value }}">
-                @if ($last)
-                    <img src="{{ \App\Media\MediaUrl::for($last, 'w320') }}" alt="" data-full="{{ \App\Media\MediaUrl::for($last) }}">
+            @if ($last)
+                {{-- Снятый слот: нажатие — кадр во весь экран (все кадры слота подряд), камера в углу — доснять. --}}
+                <div class="photo-slot is-filled">
+                    @foreach ($shots->reverse()->values() as $k => $shot)
+                        <img src="{{ \App\Media\MediaUrl::for($shot, 'w320') }}" alt="" data-full="{{ \App\Media\MediaUrl::for($shot) }}" data-id="{{ $shot->id }}" @if ($k) hidden loading="lazy" @else data-action="click->photos#open" @endif>
+                    @endforeach
                     @if ($shots->count() > 1)<span class="mark nums">{{ $shots->count() }}</span>@endif
-                @else
+                    <button type="button" class="photo-slot-camera" data-action="photo-slot#pick" data-slot="{{ $slot->value }}" aria-label="Доснять"><x-ui.icon name="camera" class="size-4"/></button>
+                    <span class="photo-slot-label">{{ $slot->label() }}</span>
+                </div>
+            @else
+                <button type="button" class="photo-slot {{ $slot->required() ? 'is-required' : '' }}" data-action="photo-slot#pick" data-slot="{{ $slot->value }}">
                     <x-ui.icon name="camera" class="size-6"/>
-                @endif
-                <span class="photo-slot-label">{{ $slot->label() }}</span>
-            </button>
+                    <span class="photo-slot-label">{{ $slot->label() }}</span>
+                </button>
+            @endif
         @endforeach
     </div>
     <input type="file" accept="image/*,.heic,.heif" capture="environment" hidden data-photo-slot-target="input" data-action="change->photo-slot#upload">

@@ -20,6 +20,6 @@
         </div>
     @endif
     @if ($photos->isNotEmpty())
-        <div data-controller="photos" data-photos-readonly-value="true"><x-ui.photos :photos="$photos" readonly grid :hide="false" :main="false" id="phase-{{ $step->key }}"/></div>
+        <div data-controller="photos" data-photos-readonly-value="true" data-photos-group-value="car-{{ $vehicle->id }}" data-photos-order="{{ array_search(\App\Park\PhotoStage::from($stage), \App\Park\PhotoStage::cases(), true) }}"><x-ui.photos :photos="$photos" readonly grid :hide="false" :main="false" id="phase-{{ $step->key }}"/></div>
     @endif
 </div>

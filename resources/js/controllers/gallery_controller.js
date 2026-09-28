@@ -1,10 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
+import { openLightbox } from '../lightbox';
 
-// Лента фото: свайп по snap-scroll, стрелки и ←/→, счётчик, полноэкранный просмотр.
-// Просмотрщик — Viewer.js: лента миниатюр, зум колесом и щипком, без анимации кадров.
-let viewerModule = null;
-const loadViewer = () => (viewerModule ??= Promise.all([import('viewerjs'), import('viewerjs/dist/viewer.css')]).then(([m]) => m.default));
-
+// Лента фото: свайп по snap-scroll, стрелки и ←/→, счётчик, полноэкранный просмотр (lightbox.js);
+// листание в просмотре двигает и ленту — после закрытия на странице тот же кадр.
 export default class extends Controller {
     static targets = ['strip', 'counter', 'thumb'];
 
@@ -53,15 +51,14 @@ export default class extends Controller {
         event.preventDefault();
         // Индекс — до await: после него event.currentTarget уже пуст.
         const index = event.currentTarget.dataset.index === undefined ? this.index() : Number(event.currentTarget.dataset.index);
-        const Viewer = await loadViewer();
-        this.viewer?.destroy();
-        this.viewer = new Viewer(this.stripTarget, {
-            url: (img) => img.closest('a').href,
-            navbar: true, title: false, transition: false, tooltip: false,
-            toolbar: { prev: { show: 1, size: 'large' }, reset: { show: 1, size: 'large' }, next: { show: 1, size: 'large' } },
-            initialViewIndex: index,
-            hidden: () => { this.viewer?.destroy(); this.viewer = null; },
+        const items = [...this.stripTarget.querySelectorAll('a[href]')].map((a) => {
+            const img = a.querySelector('img');
+            return { src: a.href, el: img, thumb: img?.currentSrc || img?.src };
         });
-        this.viewer.show();
+        this.viewer = await openLightbox({
+            items, index,
+            onChange: (i) => this.stripTarget.children[i]?.scrollIntoView({ block: 'nearest', inline: 'nearest' }),
+            onClose: () => { this.viewer = null; },
+        });
     }
 }

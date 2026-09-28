@@ -2,16 +2,17 @@ import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import { confirmSheet } from '../confirm';
 import { loadSortable } from '../lib/sortable';
+import { openLightbox } from '../lightbox';
 
 // Фотографии: загрузка по одному файлу с прогрессом (выбор или drop на карточку), перестановка перетаскиванием,
-// действия глаз · поворот · корзина на плитке и в просмотрщике.
+// действия глаз, поворот, корзина на плитке и в просмотрщике.
 // Сервер на каждое действие возвращает turbo-stream с новой полосой; полоса
 // подменяется сразу (не через Turbo), чтобы просмотрщик и Sortable пересобрались
 // на новом узле тут же. readonly — только смотреть (кадры из письма рядом с приёмом): без
 // перестановки, без действий на плитке и в просмотрщике.
 export default class extends Controller {
     static targets = ['input', 'progress', 'grid'];
-    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean };
+    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String };
 
     connect() {
         if (this.readonlyValue) return;
@@ -47,7 +48,7 @@ export default class extends Controller {
         this.element.removeEventListener('dragleave', this.leave);
         this.element.removeEventListener('drop', this.drop);
         this.sortable?.destroy();
-        this.viewer?.destroy();
+        // Просмотр не гасим: ответ на действие из него подменяет карточку вместе с этим контроллером.
     }
 
     pick() { this.inputTarget.click(); }
@@ -236,7 +237,7 @@ export default class extends Controller {
 
     // После поворота у файла тот же адрес: добавить метку времени, чтобы браузер не показал старый кадр.
     bust(id) {
-        const img = this.cell(id)?.querySelector('img');
+        const img = this.hasGridTarget ? this.cell(id)?.querySelector('img') : null;
         if (!img) return;
         const stamp = (u) => u + (u.includes('?') ? '&' : '?') + 't=' + Date.now();
         img.src = stamp(img.src);
@@ -247,53 +248,59 @@ export default class extends Controller {
 
     cell(id) { return this.gridTarget.querySelector(`.photo-cell[data-id="${id}"]`); }
 
-    // ---- просмотрщик
+    // ---- просмотрщик (lightbox.js): глаз, поворот, корзина и «Скачать» прямо в нём. group — карточки одной ТС
+    // листаются одним просмотром (от страховой, приём, выдача); действие делает карточка, чей кадр на экране.
 
-    async open(event) {
-        const index = this.cells().indexOf(event.currentTarget.closest('.photo-cell'));
-        if (!this.Viewer) {
-            const [{ default: Viewer }] = await Promise.all([import('viewerjs'), import('viewerjs/dist/viewer.css')]);
-            this.Viewer = Viewer;
-        }
-        this.show(index);
+    open(event) {
+        const img = event.currentTarget.closest('.photo-cell')?.querySelector('img') ?? event.currentTarget;
+        const items = this.items();
+        return this.show(Math.max(0, items.findIndex((it) => it.el === img)), items);
     }
 
-    show(index) {
-        this.viewer?.destroy();
-        const canHide = !!this.gridTarget.querySelector('[data-act="hide"]');
-        const toolbar = { prev: 1, zoomOut: 1, zoomIn: 1, next: 1 };
-        if (canHide) toolbar.eye = { show: 1, size: 'large', click: () => this.fromViewer('hide') };
-        if (!this.readonlyValue) {
-            toolbar.rotate = { show: 1, size: 'large', click: () => this.fromViewer('rotate') };
-            toolbar.trash = { show: 1, size: 'large', click: () => this.fromViewer('udalit', 'Удалить фото?') };
-        }
-        this.viewer = new this.Viewer(this.gridTarget, {
-            url: (img) => img.dataset.full,
-            filter: (img) => !!img.dataset.full,
-            navbar: true, title: false, transition: false, toolbar,
-            initialViewIndex: Math.max(0, index),
-            viewed: () => this.markEye(),
-            hidden: () => { this.viewer?.destroy(); this.viewer = null; },
+    // Карточки группы — по стадиям (data-photos-order), не по месту на странице; из двух карточек одной стадии
+    // первой та, где кадры можно править.
+    owners() {
+        if (!this.groupValue) return [this];
+        const ro = (el) => (el.dataset.photosReadonlyValue === 'true' ? 1 : 0);
+        return [...document.querySelectorAll(`[data-photos-group-value="${CSS.escape(this.groupValue)}"]`)]
+            .sort((a, b) => (a.dataset.photosOrder ?? 9) - (b.dataset.photosOrder ?? 9) || ro(a) - ro(b))
+            .map((el) => this.application.getControllerForElementAndIdentifier(el, 'photos')).filter(Boolean);
+    }
+
+    // Кадры по порядку карточек, каждый один раз (кадр стадии бывает и в шаге, и карточкой справа); превью
+    // в очереди загрузки (без data-full) не смотрятся.
+    items() {
+        const seen = new Set();
+        return this.owners().flatMap((owner) => [...owner.element.querySelectorAll('img[data-full]')].map((img) => ({
+            src: img.dataset.full, el: img, thumb: img.src, download: img.dataset.download,
+            owner, id: img.dataset.id ?? img.closest('[data-id]')?.dataset.id,
+        }))).filter((it) => !it.id || (!seen.has(it.id) && seen.add(it.id)));
+    }
+
+    async show(index, items) {
+        const can = (i, act) => {
+            const it = (this.viewer?.items ?? items)[i];
+            if (!it?.id || it.owner.readonlyValue) return false;
+            return act !== 'hide' || !!it.owner.element.querySelector(`.photo-cell[data-id="${it.id}"] [data-act="hide"]`);
+        };
+        const act = (act, confirm) => async (i) => {
+            const it = this.viewer.items[i];
+            if (!can(i, act) || !(await it.owner.perform(it.id, act, confirm))) return;
+            const next = this.items();
+            const at = act === 'delete' ? Math.min(i, next.length - 1) : next.findIndex((n) => n.id === it.id);
+            this.viewer.refresh(next, at);
+        };
+        const hidden = (i) => (this.viewer?.items ?? items)[i]?.el.closest('.photo-cell')?.dataset.hidden === '1';
+        const lightbox = await openLightbox({
+            items, index, download: true,
+            actions: [
+                { name: 'eye', icon: 'eye-off', title: 'Скрыть', iconFor: (i) => (hidden(i) ? 'eye' : 'eye-off'), titleFor: (i) => (hidden(i) ? 'Показать' : 'Скрыть'), shown: (i) => can(i, 'hide'), run: act('hide') },
+                { name: 'rotate', icon: 'rotate', title: 'Повернуть', shown: (i) => can(i, 'rotate'), run: act('rotate') },
+                { name: 'trash', icon: 'trash', title: 'Удалить', shown: (i) => can(i, 'delete'), run: act('delete', 'Удалить фото?') },
+            ],
+            onClose: () => { this.viewer = null; },
         });
-        this.viewer.show();
-    }
-
-    current() { return this.cells()[this.viewer?.index ?? 0]; }
-
-    async fromViewer(act, confirm) {
-        const cellEl = this.current();
-        if (!cellEl) return;
-        const index = this.viewer.index;
-        if (!(await this.perform(cellEl.dataset.id, act, confirm))) return;
-        const n = this.cells().length;
-        if (n === 0) { this.viewer?.destroy(); this.viewer = null; return; }
-        // Полоса заменена целиком — пересобрать просмотрщик на новом узле, на том же кадре.
-        this.show(Math.min(index, n - 1));
-    }
-
-    markEye() {
-        const eye = this.viewer?.viewer?.querySelector('.viewer-eye');
-        if (eye) eye.classList.toggle('is-off', this.current()?.dataset.hidden === '1');
+        if (lightbox) this.viewer = lightbox;
     }
 
     showProgress(label, ratio) {

@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { openLightbox } from '../lightbox';
 
 // Чат по офферу. Лента дополняется фрагментами «всё после N», где N —
 // последний номер на экране: догон после обрыва идемпотентен; старое
@@ -6,9 +7,7 @@ import { Controller } from '@hotwired/stimulus';
 // {chat, seq}, текст всегда берётся с сервера. Своё меню у пузыря
 // (долгое нажатие, правая кнопка, свайп вправо): ответить, скопировать,
 // изменить, удалить; чип над полем держит ответ или правку. Фото — превью
-// до отправки, вставка из буфера и drop; просмотр — Viewer.js как в галерее.
-let viewerModule = null;
-const loadViewer = () => (viewerModule ??= Promise.all([import('viewerjs'), import('viewerjs/dist/viewer.css')]).then(([m]) => m.default));
+// до отправки, вставка из буфера и drop; просмотр — lightbox.js, как везде.
 
 export default class extends Controller {
     static targets = ['list', 'form', 'input', 'files', 'submit', 'state', 'stateIcon', 'stateName', 'stateText', 'previews', 'menu', 'ownItem', 'copyItem', 'editItem', 'more'];
@@ -442,20 +441,15 @@ export default class extends Controller {
         });
     }
 
-    // Просмотр фото ленты во весь экран — Viewer.js по всем фото чата, начиная с нажатого.
+    // Просмотр фото ленты во весь экран — по всем фото чата, начиная с нажатого.
     async view(event) {
         const images = [...this.listTarget.querySelectorAll('.msg-photos img')];
         const index = images.indexOf(event.currentTarget.querySelector('img'));
-        const Viewer = await loadViewer();
-        this.viewer?.destroy();
-        this.viewer = new Viewer(this.listTarget, {
-            filter: (img) => img.closest('.msg-photos') !== null,
-            navbar: images.length > 1, title: false, toolbar: false, transition: false, tooltip: false, movable: true, zoomRatio: .3,
-            initialViewIndex: Math.max(0, index),
-            hidden: () => { this.viewer?.destroy(); this.viewer = null; document.body.classList.remove('viewer-open'); },
-            shown: () => document.body.classList.add('viewer-open'),
+        this.viewer = await openLightbox({
+            items: images.map((img) => ({ src: img.closest('a')?.href || img.src, el: img, thumb: img.src })),
+            index: Math.max(0, index), download: true,
+            onClose: () => { this.viewer = null; },
         });
-        this.viewer.show();
     }
 
     // ------------------------------------------------------------ отправка
