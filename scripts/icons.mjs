@@ -119,9 +119,12 @@ for (const [w, h, r] of SCREENS) {
 // и на светлом, и на тёмном кузове, и его нельзя «вычесть» как один шаблон. Прозрачность здесь.
 const WM = { width: 1200, pad: 16, body: '#DCDCDC', bodyAlpha: 0.38, haloBlur: 3, haloAlpha: 0.3 };
 {
-    const src = readFileSync(at('../public/images/xcar.svg'), 'utf8').replace(/width="\d+" height="\d+"/, `width="${WM.width}" height="${Math.round(WM.width * 512 / 2054)}"`);
+    const raw = readFileSync(at('../public/images/xcar.svg'), 'utf8');
+    const [, lw, lh] = raw.match(/width="(\d+)" height="(\d+)"/);
+    const WM_H = Math.round(WM.width * lh / lw);
+    const src = raw.replace(/width="\d+" height="\d+"/, `width="${WM.width}" height="${WM_H}"`);
     const shape = (fill, alpha) => src.replace(/fill="(black|#97BF0D)"/g, `fill="${fill}" fill-opacity="${alpha}"`);
-    const size = { width: WM.width + WM.pad * 2, height: Math.round(WM.width * 512 / 2054) + WM.pad * 2 };
+    const size = { width: WM.width + WM.pad * 2, height: WM_H + WM.pad * 2 };
     const halo = await sharp(Buffer.from(shape('black', 1))).extend({ top: WM.pad, bottom: WM.pad, left: WM.pad, right: WM.pad, background: { r: 0, g: 0, b: 0, alpha: 0 } })
         .blur(WM.haloBlur).ensureAlpha().linear([1, 1, 1, WM.haloAlpha], [0, 0, 0, 0]).png().toBuffer();
     const body = await sharp(Buffer.from(shape(WM.body, WM.bodyAlpha))).png().toBuffer();
