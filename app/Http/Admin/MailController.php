@@ -524,17 +524,33 @@ class MailController
         // Файл — из outbox, из закреплённых или из ящика через кэш; отдаётся с диска, не через память.
         $file = $attachment->file();
         abort_if($file === null, 404, 'Файла нет: письмо удалено из ящика');
+        $mime = $attachment->mime ?: 'application/octet-stream';
+        $name = $attachment->filename;
+        // HEIC с айфона браузер не показывает — отдаём JPEG (он же — исходник для миниатюры и просмотра).
+        if ($attachment->isHeic()) {
+            $jpeg = Storage::disk('cache')->path("mail/jpeg-{$attachment->id}.jpg");
+            if (! is_file($jpeg) && $photos->isHeic($file)) {
+                try {
+                    rename($photos->toJpeg($file), $jpeg);
+                } catch (\Throwable) {
+                    // Не перекодировался — отдаём как есть, скачать можно.
+                }
+            }
+            if (is_file($jpeg)) {
+                [$file, $mime, $name] = [$jpeg, 'image/jpeg', preg_replace('/\.hei[cf]$/i', '', $name).'.jpg'];
+            }
+        }
         // ?thumb — миниатюра для ленты в письме, ?large — кадр для просмотра во весь экран (1600, как у медиатеки:
         // с камеры приходят мегабайты). Считаются раз, живут в cache/mail (storage:gc чистит по сроку).
         $size = $request->boolean('thumb') ? 320 : ($request->boolean('large') ? PhotoIngest::MAX_DIMENSION : null);
-        if ($size && $attachment->isImage() && $attachment->mime !== 'image/svg+xml') {
+        if ($size && $attachment->isImage() && $mime !== 'image/svg+xml') {
             $small = Storage::disk('cache')->path('mail/'.($size === 320 ? 'thumb' : 'large')."-{$attachment->id}.webp");
             if (! is_file($small)) {
                 try {
                     $made = $photos->shrink($file, $size);
                     rename($made, $small);
                 } catch (\Throwable) {
-                    // Не пережалось (битый файл, HEIC) — отдаём как есть.
+                    // Не пережалось (битый файл) — отдаём как есть.
                 }
             }
             if (is_file($small)) {
@@ -542,11 +558,11 @@ class MailController
             }
         }
         // SVG — не картинка, а документ со скриптами: только на скачивание.
-        $inline = ($attachment->isImage() && $attachment->mime !== 'image/svg+xml') || $attachment->isPdf();
+        $inline = ($attachment->isImage() && $mime !== 'image/svg+xml') || $attachment->isPdf();
 
         return response()->file($file, [
-            'Content-Type' => $attachment->mime ?: 'application/octet-stream',
-            'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode($attachment->filename),
+            'Content-Type' => $mime,
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode($name),
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=86400',
         ]);

@@ -72,16 +72,20 @@ final class PhotoIngest
     }
 
     /**
-     * HEIC с айфона (папки Carcade полны ими): GD его не читает, перегоняем
-     * в JPEG скриптом heic2jpg из образа (deploy/bin). Узнаём по сигнатуре
-     * ftyp…, не по имени — из архивов и с телефона имя бывает любым.
+     * HEIC с айфона (папки Carcade полны ими, вложения писем, фото в чат): GD его не читает, перегоняем
+     * в JPEG скриптом heic2jpg из образа (deploy/bin). Узнаём по сигнатуре ftyp…, не по имени — из архивов
+     * и с телефона имя бывает любым.
      */
-    private function fromHeic(string $path): string
+    public function isHeic(string $path): bool
     {
         $head = (string) @file_get_contents($path, false, null, 4, 8);
-        if (! preg_match('/^ftyp(heic|heix|hevc|hevx|heim|heis|mif1|msf1)/', $head)) {
-            return $path;
-        }
+
+        return (bool) preg_match('/^ftyp(heic|heix|hevc|hevx|heim|heis|mif1|msf1)/', $head);
+    }
+
+    /** JPEG рядом во временной папке; исходник не трогается. */
+    public function toJpeg(string $path): string
+    {
         $base = tempnam(sys_get_temp_dir(), 'heic-');
         $jpg = $base.'.jpg';
         $result = Process::timeout(120)->run(['heic2jpg', $path, $jpg]);
@@ -90,6 +94,16 @@ final class PhotoIngest
             @unlink($jpg);
             throw new RuntimeException('HEIC не перекодировался: '.trim($result->errorOutput() ?: $result->output()) ?: 'нет heic2jpg');
         }
+
+        return $jpg;
+    }
+
+    private function fromHeic(string $path): string
+    {
+        if (! $this->isHeic($path)) {
+            return $path;
+        }
+        $jpg = $this->toJpeg($path);
         @unlink($path);
 
         return $jpg;
@@ -110,10 +124,15 @@ final class PhotoIngest
     public function shrink(string $path, int $max = self::MAX_DIMENSION): string
     {
         $webp = $path.'.webp';
+        $source = $this->isHeic($path) ? $this->toJpeg($path) : $path;
         try {
-            Image::load($path)->fit(Fit::Max, $max, $max)->format('webp')->quality(self::QUALITY)->save($webp);
+            Image::load($source)->fit(Fit::Max, $max, $max)->format('webp')->quality(self::QUALITY)->save($webp);
         } catch (Throwable $e) {
             throw new RuntimeException('Кадр не пережался: '.$e->getMessage(), previous: $e);
+        } finally {
+            if ($source !== $path) {
+                @unlink($source);
+            }
         }
         if (! is_file($webp) || filesize($webp) === 0) {
             throw new RuntimeException('Кадр не пережался');

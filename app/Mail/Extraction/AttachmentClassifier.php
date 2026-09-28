@@ -19,7 +19,7 @@ final class AttachmentClassifier
             }
             $mime = mb_strtolower((string) $attachment->mime);
             $name = mb_strtolower((string) $attachment->filename);
-            if (str_starts_with($mime, 'image/')) {
+            if (str_starts_with($mime, 'image/') || $attachment->isHeic()) {
                 $this->looksLikeDocument($name) ? $documents[] = $attachment : $photos[] = $attachment;
             } elseif (ArchivePhotoExtractor::isArchive($mime) || ArchivePhotoExtractor::isArchiveName($name)) {
                 $archives[] = $attachment;

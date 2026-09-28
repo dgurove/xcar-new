@@ -64,7 +64,13 @@ class Attachment extends Model
 
     public function isImage(): bool
     {
-        return str_starts_with((string) $this->mime, 'image/') && $this->mime !== 'image/svg+xml';
+        return (str_starts_with((string) $this->mime, 'image/') && $this->mime !== 'image/svg+xml') || $this->isHeic();
+    }
+
+    /** Фото с айфона: браузер его не показывает, отдаётся JPEG (`MailController::attachment`). Почта часто шлёт его octet-stream. */
+    public function isHeic(): bool
+    {
+        return in_array($this->mime, ['image/heic', 'image/heif'], true) || preg_match('/\.hei[cf]$/i', (string) $this->filename) === 1;
     }
 
     public function isPdf(): bool
