@@ -21,7 +21,7 @@
     <x-ui.peek :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         <x-slot:marks>
             @unless ($offer->state === OfferState::Draft)<span class="tag nums">№ {{ $n }}</span>@endunless
-            <x-ui.pill :tone="$offer->state->tone()" class="!min-h-0 !py-1 text-xs">{{ $offer->state->label() }}</x-ui.pill>
+            <span class="tag {{ match ($offer->state->tone()) { 'open' => 'tag-accent', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' } }}">{{ $offer->state->label() }}</span>
             @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
             @elseif (!$gallery && $offer->closed())<span class="tag">приём закрыт</span>@endif
             @if ($offer->car_place)<x-ui.place class="tag">{{ $offer->car_place->label() }}</x-ui.place>@endif
@@ -31,13 +31,11 @@
         </x-slot:marks>
         <x-slot:aside>
             @if ($price->shown())
-                <span class="nums block whitespace-nowrap text-lg">@if ($price->withFrom())<span class="text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="font-bold">{{ $price::money($price->to) }}&nbsp;₽</span></span>
-                @if ($price->declared)<span class="text-xs text-ink-dim nums">заявлена {{ $price::money($price->declared) }}</span>@endif
+                <span class="nums block whitespace-nowrap text-lg">@if ($price->withFrom())<span class="text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="font-bold">{{ $price::money($price->to) }}&nbsp;₽</span>@if ($price->declared) <span class="text-xs font-normal text-ink-dim">заявлена {{ $price::money($price->declared) }}</span>@endif</span>
             @elseif ($gallery)
                 <span class="text-sm text-accent-text">Скоро в продаже</span>
             @elseif ($offer->floor_price)
-                <span class="nums block whitespace-nowrap text-lg font-bold">{{ $price::money($offer->floor_price) }}&nbsp;₽</span>
-                <span class="text-xs text-ink-dim">закупочная</span>
+                <span class="block whitespace-nowrap text-lg"><span class="nums font-bold">{{ $price::money($offer->floor_price) }}&nbsp;₽</span> <span class="text-xs text-ink-dim">закупочная</span></span>
             @endif
         </x-slot:aside>
         <x-slot:actions>

@@ -14,7 +14,8 @@
     <div class="peek-head mt-3">
         <a href="{{ $href }}" class="peek-title block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}</span></a>
         @if ($aside)<div class="peek-aside">{{ $aside }}</div>@endif
-        @if ($marks)<div class="peek-marks flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
+        {{-- Метки и факты — одной строкой с одним шагом: два ряда тегов с разными отступами смотрелись вразнобой. --}}
+        @if ($marks || array_filter($facts))<div class="peek-marks flex flex-wrap items-center gap-1.5">{{ $marks }}@foreach (array_filter($facts) as $fact)<span class="tag nums">{{ $fact }}</span>@endforeach</div>@endif
     </div>
 @else
 <div class="flex items-start gap-3">
@@ -25,7 +26,7 @@
     </div>
 </div>
 @endif
-@if ($facts = array_filter($facts))<div class="mt-3 flex flex-wrap gap-1.5">@foreach ($facts as $fact)<span class="tag nums">{{ $fact }}</span>@endforeach</div>@endif
+@if ($photos === null && ($facts = array_filter($facts)))<div class="mt-3 flex flex-wrap gap-1.5">@foreach ($facts as $fact)<span class="tag nums">{{ $fact }}</span>@endforeach</div>@endif
 @if ($actions)
     <div class="mt-3 flex flex-wrap items-center gap-2">{{ $actions }}</div>
 @elseif ($action)

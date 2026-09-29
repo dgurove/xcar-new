@@ -1133,11 +1133,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .peek-close { @apply relative z-10 flex size-8 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   .peek-body { @apply block min-h-0 overflow-y-auto px-4 pb-4 pt-1; overscroll-behavior: contain; transition: opacity var(--dur-fast); }
   .peek-body[aria-busy="true"] { opacity: .45; }
-  /* Шапка окошка с лентой: название и цена рядом, метки под названием; до 640 цена — своей строкой под названием, метки
-     во всю ширину (узкая колонка рядом с ценой ставила теги столбиком). */
+  /* Шапка окошка с лентой: название и цена в одну строку, под ними метки с фактами во всю ширину (колонка рядом с ценой
+     ставила теги столбиком); до 640 цена — своей строкой под названием. */
   .peek-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .75rem; align-items: start; }
-  .peek-aside { grid-column: 2; grid-row: 1 / span 2; text-align: right; }
-  .peek-marks { grid-column: 1; margin-top: .375rem; }
+  .peek-aside { grid-column: 2; grid-row: 1; text-align: right; }
+  .peek-marks { grid-column: 1 / -1; margin-top: .375rem; }
   @media (max-width: 639.98px) {
     .peek-aside { grid-column: 1 / -1; grid-row: auto; text-align: left; margin-top: .125rem; }
     .peek-marks { grid-column: 1 / -1; }
