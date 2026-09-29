@@ -1872,8 +1872,6 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .photo-main { @apply absolute left-1 top-1; }
   /* Заголовок раздела полей в окошке строки — как заголовок блока в шторке. */
   .peek-section { @apply mb-3 text-base font-medium; }
-  /* Кадр в окошке нажимают, чтобы спрятать или вернуть, — не лупа. */
-  .photo-tap .photo-cell img { cursor: pointer; }
 
   .sortable-ghost { @apply opacity-40; }
 }
