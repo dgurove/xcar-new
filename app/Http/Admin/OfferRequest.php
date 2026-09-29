@@ -9,6 +9,7 @@ use App\Cars\Drive;
 use App\Cars\Fuel;
 use App\Cars\Papers;
 use App\Cars\Transmission;
+use App\Offers\AudienceRules;
 use App\Offers\Flag;
 use App\Support\Liters;
 use Illuminate\Foundation\Http\FormRequest;
@@ -67,9 +68,8 @@ class OfferRequest extends FormRequest
             'chat_enabled' => ['boolean'],
             'share_locked' => ['boolean'],
             'recommended' => ['boolean'],
-            'managers_limited' => ['boolean'],
-            'managers' => ['nullable', 'array'],
-            'managers.*' => ['integer', Rule::exists('users', 'id')->where('role', 'manager')],
+            'audience_id' => ['nullable', 'exists:audiences,id'],
+            'audience_rules' => ['nullable', 'json'],
             'vendor_id' => ['nullable', 'exists:vendors,id'],
             'answer_by' => ['nullable', 'date'],
             'insured_name' => ['nullable', 'string', 'max:80'],
@@ -107,10 +107,9 @@ class OfferRequest extends FormRequest
                 $data[$flag] = $this->boolean($flag);
             }
         }
-        if ($sent('managers') || $sent('managers_limited')) {
-            $data['managers'] = array_values(array_map('intval', $this->validated('managers') ?? []));
-            // Сузить круг до пустого — значит не показать никому; так не бывает, это середина выбора — круг остаётся «Все».
-            $data['managers_limited'] = $this->boolean('managers_limited') && $data['managers'] !== [];
+        if ($sent('audience_rules')) {
+            // Волны показа приходят JSON-строкой из шторки «Кому»; пустые — «как у вендора» (null).
+            $data['audience_rules'] = AudienceRules::normalize($this->input('audience_rules')) ?: null;
         }
         if ($sent('damage_zones')) {
             $data['damage_zones'] = $this->validated('damage_zones') ?? [];

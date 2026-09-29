@@ -157,8 +157,8 @@
                 @include('admin.offers.fields.condition')
             </section>
             <section>
-                <h2 class="peek-section">Менеджеры</h2>
-                @include('admin.offers.fields.managers')
+                <h2 class="peek-section">Кому показывать</h2>
+                @include('admin.offers.fields.audience')
             </section>
         </form>
         <section class="mt-5">

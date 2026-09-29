@@ -20,19 +20,12 @@ final class UpdateOffer
         if (array_key_exists('vin', $data)) {
             $data['vin'] = $data['vin'] ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $data['vin'])) : null;
         }
-        // Круг менеджеров идёт отдельным списком: сужен — синхронизируем, снят — список чистим.
-        $managers = $data['managers'] ?? null;
-        unset($data['managers']);
         $offer->fill($data);
         $changed = array_keys($offer->getDirty());
         $offer->save();
-        if (array_key_exists('managers_limited', $data)) {
-            $before = $offer->managers()->pluck('users.id')->sort()->values()->all();
-            $after = $offer->managers_limited ? collect($managers ?? [])->map(fn ($v) => (int) $v)->unique()->sort()->values()->all() : [];
-            if ($before !== $after) {
-                $offer->managers()->sync($after);
-                $changed[] = 'managers';
-            }
+        if (array_intersect(['audience_rules', 'vendor_id'], $changed)) {
+            app(SyncViewers::class)($offer);
+            app(NotifyViewers::class)($offer, live: true);
         }
         if ($changed) {
             $offer->log(OfferEventType::Updated, $by, ['fields' => $changed]);

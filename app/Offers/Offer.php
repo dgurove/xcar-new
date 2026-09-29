@@ -28,7 +28,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
@@ -39,7 +38,7 @@ use Spatie\MediaLibrary\HasMedia;
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
     'incident_date', 'description', 'settlement_id', 'inspection_address', 'show_address', 'floor_price', 'publish_price',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'bids_close_at', 'sort_weight',
-    'chat_enabled', 'share_locked', 'managers_limited', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
+    'chat_enabled', 'share_locked', 'audience_id', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
 ])]
 class Offer extends Model implements HasMedia
@@ -74,7 +73,7 @@ class Offer extends Model implements HasMedia
             'chat_enabled' => 'bool',
             'share_locked' => 'bool',
             'recommended' => 'bool',
-            'managers_limited' => 'bool',
+            'audience_rules' => 'array',
             'incident_date' => 'date',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
@@ -190,10 +189,15 @@ class Offer extends Model implements HasMedia
 
     // ------------------------------------------------------------ кто видит
 
-    /** Менеджеры, которым предложение открыто, когда круг сужен (`managers_limited`). */
-    public function managers(): BelongsToMany
+    /** Кто видит и с какого момента — посчитанный итог правил показа (SyncViewers). */
+    public function viewers(): HasMany
     {
-        return $this->belongsToMany(User::class, 'offer_managers')->orderBy('name');
+        return $this->hasMany(OfferViewer::class);
+    }
+
+    public function audience(): BelongsTo
+    {
+        return $this->belongsTo(Audience::class);
     }
 
     public function showings(): HasMany
@@ -201,15 +205,15 @@ class Offer extends Model implements HasMedia
         return $this->hasMany(Showing::class);
     }
 
-    /** Все менеджеры, которым предложение доступно: весь круг или выбранные. */
+    /** Менеджеры, которым предложение уже открыто (их волна наступила). */
     public function allowedManagers(): Collection
     {
-        return $this->managers_limited ? $this->managers()->get() : User::where('role', Role::Manager)->orderBy('name')->get();
+        return User::whereIn('id', $this->viewers()->where('opens_at', '<=', now())->select('user_id'))->orderBy('name')->get();
     }
 
     /**
      * Одна дверь видимости. Сотрудник видит всё; менеджер — открытые и галерею
-     * из своего круга; покупатель — открытые, которые ему показал его менеджер
+     * из своего круга, когда его волна показа наступила; покупатель — открытые, которые ему показал его менеджер
      * (лично или группе) и которые этому менеджеру доступны; посетитель —
      * галерею; гость — ничего.
      */
@@ -223,11 +227,12 @@ class Offer extends Model implements HasMedia
         }
         if ($user->role === Role::Manager) {
             return $q->whereIn('state', [OfferState::Open, OfferState::Gallery])
-                ->where(fn ($w) => $w->where('managers_limited', false)->orWhereHas('managers', fn ($m) => $m->whereKey($user->id)));
+                ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now()));
         }
-        // Проверяющий: все открытые предложения общего круга, без показов и менеджера.
+        // Проверяющий: открытые, которые всем сразу и без исключений; без показов и менеджера.
         if ($user->role === Role::Reviewer) {
-            return $q->where('state', OfferState::Open)->where('managers_limited', false);
+            return $q->where('state', OfferState::Open)->where(fn ($w) => $w->whereNull('audience_rules')
+                ->orWhere(fn ($x) => $x->whereJsonContains('audience_rules', [['all' => true, 'delay' => 0]])->whereRaw("not jsonb_path_exists(audience_rules, '$[*] ? (@.delay == null)')")));
         }
         if ($user->role === Role::Buyer) {
             if (! $user->manager_id) {
@@ -238,7 +243,7 @@ class Offer extends Model implements HasMedia
             return $q->where('state', OfferState::Open)
                 ->whereHas('showings', fn ($s) => $s->where('manager_id', $user->manager_id)
                     ->where(fn ($w) => $w->where('user_id', $user->id)->when($groups, fn ($w) => $w->orWhereIn('group_id', $groups))))
-                ->where(fn ($w) => $w->where('managers_limited', false)->orWhereHas('managers', fn ($m) => $m->whereKey($user->manager_id)));
+                ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->manager_id)->where('opens_at', '<=', now()));
         }
 
         return $q->where('state', OfferState::Gallery);

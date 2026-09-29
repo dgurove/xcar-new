@@ -30,6 +30,7 @@
                     <x-ui.field name="reward_value" label="Процент или сумма" :value="$vendor->reward_value"/>
                     <x-ui.field name="answer_hours" label="Ответ, часов" :value="$vendor->answer_hours"/>
                     <x-ui.field name="binding_days" label="Предложение держим, дней" :value="$vendor->binding_days"/>
+                    <x-ui.field name="audience_id" label="Кому показывать" :options="$audiences" placeholder="Все сразу" :value="$vendor->audience_id" span="col-span-2"/>
                     <div class="col-span-2 flex flex-col gap-3">
                         <x-ui.check name="silence_means_buy" :checked="$vendor->silence_means_buy">Молчание — обязанность купить</x-ui.check>
                         <x-ui.check name="offers_include_vat" :checked="$vendor->offers_include_vat">Цены предложений с НДС</x-ui.check>

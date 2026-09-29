@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Admin\AudienceController;
 use App\Http\Admin\BankController;
 use App\Http\Admin\BidController;
 use App\Http\Admin\ChatController;
@@ -181,6 +182,14 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::post('/users/invites', [InviteController::class, 'store']);
         Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
         Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);
+
+        Route::get('/audience', [AudienceController::class, 'index']);
+        Route::post('/audience/groups', [AudienceController::class, 'storeGroup']);
+        Route::put('/audience/groups/{group}', [AudienceController::class, 'updateGroup']);
+        Route::delete('/audience/groups/{group}', [AudienceController::class, 'destroyGroup']);
+        Route::post('/audience/presets', [AudienceController::class, 'storePreset']);
+        Route::put('/audience/presets/{audience}', [AudienceController::class, 'updatePreset']);
+        Route::delete('/audience/presets/{audience}', [AudienceController::class, 'destroyPreset']);
 
         Route::get('/tags', [TagController::class, 'index']);
         Route::post('/tags', [TagController::class, 'store']);

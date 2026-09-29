@@ -53,6 +53,8 @@ final class ChangeOfferState
 
             $offer->state = $next;
             $offer->save();
+            // Кто видит — до событий: уведомление о публикации берёт наступившие волны.
+            app(SyncViewers::class)($offer);
             $offer->log(OfferEventType::StateChanged, $by, ['from' => $from->value, 'to' => $next->value]);
             $this->settleDeal($offer, $next, $by);
 

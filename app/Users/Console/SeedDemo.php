@@ -17,6 +17,7 @@ use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
 use App\Cars\Brand;
 use App\Cars\CarModel;
+use App\Offers\Actions\SyncViewers;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealState;
@@ -144,6 +145,7 @@ final class SeedDemo extends Command
             'description' => 'Демонстрационное предложение',
         ]);
         $offer->forceFill(['number' => $number, 'state' => $state, 'is_demo' => true])->save();
+        app(SyncViewers::class)($offer);
 
         return $offer;
     }

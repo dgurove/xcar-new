@@ -2,9 +2,8 @@ import { Controller } from '@hotwired/stimulus';
 
 // Форма без кнопки «Сохранить»: изменил поле и ушёл из него — уходят только тронутые поля (их имена в
 // `_fields[]`), окошко не перерисовывается. Чужие правки остальных полей не перетираются. Середину правки
-// не сохраняем: марка без модели (модель после смены марки сбрасывается) и круг менеджеров без единого
-// менеджера ждут следующего изменения. Пачку изменений подряд (разбор VIN заполняет поля по очереди)
-// отправляет одним запросом, по одному сохранению за раз. Ответ — редирект на строку: свежая строка
+// не сохраняем: марка без модели (модель после смены марки сбрасывается) ждёт следующего изменения. Пачку
+// изменений подряд (разбор VIN заполняет поля по очереди) отправляет одним запросом, по одному сохранению за раз. Ответ — редирект на строку: свежая строка
 // таблицы и полоса окошка (peek:refresh); ошибки — у поля и тостом.
 export default class extends Controller {
     connect() {
@@ -22,8 +21,10 @@ export default class extends Controller {
     }
 
     touch(el) {
-        if (el.closest('[data-controller~="managers"]')) {
-            this.dirty.add('managers').add('managers_limited');
+        if (el.closest('[data-controller~="audience"]')) {
+            // В шторке «Кому» свои списки без имён — сохраняет только итог в скрытом поле.
+            if (el.name !== 'audience_rules') return;
+            this.dirty.add('audience_rules').add('audience_id');
         } else if (el.name && !el.name.startsWith('_')) {
             this.dirty.add(el.name.replace(/\[\]$/, ''));
         } else return;
@@ -37,8 +38,7 @@ export default class extends Controller {
 
     // Середина правки: сохранять рано.
     unfinished(form) {
-        if (this.dirty.has('brand_id') && form.get('brand_id') && !form.get('model_id')) return true;
-        return this.dirty.has('managers') && form.get('managers_limited') === '1' && !form.getAll('managers[]').length;
+        return this.dirty.has('brand_id') && form.get('brand_id') && !form.get('model_id');
     }
 
     async save() {

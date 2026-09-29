@@ -120,9 +120,9 @@
             </x-ui.card>
             @endif
 
-            {{-- Круг менеджеров: по умолчанию все; сняли «Все» — выбирайте. Поля живут в форме оффера через form=. --}}
-            <x-ui.card title="Менеджеры" class="order-5">
-                @include('admin.offers.fields.managers', ['form' => 'offer-form'])
+            {{-- Кому показывать: сводка волн, правка в шторке. Поля живут в форме оффера через form=. --}}
+            <x-ui.card title="Кому показывать" class="order-5">
+                @include('admin.offers.fields.audience', ['form' => 'offer-form'])
                 @if ($showingSummary->isNotEmpty())
                     <div class="mt-4 flex flex-col gap-1.5 text-sm">
                         @foreach ($showingSummary as $row)

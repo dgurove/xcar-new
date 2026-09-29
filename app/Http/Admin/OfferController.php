@@ -12,6 +12,7 @@ use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
+use App\Offers\AudienceRules;
 use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -118,7 +119,7 @@ class OfferController
             'stages' => $offer->vendor ? $offer->vendor->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
             'tags' => Tag::orderBy('sort')->get(),
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
-            'offerManagers' => $offer->managers()->pluck('users.id')->all(),
+            'audienceOptions' => AudienceRules::options(),
             'showingSummary' => Showing::summary($offer),
         ]);
     }
@@ -170,8 +171,7 @@ class OfferController
         return view('admin.offers.peek', [
             'offer' => $offer,
             // Поля редактора в окошке — те же справочники, что у страницы.
-            'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
-            'offerManagers' => $offer->managers()->pluck('users.id')->all(),
+            'audienceOptions' => AudienceRules::options(),
             'tags' => Tag::orderBy('sort')->get(),
             'chats' => Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']),
             'list' => $request->boolean('gallery'),

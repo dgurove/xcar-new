@@ -4,6 +4,8 @@ namespace App\Http\Admin;
 
 use App\Mail\Account;
 use App\Mail\Scope;
+use App\Offers\Actions\SyncViewers;
+use App\Offers\Audience;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Support\Surface;
@@ -77,6 +79,7 @@ class VendorController
             'base' => "/settings/vendors/{$vendor->id}",
             // Ссылка на парковочную карточку — только тем, кого туда пустят.
             'park' => $request->user()->canAccess(Section::Park) ? Surface::Park->url("/vendors/{$vendor->id}") : null,
+            'audiences' => Audience::orderBy('position')->orderBy('name')->pluck('name', 'id'),
             'accounts' => Account::where('scope', Scope::Offers)->where('is_active', true)->orderBy('title')->get()->mapWithKeys(fn ($a) => [$a->id => $a->title.' ('.$a->email.')']),
         ];
 
@@ -104,7 +107,7 @@ class VendorController
         return view('admin.vendors.show', $data);
     }
 
-    public function update(Request $request, Vendor $vendor, SetLogo $setLogo)
+    public function update(Request $request, Vendor $vendor, SetLogo $setLogo, SyncViewers $sync)
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:80', 'unique:vendors,name,'.$vendor->id],
@@ -117,6 +120,7 @@ class VendorController
             'binding_days' => ['nullable', 'integer', 'between:1,365'],
             'silence_means_buy' => ['boolean'],
             'offers_include_vat' => ['boolean'],
+            'audience_id' => ['nullable', 'exists:audiences,id'],
             // Ящик продажи — только из ящиков CRM: парковочный отсюда не выбрать.
             'mail_account_id' => ['nullable', Rule::exists('mail_accounts', 'id')->where('scope', Scope::Offers->value)],
             'senders' => ['nullable', 'string', 'max:2000'],
@@ -134,6 +138,10 @@ class VendorController
         ]));
 
         $setLogo($vendor, $request);
+        // Шаблон показа по умолчанию сменился — предложения без своих правил видят теперь другие.
+        if ($vendor->wasChanged('audience_id')) {
+            $sync->all();
+        }
 
         return back()->with('toast', 'Сохранено');
     }

@@ -5,6 +5,7 @@ namespace App\Users;
 use App\Billing\Party;
 use App\Chats\Chat;
 use App\Media\MediaUrl;
+use App\Offers\Actions\SyncViewers;
 use App\Offers\Interest;
 use App\Park\Area;
 use App\Park\Yard;
@@ -36,6 +37,21 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     use HasFactory, InteractsWithMedia, Notifiable, WebAuthnAuthentication;
 
     use HidesDemo;
+
+    /** Стал менеджером или перестал — круги показа опубликованных пересчитываются: правило «все» его касается. */
+    protected static function booted(): void
+    {
+        static::saved(function (self $user) {
+            if ($user->wasChanged('role') || ($user->wasRecentlyCreated && $user->role === Role::Manager)) {
+                app(SyncViewers::class)->all();
+            }
+        });
+    }
+
+    public function managerGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(ManagerGroup::class, 'manager_group_user', 'user_id', 'group_id');
+    }
 
     protected function casts(): array
     {

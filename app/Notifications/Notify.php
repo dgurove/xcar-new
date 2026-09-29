@@ -16,12 +16,14 @@ use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
 use App\Garage\Car as GarageCar;
+use App\Offers\Actions\NotifyViewers;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
+use App\Offers\OfferViewer;
 use App\Park\Events\BuyerFormSubmitted;
 use App\Park\Events\CandidateArrived;
 use App\Park\Events\LetterArrived;
@@ -32,8 +34,6 @@ use App\Park\Events\RequestDue;
 use App\Park\Events\VehicleIdle;
 use App\Park\Events\VehicleSold;
 use App\Park\RequestState;
-use App\Purchases\Car as PurchaseCar;
-use App\Purchases\OfferState as PurchaseOfferState;
 use App\Support\Money;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\AgentFeeDue as AgentFeeDueMessage;
@@ -123,20 +123,13 @@ final class Notify
     }
 
     /**
-     * Новое предложение — всем менеджерам круга. Вышло из закупки по контрпредложению — тем, кто называл за ТС
-     * цену в закупке, вместо общего своё «ТС из закупки в продаже», один раз на ТС.
+     * Новое предложение — тем, чья волна показа уже наступила (остальным напишут часы, NotifyViewers::due).
+     * Снова в продаже (менеджер отказался) — снова всем, кто видит: отметки «писали» сбрасываются.
      */
     public function offerPublished(OfferPublished $e): void
     {
-        $managers = $e->offer->allowedManagers();
-        $car = PurchaseCar::where('offer_id', $e->offer->id)->whereNull('announced_at')->first();
-        if ($car) {
-            $priced = $car->offers()->where('state', '!=', PurchaseOfferState::Withdrawn)->pluck('user_id')->all();
-            [$ours, $managers] = $managers->partition(fn ($u) => in_array($u->id, $priced, true));
-            Notification::send($ours, new PurchaseCarOnSaleNotice($e->offer));
-            $car->update(['announced_at' => now()]);
-        }
-        Notification::send($managers, new OfferPublishedNotice($e->offer));
+        OfferViewer::where('offer_id', $e->offer->id)->update(['notified_at' => null]);
+        app(NotifyViewers::class)($e->offer);
     }
 
     /** Покупателям — одно уведомление на пачку: «открыл вам 3 автомобиля». */
