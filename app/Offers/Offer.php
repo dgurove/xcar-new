@@ -19,6 +19,7 @@ use App\Purchases\Car;
 use App\Support\Demo\HidesDemo;
 use App\Users\Role;
 use App\Users\User;
+use App\Vendors\Kind;
 use App\Vendors\Vendor;
 use App\Workflow\Position;
 use App\Workflow\Requirement;
@@ -321,6 +322,14 @@ class Offer extends Model implements HasMedia
      * Заявленная цена — та, что менеджер считает закупочной. По умолчанию равна
      * закупочной; задана отдельно — менеджер видит её, настоящая остаётся у нас.
      */
+    /** Номер договора лизинга (ДЛ) — у предложений лизинговых вендоров в claim_ref; его видят и менеджеры. */
+    public function leaseRef(): ?string
+    {
+        $vendor = $this->vendor_id ? Vendor::badges()->get($this->vendor_id) : null;
+
+        return $vendor?->kind === Kind::Leasing ? ($this->claim_ref ?: null) : null;
+    }
+
     public function declaredPrice(): ?int
     {
         return $this->publish_price ?? $this->floor_price;

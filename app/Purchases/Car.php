@@ -109,6 +109,28 @@ class Car extends Model implements HasMedia
         ], fn ($v) => $v !== null && $v !== '');
     }
 
+    /**
+     * Что из карточки закупки уходит в предложение сверх одноимённых полей: VIN и адрес открыты (в закупке их
+     * видели все), ключи — флагом, «ФССП» — меткой, а состояние, руль, ключи словом, обременения и город, которого
+     * нет в справочнике, — строками описания (своего поля у предложения для них нет).
+     */
+    public function offerExtras(): array
+    {
+        $lines = array_filter([
+            'Состояние' => $this->condition, 'Руль' => $this->steering, 'Ключи' => $this->keys, 'Обременения' => $this->encumbrance,
+            'Город' => $this->settlement_id ? null : $this->city,
+        ], fn ($v) => $v !== null && $v !== '');
+        $text = implode("\n", array_map(fn ($k, $v) => "{$k}: {$v}", array_keys($lines), $lines));
+
+        return array_filter([
+            'show_vin' => true,
+            'show_address' => (bool) $this->address,
+            'has_keys' => $this->keys === null || $this->keys === '' ? null : ! in_array(mb_strtolower(trim($this->keys)), ['нет', '0', 'отсутствуют'], true),
+            'description' => trim(implode("\n\n", array_filter([$this->description, $text]))) ?: null,
+            'tags' => $this->fssp ? ['Ограничения ФССП'] : null,
+        ], fn ($v) => $v !== null);
+    }
+
     public function isLocked(string $field): bool
     {
         return in_array($field, $this->locked_fields ?? [], true);

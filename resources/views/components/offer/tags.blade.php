@@ -1,4 +1,4 @@
-{{-- Факты машины нейтральными тегами, метки оффера цветом, НДС. --}}
+{{-- Номер ДЛ (копируется), факты машины нейтральными тегами, метки оффера цветом, НДС. --}}
 @props(['offer', 'facts' => true, 'vat' => true])
 @php
     $palette = [
@@ -12,6 +12,7 @@
     $colors = once(fn () => \App\Offers\Tag::query()->pluck('color', 'name')->all());
     $style = fn (string $color) => isset($palette[$color]) ? sprintf('--tag-bg:%s;--tag-text:%s;--tag-bg-d:%s;--tag-text-d:%s', ...$palette[$color]) : '';
 @endphp
+@if ($ref = $offer->leaseRef())<span class="tag nums gap-1">ДЛ<x-ui.copy-code :value="$ref" done="Номер ДЛ в буфере"/></span>@endif
 @if ($facts)
     @foreach (array_filter([$offer->year, $offer->transmission?->label(), $offer->drive?->label()]) as $fact)
         <span class="tag">{{ $fact }}</span>

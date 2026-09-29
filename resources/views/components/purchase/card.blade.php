@@ -48,7 +48,8 @@
     <span class="card-aside"><span class="nums text-sm font-normal text-ink-dim">{{ $car->dl }}</span></span>
     <div class="card-place">@if ($car->settlement?->name ?? $car->city)<x-ui.place class="truncate text-sm text-ink-dim">{{ $car->settlement?->name ?? $car->city }}</x-ui.place>@endif</div>
     <div class="card-action">
-        @if ($car->offer_id)
+        {{-- Ссылка на предложение — только тому, кому оно уже открыто: черновик и чужая волна показа дали бы 404. --}}
+        @if ($car->offer_id && $car->offer?->isVisibleTo(auth()->user()))
             <a href="/offers/{{ $car->offer?->number }}" class="btn btn-s btn-accent nums w-full whitespace-nowrap">Предложение № {{ $car->offer?->number }}</a>
         @elseif ($staff)
             @if ($best)

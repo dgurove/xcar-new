@@ -34,9 +34,10 @@ final class MoveToOffers
                 $offer = ($this->create)($by, [
                     'brand_id' => $car->brand_id, 'model_id' => $car->model_id, 'year' => $car->year, 'vin' => $car->vin, 'mileage' => $car->mileage,
                     'transmission' => $car->transmission, 'fuel' => $car->fuel, 'engine_volume' => $car->engine_volume, 'engine_power' => $car->engine_power,
-                    'color' => $car->color, 'settlement_id' => $car->settlement_id, 'inspection_address' => $car->address, 'description' => $car->description,
+                    'color' => $car->color, 'settlement_id' => $car->settlement_id, 'inspection_address' => $car->address,
                     'share_locked' => $car->share_locked, 'vendor_id' => $vendor->id, 'prices_include_vat' => (bool) $vendor->offers_include_vat,
                     'floor_price' => $prices[mb_strtolower(trim($car->dl))], 'claim_ref' => $car->dl,
+                    ...$car->offerExtras(),
                 ], ['purchase' => $purchase->number, 'dl' => $car->dl]);
                 // Фото не копируются, а переходят: путь файла у spatie — по id кадра, модель в нём не участвует.
                 $car->media()->where('collection_name', 'photos')->update(['model_type' => $offer->getMorphClass(), 'model_id' => $offer->id]);

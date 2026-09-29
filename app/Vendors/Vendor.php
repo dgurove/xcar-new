@@ -83,7 +83,7 @@ class Vendor extends Model implements HasMedia
      */
     public static function badges(): \Illuminate\Support\Collection
     {
-        return once(fn () => self::with(['media' => fn ($q) => $q->where('collection_name', 'logo')])->get(['id', 'name', 'party_id'])->keyBy('id'));
+        return once(fn () => self::with(['media' => fn ($q) => $q->where('collection_name', 'logo')])->get(['id', 'name', 'kind', 'party_id'])->keyBy('id'));
     }
 
     /** Вендор, чей это контрагент счёта, — для логотипа перед именем контрагента. */

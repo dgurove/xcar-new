@@ -68,7 +68,7 @@
     <span class="card-aside">
         @if ($prices)
             @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@endif
-            @if ($price->declared)<span class="tag nums">заявлена {{ $price::money($price->declared) }}</span>@endif
+            @if ($price->declared)<span class="tag nums">заявленная {{ $price::money($price->declared) }}</span>@endif
         @elseif ($gallery)
             <span class="text-sm text-accent-text">Скоро в продаже</span>
         @else

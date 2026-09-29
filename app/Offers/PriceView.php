@@ -11,7 +11,7 @@ use App\Users\User;
  * подписи шеринга и фильтров — иначе формула расползается по вьюхам.
  *
  * Сотрудник: закупочная → продажи (и заявленная чипом, когда отличается).
- * Менеджер: заявленная → продажи — заявленную он считает закупочной.
+ * Менеджер: продажи и подписанная «Заявленная» — её он считает закупочной.
  * Покупатель: только цена продажи. Посетитель, гость и галерея — ничего.
  */
 final class PriceView
@@ -29,12 +29,13 @@ final class PriceView
         if (! $user || $offer->isGallery() || ! $user->role->canSeePrices()) {
             return new self(false, null, null, (bool) $offer->prices_include_vat, null);
         }
-        $from = match (true) {
-            $user->isStaff() => $offer->floor_price,
+        // Менеджеру «от» нет: его закупочная — заявленная, и она идёт подписанной строкой, а не безымянной стрелкой.
+        $from = $user->isStaff() ? $offer->floor_price : null;
+        $declared = match (true) {
+            $user->isStaff() => $offer->publish_price && $offer->publish_price !== $offer->floor_price ? $offer->publish_price : null,
             $user->role === Role::Manager => $offer->declaredPrice(),
             default => null,
         };
-        $declared = $user->isStaff() && $offer->publish_price && $offer->publish_price !== $offer->floor_price ? $offer->publish_price : null;
 
         return new self(true, $from ?: null, $offer->asking_price ?: null, (bool) $offer->prices_include_vat, $declared);
     }

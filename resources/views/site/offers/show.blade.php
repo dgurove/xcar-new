@@ -83,7 +83,10 @@
             @endif
 
             @if ($dealInSheet && $price->shown())
-                <div class="nums order-1 text-[26px] leading-none lg:hidden" data-controller="fit">{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
+                <div class="order-1 lg:hidden">
+                    <div class="nums text-[26px] leading-none" data-controller="fit">{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
+                    @if ($price->declared)<div class="mt-2"><span class="tag nums">заявленная {{ $price::money($price->declared) }}</span></div>@endif
+                </div>
             @endif
 
             @if ($facts)

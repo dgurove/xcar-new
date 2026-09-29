@@ -17,7 +17,7 @@
 
 @if ($price->shown())
     <div class="nums text-[32px] font-bold leading-tight" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
-    @if ($price->declared)<div class="mt-2"><span class="tag nums">заявлена {{ $price::money($price->declared) }}</span></div>@endif
+    @if ($price->declared)<div class="mt-2"><span class="tag nums">заявленная {{ $price::money($price->declared) }}</span></div>@endif
 @elseif ($gallery)
     <div class="text-lg text-accent-text">Скоро в продаже</div>
 @endif

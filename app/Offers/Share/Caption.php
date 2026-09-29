@@ -24,6 +24,7 @@ final class Caption
         // VIN менеджеру — как на сайте: скрытый глазиком уходит маской.
         $rows = [
             ['number', 'Номер', '#'.$offer->number, true],
+            ['dl', 'ДЛ', $offer->leaseRef() ? 'ДЛ '.$offer->leaseRef() : null, true],
             ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
             ['city', 'Город', $offer->settlement?->name, true],
             ['specs', 'КПП, привод, кузов', implode(', ', array_filter([$offer->transmission?->label(), $offer->drive?->label(), $offer->body?->label()])) ?: null, true],
@@ -35,7 +36,7 @@ final class Caption
             // Закупочная и заявленная — «от», из двух одна (клиент снимает вторую); по умолчанию выключены: покупателю уходит одна цена.
             ['floor_price', 'Закупочная', $staff ? $money($offer->floor_price) : null, false],
             // Сотруднику «Заявленная» — только когда она вписана: пустая равна закупочной, и под этим именем в текст уходила закупочная.
-            ['publish_price', 'Заявленная', $staff ? $money($offer->publish_price) : ($price->visible ? $money($price->from) : null), false],
+            ['publish_price', 'Заявленная', $staff ? $money($offer->publish_price) : ($price->visible ? $money($price->declared) : null), false],
             ['price', 'Цена', $price->visible ? $money($offer->asking_price) : null, true],
             // Ссылка на машину на сайте — последней строкой; у черновика своего адреса ещё нет (номер при публикации).
             ['link', 'Ссылка', self::link($offer), true],

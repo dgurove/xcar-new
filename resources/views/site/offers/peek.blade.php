@@ -34,7 +34,7 @@
         <x-slot:aside>
             @if ($price->shown())
                 <span class="nums block whitespace-nowrap text-lg">@if ($price->withFrom())<span class="text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="font-bold">{{ $price::money($price->to) }}&nbsp;₽</span>@if ($price->vat) <span class="text-xs font-normal text-ink-muted">с НДС</span>@endif</span>
-                @if ($price->declared)<span class="text-xs text-ink-dim nums">заявлена {{ $price::money($price->declared) }}</span>@endif
+                @if ($price->declared)<span class="text-xs text-ink-dim nums">заявленная {{ $price::money($price->declared) }}</span>@endif
             @elseif ($gallery)
                 <span class="text-sm text-accent-text">Скоро в продаже</span>
             @endif
