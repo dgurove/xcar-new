@@ -3,9 +3,8 @@
     use App\Offers\{OfferState, BidState, InterestState};
     $n = $offer->number;
     // «В гараже» ставит не кнопка состояния, а «Отдать в гараж»: там выбирают менеджера и цену.
-    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage, OfferState::Sold], true)
-        // «Снять с продажи» — одно действие: где можно в черновик, снимаем туда (можно вернуть), иначе — «Снят».
-        && ! ($s === OfferState::Cancelled && $offer->state->allows(OfferState::Draft)));
+    // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
+    $transitions = collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]);
     $garage = $offer->state === OfferState::Garage ? \App\Garage\Car::with('manager')->where('offer_id', $offer->id)->first() : null;
     // Машину из гаража уводит только «Отдали по ошибке» там же: кнопки состояния тут отбились бы ошибкой.
     if ($garage) $transitions = collect();
@@ -198,13 +197,10 @@
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
             <x-ui.sheet id="offer-actions" title="Предложение № {{ $n }}">
                 <div class="flex flex-col gap-2">
-                    @foreach ($transitions as $next)
+                    @foreach ($transitions as [$next, $label])
                         <form method="post" action="/offers/{{ $n }}/state" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
-                            <x-ui.button block :variant="$next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary')">{{ match($next) {
-                                OfferState::Open => 'Опубликовать',
-                                OfferState::Gallery => 'В галерею «скоро»', OfferState::Draft => 'Снять с продажи',
-                                OfferState::Sold => 'В сделку', OfferState::Cancelled => 'Снять с продажи', OfferState::Archived => 'В архив', default => $next->label() } }}</x-ui.button>
+                            <x-ui.button block :variant="$next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary')">{{ $label }}</x-ui.button>
                         </form>
                     @endforeach
                     @if (! $garage && $offer->state->allows(OfferState::Garage))

@@ -58,6 +58,25 @@ enum OfferState: string
         return in_array($this, [self::Open, self::Gallery], true);
     }
 
+    /**
+     * Что сотрудник может сделать кнопкой из этого состояния — только уместное: «Снять с продажи» есть лишь у того,
+     * что в продаже; у машины в сделке меню нет — её ведут подтверждения и маршрут. Сделка, выдача и гараж —
+     * своими действиями, не отсюда.
+     *
+     * @return array<string, string> значение состояния => подпись кнопки
+     */
+    public function actions(): array
+    {
+        return match ($this) {
+            self::Draft => [self::Open->value => 'Опубликовать', self::Gallery->value => 'В галерею «скоро»', self::Archived->value => 'В архив'],
+            self::Gallery => [self::Open->value => 'Опубликовать', self::Draft->value => 'Снять с продажи', self::Archived->value => 'В архив'],
+            self::Open => [self::Draft->value => 'Снять с продажи', self::Archived->value => 'В архив'],
+            self::Delivered, self::Cancelled => [self::Archived->value => 'В архив'],
+            self::Archived => [self::Draft->value => 'Вернуть в черновики'],
+            self::Sold, self::Garage => [],
+        };
+    }
+
     public function allows(self $next): bool
     {
         return in_array($next, match ($this) {

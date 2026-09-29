@@ -11,9 +11,8 @@
     $price = \App\Offers\PriceView::for($offer, auth()->user());
     $left = $gallery ? null : $offer->secondsLeft();
     // «В гараже» ставится на странице предложения: там выбирают менеджера и цену, одной кнопкой не обойтись.
-    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage, OfferState::Sold], true)
-        // «Снять с продажи» — одно действие: где можно в черновик, снимаем туда (можно вернуть), иначе — «Снят».
-        && ! ($s === OfferState::Cancelled && $offer->state->allows(OfferState::Draft)));
+    // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
+    $transitions = collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]);
     $bids = $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]);
     $waiting = $offer->bids->where('state', BidState::Active);
     $best = $waiting->sortByDesc('amount')->first();
@@ -89,13 +88,10 @@
                 <div class="contents" data-controller="menu">
                     <button type="button" class="pill pill-plain" data-action="menu#toggle" aria-haspopup="menu" aria-controls="peek-state-{{ $n }}">Состояние <x-ui.icon name="chevron-down" class="size-4"/></button>
                     <div id="peek-state-{{ $n }}" class="menu" popover data-menu-target="list" role="menu">
-                        @foreach ($transitions as $next)
+                        @foreach ($transitions as [$next, $label])
                             <form method="post" action="/offers/{{ $n }}/state" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
                                 @csrf<input type="hidden" name="state" value="{{ $next->value }}">
-                                <button class="menu-item w-full {{ $next->tone() === 'danger' || $next === OfferState::Archived ? 'text-danger' : '' }}" role="menuitem" data-action="menu#close">{{ match($next) {
-                                    OfferState::Open => 'Опубликовать',
-                                    OfferState::Gallery => 'В галерею «скоро»', OfferState::Draft => 'Снять с продажи',
-                                    OfferState::Sold => 'В сделку', OfferState::Cancelled => 'Снять с продажи', OfferState::Archived => 'В архив', default => $next->label() } }}</button>
+                                <button class="menu-item w-full {{ $next->tone() === 'danger' || $next === OfferState::Archived ? 'text-danger' : '' }}" role="menuitem" data-action="menu#close">{{ $label }}</button>
                             </form>
                         @endforeach
                     </div>
