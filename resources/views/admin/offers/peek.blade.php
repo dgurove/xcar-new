@@ -1,9 +1,9 @@
-{{-- Окошко строки таблицы предложений и галереи (фрейм peek) — работа с предложением
-     без ухода на страницу: лента фото, метки, цена, факты; действия — продлить приём
-     (+15 мин / +1 ч), состояние меню-popover (те же переходы, что в шторке страницы),
-     чипы-ссылки на сделку и чаты; ниже подтверждения (принять/отклонить), интерес
-     (связались/закрыть), описание. Формы отвечают в окошко (PeekBack), строка —
-     свежей из row (gallery — какой список её показывает). --}}
+{{-- Окошко строки таблицы предложений и галереи (фрейм peek) — почти весь редактор без ухода на страницу,
+     одной лентой: кадры (нажатие прячет или возвращает, порядок перетаскиванием, поворот, «+»; удаления нет),
+     шапка с ценой, у черновика «Оценка» с «В продажу», у открытого — продлить приём и состояние; подтверждения
+     и интерес; дальше поля редактора (деньги, ТС, состояние, менеджеры) — сохраняются сами при выходе из поля
+     (autosave), без перерисовки окошка. Документы, маршрут, удаление кадров и история — в полном редакторе.
+     Формы действий отвечают в окошко (PeekBack), строка — свежей из row (gallery — какой список её показывает). --}}
 @php
     use App\Offers\{OfferState, BidState, InterestState};
     $n = $offer->number;
@@ -16,9 +16,20 @@
     $waiting = $offer->bids->where('state', BidState::Active);
     $best = $waiting->sortByDesc('amount')->first();
     $unread = $chats->sum('unread_for_staff');
+    $grid = 'grid grid-cols-2 gap-3';
 @endphp
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
+        <x-slot:media>
+            <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media">
+                <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
+                <div hidden data-photos-target="progress" class="mb-2">
+                    <div class="mb-1 text-sm text-ink-muted" data-label></div>
+                    <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
+                </div>
+                @include('admin.offers.peek-photos')
+            </div>
+        </x-slot:media>
         <x-slot:marks>
             @unless ($offer->state === OfferState::Draft)<span class="tag nums">№ {{ $n }}</span>@endunless
             <span class="tag {{ match ($offer->state->tone()) { 'open' => 'tag-accent', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' } }}">{{ $offer->state->label() }}</span>
@@ -134,10 +145,29 @@
                 @endforeach
             </div>
         @endif
-        @if ($offer->description)<p class="mt-4 whitespace-pre-line text-sm text-ink-muted">{{ $offer->description }}</p>@endif
+        <form method="post" action="/offers/{{ $n }}" class="mt-6 flex flex-col gap-6" data-controller="vin autosave" data-turbo-frame="peek">
+            @csrf @method('put')
+            <section>
+                <h2 class="peek-section">Деньги</h2>
+                @include('admin.offers.fields.money', ['askingElsewhere' => $offer->state === OfferState::Draft])
+            </section>
+            <section>
+                <h2 class="peek-section">Транспортное средство</h2>
+                @include('admin.offers.fields.car')
+            </section>
+            <section>
+                <h2 class="peek-section">Состояние</h2>
+                @include('admin.offers.fields.condition')
+            </section>
+            <section>
+                <h2 class="peek-section">Менеджеры</h2>
+                @include('admin.offers.fields.managers')
+            </section>
+        </form>
+        <a href="/offers/{{ $n }}" class="btn btn-quiet mt-6 w-full" data-turbo-frame="_top">Полный редактор</a>
         {{-- Поделиться — в полосу окошка справа, перед «Развернуть»; нечего отдавать (ни фото, ни цены) — кнопки нет. --}}
         <x-slot:tools>
-            @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" icon class="peek-close"/>@endif
+            @include('admin.offers.peek-tools')
         </x-slot:tools>
         <x-slot:row><x-offer.table-row :offer="$offer" :gallery="$list"/></x-slot:row>
     </x-ui.peek>

@@ -5,10 +5,11 @@
      peek_controller заменяет выделенную после действия; flash-сообщение и просьба
      перейти к следующей (session peek-advance) едут шаблонами — их читает он же.
      tools — кнопки строки в полосу окошка рядом со стрелками (поделиться).
-     photo — одно фото вместо ленты (старые окошки); :photo="false" — без кадра вовсе (ветка почты). --}}
-@props(['href', 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null])
-@if ($photos !== null)
-    <x-offer.gallery :photos="$photos" :alt="$title" strip/>
+     photo — одно фото вместо ленты (старые окошки); :photo="false" — без кадра вовсе (ветка почты).
+     media — свой ряд кадров вместо ленты (окошко предложения CRM: кадры правят прямо тут). --}}
+@props(['href', 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null])
+@if ($photos !== null || $media)
+    @if ($media){{ $media }}@else<x-offer.gallery :photos="$photos" :alt="$title" strip/>@endif
     {{-- Шапка с лентой: название, справа цена, под названием метки; на телефоне цена — своей строкой под названием,
          метки — во всю ширину рядом (узкая колонка рядом с ценой ставила их столбиком). --}}
     <div class="peek-head mt-3">

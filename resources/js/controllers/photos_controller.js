@@ -169,6 +169,7 @@ export default class extends Controller {
             form.append('_token', this.token);
             xhr.open('POST', this.urlValue);
             xhr.setRequestHeader('Accept', 'text/vnd.turbo-stream.html');
+            if (this.rowId) xhr.setRequestHeader('X-Photos-Target', this.rowId);
             xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
             xhr.onload = () => {
                 if (xhr.status < 300) resolve(xhr.responseText);
@@ -214,9 +215,14 @@ export default class extends Controller {
     post(url, body, type) {
         return fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': type, Accept: 'text/vnd.turbo-stream.html', 'X-CSRF-TOKEN': this.token, 'X-Requested-With': 'XMLHttpRequest' },
+            headers: { 'Content-Type': type, Accept: 'text/vnd.turbo-stream.html', 'X-CSRF-TOKEN': this.token, 'X-Requested-With': 'XMLHttpRequest', ...(this.rowId ? { 'X-Photos-Target': this.rowId } : {}) },
             body,
         });
+    }
+
+    // Какой ряд кадров перерисовать ответом: у редактора и у окошка они разные (id у ряда свой).
+    get rowId() {
+        return this.element.querySelector('.photo-row[id], .photo-grid[id]')?.id ?? '';
     }
 
     // Применить turbo-stream прямо сейчас (replace / append / prepend / update).

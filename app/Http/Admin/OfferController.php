@@ -22,6 +22,7 @@ use App\Support\ListView;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 
 class OfferController
 {
@@ -125,6 +126,11 @@ class OfferController
 
         return view('admin.offers.peek', [
             'offer' => $offer,
+            // Поля редактора в окошке — те же справочники, что у страницы.
+            'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
+            'offerManagers' => $offer->managers()->pluck('users.id')->all(),
+            'tags' => Tag::orderBy('sort')->get(),
+            'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id'),
             'chats' => Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']),
             'list' => $request->boolean('gallery'),
         ]);
@@ -133,6 +139,15 @@ class OfferController
     public function update(OfferRequest $request, Offer $offer, UpdateOffer $update)
     {
         $update($offer, $request->payload(), $request->user());
+        // Автосохранение окошка строки: свежая строка таблицы и полоса «Поделиться», окошко не перерисовывается.
+        if ($request->expectsJson()) {
+            $offer = $offer->fresh(['brand', 'model'])->loadCount(['activeBids', 'interests']);
+
+            return response()->json([
+                'row' => Blade::render('<x-offer.table-row :offer="$offer" :gallery="$gallery"/>', ['offer' => $offer, 'gallery' => $offer->isGallery()]),
+                'tools' => view('admin.offers.peek-tools', ['offer' => $offer])->render(),
+            ]);
+        }
 
         return redirect("/offers/{$offer->number}")->with('toast', 'Сохранено');
     }

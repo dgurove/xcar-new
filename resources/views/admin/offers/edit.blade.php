@@ -117,14 +117,8 @@
             @endif
 
             {{-- Круг менеджеров: по умолчанию все; сняли «Все» — выбирайте. Поля живут в форме оффера через form=. --}}
-            <x-ui.card title="Менеджеры" class="order-5" data-controller="managers">
-                <input type="hidden" name="managers_limited" value="{{ old('managers_limited', $offer->managers_limited ? 1 : 0) }}" form="offer-form" data-managers-target="limited">
-                <div class="flex flex-wrap gap-1.5">
-                    <label class="choice"><input type="checkbox" @checked(! old('managers_limited', $offer->managers_limited)) data-managers-target="all" data-action="managers#toggleAll"><span>Все</span></label>
-                    @foreach ($managers as $m)
-                        <label class="choice"><input type="checkbox" name="managers[]" value="{{ $m->id }}" form="offer-form" @checked(in_array($m->id, old('managers', $offerManagers))) @disabled(! old('managers_limited', $offer->managers_limited)) data-managers-target="chip" data-action="managers#pick"><span class="gap-1.5"><x-ui.avatar :user="$m" :size="20"/>{{ $m->shortName() }}</span></label>
-                    @endforeach
-                </div>
+            <x-ui.card title="Менеджеры" class="order-5">
+                @include('admin.offers.fields.managers', ['form' => 'offer-form'])
                 @if ($showingSummary->isNotEmpty())
                     <div class="mt-4 flex flex-col gap-1.5 text-sm">
                         @foreach ($showingSummary as $row)
@@ -151,72 +145,15 @@
             @csrf @method('put')
 
             <x-ui.card title="Транспортное средство" class="order-2">
-                <div class="{{ $grid }}">
-                    <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id"/>
-                    <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="$offer->model_id" :text="$offer->model?->name"/>
-                    <x-ui.vin :value="$offer->vin" span="col-span-2 lg:col-span-1">
-                        <x-slot:after-label><x-ui.eye-check name="show_vin" :checked="$offer->show_vin"/></x-slot:after-label>
-                    </x-ui.vin>
-                    <x-ui.field name="year" label="Год" inputmode="numeric" :value="$offer->year"/>
-                    <x-ui.field name="mileage" label="Пробег, км" inputmode="numeric" :value="$offer->mileage"/>
-                    <x-ui.field name="color" label="Цвет" :value="$offer->color"/>
-                    <x-ui.field name="body" label="Кузов" :options="Body::options()" placeholder="—" :value="$offer->body?->value"/>
-                    <x-ui.field name="transmission" label="Коробка" :options="Transmission::options()" placeholder="—" :value="$offer->transmission?->value"/>
-                    <x-ui.field name="drive" label="Привод" :options="Drive::options()" placeholder="—" :value="$offer->drive?->value"/>
-                    <x-ui.field name="fuel" label="Топливо" :options="Fuel::options()" placeholder="—" :value="$offer->fuel?->value"/>
-                    <x-ui.field name="engine_volume" label="Объём, л" inputmode="decimal" placeholder="1,6" :value="\App\Support\Liters::format($offer->engine_volume)"/>
-                    <x-ui.field name="engine_power" label="Мощность, л. с." inputmode="numeric" :value="$offer->engine_power"/>
-                    <x-ui.field name="settlement_id" label="Город" :options="$settlements" placeholder="—" :value="$offer->settlement_id"/>
-                    <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">
-                        <x-slot:after-label><x-ui.eye-check name="show_address" :checked="$offer->show_address"/></x-slot:after-label>
-                    </x-ui.field>
-                </div>
+                @include('admin.offers.fields.car')
             </x-ui.card>
 
             <x-ui.card title="Состояние" class="order-2">
-                <div class="{{ $grid }}">
-                    <x-ui.field name="damage_cause" label="Причина" :options="DamageCause::options()" placeholder="—" :value="$offer->damage_cause?->value"/>
-                    <x-ui.field name="incident_date" label="Дата события" type="date" :value="$offer->incident_date?->toDateString()"/>
-                    <x-ui.field name="papers" label="Документы" :options="Papers::options()" placeholder="—" :value="$offer->papers?->value" span="col-span-2 lg:col-span-1"/>
-                    <div class="field col-span-full">
-                        <span class="field-label">Повреждения</span>
-                        <div class="flex flex-wrap gap-1.5">
-                            @foreach (DamageZone::cases() as $zone)
-                                <label class="choice"><input type="checkbox" name="damage_zones[]" value="{{ $zone->value }}" @checked(in_array($zone->value, old('damage_zones', $offer->damage_zones ?? [])))><span>{{ $zone->label() }}</span></label>
-                            @endforeach
-                        </div>
-                    </div>
-                    <x-ui.tri name="is_runnable" label="На ходу" :value="$offer->is_runnable"/>
-                    <x-ui.tri name="has_keys" label="Ключи" :value="$offer->has_keys"/>
-                    <x-ui.field name="description" label="Описание" type="textarea" :value="$offer->description" span="col-span-full"/>
-                </div>
+                @include('admin.offers.fields.condition')
             </x-ui.card>
 
             <x-ui.card title="Деньги" class="order-2">
-                <div class="{{ $grid }}">
-                    <x-ui.field name="floor_price" label="Закупочная, ₽" inputmode="numeric" :value="$offer->floor_price"/>
-                    <x-ui.field name="publish_price" label="Заявленная, ₽" inputmode="numeric" :value="$offer->publish_price" :placeholder="$offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : null"/>
-                    <x-ui.field name="asking_price" label="Цена продажи, ₽" inputmode="numeric" :value="$offer->asking_price"/>
-                    <x-ui.field name="min_bid_price" label="Минимальная, ₽" inputmode="numeric" :value="$offer->min_bid_price" :placeholder="$offer->minBid() ? \App\Support\Money::nums($offer->minBid()) : null"/>
-                    <x-ui.field name="min_bid_share" label="Доля до продажной" inputmode="decimal" :value="$offer->min_bid_share" placeholder="0,6"/>
-                    <x-ui.field name="bids_close_at" label="Приём подтверждений до" type="datetime-local" :value="$offer->bids_close_at?->format('Y-m-d\TH:i')" span="col-span-2 lg:col-span-1"/>
-                    <div class="col-span-full flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
-                        <x-ui.check name="recommended" :checked="$offer->recommended">Рекомендуем</x-ui.check>
-                        <x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat">С НДС</x-ui.check>
-                        <x-ui.check name="chat_enabled" :checked="$offer->chat_enabled">Чат с покупателями</x-ui.check>
-                        <x-ui.check name="share_locked" :checked="$offer->share_locked">Запретить шеринг</x-ui.check>
-                    </div>
-                    @if ($tags->isNotEmpty())
-                        <div class="field col-span-full">
-                            <span class="field-label">Метки</span>
-                            <div class="flex flex-wrap gap-1.5">
-                                @foreach ($tags as $tag)
-                                    <label class="choice"><input type="checkbox" name="tags[]" value="{{ $tag->name }}" @checked(in_array($tag->name, old('tags', $offer->tags ?? [])))><span>{{ $tag->name }}</span></label>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-                </div>
+                @include('admin.offers.fields.money')
             </x-ui.card>
 
         </form>

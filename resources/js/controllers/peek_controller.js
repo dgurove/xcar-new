@@ -126,8 +126,12 @@ export default class extends Controller {
         // Прошлое содержимое остаётся, пока едет новое (Turbo ставит фрейму aria-busy —
         // оно притушено); скелет — только в самый первый раз.
         this.skeleton ??= frame.innerHTML;
-        if (frame.src !== new URL(row.dataset.peekUrl, location.href).href) frame.src = row.dataset.peekUrl;
-        else this.focus();
+        // Та же строка — фрейм не перегружается (Turbo держит в src адрес ответа), полоса остаётся
+        // от прошлого открытия; другая — полосу прошлой машины снимаем, новую привезёт ответ.
+        if (frame.src !== new URL(row.dataset.peekUrl, location.href).href) {
+            if (this.hasToolsTarget) this.toolsTarget.replaceChildren();
+            frame.src = row.dataset.peekUrl;
+        } else this.focus();
         row.scrollIntoView({ block: 'nearest', behavior: reduce.matches ? 'auto' : 'smooth' });
     }
 
@@ -136,14 +140,8 @@ export default class extends Controller {
         const frame = this.frameTarget;
         if (event.target !== frame) return;
         frame.scrollTop = 0;
-        // Строка — по id: пока ответ шёл, выделение могло уйти на другую.
         const row = frame.querySelector('template[data-peek-row]');
-        const fresh = row?.content.firstElementChild;
-        const stale = fresh?.tagName === 'TR' && fresh.id ? this.bodyTarget.querySelector(`#${CSS.escape(fresh.id)}`) : null;
-        if (stale) {
-            if (stale === this.current) fresh.setAttribute('aria-selected', 'true');
-            stale.replaceWith(fresh);
-        }
+        this.swapRow(row?.content.firstElementChild);
         row?.remove();
         // Кнопки строки для полосы окошка (поделиться): едут шаблоном, встают рядом со стрелками.
         const tools = frame.querySelector('template[data-peek-tools]');
@@ -154,6 +152,23 @@ export default class extends Controller {
         frame.querySelectorAll('form:not([data-turbo-frame])').forEach((f) => { f.dataset.turboFrame = 'peek'; });
         if (frame.querySelector('template[data-peek-advance]')) { this.advance(); return; }
         this.focus();
+    }
+
+    // Строка — по id: пока ответ шёл, выделение могло уйти на другую. Выделенную заменяем и держим
+    // выделенной — иначе стрелки считали бы от оторванной строки.
+    swapRow(fresh) {
+        const stale = fresh?.tagName === 'TR' && fresh.id ? this.bodyTarget.querySelector(`#${CSS.escape(fresh.id)}`) : null;
+        if (!stale) return;
+        if (stale === this.current) fresh.setAttribute('aria-selected', 'true');
+        stale.replaceWith(fresh);
+    }
+
+    // Автосохранение полей окошка (autosave): свежая строка таблицы и полоса «Поделиться».
+    refresh({ detail }) {
+        const parse = (html) => html ? document.createRange().createContextualFragment(html) : null;
+        const row = parse(detail.row);
+        if (row) this.swapRow(row.querySelector('tr'));
+        if (this.hasToolsTarget && detail.tools !== undefined) this.toolsTarget.replaceChildren(...(parse(detail.tools)?.childNodes ?? []));
     }
 
     // Форма из окошка: серверу — куда возвращать ответ (PeekBack).
@@ -200,7 +215,6 @@ export default class extends Controller {
         this.current?.blur();
         this.current?.removeAttribute('aria-selected');
         panel.style.translate = '';
-        if (this.hasToolsTarget) this.toolsTarget.replaceChildren();
         const done = () => {
             // Пока шла анимация, окошко могли открыть снова — тогда ничего не трогать.
             if (panel.hidden || (!reduce.matches && !panel.classList.contains('is-closing'))) return;
@@ -222,6 +236,7 @@ export default class extends Controller {
         panel.hidden = true;
         if (this.skeleton) frame.innerHTML = this.skeleton;
         frame.removeAttribute('src');
+        if (this.hasToolsTarget) this.toolsTarget.replaceChildren();
     }
 
     // Запись окошка в истории и её снятие — как у шторки в sheet.js.
@@ -280,6 +295,8 @@ export default class extends Controller {
     // Вниз: из полного — свернуть, из короткого — закрыть; вверх из короткого — раскрыть.
     touchStart(e) {
         if (e.touches.length !== 1) return;
+        // Кадры перетаскивают пальцем, поля выделяют — окошко за ними не едет.
+        if (e.target.closest('.photo-row, .photo-grid, input, textarea, select')) return;
         const inBody = this.frameTarget.contains(e.target);
         if (inBody && this.frameTarget.scrollTop > 0) return;
         this.drag = { y: e.touches[0].clientY, at: e.timeStamp, dy: 0, inBody };

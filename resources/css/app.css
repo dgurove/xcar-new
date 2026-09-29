@@ -1759,6 +1759,10 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .photo-cell .photo-actions { @apply absolute inset-x-0 bottom-0 flex justify-between text-white; background: rgb(18 18 18 / .65); }
   .photo-cell .photo-actions button { @apply flex flex-1 items-center justify-center py-1.5 hover:bg-white/15; }
   .photo-main { @apply absolute left-1 top-1; }
+  /* Заголовок раздела полей в окошке строки — как заголовок блока в шторке. */
+  .peek-section { @apply mb-3 text-base font-medium; }
+  /* Кадр в окошке нажимают, чтобы спрятать или вернуть, — не лупа. */
+  .photo-tap .photo-cell img { cursor: pointer; }
 
   .sortable-ghost { @apply opacity-40; }
 }
