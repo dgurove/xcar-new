@@ -103,6 +103,19 @@ class Message extends Model
         return (int) $this->parser_version === Reading\ReadLetter::VERSION;
     }
 
+    /**
+     * Письмо вендора, пересланное сотрудником со своего ящика: пришло к нам, отправитель — наш человек, а разбор
+     * нашёл в пересылке вендора (`sender` из «От:» цитаты, не сам сотрудник). Для полей цепочки это письмо вендора:
+     * страховая, закупочная, пробег, адрес — его, иначе дело заводилось без вендора (Howo 780961/2026, 29.09.2026).
+     */
+    public function isForwardedByStaff(): bool
+    {
+        $sender = mb_strtolower((string) $this->field('sender'));
+
+        return $this->direction === Direction::In && $this->field('vendor_id') !== null && $sender !== ''
+            && $sender !== mb_strtolower((string) $this->from_email) && in_array(mb_strtolower((string) $this->from_email), self::ownEmails(), true);
+    }
+
     /** Наше письмо: отправлено с ящика или своим человеком с личного адреса (Корабельников с mail.ru отвечает вендору как мы). */
     public function isOurs(): bool
     {

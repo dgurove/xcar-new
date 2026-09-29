@@ -119,8 +119,9 @@ final class ChainBuilder
             $messages = $candidate->messages()->with(['account', 'attachments'])->get();
         }
         $live = $messages->reject(fn (Message $m) => in_array($m->intent, [Intent::Billing->value, Intent::Auto->value], true));
-        $theirs = $live->filter(fn (Message $m) => ! $m->isOurs());
-        $ours = $live->filter(fn (Message $m) => $m->isOurs());
+        // Пересылка сотрудником письма вендора — поля вендора (страховая, цена, адрес), а не только марка и номер.
+        $theirs = $live->filter(fn (Message $m) => ! $m->isOurs() || $m->isForwardedByStaff());
+        $ours = $live->filter(fn (Message $m) => $m->isOurs() && ! $m->isForwardedByStaff());
         // Письмо о нескольких машинах («выдать ТС А и Б») лежит в обеих цепочках — его VIN и госномер про одну из них, полей не даёт.
         $single = fn (Message $m) => count(array_filter($m->keys(), fn ($k) => str_starts_with($k, 'code:'))) <= 1;
         $fields = [];
