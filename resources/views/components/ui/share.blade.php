@@ -7,12 +7,13 @@
     $id = 'share-'.$subject->model->getTable().'-'.$subject->model->getKey();
     // Иконкой — круглая кнопка; свой класс (полоса окошка строки) заменяет его целиком.
     $iconClass = $attributes->get('class') ?: 'btn btn-s btn-quiet btn-round';
+    $iconSize = $attributes->get('class') ? 'size-[18px]' : 'size-5';
 @endphp
 @if ($subject->locked())
     {{-- Запрет шеринга: кнопка на месте, но серая; нажатие — тост с причиной. Не disabled — у .btn он режет клики. --}}
     <div data-controller="share" data-share-locked-value="{{ \App\Offers\Share\Subject::LOCKED }}" class="contents">
         @if ($icon)
-            <button type="button" class="{{ $iconClass }}" aria-disabled="true" data-action="share#locked" aria-label="Поделиться" title="Поделиться" {{ $attributes->except('class') }}><x-ui.icon name="share" class="size-5"/></button>
+            <button type="button" class="{{ $iconClass }}" aria-disabled="true" data-action="share#locked" aria-label="Поделиться" title="Поделиться" {{ $attributes->except('class') }}><x-ui.icon name="share" :class="$iconSize"/></button>
         @else
             <x-ui.button type="button" :variant="$variant" :size="$size" aria-disabled="true" data-action="share#locked" {{ $attributes }}><x-ui.icon name="share" class="size-5"/> Поделиться</x-ui.button>
         @endif
@@ -20,7 +21,7 @@
 @else
 <div data-controller="share" data-share-url-value="{{ $subject->url }}" data-share-vat-value="{{ $subject->vatMark() }}" data-share-name-value="{{ $subject->fileName() }}" class="contents">
     @if ($icon)
-        <button type="button" class="{{ $iconClass }}" data-action="share#open" aria-label="Поделиться" title="Поделиться" {{ $attributes->except('class') }}><x-ui.icon name="share" class="size-5"/></button>
+        <button type="button" class="{{ $iconClass }}" data-action="share#open" aria-label="Поделиться" title="Поделиться" {{ $attributes->except('class') }}><x-ui.icon name="share" :class="$iconSize"/></button>
     @else
         <x-ui.button type="button" :variant="$variant" :size="$size" data-action="share#open" {{ $attributes }}><x-ui.icon name="share" class="size-5"/> Поделиться</x-ui.button>
     @endif
