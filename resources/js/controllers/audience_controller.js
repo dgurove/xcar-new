@@ -1,17 +1,15 @@
 import { Controller } from '@hotwired/stimulus';
 
-// «Кому показывать»: волны [{delay, all, groups, users}] — через сколько минут после публикации (null — не
-// показывать) и кому (все, группы, люди). Шаблон сверху шторки подставляет свои волны целиком; правка волны
-// делает правила своими (audience_id пустеет). Итог — JSON в скрытом поле и change с него: окошко сохраняет
-// само, форма настроек — кнопкой. Сводка в строке считается так же, как AudienceRules::summary.
-const DELAYS = [[0, 'Сразу'], [30, 'Через 30 мин'], [60, 'Через 1 ч'], [120, 'Через 2 ч'], [180, 'Через 3 ч'], [360, 'Через 6 ч'], [720, 'Через 12 ч'], [1440, 'Через 1 д'], [2880, 'Через 2 д'], ['', 'Не показывать']];
-
+// «Кому показывать» — список «кто → когда»: строки групп и менеджеров, последней «Остальные». Время у строки —
+// системный выбор справа (минуты от публикации, «Не показывать» — null, у своих строк ещё «Убрать»). Чип шаблона
+// подставляет его строки; правка строки делает настройки своими (audience_id пустеет). Итог — JSON в скрытом
+// поле и change с него: окошко сохраняет само, форма настроек — кнопкой. Сводка — те же слова, что AudienceRules::summary.
 export default class extends Controller {
-    static targets = ['rules', 'audience', 'summary', 'waves'];
+    static targets = ['rules', 'audience', 'summary', 'list', 'add', 'preset'];
     static values = { options: Object, effective: Array };
 
     connect() {
-        this.waves = this.parse(this.rulesTarget.value) ?? this.effectiveValue.map((w) => ({ ...w }));
+        this.rows = this.clean(this.parse(this.rulesTarget.value) ?? this.effectiveValue);
         this.render();
     }
 
@@ -24,125 +22,105 @@ export default class extends Controller {
         }
     }
 
+    // «Остальные» ровно одна и в конце.
+    clean(rows) {
+        const own = rows.filter((r) => r.type !== 'rest').map((r) => ({ type: r.type, id: Number(r.id), delay: r.delay ?? null }));
+        const rest = rows.find((r) => r.type === 'rest');
+        return [...own, { type: 'rest', id: null, delay: rest ? rest.delay ?? null : 0 }];
+    }
+
     preset({ params: { id } }) {
         const preset = (this.optionsValue.presets || []).find((p) => p.id === id);
         if (!preset) return;
-        this.waves = preset.rules.map((w) => ({ ...w, groups: [...w.groups], users: [...w.users] }));
+        this.rows = this.clean(preset.rules);
         if (this.hasAudienceTarget) this.audienceTarget.value = id;
-        this.commit(false);
+        this.commit();
     }
 
     add() {
-        this.waves.push({ delay: this.waves.length ? 60 : 0, all: false, groups: [], users: [] });
+        const [type, id] = this.addTarget.value.split(':');
+        this.addTarget.value = '';
+        if (!type) return;
+        this.rows.splice(this.rows.length - 1, 0, { type, id: Number(id), delay: 0 });
+        this.changed();
+    }
+
+    // Правка строк: настройки становятся своими.
+    changed() {
+        if (this.hasAudienceTarget) this.audienceTarget.value = '';
+        this.commit();
+    }
+
+    commit() {
+        this.rulesTarget.value = JSON.stringify(this.rows);
+        this.rulesTarget.dispatchEvent(new Event('change', { bubbles: true }));
         this.render();
     }
 
-    // Правка волн: правила становятся своими.
-    changed() {
-        if (this.hasAudienceTarget) this.audienceTarget.value = '';
-        this.commit(true);
-    }
-
-    commit(own) {
-        const clean = this.waves.filter((w) => w.all || w.groups.length || w.users.length);
-        this.rulesTarget.value = clean.length ? JSON.stringify(clean) : '';
-        this.rulesTarget.dispatchEvent(new Event('change', { bubbles: true }));
-        if (!own) this.render();
-        else this.paintSummary();
-    }
-
     render() {
-        const box = this.wavesTarget;
-        box.replaceChildren(...this.waves.map((w, i) => this.row(w, i)));
-        this.paintSummary();
+        this.listTarget.replaceChildren(...this.rows.map((r, i) => this.row(r, i)));
+        this.fillAdd();
+        if (this.hasSummaryTarget) this.summaryTarget.textContent = this.summary();
+        // Подсвечен шаблон, с которым строки совпадают сейчас, — а не тот, с которого когда-то начали.
+        const now = JSON.stringify(this.rows);
+        const same = (this.optionsValue.presets || []).find((p) => JSON.stringify(this.clean(p.rules)) === now);
+        this.presetTargets.forEach((p) => p.setAttribute('aria-pressed', String(same?.id === Number(p.dataset.audienceIdParam))));
     }
 
-    paintSummary() {
-        if (this.hasSummaryTarget) this.summaryTarget.textContent = this.summary(this.waves);
-        const current = this.hasAudienceTarget ? this.audienceTarget.value : '';
-        this.element.querySelectorAll('[data-audience-mark]').forEach((m) => m.toggleAttribute('hidden', m.dataset.audienceMark !== String(current)));
-    }
-
-    row(w, i) {
-        const row = el('div', 'box-nested flex flex-col gap-2');
-        const head = el('div', 'flex items-center gap-2');
-        const delay = el('select', 'field-input field-s w-auto');
-        delay.setAttribute('aria-label', 'Когда');
-        for (const [v, label] of DELAYS) delay.append(new Option(label, v, false, String(w.delay ?? '') === String(v)));
-        delay.addEventListener('change', () => { w.delay = delay.value === '' ? null : Number(delay.value); this.changed(); });
-        const drop = el('button', 'sheet-close ml-auto');
-        drop.type = 'button';
-        drop.setAttribute('aria-label', 'Убрать волну');
-        drop.textContent = '×';
-        drop.addEventListener('click', () => { this.waves.splice(i, 1); this.render(); this.changed(); });
-        head.append(delay, drop);
-
-        const chips = el('div', 'flex flex-wrap items-center gap-1.5');
-        const chip = (text, remove) => {
-            const c = el('button', 'chip');
-            c.type = 'button';
-            c.textContent = `${text} ×`;
-            c.addEventListener('click', () => { remove(); this.render(); this.changed(); });
-            return c;
-        };
-        if (w.all) chips.append(chip('Все', () => { w.all = false; }));
-        w.groups.forEach((id) => chips.append(chip(this.groupName(id), () => { w.groups = w.groups.filter((g) => g !== id); })));
-        w.users.forEach((id) => chips.append(chip(this.userName(id), () => { w.users = w.users.filter((u) => u !== id); })));
-
-        const pick = el('select', 'choice-input w-auto');
-        pick.setAttribute('aria-label', 'Добавить');
-        pick.append(new Option('+ Кому', '', true, true));
-        if (!w.all) pick.append(new Option('Все', 'all'));
-        const groups = (this.optionsValue.groups || []).filter((g) => !w.groups.includes(g.id));
-        if (groups.length) {
-            const og = document.createElement('optgroup');
-            og.label = 'Группы';
-            groups.forEach((g) => og.append(new Option(g.name, `g${g.id}`)));
-            pick.append(og);
-        }
-        const people = (this.optionsValue.managers || []).filter((m) => !w.users.includes(m.id));
-        if (people.length) {
-            const og = document.createElement('optgroup');
-            og.label = 'Менеджеры';
-            people.forEach((m) => og.append(new Option(m.name, `u${m.id}`)));
-            pick.append(og);
-        }
-        pick.addEventListener('change', () => {
-            const v = pick.value;
-            if (v === 'all') w.all = true;
-            else if (v.startsWith('g')) w.groups.push(Number(v.slice(1)));
-            else if (v.startsWith('u')) w.users.push(Number(v.slice(1)));
-            this.render();
+    row(r, i) {
+        const row = el('label', 'row audience-row');
+        const name = el('span', 'min-w-0 flex-1 truncate');
+        name.textContent = this.name(r);
+        const when = el('select', 'row-select');
+        when.setAttribute('aria-label', `Когда: ${this.name(r)}`);
+        for (const [min, label] of this.optionsValue.delays || []) when.append(new Option(label, min, false, r.delay === min));
+        when.append(new Option('Не показывать', 'never', false, r.delay === null));
+        if (r.type !== 'rest') when.append(new Option('Убрать', 'drop'));
+        when.addEventListener('change', () => {
+            if (when.value === 'drop') this.rows.splice(i, 1);
+            else r.delay = when.value === 'never' ? null : Number(when.value);
             this.changed();
         });
-        chips.append(pick);
-        row.append(head, chips);
+        row.append(name, when);
         return row;
     }
 
-    groupName(id) {
-        return (this.optionsValue.groups || []).find((g) => g.id === id)?.name ?? 'Группа';
+    // Добавить можно тех, кого ещё нет в списке: сначала группы, потом люди.
+    fillAdd() {
+        const taken = new Set(this.rows.map((r) => `${r.type}:${r.id}`));
+        const select = this.addTarget;
+        select.replaceChildren(new Option('', '', true, true));
+        for (const [type, label, items] of [['group', 'Группы', this.optionsValue.groups], ['user', 'Менеджеры', this.optionsValue.managers]]) {
+            const free = (items || []).filter((x) => !taken.has(`${type}:${x.id}`));
+            if (!free.length) continue;
+            const og = document.createElement('optgroup');
+            og.label = label;
+            free.forEach((x) => og.append(new Option(x.name, `${type}:${x.id}`)));
+            select.append(og);
+        }
+        select.closest('.add-select').hidden = select.options.length < 2;
     }
 
-    userName(id) {
-        return (this.optionsValue.managers || []).find((m) => m.id === id)?.name ?? 'Менеджер';
+    name(r) {
+        if (r.type === 'rest') return this.rows.length > 1 ? 'Остальные' : 'Все менеджеры';
+        const list = r.type === 'group' ? this.optionsValue.groups : this.optionsValue.managers;
+        return (list || []).find((x) => x.id === r.id)?.name ?? (r.type === 'group' ? 'Группа' : 'Менеджер');
     }
 
     when(delay) {
-        if (delay === null || delay === undefined) return 'не видят';
-        if (delay === 0) return 'сразу';
-        if (delay < 60) return `через ${delay} мин`;
-        if (delay < 1440) return `через ${Math.round(delay / 60)} ч`;
-        return `через ${Math.round(delay / 1440)} д`;
+        if (delay === null) return 'не показывать';
+        const found = (this.optionsValue.delays || []).find(([min]) => min === delay);
+        return (found ? found[1] : `через ${delay} минут`).toLowerCase();
     }
 
-    summary(waves) {
-        const parts = waves.map((w) => {
-            const who = w.all ? ['все'] : [...w.groups.map((g) => this.groupName(g)), ...w.users.map((u) => this.userName(u))];
-            return who.length ? `${who.join(', ')} ${this.when(w.delay)}` : null;
-        }).filter(Boolean);
-        if (!parts.length) return 'Как у вендора';
-        const text = parts.join(', ');
+    summary() {
+        const rest = this.rows[this.rows.length - 1];
+        if (this.rows.length === 1) return rest.delay === null ? 'Никому' : `Всем ${this.when(rest.delay)}`;
+        const text = this.rows.map((r) => {
+            const name = r.type === 'rest' ? 'остальные' : this.name(r);
+            const many = r.type !== 'user';
+            return `${name} ${r.delay === null ? (many ? 'не видят' : 'не видит') : this.when(r.delay)}`;
+        }).join(', ');
         return text[0].toUpperCase() + text.slice(1);
     }
 }

@@ -1,13 +1,15 @@
-{{-- Начинка шторки «Кому»: шаблоны (если есть) и волны. Общая для предложения и шаблона в настройках. --}}
+{{-- Начинка шторки «Кому»: список «кто → когда» (строки рисует audience_controller), «+ Группа или менеджер» —
+     системный выбор под кнопкой, ниже чипы шаблонов (у шаблона в настройках их нет). --}}
+<div class="list" data-audience-target="list"></div>
+<label class="add-select pill pill-plain mt-3">
+    <x-ui.icon name="plus" class="size-4"/> Группа или менеджер
+    <select data-audience-target="add" data-action="audience#add" aria-label="Добавить группу или менеджера"></select>
+</label>
 @if ($audienceOptions['presets'] ?? [])
-    <div class="list mb-4">
+    <div class="mt-5 flex flex-wrap items-center gap-1.5">
+        <span class="mr-1 text-sm text-ink-muted">Шаблоны</span>
         @foreach ($audienceOptions['presets'] as $preset)
-            <button type="button" class="row w-full text-left" data-action="audience#preset" data-audience-id-param="{{ $preset['id'] }}">
-                <span class="min-w-0 flex-1"><span class="block font-medium">{{ $preset['name'] }}</span>@if ($preset['summary'] !== $preset['name'])<span class="row-sub">{{ $preset['summary'] }}</span>@endif</span>
-                <x-ui.icon name="check" class="size-5 shrink-0 text-accent-text" data-audience-mark="{{ $preset['id'] }}" hidden/>
-            </button>
+            <button type="button" class="pill pill-plain" data-audience-target="preset" data-action="audience#preset" data-audience-id-param="{{ $preset['id'] }}" aria-pressed="false">{{ $preset['name'] }}</button>
         @endforeach
     </div>
 @endif
-<div class="flex flex-col gap-2" data-audience-target="waves"></div>
-<button type="button" class="pill pill-plain mt-3" data-action="audience#add"><x-ui.icon name="plus" class="size-4"/> Волна</button>

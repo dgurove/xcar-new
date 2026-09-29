@@ -390,6 +390,17 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Доступ управляющего парковкой — только при роли «Парковка» (ссылка админа и карточка человека). */
   :is(.invite-form, .user-form):has(select[name="role"] option:checked:not([value="parking"])) [data-park] { display: none !important; }
   .row-sub { @apply mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted; }
+  /* Значение строки системным выбором (время показа): текст справа с шевроном, без фона, на телефоне — барабан. */
+  .row-select { @apply shrink-0 cursor-pointer appearance-none bg-transparent pr-5 text-right text-ink-muted outline-none; font-size: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9a9a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m9 6 6 6-6 6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right center; background-size: 1rem; }
+  .row-select:focus-visible { @apply text-ink; }
+  .audience-row { @apply cursor-pointer; }
+  /* Кнопка, под которой лежит системный выбор: нажатие открывает список, сама кнопка — только вид. */
+  .add-select { @apply relative inline-flex cursor-pointer items-center gap-1.5; }
+  .add-select select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+  .pill[aria-pressed="true"] { background: var(--color-chrome); color: #fff; }
+  .dark .pill[aria-pressed="true"] { background: #fff; color: var(--color-chrome); }
 
   /* Режим выбора в ленте менеджера: кружок на каждой карточке, отмеченная — с обводкой.
      Чекбокс живёт в карточке всегда (живая замена карточки его не теряет), виден только в режиме. */

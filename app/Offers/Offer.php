@@ -26,12 +26,12 @@ use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\HasMedia;
 
 #[Fillable([
@@ -239,7 +239,7 @@ class Offer extends Model implements HasMedia
         // Проверяющий: открытые, которые всем сразу и без исключений; без показов и менеджера.
         if ($user->role === Role::Reviewer) {
             return $q->where('state', OfferState::Open)->where(fn ($w) => $w->whereNull('audience_rules')
-                ->orWhere(fn ($x) => $x->whereJsonContains('audience_rules', [['all' => true, 'delay' => 0]])->whereRaw("not jsonb_path_exists(audience_rules, '$[*] ? (@.delay == null)')")));
+                ->orWhereRaw("audience_rules = '[{\"id\": null, \"type\": \"rest\", \"delay\": 0}]'::jsonb"));
         }
         if ($user->role === Role::Buyer) {
             if (! $user->manager_id) {
