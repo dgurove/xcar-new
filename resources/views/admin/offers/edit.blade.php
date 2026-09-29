@@ -18,6 +18,9 @@
         <span class="order-last ml-auto flex items-center gap-1">
             @include('admin.offers.share-button')
         </span>
+        {{-- Номер предложения и номер ДЛ или убытка копируются нажатием, как VIN. --}}
+        @unless ($offer->state === OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $n" done="Номер в буфере"/></span>@endunless
+        @if ($offer->claim_ref)<span class="tag nums gap-1">{{ $offer->leaseRef() ? 'ДЛ' : 'Убыток' }}<x-ui.copy-code :value="$offer->claim_ref"/></span>@endif
         @if ($garage)
             <x-ui.pill tone="plain" :href="\App\Support\Surface::Garage->url('/cars/'.$n)" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }} ↗</x-ui.pill>
         @else

@@ -28,7 +28,9 @@
             </div>
         </x-slot:media>
         <x-slot:marks>
-            @unless ($offer->state === OfferState::Draft)<span class="tag nums">№ {{ $n }}</span>@endunless
+            {{-- Номер предложения и номер ДЛ или убытка копируются нажатием, как VIN. --}}
+            @unless ($offer->state === OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $n" done="Номер в буфере"/></span>@endunless
+            @if ($offer->claim_ref)<span class="tag nums gap-1">{{ $offer->leaseRef() ? 'ДЛ' : 'Убыток' }}<x-ui.copy-code :value="$offer->claim_ref"/></span>@endif
             <span class="tag {{ match ($offer->state->tone()) { 'open' => 'tag-accent', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' } }}">{{ $offer->state->label() }}</span>
             @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
             @elseif (!$gallery && $offer->closed())<span class="tag">приём закрыт</span>@endif
