@@ -43,7 +43,7 @@
         <x-slot:actions>
             @if ($offer->state === OfferState::Draft)
                 {{-- «Оценить» одним блоком: цена продажи и «В продажу» (окошко переходит к следующему черновику; пустое поле —
-                     просто дальше), под ними ориентиры из закупки, если черновик сделан по контрпредложению. --}}
+                     просто дальше), под ними ориентиры из закупки, если черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
                 <div class="w-full rounded-(--radius-l) bg-surface-2 p-3">
                     <form method="post" action="/offers/{{ $n }}/publish" class="flex gap-2" data-controller="bid" data-bid-asking-value="0">
                         @csrf
@@ -56,15 +56,15 @@
                         @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp
                         @if ($car->price_final || $named->isNotEmpty())
                             <dl class="mt-3 flex flex-col gap-2 text-sm">
-                                @if ($car->price_final)
-                                    <div class="flex items-center justify-between gap-3"><dt class="text-ink-dim">Наша цена в закупке</dt><dd class="nums font-medium">{{ \App\Support\Money::rub($car->price_final) }}</dd></div>
-                                @endif
                                 @foreach ($named as $one)
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="flex min-w-0 items-center gap-2"><x-ui.avatar :user="$one->user" :size="20"/><span class="truncate">{{ $one->user->shortName() }}</span></dt>
                                         <dd class="nums whitespace-nowrap">{{ \App\Support\Money::rub($one->amount) }}</dd>
                                     </div>
                                 @endforeach
+                                @if ($car->price_final)
+                                    <div class="flex items-center justify-between gap-3"><dt class="text-ink-dim">Админская цена</dt><dd class="nums font-medium">{{ \App\Support\Money::rub($car->price_final) }}</dd></div>
+                                @endif
                             </dl>
                         @endif
                     @endif
