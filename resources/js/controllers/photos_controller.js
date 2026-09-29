@@ -37,7 +37,7 @@ export default class extends Controller {
             delay: 150,
             delayOnTouchOnly: true,
             direction: 'horizontal',
-            filter: '.photo-actions',
+            filter: '.photo-actions, .photo-star',
             preventOnFilter: false,
             onEnd: () => this.reorder(),
         });
@@ -188,6 +188,27 @@ export default class extends Controller {
         const order = this.cells().map((el) => el.dataset.id);
         const r = await this.post(this.urlValue + '/order', JSON.stringify({ order }), 'application/json');
         if (r.ok) this.apply(await r.text());
+    }
+
+    // Звезда главного: у главного — открыть выбор (контурные звёзды на остальных), у контурной — сделать этот кадр
+    // главным: он встаёт первым, дальше тот же порядок, что после перетаскивания. Нажали мимо — выбор закрывается.
+    star(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const button = event.currentTarget, grid = this.gridTarget;
+        if (button.classList.contains('photo-star--main')) {
+            const on = grid.classList.toggle('is-choosing');
+            if (on) setTimeout(() => document.addEventListener('click', this.stopChoosing ??= (e) => {
+                if (!e.target.closest?.('.photo-star') && this.hasGridTarget) this.gridTarget.classList.remove('is-choosing');
+                document.removeEventListener('click', this.stopChoosing);
+            }), 0);
+            return;
+        }
+        grid.classList.remove('is-choosing');
+        grid.querySelector('.photo-star--main')?.classList.replace('photo-star--main', 'photo-star--pick');
+        button.classList.replace('photo-star--pick', 'photo-star--main');
+        grid.prepend(button.closest('.photo-cell'));
+        this.reorder();
     }
 
     // Кнопка на плитке: hide / rotate / delete.
