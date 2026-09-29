@@ -1554,12 +1554,40 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
   .over-hero { position: relative; z-index: 1; background: var(--color-ground); border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
 
-  /* Лендинг `/` сайта и парковки: заголовок первого экрана, блоки ниже. Размеры — со шкалы (22/26 экран, 17 блок, 15 текст). */
-  .landing-title { font-size: var(--text-2xl); font-weight: 500; line-height: 1.15; color: var(--color-ink); text-wrap: balance; }
+  /* Лендинг `/` сайта и парковки. Фото стоит на месте (fixed), первый экран — текст и действия, лист с содержимым
+     наезжает поверх со скруглением. --dock (0…1, landing_controller) — насколько лист подошёл к шапке: скругление
+     уходит в ноль, шапка набирает цвет листа, и у края они одна поверхность. --lift — насколько первый экран ушёл. */
+  .landing-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .landing-bg .parking-photo { transform: scale(calc(1 + var(--lift, 0) * .06)); transform-origin: 50% 60%; }
+  .landing-shade { background: linear-gradient(to top, rgb(247 247 247 / .92) 0%, rgb(247 247 247 / .45) 38%, rgb(247 247 247 / 0) 70%), linear-gradient(to right, rgb(255 255 255 / .55), rgb(255 255 255 / 0) 60%); }
+  .dark .landing-shade { background: linear-gradient(to top, rgb(22 22 22 / .95) 0%, rgb(22 22 22 / .5) 38%, rgb(22 22 22 / 0) 70%), linear-gradient(to right, rgb(18 18 18 / .6), rgb(18 18 18 / 0) 60%); }
+  .landing-hero { position: relative; z-index: 1; display: flex; align-items: flex-end; min-height: 100svh;
+    padding-top: var(--spacing-header); padding-bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 12vh); }
+  @media (min-width: 768px) { .landing-hero { padding-bottom: 16vh; } }
+  .landing-hero-body { display: flex; width: 100%; max-width: 44rem; flex-direction: column; align-items: flex-start;
+    opacity: calc(1 - var(--lift, 0) * 1.4); transform: translateY(calc(var(--lift, 0) * -40px)); }
+  .landing-title { font-size: 2rem; font-weight: 500; line-height: 1.08; letter-spacing: -.01em; color: var(--color-ink); text-wrap: balance; }
   .dark .landing-title { color: #fff; }
-  @media (min-width: 640px) { .landing-title { font-size: 2.5rem; } }
-  .landing-quiet { background: rgb(255 255 255 / .72); color: var(--color-ink); backdrop-filter: blur(12px); }
+  @media (min-width: 640px) { .landing-title { font-size: 3.25rem; } }
+  @media (min-width: 1280px) { .landing-title { font-size: 4rem; } }
+  .landing-sub { margin-top: 1rem; max-width: 34rem; font-size: var(--text-lg); color: rgb(29 29 27 / .72); text-wrap: pretty; }
+  .dark .landing-sub { color: rgb(255 255 255 / .72); }
+  @media (min-width: 640px) { .landing-sub { font-size: var(--text-xl); } }
+  .landing-quiet { background: rgb(255 255 255 / .72); color: var(--color-ink); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
   .dark .landing-quiet { background: rgb(255 255 255 / .12); color: #fff; }
+  @media (hover: hover) { .landing-quiet:hover { background: rgb(255 255 255 / .9); } .dark .landing-quiet:hover { background: rgb(255 255 255 / .2); } }
+  .landing-sheet { position: relative; z-index: 2; background: var(--color-ground);
+    border-radius: calc(var(--radius-xl) * 1.5 * (1 - var(--dock, 0))) calc(var(--radius-xl) * 1.5 * (1 - var(--dock, 0))) 0 0; }
+  /* Шапка над лендингом: прозрачная над фото, у листа — его цвет; стекло появляется, только когда под ней содержимое. */
+  body:has(.landing) .header--over { background: color-mix(in srgb, var(--color-ground) calc(var(--dock, 0) * 100%), transparent);
+    -webkit-backdrop-filter: none; backdrop-filter: none; }
+  /* Заголовка экрана в шапке у лендинга нет — логотип остаётся на месте. */
+  body:has(.landing) .header.is-past-title .header-brand { opacity: 1; }
+  body:has(.landing) .footer { position: relative; z-index: 2; background: var(--color-ground); }
+  @media (prefers-reduced-motion: reduce) {
+    .landing-bg .parking-photo, .landing-hero-body { transform: none; }
+    .landing-hero-body { opacity: 1; }
+  }
   .landing-h2 { font-size: var(--text-xl); font-weight: 500; line-height: 1.25; text-wrap: balance; }
   @media (min-width: 640px) { .landing-h2 { font-size: var(--text-2xl); } }
   .landing-lead { max-width: 40rem; color: var(--color-ink-muted); }

@@ -3,10 +3,6 @@
 namespace App\Http\Site;
 
 use App\Http\Middleware\MarkInstalled;
-use App\Offers\Offer;
-use App\Offers\OfferState;
-use App\Park\Vehicle;
-use App\Park\VehicleState;
 use App\Support\Surface;
 use Illuminate\Http\Request;
 
@@ -22,7 +18,7 @@ class LandingController
             return redirect(Surface::Site->home());
         }
 
-        return view('landing.site', ['offers' => Offer::where('state', OfferState::Open)->count()]);
+        return view('landing.site');
     }
 
     public function park(Request $request)
@@ -31,6 +27,6 @@ class LandingController
             return redirect(Surface::Park->home());
         }
 
-        return view('landing.park', ['stored' => Vehicle::where('state', VehicleState::Stored)->count()]);
+        return view('landing.park');
     }
 }
