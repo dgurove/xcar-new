@@ -42,6 +42,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/offers/from-mail/{candidate}/decline', [MailController::class, 'decline']);
     Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
     Route::get('/offers/{offer}/peek', [OfferController::class, 'peek']);
+    Route::get('/offers/{offer}/row', [OfferController::class, 'row']);
     Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
     Route::post('/work/invoices', [InvoiceController::class, 'store']);
     // Шеринг PDF: маршруты без домена на хосте CRM отбивает ResolveSurface — свои копии.
@@ -235,6 +236,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::get('/reference/vin', [ReferenceController::class, 'vin']);
     Route::get('/reference/brands', [ReferenceController::class, 'brands']);
     Route::get('/reference/models', [ReferenceController::class, 'models']);
+    Route::get('/reference/settlements', [ReferenceController::class, 'settlements']);
     Route::post('/reference/brands', [ReferenceController::class, 'createBrand']);
     Route::post('/reference/models', [ReferenceController::class, 'createModel']);
 

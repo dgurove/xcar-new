@@ -12,6 +12,7 @@ use App\Cars\Transmission;
 use App\Offers\Flag;
 use App\Support\Liters;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 class OfferRequest extends FormRequest
@@ -88,25 +89,43 @@ class OfferRequest extends FormRequest
         return ['brand_id' => 'марка', 'model_id' => 'модель', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'publish_price' => 'заявленная цена'];
     }
 
+    /**
+     * Данные для UpdateOffer. Полный редактор присылает всю форму: не пришла галка — снята, не пришёл список — пуст.
+     * Окошко строки присылает только тронутые поля и их имена в `_fields[]` (autosave): остальное не трогаем,
+     * иначе каждое сохранение перетирало бы чужие правки и сбрасывало галки, которых в запросе нет.
+     */
     public function payload(): array
     {
+        $only = $this->has('_fields') ? array_values((array) $this->input('_fields')) : null;
+        $sent = fn (string $key) => $only === null || in_array($key, $only, true);
         $data = $this->validated();
-        $data['show_vin'] = $this->boolean('show_vin');
-        $data['show_address'] = $this->boolean('show_address');
-        $data['chat_enabled'] = $this->boolean('chat_enabled');
-        $data['share_locked'] = $this->boolean('share_locked');
-        $data['recommended'] = $this->boolean('recommended');
-        $data['managers_limited'] = $this->boolean('managers_limited');
-        $data['managers'] = array_values(array_map('intval', $data['managers'] ?? []));
-        $data['damage_zones'] = $data['damage_zones'] ?? [];
-        $data['tags'] = array_values(array_filter($data['tags'] ?? []));
+        if ($only !== null) {
+            $data = Arr::only($data, $only);
+        }
+        foreach (['show_vin', 'show_address', 'chat_enabled', 'share_locked', 'recommended', 'prices_include_vat'] as $flag) {
+            if ($sent($flag)) {
+                $data[$flag] = $this->boolean($flag);
+            }
+        }
+        if ($sent('managers') || $sent('managers_limited')) {
+            $data['managers'] = array_values(array_map('intval', $this->validated('managers') ?? []));
+            // Сузить круг до пустого — значит не показать никому; так не бывает, это середина выбора — круг остаётся «Все».
+            $data['managers_limited'] = $this->boolean('managers_limited') && $data['managers'] !== [];
+        }
+        if ($sent('damage_zones')) {
+            $data['damage_zones'] = $this->validated('damage_zones') ?? [];
+        }
+        if ($sent('tags')) {
+            $data['tags'] = array_values(array_filter($this->validated('tags') ?? []));
+        }
         // Признаки ставит разбор писем, в редакторе их нет: отсутствие в форме — не «снять все».
         if ($this->has('flags')) {
             $data['flags'] = array_values(array_filter($data['flags']));
         }
-        $data['prices_include_vat'] = $this->boolean('prices_include_vat');
         foreach (['is_runnable', 'has_keys'] as $tri) {
-            $data[$tri] = $this->filled($tri) ? $this->boolean($tri) : null;
+            if ($sent($tri)) {
+                $data[$tri] = $this->filled($tri) ? $this->boolean($tri) : null;
+            }
         }
 
         return $data;

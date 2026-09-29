@@ -16,7 +16,7 @@
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
     <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
         <span class="order-last ml-auto flex items-center gap-1">
-            @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" icon/>@endif
+            @include('admin.offers.share-button')
         </span>
         @if ($garage)
             <x-ui.pill tone="plain" :href="\App\Support\Surface::Garage->url('/cars/'.$n)" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }} ↗</x-ui.pill>
@@ -159,11 +159,7 @@
         </form>
 
         <x-ui.card title="Фотографии" class="order-3 lg:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media">
-            <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
-            <div hidden data-photos-target="progress" class="mb-3">
-                <div class="mb-1 text-sm text-ink-muted" data-label></div>
-                <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-            </div>
+            @include('admin.offers.photo-upload')
             @include('admin.offers.gallery')
         </x-ui.card>
 

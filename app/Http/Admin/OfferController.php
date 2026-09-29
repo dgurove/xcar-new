@@ -2,7 +2,6 @@
 
 namespace App\Http\Admin;
 
-use App\Cars\Settlement;
 use App\Chats\Chat;
 use App\Chats\Message as ChatMessage;
 use App\Garage\Actions\TakeToGarage;
@@ -115,7 +114,6 @@ class OfferController
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
             'offerManagers' => $offer->managers()->pluck('users.id')->all(),
             'showingSummary' => Showing::summary($offer),
-            'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 
@@ -130,7 +128,6 @@ class OfferController
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
             'offerManagers' => $offer->managers()->pluck('users.id')->all(),
             'tags' => Tag::orderBy('sort')->get(),
-            'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id'),
             'chats' => Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']),
             'list' => $request->boolean('gallery'),
         ]);
@@ -139,17 +136,23 @@ class OfferController
     public function update(OfferRequest $request, Offer $offer, UpdateOffer $update)
     {
         $update($offer, $request->payload(), $request->user());
-        // Автосохранение окошка строки: свежая строка таблицы и полоса «Поделиться», окошко не перерисовывается.
+        // Автосохранение окошка строки идёт fetch-ем: редирект на свежую строку, fetch пройдёт по нему сам.
         if ($request->expectsJson()) {
-            $offer = $offer->fresh(['brand', 'model'])->loadCount(['activeBids', 'interests']);
-
-            return response()->json([
-                'row' => Blade::render('<x-offer.table-row :offer="$offer" :gallery="$gallery"/>', ['offer' => $offer, 'gallery' => $offer->isGallery()]),
-                'tools' => view('admin.offers.peek-tools', ['offer' => $offer])->render(),
-            ]);
+            return redirect("/offers/{$offer->number}/row");
         }
 
         return redirect("/offers/{$offer->number}")->with('toast', 'Сохранено');
+    }
+
+    /** Строка таблицы и полоса окошка после автосохранения: окошко не перерисовывается, меняются только они. */
+    public function row(Offer $offer)
+    {
+        $offer->load(['brand', 'model'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
+
+        return response()->json([
+            'row' => Blade::render('<x-offer.table-row :offer="$offer" :gallery="$gallery"/>', ['offer' => $offer, 'gallery' => $offer->isGallery()]),
+            'tools' => view('admin.offers.peek-tools', ['offer' => $offer])->render(),
+        ]);
     }
 
     /** Продлить приём на ходу: от текущего срока, если он ещё не прошёл, иначе от сейчас. */

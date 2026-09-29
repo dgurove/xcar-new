@@ -7,6 +7,7 @@ use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Drive;
 use App\Cars\Fuel;
+use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Cars\Vin\VinAutofill;
 use Illuminate\Http\Request;
@@ -49,6 +50,17 @@ class ReferenceController
             ->orderByDesc('is_popular')->orderBy('name')->limit(20)->get();
 
         return response()->json($brands->map(fn ($b) => ['id' => $b->id, 'label' => $b->name, 'hint' => $b->name_ru]));
+    }
+
+    /** Города для поля «Город» предложения: поиском, а не списком из тысячи восьмисот строк в каждом окошке. */
+    public function settlements(Request $request)
+    {
+        $q = mb_strtolower(trim($request->query('q', '')));
+        $towns = Settlement::query()
+            ->when($q, fn ($s) => $s->whereRaw('lower(name) like ?', ["{$q}%"]))
+            ->orderByDesc('is_federal_city')->orderBy('name')->limit(20)->get(['id', 'name']);
+
+        return response()->json($towns->map(fn ($s) => ['id' => $s->id, 'label' => $s->name]));
     }
 
     public function models(Request $request)

@@ -22,11 +22,7 @@
     <x-ui.peek :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         <x-slot:media>
             <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media">
-                <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
-                <div hidden data-photos-target="progress" class="mb-2">
-                    <div class="mb-1 text-sm text-ink-muted" data-label></div>
-                    <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-                </div>
+                @include('admin.offers.photo-upload')
                 @include('admin.offers.peek-photos')
             </div>
         </x-slot:media>

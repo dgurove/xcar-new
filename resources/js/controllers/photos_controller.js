@@ -39,7 +39,7 @@ export default class extends Controller {
             direction: 'horizontal',
             filter: '.photo-actions',
             preventOnFilter: false,
-            onEnd: () => this.reorder(),
+            onEnd: () => { this.draggedAt = Date.now(); this.reorder(); },
         });
     }
 
@@ -193,6 +193,8 @@ export default class extends Controller {
     // Кнопка на плитке: hide / rotate / delete.
     act(event) {
         const button = event.currentTarget;
+        // Отпустили перетащенный кадр — браузер шлёт click по нему же; в окошке нажатие прячет кадр, а прятать не просили.
+        if (button.tagName === 'IMG' && Date.now() - (this.draggedAt ?? 0) < 500) return;
         this.perform(button.closest('.photo-cell').dataset.id, button.dataset.act, button.dataset.confirm);
     }
 

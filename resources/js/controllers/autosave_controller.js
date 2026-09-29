@@ -1,43 +1,77 @@
 import { Controller } from '@hotwired/stimulus';
 
-// Форма без кнопки «Сохранить»: изменил поле и ушёл из него — вся форма уходит fetch-ем, окошко не
-// перерисовывается (фокус и прокрутка на месте). По одному сохранению за раз: пришла правка, пока
-// шло прошлое, — отправится следом. Ответ: свежая строка таблицы и полоса окошка (событие peek:refresh),
-// ошибки — подсветкой поля и тостом.
+// Форма без кнопки «Сохранить»: изменил поле и ушёл из него — уходят только тронутые поля (их имена в
+// `_fields[]`), окошко не перерисовывается. Чужие правки остальных полей не перетираются. Середину правки
+// не сохраняем: марка без модели (модель после смены марки сбрасывается) и круг менеджеров без единого
+// менеджера ждут следующего изменения. Пачку изменений подряд (разбор VIN заполняет поля по очереди)
+// отправляет одним запросом, по одному сохранению за раз. Ответ — редирект на строку: свежая строка
+// таблицы и полоса окошка (peek:refresh); ошибки — у поля и тостом.
 export default class extends Controller {
     connect() {
-        this.onChange = (e) => { if (e.target.name || e.target.closest('[data-managers-target]')) this.save(); };
-        this.onSubmit = (e) => { e.preventDefault(); this.save(); };
+        this.dirty = new Set();
+        this.onChange = (e) => this.touch(e.target);
+        this.onSubmit = (e) => { e.preventDefault(); this.later(0); };
         this.element.addEventListener('change', this.onChange);
         this.element.addEventListener('submit', this.onSubmit);
     }
 
     disconnect() {
+        clearTimeout(this.timer);
         this.element.removeEventListener('change', this.onChange);
         this.element.removeEventListener('submit', this.onSubmit);
     }
 
+    touch(el) {
+        if (el.closest('[data-controller~="managers"]')) {
+            this.dirty.add('managers').add('managers_limited');
+        } else if (el.name && !el.name.startsWith('_')) {
+            this.dirty.add(el.name.replace(/\[\]$/, ''));
+        } else return;
+        this.later(250);
+    }
+
+    later(ms) {
+        clearTimeout(this.timer);
+        this.timer = setTimeout(() => this.save(), ms);
+    }
+
+    // Середина правки: сохранять рано.
+    unfinished(form) {
+        if (this.dirty.has('brand_id') && form.get('brand_id') && !form.get('model_id')) return true;
+        return this.dirty.has('managers') && form.get('managers_limited') === '1' && !form.getAll('managers[]').length;
+    }
+
     async save() {
+        if (!this.dirty.size) return;
         if (this.busy) { this.again = true; return; }
+        const form = new FormData(this.element);
+        if (this.unfinished(form)) return;
+        const sent = [...this.dirty];
+        this.dirty.clear();
+        const body = new FormData();
+        body.append('_token', form.get('_token'));
+        body.append('_method', 'put');
+        for (const name of sent) {
+            body.append('_fields[]', name);
+            for (const key of [name, `${name}[]`]) form.getAll(key).forEach((v) => body.append(key, v));
+        }
         this.busy = true;
         try {
-            const r = await fetch(this.element.action, {
-                method: 'POST',
-                body: new FormData(this.element),
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            });
+            const r = await fetch(this.element.action, { method: 'POST', body, headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
             const data = await r.json().catch(() => ({}));
             this.clear();
             if (r.status === 422 && data.errors) {
                 this.mark(data.errors);
                 window.toast?.(this.plain(Object.values(data.errors)[0]?.[0]) || 'Не сохранилось', 'danger');
             } else if (!r.ok) {
+                sent.forEach((n) => this.dirty.add(n));
                 window.toast?.('Не сохранилось', 'danger');
             } else {
                 window.dispatchEvent(new CustomEvent('peek:refresh', { detail: data }));
                 window.toast?.('Сохранено');
             }
         } catch {
+            sent.forEach((n) => this.dirty.add(n));
             window.toast?.('Нет связи, не сохранилось', 'danger');
         } finally {
             this.busy = false;
@@ -48,7 +82,7 @@ export default class extends Controller {
     // Ошибка — у поля, как после обычной отправки формы: рамка и текст под ним.
     mark(errors) {
         for (const [name, messages] of Object.entries(errors)) {
-            const field = this.element.querySelector(`[name="${CSS.escape(name)}"]`)?.closest('.field');
+            const field = this.element.querySelector(`[name="${CSS.escape(name)}"], [name="${CSS.escape(name.replace(/\.\d+$/, ''))}[]"]`)?.closest('.field');
             if (!field) continue;
             field.classList.add('field-invalid');
             const p = document.createElement('p');
