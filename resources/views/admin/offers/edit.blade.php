@@ -156,10 +156,6 @@
                 @include('admin.offers.fields.car')
             </x-ui.card>
 
-            <x-ui.card title="Состояние" class="order-2">
-                @include('admin.offers.fields.condition')
-            </x-ui.card>
-
             <x-ui.card title="Деньги" class="order-2">
                 @include('admin.offers.fields.money')
             </x-ui.card>

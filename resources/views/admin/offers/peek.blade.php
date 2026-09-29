@@ -153,10 +153,6 @@
                 @include('admin.offers.fields.car')
             </section>
             <section>
-                <h2 class="peek-section">Состояние</h2>
-                @include('admin.offers.fields.condition')
-            </section>
-            <section>
                 <h2 class="peek-section">Кому показывать</h2>
                 @include('admin.offers.fields.audience')
             </section>

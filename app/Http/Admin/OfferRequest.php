@@ -11,6 +11,7 @@ use App\Cars\Papers;
 use App\Cars\Transmission;
 use App\Offers\AudienceRules;
 use App\Offers\Flag;
+use App\Offers\Tag;
 use App\Support\Liters;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Arr;
@@ -64,6 +65,7 @@ class OfferRequest extends FormRequest
             'prices_include_vat' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string', 'max:40'],
+            'tag_colors' => ['nullable', 'json'],
             'bids_close_at' => ['nullable', 'date'],
             'chat_enabled' => ['boolean'],
             'share_locked' => ['boolean'],
@@ -111,18 +113,25 @@ class OfferRequest extends FormRequest
             // Волны показа приходят JSON-строкой из шторки «Кому»; пустые — «как у вендора» (null).
             $data['audience_rules'] = AudienceRules::normalize($this->input('audience_rules')) ?: null;
         }
-        if ($sent('damage_zones')) {
+        // Повреждений, «на ходу» и ключей в формах больше нет (блок «Состояние» убран, 30.09.2026): чего нет в запросе — не трогаем.
+        if ($sent('damage_zones') && $this->has('damage_zones')) {
             $data['damage_zones'] = $this->validated('damage_zones') ?? [];
         }
         if ($sent('tags')) {
             $data['tags'] = array_values(array_filter($this->validated('tags') ?? []));
+        }
+        if ($sent('tag_colors')) {
+            // Цвет своей метки: только известные цвета и только строки-названия.
+            $colors = json_decode((string) $this->input('tag_colors'), true);
+            $data['tag_colors'] = collect(is_array($colors) ? $colors : [])
+                ->filter(fn ($c, $n) => is_string($n) && mb_strlen($n) <= 40 && array_key_exists($c, Tag::COLORS))->all() ?: null;
         }
         // Признаки ставит разбор писем, в редакторе их нет: отсутствие в форме — не «снять все».
         if ($this->has('flags')) {
             $data['flags'] = array_values(array_filter($data['flags']));
         }
         foreach (['is_runnable', 'has_keys'] as $tri) {
-            if ($sent($tri)) {
+            if ($sent($tri) && $this->has($tri)) {
                 $data[$tri] = $this->filled($tri) ? $this->boolean($tri) : null;
             }
         }

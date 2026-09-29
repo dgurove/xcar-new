@@ -13,17 +13,28 @@
         <x-ui.check name="chat_enabled" :checked="$offer->chat_enabled">Чат с покупателями</x-ui.check>
         <x-ui.check name="share_locked" :checked="$offer->share_locked">Запретить шеринг</x-ui.check>
     </div>
-    {{-- Метки: справочник и разовые этого предложения (их нет в справочнике — без них сохранение стёрло бы их молча),
-         последним — «+» для своей метки (tag-add). --}}
-    @php($current = old('tags', $offer->tags ?? []))
+    {{-- Метки цветом: справочник и разовые этого предложения (их нет в справочнике — без них сохранение стёрло бы их
+         молча), последним — «+» для своей метки с выбором цвета (tag-add). Под метками — описание. --}}
+    @php
+        $current = old('tags', $offer->tags ?? []);
+        $own = old('tag_colors') ? (json_decode(old('tag_colors'), true) ?: []) : ($offer->tag_colors ?? []);
+    @endphp
     <div class="field col-span-full" data-controller="tag-add">
         <span class="field-label">Метки</span>
+        <input type="hidden" name="tag_colors" value="{{ json_encode((object) $own) }}" data-tag-add-target="colors">
         <div class="flex flex-wrap gap-1.5">
             @foreach ($tags->pluck('name')->merge(array_diff($current, $tags->pluck('name')->all())) as $name)
-                <label class="choice"><input type="checkbox" name="tags[]" value="{{ $name }}" @checked(in_array($name, $current))><span>{{ $name }}</span></label>
+                <label class="choice choice-tag" style="{{ \App\Offers\Tag::style(\App\Offers\Tag::colorOf($name, $own)) }}"><input type="checkbox" name="tags[]" value="{{ $name }}" @checked(in_array($name, $current))><span>{{ $name }}</span></label>
             @endforeach
             <button type="button" class="choice-add" data-tag-add-target="button" data-action="tag-add#open" aria-label="Своя метка">+</button>
-            <input type="text" class="choice-input" maxlength="40" hidden data-tag-add-target="input" data-action="keydown.enter->tag-add#add:prevent blur->tag-add#add keydown.esc->tag-add#close">
+            <span class="flex flex-wrap items-center gap-1.5" data-tag-add-target="draft" hidden>
+                <input type="text" class="choice-input" maxlength="40" data-tag-add-target="input" data-action="keydown.enter->tag-add#add:prevent keydown.esc->tag-add#close">
+                @foreach (array_keys(\App\Offers\Tag::COLORS) as $color)
+                    <button type="button" class="tag-dot" style="{{ \App\Offers\Tag::style($color) }}" data-tag-add-target="dot" data-color="{{ $color }}" data-action="tag-add#pick" aria-label="{{ \App\Offers\Tag::COLORS[$color] }}" aria-pressed="{{ $color === 'grey' ? 'true' : 'false' }}"></button>
+                @endforeach
+                <button type="button" class="pill pill-plain" data-action="tag-add#add">Добавить</button>
+            </span>
         </div>
     </div>
+    <x-ui.field name="description" label="Описание" type="textarea" :value="$offer->description" span="col-span-full"/>
 </div>
