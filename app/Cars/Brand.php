@@ -26,6 +26,14 @@ class Brand extends Model
         return Str::slug($name) ?: mb_strtolower($name);
     }
 
+    /** Найти по любому написанию; нет — null (разбор письма новых марок не заводит). */
+    public static function known(string $name): ?self
+    {
+        $name = trim($name);
+
+        return self::query()->where('slug', self::slugFor($name))->orWhereRaw('lower(name) = ?', [mb_strtolower($name)])->orWhereRaw('lower(name_ru) = ?', [mb_strtolower($name)])->first();
+    }
+
     /** Найти по любому написанию, иначе завести. */
     public static function resolve(string $name): self
     {

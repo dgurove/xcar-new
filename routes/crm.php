@@ -40,6 +40,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     // Из писем: та же почта с вшитой выборкой «надо завести» — раньше `/offers/{offer}`, иначе from-mail примут за номер.
     Route::get('/offers/from-mail', [MailController::class, 'fromMail']);
     Route::get('/offers/twins', [OfferController::class, 'twins']);
+    Route::get('/offers/from-mail/{candidate}/new', [MailController::class, 'review']);
     Route::post('/offers/from-mail/{candidate}/create', [MailController::class, 'promote']);
     Route::post('/offers/from-mail/{candidate}/decline', [MailController::class, 'decline']);
     Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');

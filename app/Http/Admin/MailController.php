@@ -246,9 +246,8 @@ class MailController
         if ($this->scope === Scope::Park) {
             return redirect('/requests/new?candidate='.$candidate->id);
         }
-        $offer = app(PromoteCandidate::class)($candidate, $request->user());
 
-        return redirect("/offers/{$offer->number}")->with('toast', $offer->wasRecentlyCreated ? 'Черновик заведён, фото подтягиваются' : 'Письма привязаны к предложению');
+        return redirect("/offers/from-mail/{$candidate->id}/new");
     }
 
     /**
@@ -295,11 +294,63 @@ class MailController
         return back()->with('toast', $restore ? 'Снова во входящих' : 'В архиве');
     }
 
-    /** «Завести» у цепочки в CRM: черновик предложения из писем (на стоянке вместо этого открывается разбор письма). */
+    /**
+     * Проверка перед «Завести» (CRM, как разбор письма на парковке): поля черновика из писем (`PromoteCandidate::data` —
+     * разбор, документы во вложениях, VIN) можно поправить, письмо и документы — шторкой рядом. Если новое письмо
+     * цепочки говорит иначе, чем первое (`proposed`), его значение стоит кнопкой «Взять».
+     */
+    public function review(Candidate $candidate, PromoteCandidate $promote)
+    {
+        abort_if($candidate->state === CandidateState::Promoted || $candidate->scope !== Scope::Offers || $this->scope !== Scope::Offers, 404);
+        $candidate->load(['messages.attachments', 'messages.account']);
+        $letters = $candidate->messages->filter(fn (Message $m) => $m->direction === Direction::In)->sortBy('date_at')->values();
+        $letter = $letters->first(fn (Message $m) => ! $m->isOurs()) ?? $letters->first();
+        ['docs' => $files, 'photos' => $photos] = Docs::fromLetters($letters, $this->base);
+        $threads = $candidate->threads();
+        $thread = $threads->count() === 1 ? "{$this->base}/{$threads->first()->id}" : null;
+
+        return view('admin.offers.from-mail', [
+            'candidate' => $candidate,
+            'offer' => new Offer($promote->data($candidate)),
+            'existing' => $promote->existing($candidate),
+            'docs' => array_values(array_filter([$letter ? Docs::letter($letter, $this->base, $thread) : null, ...$files, Docs::photos($photos, $this->base)])),
+            'proposed' => $this->proposed($candidate),
+            'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+        ]);
+    }
+
+    /**
+     * Где новое письмо цепочки говорит иначе, чем свёртка: поле → [подпись, как показать, что подставить].
+     *
+     * @return array<string, array{0: string, 1: string, 2: mixed}>
+     */
+    private function proposed(Candidate $candidate): array
+    {
+        $labels = ['year' => 'Год', 'mileage' => 'Пробег, км', 'vin' => 'VIN', 'floor_price' => 'Закупочная, ₽', 'engine_volume' => 'Объём, л', 'engine_power' => 'Мощность, л. с.', 'color' => 'Цвет', 'location' => 'Адрес осмотра'];
+        $out = [];
+        foreach ($labels as $field => $label) {
+            $new = $candidate->proposed[$field]['value'] ?? null;
+            if ($new === null || (string) $new === (string) $candidate->value($field)) {
+                continue;
+            }
+            $input = $field === 'location' ? 'inspection_address' : $field;
+            $shown = match ($field) {
+                'floor_price', 'mileage' => \App\Support\Money::nums((int) $new),
+                'engine_volume' => (string) \App\Support\Liters::format((int) $new),
+                default => (string) $new,
+            };
+            $out[$input] = [$label, $shown, $field === 'engine_volume' ? \App\Support\Liters::format((int) $new) : $new];
+        }
+
+        return $out;
+    }
+
+    /** «Завести» у цепочки в CRM: с формы проверки — с её полями (на стоянке вместо этого открывается разбор письма). */
     public function promote(Request $request, Candidate $candidate)
     {
         abort_if($candidate->state === CandidateState::Promoted || $candidate->scope !== $this->scope, 404);
-        $offer = app(PromoteCandidate::class)($candidate, $request->user());
+        $fields = $request->has('from_review') ? app(OfferRequest::class)->validated() : [];
+        $offer = app(PromoteCandidate::class)($candidate, $request->user(), $fields);
 
         return redirect("/offers/{$offer->number}")->with('toast', $offer->wasRecentlyCreated ? 'Черновик заведён, фото подтягиваются' : 'Письма привязаны к предложению');
     }

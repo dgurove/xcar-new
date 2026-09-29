@@ -5,7 +5,7 @@ namespace App\Mail\Extraction\Templates;
 /** Незнакомая страховая: всё, что находится в теме, потом — чего в теме не бывает — из тела. */
 class Generic extends Template
 {
-    /** Искать номер, VIN, госномер и год ещё и в теле — там, где тема бывает пустой. */
+    /** Искать номер, VIN и госномер ещё и в теле — там, где тема бывает пустой. Год в теле — это год письма, его нет. */
     protected const BODY_FALLBACK = true;
 
     public function extract(string $subject, string $body): array
@@ -23,7 +23,6 @@ class Generic extends Template
             $this->put($fields, 'code', $this->firstCode($body), 'body');
             $this->put($fields, 'vin', $this->match(self::VIN, $body), 'body');
             $this->put($fields, 'plate', $this->match(self::PLATE, $body), 'body');
-            $this->put($fields, 'year', $this->match(self::YEAR, $body), 'body');
         }
         $this->put($fields, 'floor_price', $this->price($body), 'body');
         $this->put($fields, 'location', $this->location($body), 'body');

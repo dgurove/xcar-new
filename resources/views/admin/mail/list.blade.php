@@ -51,7 +51,7 @@
                                 @if ($park)
                                     <a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent case-do">Завести</a>
                                 @else
-                                    <form method="post" action="{{ $queue }}/{{ $c->id }}/create" class="contents">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
+                                    <a href="/offers/from-mail/{{ $c->id }}/new" class="btn btn-s btn-accent case-do">Завести</a>
                                 @endif
                             @elseif ($c->state === CandidateState::Promoted)
                                 <a href="{{ $park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number }}" class="case-go"><span class="tag">{{ $c->state->label() }}</span><span aria-hidden="true">›</span></a>

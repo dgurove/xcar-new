@@ -20,7 +20,7 @@ use App\Garage\Listeners\CloseWhenPaid;
 use App\Garage\Listeners\ReopenWhenVoided;
 use App\Live\PublishLiveUpdates;
 use App\Mail\Extraction\AttachmentReader;
-use App\Mail\Extraction\NullAttachmentReader;
+use App\Mail\Extraction\TextAttachmentReader;
 use App\Mail\OnMessage;
 use App\Media\StampOnAdd;
 use App\Notifications\Notify;
@@ -44,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Сканы и документы из писем пока не читаются; сюда встанет OCR или модель по API.
-        $this->app->bind(AttachmentReader::class, NullAttachmentReader::class);
+        $this->app->bind(AttachmentReader::class, TextAttachmentReader::class);
         // Эквайринг — ЮKassa, подключённая в СберБизнесе.
         $this->app->bind(Gateway::class, YooKassa::class);
     }

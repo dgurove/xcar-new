@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class ReadLetter
 {
-    public const VERSION = 6;
+    public const VERSION = 7;
 
     public function __construct(private ParkExtractor $park, private Extractor $offers, private CodeMatcher $codes) {}
 
@@ -33,8 +33,9 @@ final class ReadLetter
         $isPark = $message->account?->scope === Scope::Park;
         $fields = $isPark
             ? $this->park->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments->pluck('filename')->all(), $message->attachments)
-            : $this->offers->extract($message->subject, $body, $message->from_email, $message->date_at);
-        $intent = $isPark ? Intent::ofMessage($message) : null;
+            : $this->offers->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments);
+        // У писем с предложениями смысла нет, кроме служебного: «Вход с нового устройства» не даёт ни полей, ни номеров.
+        $intent = $isPark ? Intent::ofMessage($message) : (Extractor::isService($message->subject, $message->from_email) ? Intent::Auto : null);
         $own = QuotationStripper::ownText($body);
 
         return [

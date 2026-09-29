@@ -39,10 +39,10 @@ final class Docs
         return mb_strtolower((string) preg_replace('/[^\p{L}\p{N}]+/u', '', $name));
     }
 
-    /** Подпись вкладки — имя файла без расширения (медиатека пишет пробелы дефисами: «Согаз-заявка» — словами). */
+    /** Подпись вкладки — имя файла без расширения (медиатека пишет пробелы дефисами: «Согаз-заявка» — словами; дефис в номере «473697-26» остаётся). */
     public static function label(string $name): string
     {
-        return trim(str_replace(['_', '-'], ' ', pathinfo($name, PATHINFO_FILENAME))) ?: $name;
+        return trim((string) preg_replace(['/_+/', '/(?<!\d)-|-(?!\d)/'], ' ', pathinfo($name, PATHINFO_FILENAME))) ?: $name;
     }
 
     /** @return array<string, mixed> */

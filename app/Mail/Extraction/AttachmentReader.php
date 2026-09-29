@@ -5,8 +5,8 @@ namespace App\Mail\Extraction;
 use App\Mail\Attachment;
 
 /**
- * Поля машины из вложения письма (скан заявки Альфы, акт, выписка ЭПТС). Читалки пока нет — `NullAttachmentReader`;
- * когда появится OCR или модель по API, её класс подключается в `AppServiceProvider` вместо пустой.
+ * Поля машины из вложения письма (акт, договор, оценка, скан заявки Альфы). Сейчас — `TextAttachmentReader` по тексту
+ * документа; OCR или модель по API для сканов подключается в `AppServiceProvider` вместо него.
  */
 interface AttachmentReader
 {

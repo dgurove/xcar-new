@@ -110,10 +110,11 @@ final class ParkExtractor
         if (preg_match('/\b(?:прием|приём|приемка|приёмка)\s+(?:ГОТС|ТС)\b|\bвывоз|\bвывезти|\bзабрать|связаться\s+с\s+клиентом|передач[аеи]\s+(?:ТС|ГОТС)|готов\w*\s+к\s+передаче/iu', $subject.' '.$text)) {
             $fields['request'] ??= ['value' => 'tow', 'source' => 'body'];
         }
-        // Сканы и документы: читалки пока нет (NullAttachmentReader), место подключения OCR или AI по API — здесь.
+        // Вложения: `TextAttachmentReader` читает пока только письма с предложениями, у парковки сканы без текстового
+        // слоя — место для OCR. Когда подключится, парковке — только тождество машины, цены у неё свои.
         if ($this->reader) {
             foreach ($attachments as $attachment) {
-                foreach ($this->reader->read($attachment) as $field => $value) {
+                foreach (array_intersect_key($this->reader->read($attachment), array_flip(['brand', 'model', 'vin', 'plate', 'year', 'color'])) as $field => $value) {
                     $fields[$field] ??= $value;
                 }
             }

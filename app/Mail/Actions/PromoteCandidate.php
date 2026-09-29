@@ -4,6 +4,8 @@ namespace App\Mail\Actions;
 
 use App\Cars\Brand;
 use App\Cars\CarModel;
+use App\Cars\Settlement;
+use App\Cars\Vin\VinAutofill;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Jobs\ExtractCandidate;
@@ -14,6 +16,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Users\User;
 use App\Vendors\Vendor;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -24,7 +27,10 @@ final class PromoteCandidate
 {
     public function __construct(private CreateOffer $create, private UpdateOffer $update, private LinkThread $link) {}
 
-    public function __invoke(Candidate $candidate, User $by): Offer
+    /**
+     * @param  array<string, mixed>  $fields  поля формы проверки (`/offers/from-mail/{c}/new`) — накрывают разобранное из писем
+     */
+    public function __invoke(Candidate $candidate, User $by, array $fields = []): Offer
     {
         if ($offer = $this->existing($candidate)) {
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
@@ -32,42 +38,9 @@ final class PromoteCandidate
 
             return $offer;
         }
-        $offer = DB::transaction(function () use ($candidate, $by) {
-            $v = fn (string $f) => $candidate->value($f);
-            $brand = $v('brand') ? Brand::resolve($this->clean($v('brand'))) : null;
-            $model = $brand && $v('model') ? CarModel::resolve($brand, $this->clean($v('model'))) : null;
-            // Кандидаты до вендоров несли только имя страховой — старым ещё нужен поиск по нему.
-            $vendor = $v('vendor_id') ? Vendor::find($v('vendor_id')) : Vendor::forSender($v('sender'), Scope::Offers)
-                ?? ($v('insurer') ? Vendor::whereRaw('lower(name) = ?', [mb_strtolower($v('insurer'))])->first() : null);
-
+        $offer = DB::transaction(function () use ($candidate, $by, $fields) {
             $offer = ($this->create)($by);
-            ($this->update)($offer, array_filter([
-                'brand_id' => $brand?->id,
-                'model_id' => $model?->id,
-                'year' => $v('year') ? (int) $v('year') : null,
-                'vin' => $v('vin'),
-                'mileage' => $v('mileage'),
-                'fuel' => $v('fuel'),
-                'transmission' => $v('transmission'),
-                'drive' => $v('drive'),
-                'engine_volume' => $v('engine_volume'),
-                'engine_power' => $v('engine_power'),
-                'floor_price' => $v('floor_price'),
-                'inspection_address' => $v('location'),
-                'claim_ref' => $candidate->code,
-                'vendor_id' => $vendor?->id,
-                'prices_include_vat' => $v('vat') ?? $vendor?->offers_include_vat,
-                'answer_by' => $v('answer_by'),
-                'insured_name' => $v('insured_name'),
-                'insured_phone' => $v('insured_phone'),
-                'flags' => $v('flags') ?: null,
-                'holder' => $v('holder'),
-                'docs_required' => $v('docs_required') ?: null,
-                'contact_name' => $v('contact_name') ?? $candidate->message?->from_name,
-                'contact_email' => $v('sender'),
-                'description' => $v('photos_url') ? 'Фото: '.$v('photos_url') : null,
-            ], fn ($x) => $x !== null && $x !== ''), $by);
-
+            ($this->update)($offer, array_filter(array_merge($this->data($candidate), $fields), fn ($x) => $x !== null && $x !== ''), $by);
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
             $this->linkAll($candidate, $offer);
 
@@ -75,6 +48,69 @@ final class PromoteCandidate
         });
 
         return $offer;
+    }
+
+    /**
+     * Черновик из свёртки писем: одно место на «Завести» и на форму проверки перед ним.
+     * Марка — только из справочника (разбор уже сверил её со словарём, новой марки из письма не заводим).
+     * Чего письмо не сказало — из VIN (`VinAutofill`: кузов, КПП, привод, топливо, объём, мощность; год — только
+     * у марок, которые его кодируют): письмо важнее. Город — из справочника, срок страховой — из «ответить до».
+     *
+     * @return array<string, mixed>
+     */
+    public function data(Candidate $candidate): array
+    {
+        $v = fn (string $f) => $candidate->value($f);
+        $brand = $v('brand') ? Brand::known($this->clean($v('brand'))) : null;
+        $model = $brand && $v('model') ? CarModel::resolve($brand, $this->clean($v('model'))) : null;
+        // Кандидаты до вендоров несли только имя страховой — старым ещё нужен поиск по нему.
+        $vendor = $v('vendor_id') ? Vendor::find($v('vendor_id')) : Vendor::forSender($v('sender'), Scope::Offers)
+            ?? ($v('insurer') ? Vendor::whereRaw('lower(name) = ?', [mb_strtolower($v('insurer'))])->first() : null);
+        $answerBy = $v('answer_by') ? Carbon::parse($v('answer_by')) : null;
+
+        $data = array_filter([
+            'brand_id' => $brand?->id,
+            'model_id' => $model?->id,
+            'year' => $v('year') ? (int) $v('year') : null,
+            'vin' => $v('vin'),
+            'mileage' => $v('mileage'),
+            'fuel' => $v('fuel'),
+            'transmission' => $v('transmission'),
+            'drive' => $v('drive'),
+            'engine_volume' => $v('engine_volume'),
+            'engine_power' => $v('engine_power'),
+            'color' => $v('color'),
+            'floor_price' => $v('floor_price'),
+            'inspection_address' => $v('location'),
+            'settlement_id' => $v('city') ? Settlement::whereRaw("replace(lower(name), 'ё', 'е') = ?", [str_replace('ё', 'е', mb_strtolower($v('city')))])->value('id') : null,
+            'claim_ref' => $candidate->code,
+            'vendor_id' => $vendor?->id,
+            'prices_include_vat' => $v('vat') ?? $vendor?->offers_include_vat,
+            'answer_by' => $v('answer_by'),
+            'insurer_deadline_at' => $answerBy?->toDateString(),
+            'insured_name' => $v('insured_name'),
+            'insured_phone' => $v('insured_phone'),
+            'flags' => $v('flags') ?: null,
+            'holder' => $v('holder'),
+            'docs_required' => $v('docs_required') ?: null,
+            'contact_name' => $v('contact_name') ?? $candidate->message?->from_name,
+            'contact_email' => $v('sender'),
+            'description' => $v('photos_url') ? 'Фото: '.$v('photos_url') : null,
+        ], fn ($x) => $x !== null && $x !== '');
+        if ($data['vin'] ?? null) {
+            $byVin = app(VinAutofill::class)->suggest($data['vin'])['values'];
+            // Марку сказало письмо, а VIN — другую: модель по VIN к этой марке не подходит.
+            if (isset($data['brand_id'], $byVin['brand_id']) && $data['brand_id'] !== $byVin['brand_id']) {
+                unset($byVin['model_id']);
+            }
+            foreach ($byVin as $field => $value) {
+                if ($value !== null && ! isset($data[$field])) {
+                    $data[$field] = $value instanceof \BackedEnum ? $value->value : $value;
+                }
+            }
+        }
+
+        return $data;
     }
 
     private function linkAll(Candidate $candidate, Offer $offer): void
@@ -88,7 +124,7 @@ final class PromoteCandidate
     }
 
     /** Предложение с тем же убытком или VIN, не в архиве. */
-    private function existing(Candidate $candidate): ?Offer
+    public function existing(Candidate $candidate): ?Offer
     {
         $live = fn () => Offer::where('state', '!=', OfferState::Archived)->latest();
         $vin = $candidate->value('vin') ? strtoupper((string) $candidate->value('vin')) : null;

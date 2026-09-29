@@ -2,15 +2,11 @@
 
 namespace App\Mail\Extraction\Templates;
 
-use App\Cars\Drive;
-use App\Cars\Fuel;
-use App\Cars\Transmission;
+use App\Mail\Extraction\CarWords;
 
 /** Совкомбанк: блок «МАРКА МОДЕЛЬ:/ГОД ВЫПУСКА:/КПП:/ПРИВОД:…», «оценены N руб», VIN в теле или без него. */
 final class Sovcombank extends Template
 {
-    private const FUEL_WORDS = ['бензин' => 'petrol', 'дизел' => 'diesel', 'гибрид' => 'hybrid', 'электро' => 'electric', 'газ' => 'gas'];
-
     public function extract(string $subject, string $body): array
     {
         $subject = $this->subjectOf($subject, $body);
@@ -19,13 +15,13 @@ final class Sovcombank extends Template
         [$brand, $model] = $this->splitBrandModel((string) $this->block($body, 'МАРКА МОДЕЛЬ'));
         $this->put($fields, 'brand', $brand, 'body');
         $this->put($fields, 'model', $model, 'body');
-        $this->put($fields, 'year', $this->digits($this->block($body, 'ГОД ВЫПУСКА')), 'body');
-        $this->put($fields, 'mileage', $this->digits($this->block($body, 'ПРОБЕГ')), 'body');
-        $this->put($fields, 'fuel', $this->fuel($this->block($body, 'ТИП ДВИГАТЕЛЯ')), 'body');
-        $this->put($fields, 'engine_power', $this->digits($this->block($body, 'МОЩНОСТЬ ДВИГАТЕЛЯ')), 'body');
-        $this->put($fields, 'engine_volume', $this->digits($this->block($body, 'ОБЪЕМ ДВИГАТЕЛЯ')), 'body');
-        $this->put($fields, 'transmission', $this->transmission($this->block($body, 'КПП')), 'body');
-        $this->put($fields, 'drive', $this->drive($this->block($body, 'ПРИВОД')), 'body');
+        $this->put($fields, 'year', CarWords::digits($this->block($body, 'ГОД ВЫПУСКА')), 'body');
+        $this->put($fields, 'mileage', CarWords::digits($this->block($body, 'ПРОБЕГ')), 'body');
+        $this->put($fields, 'fuel', CarWords::fuel($this->block($body, 'ТИП ДВИГАТЕЛЯ')), 'body');
+        $this->put($fields, 'engine_power', CarWords::digits($this->block($body, 'МОЩНОСТЬ ДВИГАТЕЛЯ')), 'body');
+        $this->put($fields, 'engine_volume', CarWords::digits($this->block($body, 'ОБЪЕМ ДВИГАТЕЛЯ')), 'body');
+        $this->put($fields, 'transmission', CarWords::transmission($this->block($body, 'КПП')), 'body');
+        $this->put($fields, 'drive', CarWords::drive($this->block($body, 'ПРИВОД')), 'body');
         $this->put($fields, 'location', $this->block($body, 'МЕСТОНАХОЖДЕНИЕ ТС'), 'body');
         $this->put($fields, 'floor_price', $this->price($body), 'body');
         if (! isset($fields['brand']) && ! isset($fields['year'])) {
@@ -50,68 +46,6 @@ final class Sovcombank extends Template
         return $value !== '' ? $value : null;
     }
 
-    /** Первое число в строке: «1998 см3» — 1998, а не 19983. */
-    private function digits(?string $value): ?int
-    {
-        if ($value === null || ! preg_match('/\d[\d\s\x{00A0}]*/u', $value, $m)) {
-            return null;
-        }
-        $digits = preg_replace('/\D/u', '', $m[0]) ?? '';
-
-        return $digits !== '' && (int) $digits > 0 ? (int) $digits : null;
-    }
-
-    private function fuel(?string $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-        $word = mb_strtolower($value);
-        if (str_contains($word, 'бензин') && str_contains($word, 'газ')) {
-            return 'gas';
-        }
-        foreach (self::FUEL_WORDS as $needle => $enum) {
-            if (str_contains($word, $needle)) {
-                return Fuel::tryFrom($enum)?->value;
-            }
-        }
-
-        return null;
-    }
-
-    private function transmission(?string $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-        $word = mb_strtolower($value);
-        $mapped = match (true) {
-            str_contains($word, 'акпп') || str_contains($word, 'автомат') => 'automatic',
-            str_contains($word, 'мкпп') || str_contains($word, 'механ') => 'manual',
-            str_contains($word, 'вариатор') => 'cvt',
-            str_contains($word, 'робот') => 'dual_clutch',
-            default => null,
-        };
-
-        return $mapped ? Transmission::tryFrom($mapped)?->value : null;
-    }
-
-    private function drive(?string $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-        $word = mb_strtolower($value);
-        $mapped = match (true) {
-            str_contains($word, 'полн') || preg_match('/4\s*[хx]\s*4|\bawd\b|\b4\s*wd\b/u', $word) === 1 => 'awd',
-            str_contains($word, 'передн') || preg_match('/\bf\s*wd\b/u', $word) === 1 => 'fwd',
-            str_contains($word, 'задн') || preg_match('/4\s*[хx]\s*2|\brwd\b/u', $word) === 1 => 'rwd',
-            default => null,
-        };
-
-        return $mapped ? Drive::tryFrom($mapped)?->value : null;
-    }
-
     /** «Haval Jolion, 2023 г.в.» — год выпуска якорь: перед запятой стоят марка и модель. */
     private function freeForm(string $body): array
     {
@@ -134,7 +68,7 @@ final class Sovcombank extends Template
             $car = mb_substr($car, 0, $at);
         }
         if (preg_match('/пробег\s*:?\s*([\d\s]{4,})\s*км/iu', $car, $f)) {
-            $fields['mileage'] = $this->digits($f[1]);
+            $fields['mileage'] = CarWords::digits($f[1]);
         }
         if (preg_match('/(\d{3,5})\s*(?:[cс]\s*м\s*[3³]|куб\.?(?:\s*см)?)/iu', $car, $f)) {
             $fields['engine_volume'] = (int) $f[1];
@@ -142,8 +76,8 @@ final class Sovcombank extends Template
         if (preg_match('/(\d{2,4})\s*л\s*\.?\s*с\s*\.?/iu', $car, $f)) {
             $fields['engine_power'] = (int) $f[1];
         }
-        $fields['transmission'] = $this->transmission($car);
-        $fields['drive'] = $this->drive($car);
+        $fields['transmission'] = CarWords::transmission($car);
+        $fields['drive'] = CarWords::drive($car);
 
         return array_filter($fields, fn ($v) => $v !== null);
     }

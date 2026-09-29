@@ -17,7 +17,8 @@ WORKDIR /app
 RUN install-php-extensions bcmath exif gd intl pcntl pdo_pgsql zip
 # p7zip — архивы фотографий от страховых приходят и в .7z. heic2jpg — HEIC с айфонов
 # из облака Carcade: libheif из Debian 12 их не читает, декодер — pillow-heif со своим libheif.
-RUN apt-get update && apt-get install -y --no-install-recommends p7zip-full python3 python3-pip && rm -rf /var/lib/apt/lists/* \
+# poppler-utils — pdftotext: текст оценки с торгов и акта во вложении письма (`AttachmentText`).
+RUN apt-get update && apt-get install -y --no-install-recommends p7zip-full poppler-utils python3 python3-pip && rm -rf /var/lib/apt/lists/* \
     && pip3 install --no-cache-dir --break-system-packages pillow==12.3.0 pillow-heif==1.7.0
 COPY deploy/bin/heic2jpg /usr/local/bin/heic2jpg
 

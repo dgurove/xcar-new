@@ -33,6 +33,20 @@ final class OfficePreview
         return response($html, 200, ['Content-Type' => 'text/html; charset=utf-8', 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, max-age=86400']);
     }
 
+    /** Текст документа для разбора писем (`AttachmentText`): строки таблиц — ячейки через « | », абзацы — строками. */
+    public static function plainText(string $path, string $name): ?string
+    {
+        $html = self::html($path, $name);
+        if ($html === null) {
+            return null;
+        }
+        // Абзацы внутри ячейки — одной строкой: «Марка/модель | XCITE X-CROSS 8», а не подпись и значение на разных.
+        $html = (string) preg_replace_callback('/<td([^>]*)>(.*?)<\/td>/s', fn ($m) => '<td'.$m[1].'>'.trim(str_replace(['</p>', '<p>', '<br>'], ' ', $m[2])).'</td>', $html);
+        $text = strip_tags(str_replace(['</td>', '</tr>', '</p>', '<br>', '</h3>'], [' | ', "\n", "\n", "\n", "\n"], $html));
+
+        return trim(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+
     public static function html(string $path, string $name): ?string
     {
         try {

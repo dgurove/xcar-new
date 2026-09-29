@@ -24,6 +24,8 @@ final class Code
         $code = mb_strtoupper(trim($code));
         $code = (string) preg_replace('/\s*([\/\\\\-])\s*/u', '$1', $code);
         $code = (string) preg_replace('/\s+/u', ' ', $code);
+        // Совкомбанк пишет один номер тремя способами: 473697/2026, 473697-2026 и 473697-26 — запись одна.
+        $code = (string) preg_replace(['/^(\d{6})[\/-](\d{2})$/', '/^(\d{6})-(\d{4})$/'], ['$1/20$2', '$1/$2'], $code);
 
         return strtr($code, self::HOMOGLYPHS);
     }
