@@ -19,21 +19,22 @@ final class Caption
         $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
         $staff = $user?->isStaff() ?? false;
         $price = PriceView::for($offer, $user);
+        // Цены — последней строкой: клиент собирает отмеченные сверху вниз, цены склеивает стрелкой «от → до» в конце.
+        // VIN менеджеру — как на сайте: скрытый глазиком уходит маской.
         $rows = [
-            ['number', 'Номер', (string) $offer->number, true],
-            // «От» перед «до» — клиент склеивает отмеченные цены стрелкой в этом порядке.
-            // Менеджеру — заявленная, сотруднику — закупочная и заявленная; по умолчанию выключены: покупателю уходит одна цена.
+            ['number', 'Номер', '#'.$offer->number, true],
+            ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
+            ['city', 'Город', $offer->settlement?->name, true],
+            ['specs', 'КПП, привод, кузов', implode(', ', array_filter([$offer->transmission?->label(), $offer->drive?->label(), $offer->body?->label()])) ?: null, true],
+            ['engine', 'Двигатель', $offer->engine_volume ? number_format($offer->engine_volume / 1000, 1, ',', '').' л'.($offer->engine_power ? ', '.$offer->engine_power.' л. с.' : '') : null, true],
+            ['mileage', 'Пробег', $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null, false],
+            ['vin', 'VIN', $offer->vin ? 'VIN '.($staff ? $offer->vin : $offer->vinMasked()) : null, true],
+            ['tags', 'Метки', $offer->tags ? implode(', ', $offer->tags) : null, false],
+            ['until', 'Приём подтверждений до', $offer->bids_close_at?->translatedFormat('d.m.Y H:i'), false],
+            // Закупочная и заявленная — «от», из двух одна (клиент снимает вторую); по умолчанию выключены: покупателю уходит одна цена.
             ['floor_price', 'Закупочная', $staff ? $money($offer->floor_price) : null, false],
             ['publish_price', 'Заявленная', $staff ? $money($offer->declaredPrice()) : ($price->visible ? $money($price->from) : null), false],
             ['price', 'Цена', $price->visible ? $money($offer->asking_price) : null, true],
-            ['city', 'Город', $offer->settlement?->name, true],
-            ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
-            ['specs', 'КПП, привод, кузов', implode(', ', array_filter([$offer->transmission?->label(), $offer->drive?->label(), $offer->body?->label()])) ?: null, true],
-            ['engine', 'Двигатель', $offer->engine_volume ? number_format($offer->engine_volume / 1000, 1, ',', '').' л'.($offer->engine_power ? ', '.$offer->engine_power.' л. с.' : '') : null, false],
-            ['mileage', 'Пробег', $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null, false],
-            ['vin', 'VIN', $offer->vin ? 'VIN '.$offer->vin : null, false],
-            ['tags', 'Метки', $offer->tags ? implode(', ', $offer->tags) : null, false],
-            ['until', 'Приём подтверждений до', $offer->bids_close_at?->translatedFormat('d.m.Y H:i'), false],
         ];
 
         return self::rows($rows);
@@ -46,15 +47,15 @@ final class Caption
         $prices = $user?->role->canSeePrices() ?? false;
         $rows = [
             ['number', 'Номер', str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl, true],
-            ['price', 'Наша цена', $prices ? $money($car->price_listing) : null, true],
             ['city', 'Город', $car->settlement?->name ?? $car->city, true],
             ['model', 'Марка, модель, год', $car->titleWithYear(), true],
             ['specs', 'КПП, топливо', implode(', ', array_filter([$car->transmission?->label(), $car->fuel?->label()])) ?: null, true],
-            ['engine', 'Двигатель', $car->engine_volume ? number_format($car->engine_volume / 1000, 1, ',', '').' л'.($car->engine_power ? ', '.$car->engine_power.' л. с.' : '') : null, false],
+            ['engine', 'Двигатель', $car->engine_volume ? number_format($car->engine_volume / 1000, 1, ',', '').' л'.($car->engine_power ? ', '.$car->engine_power.' л. с.' : '') : null, true],
             ['mileage', 'Пробег', $car->mileage !== null ? number_format($car->mileage, 0, '', ' ').' км' : null, false],
-            ['vin', 'VIN', $car->vin ? 'VIN '.$car->vin : null, false],
+            ['vin', 'VIN', $car->vin ? 'VIN '.$car->vin : null, true],
             ['encumbrance', 'Обременения', $car->encumbrance, false],
             ['until', 'Приём цен до', $car->purchase?->offers_close_at?->translatedFormat('d.m.Y H:i'), false],
+            ['price', 'Наша цена', $prices ? $money($car->price_listing) : null, true],
         ];
 
         return self::rows($rows);

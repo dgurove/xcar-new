@@ -48,9 +48,9 @@
                     <form method="post" action="/offers/{{ $n }}/publish" class="flex gap-2" data-controller="bid" data-bid-asking-value="0">
                         @csrf
                         <input type="hidden" name="asking_price" data-bid-target="amount" value="{{ $offer->asking_price }}">
-                        <input type="text" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
+                        <input type="text" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
                             data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-peek-focus>
-                        <button type="submit" class="btn btn-accent shrink-0">В продажу</button>
+                        <button type="submit" class="btn btn-s btn-accent shrink-0">В продажу</button>
                     </form>
                     @if ($car = $offer->purchaseCar)
                         @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp

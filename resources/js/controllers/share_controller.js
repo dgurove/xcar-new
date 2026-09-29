@@ -13,6 +13,9 @@ import { openSheet, closeSheet } from '../sheet';
 // сбой — тостом и на сервер (/share/error): иначе с чужого телефона не видно ничего.
 const BROKEN = 'share:open';
 
+const PRICES = ['floor_price', 'publish_price', 'price'];
+const FROM = ['floor_price', 'publish_price'];
+
 export default class extends Controller {
     static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label'];
     static values = { url: String, vat: String, name: String, locked: String };
@@ -41,18 +44,26 @@ export default class extends Controller {
         if (event.target === this.dialogTarget) this.close();
     }
 
+    // Строки сверху вниз, цены — одной последней строкой: «от → до» и метка НДС.
     caption() {
         const lines = [];
         const price = [];
         for (const f of this.fieldTargets) {
             if (!f.checked || !f.dataset.value) continue;
-            if (f.dataset.key === 'floor_price' || f.dataset.key === 'publish_price' || f.dataset.key === 'price') { price.push(f.dataset.value); continue; }
-            if (price.length && f.dataset.key !== 'number') { lines.push(price.join(' → ') + this.vatValue); price.length = 0; }
-            lines.push(f.dataset.value);
-            if (f.dataset.key === 'number' && price.length) { lines.push(price.join(' → ') + this.vatValue); price.length = 0; }
+            if (PRICES.includes(f.dataset.key)) price.push(f.dataset.value);
+            else lines.push(f.dataset.value);
         }
         if (price.length) lines.push(price.join(' → ') + this.vatValue);
         return lines.join('\n');
+    }
+
+    // Закупочная и заявленная — обе «от»: отметили одну — вторая снимается.
+    pick(event) {
+        const key = event.target.dataset.key;
+        if (event.target.checked && FROM.includes(key)) {
+            this.fieldTargets.forEach((f) => { if (f !== event.target && FROM.includes(f.dataset.key)) f.checked = false; });
+        }
+        this.compose();
     }
 
     compose() {
@@ -119,7 +130,8 @@ export default class extends Controller {
     }
 
     writeCaption() {
-        const text = this.caption().replace(/\n/g, ' ');
+        // Переносы — U+2028: подпись к файлу в WhatsApp режет \n, а этот разделитель пропускает (проверено на iPhone).
+        const text = this.caption().replace(/\n/g, '\u2028');
         if (!text) return false;
         try { navigator.clipboard.writeText(text); return true; } catch { return false; }
     }
