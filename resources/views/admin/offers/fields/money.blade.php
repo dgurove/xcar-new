@@ -1,5 +1,5 @@
-{{-- Поля «Деньги» — одни на редактор и окошко строки. --}}
-<div class="{{ $grid }}">
+{{-- Поля «Деньги» — одни на редактор и окошко строки. Серые подсказки заявленной и минимальной считаются на ходу (min-bid). --}}
+<div class="{{ $grid }}" data-controller="min-bid">
     <x-ui.field name="floor_price" data-controller="digits" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price"/>
     <x-ui.field name="publish_price" data-controller="digits" data-action="input->digits#format" label="Заявленная, ₽" :value="$offer->publish_price" :placeholder="$offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : null"/>
     {{-- В окошке у черновика цена продажи стоит в «Оценке» рядом с «В продажу» — второй раз не нужна. --}}

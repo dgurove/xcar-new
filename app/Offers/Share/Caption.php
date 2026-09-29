@@ -33,7 +33,8 @@ final class Caption
             ['until', 'Приём подтверждений до', $offer->bids_close_at?->translatedFormat('d.m.Y H:i'), false],
             // Закупочная и заявленная — «от», из двух одна (клиент снимает вторую); по умолчанию выключены: покупателю уходит одна цена.
             ['floor_price', 'Закупочная', $staff ? $money($offer->floor_price) : null, false],
-            ['publish_price', 'Заявленная', $staff ? $money($offer->declaredPrice()) : ($price->visible ? $money($price->from) : null), false],
+            // Сотруднику «Заявленная» — только когда она вписана: пустая равна закупочной, и под этим именем в текст уходила закупочная.
+            ['publish_price', 'Заявленная', $staff ? $money($offer->publish_price) : ($price->visible ? $money($price->from) : null), false],
             ['price', 'Цена', $price->visible ? $money($offer->asking_price) : null, true],
         ];
 
