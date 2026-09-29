@@ -242,6 +242,10 @@ class OfferController
     public function state(Request $request, Offer $offer, ChangeOfferState $change)
     {
         $next = OfferState::from($request->validate(['state' => ['required', 'string']])['state']);
+        // В сделку руками нельзя: сделку заводит «Принять» у подтверждения.
+        if ($next === OfferState::Sold) {
+            return back()->withErrors(['state' => 'Примите подтверждение менеджера — сделка заведётся сама']);
+        }
         $change($offer, $next, $request->user());
 
         return redirect("/offers/{$offer->number}")->with('toast', $next->label());

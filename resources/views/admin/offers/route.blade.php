@@ -2,7 +2,11 @@
 <x-ui.card title="Маршрут" class="order-1" data-controller="sheet">
     <div class="flex flex-col gap-4">
         @foreach ($offer->positions as $position)
-            @php $stage = $position->stage; $staffExits = $stage->exitsFor(Actor::Staff); @endphp
+            @php
+                $stage = $position->stage;
+                // «Подтверждение принято» — не кнопка: в сделку ведёт только «Принять» у подтверждения.
+                $staffExits = $stage->exitsFor(Actor::Staff)->reject(fn ($x) => $x->acceptsBid());
+            @endphp
             <div class="flex flex-col gap-2">
                 @if ($offer->positions->count() > 1)<div class="text-sm text-ink-muted">{{ $position->track->label() }}</div>@endif
                 <x-route.status :position="$position"/>

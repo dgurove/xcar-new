@@ -3,7 +3,7 @@
     use App\Offers\{OfferState, BidState, InterestState};
     $n = $offer->number;
     // «В гараже» ставит не кнопка состояния, а «Отдать в гараж»: там выбирают менеджера и цену.
-    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage], true));
+    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage, OfferState::Sold], true));
     $garage = $offer->state === OfferState::Garage ? \App\Garage\Car::with('manager')->where('offer_id', $offer->id)->first() : null;
     // Машину из гаража уводит только «Отдали по ошибке» там же: кнопки состояния тут отбились бы ошибкой.
     if ($garage) $transitions = collect();

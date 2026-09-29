@@ -11,7 +11,7 @@
     $price = \App\Offers\PriceView::for($offer, auth()->user());
     $left = $gallery ? null : $offer->secondsLeft();
     // «В гараже» ставится на странице предложения: там выбирают менеджера и цену, одной кнопкой не обойтись.
-    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage], true));
+    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage, OfferState::Sold], true));
     $bids = $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]);
     $waiting = $offer->bids->where('state', BidState::Active);
     $best = $waiting->sortByDesc('amount')->first();

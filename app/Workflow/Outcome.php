@@ -26,4 +26,13 @@ class Outcome extends Model
     {
         return $this->belongsTo(Stage::class, 'to_stage_id');
     }
+
+    /**
+     * «Подтверждение принято» — исход, которым маршрут догоняет AcceptBid. Кнопкой его не жмут: сделку заводит
+     * только «Принять» у самого подтверждения, иначе предложение уходит «в сделку» без сделки и менеджера.
+     */
+    public function acceptsBid(): bool
+    {
+        return mb_strtolower(trim($this->label)) === 'подтверждение принято';
+    }
 }
