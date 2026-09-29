@@ -109,9 +109,15 @@
                     <div class="mt-4 space-y-2">
                         @foreach ($deal->requirements->whereNotNull('done_at') as $req)
                             @if (!empty($req->answer['exit']))
-                                <div class="flex items-baseline justify-between gap-3 rounded-(--radius-l) bg-surface-2 px-4 py-3">
-                                    <span class="min-w-0 break-words">{{ $req->title }} — «{{ $req->answer['exit'] }}»@if (!empty($req->answer['fields'])): {{ implode(', ', $req->answer['fields']) }}@endif</span>
-                                    <span class="nums shrink-0 text-sm font-normal text-ink-dim">{{ $req->done_at->translatedFormat('d.m.Y') }}</span>
+                                <div class="rounded-(--radius-l) bg-surface-2 px-4 py-3">
+                                    <div class="flex items-baseline justify-between gap-3">
+                                        <span class="min-w-0 break-words">{{ $req->title }}: «{{ $req->answer['exit'] }}»@if (!empty($req->answer['fields'])), {{ implode(', ', $req->answer['fields']) }}@endif</span>
+                                        <span class="nums shrink-0 text-sm font-normal text-ink-dim">{{ $req->done_at->translatedFormat('d.m.Y') }}</span>
+                                    </div>
+                                    {{-- Приложенное остаётся видно и после ответа. --}}
+                                    @foreach ($req->getMedia('files') as $media)
+                                        <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" class="mt-2"/>
+                                    @endforeach
                                 </div>
                             @endif
                         @endforeach
@@ -141,12 +147,16 @@
                 @endif
                 <div class="px-6 pb-6">
                     <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
-                        @foreach (['Предложение' => $offer->number, 'Год' => $offer->year, 'VIN' => $offer->vinMasked(), 'Город' => $offer->settlement?->name] as $label => $value)
-                            @if ($value)<div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal">@if ($label === 'VIN')<x-ui.vin-code :vin="$value" :copy="$offer->show_vin"/>@elseif ($label === 'Город')<x-ui.place>{{ $value }}</x-ui.place>@else{{ $value }}@endif</dd></div>@endif
+                        {{-- Своя сделка — всё, что нужно забрать машину: полный VIN, ДЛ, адрес; номера копируются. --}}
+                        @foreach (['Предложение' => $offer->number, 'ДЛ' => $offer->leaseRef(), 'Год' => $offer->year, 'VIN' => $offer->vin, 'Город' => $offer->settlement?->name, 'Адрес' => $offer->inspection_address] as $label => $value)
+                            @if ($value)<div @class(['min-w-0', 'col-span-2' => in_array($label, ['VIN', 'Адрес'], true)])><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal">@if ($label === 'VIN')<x-ui.vin-code :vin="$value"/>@elseif (in_array($label, ['Город', 'Адрес'], true))<x-ui.place>{{ $value }}</x-ui.place>@elseif (in_array($label, ['ДЛ', 'Предложение'], true))<x-ui.copy-code :value="(string) $value"/>@else{{ $value }}@endif</dd></div>@endif
                         @endforeach
                     </dl>
                 </div>
             </div>
+            @if ($offer->chatOpenFor(auth()->user()))
+                <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet mt-3 w-full"><x-ui.icon name="chat" class="size-5"/> Написать по сделке</a>
+            @endif
         </aside>
     </div>
 </x-ui.cabinet>

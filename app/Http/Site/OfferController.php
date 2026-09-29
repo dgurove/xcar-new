@@ -31,7 +31,7 @@ class OfferController
             : ['prev' => null, 'next' => null, 'index' => null, 'total' => 0];
 
         // Открыли шторку — непрочитанное прочитано, бейдж гаснет сразу.
-        $canChat = $user && $user->canChat() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest());
+        $canChat = $offer->chatOpenFor($user);
         if ($request->boolean('chat') && $canChat && ($existing = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first())) {
             app(MarkChatRead::class)($existing, $user);
         }
@@ -59,7 +59,7 @@ class OfferController
         $user = $request->user();
         abort_unless($offer->isVisibleTo($user), 404);
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites']);
-        $canChat = $user && $user->canChat() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest());
+        $canChat = $offer->chatOpenFor($user);
 
         return view('site.offers.peek', [
             'offer' => $offer,

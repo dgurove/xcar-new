@@ -49,7 +49,7 @@ class ChatController
     public function offer(Request $request, Offer $offer)
     {
         $user = $request->user();
-        abort_unless($user->canChat() && $offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest()), 404);
+        abort_unless($offer->chatOpenFor($user), 404);
         if ($chat = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first()) {
             return redirect('/account/chats/'.$chat->id);
         }

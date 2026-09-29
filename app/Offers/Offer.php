@@ -322,6 +322,13 @@ class Offer extends Model implements HasMedia
      * Заявленная цена — та, что менеджер считает закупочной. По умолчанию равна
      * закупочной; задана отдельно — менеджер видит её, настоящая остаётся у нас.
      */
+    /** Чат по предложению с площадкой: пока оно на витрине или в галерее, а у менеджера со сделкой — и после продажи. */
+    public function chatOpenFor(?User $user): bool
+    {
+        return $user && $user->canChat() && $this->chat_enabled
+            && ($this->state->isPublic() || $this->state->acceptsInterest() || $this->deal()->where('buyer_id', $user->id)->exists());
+    }
+
     /** Номер договора лизинга (ДЛ) — у предложений лизинговых вендоров в claim_ref; его видят и менеджеры. */
     public function leaseRef(): ?string
     {

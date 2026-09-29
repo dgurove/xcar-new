@@ -31,7 +31,7 @@ class ChatController
     /** Первое сообщение покупателя: чат заводится здесь же, ответ — лента и её адрес в заголовках. */
     public function open(Request $request, Offer $offer, OpenChat $open, PostMessage $post)
     {
-        abort_unless($offer->chat_enabled && ($offer->state->isPublic() || $offer->state->acceptsInterest()) && $request->user()->canChat(), 404);
+        abort_unless($offer->chatOpenFor($request->user()), 404);
         $this->validateMessage($request);
         $chat = $open($offer, $request->user());
         $this->guarded(fn () => $post($chat, $request->user(), $request->input('text'), $request->file('files', []), $request->integer('reply_to') ?: null));
