@@ -237,9 +237,28 @@ function keyboardInset() {
         document.documentElement.style.setProperty('--kb', `${kb}px`);
         document.documentElement.classList.toggle('kb-open', kb > 100);
     };
-    vv.addEventListener('resize', update);
+    // iOS: поле с клавиатурой пропало из DOM, не потеряв фокус (ответ формы подменил окошко строки, морф
+    // страницы), — клавиатура уходит, а viewport остаётся ужатым: таб-бар висит посреди экрана, строки под ним
+    // не рисуются. Снимаем фокус до подмены — клавиатура закрывается штатно; и после закрытия клавиатуры
+    // тянем прокрутку на месте — WebKit по ней пересчитывает viewport.
+    const blurInside = (root) => {
+        const el = document.activeElement;
+        if (el && el !== document.body && root?.contains(el) && field()) el.blur();
+    };
+    document.addEventListener('turbo:submit-start', (e) => blurInside(e.target));
+    document.addEventListener('turbo:before-frame-render', (e) => blurInside(e.target));
+    // Морф поле сохраняет вместе с фокусом (чат, поиск) — только полная подмена страницы.
+    document.addEventListener('turbo:before-render', (e) => { if (e.detail.renderMethod !== 'morph') blurInside(document.body); });
+    let open = false;
+    const settle = () => {
+        const was = open;
+        update();
+        open = document.documentElement.classList.contains('kb-open');
+        if (was && !open) setTimeout(() => scrollTo(scrollX, scrollY), 80);
+    };
+    vv.addEventListener('resize', settle);
     vv.addEventListener('scroll', update);
-    document.addEventListener('focusout', () => requestAnimationFrame(update));
+    document.addEventListener('focusout', () => requestAnimationFrame(settle));
     update();
 }
 
