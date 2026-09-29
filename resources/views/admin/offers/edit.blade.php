@@ -3,7 +3,9 @@
     use App\Offers\{OfferState, BidState, InterestState};
     $n = $offer->number;
     // «В гараже» ставит не кнопка состояния, а «Отдать в гараж»: там выбирают менеджера и цену.
-    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage, OfferState::Sold], true));
+    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage, OfferState::Sold], true)
+        // «Снять с продажи» — одно действие: где можно в черновик, снимаем туда (можно вернуть), иначе — «Снят».
+        && ! ($s === OfferState::Cancelled && $offer->state->allows(OfferState::Draft)));
     $garage = $offer->state === OfferState::Garage ? \App\Garage\Car::with('manager')->where('offer_id', $offer->id)->first() : null;
     // Машину из гаража уводит только «Отдали по ошибке» там же: кнопки состояния тут отбились бы ошибкой.
     if ($garage) $transitions = collect();
@@ -201,7 +203,7 @@
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                             <x-ui.button block :variant="$next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary')">{{ match($next) {
                                 OfferState::Open => 'Опубликовать',
-                                OfferState::Gallery => 'В галерею «скоро»', OfferState::Draft => 'В черновик',
+                                OfferState::Gallery => 'В галерею «скоро»', OfferState::Draft => 'Снять с продажи',
                                 OfferState::Sold => 'В сделку', OfferState::Cancelled => 'Снять с продажи', OfferState::Archived => 'В архив', default => $next->label() } }}</x-ui.button>
                         </form>
                     @endforeach

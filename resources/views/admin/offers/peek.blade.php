@@ -11,7 +11,9 @@
     $price = \App\Offers\PriceView::for($offer, auth()->user());
     $left = $gallery ? null : $offer->secondsLeft();
     // «В гараже» ставится на странице предложения: там выбирают менеджера и цену, одной кнопкой не обойтись.
-    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage, OfferState::Sold], true));
+    $transitions = collect(OfferState::cases())->filter(fn ($s) => $offer->state->allows($s) && ! in_array($s, [OfferState::Delivered, OfferState::Garage, OfferState::Sold], true)
+        // «Снять с продажи» — одно действие: где можно в черновик, снимаем туда (можно вернуть), иначе — «Снят».
+        && ! ($s === OfferState::Cancelled && $offer->state->allows(OfferState::Draft)));
     $bids = $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]);
     $waiting = $offer->bids->where('state', BidState::Active);
     $best = $waiting->sortByDesc('amount')->first();
@@ -92,7 +94,7 @@
                                 @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                                 <button class="menu-item w-full {{ $next->tone() === 'danger' || $next === OfferState::Archived ? 'text-danger' : '' }}" role="menuitem" data-action="menu#close">{{ match($next) {
                                     OfferState::Open => 'Опубликовать',
-                                    OfferState::Gallery => 'В галерею «скоро»', OfferState::Draft => 'В черновик',
+                                    OfferState::Gallery => 'В галерею «скоро»', OfferState::Draft => 'Снять с продажи',
                                     OfferState::Sold => 'В сделку', OfferState::Cancelled => 'Снять с продажи', OfferState::Archived => 'В архив', default => $next->label() } }}</button>
                             </form>
                         @endforeach
