@@ -66,10 +66,10 @@
                             @if ($bid->state === BidState::Active)
                                 <div class="mt-2 flex gap-2">
                                     <div data-controller="sheet">
-                                        <x-ui.button type="button" size="sm" data-action="sheet#open">Принять</x-ui.button>
-                                        <x-ui.sheet id="accept-{{ $bid->id }}" title="Принять подтверждение" :open="$errors->has('commission') && old('bid') == $bid->id">
+                                        <x-ui.button type="button" size="sm" data-action="sheet#open">{{ $offer->deal ? 'Отдать' : 'Принять' }}</x-ui.button>
+                                        <x-ui.sheet id="accept-{{ $bid->id }}" :title="$offer->deal ? 'Отдать другому' : 'Принять подтверждение'" :open="$errors->has('commission') && old('bid') == $bid->id">
                                             <div class="mb-4 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$bid->user" full/><span class="tag">{{ $offer->titleWithYear() }}</span></div>
-                                            <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :note="$waiting->count() > 1 ? 'Остальные подтверждения будут отклонены' : null"><input type="hidden" name="bid" value="{{ $bid->id }}"></x-offer.money-form>
+                                            <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :submit="$offer->deal ? 'Отдать' : 'Принять'" :note="$offer->deal ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null"><input type="hidden" name="bid" value="{{ $bid->id }}"></x-offer.money-form>
                                         </x-ui.sheet>
                                     </div>
                                     <form method="post" action="/confirmations/{{ $bid->id }}/decline">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>

@@ -41,7 +41,7 @@ class OfferController
             'photos' => $offer->visiblePhotos(),
             'context' => $context,
             'position' => $position,
-            'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->where('state', BidState::Active)->first() : null,
+            'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])->latest('id')->first() : null,
             'myInterest' => $user ? $offer->interests()->where('user_id', $user->id)->first() : null,
             'chat' => $canChat ? Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first() : null,
             // Шторка чата есть всегда; сам чат заведётся первым сообщением: менеджеру — с площадкой, покупателю — со своим менеджером.
@@ -64,7 +64,7 @@ class OfferController
         return view('site.offers.peek', [
             'offer' => $offer,
             'context' => ListContext::fromRequest($request),
-            'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->where('state', BidState::Active)->first() : null,
+            'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])->latest('id')->first() : null,
             'myInterest' => $user ? $offer->interests()->where('user_id', $user->id)->first() : null,
             'chat' => $canChat ? Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first() : null,
             'canChat' => $canChat,

@@ -2,10 +2,7 @@
 
 namespace App\Offers\Actions;
 
-use App\Billing\Actions\VoidInvoice;
-use App\Billing\InvoiceState;
 use App\Garage\Car as GarageCar;
-use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\DealState;
 use App\Offers\Events\OfferPublished;
@@ -97,22 +94,25 @@ final class ChangeOfferState
         }
     }
 
-    /** Сделка живёт, пока оффер в сделке: выдан — завершена, всё остальное — сорвалась. */
+    /**
+     * Сделка живёт, пока оффер в сделке: выдан — завершена, всё остальное — сорвалась. Резерв (остальные живые
+     * подтверждения) ждёт до выдачи или архива и закрывается тихо, без уведомлений: снятие с продажи и черновик
+     * его не трогают — к подтвердившим возвращаются, если выбранный передумал.
+     */
     private function settleDeal(Offer $offer, OfferState $next, ?User $by = null): void
     {
+        if (in_array($next, [OfferState::Delivered, OfferState::Archived], true)) {
+            $offer->bids()->where('state', BidState::Active)->update(['state' => BidState::Declined, 'decided_at' => now(), 'decided_by' => $by?->id]);
+        }
         $deal = $offer->deal()->first();
         if (! $deal || in_array($next, [OfferState::Sold], true)) {
             return;
         }
-        $state = $next === OfferState::Delivered ? DealState::Done : DealState::Cancelled;
-        $deal->update(['state' => $state, 'closed_at' => now()]);
-        if ($state === DealState::Cancelled && $deal->bid?->state === BidState::Accepted) {
-            Bid::whereKey($deal->bid_id)->update(['state' => BidState::Declined]);
-        }
-        Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'deal'])]);
-        // Сделка сорвалась — невыплаченное вознаграждение гаснет; выплаченное остаётся историей.
-        if ($state === DealState::Cancelled && ($fee = $deal->agentFee()->first()) && $fee->state === InvoiceState::Issued && $fee->paid == 0) {
-            app(VoidInvoice::class)($fee, $by, 'Сделка отменена');
+        if ($next === OfferState::Delivered) {
+            $deal->update(['state' => DealState::Done, 'closed_at' => now()]);
+            Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'deal'])]);
+        } else {
+            app(CancelDeal::class)($deal, $by);
         }
         $offer->unsetRelation('deal');
     }

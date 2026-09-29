@@ -58,9 +58,11 @@
                     </div>
                 </form>
                 @if ($myBid)
-                    <span class="text-sm text-ink-muted">Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span> — {{ mb_strtolower($myBid->state->label()) }}</span>
+                    <span class="text-sm text-ink-muted">Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span>, {{ mb_strtolower($myBid->state->label()) }}</span>
                     <form method="post" action="/confirmations/{{ $myBid->id }}/withdraw" class="contents">@csrf<button type="submit" class="pill pill-plain">Отозвать</button></form>
                 @endif
+            @elseif ($myBid)
+                <x-offer.my-bid :offer="$offer" :bid="$myBid" class="w-full"/>
             @elseif ($wantsInterest)
                 @if ($myInterest)
                     <span class="flash flash-accent w-full text-sm">{{ $gallery ? 'Сообщим, когда откроется приём' : ($myInterest->state === InterestState::New ? ($manager ? $manager->shortName().' свяжется с вами' : 'Менеджер свяжется с Вами') : 'С Вами связались') }}</span>

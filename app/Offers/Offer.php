@@ -244,9 +244,11 @@ class Offer extends Model implements HasMedia
         return $q->where('state', OfferState::Gallery);
     }
 
+    /** Страница предложения: круг видимости, а своё подтверждение открывает её в любом состоянии — без 404 после решения. */
     public function isVisibleTo(?User $user): bool
     {
-        return $user?->isStaff() || self::query()->whereKey($this->id)->visibleTo($user)->exists();
+        return $user?->isStaff() || self::query()->whereKey($this->id)->visibleTo($user)->exists()
+            || ($user && $this->bids()->where('user_id', $user->id)->exists());
     }
 
     // ------------------------------------------------------------ подписи

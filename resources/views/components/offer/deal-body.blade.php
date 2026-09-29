@@ -31,6 +31,7 @@
 @elseif (!$gallery && ($user?->role->canBid() ?? false) && !$offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft)
     <div class="mt-5 rounded-(--radius-l) bg-surface-2 px-4 py-3 text-sm text-ink-muted">Приём подтверждений закрыт</div>
 @endif
+@if ($myBid && ! $canBid)<x-offer.my-bid :offer="$offer" :bid="$myBid" class="mt-3"/>@endif
 
 @guest
     <a href="/login?intended={{ urlencode(request()->getRequestUri()) }}" class="btn btn-accent mt-6 w-full">{{ $gallery ? 'Войти' : 'Войти, чтобы узнать цену' }}</a>

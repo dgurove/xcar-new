@@ -12,17 +12,20 @@ use App\Offers\Events\BidDeclined;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Users\User;
+use App\Workflow\Actions\EnterStage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Принять подтверждение: сделка, остальные подтверждения отклонены, оффер в сделке.
+ * Принять подтверждение: сделка, оффер в сделке. Остальные подтверждения не отклоняются — это резерв:
+ * выбранный передумал, и машину отдают другому подтвердившему тем же действием. Тогда прежняя сделка
+ * отменяется (прежнему победителю — «отклонено»), этап маршрута остаётся, его просьба переходит новому.
  * Деньги фиксируются тут же: закупочная снимком, агентское вознаграждение и режим —
  * менеджер их не увидит, пока по сделке не выставлен счёт.
  */
 final class AcceptBid
 {
-    public function __construct(private ChangeOfferState $changeState) {}
+    public function __construct(private ChangeOfferState $changeState, private CancelDeal $cancelDeal, private EnterStage $enterStage) {}
 
     public function __invoke(Bid $bid, User $by, ?int $commission = null, CommissionMode $mode = CommissionMode::Payout): Deal
     {
@@ -33,16 +36,28 @@ final class AcceptBid
             }
             $offer = $bid->offer;
 
-            $bid->update(['state' => BidState::Accepted, 'decided_at' => now(), 'decided_by' => $by->id]);
-            $offer->bids()->where('state', BidState::Active)->get()->each(function (Bid $other) use ($by) {
-                $other->update(['state' => BidState::Declined, 'decided_at' => now(), 'decided_by' => $by->id]);
-                BidDeclined::dispatch($other, $by);
-            });
+            // Отдаём другому: прежняя сделка отменяется, прежний победитель узнаёт об этом.
+            $previous = $offer->deal()->with('bid')->first();
+            if ($previous) {
+                ($this->cancelDeal)($previous, $by);
+                if ($previous->bid) {
+                    BidDeclined::dispatch($previous->bid->refresh(), $by);
+                }
+                $offer->unsetRelation('deal');
+            }
 
+            $bid->update(['state' => BidState::Accepted, 'decided_at' => now(), 'decided_by' => $by->id]);
             $deal = Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid->id, 'buyer_id' => $bid->user_id, 'amount' => $bid->amount, 'state' => DealState::Active,
                 'cost' => $offer->floor_price, 'commission' => $commission, 'commission_mode' => $mode]);
             $offer->log(OfferEventType::BidAccepted, $by, ['bid_id' => $bid->id, 'amount' => $bid->amount, 'commission' => $commission, 'mode' => $mode->value]);
-            ($this->changeState)($offer, OfferState::Sold, $by);
+            if ($previous && $offer->state === OfferState::Sold) {
+                // Этап тот же, просьба к менеджеру — новому (вход на этап заводит её по сделке).
+                if ($stage = $offer->stage()) {
+                    ($this->enterStage)($offer, $stage, $by);
+                }
+            } else {
+                ($this->changeState)($offer, OfferState::Sold, $by);
+            }
             BidAccepted::dispatch($bid, $by);
 
             return $deal;

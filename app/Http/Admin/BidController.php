@@ -18,9 +18,10 @@ class BidController
             'commission' => ['nullable', 'integer', 'min:0', 'max:'.$bid->amount],
             'mode' => ['nullable', Rule::enum(CommissionMode::class)],
         ]);
+        $switch = $bid->offer->deal()->exists();
         $accept($bid, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, CommissionMode::tryFrom($data['mode'] ?? '') ?? CommissionMode::Payout);
 
-        return back()->with('toast', 'Подтверждение принято, сделка открыта');
+        return back()->with('toast', $switch ? 'Сделка передана '.$bid->user->shortName() : 'Подтверждение принято, сделка открыта');
     }
 
     public function decline(Request $request, Bid $bid, DeclineBid $decline)
