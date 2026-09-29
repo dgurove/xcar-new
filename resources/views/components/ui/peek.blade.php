@@ -4,8 +4,9 @@
      формы, характеристики, описание. row — свежая строка таблицы <tr>, ею
      peek_controller заменяет выделенную после действия; flash-сообщение и просьба
      перейти к следующей (session peek-advance) едут шаблонами — их читает он же.
+     tools — кнопки строки в полосу окошка рядом со стрелками (поделиться).
      photo — одно фото вместо ленты (старые окошки); :photo="false" — без кадра вовсе (ветка почты). --}}
-@props(['href', 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null])
+@props(['href', 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null])
 @if ($photos !== null)
     <x-offer.gallery :photos="$photos" :alt="$title" strip/>
     {{-- Шапка с лентой: название, справа цена, под названием метки; на телефоне цена — своей строкой под названием,
@@ -35,6 +36,7 @@
 @endif
 {{ $slot }}
 @if ($row)<template data-peek-row>{{ $row }}</template>@endif
+@if ($tools && trim($tools) !== '')<template data-peek-tools>{{ $tools }}</template>@endif
 @if ($errors->any())<p class="field-error mt-3">{{ $errors->first() }}</p>@endif
 @if (session('toast') || session('toast-danger'))<template data-peek-toast data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}"></template>@endif
 @if (session('peek-advance'))<template data-peek-advance></template>@endif

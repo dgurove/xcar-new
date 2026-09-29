@@ -1111,7 +1111,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      раздел — закрыв окошко), полэкрана или во весь экран (.is-full, за ручку);
      клавиатура поднимает его (--kb). От 768 — парит снизу по центру.
      От 1024 — не парит, а стоит панелью справа от таблицы (.table-wrap становится
-     сеткой) и липнет под шапкой. Пока открыто на телефоне, у страницы нижний
+     сеткой), липнет под шапкой и высотой по содержимому (не выше экрана — дальше прокрутка внутри). Пока открыто на телефоне, у страницы нижний
      отступ, чтобы последние строки выезжали из-под него. */
   .table-box { @apply rounded-(--radius-l) bg-surface; overflow: clip; }
   .peek {
@@ -1163,7 +1163,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table-wrap:has(.peek:not([hidden])) { display: grid; grid-template-columns: minmax(0, 1fr) 26rem; gap: 1rem; align-items: start; }
     .peek, .peek.is-full {
       position: sticky; inset: auto; top: calc(var(--spacing-header) + env(safe-area-inset-top) + .75rem);
-      margin: 0; width: auto; max-width: none; height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 1.5rem);
+      margin: 0; width: auto; max-width: none; height: auto; max-height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 1.5rem);
       padding-bottom: 0; border-radius: var(--radius-xl); box-shadow: none; animation: dialog-in var(--dur) var(--ease-out);
     }
     .peek-handle { display: none; }

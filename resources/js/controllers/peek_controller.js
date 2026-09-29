@@ -17,7 +17,7 @@ import { reduce } from '../sheet';
 // просьба перейти к следующей без нашей цены (data-unpriced) — оценка закупки.
 // Положение «во весь экран» помнится в localStorage.
 export default class extends Controller {
-    static targets = ['body', 'panel', 'frame', 'count', 'open'];
+    static targets = ['body', 'panel', 'frame', 'count', 'open', 'tools'];
     static values = { open: String };
 
     connect() {
@@ -145,6 +145,10 @@ export default class extends Controller {
             stale.replaceWith(fresh);
         }
         row?.remove();
+        // Кнопки строки для полосы окошка (поделиться): едут шаблоном, встают рядом со стрелками.
+        const tools = frame.querySelector('template[data-peek-tools]');
+        if (this.hasToolsTarget) this.toolsTarget.replaceChildren(...(tools ? tools.content.cloneNode(true).childNodes : []));
+        tools?.remove();
         const flash = frame.querySelector('template[data-peek-toast]');
         if (flash) { window.toast?.(flash.dataset.message, flash.dataset.kind); flash.remove(); }
         frame.querySelectorAll('form:not([data-turbo-frame])').forEach((f) => { f.dataset.turboFrame = 'peek'; });
@@ -196,6 +200,7 @@ export default class extends Controller {
         this.current?.blur();
         this.current?.removeAttribute('aria-selected');
         panel.style.translate = '';
+        if (this.hasToolsTarget) this.toolsTarget.replaceChildren();
         const done = () => {
             // Пока шла анимация, окошко могли открыть снова — тогда ничего не трогать.
             if (panel.hidden || (!reduce.matches && !panel.classList.contains('is-closing'))) return;

@@ -42,26 +42,33 @@
         </x-slot:aside>
         <x-slot:actions>
             @if ($offer->state === OfferState::Draft)
-                {{-- «Оценить»: цена продажи и сразу в продажу, окошко переходит к следующему черновику; пустое поле — просто дальше. --}}
-                <form method="post" action="/offers/{{ $n }}/publish" class="flex w-full gap-2" data-controller="bid" data-bid-asking-value="0">
-                    @csrf
-                    <input type="hidden" name="asking_price" data-bid-target="amount" value="{{ $offer->asking_price }}">
-                    <input type="text" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
-                        data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-peek-focus>
-                    <button type="submit" class="btn btn-s btn-accent shrink-0">В продажу</button>
-                </form>
-                {{-- Из закупки по контрпредложению: ориентир для цены продажи — наша цена в закупке и что называли менеджеры. --}}
-                @if ($car = $offer->purchaseCar)
-                    @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp
-                    @if ($car->price_final)
-                        <dl class="flex w-full gap-6"><div><dt class="text-xs text-ink-dim">Наша цена в закупке</dt><dd class="nums text-sm font-medium">{{ \App\Support\Money::rub($car->price_final) }}</dd></div></dl>
+                {{-- «Оценить» одним блоком: цена продажи и «В продажу» (окошко переходит к следующему черновику; пустое поле —
+                     просто дальше), под ними ориентиры из закупки, если черновик сделан по контрпредложению. --}}
+                <div class="w-full rounded-(--radius-l) bg-surface-2 p-3">
+                    <form method="post" action="/offers/{{ $n }}/publish" class="flex gap-2" data-controller="bid" data-bid-asking-value="0">
+                        @csrf
+                        <input type="hidden" name="asking_price" data-bid-target="amount" value="{{ $offer->asking_price }}">
+                        <input type="text" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
+                            data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-peek-focus>
+                        <button type="submit" class="btn btn-accent shrink-0">В продажу</button>
+                    </form>
+                    @if ($car = $offer->purchaseCar)
+                        @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp
+                        @if ($car->price_final || $named->isNotEmpty())
+                            <dl class="mt-3 flex flex-col gap-2 text-sm">
+                                @if ($car->price_final)
+                                    <div class="flex items-center justify-between gap-3"><dt class="text-ink-dim">Наша цена в закупке</dt><dd class="nums font-medium">{{ \App\Support\Money::rub($car->price_final) }}</dd></div>
+                                @endif
+                                @foreach ($named as $one)
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="flex min-w-0 items-center gap-2"><x-ui.avatar :user="$one->user" :size="20"/><span class="truncate">{{ $one->user->shortName() }}</span></dt>
+                                        <dd class="nums whitespace-nowrap">{{ \App\Support\Money::rub($one->amount) }}</dd>
+                                    </div>
+                                @endforeach
+                            </dl>
+                        @endif
                     @endif
-                    @if ($named->isNotEmpty())
-                        <div class="flex w-full flex-wrap items-center gap-1.5">
-                            @foreach ($named as $one)<span class="chip person"><x-ui.avatar :user="$one->user" :size="20"/><span class="truncate">{{ $one->user->shortName() }}</span><span class="nums whitespace-nowrap">{{ \App\Support\Money::rub($one->amount) }}</span></span>@endforeach
-                        </div>
-                    @endif
-                @endif
+                </div>
             @endif
             @if ($offer->state === OfferState::Open && $offer->bids_close_at)
                 @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
@@ -130,6 +137,10 @@
             </div>
         @endif
         @if ($offer->description)<p class="mt-4 whitespace-pre-line text-sm text-ink-muted">{{ $offer->description }}</p>@endif
+        {{-- Поделиться — в полосу окошка справа, перед «Развернуть»; нечего отдавать (ни фото, ни цены) — кнопки нет. --}}
+        <x-slot:tools>
+            @if ($offer->visiblePhotos()->isNotEmpty() || $offer->asking_price)<x-offer.share :offer="$offer" icon class="peek-close"/>@endif
+        </x-slot:tools>
         <x-slot:row><x-offer.table-row :offer="$offer" :gallery="$list"/></x-slot:row>
     </x-ui.peek>
 </turbo-frame>
