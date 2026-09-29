@@ -13,14 +13,17 @@
         <x-ui.check name="chat_enabled" :checked="$offer->chat_enabled">Чат с покупателями</x-ui.check>
         <x-ui.check name="share_locked" :checked="$offer->share_locked">Запретить шеринг</x-ui.check>
     </div>
-    @if ($tags->isNotEmpty())
-        <div class="field col-span-full">
-            <span class="field-label">Метки</span>
-            <div class="flex flex-wrap gap-1.5">
-                @foreach ($tags as $tag)
-                    <label class="choice"><input type="checkbox" name="tags[]" value="{{ $tag->name }}" @checked(in_array($tag->name, old('tags', $offer->tags ?? [])))><span>{{ $tag->name }}</span></label>
-                @endforeach
-            </div>
+    {{-- Метки: справочник и разовые этого предложения (их нет в справочнике — без них сохранение стёрло бы их молча),
+         последним — «+» для своей метки (tag-add). --}}
+    @php($current = old('tags', $offer->tags ?? []))
+    <div class="field col-span-full" data-controller="tag-add">
+        <span class="field-label">Метки</span>
+        <div class="flex flex-wrap gap-1.5">
+            @foreach ($tags->pluck('name')->merge(array_diff($current, $tags->pluck('name')->all())) as $name)
+                <label class="choice"><input type="checkbox" name="tags[]" value="{{ $name }}" @checked(in_array($name, $current))><span>{{ $name }}</span></label>
+            @endforeach
+            <button type="button" class="choice-add" data-tag-add-target="button" data-action="tag-add#open" aria-label="Своя метка">+</button>
+            <input type="text" class="choice-input" maxlength="40" hidden data-tag-add-target="input" data-action="keydown.enter->tag-add#add:prevent blur->tag-add#add keydown.esc->tag-add#close">
         </div>
-    @endif
+    </div>
 </div>

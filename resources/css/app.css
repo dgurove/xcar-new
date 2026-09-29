@@ -343,6 +343,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .dark .choice input:checked + span { background: #fff; color: var(--color-chrome); }
   .choice input:focus-visible + span { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .choice-danger input:checked + span { @apply bg-danger-soft text-danger; }
+  /* Своя метка: «+» в ряду чипов, по нажатию — поле ввода того же размера. */
+  .choice-add { @apply inline-flex min-w-9 items-center justify-center rounded-full bg-surface-3 px-3.5 py-2 text-sm text-ink-muted; }
+  .choice-add:hover { @apply text-ink; }
+  .choice-input { @apply w-40 rounded-full bg-surface-3 px-3.5 py-2 text-sm text-ink outline-none; }
+  .choice-input:focus { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .tri input:checked + span { @apply bg-surface text-ink; }
 
   /* Мини-карточка выбора предложений (шторка «Открыть…»): фото, название, цена, галка в углу.
@@ -408,7 +413,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .surface-crm select.field-input, .surface-park select.field-input, .form-dense select.field-input { padding-right: 2rem; background-position: right 10px center; }
   .surface-crm textarea.field-input, .surface-park textarea.field-input, .form-dense textarea.field-input { min-height: 5rem; }
   .surface-crm .tri span, .surface-park .tri span { padding-block: .375rem; }
-  .surface-crm .choice span, .surface-park .choice span { padding: .375rem .75rem; }
+  .surface-crm .choice span, .surface-park .choice span, .surface-crm .choice-add, .surface-crm .choice-input { padding: .375rem .75rem; }
   .surface-crm .box, .surface-park .box { padding: 1rem; }
   /* Строка списка тоже плотнее: в почте она была вдвое выше карточки «Из писем». */
   .surface-crm .row, .surface-park .row { padding: .5rem .75rem; gap: .5rem; }
@@ -1910,7 +1915,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .peek-edit select.field-input { padding-right: 1.75rem; background-position: right 8px center; }
   .peek-edit textarea.field-input { min-height: 4.5rem; }
   .peek-edit .vin-box .field-input { padding-right: 3rem; }
-  .peek-edit .choice > span { padding-block: .25rem; }
+  .peek-edit .choice > span, .peek-edit .choice-add, .peek-edit .choice-input { padding-block: .25rem; }
 
   .sortable-ghost { @apply opacity-40; }
 }
