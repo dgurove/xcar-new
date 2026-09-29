@@ -7,6 +7,7 @@ use App\Mail\Actions\LinkThread;
 use App\Mail\Candidate;
 use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
+use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Scope as MailScope;
 use App\Park\Actions\AssignRequest;
@@ -163,12 +164,13 @@ class RequestController
         }
 
         // Письмо-заявка — то, с которого цепочка началась: оно раскрыто в ленте, из него же берётся скан.
-        $letter = $candidate?->message ?? $candidate?->messages->first(fn ($m) => ! $m->isOurs());
+        $letter = $candidate?->message ?? $candidate?->messages->first(fn ($m) => ! $m->isOurs()) ?? $candidate?->messages->first(fn ($m) => $m->direction === Direction::In);
         // Документы для шторки: письмо-заявка, файлы писем вендора (сначала этого письма), фото. Скан заявки
         // страховой (у Альфы Москва в нём марка, модель, VIN, год, цвет и стоимость) открывается сам.
         $docs = [];
         if ($candidate) {
-            $vendorLetters = $candidate->messages->reject(fn ($m) => $m->isOurs())->sortByDesc(fn ($m) => $m->id === $letter?->id ? 1 : 0);
+            // Входящие: заявку сотрудник бывает что пересылает со своего ящика — скан в ней тот же.
+            $vendorLetters = $candidate->messages->filter(fn ($m) => $m->direction === Direction::In)->sortByDesc(fn ($m) => $m->id === $letter?->id ? 1 : 0);
             ['docs' => $files, 'photos' => $photos] = Docs::fromLetters($vendorLetters, '/mail');
             $docs = array_values(array_filter([$letter ? Docs::letter($letter, '/mail') : null, ...$files, Docs::photos($photos)]));
         }

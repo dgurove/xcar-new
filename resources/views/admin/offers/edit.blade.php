@@ -40,9 +40,9 @@
                 @endforeach
             </span>
         @endif
-        {{-- Письмо, документы и фото — шторкой рядом с полями (x-ui.docs), переписка целиком — ссылкой из письма. --}}
-        @if ($docs)<x-ui.docs-pill :docs="$docs"/>
-        @elseif ($threads->count() === 1)<x-ui.pill tone="plain" href="/work/mail/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
+        {{-- Письмо, документы и фото — шторкой рядом с полями (x-ui.docs); переписка целиком — своей пилюлей, всегда. --}}
+        @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
+        @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/work/mail/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
         @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/work/mail?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
         @if ($offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
         @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif

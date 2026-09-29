@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Chats\Chat;
 use App\Chats\Message as ChatMessage;
 use App\Garage\Actions\TakeToGarage;
+use App\Mail\Direction;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
 use App\Mail\Thread;
@@ -133,8 +134,9 @@ class OfferController
      */
     private function docs(Offer $offer, Collection $threads): array
     {
-        $letters = Message::with(['attachments', 'account'])->whereIn('thread_id', $threads->pluck('id'))->orderBy('date_at')->get()->reject(fn (Message $m) => $m->isOurs());
-        $letter = $letters->first();
+        // Входящие, а не «не наши»: сотрудник пересылает письмо вендора со своего ящика — это оно же, в цитате.
+        $letters = Message::with(['attachments', 'account'])->whereIn('thread_id', $threads->pluck('id'))->where('direction', Direction::In)->orderBy('date_at')->get();
+        $letter = $letters->first(fn (Message $m) => ! $m->isOurs()) ?? $letters->first();
         $thread = match (true) {
             $threads->count() === 1 => "/work/mail/{$threads->first()->id}",
             $threads->isNotEmpty() => '/work/mail?preset=linked&q='.urlencode($offer->claim_ref ?: ''),
