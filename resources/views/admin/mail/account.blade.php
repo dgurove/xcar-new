@@ -24,7 +24,7 @@
         <x-ui.card title="Приём IMAP">
             <div class="grid gap-4 sm:grid-cols-[1fr_120px_140px]">
                 <x-ui.field name="imap_host" label="Сервер" :value="$account->imap_host" required/>
-                <x-ui.field name="imap_port" label="Порт" inputmode="numeric" :value="$account->imap_port" required/>
+                <x-ui.field name="imap_port" label="Порт" :value="$account->imap_port" required/>
                 <x-ui.field name="imap_encryption" label="Шифрование" :options="$enc" :value="$account->imap_encryption"/>
                 <x-ui.field name="imap_username" label="Логин" :value="$account->imap_username" autocomplete="off" required/>
                 <x-ui.field name="imap_password" label="Пароль" type="password" autocomplete="new-password" :placeholder="$new ? null : '••••••••'" class="sm:col-span-2"/>
@@ -33,7 +33,7 @@
         <x-ui.card title="Отправка SMTP">
             <div class="grid gap-4 sm:grid-cols-[1fr_120px_140px]">
                 <x-ui.field name="smtp_host" label="Сервер" :value="$account->smtp_host" required/>
-                <x-ui.field name="smtp_port" label="Порт" inputmode="numeric" :value="$account->smtp_port" required/>
+                <x-ui.field name="smtp_port" label="Порт" :value="$account->smtp_port" required/>
                 <x-ui.field name="smtp_encryption" label="Шифрование" :options="$enc" :value="$account->smtp_encryption"/>
                 <x-ui.field name="smtp_username" label="Логин" :value="$account->smtp_username" autocomplete="off" required/>
                 <x-ui.field name="smtp_password" label="Пароль" type="password" autocomplete="new-password" :placeholder="$new ? null : '••••••••'" class="sm:col-span-2"/>

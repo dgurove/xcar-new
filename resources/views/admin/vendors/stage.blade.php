@@ -31,7 +31,7 @@
                 <div class="field">
                     <label class="field-label" for="f-limit_value">Сколько ждём</label>
                     <div class="flex gap-2">
-                        <input id="f-limit_value" name="limit_value" inputmode="numeric" value="{{ old('limit_value', $limitValue) }}" class="field-input" placeholder="—">
+                        <input id="f-limit_value" name="limit_value" value="{{ old('limit_value', $limitValue) }}" class="field-input" placeholder="—">
                         <select name="limit_unit" class="field-input !w-auto">
                             @foreach (['minutes' => 'мин', 'hours' => 'ч', 'days' => 'дн'] as $k => $l)<option value="{{ $k }}" @selected(old('limit_unit', $limitUnit) === $k)>{{ $l }}</option>@endforeach
                         </select>

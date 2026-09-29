@@ -18,7 +18,7 @@
         <x-ui.card title="Поля">
             <div class="grid gap-4 sm:grid-cols-2">
                 <x-ui.field name="demo_text" label="Текст" placeholder="Подсказка"/>
-                <x-ui.field name="demo_num" label="Цена" inputmode="numeric" value="1 250 000" class="nums"/>
+                <x-ui.field name="demo_num" label="Цена" value="1 250 000" class="nums"/>
                 <x-ui.field name="demo_date" label="Дата" type="date"/>
                 <x-ui.field name="demo_select" label="Выбор" :options="['a' => 'Первый', 'b' => 'Второй']" placeholder="Не выбрано"/>
                 <x-ui.field name="demo_area" label="Описание" type="textarea" class="sm:col-span-2"/>

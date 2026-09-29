@@ -31,13 +31,13 @@
                         @foreach ($brands as $brand)<option value="{{ $brand->slug }}" @selected(($filters['brand'] ?? '') === $brand->slug)>{{ $brand->name }}</option>@endforeach
                     </select>
                     <div class="grid grid-cols-2 gap-2">
-                        <input name="year_from" value="{{ $filters['year_from'] ?? '' }}" placeholder="Год от" inputmode="numeric" class="field-input field-s nums">
-                        <input name="year_to" value="{{ $filters['year_to'] ?? '' }}" placeholder="до" inputmode="numeric" class="field-input field-s nums">
+                        <input name="year_from" value="{{ $filters['year_from'] ?? '' }}" placeholder="Год от" class="field-input field-s nums">
+                        <input name="year_to" value="{{ $filters['year_to'] ?? '' }}" placeholder="до" class="field-input field-s nums">
                     </div>
                     @if ($prices)
                         <div class="grid grid-cols-2 gap-2">
-                            <input name="price_from" value="{{ $filters['price_from'] ?? '' }}" placeholder="Цена от" inputmode="numeric" class="field-input field-s nums">
-                            <input name="price_to" value="{{ $filters['price_to'] ?? '' }}" placeholder="до" inputmode="numeric" class="field-input field-s nums">
+                            <input name="price_from" value="{{ $filters['price_from'] ?? '' }}" placeholder="Цена от" class="field-input field-s nums">
+                            <input name="price_to" value="{{ $filters['price_to'] ?? '' }}" placeholder="до" class="field-input field-s nums">
                         </div>
                     @endif
                 </x-slot:filters>

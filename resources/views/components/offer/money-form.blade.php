@@ -21,7 +21,7 @@
     <div class="field">
         <label for="{{ $id }}" class="field-label">Агентское вознаграждение, ₽</label>
         <input type="hidden" name="commission" data-commission-target="amount" value="{{ $current }}">
-        <input id="{{ $id }}" type="text" inputmode="numeric" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $current !== null && $current !== '' ? Money::nums((int) $current) : '' }}" autocomplete="off" placeholder="0">
+        <input id="{{ $id }}" type="text" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $current !== null && $current !== '' ? Money::nums((int) $current) : '' }}" autocomplete="off" placeholder="0">
         @error('commission')<p class="field-error">{{ $message }}</p>@enderror
     </div>
     @if ($margin !== null)

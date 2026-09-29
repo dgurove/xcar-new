@@ -14,13 +14,13 @@
             <div class="list-head">Реквизиты</div>
             <div class="{{ $g }}">
                 <x-ui.field name="legal_name" label="Юрлицо" :value="$vendor->legal_name" span="col-span-2"/>
-                <x-ui.field name="inn" label="ИНН" :value="$vendor->inn" inputmode="numeric"/>
-                <x-ui.field name="kpp" label="КПП" :value="$vendor->kpp" inputmode="numeric"/>
+                <x-ui.field name="inn" label="ИНН" :value="$vendor->inn"/>
+                <x-ui.field name="kpp" label="КПП" :value="$vendor->kpp"/>
                 <x-ui.field name="legal_address" label="Юридический адрес" :value="$vendor->legal_address" span="col-span-2"/>
                 <x-ui.field name="bank_name" label="Банк" :value="$vendor->bank_name" span="col-span-2"/>
-                <x-ui.field name="bank_account" label="Расчётный счёт" :value="$vendor->bank_account" inputmode="numeric"/>
-                <x-ui.field name="bank_corr" label="Корр. счёт" :value="$vendor->bank_corr" inputmode="numeric"/>
-                <x-ui.field name="bank_bic" label="БИК" :value="$vendor->bank_bic" inputmode="numeric"/>
+                <x-ui.field name="bank_account" label="Расчётный счёт" :value="$vendor->bank_account"/>
+                <x-ui.field name="bank_corr" label="Корр. счёт" :value="$vendor->bank_corr"/>
+                <x-ui.field name="bank_bic" label="БИК" :value="$vendor->bank_bic"/>
                 <x-ui.field name="payment_purpose" label="Назначение платежа" :value="$vendor->payment_purpose" span="col-span-2"/>
             </div>
             <div class="list-head">Договор</div>
@@ -28,7 +28,7 @@
                 <x-ui.field name="agreement_number" label="Номер" :value="$vendor->agreement_number" span="col-span-2"/>
                 <x-ui.field name="agreement_date" label="Дата" type="date" :value="$vendor->agreement_date?->toDateString()"/>
                 <x-ui.field name="agreement_until" label="Действует до" type="date" :value="$vendor->agreement_until?->toDateString()"/>
-                <x-ui.field name="payment_days" label="Оплата, рабочих дней" :value="$vendor->payment_days" inputmode="numeric"/>
+                <x-ui.field name="payment_days" label="Оплата, рабочих дней" :value="$vendor->payment_days"/>
                 <div class="flex items-end pb-3.5"><x-ui.check name="vat_included" :checked="$vendor->vat_included">Хранение с НДС</x-ui.check></div>
             </div>
             <div class="list-head">Хранение</div>
@@ -39,7 +39,7 @@
                 <x-ui.field name="billing_cadence" label="Счёт" :options="Cadence::options()" :value="$vendor->billing_cadence->value"/>
                 <div class="col-span-2 flex flex-col gap-3">
                     <x-ui.check name="buyer_pays_late" :checked="$vendor->buyer_pays_late">Опоздавший покупатель платит</x-ui.check>
-                    <div data-late><x-ui.field name="buyer_rate_multiplier" label="Опоздавший платит, × прайс" :value="rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.')" inputmode="decimal"/></div>
+                    <div data-late><x-ui.field name="buyer_rate_multiplier" label="Опоздавший платит, × прайс" :value="rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.')"/></div>
                     <x-ui.check name="release_without_payment" :checked="$vendor->release_without_payment">Выдавать без оплаты</x-ui.check>
                     <x-ui.check name="release_by_qr" :checked="$vendor->release_by_qr">Выдача по QR</x-ui.check>
                 </div>

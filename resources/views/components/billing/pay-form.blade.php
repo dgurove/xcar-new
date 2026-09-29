@@ -5,7 +5,7 @@
 <form method="post" action="{{ $action }}" enctype="multipart/form-data" class="flex flex-col gap-3" data-turbo-confirm="{{ $invoice->isOwed() ? 'Перечислено' : 'Оплачено' }} {{ Money::rub($invoice->remaining()) }}?">
     @csrf
     <div class="grid grid-cols-2 gap-3">
-        <x-ui.field name="amount" label="Сумма" :value="rtrim(rtrim(number_format($invoice->remaining(), 2, '.', ''), '0'), '.')" inputmode="decimal" required/>
+        <x-ui.field name="amount" label="Сумма" :value="rtrim(rtrim(number_format($invoice->remaining(), 2, '.', ''), '0'), '.')" required/>
         <x-ui.field name="paid_at" label="Дата" type="date" :value="now()->toDateString()"/>
         <x-ui.field name="source" label="Откуда" :options="$sources" value="bank"/>
         <x-ui.field name="ref" label="№ платёжки"/>

@@ -7,11 +7,12 @@
     $path = str_replace(['[', ']'], ['.', ''], $name);
     $error = $errors->first($name) ?: $errors->first($path);
     $bound = old($path, old($name, $value));
-    // Клавиатура по смыслу поля: цифры для цен и пробега, заглавные без автозамены
+    // Клавиатура по смыслу поля: обычная для чисел (цифровой нет — в ней не набрать запятую), заглавные без автозамены
     // для VIN и госномера, свой тип для телефона и почты. Явные атрибуты важнее.
     $base = strtolower(preg_replace('/\[.*$/', '', $name));
     $keys = match (true) {
-        in_array($base, ['price', 'amount', 'mileage', 'year', 'power', 'volume', 'sum', 'cost'], true) || str_ends_with($base, '_price') || str_ends_with($base, '_km') => ['inputmode' => 'numeric', 'autocomplete' => 'off'],
+        // Цифровой клавиатуры нет нигде (решение владельца 29.09.2026): на iOS в ней нет запятой, «1,6» не набрать.
+        in_array($base, ['price', 'amount', 'mileage', 'year', 'power', 'volume', 'sum', 'cost'], true) || str_ends_with($base, '_price') || str_ends_with($base, '_km') => ['autocomplete' => 'off'],
         in_array($base, ['vin', 'plate'], true) => ['autocapitalize' => 'characters', 'autocorrect' => 'off', 'spellcheck' => 'false', 'autocomplete' => 'off'],
         in_array($base, ['phone', 'tel'], true) => ['type' => 'tel', 'inputmode' => 'tel', 'autocomplete' => 'tel'],
         $base === 'email' => ['type' => 'email', 'inputmode' => 'email', 'autocomplete' => 'email', 'autocapitalize' => 'none', 'autocorrect' => 'off'],

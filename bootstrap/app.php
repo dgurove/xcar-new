@@ -14,6 +14,7 @@ use App\Http\Middleware\EnsurePurchases;
 use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\MarkInstalled;
+use App\Http\Middleware\NormalizeNumbers;
 use App\Http\Middleware\PeekBack;
 use App\Http\Middleware\RedirectLegacyPaths;
 use App\Http\Middleware\ResolveSurface;
@@ -96,7 +97,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(RedirectLegacyPaths::class);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
-        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, TouchSeen::class, DemoReadOnly::class]);
+        $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, TouchSeen::class, DemoReadOnly::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
         // Уведомления провайдеров: подписи у ЮKassa нет, статус перечитывается по API (`PayController::hook`).
         $middleware->validateCsrfTokens(except: ['hooks/*']);

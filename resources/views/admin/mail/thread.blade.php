@@ -14,7 +14,7 @@
                 @if ($park)
                     <x-ui.combobox name="vehicle_id" label="Транспортное средство" url="/reference/cars" :value="$thread->vehicle_id" :text="$thread->vehicle?->titleWithYear()"/>
                 @else
-                    <x-ui.field name="number" label="Номер предложения" inputmode="numeric" :value="$thread->offer?->number" autofocus/>
+                    <x-ui.field name="number" label="Номер предложения" :value="$thread->offer?->number" autofocus/>
                 @endif
                 <div class="flex gap-2">
                     <x-ui.button class="flex-1">Привязать</x-ui.button>

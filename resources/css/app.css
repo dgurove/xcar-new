@@ -1871,7 +1871,14 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .photo-cell .photo-actions button { @apply flex flex-1 items-center justify-center py-1.5 hover:bg-white/15; }
   .photo-main { @apply absolute left-1 top-1; }
   /* Заголовок раздела полей в окошке строки — как заголовок блока в шторке. */
-  .peek-section { @apply mb-3 text-base font-medium; }
+  .peek-section { @apply mb-2 text-base font-medium; }
+  /* Поля в окошке строки: плотнее, чем в редакторе, и не шире своей колонки (дата-время и VIN распирали её). */
+  .peek-edit .field { min-width: 0; gap: .25rem; }
+  .peek-edit .field-input { min-width: 0; width: 100%; min-height: 2.5rem; padding-block: .375rem; padding-inline: .625rem; }
+  .peek-edit select.field-input { padding-right: 1.75rem; background-position: right 8px center; }
+  .peek-edit textarea.field-input { min-height: 4.5rem; }
+  .peek-edit .vin-box .field-input { padding-right: 3rem; }
+  .peek-edit .choice > span { padding-block: .25rem; }
 
   .sortable-ghost { @apply opacity-40; }
 }

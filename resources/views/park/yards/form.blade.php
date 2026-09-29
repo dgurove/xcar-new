@@ -4,7 +4,7 @@
     <x-ui.field name="name" label="Название" :value="$yard?->name" required :autofocus="! $yard"/>
     <x-ui.field name="settlement_id" label="Город" :options="$settlements" placeholder="—" :value="$yard?->settlement_id"/>
     <x-ui.field name="address" label="Адрес" :value="$yard?->address"/>
-    <x-ui.field name="capacity" label="Мест" inputmode="numeric" :value="$yard?->capacity"/>
+    <x-ui.field name="capacity" label="Мест" :value="$yard?->capacity"/>
     <x-ui.field name="rows" label="Ряды: буква и число мест, по строке" type="textarea" :value="$yard ? implode(PHP_EOL, array_map(fn ($r) => trim(($r['name'] ?? '').': '.($r['n'] ?? 0), ': '), $yard->rows ?? [])) : null" placeholder="A: 20"/>
     @if ($yard)
         <x-ui.field name="notes" label="Заметки" type="textarea" :value="$yard->notes"/>

@@ -36,7 +36,7 @@
                 @if ($park)
                     <div class="min-w-0 flex-1"><x-ui.combobox name="vehicle_id" label="Транспортное средство" url="/reference/cars" :value="$thread->vehicle_id" :text="$thread->vehicle?->titleWithYear()"/></div>
                 @else
-                    <x-ui.field name="number" label="Номер предложения" inputmode="numeric" :value="$thread->offer?->number" span="flex-1"/>
+                    <x-ui.field name="number" label="Номер предложения" :value="$thread->offer?->number" span="flex-1"/>
                 @endif
                 <x-ui.button size="sm">Привязать</x-ui.button>
                 @if ($linked)<x-ui.button variant="ghost" size="sm" name="{{ $park ? 'vehicle_id' : 'number' }}" value="">Отвязать</x-ui.button>@endif

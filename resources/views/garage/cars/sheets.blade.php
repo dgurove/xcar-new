@@ -48,7 +48,7 @@
                     <div class="field">
                         <label for="fee" class="field-label">Вознаграждение менеджеру, ₽</label>
                         <input type="hidden" name="commission" data-commission-target="amount" value="{{ old('commission', $car->commission) }}">
-                        <input id="fee" type="text" inputmode="numeric" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $car->commission ? Money::nums($car->commission) : '' }}" autocomplete="off" placeholder="0">
+                        <input id="fee" type="text" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $car->commission ? Money::nums($car->commission) : '' }}" autocomplete="off" placeholder="0">
                         @error('commission')<p class="field-error">{{ $message }}</p>@enderror
                     </div>
                     <div class="list">
@@ -68,7 +68,7 @@
         <x-ui.sheet id="paid" :title="$invoice->isOwed() ? 'Выплатили менеджеру' : 'Деньги пришли'" :open="$errors->has('amount')">
             <form method="post" action="/cars/{{ $n }}/payments" class="flex flex-col gap-4">
                 @csrf
-                <x-ui.field name="amount" label="Сколько, ₽" :value="$sum($invoice->remaining())" inputmode="decimal"/>
+                <x-ui.field name="amount" label="Сколько, ₽" :value="$sum($invoice->remaining())"/>
                 <x-ui.field name="paid_at" label="Когда" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
                 <x-ui.button type="submit" variant="primary" block>Записать</x-ui.button>
             </form>

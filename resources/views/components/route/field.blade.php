@@ -8,7 +8,7 @@
     @elseif ($field['type'] === 'date')
         <input id="{{ $id }}" name="{{ $name }}" type="date" value="{{ $bound }}" class="field-input">
     @elseif ($field['type'] === 'number')
-        <input id="{{ $id }}" name="{{ $name }}" inputmode="decimal" value="{{ $bound }}" class="field-input">
+        <input id="{{ $id }}" name="{{ $name }}" value="{{ $bound }}" class="field-input">
     @else
         <input id="{{ $id }}" name="{{ $name }}" value="{{ $bound }}" class="field-input">
     @endif

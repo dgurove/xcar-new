@@ -55,7 +55,7 @@
                     <x-ui.field name="phone" id="pay-phone" label="Телефон" :value="$otherPhone"/>
                 </div>
             </div>
-            <x-ui.field name="amount" id="pay-amount-link" label="Сумма, ₽" :value="$invoices->count() === 1 ? $left($first) : null" inputmode="decimal"/>
+            <x-ui.field name="amount" id="pay-amount-link" label="Сумма, ₽" :value="$invoices->count() === 1 ? $left($first) : null"/>
             <x-ui.button block>Получить ссылку</x-ui.button>
         </div>
         @endif
@@ -67,7 +67,7 @@
                 </div>
             @endif
             <div class="grid grid-cols-2 gap-3">
-                <x-ui.field name="amount" id="pay-amount-transfer" label="Сумма, ₽" :value="$invoices->count() === 1 ? $left($first) : null" inputmode="decimal"/>
+                <x-ui.field name="amount" id="pay-amount-transfer" label="Сумма, ₽" :value="$invoices->count() === 1 ? $left($first) : null"/>
                 <x-ui.field name="paid_at" id="pay-date-transfer" label="Дата оплаты" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
                 <x-ui.field name="ref" label="№ платёжки"/>
                 <x-ui.field name="slip" label="Платёжка" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,image/*"/>
@@ -77,7 +77,7 @@
 
         <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="cash" @if ($way !== 'cash') hidden @endif>
             <div class="grid grid-cols-2 gap-3">
-                <x-ui.field name="amount" id="pay-amount-cash" label="Сумма, ₽" :value="$invoices->count() === 1 ? $left($first) : null" inputmode="decimal"/>
+                <x-ui.field name="amount" id="pay-amount-cash" label="Сумма, ₽" :value="$invoices->count() === 1 ? $left($first) : null"/>
                 <x-ui.field name="paid_at" id="pay-date-cash" label="Когда отдали" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
             </div>
             <x-ui.button block>Отдал наличными</x-ui.button>

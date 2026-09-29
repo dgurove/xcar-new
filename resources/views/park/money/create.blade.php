@@ -53,8 +53,8 @@
                 @for ($n = 0; $n < 2; $n++)
                     <div class="grid grid-cols-[1fr_4rem_6rem] gap-2" data-repeater-target="item">
                         <x-ui.field name="lines[{{ $n }}][title]" placeholder="Название" :id="'line-t-'.$n"/>
-                        <x-ui.field name="lines[{{ $n }}][qty]" placeholder="1" :id="'line-q-'.$n" inputmode="decimal"/>
-                        <x-ui.field name="lines[{{ $n }}][price]" placeholder="Цена" :id="'line-p-'.$n" inputmode="numeric"/>
+                        <x-ui.field name="lines[{{ $n }}][qty]" placeholder="1" :id="'line-q-'.$n"/>
+                        <x-ui.field name="lines[{{ $n }}][price]" placeholder="Цена" :id="'line-p-'.$n"/>
                         <input type="hidden" name="lines[{{ $n }}][kind]" value="other">
                     </div>
                 @endfor

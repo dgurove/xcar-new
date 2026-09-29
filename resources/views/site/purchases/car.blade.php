@@ -35,7 +35,7 @@
                         <form method="post" action="/purchases/{{ $purchase->number }}/{{ $car->ref }}/price{{ $suffix }}" class="mt-4 flex flex-col gap-3" data-controller="bid" data-bid-asking-value="0" data-bid-min-value="0">
                             @csrf
                             <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $mine?->amount) }}">
-                            <input type="text" inputmode="numeric" required class="field-input nums text-lg" placeholder="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? \App\Support\Money::nums($mine->amount) : '') }}" autocomplete="off">
+                            <input type="text" required class="field-input nums text-lg" placeholder="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? \App\Support\Money::nums($mine->amount) : '') }}" autocomplete="off">
                             @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror
                             <textarea name="comment" rows="3" class="field-input !min-h-0 text-sm" placeholder="Комментарий">{{ old('comment', $mine?->comment) }}</textarea>
                             <button type="submit" class="btn btn-accent w-full" data-bid-target="submit">{{ $mine ? 'Изменить' : 'Предложить' }}</button>

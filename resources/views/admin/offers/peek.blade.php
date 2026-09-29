@@ -16,7 +16,8 @@
     $waiting = $offer->bids->where('state', BidState::Active);
     $best = $waiting->sortByDesc('amount')->first();
     $unread = $chats->sum('unread_for_staff');
-    $grid = 'grid grid-cols-2 gap-3';
+    // Две колонки, которые не распирает содержимое (дата-время, VIN с кнопкой): иначе окошко листалось вбок.
+    $grid = 'grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-2.5';
 @endphp
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
@@ -53,7 +54,7 @@
                     <form method="post" action="/offers/{{ $n }}/publish" class="flex gap-2" data-controller="bid" data-bid-asking-value="0">
                         @csrf
                         <input type="hidden" name="asking_price" data-bid-target="amount" value="{{ $offer->asking_price }}">
-                        <input type="text" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
+                        <input type="text" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
                             data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-peek-focus>
                         <button type="submit" class="btn btn-s btn-accent shrink-0">В продажу</button>
                     </form>
@@ -141,7 +142,7 @@
                 @endforeach
             </div>
         @endif
-        <form method="post" action="/offers/{{ $n }}" class="mt-6 flex flex-col gap-6" data-controller="vin autosave" data-turbo-frame="peek">
+        <form method="post" action="/offers/{{ $n }}" class="peek-edit mt-5 flex flex-col gap-5" data-controller="vin autosave" data-turbo-frame="peek">
             @csrf @method('put')
             <section>
                 <h2 class="peek-section">Деньги</h2>
@@ -160,7 +161,11 @@
                 @include('admin.offers.fields.managers')
             </section>
         </form>
-        <a href="/offers/{{ $n }}" class="btn btn-quiet mt-6 w-full" data-turbo-frame="_top">Полный редактор</a>
+        <section class="mt-5">
+            <h2 class="peek-section">Документы</h2>
+            @include('admin.offers.papers-block')
+        </section>
+        <a href="/offers/{{ $n }}" class="btn btn-quiet mt-5 w-full" data-turbo-frame="_top">Полный редактор</a>
         {{-- Поделиться — в полосу окошка справа, перед «Развернуть»; нечего отдавать (ни фото, ни цены) — кнопки нет. --}}
         <x-slot:tools>
             @include('admin.offers.peek-tools')

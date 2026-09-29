@@ -35,7 +35,7 @@
             @if ($admin)
                 <form method="post" action="/settings/bank" class="mt-3 flex items-end gap-2">
                     @csrf @method('put')
-                    <x-ui.field name="account" label="Расчётный счёт" :value="$c->account" inputmode="numeric" maxlength="20" class="nums" span="flex-1"/>
+                    <x-ui.field name="account" label="Расчётный счёт" :value="$c->account" maxlength="20" class="nums" span="flex-1"/>
                     <x-ui.button variant="secondary">Сохранить</x-ui.button>
                 </form>
             @endif

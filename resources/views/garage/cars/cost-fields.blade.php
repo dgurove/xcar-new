@@ -9,5 +9,5 @@
         </div>
     @endunless
 </div>
-<x-ui.field name="amount" label="Сколько, ₽" :value="$cost?->amount ? rtrim(rtrim(number_format($cost->amount, 2, ',', ''), '0'), ',') : null" inputmode="decimal" placeholder="15000"/>
+<x-ui.field name="amount" label="Сколько, ₽" :value="$cost?->amount ? rtrim(rtrim(number_format($cost->amount, 2, ',', ''), '0'), ',') : null" placeholder="15000"/>
 <x-ui.field name="spent_at" label="Когда" type="date" :value="($cost?->spent_at ?? now())->toDateString()" max="{{ now()->toDateString() }}"/>

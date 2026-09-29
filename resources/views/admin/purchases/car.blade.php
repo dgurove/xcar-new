@@ -15,14 +15,14 @@
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
                     <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$car->brand_id" :text="$car->brand?->name ?? $car->brand_raw" resets="#cb-model_id"/>
                     <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="$car->model_id" :text="$car->model?->name ?? $car->model_raw"/>
-                    <x-ui.field name="year" label="Год" inputmode="numeric" :value="$car->year"/>
-                    <x-ui.field name="mileage" label="Пробег, км" inputmode="numeric" :value="$car->mileage"/>
+                    <x-ui.field name="year" label="Год" :value="$car->year"/>
+                    <x-ui.field name="mileage" label="Пробег, км" :value="$car->mileage"/>
                     <x-ui.vin :value="$car->vin" span="col-span-2 lg:col-span-1"/>
                     <x-ui.field name="kind" label="Категория" :options="Kind::options()" :value="$car->kind->value"/>
                     <x-ui.field name="transmission" label="Коробка" :options="Transmission::options()" placeholder="—" :value="$car->transmission?->value"/>
                     <x-ui.field name="fuel" label="Топливо" :options="Fuel::options()" placeholder="—" :value="$car->fuel?->value"/>
-                    <x-ui.field name="engine_volume" label="Объём, л" inputmode="decimal" placeholder="1,6" :value="\App\Support\Liters::format($car->engine_volume)"/>
-                    <x-ui.field name="engine_power" label="Мощность, л. с." inputmode="numeric" :value="$car->engine_power"/>
+                    <x-ui.field name="engine_volume" label="Объём, л" placeholder="1,6" :value="\App\Support\Liters::format($car->engine_volume)"/>
+                    <x-ui.field name="engine_power" label="Мощность, л. с." :value="$car->engine_power"/>
                     <x-ui.field name="color" label="Цвет" :value="$car->color"/>
                     <x-ui.field name="condition" label="Состояние" :value="$car->condition"/>
                     <x-ui.field name="settlement_id" label="Город" :options="$settlements" placeholder="—" :value="$car->settlement_id"/>
@@ -32,9 +32,9 @@
             </x-ui.card>
             <x-ui.card title="Цены" class="order-1">
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                    <x-ui.field name="price_revalued" label="С учётом переоценки, ₽" inputmode="numeric" :value="$car->price_revalued"/>
-                    <x-ui.field name="price_listing" label="Для размещения, ₽" inputmode="numeric" :value="$car->price_listing"/>
-                    <x-ui.field name="price_final" label="Наша цена, ₽" inputmode="numeric" :value="$car->price_final"/>
+                    <x-ui.field name="price_revalued" label="С учётом переоценки, ₽" :value="$car->price_revalued"/>
+                    <x-ui.field name="price_listing" label="Для размещения, ₽" :value="$car->price_listing"/>
+                    <x-ui.field name="price_final" label="Наша цена, ₽" :value="$car->price_final"/>
                     <div class="col-span-full flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
                         <x-ui.check name="is_published" :checked="$car->is_published">Показывать покупателям</x-ui.check>
                         <x-ui.check name="share_locked" :checked="$car->share_locked">Запретить шеринг</x-ui.check>

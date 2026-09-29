@@ -34,7 +34,7 @@
                 <form method="post" action="{{ $href }}/estimate" class="flex w-full gap-2" data-controller="bid" data-bid-asking-value="0">
                     @csrf
                     <input type="hidden" name="price_final" data-bid-target="amount" value="{{ $car->price_final }}">
-                    <input type="text" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Наша цена, ₽" aria-label="Наша цена, ₽"
+                    <input type="text" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Наша цена, ₽" aria-label="Наша цена, ₽"
                         data-bid-target="display" data-action="input->bid#input" value="{{ $car->price_final ? \App\Support\Money::nums($car->price_final) : '' }}" data-peek-focus>
                     <button type="submit" class="btn btn-s btn-accent shrink-0">Дальше</button>
                 </form>

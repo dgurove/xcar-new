@@ -45,7 +45,7 @@
                     @csrf
                     <div class="flex gap-2">
                         <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $myBid?->amount) }}">
-                        <input type="text" inputmode="numeric" required autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена, ₽" aria-label="Цена, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" data-peek-focus>
+                        <input type="text" required autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена, ₽" aria-label="Цена, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" data-peek-focus>
                         <button type="submit" class="btn btn-s btn-accent shrink-0" data-bid-target="submit">{{ $myBid ? 'Изменить' : 'Подтвердить' }}</button>
                     </div>
                     @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror

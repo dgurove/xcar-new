@@ -198,8 +198,8 @@
                     <x-ui.field name="kind" label="За что" :options="$chargeKinds" data-price-target="kind" data-action="change->price#sync"/>
                     @if (count($payers) > 1)<x-ui.field name="party_id" label="Кому" :options="$payers" :value="array_key_first($payers)"/>@endif
                     <div class="grid grid-cols-2 gap-3">
-                        <x-ui.field name="qty" label="Сколько" value="1" inputmode="decimal"/>
-                        <x-ui.field name="price" label="Цена, ₽" inputmode="numeric" required data-price-target="price"/>
+                        <x-ui.field name="qty" label="Сколько" value="1"/>
+                        <x-ui.field name="price" label="Цена, ₽" required data-price-target="price"/>
                     </div>
                     <x-ui.field name="title" label="Как назвать в счёте"/>
                     <x-ui.button block>Начислить</x-ui.button>
@@ -245,11 +245,11 @@
                         <x-ui.field name="contract_kind" label="Основание" :options="['storage' => 'Хранение', 'commission' => 'Договор комиссии']" :value="$vehicle->contract_kind"/>
                         <x-ui.field name="contract_no" label="Номер договора" :value="$vehicle->contract_no" :placeholder="$vehicle->ref"/>
                         <x-ui.field name="contract_at" label="Дата" type="date" :value="$vehicle->contract_at?->toDateString()"/>
-                        <x-ui.field name="assigned_price" label="Назначенная цена, ₽" :value="$vehicle->assigned_price" inputmode="numeric"/>
+                        <x-ui.field name="assigned_price" label="Назначенная цена, ₽" :value="$vehicle->assigned_price"/>
                         <x-ui.field name="pts" label="ПТС" :value="$vehicle->pts" copy/>
                         <x-ui.field name="sts" label="СТС" :value="$vehicle->sts" copy/>
                         <x-ui.field name="owner_party_id" label="Комитент" :options="$owners" placeholder="—" :value="$vehicle->owner_party_id" span="col-span-2"/>
-                        <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут" :value="$vehicle->storage_rate" inputmode="numeric"/>
+                        <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут" :value="$vehicle->storage_rate"/>
                         <x-ui.field name="storage_rate_note" label="Почему своя" :value="$vehicle->storage_rate_note"/>
                         <x-ui.field name="billing_cadence" label="Счёт за хранение" :options="\App\Billing\Cadence::options()" :placeholder="'Как у вендора'.($vehicle->vendor ? ' — '.mb_strtolower($vehicle->vendor->billing_cadence->label()) : '')" :value="$vehicle->billing_cadence?->value" span="col-span-2"/>
                         {{-- Даты приёма и выдачи правятся, пока хранение по ним не выставлено (сервер отобьёт иначе). --}}

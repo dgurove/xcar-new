@@ -15,9 +15,9 @@
     </div>
     <x-ui.field name="name" label="Название или ФИО" :value="$party?->name" required/>
     <div class="{{ $g }}" data-reveal-target="pane" data-reveal-key="company">
-        <x-ui.field name="inn" id="inn-company" label="ИНН" :value="$party?->inn" inputmode="numeric"/>
-        <x-ui.field name="kpp" id="kpp-company" label="КПП" :value="$party?->kpp" inputmode="numeric"/>
-        <x-ui.field name="ogrn" id="ogrn-company" label="ОГРН" :value="$party?->ogrn" inputmode="numeric"/>
+        <x-ui.field name="inn" id="inn-company" label="ИНН" :value="$party?->inn"/>
+        <x-ui.field name="kpp" id="kpp-company" label="КПП" :value="$party?->kpp"/>
+        <x-ui.field name="ogrn" id="ogrn-company" label="ОГРН" :value="$party?->ogrn"/>
         <x-ui.field name="legal_address" id="legal_address-company" label="Юридический адрес" :value="$party?->legal_address"/>
         @if ($staff)
             <x-ui.field name="director" id="director-company" label="Руководитель" :value="$party?->director"/>
@@ -25,12 +25,12 @@
         @endif
     </div>
     <div class="{{ $g }}" data-reveal-target="pane" data-reveal-key="ip">
-        <x-ui.field name="inn" id="inn-ip" label="ИНН" :value="$party?->inn" inputmode="numeric"/>
-        <x-ui.field name="ogrn" id="ogrn-ip" label="ОГРНИП" :value="$party?->ogrn" inputmode="numeric"/>
+        <x-ui.field name="inn" id="inn-ip" label="ИНН" :value="$party?->inn"/>
+        <x-ui.field name="ogrn" id="ogrn-ip" label="ОГРНИП" :value="$party?->ogrn"/>
         <x-ui.field name="legal_address" id="legal_address-ip" label="Адрес регистрации" :value="$party?->legal_address" span="col-span-2"/>
     </div>
     <div class="{{ $g }}" data-reveal-target="pane" data-reveal-key="npd">
-        <x-ui.field name="inn" id="inn-npd" label="ИНН" :value="$party?->inn" inputmode="numeric"/>
+        <x-ui.field name="inn" id="inn-npd" label="ИНН" :value="$party?->inn"/>
         <x-ui.field name="reg_address" id="reg_address-npd" label="Адрес регистрации" :value="$party?->reg_address"/>
     </div>
     <div class="{{ $g }}" data-reveal-target="pane" data-reveal-key="person">
@@ -42,10 +42,10 @@
     <x-ui.section-title level="h3" class="!text-lg">Банк</x-ui.section-title>
     <div class="{{ $g }}">
         <x-ui.field name="bank_name" label="Банк" :value="$party?->bank_name" span="col-span-2"/>
-        <x-ui.field name="bik" label="БИК" :value="$party?->bik" inputmode="numeric"/>
-        <x-ui.field name="account" label="Расчётный счёт" :value="$party?->account" inputmode="numeric"/>
-        <x-ui.field name="corr_account" label="Корр. счёт" :value="$party?->corr_account" inputmode="numeric"/>
-        <x-ui.field name="card" label="Номер карты" :value="$party?->card" inputmode="numeric"/>
+        <x-ui.field name="bik" label="БИК" :value="$party?->bik"/>
+        <x-ui.field name="account" label="Расчётный счёт" :value="$party?->account"/>
+        <x-ui.field name="corr_account" label="Корр. счёт" :value="$party?->corr_account"/>
+        <x-ui.field name="card" label="Номер карты" :value="$party?->card"/>
         @if ($staff)<x-ui.field name="payment_purpose" label="Назначение платежа" :value="$party?->payment_purpose" span="col-span-2"/>@endif
     </div>
     <div class="{{ $g }}">

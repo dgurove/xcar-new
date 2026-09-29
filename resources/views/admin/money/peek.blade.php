@@ -43,7 +43,7 @@
                 <details class="w-full" @if ($errors->has('payer_phone') || $errors->has('phone')) open @endif><summary class="btn btn-s btn-quiet inline-flex cursor-pointer">Ссылка на оплату</summary>
                     <form method="post" action="{{ $href }}/links" class="mt-3 grid grid-cols-2 gap-2">
                         @csrf
-                        <x-ui.field name="amount" id="link-amount" label="Сумма, ₽" :placeholder="Money::nums($i->remaining() - $i->claimed(), 2)" inputmode="decimal"/>
+                        <x-ui.field name="amount" id="link-amount" label="Сумма, ₽" :placeholder="Money::nums($i->remaining() - $i->claimed(), 2)"/>
                         <x-ui.field name="phone" id="link-phone" label="Телефон для чека" :value="$i->party->phone"/>
                         <x-ui.field name="name" id="link-name" label="Плательщик" :value="$i->party->name" span="col-span-2"/>
                         @error('payer_phone')<div class="col-span-2 text-sm text-danger">{{ $message }}</div>@enderror
