@@ -21,6 +21,7 @@ use App\Mail\CandidateState;
 use App\Mail\Chains\ChainBuilder;
 use App\Mail\Composer;
 use App\Mail\Direction;
+use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\Keys;
 use App\Mail\Jobs\ExtractCandidate;
@@ -44,6 +45,7 @@ use App\Park\EventType;
 use App\Park\InspectionKind;
 use App\Park\PhotoStage;
 use App\Park\Vehicle;
+use App\Support\Docs;
 use App\Support\Nav;
 use App\Support\OfficePreview;
 use App\Vendors\ContactRole;
@@ -53,6 +55,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mime\MimeTypes;
 
 /**
  * Почта — рабочий список дел: Требуют внимания · Все · Прочее · Отправленные · Архив (ветка там, где её последнее
@@ -527,6 +530,37 @@ class MailController
         abort_if($file === null, 404, 'Файла нет: письмо удалено из ящика');
         $mime = $attachment->mime ?: 'application/octet-stream';
         $name = $attachment->filename;
+        // Файл из архива (`?entry=N`, шторка документов): запись — во временный файл, дальше как обычное вложение.
+        if ($request->has('entry')) {
+            $one = app(ArchivePhotoExtractor::class)->entryFile($file, (int) $request->query('entry'));
+            abort_if($one === null, 404, 'Файла нет в архиве');
+            [$file, $name] = [$one['path'], $one['name']];
+            $mime = (new MimeTypes)->getMimeTypes(strtolower(pathinfo($name, PATHINFO_EXTENSION)))[0] ?? 'application/octet-stream';
+            if (preg_match('/\.hei[cf]$/i', $name)) {
+                try {
+                    $jpeg = $photos->toJpeg($file);
+                    @unlink($file);
+                    [$file, $mime] = [$jpeg, 'image/jpeg'];
+                } catch (\Throwable) {
+                }
+            }
+            // Временный файл снимается сразу после ответа: под Octane shutdown-функции ждали бы конца воркера.
+            if ($request->boolean('preview')) {
+                try {
+                    return OfficePreview::response($file, $name);
+                } finally {
+                    @unlink($file);
+                }
+            }
+            $inline = in_array(Docs::type($mime, $name), ['pdf', 'image'], true);
+
+            return response()->file($file, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode($name),
+                'X-Content-Type-Options' => 'nosniff',
+                'Cache-Control' => 'private, max-age=86400',
+            ])->deleteFileAfterSend();
+        }
         if ($request->boolean('preview')) {
             return OfficePreview::response($file, $name);
         }

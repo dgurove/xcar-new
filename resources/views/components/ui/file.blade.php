@@ -2,7 +2,7 @@
 @props(['name', 'href' => null, 'size' => null, 'mime' => null, 'thumb' => null, 'download' => false])
 <div {{ $attributes->merge(['class' => 'file-row']) }}>
     @if ($href)
-        <a href="{{ $href }}" target="_blank" class="contents" data-doc="{{ \App\Support\Docs::type($mime, $name) }}" data-doc-name="{{ \App\Support\Docs::label($name) }}" title="{{ $name }}">
+        <a href="{{ $href }}" target="_blank" class="contents" data-doc="{{ \App\Support\Docs::type($mime, $name) }}" data-doc-name="{{ \App\Support\Docs::label($name) }}" title="{{ $name }}" @if (str_starts_with($href, '/files/') && preg_match('/\.hei[cf]$/i', $name)) data-doc-src="{{ $href }}?jpeg=1" @endif>
             <x-ui.file-icon :name="$name" :mime="$mime" :thumb="$thumb"/>
             <span class="min-w-0 flex-1 truncate">{{ $name }}</span>
         </a>

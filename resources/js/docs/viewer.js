@@ -19,8 +19,10 @@ export async function render(box, item, hooks) {
             case 'letter': return await letter(box, item);
             case 'image': return image(box, item.src || item.url, hooks);
             case 'sheet':
-            case 'word': return await office(box, item);
+            case 'word':
+            case 'text': return await office(box, item);
             case 'pdf': return await pdf(box, item, hooks, await fetchFile(item.url));
+            case 'video': return video(box, item.url);
             case 'file': return card(box, item);
             default: return await sniff(box, item, hooks);
         }
@@ -49,7 +51,8 @@ async function sniff(box, item, hooks) {
     if (type.startsWith('application/pdf')) return pdf(box, item, hooks, res);
     res.body?.cancel();
     if (type.startsWith('image/') && !type.includes('svg')) return image(box, item.url, hooks);
-    if (/spreadsheetml|wordprocessingml/.test(type)) return office(box, item);
+    if (type.startsWith('video/')) return video(box, item.url);
+    if (/spreadsheetml|wordprocessingml|text\/plain/.test(type)) return office(box, { ...item, type: type.includes('spreadsheetml') ? 'sheet' : 'word' });
     return card(box, item);
 }
 
@@ -84,7 +87,8 @@ async function office(box, item) {
     url.searchParams.set('preview', '1');
     box.classList.add('docs-wait');
     const res = await fetchFile(url);
-    const wrap = el('div', 'docs-html');
+    // Word и текст — белым листом и в тёмной теме: это бумага, а не интерфейс.
+    const wrap = el('div', item.type === 'sheet' ? 'docs-html' : 'docs-html docs-paper');
     wrap.innerHTML = await res.text();
     box.classList.remove('docs-wait');
     box.replaceChildren(wrap);
@@ -185,6 +189,14 @@ function photos(box, item) {
         rotate() { view?.rotate(); },
         destroy() { view?.destroy(); removeEventListener('keydown', key); },
     };
+}
+
+// Видео с осмотра — своим плеером, во весь лист; playsinline — на айфоне не уходит во весь экран само.
+function video(box, src) {
+    const v = el('video', 'docs-video');
+    Object.assign(v, { src, controls: true, playsInline: true, preload: 'metadata' });
+    box.replaceChildren(v);
+    return { destroy() { v.pause(); v.removeAttribute('src'); v.load(); } };
 }
 
 function card(box, item, note) {

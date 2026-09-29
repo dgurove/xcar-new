@@ -140,14 +140,14 @@ class OfferController
             default => null,
         };
         $papers = $offer->papers();
-        $names = $papers->pluck('file_name')->map(fn ($n) => mb_strtolower($n))->all();
+        $names = $papers->pluck('file_name')->map(fn ($n) => Docs::norm($n))->all();
         ['docs' => $files, 'photos' => $pictures] = Docs::fromLetters($letters, '/work/mail');
         $photos = $offer->photos();
 
         return array_values(array_filter([
             $letter ? Docs::letter($letter, '/work/mail', $thread) : null,
             ...$papers->map(fn ($m) => Docs::media($m))->all(),
-            ...array_filter($files, fn ($d) => ! in_array(mb_strtolower($d['name']), $names, true)),
+            ...array_filter($files, fn ($d) => ! in_array(Docs::norm($d['name']), $names, true)),
             $photos->isNotEmpty() ? Docs::photos($photos) : Docs::photos($pictures, '/work/mail'),
         ]));
     }

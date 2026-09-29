@@ -37,8 +37,9 @@ final class OfficePreview
     {
         try {
             return match (Docs::type(null, $name)) {
-                'sheet' => self::sheet($path),
+                'sheet' => str_ends_with(mb_strtolower($name), '.csv') ? self::csv($path) : self::sheet($path),
                 'word' => self::word($path),
+                'text' => self::plain($path),
                 default => null,
             };
         } catch (Throwable) {
@@ -102,6 +103,37 @@ final class OfficePreview
             is_scalar($v) => trim((string) $v),
             default => '',
         };
+    }
+
+    /** csv: разделитель — чего в первой строке больше (`;` у русского Excel, `,`, таб); кодировка — как у txt. */
+    private static function csv(string $path): ?string
+    {
+        $raw = (string) file_get_contents($path, length: 2_000_000);
+        $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+        if (! mb_check_encoding($raw, 'UTF-8')) {
+            $raw = mb_convert_encoding($raw, 'UTF-8', 'Windows-1251');
+        }
+        $lines = preg_split('/\r\n|\n|\r/', trim($raw));
+        $first = $lines[0] ?? '';
+        $sep = collect([';', ',', "\t"])->sortByDesc(fn ($d) => substr_count($first, $d))->first();
+        $out = '<div class="docs-table docs-sheet"><table>';
+        foreach (array_slice($lines, 0, self::ROWS) as $line) {
+            $out .= '<tr>'.implode('', array_map(fn ($c) => '<td>'.e(trim((string) $c)).'</td>', array_slice(str_getcsv($line, $sep, '"', ''), 0, self::COLS))).'</tr>';
+        }
+
+        return trim($raw) === '' ? null : $out.'</table></div>';
+    }
+
+    /** txt: как есть, моноширинным; старые файлы из Windows — в CP1251. */
+    private static function plain(string $path): ?string
+    {
+        $raw = (string) file_get_contents($path, length: 2_000_000);
+        $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+        if (! mb_check_encoding($raw, 'UTF-8')) {
+            $raw = mb_convert_encoding($raw, 'UTF-8', 'Windows-1251');
+        }
+
+        return trim($raw) === '' ? null : '<pre>'.e($raw).'</pre>';
     }
 
     /** docx: абзацы и таблицы из word/document.xml, текст без оформления. */

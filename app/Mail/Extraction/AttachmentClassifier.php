@@ -64,7 +64,7 @@ final class AttachmentClassifier
         };
     }
 
-    private function looksLikeDocument(string $filename): bool
+    public function looksLikeDocument(string $filename): bool
     {
         foreach (self::DOCUMENT_MARKERS as $marker) {
             if (str_contains($filename, $marker)) {

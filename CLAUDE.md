@@ -237,8 +237,13 @@
   список — `Support\Docs`: тип pdf · image · sheet · word · file · letter · photos) и любая ссылка на `/files/{id}` и
   `…/mail/attachments/{id}` без `download`; под модальным окном писем — встроенный браузер, как `file_controller`.
   PDF — pdf.js legacy (свой холст, щипок и двойное касание — `docs/zoom.js`, масштаб раскладкой; шрифты, cmaps и wasm
-  кладёт сборка в `/build/pdfjs`), xlsx и docx — HTML с сервера `?preview=1` (`Support\OfficePreview`), письмо —
-  `…/messages/{m}/body`. В редакторе предложения и в деле ТС — пилюля «Документы N» (`x-ui.docs-pill`: письмо
+  кладёт сборка в `/build/pdfjs`), xlsx, csv, docx и txt — HTML с сервера `?preview=1` (`Support\OfficePreview`;
+  docx и txt — белым листом и в тёмной теме, txt и csv из Windows — CP1251), видео — плеером, HEIC из «Документов» —
+  JPEG `/files/{id}?jpeg=1`, письмо — `…/messages/{m}/body`, широкое письмо ужимается по ширине; вкладка — имя файла,
+  поворот помнится у документа. **Архивы** (zip, rar, 7z — по сигнатуре, не по MIME: почта шлёт их octet-stream)
+  раскрыты в шторке по файлам (`?entry=N` у вложения, список — `ArchivePhotoExtractor::listFile`, сутки в кэше, только
+  если архив уже на диске), а при «Завести» разворачиваются целиком со вложенными (`extractFiles`): кадры — в фото,
+  PDF, СТС, Excel — в документы; мусор macOS/Windows пропускается. doc, xls, rtf, odt и eml не рисуются — «Скачать». В редакторе предложения и в деле ТС — пилюля «Документы N» (`x-ui.docs-pill`: письмо
   вендора, документы, файлы писем, которых среди них нет, фото), на разборе письма — чипы. После сохранения формы
   шторка открывается снова на том же документе. **Дубли на лету** — `twins_controller`: номер убытка, VIN, госномер
   в полях ТС парковки (`/reference/twins`, «Это она» на разборе — `?car=`) и VIN предложения (`/offers/twins`) —

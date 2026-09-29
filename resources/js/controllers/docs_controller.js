@@ -91,7 +91,10 @@ export default class extends Controller {
     }
 
     key(a) {
-        return a.dataset.doc === 'photos' ? '#photos' : new URL(a.href, location.href).pathname;
+        if (a.dataset.doc === 'photos') return '#photos';
+        // Файлы одного архива различаются только `?entry=N`.
+        const url = new URL(a.href, location.href);
+        return url.pathname + (url.searchParams.has('entry') ? `?entry=${url.searchParams.get('entry')}` : '');
     }
 
     item(a) {

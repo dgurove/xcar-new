@@ -74,35 +74,71 @@ final class ArchivePhotoExtractor
      */
     public function extractPhotos(Attachment $attachment, int $limit = 0): array
     {
-        return $this->withArchive((string) $attachment->contents(), (string) $attachment->mime, function (ZipArchive|Archive7z $archive) use ($limit): array {
-            $photos = [];
-            $taken = [];
-
-            foreach ($this->safeEntries($archive) as $entry) {
-                if (! $this->isImageName($entry['name'])) {
-                    continue;
-                }
-
-                $contents = $this->readEntry($archive, $entry);
-
-                if ($contents === null) {
-                    continue;
-                }
-
-                $base = $this->uniqueName(basename($entry['name']), $taken);
-                $photos[] = [
-                    'name' => $base,
-                    'mime' => $this->mimeOf($base),
-                    'contents' => $contents,
-                ];
-
+        $photos = [];
+        foreach ($this->extractFiles($attachment) as $file) {
+            if ($file['photo']) {
+                $photos[] = ['name' => $file['name'], 'mime' => $this->mimeOf($file['name']), 'contents' => $file['contents']];
                 if ($limit > 0 && count($photos) >= $limit) {
                     break;
                 }
             }
+        }
 
-            return $photos;
-        }) ?? [];
+        return $photos;
+    }
+
+    /**
+     * Всё содержимое архива письма: кадры и документы (PDF, СТС, Excel), со вложенными архивами.
+     * Формат — по сигнатуре файла, а не по MIME: rar и 7z почта шлёт и `application/octet-stream`.
+     *
+     * @return list<array{name: string, contents: string, photo: bool}>
+     */
+    public function extractFiles(Attachment $attachment): array
+    {
+        $path = $attachment->file();
+        if ($path === null || ! is_file($path)) {
+            return [];
+        }
+        $files = [];
+        try {
+            $this->walkAll($path, function (string $name, string $contents) use (&$files) {
+                $files[] = ['name' => $name, 'contents' => $contents, 'photo' => $this->isImageName($name)];
+            });
+        } catch (Throwable) {
+            return [];
+        }
+
+        return $files;
+    }
+
+    /**
+     * Записи архива для шторки документов: имя и размер, без вложенных архивов (они — файлом).
+     *
+     * @return list<array{index: int, name: string, size: int}>
+     */
+    public function listFile(string $path): array
+    {
+        return $this->withFile($path, fn (ZipArchive|Archive7z $archive) => array_values(array_filter(array_map(
+            fn (array $entry, int $i) => ['index' => $i, 'name' => $entry['name'], 'size' => $entry['size']],
+            $entries = $this->safeEntries($archive), array_keys($entries)), fn ($e) => ! self::isJunk($e['name'])))) ?? [];
+    }
+
+    /**
+     * Одна запись архива по месту в списке (`listFile`) — во временный файл; удаляет вызывающий.
+     *
+     * @return array{name: string, path: string}|null
+     */
+    public function entryFile(string $path, int $index): ?array
+    {
+        return $this->withFile($path, function (ZipArchive|Archive7z $archive) use ($index): ?array {
+            $entry = $this->safeEntries($archive)[$index] ?? null;
+            if ($entry === null || $entry['size'] > self::MAX_FILE_BYTES) {
+                return null;
+            }
+            $tmp = $this->spill($archive, $entry);
+
+            return $tmp === null ? null : ['name' => basename($entry['name']), 'path' => $tmp];
+        });
     }
 
     /**
@@ -127,6 +163,40 @@ final class ArchivePhotoExtractor
         $this->walk($path, $onPhoto, $limit, 0, $taken, $count);
 
         return $count;
+    }
+
+    /** @param  callable(string, string): void  $onFile */
+    private function walkAll(string $path, callable $onFile, int $depth = 0, array &$taken = []): void
+    {
+        $this->withFile($path, function (ZipArchive|Archive7z $archive) use ($onFile, $depth, &$taken): void {
+            foreach ($this->safeEntries($archive) as $entry) {
+                if (self::isArchiveName($entry['name'])) {
+                    if ($depth >= self::MAX_DEPTH || ($nested = $this->spill($archive, $entry)) === null) {
+                        continue;
+                    }
+                    try {
+                        $this->walkAll($nested, $onFile, $depth + 1, $taken);
+                    } finally {
+                        @unlink($nested);
+                    }
+
+                    continue;
+                }
+                if (self::isJunk($entry['name'])) {
+                    continue;
+                }
+                $contents = $this->readEntry($archive, $entry);
+                if ($contents !== null) {
+                    $onFile($this->uniqueName(basename($entry['name']), $taken), $contents);
+                }
+            }
+        });
+    }
+
+    /** Служебное macOS и Windows в архиве — не документы. */
+    private static function isJunk(string $name): bool
+    {
+        return (bool) preg_match('#(^|/)(__MACOSX/|\.DS_Store$|Thumbs\.db$|desktop\.ini$)#i', $name);
     }
 
     /** Архив по имени файла: то, что мы умеем развернуть. */
@@ -181,12 +251,13 @@ final class ArchivePhotoExtractor
 
     /**
      * Открыть архив с диска и позвать колбэк. Zip — по сигнатуре `PK`,
-     * остальное — бинарём 7z. Любая ошибка — null, как в withArchive().
+     * остальное — бинарём 7z. Любая ошибка — null: вызывающий решает, что вернуть.
      */
     private function withFile(string $path, callable $callback): mixed
     {
         try {
             $head = (string) @file_get_contents($path, false, null, 0, 2);
+            // PK — zip (и docx/xlsx, но их сюда не зовут); 7z и rar — бинарём.
 
             return $head === 'PK'
                 ? $this->withZip($path, $callback)
@@ -260,52 +331,6 @@ final class ArchivePhotoExtractor
 
         return in_array($mime, self::ZIP_MIMES, true)
             || in_array($mime, self::SEVEN_ZIP_MIMES, true);
-    }
-
-    /**
-     * Открыть архив из байтов и MIME и позвать колбэк с открытым архивом.
-     *
-     * Любая ошибка — битый архив, пустые данные, странная запись — это null,
-     * а не исключение: вызывающий решает, что вернуть.
-     */
-    private function withArchive(string $contents, string $mime, callable $callback): mixed
-    {
-        $mime = mb_strtolower($mime);
-        $viaSevenZip = in_array($mime, self::SEVEN_ZIP_MIMES, true);
-
-        if (! in_array($mime, self::ZIP_MIMES, true) && ! $viaSevenZip) {
-            return null;
-        }
-
-        try {
-            $bytes = $contents;
-
-            if ($bytes === null || $bytes === '') {
-                return null;
-            }
-
-            $tempFile = tempnam(sys_get_temp_dir(), 'xcar-arch-');
-
-            if ($tempFile === false) {
-                return null;
-            }
-
-            if (file_put_contents($tempFile, $bytes) === false) {
-                @unlink($tempFile);
-
-                return null;
-            }
-
-            try {
-                return $viaSevenZip
-                    ? $this->withSevenZip($tempFile, $callback)
-                    : $this->withZip($tempFile, $callback);
-            } finally {
-                @unlink($tempFile);
-            }
-        } catch (Throwable) {
-            return null;
-        }
     }
 
     private function withZip(string $tempFile, callable $callback): mixed
@@ -553,7 +578,7 @@ final class ArchivePhotoExtractor
      */
     private function isImageName(string $name): bool
     {
-        return (bool) preg_match('/\.(jpe?g|png|webp)$/i', $name);
+        return (bool) preg_match('/\.(jpe?g|png|webp|heic|heif)$/i', $name);
     }
 
     private function mimeOf(string $name): string
@@ -562,6 +587,7 @@ final class ArchivePhotoExtractor
             'jpeg', 'jpg' => 'image/jpeg',
             'png' => 'image/png',
             'webp' => 'image/webp',
+            'heic', 'heif' => 'image/heic',
             'gif' => 'image/gif',
             'bmp' => 'image/bmp',
             'pdf' => 'application/pdf',

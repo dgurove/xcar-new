@@ -44,15 +44,21 @@ final class AttachmentImporter
         }
         foreach ($classified['archives'] as $i => $archive) {
             $progress && $progress('Распаковываем архив', $i, count($classified['archives']));
-            $extracted = $this->archives->extractPhotos($archive);
+            // Архив разворачивается целиком: кадры — к фото, остальное (PDF, СТС, Excel) — к документам;
+            // не открылся (битый, с паролем) — лежит документом, как пришёл.
+            $extracted = $this->archives->extractFiles($archive);
             if (! $extracted) {
                 $added['documents'] += (int) $this->addDocument($model, $documentsCollection, $archive);
 
                 continue;
             }
-            // Кадры из архива и вырезки из листа — свойства того вложения, в котором они приехали.
-            foreach ($extracted as $photo) {
-                $sources[] = ['name' => $photo['name'], 'contents' => $photo['contents'], 'properties' => $propertiesOf($archive)];
+            foreach ($extracted as $file) {
+                // Кадры из архива и вырезки из листа — свойства того вложения, в котором они приехали.
+                if ($file['photo'] && ! $this->classifier->looksLikeDocument(mb_strtolower($file['name']))) {
+                    $sources[] = ['name' => $file['name'], 'contents' => $file['contents'], 'properties' => $propertiesOf($archive)];
+                } else {
+                    $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $file['name'], $file['contents']);
+                }
             }
         }
         foreach ($sources as $i => $photo) {
@@ -106,13 +112,19 @@ final class AttachmentImporter
             return false;
         }
         $contents = $document->contents();
-        if ($contents === null || $model->hasFile($sha = hash('sha256', $contents))) {
+
+        return $contents !== null && $this->addDocumentFile($model, $collection, $document->filename, $contents);
+    }
+
+    private function addDocumentFile(HasMedia $model, string $collection, string $name, string $contents): bool
+    {
+        if ($collection === '' || $model->hasFile($sha = hash('sha256', $contents))) {
             return false;
         }
         $this->guard(fn () => $model->addMediaFromString($contents)
-            ->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $document->filename) ?: 'dokument')
-            ->usingName(pathinfo($document->filename, PATHINFO_FILENAME))
-            ->withCustomProperties(array_filter(['sha' => $sha, 'kind' => AttachmentClassifier::kindOf($document->filename), 'source' => 'mail']))
+            ->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $name) ?: 'dokument')
+            ->usingName(pathinfo($name, PATHINFO_FILENAME))
+            ->withCustomProperties(array_filter(['sha' => $sha, 'kind' => AttachmentClassifier::kindOf($name), 'source' => 'mail']))
             ->toMediaCollection($collection));
 
         return true;

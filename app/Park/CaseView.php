@@ -42,14 +42,14 @@ final class CaseView
     {
         $letters = $threadIds->isEmpty() ? collect() : Message::with(['attachments', 'account'])->whereIn('thread_id', $threadIds)->orderBy('date_at')->get()->reject(fn (Message $m) => $m->isOurs());
         $papers = $vehicle->papers();
-        $names = $papers->pluck('file_name')->map(fn ($n) => mb_strtolower($n))->all();
+        $names = $papers->pluck('file_name')->map(fn ($n) => Docs::norm($n))->all();
         ['docs' => $files] = Docs::fromLetters($letters, '/mail');
         $photos = $vehicle->photos();
 
         return array_values(array_filter([
             $letters->isNotEmpty() ? Docs::letter($letters->first(), '/mail') : null,
             ...$papers->map(fn ($m) => Docs::media($m))->all(),
-            ...array_filter($files, fn ($d) => ! in_array(mb_strtolower($d['name']), $names, true)),
+            ...array_filter($files, fn ($d) => ! in_array(Docs::norm($d['name']), $names, true)),
             $photos->isNotEmpty() ? Docs::photos($photos) : null,
         ]));
     }

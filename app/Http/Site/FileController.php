@@ -2,6 +2,7 @@
 
 namespace App\Http\Site;
 
+use App\Media\PhotoIngest;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Support\OfficePreview;
@@ -9,6 +10,7 @@ use App\Users\Section;
 use App\Users\User;
 use App\Workflow\Requirement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -18,11 +20,25 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 final class FileController
 {
-    public function show(Request $request, Media $media)
+    public function show(Request $request, Media $media, PhotoIngest $photos)
     {
         abort_unless($media->disk === 'private' && $this->allowed($request->user(), $media), 404);
         if ($request->boolean('preview')) {
             return OfficePreview::response($media->getPath(), $media->file_name);
+        }
+        // HEIC с айфона для шторки документов: Chrome его не рисует — JPEG, посчитанный раз (cache, storage:gc).
+        if ($request->boolean('jpeg') && preg_match('/\.hei[cf]$/i', $media->file_name)) {
+            $jpeg = Storage::disk('cache')->path("files/jpeg-{$media->id}.jpg");
+            if (! is_file($jpeg)) {
+                @mkdir(dirname($jpeg), 0775, true);
+                try {
+                    rename($photos->toJpeg($media->getPath()), $jpeg);
+                } catch (\Throwable) {
+                }
+            }
+            if (is_file($jpeg)) {
+                return response()->file($jpeg, ['Content-Type' => 'image/jpeg', 'Cache-Control' => 'private, max-age=86400']);
+            }
         }
         $inline = (str_starts_with((string) $media->mime_type, 'image/') && $media->mime_type !== 'image/svg+xml') || $media->mime_type === 'application/pdf';
 
