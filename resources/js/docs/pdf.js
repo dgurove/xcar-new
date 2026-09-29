@@ -16,7 +16,7 @@ const MAX_PIXELS = 8e6;
 const el = (tag, cls) => Object.assign(document.createElement(tag), { className: cls });
 const free = (canvas) => { canvas.width = 0; canvas.height = 0; canvas.remove(); };
 
-export async function pdfView(box, data, { count }) {
+export async function pdfView(box, data, { count, rotation: turned = 0, rotated = () => {} }) {
     const task = pdfjs.getDocument({
         data, cMapUrl: `${ASSETS}cmaps/`, cMapPacked: true, standardFontDataUrl: `${ASSETS}standard_fonts/`,
         wasmUrl: `${ASSETS}wasm/`, iccUrl: `${ASSETS}iccs/`, isEvalSupported: false, enableXfa: false,
@@ -33,7 +33,7 @@ export async function pdfView(box, data, { count }) {
     });
     const byDiv = new Map(list.map((p) => [p.div, p]));
     box.replaceChildren(scroll);
-    let rot = 0, dead = false;
+    let rot = turned, dead = false;
     const rotation = (p) => (p.page.rotate + rot) % 360;
 
     const layout = (z) => {
@@ -138,6 +138,7 @@ export async function pdfView(box, data, { count }) {
     return {
         rotate() {
             rot = (rot + 90) % 360;
+            rotated(rot);
             zoom.relayout();
         },
         destroy() {

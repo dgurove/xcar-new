@@ -17,7 +17,7 @@ export async function render(box, item, hooks) {
         switch (item.type) {
             case 'photos': return photos(box, item);
             case 'letter': return await letter(box, item);
-            case 'image': return image(box, item.src || item.url);
+            case 'image': return image(box, item.src || item.url, hooks);
             case 'sheet':
             case 'word': return await office(box, item);
             case 'pdf': return await pdf(box, item, hooks, await fetchFile(item.url));
@@ -48,12 +48,12 @@ async function sniff(box, item, hooks) {
     const type = res.headers.get('Content-Type') || '';
     if (type.startsWith('application/pdf')) return pdf(box, item, hooks, res);
     res.body?.cancel();
-    if (type.startsWith('image/') && !type.includes('svg')) return image(box, item.url);
+    if (type.startsWith('image/') && !type.includes('svg')) return image(box, item.url, hooks);
     if (/spreadsheetml|wordprocessingml/.test(type)) return office(box, item);
     return card(box, item);
 }
 
-function image(box, src) {
+function image(box, src, { rotation = 0, rotated = () => {} } = {}) {
     const scroll = el('div', 'docs-scroll'), stage = el('div', 'docs-stage'), img = new Image();
     img.alt = '';
     img.decoding = 'async';
@@ -61,7 +61,7 @@ function image(box, src) {
     scroll.append(stage);
     box.replaceChildren(scroll);
     box.classList.add('docs-wait');
-    let rot = 0, zoom = null;
+    let rot = rotation, zoom = null;
     const layout = (z) => {
         if (!img.naturalWidth) return;
         const turned = rot % 180 !== 0;
@@ -74,7 +74,7 @@ function image(box, src) {
     img.onerror = () => { box.classList.remove('docs-wait'); scroll.replaceChildren(el('p', 'docs-note', 'Не открылся')); };
     img.src = src;
     return {
-        rotate() { rot = (rot + 90) % 360; zoom?.relayout(); },
+        rotate() { rot = (rot + 90) % 360; rotated(rot); zoom?.relayout(); },
         destroy() { zoom?.destroy(); img.onload = img.onerror = null; },
     };
 }
@@ -108,7 +108,25 @@ async function letter(box, item) {
     if (frame) wrap.append(frame);
     else wrap.append(el('p', 'docs-note', 'Письмо не открылось'));
     box.replaceChildren(wrap);
+    frame?.querySelector('iframe')?.addEventListener('load', (e) => fitLetter(e.target));
     return none;
+}
+
+// Письмо шире шторки (таблицы вёрстки в 600–800 px) — ужимается по ширине, а не листается вбок, как увеличенное.
+function fitLetter(iframe) {
+    try {
+        const doc = iframe.contentDocument;
+        const box = iframe.parentElement, avail = box.clientWidth, wide = doc.documentElement.scrollWidth;
+        if (wide <= avail + 2) return;
+        // Письмо рисуется своей шириной и ужимается целиком — как страница, а рамка берёт ужатую высоту.
+        iframe.style.width = `${wide}px`;
+        requestAnimationFrame(() => {
+            const k = avail / wide;
+            const tall = Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight || 0);
+            Object.assign(iframe.style, { height: `${tall}px`, transform: `scale(${k})`, transformOrigin: '0 0' });
+            box.style.height = `${Math.ceil(tall * k)}px`;
+        });
+    } catch {}
 }
 
 // Кадры сеткой; нажатие — кадр во всю шторку с масштабом, листается свайпом вбок и стрелками.

@@ -171,7 +171,13 @@ export default class extends Controller {
         this.bodyTarget.replaceChildren(box);
         const { render } = await (this.viewer ??= import('../docs/viewer.js'));
         if (token !== this.token) return;
-        const view = await render(box, item, { count: (text) => { if (token === this.token) this.countTarget.textContent = text; } });
+        // Поворот помнится у документа: скан, пришедший боком, второй раз поворачивать не надо.
+        const turn = `docs:rot:${item.key}`;
+        const view = await render(box, item, {
+            count: (text) => { if (token === this.token) this.countTarget.textContent = text; },
+            rotation: Number(store.get(turn)) || 0,
+            rotated: (deg) => store.set(turn, String(deg)),
+        });
         if (token !== this.token) { view?.destroy(); return; }
         this.view = view;
     }

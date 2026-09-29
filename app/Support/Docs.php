@@ -29,11 +29,10 @@ final class Docs
         };
     }
 
-    /** Подпись вкладки: вид документа по имени (СТС, акт), иначе имя без расширения. */
+    /** Подпись вкладки — имя файла без расширения (медиатека пишет пробелы дефисами: «Согаз-заявка» — словами). */
     public static function label(string $name): string
     {
-        // Медиатека пишет пробелы в имени дефисами: «Согаз-заявка-чери» — показываем словами.
-        return AttachmentClassifier::kindLabel(AttachmentClassifier::kindOf($name)) ?? trim(str_replace(['_', '-'], ' ', pathinfo($name, PATHINFO_FILENAME)));
+        return trim(str_replace(['_', '-'], ' ', pathinfo($name, PATHINFO_FILENAME))) ?: $name;
     }
 
     /** @return array<string, mixed> */
@@ -49,7 +48,7 @@ final class Docs
     public static function media(Media $m): array
     {
         return ['url' => "/files/{$m->id}", 'type' => self::type($m->mime_type, $m->file_name), 'name' => $m->file_name,
-            'label' => AttachmentClassifier::kindLabel($m->getCustomProperty('kind')) ?? self::label($m->file_name)];
+            'label' => $m->name ?: self::label($m->file_name)];
     }
 
     /** @return array<string, mixed> */
