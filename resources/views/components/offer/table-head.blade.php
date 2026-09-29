@@ -7,5 +7,5 @@
     <th class="hidden sm:table-cell">Состояние</th>
     <th class="num hidden sm:table-cell">{{ $gallery ? 'Интерес' : 'Подтверждения' }}</th>
     <th class="num">Цена</th>
-    <th class="num col-peek-hide hidden sm:table-cell">Прошло</th>
+    <th class="num col-peek-hide hidden sm:table-cell">Закупочная</th>
 </tr>

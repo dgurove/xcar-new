@@ -1,7 +1,7 @@
 {{-- Строка таблицы предложений (CRM), по образцу «Наличия» парковки. Ячейка в два этажа: иконка типа ТС и название с
      «рекомендуем», под ним логотип страховой с номером убытка, номер предложения, приём (таймер или состояние, цветом
      по тону) и подтверждения; от 640 они встают своими столбцами (вендор с номером убытка — одним). Справа цена
-     «до», под ней на телефоне сколько прошло; у черновика без цены продажи — лаймовое «оценить», под ним закупочная.
+     продажи (у черновика без неё — лаймовое «оценить»), последним столбцом закупочная; на телефоне она под ценой.
      У черновика нет ни номера (он ещё не выставлен), ни слова «черновик»: его и так видно по «оценить» и цене.
      В галерее вместо подтверждений — интерес. Нажатие — окошко; data-unpriced — черновик без цены продажи,
      по ним окошко идёт «Дальше» («Оценить»). --}}
@@ -12,7 +12,6 @@
     $price = \App\Offers\PriceView::for($offer, auth()->user());
     $left = $gallery ? null : $offer->secondsLeft();
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' };
-    $since = $gallery ? $offer->created_at : ($offer->published_at ?? $offer->updated_at);
     $count = $gallery ? (int) $offer->interests_count : (int) $offer->active_bids_count;
     $countWord = $gallery ? 'интерес '.$count : $count.' подтв.';
     $timer = $left !== null && $left > 0;
@@ -42,15 +41,12 @@
         @else<span class="{{ $tone }}">{{ $offer->state === OfferState::Open ? 'Приём' : $offer->state->label() }}</span>@endif
     </td>
     <td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>
+    {{-- Цена продажи (у черновика без неё — «оценить»), справа закупочная; на телефоне закупочная — под ценой. --}}
     <td class="num nums">
-        @if ($unpriced)
-            {{-- Закупочная — во всех видах (и в подробной, и на ПК): без неё «оценить» не с чем сравнить. --}}
-            <span class="text-accent-text">оценить</span>
-            @if ($offer->floor_price)<span class="cell-sub">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@else<span class="cell-sub sm:hidden">{!! \App\Support\Ago::time($since) !!}</span>@endif
-        @else
-            @if ($price->shown())@if ($price->withFrom())<span class="price-from hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
-            <span class="cell-sub sm:hidden">{!! \App\Support\Ago::time($since) !!}</span>
-        @endif
+        @if ($unpriced)<span class="text-accent-text">оценить</span>
+        @elseif ($price->shown()){{ $price::money($price->to) }}
+        @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
+        @if ($offer->floor_price)<span class="cell-sub sm:hidden">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>
-    <td class="cell-dim num col-peek-hide hidden sm:table-cell">{!! \App\Support\Ago::time($since) !!}</td>
+    <td class="cell-dim num nums col-peek-hide hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>
 </tr>
