@@ -1,13 +1,15 @@
-{{-- Поля «Транспортное средство» — одни на редактор и окошко строки. $grid — сетка колонок. --}}
+{{-- Поля «Транспортное средство» — одни на редактор и окошко строки. $grid — сетка колонок. Другое предложение с тем же
+     VIN — строкой под полем сразу при вводе (twins_controller). --}}
 @php use App\Cars\{Body, Transmission, Drive, Fuel}; @endphp
-<div class="{{ $grid }}">
+<div class="{{ $grid }}" data-controller="twins" data-twins-url-value="/offers/twins" data-twins-except-value="{{ $offer->id }}" data-action="input->twins#changed">
     <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id"/>
     <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="$offer->model_id" :text="$offer->model?->name"/>
     <x-ui.vin :value="$offer->vin" span="col-span-2 lg:col-span-1">
         <x-slot:after-label><x-ui.eye-check name="show_vin" :checked="$offer->show_vin"/></x-slot:after-label>
     </x-ui.vin>
+    <div class="col-span-full flex flex-col gap-2 empty:hidden" data-twins-target="box"></div>
     <x-ui.field name="year" label="Год" inputmode="numeric" :value="$offer->year"/>
-    <x-ui.field name="mileage" label="Пробег, км" inputmode="numeric" :value="$offer->mileage"/>
+    <x-ui.field name="mileage" data-controller="digits" data-action="input->digits#format" label="Пробег, км" inputmode="numeric" :value="$offer->mileage"/>
     <x-ui.field name="color" label="Цвет" :value="$offer->color"/>
     <x-ui.field name="body" label="Кузов" :options="Body::options()" placeholder="—" :value="$offer->body?->value"/>
     <x-ui.field name="transmission" label="Коробка" :options="Transmission::options()" placeholder="—" :value="$offer->transmission?->value"/>

@@ -47,6 +47,7 @@
     </main>
 
     @if ($site && !$installed)<x-ui.footer/>@endif
+    @auth<x-ui.docs/>@endauth
     <x-ui.tabbar/>
     <x-ui.toasts/>
 </x-ui.layout>

@@ -11,7 +11,7 @@
     $bids = $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]);
     $waiting = $offer->bids->where('state', BidState::Active);
     $best = $waiting->sortByDesc('amount')->first();
-    $grid = 'grid grid-cols-2 gap-3 lg:grid-cols-3';
+    $grid = 'grid grid-cols-2 gap-3 @4xl:grid-cols-3';
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
     <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
@@ -36,7 +36,9 @@
                 @endforeach
             </span>
         @endif
-        @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/work/mail/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
+        {{-- Письмо, документы и фото — шторкой рядом с полями (x-ui.docs), переписка целиком — ссылкой из письма. --}}
+        @if ($docs)<x-ui.docs-pill :docs="$docs"/>
+        @elseif ($threads->count() === 1)<x-ui.pill tone="plain" href="/work/mail/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
         @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/work/mail?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
         @if ($offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
         @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
@@ -45,8 +47,10 @@
     </div>
 
     {{-- На телефоне блоки идут в одну колонку по order-*, на десктопе обёртки становятся колонками. --}}
-    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div class="contents lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+    {{-- Колонки — по ширине содержимого (@container): с открытой справа шторкой документов редактор в одну колонку. --}}
+    <div class="@container">
+    <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             @if ($bids->isNotEmpty())
             <x-ui.card :title="'Подтверждения'.($waiting->isNotEmpty() ? ' '.$waiting->count() : '')" class="order-1 {{ $waiting->isNotEmpty() ? 'box-urgent' : '' }}">
                 <div class="flex flex-col gap-2">
@@ -141,7 +145,7 @@
             </x-ui.card>
         </div>
 
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft next" class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             @csrf @method('put')
 
             <x-ui.card title="Транспортное средство" class="order-2">
@@ -158,12 +162,12 @@
 
         </form>
 
-        <x-ui.card title="Фотографии" class="order-3 lg:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media">
+        <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media">
             @include('admin.offers.photo-upload')
             @include('admin.offers.gallery')
         </x-ui.card>
 
-        <x-ui.card title="Документы" class="order-4 lg:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-collection-value="papers">
+        <x-ui.card title="Документы" class="order-4 @4xl:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-collection-value="papers">
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx" multiple hidden data-photos-target="input" data-action="change->photos#upload">
             <div class="mb-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Добавить документ</x-ui.button></div>
             <div hidden data-photos-target="progress" class="mb-3">
@@ -172,6 +176,7 @@
             </div>
             @include('admin.offers.papers')
         </x-ui.card>
+    </div>
     </div>
 
     {{-- Гараж: машина уходит из продажи менеджеру на ремонт — нужен человек и цена, поэтому своя шторка. --}}

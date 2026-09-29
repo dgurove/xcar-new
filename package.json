@@ -21,6 +21,7 @@
         "@hotwired/stimulus": "^3.2.2",
         "@hotwired/turbo": "^8.0.23",
         "@simplewebauthn/browser": "^13.3.0",
+        "pdfjs-dist": "^6.3.289",
         "photoswipe": "^5.4.4",
         "sortablejs": "^1.15.7",
         "trix": "^2.1.19",

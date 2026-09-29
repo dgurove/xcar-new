@@ -35,6 +35,7 @@ use App\Park\Vehicle;
 use App\Park\VehicleFields;
 use App\Park\VehicleState;
 use App\Park\Yard;
+use App\Support\Docs;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Phone;
@@ -133,7 +134,8 @@ class RequestController
         if ($candidate) {
             $v = fn (string $f) => $candidate->value($f);
             // Такую ТС уже завели (редкость: письма о заведённой цепочку не начинают) — в форме она показывается целиком.
-            $vehicle = $promote->existing($candidate)?->loadCount('threads')->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests']);
+            // «Это она» у строки дубля (twins) — `?car=`: письма идут к выбранной ТС.
+            $vehicle = ($vehicle ?? $promote->existing($candidate))?->loadCount('threads')->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests']);
             // Письма этой цепочки к ТС ещё не привязаны, но они вот, на экране: пилюля «Писем нет» тут соврала бы.
             $vehicle?->setAttribute('threads_count', $vehicle->threads_count + $candidate->threads()->count());
             [$brand, $model] = $candidate->cars();
@@ -162,15 +164,19 @@ class RequestController
 
         // Письмо-заявка — то, с которого цепочка началась: оно раскрыто в ленте, из него же берётся скан.
         $letter = $candidate?->message ?? $candidate?->messages->first(fn ($m) => ! $m->isOurs());
-        // Скан заявки страховой: у Альфы Москва в нём марка, модель, VIN, год, цвет и стоимость — рисует браузер.
-        $scans = $candidate === null ? collect() : $candidate->messages->reject(fn ($m) => $m->isOurs())
-            ->flatMap->attachments->filter(fn ($a) => ! $a->is_inline && $a->isPdf() && $a->isOnDisk())
-            ->sortByDesc(fn ($a) => $a->message_id === $letter?->id ? 1 : 0)->values();
+        // Документы для шторки: письмо-заявка, файлы писем вендора (сначала этого письма), фото. Скан заявки
+        // страховой (у Альфы Москва в нём марка, модель, VIN, год, цвет и стоимость) открывается сам.
+        $docs = [];
+        if ($candidate) {
+            $vendorLetters = $candidate->messages->reject(fn ($m) => $m->isOurs())->sortByDesc(fn ($m) => $m->id === $letter?->id ? 1 : 0);
+            ['docs' => $files, 'photos' => $photos] = Docs::fromLetters($vendorLetters, '/mail');
+            $docs = array_values(array_filter([$letter ? Docs::letter($letter, '/mail') : null, ...$files, Docs::photos($photos)]));
+        }
 
         return view('park.requests.create', [
             'type' => $type,
             'letter' => $letter,
-            'scans' => $scans,
+            'docs' => $docs,
             'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'vendors' => Vendor::onPark()->where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
@@ -184,6 +190,7 @@ class RequestController
 
     public function store(Request $request, CreateRequest $create, PromoteCandidate $promote, LinkThread $link, RegisterFromLetters $register, MarkSold $markSold)
     {
+        VehicleFields::clean($request);
         $data = $request->validate([
             'stages' => ['nullable', 'array'], 'stages.stored' => ['nullable', 'boolean'], 'stages.accepted_at' => ['nullable', 'date'],
             'stages.yard_id' => ['nullable', 'exists:park_yards,id'], 'stages.spot' => ['nullable', 'string', 'max:10'],
@@ -276,6 +283,7 @@ class RequestController
         if (! $request->user()->canManagePark() || ! $request->has('vehicle_form')) {
             return;
         }
+        VehicleFields::clean($request);
         $data = VehicleFields::only($request->validate(VehicleFields::rules()));
         app(UpdateVehicle::class)($vehicle, $data, $request->user());
         $vehicle->refresh();

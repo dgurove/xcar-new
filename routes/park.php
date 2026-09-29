@@ -94,6 +94,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     });
 
     Route::get('/reference/cars', [VehicleController::class, 'suggest']);
+    Route::get('/reference/twins', [VehicleController::class, 'twins']);
     Route::get('/reference/vin', [ReferenceController::class, 'vin']);
     Route::get('/reference/brands', [ReferenceController::class, 'brands']);
     Route::get('/reference/models', [ReferenceController::class, 'models']);

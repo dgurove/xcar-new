@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Support;
+
+use App\Mail\Attachment;
+use App\Mail\Extraction\AttachmentClassifier;
+use App\Mail\Message;
+use App\Media\MediaUrl;
+use Illuminate\Support\Collection;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
+
+/**
+ * Документы для шторки (x-ui.docs): вложения писем, файлы медиатеки, само письмо, фото. Каждый — ссылка
+ * `a[data-doc]` (x-ui.doc), тип решает, чем рисовать: pdf — pdf.js, image — картинкой, sheet и word — HTML
+ * с сервера (`?preview=1`, OfficePreview), file — карточкой со «Скачать», letter — тело письма, photos — сетка.
+ */
+final class Docs
+{
+    public static function type(?string $mime, ?string $name): string
+    {
+        $ext = strtolower(pathinfo((string) $name, PATHINFO_EXTENSION));
+
+        return match (true) {
+            $mime === 'application/pdf' || $ext === 'pdf' => 'pdf',
+            (str_starts_with((string) $mime, 'image/') && $mime !== 'image/svg+xml') || in_array($ext, ['jpg', 'jpeg', 'jfif', 'png', 'webp', 'gif', 'heic', 'heif'], true) => 'image',
+            in_array($ext, ['xlsx', 'xlsm'], true) => 'sheet',
+            $ext === 'docx' => 'word',
+            default => 'file',
+        };
+    }
+
+    /** Подпись вкладки: вид документа по имени (СТС, акт), иначе имя без расширения. */
+    public static function label(string $name): string
+    {
+        // Медиатека пишет пробелы в имени дефисами: «Согаз-заявка-чери» — показываем словами.
+        return AttachmentClassifier::kindLabel(AttachmentClassifier::kindOf($name)) ?? trim(str_replace(['_', '-'], ' ', pathinfo($name, PATHINFO_FILENAME)));
+    }
+
+    /** @return array<string, mixed> */
+    public static function attachment(Attachment $a, string $base): array
+    {
+        $type = self::type($a->mime, $a->filename);
+        $url = "{$base}/attachments/{$a->id}";
+
+        return ['url' => $url, 'type' => $type, 'name' => $a->filename, 'label' => self::label($a->filename), 'src' => $type === 'image' ? "{$url}?large=1" : null];
+    }
+
+    /** @return array<string, mixed> */
+    public static function media(Media $m): array
+    {
+        return ['url' => "/files/{$m->id}", 'type' => self::type($m->mime_type, $m->file_name), 'name' => $m->file_name,
+            'label' => AttachmentClassifier::kindLabel($m->getCustomProperty('kind')) ?? self::label($m->file_name)];
+    }
+
+    /** @return array<string, mixed> */
+    public static function letter(Message $m, string $base, ?string $thread = null): array
+    {
+        return ['url' => "{$base}/messages/{$m->id}/body", 'type' => 'letter', 'name' => (string) $m->subject, 'label' => 'Письмо', 'thread' => $thread];
+    }
+
+    /**
+     * Фото сеткой: вложения-картинки писем или кадры медиатеки.
+     *
+     * @param  Collection<int, Attachment|Media>  $items
+     * @return array<string, mixed>|null
+     */
+    public static function photos(Collection $items, string $base = '/mail'): ?array
+    {
+        if ($items->isEmpty()) {
+            return null;
+        }
+        $list = $items->map(fn ($p) => $p instanceof Media
+            ? ['t' => MediaUrl::for($p, 'w320'), 's' => MediaUrl::for($p)]
+            : ['t' => "{$base}/attachments/{$p->id}?thumb=1", 's' => "{$base}/attachments/{$p->id}?large=1"])->values();
+
+        return ['url' => '#photos', 'type' => 'photos', 'name' => 'Фото', 'label' => 'Фото '.$list->count(), 'photos' => $list->all()];
+    }
+
+    /**
+     * Документы писем без фото: вложения не встроенные и не картинки (картинки идут во «Фото»); файлы старых и
+     * замороженных писем на диске нет — шторка тянет их из ящика, как ссылка в ленте. Сканы-картинки с видом
+     * в имени (СТС, акт) — документы.
+     *
+     * @param  iterable<Message>  $messages
+     * @return array{docs: list<array<string, mixed>>, photos: Collection<int, Attachment>}
+     */
+    public static function fromLetters(iterable $messages, string $base): array
+    {
+        $docs = [];
+        $photos = collect();
+        foreach ($messages as $m) {
+            foreach ($m->files() as $a) {
+                if ($a->isImage() && AttachmentClassifier::kindOf($a->filename) === null) {
+                    $photos->push($a);
+                } else {
+                    $docs[] = self::attachment($a, $base);
+                }
+            }
+        }
+
+        return ['docs' => $docs, 'photos' => $photos];
+    }
+}

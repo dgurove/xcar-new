@@ -45,6 +45,7 @@ use App\Park\InspectionKind;
 use App\Park\PhotoStage;
 use App\Park\Vehicle;
 use App\Support\Nav;
+use App\Support\OfficePreview;
 use App\Vendors\ContactRole;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
@@ -526,6 +527,9 @@ class MailController
         abort_if($file === null, 404, 'Файла нет: письмо удалено из ящика');
         $mime = $attachment->mime ?: 'application/octet-stream';
         $name = $attachment->filename;
+        if ($request->boolean('preview')) {
+            return OfficePreview::response($file, $name);
+        }
         // HEIC с айфона браузер не показывает — отдаём JPEG (он же — исходник для миниатюры и просмотра).
         if ($attachment->isHeic()) {
             $jpeg = Storage::disk('cache')->path("mail/jpeg-{$attachment->id}.jpg");

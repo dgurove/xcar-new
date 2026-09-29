@@ -13,11 +13,13 @@ use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Thread;
+use App\Support\Docs;
 use App\Support\Money;
 use App\Users\User;
 use App\Vendors\Tariff;
 use App\Vendors\TariffService;
 use App\Vendors\Vendor;
+use Illuminate\Support\Collection;
 
 /**
  * Дело ТС одной страницей: всё, что нужно экрану `/cars/{id}` — открытая заявка (текущий этап и его
@@ -30,6 +32,27 @@ final class CaseView
 
     /** Что начисляют руками: хранение считается само, негабарит входит в суточную ставку. */
     private const CHARGES = [ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other];
+
+    /**
+     * Шторка документов дела: письмо вендора, документы ТС, файлы писем, которых среди них нет, фото.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function docs(Vehicle $vehicle, Collection $threadIds): array
+    {
+        $letters = $threadIds->isEmpty() ? collect() : Message::with(['attachments', 'account'])->whereIn('thread_id', $threadIds)->orderBy('date_at')->get()->reject(fn (Message $m) => $m->isOurs());
+        $papers = $vehicle->papers();
+        $names = $papers->pluck('file_name')->map(fn ($n) => mb_strtolower($n))->all();
+        ['docs' => $files] = Docs::fromLetters($letters, '/mail');
+        $photos = $vehicle->photos();
+
+        return array_values(array_filter([
+            $letters->isNotEmpty() ? Docs::letter($letters->first(), '/mail') : null,
+            ...$papers->map(fn ($m) => Docs::media($m))->all(),
+            ...array_filter($files, fn ($d) => ! in_array(mb_strtolower($d['name']), $names, true)),
+            $photos->isNotEmpty() ? Docs::photos($photos) : null,
+        ]));
+    }
 
     public static function for(Vehicle $vehicle, User $user, ?int $requestId = null, bool $callAgain = false): array
     {
@@ -62,6 +85,7 @@ final class CaseView
             'threads' => Thread::where('vehicle_id', $vehicle->id)->park()->orderByDesc('last_message_at')->get(['id', 'subject']),
             // Блок «Письма» над таймлайном: последнее письмо словами, этапы — из цепочки кандидата этой ТС.
             'lastLetter' => $ids->isEmpty() ? null : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),
+            'docs' => self::docs($vehicle, $ids),
             'candidate' => $threads->isEmpty() ? null : Candidate::where('vehicle_id', $vehicle->id)->latest('id')->first(),
             'yards' => $yards->pluck('name', 'id'),
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),

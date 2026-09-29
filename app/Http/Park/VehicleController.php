@@ -186,6 +186,7 @@ class VehicleController
     public function update(Request $request, Vehicle $vehicle, UpdateVehicle $update, LinkThread $link, PromoteCandidate $promote)
     {
         // Поля тождества (VehicleFields) шлёт форма дела; договор — шторка «Договор». Одна дверь на обе.
+        VehicleFields::clean($request);
         $data = $request->validate(VehicleFields::rules(identity: $request->hasAny(['brand_id', 'model_id', 'ref', 'vin', 'plate'])) + [
             'contract_kind' => ['nullable', Rule::in(['storage', 'commission'])], 'contract_no' => ['nullable', 'string', 'max:60'], 'contract_at' => ['nullable', 'date'], 'assigned_price' => ['nullable', 'integer', 'min:0'],
             'pts' => ['nullable', 'string', 'max:40'], 'sts' => ['nullable', 'string', 'max:40'], 'owner_party_id' => ['nullable', 'exists:billing_parties,id'], 'storage_rate' => ['nullable', 'numeric', 'min:0'], 'storage_rate_note' => ['nullable', 'string', 'max:120'], 'billing_cadence' => ['nullable', Rule::enum(Cadence::class)],
@@ -405,6 +406,7 @@ class VehicleController
     {
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
         if ($request->has('vehicle_form')) {
+            VehicleFields::clean($request);
             app(UpdateVehicle::class)($vehicle, VehicleFields::only($request->validate(VehicleFields::rules())), $request->user());
         }
         $setYard($vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);
@@ -448,6 +450,25 @@ class VehicleController
             ->latest()->limit(20)->get();
 
         return response()->json($vehicles->map(fn ($v) => ['id' => $v->id, 'label' => $v->titleWithYear(), 'hint' => implode(', ', array_filter([$v->ref, $v->plate, $v->vin]))]));
+    }
+
+    /**
+     * Такая ТС уже есть? Номер убытка, полный VIN или госномер из формы (twins_controller) — живые ТС строками,
+     * кроме этой (`except`). На разборе письма у строки «Это она»: форма открывается на найденную ТС.
+     */
+    public function twins(Request $request)
+    {
+        $ref = mb_strlen((string) $request->query('ref')) >= 4 ? Vehicle::keyFor((string) $request->query('ref')) : '';
+        $vin = strtoupper(trim((string) $request->query('vin')));
+        $plate = mb_strlen((string) $request->query('plate')) >= 6 ? Candidate::plateKey($request->query('plate')) : null;
+        $vin = strlen($vin) === 17 ? $vin : '';
+        $vehicles = $ref === '' && $vin === '' && ! $plate ? collect() : Vehicle::with(['brand', 'model', 'yard', 'media'])
+            ->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])
+            ->when($request->query('except'), fn ($q, $id) => $q->whereKeyNot((int) $id))
+            ->where(fn ($q) => $q->when($ref !== '', fn ($w) => $w->orWhere('ref_key', $ref))->when($vin !== '', fn ($w) => $w->orWhere('vin', $vin))->when($plate, fn ($w) => $w->orWhere('plate', $plate)))
+            ->latest()->limit(3)->get();
+
+        return view('park.vehicles.twins', ['vehicles' => $vehicles, 'candidate' => (int) $request->query('candidate') ?: null]);
     }
 
     /** Карточки кадров заново; `$stage` — та, из которой пришёл запрос: только ей возвращается кнопка камеры. */

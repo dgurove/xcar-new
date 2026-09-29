@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Cars\Category;
+use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
@@ -31,6 +32,15 @@ final class VehicleFields
             'category' => ['nullable', Rule::enum(Category::class)], 'color' => ['nullable', 'string', 'max:32'], 'policy_no' => ['nullable', 'string', 'max:60'],
             'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'integer', 'min:0'],
         ];
+    }
+
+    /** Заявленная стоимость приходит разрядами («1 450 000», digits_controller) — до проверки остаются цифры. */
+    public static function clean(Request $request): void
+    {
+        if ($request->has('value')) {
+            $digits = preg_replace('/\D+/', '', (string) $request->input('value'));
+            $request->merge(['value' => $digits === '' ? null : $digits]);
+        }
     }
 
     /** Только поля ТС из проверенных данных формы — этап заявки шлёт их вместе со своими. */

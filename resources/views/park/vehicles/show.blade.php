@@ -47,11 +47,14 @@
                 </form>
             </x-ui.sheet>
         @endif
+        <x-ui.docs-pill :docs="$docs" class="!min-h-0 !py-1 text-xs"/>
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif
 
-    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    {{-- Колонки — по ширине содержимого (@container): с открытой справа шторкой документов дело в одну колонку. --}}
+    <div class="@container">
+    <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
     <div class="flex min-w-0 flex-col gap-4">
         @php
             $submit = $cur?->plate['kind'] === 'submit' ? $cur : null;
@@ -67,7 +70,7 @@
         @endphp
         {{-- Одна форма на поля ТС и текущий шаг: кнопка в плашке сохраняет всё. Внутри сделанных шагов форм нет. --}}
         @if ($submit)
-            <form method="post" action="{{ $action }}" id="act-form" class="flex flex-col gap-4" data-controller="vin draft reveal" data-reveal-label-selector-value="#act-submit" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
+            <form method="post" action="{{ $action }}" id="act-form" class="flex flex-col gap-4" data-controller="vin draft next reveal" data-reveal-label-selector-value="#act-submit" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
                 @csrf
                 @if ($canManage)
                     <input type="hidden" name="vehicle_form" value="1">
@@ -78,7 +81,7 @@
             </form>
         @else
             @if ($canManage && ! $state->isFinal())
-                <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin draft">
+                <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin draft next">
                     @csrf @method('put')
                     @include('park.vehicles.fields-block', ['save' => true])
                 </form>
@@ -228,6 +231,7 @@
                 @endforeach
             </div>
         </x-ui.card>
+    </div>
     </div>
     </div>
 

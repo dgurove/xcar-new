@@ -1,6 +1,6 @@
 {{-- Письмо в ленте: свёрнуто — строка «кто, заголовок, скрепка, когда» (заголовок — этап, смысл или первые свои слова,
      непрочитанное полужирным); раскрыто — свои слова письма без цитат и подписи, вложения (фото лентой, документы
-     строкой), «Исходное письмо» грузит тело в iframe только по раскрытию, «Ответить на это» — редактор
+     строкой, открываются в шторке документов), «Исходное письмо» грузит тело в iframe только по раскрытию, «Ответить на это» — редактор
      во фрейме под письмом. kind: stage (этап, лаймовая точка), ask (без нашего ответа, оранжевая), ours (наше). --}}
 {{-- continuation — «ч.2» того же письма (те же слова, другие файлы): текст не повторяется, только вложения. --}}
 @props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false])
@@ -54,7 +54,7 @@
             @if ($documents->isNotEmpty())
                 <div class="mt-3 flex flex-wrap gap-2">
                     @foreach ($documents as $file)
-                        <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3">
+                        <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}">
                             <x-ui.file-icon :name="$file->filename" :mime="$file->mime"/>
                             <span class="min-w-0"><span class="block truncate text-sm">{{ $file->filename }}</span><span class="text-xs text-ink-muted">{{ $file->humanSize() }}</span></span>
                         </a>

@@ -4,6 +4,7 @@ namespace App\Http\Site;
 
 use App\Offers\Offer;
 use App\Park\Vehicle;
+use App\Support\OfficePreview;
 use App\Users\Section;
 use App\Users\User;
 use App\Workflow\Requirement;
@@ -20,6 +21,9 @@ final class FileController
     public function show(Request $request, Media $media)
     {
         abort_unless($media->disk === 'private' && $this->allowed($request->user(), $media), 404);
+        if ($request->boolean('preview')) {
+            return OfficePreview::response($media->getPath(), $media->file_name);
+        }
         $inline = (str_starts_with((string) $media->mime_type, 'image/') && $media->mime_type !== 'image/svg+xml') || $media->mime_type === 'application/pdf';
 
         return response()->file($media->getPath(), [

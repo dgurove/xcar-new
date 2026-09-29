@@ -1,5 +1,5 @@
-{{-- Разбор письма (`?candidate=`): слева письма цепочки лентой и скан заявки страховой, справа поля дела — читаешь
-     и тут же переписываешь со скана, не уходя со страницы. Заголовок — сама ТС, под ним теги, как в почте;
+{{-- Разбор письма (`?candidate=`): поля дела, над ними документы письма — скан заявки страховой открывается
+     шторкой сам, читаешь и тут же переписываешь, не уходя со страницы; цепочка писем лентой рядом (ниже на телефоне). Заголовок — сама ТС, под ним теги, как в почте;
      своими словами письмо не пересказывается. Кнопка называет исход: заявка на приём, стоящей, и выдать,
      привязать письма к уже заведённой ТС.
      Без кандидата это прежняя ручная «Новая заявка» одной колонкой; тип «приём» / «эвакуация» решает «Доставка». --}}
@@ -36,20 +36,21 @@
         </div>
     @endif
     @if ($errors->any())<p class="field-error mb-4">{{ $errors->first() }}</p>@endif
-    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_28rem]">
-        @if ($letters)
-            <div class="flex min-w-0 flex-col gap-4">
-                <x-ui.card title="Письма" :count="$messages->count()">
-                    <x-mail.chain :messages="$messages" :candidate="$candidate" :focus="false" fold reply/>
-                </x-ui.card>
-                @if ($scans->isNotEmpty())
-                    @include('park.requests.scan-card', ['scans' => $scans])
-                @endif
+    {{-- Форма первой: на телефоне поля сразу, документы письма — чипами над ними, открываются шторкой
+         (x-ui.docs, скан заявки — сам), цепочка писем ниже. Две колонки — по ширине содержимого (@container):
+         с открытой справа шторкой документов места на них нет, и форма встаёт над письмами. --}}
+    <div class="@container">
+    <div class="grid items-start gap-4 {{ $letters ? '@4xl:grid-cols-[minmax(0,1fr)_28rem]' : '' }}">
+        <div class="flex min-w-0 flex-col gap-4 {{ $letters ? '@4xl:sticky @4xl:top-24 @4xl:col-start-2 @4xl:row-start-1 @4xl:max-h-[calc(100dvh-8rem)] @4xl:overflow-y-auto @4xl:-mr-2 @4xl:pr-2' : '' }}">
+        @if ($docs)
+            @php $auto = collect($docs)->firstWhere('type', 'pdf'); @endphp
+            <div class="pills">
+                @foreach ($docs as $doc)
+                    <x-ui.doc :doc="$doc" :auto="$doc === $auto" class="pill pill-plain min-w-0 max-w-[14rem] gap-1.5"><x-ui.icon :name="match ($doc['type']) { 'letter' => 'mail', 'photos' => 'photo', default => 'file' }" class="size-4 shrink-0"/><span class="truncate">{{ $doc['label'] }}</span></x-ui.doc>
+                @endforeach
             </div>
         @endif
-        {{-- Правая колонка липнет, пока читаешь письмо и скан слева; кнопка заканчивает то, что заполняешь, плашки тут нет. --}}
-        <div class="flex min-w-0 flex-col gap-4 {{ $letters ? 'lg:sticky lg:top-24 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:-mr-2 lg:pr-2' : '' }}">
-        <form method="post" action="/requests" id="request-form" data-controller="vin draft" class="flex min-w-0 flex-col gap-4">
+        <form method="post" action="/requests" id="request-form" data-controller="vin draft next" class="flex min-w-0 flex-col gap-4">
             @csrf
             <input type="hidden" name="type" value="{{ $type->value }}">
             @if ($candidate)
@@ -67,7 +68,7 @@
                 <input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}">
             @elseif (in_array($type, [RequestType::Intake, RequestType::Tow], true))
                 <x-ui.card title="Транспортное средство">
-                    <x-park.vehicle-fields :values="$p" :brand="$p['brand'] ?? null" :model="$p['model'] ?? null" :vendors="$vendors" :categories="$categories" :cols="$letters ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'"/>
+                    <x-park.vehicle-fields :values="$p" :brand="$p['brand'] ?? null" :model="$p['model'] ?? null" :vendors="$vendors" :categories="$categories" :cols="$letters ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'" :candidate="$candidate?->id"/>
                 </x-ui.card>
             @else
                 <x-ui.card title="Транспортное средство">
@@ -119,7 +120,7 @@
                         @endif
                         <x-ui.field name="planned_at" :label="$letters ? 'Когда привезут' : 'Когда'" type="datetime-local" :value="$val('planned_at')"/>
                         @if ($type === RequestType::Tow || $letters)
-                            <x-ui.field name="from_address" label="Откуда" :value="$val('from_address') ?? $vehicle?->offer?->inspection_address" span="col-span-2"/>
+                            <x-ui.field name="from_address" label="Откуда" :value="$val('from_address') ?? $vehicle?->offer?->inspection_address" span="col-span-full sm:col-span-2"/>
                         @endif
                         @if ($vehicle || !in_array($type, [RequestType::Intake, RequestType::Tow], true))
                             <x-ui.field name="contact_name" :label="$type === RequestType::Tow ? 'Страхователь' : 'Кто сдаёт'" :value="$val('contact_name') ?? $vehicle?->contact_name"/>
@@ -137,6 +138,14 @@
             </div>
         @endif
         </div>
+        @if ($letters)
+            <div class="flex min-w-0 flex-col gap-4 @4xl:col-start-1 @4xl:row-start-1">
+                <x-ui.card title="Письма" :count="$messages->count()">
+                    <x-mail.chain :messages="$messages" :candidate="$candidate" :focus="false" fold reply/>
+                </x-ui.card>
+            </div>
+        @endif
+    </div>
     </div>
     @unless ($letters)
         <x-ui.action-bar><x-ui.button form="request-form" class="min-w-0 flex-1">{{ $act }}</x-ui.button></x-ui.action-bar>

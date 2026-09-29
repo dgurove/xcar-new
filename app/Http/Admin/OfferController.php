@@ -6,6 +6,7 @@ use App\Chats\Chat;
 use App\Chats\Message as ChatMessage;
 use App\Garage\Actions\TakeToGarage;
 use App\Mail\Jobs\ImportThreadFiles;
+use App\Mail\Message;
 use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
@@ -16,11 +17,13 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Offers\Tag;
+use App\Support\Docs;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
 
 class OfferController
@@ -104,9 +107,12 @@ class OfferController
             app(WarmPhotos::class)($offer);
         }
 
+        $threads = Thread::where('offer_id', $offer->id)->get();
+
         return view('admin.offers.edit', [
             'offer' => $offer,
-            'threads' => Thread::where('offer_id', $offer->id)->get(),
+            'threads' => $threads,
+            'docs' => $this->docs($offer, $threads),
             'chats' => Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'import' => ImportThreadFiles::progress($offer->id),
             'stages' => $offer->vendor ? $offer->vendor->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
@@ -115,6 +121,45 @@ class OfferController
             'offerManagers' => $offer->managers()->pluck('users.id')->all(),
             'showingSummary' => Showing::summary($offer),
         ]);
+    }
+
+    /**
+     * Шторка документов редактора: письмо вендора, документы предложения, файлы писем, которых среди них нет
+     * (пока идёт импорт, документов ещё нет), фото.
+     *
+     * @param  Collection<int, Thread>  $threads
+     * @return list<array<string, mixed>>
+     */
+    private function docs(Offer $offer, Collection $threads): array
+    {
+        $letters = Message::with(['attachments', 'account'])->whereIn('thread_id', $threads->pluck('id'))->orderBy('date_at')->get()->reject(fn (Message $m) => $m->isOurs());
+        $letter = $letters->first();
+        $thread = match (true) {
+            $threads->count() === 1 => "/work/mail/{$threads->first()->id}",
+            $threads->isNotEmpty() => '/work/mail?preset=linked&q='.urlencode($offer->claim_ref ?: ''),
+            default => null,
+        };
+        $papers = $offer->papers();
+        $names = $papers->pluck('file_name')->map(fn ($n) => mb_strtolower($n))->all();
+        ['docs' => $files, 'photos' => $pictures] = Docs::fromLetters($letters, '/work/mail');
+        $photos = $offer->photos();
+
+        return array_values(array_filter([
+            $letter ? Docs::letter($letter, '/work/mail', $thread) : null,
+            ...$papers->map(fn ($m) => Docs::media($m))->all(),
+            ...array_filter($files, fn ($d) => ! in_array(mb_strtolower($d['name']), $names, true)),
+            $photos->isNotEmpty() ? Docs::photos($photos) : Docs::photos($pictures, '/work/mail'),
+        ]));
+    }
+
+    /** Другие предложения с тем же VIN (twins_controller под полем VIN): второе на ту же машину видно до сохранения. */
+    public function twins(Request $request)
+    {
+        $vin = strtoupper(trim((string) $request->query('vin')));
+        $offers = strlen($vin) !== 17 ? collect() : Offer::with(['brand', 'model'])->where('vin', $vin)
+            ->when($request->query('except'), fn ($q, $id) => $q->whereKeyNot((int) $id))->latest('id')->limit(3)->get();
+
+        return view('admin.offers.twins', ['offers' => $offers]);
     }
 
     /** Окошко строки таблицы: фото, метки, цена, действия, подтверждения, интерес; ?gallery=1 — строка списка галереи. */
