@@ -122,6 +122,8 @@ class OfferController
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
             'audienceOptions' => AudienceRules::options(),
             'showingSummary' => Showing::summary($offer),
+            // Черновик только что заведён из писем и ещё ни разу не сохранён: внизу «Отменить» и «Не заявка».
+            'fromMail' => $offer->state === OfferState::Draft && session()->has("mail-draft.{$offer->id}"),
         ]);
     }
 
@@ -180,12 +182,19 @@ class OfferController
         ]);
     }
 
-    public function update(OfferRequest $request, Offer $offer, UpdateOffer $update)
+    /** «Сохранить»; у черновика «Опубликовать» — та же форма с `then=open`: сначала поля, потом в продажу. */
+    public function update(OfferRequest $request, Offer $offer, UpdateOffer $update, ChangeOfferState $change)
     {
         $update($offer, $request->payload(), $request->user());
+        session()->forget("mail-draft.{$offer->id}");
         // Автосохранение окошка строки идёт fetch-ем: редирект на свежую строку, fetch пройдёт по нему сам.
         if ($request->expectsJson()) {
             return redirect("/offers/{$offer->number}/row");
+        }
+        if ($request->input('then') === 'open' && $offer->state === OfferState::Draft) {
+            $change($offer->refresh(), OfferState::Open, $request->user());
+
+            return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number);
         }
 
         return redirect("/offers/{$offer->number}")->with('toast', 'Сохранено');

@@ -302,10 +302,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .field-input:focus-visible { outline-offset: 0; }
   .field-error { @apply text-sm text-danger; }
   .field-invalid .field-input { @apply ring-2 ring-danger/60; }
-  /* Новое письмо говорит иначе (x-ui.take): оранжевая рамка у поля, его значение — чипом под ним. */
-  .field-changed .field-input { @apply ring-1 ring-urgent/60; }
-  .field-take { @apply inline-flex max-w-full items-center gap-1.5 self-start truncate rounded-full bg-urgent-soft px-2.5 py-1 text-sm text-urgent; }
-  @media (hover: hover) { .field-take:hover { @apply brightness-110; } }
   /* Подпись пальцем: холст того же тона, что поле; линия — цветом текста. */
   .signature-pad { @apply mt-1 block h-36 w-full touch-none rounded-(--radius-m) bg-surface-3 text-ink; }
   .signature.is-signed .signature-pad { @apply ring-2 ring-accent/50; }

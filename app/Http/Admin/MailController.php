@@ -38,7 +38,9 @@ use App\Mail\Thread;
 use App\Media\PhotoIngest;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
+use App\Offers\OfferState;
 use App\Park\Actions\MarkDoc;
+use App\Park\Actions\UnwindVehicle;
 use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\Documents\ActPdf;
@@ -50,9 +52,11 @@ use App\Support\Docs;
 use App\Support\Nav;
 use App\Support\OfficePreview;
 use App\Vendors\ContactRole;
+use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -246,8 +250,11 @@ class MailController
         if ($this->scope === Scope::Park) {
             return redirect('/requests/new?candidate='.$candidate->id);
         }
+        if ($candidate->state === CandidateState::Promoted && $candidate->offer) {
+            return redirect("/offers/{$candidate->offer->number}");
+        }
 
-        return redirect("/offers/from-mail/{$candidate->id}/new");
+        return $this->draft($candidate, $request->user());
     }
 
     /**
@@ -295,65 +302,60 @@ class MailController
     }
 
     /**
-     * Проверка перед «Завести» (CRM, как разбор письма на парковке): поля черновика из писем (`PromoteCandidate::data` —
-     * разбор, документы во вложениях, VIN) можно поправить, письма цепочки — лентой рядом, документы — шторкой.
-     * Если новое письмо цепочки говорит иначе, чем первое (`proposed`), его значение стоит чипом под полем.
+     * «Завести» у цепочки в CRM: черновик заводится сразу (`PromoteCandidate` — поля из писем, документов во вложениях
+     * и VIN) и открывается обычный редактор. До первого «Сохранить» он помнит, что пришёл из писем (сессия
+     * `mail-draft.{id}`): внизу «Отменить» и «Не заявка» вместо «Опубликовать». Предложение с тем же убытком или VIN
+     * уже есть — письма к нему, второго черновика нет.
      */
-    public function review(Candidate $candidate, PromoteCandidate $promote)
+    public function promote(Request $request, Candidate $candidate)
     {
-        abort_if($candidate->state === CandidateState::Promoted || $candidate->scope !== Scope::Offers || $this->scope !== Scope::Offers, 404);
-        $candidate->load(['messages.attachments', 'messages.account', 'messages.addresses', 'messages.author', 'vendor']);
-        $letters = $candidate->messages->filter(fn (Message $m) => $m->direction === Direction::In)->sortBy('date_at')->values();
-        $letter = $letters->first(fn (Message $m) => ! $m->isOurs() || $m->isForwardedByStaff()) ?? $letters->first();
-        ['docs' => $files, 'photos' => $photos] = Docs::fromLetters($letters, $this->base);
-        $threads = $candidate->threads();
-        $thread = $threads->count() === 1 ? "{$this->base}/{$threads->first()->id}" : null;
+        abort_if($candidate->state === CandidateState::Promoted || $candidate->scope !== $this->scope || $this->scope !== Scope::Offers, 404);
 
-        return view('admin.offers.from-mail', [
-            'candidate' => $candidate,
-            'letter' => $letter,
-            'messages' => $candidate->messages,
-            'waits' => $threads->contains(fn (Thread $t) => $t->needs_reply_at !== null),
-            'base' => $this->base,
-            'offer' => new Offer($promote->data($candidate)),
-            'existing' => $promote->existing($candidate),
-            'docs' => array_values(array_filter([$letter ? Docs::letter($letter, $this->base, $thread) : null, ...$files, Docs::photos($photos, $this->base)])),
-            'take' => $this->proposed($candidate),
-            'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
-        ]);
+        return $this->draft($candidate, $request->user());
+    }
+
+    private function draft(Candidate $candidate, User $by)
+    {
+        $promote = app(PromoteCandidate::class);
+        $existing = $promote->existing($candidate);
+        $offer = $promote($candidate, $by);
+        if ($existing) {
+            return redirect("/offers/{$offer->number}")->with('toast', 'Письма привязаны к предложению');
+        }
+        session()->put("mail-draft.{$offer->id}", $candidate->id);
+
+        return redirect("/offers/{$offer->number}");
     }
 
     /**
-     * Где новое письмо цепочки говорит иначе, чем свёртка: поле формы → [как показать, что подставить].
-     *
-     * @return array<string, array{0: string, 1: mixed}>
+     * «Отменить» и «Не заявка» у черновика из писем до первого сохранения: черновика не было — он удаляется вместе
+     * с перенесёнными фото и заведённым с ним вывозом, письма отвязываются и цепочка снова ждёт в «Из писем»;
+     * «Не заявка» ещё и уводит её в архив.
      */
-    private function proposed(Candidate $candidate): array
+    public function dropDraft(Request $request, Offer $offer, ArchiveThread $archive, FreezeMessages $freeze, ChainBuilder $chains)
     {
-        $out = [];
-        foreach (['year', 'mileage', 'vin', 'floor_price', 'engine_volume', 'engine_power', 'color', 'location'] as $field) {
-            $new = $candidate->proposed[$field]['value'] ?? null;
-            if ($new === null || (string) $new === (string) $candidate->value($field)) {
-                continue;
+        $candidate = Candidate::where('scope', Scope::Offers)->where('offer_id', $offer->id)->where('state', CandidateState::Promoted)->first();
+        abort_if($this->scope !== Scope::Offers || ! $candidate || $offer->state !== OfferState::Draft || $offer->published_at !== null, 404);
+        DB::transaction(function () use ($offer, $candidate, $request) {
+            // Вывоз с маршрутом вендора завёл вместе с черновиком ТС «ожидается» и заявку на парковке — их тоже не было.
+            foreach (Vehicle::where('offer_id', $offer->id)->where('created_at', '>=', $offer->created_at)->get() as $vehicle) {
+                if (UnwindVehicle::allowed($vehicle)) {
+                    app(UnwindVehicle::class)($vehicle, $request->user());
+                }
             }
-            $out[$field === 'location' ? 'inspection_address' : $field] = match ($field) {
-                'floor_price', 'mileage' => [\App\Support\Money::nums((int) $new), $new],
-                'engine_volume' => [(string) \App\Support\Liters::format((int) $new), \App\Support\Liters::format((int) $new)],
-                default => [(string) $new, $new],
-            };
+            Thread::where('offer_id', $offer->id)->update(['offer_id' => null]);
+            $candidate->update(['state' => CandidateState::New, 'offer_id' => null]);
+            $offer->delete();
+        });
+        session()->forget("mail-draft.{$offer->id}");
+        Nav::forgetStaffCounts();
+        if ($request->boolean('decline')) {
+            $this->toggleChain($candidate->refresh(), false, $archive, $freeze, $chains);
+
+            return redirect($this->queue)->with('toast', 'В архиве');
         }
 
-        return $out;
-    }
-
-    /** «Завести» у цепочки в CRM: с формы проверки — с её полями (на стоянке вместо этого открывается разбор письма). */
-    public function promote(Request $request, Candidate $candidate)
-    {
-        abort_if($candidate->state === CandidateState::Promoted || $candidate->scope !== $this->scope, 404);
-        $fields = $request->has('from_review') ? app(OfferRequest::class)->validated() : [];
-        $offer = app(PromoteCandidate::class)($candidate, $request->user(), $fields);
-
-        return redirect("/offers/{$offer->number}")->with('toast', $offer->wasRecentlyCreated ? 'Черновик заведён, фото подтягиваются' : 'Письма привязаны к предложению');
+        return redirect($this->queue);
     }
 
     /** «Не заявка» ↔ «Снова ждёт»: решение человека, свёртка его не трогает. */

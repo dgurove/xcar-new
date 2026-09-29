@@ -187,9 +187,25 @@
         </div>
     @endif
 
+    {{-- Черновик из писем до первого сохранения: «Отменить» (черновика не было, цепочка снова в «Из писем»), «Не заявка»
+         (и цепочку в архив), «Сохранить». После сохранения у черновика — «Опубликовать» той же формой (`then=open`):
+         поля сохраняются, потом публикация; из «···» она уходит, чтобы не стоять дважды. --}}
+    @php
+        $draft = $offer->state === OfferState::Draft;
+        if ($draft) $transitions = $transitions->except(OfferState::Open->value);
+    @endphp
     <x-ui.action-bar data-controller="sheet">
-        <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
-        @if ($transitions->isNotEmpty())
+        @if ($fromMail)
+            <form method="post" action="/offers/{{ $n }}/drop" class="contents">@csrf<x-ui.button variant="ghost" class="shrink-0">Отменить</x-ui.button></form>
+            <form method="post" action="/offers/{{ $n }}/drop" class="contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<input type="hidden" name="decline" value="1"><x-ui.button variant="ghost" class="shrink-0">Не заявка</x-ui.button></form>
+            <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
+        @elseif ($draft)
+            <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>
+            <x-ui.button form="offer-form" name="then" value="open" class="min-w-0 flex-1">Опубликовать</x-ui.button>
+        @else
+            <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
+        @endif
+        @if ($transitions->isNotEmpty() && ! $fromMail)
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
             <x-ui.sheet id="offer-actions" title="Предложение № {{ $n }}">
                 <div class="flex flex-col gap-2">

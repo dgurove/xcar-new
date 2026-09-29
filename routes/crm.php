@@ -40,7 +40,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     // Из писем: та же почта с вшитой выборкой «надо завести» — раньше `/offers/{offer}`, иначе from-mail примут за номер.
     Route::get('/offers/from-mail', [MailController::class, 'fromMail']);
     Route::get('/offers/twins', [OfferController::class, 'twins']);
-    Route::get('/offers/from-mail/{candidate}/new', [MailController::class, 'review']);
     Route::post('/offers/from-mail/{candidate}/create', [MailController::class, 'promote']);
     Route::post('/offers/from-mail/{candidate}/decline', [MailController::class, 'decline']);
     Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
@@ -55,6 +54,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
     Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
     Route::post('/offers/{offer}/publish', [OfferController::class, 'publish']);
+    // Черновик из писем до первого сохранения: «Отменить» и «Не заявка» (decline) — черновика не было, письма снова ждут.
+    Route::post('/offers/{offer}/drop', [MailController::class, 'dropDraft']);
     Route::post('/offers/{offer}/garage', [OfferController::class, 'garage']);
     Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
     Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);

@@ -27,10 +27,7 @@ final class PromoteCandidate
 {
     public function __construct(private CreateOffer $create, private UpdateOffer $update, private LinkThread $link) {}
 
-    /**
-     * @param  array<string, mixed>  $fields  поля формы проверки (`/offers/from-mail/{c}/new`) — накрывают разобранное из писем
-     */
-    public function __invoke(Candidate $candidate, User $by, array $fields = []): Offer
+    public function __invoke(Candidate $candidate, User $by): Offer
     {
         if ($offer = $this->existing($candidate)) {
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
@@ -38,20 +35,22 @@ final class PromoteCandidate
 
             return $offer;
         }
-        $offer = DB::transaction(function () use ($candidate, $by, $fields) {
+        $offer = DB::transaction(function () use ($candidate, $by) {
             $offer = ($this->create)($by);
-            ($this->update)($offer, array_filter(array_merge($this->data($candidate), $fields), fn ($x) => $x !== null && $x !== ''), $by);
+            ($this->update)($offer, $this->data($candidate), $by);
             $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
-            $this->linkAll($candidate, $offer);
 
             return $offer;
         });
+        // Ветки — после транзакции: импорт файлов берёт уникальную блокировку в базе, и если прежний импорт этой ветки
+        // ещё в очереди (черновик завели, отменили и завели снова), неудачная вставка блокировки обрывала транзакцию.
+        $this->linkAll($candidate, $offer);
 
         return $offer;
     }
 
     /**
-     * Черновик из свёртки писем: одно место на «Завести» и на форму проверки перед ним.
+     * Черновик из свёртки писем.
      * Марка — только из справочника (разбор уже сверил её со словарём, новой марки из письма не заводим).
      * Чего письмо не сказало — из VIN (`VinAutofill`: кузов, КПП, привод, топливо, объём, мощность; год — только
      * у марок, которые его кодируют): письмо важнее. Город — из справочника, срок страховой — из «ответить до».
