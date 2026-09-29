@@ -8,7 +8,7 @@
     use App\Offers\{OfferState, BidState, InterestState};
     $n = $offer->number;
     $gallery = $offer->isGallery();
-    $price = \App\Offers\PriceView::for($offer, auth()->user());
+    $price = \App\Offers\PriceView::for($offer, auth()->user(), crm: true);
     $left = $gallery ? null : $offer->secondsLeft();
     // «В гараже» ставится на странице предложения: там выбирают менеджера и цену, одной кнопкой не обойтись.
     // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.

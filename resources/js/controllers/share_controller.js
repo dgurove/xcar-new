@@ -13,8 +13,8 @@ import { openSheet, closeSheet } from '../sheet';
 // сбой — тостом и на сервер (/share/error): иначе с чужого телефона не видно ничего.
 const BROKEN = 'share:open';
 
-const PRICES = ['floor_price', 'publish_price', 'price'];
-const FROM = ['floor_price', 'publish_price'];
+const PRICES = ['publish_price', 'price'];
+const FROM = ['publish_price'];
 
 export default class extends Controller {
     static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label', 'all'];

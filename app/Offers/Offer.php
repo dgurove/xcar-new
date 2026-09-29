@@ -338,9 +338,18 @@ class Offer extends Model implements HasMedia
         return $vendor?->kind === Kind::Leasing ? ($this->claim_ref ?: null) : null;
     }
 
+    /**
+     * Заявленная — единственная цена «от», которую видит xcar: вписанная руками, иначе закупочная, округлённая вверх
+     * до тысячи (967 619 → 968 000). Сама закупочная на сайте не бывает нигде и ни у кого, даже в тексте «Поделиться».
+     */
     public function declaredPrice(): ?int
     {
-        return $this->publish_price ?? $this->floor_price;
+        return $this->publish_price ?? self::declaredFrom($this->floor_price);
+    }
+
+    public static function declaredFrom(?int $floor): ?int
+    {
+        return $floor ? (int) (ceil($floor / 1000) * 1000) : null;
     }
 
     /** Нижняя граница подтверждения: заданная руками или по доле между заявленной и продажной. */

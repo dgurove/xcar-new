@@ -15,7 +15,7 @@
         'Повреждения' => $offer->damage_zones ? implode(', ', array_map(fn ($z) => \App\Cars\DamageZone::labelOf($z), $offer->damage_zones)) : null,
         'На ходу' => $offer->is_runnable === null ? null : ($offer->is_runnable ? 'Да' : 'Нет'),
         'Ключи' => $offer->has_keys === null ? null : ($offer->has_keys ? 'Есть' : 'Нет'), 'Документы' => $offer->papers?->label(),
-        'Город' => $offer->settlement?->name, 'Где сейчас' => $offer->car_place?->label(), 'Осмотр' => $offer->show_address ? $offer->inspection_address : null,
+        'Город' => $offer->settlement?->name, 'Осмотр' => $offer->show_address ? $offer->inspection_address : null,
     ], fn ($v) => $v !== null && $v !== '');
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="[$gallery ? 'Галерея' : 'Предложения', $back]" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">
@@ -96,9 +96,9 @@
                         @foreach ($facts as $label => $value)
                             <div @class(['min-w-0', 'col-span-2' => in_array($label, ['VIN', 'Осмотр', 'Повреждения'], true)])>
                                 <dt class="text-sm text-ink-dim">{{ $label }}</dt>
-                                <dd @class(['mt-0.5 font-medium', 'nums whitespace-nowrap' => $label === 'VIN', 'break-words' => $label !== 'VIN']) @if ($label === 'Где сейчас') data-offer-place @endif>
+                                <dd @class(['mt-0.5 font-medium', 'nums whitespace-nowrap' => $label === 'VIN', 'break-words' => $label !== 'VIN'])>
                                     @if ($label === 'VIN')<x-ui.vin-code :vin="$value" :copy="$offer->show_vin"/>
-                                    @elseif (in_array($label, ['Город', 'Где сейчас', 'Осмотр'], true))<x-ui.place>{{ $value }}</x-ui.place>
+                                    @elseif (in_array($label, ['Город', 'Осмотр'], true))<x-ui.place>{{ $value }}</x-ui.place>
                                     @else{{ $value }}@endif
                                 </dd>
                             </div>

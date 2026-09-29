@@ -1,6 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 
-// Серые подсказки цен, пока поле пустое: заявленная по умолчанию равна закупочной, минимальная — заявленная плюс
+// Серые подсказки цен, пока поле пустое: заявленная по умолчанию — закупочная вверх до тысячи (Offer::declaredFrom), минимальная — заявленная плюс
 // доля (по умолчанию 0,6) от разницы до цены продажи, с округлением до тысячи (Offer::minBid). Пересчитываются
 // на ходу при наборе любой из цен — и цены продажи в «Оценке» окошка, она вне формы полей.
 const DEFAULT_SHARE = 0.6;
@@ -28,7 +28,8 @@ export default class extends Controller {
     }
 
     update() {
-        const floor = this.value('floor_price');
+        const raw = this.value('floor_price');
+        const floor = raw ? Math.ceil(raw / 1000) * 1000 : null;
         const from = this.value('publish_price') ?? floor;
         const asking = this.value('asking_price');
         const shareRaw = this.root.querySelector('[name="min_bid_share"]')?.value.replace(',', '.').trim();

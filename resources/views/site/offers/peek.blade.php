@@ -26,7 +26,6 @@
             @if ($offer->recommended)<x-offer.recommended label/>@endif
             @if (!$gallery && $offer->isFresh())<x-ui.pill tone="open" class="!min-h-0 !py-1 text-xs">Новый</x-ui.pill>@endif
             @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>@elseif ($bids && !$gallery && !$offer->bidsOpen())<span class="tag">Приём закрыт</span>@endif
-            @if ($offer->car_place)<x-ui.place class="tag">{{ $offer->car_place->label() }}</x-ui.place>@endif
             @if ($offer->settlement)<x-ui.place class="tag">{{ $offer->settlement->name }}</x-ui.place>@endif
             <x-ui.vin-code :vin="$offer->vinMasked()" :copy="$offer->show_vin" class="tag"/>
             <x-offer.tags :offer="$offer" :facts="false"/>
