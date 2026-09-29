@@ -19,7 +19,7 @@ class CatalogController
     /** Главная: первый экран с числом предложений, ниже — каталог. С фильтрами в адресе — просто каталог. */
     public function index(Request $request)
     {
-        if ($request->user()?->isManager()) {
+        if ($request->user()?->isManager() && ! $request->user()->is_demo) {
             return redirect('/purchases');
         }
 

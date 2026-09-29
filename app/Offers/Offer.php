@@ -16,6 +16,7 @@ use App\Mail\Extraction\Code;
 use App\Media\HasPhotos;
 use App\Park\Vehicle;
 use App\Purchases\Car;
+use App\Support\Demo\HidesDemo;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -44,6 +45,7 @@ use Spatie\MediaLibrary\HasMedia;
 class Offer extends Model implements HasMedia
 {
     use HasPhotos;
+    use HidesDemo;
 
     public const DEFAULT_SHARE = 0.6;
 

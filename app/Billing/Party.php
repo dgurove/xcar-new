@@ -3,6 +3,7 @@
 namespace App\Billing;
 
 use App\Park\Vehicle;
+use App\Support\Demo\HidesDemo;
 use App\Users\User;
 use App\Vendors\ContactRole;
 use App\Vendors\Kind;
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'passport', 'passport_issued', 'reg_address', 'birth_at', 'phone', 'email', 'card', 'payment_purpose', 'notes'])]
 class Party extends Model
 {
+    use HidesDemo;
+
     protected $table = 'billing_parties';
 
     protected function casts(): array

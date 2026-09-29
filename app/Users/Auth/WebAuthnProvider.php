@@ -16,6 +16,12 @@ use Laragear\WebAuthn\JsonTransport;
  */
 class WebAuthnProvider extends WebAuthnUserProvider
 {
+    /** Вход и сессия видят и демо-пользователя: область `demo` у `User` скрывает его от всех остальных запросов. */
+    protected function newModelQuery($model = null)
+    {
+        return parent::newModelQuery($model)->withoutGlobalScope('demo');
+    }
+
     protected function validateWebAuthn(WebAuthnAuthenticatable $user, array $credentials): bool
     {
         try {

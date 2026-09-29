@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Support\Demo\HidesDemo;
 use App\Users\User;
 use App\Workflow\Requirement;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'commission', 'commission_mode', 'state', 'notes', 'closed_at'])]
 class Deal extends Model
 {
+    use HidesDemo;
+
     protected function casts(): array
     {
         return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'closed_at' => 'datetime'];

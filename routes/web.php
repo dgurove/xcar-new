@@ -184,8 +184,8 @@ Route::get('/admin/{path?}', fn (string $path = '') => redirect(LegacyAdmin::tar
 
 if (app()->isLocal()) {
     // Вход без пароля для проверки глазами: /dev/login/1 — первый пользователь.
-    Route::get('/dev/login/{user}', function (User $user) {
-        auth()->login($user, true);
+    Route::get('/dev/login/{user}', function (int $user) {
+        auth()->login(User::withoutGlobalScope('demo')->findOrFail($user), true);
 
         return redirect('/');
     });

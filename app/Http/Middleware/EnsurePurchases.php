@@ -10,7 +10,7 @@ class EnsurePurchases
 {
     public function handle(Request $request, Closure $next)
     {
-        abort_unless($request->user()?->role->canSeePurchases(), 404);
+        abort_unless($request->user()?->role->canSeePurchases() && ! $request->user()->is_demo, 404);
 
         return $next($request);
     }

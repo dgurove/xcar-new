@@ -8,6 +8,7 @@ use App\Media\MediaUrl;
 use App\Offers\Interest;
 use App\Park\Area;
 use App\Park\Yard;
+use App\Support\Demo\HidesDemo;
 use App\Support\Phone;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -33,6 +34,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, InteractsWithMedia, Notifiable, WebAuthnAuthentication;
+
+    use HidesDemo;
 
     protected function casts(): array
     {

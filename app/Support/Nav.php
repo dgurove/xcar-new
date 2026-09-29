@@ -88,6 +88,16 @@ final class Nav
             ];
         }
 
+        // Демо-кабинет менеджера: каталог вместо закупок — закупки настоящие и ему закрыты.
+        if ($user?->role === Role::Manager && $user->is_demo) {
+            return [
+                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Покупатели', '/account/buyers', ['/account/buyers', '/account/interest', '/account/invites']),
+                self::item('Сделки', '/account/deals', tab: false),
+                self::item('Уведомления', '/account/notifications', capsule: false),
+            ];
+        }
+
         // Менеджеру предложения пока закрыты (временно, по просьбе руководства): главная уводит в закупки.
         if ($user?->role === Role::Manager) {
             return [

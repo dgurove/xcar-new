@@ -41,9 +41,10 @@ class PayLink extends Model
         return $code;
     }
 
+    /** Страница оплаты открывается и без входа — демо-счёт по ссылке тоже виден. */
     public function invoice(): BelongsTo
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(Invoice::class)->withoutGlobalScope('demo');
     }
 
     public function payment(): BelongsTo

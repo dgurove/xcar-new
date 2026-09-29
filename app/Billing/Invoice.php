@@ -7,6 +7,7 @@ use App\Billing\Acquiring\PayLinkState;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Park\Vehicle;
+use App\Support\Demo\HidesDemo;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
     'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by'])]
 class Invoice extends Model implements HasMedia
 {
+    use HidesDemo;
     use InteractsWithMedia;
 
     protected $table = 'billing_invoices';

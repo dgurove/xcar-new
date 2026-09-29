@@ -6,6 +6,7 @@ use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\LearnVins;
+use App\Http\Middleware\DemoReadOnly;
 use App\Http\Middleware\EnsureManager;
 use App\Http\Middleware\EnsureParkArea;
 use App\Http\Middleware\EnsureParkManager;
@@ -42,6 +43,7 @@ use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
 use App\Telegram\Console\Poll;
 use App\Users\Console\CreateUser;
+use App\Users\Console\SeedDemo;
 use App\Workflow\Console\RefillVendors;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
@@ -85,6 +87,7 @@ return Application::configure(basePath: dirname(__DIR__))
         SyncAcquiring::class,
         SyncBank::class,
         PerpetualSecret::class,
+        SeedDemo::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');
@@ -93,7 +96,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(RedirectLegacyPaths::class);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
-        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, TouchSeen::class]);
+        $middleware->web(append: [ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, TouchSeen::class, DemoReadOnly::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
         // Уведомления провайдеров: подписи у ЮKassa нет, статус перечитывается по API (`PayController::hook`).
         $middleware->validateCsrfTokens(except: ['hooks/*']);

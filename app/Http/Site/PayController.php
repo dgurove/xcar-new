@@ -77,6 +77,7 @@ class PayController
 
     private function link(string $code): PayLink
     {
-        return PayLink::where('code', $code)->with(['invoice.offer.brand', 'invoice.offer.model', 'creator', 'payerUser'])->firstOrFail();
+        // Демо-ссылка открывается и без входа: её счёт (`PayLink::invoice`) и предложение область `demo` не прячет.
+        return PayLink::where('code', $code)->with(['invoice.offer' => fn ($q) => $q->withoutGlobalScope('demo')->with('brand', 'model'), 'creator', 'payerUser'])->firstOrFail();
     }
 }
