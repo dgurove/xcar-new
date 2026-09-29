@@ -50,6 +50,18 @@
                         data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-peek-focus>
                     <button type="submit" class="btn btn-s btn-accent shrink-0">В продажу</button>
                 </form>
+                {{-- Из закупки по контрпредложению: ориентир для цены продажи — наша цена в закупке и что называли менеджеры. --}}
+                @if ($car = $offer->purchaseCar)
+                    @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp
+                    @if ($car->price_final)
+                        <dl class="flex w-full gap-6"><div><dt class="text-xs text-ink-dim">Наша цена в закупке</dt><dd class="nums text-sm font-medium">{{ \App\Support\Money::rub($car->price_final) }}</dd></div></dl>
+                    @endif
+                    @if ($named->isNotEmpty())
+                        <div class="flex w-full flex-wrap items-center gap-1.5">
+                            @foreach ($named as $one)<span class="chip person"><x-ui.avatar :user="$one->user" :size="20"/><span class="truncate">{{ $one->user->shortName() }}</span><span class="nums whitespace-nowrap">{{ \App\Support\Money::rub($one->amount) }}</span></span>@endforeach
+                        </div>
+                    @endif
+                @endif
             @endif
             @if ($offer->state === OfferState::Open && $offer->bids_close_at)
                 @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)

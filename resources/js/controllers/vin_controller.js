@@ -88,7 +88,8 @@ export default class extends Controller {
         plain('transmission', v.transmission);
         plain('drive', v.drive);
         plain('fuel', v.fuel);
-        plain('engine_volume', v.engine_volume);
+        // Объём в форме — литрами («1,6»), из VIN приходит в см³.
+        plain('engine_volume', v.engine_volume ? (v.engine_volume / 1000).toFixed(1).replace('.', ',') : v.engine_volume);
         plain('engine_power', v.engine_power);
 
         // Что заполнилось — видно по вспышкам полей; словами — только то, чего в них не видно.

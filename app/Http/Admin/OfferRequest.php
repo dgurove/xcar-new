@@ -10,6 +10,7 @@ use App\Cars\Fuel;
 use App\Cars\Papers;
 use App\Cars\Transmission;
 use App\Offers\Flag;
+use App\Support\Liters;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,7 +19,10 @@ class OfferRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         // Числа приходят с пробелами и знаком рубля — чистим до цифр.
-        $this->merge(collect($this->only(['mileage', 'floor_price', 'publish_price', 'asking_price', 'min_bid_price', 'engine_volume', 'engine_power']))
+        if ($this->has('engine_volume')) {
+            $this->merge(['engine_volume' => Liters::parse($this->input('engine_volume'), $this->route('offer')?->engine_volume)]);
+        }
+        $this->merge(collect($this->only(['mileage', 'floor_price', 'publish_price', 'asking_price', 'min_bid_price', 'engine_power']))
             ->map(fn ($v) => $v === null || $v === '' ? null : (int) preg_replace('/\D+/', '', (string) $v))
             ->all());
     }
@@ -32,6 +36,7 @@ class OfferRequest extends FormRequest
             'mileage' => ['nullable', 'integer', 'max:5000000'],
             'vin' => ['nullable', 'string', 'max:17'],
             'show_vin' => ['boolean'],
+            'show_address' => ['boolean'],
             'body' => ['nullable', Rule::enum(Body::class)],
             'transmission' => ['nullable', Rule::enum(Transmission::class)],
             'drive' => ['nullable', Rule::enum(Drive::class)],
@@ -87,6 +92,7 @@ class OfferRequest extends FormRequest
     {
         $data = $this->validated();
         $data['show_vin'] = $this->boolean('show_vin');
+        $data['show_address'] = $this->boolean('show_address');
         $data['chat_enabled'] = $this->boolean('chat_enabled');
         $data['share_locked'] = $this->boolean('share_locked');
         $data['recommended'] = $this->boolean('recommended');
@@ -94,7 +100,10 @@ class OfferRequest extends FormRequest
         $data['managers'] = array_values(array_map('intval', $data['managers'] ?? []));
         $data['damage_zones'] = $data['damage_zones'] ?? [];
         $data['tags'] = array_values(array_filter($data['tags'] ?? []));
-        $data['flags'] = array_values(array_filter($data['flags'] ?? []));
+        // Признаки ставит разбор писем, в редакторе их нет: отсутствие в форме — не «снять все».
+        if ($this->has('flags')) {
+            $data['flags'] = array_values(array_filter($data['flags']));
+        }
         $data['prices_include_vat'] = $this->boolean('prices_include_vat');
         foreach (['is_runnable', 'has_keys'] as $tri) {
             $data[$tri] = $this->filled($tri) ? $this->boolean($tri) : null;

@@ -21,7 +21,6 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Users\Role;
 use App\Users\User;
-use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 
 class OfferController
@@ -110,7 +109,6 @@ class OfferController
             'threads' => Thread::where('offer_id', $offer->id)->get(),
             'chats' => Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'import' => ImportThreadFiles::progress($offer->id),
-            'vendors' => Vendor::where('is_active', true)->orWhere('id', $offer->vendor_id)->orderBy('name')->pluck('name', 'id'),
             'stages' => $offer->vendor ? $offer->vendor->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
             'tags' => Tag::orderBy('sort')->get(),
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
@@ -123,7 +121,7 @@ class OfferController
     /** Окошко строки таблицы: фото, метки, цена, действия, подтверждения, интерес; ?gallery=1 — строка списка галереи. */
     public function peek(Request $request, Offer $offer)
     {
-        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'deal'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
+        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
 
         return view('admin.offers.peek', [
             'offer' => $offer,

@@ -4,8 +4,8 @@ namespace App\Offers;
 
 use App\Cars\Body;
 use App\Cars\Brand;
-use App\Cars\Category;
 use App\Cars\CarModel;
+use App\Cars\Category;
 use App\Cars\DamageCause;
 use App\Cars\Drive;
 use App\Cars\Fuel;
@@ -15,6 +15,7 @@ use App\Cars\Transmission;
 use App\Mail\Extraction\Code;
 use App\Media\HasPhotos;
 use App\Park\Vehicle;
+use App\Purchases\Car;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -35,7 +36,7 @@ use Spatie\MediaLibrary\HasMedia;
 #[Fillable([
     'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'body', 'transmission', 'drive', 'fuel',
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
-    'incident_date', 'description', 'settlement_id', 'inspection_address', 'floor_price', 'publish_price',
+    'incident_date', 'description', 'settlement_id', 'inspection_address', 'show_address', 'floor_price', 'publish_price',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'managers_limited', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
@@ -64,6 +65,7 @@ class Offer extends Model implements HasMedia
             'damage_zones' => 'array',
             'tags' => 'array',
             'show_vin' => 'bool',
+            'show_address' => 'bool',
             'is_runnable' => 'bool',
             'has_keys' => 'bool',
             'prices_include_vat' => 'bool',
@@ -280,6 +282,12 @@ class Offer extends Model implements HasMedia
             $this->fuel?->label(),
             $this->engine_volume ? number_format($this->engine_volume / 1000, 1, ',', '').' л' : null,
         ]));
+    }
+
+    /** ТС закупки, из которой предложение сделано по контрпредложению: её цены нужны при оценке. */
+    public function purchaseCar(): HasOne
+    {
+        return $this->hasOne(Car::class, 'offer_id');
     }
 
     public function vinMasked(): ?string

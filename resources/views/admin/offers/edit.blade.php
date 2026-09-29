@@ -164,10 +164,12 @@
                     <x-ui.field name="transmission" label="Коробка" :options="Transmission::options()" placeholder="—" :value="$offer->transmission?->value"/>
                     <x-ui.field name="drive" label="Привод" :options="Drive::options()" placeholder="—" :value="$offer->drive?->value"/>
                     <x-ui.field name="fuel" label="Топливо" :options="Fuel::options()" placeholder="—" :value="$offer->fuel?->value"/>
-                    <x-ui.field name="engine_volume" label="Объём, см³" inputmode="numeric" :value="$offer->engine_volume"/>
+                    <x-ui.field name="engine_volume" label="Объём, л" inputmode="decimal" placeholder="1,6" :value="\App\Support\Liters::format($offer->engine_volume)"/>
                     <x-ui.field name="engine_power" label="Мощность, л. с." inputmode="numeric" :value="$offer->engine_power"/>
                     <x-ui.field name="settlement_id" label="Город" :options="$settlements" placeholder="—" :value="$offer->settlement_id"/>
-                    <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2"/>
+                    <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">
+                        <x-slot:after-label><x-ui.eye-check name="show_address" :checked="$offer->show_address"/></x-slot:after-label>
+                    </x-ui.field>
                 </div>
             </x-ui.card>
 
@@ -204,28 +206,6 @@
                         <x-ui.check name="chat_enabled" :checked="$offer->chat_enabled">Чат с покупателями</x-ui.check>
                         <x-ui.check name="share_locked" :checked="$offer->share_locked">Запретить шеринг</x-ui.check>
                     </div>
-                </div>
-            </x-ui.card>
-
-            <x-ui.card title="Вендор" class="order-2">
-                <div class="{{ $grid }}">
-                    <x-ui.field name="vendor_id" label="Вендор" :options="$vendors" placeholder="—" :value="$offer->vendor_id"/>
-                    <x-ui.field name="claim_ref" :label="$offer->vendor?->kind === \App\Vendors\Kind::Leasing ? 'Номер ДЛ' : 'Номер убытка'" :value="$offer->claim_ref"/>
-                    <x-ui.field name="answer_by" label="Ответ до" type="datetime-local" :value="$offer->answer_by?->timezone('Europe/Moscow')->format('Y-m-d\TH:i')"/>
-                    <x-ui.field name="insurer_deadline_at" label="Продать до" type="date" :value="$offer->insurer_deadline_at?->toDateString()"/>
-                    <x-ui.field name="insured_name" label="Страхователь" :value="$offer->insured_name"/>
-                    <x-ui.field name="insured_phone" label="Телефон страхователя" type="tel" :value="$offer->insured_phone"/>
-                    <x-ui.field name="holder" label="Держатель" :value="$offer->holder" placeholder="банк или лизинг"/>
-                    <x-ui.field name="contact_name" label="Ответственный по убытку" :value="$offer->contact_name"/>
-                    <x-ui.field name="contact_email" label="Почта ответственного" type="email" :value="$offer->contact_email" span="col-span-2 lg:col-span-1"/>
-                    <div class="field col-span-full">
-                        <span class="field-label">Признаки</span>
-                        <div class="flex flex-wrap gap-1.5">
-                            @foreach (\App\Offers\Flag::cases() as $flag)
-                                <label class="choice"><input type="checkbox" switch name="flags[]" value="{{ $flag->value }}" @checked(in_array($flag->value, old('flags', $offer->flags ?? []), true))><span>{{ $flag->label() }}</span></label>
-                            @endforeach
-                        </div>
-                    </div>
                     @if ($tags->isNotEmpty())
                         <div class="field col-span-full">
                             <span class="field-label">Метки</span>
@@ -238,6 +218,7 @@
                     @endif
                 </div>
             </x-ui.card>
+
         </form>
 
         <x-ui.card title="Фотографии" class="order-3 lg:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media">

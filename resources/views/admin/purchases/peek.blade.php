@@ -4,7 +4,7 @@
      (выбрать/отменить прямо тут), описание. Цены Carcade — подписями под полем,
      характеристики — метками и фактами наверху, отдельных блоков нет: окошко — полэкрана.
      Формы отвечают в окошко (PeekBack), строка таблицы — свежей из row. ТС, ушедшая в предложение по
-     контрпредложению, оценки и цен менеджеров не показывает — только ссылку на предложение. --}}
+     контрпредложению, вместо оценки показывает ссылку на предложение; цены менеджеров остаются. --}}
 @php
     use App\Purchases\ImportState;
     $n = $purchase->number;
@@ -25,7 +25,7 @@
             @unless ($car->is_published)<span class="tag">скрыта</span>@endunless
         </x-slot:marks>
         <x-slot:aside>
-            @if ($car->price_final && ! $car->offer)<span class="nums whitespace-nowrap text-lg font-bold">{{ \App\Support\Money::rub($car->price_final) }}</span>@endif
+            @if ($car->price_final)<span class="nums whitespace-nowrap text-lg font-bold">{{ \App\Support\Money::rub($car->price_final) }}</span>@endif
         </x-slot:aside>
         <x-slot:actions>
             @if ($car->offer)
@@ -49,9 +49,7 @@
                 @endif
             @endif
         </x-slot:actions>
-        @if ($car->offer)
-            {{-- Цены менеджеров и наша цена после контрпредложения не нужны: ТС живёт в предложении. --}}
-        @elseif ($offers->isNotEmpty())
+        @if ($offers->isNotEmpty())
             <div class="mt-3 flex flex-wrap items-center gap-1.5">
                 @foreach ($offers as $offer)<x-purchase.offer-chip :offer="$offer" :car="$car"/>@endforeach
             </div>

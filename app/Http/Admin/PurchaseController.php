@@ -22,6 +22,7 @@ use App\Purchases\PurchaseState;
 use App\Purchases\Restriction;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Liters;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -324,7 +325,8 @@ class PurchaseController
             'color' => ['nullable', 'string', 'max:32'], 'settlement_id' => ['nullable', 'exists:settlements,id'], 'address' => ['nullable', 'string', 'max:255'], 'kind' => ['required', Rule::enum(Kind::class)],
             'price_revalued' => ['nullable', 'string'], 'price_listing' => ['nullable', 'string'], 'price_final' => ['nullable', 'string'], 'description' => ['nullable', 'string', 'max:5000'], 'condition' => ['nullable', 'string', 'max:120'],
         ]);
-        foreach (['mileage', 'engine_volume', 'engine_power', 'price_revalued', 'price_listing', 'price_final'] as $n) {
+        $data['engine_volume'] = Liters::parse($data['engine_volume'] ?? null, $car->engine_volume);
+        foreach (['mileage', 'engine_power', 'price_revalued', 'price_listing', 'price_final'] as $n) {
             $data[$n] = isset($data[$n]) && $data[$n] !== '' ? (int) preg_replace('/\D+/', '', $data[$n]) : null;
         }
         $data['transmission'] = $data['transmission'] ?: null;

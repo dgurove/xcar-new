@@ -6,7 +6,7 @@ namespace App\Support;
 final class FieldLabels
 {
     private const LABELS = [
-        'ref' => 'номер убытка', 'claim_ref' => 'номер убытка', 'vin' => 'VIN', 'show_vin' => 'показ VIN', 'plate' => 'госномер', 'year' => 'год', 'color' => 'цвет',
+        'ref' => 'номер убытка', 'claim_ref' => 'номер убытка', 'vin' => 'VIN', 'show_vin' => 'показ VIN', 'show_address' => 'показ адреса', 'plate' => 'госномер', 'year' => 'год', 'color' => 'цвет',
         'brand_id' => 'марка', 'model_id' => 'модель', 'mileage' => 'пробег', 'body' => 'кузов', 'transmission' => 'КПП', 'drive' => 'привод', 'fuel' => 'топливо',
         'engine_volume' => 'объём двигателя', 'engine_power' => 'мощность', 'damage_cause' => 'причина повреждений', 'damage_zones' => 'повреждения', 'damage_note' => 'что заметили',
         'is_runnable' => 'на ходу', 'has_keys' => 'ключи', 'papers' => 'документы', 'incident_date' => 'дата события', 'description' => 'описание',

@@ -9,8 +9,7 @@
     use App\Support\Money;
     $n = $purchase->number;
     $href = "/purchases/{$n}/{$car->ref}";
-    // Ушедшей в предложение цены менеджеров из закупки больше ни к чему.
-    $offers = $car->offer_id ? collect() : $car->activeOfferList();
+    $offers = $car->activeOfferList();
     $best = $offers->max('amount');
     $flag = $car->specs_state->needsAttention() ? $car->specs_state->label() : ($car->photos_state->needsAttention() ? $car->photos_state->label() : null);
     $note = $flag ? mb_strtolower($flag) : (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true) ? 'фото едут' : (! $car->is_published ? 'скрыта' : null));

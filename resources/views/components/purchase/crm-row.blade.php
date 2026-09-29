@@ -5,7 +5,7 @@
 @php
     use App\Purchases\{OfferState, ImportState};
     $n = $purchase->number;
-    $offers = ($car->offer_id ? collect() : $car->activeOfferList())->sortBy([fn ($a, $b) => ($b->user_id === $highlight) <=> ($a->user_id === $highlight), fn ($a, $b) => $b->amount <=> $a->amount])->values();
+    $offers = $car->activeOfferList()->sortBy([fn ($a, $b) => ($b->user_id === $highlight) <=> ($a->user_id === $highlight), fn ($a, $b) => $b->amount <=> $a->amount])->values();
 @endphp
 <div class="row flex-col items-stretch sm:flex-row sm:items-center sm:gap-x-6">
     <div class="flex min-w-0 items-start gap-3">

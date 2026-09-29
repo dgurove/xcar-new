@@ -21,7 +21,7 @@
                     <x-ui.field name="kind" label="Категория" :options="Kind::options()" :value="$car->kind->value"/>
                     <x-ui.field name="transmission" label="Коробка" :options="Transmission::options()" placeholder="—" :value="$car->transmission?->value"/>
                     <x-ui.field name="fuel" label="Топливо" :options="Fuel::options()" placeholder="—" :value="$car->fuel?->value"/>
-                    <x-ui.field name="engine_volume" label="Объём, см³" inputmode="numeric" :value="$car->engine_volume"/>
+                    <x-ui.field name="engine_volume" label="Объём, л" inputmode="decimal" placeholder="1,6" :value="\App\Support\Liters::format($car->engine_volume)"/>
                     <x-ui.field name="engine_power" label="Мощность, л. с." inputmode="numeric" :value="$car->engine_power"/>
                     <x-ui.field name="color" label="Цвет" :value="$car->color"/>
                     <x-ui.field name="condition" label="Состояние" :value="$car->condition"/>
