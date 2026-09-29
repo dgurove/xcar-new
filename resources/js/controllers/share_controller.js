@@ -17,7 +17,7 @@ const PRICES = ['floor_price', 'publish_price', 'price'];
 const FROM = ['floor_price', 'publish_price'];
 
 export default class extends Controller {
-    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label'];
+    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label', 'all'];
     static values = { url: String, vat: String, name: String, locked: String };
 
     connect() {
@@ -74,7 +74,15 @@ export default class extends Controller {
         if (this.hasPreviewTarget) this.previewTarget.textContent = this.caption();
     }
 
+    // «Выбрать все» / «Снять все»: выбраны все — снимает, иначе отмечает все.
+    toggleAll() {
+        const every = this.photoTargets.every((p) => p.checked);
+        this.photoTargets.forEach((p) => { p.checked = !every; });
+        this.photosChanged();
+    }
+
     photosChanged() {
+        if (this.hasAllTarget) this.allTarget.textContent = this.photoTargets.every((p) => p.checked) ? 'Снять все' : 'Выбрать все';
         clearTimeout(this.timer);
         this.timer = setTimeout(() => this.prepare(), 500);
     }

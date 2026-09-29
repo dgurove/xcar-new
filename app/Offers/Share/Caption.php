@@ -39,7 +39,7 @@ final class Caption
             ['publish_price', 'Заявленная', $staff ? $money($offer->publish_price) : ($price->visible ? $money($price->declared) : null), false],
             ['price', 'Цена', $price->visible ? $money($offer->asking_price) : null, true],
             // Ссылка на машину на сайте — последней строкой; у черновика своего адреса ещё нет (номер при публикации).
-            ['link', 'Ссылка', self::link($offer), true],
+            ['link', 'Ссылка', self::link($offer), false],
         ];
 
         return self::rows($rows);
@@ -61,7 +61,7 @@ final class Caption
             ['encumbrance', 'Обременения', $car->encumbrance, false],
             ['until', 'Приём цен до', $car->purchase?->offers_close_at?->translatedFormat('d.m.Y H:i'), false],
             ['price', 'Наша цена', $prices ? $money($car->price_listing) : null, true],
-            ['link', 'Ссылка', $car->purchase ? Surface::Site->url("/purchases/{$car->purchase->number}/{$car->ref}") : null, true],
+            ['link', 'Ссылка', $car->purchase ? Surface::Site->url("/purchases/{$car->purchase->number}/{$car->ref}") : null, false],
         ];
 
         return self::rows($rows);

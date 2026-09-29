@@ -38,6 +38,10 @@
             </div>
             <pre class="box-nested whitespace-pre-wrap font-sans text-sm" data-share-target="preview"></pre>
             @if ($photos->isNotEmpty())
+                <div class="-mb-1 flex items-center justify-between">
+                    <span class="text-sm text-ink-muted">Фото</span>
+                    <button type="button" class="pill pill-plain" data-share-target="all" data-action="share#toggleAll">{{ $photos->take(30)->count() <= 6 ? 'Снять все' : 'Выбрать все' }}</button>
+                </div>
                 <div class="grid grid-cols-4 gap-1.5">
                     @foreach ($photos->take(30) as $i => $media)
                         <label class="relative aspect-[4/3] cursor-pointer overflow-hidden rounded-(--radius-s) bg-surface-3">
