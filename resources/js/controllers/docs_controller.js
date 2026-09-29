@@ -102,7 +102,7 @@ export default class extends Controller {
         try { photos = a.dataset.docPhotos ? JSON.parse(a.dataset.docPhotos) : null; } catch {}
         return {
             key: this.key(a), url: a.href, type: a.dataset.doc || '', photos,
-            name: a.dataset.docName || a.title || a.textContent.trim() || 'Файл',
+            name: a.dataset.docName || a.title || a.textContent.trim() || 'Файл', file: a.title || '',
             src: a.dataset.docSrc || null, thread: a.dataset.docThread || null,
         };
     }

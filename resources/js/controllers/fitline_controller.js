@@ -25,7 +25,9 @@ export default class extends Controller {
         el.style.fontSize = '';
         if (!core || el.clientWidth === 0) return;
         const base = parseFloat(getComputedStyle(el).fontSize);
-        const need = core.getBoundingClientRect().right - el.getBoundingClientRect().left;
+        // Хвост за номерами не влез — строка кончится многоточием: ему и отступу перед хвостом нужно место, иначе оно ложится на последние цифры номера.
+        const tail = el.scrollWidth > el.clientWidth && core.nextElementSibling ? base * 1.6 : 0;
+        const need = core.getBoundingClientRect().right - el.getBoundingClientRect().left + tail;
         const room = el.clientWidth;
         if (need > room) el.style.fontSize = `${Math.max(this.minValue, Math.floor(base * room / need * 10) / 10)}px`;
     }

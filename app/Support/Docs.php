@@ -110,7 +110,8 @@ final class Docs
     /**
      * Документы писем без фото: вложения не встроенные и не картинки (картинки идут во «Фото»); файлы старых и
      * замороженных писем на диске нет — шторка тянет их из ящика, как ссылка в ленте. Сканы-картинки с видом
-     * в имени (СТС, акт) — документы.
+     * в имени (СТС, акт) — документы. Одно и то же вложение в нескольких письмах цепочки (пересылка, «ч.2») — один
+     * раз: ключ — имя без регистра и размер, место — первого, файл — последнего письма (у него чаще есть на диске).
      *
      * @param  iterable<Message>  $messages
      * @return array{docs: list<array<string, mixed>>, photos: Collection<int, Attachment>}
@@ -118,11 +119,12 @@ final class Docs
     public static function fromLetters(iterable $messages, string $base): array
     {
         $docs = [];
-        $photos = collect();
+        $photos = [];
         foreach ($messages as $m) {
             foreach ($m->files() as $a) {
+                $key = mb_strtolower((string) $a->filename).'|'.$a->size;
                 if ($a->isImage() && AttachmentClassifier::kindOf($a->filename) === null) {
-                    $photos->push($a);
+                    $photos[$key] = $a;
                 } elseif ($entries = self::archive($a)) {
                     // Архив раскрыт: каждый файл — своей вкладкой, кадры — во «Фото».
                     $shots = 0;
@@ -130,18 +132,21 @@ final class Docs
                         $url = "{$base}/attachments/{$a->id}?entry={$e['index']}";
                         $name = basename($e['name']);
                         $type = self::type(null, $name);
+                        $inner = $key.'|'.$e['name'];
                         // Кадр из архива каждый раз достаётся из него целиком — в шторку не больше 60 штук.
                         if ($type === 'image' && AttachmentClassifier::kindOf($name) === null) {
-                            $shots++ < 60 && $photos->push(['t' => $url, 's' => $url]);
+                            $shots++ < 60 && $photos[$inner] = ['t' => $url, 's' => $url];
                         } else {
-                            $docs[] = ['url' => $url, 'type' => $type, 'name' => $name, 'label' => self::label($name), 'src' => null];
+                            $docs[$inner] = ['url' => $url, 'type' => $type, 'name' => $name, 'label' => self::label($name), 'src' => null];
                         }
                     }
                 } else {
-                    $docs[] = self::attachment($a, $base);
+                    $docs[$key] = self::attachment($a, $base);
                 }
             }
         }
+        $docs = array_values($docs);
+        $photos = collect(array_values($photos));
 
         return ['docs' => $docs, 'photos' => $photos];
     }

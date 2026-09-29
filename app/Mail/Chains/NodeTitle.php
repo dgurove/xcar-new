@@ -47,6 +47,9 @@ final class NodeTitle
     /** Кто пишет: наше письмо — сотрудник или «Мы», письмо вендора — имя или адрес. */
     public static function who(Message $m): string
     {
+        if ($m->isForwardedByStaff()) {
+            return $m->forwardedFrom() ?? ($m->from_name ?: $m->from_email);
+        }
         if ($m->isOurs()) {
             return $m->author?->name ?? ($m->direction === Direction::Out ? 'Мы' : ($m->from_name ?: $m->from_email));
         }

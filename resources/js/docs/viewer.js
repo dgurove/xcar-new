@@ -199,11 +199,16 @@ function video(box, src) {
     return { destroy() { v.pause(); v.removeAttribute('src'); v.load(); } };
 }
 
+// Файл, который здесь не показать или не достать: значок типа (как в ленте писем), имя, почему, «Скачать».
 function card(box, item, note) {
     const wrap = el('div', 'docs-card');
+    const ext = ((item.file || item.name).match(/\.([a-z0-9]{1,5})$/i)?.[1] || item.type || '').toLowerCase();
+    const kind = ext === 'pdf' ? 'pdf' : ['xls', 'xlsx', 'csv', 'ods'].includes(ext) ? 'sheet'
+        : ['doc', 'docx', 'rtf', 'odt', 'txt'].includes(ext) ? 'doc' : ['zip', 'rar', '7z', 'gz', 'tar'].includes(ext) ? 'zip' : null;
+    wrap.append(el('span', `file-icon docs-card-icon${kind ? ` file-icon-${kind}` : ''}`, ext.slice(0, 4) || '?'));
     wrap.append(el('div', 'docs-card-name', item.name));
     if (note) wrap.append(el('p', 'docs-note', note));
-    const a = el('a', 'btn btn-secondary btn-s', 'Скачать');
+    const a = el('a', 'btn btn-quiet btn-s mt-2', 'Скачать');
     a.href = item.url;
     a.setAttribute('download', '');
     a.dataset.controller = 'file';

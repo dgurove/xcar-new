@@ -296,50 +296,51 @@ class MailController
 
     /**
      * Проверка перед «Завести» (CRM, как разбор письма на парковке): поля черновика из писем (`PromoteCandidate::data` —
-     * разбор, документы во вложениях, VIN) можно поправить, письмо и документы — шторкой рядом. Если новое письмо
-     * цепочки говорит иначе, чем первое (`proposed`), его значение стоит кнопкой «Взять».
+     * разбор, документы во вложениях, VIN) можно поправить, письма цепочки — лентой рядом, документы — шторкой.
+     * Если новое письмо цепочки говорит иначе, чем первое (`proposed`), его значение стоит чипом под полем.
      */
     public function review(Candidate $candidate, PromoteCandidate $promote)
     {
         abort_if($candidate->state === CandidateState::Promoted || $candidate->scope !== Scope::Offers || $this->scope !== Scope::Offers, 404);
-        $candidate->load(['messages.attachments', 'messages.account']);
+        $candidate->load(['messages.attachments', 'messages.account', 'messages.addresses', 'messages.author', 'vendor']);
         $letters = $candidate->messages->filter(fn (Message $m) => $m->direction === Direction::In)->sortBy('date_at')->values();
-        $letter = $letters->first(fn (Message $m) => ! $m->isOurs()) ?? $letters->first();
+        $letter = $letters->first(fn (Message $m) => ! $m->isOurs() || $m->isForwardedByStaff()) ?? $letters->first();
         ['docs' => $files, 'photos' => $photos] = Docs::fromLetters($letters, $this->base);
         $threads = $candidate->threads();
         $thread = $threads->count() === 1 ? "{$this->base}/{$threads->first()->id}" : null;
 
         return view('admin.offers.from-mail', [
             'candidate' => $candidate,
+            'letter' => $letter,
+            'messages' => $candidate->messages,
+            'waits' => $threads->contains(fn (Thread $t) => $t->needs_reply_at !== null),
+            'base' => $this->base,
             'offer' => new Offer($promote->data($candidate)),
             'existing' => $promote->existing($candidate),
             'docs' => array_values(array_filter([$letter ? Docs::letter($letter, $this->base, $thread) : null, ...$files, Docs::photos($photos, $this->base)])),
-            'proposed' => $this->proposed($candidate),
+            'take' => $this->proposed($candidate),
             'vendors' => Vendor::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 
     /**
-     * Где новое письмо цепочки говорит иначе, чем свёртка: поле → [подпись, как показать, что подставить].
+     * Где новое письмо цепочки говорит иначе, чем свёртка: поле формы → [как показать, что подставить].
      *
-     * @return array<string, array{0: string, 1: string, 2: mixed}>
+     * @return array<string, array{0: string, 1: mixed}>
      */
     private function proposed(Candidate $candidate): array
     {
-        $labels = ['year' => 'Год', 'mileage' => 'Пробег, км', 'vin' => 'VIN', 'floor_price' => 'Закупочная, ₽', 'engine_volume' => 'Объём, л', 'engine_power' => 'Мощность, л. с.', 'color' => 'Цвет', 'location' => 'Адрес осмотра'];
         $out = [];
-        foreach ($labels as $field => $label) {
+        foreach (['year', 'mileage', 'vin', 'floor_price', 'engine_volume', 'engine_power', 'color', 'location'] as $field) {
             $new = $candidate->proposed[$field]['value'] ?? null;
             if ($new === null || (string) $new === (string) $candidate->value($field)) {
                 continue;
             }
-            $input = $field === 'location' ? 'inspection_address' : $field;
-            $shown = match ($field) {
-                'floor_price', 'mileage' => \App\Support\Money::nums((int) $new),
-                'engine_volume' => (string) \App\Support\Liters::format((int) $new),
-                default => (string) $new,
+            $out[$field === 'location' ? 'inspection_address' : $field] = match ($field) {
+                'floor_price', 'mileage' => [\App\Support\Money::nums((int) $new), $new],
+                'engine_volume' => [(string) \App\Support\Liters::format((int) $new), \App\Support\Liters::format((int) $new)],
+                default => [(string) $new, $new],
             };
-            $out[$input] = [$label, $shown, $field === 'engine_volume' ? \App\Support\Liters::format((int) $new) : $new];
         }
 
         return $out;

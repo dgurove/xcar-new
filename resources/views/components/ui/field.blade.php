@@ -1,5 +1,6 @@
-{{-- copy — иконка внутри поля справа: кладёт в буфер то, что сейчас введено (номер убытка, госномер, ПТС). --}}
-@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false])
+{{-- copy — иконка внутри поля справа: кладёт в буфер то, что сейчас введено (номер убытка, госномер, ПТС).
+     take — [как показать, что подставить]: новое письмо говорит иначе, его значение чипом под полем (take_controller). --}}
+@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false, 'take' => null])
 @php
     $id = $attributes->get('id', 'f-'.str_replace(['[', ']'], ['-', ''], $name));
     // Поле набора (`rows[0][price]`): ошибки и old() лежат под точками — иначе строка лестницы прайса
@@ -23,7 +24,7 @@
     $type = $keys['type'] ?? $type;
     unset($keys['type']);
 @endphp
-<div class="field {{ $span }} {{ $error ? 'field-invalid' : '' }}">
+<div class="field {{ $span }} {{ $error ? 'field-invalid' : '' }} {{ $take ? 'field-changed' : '' }}">
     @if ($label && $afterLabel)<span class="field-label flex items-center gap-1.5"><label for="{{ $id }}">{{ $label }}</label>{{ $afterLabel }}</span>
     @elseif ($label)<label for="{{ $id }}" class="field-label">{{ $label }}</label>@endif
     @if ($options !== null)
@@ -46,5 +47,6 @@
             @if ($type !== 'password' && $type !== 'file') value="{{ $bound }}" @endif
             {{ $attributes->except('id')->merge(['class' => 'field-input'] + $keys) }}>
     @endif
+    @if ($take)<x-ui.take :name="$name" :take="$take"/>@endif
     @if ($error)<p class="field-error">{{ $error }}</p>@endif
 </div>

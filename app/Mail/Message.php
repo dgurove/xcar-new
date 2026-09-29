@@ -116,6 +116,18 @@ class Message extends Model
             && $sender !== mb_strtolower((string) $this->from_email) && in_array(mb_strtolower((string) $this->from_email), self::ownEmails(), true);
     }
 
+    /** Пересылка сотрудника: кто написал на самом деле — имя из «От:» цитаты («Лапшин Александр Юрьевич»), иначе адрес. */
+    public function forwardedFrom(): ?string
+    {
+        $text = Extraction\QuotationStripper::forwardedBody($this->text_body ?: strip_tags((string) $this->html_body));
+        if ($text === null || ! preg_match('/^\s*(?:От|От кого|From)\s*:\s*(.+)$/umi', $text, $m)) {
+            return $this->field('sender');
+        }
+        $name = trim((string) preg_replace(['/<[^>]*>/u', '/\S+@\S+/u', '/["«»*]/u'], '', $m[1]), " \t,;");
+
+        return $name !== '' ? $name : $this->field('sender');
+    }
+
     /** Наше письмо: отправлено с ящика или своим человеком с личного адреса (Корабельников с mail.ru отвечает вендору как мы). */
     public function isOurs(): bool
     {

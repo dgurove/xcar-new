@@ -4,6 +4,8 @@
      Оранжевое — только «Ждёт ответа» (вопрос, документы, осмотр без нашего ответа). Непрочитанное — полужирным с оранжевой
      точкой: обработанная ветка (ответили, завели, «Сделано», в архив) читается сама. Нажатие — окно писем ветки;
      свайпом уходит всё дело, а не строка (смахивание висит на секции), «В архив» одной ветки — в окне письма.
+     Пересланное сотрудником письмо вендора (Андрей переслал со своего mail.ru) — как письмо самого вендора: кто, тема и
+     первые слова из цитаты, тег «От сотрудника» остаётся.
      linked — плоский список (поиск, «Ждут ответа», «Прочее», архив): там нет заголовка секции, поэтому вендор и ТС — чипами в строке. --}}
 @props(['thread', 'base', 'park' => true, 'linked' => false])
 @php
@@ -11,8 +13,11 @@
     $last = $thread->latestMessage;
     $out = $last?->direction === \App\Mail\Direction::Out;
     $ours = $last?->isOurs() ?? false;
+    $fwd = $ours && ! $out && $last->isForwardedByStaff();
     $party = collect($thread->counterparts())->first();
-    $who = $party ? ($party['name'] ?: $party['email']) : $thread->account->title;
+    $who = $fwd ? \App\Mail\Chains\NodeTitle::who($last) : ($party ? ($party['name'] ?: $party['email']) : $thread->account->title);
+    $subject = ($fwd ? \App\Mail\Extraction\QuotationStripper::forwardedSubject($last->text_body) : null) ?? $thread->subject;
+    $preview = $fwd ? \App\Mail\Chains\NodeTitle::words($last, 200) : $last?->preview;
     $files = $thread->attachments_count ?? ($thread->has_attachments ? 1 : 0);
     $intent = ! $ours ? Intent::tryFrom((string) ($thread->latestIncoming?->intent ?? $last?->intent)) : null;
     $tag = $ours ? ($out ? 'Мы ответили' : 'От сотрудника') : $intent?->short();
@@ -25,7 +30,9 @@
 @endphp
 <div id="thread-{{ $thread->id }}" data-search-row>
     <div class="row items-center">
-        @if ($ours && $last?->author)
+        @if ($fwd)
+            <x-ui.avatar :name="$who" :email="$last->field('sender')" :size="32"/>
+        @elseif ($ours && $last?->author)
             <x-ui.avatar :user="$last->author" :size="32"/>
         @elseif ($ours)
             <x-chat.avatar :user="null" :size="32"/>
@@ -41,7 +48,7 @@
                 <span class="nums ml-auto shrink-0 text-xs text-ink-dim">{{ $when }}</span>
             </div>
             <div class="mt-0.5 flex items-center gap-2">
-                <span class="min-w-0 flex-1 truncate {{ $unread ? 'font-medium' : 'text-ink-muted' }}">{{ $thread->subject ?: '(без темы)' }}@if ($last?->preview) <span class="font-normal text-ink-dim">{{ $last->preview }}</span>@endif</span>
+                <span class="min-w-0 flex-1 truncate {{ $unread ? 'font-medium' : 'text-ink-muted' }}">{{ $subject ?: '(без темы)' }}@if ($preview) <span class="font-normal text-ink-dim">{{ $preview }}</span>@endif</span>
                 <span class="nums inline-flex shrink-0 items-center gap-1.5 text-xs text-ink-dim">@if ($files)<span class="inline-flex items-center gap-0.5"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif @if ($thread->messages_count > 1)<span>{{ $thread->messages_count }}</span>@endif</span>
             </div>
             @if ($linked && $chip)<span class="mt-1 inline-flex max-w-full items-center gap-1 tag truncate"><x-ui.icon :name="$thread->vehicle ? 'car' : 'mail'" class="size-3 text-ink-dim"/>{{ $chip }}</span>@endif

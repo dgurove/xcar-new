@@ -302,6 +302,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .field-input:focus-visible { outline-offset: 0; }
   .field-error { @apply text-sm text-danger; }
   .field-invalid .field-input { @apply ring-2 ring-danger/60; }
+  /* Новое письмо говорит иначе (x-ui.take): оранжевая рамка у поля, его значение — чипом под ним. */
+  .field-changed .field-input { @apply ring-1 ring-urgent/60; }
+  .field-take { @apply inline-flex max-w-full items-center gap-1.5 self-start truncate rounded-full bg-urgent-soft px-2.5 py-1 text-sm text-urgent; }
+  @media (hover: hover) { .field-take:hover { @apply brightness-110; } }
   /* Подпись пальцем: холст того же тона, что поле; линия — цветом текста. */
   .signature-pad { @apply mt-1 block h-36 w-full touch-none rounded-(--radius-m) bg-surface-3 text-ink; }
   .signature.is-signed .signature-pad { @apply ring-2 ring-accent/50; }
@@ -1513,8 +1517,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .docs-one-bar { @apply flex shrink-0 items-center justify-between px-3 pb-1.5 text-sm; }
   .docs-one-count { @apply text-xs text-ink-muted; }
   .docs-one-body { @apply relative min-h-0 flex-1; }
-  .docs-card { @apply flex flex-col items-start gap-2 px-4 py-3; }
-  .docs-card-name { @apply break-all font-medium; }
+  .docs-card { @apply absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 pb-8 text-center; }
+  .docs-card-icon { @apply mb-2 size-14 rounded-(--radius-m) text-sm; }
+  .docs-card-name { @apply max-w-full break-words font-medium; }
   .docs-note { @apply text-sm text-ink-muted; }
 
   @media (max-width: 1023.98px) {

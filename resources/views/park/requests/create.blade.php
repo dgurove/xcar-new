@@ -32,7 +32,7 @@
 <x-ui.shell :title="$letters ? 'Разбор письма' : 'Новая заявка'" :heading="$heading" :back="$letters ? ['Из писем', '/requests/from-mail'] : null">
     @if ($letters)
         <div class="-mt-3 mb-5 sm:-mt-4">
-            @include('park.requests.letter-tags', ['candidate' => $candidate, 'letter' => $letter, 'waits' => $waits])
+            <x-mail.letter-tags :candidate="$candidate" :letter="$letter" :waits="$waits"/>
         </div>
     @endif
     @if ($errors->any())<p class="field-error mb-4">{{ $errors->first() }}</p>@endif
@@ -44,7 +44,7 @@
         <div class="flex min-w-0 flex-col gap-4 {{ $letters ? '@4xl:sticky @4xl:top-24 @4xl:col-start-2 @4xl:row-start-1 @4xl:max-h-[calc(100dvh-8rem)] @4xl:overflow-y-auto @4xl:-mr-2 @4xl:pr-2' : '' }}">
         @if ($docs)
             @php $auto = collect($docs)->firstWhere('type', 'pdf'); @endphp
-            <div class="pills">
+            <div class="pills shrink-0">
                 @foreach ($docs as $doc)
                     <x-ui.doc :doc="$doc" :auto="$doc === $auto" class="pill pill-plain min-w-0 max-w-[14rem] gap-1.5"><x-ui.icon :name="match ($doc['type']) { 'letter' => 'mail', 'photos' => 'photo', default => 'file' }" class="size-4 shrink-0"/><span class="truncate">{{ $doc['label'] }}</span></x-ui.doc>
                 @endforeach
