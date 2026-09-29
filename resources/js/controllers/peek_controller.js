@@ -154,10 +154,13 @@ export default class extends Controller {
         this.focus();
     }
 
-    // Строка — по id: пока ответ шёл, выделение могло уйти на другую. Выделенную заменяем и держим
+    // Строка — по ключу (или id): пока ответ шёл, выделение могло уйти на другую. Выделенную заменяем и держим
     // выделенной — иначе стрелки считали бы от оторванной строки.
     swapRow(fresh) {
-        const stale = fresh?.tagName === 'TR' && fresh.id ? this.bodyTarget.querySelector(`#${CSS.escape(fresh.id)}`) : null;
+        // Номер предложения меняется при первой публикации (OfferNumber) — строку ищем по постоянному ключу, если он есть.
+        const key = fresh?.dataset?.rowKey;
+        const stale = fresh?.tagName !== 'TR' ? null
+            : (key ? this.bodyTarget.querySelector(`tr[data-row-key="${CSS.escape(key)}"]`) : null) ?? (fresh.id ? this.bodyTarget.querySelector(`#${CSS.escape(fresh.id)}`) : null);
         if (!stale) return;
         if (stale === this.current) fresh.setAttribute('aria-selected', 'true');
         stale.replaceWith(fresh);

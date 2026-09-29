@@ -16,6 +16,7 @@ use App\Mail\Threads;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Offers\Offer;
+use App\Offers\OfferNumber;
 use App\Park\Actions\CancelVehicle;
 use App\Park\Actions\CloseRequest;
 use App\Park\Actions\LinkOffer;
@@ -384,7 +385,7 @@ class VehicleController
 
             return back()->with('toast', 'Связь снята');
         }
-        $offer = Offer::where('number', $data['number'])->first();
+        $offer = OfferNumber::find($data['number']);
         if (! $offer) {
             return back()->withErrors(['number' => 'Предложения № '.$data['number'].' нет']);
         }

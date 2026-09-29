@@ -37,6 +37,7 @@ use App\Mail\Template;
 use App\Mail\Thread;
 use App\Media\PhotoIngest;
 use App\Offers\Offer;
+use App\Offers\OfferNumber;
 use App\Park\Actions\MarkDoc;
 use App\Park\DocKind;
 use App\Park\DocState;
@@ -369,7 +370,7 @@ class MailController
         $template = $request->query('template') ? Template::where('scope', $this->scope)->find($request->query('template')) : null;
         // Предложение — письмо CRM, машина и счёт — письма парковки: чужая сторона их не подставляет.
         $sale = $this->scope === Scope::Offers;
-        $offer = $sale && $request->query('offer') ? Offer::where('number', $request->query('offer'))->first() : null;
+        $offer = $sale && $request->query('offer') ? OfferNumber::find((string) $request->query('offer')) : null;
         $vehicle = ! $sale && $request->query('car') ? Vehicle::find($request->query('car')) : null;
         // Счёт за хранение вендору: ТС счёта, шаблон «Счёт за хранение», PDF счёта и акта, адресат — бухгалтерия вендора.
         $invoice = ! $sale && $request->query('invoice') ? Invoice::with(['vehicle', 'party'])->find($request->query('invoice')) : null;
@@ -649,7 +650,7 @@ class MailController
 
             return $back()->with('toast', 'Отвязано');
         }
-        $offer = Offer::where('number', $number)->first();
+        $offer = OfferNumber::find($number);
         if (! $offer) {
             return $back()->withErrors(['number' => 'Нет такого предложения']);
         }

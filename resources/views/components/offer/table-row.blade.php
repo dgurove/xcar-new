@@ -22,7 +22,7 @@
     $draft = $offer->state === OfferState::Draft;
     $unpriced = $draft && ! $offer->asking_price;
 @endphp
-<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0" @if ($unpriced) data-unpriced @endif>
+<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-row-key="offer-{{ $offer->id }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0" @if ($unpriced) data-unpriced @endif>
     <td class="grow">
         <span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
         <span class="cell-sub" data-controller="fitline">

@@ -48,12 +48,16 @@ export default class extends Controller {
     caption() {
         const lines = [];
         const price = [];
+        let link = null;
         for (const f of this.fieldTargets) {
             if (!f.checked || !f.dataset.value) continue;
             if (PRICES.includes(f.dataset.key)) price.push(f.dataset.value);
+            else if (f.dataset.key === 'link') link = f.dataset.value;
             else lines.push(f.dataset.value);
         }
         if (price.length) lines.push(price.join(' → ') + this.vatValue);
+        // Ссылка — самой последней, после цены.
+        if (link) lines.push(link);
         return lines.join('\n');
     }
 
@@ -138,6 +142,13 @@ export default class extends Controller {
 
     copy() {
         if (this.writeCaption()) window.toast?.('Текст в буфере');
+    }
+
+    copyLink(event) {
+        try {
+            navigator.clipboard.writeText(event.currentTarget.dataset.link);
+            window.toast?.('Ссылка в буфере');
+        } catch { window.toast?.('Не получилось', 'danger'); }
     }
 
     openPdf() {

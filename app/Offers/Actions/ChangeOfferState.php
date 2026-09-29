@@ -9,6 +9,7 @@ use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
+use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Users\User;
 use App\Workflow\Actions\EnterStage;
@@ -41,6 +42,7 @@ final class ChangeOfferState
             }
             if ($next === OfferState::Open) {
                 $this->readyToPublish($offer);
+                OfferNumber::issue($offer);
                 $offer->published_at ??= now();
                 if (! $offer->bids_close_at || $offer->bids_close_at->isPast()) {
                     $offer->bids_close_at = now()->addDays((int) config('xcar.bids_window_days'));
@@ -48,6 +50,7 @@ final class ChangeOfferState
             }
             if ($next === OfferState::Gallery) {
                 $this->readyForGallery($offer);
+                OfferNumber::issue($offer);
                 $offer->published_at ??= now();
             }
 

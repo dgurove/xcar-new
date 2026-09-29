@@ -26,6 +26,7 @@ use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -88,6 +89,12 @@ class Offer extends Model implements HasMedia
     public function getRouteKeyName(): string
     {
         return 'number';
+    }
+
+    /** В адресе — номер, нынешний или прежний (номер меняется при первой публикации, `OfferNumber`). */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return $field === null || $field === 'number' ? OfferNumber::find($value) : parent::resolveRouteBinding($value, $field);
     }
 
     public function setClaimRefAttribute(?string $value): void
@@ -347,12 +354,16 @@ class Offer extends Model implements HasMedia
         return $this->state->acceptsBids() && $this->bids_close_at?->isPast() === true;
     }
 
-    /** Поиск в списках CRM: номер, VIN, марка, модель. */
+    /** Поиск в списках CRM: номер (и прежний), VIN, марка, модель. */
     public function scopeSearch(Builder $q, string $term): Builder
     {
         $like = '%'.mb_strtolower(trim($term)).'%';
 
+        $digits = trim($term);
+
         return $q->where(fn ($w) => $w->whereRaw('cast(number as text) like ?', [$like])->orWhereRaw('lower(vin) like ?', [$like])
+            // Прежний номер (до первой публикации или до перенумерации) — точным совпадением.
+            ->when(ctype_digit($digits), fn ($w) => $w->orWhereIn('id', DB::table('offer_number_aliases')->where('number', $digits)->select('offer_id')))
             ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$like])->orWhereRaw('lower(name_ru) like ?', [$like]))
             ->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$like])));
     }

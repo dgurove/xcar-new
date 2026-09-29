@@ -54,9 +54,11 @@
             <div class="text-sm text-ink-muted" data-share-target="status"></div>
             <div class="flex flex-col gap-2">
                 <x-ui.button type="button" block data-action="share#send" data-share-target="send"><x-ui.icon name="send" class="size-5"/> <span data-share-target="label">Отправить</span></x-ui.button>
-                <div class="flex gap-2">
-                    <x-ui.button type="button" variant="secondary" class="flex-1" data-action="share#copy">Текст в буфер</x-ui.button>
-                    @if ($photos->isNotEmpty())<x-ui.button type="button" variant="secondary" class="flex-1" data-action="share#openPdf">Открыть PDF</x-ui.button>@endif
+                @php $link = collect($fields)->firstWhere('key', 'link')['value'] ?? null; @endphp
+                <div class="flex flex-wrap gap-2">
+                    <x-ui.button type="button" variant="secondary" class="min-w-[9rem] flex-1" data-action="share#copy">Текст в буфер</x-ui.button>
+                    @if ($link)<x-ui.button type="button" variant="secondary" class="min-w-[9rem] flex-1" data-action="share#copyLink" data-link="{{ $link }}"><x-ui.icon name="link" class="size-5"/> Скопировать ссылку</x-ui.button>@endif
+                    @if ($photos->isNotEmpty())<x-ui.button type="button" variant="secondary" class="min-w-[9rem] flex-1" data-action="share#openPdf">Открыть PDF</x-ui.button>@endif
                 </div>
             </div>
         </div>

@@ -5,6 +5,7 @@ namespace App\Offers\Share;
 use App\Offers\Offer;
 use App\Offers\PriceView;
 use App\Purchases\Car;
+use App\Support\Surface;
 use App\Users\User;
 
 /**
@@ -36,6 +37,8 @@ final class Caption
             // Сотруднику «Заявленная» — только когда она вписана: пустая равна закупочной, и под этим именем в текст уходила закупочная.
             ['publish_price', 'Заявленная', $staff ? $money($offer->publish_price) : ($price->visible ? $money($price->from) : null), false],
             ['price', 'Цена', $price->visible ? $money($offer->asking_price) : null, true],
+            // Ссылка на машину на сайте — последней строкой; у черновика своего адреса ещё нет (номер при публикации).
+            ['link', 'Ссылка', self::link($offer), true],
         ];
 
         return self::rows($rows);
@@ -57,9 +60,16 @@ final class Caption
             ['encumbrance', 'Обременения', $car->encumbrance, false],
             ['until', 'Приём цен до', $car->purchase?->offers_close_at?->translatedFormat('d.m.Y H:i'), false],
             ['price', 'Наша цена', $prices ? $money($car->price_listing) : null, true],
+            ['link', 'Ссылка', $car->purchase ? Surface::Site->url("/purchases/{$car->purchase->number}/{$car->ref}") : null, true],
         ];
 
         return self::rows($rows);
+    }
+
+    /** Адрес предложения на сайте — для текста и «Скопировать ссылку». */
+    public static function link(Offer $offer): ?string
+    {
+        return $offer->published_at ? Surface::Site->url("/offers/{$offer->number}") : null;
     }
 
     private static function rows(array $rows): array
