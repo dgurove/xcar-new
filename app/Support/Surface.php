@@ -85,8 +85,13 @@ enum Surface: string
         return $this->label();
     }
 
+    /** Где начинается работа после входа: на сайте и парковке `/` — лендинг для гостя, списки на своих адресах. */
     public function home(): string
     {
-        return '/';
+        return match ($this) {
+            self::Site => '/offers',
+            self::Park => '/requests',
+            default => '/',
+        };
     }
 }

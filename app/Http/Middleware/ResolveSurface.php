@@ -42,7 +42,9 @@ class ResolveSurface
 
         $response = $next($request);
         // CRM и стоянка — не для поисковиков; для сайта решается отдельно, когда всё завершим.
-        if ($surface !== Surface::Site && method_exists($response, 'header')) {
+        // Исключение — лендинг парковки для гостя: его ищут страховые.
+        $landing = $surface === Surface::Park && $request->path() === '/' && ! $request->user();
+        if ($surface !== Surface::Site && ! $landing && method_exists($response, 'header')) {
             $response->header('X-Robots-Tag', 'noindex, nofollow');
         }
 

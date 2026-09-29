@@ -1,19 +1,15 @@
-{{-- Главная и галерея: первый экран (без фильтров), название раздела со счётчиком, тулбар, карточки. --}}
+{{-- Предложения и галерея: название раздела со счётчиком, тулбар, карточки. Первый экран с числом — на лендинге `/`. --}}
 @php
     $user = auth()->user();
-    $trail = $hero ? [] : [['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения']];
+    $trail = [['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения']];
     $selecting = $user?->isManager() && !$gallery;
     // Покупателю та же лента и тот же тулбар: у него нет только первого экрана, а пустая лента — с контактом менеджера.
     $buyer = $user?->isBuyer() ?? false;
 @endphp
-<x-ui.shell :title="$gallery ? 'Скоро в продаже' : ($hero ? null : 'Предложения')" :heading="false" :over-hero="$hero" :trail="$trail">
-    @if ($hero)
-        <x-ui.hero :count="$counts['offers']" :label="\App\Support\Plural::of($counts['offers'], ['предложение доступно', 'предложения доступно', 'предложений доступно'])" href="#catalog-section"/>
-    @endif
+<x-ui.shell :title="$gallery ? 'Скоро в продаже' : 'Предложения'" :heading="false" :trail="$trail">
 
-    <div id="catalog-section" @class(['over-hero' => $hero]) @if ($selecting) data-controller="selection" data-selection-url-value="/account/showings/new" @endif>
-        {{-- Без первого экрана контейнер уже даёт шелл — второй удваивал поля. --}}
-        <div @class(['container-site pt-10 pb-10 sm:pt-14 sm:pb-14' => $hero])>
+    <div id="catalog-section" @if ($selecting) data-controller="selection" data-selection-url-value="/account/showings/new" @endif>
+        <div>
             {{-- Только название раздела: соседние разделы уже в шапке, а на телефоне и его место — лента пилюль тулбара. --}}
             <div class="hidden md:block">
                 <x-ui.section-title level="h1" :count="$gallery ? $counts['gallery'] : $counts['offers']">{{ $gallery ? 'Галерея' : 'Предложения' }}</x-ui.section-title>
@@ -60,7 +56,7 @@
                             </{{ $tag }}>
                         @endif
                     @else
-                    <x-ui.empty :href="$gallery ? '/gallery' : '/'" :link="$filters ? 'Сбросить фильтры' : null" id="catalog-empty">
+                    <x-ui.empty :href="$gallery ? '/gallery' : '/offers'" :link="$filters ? 'Сбросить фильтры' : null" id="catalog-empty">
                         @if ($filters) По этим условиям ничего нет. @elseif ($gallery) Пока пусто. @else Предложений пока нет. @endif
                     </x-ui.empty>
                     @endif

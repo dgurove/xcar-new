@@ -33,7 +33,7 @@
     @endif
 
     @if ($deals->isEmpty() && ! $sections)
-        <x-ui.empty href="/" link="В каталог">Пока ни одной сделки</x-ui.empty>
+        <x-ui.empty href="/offers" link="В предложения">Пока ни одной сделки</x-ui.empty>
     @elseif ($deals->isNotEmpty())
         <section>
         @if ($sections)<h2 class="text-xl">Сделки <span class="nums text-ink-dim">{{ $deals->total() }}</span></h2>@endif

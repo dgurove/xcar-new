@@ -10,7 +10,7 @@
      :desktop-heading="false" — ряд с h1 только на телефоне (кабинет: на ПК раздел называет пилюля).
      :phone-heading="false" — на телефоне ряд с h1 спрятан: раздел уже назван в таб-баре, его место
      занимает лента пилюль тулбара (она же якорь для имени в шапке при прокрутке). --}}
-@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null, 'phoneBack' => null, 'backRow' => true, 'phoneHeading' => true, 'desktopHeading' => true, 'cache' => 'no-preview'])
+@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null, 'phoneBack' => null, 'backRow' => true, 'phoneHeading' => true, 'desktopHeading' => true, 'cache' => 'no-preview', 'description' => null, 'index' => false])
 @php
     $heading = $heading === false ? null : ($heading ?? $title);
     // Пустой слот (кабинет передаёт его всегда) — всё равно что нет.
@@ -23,7 +23,7 @@
     $phoneBack ??= $back === false ? null : ($back ?? \App\Support\Nav::phoneBack($path, auth()->user()));
     $back = $back === false ? null : ($back ?? \App\Support\Nav::backFor($path, auth()->user()));
 @endphp
-<x-ui.layout :title="$title" :cache="$cache" class="min-h-dvh flex flex-col">
+<x-ui.layout :title="$title" :cache="$cache" :description="$description" :index="$index" class="min-h-dvh flex flex-col">
     <x-ui.header :over-hero="$overHero" :back="$phoneBack" :heading="$overHero ? null : ($heading ?? $title)"/>
 
     {{-- Запас под таб-бар: у CRM и стоянки всегда, у сайта — в приложении, где подвала с запасом нет. --}}

@@ -31,7 +31,7 @@ final class OffersShownNotice extends Notice
 
     public function href(): string
     {
-        return count($this->offerIds) === 1 ? '/offers/'.(Offer::find($this->offerIds[0])?->number ?? '') : '/';
+        return count($this->offerIds) === 1 ? '/offers/'.(Offer::find($this->offerIds[0])?->number ?? '') : '/offers';
     }
 
     public function offerNumber(): ?int

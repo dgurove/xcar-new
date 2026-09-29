@@ -66,9 +66,9 @@ final class PublishLiveUpdates
     public function shown(OffersShown $e): void
     {
         foreach (array_keys($e->fresh) as $buyerId) {
-            $this->publish->refresh(Topics::user($buyerId), ['/', '/account']);
+            $this->publish->refresh(Topics::user($buyerId), ['/offers', '/account']);
         }
-        $this->publish->refresh(Topics::user($e->manager), ['/', '/account/buyers']);
+        $this->publish->refresh(Topics::user($e->manager), ['/offers', '/account/buyers']);
     }
 
     public function hidden(OffersHidden $e): void

@@ -49,8 +49,13 @@ final class Nav
         $surface ??= Surface::current();
 
         if ($surface === Surface::Park) {
+            // Гость видит только лендинг: разделов у него нет.
+            if (! $user) {
+                return [];
+            }
+
             return array_values(array_filter([
-                self::item('Заявки', '/', ['/', '/requests']),
+                self::item('Заявки', '/requests'),
                 self::item('Наличие', '/cars'),
                 $user?->canPark(Area::Money) ? self::item('Оплаты', '/money') : null,
                 $user?->canPark(Area::Mail) ? self::item('Почта', '/mail') : null,
@@ -81,7 +86,7 @@ final class Nav
 
         if ($user?->isStaff()) {
             return [
-                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Предложения', '/offers'),
                 self::item('Галерея', '/gallery'),
                 self::item('Закупки', '/purchases'),
                 self::item('Уведомления', '/account/notifications', capsule: false),
@@ -91,16 +96,16 @@ final class Nav
         // Демо-кабинет менеджера: каталог вместо закупок — закупки настоящие и ему закрыты.
         if ($user?->role === Role::Manager && $user->is_demo) {
             return [
-                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Предложения', '/offers'),
                 self::item('Покупатели', '/account/buyers', ['/account/buyers', '/account/interest', '/account/invites']),
                 self::item('Сделки', '/account/deals', tab: false),
                 self::item('Уведомления', '/account/notifications', capsule: false),
             ];
         }
 
-        // Менеджеру предложения пока закрыты (временно, по просьбе руководства): главная уводит в закупки.
         if ($user?->role === Role::Manager) {
             return [
+                self::item('Предложения', '/offers'),
                 self::item('Галерея', '/gallery', tab: false),
                 self::item('Закупки', '/purchases'),
                 self::item('Покупатели', '/account/buyers', ['/account/buyers', '/account/interest', '/account/invites']),
@@ -111,13 +116,13 @@ final class Nav
 
         // Проверяющий: только посмотреть предложения.
         if ($user?->role === Role::Reviewer) {
-            return [self::item('Предложения', '/', ['/', '/offers'])];
+            return [self::item('Предложения', '/offers')];
         }
 
         // Покупатель: только то, что открыл менеджер, его интерес и уведомления.
         if ($user?->isBuyer()) {
             return [
-                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Предложения', '/offers'),
                 self::item('Интерес', '/account/interests'),
                 self::item('Уведомления', '/account/notifications', capsule: false),
             ];
@@ -125,7 +130,7 @@ final class Nav
 
         if ($user?->isApproved()) {
             return [
-                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Предложения', '/offers'),
                 self::item('Галерея', '/gallery'),
                 self::item('Избранное', '/account/favorites', capsule: false),
                 self::item('Уведомления', '/account/notifications', capsule: false),
@@ -395,7 +400,7 @@ final class Nav
             $day = now()->subDay();
             if ($surface === Surface::Park) {
                 return ['totals' => [
-                    '/' => Request::whereIn('state', RequestState::open())->count(),
+                    '/requests' => Request::whereIn('state', RequestState::open())->count(),
                     '/cars' => Vehicle::where('state', VehicleState::Stored)->count(),
                     '/yards' => Yard::count(),
                     '/money' => Invoice::where('state', InvoiceState::Issued)->count(),
@@ -418,7 +423,7 @@ final class Nav
 
             // Ноль — тоже число («Покупатели 0»), нет только разделов, которых у роли нет.
             return ['totals' => array_filter([
-                '/' => (clone $open)->count(),
+                '/offers' => (clone $open)->count(),
                 '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->count() : null,
                 '/purchases' => $user->role->canSeePurchases() ? count(Purchase::showcase($user)) : null,
                 '/account/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
@@ -426,7 +431,7 @@ final class Nav
                 '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
                 '/account/notifications' => $user->notifications()->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
-                '/' => (clone $open)->where('published_at', '>', $day)->count(),
+                '/offers' => (clone $open)->where('published_at', '>', $day)->count(),
                 '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->where('published_at', '>', $day)->count() : 0,
             ]];
         });
@@ -470,7 +475,7 @@ final class Nav
             if ($surface === Surface::Park) {
                 return [
                     // Бейдж «Заявки» — просроченные: то, что горит.
-                    '/' => Request::whereIn('state', RequestState::open())->where('planned_at', '<', now())->count(),
+                    '/requests' => Request::whereIn('state', RequestState::open())->where('planned_at', '<', now())->count(),
                     // Бейдж «Из писем» — число дел, которые надо завести: у одинокого письма-заявки цепочки нет.
                     '/requests/from-mail' => Boxes::registerCount(Scope::Park),
                     '/money' => Invoice::where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString())->count(),

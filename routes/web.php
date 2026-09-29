@@ -22,6 +22,7 @@ use App\Http\Site\EnquiryController;
 use App\Http\Site\FavoriteController;
 use App\Http\Site\FileController;
 use App\Http\Site\InterestController;
+use App\Http\Site\LandingController;
 use App\Http\Site\OfferController;
 use App\Http\Site\PayController;
 use App\Http\Site\PickupController;
@@ -67,9 +68,12 @@ Route::delete('/chats/{chat}/messages/{seq}', [ChatController::class, 'destroy']
 Route::post('/chats/{chat}/typing', [ChatController::class, 'typing'])->middleware('throttle:30,1');
 Route::get('/chats/{chat}/files/{file}', [ChatController::class, 'file']);
 
+// Первый экран для гостя; вошедшего и установленное приложение уводит в предложения.
+Route::get('/', [LandingController::class, 'site']);
+
 // Сайт закрыт: дальше только с открытым доступом (SiteWall).
 Route::middleware('wall')->group(function () {
-    Route::get('/', [CatalogController::class, 'index'])->name('home');
+    Route::get('/offers', [CatalogController::class, 'index'])->name('home');
     Route::get('/search', [CatalogController::class, 'search']);
     Route::view('/faq', 'site.pages.voprosy');
     Route::get('/gallery', [CatalogController::class, 'gallery']);

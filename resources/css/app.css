@@ -1554,6 +1554,24 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
   .over-hero { position: relative; z-index: 1; background: var(--color-ground); border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
 
+  /* Лендинг `/` сайта и парковки: заголовок первого экрана, блоки ниже. Размеры — со шкалы (22/26 экран, 17 блок, 15 текст). */
+  .landing-title { font-size: var(--text-2xl); font-weight: 500; line-height: 1.15; color: var(--color-ink); text-wrap: balance; }
+  .dark .landing-title { color: #fff; }
+  @media (min-width: 640px) { .landing-title { font-size: 2.5rem; } }
+  .landing-quiet { background: rgb(255 255 255 / .72); color: var(--color-ink); backdrop-filter: blur(12px); }
+  .dark .landing-quiet { background: rgb(255 255 255 / .12); color: #fff; }
+  .landing-h2 { font-size: var(--text-xl); font-weight: 500; line-height: 1.25; text-wrap: balance; }
+  @media (min-width: 640px) { .landing-h2 { font-size: var(--text-2xl); } }
+  .landing-lead { max-width: 40rem; color: var(--color-ink-muted); }
+  .landing-steps { display: grid; gap: .75rem; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 640px) { .landing-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) { .landing-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); } .landing-steps--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .landing-steps h3 { font-size: var(--text-lg); font-weight: 500; }
+  .landing-steps p { margin-top: .375rem; color: var(--color-ink-muted); }
+  .landing-step { display: inline-flex; margin-bottom: .75rem; width: 2rem; height: 2rem; align-items: center; justify-content: center; border-radius: 999px; background: var(--color-surface-3); color: var(--color-ink); font-size: var(--text-sm); font-weight: 500; }
+  .landing-cta { display: flex; flex-direction: column; gap: 1.25rem; }
+  @media (min-width: 640px) { .landing-cta { flex-direction: row; align-items: center; } }
+
   .auth-page { background-color: var(--color-chrome); }
   .auth-shade { background: linear-gradient(to bottom, rgb(18 18 18 / .55) 0%, rgb(18 18 18 / .78) 100%); }
 

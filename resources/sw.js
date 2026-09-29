@@ -16,7 +16,8 @@ const PAGES = `pages-${VERSION}`;
 const MEDIA_LIMIT = 300;
 const PAGES_LIMIT = 30;
 // Экраны, которые нельзя показывать из кэша: вход, выход, служебное.
-const NO_PAGE_CACHE = /^\/(login|logout|register|password|passkey|i|offline|dev|live|up)(\/|$)/;
+// Корень — лендинг гостя: вошедшему он редирект в список, из кэша его показывать нельзя.
+const NO_PAGE_CACHE = /^\/($|(login|logout|register|password|passkey|i|offline|dev|live|up)(\/|$))/;
 
 self.addEventListener('install', (event) => {
     event.waitUntil((async () => {

@@ -3,7 +3,7 @@
     $gallery = $offer->isGallery();
     $price = \App\Offers\PriceView::for($offer, $user);
     $prices = $price->visible;
-    $back = $context?->backUrl() ?? ($gallery ? '/gallery' : '/');
+    $back = $context?->backUrl() ?? ($gallery ? '/gallery' : '/offers');
     $dealInSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
     $facts = array_filter([
         'Год' => $offer->year,

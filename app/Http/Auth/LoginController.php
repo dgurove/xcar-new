@@ -68,6 +68,6 @@ class LoginController
         $allowed = $surface->opensFor($user);
 
         // Управляющий парковкой, вошедший на сайте или в CRM, — сразу на парковку.
-        return $allowed && ! ($user?->isParking() && $surface !== Surface::Park) ? $surface->home() : ($user?->isParking() ? Surface::Park->url() : Surface::Site->url());
+        return $allowed && ! ($user?->isParking() && $surface !== Surface::Park) ? $surface->home() : ($user?->isParking() ? Surface::Park->url(Surface::Park->home()) : Surface::Site->url(Surface::Site->home()));
     }
 }

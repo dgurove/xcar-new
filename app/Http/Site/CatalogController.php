@@ -3,7 +3,6 @@
 namespace App\Http\Site;
 
 use App\Cars\Brand;
-use App\Http\Middleware\MarkInstalled;
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -16,13 +15,9 @@ use Illuminate\Support\Facades\Cache;
 
 class CatalogController
 {
-    /** Главная: первый экран с числом предложений, ниже — каталог. С фильтрами в адресе — просто каталог. */
+    /** Предложения: каталог. Первый экран с числом — на лендинге `/` для гостя. */
     public function index(Request $request)
     {
-        if ($request->user()?->isManager() && ! $request->user()->is_demo) {
-            return redirect('/purchases');
-        }
-
         return $this->list($request, gallery: false);
     }
 
@@ -87,9 +82,6 @@ class CatalogController
             'gallery' => $gallery,
             'prices' => $prices,
             'counts' => ['recommended' => $recommended] + $counts,
-            // Установленное приложение открывается сразу в список, первый экран — гостю в браузере.
-            // Покупателю первый экран ни к чему: у него не витрина, а то, что открыл менеджер.
-            'hero' => ! $gallery && $filters === [] && $view === null && ! $request->has('page') && ! MarkInstalled::installed($request) && ! $user?->isBuyer(),
             'manager' => $user?->isBuyer() ? $user->manager : null,
         ]);
     }

@@ -14,13 +14,13 @@ class PwaController
 
         [$description, $shortcuts] = match ($surface) {
             Surface::Site => ['Предложения, сделки, закупки', [
-                ['Предложения', '/', 'car'], ['Сделки', '/account/deals', 'deal'], ['Уведомления', '/account/notifications', 'bell'],
+                ['Предложения', '/offers', 'car'], ['Сделки', '/account/deals', 'deal'], ['Уведомления', '/account/notifications', 'bell'],
             ]],
             Surface::Crm => ['Предложения, галерея, работа, закупки', [
                 ['Предложения', '/', 'car'], ['Галерея', '/gallery', 'photo'], ['Работа', '/work', 'deal'], ['Закупки', '/purchases', 'cart'],
             ]],
             Surface::Park => ['Заявки, ТС, парковки', [
-                ['Заявки', '/', 'flag'], ['ТС', '/cars', 'car'],
+                ['Заявки', '/requests', 'flag'], ['ТС', '/cars', 'car'],
             ]],
             Surface::Garage => ['Машины в гараже и расходы по ним', [
                 ['Машины', '/', 'car'],
@@ -33,7 +33,8 @@ class PwaController
             'name' => $surface->label(),
             'short_name' => $surface->short(),
             'description' => $description,
-            'start_url' => '/?app=1',
+            // Старт — сразу в список; id прежний, иначе установленное приложение стало бы другим.
+            'start_url' => $surface->home().'?app=1',
             'id' => '/',
             'scope' => '/',
             'display' => 'standalone',

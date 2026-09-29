@@ -1,4 +1,4 @@
-@props(['title' => null, 'cache' => 'no-preview'])
+@props(['title' => null, 'cache' => 'no-preview', 'description' => null, 'index' => false])
 @php
     $surface = \App\Support\Surface::current();
     // Тема: cookie на общий домен — одна на три приложения и известна серверу, поэтому
@@ -38,8 +38,14 @@
     @auth<meta name="badge-count" content="{{ auth()->user()->badgeCount() }}"><meta name="user-id" content="{{ auth()->id() }}">@endauth
     @if (config('xcar.vapid.public'))<meta name="vapid-key" content="{{ config('xcar.vapid.public') }}">@endif
     <link rel="preload" href="/fonts/onest-var.woff2" as="font" type="font/woff2" crossorigin>
-    @if ($surface !== \App\Support\Surface::Site)
+    @if ($surface !== \App\Support\Surface::Site && ! $index)
     <meta name="robots" content="noindex, nofollow">
+    @endif
+    @if ($description)
+    <meta name="description" content="{{ $description }}">
+    <meta property="og:title" content="{{ $title ?? $surface->label() }}">
+    <meta property="og:description" content="{{ $description }}">
+    <meta property="og:type" content="website">
     @endif
     @if (!$theme)
     {{-- Cookie ещё нет: тема по системе до первой отрисовки, иначе тёмная страница мигает белым. --}}

@@ -13,7 +13,9 @@
     $capsules = \App\Support\Nav::capsules($user);
     $top = \App\Support\Nav::top($user);
     $badges = \App\Support\Nav::badges($user);
-    $searchAction = $park ? '/cars' : '/';
+    $searchAction = $park ? '/cars' : ($site ? '/offers' : '/');
+    // Логотип ведёт вошедшего в его список, гостя — на первый экран.
+    $home = $user ? $surface->home() : '/';
     $searchHint = match (true) { $park => 'VIN, госномер, марка', $garage => 'Марка, модель, номер', default => 'Поиск объявления…' };
     $cabinet = \App\Support\Nav::cabinetRoot();
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
@@ -26,30 +28,30 @@
             <a href="{{ $back[1] }}" class="header-btn header-back {{ $site ? '' : 'justify-self-start' }}" data-controller="back" data-action="back#go" data-turbo-action="replace">
                 <x-ui.icon name="chevron-left" class="-ml-1 size-5 shrink-0"/><span class="truncate">Назад</span>
             </a>
-            @if ($site)<a href="/" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>@endif
+            @if ($site)<a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>@endif
         @elseif ($site)
             <div class="flex gap-1">
+                @if ($user)
                 <div class="contents" data-controller="sheet">
                     <button type="button" class="header-btn header-sq" data-action="sheet#open" aria-label="Поиск">
                         <x-ui.icon name="search" class="size-[18px]"/>
                     </button>
                     <x-ui.sheet id="search-sheet" title="Поиск" data-controller="search" data-search-url-value="/search">
-                        <form method="get" action="/" data-turbo-action="replace" data-action="submit->search#submit">
+                        <form method="get" action="{{ $searchAction }}" data-turbo-action="replace" data-action="submit->search#submit">
                             <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" class="field-input" placeholder="Марка, модель, VIN" enterkeyhint="search" autocomplete="off" autofocus data-search-target="input" data-action="input->search#input">
                         </form>
                         <div class="pills mt-3" data-search-target="recent" hidden></div>
                         <turbo-frame id="search-results" target="_top" class="mt-3 block" data-search-target="frame"></turbo-frame>
                     </x-ui.sheet>
                 </div>
-                @if ($user)
-                    <a href="/account/favorites" class="header-btn header-sq relative" aria-label="Избранное">
-                        <x-ui.icon name="bookmark" class="size-[18px]"/><x-ui.badge href="/account/favorites" :badges="$badges"/>
-                    </a>
+                <a href="/account/favorites" class="header-btn header-sq relative" aria-label="Избранное">
+                    <x-ui.icon name="bookmark" class="size-[18px]"/><x-ui.badge href="/account/favorites" :badges="$badges"/>
+                </a>
                 @endif
             </div>
-            <a href="/" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>
+            <a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>
         @else
-            <a href="/" class="flex min-w-0 items-center justify-self-start" aria-label="XCar"><x-ui.brand class="h-10"/></a>
+            <a href="{{ $home }}" class="flex min-w-0 items-center justify-self-start" aria-label="XCar"><x-ui.brand class="h-10"/></a>
         @endif
         <div class="flex items-center gap-1">
             <span class="net" aria-live="polite"></span>
@@ -80,12 +82,15 @@
 
     {{-- Десктоп --}}
     <div class="container-site hidden grid-cols-[auto_1fr] items-start gap-1 py-2 md:grid">
-        <a href="/" class="row-span-2 mr-1 flex shrink-0 items-center self-start" aria-label="XCar"><x-ui.brand class="h-16"/></a>
+        <a href="{{ $home }}" class="row-span-2 mr-1 flex shrink-0 items-center self-start" aria-label="XCar"><x-ui.brand class="h-16"/></a>
         <div class="header-row">
+            {{-- Поиск — по закрытому: гостю не нужен. --}}
+            @if ($user)
             <form method="get" action="{{ $searchAction }}" class="header-btn header-h header-search relative justify-start px-3" role="search" data-turbo-action="replace">
                 <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>
                 <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" placeholder="{{ $searchHint }}" class="w-28 sm:w-36 lg:w-52" aria-label="Поиск">
             </form>
+            @endif
             @foreach ($top as $item)
                 <a href="{{ $item['href'] }}" class="header-btn header-h flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>{{ $item['label'] }}@if (str_starts_with($item['href'], 'http')) ↗@endif</a>
             @endforeach

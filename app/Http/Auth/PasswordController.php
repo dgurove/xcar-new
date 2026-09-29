@@ -2,6 +2,7 @@
 
 namespace App\Http\Auth;
 
+use App\Support\Surface;
 use App\Users\Actions\SetPasswordByLink;
 use App\Users\PasswordLink;
 use Illuminate\Http\Request;
@@ -48,7 +49,7 @@ class PasswordController
             throw ValidationException::withMessages(['email' => 'Ссылка устарела, запросите новую']);
         }
 
-        return redirect('/')->with('toast', 'Пароль обновлён');
+        return redirect(Surface::current()->home())->with('toast', 'Пароль обновлён');
     }
 
     // -------------------------------------------------------------- ссылка от менеджера или админа

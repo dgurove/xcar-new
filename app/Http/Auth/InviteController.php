@@ -23,11 +23,11 @@ class InviteController
         $invite->load('manager');
         if ($user = $request->user()) {
             if ($user->isBuyer() && $user->manager_id === $invite->manager_id) {
-                return redirect('/')->with('toast', 'Вы уже в xcar');
+                return redirect(Surface::current()->home())->with('toast', 'Вы уже в xcar');
             }
             // Свою ссылку менеджер смотрит глазами покупателя, сотрудник — любую; остальным тут делать нечего.
             if ($user->id !== $invite->manager_id && ! $user->isStaff()) {
-                return redirect('/')->with('toast', 'Вы уже вошли как '.$user->shortName());
+                return redirect(Surface::current()->home())->with('toast', 'Вы уже вошли как '.$user->shortName());
             }
         }
 

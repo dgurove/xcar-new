@@ -1,7 +1,7 @@
 @php $view = \App\Support\ListView::pick(request(), $offers->total()); @endphp
 <x-ui.cabinet title="Избранное">
     @if ($offers->isEmpty())
-        <x-ui.empty href="/" link="В предложения">Пока пусто</x-ui.empty>
+        <x-ui.empty href="/offers" link="В предложения">Пока пусто</x-ui.empty>
     @else
         <div class="flex justify-end"><x-ui.view-switch :current="$view"/></div>
         @if (\App\Support\ListView::isTable($view))

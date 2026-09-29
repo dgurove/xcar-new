@@ -16,7 +16,7 @@ final class AccessOpenedNotice extends Notice
 
     public function href(): string
     {
-        return '/';
+        return '/offers';
     }
 
     public function category(): string

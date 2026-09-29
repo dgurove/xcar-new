@@ -13,11 +13,14 @@ use App\Http\Park\VehicleInvoiceController;
 use App\Http\Park\VendorContactController;
 use App\Http\Park\VendorController;
 use App\Http\Park\YardController;
+use App\Http\Site\LandingController;
 use Illuminate\Support\Facades\Route;
+
+// Первый экран для страховых и лизинга; вошедшего и установленное приложение уводит в заявки.
+Route::domain(config('xcar.park_host'))->get('/', [LandingController::class, 'park']);
 
 // Стоянка — свой хост того же приложения. Вход общий; пускает раздел «park».
 Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->group(function () {
-    Route::get('/', [RequestController::class, 'index']);
     Route::get('/requests', [RequestController::class, 'index']);
 
     Route::get('/requests/new', [RequestController::class, 'create']);
