@@ -17,6 +17,8 @@ use App\Users\User;
 use App\Workflow\Actions\DropRoute;
 use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\SetCarPlace;
+use App\Workflow\Actions\TakeExit;
+use App\Workflow\Actor;
 use App\Workflow\Track;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Validation\ValidationException;
@@ -28,7 +30,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class SyncOffer
 {
-    public function __construct(private PlaceOnStage $place, private SetCarPlace $setPlace, private DropRoute $drop) {}
+    public function __construct(private PlaceOnStage $place, private SetCarPlace $setPlace, private DropRoute $drop, private TakeExit $take) {}
 
     public function subscribe(Dispatcher $events): array
     {
@@ -70,10 +72,16 @@ final class SyncOffer
         $this->moveTo($e->vehicle, CarPlace::Owner, $e->by);
     }
 
+    /** Выдали с парковки: если продажа ждёт передачи машины (своя машина, Stock), шаг «Автомобиль передан» делается сам. */
     public function released(VehicleReleased $e): void
     {
-        if ($offer = $this->offer($e->vehicle)) {
-            $offer->log(OfferEventType::Note, $e->by, ['text' => 'Выдана с парковки'.($e->vehicle->yard ? ' «'.$e->vehicle->yard->name.'»' : '')]);
+        if (! ($offer = $this->offer($e->vehicle))) {
+            return;
+        }
+        $offer->log(OfferEventType::Note, $e->by, ['text' => 'Выдана с парковки'.($e->vehicle->yard ? ' «'.$e->vehicle->yard->name.'»' : '')]);
+        $exit = $offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff)->first(fn ($x) => mb_strtolower($x->label) === 'автомобиль передан');
+        if ($exit) {
+            ($this->take)($offer, $exit, Actor::Staff, $e->by ?? $this->system());
         }
     }
 

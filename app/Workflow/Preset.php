@@ -6,6 +6,7 @@ use App\Workflow\Presets\Alfa;
 use App\Workflow\Presets\Pickup;
 use App\Workflow\Presets\Route;
 use App\Workflow\Presets\Sovcombank;
+use App\Workflow\Presets\Stock;
 use App\Workflow\Presets\TBank;
 
 /**
@@ -19,6 +20,7 @@ enum Preset: string
     case Alfa = 'alfa';
     case Sovcombank = 'sovcombank';
     case Pickup = 'pickup';
+    case Stock = 'stock';
 
     public function label(): string
     {
@@ -27,6 +29,7 @@ enum Preset: string
             self::Alfa => 'Как у АльфаСтрахования',
             self::Sovcombank => 'Как у Совкомбанка',
             self::Pickup => 'Вывоз от страхователя',
+            self::Stock => 'Своя машина на парковке',
         };
     }
 
@@ -48,6 +51,7 @@ enum Preset: string
             self::Alfa => new Alfa,
             self::Sovcombank => new Sovcombank,
             self::Pickup => new Pickup,
+            self::Stock => new Stock,
         };
     }
 }
