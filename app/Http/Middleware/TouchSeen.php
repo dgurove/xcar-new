@@ -15,8 +15,9 @@ class TouchSeen
     {
         $user = $request->user();
         if ($user && ! Impersonation::active() && (! $user->seen_at || $user->seen_at->lt(now()->subMinute()))) {
-            // Через DB, а не Eloquent: updated_at человека от «был в сети» меняться не должен.
-            DB::table('users')->where('id', $user->id)->update(['seen_at' => now()]);
+            // Через DB, а не Eloquent: updated_at человека от «был в сети» меняться не должен. Соединение без ожидания
+            // диска (`pgsql_async`): отметка раз в минуту не должна стоить странице фиксацию на HDD.
+            DB::connection('pgsql_async')->table('users')->where('id', $user->id)->update(['seen_at' => now()]);
         }
 
         return $next($request);
