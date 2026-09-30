@@ -4,6 +4,8 @@ namespace App\Http\Auth;
 
 use App\Support\Phone;
 use App\Support\Surface;
+use App\Telegram\Bot;
+use App\Telegram\StartLink;
 use App\Users\Actions\LeaveImpersonation;
 use App\Users\Impersonation;
 use Illuminate\Http\Request;
@@ -12,9 +14,13 @@ use Illuminate\Validation\ValidationException;
 
 class LoginController
 {
-    public function show()
+    /** Ссылка «Войти через Telegram» — у каждого браузера своя попытка: подтверждённую кнопкой в чате заберёт только он. */
+    public function show(Request $request, Bot $bot)
     {
-        return view('auth.login');
+        return view('auth.login', [
+            'telegram' => $bot->username() ? $bot->startUrl(StartLink::login($request)) : null,
+            'telegramToken' => $request->session()->get('telegram.login'),
+        ]);
     }
 
     public function login(Request $request)

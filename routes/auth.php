@@ -5,6 +5,7 @@ use App\Http\Auth\InviteController;
 use App\Http\Auth\LoginController;
 use App\Http\Auth\PasskeyController;
 use App\Http\Auth\PasswordController;
+use App\Http\Auth\TelegramController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -19,6 +20,8 @@ Route::middleware('guest')->group(function () {
 
     Route::post('/passkey/login/options', [PasskeyController::class, 'loginOptions'])->middleware('throttle:20,1');
     Route::post('/passkey/login', [PasskeyController::class, 'login'])->middleware('throttle:10,1');
+    // Вход через Telegram: ссылка на бота — на самой странице входа, здесь страница узнаёт ответ из чата.
+    Route::post('/login/telegram/{token}', [TelegramController::class, 'login'])->middleware('throttle:30,1');
 });
 
 Route::middleware('auth')->group(function () {
@@ -26,6 +29,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/passkey/register/options', [PasskeyController::class, 'registerOptions'])->middleware('throttle:10,1');
     Route::post('/passkey/register', [PasskeyController::class, 'register'])->middleware('throttle:10,1');
     Route::delete('/passkey/{id}', [PasskeyController::class, 'destroy']);
+    Route::post('/account/telegram/later', [TelegramController::class, 'later'])->middleware('throttle:10,1');
+    Route::delete('/account/telegram', [TelegramController::class, 'destroy']);
 });
 
 // Ссылка на новый пароль от менеджера или админа: вошедшего контроллер сам выводит — ссылка должна сработать с любого телефона.

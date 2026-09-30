@@ -14,6 +14,7 @@ import * as Turbo from '@hotwired/turbo';
 //   chat    {chat, seq, author, from, text, href} — live:chat на document для chat_controller;
 //           если ни одна лента этого чата не на экране (handled) и это не своё — тост
 //   chat-edit / chat-read / chat-typing {chat, ...} — тем же путём, без тоста
+//   telegram {state} — live:telegram для telegram_controller: чат привязан, вход подтверждён или отклонён
 let source = null;
 let topics = '';
 let lastEventId = '';
@@ -60,6 +61,7 @@ function open() {
     on('toast', ({ message, href }) => window.toast?.(message, href ? { href } : undefined));
     on('badges', badges);
     on('chat', chat);
+    on('telegram', (detail) => document.dispatchEvent(new CustomEvent('live:telegram', { detail })));
     ['chat-edit', 'chat-read', 'chat-typing'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     source.onopen = () => {
         document.documentElement.removeAttribute('data-net');

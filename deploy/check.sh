@@ -9,8 +9,11 @@ env_value() { sed -nE "s/^$1=\"?([^\"]*)\"?\r?$/\1/p" "$ROOT/env/.env" | tail -1
 ADDRESSES="$(env_value SITE_ADDRESSES)"; ADDRESSES="${ADDRESSES:-http://127.0.0.1}"
 problems=()
 
-# Каждое имя: сайт отдаёт страницы, CRM и стоянка гостю — вход.
-code() { curl -sS -m 10 -o /dev/null -w '%{http_code}' -H "Host: $1" "http://127.0.0.1$2" 2>/dev/null || echo 000; }
+# Каждое имя: сайт отдаёт страницы, CRM и стоянка гостю — вход. По https на себя: на :80 Caddy отвечает 308,
+# а прежние хосты (garage) — 301 на сайт; редиректы проходим, ждём итоговый 200.
+resolve=()
+for addr in ${ADDRESSES//,/ }; do resolve+=(--resolve "${addr#*://}:443:127.0.0.1"); done
+code() { curl -sS -L --max-redirs 3 -m 10 "${resolve[@]}" -o /dev/null -w '%{http_code}' "https://$1$2" 2>/dev/null || echo 000; }
 first=1
 for addr in ${ADDRESSES//,/ }; do
     host="${addr#*://}"
@@ -52,21 +55,32 @@ report() {
     (cd "$ROOT/current/deploy" && docker compose exec -T app php artisan storage:report 2>/dev/null)
 }
 
+# До Telegram с сервера доходит только IPv6.
+telegram() {
+    local token chat
+    token="$(env_value TELEGRAM_BOT_TOKEN)"; chat="$(env_value TELEGRAM_CHAT_ID)"
+    [ -n "$token" ] && [ -n "$chat" ] || return 1
+    curl -6 -sS -m 10 --retry 2 -o /dev/null "https://api.telegram.org/bot$token/sendMessage" --data-urlencode "chat_id=$chat" --data-urlencode "text=$1"
+}
+stamp=/run/xcar-check.last
+
 if [ ${#problems[@]} -eq 0 ]; then
     echo "xcar: всё в порядке"
-    [ "${1:-}" = "--telegram" ] || report
+    if [ "${1:-}" = "--telegram" ]; then
+        # Беда прошла — сказать об этом один раз.
+        [ -s $stamp ] && telegram "xcar: снова всё в порядке" && rm -f $stamp
+    else
+        report
+    fi
     exit 0
 fi
 msg="xcar: $(printf '%s; ' "${problems[@]}")"
 echo "$msg"
 if [ "${1:-}" = "--telegram" ]; then
-    token="$(env_value TELEGRAM_BOT_TOKEN)"; chat="$(env_value TELEGRAM_CHAT_ID)"
-    if [ -n "$token" ] && [ -n "$chat" ]; then
-        # Не чаще раза в час на одну и ту же беду.
-        stamp=/run/xcar-check.last; last="$(cat $stamp 2>/dev/null || echo)"
-        if [ "$last" != "$msg" ] || [ "$(find $stamp -mmin +60 2>/dev/null)" ]; then
-            curl -sS -m 10 -o /dev/null "https://api.telegram.org/bot$token/sendMessage" --data-urlencode "chat_id=$chat" --data-urlencode "text=$msg" && echo "$msg" > $stamp
-        fi
+    # Не чаще раза в час на одну и ту же беду.
+    last="$(cat $stamp 2>/dev/null || echo)"
+    if [ "$last" != "$msg" ] || [ "$(find $stamp -mmin +60 2>/dev/null)" ]; then
+        telegram "$msg" && echo "$msg" > $stamp
     fi
 fi
 exit 1

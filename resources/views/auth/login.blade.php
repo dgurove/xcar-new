@@ -13,6 +13,12 @@
         <div class="my-4 flex items-center gap-3 text-sm text-ink-dim"><span class="h-px flex-1 bg-line"></span>или<span class="h-px flex-1 bg-line"></span></div>
         <button type="button" class="btn btn-quiet w-full" data-action="passkey#login" data-passkey-target="button"><x-ui.icon name="faceid" class="size-5"/> <span data-label>Войти по ключу</span></button>
     </div>
+    @if ($telegram)
+        {{-- Ссылка на бота своя у этого браузера: подтверждённый в чате вход забирает только он. --}}
+        <div data-controller="telegram" data-telegram-mode-value="login" data-telegram-token-value="{{ $telegramToken }}" class="mt-3">
+            <a href="{{ $telegram }}" target="_blank" rel="noopener" data-turbo="false" class="btn btn-quiet w-full" data-action="telegram#wait"><x-ui.icon name="telegram" class="size-5"/> <span data-telegram-target="label">Войти через Telegram</span></a>
+        </div>
+    @endif
     <div class="mt-5 flex justify-between text-sm">
         <a href="/password" class="text-ink-muted hover:text-accent-text">Забыли пароль?</a>
         <a href="/register" class="text-ink-muted hover:text-accent-text">Нет аккаунта?</a>

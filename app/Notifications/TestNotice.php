@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-/** Пробное уведомление из настроек: видно, что пуш и почта доходят. */
+/** Пробное уведомление из настроек: видно, что пуш, почта и Telegram доходят. */
 final class TestNotice extends Notice
 {
     public function title(): string
@@ -21,6 +21,11 @@ final class TestNotice extends Notice
     }
 
     public function critical(): bool
+    {
+        return true;
+    }
+
+    public function telegram(): bool
     {
         return true;
     }

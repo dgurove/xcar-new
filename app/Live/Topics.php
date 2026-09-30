@@ -24,6 +24,12 @@ final class Topics
         return "chat/{$chat}";
     }
 
+    /** Вход через Telegram: страница входа ждёт кнопку в чате — тема одной попытки, по сессии этого браузера. */
+    public static function login(string $token): string
+    {
+        return "login/{$token}";
+    }
+
     /** Что человек вправе слушать. */
     public static function for(?User $user, ?int $guestChat = null): array
     {
@@ -31,6 +37,9 @@ final class Topics
         $topics = $user?->isBuyer() ? [] : [self::CATALOG];
         if ($guestChat) {
             $topics[] = self::chat($guestChat);
+        }
+        if (! $user && request()->hasSession() && is_string($login = request()->session()->get('telegram.login'))) {
+            $topics[] = self::login($login);
         }
         if ($user) {
             $topics[] = self::user($user);

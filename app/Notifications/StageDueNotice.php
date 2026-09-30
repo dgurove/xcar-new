@@ -40,4 +40,10 @@ final class StageDueNotice extends Notice
     {
         return $this->dealId !== null;
     }
+
+    /** В Telegram — только менеджеру по его сделке. */
+    public function telegram(): bool
+    {
+        return $this->dealId !== null;
+    }
 }

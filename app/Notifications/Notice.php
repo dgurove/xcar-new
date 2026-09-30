@@ -50,9 +50,15 @@ abstract class Notice extends Notification implements ShouldQueue
         return false;
     }
 
+    /** В привязанный Telegram — только то, что требует человека: принятое подтверждение, его ход и сроки, деньги. */
+    public function telegram(): bool
+    {
+        return false;
+    }
+
     /**
      * Куда: выключенная категория — никуда; лента всегда; пуш — не в тихие часы;
-     * почта — если есть адрес и не выключена.
+     * почта — если есть адрес и не выключена; Telegram — если привязан и уведомление туда просится.
      */
     public function via(User $user): array
     {
@@ -66,6 +72,9 @@ abstract class Notice extends Notification implements ShouldQueue
         if ($user->email && $user->wantsMail()) {
             // Уведомления стоянки — через её ящик, если он есть; остальное — системный мейлер.
             $via[] = $this->category() === 'park' && MailboxChannel::account() ? MailboxChannel::class : 'mail';
+        }
+        if ($this->telegram() && $user->wantsTelegram()) {
+            $via[] = TelegramChannel::class;
         }
 
         return $via;

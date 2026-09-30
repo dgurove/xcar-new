@@ -17,6 +17,12 @@ final class MoneyNotice extends Notice
 {
     public function __construct(private string $title, private ?string $text, private string $path, private ?int $offerNumber = null, private bool $toStaff = false) {}
 
+    /** Менеджеру про его деньги — и в Telegram; сотрудникам только лентой. */
+    public function telegram(): bool
+    {
+        return ! $this->toStaff;
+    }
+
     public static function invoiceIssued(Invoice $i): self
     {
         return new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'), $i->deal?->offer?->titleWithYear(), '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number);

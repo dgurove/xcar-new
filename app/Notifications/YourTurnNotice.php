@@ -40,4 +40,9 @@ final class YourTurnNotice extends Notice
     {
         return true;
     }
+
+    public function telegram(): bool
+    {
+        return true;
+    }
 }

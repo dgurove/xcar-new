@@ -36,6 +36,7 @@
                             @if ($user->login)<span>{{ $user->login }}</span>@endif
                             @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="nums">{{ $user->phoneFormatted() }}</a>@endif
                             @if ($user->email)<a href="mailto:{{ $user->email }}">{{ $user->email }}</a>@endif
+                            @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false">{{ '@'.$user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span>Telegram</span>@endif
                             @if ($user->isManager() && isset($user->buyers_count))<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="text-ink">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
                             @if ($user->isPending() || $user->isBuyer())<span class="nums">с {{ $user->created_at->translatedFormat('j M') }}</span>@endif
                             {{-- Сотрудник или менеджер пришёл по одноразовой ссылке — чьей: без этого непонятно, кто его позвал. --}}

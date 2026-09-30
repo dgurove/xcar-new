@@ -79,12 +79,13 @@ class NotificationController
     {
         $user = $request->user();
         $allowed = array_keys(Categories::for($user->role)['on']);
+        // Прочие ключи (пуш, «напомнить позже» про Telegram) форма не присылает — их не теряем.
         $user->update(['notification_settings' => [
             'mail' => $request->boolean('mail'),
             'quiet' => $request->boolean('quiet'),
             // Форма присылает включённые категории — выключенные считаем от разрешённых.
             'off' => array_values(array_diff($allowed, array_map('strval', (array) $request->input('on', [])))),
-        ]]);
+        ] + ($user->telegram_chat_id ? ['telegram' => $request->boolean('telegram')] : []) + ($user->notification_settings ?? [])]);
 
         return back()->with('toast', 'Сохранено');
     }

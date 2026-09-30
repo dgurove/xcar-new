@@ -37,4 +37,9 @@ final class BidAcceptedNotice extends Notice
     {
         return true;
     }
+
+    public function telegram(): bool
+    {
+        return true;
+    }
 }

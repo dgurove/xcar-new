@@ -11,6 +11,7 @@ use App\Park\Area;
 use App\Park\Yard;
 use App\Support\Demo\HidesDemo;
 use App\Support\Phone;
+use App\Telegram\Bot;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -67,6 +68,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'email_verified_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
+            'telegram_linked_at' => 'datetime',
         ];
     }
 
@@ -238,6 +240,24 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         $h = (int) now('Europe/Moscow')->format('G');
 
         return $h >= 22 || $h < 8;
+    }
+
+    /** Telegram привязан и не выключен в настройках уведомлений. */
+    public function wantsTelegram(): bool
+    {
+        return $this->telegram_chat_id !== null && ($this->notification_settings['telegram'] ?? true) !== false;
+    }
+
+    /**
+     * Окошко «Привяжите Telegram»: менеджеру и админу без привязки, пока не просили напомнить позже.
+     * Не за человека: админ, вошедший за менеджера, привязал бы свой чат к чужому аккаунту.
+     */
+    public function offerTelegram(): bool
+    {
+        $later = $this->notification_settings['telegram_later'] ?? null;
+
+        return ($this->isManager() || $this->isAdmin()) && $this->telegram_chat_id === null && ! $this->is_demo
+            && ! Impersonation::active() && (! $later || now()->greaterThan($later)) && app(Bot::class)->username() !== null;
     }
 
     /** Подписанная ссылка «не присылать на почту» — работает без входа. */

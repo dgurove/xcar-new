@@ -6,8 +6,13 @@ use App\Telegram\Bot;
 use App\Telegram\Messages\Message;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
-/** Сообщение владельцу в Telegram. Без токена или чата — молча ничего. */
+/**
+ * Сообщение владельцу в Telegram: в чат из настроек и привязанным админам. Без токена или чатов — молча ничего.
+ * Повтор очередью — только если не дошло никуда: иначе дошедшие получили бы его дважды.
+ */
 final class NotifyOwner implements ShouldQueue
 {
     use Queueable;
@@ -23,10 +28,19 @@ final class NotifyOwner implements ShouldQueue
 
     public function handle(Bot $bot): void
     {
-        $chat = $bot->ownerChatId();
-        if (! $bot->configured() || $chat === null) {
-            return;
+        $chats = $bot->configured() ? $bot->ownerChats() : [];
+        $failed = null;
+        foreach ($chats as $chat) {
+            try {
+                $bot->send($chat, $this->message->text(), $this->message->keyboard());
+                $sent = true;
+            } catch (Throwable $e) {
+                Log::warning('Telegram: сообщение владельцу не ушло', ['chat' => $chat, 'error' => $e->getMessage()]);
+                $failed = $e;
+            }
         }
-        $bot->send($chat, $this->message->text(), $this->message->keyboard());
+        if ($failed && ! isset($sent)) {
+            throw $failed;
+        }
     }
 }

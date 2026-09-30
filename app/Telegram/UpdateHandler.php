@@ -10,6 +10,10 @@ use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
 use App\Billing\Robot;
+use App\Support\Surface;
+use App\Telegram\Actions\DecideLogin;
+use App\Telegram\Actions\LinkChat;
+use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\Messages\AgentFeeDue;
 use App\Telegram\Messages\InvoiceOverdue;
 use App\Telegram\Messages\PaymentClaimed;
@@ -21,8 +25,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Одно обновление Telegram: нажатие кнопки под сообщением или личное
- * сообщение боту. Исключение наружу не выходит — одно битое обновление не
+ * Одно обновление Telegram: нажатие кнопки под сообщением, личное
+ * сообщение боту (`/start` — привязка и вход) или блокировка бота. Исключение наружу не выходит — одно битое обновление не
  * должно останавливать опрос.
  */
 final class UpdateHandler
@@ -37,6 +41,8 @@ final class UpdateHandler
                 $this->press($update['callback_query']);
             } elseif (is_array($update['message'] ?? null)) {
                 $this->message($update['message']);
+            } elseif (is_array($update['my_chat_member'] ?? null)) {
+                $this->member($update['my_chat_member']);
             }
         } catch (Throwable $e) {
             Log::error('Telegram: обновление не разобрано', ['update' => $update['update_id'] ?? null, 'error' => $e->getMessage()]);
@@ -51,8 +57,14 @@ final class UpdateHandler
 
             return;
         }
-        // Кнопки лежат в чате владельца, но переслать сообщение и нажать может кто угодно.
-        if ($press->fromId !== $this->bot->ownerChatId()) {
+        // Вход подтверждает только тот, к чьему аккаунту привязан чат.
+        if ($press->topic === 'login') {
+            $this->login($press);
+
+            return;
+        }
+        // Кнопки лежат в чатах владельца и админов, но переслать сообщение и нажать может кто угодно.
+        if (! in_array($press->fromId, $this->bot->ownerChats(), true)) {
             $this->bot->answer($press->queryId, 'Эта кнопка не для вас.');
 
             return;
@@ -162,21 +174,121 @@ final class UpdateHandler
         $this->bot->edit($press->chatId, $press->messageId, $message->text('Поступило '.now()->translatedFormat('j M, H:i')), $message->afterDecision());
     }
 
-    /** Личное сообщение: пока владелец не задан, бот отвечает chat_id — иначе узнать его нечем. */
+    /** «Войти» или «Это не я» под «Вход на xcar.ru». */
+    private function login(Press $press): void
+    {
+        $token = StartLink::tokenOf($press->id);
+        $attempt = $token ? StartLink::attempt($token) : null;
+        $user = User::where('telegram_chat_id', $press->fromId)->first();
+        if (! $attempt || ! $user || ($attempt['user'] ?? $user->id) !== $user->id) {
+            $this->bot->answer($press->queryId, 'Ссылка устарела');
+            $this->bot->edit($press->chatId, $press->messageId, '<b>Вход на xcar.ru</b>'."\n".'Ссылка устарела');
+
+            return;
+        }
+        if ($attempt['state'] !== 'wait') {
+            $this->bot->answer($press->queryId, $attempt['state'] === 'ok' ? 'Уже вошли' : 'Уже отклонено');
+
+            return;
+        }
+        $allow = $press->action === 'ok';
+        app(DecideLogin::class)($token, $user, $allow);
+        $this->bot->answer($press->queryId, $allow ? 'Входим' : 'Вход отклонён');
+        $this->bot->edit($press->chatId, $press->messageId, '<b>Вход на xcar.ru</b>'."\n".e($attempt['device'])."\n\n".($allow ? 'Вошли ' : 'Отклонено ').now()->translatedFormat('j M, H:i'));
+    }
+
+    /** Человек заблокировал бота — уведомлениям туда больше не пробиться. */
+    private function member(array $update): void
+    {
+        if (data_get($update, 'chat.type') === 'private' && in_array(data_get($update, 'new_chat_member.status'), ['kicked', 'left'], true)) {
+            app(UnlinkChat::class)->byChat((int) data_get($update, 'chat.id'));
+        }
+    }
+
+    /** Личное сообщение: `/start` со ссылкой из приложения — привязка или вход; без неё — кто на связи. */
     private function message(array $message): void
     {
         $chatId = (int) data_get($message, 'chat.id', 0);
-        if ($chatId === 0) {
+        if ($chatId === 0 || data_get($message, 'chat.type', 'private') !== 'private') {
+            return;
+        }
+        if (preg_match('~^/start(?:@\w+)?\s+(\S+)$~', trim((string) ($message['text'] ?? '')), $m) === 1) {
+            $this->start($chatId, $m[1], data_get($message, 'from.username'));
+
             return;
         }
         $owner = $this->bot->ownerChatId();
-        $text = match (true) {
-            $owner === null => "Ваш chat_id: <code>{$chatId}</code>\nВпишите его в TELEGRAM_OWNER_CHAT_ID и перезапустите приложение.",
-            $chatId === $owner => 'Бот на связи: сюда приходят регистрации.',
-            default => 'Служебный бот xcar.ru.',
+        $linked = User::where('telegram_chat_id', $chatId)->first();
+        [$text, $keyboard] = match (true) {
+            $owner === null => ["Ваш chat_id: <code>{$chatId}</code>\nВпишите его в TELEGRAM_OWNER_CHAT_ID и перезапустите приложение", null],
+            $linked !== null => ['Привязан к аккаунту '.e($linked->name).' на xcar.ru', [[$this->open()]]],
+            $chatId === $owner => ['Бот на связи', null],
+            default => ['Служебный бот xcar.ru', [[$this->profile()]]],
         };
+        $this->reply($chatId, $text, $keyboard);
+    }
+
+    private function start(int $chatId, string $payload, ?string $username): void
+    {
+        $link = StartLink::parse($payload);
+        if ($link === null) {
+            $this->reply($chatId, 'Ссылка не подходит, нажмите «Привязать» в профиле ещё раз', [[$this->profile()]]);
+
+            return;
+        }
+        if ($link[0] === 'login') {
+            $this->askLogin($chatId, $link[1]);
+
+            return;
+        }
+        [, $userId, $expired] = $link;
+        $user = User::find($userId);
+        if (! $user || $expired) {
+            $this->reply($chatId, 'Ссылка устарела, нажмите «Привязать» в профиле ещё раз', [[$this->profile()]]);
+
+            return;
+        }
+        app(LinkChat::class)($user, $chatId, $username);
+        $what = $user->isManager() ? 'Сюда придут ваш ход в сделках, счета и выплаты' : 'Сюда придут сообщения владельца';
+        $this->reply($chatId, '<b>Telegram привязан</b>'."\n".e($user->name)."\n\n".$what, [[$this->open()]]);
+    }
+
+    /** Браузер просит войти: спрашиваем в чате, привязанном к аккаунту. */
+    private function askLogin(int $chatId, string $token): void
+    {
+        $attempt = StartLink::attempt($token);
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (! $user) {
+            $this->reply($chatId, 'Этот Telegram не привязан к xcar.ru. Войдите по паролю и привяжите его в профиле', [[['text' => 'Войти по паролю', 'url' => Surface::Site->url('/login')]]]);
+
+            return;
+        }
+        if (! $attempt || $attempt['state'] !== 'wait') {
+            $this->reply($chatId, 'Ссылка устарела, нажмите «Войти через Telegram» ещё раз', null);
+
+            return;
+        }
+        $n = StartLink::number($token);
+        $this->reply($chatId, '<b>Вход на xcar.ru</b>'."\n".e($attempt['device'])."\n".e($user->name), [[
+            ['text' => 'Войти', 'callback_data' => "login:{$n}:ok"],
+            ['text' => 'Это не я', 'callback_data' => "login:{$n}:no"],
+        ]]);
+    }
+
+    private function open(): array
+    {
+        return ['text' => 'Открыть xcar.ru', 'url' => Surface::Site->url('/')];
+    }
+
+    private function profile(): array
+    {
+        return ['text' => 'Профиль на xcar.ru', 'url' => Surface::Site->url('/account')];
+    }
+
+    private function reply(int $chatId, string $text, ?array $keyboard): void
+    {
         try {
-            $this->bot->send($chatId, $text);
+            $this->bot->send($chatId, $text, $keyboard);
         } catch (Throwable $e) {
             Log::warning('Telegram: не ответил на сообщение', ['chat' => $chatId, 'error' => $e->getMessage()]);
         }
