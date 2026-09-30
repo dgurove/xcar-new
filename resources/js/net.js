@@ -62,7 +62,8 @@ export function netGuards() {
     let hiddenAt = 0;
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
-        if (hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000) refreshCsrf();
+        // Страница сама обновилась при возврате (app.js freshness) — токен придёт с ней, второй запрос не нужен.
+        if (hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000) setTimeout(() => Date.now() - (window.xcarRefreshedAt || 0) > 5000 && refreshCsrf(), 0);
     });
 }
 

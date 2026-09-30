@@ -16,9 +16,9 @@ window.Stimulus = application;
 // Контроллеры, нужные только на своих экранах (чат, фото, сканер QR, подпись, редактор…), — отдельными кусками:
 // грузятся, когда на странице появился их data-controller. Остальные — в основной сборке, сразу.
 const controllerName = (path) => path.match(/\/([\w-]+)_controller\.js$/)[1].replace(/_/g, '-');
-const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,photo_slot,qr_release,signature,share,passkey,vin,draft,editor,combobox}_controller.js'], { eager: true });
+const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,photo_slot,qr_release,signature,share,passkey,vin,draft,editor,combobox,peek,gallery,audience,autosave,landing,login,tariff_form}_controller.js'], { eager: true });
 for (const [path, module] of Object.entries(controllers)) application.register(controllerName(path), module.default);
-const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,photo_slot,qr_release,signature,share,passkey,vin,draft,editor,combobox}_controller.js')).map(([path, load]) => [controllerName(path), load]));
+const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,photo_slot,qr_release,signature,share,passkey,vin,draft,editor,combobox,peek,gallery,audience,autosave,landing,login,tariff_form}_controller.js')).map(([path, load]) => [controllerName(path), load]));
 const loadLazy = (root) => {
     for (const [name, load] of lazy) {
         const selector = `[data-controller~="${name}"]`;
@@ -170,18 +170,21 @@ function imageFade() {
     document.addEventListener('error', done, true);
 }
 
-// Снимок «назад» старше 10 с и возврат из фона дольше минуты — тихий replace:
+// Снимок «назад» старше 2 мин и возврат из фона дольше минуты — тихий replace:
 // морф на месте с сохранением прокрутки, заодно свежие csrf-token и темы live.
+// 2 мин, а не 10 с: карточки и так живут по Mercure, а открыть ТС, почитать и вернуться — не повод
+// перерисовывать весь список заново («Назад» должен быть мгновенным).
 // Только на списках и не под руками: открытая шторка или правка формы — не трогаем.
 function freshness() {
     const cachedAt = new Map();
     let action = null;
     const quiet = () => document.querySelector('.cards, [data-list]') && !document.querySelector('form[data-dirty], dialog:modal');
-    const refresh = () => Turbo.visit(location.href, { action: 'replace' });
+    // Метка — чтобы net.js не перечитывал токен отдельным запросом: его принесёт этот же ответ.
+    const refresh = () => { window.xcarRefreshedAt = Date.now(); Turbo.visit(location.href, { action: 'replace' }); };
     document.addEventListener('turbo:before-cache', () => cachedAt.set(location.href, Date.now()));
     document.addEventListener('turbo:visit', (event) => { action = event.detail.action; });
     document.addEventListener('turbo:load', () => {
-        if (action === 'restore' && Date.now() - (cachedAt.get(location.href) ?? Date.now()) > 10_000 && quiet()) refresh();
+        if (action === 'restore' && Date.now() - (cachedAt.get(location.href) ?? Date.now()) > 120_000 && quiet()) refresh();
         action = null;
     });
     let hiddenAt = 0;
@@ -373,7 +376,7 @@ function stalePage() {
     if (['navigate', 'reload'].includes(nav?.type)) {
         const at = Number(document.querySelector('meta[name="rendered-at"]')?.content || 0) * 1000;
         if (at && Date.now() - at > 5_000 && navigator.onLine !== false) {
-            setTimeout(() => Turbo.visit(location.href, { action: 'replace' }), 300);
+            setTimeout(() => { window.xcarRefreshedAt = Date.now(); Turbo.visit(location.href, { action: 'replace' }); }, 300);
         }
     }
     document.addEventListener('turbo:submit-start', (event) => {

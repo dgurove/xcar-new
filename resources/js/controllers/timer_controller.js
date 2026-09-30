@@ -6,9 +6,18 @@ import { Controller } from '@hotwired/stimulus';
 // заголовок Date), при возврате из фона — тик сразу. На нуле шлёт timer:done
 // (bubbles) — экран закрывает приём сам, не дожидаясь серверного тика. coarse — без секунд, «21 ч 22 мин»: часы этапа
 // в строках списков и в шаге пути не тикают секундами.
+// Текст пишется только у видимых таймеров и только когда он поменялся: в длинном списке таймеры в каждой строке
+// (часть — скрытые копии для другой ширины) иначе каждую секунду перекладывали таблицу. Срок «вышел» проверяется у всех.
 const timers = new Set();
 let interval = null;
 const tickAll = () => timers.forEach((t) => t.tick());
+const owners = new WeakMap();
+const sight = typeof IntersectionObserver === 'function' ? new IntersectionObserver((entries) => entries.forEach((entry) => {
+    const timer = owners.get(entry.target);
+    if (!timer) return;
+    timer.visible = entry.isIntersecting;
+    if (timer.visible) timer.tick();
+}), { rootMargin: '200px 0px' }) : null;
 document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && tickAll());
 
 export const serverNow = () => Date.now() + (window.clockOffset || 0);
@@ -19,32 +28,41 @@ export default class extends Controller {
 
     connect() {
         this.finished = false;
+        this.visible = true; // до первого ответа наблюдателя — как видимый: первый кадр рисуется сразу
         this.tick();
         timers.add(this);
+        owners.set(this.element, this);
+        sight?.observe(this.element);
         interval ??= setInterval(tickAll, 1000);
     }
 
     disconnect() {
         timers.delete(this);
+        sight?.unobserve(this.element);
         if (!timers.size) { clearInterval(interval); interval = null; }
+    }
+
+    // Сверяем с тем, что стоит в DOM (морф мог подставить серверный текст), — чтение раскладку не трогает.
+    write(text) {
+        if (this.visible && this.element.textContent !== text) this.element.textContent = text;
     }
 
     tick() {
         if (this.hasUntilValue && this.untilValue) {
             const left = Math.floor((new Date(this.untilValue) - serverNow()) / 1000);
             if (left <= 0) {
-                this.element.textContent = this.doneValue === '-' ? '−' + this.format(-left) : this.doneValue;
+                this.write(this.doneValue === '-' ? '−' + this.format(-left) : this.doneValue);
                 if (this.doneValue !== '-' && !this.finished) {
                     this.finished = true;
                     this.dispatch('done', { bubbles: true });
                 }
                 return;
             }
-            this.element.classList.toggle('is-last', left < 60);
-            this.element.textContent = this.coarseValue ? this.rough(left) : this.format(left);
+            if (this.visible) this.element.classList.toggle('is-last', left < 60);
+            this.write(this.coarseValue ? this.rough(left) : this.format(left));
         } else if (this.hasSinceValue && this.sinceValue) {
             const passed = Math.max(0, Math.floor((serverNow() - new Date(this.sinceValue)) / 1000));
-            this.element.textContent = this.humanValue ? this.human(passed) : this.coarseValue ? this.rough(passed) : this.format(passed);
+            this.write(this.humanValue ? this.human(passed) : this.coarseValue ? this.rough(passed) : this.format(passed));
         }
     }
 

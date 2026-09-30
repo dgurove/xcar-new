@@ -26,7 +26,7 @@ class ServerTiming
             self::$listening = $events;
         }
         self::$queries = 0;
-        $dbBefore = DB::connection()->totalQueryDuration();
+        $dbBefore = self::dbTime();
         $started = (float) $request->server('REQUEST_TIME_FLOAT');
         if (! $started || microtime(true) - $started > 60) {
             $started = microtime(true); // у воркера метка могла остаться от старта процесса
@@ -35,10 +35,16 @@ class ServerTiming
         $response = $next($request);
         if (method_exists($response, 'header')) {
             $app = round((microtime(true) - $started) * 1000, 1);
-            $db = round(DB::connection()->totalQueryDuration() - $dbBefore, 1);
+            $db = round(self::dbTime() - $dbBefore, 1);
             $response->header('Server-Timing', 'app;dur='.$app.', db;dur='.$db.', q;desc="'.self::$queries.'"');
         }
 
         return $response;
+    }
+
+    /** Время базы по всем соединениям: сессии и кэш идут через `pgsql_async`. */
+    private static function dbTime(): float
+    {
+        return array_sum(array_map(fn ($c) => $c->totalQueryDuration(), DB::getConnections()));
     }
 }

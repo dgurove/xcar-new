@@ -1,8 +1,8 @@
 // Turbo подгружает страницу по ссылке при наведении. На телефоне наведения
 // нет, а tap на iOS даёт mouseenter и click почти одновременно — 100 мс
 // задержки Turbo не успевают. Поэтому запрос уходит на touchstart, пока палец
-// ещё на экране, а Turbo при переходе забирает уже идущий ответ. Начало
-// прокрутки по ссылке — не тап: запрос отменяется через AbortController.
+// ещё на экране (после 70 мс без движения), а Turbo при переходе забирает уже
+// идущий ответ. Начало прокрутки по ссылке — не тап: запрос не уходит или отменяется.
 // Штатный hover-префетч на телефоне глушится (эмулированный mouseenter давал
 // второй запрос). Соседи по списку (rel=prev/next) подгружаются заранее.
 import { fetch as turboFetch } from '@hotwired/turbo';
@@ -30,27 +30,36 @@ export function prefetch(href, ttl = TTL) {
 }
 
 export function touchPrefetch() {
+    // Касание — ещё не тап: запрос уходит, если палец 70 мс стоит на месте (или отпущен раньше — быстрый тап),
+    // а не на каждое касание карточки при прокрутке ленты: те запросы сервер всё равно рисовал до конца.
     let touch = null;
+    const start = () => {
+        if (!touch || touch.entry) return;
+        clearTimeout(touch.timer);
+        touch.entry = prefetch(touch.href);
+    };
 
     document.addEventListener('touchstart', (event) => {
         const link = event.target.closest?.('a[href]');
-        if (!link || !prefetchable(link)) return;
+        if (!link || !prefetchable(link)) { touch = null; return; }
         // Касание у самого края — это жест «назад» iOS, а не тап по карточке.
-        const x = event.touches[0].clientX;
-        if (x < 24 || x > innerWidth - 24) return;
-        const entry = prefetch(link.href);
         const t = event.touches[0];
-        touch = entry ? { entry, x: t.clientX, y: t.clientY, at: Date.now(), fresh: Date.now() - entry.at < 50 } : null;
+        if (t.clientX < 24 || t.clientX > innerWidth - 24) { touch = null; return; }
+        touch = { href: link.href, x: t.clientX, y: t.clientY, entry: null };
+        touch.timer = setTimeout(start, 70);
     }, { capture: true, passive: true });
 
     document.addEventListener('touchmove', (event) => {
         if (!touch) return;
         const t = event.touches[0];
-        if (Math.hypot(t.clientX - touch.x, t.clientY - touch.y) > 10 && Date.now() - touch.at < 150 && touch.fresh) {
-            touch.entry.controller.abort();
-            touch = null;
-        }
+        if (Math.hypot(t.clientX - touch.x, t.clientY - touch.y) <= 10) return;
+        // Это прокрутка: не начатый запрос не начинаем, начатый — отменяем.
+        clearTimeout(touch.timer);
+        if (touch.entry && Date.now() - touch.entry.at < 300) touch.entry.controller.abort();
+        touch = null;
     }, { capture: true, passive: true });
+
+    document.addEventListener('touchend', start, { capture: true, passive: true });
 
     document.addEventListener('turbo:before-fetch-request', (event) => {
         const { fetchOptions, url } = event.detail;
@@ -66,9 +75,10 @@ export function touchPrefetch() {
         document.addEventListener('turbo:before-prefetch', (event) => event.preventDefault());
     }
 
-    // Стрелки к соседям и «Вперёд» — ответ уже в руках к моменту тапа.
+    // Стрелки к соседям на странице ТС — ответ уже в руках к моменту тапа. Постраничку списка — нет: это целая
+    // следующая страница карточек на каждый показ, а листают её редко.
     document.addEventListener('turbo:load', () => setTimeout(() => {
-        document.querySelectorAll('a[rel="prev"], a[rel="next"]').forEach((a) => prefetchable(a) && prefetch(a.href, 60_000));
+        document.querySelectorAll('a[rel="prev"], a[rel="next"]').forEach((a) => !a.closest('[data-pages]') && prefetchable(a) && prefetch(a.href, 60_000));
     }, 800));
 }
 
@@ -76,6 +86,8 @@ function prefetchable(link) {
     if (link.origin !== location.origin) return false;
     if (link.hasAttribute('download') || link.target?.startsWith('_')) return false;
     if (link.closest('[data-turbo="false"], [data-turbo-prefetch="false"], [data-turbo-method], [data-turbo-frame]')) return false;
+    // Таб таб-бара открывает запомненный экран раздела (tabbar_controller), а не свой href — предзагрузка ушла бы мимо.
+    if (link.closest('#tabbar')) return false;
     if (link.href === location.href || link.hash && link.pathname === location.pathname) return false;
     if (document.querySelector('meta[name="turbo-prefetch"][content="false"]')) return false;
     return true;

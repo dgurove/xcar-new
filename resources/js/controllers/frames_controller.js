@@ -51,6 +51,8 @@ export default class extends Controller {
     // Сам листается только кадр на экране: карточки ниже не качают свои кадры, пока до них не долистали.
     next() {
         if (this.stopped) return;
+        // Вид «строки»: кадр — миниатюра, точек нет — не листаем и не качаем остальные кадры.
+        if (this.hasDotTarget && !this.dotTargets[0].offsetParent) return;
         const r = this.element.getBoundingClientRect();
         if (r.bottom > 0 && r.top < innerHeight) this.show(this.i + 1);
     }

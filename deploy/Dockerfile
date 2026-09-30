@@ -50,7 +50,8 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 COPY resources ./resources
 COPY vite.config.js ./
-RUN npm run build && test -s public/build/manifest.json
+COPY scripts/precompress.mjs ./scripts/
+RUN npm run build && test -s public/build/manifest.json && node scripts/precompress.mjs
 
 # ------------------------------------------------------------ runtime
 FROM base AS app

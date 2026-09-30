@@ -48,6 +48,9 @@ self.addEventListener('activate', (event) => {
     })());
 });
 
+// Свежие ответы на запуск с иконки — по адресу, несколько секунд (см. fetch ниже).
+const recent = new Map();
+
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     if (request.method !== 'GET') return;
@@ -55,11 +58,19 @@ self.addEventListener('fetch', (event) => {
     if (url.origin !== location.origin) return;
 
     if (url.pathname.startsWith('/build/') || url.pathname.startsWith('/fonts/') || url.pathname.startsWith('/pwa/') || url.pathname.startsWith('/images/')) {
-        event.respondWith(cacheFirst(STATIC, request));
+        event.respondWith(cacheFirst(event, STATIC, request));
         return;
     }
     if (url.pathname.startsWith('/hot/')) {
-        event.respondWith(cacheFirst(MEDIA, request, MEDIA_LIMIT));
+        event.respondWith(cacheFirst(event, MEDIA, request, MEDIA_LIMIT));
+        return;
+    }
+    // Экран показан из кэша, свежий уже пришёл следом — тихий replace страницы (app.js stalePage) получает его, а не
+    // рисует ту же страницу на сервере второй раз.
+    const fresh = request.mode !== 'navigate' && !request.headers.get('Turbo-Frame') && (request.headers.get('Accept') || '').includes('text/html') && recent.get(url.href);
+    if (fresh && Date.now() - fresh.at < 10_000) {
+        recent.delete(url.href);
+        event.respondWith(fresh.response);
         return;
     }
     // Запуск с иконки: последний экран из кэша сразу, свежий — следом (страница сама
@@ -69,41 +80,55 @@ self.addEventListener('fetch', (event) => {
             const cacheable = !NO_PAGE_CACHE.test(url.pathname);
             const network = (async () => {
                 const response = (await event.preloadResponse) || (await fetch(request));
-                if (response.redirected && /\/login(\/|$|\?)/.test(new URL(response.url).pathname)) await caches.delete(PAGES);
+                if (response.redirected && /\/login(\/|$|\?)/.test(new URL(response.url).pathname)) later(event, caches.delete(PAGES));
                 else if (cacheable && response.ok && (response.headers.get('Content-Type') || '').includes('text/html')) {
-                    // Не записалось — страница всё равно показывается из сети, а не «нет связи».
-                    try {
-                        const cache = await caches.open(PAGES);
-                        await cache.put(request, response.clone());
-                        await trim(cache, PAGES_LIMIT);
-                    } catch { await dropHeavy(); }
+                    // Страница отдаётся браузеру сразу, запись в кэш — следом: иначе <head> со стилями ждал бы диска.
+                    // Не записалось — страница всё равно показана из сети, а не «нет связи».
+                    later(event, store(PAGES, request, response.clone(), PAGES_LIMIT));
                 }
                 return response;
             })();
             const cached = cacheable && await caches.match(request);
-            if (cached) { event.waitUntil(network.catch(() => {})); return cached; }
+            if (cached) {
+                later(event, network.then((response) => {
+                    if (!response.ok || response.redirected) return;
+                    for (const [key, entry] of recent) if (Date.now() - entry.at > 10_000) recent.delete(key);
+                    recent.set(url.href, { response: response.clone(), at: Date.now() });
+                }).catch(() => {}));
+                return cached;
+            }
             try { return await network; } catch { return caches.match('/offline'); }
         })());
     }
 });
 
-async function cacheFirst(name, request, limit) {
-    let cache = null;
+// Дописать в фоне, продлив жизнь воркера. Позднее продление старые WebKit отбивают (InvalidStateError) — тогда просто
+// в фоне: ответ странице от этого пострадать не должен.
+function later(event, promise) {
+    try { event.waitUntil(promise); } catch { promise.catch(() => {}); }
+}
+
+async function cacheFirst(event, name, request, limit) {
     try {
-        cache = await caches.open(name);
-        const hit = await cache.match(request);
+        const hit = await (await caches.open(name)).match(request);
         if (hit) return hit;
     } catch {}
     const response = await fetch(request);
-    if (cache && response.ok) {
-        try {
-            await cache.put(request, response.clone());
-            if (limit) await trim(cache, limit);
-        } catch {
-            await dropHeavy();
-        }
-    }
+    // Картинка уходит странице сразу (рисуется по мере загрузки), запись в кэш — следом, не задерживая её.
+    if (response.ok) later(event, store(name, request, response.clone(), limit));
     return response;
+}
+
+// Запись в кэш с обрезкой по лимиту. Обрезка перебирает все ключи — на каждой картинке это дорого, поэтому в среднем
+// раз в 20 записей; случайно, а не счётчиком: iOS часто перезапускает воркер, и счётчик до 20 не доходил бы.
+async function store(name, request, response, limit) {
+    try {
+        const cache = await caches.open(name);
+        await cache.put(request, response);
+        if (limit && Math.random() < 0.05) await trim(cache, limit);
+    } catch {
+        await dropHeavy();
+    }
 }
 
 // Картинки и экраны всех версий — то, что можно выбросить, когда хранилище полно.
@@ -126,7 +151,7 @@ const surface = () => ['crm', 'park'].find((name) => location.hostname.startsWit
 
 // Страница просит забыть экраны: выход.
 self.addEventListener('message', (event) => {
-    if (event.data?.forgetPages) event.waitUntil(caches.delete(PAGES));
+    if (event.data?.forgetPages) later(event, caches.delete(PAGES));
 });
 
 self.addEventListener('push', (event) => {

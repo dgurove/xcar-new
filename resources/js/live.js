@@ -28,10 +28,12 @@ export const liveOpen = () => source?.readyState === EventSource.OPEN;
 
 export function live() {
     document.addEventListener('turbo:load', retopic);
+    // Бейджи при возврате — только после паузы дольше 30 с: переключились на секунду в другое приложение — не повод.
+    let hiddenAt = 0;
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState !== 'visible') return;
+        if (document.visibilityState !== 'visible') { hiddenAt = Date.now(); return; }
         if (source?.readyState === EventSource.CLOSED) reopen(0);
-        else if (source) badges();
+        else if (source && Date.now() - hiddenAt > 30_000) badges();
     });
     window.addEventListener('online', () => source?.readyState === EventSource.CLOSED && reopen(0));
     // Человек что-то печатает — refresh от хаба страницу под руками не дёргает.
