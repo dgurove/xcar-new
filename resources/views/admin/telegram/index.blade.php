@@ -7,13 +7,12 @@
     $qs = request()->getQueryString() ? '?'.request()->getQueryString() : '';
 @endphp
 <x-ui.cabinet :title="$chat ? $chat->displayName() : 'Бот Telegram'">
-    @unless ($chat)
-        <form method="get" action="/settings/telegram" class="chat-crm-top" data-turbo-action="replace">
-            <input name="q" value="{{ $q }}" placeholder="Имя, @username, текст" class="field-input field-s w-full sm:max-w-80" type="search">
-        </form>
-    @endunless
     <div class="chat-split {{ $current ? 'has-current' : '' }}" data-controller="split">
         <div class="chat-rows">
+            {{-- Поиск — шапкой списка: окно переписки начинается вровень с ним, а не под строкой поиска. --}}
+            <form method="get" action="/settings/telegram" class="chat-rows-search" data-turbo-action="replace">
+                <input name="q" value="{{ $q }}" placeholder="Имя, @username, текст" class="field-input field-s w-full" type="search" enterkeyhint="search">
+            </form>
             @if ($chats->isEmpty())
                 <x-ui.empty>{{ $q !== '' ? 'Ничего не нашли' : 'Чатов пока нет' }}</x-ui.empty>
             @else

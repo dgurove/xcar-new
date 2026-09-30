@@ -53,6 +53,9 @@ migrate() {
 up() {
     echo "==> запуск"
     compose_in "$(release_dir)" up -d --remove-orphans
+    # Старый планировщик убит посреди задач, а их замки withoutOverlapping живут в кэше до 10 минут:
+    # бот (telegram:poll) и почта молчали бы после каждой выкладки. Новые контейнеры ещё ничего не держат.
+    compose_in "$(release_dir)" exec -T scheduler php artisan schedule:clear-cache || true
     remote "ln -sfn $(release_dir) $ROOT/current"
     timers
     prune
