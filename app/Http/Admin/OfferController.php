@@ -119,7 +119,6 @@ class OfferController
             'docs' => $this->docs($offer, $threads),
             'chats' => Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'import' => ImportThreadFiles::progress($offer->id),
-            'stages' => $offer->vendor ? $offer->vendor->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
             'tags' => Tag::orderBy('sort')->get(),
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
             'audienceOptions' => AudienceRules::options(),

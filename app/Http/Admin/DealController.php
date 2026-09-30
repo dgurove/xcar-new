@@ -55,7 +55,6 @@ class DealController
         return view('admin.deals.show', [
             'deal' => $deal,
             'offer' => $offer,
-            'stages' => $offer->vendor ? $offer->vendor->workflows->mapWithKeys(fn ($w) => [$w->track->label() => $w->stages()->with('block')->get()->mapWithKeys(fn ($s) => [$s->id => $s->block->name.' › '.$s->name])]) : collect(),
             'events' => $offer->events->where('created_at', '>=', $deal->created_at),
             'dealCard' => false,
         ]);

@@ -12,12 +12,10 @@ use App\Offers\Deal;
 use App\Offers\OfferEventType;
 use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Actor;
-use App\Workflow\Block;
 use App\Workflow\Outcome;
-use App\Workflow\Stage;
+use App\Workflow\Path;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class DealController
@@ -48,7 +46,7 @@ class DealController
             ->map(fn ($e) => ['at' => $e->created_at, 'block' => $e->payload['block'] ?? null])
             ->filter(fn ($s) => $s['block'])
             ->values();
-        $blocks = $position ? $this->ladder($position->stage, $steps->pluck('block')->all()) : collect();
+        $blocks = $position ? Path::ladder($position->stage, $steps->pluck('block')->all()) : collect();
 
         return view('cabinet.deals.show', [
             'deal' => $deal,
@@ -60,32 +58,6 @@ class DealController
             'exits' => $deal->openRequirement ? $position?->stage->exitsFor(Actor::Manager) : collect(),
             'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->orderBy('id')->get(),
         ]);
-    }
-
-    /**
-     * Лестница: позади — где сделка была по журналу, текущий блок, впереди —
-     * пока путь однозначен. Развилка её обрывает: у маршрута с двумя ветками
-     * покупки менеджер увидел бы обе, включая ту, от которой отказался.
-     * Тупики срыва и возвраты назад впереди не считаются. Блоки сравниваются
-     * по имени: у двух веток покупки блок «Согласуем с поставщиком» свой.
-     */
-    private function ladder(Stage $stage, array $passedNames): Collection
-    {
-        $all = $stage->workflow->blocks()->with('stages.exits.to.block')->get();
-        $current = $all->firstWhere('id', $stage->block_id);
-        $behind = collect($passedNames)->map(fn ($name) => $all->firstWhere('name', $name))->filter()
-            ->reject(fn (Block $b) => $b->name === $current->name)->unique('name')->values();
-        $ladder = $behind->push($current);
-        $seen = $ladder->pluck('id')->all();
-        while (true) {
-            $next = $current->nextBlocks()->reject(fn (Block $b) => $b->isDeadEnd() || in_array($b->id, $seen, true));
-            if ($next->count() !== 1) {
-                return $ladder;
-            }
-            $current = $next->first();
-            $seen[] = $current->id;
-            $ladder->push($current);
-        }
     }
 
     public function answer(Request $request, Deal $deal, AnswerRequirement $answer)

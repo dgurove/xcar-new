@@ -11,11 +11,12 @@ use App\Workflow\Actions\StartRoute;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
+use App\Workflow\Path;
 use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
 
-/** Маршрут на карточке оффера: наши исходы и ручная постановка на этап. */
+/** Маршрут на карточке оффера: наши исходы, вывоз и возврат на пройденный шаг. */
 class RouteController
 {
     public function exit(Request $request, Offer $offer, Outcome $exit, TakeExit $take)
@@ -32,13 +33,16 @@ class RouteController
         return redirect("/offers/{$offer->number}")->with('toast', $exit->label);
     }
 
+    /** «Вернуть на этот шаг» у пройденного блока пути: назад — только туда, где предложение уже было. */
     public function place(Request $request, Offer $offer, PlaceOnStage $place)
     {
-        $stage = Stage::findOrFail($request->validate(['stage_id' => ['required', 'integer']])['stage_id']);
+        $stage = Stage::with('block', 'workflow')->findOrFail($request->validate(['stage_id' => ['required', 'integer']])['stage_id']);
         abort_unless($stage->workflow->vendor_id === $offer->vendor_id, 403);
+        $passed = Path::for($offer, $stage->workflow->track)->where('state', Path::DONE)->pluck('block.id')->all();
+        abort_unless(in_array($stage->block_id, $passed, true), 422);
         $place($offer, $stage, $request->user());
 
-        return redirect("/offers/{$offer->number}")->with('toast', 'Поставлен на «'.$stage->name.'»');
+        return redirect("/offers/{$offer->number}")->with('toast', 'Снова «'.$stage->block->name.'»');
     }
 
     /** Вывоз по решению сотрудника — там, где он исключение, а не правило. */
