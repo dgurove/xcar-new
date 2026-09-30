@@ -8,7 +8,8 @@
     // Без договора эквайринга способа «Ссылкой» нет вовсе.
     $online = app(\App\Billing\Acquiring\Gateway::class)->configured();
     $first = $invoices->first();
-    $left = fn ($i) => rtrim(rtrim(number_format(max(0, $i->remaining() - $i->claimed()), 2, '.', ''), '0'), '.');
+    // Сумма разрядами («780 000»), копейки — только если они есть; пробелы и запятую сервер снимает сам (NormalizeNumbers).
+    $left = function ($i) { $v = max(0, $i->remaining() - $i->claimed()); return \App\Support\Money::nums($v, fmod($v, 1) ? 2 : 0); };
     // Поле не зовётся `method`: оно перекрыло бы form.method, и Turbo с обработчиками отправки ломались бы.
     $way = old('way', $online ? 'link' : 'transfer');
     $payer = old('payer', 'self');
@@ -70,7 +71,7 @@
                 <x-ui.field name="amount" id="pay-amount-transfer" label="Сумма, ₽" :value="$invoices->count() === 1 ? $left($first) : null"/>
                 <x-ui.field name="paid_at" id="pay-date-transfer" label="Дата оплаты" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
                 <x-ui.field name="ref" label="№ платёжки"/>
-                <x-ui.field name="slip" label="Платёжка" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,image/*"/>
+                <x-ui.file-field name="slip" label="Платёжка" accept=".pdf,.jpg,.jpeg,.png,.heic,image/*"/>
             </div>
             <x-ui.button block>Я оплатил</x-ui.button>
         </div>

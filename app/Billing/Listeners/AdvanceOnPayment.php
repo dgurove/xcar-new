@@ -3,6 +3,7 @@
 namespace App\Billing\Listeners;
 
 use App\Billing\ChargeKind;
+use App\Billing\Events\PaymentConfirmed;
 use App\Billing\Events\PaymentRecorded;
 use App\Billing\InvoiceState;
 use App\Offers\OfferEventType;
@@ -13,15 +14,17 @@ use App\Workflow\Track;
 /**
  * Счёт по сделке оплачен целиком — маршрут сам делает шаг «Оплата получена». Если сделка ещё ждёт
  * платёжку менеджера (оплатили по ссылке, пришло по выписке, сотрудник отметил сам), сначала за менеджера
- * проходится «Платёжное поручение приложено»: деньги уже у нас, ждать его бумагу незачем.
+ * проходится «Платёжное поручение приложено»: деньги уже у нас, ждать его бумагу незачем. Подтверждение заявки
+ * менеджера об оплате («Поступило») — тоже оплата: без этого сотрудник жал «Поступило» в деньгах и ещё раз
+ * «Оплата получена» в пути, а одно не знало о другом.
  */
 final class AdvanceOnPayment
 {
     public function __construct(private TakeExit $take) {}
 
-    public function handle(PaymentRecorded $e): void
+    public function handle(PaymentRecorded|PaymentConfirmed $e): void
     {
-        $invoice = $e->invoice;
+        $invoice = $e instanceof PaymentConfirmed ? $e->payment->invoice->refresh() : $e->invoice;
         // Вознаграждение от поставщика и наше обязательство менеджеру — не оплата покупателя, маршрут не двигают.
         if ($invoice->state !== InvoiceState::Paid || ! $invoice->deal_id || $invoice->isOwed() || $invoice->kind === ChargeKind::Reward) {
             return;

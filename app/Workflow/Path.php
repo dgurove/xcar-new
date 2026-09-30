@@ -35,7 +35,9 @@ final class Path
 
         return $blocks->map(function (Block $block) use (&$passed, $position, $journal) {
             $current = $block->id === $position->stage->block_id;
-            $state = $current ? self::CURRENT : ($passed ? self::DONE : self::NEXT);
+            // Конечный этап (выходов нет — «Сделка закрыта») не ждёт действия: он пройден, галочкой, а не текущим.
+            $final = $current && $position->stage->exits->isEmpty();
+            $state = $final ? self::DONE : ($current ? self::CURRENT : ($passed ? self::DONE : self::NEXT));
             if ($current) {
                 $passed = false;
             }
@@ -83,7 +85,8 @@ final class Path
         $ladder = $behind->push($current);
         $seen = $ladder->pluck('id')->all();
         while (true) {
-            $next = $current->nextBlocks()->reject(fn (Block $b) => $b->isDeadEnd() || in_array($b->id, $seen, true));
+            // Возврат назад («Отказываюсь» → снова приём) — не развилка пути вперёд: блоки раньше текущего не считаются.
+            $next = $current->nextBlocks()->reject(fn (Block $b) => $b->isDeadEnd() || in_array($b->id, $seen, true) || $b->position < $current->position);
             if ($next->count() !== 1) {
                 return $ladder;
             }

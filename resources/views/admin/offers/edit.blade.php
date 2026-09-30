@@ -113,12 +113,15 @@
             </x-ui.card>
 
             <x-ui.card title="История" class="order-6">
-                <div class="flex flex-col gap-1.5 text-sm">
+                <div class="flex flex-col gap-3 text-sm">
                     @foreach ($offer->events->take(30) as $event)
-                        <div class="flex gap-3">
-                            <span class="shrink-0 text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
-                            <span class="min-w-0">{{ $event->text() }}</span>
-                            @if ($event->user)<span class="ml-auto shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
+                        {{-- Как история дела ТС: сверху мелко дата, ниже текст во всю ширину, справа кто — в узкой колонке строка не ломается лесенкой. --}}
+                        <div>
+                            <div class="nums text-xs text-ink-dim">{{ $event->created_at->translatedFormat('j M, H:i') }}</div>
+                            <div class="mt-0.5 flex items-start justify-between gap-3">
+                                <div class="min-w-0 flex-1 leading-snug">{{ $event->text() }}</div>
+                                @if ($event->user)<span class="shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
+                            </div>
                         </div>
                     @endforeach
                 </div>

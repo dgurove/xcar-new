@@ -31,7 +31,8 @@
             </nav>
         @endif
         <div class="flex min-w-0 flex-col gap-6">
-            @if ($back)
+            {{-- Ссылка «‹ Раздел» — только когда заголовка с круглой «назад» над колонкой нет (экран с пилюлями). --}}
+            @if ($back && $pills)
                 <a href="{{ $back[1] }}" class="hidden w-fit items-center gap-1 text-sm text-ink-muted transition-colors hover:text-ink md:inline-flex" data-controller="back" data-action="back#go" data-turbo-action="replace"><x-ui.icon name="chevron-left" class="size-4"/>{{ $back[0] }}</a>
             @endif
             {{ $slot }}

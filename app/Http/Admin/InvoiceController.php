@@ -66,7 +66,8 @@ class InvoiceController
         $invoice = $issue($deal, $request->user(), $party, ChargeKind::from($data['kind']), (float) $data['amount'], Carbon::parse($data['due_at']), $request->boolean('vat'),
             $data['notes'] ?? null, filled($data['title'] ?? null) ? $data['title'] : null);
 
-        return redirect("/offers/{$offer->number}")->with('toast', 'Счёт '.$invoice->label().' выставлен');
+        // Счёт выставляют из сделки — туда и возвращаемся.
+        return redirect($deal ? "/work/deals/{$deal->id}" : "/offers/{$offer->number}")->with('toast', 'Счёт '.$invoice->label().' выставлен');
     }
 
     /** Наше вознаграждение по условиям вендора: разница цен, процент от продажи или фикс; без условий — разница. */

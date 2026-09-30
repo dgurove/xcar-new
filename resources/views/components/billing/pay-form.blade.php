@@ -9,7 +9,7 @@
         <x-ui.field name="paid_at" label="Дата" type="date" :value="now()->toDateString()"/>
         <x-ui.field name="source" label="Откуда" :options="$sources" value="bank"/>
         <x-ui.field name="ref" label="№ платёжки"/>
-        <x-ui.field name="slip" label="Платёжка" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic" span="col-span-2"/>
+        <x-ui.file-field name="slip" label="Платёжка" accept=".pdf,.jpg,.jpeg,.png,.heic" span="col-span-2"/>
         <x-ui.field name="note" label="Заметка" span="col-span-2"/>
     </div>
     <x-ui.button block>{{ $invoice->isOwed() ? 'Перечислено' : 'Оплачен' }}</x-ui.button>

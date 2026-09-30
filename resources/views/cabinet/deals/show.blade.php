@@ -2,14 +2,20 @@
     use App\Offers\DealState;
     use App\Offers\CommissionState;
     use App\Workflow\Asks;
-    $currentBlock = $position?->stage->block_id;
+    // Конечный этап (выходов нет — «Сделка закрыта») пройден: в пути он галочкой, как в CRM.
+    $currentBlock = $position?->stage->exits->isNotEmpty() ? $position->stage->block_id : null;
     // Шаг «оплатите счёт»: платёжка живёт у счёта в «Деньгах», а не у просьбы — кнопка ведёт туда.
     $payStep = $requirement && $exits->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
     $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
+    // Оплата, а счёта ещё нет: просить оплатить и приложить платёжку нечего — счёт готовим.
+    $noInvoice = $payStep && $invoices->reject(fn ($i) => $i->isOwed())->isEmpty();
     $feeState = $deal->commissionState();
     $waiting = $position ? match ($position->stage->waits_for) {
         \App\Workflow\WaitsFor::Manager => 'Ваш ход', \App\Workflow\WaitsFor::Supplier => 'ждём поставщика', \App\Workflow\WaitsFor::Us => 'ждём нас', default => null,
     } : null;
+    if ($noInvoice) {
+        $waiting = 'ждём нас';
+    }
 @endphp
 <x-ui.cabinet :title="$offer->titleWithYear()" :back="['Сделки', '/account/deals']">
     <div class="grid gap-6 lg:grid-cols-[1fr_18rem]" data-deal-offer="{{ $offer->number }}">
@@ -24,9 +30,10 @@
                 <div class="box {{ $requirement && $position->isOverdue() ? 'box-urgent' : '' }}">
                     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                         <h2 class="text-xl">{{ $position->stage->block?->name ?? 'Идёт работа' }}</h2>
-                        <x-route.clock :position="$position"/>
+                        @if ($noInvoice)<p class="text-sm text-ink-muted">ждём нас</p>@else<x-route.clock :position="$position"/>@endif
                     </div>
-                    @php $about = $requirement ? $position->stage->block?->text : $position->stage->managerText(); @endphp
+                    {{-- Есть просьба — её текст и говорит, что делать; текст блока рядом повторял бы его слово в слово. --}}
+                    @php $about = $requirement ? null : $position->stage->managerText(); @endphp
                     @if ($about)<p class="mt-3 whitespace-pre-line text-ink-muted">{{ $about }}</p>@endif
                     @if ($position->payload)
                         <dl class="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
@@ -41,14 +48,17 @@
                             @foreach ($invoices as $i)
                                 <a href="/account/money/invoices/{{ $i->id }}" class="row !py-3">
                                     <x-ui.icon name="file" class="size-5 shrink-0 text-ink-muted"/>
-                                    <span class="min-w-0 flex-1"><span class="whitespace-nowrap">Счёт {{ $i->label() }}</span>{{ $i->state === \App\Billing\InvoiceState::Issued ? ', до '.$i->due_at->translatedFormat('j M') : '' }}{{ $i->claimed() > 0 ? ', ждёт подтверждения' : '' }}</span>
+                                    {{-- Срок — в светофоре справа, словами его не повторяем. --}}
+                                    <span class="min-w-0 flex-1"><span class="whitespace-nowrap">Счёт {{ $i->label() }}</span>{{ $i->claimed() > 0 ? ', ждёт подтверждения' : '' }}</span>
                                     <x-billing.light :invoice="$i"/>
                                     <span class="nums font-semibold">{{ \App\Support\Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
                                 </a>
                             @endforeach
                         </div>
                     @endif
-                    @if ($requirement)
+                    @if ($noInvoice)
+                        <div class="box-nested mt-5"><h3 class="text-lg">Готовим счёт</h3></div>
+                    @elseif ($requirement)
                         <div class="box-nested mt-5">
                             <h3 class="text-lg">{{ $requirement->title }}</h3>
                             @if ($requirement->text)<p class="mt-2 whitespace-pre-line text-ink-muted">{{ $requirement->text }}</p>@endif
@@ -58,7 +68,7 @@
 
                             @if ($payStep && $unpaid->isNotEmpty())
                                 <div class="mt-4 flex flex-wrap gap-2">
-                                    @foreach ($unpaid as $i)<x-ui.button :href="'/account/money/invoices/'.$i->id" size="s">Сообщить об оплате{{ $unpaid->count() > 1 ? ' '.$i->label() : '' }}</x-ui.button>@endforeach
+                                    @foreach ($unpaid as $i)<x-ui.button :href="'/account/money/invoices/'.$i->id" size="s">Оплатить{{ $unpaid->count() > 1 ? ' '.$i->label() : '' }}</x-ui.button>@endforeach
                                 </div>
                             @elseif ($requirement->asks === Asks::Document)
                                 <div class="mt-4" data-controller="photos" data-photos-url-value="/account/deals/{{ $deal->id }}/files">
@@ -140,9 +150,10 @@
                 </a>
                 @if ($feeState !== CommissionState::Hidden)
                     {{-- Вознаграждение открывается со счёта; до него менеджер видит только цену. --}}
-                    <a href="/account/money/deals/{{ $deal->id }}" class="mx-6 mb-5 flex items-center gap-2 rounded-(--radius-m) bg-surface-2 px-4 py-3">
-                        <span class="min-w-0 flex-1"><span class="block text-sm text-ink-dim">Агентское вознаграждение</span><span class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</span></span>
-                        <x-ui.pill :tone="$feeState->tone()" class="!min-h-0 !py-1 text-xs">{{ mb_strtolower($feeState->label()) }}</x-ui.pill>
+                    {{-- Подпись своей строкой, ниже сумма и состояние: в колонку 18rem три части в ряд не влезали, подпись рвалась. --}}
+                    <a href="/account/money/deals/{{ $deal->id }}" class="mx-6 mb-5 block rounded-(--radius-m) bg-surface-2 px-4 py-3">
+                        <span class="block text-sm text-ink-dim">Агентское вознаграждение</span>
+                        <span class="mt-0.5 flex flex-wrap items-center justify-between gap-2"><span class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</span><x-ui.pill :tone="$feeState->tone()" class="!min-h-0 !py-1 text-xs">{{ mb_strtolower($feeState->label()) }}</x-ui.pill></span>
                     </a>
                 @endif
                 <div class="px-6 pb-6">

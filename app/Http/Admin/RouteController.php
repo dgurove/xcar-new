@@ -30,7 +30,8 @@ class RouteController
         }
         $take($offer, $exit, Actor::Staff, $request->user(), $payload);
 
-        return redirect("/offers/{$offer->number}")->with('toast', $exit->label);
+        // Туда же, откуда нажали: страница сделки, редактор или окошко строки (PeekBack), а не всегда в редактор.
+        return back(fallback: "/offers/{$offer->number}")->with('toast', $exit->label);
     }
 
     /** «Вернуть на этот шаг» у пройденного блока пути: назад — только туда, где предложение уже было. */
@@ -42,7 +43,7 @@ class RouteController
         abort_unless(in_array($stage->block_id, $passed, true), 422);
         $place($offer, $stage, $request->user());
 
-        return redirect("/offers/{$offer->number}")->with('toast', 'Снова «'.$stage->block->name.'»');
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Снова «'.$stage->block->name.'»');
     }
 
     /** Вывоз по решению сотрудника — там, где он исключение, а не правило. */

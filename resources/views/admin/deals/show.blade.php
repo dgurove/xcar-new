@@ -2,8 +2,6 @@
     use App\Offers\DealState;
     use App\Workflow\Asks;
     $position = $offer->position();
-    $open = $deal->requirements->whereNull('done_at');
-    $answered = $deal->requirements->whereNotNull('done_at')->sortByDesc('done_at');
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/work/deals']">
     <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
@@ -22,59 +20,8 @@
             @if ($offer->positions->isNotEmpty())
                 @include('admin.offers.route')
             @endif
-            @if ($offer->deal)
-                <x-deal.money :deal="$offer->deal" class="order-1"/>
-            @endif
-
-            @if ($open->isNotEmpty())
-            <x-ui.card title="Ждём от менеджера" class="order-2 box-urgent">
-                <div class="flex flex-col gap-2">
-                    @foreach ($open as $r)
-                        <div class="box-nested">
-                            <div class="font-medium">{{ $r->title }}</div>
-                            @if ($r->text)<div class="mt-1 whitespace-pre-line text-sm text-ink-muted">{{ $r->text }}</div>@endif
-                            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                                @if ($r->stage?->block?->name)<span class="tag">{{ $r->stage->block->name }}</span>@endif
-                                @if ($r->due_at)<span class="tag nums" @if ($r->due_at->isPast()) style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d" @endif>до {{ $r->due_at->translatedFormat('j M, H:i') }}</span>@endif
-                            </div>
-                            @if ($r->media->isNotEmpty())
-                                <div class="mt-2 flex flex-col">
-                                    @foreach ($r->media as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
-                                </div>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            </x-ui.card>
-            @endif
-
-            @if ($answered->isNotEmpty())
-            <x-ui.card title="Ответы менеджера" class="order-3">
-                <div class="flex flex-col gap-2">
-                    @foreach ($answered as $r)
-                        <div class="box-nested">
-                            <div class="flex flex-wrap items-baseline gap-x-2">
-                                <span class="font-medium">{{ $r->title }}</span>
-                                <span class="text-sm text-ink-muted">{{ $r->done_at->translatedFormat('j M, H:i') }}</span>
-                            </div>
-                            @if ($r->answer['exit'] ?? null)<div class="mt-1 text-sm">«{{ $r->answer['exit'] }}»</div>@endif
-                            @if (!empty($r->answer['fields']))
-                                <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
-                                    @foreach ($r->answer['fields'] as $k => $v)
-                                        <div class="min-w-0"><dt class="text-ink-dim">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}</dt><dd class="break-words">{{ is_array($v) ? implode(', ', $v) : $v }}</dd></div>
-                                    @endforeach
-                                </dl>
-                            @endif
-                            @if ($r->media->isNotEmpty())
-                                <div class="mt-2 flex flex-col">
-                                    @foreach ($r->media as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
-                                </div>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            </x-ui.card>
-            @endif
+            {{-- Деньги — и у закрытой сделки: вознаграждение и выплата остаются видны. Просьбы и ответы менеджера — в шагах пути. --}}
+            <x-deal.money :deal="$deal" class="order-1"/>
 
             @if ($lastLetter)
                 <x-ui.card title="Письма" :count="$letters" class="order-3">
@@ -108,15 +55,18 @@
             </x-ui.card>
 
             <x-ui.card title="История" class="order-5">
-                <div class="flex flex-col gap-1.5 text-sm">
+                <div class="flex flex-col gap-3 text-sm">
                     @forelse ($events->take(40) as $event)
-                        <div class="flex gap-3">
-                            <span class="shrink-0 text-ink-dim">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
-                            <span class="min-w-0">{{ $event->text() }}</span>
-                            @if ($event->user)<span class="ml-auto shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
+                        {{-- Как история дела ТС: сверху мелко дата, ниже текст во всю ширину, справа кто — в узкой колонке строка не ломается лесенкой. --}}
+                        <div>
+                            <div class="nums text-xs text-ink-dim">{{ $event->created_at->translatedFormat('j M, H:i') }}</div>
+                            <div class="mt-0.5 flex items-start justify-between gap-3">
+                                <div class="min-w-0 flex-1 leading-snug">{{ $event->text() }}</div>
+                                @if ($event->user)<span class="shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
+                            </div>
                         </div>
                     @empty
-                        <div class="text-ink-muted">Пока ничего.</div>
+                        <div class="text-ink-muted">Пока ничего</div>
                     @endforelse
                 </div>
             </x-ui.card>

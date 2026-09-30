@@ -25,13 +25,14 @@
                     <x-ui.field name="party_phone" label="Телефон" span="col-span-2"/>
                 </div>
                 <x-ui.field name="due_at" label="Оплатить до" type="date" :value="$due" required/>
-                <x-ui.check name="vat" :checked="$offer->prices_include_vat" class="self-end">С НДС</x-ui.check>
+                {{-- Галка вровень с полем даты: класс у x-ui.check уходит на сам input, поэтому ровняет обёртка. --}}
+                <div class="flex items-end pb-3.5"><x-ui.check name="vat" :checked="$offer->prices_include_vat">С НДС</x-ui.check></div>
             </div>
         </x-ui.card>
         <x-ui.card title="За что">
             <div class="grid grid-cols-2 gap-3">
                 <x-ui.field name="kind" label="Вид" :options="$kinds" value="sale" data-deal-invoice-target="kind" data-action="deal-invoice#kind"/>
-                <x-ui.field name="amount" label="Сумма, ₽" :value="$bases['sale']" required data-deal-invoice-target="amount" data-action="input->deal-invoice#lines"/>
+                <x-ui.field name="amount" label="Сумма, ₽" :value="\App\Support\Money::nums((int) $bases['sale'])" required data-controller="digits" data-deal-invoice-target="amount" data-action="input->digits#format input->deal-invoice#lines"/>
                 <x-ui.field name="title" label="Первая строка счёта" placeholder="Транспортное средство {{ $offer->titleWithYear() }}" span="col-span-2"/>
             </div>
             {{-- Как это будет в счёте: строки и итог; удержание — сразу видно, сколько к оплате. --}}

@@ -11,6 +11,10 @@
     $issued = $invoices->reject(fn ($i) => $i->isOwed());
     $state = $deal->commissionState();
     $party = $deal->buyer ? \App\Billing\Party::forUser($deal->buyer, false) : null;
+    // Этап «Проверка оплаты» сам показывает заявку менеджера с «Поступило» — здесь она только строкой, без второй пары кнопок.
+    $inStep = $deal->isActive() && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Staff)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата получена'));
+    // Первый счёт на этапе оплаты предлагает сам шаг пути — здесь его второй раз не ставим.
+    $stepInvoices = $deal->isActive() && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Manager)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
 @endphp
 <x-ui.card title="Деньги" {{ $attributes }}>
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
@@ -33,7 +37,8 @@
                     </x-ui.sheet>
                 </div>
             @endif
-            <a href="/work/invoices/new?offer={{ $offer->number }}" class="chip">{{ $issued->isEmpty() ? 'Выставить счёт' : 'Ещё счёт' }}</a>
+            {{-- Первый счёт — главное действие этапа «Оплата» в пути; здесь — «Выставить» тем, у кого этапа оплаты нет, и «Ещё счёт». --}}
+            @unless ($issued->isEmpty() && $stepInvoices)<a href="/work/invoices/new?offer={{ $offer->number }}" class="chip">{{ $issued->isEmpty() ? 'Выставить счёт' : 'Ещё счёт' }}</a>@endunless
         @endif
     </div>
     @if ($invoices->isNotEmpty())
@@ -58,8 +63,10 @@
                     <div class="flex flex-wrap items-center gap-2 pl-3">
                         <span class="text-sm">Сообщил об оплате</span><span class="nums font-semibold">{{ Money::rub($p->amount) }}</span><span class="tag nums">{{ $p->paid_at->translatedFormat('j M') }}</span>
                         @if ($p->slip())<a href="/work/money/invoices/{{ $i->id }}/payments/{{ $p->id }}/slip" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>платёжка</a>@endif
-                        <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>
-                        <a href="/work/money/invoices/{{ $i->id }}" class="btn btn-s btn-ghost">Не поступила</a>
+                        @unless ($inStep)
+                            <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>
+                            <a href="/work/money/invoices/{{ $i->id }}" class="btn btn-s btn-ghost">Не поступила</a>
+                        @endunless
                     </div>
                 @endforeach
             @endforeach

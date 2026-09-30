@@ -16,7 +16,7 @@ export default class extends Controller {
 
     kind() {
         const kind = this.kindTarget.value;
-        if (this.basesValue[kind] !== undefined) this.amountTarget.value = this.basesValue[kind] || '';
+        if (this.basesValue[kind] !== undefined) this.amountTarget.value = this.basesValue[kind] ? new Intl.NumberFormat('ru-RU').format(this.basesValue[kind]) : '';
         if (kind === 'reward' && this.vendorPartyValue) this.partyTarget.value = String(this.vendorPartyValue);
         this.party();
         this.lines();
