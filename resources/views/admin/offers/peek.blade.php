@@ -97,7 +97,7 @@
         </x-slot:actions>
         {{-- Последнее письмо, как в редакторе и деле ТС; вся переписка — окном поверх списка (x-mail.window на странице). --}}
         @if ($bids->isNotEmpty())
-            <div class="mt-4">@include('admin.offers.bids', ['inline' => true])</div>
+            <div class="mt-4">@include('admin.offers.bids')</div>
         @endif
         @if ($offer->interests->isNotEmpty())
             <div class="mt-4 flex flex-col gap-2">
