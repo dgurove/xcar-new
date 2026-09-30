@@ -45,7 +45,8 @@ final class ChangeOfferState
                 OfferNumber::issue($offer);
                 $offer->published_at ??= now();
                 if (! $offer->bids_close_at || $offer->bids_close_at->isPast()) {
-                    $offer->bids_close_at = now()->addDays((int) config('xcar.bids_window_days'));
+                    // Срок приёма по умолчанию — вечер, 20:00 (решение владельца 30.09.2026), а не текущая минута.
+                    $offer->bids_close_at = now()->addDays((int) config('xcar.bids_window_days'))->setTime(20, 0);
                 }
             }
             if ($next === OfferState::Gallery) {
