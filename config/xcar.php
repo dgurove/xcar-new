@@ -14,6 +14,9 @@ return [
         'phone' => '+7 495 669-11-11', 'email' => '6691111@mail.ru',
         'bank' => 'ПАО Сбербанк', 'bik' => '044525225', 'account' => '40702810340000004750', 'corr_account' => '30101810400000000225',
         'director' => 'Кузнецов А. В.', 'director_full' => 'Кузнецов Андрей Викторович',
+        // УСН «доходы минус расходы» с НДС 5 % (ст. 164 п. 8 НК): одна ставка на все продажи ПРАЙМ — сделки и гараж.
+        // Межценовой разницы при 5 % нет: НДС внутри всей суммы счёта (по умолчанию — «в сумме», сверху — галкой у контрагента).
+        'vat_rate' => (int) env('XCAR_VAT_RATE', 5),
     ],
 
     // Стоянка: после скольких дней хранения без движения ТС попадает в «стоят долго».
@@ -42,18 +45,18 @@ return [
     ],
 
     // Оплата по ссылке — ЮKassa, подключённая в СберБизнесе; чеки 54-ФЗ пробивает она же («Чеки от ЮKassa»).
-    // Признаки позиции чека — по согласованию с бухгалтером; vat_code: 1 — без НДС, 4 — 20 %, 11 — 22 %.
+    // Чек уходит только на почту; позиция — услуга, полный расчёт, код НДС — от ставки счёта (`Billing\Vat::receiptCode`).
     'yookassa' => [
         'url' => env('YOOKASSA_URL', 'https://api.yookassa.ru/v3'),
         'shop_id' => env('YOOKASSA_SHOP_ID'),
         'secret' => env('YOOKASSA_SECRET_KEY'),
         'receipt' => (bool) env('YOOKASSA_RECEIPT', true),
-        'vat_code' => (int) env('YOOKASSA_VAT_CODE', 1),
-        'vat_code_with_vat' => (int) env('YOOKASSA_VAT_CODE_WITH_VAT', 4),
-        'payment_subject' => env('YOOKASSA_PAYMENT_SUBJECT', 'commodity'),
+        'payment_subject' => env('YOOKASSA_PAYMENT_SUBJECT', 'service'),
         'payment_mode' => env('YOOKASSA_PAYMENT_MODE', 'full_payment'),
         // ИНН НКО «ЮМани»: её перечисления на расчётный счёт — уже учтённые оплаты по ссылкам, выписка их не привязывает.
         'payout_inn' => env('YOOKASSA_PAYOUT_INN', '7750005725'),
+        // Сколько можно заплатить одной ссылкой: СБП и SberPay — 700 000 ₽ за платёж (карта — 350 000).
+        'max_amount' => (int) env('YOOKASSA_MAX_AMOUNT', 700000),
     ],
 
     // Sber API (СберБизнес): выписка по расчётному счёту — оплаты по счетам отмечаются сами.

@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** Контрагент счёта: юрлицо, ИП, самозанятый или физлицо с паспортом. Одна строка `is_self` — мы. */
 #[Fillable(['kind', 'name', 'is_self', 'inn', 'kpp', 'ogrn', 'legal_address', 'director', 'director_basis', 'bank_name', 'bik', 'account', 'corr_account',
-    'passport', 'passport_issued', 'reg_address', 'birth_at', 'phone', 'email', 'card', 'payment_purpose', 'notes'])]
+    'passport', 'passport_issued', 'reg_address', 'birth_at', 'phone', 'email', 'card', 'payment_purpose', 'notes', 'vat_on_top'])]
 class Party extends Model
 {
     use HidesDemo;
@@ -23,7 +23,7 @@ class Party extends Model
 
     protected function casts(): array
     {
-        return ['kind' => PartyKind::class, 'is_self' => 'bool', 'birth_at' => 'date'];
+        return ['kind' => PartyKind::class, 'is_self' => 'bool', 'birth_at' => 'date', 'vat_on_top' => 'bool'];
     }
 
     public function invoices(): HasMany

@@ -7,6 +7,7 @@ use App\Billing\Documents\InvoicePdf;
 use App\Billing\Invoice;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
+use App\Billing\Vat;
 use App\Offers\Deal;
 use App\Offers\OfferEventType;
 use App\Support\Money;
@@ -20,12 +21,13 @@ use Illuminate\Support\Facades\DB;
  * Менеджер удерживает вознаграждение сам — его строка тут же гасится зачётом,
  * к оплате остаётся база минус вознаграждение. Вознаграждение от поставщика —
  * одна строка вендору. С этого счёта менеджер видит своё вознаграждение.
+ * НДС — ставкой ПРАЙМ (`Vat::rate`): в сумме, а у контрагента с «НДС сверху» — прибавлен к строкам.
  */
 final class IssueDealInvoice
 {
     public function __construct(private IssueInvoice $issue, private RecordPayment $record, private InvoicePdf $pdf) {}
 
-    public function __invoke(Deal $deal, User $by, Party $party, ChargeKind $kind, float $base, CarbonInterface $dueAt, bool $vat, ?string $notes = null, ?string $title = null): Invoice
+    public function __invoke(Deal $deal, User $by, Party $party, ChargeKind $kind, float $base, CarbonInterface $dueAt, ?string $notes = null, ?string $title = null): Invoice
     {
         $offer = $deal->offer;
         $car = $offer->titleWithYear();
@@ -41,8 +43,9 @@ final class IssueDealInvoice
             $lines[] = ['title' => 'Агентское вознаграждение', 'qty' => 1, 'unit' => 'pc', 'price' => (float) $fee, 'kind' => ChargeKind::AgentFee->value];
         }
 
-        return DB::transaction(function () use ($deal, $by, $party, $kind, $dueAt, $vat, $notes, $lines, $fee, $offer) {
-            $invoice = ($this->issue)($party, $by, 'issued', $kind, $dueAt, $vat, lines: $lines, dealId: $deal->id, offerId: $offer->id, notes: $notes);
+        return DB::transaction(function () use ($deal, $by, $party, $kind, $dueAt, $notes, $lines, $fee, $offer) {
+            $invoice = ($this->issue)($party, $by, 'issued', $kind, $dueAt, false, lines: $lines, dealId: $deal->id, offerId: $offer->id, notes: $notes,
+                vatRate: Vat::rate(), vatOnTop: (bool) $party->vat_on_top);
             if ($fee > 0 && $deal->withholds()) {
                 ($this->record)($invoice, $by, (float) $fee, null, PaymentSource::Offset, null, 'Удержано агентское вознаграждение');
                 // PDF печётся при выставлении — перепечь с зачётом и «к оплате».

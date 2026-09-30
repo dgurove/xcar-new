@@ -39,7 +39,7 @@ final class SettleAcquiring
                 return $attempt;
             }
             $link = $attempt->link()->lockForUpdate()->first();
-            $invoice = Invoice::find($link->invoice_id);
+            $invoice = Invoice::withoutGlobalScope('demo')->find($link->invoice_id);
             $amount = round(min($fresh->amount, $invoice->remaining()), 2);
             if ($invoice->state !== InvoiceState::Issued || $amount <= 0) {
                 return $attempt;

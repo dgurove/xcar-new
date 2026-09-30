@@ -10,7 +10,7 @@
         <x-billing.light :invoice="$i"/>
         <span class="chip nums">{{ $i->issued_at->translatedFormat('j M Y') }}</span>
         <span class="chip">{{ $i->kind->label() }}</span>
-        <span class="chip">{{ $i->vat ? 'с НДС' : 'без НДС' }}</span>
+        <span class="chip">{{ $i->vatRate() ? 'НДС '.$i->vatRate().' %' : 'без НДС' }}</span>
         @if ($i->external_no)<span class="chip nums">{{ $i->external_no }}</span>@endif
         @if ($i->sent_at)<span class="chip nums"><x-ui.icon name="send" class="size-3.5"/>{{ $i->sent_at->translatedFormat('j M') }}</span>@endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
@@ -41,8 +41,9 @@
                     @foreach ($i->charges as $c)
                         <div class="flex items-baseline gap-3 py-2"><span class="min-w-0 flex-1">{{ $c->title }}</span><span class="nums text-sm text-ink-muted">{{ rtrim(rtrim(number_format($c->qty, 2, '.', ''), '0'), '.') }} {{ $c->unitLabel() }} × {{ Money::nums($c->price) }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($c->amount) }}</span></div>
                     @endforeach
+                    @if ($i->vat_on_top)<div class="flex items-baseline gap-3 py-2"><span class="flex-1">{{ $i->vatLabel() }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->vatAmount()) }}</span></div>@endif
                     <div class="flex items-baseline gap-3 py-2"><span class="flex-1">Итого</span><span class="nums text-lg font-semibold">{{ Money::rub($i->total) }}</span></div>
-                    @if ($i->vat)<div class="text-sm text-ink-muted">в том числе НДС {{ Money::rub($i->vatAmount()) }}</div>@endif
+                    @if ($i->vatRate() && ! $i->vat_on_top)<div class="text-sm text-ink-muted">{{ mb_strtolower($i->vatLabel()) }} {{ Money::rub($i->vatAmount()) }}</div>@endif
                     @if ($offset > 0)<div class="flex items-baseline gap-3 py-2 text-sm text-ink-muted"><span class="flex-1">Удержано агентское вознаграждение</span><span class="nums">{{ Money::rub($offset) }}</span></div>@endif
                 </div>
             </x-ui.card>

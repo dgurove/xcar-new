@@ -2,6 +2,7 @@
 
 namespace App\Billing\Acquiring;
 
+use App\Billing\Bank\Transaction;
 use App\Billing\Payment;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * (`income_amount` — за вычетом комиссии). Успешная связана с оплатой счёта на `applied`; всё сверх
  * (счёт закрыли раньше иначе, целиком или частью) — переплата, её возвращают из CRM.
  */
-#[Fillable(['link_id', 'provider', 'external_id', 'status', 'amount', 'income_amount', 'method', 'confirmation_url', 'receipt_status', 'applied', 'refunded', 'payment_id', 'payload', 'checked_at'])]
+#[Fillable(['link_id', 'provider', 'external_id', 'status', 'amount', 'income_amount', 'method', 'confirmation_url', 'receipt_status', 'applied', 'refunded', 'payment_id', 'payout_tx_id', 'payload', 'checked_at'])]
 class AcquiringPayment extends Model
 {
     protected $table = 'billing_acquiring_payments';
@@ -28,6 +29,12 @@ class AcquiringPayment extends Model
     public function link(): BelongsTo
     {
         return $this->belongsTo(PayLink::class, 'link_id');
+    }
+
+    /** Перечисление ЮMoney на расчётный счёт, в которое вошла оплата (`ReconcilePayout`). */
+    public function payout(): BelongsTo
+    {
+        return $this->belongsTo(Transaction::class, 'payout_tx_id');
     }
 
     public function payment(): BelongsTo

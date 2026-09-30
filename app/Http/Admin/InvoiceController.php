@@ -58,12 +58,12 @@ class InvoiceController
             'party_name' => ['required_if:party_id,new', 'nullable', 'string', 'max:200'], 'party_kind' => ['nullable', Rule::enum(PartyKind::class)],
             'party_inn' => ['nullable', 'digits_between:10,12'], 'party_phone' => ['nullable', 'string', 'max:20'],
             'kind' => ['required', 'in:sale,selection,reward,other'], 'title' => ['nullable', 'string', 'max:160'],
-            'amount' => ['required', 'numeric', 'min:1'], 'due_at' => ['required', 'date'], 'vat' => ['boolean'], 'notes' => ['nullable', 'string', 'max:1000'],
+            'amount' => ['required', 'numeric', 'min:1'], 'due_at' => ['required', 'date'], 'notes' => ['nullable', 'string', 'max:1000'],
         ]);
         $party = $data['party_id'] === 'new'
             ? Party::create(['kind' => PartyKind::tryFrom($data['party_kind'] ?? '') ?? PartyKind::Person, 'name' => $data['party_name'], 'inn' => $data['party_inn'] ?? null, 'phone' => $data['party_phone'] ?? null])
             : Party::findOrFail($data['party_id']);
-        $invoice = $issue($deal, $request->user(), $party, ChargeKind::from($data['kind']), (float) $data['amount'], Carbon::parse($data['due_at']), $request->boolean('vat'),
+        $invoice = $issue($deal, $request->user(), $party, ChargeKind::from($data['kind']), (float) $data['amount'], Carbon::parse($data['due_at']),
             $data['notes'] ?? null, filled($data['title'] ?? null) ? $data['title'] : null);
 
         // Счёт выставляют из сделки — туда и возвращаемся.

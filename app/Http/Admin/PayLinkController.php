@@ -6,6 +6,7 @@ use App\Billing\Acquiring\AcquiringPayment;
 use App\Billing\Acquiring\Actions\CancelPayLink;
 use App\Billing\Acquiring\Actions\CreatePayLink;
 use App\Billing\Acquiring\Actions\RefundAcquiring;
+use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Invoice;
@@ -17,17 +18,19 @@ use Throwable;
 /** Ссылки на оплату из CRM: сотрудник заводит ссылку плательщику счёта, отменяет открытую, возвращает деньги по ссылке. */
 class PayLinkController
 {
-    public function store(Request $request, Invoice $invoice, CreatePayLink $create)
+    public function store(Request $request, Invoice $invoice, CreatePayLink $create, Gateway $gateway)
     {
+        abort_unless($gateway->configured(), 422, 'Оплата по ссылке не подключена');
         $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
         $data = $request->validate([
             'amount' => ['nullable', 'numeric', 'min:0.01'],
             'name' => ['nullable', 'string', 'max:160'],
             'phone' => ['nullable', 'string', 'max:20', 'regex:/^[\d\s()+\-]{10,20}$/'],
-        ], ['phone.regex' => 'Проверьте номер телефона']);
+            'email' => ['nullable', 'email', 'max:120'],
+        ], ['phone.regex' => 'Проверьте номер телефона', 'email.email' => 'Проверьте почту']);
         $party = $invoice->party;
-        $link = $create($invoice, $request->user(), isset($data['amount']) ? (float) $data['amount'] : round($invoice->remaining() - $invoice->claimed(), 2),
-            PayerKind::Other, null, $data['name'] ?? $party->name, $data['phone'] ?? $party->phone, $party->email);
+        $link = $create($invoice, $request->user(), isset($data['amount']) ? (float) $data['amount'] : PayLink::defaultAmount($invoice),
+            PayerKind::Other, null, $data['name'] ?? $party->name, $data['phone'] ?? $party->phone, $data['email'] ?? $party->email);
 
         return back()->with('toast', 'Ссылка готова')->with('open-link', $link->id);
     }

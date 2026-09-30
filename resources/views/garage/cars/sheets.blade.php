@@ -55,7 +55,6 @@
                         <div class="row justify-between"><span>Нам остаётся</span><span class="nums font-semibold" data-commission-target="ours">{{ Money::exact($s['ours']) }}</span></div>
                         <div class="row justify-between"><span data-commission-target="dueLabel" data-positive="Менеджер отдаёт нам" data-negative="Отдаём менеджеру">Менеджер отдаёт нам</span><span class="nums font-semibold" data-commission-target="due">{{ Money::exact(abs($s['due'])) }}</span></div>
                     </div>
-                    <x-ui.check name="vat" :checked="$offer->prices_include_vat">С НДС</x-ui.check>
                 @endif
                 <x-ui.button type="submit" variant="primary" block>{{ $car->manager ? 'Выставить' : 'Закрыть расчёт' }}</x-ui.button>
             </form>

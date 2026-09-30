@@ -1,7 +1,8 @@
 {{-- Поля контрагента по виду: юрлицо, ИП, самозанятый, физлицо — вид выбирается чипами, лишние поля прячутся
      (reveal_controller выключает их, чтобы не ушли в форму). Банк общий, карта — где счёта может не быть.
-     staff — служебные поля (руководитель, назначение платежа, заметки), менеджеру в кабинете они не нужны. --}}
-@props(['party' => null, 'staff' => true])
+     staff — служебные поля (руководитель, назначение платежа, заметки), менеджеру в кабинете они не нужны.
+     vat — «НДС сверху» для счетов ПРАЙМ (CRM); парковка — другой продавец, у неё галки нет. --}}
+@props(['party' => null, 'staff' => true, 'vat' => false])
 @php
     use App\Billing\PartyKind;
     $g = 'grid grid-cols-2 gap-3';
@@ -52,5 +53,6 @@
         <x-ui.field name="phone" label="Телефон" type="tel" :value="$party?->phone"/>
         <x-ui.field name="email" label="Почта" type="email" :value="$party?->email"/>
     </div>
+    @if ($vat)<x-ui.check name="vat_on_top" :checked="$party?->vat_on_top">НДС сверху</x-ui.check>@endif
     @if ($staff)<x-ui.field name="notes" label="Заметки" type="textarea" :value="$party?->notes"/>@endif
 </div>

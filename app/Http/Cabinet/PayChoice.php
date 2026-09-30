@@ -35,15 +35,16 @@ final class PayChoice
             'payer' => ['exclude_unless:way,link', 'required', Rule::in(['self', 'buyer', 'other'])],
             'payer_user_id' => ['exclude_unless:payer,buyer', 'required', Rule::exists('users', 'id')->where('manager_id', $me->id)],
             'name' => ['exclude_unless:payer,other', 'required', 'string', 'max:160'],
-            'phone' => ['exclude_unless:payer,other', 'required', 'string', 'max:20', 'regex:/^[\d\s()+\-]{10,20}$/'],
+            'phone' => ['exclude_unless:payer,other', 'nullable', 'string', 'max:20', 'regex:/^[\d\s()+\-]{10,20}$/'],
+            'email' => ['exclude_unless:way,link', 'nullable', 'email', 'max:120'],
             'paid_at' => ['exclude_if:way,link', 'nullable', 'date', 'before_or_equal:today'],
             'ref' => ['exclude_unless:way,transfer', 'nullable', 'string', 'max:60'],
             'slip' => ['exclude_unless:way,transfer', 'nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic'],
         ], [
-            'payer_user_id.required' => 'Выберите покупателя', 'name.required' => 'Укажите, кто платит', 'phone.required' => 'Нужен телефон: на него придёт чек',
-            'phone.regex' => 'Проверьте номер телефона',
+            'payer_user_id.required' => 'Выберите покупателя', 'name.required' => 'Укажите, кто платит',
+            'phone.regex' => 'Проверьте номер телефона', 'email.email' => 'Проверьте почту',
         ]);
-        $amount = isset($data['amount']) ? (float) $data['amount'] : round($invoice->remaining() - $invoice->claimed(), 2);
+        $amount = isset($data['amount']) ? (float) $data['amount'] : ($data['way'] === 'link' ? PayLink::defaultAmount($invoice) : round($invoice->remaining() - $invoice->claimed(), 2));
         if ($amount <= 0) {
             throw ValidationException::withMessages(['amount' => 'По счёту платить нечего']);
         }
@@ -51,7 +52,7 @@ final class PayChoice
         if ($data['way'] === 'link') {
             abort_unless(app(Gateway::class)->configured(), 422, 'Оплата по ссылке не подключена');
             $kind = PayerKind::from($data['payer']);
-            $link = ($this->link)($invoice, $me, $amount, $kind, $kind === PayerKind::Buyer ? User::find($data['payer_user_id']) : null, $data['name'] ?? null, $data['phone'] ?? null);
+            $link = ($this->link)($invoice, $me, $amount, $kind, $kind === PayerKind::Buyer ? User::find($data['payer_user_id']) : null, $data['name'] ?? null, $data['phone'] ?? null, $data['email'] ?? null);
 
             return ['Ссылка готова', $link];
         }

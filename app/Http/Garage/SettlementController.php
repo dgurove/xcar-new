@@ -45,7 +45,7 @@ class SettlementController
     {
         $car = $this->staffCar($request, $offer);
         $commission = $request->validate(['commission' => ['nullable', 'integer', 'min:0']])['commission'] ?? null;
-        $invoice = $settle($car, $request->user(), $commission, $request->boolean('vat'));
+        $invoice = $settle($car, $request->user(), $commission);
 
         return back()->with('toast', $invoice ? 'Счёт '.$invoice->label() : 'Расчёт закрыт');
     }

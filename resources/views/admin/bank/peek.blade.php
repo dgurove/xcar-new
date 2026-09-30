@@ -20,6 +20,20 @@
             @endif
         </x-slot:actions>
         @if ($tx->purpose)<div class="mt-4 text-sm">{{ $tx->purpose }}</div>@endif
+        @if ($tx->note && $payouts->isEmpty() && \App\Billing\Bank\Actions\MatchTransaction::isPayout($tx))<div class="mt-4 text-sm text-urgent">{{ $tx->note }}</div>@endif
+        @if ($payouts->isNotEmpty())
+            <div class="list mt-4">
+                @foreach ($payouts as $a)
+                    <a href="/work/money/invoices/{{ $a->link->invoice_id }}" class="row !py-2" data-turbo-frame="_top">
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate">Счёт {{ $a->link->invoice->label() }}, {{ $a->link->invoice->party->name }}</span>
+                            <span class="row-sub nums">{{ $a->created_at->translatedFormat('j M H:i') }}, комиссия {{ Money::exact($a->fee() ?? 0) }}</span>
+                        </span>
+                        <span class="nums shrink-0">{{ Money::exact($a->amount) }}</span>
+                    </a>
+                @endforeach
+            </div>
+        @endif
         @if ($suggestions->isNotEmpty())
             <form method="post" action="{{ $href }}/match" class="mt-4 flex flex-col gap-3">
                 @csrf

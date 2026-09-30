@@ -25,8 +25,6 @@
                     <x-ui.field name="party_phone" label="Телефон" span="col-span-2"/>
                 </div>
                 <x-ui.field name="due_at" label="Оплатить до" type="date" :value="$due" required/>
-                {{-- Галка вровень с полем даты: класс у x-ui.check уходит на сам input, поэтому ровняет обёртка. --}}
-                <div class="flex items-end pb-3.5"><x-ui.check name="vat" :checked="$offer->prices_include_vat">С НДС</x-ui.check></div>
             </div>
         </x-ui.card>
         <x-ui.card title="За что">

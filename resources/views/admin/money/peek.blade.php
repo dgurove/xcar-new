@@ -4,7 +4,7 @@
     use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource; use App\Billing\Acquiring\PayMethod;
     $i = $invoice; $href = '/work/money/invoices/'.$i->id; $offer = $i->deal?->offer;
     $link = $i->openLink();
-    $attempts = \App\Billing\Acquiring\AcquiringPayment::whereIn('link_id', $i->payLinks()->pluck('id'))->where('status', 'succeeded')->get();
+    $attempts = \App\Billing\Acquiring\AcquiringPayment::whereIn('link_id', $i->payLinks()->pluck('id'))->where('status', 'succeeded')->with('payout')->get();
     $overpaid = $attempts->filter(fn ($a) => $a->overpaid() > 0);
 @endphp
 <turbo-frame id="peek" target="_top">
@@ -39,14 +39,14 @@
                     <button type="button" class="chip" data-action="copy#copy"><x-ui.icon name="copy" class="size-3.5"/>Скопировать</button>
                     <form method="post" action="/work/money/links/{{ $link->id }}" class="contents" data-turbo-confirm="Отменить ссылку?">@csrf @method('delete')<button class="chip text-ink-muted">Отменить</button></form>
                 </div>
-            @elseif ($i->state === InvoiceState::Issued && ! $i->isOwed())
-                <details class="w-full" @if ($errors->has('payer_phone') || $errors->has('phone')) open @endif><summary class="btn btn-s btn-quiet inline-flex cursor-pointer">Ссылка на оплату</summary>
+            @elseif ($i->state === InvoiceState::Issued && ! $i->isOwed() && app(\App\Billing\Acquiring\Gateway::class)->configured())
+                <details class="w-full" @if ($errors->hasAny(['email', 'phone', 'amount'])) open @endif><summary class="btn btn-s btn-quiet inline-flex cursor-pointer">Ссылка на оплату</summary>
                     <form method="post" action="{{ $href }}/links" class="mt-3 grid grid-cols-2 gap-2">
                         @csrf
-                        <x-ui.field name="amount" id="link-amount" label="Сумма, ₽" :placeholder="Money::nums($i->remaining() - $i->claimed(), 2)"/>
-                        <x-ui.field name="phone" id="link-phone" label="Телефон для чека" :value="$i->party->phone"/>
                         <x-ui.field name="name" id="link-name" label="Плательщик" :value="$i->party->name" span="col-span-2"/>
-                        @error('payer_phone')<div class="col-span-2 text-sm text-danger">{{ $message }}</div>@enderror
+                        <x-ui.field name="email" id="link-email" label="Почта для чека" type="email" :value="$i->party->email"/>
+                        <x-ui.field name="phone" id="link-phone" label="Телефон" :value="$i->party->phone"/>
+                        <x-ui.field name="amount" id="link-amount" label="Сумма, ₽" :placeholder="Money::nums(\App\Billing\Acquiring\PayLink::defaultAmount($i), 2)"/>
                         <x-ui.button size="sm" class="col-span-2">Получить ссылку</x-ui.button>
                     </form>
                 </details>
@@ -69,7 +69,7 @@
             @foreach ($i->payments as $p)
                 @php $a = $p->source === PaymentSource::Acquiring ? $attempts->firstWhere('payment_id', $p->id) : null; @endphp
                 <div class="flex flex-wrap items-baseline gap-2 py-1.5 text-accent-text">
-                    <span class="min-w-0 flex-1">{{ $a ? 'По ссылке '.PayMethod::label($a->method) : $p->source->label().($p->ref ? ' № '.$p->ref : '') }}{{ ! $a && $p->note ? ', '.$p->note : '' }}@if ($a?->fee() > 0)<span class="text-ink-muted">, комиссия {{ Money::exact($a->fee()) }}</span>@endif</span>
+                    <span class="min-w-0 flex-1">{{ $a ? 'По ссылке '.PayMethod::label($a->method) : $p->source->label().($p->ref ? ' № '.$p->ref : '') }}{{ ! $a && $p->note ? ', '.$p->note : '' }}@if ($a?->fee() > 0)<span class="text-ink-muted">, комиссия {{ Money::exact($a->fee()) }}</span>@endif@if ($a)<span class="text-ink-muted">, {{ $a->payout ? 'зачислено на счёт '.$a->payout->booked_at->translatedFormat('j M') : 'ждёт зачисления' }}</span>@endif</span>
                     <span class="nums text-ink-muted">{{ $p->paid_at->translatedFormat('j M') }}</span><span class="nums shrink-0">− {{ Money::rub($p->amount) }}</span>
                     @if ($a && $a->refundable() > 0)
                         <form method="post" action="/work/money/acquiring/{{ $a->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($a->refundable()) }} плательщику? Оплата по счёту отменится">@csrf<button class="chip text-ink-muted">Вернуть</button></form>

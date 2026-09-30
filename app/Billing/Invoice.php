@@ -21,7 +21,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * договору комиссии). Остаток и просрочка считаются, не хранятся; PDF — снимок
  * в момент выставления, коллекция `file` на закрытом диске.
  */
-#[Fillable(['direction', 'year', 'number', 'external_no', 'kind', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'total', 'paid', 'state', 'paid_at',
+#[Fillable(['direction', 'year', 'number', 'external_no', 'kind', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
     'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by'])]
 class Invoice extends Model implements HasMedia
 {
@@ -34,7 +34,7 @@ class Invoice extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['kind' => ChargeKind::class, 'state' => InvoiceState::class, 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'vat' => 'bool',
+        return ['kind' => ChargeKind::class, 'state' => InvoiceState::class, 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool',
             'total' => 'float', 'paid' => 'float', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime'];
     }
 
@@ -173,9 +173,41 @@ class Invoice extends Model implements HasMedia
         return $this->number ? '№ '.$this->number : ($this->external_no ? $this->external_no : $this->kind->label());
     }
 
-    /** НДС внутри суммы: «в том числе НДС 20 %». */
+    /**
+     * Ставка НДС счёта. У счетов ПРАЙМ она записана при выставлении (`vat_rate`), у прочих — прежняя галка
+     * «С НДС» и 20 %: парковка ИП Кузнецова считается по-своему, пока не разведены продавцы.
+     */
+    public function vatRate(): ?int
+    {
+        return $this->vat_rate ?: ($this->vat ? self::VAT : null);
+    }
+
+    /** НДС счёта: в сумме — выделенный из итога, сверху — то, что прибавлено к строкам. */
     public function vatAmount(): float
     {
-        return $this->vat ? round($this->total * self::VAT / (100 + self::VAT), 2) : 0;
+        $rate = $this->vatRate();
+        if (! $rate) {
+            return 0;
+        }
+
+        return $this->vat_on_top ? round($this->total - $this->net(), 2) : Vat::inside($this->total, $rate);
+    }
+
+    /** Сумма строк без НДС сверху. */
+    public function net(): float
+    {
+        return $this->vat_on_top ? round((float) $this->charges->sum('amount'), 2) : $this->total;
+    }
+
+    /** «В том числе НДС 5 %», «НДС 5 %» (сверху) или «Без НДС». */
+    public function vatLabel(): string
+    {
+        $rate = $this->vatRate();
+
+        return match (true) {
+            ! $rate => 'Без НДС',
+            (bool) $this->vat_on_top => 'НДС '.$rate.' %',
+            default => 'В том числе НДС '.$rate.' %',
+        };
     }
 }

@@ -24,7 +24,8 @@ final class RecordPayment
     {
         Nav::forgetStaffCounts();
         $payment = DB::transaction(function () use ($invoice, $by, $amount, $at, $source, $ref, $note, $claim) {
-            $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            // Робот эквайринга и выписки смотрит без области демо: счёт уже выбран, прятать его здесь не от кого.
+            $invoice = Invoice::withoutGlobalScope('demo')->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             if ($invoice->state !== InvoiceState::Issued) {
                 throw ValidationException::withMessages(['amount' => 'Счёт '.mb_strtolower($invoice->state->label())]);
             }

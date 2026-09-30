@@ -27,7 +27,8 @@ use Tests\TestCase;
 /**
  * Деньги по счёту приходят одной оплатой, откуда бы о них ни узнали: повтор уведомления ЮKassa,
  * опрос и выписка не задваивают; поступление, о котором менеджер уже сообщил, подтверждает его заявку;
- * перечисление ЮKassa на расчётный счёт в счёт не ложится. Ошибка тут молчалива и дорога — поэтому тест.
+ * перечисление ЮKassa на расчётный счёт в счёт не ложится, а сверяется с оплатами по ссылкам суммой за вычетом
+ * комиссии. Ошибка тут молчалива и дорога — поэтому тест.
  */
 class MoneyArrivesOnceTest extends TestCase
 {
@@ -42,7 +43,7 @@ class MoneyArrivesOnceTest extends TestCase
         parent::setUp();
         Storage::fake('private');
         User::create(['name' => 'Владелец', 'phone' => '79000000001', 'role' => Role::Admin, 'approved_at' => now()]);
-        $this->manager = User::create(['name' => 'Менеджер', 'phone' => '79000000002', 'role' => Role::Manager, 'approved_at' => now()]);
+        $this->manager = User::create(['name' => 'Менеджер', 'phone' => '79000000002', 'email' => 'manager@example.test', 'role' => Role::Manager, 'approved_at' => now()]);
         $party = Party::create(['kind' => PartyKind::Entrepreneur, 'name' => 'ИП Менеджер', 'inn' => '771234567890', 'phone' => '79000000002']);
         $this->invoice = app(IssueInvoice::class)($party, User::first(), 'issued', ChargeKind::Other, now()->addDays(3), false, lines: [['title' => 'Разница по сделке', 'price' => 100000]]);
     }
@@ -99,17 +100,45 @@ class MoneyArrivesOnceTest extends TestCase
         $this->assertSame(PaymentState::Confirmed, $claim->fresh()->state);
     }
 
-    public function test_acquiring_payout_and_foreign_money_do_not_touch_invoices(): void
+    public function test_acquiring_payout_reconciles_by_income_and_does_not_touch_invoices(): void
     {
-        $payout = $this->incoming(58500, 'Перечисление по договору', config('xcar.yookassa.payout_inn'));
+        $link = app(CreatePayLink::class)($this->invoice, $this->manager, 60000, PayerKind::Self);
+        $first = $this->succeeded($link->id, 'p-3', 60000, 58500, now()->subDays(2));
+        $second = $this->succeeded($link->id, 'p-4', 1000, 975, now()->subDay());
+        $payout = $this->incoming(59475, 'Перечисление по договору', config('xcar.yookassa.payout_inn'));
         $foreign = $this->incoming(100000, 'Возврат займа', '7700000000');
 
         app(MatchTransaction::class)($payout);
         app(MatchTransaction::class)($foreign);
 
-        $this->assertSame(Transaction::IGNORED, $payout->fresh()->state);
+        $this->assertSame(Transaction::MATCHED, $payout->fresh()->state);
+        $this->assertSame($payout->id, $first->fresh()->payout_tx_id);
+        $this->assertSame($payout->id, $second->fresh()->payout_tx_id);
+        $this->assertStringContainsString('комиссия 1', $payout->fresh()->note);
         $this->assertSame(Transaction::UNMATCHED, $foreign->fresh()->state);
         $this->assertEquals(0, $this->invoice->fresh()->paid);
+    }
+
+    public function test_acquiring_payout_that_does_not_add_up_waits_for_a_person(): void
+    {
+        $link = app(CreatePayLink::class)($this->invoice, $this->manager, 60000, PayerKind::Self);
+        $attempt = $this->succeeded($link->id, 'p-5', 60000, 58500, now()->subDay());
+        $payout = $this->incoming(50000, 'Перечисление по договору', config('xcar.yookassa.payout_inn'));
+
+        app(MatchTransaction::class)($payout);
+
+        $this->assertSame(Transaction::UNMATCHED, $payout->fresh()->state);
+        $this->assertNull($attempt->fresh()->payout_tx_id);
+        $this->assertEquals(0, $this->invoice->fresh()->paid);
+    }
+
+    private function succeeded(int $link, string $id, float $amount, float $income, $at): AcquiringPayment
+    {
+        $attempt = AcquiringPayment::create(['link_id' => $link, 'provider' => 'yookassa', 'external_id' => $id, 'status' => 'succeeded', 'amount' => $amount,
+            'income_amount' => $income, 'payload' => ['captured_at' => $at->toIso8601String()]]);
+        $attempt->forceFill(['created_at' => $at])->save();
+
+        return $attempt;
     }
 
     private function incoming(float $amount, string $purpose, ?string $inn): Transaction

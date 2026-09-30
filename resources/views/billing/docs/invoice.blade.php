@@ -63,8 +63,14 @@
         </tbody>
     </table>
     <div class="total">
-        Итого: <b>{{ Money::nums($invoice->total, 2) }} ₽</b><br>
-        {{ $invoice->vat ? 'В том числе НДС '.\App\Billing\Invoice::VAT.' %: '.Money::nums($invoice->vatAmount(), 2).' ₽' : 'НДС не облагается' }}
+        @if ($invoice->vat_on_top)
+            Итого без НДС: {{ Money::nums($invoice->net(), 2) }} ₽<br>
+            {{ $invoice->vatLabel() }}: {{ Money::nums($invoice->vatAmount(), 2) }} ₽<br>
+            Всего к оплате: <b>{{ Money::nums($invoice->total, 2) }} ₽</b>
+        @else
+            Итого: <b>{{ Money::nums($invoice->total, 2) }} ₽</b><br>
+            {{ $invoice->vatRate() ? $invoice->vatLabel().': '.Money::nums($invoice->vatAmount(), 2).' ₽' : 'НДС не облагается' }}
+        @endif
         @if ($offset > 0)<br>Зачёт агентского вознаграждения: {{ Money::nums($offset, 2) }} ₽<br>К оплате: <b>{{ Money::nums($invoice->total - $offset, 2) }} ₽</b>@endif
     </div>
     <div class="note">Всего наименований {{ $lines->count() }}, на сумму {{ Money::nums($invoice->total, 2) }} ₽</div>

@@ -27,6 +27,10 @@ final class StartCheckout
                 throw ValidationException::withMessages(['link' => 'Ссылка '.mb_strtolower($link->state->label())]);
             }
             $invoice = $link->invoice;
+            // Демо-кабинет для проверяющих: страница оплаты настоящая, а платёж по ней — нет.
+            if ($invoice->is_demo) {
+                throw ValidationException::withMessages(['link' => 'Оплата сейчас недоступна']);
+            }
             $amount = round(min($link->amount, $invoice->remaining()), 2);
             if ($invoice->state !== InvoiceState::Issued || $amount <= 0) {
                 ($this->cancel)($link);

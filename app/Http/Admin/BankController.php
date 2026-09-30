@@ -6,6 +6,7 @@ use App\Billing\Bank\Actions\ConnectSber;
 use App\Billing\Bank\Actions\IgnoreTransaction;
 use App\Billing\Bank\Actions\ImportStatement;
 use App\Billing\Bank\Actions\MatchTransaction;
+use App\Billing\Bank\Actions\ReconcilePayout;
 use App\Billing\Bank\Actions\SetBankAccount;
 use App\Billing\Bank\Connection;
 use App\Billing\Bank\SberApi;
@@ -45,7 +46,9 @@ class BankController
     {
         return view('admin.bank.peek', [
             'tx' => $transaction->load(['invoice.party', 'decider']),
-            'suggestions' => $transaction->state === Transaction::UNMATCHED ? MatchTransaction::suggestions($transaction)->take(12) : collect(),
+            // Перечисление ЮMoney счёт не закрывает — вместо счетов на выбор оплаты по ссылкам, что в него вошли.
+            'suggestions' => $transaction->state === Transaction::UNMATCHED && ! MatchTransaction::isPayout($transaction) ? MatchTransaction::suggestions($transaction)->take(12) : collect(),
+            'payouts' => MatchTransaction::isPayout($transaction) ? ReconcilePayout::payments($transaction) : collect(),
         ]);
     }
 

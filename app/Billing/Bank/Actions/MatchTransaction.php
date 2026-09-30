@@ -18,23 +18,21 @@ use Illuminate\Validation\ValidationException;
 /**
  * Входящее поступление → оплата счёта. Сам узнаёт только наверняка: номер нашего счёта в назначении
  * («по счёту № 12 от 28.09.2026») и сумма не больше остатка, ИНН плательщика не спорит с контрагентом счёта;
- * без номера — если ровно один открытый счёт этого ИНН ждёт ровно эту сумму. Перечисления ЮKassa — «не наше»:
- * это уже учтённые оплаты по ссылкам. Заявка менеджера на ту же сумму подтверждается, второй оплаты нет.
+ * без номера — если ровно один открытый счёт этого ИНН ждёт ровно эту сумму. Перечисления ЮKassa счёт не закрывают:
+ * это уже учтённые оплаты по ссылкам, их сверяет `ReconcilePayout`. Заявка менеджера на ту же сумму подтверждается, второй оплаты нет.
  * Руками (`$invoice`) — сотрудник выбрал счёт сам.
  */
 final class MatchTransaction
 {
-    public function __construct(private RecordPayment $record) {}
+    public function __construct(private RecordPayment $record, private ReconcilePayout $payout) {}
 
     public function __invoke(Transaction $tx, ?Invoice $invoice = null, ?User $by = null): Transaction
     {
         if (! $tx->isIncoming() || $tx->state === Transaction::MATCHED) {
             return $tx;
         }
-        if (! $invoice && $tx->counterparty_inn && $tx->counterparty_inn === config('xcar.yookassa.payout_inn')) {
-            $tx->update(['state' => Transaction::IGNORED, 'note' => 'Перечисление эквайринга']);
-
-            return $tx;
+        if (! $invoice && self::isPayout($tx)) {
+            return $tx->state === Transaction::IGNORED ? $tx : ($this->payout)($tx);
         }
         $invoice ??= $this->guess($tx);
         if (! $invoice) {
@@ -69,6 +67,11 @@ final class MatchTransaction
         }
 
         return $tx->fresh();
+    }
+
+    public static function isPayout(Transaction $tx): bool
+    {
+        return $tx->counterparty_inn && $tx->counterparty_inn === config('xcar.yookassa.payout_inn');
     }
 
     /** Счёт, который это поступление закрывает наверняка; сомнение — null, решит человек. */

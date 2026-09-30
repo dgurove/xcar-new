@@ -2,6 +2,7 @@
 
 namespace App\Billing\Acquiring;
 
+use App\Billing\Vat;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -9,7 +10,8 @@ use RuntimeException;
 
 /**
  * ЮKassa, Payments API v3 без SDK: платёж с `capture: true` и переходом на её страницу (карта, СБП, SberPay),
- * чек 54-ФЗ одной позицией «Оплата по счёту № N» на сумму платежа — строк счёта плательщик не видит.
+ * чек 54-ФЗ одной позицией «Подбор ТС …» на сумму платежа (услуга оказана — полный расчёт, НДС ставкой счёта) — строк
+ * счёта плательщик не видит. «Чеки от ЮKassa» уходят только на почту: без неё платёж с чеком не создаётся.
  * Каждое создание — свой `Idempotence-Key`: повтор запроса при обрыве не заведёт второй платёж.
  */
 final class YooKassa implements Gateway
@@ -36,7 +38,7 @@ final class YooKassa implements Gateway
             'metadata' => ['link' => (string) $link->id, 'invoice' => (string) $invoice->id],
         ];
         if (config('xcar.yookassa.receipt')) {
-            $body['receipt'] = $this->receipt($link, $amount, $what);
+            $body['receipt'] = $this->receipt($link, $amount);
         }
 
         return $this->checkout($this->http()->withHeaders(['Idempotence-Key' => (string) Str::uuid()])->post('/payments', $body)->throw()->json());
@@ -50,9 +52,10 @@ final class YooKassa implements Gateway
     public function refund(AcquiringPayment $attempt, float $amount): void
     {
         $body = ['payment_id' => $attempt->external_id, 'amount' => self::money($amount)];
-        if (config('xcar.yookassa.receipt')) {
-            $link = $attempt->link;
-            $body['receipt'] = $this->receipt($link, $amount, 'Оплата по счёту '.$link->invoice->label().' от '.$link->invoice->issued_at->format('d.m.Y'));
+        // Полный возврат ЮKassa пробивает по чеку платежа сама; частичный (переплата) — только со своим чеком.
+        $full = $attempt->refunded < 0.005 && abs($amount - $attempt->amount) < 0.005;
+        if (config('xcar.yookassa.receipt') && ! $full) {
+            $body['receipt'] = $this->receipt($attempt->link, $amount);
         }
         $refund = $this->http()->withHeaders(['Idempotence-Key' => 'refund-'.$attempt->id.'-'.round($attempt->refunded * 100)])->post('/refunds', $body)->throw()->json();
         if (($refund['status'] ?? null) === 'canceled') {
@@ -60,9 +63,10 @@ final class YooKassa implements Gateway
         }
     }
 
-    /** Чек: покупатель — телефон или почта плательщика по ссылке, позиция одна. */
-    private function receipt(PayLink $link, float $amount, string $what): array
+    /** Чек: покупатель — почта (обязательна) и телефон плательщика по ссылке, позиция одна. */
+    private function receipt(PayLink $link, float $amount): array
     {
+        $invoice = $link->invoice;
         $phone = preg_replace('/\D/', '', (string) $link->payer_phone);
         if (strlen($phone) === 11 && $phone[0] === '8') {
             $phone = '7'.substr($phone, 1);
@@ -79,10 +83,10 @@ final class YooKassa implements Gateway
         return [
             'customer' => $customer,
             'items' => [[
-                'description' => Str::limit($what, 125, ''),
+                'description' => Str::limit(trim('Подбор ТС '.($invoice->offer?->titleWithYear() ?? '')), 128, ''),
                 'quantity' => 1,
                 'amount' => self::money($amount),
-                'vat_code' => $link->invoice->vat ? config('xcar.yookassa.vat_code_with_vat') : config('xcar.yookassa.vat_code'),
+                'vat_code' => Vat::receiptCode($invoice->vatRate()),
                 'payment_subject' => config('xcar.yookassa.payment_subject'),
                 'payment_mode' => config('xcar.yookassa.payment_mode'),
             ]],

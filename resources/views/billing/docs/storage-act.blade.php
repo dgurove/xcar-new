@@ -53,7 +53,7 @@
             @endforeach
             <tr><td colspan="3"><b>Итого</b></td><td class="n"><b>{{ Money::nums($i->total, 2) }} ₽</b></td></tr>
         </table>
-        <p>{{ $i->vat ? 'В том числе НДС '.\App\Billing\Invoice::VAT.' % — '.Money::nums($i->vatAmount(), 2).' ₽.' : 'НДС не облагается.' }} Услуги оказаны в полном объёме, претензий по объёму, качеству и срокам Заказчик не имеет.</p>
+        <p>{{ $i->vatRate() ? $i->vatLabel().' — '.Money::nums($i->vatAmount(), 2).' ₽.' : 'НДС не облагается.' }} Услуги оказаны в полном объёме, претензий по объёму, качеству и срокам Заказчик не имеет.</p>
         <table class="sign"><tr>
             <td><div class="line">Исполнитель {{ $self->director ? '/ '.$self->director : '' }}</div></td>
             <td><div class="line">Заказчик</div></td>

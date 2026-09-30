@@ -140,7 +140,8 @@ class UserController
     {
         abort_unless($request->user()->isStaff() && $user->isManager(), 404);
         $data = $request->validate(PartyRules::rules());
-        Party::forUser($user)->update($data + ['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null]);
+        // НДС ПРАЙМ в его счетах — в сумме (разница цен), «НДС сверху» — если так договорились.
+        Party::forUser($user)->update($data + ['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null, 'vat_on_top' => $request->boolean('vat_on_top')]);
 
         return back()->with('toast', 'Реквизиты сохранены');
     }

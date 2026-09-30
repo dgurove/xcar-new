@@ -42,6 +42,6 @@ final class PaymentQr
     public static function purpose(Invoice $invoice): string
     {
         return 'Оплата по счёту № '.$invoice->number.' от '.$invoice->issued_at->format('d.m.Y').'. '
-            .($invoice->vat ? 'В т.ч. НДС '.Invoice::VAT.'%' : 'НДС не облагается');
+            .($invoice->vatRate() ? 'В т.ч. НДС '.$invoice->vatRate().'%' : 'НДС не облагается');
     }
 }

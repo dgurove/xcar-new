@@ -42,6 +42,15 @@ class PayLink extends Model
     }
 
     /** Страница оплаты открывается и без входа — демо-счёт по ссылке тоже виден. */
+    /** Сумма ссылки по умолчанию: остаток к оплате, но не больше лимита одного платежа. */
+    public static function defaultAmount(Invoice $invoice): float
+    {
+        $left = max(0, round($invoice->remaining() - $invoice->claimed(), 2));
+        $max = (float) config('xcar.yookassa.max_amount');
+
+        return $max > 0 ? min($left, $max) : $left;
+    }
+
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class)->withoutGlobalScope('demo');

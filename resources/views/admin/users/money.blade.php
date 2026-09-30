@@ -27,7 +27,7 @@
     <x-ui.sheet id="party" title="Реквизиты" wide :open="$errors->has('name') || $errors->has('inn')">
         <form method="post" action="{{ $base }}/{{ $user->id }}/party" class="flex flex-col gap-4">
             @csrf @method('put')
-            <x-billing.party-fields :party="$party->exists ? $party : null"/>
+            <x-billing.party-fields :party="$party->exists ? $party : null" vat/>
             <x-ui.button block>Сохранить</x-ui.button>
         </form>
     </x-ui.sheet>

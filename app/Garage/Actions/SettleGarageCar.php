@@ -9,6 +9,7 @@ use App\Billing\Documents\InvoicePdf;
 use App\Billing\Invoice;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
+use App\Billing\Vat;
 use App\Billing\WorkDays;
 use App\Garage\Car;
 use App\Garage\CarState;
@@ -30,7 +31,7 @@ final class SettleGarageCar
 {
     public function __construct(private IssueInvoice $issue, private RecordPayment $record, private InvoicePdf $pdf) {}
 
-    public function __invoke(Car $car, User $by, ?int $commission = null, bool $vat = false): ?Invoice
+    public function __invoke(Car $car, User $by, ?int $commission = null): ?Invoice
     {
         if ($car->sold_price === null) {
             throw ValidationException::withMessages(['car' => 'Сначала внесите итог продажи']);
@@ -50,7 +51,7 @@ final class SettleGarageCar
             return null;
         }
 
-        $invoice = DB::transaction(function () use ($car, $by, $vat, $due) {
+        $invoice = DB::transaction(function () use ($car, $by, $due) {
             $offer = $car->offer;
             $party = Party::forUser($car->manager);
             if ($due < 0) {
@@ -62,7 +63,8 @@ final class SettleGarageCar
                 if ($fee > 0) {
                     $lines[] = ['title' => 'Вознаграждение менеджеру', 'qty' => 1, 'unit' => 'pc', 'price' => $fee, 'kind' => ChargeKind::AgentFee->value];
                 }
-                $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Sale, WorkDays::add(now(), 5), $vat, lines: $lines, offerId: $offer->id);
+                $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Sale, WorkDays::add(now(), 5), false, lines: $lines, offerId: $offer->id,
+                    vatRate: Vat::rate(), vatOnTop: (bool) $party->vat_on_top);
                 if ($fee > 0) {
                     ($this->record)($invoice, $by, $fee, null, PaymentSource::Offset, null, 'Удержано вознаграждение менеджеру');
                     // PDF печётся при выставлении — перепечь с зачётом и «к оплате».

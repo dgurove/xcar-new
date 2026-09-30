@@ -15,6 +15,7 @@ use App\Billing\PartyKind;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
+use App\Billing\Vat;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Offers\Actions\SyncViewers;
@@ -166,7 +167,7 @@ final class SeedDemo extends Command
         $invoice = new Invoice([
             'direction' => 'issued', 'year' => self::YEAR, 'number' => $number, 'kind' => ChargeKind::Selection, 'party_id' => $party->id,
             'deal_id' => $deal->id, 'offer_id' => $deal->offer_id, 'issued_at' => $at->toDateString(), 'due_at' => $at->copy()->addDays(5)->toDateString(),
-            'vat' => false, 'total' => $selection + $fee, 'paid' => 0, 'state' => InvoiceState::Issued,
+            'vat' => true, 'vat_rate' => Vat::rate(), 'total' => $selection + $fee, 'paid' => 0, 'state' => InvoiceState::Issued,
         ]);
         $invoice->forceFill(['is_demo' => true])->save();
         foreach ([['Подбор ТС '.$car, $selection, ChargeKind::Selection], ['Агентское вознаграждение', $fee, ChargeKind::AgentFee]] as [$title, $price, $kind]) {
