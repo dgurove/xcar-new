@@ -48,19 +48,3 @@
         <form method="post" action="/offers/{{ $offer->number }}/pickup" data-turbo-confirm="Запустить вывоз автомобиля от страхователя?">@csrf<x-ui.button size="sm" variant="secondary">Нужен вывоз</x-ui.button></form>
     </x-ui.card>
 @endif
-
-@if ($offer->deal)<x-deal.money :deal="$offer->deal" class="order-1"/>@endif
-
-@if ($offer->deal && ($dealCard ?? true))
-<x-ui.card title="Сделка" id="deal-note" class="order-1">
-    <div class="mb-3 flex flex-wrap items-center gap-1.5">
-        @if ($offer->deal->buyer)<x-ui.person :user="$offer->deal->buyer" full/><a href="tel:+{{ $offer->deal->buyer->phone }}" class="tag nums">{{ $offer->deal->buyer->phoneFormatted() }}</a>@endif
-        <span class="tag nums font-semibold">{{ \App\Support\Money::rub($offer->deal->amount) }}</span>
-    </div>
-    <form method="post" action="/work/deals/{{ $offer->deal->id }}/note" class="flex flex-col gap-2">
-        @csrf
-        <textarea name="notes" class="field-input" placeholder="Заметка">{{ old('notes', $offer->deal->notes) }}</textarea>
-        <x-ui.button size="sm" variant="secondary" class="self-end">Сохранить</x-ui.button>
-    </form>
-</x-ui.card>
-@endif

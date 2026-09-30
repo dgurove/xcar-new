@@ -15,7 +15,6 @@
     $transitions = collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]);
     $bids = $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]);
     $waiting = $offer->bids->where('state', BidState::Active);
-    $best = $waiting->sortByDesc('amount')->first();
     $unread = $chats->sum('unread_for_staff');
     // Две колонки, которые не распирает содержимое (дата-время, VIN с кнопкой): иначе окошко листалось вбок.
     $grid = 'grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-2.5';
@@ -98,30 +97,7 @@
         </x-slot:actions>
         {{-- Последнее письмо, как в редакторе и деле ТС; вся переписка — окном поверх списка (x-mail.window на странице). --}}
         @if ($bids->isNotEmpty())
-            <div class="mt-4 flex flex-col gap-2">
-                @foreach ($bids as $bid)
-                    <div class="box-nested">
-                        <div class="flex flex-wrap items-center gap-1.5">
-                            <span class="nums whitespace-nowrap font-semibold">{{ \App\Support\Money::rub($bid->amount) }}</span>
-                            @if ($bid->is($best) && $waiting->count() > 1)<x-ui.pill tone="soft" class="!min-h-0 !py-1 text-xs">Лучшая</x-ui.pill>
-                            @elseif ($bid->state !== BidState::Active)<x-ui.pill :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $bid->state->label() }}</x-ui.pill>@endif
-                            <x-ui.person :user="$bid->user"/>
-                            <a href="tel:+{{ $bid->user->phone }}" class="tag nums">{{ $bid->user->phoneFormatted() }}</a>
-                            <span class="tag nums">{{ $bid->created_at->translatedFormat('j M, H:i') }}</span>
-                        </div>
-                        @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
-                        @if ($bid->state === BidState::Active)
-                            <div class="mt-2 flex items-start gap-2">
-                                <details class="min-w-0 flex-1" @if ($errors->has('commission') && old('bid') == $bid->id) open @endif>
-                                    <summary class="btn btn-s btn-accent inline-flex cursor-pointer">{{ $offer->deal ? 'Отдать' : 'Принять' }}</summary>
-                                    <div class="mt-3"><x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :submit="$offer->deal ? 'Отдать' : 'Принять'" :note="$offer->deal ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null"><input type="hidden" name="bid" value="{{ $bid->id }}"></x-offer.money-form></div>
-                                </details>
-                                <form method="post" action="/confirmations/{{ $bid->id }}/decline">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>
-                            </div>
-                        @endif
-                    </div>
-                @endforeach
-            </div>
+            <div class="mt-4">@include('admin.offers.bids', ['inline' => true])</div>
         @endif
         @if ($offer->interests->isNotEmpty())
             <div class="mt-4 flex flex-col gap-2">

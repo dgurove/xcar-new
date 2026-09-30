@@ -10,12 +10,10 @@
         @if ($deal->state !== DealState::Active)
             <x-ui.pill :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.pill>
             @if ($deal->closed_at)<x-ui.pill tone="plain"><span>{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span></x-ui.pill>@endif
-        @elseif ($position)
-            <x-route.status :position="$position"/>
-        @else
-            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
         @endif
+        {{-- Этап и срок — в карточке «Продажа», в шапке их не повторяем. --}}
         <x-ui.pill tone="plain" href="/offers/{{ $offer->number }}"><x-ui.icon name="car" class="size-4"/> Предложение № {{ $offer->number }}</x-ui.pill>
+        @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
         @if ($errors->has('exit'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('exit') }}</x-ui.flash>@endif
     </div>
 
@@ -23,6 +21,9 @@
         <div class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @if ($offer->positions->isNotEmpty())
                 @include('admin.offers.route')
+            @endif
+            @if ($offer->deal)
+                <x-deal.money :deal="$offer->deal" class="order-1"/>
             @endif
 
             @if ($open->isNotEmpty())
@@ -75,6 +76,12 @@
             </x-ui.card>
             @endif
 
+            @if ($lastLetter)
+                <x-ui.card title="Письма" :count="$letters" class="order-3">
+                    <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks"/>
+                </x-ui.card>
+            @endif
+
             <x-ui.card title="Заметка" class="order-4" id="deal-note">
                 <form method="post" action="/work/deals/{{ $deal->id }}/note" class="flex flex-col gap-2">
                     @csrf
@@ -115,4 +122,5 @@
             </x-ui.card>
         </div>
     </div>
+    <x-mail.window :title="$offer->titleWithYear()"/>
 </x-ui.shell>

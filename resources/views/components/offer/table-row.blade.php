@@ -15,7 +15,9 @@
     $count = $gallery ? (int) $offer->interests_count : (int) $offer->active_bids_count;
     $countWord = $gallery ? 'интерес '.$count : $count.' подтв.';
     $timer = $left !== null && $left > 0;
-    $stateWord = $offer->state === OfferState::Open ? 'приём' : mb_strtolower($offer->state->label());
+    // Приём закрылся, а подтверждения есть — ход наш: «выбрать» оранжевым; без них — «приём закрыт».
+    $pick = $offer->state === OfferState::Open && ! $timer && $offer->bids_close_at;
+    $stateWord = $offer->state === OfferState::Open ? ($pick ? ($count ? 'выбрать' : 'приём закрыт') : 'приём') : mb_strtolower($offer->state->label());
     // Логотип — из одной выборки вендоров на страницу, а не связью на каждую строку.
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
     $offer->loadMissing('parkVehicle:id,offer_id,category');
@@ -38,6 +40,7 @@
     <td class="cell-dim nums hidden sm:table-cell">@unless ($draft){{ $n }}@endunless</td>
     <td class="hidden sm:table-cell">
         @if ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
+        @elseif ($pick)<span class="{{ $count ? 'text-urgent' : 'text-ink-muted' }}">{{ $count ? 'Выбрать' : 'Приём закрыт' }}</span>
         @else<span class="{{ $tone }}">{{ $offer->state === OfferState::Open ? 'Приём' : $offer->state->label() }}</span>@endif
     </td>
     <td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>

@@ -11,7 +11,6 @@
     // Подтверждения: ждущие по сумме вниз, потом решённые.
     $bids = $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]);
     $waiting = $offer->bids->where('state', BidState::Active);
-    $best = $waiting->sortByDesc('amount')->first();
     $grid = 'grid grid-cols-2 gap-3 @4xl:grid-cols-3';
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
@@ -25,7 +24,9 @@
         @if ($garage)
             <x-ui.pill tone="plain" :href="\App\Support\Surface::Garage->url('/cars/'.$n)" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }} ↗</x-ui.pill>
         @else
-            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
+            {{-- В сделке пилюля состояния и есть вход в сделку: «Идёт сделка ›», второй пилюли «Сделка» рядом нет. --}}
+            @if ($offer->deal)<x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
+            @else<x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>@endif
         @endif
         @if ($offer->closed())
             <x-ui.pill tone="closed">Приём закрыт с {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</x-ui.pill>
@@ -42,7 +43,6 @@
         @endif
         {{-- Письмо, документы и фото — шторкой рядом с полями (x-ui.docs); переписка — карточкой «Письма» и окном. --}}
         @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
-        @if ($offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
         @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
         @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
@@ -54,32 +54,10 @@
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             @if ($bids->isNotEmpty())
-            <x-ui.card :title="'Подтверждения'.($waiting->isNotEmpty() ? ' '.$waiting->count() : '')" class="order-1 {{ $waiting->isNotEmpty() ? 'box-urgent' : '' }}">
-                <div class="flex flex-col gap-2">
-                    @foreach ($bids as $bid)
-                        <div class="box-nested">
-                            <div class="flex items-center gap-2">
-                                <span class="nums whitespace-nowrap text-lg font-semibold">{{ \App\Support\Money::rub($bid->amount) }}</span>
-                                @if ($bid->is($best) && $waiting->count() > 1)<x-ui.pill tone="soft" class="!min-h-0 !py-1 text-xs">Лучшая</x-ui.pill>
-                                @elseif ($bid->state !== BidState::Active)<x-ui.pill :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $bid->state->label() }}</x-ui.pill>@endif
-                            </div>
-                            <div class="mt-1 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$bid->user" full/><a href="tel:+{{ $bid->user->phone }}" class="tag nums">{{ $bid->user->phoneFormatted() }}</a><span class="tag nums">{{ $bid->created_at->translatedFormat('j M, H:i') }}</span></div>
-                            @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
-                            @if ($bid->state === BidState::Active)
-                                <div class="mt-2 flex gap-2">
-                                    <div data-controller="sheet">
-                                        <x-ui.button type="button" size="sm" data-action="sheet#open">{{ $offer->deal ? 'Отдать' : 'Принять' }}</x-ui.button>
-                                        <x-ui.sheet id="accept-{{ $bid->id }}" :title="$offer->deal ? 'Отдать другому' : 'Принять подтверждение'" :open="$errors->has('commission') && old('bid') == $bid->id">
-                                            <div class="mb-4 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$bid->user" full/><span class="tag">{{ $offer->titleWithYear() }}</span></div>
-                                            <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :submit="$offer->deal ? 'Отдать' : 'Принять'" :note="$offer->deal ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null"><input type="hidden" name="bid" value="{{ $bid->id }}"></x-offer.money-form>
-                                        </x-ui.sheet>
-                                    </div>
-                                    <form method="post" action="/confirmations/{{ $bid->id }}/decline">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>
-                                </div>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
+            {{-- Подтверждения: без сделки — выбрать победителя (оранжевым, пока ждут). Со сделкой это и есть карточка «Сделка»:
+                 принятое, «Открыть сделку» и резерв; деньги и заметка — на странице сделки. --}}
+            <x-ui.card :title="$offer->deal ? 'Сделка' : 'Подтверждения'.($waiting->isNotEmpty() ? ' '.$waiting->count() : '')" class="order-1 {{ ! $offer->deal && $waiting->isNotEmpty() ? 'box-urgent' : '' }}">
+                @include('admin.offers.bids')
             </x-ui.card>
             @endif
 

@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
+use App\Offers\OfferFiles;
 use App\Offers\DealState;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -45,18 +46,21 @@ class DealController
         ]);
     }
 
-    /** Сделка целиком: маршрут с исходами, просьбы менеджеру и ответы, машина и покупатель, история. */
+    /** Сделка целиком: маршрут с исходами, деньги, письма и документы, просьбы менеджеру и ответы, машина и покупатель, история. */
     public function show(Deal $deal)
     {
         $deal->load(['buyer', 'bid', 'requirements.media', 'requirements.stage.block', 'offer.brand', 'offer.model', 'offer.media', 'offer.settlement',
             'offer.vendor.workflows', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.positions.stage.workflow', 'offer.events.user']);
         $offer = $deal->offer;
 
-        return view('admin.deals.show', [
+        $threads = OfferFiles::threads($offer);
+
+        // Письма и документы — как в редакторе: письмо вендору, документы к подписанию и ответ страховой ведут отсюда.
+        return view('admin.deals.show', OfferFiles::letters($offer, $threads) + [
+            'docs' => OfferFiles::docs($offer, $threads),
             'deal' => $deal,
             'offer' => $offer,
             'events' => $offer->events->where('created_at', '>=', $deal->created_at),
-            'dealCard' => false,
         ]);
     }
 

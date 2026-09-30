@@ -5,9 +5,7 @@ namespace App\Http\Admin;
 use App\Chats\Chat;
 use App\Chats\Message as ChatMessage;
 use App\Garage\Actions\TakeToGarage;
-use App\Mail\Direction;
 use App\Mail\Jobs\ImportThreadFiles;
-use App\Mail\Message;
 use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
@@ -16,10 +14,10 @@ use App\Offers\Actions\UpdateOffer;
 use App\Offers\AudienceRules;
 use App\Offers\BidState;
 use App\Offers\Offer;
+use App\Offers\OfferFiles;
 use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Offers\Tag;
-use App\Support\Docs;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Users\Role;
@@ -32,7 +30,7 @@ class OfferController
 {
     public const PRESETS = [
         'all' => 'Все', 'recommended' => 'Рекомендуем', 'draft' => 'Черновики', 'open' => 'В продаже',
-        'bids' => 'Ждут ответа', 'sold' => 'В сделке', 'archive' => 'Архив',
+        'bids' => 'Выбрать', 'sold' => 'В сделке', 'archive' => 'Архив',
     ];
 
     public const SORTS = ['fresh' => 'Сначала новые', 'bids' => 'По подтверждениям', 'closing' => 'Скоро закроются', 'number' => 'По номеру'];
@@ -49,7 +47,8 @@ class OfferController
             'recommended' => $q->where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),
             'draft' => $q->where('state', OfferState::Draft),
             'open' => $q->where('state', OfferState::Open),
-            'bids' => $q->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
+            // Выбрать победителя: в продаже и с подтверждениями. У предложения в сделке оставшиеся — резерв, не очередь.
+            'bids' => $q->where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
             'sold' => $q->whereIn('state', [OfferState::Sold, OfferState::Delivered]),
             'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
             // Галерея — свой раздел.
@@ -57,6 +56,10 @@ class OfferController
         };
         if ($term = trim((string) $request->query('q'))) {
             $q->search($term);
+        }
+        // В «Выбрать» сначала те, у кого приём уже закрыт, — по ним решать сейчас.
+        if ($preset === 'bids' && ! $request->has('sort')) {
+            $sort = 'closing';
         }
         match ($sort) {
             'bids' => $q->orderByDesc('active_bids_count')->orderByRaw('top_bid desc nulls last')->orderByDesc('updated_at'),
@@ -88,7 +91,7 @@ class OfferController
             'counts' => [
                 'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
                 'draft' => Offer::where('state', OfferState::Draft)->count(),
-                'bids' => Offer::whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->count(),
+                'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->count(),
             ],
         ]);
     }
@@ -111,12 +114,12 @@ class OfferController
 
         $threads = Thread::where('offer_id', $offer->id)->get();
 
-        return view('admin.offers.edit', $this->letters($offer, $threads) + [
+        return view('admin.offers.edit', OfferFiles::letters($offer, $threads) + [
             'offer' => $offer,
             'threads' => $threads,
             // ?window= — открыть окно писем сразу (ссылка «Вся переписка» из шторки документов).
             'window' => str_starts_with((string) request()->query('window'), "/offers/{$offer->number}/letters") ? request()->query('window') : null,
-            'docs' => $this->docs($offer, $threads),
+            'docs' => OfferFiles::docs($offer, $threads),
             'chats' => Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'import' => ImportThreadFiles::progress($offer->id),
             'tags' => Tag::orderBy('sort')->get(),
@@ -135,45 +138,6 @@ class OfferController
      * @param  Collection<int, Thread>  $threads
      * @return list<array<string, mixed>>
      */
-    /**
-     * Карточка «Письма» (x-mail.last-letter), как в деле ТС: последнее письмо всех веток предложения, их число и письма,
-     * что ждут ответа (одно правило почты — `needs_reply_at`, само письмо — последнее входящее ветки).
-     *
-     * @return array{lastLetter: ?Message, letters: int, asks: Collection}
-     */
-    private function letters(Offer $offer, Collection $threads): array
-    {
-        $ids = $threads->pluck('id');
-        $waiting = $threads->whereNotNull('needs_reply_at')->pluck('id');
-
-        return [
-            'lastLetter' => $ids->isEmpty() ? null : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),
-            'letters' => $ids->isEmpty() ? 0 : Message::whereIn('thread_id', $ids)->count(),
-            'asks' => $waiting->isEmpty() ? collect() : Message::whereIn('thread_id', $waiting)->where('direction', Direction::In)
-                ->orderBy('date_at')->orderBy('id')->get(['id', 'thread_id', 'date_at'])->groupBy('thread_id')->map->last()->values(),
-        ];
-    }
-
-    private function docs(Offer $offer, Collection $threads): array
-    {
-        // Входящие, а не «не наши»: сотрудник пересылает письмо вендора со своего ящика — это оно же, в цитате.
-        $letters = Message::with(['attachments', 'account'])->whereIn('thread_id', $threads->pluck('id'))->where('direction', Direction::In)->orderBy('date_at')->get();
-        $letter = $letters->first(fn (Message $m) => ! $m->isOurs()) ?? $letters->first();
-        // «Вся переписка» у письма в шторке — окно-лента всех веток предложения на его же странице.
-        $thread = $threads->isNotEmpty() ? "/offers/{$offer->number}?window=/offers/{$offer->number}/letters" : null;
-        $papers = $offer->papers();
-        $names = $papers->pluck('file_name')->map(fn ($n) => Docs::norm($n))->all();
-        ['docs' => $files, 'photos' => $pictures] = Docs::fromLetters($letters, '/work/mail');
-        $photos = $offer->photos();
-
-        return array_values(array_filter([
-            $letter ? Docs::letter($letter, '/work/mail', $thread) : null,
-            ...$papers->map(fn ($m) => Docs::media($m))->all(),
-            ...array_filter($files, fn ($d) => ! in_array(Docs::norm($d['name']), $names, true)),
-            $photos->isNotEmpty() ? Docs::photos($photos) : Docs::photos($pictures, '/work/mail'),
-        ]));
-    }
-
     /** Другие предложения с тем же VIN (twins_controller под полем VIN): второе на ту же машину видно до сохранения. */
     public function twins(Request $request)
     {
@@ -189,7 +153,7 @@ class OfferController
     {
         $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
 
-        return view('admin.offers.peek', $this->letters($offer, Thread::where('offer_id', $offer->id)->get()) + [
+        return view('admin.offers.peek', OfferFiles::letters($offer, Thread::where('offer_id', $offer->id)->get()) + [
             'offer' => $offer,
             // Поля редактора в окошке — те же справочники, что у страницы.
             'audienceOptions' => AudienceRules::options(),

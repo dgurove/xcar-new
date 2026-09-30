@@ -8,7 +8,9 @@
     @if ($block)<x-ui.pill tone="plain" class="shrink whitespace-normal text-left">{{ $stage->block?->name }}@if ($stage->block && $stage->block->name !== $stage->name) <span class="text-ink-dim">› {{ $stage->name }}</span>@endif</x-ui.pill>@endif
     <x-ui.pill :tone="$tone">
         {{ $position->isOverdue() ? 'Срок вышел' : $stage->waits_for->label() }}
-        @if ($position->deadline_at)
+        @if ($position->deadline_at && $position->isOverdue())
+            <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}"></span> назад
+        @elseif ($position->deadline_at)
             <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-"></span>
         @elseif ($stage->timerMode() === 'stopwatch')
             <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}"></span>
