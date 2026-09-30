@@ -4,7 +4,7 @@
 @php use App\Support\Money; $href = '/work/money/bank/'.$tx->id; @endphp
 <tr id="tx-{{ $tx->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}/peek" tabindex="0">
     <td class="grow">
-        <span class="cell-title">{{ $tx->counterparty ?: 'Плательщик не указан' }}</span>
+        <span class="cell-title flex items-center gap-2"><x-ui.avatar :name="\App\Billing\Bank\Actions\MatchTransaction::isPayout($tx) ? 'ЮMoney' : ($tx->counterparty ?: '?')" :size="24"/><span class="min-w-0 truncate">{{ $tx->counterparty ?: 'Плательщик не указан' }}</span></span>
         <span class="cell-sub">
             <span class="text-{{ $tx->tone() }}">{{ mb_strtolower($tx->stateLabel()) }}</span>
             @if ($tx->invoice)<span>счёт {{ $tx->invoice->label() }}</span>@elseif ($tx->note)<span>{{ mb_strtolower($tx->note) }}</span>@endif

@@ -58,11 +58,10 @@ class MoneyController
         abort_unless($deal->buyer_id === $me->id, 404);
         $deal->load(['offer.brand', 'offer.model', 'offer.media', 'agentFee.payments.media']);
         $invoices = $deal->issuedInvoices()->with(['party', 'charges', 'allPayments.media'])->get();
-        $history = (new ManagerLedger($me))->history()->where('deal', $deal->id)->reverse()->values();
         $links = PayLink::whereIn('invoice_id', $invoices->pluck('id'))->where('state', PayLinkState::Open)->with(['invoice', 'payerUser', 'creator'])->get();
 
         return view('cabinet.money.deal', [
-            'deal' => $deal, 'offer' => $deal->offer, 'invoices' => $invoices, 'fee' => $deal->agentFee, 'state' => $deal->commissionState(), 'history' => $history,
+            'deal' => $deal, 'offer' => $deal->offer, 'invoices' => $invoices, 'fee' => $deal->agentFee, 'state' => $deal->commissionState(),
             // Счёт вендору (вознаграждение от поставщика) платит не менеджер: его в «Оплатить» нет.
             'claimable' => $invoices->filter(fn (Invoice $i) => $i->state === InvoiceState::Issued && $i->kind !== ChargeKind::Reward && $i->remaining() - $i->claimed() > 0)->values(),
             'links' => $links, 'buyers' => $me->buyers()->orderBy('name')->get(),

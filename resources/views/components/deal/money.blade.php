@@ -46,7 +46,7 @@
              справа сумма; «Выплатить» — только у вознаграждения к выплате. --}}
         <div class="list mt-4">
             @foreach ($invoices as $i)
-                <div class="row {{ $i->claims->isNotEmpty() ? 'bg-urgent-soft' : '' }}">
+                <div class="row">
                     <a href="/work/money/invoices/{{ $i->id }}" class="min-w-0 flex-1">
                         <span class="block truncate">{{ $i->isOwed() ? 'Вознаграждение менеджеру' : 'Счёт '.$i->label() }}@unless ($i->isOwed())<span class="text-ink-muted"> <x-vendor.name :party="$i->party"/></span>@endunless</span>
                         <span class="row-sub"><x-billing.light :invoice="$i"/>@if ($i->isPartial())<span class="tag nums">из {{ Money::rub($i->total) }}</span>@endif</span>
@@ -60,14 +60,14 @@
                     @endif
                 </div>
                 @foreach ($i->claims as $p)
-                    <div class="row flex-wrap bg-urgent-soft">
-                        <span class="min-w-0 flex-1 text-sm">Менеджер сообщил об оплате <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span> <span class="nums text-ink-dim">{{ $p->paid_at->translatedFormat('j M') }}</span></span>
-                        @if ($slip = $p->slip())<x-ui.doc :doc="\App\Support\Docs::media($slip)" class="chip"><x-ui.icon name="file" class="size-3.5"/>платёжка</x-ui.doc>@endif
+                    <x-money.payment :payment="$p" :slip="'/work/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'" staff>
                         @unless ($inStep)
-                            <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>
-                            <a href="/work/money/invoices/{{ $i->id }}" class="btn btn-s btn-ghost">Не поступила</a>
+                            <x-slot:acts>
+                                <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>
+                                <a href="/work/money/invoices/{{ $i->id }}" class="btn btn-s btn-quiet">Не поступила</a>
+                            </x-slot:acts>
                         @endunless
-                    </div>
+                    </x-money.payment>
                 @endforeach
             @endforeach
         </div>

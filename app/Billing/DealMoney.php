@@ -6,6 +6,7 @@ use App\Offers\CommissionState;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Support\Money;
+use Carbon\CarbonInterface;
 
 /**
  * Сделка глазами денег одной строкой: что сейчас важно (фраза), какое число
@@ -21,6 +22,7 @@ final class DealMoney
         public readonly ?float $amount,
         public readonly string $tone,      // urgent | accent | plain | muted
         public readonly string $preset,    // pay | payout | closed | open
+        public readonly string $caption = '', // подпись над числом в шапке расчёта
     ) {}
 
     public static function of(Deal $deal): self
@@ -37,31 +39,84 @@ final class DealMoney
         if ($unpaid) {
             $left = $unpaid->remaining();
             if ($unpaid->claimed() > 0) {
-                return new self('Оплата ждёт подтверждения', $left, 'muted', 'pay');
+                return new self('Оплата ждёт подтверждения', $left, 'muted', 'pay', 'К оплате');
             }
             if ($unpaid->openLink()) {
-                return new self('Ссылка отправлена, ждём оплату', $left, 'muted', 'pay');
+                return new self('Ссылка отправлена, ждём оплату', $left, 'muted', 'pay', 'К оплате');
             }
             if ($unpaid->isOverdue()) {
-                return new self('Просрочен на '.$unpaid->overdueDays().' дн', $left, 'urgent', 'pay');
+                return new self('Просрочен на '.$unpaid->overdueDays().' дн', $left, 'urgent', 'pay', 'К оплате');
             }
             $paid = $unpaid->paid > 0 ? 'Оплачено '.Money::rub($unpaid->paid).', остаток до ' : 'Оплатите до ';
 
-            return new self($paid.$unpaid->due_at->translatedFormat('j M'), $left, $unpaid->light() === 'urgent' ? 'urgent' : 'plain', 'pay');
+            return new self($paid.$unpaid->due_at->translatedFormat('j M'), $left, $unpaid->light() === 'urgent' ? 'urgent' : 'plain', 'pay', 'К оплате');
         }
         if ($issued->isEmpty()) {
             return $deal->state === DealState::Done
-                ? new self('Сделка закрыта', (float) $deal->amount, 'muted', 'closed')
-                : new self('Счёт ещё не выставлен', (float) $deal->amount, 'muted', 'open');
+                ? new self('Сделка закрыта', (float) $deal->amount, 'muted', 'closed', 'Цена подтверждения')
+                : new self('Счёт ещё не выставлен', (float) $deal->amount, 'muted', 'open', 'Цена подтверждения');
         }
 
         return match ($state) {
-            CommissionState::Payable => new self('К выплате до '.$fee->due_at->translatedFormat('j M'), $fee->remaining(), 'accent', 'payout'),
-            CommissionState::Paid => new self('Выплачено '.$fee->paid_at?->translatedFormat('j M'), (float) $deal->commission, 'muted', 'closed'),
-            CommissionState::Withheld => new self('Вознаграждение удержано из счёта', (float) $deal->commission, 'muted', 'closed'),
-            CommissionState::Awaiting => new self('Счёт оплачен', (float) $deal->commission, 'muted', 'closed'),
-            default => new self('Счёт оплачен', (float) $deal->amount, 'muted', 'closed'),
+            CommissionState::Payable => new self('К выплате до '.$fee->due_at->translatedFormat('j M'), $fee->remaining(), 'accent', 'payout', 'Вам к выплате'),
+            CommissionState::Paid => new self('Выплачено '.$fee->paid_at?->translatedFormat('j M'), (float) $deal->commission, 'muted', 'closed', 'Вознаграждение'),
+            CommissionState::Withheld => new self('Вознаграждение удержано из счёта', (float) $deal->commission, 'muted', 'closed', 'Вознаграждение'),
+            CommissionState::Awaiting => new self('Счёт оплачен', (float) $deal->commission, 'muted', 'closed', 'Вознаграждение'),
+            default => new self('Счёт оплачен', (float) $deal->amount, 'muted', 'closed', 'Цена подтверждения'),
         };
+    }
+
+    /**
+     * Путь денег сделки точками на линии (`x-money.track`, `.steps`): подтверждение → счёт → оплата → вознаграждение.
+     * Пройденное — с датой, текущее — со словом, что сейчас происходит, будущее — серым. Вознаграждения нет
+     * или менеджер его удерживает сам — шага выплаты нет.
+     *
+     * @return list<array{title: string, at: ?CarbonInterface, state: string, hint: ?string, tone: ?string}>
+     */
+    public static function track(Deal $deal): array
+    {
+        $step = fn (string $title, string $state, $at = null, ?string $hint = null, ?string $tone = null) => compact('title', 'state', 'at', 'hint', 'tone');
+        $invoices = $deal->relationLoaded('invoices') ? $deal->invoices : $deal->invoices()->with(['claims', 'payments'])->get();
+        $issued = $invoices->reject(fn (Invoice $i) => $i->isOwed())->sortBy('issued_at')->values();
+        $fee = $invoices->first(fn (Invoice $i) => $i->isAgentFee());
+        $steps = [$step('Подтверждение принято', 'done', $deal->created_at)];
+
+        if ($deal->state === DealState::Cancelled) {
+            $steps[] = $step('Сделка отменена', 'danger', $deal->closed_at ?? $deal->updated_at);
+
+            return $steps;
+        }
+        if ($issued->isEmpty()) {
+            $steps[] = $step('Счёт', 'current', null, 'Готовим счёт');
+            $steps[] = $step('Оплата', 'todo');
+        } else {
+            $first = $issued->first();
+            $steps[] = $step('Счёт '.$first->label().' выставлен', 'done', $first->issued_at);
+            $unpaid = $issued->first(fn (Invoice $i) => $i->state === InvoiceState::Issued);
+            if (! $unpaid) {
+                $steps[] = $step('Счёт оплачен', 'done', $issued->max('paid_at'));
+            } elseif ($unpaid->claimed() > 0) {
+                $steps[] = $step('Оплата', 'current', null, 'Сообщили об оплате, ждём поступления', 'urgent');
+            } elseif ($link = $unpaid->openLink()) {
+                $steps[] = $step('Оплата', 'current', null, 'Ссылка на оплату отправлена '.$link->created_at->translatedFormat('j M'));
+            } elseif ($unpaid->isOverdue()) {
+                $steps[] = $step('Оплата', 'current', null, 'Просрочена на '.$unpaid->overdueDays().' дн', 'danger');
+            } else {
+                $steps[] = $step('Оплата', 'current', null, ($unpaid->paid > 0 ? 'Оплачено '.Money::rub($unpaid->paid).', остаток ' : 'Ждём оплату ').'до '.$unpaid->due_at->translatedFormat('j M'));
+            }
+        }
+
+        $state = $deal->commissionState();
+        if ($deal->commission && $state !== CommissionState::Hidden) {
+            $steps[] = match ($state) {
+                CommissionState::Withheld => $step('Вознаграждение удержано', 'done', $issued->first()?->issued_at),
+                CommissionState::Paid => $step('Вознаграждение выплачено', 'done', $fee?->paid_at),
+                CommissionState::Payable => $step('Выплата вознаграждения', 'current', null, 'До '.$fee?->due_at->translatedFormat('j M'), 'accent'),
+                default => $step('Выплата вознаграждения', 'todo'),
+            };
+        }
+
+        return $steps;
     }
 
     public function needsAction(): bool

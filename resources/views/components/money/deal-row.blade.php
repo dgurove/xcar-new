@@ -1,13 +1,17 @@
-{{-- Сделка-расчёт строкой: фото, ТС, одна фраза о деньгах и № предложения; справа — число, которое сейчас важно.
-     href — куда ведёт (кабинет: расчёт, CRM: сделка). person — показать менеджера (CRM). --}}
+{{-- Сделка-расчёт строкой в два этажа: фото, ТС и под ним одной строкой, что с деньгами (цветом состояния); справа число,
+     под ним — что это за число. href — куда ведёт (кабинет: расчёт, CRM: сделка). person — показать менеджера (CRM). --}}
 @props(['deal', 'href', 'person' => false])
 @php use App\Support\Money; $offer = $deal->offer; $m = $deal->money ?? \App\Billing\DealMoney::of($deal); @endphp
-<a href="{{ $href }}" class="row items-start">
-    <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+<a href="{{ $href }}" class="row">
+    <span class="row-photo row-photo-s"><x-offer.photo :media="$offer->mainPhoto()" sizes="48px"/></span>
     <span class="min-w-0 flex-1">
-        <span class="block truncate font-medium">{{ $offer->titleWithYear() }}</span>
-        <span class="mt-0.5 block text-sm {{ $m->phraseClass() }}">{{ $m->phrase }}</span>
-        <span class="row-sub"><span class="tag nums">№ {{ $offer->number }}</span>@if ($person && $deal->buyer)<x-ui.person :user="$deal->buyer"/>@endif</span>
+        <span class="block truncate">{{ $offer->titleWithYear() }}</span>
+        <span class="row-sub"><span class="{{ $m->phraseClass() }}">{{ $m->phrase }}</span>@if ($person && $deal->buyer)<x-ui.person :user="$deal->buyer"/>@endif</span>
     </span>
-    @if ($m->amount !== null)<span class="nums shrink-0 {{ $m->amountClass() }}">{{ Money::rub($m->amount) }}</span>@endif
+    @if ($m->amount !== null)
+        <span class="shrink-0 text-right">
+            <span class="nums block {{ $m->amountClass() }}">{{ Money::rub($m->amount) }}</span>
+            @if ($m->caption)<span class="block text-xs text-ink-dim">{{ mb_strtolower($m->caption) }}</span>@endif
+        </span>
+    @endif
 </a>

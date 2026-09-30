@@ -1,11 +1,17 @@
-{{-- Окошко счёта или вознаграждения по сделке: светофор, документ, менеджер, ТС; остаток справа; заявки менеджера с
-     «Поступило / Не поступила», выплата и оплата формами, PDF и «Аннулировать» чипами; строки и оплаты. --}}
+{{-- Окошко счёта или вознаграждения по сделке: в метках остаток, светофор словом, документ, менеджер, ТС; в ряду действий
+     «Оплачен» / «Выплатить» и «Ссылка на оплату» — шторками, PDF — шторкой документов, «Аннулировать» — в «···».
+     Ниже строками денег: заявки менеджера с «Поступило» / «Не поступила», строки счёта с итогом и НДС, оплаты (у ссылки —
+     способ, комиссия, зачислено ли на счёт, «Вернуть»), переплата по ссылке. --}}
 @php
-    use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource; use App\Billing\Acquiring\PayMethod;
+    use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource;
     $i = $invoice; $href = '/work/money/invoices/'.$i->id; $offer = $i->deal?->offer;
     $link = $i->openLink();
     $attempts = \App\Billing\Acquiring\AcquiringPayment::whereIn('link_id', $i->payLinks()->pluck('id'))->where('status', 'succeeded')->with('payout')->get();
     $overpaid = $attempts->filter(fn ($a) => $a->overpaid() > 0);
+    $issued = $i->state === InvoiceState::Issued;
+    $online = $issued && ! $i->isOwed() && app(\App\Billing\Acquiring\Gateway::class)->configured();
+    $voidable = $issued && ! $i->payments()->where('source', '!=', PaymentSource::Offset)->exists();
+    $suggest = \App\Billing\Acquiring\PayLink::defaultAmount($i);
 @endphp
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="$href" :title="$i->isOwed() ? 'Вознаграждение '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :photo="$offer?->mainPhoto()">
@@ -16,66 +22,114 @@
             <span class="tag">{{ $i->kind->label() }}</span>
             @if ($i->deal?->buyer)<x-ui.person :user="$i->deal->buyer"/>@endif
             @if ($offer)<a href="/work/deals/{{ $i->deal_id }}" class="tag">{{ $offer->titleWithYear() }}</a>@endif
-            @if ($i->isOwed() && ! $i->party->payoutReady())<x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">Реквизитов нет</x-ui.pill>@endif
+            @if ($i->isOwed() && ! $i->party->payoutReady())<span class="tag text-urgent">реквизитов нет</span>@endif
         </x-slot:marks>
         <x-slot:actions>
-            @foreach ($i->claims as $p)
-                <div class="flex w-full flex-wrap items-center gap-2">
-                    <span class="text-sm">{{ $p->source === PaymentSource::Cash ? 'Отдал наличными' : 'Сообщил об оплате' }}</span><span class="nums font-semibold">{{ Money::rub($p->amount) }}</span><span class="tag nums">{{ $p->paid_at->translatedFormat('j M') }}</span>
-                    @if ($p->ref)<span class="tag nums">№ {{ $p->ref }}</span>@endif
-                    @if ($p->slip())<a href="{{ $href }}/payments/{{ $p->id }}/slip" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>платёжка</a>@endif
-                    <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<button class="btn btn-s btn-accent">Поступило</button></form>
-                    <details class="w-full"><summary class="btn btn-s btn-ghost inline-flex cursor-pointer">Не поступила</summary>
-                        <form method="post" action="/work/payments/{{ $p->id }}/reject" class="mt-2 flex gap-2">@csrf<input name="reason" class="field-input min-w-0 flex-1" placeholder="Что не так"><x-ui.button size="sm" variant="secondary">Отметить</x-ui.button></form>
-                    </details>
+            @if ($issued)
+                <div data-controller="sheet" class="contents">
+                    <button type="button" class="btn btn-s btn-accent" data-action="sheet#open">{{ $i->isOwed() ? 'Выплатить' : 'Оплачен' }}</button>
+                    <x-ui.sheet :id="'paid-'.$i->id" :title="$i->isOwed() ? 'Выплата '.$i->party->name : 'Оплата по счёту '.$i->label()" :open="$errors->hasAny(['source', 'paid_at', 'slip'])">
+                        <x-billing.pay-form :invoice="$i" :action="$href.'/payments'" :sources="$sources"/>
+                    </x-ui.sheet>
                 </div>
-            @endforeach
-            @if ($i->state === InvoiceState::Issued)
-                <details class="w-full"><summary class="btn btn-s btn-accent inline-flex cursor-pointer">{{ $i->isOwed() ? 'Выплатить' : 'Оплачен' }}</summary><div class="mt-3"><x-billing.pay-form :invoice="$i" :action="$href.'/payments'" :sources="$sources"/></div></details>
             @endif
             @if ($link)
-                <div class="flex w-full flex-wrap items-center gap-2" data-controller="copy" data-copy-text-value="{{ $link->url() }}">
-                    <span class="text-sm">Ссылка на оплату</span><span class="nums font-semibold">{{ Money::rub($link->amount) }}</span><span class="tag">платит {{ $link->payerLabel() }}</span>
-                    <button type="button" class="chip" data-action="copy#copy"><x-ui.icon name="copy" class="size-3.5"/>Скопировать</button>
-                    <form method="post" action="/work/money/links/{{ $link->id }}" class="contents" data-turbo-confirm="Отменить ссылку?">@csrf @method('delete')<button class="chip text-ink-muted">Отменить</button></form>
+                <div data-controller="sheet" class="contents">
+                    <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open"><x-ui.icon name="qr" class="size-4"/>Ссылка {{ Money::rub($link->amount) }}</button>
+                    <x-ui.sheet :id="'link-'.$link->id" title="Ссылка на оплату" :open="session('open-link') === $link->id">
+                        <div class="flex flex-col gap-4">
+                            <div class="money-hero">
+                                <span class="nums text-[32px] font-semibold leading-tight">{{ Money::rub($link->amount) }}</span>
+                                <span class="text-ink-muted">платит {{ $link->payerLabel() }}@if ($link->payer_email), чек на {{ $link->payer_email }}@endif</span>
+                            </div>
+                            <div class="mx-auto w-52 rounded-(--radius-l) bg-white p-3 text-black">{!! \App\Support\Qr::svg($link->url()) !!}</div>
+                            <x-ui.copy-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()"/>
+                            <form method="post" action="/work/money/links/{{ $link->id }}" data-turbo-confirm="Отменить ссылку? Оплатить по ней будет нельзя">
+                                @csrf @method('delete')
+                                <x-ui.button variant="ghost" block class="text-ink-muted">Отменить ссылку</x-ui.button>
+                            </form>
+                        </div>
+                    </x-ui.sheet>
                 </div>
-            @elseif ($i->state === InvoiceState::Issued && ! $i->isOwed() && app(\App\Billing\Acquiring\Gateway::class)->configured())
-                <details class="w-full" @if ($errors->hasAny(['email', 'phone', 'amount'])) open @endif><summary class="btn btn-s btn-quiet inline-flex cursor-pointer">Ссылка на оплату</summary>
-                    <form method="post" action="{{ $href }}/links" class="mt-3 grid grid-cols-2 gap-2">
-                        @csrf
-                        <x-ui.field name="name" id="link-name" label="Плательщик" :value="$i->party->name" span="col-span-2"/>
-                        <x-ui.field name="email" id="link-email" label="Почта для чека" type="email" :value="$i->party->email"/>
-                        <x-ui.field name="phone" id="link-phone" label="Телефон" :value="$i->party->phone"/>
-                        <x-ui.field name="amount" id="link-amount" label="Сумма, ₽" :placeholder="Money::nums(\App\Billing\Acquiring\PayLink::defaultAmount($i), 2)"/>
-                        <x-ui.button size="sm" class="col-span-2">Получить ссылку</x-ui.button>
-                    </form>
-                </details>
+            @elseif ($online)
+                <div data-controller="sheet" class="contents">
+                    <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open"><x-ui.icon name="qr" class="size-4"/>Ссылка на оплату</button>
+                    <x-ui.sheet :id="'new-link-'.$i->id" title="Ссылка на оплату" :open="$errors->hasAny(['email', 'phone', 'amount'])">
+                        <form method="post" action="{{ $href }}/links" class="flex flex-col gap-4">
+                            @csrf
+                            <label class="flex items-baseline justify-center gap-2">
+                                <input name="amount" inputmode="decimal" autocomplete="off" class="pay-amount nums" aria-label="Сумма, ₽" placeholder="0"
+                                    value="{{ old('amount', Money::nums($suggest, fmod($suggest, 1) ? 2 : 0)) }}" data-controller="digits" data-action="input->digits#format">
+                                <span class="text-2xl text-ink-muted">₽</span>
+                            </label>
+                            @error('amount')<div class="-mt-2 text-center text-sm text-danger">{{ $message }}</div>@enderror
+                            <x-ui.field name="name" id="link-name" label="Плательщик" :value="$i->party->name"/>
+                            <div class="grid grid-cols-2 gap-3">
+                                <x-ui.field name="email" id="link-email" label="Почта для чека" type="email" :value="$i->party->email"/>
+                                <x-ui.field name="phone" id="link-phone" label="Телефон" :value="$i->party->phone"/>
+                            </div>
+                            <x-ui.button block>Получить ссылку</x-ui.button>
+                        </form>
+                    </x-ui.sheet>
+                </div>
             @endif
-            @foreach ($overpaid as $a)
-                <div class="flex w-full flex-wrap items-center gap-2">
-                    <span class="text-sm text-urgent">Переплата по ссылке</span><span class="nums font-semibold">{{ Money::exact($a->overpaid()) }}</span>
-                    <form method="post" action="/work/money/acquiring/{{ $a->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($a->overpaid()) }} плательщику?">@csrf<input type="hidden" name="surplus" value="1"><button class="btn btn-s btn-quiet">Вернуть</button></form>
+            @if ($i->number)<x-ui.doc :doc="['url' => $href.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="btn btn-s btn-quiet"><x-ui.icon name="file" class="size-4"/>PDF</x-ui.doc>@endif
+            @if ($voidable)
+                <div class="contents" data-controller="menu">
+                    <button type="button" class="btn btn-s btn-quiet btn-round" data-action="menu#toggle" aria-haspopup="menu" aria-controls="invoice-more-{{ $i->id }}" aria-label="Ещё"><x-ui.icon name="more" class="size-5"/></button>
+                    <div id="invoice-more-{{ $i->id }}" class="menu" popover data-menu-target="list" role="menu">
+                        <form method="post" action="{{ $href }}/void" data-turbo-confirm="Аннулировать {{ $i->isOwed() ? 'обязательство' : 'счёт' }}?">@csrf<button class="menu-item w-full text-danger" role="menuitem" data-action="menu#close">Аннулировать</button></form>
+                    </div>
                 </div>
-            @endforeach
-            @if ($i->number)<a href="{{ $href }}/pdf" class="chip" data-turbo="false" target="_blank">PDF</a>@endif
-            @if ($i->state === InvoiceState::Issued && ! $i->payments()->where('source', '!=', PaymentSource::Offset)->exists())
-                <form method="post" action="{{ $href }}/void" class="contents" data-turbo-confirm="Аннулировать {{ $i->isOwed() ? 'обязательство' : 'счёт' }}?">@csrf<button class="chip text-ink-muted">Аннулировать</button></form>
             @endif
         </x-slot:actions>
-        <div class="mt-4 flex flex-col divide-y divide-line/40 text-sm">
+
+        @if ($i->claims->isNotEmpty())
+            <div class="list mt-4">
+                @foreach ($i->claims as $p)
+                    <x-money.payment :payment="$p" :slip="$href.'/payments/'.$p->id.'/slip'" staff>
+                        <x-slot:acts>
+                            <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<button class="btn btn-s btn-accent">Поступило</button></form>
+                            <span data-controller="sheet" class="contents">
+                                <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open">Не поступила</button>
+                                <x-ui.sheet :id="'reject-'.$p->id" title="Не поступила">
+                                    <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-4">
+                                        @csrf
+                                        <x-ui.field name="reason" :id="'reason-'.$p->id" label="Что не так"/>
+                                        <x-ui.button block variant="secondary">Отметить</x-ui.button>
+                                    </form>
+                                </x-ui.sheet>
+                            </span>
+                        </x-slot:acts>
+                    </x-money.payment>
+                @endforeach
+            </div>
+        @endif
+
+        <div class="list mt-4">
             @foreach ($i->charges as $c)
-                <div class="flex items-baseline gap-2 py-1.5"><span class="min-w-0 flex-1">{{ $c->title }}</span><span class="nums shrink-0">{{ Money::rub($c->amount) }}</span></div>
+                <div class="row"><span class="min-w-0 flex-1 text-ink-muted">{{ $c->title }}</span><span class="nums shrink-0">{{ Money::rub($c->amount) }}</span></div>
             @endforeach
+            <div class="row">
+                <span class="min-w-0 flex-1">Итого@if ($i->vatRate())<span class="row-sub">{{ mb_strtolower($i->vatLabel()) }} {{ Money::rub($i->vatAmount()) }}</span>@endif</span>
+                <span class="nums shrink-0 font-semibold">{{ Money::rub($i->total) }}</span>
+            </div>
             @foreach ($i->payments as $p)
                 @php $a = $p->source === PaymentSource::Acquiring ? $attempts->firstWhere('payment_id', $p->id) : null; @endphp
-                <div class="flex flex-wrap items-baseline gap-2 py-1.5 text-accent-text">
-                    <span class="min-w-0 flex-1">{{ $a ? 'По ссылке '.PayMethod::label($a->method) : $p->source->label().($p->ref ? ' № '.$p->ref : '') }}{{ ! $a && $p->note ? ', '.$p->note : '' }}@if ($a?->fee() > 0)<span class="text-ink-muted">, комиссия {{ Money::exact($a->fee()) }}</span>@endif
-                        @if ($a)<span class="text-ink-muted">, {{ $a->payout ? 'зачислено на счёт '.$a->payout->booked_at->translatedFormat('j M') : 'ждёт зачисления' }}</span>@endif</span>
-                    <span class="nums text-ink-muted">{{ $p->paid_at->translatedFormat('j M') }}</span><span class="nums shrink-0">− {{ Money::rub($p->amount) }}</span>
+                <x-money.payment :payment="$p" :attempt="$a" :slip="$href.'/payments/'.$p->id.'/slip'" staff>
                     @if ($a && $a->refundable() > 0)
-                        <form method="post" action="/work/money/acquiring/{{ $a->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($a->refundable()) }} плательщику? Оплата по счёту отменится">@csrf<button class="chip text-ink-muted">Вернуть</button></form>
+                        <x-slot:acts>
+                            <form method="post" action="/work/money/acquiring/{{ $a->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($a->refundable()) }} плательщику? Оплата по счёту отменится">@csrf<button class="chip text-ink-muted">Вернуть</button></form>
+                        </x-slot:acts>
                     @endif
-                </div>
+                </x-money.payment>
+            @endforeach
+            @foreach ($overpaid as $a)
+                <x-money.line icon="offset" title="Переплата по ссылке" :amount="$a->overpaid()" tone="urgent">
+                    <x-slot:acts>
+                        <form method="post" action="/work/money/acquiring/{{ $a->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($a->overpaid()) }} плательщику?">@csrf<input type="hidden" name="surplus" value="1"><button class="btn btn-s btn-quiet">Вернуть</button></form>
+                    </x-slot:acts>
+                </x-money.line>
             @endforeach
         </div>
         <x-slot:row><x-money.table-row :invoice="$i"/></x-slot:row>

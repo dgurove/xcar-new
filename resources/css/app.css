@@ -661,6 +661,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row { @apply flex items-center gap-3 rounded-(--radius-l) bg-surface p-3 sm:p-4; }
   .row-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 4.5rem; height: 3.25rem; }
   .row-photo img { @apply size-full object-cover; }
+  .row-photo-s { width: 3rem; height: 2.25rem; }
   @media (hover: hover) { a.row:hover, button.row:hover, .row:has(> a:hover) { @apply bg-hover; } }
   .row[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--color-accent); }
 
@@ -682,6 +683,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .dark .list .row-sub .tag, .dark .list .row-sub .chip { background: none; color: var(--tag-text-d, inherit); }
   .list-head { @apply flex items-baseline gap-1.5 px-1 pb-2 pt-3 text-lg font-medium text-ink; }
   .list-head .nums { @apply font-normal text-ink-dim; }
+  /* Подпись группы строк, как в «Настройках» iOS: мелко и серым над плашкой, справа — состояние словом. */
+  .list-cap { @apply flex items-baseline gap-2 px-4 pb-1.5 text-sm font-medium text-ink-dim; }
 
   /* Таблица (вид списка «Таблицей»): читают с телефона весь день, поэтому она устроена как список iOS.
      Первый столбец — название в два этажа (.cell-title 15, под ним .cell-sub 13 тусклым: номер, факты,
@@ -922,6 +925,27 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .qr-result-title { @apply font-medium; }
   .qr-result-person { @apply mt-0.5; }
   .qr-result-text { @apply mt-0.5 text-sm text-ink-muted; }
+  /* Деньги (x-money.*): строка с кружком способа, шапка расчёта с числом, сумма крупно в шторке оплаты,
+     сегмент способа. Кружок — тон состояния: зелёный пришло, оранжевый ждём, красный не поступило. */
+  .money-ico { @apply flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink; }
+  .money-ico svg { width: 1.125rem; height: 1.125rem; }
+  .money-ico--open { @apply bg-open-soft text-open; }
+  .money-ico--urgent { @apply bg-urgent-soft text-urgent; }
+  .money-ico--danger { @apply bg-danger-soft text-danger; }
+  .money-ico--muted { @apply text-ink-dim; }
+  .money-line { flex-wrap: wrap; }
+  .money-acts { @apply flex basis-full flex-wrap items-center gap-2 pl-12; }
+  .money-hero { @apply flex flex-col items-center gap-0.5 pb-2 text-center; }
+  .money-hero-photo { @apply mb-2 size-16 overflow-hidden rounded-full bg-surface-3; }
+  .money-hero-photo img { @apply size-full object-cover; }
+  .pay-amount { @apply bg-transparent text-center font-semibold outline-none; font-size: 32px; line-height: 1.2; field-sizing: content; min-width: 2ch; max-width: 100%; }
+  .pay-amount::placeholder { color: var(--color-ink-dim); }
+  .segment { @apply grid auto-cols-fr grid-flow-col gap-1 rounded-full bg-surface-3 p-1; }
+  .segment label { @apply relative flex min-h-9 cursor-pointer items-center justify-center rounded-full px-3 text-sm text-ink-muted; }
+  .segment input { @apply absolute inset-0 opacity-0; }
+  .segment label:has(input:checked) { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
+  .pay-methods { @apply flex items-center justify-center gap-4 text-sm text-ink-muted; }
+  .pay-methods span { @apply flex items-center gap-1.5; }
   .qr-result-again { @apply flex size-10 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-hover; }
   .qr-result-again svg { width: 1.25rem; height: 1.25rem; }
   .qr-result--open { @apply bg-accent-soft; }

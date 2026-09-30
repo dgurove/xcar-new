@@ -20,17 +20,12 @@
             @endif
         </x-slot:actions>
         @if ($tx->purpose)<div class="mt-4 text-sm">{{ $tx->purpose }}</div>@endif
-        @if ($tx->note && $payouts->isEmpty() && \App\Billing\Bank\Actions\MatchTransaction::isPayout($tx))<div class="mt-4 text-sm text-urgent">{{ $tx->note }}</div>@endif
-        @if ($payouts->isNotEmpty())
+        @if (\App\Billing\Bank\Actions\MatchTransaction::isPayout($tx) && $tx->note)
             <div class="list mt-4">
+                <x-money.line :icon="$payouts->isEmpty() ? 'clock' : 'check'" :title="$tx->note" :tone="$payouts->isEmpty() ? 'urgent' : 'open'"/>
                 @foreach ($payouts as $a)
-                    <a href="/work/money/invoices/{{ $a->link->invoice_id }}" class="row !py-2" data-turbo-frame="_top">
-                        <span class="min-w-0 flex-1">
-                            <span class="block truncate">Счёт {{ $a->link->invoice->label() }}, {{ $a->link->invoice->party->name }}</span>
-                            <span class="row-sub nums">{{ $a->created_at->translatedFormat('j M H:i') }}, комиссия {{ Money::exact($a->fee() ?? 0) }}</span>
-                        </span>
-                        <span class="nums shrink-0">{{ Money::exact($a->amount) }}</span>
-                    </a>
+                    <x-money.line :icon="\App\Billing\Acquiring\PayMethod::icon($a->method)" :title="'Счёт '.$a->link->invoice->label().', '.$a->link->invoice->party->name"
+                        :sub="$a->created_at->translatedFormat('j M H:i').', комиссия '.Money::exact($a->fee() ?? 0)" :amount="$a->amount" :href="'/work/money/invoices/'.$a->link->invoice_id" data-turbo-frame="_top"/>
                 @endforeach
             </div>
         @endif

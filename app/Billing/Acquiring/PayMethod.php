@@ -16,4 +16,14 @@ final class PayMethod
             default => 'онлайн',
         };
     }
+
+    /** Иконка способа у строки оплаты (`x-money.line`). */
+    public static function icon(?string $method): string
+    {
+        return match ($method) {
+            'sbp' => 'sbp',
+            'sberbank' => 'sberpay',
+            default => 'card',
+        };
+    }
 }

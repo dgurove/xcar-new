@@ -1,84 +1,77 @@
-{{-- Расчёт по сделке — как документ сверху вниз: цена → счета со строками, оплатами и заявками → агентское
-     вознаграждение → выплаты; ниже история этой сделки. Плашка «Оплатить» (ссылкой, по счёту, наличными) — пока есть что платить.
-     Закупочной и «нам» здесь нет. --}}
+{{-- Расчёт по сделке, как экран операции в банковском приложении: сверху фото ТС и число, которое сейчас важно, со
+     словом состояния; путь денег точками (подтверждение → счёт → оплата → вознаграждение); дальше группы строк —
+     счёт (строки, итог с НДС, оплаты, ссылка, PDF) и вознаграждение с выплатами. Плашка «Оплатить» — пока есть что
+     платить. Закупочной и «нам» здесь нет. --}}
 @php
-    use App\Support\Money; use App\Offers\CommissionState; use App\Billing\InvoiceState; use App\Billing\PaymentState; use App\Billing\PaymentSource;
+    use App\Support\Money; use App\Offers\CommissionState; use App\Billing\InvoiceState; use App\Billing\DealMoney;
     $shows = $deal->showsCommission();
+    $m = DealMoney::of($deal);
+    // Под числом к оплате — срок: что происходит с оплатой, говорит путь ниже.
+    $unpaid = $invoices->first(fn ($i) => $i->state === InvoiceState::Issued && $i->kind !== \App\Billing\ChargeKind::Reward);
+    [$phrase, $tone] = $m->preset === 'pay' && $unpaid
+        ? ($unpaid->isOverdue() ? ['просрочен на '.$unpaid->overdueDays().' дн', 'urgent'] : ['до '.$unpaid->due_at->translatedFormat('j F'), $unpaid->light() === 'urgent' ? 'urgent' : null])
+        : [$m->phrase, $m->tone];
 @endphp
 <x-ui.cabinet :title="$offer->titleWithYear()" :back="['Деньги', '/account/money']">
     <div class="flex max-w-[30rem] flex-col gap-6">
-        <div class="box">
-            <div class="flex items-baseline justify-between gap-3">
-                <h2 class="text-xl">Расчёт</h2>
-                <span class="tag nums">№ {{ $offer->number }}</span>
-            </div>
-            <dl class="mt-4 flex flex-col">
-                <div class="flex items-baseline justify-between gap-3 py-2"><dt>Цена подтверждения</dt><dd class="nums font-semibold">{{ Money::rub($deal->amount) }}</dd></div>
-
-                @foreach ($invoices as $i)
-                    <div class="mt-3 border-t border-line/40 pt-3">
-                        <div class="flex flex-wrap items-center gap-1.5">
-                            <span class="font-medium">Счёт {{ $i->label() }}</span>
-                            <span class="tag nums">от {{ $i->issued_at->translatedFormat('j M') }}</span>
-                            <x-billing.light :invoice="$i"/>
-                            @if ($i->getFirstMedia('file'))<a href="/account/invoices/{{ $i->id }}/pdf" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>PDF</a>@endif
-                            @if ($i->party_id !== auth()->user()->party_id)<span class="tag">платит {{ $i->party->name }}</span>@endif
-                        </div>
-                        <div class="mt-2 flex flex-col text-sm">
-                            @foreach ($i->charges as $c)
-                                <div class="flex items-baseline justify-between gap-3 py-1 pl-4"><span class="min-w-0 text-ink-muted">{{ $c->title }}</span><span class="nums shrink-0">{{ Money::rub($c->amount) }}</span></div>
-                            @endforeach
-                            @foreach ($i->allPayments as $p)
-                                @php [$text, $cls] = match (true) {
-                                    $p->state === PaymentState::Claimed && $p->source === PaymentSource::Cash => ['Отдали наличными '.$p->paid_at->translatedFormat('j M').', ждёт подтверждения', 'text-urgent'],
-                                    $p->state === PaymentState::Claimed => ['Сообщили об оплате '.$p->paid_at->translatedFormat('j M').', ждёт поступления', 'text-urgent'],
-                                    $p->state === PaymentState::Rejected => ['Не поступила'.($p->reject_reason ? ': '.$p->reject_reason : ''), 'text-ink-muted line-through'],
-                                    $p->source === PaymentSource::Offset => ['Удержано агентское вознаграждение', 'text-ink-muted'],
-                                    $p->source === PaymentSource::Acquiring => ['Оплачено по ссылке '.$p->paid_at->translatedFormat('j M'), ''],
-                                    $p->source === PaymentSource::Cash => ['Приняты наличные '.$p->paid_at->translatedFormat('j M'), ''],
-                                    default => ['Оплачено '.$p->paid_at->translatedFormat('j M'), ''],
-                                }; @endphp
-                                <div class="flex items-baseline justify-between gap-3 py-1 {{ $cls }}"><span class="min-w-0">{{ $text }}@if ($p->slip()) <a href="/account/money/invoices/{{ $i->id }}/payments/{{ $p->id }}/slip" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>платёжка</a>@endif</span><span class="nums shrink-0">{{ Money::rub($p->amount) }}</span></div>
-                            @endforeach
-                            @if ($i->state === InvoiceState::Issued && $i->remaining() > 0)
-                                @foreach ($links->where('invoice_id', $i->id) as $link)
-                                    <div class="list my-2"><x-billing.pay-link :link="$link" :cancel="'/account/money/links/'.$link->id"/></div>
-                                @endforeach
-                                <div class="flex items-baseline justify-between gap-3 py-1 {{ $i->isOverdue() ? 'text-urgent' : '' }}"><span class="font-medium">Остаток{{ $i->isOverdue() ? ', просрочен на '.$i->overdueDays().' дн' : ', до '.$i->due_at->translatedFormat('j M') }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining()) }}</span></div>
-                            @endif
-                        </div>
-                    </div>
-                @endforeach
-
-                @if ($shows)
-                    <div class="mt-3 border-t border-line/40 pt-3">
-                        <div class="flex items-baseline justify-between gap-3"><dt class="font-medium">Агентское вознаграждение</dt><dd class="nums font-semibold {{ $state === CommissionState::Payable ? 'text-accent-text' : '' }}">{{ Money::rub($deal->commission) }}</dd></div>
-                        <div class="mt-1.5"><x-ui.pill :tone="$state->tone()" class="!min-h-0 !py-1 text-xs">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}</x-ui.pill></div>
-                    </div>
-                    @if ($fee)
-                        <div class="flex flex-col text-sm">
-                            @foreach ($fee->payments as $p)
-                                <div class="flex items-baseline justify-between gap-3 py-1 text-accent-text"><span class="min-w-0">Выплачено {{ $p->paid_at->translatedFormat('j M') }}@if ($p->slip()) <a href="/account/money/invoices/{{ $fee->id }}/payments/{{ $p->id }}/slip" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>платёжка</a>@endif</span><span class="nums shrink-0">{{ Money::rub($p->amount) }}</span></div>
-                            @endforeach
-                            @if ($fee->state === InvoiceState::Issued && $fee->paid > 0)<div class="flex items-baseline justify-between gap-3 py-1"><span>Осталось выплатить</span><span class="nums shrink-0 font-semibold">{{ Money::rub($fee->remaining()) }}</span></div>@endif
-                        </div>
-                    @endif
-                @endif
-            </dl>
-        </div>
-
-        @if ($history->isNotEmpty())
-            <div class="box">
-                <h2 class="text-xl">История</h2>
-                <div class="mt-3 flex flex-col divide-y divide-line/40 text-sm">
-                    @foreach ($history as $r)
-                        <div class="flex items-baseline gap-3 py-2"><span class="nums shrink-0 text-ink-dim">{{ $r['at']->translatedFormat('j M') }}</span><span class="min-w-0 flex-1">{{ $r['title'] }}</span><span class="nums shrink-0 text-ink-muted">{{ Money::rub($r['amount']) }}</span></div>
-                    @endforeach
-                </div>
-            </div>
+        @if ($m->amount !== null)
+            <x-money.hero :offer="$offer" :caption="$m->caption" :amount="$m->amount" :phrase="$phrase" :tone="$tone"/>
         @endif
 
-        <a href="/account/deals/{{ $deal->id }}" class="row"><span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span><span class="min-w-0 flex-1 font-medium">Сделка</span><x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/></a>
+        <div class="box"><x-money.track :steps="DealMoney::track($deal)"/></div>
+
+        @foreach ($invoices as $i)
+            <section>
+                <div class="list-cap"><span class="min-w-0 flex-1">Счёт {{ $i->label() }} от {{ $i->issued_at->translatedFormat('j M') }}@if ($i->party_id !== auth()->user()->party_id), платит {{ $i->party->name }}@endif</span>@if ($i->isNot($unpaid))<x-billing.light :invoice="$i"/>@endif</div>
+                <div class="list">
+                    @foreach ($i->charges as $c)
+                        <div class="row"><span class="min-w-0 flex-1 text-ink-muted">{{ $c->title }}</span><span class="nums shrink-0">{{ Money::rub($c->amount) }}</span></div>
+                    @endforeach
+                    <div class="row">
+                        <span class="min-w-0 flex-1">Итого@if ($i->vatRate())<span class="row-sub">{{ mb_strtolower($i->vatLabel()) }} {{ Money::rub($i->vatAmount()) }}</span>@endif</span>
+                        <span class="nums shrink-0 font-semibold">{{ Money::rub($i->total) }}</span>
+                    </div>
+                    @foreach ($i->allPayments as $p)
+                        <x-money.payment :payment="$p" :slip="'/account/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'"/>
+                    @endforeach
+                    @if ($i->state === InvoiceState::Issued && $i->remaining() > 0)
+                        @foreach ($links->where('invoice_id', $i->id) as $link)
+                            <x-billing.pay-link :link="$link" :cancel="'/account/money/links/'.$link->id"/>
+                        @endforeach
+                        @if ($i->paid > 0)
+                            <div class="row"><span class="min-w-0 flex-1 font-medium">Остаток</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining()) }}</span></div>
+                        @endif
+                    @endif
+                    @if ($i->getFirstMedia('file'))
+                        <x-ui.doc :doc="['url' => '/account/invoices/'.$i->id.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="row">
+                            <span class="money-ico"><x-ui.icon name="file"/></span><span class="min-w-0 flex-1">Счёт PDF</span><x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                        </x-ui.doc>
+                    @endif
+                </div>
+            </section>
+        @endforeach
+
+        @if ($shows)
+            <section>
+                <div class="list-cap"><span class="min-w-0 flex-1">Вознаграждение</span></div>
+                <div class="list">
+                    <div class="row">
+                        <span class="min-w-0 flex-1">Агентское вознаграждение<span class="row-sub {{ match ($state) { CommissionState::Payable => '!text-accent-text', default => '' } }}">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}</span></span>
+                        <span class="nums shrink-0 font-semibold {{ $state === CommissionState::Payable ? 'text-accent-text' : '' }}">{{ Money::rub($deal->commission) }}</span>
+                    </div>
+                    @foreach ($fee?->payments ?? [] as $p)
+                        <x-money.payment :payment="$p" title="Выплачено" icon="wallet" :slip="'/account/money/invoices/'.$fee->id.'/payments/'.$p->id.'/slip'"/>
+                    @endforeach
+                    @if ($fee && $fee->state === InvoiceState::Issued && $fee->paid > 0)
+                        <div class="row"><span class="min-w-0 flex-1">Осталось выплатить</span><span class="nums shrink-0 font-semibold">{{ Money::rub($fee->remaining()) }}</span></div>
+                    @endif
+                </div>
+            </section>
+        @endif
+
+        <div class="list">
+            <a href="/account/deals/{{ $deal->id }}" class="row"><span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span><span class="min-w-0 flex-1">Сделка<span class="row-sub nums">№ {{ $offer->number }}</span></span><x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/></a>
+        </div>
     </div>
 
     @if ($claimable->isNotEmpty())
