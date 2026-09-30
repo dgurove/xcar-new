@@ -164,7 +164,6 @@
                 <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks" compact/>
             </section>
         @endif
-        <a href="/offers/{{ $n }}" class="btn btn-quiet mt-5 w-full" data-turbo-frame="_top">Полный редактор</a>
         {{-- Поделиться — в полосу окошка справа, перед «Развернуть»; нечего отдавать (ни фото, ни цены) — кнопки нет. --}}
         <x-slot:tools>
             @include('admin.offers.peek-tools')
