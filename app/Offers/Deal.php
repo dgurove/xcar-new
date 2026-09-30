@@ -98,7 +98,7 @@ class Deal extends Model
     }
 
     /** Менеджеру вознаграждение открывается с первого живого счёта по сделке. */
-    /** Есть ли живой счёт — по загруженным счетам, если они уже есть (списки «Денег»), иначе запросом. */
+    /** Есть ли живой счёт — для экранов: по загруженным счетам, если они уже есть (списки «Денег»), иначе запросом. */
     public function hasInvoices(): bool
     {
         return $this->relationLoaded('invoices') ? $this->invoices->isNotEmpty() : $this->invoices()->exists();
@@ -112,7 +112,8 @@ class Deal extends Model
     /** Вознаграждение правится, пока по сделке нет ни одного живого счёта. */
     public function commissionEditable(): bool
     {
-        return ! $this->hasInvoices();
+        // Проверка перед записью (UpdateDealMoney) — всегда из базы: загруженные счета могли устареть.
+        return ! $this->invoices()->exists();
     }
 
     public function commissionState(): CommissionState

@@ -6,8 +6,9 @@ use Closure;
 use Illuminate\Http\Request;
 
 /**
- * Раздел по способности человека: `ability:canGarage` зовёт `User::canGarage()`. Чужому 404, а не 403 —
- * не подсказывать, что раздел есть. Новому разделу — метод у `User`/`Role`, а не ещё один класс middleware.
+ * Раздел по способности человека: `ability:canGarage` зовёт `User::canGarage()` (так же isStaff — CRM, isManager —
+ * кабинет менеджера, canSeePurchases — закупки). Чужому 404, а не 403 — не подсказывать, что раздел есть. Новому
+ * разделу — метод у `User`/`Role`, а не ещё один класс middleware.
  */
 class EnsureAbility
 {

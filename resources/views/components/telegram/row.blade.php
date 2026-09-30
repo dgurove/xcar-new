@@ -4,7 +4,7 @@
 @if ($user->telegram_chat_id)
     <div data-controller="sheet" class="contents">
         <button type="button" class="row w-full text-left" data-action="sheet#open">
-            <span class="profile-icon tg-tile"><x-telegram.logo plain class="size-[18px]"/></span>
+            <span class="row-icon row-icon-s tg-tile"><x-telegram.logo plain class="size-[18px]"/></span>
             <span class="min-w-0 flex-1">Telegram</span>
             <span class="truncate text-ink-muted">{{ $user->telegram_username ? '@'.$user->telegram_username : 'подключён' }}</span>
             <x-ui.chevron/>
@@ -38,7 +38,7 @@
     </div>
 @elseif ($user->canLinkTelegram())
     <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="telegram:open">
-        <span class="profile-icon tg-tile"><x-telegram.logo plain class="size-[18px]"/></span>
+        <span class="row-icon row-icon-s tg-tile"><x-telegram.logo plain class="size-[18px]"/></span>
         <span class="min-w-0 flex-1">Telegram</span>
         <span class="font-medium" style="color: var(--color-telegram)">Подключить</span>
         <x-ui.chevron/>

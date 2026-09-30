@@ -94,10 +94,13 @@ class Invoice extends Model implements HasMedia
     }
 
     /** Сколько заявлено и ждёт подтверждения. */
-    public function claimed(): float
+    /**
+     * Заявлено к оплате. Экраны берут уже загруженные заявки (списки «Денег», положение) — без запроса на каждый счёт;
+     * действия, которые по этому числу решают (новая заявка, ссылка на оплату), просят `fresh` — из базы.
+     */
+    public function claimed(bool $fresh = false): float
     {
-        // Заявки уже загружены (списки «Денег», положение) — не спрашивать базу на каждый счёт.
-        return round((float) ($this->relationLoaded('claims') ? $this->claims->sum('amount') : $this->claims()->sum('amount')), 2);
+        return round((float) (! $fresh && $this->relationLoaded('claims') ? $this->claims->sum('amount') : $this->claims()->sum('amount')), 2);
     }
 
     public function scopeOfSeller($q, Seller $seller)

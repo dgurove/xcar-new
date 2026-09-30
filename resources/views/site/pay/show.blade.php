@@ -19,7 +19,7 @@
 <x-pickup.layout title="Оплата">
     @if ($icon)
         <div class="money-hero py-6">
-            <span class="money-ico money-ico--{{ $tone }} mb-3 !size-20"><x-ui.icon :name="$icon" class="size-10"/></span>
+            <span class="row-icon row-icon-{{ $tone ?: 'plain' }} mb-3 !size-20"><x-ui.icon :name="$icon" class="size-10"/></span>
             <h1 class="text-2xl">{{ $title }}</h1>
             @if ($link->state !== PayLinkState::Canceled)<span class="nums text-[32px] font-semibold leading-tight">{{ Money::exact($amount) }}</span>@endif
             @if ($link->state === PayLinkState::Paid)

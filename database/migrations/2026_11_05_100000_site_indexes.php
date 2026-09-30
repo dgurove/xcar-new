@@ -33,6 +33,10 @@ return new class extends Migration
     public function up(): void
     {
         foreach (self::INDEXES as $name => $on) {
+            // Прерванное CONCURRENTLY оставляет индекс INVALID, а `if not exists` его бы пропустил — такой сносим и строим заново.
+            if (DB::selectOne('select 1 from pg_index i join pg_class c on c.oid = i.indexrelid where c.relname = ? and not i.indisvalid', [$name])) {
+                DB::statement("drop index concurrently if exists {$name}");
+            }
             DB::statement("create index concurrently if not exists {$name} on {$on}");
         }
     }

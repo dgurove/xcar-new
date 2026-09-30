@@ -5,7 +5,7 @@
 @php use App\Support\Money; $who = $link->payerLabel(auth()->user()); @endphp
 <div data-controller="sheet" class="contents">
     <button type="button" class="row money-line w-full text-left" data-action="sheet#open">
-        <span class="money-ico money-ico--urgent"><x-ui.icon name="qr"/></span>
+        <x-ui.row-icon name="qr" tone="urgent" size="s"/>
         <span class="min-w-0 flex-1">
             <span class="block truncate">Ссылка на оплату</span>
             <span class="row-sub">{{ $who === 'вы' ? 'платите вы' : 'платит '.$who }}, ждём оплату</span>

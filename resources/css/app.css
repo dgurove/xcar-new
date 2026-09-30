@@ -670,14 +670,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 4.5rem; height: 3.25rem; }
   .row-photo img { @apply size-full object-cover; }
   .row-photo-s { width: 3rem; height: 2.25rem; }
+  /* Кружок значка в начале строки (x-ui.row-icon): 44 — раздел или действие, s (36) — строка «Настроек» и «Денег». */
   .row-icon { @apply flex size-11 shrink-0 items-center justify-center rounded-full; }
+  .row-icon-s { @apply size-9; }
   .row-icon-plain { @apply bg-surface-3 text-ink; } .row-icon-accent { @apply bg-accent text-white; } .row-icon-soft { @apply bg-accent-soft text-accent-text; }
-  /* Значок строки в «Настройках» (профиль): кружок поменьше аватара, чтобы группа читалась по иконкам, а не по кругам. */
-  .profile-icon { @apply flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink; }
-  .sheet .profile-icon, .box .profile-icon { @apply bg-surface; }
-  /* Линия между строками со значком — от текста, как в iOS, а не от края значка. */
-  .list > *:has(> .profile-icon) + *::after, .list > * + *:has(> .profile-icon)::after { left: 3.75rem; }
-  .list > * + .contents > :first-child:has(> .profile-icon)::after { left: 3.75rem; }
+  .row-icon-open { @apply bg-open-soft text-open; } .row-icon-urgent { @apply bg-urgent-soft text-urgent; }
+  .row-icon-danger { @apply bg-danger-soft text-danger; } .row-icon-muted { @apply bg-surface-3 text-ink-dim; }
   @media (hover: hover) { a.row:hover, button.row:hover, .row:has(> a:hover) { @apply bg-hover; } }
   .row[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--color-accent); }
 
@@ -690,10 +688,16 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet .list, .box .list { @apply bg-surface-2; }
   .list .row { border-radius: 0; background: transparent; min-height: 3.5rem; padding: .625rem 1rem; gap: .75rem; }
   .list > * + * { position: relative; }
-  .list > * + *::after, .list > * + .contents > :first-child::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
-  /* Строка со шторкой обёрнута в .contents (у обёртки своей коробки нет): линию рисует сама строка — первая в обёртке. */
-  .list > * + .contents > :first-child { position: relative; }
+  .list > * + *::after, .list > * + .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
+  /* Строка со шторкой или форма обёрнута в .contents (у обёртки своей коробки нет): линию рисует сама строка —
+     первая .row в обёртке, а не первый ребёнок (у формы первым идёт скрытый _token). */
+  .list > * + .contents > .row:first-of-type { position: relative; }
   .list > .contents::after { content: none; }
+  /* Форма-группа (form.list): @csrf и @method идут первыми детьми — строка за ними не «вторая», линии над ней нет. */
+  .list > input[type="hidden"] + :not(input)::after { content: none; }
+  /* Линия между строками со значком — от текста, как в iOS, а не от края значка. */
+  .list > * + :has(> .row-icon)::after, .list > * + .contents > .row:first-of-type:has(> .row-icon)::after { left: 4.5rem; }
+  .list > * + :has(> .row-icon-s)::after, .list > * + .contents > .row:first-of-type:has(> .row-icon-s)::after { left: 4rem; }
   .list .row-sub { display: block; margin-top: .125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .list .row-sub > * + * { margin-left: .5rem; }
   /* Факт-тег во второй строке списка — просто текст: подложка на каждом факте и давала стену чипов. Цвет тега
@@ -946,12 +950,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .qr-result-text { @apply mt-0.5 text-sm text-ink-muted; }
   /* Деньги (x-money.*): строка с кружком способа, шапка расчёта с числом, сумма крупно в шторке оплаты,
      сегмент способа. Кружок — тон состояния: зелёный пришло, оранжевый ждём, красный не поступило. */
-  .money-ico { @apply flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink; }
-  .money-ico svg { width: 1.125rem; height: 1.125rem; }
-  .money-ico--open { @apply bg-open-soft text-open; }
-  .money-ico--urgent { @apply bg-urgent-soft text-urgent; }
-  .money-ico--danger { @apply bg-danger-soft text-danger; }
-  .money-ico--muted { @apply text-ink-dim; }
   .money-line { flex-wrap: wrap; }
   .money-acts { @apply flex basis-full flex-wrap items-center gap-2 pl-12; }
   .money-hero { @apply flex flex-col items-center gap-0.5 pb-2 text-center; }

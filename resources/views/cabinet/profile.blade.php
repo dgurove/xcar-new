@@ -4,11 +4,6 @@
 @php
     $menu = \App\Support\Nav::cabinetFor($user, 'phone');
     $badges = \App\Support\Nav::badges($user);
-    // Иконка строки по адресу раздела: одна на пункт, чтобы группа читалась взглядом, как в «Настройках».
-    $icons = ['/account/money' => 'wallet', '/account/chats' => 'chat', '/account/favorites' => 'bookmark', '/account/notifications' => 'bell',
-        '/account/interests' => 'flag', '/account/users' => 'users', '/account/invites' => 'link', '/vendors' => 'deal', '/tariffs' => 'wallet',
-        '/yards' => 'park', '/company' => 'file', '/privacy' => 'file', '/terms' => 'file'];
-    $icon = fn (string $href) => $icons[parse_url($href, PHP_URL_PATH) ?: $href] ?? (str_starts_with($href, 'http') ? 'link' : 'file');
 @endphp
 <x-ui.cabinet title="Профиль" root>
     <div class="box flex flex-col items-center gap-3 text-center" data-controller="sheet">
@@ -57,7 +52,7 @@
                     @foreach ($links as $link)
                         @php $external = str_starts_with($link['href'], 'http'); @endphp
                         <a href="{{ $link['href'] }}" class="row" @if ($external) data-turbo="false" @endif>
-                            <span class="profile-icon"><x-ui.icon :name="$icon($link['href'])" class="size-[18px]"/></span>
+                            <x-ui.row-icon :name="$link['icon']" size="s"/>
                             <span class="min-w-0 flex-1 truncate">{{ $link['label'] }}</span>
                             <x-ui.badge :href="$link['href']" :badges="$badges"/>
                             <x-ui.chevron/>
@@ -84,7 +79,7 @@
         <div class="list">
             <div data-controller="sheet" class="contents">
                 <button type="button" class="row w-full text-left" data-action="sheet#open">
-                    <span class="profile-icon"><x-ui.icon name="key" class="size-[18px]"/></span>
+                    <x-ui.row-icon name="key" size="s"/>
                     <span class="min-w-0 flex-1">Сменить пароль</span>
                     <x-ui.chevron/>
                 </button>
@@ -106,7 +101,7 @@
                     data-turbo-confirm-text="{{ $key->alias ?: 'Ключ' }}, добавлен {{ $key->created_at->translatedFormat('j M Y') }}. Вход по паролю останется">
                     @csrf @method('delete')
                     <button class="row w-full text-left">
-                        <span class="profile-icon"><x-ui.icon name="faceid" class="size-[18px]"/></span>
+                        <x-ui.row-icon name="faceid" size="s"/>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate">{{ $key->alias ?: 'Ключ' }}</span>
                             <span class="row-sub">
@@ -126,7 +121,7 @@
             @endforeach
             <div data-controller="passkey" hidden class="contents">
                 <button type="button" class="row w-full text-left" data-action="passkey#register">
-                    <span class="profile-icon"><x-ui.icon name="faceid" class="size-[18px]"/></span>
+                    <x-ui.row-icon name="faceid" size="s"/>
                     <span class="min-w-0 flex-1">Добавить это устройство</span>
                     <x-ui.icon name="plus" class="size-5 shrink-0 text-ink-dim"/>
                 </button>
@@ -135,7 +130,7 @@
             <x-telegram.row/>
 
             <button type="button" class="row w-full text-left" hidden data-pwa-target="install" data-action="pwa#install">
-                <span class="profile-icon"><x-ui.icon name="download" class="size-[18px]"/></span>
+                <x-ui.row-icon name="download" size="s"/>
                 <span class="min-w-0 flex-1">Установить приложение</span>
             </button>
         </div>

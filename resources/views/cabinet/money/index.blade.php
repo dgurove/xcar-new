@@ -10,7 +10,7 @@
                 @if ($position['pay'] > 0)
                     @php $overdue = $position['overdue'] > 0 && $position['claimed'] < $position['overdue']; @endphp
                     <a href="/account/money?preset=pay" class="row" data-turbo-action="replace">
-                        <span class="money-ico {{ $overdue ? 'money-ico--danger' : 'money-ico--urgent' }}"><x-ui.icon name="file"/></span>
+                        <x-ui.row-icon name="file" :tone="$overdue ? 'danger' : 'urgent'" size="s"/>
                         <span class="min-w-0 flex-1">
                             <span class="block">Оплатить <span class="nums font-semibold">{{ Money::rub($position['pay']) }}</span></span>
                             <span class="row-sub {{ $overdue ? '!text-danger' : '' }}">{{ $position['claimed'] > 0 ? 'сообщили об оплате '.Money::rub($position['claimed']).', ждёт подтверждения' : ($overdue ? 'просрочено '.Money::rub($position['overdue']) : 'до '.$position['pay_due']->translatedFormat('j M')) }}</span>
@@ -20,7 +20,7 @@
                 @endif
                 @if ($position['payout'] > 0)
                     <a href="/account/money?preset=payout" class="row" data-turbo-action="replace">
-                        <span class="money-ico money-ico--open"><x-ui.icon name="wallet"/></span>
+                        <x-ui.row-icon name="wallet" tone="open" size="s"/>
                         <span class="min-w-0 flex-1">
                             <span class="block">Вам к выплате <span class="nums font-semibold text-accent-text">{{ Money::rub($position['payout']) }}</span></span>
                             <span class="row-sub">до {{ $position['payout_due']->translatedFormat('j M') }}</span>
@@ -30,7 +30,7 @@
                 @endif
                 @if ($needDetails && ($position['payout'] > 0 || $position['paid_out'] > 0))
                     <a href="/account/money/details" class="row">
-                        <span class="money-ico money-ico--urgent"><x-ui.icon name="user"/></span>
+                        <x-ui.row-icon name="user" tone="urgent" size="s"/>
                         <span class="min-w-0 flex-1 text-urgent">Реквизиты для выплат не указаны</span>
                         <x-ui.chevron/>
                     </a>

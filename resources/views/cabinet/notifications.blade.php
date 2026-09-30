@@ -3,7 +3,7 @@
          настроек она сжимала подпись до двух строк. --}}
     <a href="/account/notifications/settings" class="list">
         <span class="row">
-            <span class="profile-icon"><x-ui.icon name="settings" class="size-[18px]"/></span>
+            <x-ui.row-icon name="settings" size="s"/>
             <span class="min-w-0 flex-1">Настройки уведомлений</span>
             <x-ui.chevron/>
         </span>

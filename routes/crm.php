@@ -34,7 +34,7 @@ use App\Support\Surface;
 use Illuminate\Support\Facades\Route;
 
 // CRM — свой хост того же приложения, только для сотрудников.
-Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(function () {
+Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])->group(function () {
     Route::get('/', [OfferController::class, 'index'])->name('crm.offers');
     Route::get('/offers', fn () => redirect('/'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
     Route::post('/offers', [OfferController::class, 'store']);

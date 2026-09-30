@@ -218,11 +218,11 @@ final class Nav
         if ($surface === Surface::Park) {
             return ['' => array_values(array_filter([
                 self::link('Профиль', '/account', exact: true),
-                ...($user->isAdmin() ? [self::link('Вендоры', '/vendors'), self::link('Тарифы', '/tariffs')] : []),
-                self::link('Парковки', '/yards'),
-                self::link('Уведомления', '/account/notifications'),
+                ...($user->isAdmin() ? [self::link('Вендоры', '/vendors', icon: 'deal'), self::link('Тарифы', '/tariffs', icon: 'wallet')] : []),
+                self::link('Парковки', '/yards', icon: 'park'),
+                self::link('Уведомления', '/account/notifications', icon: 'bell'),
                 // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.
-                $user->isStaff() ? self::link('Шаблоны', Surface::Crm->url('/settings/templates')) : null,
+                $user->isStaff() ? self::link('Шаблоны', Surface::Crm->url('/settings/templates'), icon: 'link') : null,
             ]))];
         }
 
@@ -252,19 +252,19 @@ final class Nav
         $links = [self::link('Профиль', '/account', exact: true)];
         if ($user->role === Role::Manager) {
             // Сделки, покупатели и гараж — разделы таб-бара; в кабинете остаются деньги.
-            $links[] = self::link('Деньги', '/account/money', also: ['/account/money/details']);
+            $links[] = self::link('Деньги', '/account/money', also: ['/account/money/details'], icon: 'wallet');
         } elseif ($user->isAdmin()) {
-            $links[] = self::link('Пользователи', '/account/users');
-            $links[] = self::link('Приглашения', '/account/invites');
+            $links[] = self::link('Пользователи', '/account/users', icon: 'users');
+            $links[] = self::link('Приглашения', '/account/invites', icon: 'link');
         } elseif (! $user->isStaff()) {
-            $links[] = self::link('Интерес', '/account/interests');
+            $links[] = self::link('Интерес', '/account/interests', icon: 'flag');
         }
         // Сотруднику — чаты площадки здесь же, а не переадресацией в CRM: другой хост в приложении — встроенный браузер.
         if ($user->canChat() || $user->isStaff()) {
-            $links[] = self::link('Чаты', '/account/chats');
+            $links[] = self::link('Чаты', '/account/chats', icon: 'chat');
         }
-        $links[] = self::link('Избранное', '/account/favorites');
-        $links[] = self::link('Уведомления', '/account/notifications');
+        $links[] = self::link('Избранное', '/account/favorites', icon: 'bookmark');
+        $links[] = self::link('Уведомления', '/account/notifications', icon: 'bell');
 
         // У вошедшего подвала нет (приложение, а не сайт) — о компании и документы живут здесь.
         return ['' => $links, 'Документы' => [self::link('О компании', '/company'), self::link('Обработка данных', '/privacy'), self::link('Соглашение', '/terms')]];
@@ -343,15 +343,25 @@ final class Nav
         if (! $user) {
             return [];
         }
+
+        return self::perRequest("nav.badges:{$user->id}:{$surface->value}",
+            fn () => array_filter(self::count($user, $surface) + self::counts($user, $surface)['fresh']));
+    }
+
+    /**
+     * Посчитать раз на веб-запрос: шапка, таб-бар, пилюли и кнопки читают одно и то же. Память — на самом запросе, а
+     * не в процессе (воркер живёт долго); в консоли и очереди — каждый раз.
+     */
+    private static function perRequest(string $key, \Closure $compute): mixed
+    {
         $memo = app()->runningInConsole() ? null : request()->attributes;
-        $key = "nav.badges:{$user->id}:{$surface->value}";
         if ($memo?->has($key)) {
             return $memo->get($key);
         }
-        $badges = array_filter(self::count($user, $surface) + self::counts($user, $surface)['fresh']);
-        $memo?->set($key, $badges);
+        $value = $compute();
+        $memo?->set($key, $value);
 
-        return $badges;
+        return $value;
     }
 
     /**
@@ -366,17 +376,10 @@ final class Nav
 
     private static function counts(User $user, Surface $surface): array
     {
-        $scope = $user->isStaff() ? 'staff' : $user->id;
-        // Таб-бар, пилюли и бейджи читают это за страницу по два-три раза: из кэша (он в базе) — один раз на запрос.
-        $memo = app()->runningInConsole() ? null : request()->attributes;
-        $key = "nav.counts:{$surface->value}:{$scope}";
-        if ($memo?->has($key)) {
-            return $memo->get($key);
-        }
-        $counts = self::countsCached($user, $surface, $key);
-        $memo?->set($key, $counts);
+        $key = "nav.counts:{$surface->value}:".($user->isStaff() ? 'staff' : $user->id);
 
-        return $counts;
+        // Кэш в базе — за страницу его читают по два-три раза: из него один раз на запрос.
+        return self::perRequest($key, fn () => self::countsCached($user, $surface, $key));
     }
 
     private static function countsCached(User $user, Surface $surface, string $key): array
@@ -407,7 +410,7 @@ final class Nav
             return ['totals' => array_filter([
                 '/offers' => (clone $open)->count(),
                 '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->count() : null,
-                '/purchases' => $user->role->canSeePurchases() ? Purchase::cardCount($user) : null,
+                '/purchases' => $user->canSeePurchases() ? Purchase::cardCount($user) : null,
                 // Всё, что стоит строкой на экране «Сделки»: сделки и подтверждения, ждущие решения.
                 '/deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count() : null,
                 '/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
@@ -622,10 +625,13 @@ final class Nav
         return ['label' => $label, 'href' => $href, 'match' => $match ?? $href, 'tab' => $tab, 'capsule' => $capsule];
     }
 
-    /** @param list<string> $also  чужие адреса, при которых пилюля активна и служит «назад» */
-    private static function link(string $label, string $href, bool $exact = false, array $also = []): array
+    /**
+     * @param  list<string>  $also  чужие адреса, при которых пилюля активна и служит «назад»
+     * @param  string  $icon  значок строки в меню кабинета на телефоне (профиль)
+     */
+    private static function link(string $label, string $href, bool $exact = false, array $also = [], string $icon = 'file'): array
     {
-        return ['label' => $label, 'href' => $href, 'match' => $exact ? '='.$href : $href, 'also' => $also];
+        return ['label' => $label, 'href' => $href, 'match' => $exact ? '='.$href : $href, 'also' => $also, 'icon' => $icon];
     }
 
     /** Активная пилюля кабинета: точное совпадение для сводки, префикс для остальных. */

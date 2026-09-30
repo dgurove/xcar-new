@@ -32,7 +32,7 @@ final class CreatePayLink
             if ($invoice->state !== InvoiceState::Issued || $invoice->isOwed() || $invoice->kind === ChargeKind::Reward) {
                 throw ValidationException::withMessages(['amount' => 'Счёт '.mb_strtolower($invoice->state->label())]);
             }
-            $left = round($invoice->remaining() - $invoice->claimed(), 2);
+            $left = round($invoice->remaining() - $invoice->claimed(fresh: true), 2);
             $amount = round($amount, 2);
             if ($amount <= 0 || $amount > $left + 0.005) {
                 throw ValidationException::withMessages(['amount' => 'Не больше '.Money::exact(max(0, $left))]);

@@ -141,7 +141,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/account/users/{user}/export', [UserController::class, 'export']);
 
     // Менеджеру: деньги в кабинете, сделки и покупатели — раздел таб-бара.
-    Route::middleware('manager')->group(function () {
+    Route::middleware('ability:isManager')->group(function () {
         // Деньги менеджера: счета к оплате, вознаграждение, история, реквизиты, акт сверки, выгрузка.
         Route::get('/account/money', [MoneyController::class, 'index']);
         Route::get('/account/money/details', [MoneyController::class, 'details']);
@@ -197,13 +197,13 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::delete('/cars/{offer}/invoice', [GarageSettlementController::class, 'voidInvoice']);
     });
 
-    Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('purchases');
-    Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->middleware('purchases');
-    Route::get('/purchases/{purchase}/{car}/peek', [PurchaseController::class, 'peek'])->middleware('purchases');
-    Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car'])->middleware('purchases');
-    Route::match(['get', 'post'], '/purchases/{purchase}/{car}/pdf', [ShareController::class, 'carPdf'])->middleware('purchases');
-    Route::post('/purchases/{purchase}/{car}/price', [PurchaseController::class, 'offer'])->middleware('purchases');
-    Route::post('/purchases/prices/{offer}/withdraw', [PurchaseController::class, 'withdraw'])->middleware('purchases');
+    Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('ability:canSeePurchases');
+    Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->middleware('ability:canSeePurchases');
+    Route::get('/purchases/{purchase}/{car}/peek', [PurchaseController::class, 'peek'])->middleware('ability:canSeePurchases');
+    Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car'])->middleware('ability:canSeePurchases');
+    Route::match(['get', 'post'], '/purchases/{purchase}/{car}/pdf', [ShareController::class, 'carPdf'])->middleware('ability:canSeePurchases');
+    Route::post('/purchases/{purchase}/{car}/price', [PurchaseController::class, 'offer'])->middleware('ability:canSeePurchases');
+    Route::post('/purchases/prices/{offer}/withdraw', [PurchaseController::class, 'withdraw'])->middleware('ability:canSeePurchases');
 });
 
 // Прежняя админка: по привычке идут на xcar.ru/admin/… — уводим в CRM.

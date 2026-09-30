@@ -69,7 +69,7 @@
                             </label>
                         @endforeach
                         <label class="row row-check">
-                            <span class="money-ico"><x-ui.icon name="plus"/></span>
+                            <x-ui.row-icon name="plus" size="s"/>
                             <span class="min-w-0 flex-1">Другой человек</span>
                             <span class="check"><input type="radio" name="payer" value="other" @checked($payer === 'other') data-action="reveal#pick"></span>
                         </label>
@@ -94,7 +94,7 @@
             @if ($pdf && $one)
                 <div class="list">
                     <x-ui.doc :doc="['url' => str_replace('{id}', $first->id, $pdf), 'type' => 'pdf', 'name' => 'schet-'.$first->number.'.pdf', 'label' => 'Счёт '.$first->label()]" class="row">
-                        <span class="money-ico"><x-ui.icon name="qr"/></span>
+                        <x-ui.row-icon name="qr" size="s"/>
                         <span class="min-w-0 flex-1">Счёт {{ $first->label() }} с QR для банка</span>
                         <x-ui.chevron/>
                     </x-ui.doc>

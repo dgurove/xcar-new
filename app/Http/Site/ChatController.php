@@ -16,8 +16,10 @@ use App\Chats\Presence;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Offers\Offer;
+use App\Support\OfficePreview;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /** Чат: одни и те же концы для витрины, CRM и гостя с обращением; читать — Chat::allows, писать — Chat::canPost. */
@@ -152,6 +154,13 @@ class ChatController
         abort_unless($chat->allows($request->user(), $this->guest->token($request)), 404);
         $file->load('message');
         abort_unless($file->message->chat_id === $chat->id, 404);
+        // Шторка документов просит Word, Excel и текст HTML-фрагментом — как у файлов с закрытого диска.
+        if ($request->boolean('preview')) {
+            $disk = Storage::disk('private');
+            abort_unless($disk->exists($file->path), 404);
+
+            return OfficePreview::response($disk->path($file->path), $file->name);
+        }
         $contents = $file->contents();
         abort_if($contents === null, 404);
         $inline = $file->isImage() || $file->mime === 'application/pdf';

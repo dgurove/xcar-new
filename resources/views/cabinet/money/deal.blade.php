@@ -44,7 +44,7 @@
                     @endif
                     @if ($i->getFirstMedia('file'))
                         <x-ui.doc :doc="['url' => '/account/invoices/'.$i->id.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="row">
-                            <span class="money-ico"><x-ui.icon name="file"/></span><span class="min-w-0 flex-1">Счёт PDF</span><x-ui.chevron/>
+                            <x-ui.row-icon name="file" size="s"/><span class="min-w-0 flex-1">Счёт PDF</span><x-ui.chevron/>
                         </x-ui.doc>
                     @endif
                 </div>
