@@ -48,6 +48,6 @@ class PartyController
 
     private function data(Request $request): array
     {
-        return $request->validate(PartyRules::rules());
+        return $request->validate(PartyRules::rules()) + ['vat_on_top' => $request->boolean('vat_on_top')];
     }
 }

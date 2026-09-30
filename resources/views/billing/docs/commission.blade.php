@@ -1,8 +1,11 @@
 {{-- Договор комиссии и акт приёма-передачи ГОТС — страницами на печать по образцу Совкомбанка:
      комиссионер — мы, комитент — страхователь; деньги за ТС — на счёт вендора в N рабочих дней после акта;
-     вознаграждение — разница между продажей и назначенной ценой. kind: contract | handover. --}}
+     вознаграждение — разница между продажей и назначенной ценой. kind: contract | handover.
+     Комиссионер — ИП Кузнецов (`Seller::Park`): ИП действует сам, без «в лице» и устава. --}}
 @php
     use App\Support\Money;
+    $ip = $self->kind === \App\Billing\PartyKind::Entrepreneur;
+    $acting = $ip ? '' : ', в лице '.($self->director ?? '________').', действующего на основании '.($self->director_basis ?? 'Устава');
     $v = $vehicle; $owner = $v->ownerParty; $vendor = $v->vendor; $vp = $vendor?->party; $insp = $v->lastInspection(\App\Park\InspectionKind::Intake);
     $days = $vendor?->payment_days ?? 3;
     $no = $v->contract_no ?: ($v->ref ?: '____');
@@ -39,7 +42,7 @@
     @if ($kind === 'contract')
         <h1>Договор комиссии № {{ $no }}</h1>
         <div class="head"><span>г. Москва</span><span>«___» ___________ {{ ($v->contract_at ?? now())->format('Y') }} г.</span></div>
-        <p><b>{{ $self->name }}</b>, в лице {{ $self->director ?? '________' }}, действующего на основании {{ $self->director_basis ?? 'Устава' }}, именуемое в дальнейшем КОМИССИОНЕР, с одной стороны, и <b>{{ $owner?->name ?? $v->contact_name ?? '______________________' }}</b>, именуемый(ая) в дальнейшем КОМИТЕНТ, с другой стороны, заключили настоящий Договор о нижеследующем.</p>
+        <p><b>{{ $self->name }}</b>{{ $acting }}, {{ $ip ? 'именуемый' : 'именуемое' }} в дальнейшем КОМИССИОНЕР, с одной стороны, и <b>{{ $owner?->name ?? $v->contact_name ?? '______________________' }}</b>, именуемый(ая) в дальнейшем КОМИТЕНТ, с другой стороны, заключили настоящий Договор о нижеследующем.</p>
         <p>1.1. КОМИССИОНЕР обязуется по поручению КОМИТЕНТА за вознаграждение совершить от своего имени сделку — реализовать повреждённое транспортное средство (далее — ТС):</p>
         @include('billing.docs.commission-car')
         <p>1.2. Сумму за повреждённое ТС перечислить на расчётный счёт {{ $vp?->name ?? $vendor?->legal_name ?? $vendor?->name ?? '__________' }} по реквизитам: {{ $vp?->details() }}{{ $vp?->bankDetails() ? '; '.$vp->bankDetails() : '' }}; в назначении платежа указывать: «{{ $purpose }}», в течение {{ $days }} ({{ \App\Support\Plural::of($days, ['рабочего дня', 'рабочих дней', 'рабочих дней']) }}) с момента принятия ТС на реализацию и подписания Акта приёма-передачи повреждённого транспортного средства.</p>
@@ -55,7 +58,7 @@
     @else
         <h1>Акт приёма-передачи повреждённого транспортного средства</h1>
         <div class="head"><span>г. Москва</span><span>{{ $at }}</span></div>
-        <p><b>{{ $self->name }}</b>, в лице {{ $self->director ?? '________' }}, действующего на основании {{ $self->director_basis ?? 'Устава' }}, и <b>{{ $owner?->name ?? $v->contact_name ?? '______________________' }}</b> произвели совместный осмотр повреждённого транспортного средства и составили настоящий акт о том, что {{ $owner?->name ?? $v->contact_name ?? 'КОМИТЕНТ' }} передаёт, а {{ $self->name }} принимает повреждённое ТС:</p>
+        <p><b>{{ $self->name }}</b>{{ $acting }}{{ $acting ? ',' : '' }} и <b>{{ $owner?->name ?? $v->contact_name ?? '______________________' }}</b> произвели совместный осмотр повреждённого транспортного средства и составили настоящий акт о том, что {{ $owner?->name ?? $v->contact_name ?? 'КОМИТЕНТ' }} передаёт, а {{ $self->name }} принимает повреждённое ТС:</p>
         @include('billing.docs.commission-car')
         @php $r = $insp?->repairMap() ?? []; $yn = fn ($k) => isset($r[$k]) && $r[$k] !== null ? ($r[$k] ? 'да' : 'нет') : 'да / нет'; @endphp
         <p>Автомобиль аварийный, требует ремонта: кузов — {{ $yn('body') }}; двигатель — {{ $yn('engine') }}; ходовая часть — {{ $yn('chassis') }}.</p>
@@ -68,7 +71,7 @@
         @if ($insp)<p>Пробег {{ $insp->mileage !== null ? Money::nums($insp->mileage).' км' : '______' }}, топливо {{ $insp->fuelLabel() ?? '____' }}, ключей {{ $insp->keys_count ?? '__' }}, документы: {{ $insp->docs ? implode(', ', array_map(fn ($d) => \App\Park\Inspection::DOCS[$d] ?? $d, $insp->docs)) : '________' }}.</p>@endif
         <div class="parties">
             <div><b>Передал</b><br>{{ $owner?->name ?? $v->contact_name ?? '' }}<div class="sig">_________________</div></div>
-            <div><b>Принял</b><br>{{ $self->name }}, {{ $self->director ?? '' }}<div class="sig">_________________<br>М.П.</div></div>
+            <div><b>Принял</b><br>{{ $self->name }}{{ ! $ip && $self->director ? ', '.$self->director : '' }}<div class="sig">_________________<br>М.П.</div></div>
         </div>
     @endif
     </article>

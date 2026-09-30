@@ -4,6 +4,7 @@ namespace App\Billing\Documents;
 
 use App\Billing\ManagerLedger;
 use App\Billing\Party;
+use App\Billing\Seller;
 use App\Support\Pdf;
 use App\Users\User;
 use Carbon\CarbonInterface;
@@ -45,6 +46,6 @@ final class StatementPdf
         }
         $closing = $opening + array_sum(array_column($rows, 'debit')) - array_sum(array_column($rows, 'credit'));
 
-        return ['self' => Party::self(), 'party' => Party::forUser($manager, false), 'from' => $from, 'to' => $to, 'opening' => $opening, 'rows' => $rows, 'closing' => $closing];
+        return ['self' => Seller::Prime->party(), 'party' => Party::forUser($manager, false), 'from' => $from, 'to' => $to, 'opening' => $opening, 'rows' => $rows, 'closing' => $closing];
     }
 }

@@ -7,6 +7,7 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Payment;
 use App\Billing\PaymentState;
+use App\Billing\Seller;
 use App\Chats\Chat;
 use App\Mail\Boxes;
 use App\Mail\Scope;
@@ -398,7 +399,7 @@ final class Nav
                     '/requests' => Request::whereIn('state', RequestState::open())->count(),
                     '/cars' => Vehicle::where('state', VehicleState::Stored)->count(),
                     '/yards' => Yard::count(),
-                    '/money' => Invoice::where('state', InvoiceState::Issued)->count(),
+                    '/money' => Invoice::ofSeller(Seller::Park)->where('state', InvoiceState::Issued)->count(),
                     '/mail' => Thread::whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ], 'fresh' => []];
             }
@@ -473,7 +474,7 @@ final class Nav
                     '/requests' => Request::whereIn('state', RequestState::open())->where('planned_at', '<', now())->count(),
                     // Бейдж «Из писем» — число дел, которые надо завести: у одинокого письма-заявки цепочки нет.
                     '/requests/from-mail' => Boxes::registerCount(Scope::Park),
-                    '/money' => Invoice::where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString())->count(),
+                    '/money' => Invoice::ofSeller(Seller::Park)->where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString())->count(),
                     '/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ];
             }

@@ -9,7 +9,6 @@ use App\Billing\Documents\InvoicePdf;
 use App\Billing\Invoice;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
-use App\Billing\Vat;
 use App\Billing\WorkDays;
 use App\Garage\Car;
 use App\Garage\CarState;
@@ -55,7 +54,7 @@ final class SettleGarageCar
             $offer = $car->offer;
             $party = Party::forUser($car->manager);
             if ($due < 0) {
-                $invoice = ($this->issue)($party, $by, 'owed', ChargeKind::AgentFee, WorkDays::add(now(), 5), false,
+                $invoice = ($this->issue)($party, $by, 'owed', ChargeKind::AgentFee, WorkDays::add(now(), 5),
                     lines: [['title' => 'Расходы и вознаграждение по '.$offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => round(-$due, 2), 'kind' => ChargeKind::AgentFee->value]], offerId: $offer->id);
             } else {
                 $fee = (float) $car->commission;
@@ -63,8 +62,7 @@ final class SettleGarageCar
                 if ($fee > 0) {
                     $lines[] = ['title' => 'Вознаграждение менеджеру', 'qty' => 1, 'unit' => 'pc', 'price' => $fee, 'kind' => ChargeKind::AgentFee->value];
                 }
-                $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Sale, WorkDays::add(now(), 5), false, lines: $lines, offerId: $offer->id,
-                    vatRate: Vat::rate(), vatOnTop: (bool) $party->vat_on_top);
+                $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Sale, WorkDays::add(now(), 5), lines: $lines, offerId: $offer->id);
                 if ($fee > 0) {
                     ($this->record)($invoice, $by, $fee, null, PaymentSource::Offset, null, 'Удержано вознаграждение менеджеру');
                     // PDF печётся при выставлении — перепечь с зачётом и «к оплате».

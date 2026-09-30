@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** Контрагент счёта: юрлицо, ИП, самозанятый или физлицо с паспортом. Одна строка `is_self` — мы. */
-#[Fillable(['kind', 'name', 'is_self', 'inn', 'kpp', 'ogrn', 'legal_address', 'director', 'director_basis', 'bank_name', 'bik', 'account', 'corr_account',
+/** Контрагент счёта: юрлицо, ИП, самозанятый или физлицо с паспортом. Строки `is_self` — мы, по одной на продавца (`seller`). */
+#[Fillable(['kind', 'name', 'is_self', 'seller', 'inn', 'kpp', 'ogrn', 'legal_address', 'director', 'director_basis', 'bank_name', 'bik', 'account', 'corr_account',
     'passport', 'passport_issued', 'reg_address', 'birth_at', 'phone', 'email', 'card', 'payment_purpose', 'notes', 'vat_on_top'])]
 class Party extends Model
 {
@@ -23,7 +23,7 @@ class Party extends Model
 
     protected function casts(): array
     {
-        return ['kind' => PartyKind::class, 'is_self' => 'bool', 'birth_at' => 'date', 'vat_on_top' => 'bool'];
+        return ['kind' => PartyKind::class, 'is_self' => 'bool', 'seller' => Seller::class, 'birth_at' => 'date', 'vat_on_top' => 'bool'];
     }
 
     public function invoices(): HasMany
@@ -31,15 +31,27 @@ class Party extends Model
         return $this->hasMany(Invoice::class, 'party_id');
     }
 
-    /** Мы. Строки нет (свежая база, снесли руками) — заводится из конфига, реквизиты банка дозаполняют на экране. */
-    public static function self(): self
+    /**
+     * Мы как продавец. Строки нет (свежая база, снесли руками) — заводится из конфига продавца; дальше реквизиты
+     * живут в базе и правятся на парковке в «Реквизитах».
+     */
+    public static function seller(Seller $seller): self
     {
-        $company = config('xcar.company', []);
+        $c = $seller->config();
 
-        return self::firstOrCreate(['is_self' => true], [
-            'kind' => PartyKind::Company, 'name' => $company['name'] ?? 'ООО «ПРАЙМ»', 'inn' => $company['inn'] ?? null,
-            'director' => $company['director'] ?? null, 'director_basis' => 'Устава',
+        return self::firstOrCreate(['seller' => $seller->value], [
+            'is_self' => true, 'kind' => $seller === Seller::Park ? PartyKind::Entrepreneur : PartyKind::Company, 'name' => $c['name'],
+            'inn' => $c['inn'] ?? null, 'kpp' => $c['kpp'] ?? null, 'ogrn' => $c['ogrn'] ?? null, 'legal_address' => $c['address'] ?? null,
+            'director' => $c['director'] ?? null, 'director_basis' => $seller === Seller::Prime ? 'Устава' : null,
+            'bank_name' => $c['bank'] ?? null, 'bik' => $c['bik'] ?? null, 'account' => $c['account'] ?? null, 'corr_account' => $c['corr_account'] ?? null,
+            'phone' => $c['phone'] ?? null, 'email' => $c['email'] ?? null,
         ]);
+    }
+
+    /** Кто подписывает от нас: у ИП — сам предприниматель, у юрлица — руководитель. */
+    public function signerTitle(): string
+    {
+        return $this->kind === PartyKind::Entrepreneur ? 'Индивидуальный предприниматель' : 'Руководитель';
     }
 
     /** Реквизитов для счёта не хватает — печатается с прочерком. */

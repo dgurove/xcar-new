@@ -15,6 +15,7 @@ use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
+use App\Billing\Seller;
 use App\Park\Scope;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -68,13 +69,14 @@ class MoneyController
             ],
             'party' => $request->query('party') ? Party::find($request->query('party')) : null,
             'q' => $qs,
-            'parties' => Party::where('is_self', false)->whereHas('invoices')->orderBy('name')->pluck('name', 'id'),
+            'parties' => Party::where('is_self', false)->whereHas('invoices', fn ($i) => $i->ofSeller(Seller::Park))->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 
-    /** Своя площадка — только её счета (и счета без ТС: по сделкам). */
+    /** Счета парковки — только ИП (ПРАЙМ со сделками — в CRM); своя площадка — только её счета. */
     private static function scoped(User $user, Builder $q): Builder
     {
+        $q->ofSeller(Seller::Park);
         if ($yard = Scope::yardId($user)) {
             $q->where(fn ($w) => $w->whereNull('vehicle_id')->orWhereHas('vehicle', fn ($v) => $v->where('yard_id', $yard)->orWhereNull('yard_id')));
         }
@@ -84,6 +86,7 @@ class MoneyController
 
     private static function guard(Invoice $invoice): void
     {
+        abort_unless($invoice->seller === Seller::Park, 404);
         abort_unless(! $invoice->vehicle || Scope::allows(request()->user(), $invoice->vehicle), 403);
     }
 
@@ -169,7 +172,7 @@ class MoneyController
         self::guard($invoice);
         $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'charges', 'deal.offer']);
 
-        return view('billing.docs.invoice', ['invoice' => $invoice, 'self' => Party::self(), 'pdf' => false]);
+        return view('billing.docs.invoice', ['invoice' => $invoice, 'self' => $invoice->seller->party(), 'pdf' => false]);
     }
 
     /** Акт хранения: PDF, если выставлен закрытием месяца, иначе страница на печать. */
@@ -181,7 +184,7 @@ class MoneyController
         }
         $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges']);
 
-        return view('billing.docs.storage-act', ['invoice' => $invoice, 'self' => Party::self()]);
+        return view('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }
 
     public const DEBT_SORTS = ['overdue' => 'Просрочено', 'owed_to_us' => 'Нам должны', 'we_owe' => 'Мы должны', 'unbilled' => 'Не выставлено'];

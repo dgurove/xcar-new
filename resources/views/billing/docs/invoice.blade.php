@@ -82,7 +82,7 @@
         </tr></table>
     @endif
     <table class="sign">
-        <tr><td>Руководитель <span class="line"></span> {{ $self->director ?? '' }}</td></tr>
+        <tr><td>{{ $self->signerTitle() }} <span class="line"></span> {{ $self->director ?? '' }}</td></tr>
     </table>
 </body>
 </html>

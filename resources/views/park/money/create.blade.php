@@ -13,8 +13,7 @@
         <x-ui.card title="Кому" class="min-w-0 lg:col-start-2 lg:row-start-1">
             <div class="grid grid-cols-2 gap-3">
                 <x-ui.field name="party_id" label="Плательщик" :options="$parties" :value="$party?->id" required span="col-span-2"/>
-                <x-ui.field name="due_at" label="Оплатить до" type="date" :value="now()->addDays($dueDays)->toDateString()" required/>
-                <x-ui.check name="vat" :checked="$vat" class="self-end">С НДС</x-ui.check>
+                <x-ui.field name="due_at" label="Оплатить до" type="date" :value="now()->addDays($dueDays)->toDateString()" required span="col-span-2"/>
             </div>
         </x-ui.card>
         <div class="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1">

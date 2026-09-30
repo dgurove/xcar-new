@@ -33,7 +33,7 @@ class VehicleInvoiceController
         return view('park.money.create', [
             'vehicle' => $vehicle, 'segments' => $segments->where('payer', $payer)->values(), 'payer' => $payer, 'payers' => $payers,
             'party' => $party, 'parties' => Party::where('is_self', false)->orderBy('name')->pluck('name', 'id'), 'pending' => $pending,
-            'dueDays' => $vehicle->vendor?->payment_days ?? 5, 'vat' => (bool) ($vehicle->vendor?->vat_included ?? false),
+            'dueDays' => $vehicle->vendor?->payment_days ?? 5,
             'kinds' => collect(ChargeKind::cases())->reject(fn ($k) => in_array($k, [ChargeKind::Sale, ChargeKind::Selection, ChargeKind::Transfer], true))->mapWithKeys(fn ($k) => [$k->value => $k->label()]),
         ]);
     }
@@ -41,7 +41,7 @@ class VehicleInvoiceController
     public function store(Request $request, Vehicle $vehicle, IssueInvoice $issue)
     {
         $data = $request->validate([
-            'party_id' => ['required', 'exists:billing_parties,id'], 'due_at' => ['required', 'date'], 'vat' => ['boolean'], 'notes' => ['nullable', 'string', 'max:1000'],
+            'party_id' => ['required', 'exists:billing_parties,id'], 'due_at' => ['required', 'date'], 'notes' => ['nullable', 'string', 'max:1000'],
             'storage_until' => ['nullable', 'date'], 'charges' => ['nullable', 'array'], 'charges.*' => ['integer'],
             'lines' => ['nullable', 'array'], 'lines.*.title' => ['nullable', 'string', 'max:160'], 'lines.*.qty' => ['nullable', 'numeric', 'min:0'], 'lines.*.price' => ['nullable', 'numeric', 'min:0'], 'lines.*.kind' => ['nullable', Rule::enum(ChargeKind::class)],
         ]);
@@ -49,7 +49,7 @@ class VehicleInvoiceController
         $until = $request->boolean('with_storage') && ! empty($data['storage_until']) ? Carbon::parse($data['storage_until']) : null;
         $lines = array_values(array_filter($data['lines'] ?? [], fn ($l) => ($l['title'] ?? '') !== '' && ($l['price'] ?? '') !== ''));
         $kind = $until ? ChargeKind::Storage : (ChargeKind::tryFrom($lines[0]['kind'] ?? '') ?? ChargeKind::Other);
-        $invoice = $issue($party, $request->user(), 'issued', $kind, Carbon::parse($data['due_at']), $request->boolean('vat'), $until, array_map('intval', $data['charges'] ?? []), $lines, $vehicle, notes: $data['notes'] ?? null);
+        $invoice = $issue($party, $request->user(), 'issued', $kind, Carbon::parse($data['due_at']), $until, array_map('intval', $data['charges'] ?? []), $lines, $vehicle, notes: $data['notes'] ?? null);
 
         return redirect("/money/invoices/{$invoice->id}")->with('toast', 'Счёт '.$invoice->label().' выставлен');
     }

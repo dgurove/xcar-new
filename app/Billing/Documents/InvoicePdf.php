@@ -3,7 +3,6 @@
 namespace App\Billing\Documents;
 
 use App\Billing\Invoice;
-use App\Billing\Party;
 use App\Support\Pdf;
 
 /** Счёт на оплату — PDF на закрытом диске: снимок в момент выставления, реквизиты потом не меняют документ. */
@@ -18,6 +17,6 @@ final class InvoicePdf
 
     public function render(Invoice $invoice): string
     {
-        return Pdf::render('billing.docs.invoice', ['invoice' => $invoice, 'self' => Party::self()]);
+        return Pdf::render('billing.docs.invoice', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }
 }

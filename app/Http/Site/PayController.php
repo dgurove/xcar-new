@@ -6,7 +6,6 @@ use App\Billing\Acquiring\AcquiringPayment;
 use App\Billing\Acquiring\Actions\SettleAcquiring;
 use App\Billing\Acquiring\Actions\StartCheckout;
 use App\Billing\Acquiring\PayLink;
-use App\Billing\Party;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -34,7 +33,7 @@ class PayController
         }
 
         return view('site.pay.show', [
-            'link' => $link, 'invoice' => $link->invoice, 'self' => Party::self(),
+            'link' => $link, 'invoice' => $link->invoice, 'self' => $link->invoice->seller->party(),
             'processing' => $request->boolean('back') && $pending?->isPending(), 'failed' => $request->boolean('failed'),
         ]);
     }

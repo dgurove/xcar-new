@@ -45,7 +45,7 @@ final class IssueTransferObligation
         }
         $days = $vehicle->vendor->payment_days ?? 3;
 
-        return ($this->issue)(Party::forVendor($vehicle->vendor), $by, 'owed', ChargeKind::Transfer, WorkDays::add($vehicle->accepted_at ?? now(), $days), false,
+        return ($this->issue)(Party::forVendor($vehicle->vendor), $by, 'owed', ChargeKind::Transfer, WorkDays::add($vehicle->accepted_at ?? now(), $days),
             lines: [['title' => 'Оплата за ТС '.$vehicle->titleWithYear().($vehicle->contract_no ? ' по договору комиссии № '.$vehicle->contract_no : ''), 'qty' => 1, 'unit' => 'pc', 'price' => $vehicle->assigned_price, 'kind' => 'transfer']],
             vehicle: $vehicle, offerId: $vehicle->offer_id, externalNo: $vehicle->contract_no);
     }

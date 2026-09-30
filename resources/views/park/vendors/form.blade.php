@@ -29,7 +29,6 @@
                 <x-ui.field name="agreement_date" label="Дата" type="date" :value="$vendor->agreement_date?->toDateString()"/>
                 <x-ui.field name="agreement_until" label="Действует до" type="date" :value="$vendor->agreement_until?->toDateString()"/>
                 <x-ui.field name="payment_days" label="Оплата, рабочих дней" :value="$vendor->payment_days"/>
-                <div class="flex items-end pb-3.5"><x-ui.check name="vat_included" :checked="$vendor->vat_included">Хранение с НДС</x-ui.check></div>
             </div>
             <div class="list-head">Хранение</div>
             {{-- Опоздавший покупатель платит только там, где так в договоре: срок за счёт вендора вписывают на самой ТС,

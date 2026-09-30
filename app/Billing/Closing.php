@@ -99,7 +99,7 @@ final class Closing
                 }
                 $buyer = $item['payer'] === 'buyer';
                 $invoice = $issue($party, $by, 'issued', ChargeKind::Storage, $buyer ? now() : now()->addWeekdays($v->vendor?->payment_days ?? 5),
-                    $buyer ? false : (bool) ($v->vendor?->vat_included ?? false), $item['to'], $item['charges'], vehicle: $v->fresh());
+                    $item['to'], $item['charges'], vehicle: $v->fresh());
                 $act->attach($invoice);
                 $issued->push($invoice);
             } catch (Throwable $e) {

@@ -10,6 +10,7 @@ use App\Billing\InvoiceState;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\Robot;
+use App\Billing\Seller;
 use App\Users\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -20,10 +21,14 @@ use Illuminate\Validation\ValidationException;
  * («по счёту № 12 от 28.09.2026») и сумма не больше остатка, ИНН плательщика не спорит с контрагентом счёта;
  * без номера — если ровно один открытый счёт этого ИНН ждёт ровно эту сумму. Перечисления ЮKassa счёт не закрывают:
  * это уже учтённые оплаты по ссылкам, их сверяет `ReconcilePayout`. Заявка менеджера на ту же сумму подтверждается, второй оплаты нет.
- * Руками (`$invoice`) — сотрудник выбрал счёт сам.
+ * Руками (`$invoice`) — сотрудник выбрал счёт сам. Выписка — расчётный счёт ПРАЙМ: закрывает только счета ПРАЙМ
+ * (у ИП парковки другой банк и свой ряд номеров, его оплаты отмечают руками на парковке).
  */
 final class MatchTransaction
 {
+    /** Чей расчётный счёт в выписке. */
+    private const SELLER = Seller::Prime;
+
     public function __construct(private RecordPayment $record, private ReconcilePayout $payout) {}
 
     public function __invoke(Transaction $tx, ?Invoice $invoice = null, ?User $by = null): Transaction
@@ -47,6 +52,13 @@ final class MatchTransaction
                 return null;
             }
             $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            if ($invoice->seller !== self::SELLER) {
+                if ($manual) {
+                    throw ValidationException::withMessages(['invoice' => 'Счёт '.$invoice->label().' выставлен от '.$invoice->seller->party()->name.', на счёт ПРАЙМ его оплата не приходит']);
+                }
+
+                return null;
+            }
             if ($invoice->state !== InvoiceState::Issued || $invoice->isOwed() || $tx->amount > $invoice->remaining() + 0.005) {
                 if ($manual) {
                     throw ValidationException::withMessages(['invoice' => 'Поступление больше остатка счёта '.$invoice->label()]);
@@ -77,7 +89,7 @@ final class MatchTransaction
     /** Счёт, который это поступление закрывает наверняка; сомнение — null, решит человек. */
     public function guess(Transaction $tx): ?Invoice
     {
-        $open = fn () => Invoice::where('direction', 'issued')->where('state', InvoiceState::Issued)->with('party');
+        $open = fn () => Invoice::ofSeller(self::SELLER)->where('direction', 'issued')->where('state', InvoiceState::Issued)->with('party');
         $fits = fn (Invoice $i) => $tx->amount <= $i->remaining() + 0.005 && (! $tx->counterparty_inn || ! $i->party->inn || $i->party->inn === $tx->counterparty_inn);
 
         [$numbers, $year] = self::numbers((string) $tx->purpose);
@@ -131,7 +143,7 @@ final class MatchTransaction
     {
         [$numbers] = self::numbers((string) $tx->purpose);
 
-        return Invoice::where('direction', 'issued')->where('state', InvoiceState::Issued)->with(['party', 'deal.offer.brand', 'deal.offer.model', 'vehicle.brand', 'vehicle.model'])
+        return Invoice::ofSeller(self::SELLER)->where('direction', 'issued')->where('state', InvoiceState::Issued)->with(['party', 'deal.offer.brand', 'deal.offer.model', 'vehicle.brand', 'vehicle.model'])
             ->latest('issued_at')->limit(200)->get()
             ->filter(fn (Invoice $i) => $i->remaining() + 0.005 >= $tx->amount)
             ->sortByDesc(fn (Invoice $i) => ($tx->counterparty_inn && $i->party->inn === $tx->counterparty_inn ? 4 : 0)

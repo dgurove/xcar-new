@@ -3,7 +3,6 @@
 namespace App\Billing\Documents;
 
 use App\Billing\Invoice;
-use App\Billing\Party;
 use App\Support\Pdf;
 
 /** Акт оказанных услуг хранения — PDF при счёте: закрытие месяца кладёт его рядом со счётом, письмо вендору берёт оба. */
@@ -20,6 +19,6 @@ final class StorageActPdf
     {
         $invoice->loadMissing(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges']);
 
-        return Pdf::render('billing.docs.storage-act', ['invoice' => $invoice, 'self' => Party::self()]);
+        return Pdf::render('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }
 }

@@ -19,9 +19,10 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 /**
  * Счёт. `issued` — нам должны, `owed` — должны мы (перечисление вендору по
  * договору комиссии). Остаток и просрочка считаются, не хранятся; PDF — снимок
- * в момент выставления, коллекция `file` на закрытом диске.
+ * в момент выставления, коллекция `file` на закрытом диске. `seller` — кто из нас
+ * выставил: реквизиты в документах и свой ряд номеров.
  */
-#[Fillable(['direction', 'year', 'number', 'external_no', 'kind', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
+#[Fillable(['seller', 'direction', 'year', 'number', 'external_no', 'kind', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
     'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by'])]
 class Invoice extends Model implements HasMedia
 {
@@ -34,7 +35,7 @@ class Invoice extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['kind' => ChargeKind::class, 'state' => InvoiceState::class, 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool',
+        return ['seller' => Seller::class, 'kind' => ChargeKind::class, 'state' => InvoiceState::class, 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool',
             'total' => 'float', 'paid' => 'float', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime'];
     }
 
@@ -96,6 +97,11 @@ class Invoice extends Model implements HasMedia
     public function claimed(): float
     {
         return round((float) $this->claims()->sum('amount'), 2);
+    }
+
+    public function scopeOfSeller($q, Seller $seller)
+    {
+        return $q->where('seller', $seller->value);
     }
 
     /** Ссылки на оплату; открытая у счёта одна. */
@@ -174,8 +180,8 @@ class Invoice extends Model implements HasMedia
     }
 
     /**
-     * Ставка НДС счёта. У счетов ПРАЙМ она записана при выставлении (`vat_rate`), у прочих — прежняя галка
-     * «С НДС» и 20 %: парковка ИП Кузнецова считается по-своему, пока не разведены продавцы.
+     * Ставка НДС счёта — ставка продавца, записанная при выставлении (`vat_rate`). Старые счета без неё —
+     * прежняя галка «С НДС» и 20 %.
      */
     public function vatRate(): ?int
     {

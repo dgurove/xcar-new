@@ -87,6 +87,12 @@ final class MoneyNotice extends Notice
         return new self($count === 1 ? 'Поступление без счёта на '.Money::rub($sum) : 'Поступления без счёта: '.$count.' на '.Money::rub($sum), null, '/work/money/bank', null, true);
     }
 
+    /** Просрочен счёт ПРАЙМ (сделка, гараж) — сотрудникам в «Деньги» CRM; счета парковки идут `ParkNotice`. */
+    public static function overdue(Invoice $i): self
+    {
+        return new self(($i->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$i->label().', '.$i->party->name, Money::rub($i->remaining()), '/work/money/invoices/'.$i->id, $i->deal?->offer?->number, true);
+    }
+
     public static function feeDue(Invoice $fee): self
     {
         return new self('К выплате '.Money::rub($fee->total).' — '.$fee->party->name, $fee->deal?->offer?->titleWithYear().', до '.$fee->due_at->translatedFormat('j M'), '/work/money?preset=payouts', $fee->deal?->offer?->number, true);

@@ -62,7 +62,7 @@
             @if ($vehicle->category)<tr><th>Категория</th><td>{{ $vehicle->category->label() }}{{ $vehicle->oversize ? ', негабарит' : '' }}</td></tr>@endif
             <tr><th>Заказчик</th><td>{{ $vendor?->legal_name ?? $vendor?->name ?? '—' }}{{ $vendor?->inn ? ', ИНН '.$vendor->inn : '' }}</td></tr>
             @if ($vehicle->contact_name || $vehicle->contact_phone)<tr><th>Страхователь</th><td>{{ trim(($vehicle->contact_name ?? '').' '.($vehicle->contact_phone ?? '')) }}</td></tr>@endif
-            <tr><th>Хранитель</th><td>{{ $company['name'] ?? 'ООО «ПРАЙМ»' }}{{ ! empty($company['inn']) ? ', ИНН '.$company['inn'] : '' }}</td></tr>
+            <tr><th>Хранитель</th><td>{{ $self->name }}{{ $self->inn ? ', ИНН '.$self->inn : '' }}</td></tr>
             <tr><th>Парковка</th><td>{{ implode(', ', array_filter([$vehicle->yard?->name ?? '—', $vehicle->yard?->settlement?->name, $vehicle->yard?->address, $vehicle->spot ? 'место '.$vehicle->spot : null])) }}</td></tr>
             <tr><th>Принят на хранение</th><td>{{ $vehicle->accepted_at?->format('d.m.Y H:i') ?? '—' }}</td></tr>
             @unless ($intake)

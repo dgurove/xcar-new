@@ -3,6 +3,7 @@
 namespace App\Telegram\Messages;
 
 use App\Billing\Invoice;
+use App\Billing\Seller;
 use App\Support\Money;
 use App\Support\Surface;
 
@@ -35,6 +36,8 @@ final class InvoiceOverdue extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Счёт на парковке', 'url' => Surface::Park->url('/money/invoices/'.$this->invoice->id)];
+        return $this->invoice->seller === Seller::Park
+            ? ['text' => 'Счёт на парковке', 'url' => Surface::Park->url('/money/invoices/'.$this->invoice->id)]
+            : ['text' => 'Счёт в CRM', 'url' => Surface::Crm->url('/work/money/invoices/'.$this->invoice->id)];
     }
 }

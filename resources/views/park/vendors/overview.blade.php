@@ -10,7 +10,6 @@
     <div class="list">
         <div class="row justify-between"><span class="text-ink-muted">Платит</span><span>{{ $payer }}</span></div>
         <div class="row justify-between"><span class="text-ink-muted">Счёт</span><span class="text-right">{{ $vendor->billing_cadence->label() }}</span></div>
-        <div class="row justify-between"><span class="text-ink-muted">НДС</span><span>{{ $vendor->vat_included ? 'Хранение с НДС' : 'Без НДС' }}</span></div>
         @if ($vendor->payment_days !== null)<div class="row justify-between"><span class="text-ink-muted">Оплата</span><span class="nums">{{ $vendor->payment_days }} раб. дн</span></div>@endif
         @if ($vendor->buyer_pays_late)<div class="row justify-between"><span class="text-ink-muted">Опоздавший покупатель</span><span class="nums">× {{ rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.') }} прайса</span></div>@endif
         @if ($vendor->release_without_payment)<div class="row justify-between"><span class="text-ink-muted">Выдача</span><span>Без оплаты</span></div>@endif

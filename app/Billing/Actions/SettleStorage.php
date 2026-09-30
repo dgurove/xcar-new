@@ -47,7 +47,7 @@ final class SettleStorage
             }
             $buyer = $g['payer'] === 'buyer';
             $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Storage, $buyer ? now() : now()->addWeekdays($vehicle->vendor?->payment_days ?? 5),
-                $buyer ? false : (bool) ($vehicle->vendor?->vat_included ?? false), $g['to'], vehicle: $vehicle);
+                $g['to'], vehicle: $vehicle);
             if ($buyer && $cash) {
                 ($this->pay)($invoice, $by, (float) $invoice->total, now(), PaymentSource::Cash);
             }

@@ -30,7 +30,7 @@ final class IssueAgentFee
         }
         $party = Party::forUser($deal->buyer);
         $offer = $deal->offer;
-        $fee = ($this->issue)($party, $by, 'owed', ChargeKind::AgentFee, WorkDays::add(now(), self::DAYS), false,
+        $fee = ($this->issue)($party, $by, 'owed', ChargeKind::AgentFee, WorkDays::add(now(), self::DAYS),
             lines: [['title' => 'Агентское вознаграждение, '.$offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->commission, 'kind' => ChargeKind::AgentFee->value]],
             dealId: $deal->id, offerId: $offer->id);
         $offer->log(OfferEventType::Note, $by, ['text' => 'Вознаграждение '.Money::rub($deal->commission).' к выплате — '.$party->name]);

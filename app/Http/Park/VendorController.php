@@ -7,6 +7,7 @@ use App\Billing\Cadence;
 use App\Billing\Invoice;
 use App\Billing\Ledger;
 use App\Billing\Party;
+use App\Billing\Seller;
 use App\Cars\Category;
 use App\Http\Admin\OfferPhotoController;
 use App\Mail\Scope;
@@ -100,7 +101,7 @@ class VendorController
                 'debt' => $party->id ? Ledger::debtOf($party) : ['owed_to_us' => 0, 'we_owe' => 0, 'overdue' => 0],
                 'unbilled' => $stored->mapWithKeys(fn (Vehicle $v) => [$v->id => round(collect(Accrual::storage($v))->where('payer', 'vendor')->sum('amount') + (float) $v->charges()->whereNull('invoice_id')->whereNull('voided_at')->when($party->id, fn ($q) => $q->where('party_id', $party->id))->sum('amount'), 2)]),
                 'stored' => $stored,
-                'invoices' => $party->id ? Invoice::where('party_id', $party->id)->with(['vehicle.brand', 'vehicle.model'])->latest('issued_at')->latest('id')->get() : collect(),
+                'invoices' => $party->id ? Invoice::ofSeller(Seller::Park)->where('party_id', $party->id)->with(['vehicle.brand', 'vehicle.model'])->latest('issued_at')->latest('id')->get() : collect(),
             ];
         } elseif ($pill === 'overview') {
             $data += [
@@ -150,7 +151,6 @@ class VendorController
             'agreement_date' => ['nullable', 'date'],
             'agreement_until' => ['nullable', 'date'],
             'payment_days' => ['nullable', 'integer', 'between:0,365'],
-            'vat_included' => ['boolean'],
             'storage_payer' => ['required', Rule::in(['vendor', 'owner', 'nobody'])],
             'buyer_pays_late' => ['boolean'],
             'release_without_payment' => ['boolean'],
@@ -174,7 +174,6 @@ class VendorController
             'park_senders' => $senders,
             'intake_docs' => array_values($data['intake_docs'] ?? []),
             'is_active' => $request->boolean('is_active'),
-            'vat_included' => $request->boolean('vat_included'),
             'buyer_pays_late' => $request->boolean('buyer_pays_late'),
             'release_without_payment' => $request->boolean('release_without_payment'),
             'release_by_qr' => $request->boolean('release_by_qr'),

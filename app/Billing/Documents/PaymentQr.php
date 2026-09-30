@@ -9,13 +9,13 @@ use App\Billing\PaymentSource;
 /**
  * Строка QR платёжки по ГОСТ Р 56042 (ST00012, UTF-8): приложение любого банка заполняет перевод само —
  * получатель, счёт, сумма к оплате, назначение «Оплата по счёту № N от …», по которому выписка потом
- * находит счёт. Без наших банковских реквизитов QR не печатается.
+ * находит счёт. Получатель — продавец счёта; без его банковских реквизитов QR не печатается.
  */
 final class PaymentQr
 {
     public static function text(Invoice $invoice, ?Party $self = null): ?string
     {
-        $self ??= Party::self();
+        $self ??= $invoice->seller->party();
         if ($self->bankMissing() || $invoice->isOwed() || ! $invoice->number) {
             return null;
         }

@@ -12,6 +12,7 @@ use App\Billing\InvoiceState;
 use App\Billing\Ledger;
 use App\Billing\Numbering;
 use App\Billing\Party;
+use App\Billing\Seller;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Support\Nav;
@@ -26,9 +27,10 @@ use Illuminate\Validation\ValidationException;
  * заново под замком (`Accrual`), отрезки этого плательщика становятся
  * строками и двигают `storage_billed_until` — пропусков не бывает, чужой
  * отрезок раньше своего отбивается; невыставленные начисления привязываются,
- * свободные строки добавляются; номер — сквозной в году; PDF — снимок в той
- * же транзакции, без файла счёта нет. `owed` — наше обязательство (номера нет, есть чужой).
- * `vatRate` — счёт ПРАЙМ: НДС этой ставкой внутри итога, а с `vatOnTop` — прибавлен к строкам.
+ * свободные строки добавляются; номер — сквозной в году у продавца; PDF — снимок в той
+ * же транзакции, без файла счёта нет. `owed` — наше обязательство (номера и НДС нет, есть чужой номер).
+ * Продавец — по счёту (`Seller::for`: ТС парковки — ИП, остальное — ПРАЙМ); НДС — его ставкой внутри
+ * итога, а у контрагента с «НДС сверху» (`vat_on_top`) — прибавлен к строкам.
  */
 final class IssueInvoice
 {
@@ -39,16 +41,20 @@ final class IssueInvoice
      * @param  list<int>  $chargeIds  невыставленные начисления
      * @param  list<array{title: string, qty: float, unit: string, price: float, kind?: string}>  $lines  свободные строки
      */
-    public function __invoke(Party $party, User $by, string $direction, ChargeKind $kind, CarbonInterface $dueAt, bool $vat, ?CarbonInterface $storageUntil = null, array $chargeIds = [], array $lines = [],
-        ?Vehicle $vehicle = null, ?int $dealId = null, ?int $offerId = null, ?string $externalNo = null, ?string $notes = null, ?int $vatRate = null, bool $vatOnTop = false): Invoice
+    public function __invoke(Party $party, User $by, string $direction, ChargeKind $kind, CarbonInterface $dueAt, ?CarbonInterface $storageUntil = null, array $chargeIds = [], array $lines = [],
+        ?Vehicle $vehicle = null, ?int $dealId = null, ?int $offerId = null, ?string $externalNo = null, ?string $notes = null): Invoice
     {
         Nav::forgetStaffCounts();
-        $invoice = DB::transaction(function () use ($party, $by, $direction, $kind, $dueAt, $vat, $storageUntil, $chargeIds, $lines, $vehicle, $dealId, $offerId, $externalNo, $notes, $vatRate, $vatOnTop) {
+        $invoice = DB::transaction(function () use ($party, $by, $direction, $kind, $dueAt, $storageUntil, $chargeIds, $lines, $vehicle, $dealId, $offerId, $externalNo, $notes) {
             $year = (int) now()->format('Y');
+            $issued = $direction === 'issued';
+            $seller = Seller::for($vehicle);
+            $vatRate = $issued ? ($seller->vatRate() ?: null) : null;
+            $vatOnTop = $vatRate && $party->vat_on_top;
             $invoice = Invoice::create([
-                'direction' => $direction, 'year' => $direction === 'issued' ? $year : null, 'number' => $direction === 'issued' ? Numbering::next($year) : null,
+                'seller' => $seller, 'direction' => $direction, 'year' => $issued ? $year : null, 'number' => $issued ? Numbering::next($seller, $year) : null,
                 'external_no' => $externalNo, 'kind' => $kind, 'party_id' => $party->id, 'vehicle_id' => $vehicle?->id, 'deal_id' => $dealId, 'offer_id' => $offerId,
-                'issued_at' => now()->toDateString(), 'due_at' => Carbon::instance($dueAt)->toDateString(), 'vat' => $vat || $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $vatRate && $vatOnTop, 'state' => InvoiceState::Issued, 'notes' => $notes, 'created_by' => $by->id,
+                'issued_at' => now()->toDateString(), 'due_at' => Carbon::instance($dueAt)->toDateString(), 'vat' => (bool) $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $vatOnTop, 'state' => InvoiceState::Issued, 'notes' => $notes, 'created_by' => $by->id,
             ]);
             $total = 0.0;
             if ($vehicle && $storageUntil) {
@@ -94,12 +100,12 @@ final class IssueInvoice
             if ($total <= 0) {
                 throw ValidationException::withMessages(['total' => 'В счёте нет ни одной строки']);
             }
-            if ($vatRate && $vatOnTop) {
+            if ($vatOnTop) {
                 $total += round($total * $vatRate / 100, 2);
             }
             $invoice->update(['total' => round($total, 2)]);
             $vehicle?->log($direction === 'issued' ? EventType::Invoiced : EventType::Owed, $by, ['label' => $invoice->label(), 'amount' => $invoice->total, 'party' => $party->name]);
-            if ($direction === 'issued') {
+            if ($issued) {
                 $this->pdf->attach($invoice->fresh(['charges', 'party', 'vehicle.brand', 'vehicle.model']));
             }
 

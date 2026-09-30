@@ -12,6 +12,7 @@ use App\Billing\Events\PaymentConfirmed;
 use App\Billing\Events\PaymentRecorded;
 use App\Billing\Events\PaymentRejected;
 use App\Billing\PaymentSource;
+use App\Billing\Seller;
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
@@ -277,11 +278,16 @@ final class Notify
         Notification::send($this->parkStaff()->filter->isAdmin(), ParkNotice::idle($e->vehicle, $e->days));
     }
 
-    /** Просроченный счёт — владельцу в Telegram с кнопкой «Оплачен», админам — в ленту. */
+    /** Просроченный счёт — владельцу в Telegram с кнопкой «Оплачен», админам — в ленту своей стороны. */
     public function invoiceOverdue(InvoiceOverdue $e): void
     {
-        $invoice = $e->invoice->load(['party', 'vehicle.brand', 'vehicle.model']);
+        $invoice = $e->invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'deal.offer']);
         NotifyOwner::dispatch(new \App\Telegram\Messages\InvoiceOverdue($invoice));
+        if ($invoice->seller === Seller::Prime) {
+            Notification::send($this->staff()->filter->isAdmin(), MoneyNotice::overdue($invoice));
+
+            return;
+        }
         Notification::send($this->parkStaff()->filter->isAdmin(), new ParkNotice(
             ($invoice->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$invoice->label().' — '.$invoice->party->name,
             Money::rub($invoice->remaining()), '/money/invoices/'.$invoice->id, $invoice->vehicle_id, true));

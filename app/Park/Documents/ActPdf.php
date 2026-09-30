@@ -2,6 +2,7 @@
 
 namespace App\Park\Documents;
 
+use App\Billing\Seller;
 use App\Park\InspectionKind;
 use App\Park\Vehicle;
 use App\Support\Pdf;
@@ -14,7 +15,7 @@ final class ActPdf
         $vehicle->loadMissing(['brand', 'model', 'vendor', 'yard.settlement', 'media', 'inspections']);
 
         return Pdf::render('park.act', [
-            'vehicle' => $vehicle, 'intake' => $intake, 'company' => config('xcar.company', []),
+            'vehicle' => $vehicle, 'intake' => $intake, 'self' => Seller::Park->party(),
             'inspection' => $vehicle->lastInspection($intake ? InspectionKind::Intake : InspectionKind::Release),
         ], chroot: [storage_path('app/media')]);
     }
