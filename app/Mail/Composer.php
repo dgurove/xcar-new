@@ -16,7 +16,9 @@ final class Composer
     public function reply(Message $parent, bool $all = false): array
     {
         $account = $parent->account;
-        $to = array_filter([$parent->replyToAddress()]);
+        // Письмо вендора, пересланное сотрудником со своего ящика: отвечаем вендору, а не сотруднику, темой из цитаты.
+        $forwarded = $parent->isForwardedByStaff();
+        $to = array_filter([$forwarded ? $parent->field('sender') : $parent->replyToAddress()]);
         $cc = [];
         if ($all) {
             foreach ([AddressKind::To, AddressKind::Cc] as $kind) {
@@ -30,7 +32,7 @@ final class Composer
         return [
             'to' => implode(', ', $to),
             'cc' => implode(', ', $cc),
-            'subject' => $this->prefix($parent->subject, 'Re'),
+            'subject' => $this->prefix(($forwarded ? Extraction\QuotationStripper::forwardedSubject($parent->text_body) : null) ?? $parent->subject, 'Re'),
             'body' => $this->signature($account).$this->quote($parent),
         ];
     }

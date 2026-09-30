@@ -32,7 +32,8 @@
                     @php $o = $section['offer']; @endphp
                     <div class="case-head">
                         <div class="case-name">
-                            <a href="/offers/{{ $o->number }}" class="font-medium hover:text-accent-text">{{ $o->title() }} <span class="nums font-normal text-ink-muted">№ {{ $o->number }}</span></a>
+                            <a href="/offers/{{ $o->number }}" class="font-medium hover:text-accent-text">{{ $o->title() }}@if ($o->published_at) <span class="nums font-normal text-ink-muted">№ {{ $o->number }}</span>@endif</a>
+                            @if ($o->vendor)<x-vendor.name :vendor="$o->vendor" class="tag"/>@endif
                         </div>
                         <a href="/offers/{{ $o->number }}" class="case-go"><span class="tag">{{ $o->state->label() }}</span><span aria-hidden="true">›</span></a>
                     </div>

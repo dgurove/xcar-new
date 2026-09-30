@@ -40,10 +40,8 @@
                 @endforeach
             </span>
         @endif
-        {{-- Письмо, документы и фото — шторкой рядом с полями (x-ui.docs); переписка целиком — своей пилюлей, всегда. --}}
+        {{-- Письмо, документы и фото — шторкой рядом с полями (x-ui.docs); переписка — карточкой «Письма» и окном. --}}
         @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
-        @if ($threads->count() === 1)<x-ui.pill tone="plain" href="/work/mail/{{ $threads->first()->id }}"><x-ui.icon name="mail" class="size-4"/> Переписка</x-ui.pill>
-        @elseif ($threads->isNotEmpty())<x-ui.pill tone="plain" href="/work/mail?preset=linked&q={{ urlencode($offer->claim_ref ?: '') }}"><x-ui.icon name="mail" class="size-4"/> Переписок: {{ $threads->count() }}</x-ui.pill>@endif
         @if ($offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
         @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
         @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
@@ -55,6 +53,12 @@
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
+            {{-- Письма — как в деле ТС: последнее словами, вся переписка и ответ — окном поверх редактора. --}}
+            @if ($lastLetter)
+                <x-ui.card title="Письма" :count="$letters" class="order-1">
+                    <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks"/>
+                </x-ui.card>
+            @endif
             @if ($bids->isNotEmpty())
             <x-ui.card :title="'Подтверждения'.($waiting->isNotEmpty() ? ' '.$waiting->count() : '')" class="order-1 {{ $waiting->isNotEmpty() ? 'box-urgent' : '' }}">
                 <div class="flex flex-col gap-2">
@@ -194,10 +198,11 @@
         $draft = $offer->state === OfferState::Draft;
         if ($draft) $transitions = $transitions->except(OfferState::Open->value);
     @endphp
+    <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
     <x-ui.action-bar data-controller="sheet">
         @if ($fromMail)
-            <form method="post" action="/offers/{{ $n }}/drop" class="contents">@csrf<x-ui.button variant="ghost" class="shrink-0">Отменить</x-ui.button></form>
-            <form method="post" action="/offers/{{ $n }}/drop" class="contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<input type="hidden" name="decline" value="1"><x-ui.button variant="ghost" class="shrink-0">Не заявка</x-ui.button></form>
+            <form method="post" action="/offers/{{ $n }}/drop" class="contents">@csrf<x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Отменить</x-ui.button></form>
+            <form method="post" action="/offers/{{ $n }}/drop" class="contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<input type="hidden" name="decline" value="1"><x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Не заявка</x-ui.button></form>
             <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @elseif ($draft)
             <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>

@@ -1,7 +1,7 @@
 {{-- Кнопка ответа в ленте, во фрейме: внизу ленты (frame reply) — «Ответить {кому}», у письма (reply-{id}) — «Ответить на это».
      Нажатие грузит редактор в тот же фрейм; «Отмена» в редакторе возвращает кнопку (?cancel=1). --}}
 @props(['message', 'base' => '/mail', 'frame' => 'reply', 'open' => false])
-@php $who = ! $message->isOurs() ? \Illuminate\Support\Str::of($message->from_name ?: $message->from_email)->explode(' ')->take(2)->implode(' ') : null; @endphp
+@php $who = ! $message->isOurs() || $message->isForwardedByStaff() ? \Illuminate\Support\Str::of(\App\Mail\Chains\NodeTitle::who($message))->explode(' ')->take(2)->implode(' ') : null; @endphp
 {{-- open — редактор грузится сразу (кнопка «Ответить» в деле ТС), кнопка внизу остаётся на время загрузки. --}}
 <turbo-frame id="{{ $frame }}" class="{{ $frame === 'reply' ? 'block' : 'contents' }}" @if ($open) src="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" @endif>
     @if ($frame === 'reply')

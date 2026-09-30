@@ -30,15 +30,7 @@
 @endphp
 <div id="thread-{{ $thread->id }}" data-search-row>
     <div class="row items-center">
-        @if ($fwd)
-            <x-ui.avatar :name="$who" :email="$last->field('sender')" :size="32"/>
-        @elseif ($ours && $last?->author)
-            <x-ui.avatar :user="$last->author" :size="32"/>
-        @elseif ($ours)
-            <x-chat.avatar :user="null" :size="32"/>
-        @else
-            <x-ui.avatar :name="$party['name'] ?? null" :email="$party['email'] ?? null" :size="32"/>
-        @endif
+        @if ($last)<x-mail.sender-avatar :message="$last" :size="32"/>@else<x-ui.avatar :name="$party['name'] ?? null" :email="$party['email'] ?? null" :size="32"/>@endif
         <button type="button" class="min-w-0 flex-1 text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $base }}/{{ $thread->id }}/window">
             <div class="flex items-baseline gap-2">
                 <span class="min-w-0 max-w-max shrink truncate {{ $unread ? 'font-medium' : '' }}">@if ($unread)<span class="mr-1.5 inline-block size-2 rounded-full bg-urgent align-[1px]"></span>@endif{{ $out ? 'Кому: ' : '' }}{{ $who }}</span>

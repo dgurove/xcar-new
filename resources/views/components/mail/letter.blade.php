@@ -1,7 +1,8 @@
 {{-- Письмо в ленте: свёрнуто — строка «кто, заголовок, скрепка, когда» (заголовок — этап, смысл или первые свои слова,
      непрочитанное полужирным); раскрыто — свои слова письма без цитат и подписи, вложения (фото лентой, документы
      строкой, открываются в шторке документов), «Исходное письмо» грузит тело в iframe только по раскрытию, «Ответить на это» — редактор
-     во фрейме под письмом. kind: stage (этап, лаймовая точка), ask (без нашего ответа, оранжевая), ours (наше). --}}
+     во фрейме под письмом. На линии — кружок отправителя (x-mail.sender-avatar); kind: stage (этап — лаймовое кольцо),
+     ask (без нашего ответа — оранжевое), ours (наше). --}}
 {{-- continuation — «ч.2» того же письма (те же слова, другие файлы): текст не повторяется, только вложения. --}}
 @props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false])
 @php
@@ -15,7 +16,8 @@
     $text = trim($m->ownText());
 @endphp
 <div class="letter{{ $kind ? ' '.implode(' ', array_map(fn ($k) => 'letter--'.$k, explode(' ', $kind))) : '' }}{{ $m->is_seen ? '' : ' letter--unread' }}" id="msg-{{ $m->id }}" @if ($focus) data-chain-target="focus" @endif>
-    <span class="letter-dot"></span>
+    {{-- Узел на линии — кружок отправителя; продолжение «ч.2» — точка, это то же письмо. --}}
+    @if ($continuation)<span class="letter-dot"></span>@else<span class="letter-face"><x-mail.sender-avatar :message="$m" :size="24"/></span>@endif
     <details class="letter-body" @if ($open) open @endif>
         <summary class="letter-head">
             <span class="letter-who">{{ $who }}</span>

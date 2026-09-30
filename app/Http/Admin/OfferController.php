@@ -111,9 +111,11 @@ class OfferController
 
         $threads = Thread::where('offer_id', $offer->id)->get();
 
-        return view('admin.offers.edit', [
+        return view('admin.offers.edit', $this->letters($offer, $threads) + [
             'offer' => $offer,
             'threads' => $threads,
+            // ?window= — открыть окно писем сразу (ссылка «Вся переписка» из шторки документов).
+            'window' => str_starts_with((string) request()->query('window'), "/offers/{$offer->number}/letters") ? request()->query('window') : null,
             'docs' => $this->docs($offer, $threads),
             'chats' => Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'import' => ImportThreadFiles::progress($offer->id),
@@ -134,16 +136,32 @@ class OfferController
      * @param  Collection<int, Thread>  $threads
      * @return list<array<string, mixed>>
      */
+    /**
+     * Карточка «Письма» (x-mail.last-letter), как в деле ТС: последнее письмо всех веток предложения, их число и письма,
+     * что ждут ответа (одно правило почты — `needs_reply_at`, само письмо — последнее входящее ветки).
+     *
+     * @return array{lastLetter: ?Message, letters: int, asks: Collection}
+     */
+    private function letters(Offer $offer, Collection $threads): array
+    {
+        $ids = $threads->pluck('id');
+        $waiting = $threads->whereNotNull('needs_reply_at')->pluck('id');
+
+        return [
+            'lastLetter' => $ids->isEmpty() ? null : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),
+            'letters' => $ids->isEmpty() ? 0 : Message::whereIn('thread_id', $ids)->count(),
+            'asks' => $waiting->isEmpty() ? collect() : Message::whereIn('thread_id', $waiting)->where('direction', Direction::In)
+                ->orderBy('date_at')->orderBy('id')->get(['id', 'thread_id', 'date_at'])->groupBy('thread_id')->map->last()->values(),
+        ];
+    }
+
     private function docs(Offer $offer, Collection $threads): array
     {
         // Входящие, а не «не наши»: сотрудник пересылает письмо вендора со своего ящика — это оно же, в цитате.
         $letters = Message::with(['attachments', 'account'])->whereIn('thread_id', $threads->pluck('id'))->where('direction', Direction::In)->orderBy('date_at')->get();
         $letter = $letters->first(fn (Message $m) => ! $m->isOurs()) ?? $letters->first();
-        $thread = match (true) {
-            $threads->count() === 1 => "/work/mail/{$threads->first()->id}",
-            $threads->isNotEmpty() => '/work/mail?preset=linked&q='.urlencode($offer->claim_ref ?: ''),
-            default => null,
-        };
+        // «Вся переписка» у письма в шторке — окно-лента всех веток предложения на его же странице.
+        $thread = $threads->isNotEmpty() ? "/offers/{$offer->number}?window=/offers/{$offer->number}/letters" : null;
         $papers = $offer->papers();
         $names = $papers->pluck('file_name')->map(fn ($n) => Docs::norm($n))->all();
         ['docs' => $files, 'photos' => $pictures] = Docs::fromLetters($letters, '/work/mail');
@@ -172,7 +190,7 @@ class OfferController
     {
         $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
 
-        return view('admin.offers.peek', [
+        return view('admin.offers.peek', $this->letters($offer, Thread::where('offer_id', $offer->id)->get()) + [
             'offer' => $offer,
             // Поля редактора в окошке — те же справочники, что у страницы.
             'audienceOptions' => AudienceRules::options(),

@@ -27,4 +27,6 @@
             <div class="mt-8"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
         @endif
     </div>
+    {{-- Окно писем для карточки «Письма» в окошке строки. --}}
+    <x-mail.window/>
 </x-ui.shell>

@@ -101,6 +101,8 @@
             @if ($chats->isNotEmpty())<x-ui.pill :tone="$unread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($unread) <span class="badge">{{ $unread }}</span>@endif</x-ui.pill>@endif
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
         </x-slot:actions>
+        {{-- Последнее письмо, как в редакторе и деле ТС; вся переписка — окном поверх списка (x-mail.window на странице). --}}
+        @if ($lastLetter)<x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks" compact class="mt-4 rounded-(--radius-l) bg-surface-2 p-3"/>@endif
         @if ($bids->isNotEmpty())
             <div class="mt-4 flex flex-col gap-2">
                 @foreach ($bids as $bid)

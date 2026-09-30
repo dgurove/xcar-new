@@ -110,7 +110,7 @@ class MailController
             'files' => $request->boolean('files') ?: null,
         ]);
         $park = $this->scope === Scope::Park;
-        $with = ['account', 'vendor', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
+        $with = ['account', 'vendor', 'offer.brand', 'offer.model', 'offer.vendor', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
 
         $all = Thread::query()->whereIn('account_id', $accounts->pluck('id'))->where('messages_count', '>', 0);
         // Ветки пилюли: по ним выбираются дела. Письма дела потом берутся все — действие требуется от дела,
@@ -356,6 +356,20 @@ class MailController
         }
 
         return redirect($this->queue);
+    }
+
+    /** Окно писем предложения (как `/cars/{v}/letters` у ТС): все ветки одной лентой, этапы — из его цепочки, «Ответить» внизу. */
+    public function offerLetters(Request $request, Offer $offer)
+    {
+        abort_if($this->scope !== Scope::Offers, 404);
+        $threads = Thread::where('offer_id', $offer->id)->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'))
+            ->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
+
+        return view('admin.offers.letters', [
+            'messages' => $threads->flatMap->messages,
+            'candidate' => Candidate::where('offer_id', $offer->id)->latest('id')->first(),
+            'base' => $this->base,
+        ]);
     }
 
     /** «Не заявка» ↔ «Снова ждёт»: решение человека, свёртка его не трогает. */
