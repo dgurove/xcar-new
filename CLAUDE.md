@@ -1044,7 +1044,7 @@
   (CRM, витрина, выгрузка, новые цены), видна только в «В предложениях». Цену продажи ставят в «Оценить» по
   черновикам (`POST /offers/{n}/publish` из окошка, `peek-advance`); при публикации менеджерам с ценой по ТС в
   закупке — `PurchaseCarOnSaleNotice` вместо «Нового предложения», один раз (`announced_at`).
-- Telegram-бот без SDK (`Telegram\Bot`, IPv6, `telegram:poll`): владельцу и привязанным админам — кнопки решения, менеджерам — принятое подтверждение, ваш ход, сроки и деньги (`Notice::telegram`, `TelegramChannel`), шторка подключения `x-telegram.connect` (сама — один раз при входе и после подтверждения ценой), профиль, вход через бота (`StartLink`) — `notes/telegram-2026-09-30.md`.
+- Telegram-бот без SDK (`Telegram\Bot`, IPv6, `telegram:poll`): владельцу и привязанным админам — кнопки решения, менеджерам — принятое подтверждение, ваш ход, сроки и деньги (`Notice::telegram`, `TelegramChannel`), шторка подключения `x-telegram.connect` (сама — один раз при входе и после подтверждения ценой), профиль, вход через бота (`StartLink`), вся переписка бота — Настройки → «Бот Telegram» админам (`Telegram\Journal` в `Bot::call` и `UpdateHandler::handle`, ответ от имени бота `SendAsBot`) — `notes/telegram-2026-09-30.md`.
 - Медиа: `PhotoIngest` — всё входящее в 1600 px webp, `sha` исходника у
   каждого кадра; **просмотр фото один на три хоста** — `resources/js/lightbox.js` (PhotoSwipe 5, с 28.09.2026
   вместо Viewer.js): зовут `gallery`, `photos` (глаз, поворот, корзина и «Скачать» прямо в просмотре; `group` —

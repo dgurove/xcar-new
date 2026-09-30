@@ -234,6 +234,7 @@ final class Nav
                     ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users')] : []),
                     self::link('Вендоры', '/settings/vendors'),
                     ...($user->isAdmin() ? [self::link('Банк', '/settings/bank')] : []),
+                    ...($user->isAdmin() ? [self::link('Бот Telegram', '/settings/telegram')] : []),
                     self::link('Ящики', '/settings/mailboxes'),
                     self::link('Шаблоны', '/settings/templates'),
                     self::link('Кому показывать', '/settings/audience'),

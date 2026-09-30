@@ -2,6 +2,7 @@
 
 namespace App\Telegram\Actions;
 
+use App\Telegram\Chat;
 use App\Users\User;
 
 /** Отвязать Telegram: из профиля или сам человек заблокировал бота. Сама шторка подключения больше не открывается, карточка в «Сделках» — через 30 дней. */
@@ -9,6 +10,8 @@ final class UnlinkChat
 {
     public function __invoke(User $user): void
     {
+        // Переписка остаётся в «Бот Telegram», только без аккаунта.
+        Chat::where('user_id', $user->id)->update(['user_id' => null]);
         $user->forceFill([
             'telegram_chat_id' => null, 'telegram_username' => null, 'telegram_linked_at' => null,
             'notification_settings' => [

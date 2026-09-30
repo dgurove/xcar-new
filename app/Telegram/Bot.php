@@ -6,9 +6,12 @@ use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
@@ -17,9 +20,12 @@ use Throwable;
  * метода Bot API через Http. До api.telegram.org с сервера доходит только
  * IPv6 — клиент это и просит. `send` бросает исключение (его зовёт джоба,
  * повтор — дело очереди), ответы на нажатия ошибку гасят: их зовёт опрос.
+ * Всё, что уходит через `call`, попадает в журнал переписки (Journal) — мимо него не пишем.
  */
 class Bot
 {
+    public function __construct(private Journal $journal) {}
+
     public function configured(): bool
     {
         return $this->token() !== '';
@@ -82,13 +88,65 @@ class Bot
     }
 
     /**
-     * `silent` — без звука (тихие часы).
+     * `silent` — без звука (тихие часы), `replyTo` — ответ на сообщение (id в Telegram). Возвращает строку журнала.
      *
      * @param  array<int, array<int, array{text: string, callback_data?: string, url?: string}>>|null  $keyboard
      */
-    public function send(int $chatId, string $text, ?array $keyboard = null, bool $silent = false): void
+    public function send(int $chatId, string $text, ?array $keyboard = null, bool $silent = false, ?int $replyTo = null): ?ChatMessage
     {
-        $this->call('sendMessage', $this->payload($chatId, $text, $keyboard) + ($silent ? ['disable_notification' => 'true'] : []))->throw();
+        $payload = $this->payload($chatId, $text, $keyboard) + ($silent ? ['disable_notification' => 'true'] : []) + $this->replyTo($replyTo);
+
+        return $this->logged($chatId, $this->call('sendMessage', $payload));
+    }
+
+    /** Файл из CRM: картинка — фото, остальное — документом. */
+    public function sendFile(int $chatId, UploadedFile $file, ?string $caption = null, ?int $replyTo = null): ?ChatMessage
+    {
+        $photo = str_starts_with((string) $file->getMimeType(), 'image/') && in_array(strtolower($file->getClientOriginalExtension()), ['jpg', 'jpeg', 'png', 'webp'], true);
+        [$method, $field] = $photo ? ['sendPhoto', 'photo'] : ['sendDocument', 'document'];
+        $payload = ['chat_id' => $chatId] + ($caption ? ['caption' => $caption, 'parse_mode' => 'HTML'] : []) + $this->replyTo($replyTo);
+
+        return $this->logged($chatId, $this->call($method, $payload, [$field => $file]));
+    }
+
+    public function delete(int $chatId, int $messageId): void
+    {
+        $this->call('deleteMessage', ['chat_id' => $chatId, 'message_id' => $messageId])->throw();
+    }
+
+    /** «Печатает…» в чате человека — пока сотрудник набирает ответ в CRM. */
+    public function typing(int $chatId): void
+    {
+        try {
+            $this->call('sendChatAction', ['chat_id' => $chatId, 'action' => 'typing']);
+        } catch (Throwable) {
+        }
+    }
+
+    /**
+     * Файл из переписки: у Telegram по file_id, один раз — дальше с приватного диска.
+     *
+     * @return array{0: string, 1: string}|null содержимое и имя на диске
+     */
+    public function file(string $fileId, string $uniqueId): ?array
+    {
+        $disk = Storage::disk('private');
+        $cached = collect($disk->files('telegram'))->first(fn ($p) => pathinfo($p, PATHINFO_FILENAME) === $uniqueId);
+        if ($cached) {
+            return [$disk->get($cached), $cached];
+        }
+        try {
+            $path = (string) $this->client(10)->get('getFile', ['file_id' => $fileId])->throw()->json('result.file_path');
+            $contents = Http::timeout(60)->withOptions(['force_ip_resolve' => 'v6'])->get('https://api.telegram.org/file/bot'.$this->token().'/'.$path)->throw()->body();
+        } catch (Throwable $e) {
+            Log::warning('Telegram: файл не скачался', ['file' => $fileId, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+        $local = 'telegram/'.$uniqueId.(pathinfo($path, PATHINFO_EXTENSION) ? '.'.pathinfo($path, PATHINFO_EXTENSION) : '');
+        $disk->put($local, $contents);
+
+        return [$contents, $local];
     }
 
     /** Человек закрыл нам чат: заблокировал бота или удалил переписку — слать туда больше нечего. */
@@ -99,16 +157,22 @@ class Bot
         return $status === 403 || ($status === 400 && str_contains($e->getMessage(), 'chat not found'));
     }
 
-    public function edit(int $chatId, int $messageId, string $text, ?array $keyboard = null): void
+    /** Переписать своё сообщение; false — Telegram не дал (ошибка в логе). */
+    public function edit(int $chatId, int $messageId, string $text, ?array $keyboard = null): bool
     {
         try {
             $this->call('editMessageText', $this->payload($chatId, $text, $keyboard) + ['message_id' => $messageId])->throw();
         } catch (Throwable $e) {
             // Второе нажатие той же кнопки в ту же минуту — текст тот же, это не сбой.
-            if (! str_contains($e->getMessage(), 'message is not modified')) {
-                Log::warning('Telegram: сообщение не переписалось', ['chat' => $chatId, 'message' => $messageId, 'error' => $e->getMessage()]);
+            if (str_contains($e->getMessage(), 'message is not modified')) {
+                return true;
             }
+            Log::warning('Telegram: сообщение не переписалось', ['chat' => $chatId, 'message' => $messageId, 'error' => $e->getMessage()]);
+
+            return false;
         }
+
+        return true;
     }
 
     /** Описание и короткое описание бота (telegram:profile). */
@@ -150,10 +214,44 @@ class Bot
         return $payload;
     }
 
-    /** Путь до Telegram по IPv6 моргает: три попытки с паузой. Ответ 4xx — не сбой сети, его не повторяем. */
-    private function call(string $method, array $payload)
+    /** Строка журнала для только что отправленного — её пишет call(). */
+    private function logged(int $chatId, Response $response): ?ChatMessage
     {
-        return $this->client(20)->retry(3, 1500, fn (Throwable $e) => ! ($e instanceof RequestException && $e->response->clientError()))->asForm()->post($method, $payload);
+        $id = (int) $response->throw()->json('result.message_id');
+
+        return $id ? ChatMessage::where('chat_id', $chatId)->where('message_id', $id)->first() : null;
+    }
+
+    private function replyTo(?int $messageId): array
+    {
+        return $messageId ? ['reply_parameters' => json_encode(['message_id' => $messageId, 'allow_sending_without_reply' => true])] : [];
+    }
+
+    /**
+     * Путь до Telegram по IPv6 моргает: три попытки с паузой. Ответ 4xx — не сбой сети, его не повторяем.
+     * Каждый вызов — в журнал переписки: принятый — как есть, отказ на отправке — пузырём с причиной.
+     *
+     * @param  array<string, UploadedFile>  $files
+     */
+    private function call(string $method, array $payload, array $files = []): Response
+    {
+        $request = $this->client($files ? 60 : 20)->retry(3, 1500, fn (Throwable $e) => ! ($e instanceof RequestException && $e->response->clientError()));
+        foreach ($files as $field => $file) {
+            $request->attach($field, $file->get(), $file->getClientOriginalName());
+        }
+        try {
+            $response = ($files ? $request : $request->asForm())->post($method, $payload);
+        } catch (RequestException $e) {
+            if ($e->response->clientError()) {
+                $this->journal->failed($method, $payload, (string) ($e->response->json('description') ?? $e->getMessage()));
+            }
+            throw $e;
+        }
+        if ($response->successful()) {
+            $this->journal->sent($method, $payload, (array) $response->json('result'));
+        }
+
+        return $response;
     }
 
     private function client(int $timeout): PendingRequest

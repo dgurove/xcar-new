@@ -34,11 +34,13 @@ use Throwable;
  */
 final class UpdateHandler
 {
-    public function __construct(private Bot $bot, private DecideAccess $decide) {}
+    public function __construct(private Bot $bot, private DecideAccess $decide, private Journal $journal) {}
 
     /** @param array<string, mixed> $update */
     public function handle(array $update): void
     {
+        // В переписку — до ответа бота, чтобы в диалоге вопрос стоял раньше ответа.
+        $this->journal->received($update);
         try {
             if (is_array($update['callback_query'] ?? null)) {
                 $this->press($update['callback_query']);

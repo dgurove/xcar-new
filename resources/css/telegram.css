@@ -70,3 +70,19 @@
     .tg-wait::before, .tg-wait::after { animation: none; opacity: 0; }
   }
 }
+
+/* Настройки → «Бот Telegram»: переписка бота в CRM. Пузырь — общий .msg чатов; под исходящим inline-кнопки
+   рядами, как в Telegram, шириной пузыря (стопка — сетка по ширине самого широкого); не дошло — строкой под ним. */
+@layer components {
+  .msg-stack { display: grid; max-width: min(85%, 34rem); gap: .25rem; }
+  .msg-stack > .msg-bubble { max-width: none; }
+  .msg.is-mine .msg-failed { text-align: right; }
+  .msg-keys { display: grid; gap: .25rem; width: 100%; }
+  .msg-keys-row { display: flex; gap: .25rem; }
+  .msg-key { display: inline-flex; flex: 1 1 0; min-width: 0; align-items: center; justify-content: center; gap: .25rem; padding: .375rem .625rem; border-radius: .625rem; background: var(--color-surface-3); color: var(--color-ink); font-size: var(--text-sm); text-align: center; overflow-wrap: anywhere; }
+  a.msg-key { color: var(--color-telegram); }
+  @media (hover: hover) { a.msg-key:hover { background: var(--color-hover); } }
+  .msg-failed { font-size: var(--text-xs); color: var(--color-danger); }
+  .msg-audio { display: block; width: 16rem; max-width: 100%; height: 2.25rem; margin-bottom: .375rem; }
+  .msg-text code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; }
+}

@@ -13,6 +13,9 @@ final class Topics
 
     public const PARK = 'park';
 
+    /** Только админам: переписка бота (Настройки → «Бот Telegram»). */
+    public const ADMIN = 'admin';
+
     public static function user(User|int $user): string
     {
         return 'user/'.($user instanceof User ? $user->id : $user);
@@ -45,6 +48,9 @@ final class Topics
             $topics[] = self::user($user);
             if ($user->isStaff()) {
                 $topics[] = self::STAFF;
+            }
+            if ($user->isAdmin()) {
+                $topics[] = self::ADMIN;
             }
             if ($user->canAccess(Section::Park)) {
                 $topics[] = self::PARK;

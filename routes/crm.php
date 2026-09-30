@@ -20,6 +20,7 @@ use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RouteController;
 use App\Http\Admin\TagController;
+use App\Http\Admin\TelegramChatController;
 use App\Http\Admin\UserController;
 use App\Http\Admin\VendorContactController;
 use App\Http\Admin\VendorController;
@@ -239,6 +240,19 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::get('/bank/callback', [BankController::class, 'callback']);
         Route::put('/bank', [BankController::class, 'save']);
         Route::post('/bank/sync', [BankController::class, 'sync']);
+
+        // Переписка бота — только админам (Настройки → «Бот Telegram»).
+        Route::middleware('ability:isAdmin')->prefix('telegram')->group(function () {
+            Route::get('/', [TelegramChatController::class, 'index']);
+            Route::get('/files/{message}', [TelegramChatController::class, 'file']);
+            Route::get('/{chat}', [TelegramChatController::class, 'show'])->whereNumber('chat');
+            Route::get('/{chat}/messages', [TelegramChatController::class, 'messages'])->whereNumber('chat');
+            Route::post('/{chat}/messages', [TelegramChatController::class, 'post'])->whereNumber('chat');
+            Route::post('/{chat}/typing', [TelegramChatController::class, 'typing'])->whereNumber('chat');
+            Route::get('/{chat}/messages/{seq}', [TelegramChatController::class, 'message'])->whereNumber(['chat', 'seq']);
+            Route::patch('/{chat}/messages/{seq}', [TelegramChatController::class, 'edit'])->whereNumber(['chat', 'seq']);
+            Route::delete('/{chat}/messages/{seq}', [TelegramChatController::class, 'destroy'])->whereNumber(['chat', 'seq']);
+        });
 
         Route::get('/templates', [MailTemplateController::class, 'index']);
         Route::get('/templates/new', [MailTemplateController::class, 'create']);
