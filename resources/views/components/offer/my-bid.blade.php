@@ -2,9 +2,9 @@
 @props(['offer', 'bid'])
 @php $deal = $bid->state === \App\Offers\BidState::Accepted ? $offer->deal()->where('bid_id', $bid->id)->first() : null; @endphp
 @if ($deal)
-    <a href="/deals/{{ $deal->id }}" {{ $attributes->class('row bg-surface-2') }}>
+    <a href="/deals/{{ $deal->id }}" {{ $attributes->class('flex items-center gap-3') }}>
 @else
-    <div {{ $attributes->class('row bg-surface-2') }}>
+    <div {{ $attributes->class('flex items-center gap-3') }}>
 @endif
     <span class="min-w-0 flex-1">
         <span class="block text-sm text-ink-muted">Ваше подтверждение</span>

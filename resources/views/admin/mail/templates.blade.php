@@ -1,7 +1,7 @@
 <x-ui.cabinet title="Шаблоны">
     <div class="list">
         <a href="/settings/templates/new" class="row">
-            <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
+            <x-ui.row-icon name="plus" tone="accent"/>
             <span class="min-w-0 flex-1 font-medium">Новый шаблон</span>
         </a>
         @foreach ($templates as $template)

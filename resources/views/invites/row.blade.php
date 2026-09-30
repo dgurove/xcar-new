@@ -5,7 +5,7 @@
 @endphp
 <div data-controller="sheet" class="contents">
     <button type="button" class="row w-full text-left transition-colors hover:bg-hover" data-action="sheet#open">
-        <span class="flex size-11 shrink-0 items-center justify-center rounded-full {{ $invite->isActive() ? 'bg-accent-soft text-accent-text' : 'bg-surface-3 text-ink-dim' }}"><x-ui.icon :name="! $invite->forBuyer() ? 'user' : 'link'" class="size-5"/></span>
+        <x-ui.row-icon :name="! $invite->forBuyer() ? 'user' : 'link'" :tone="$invite->isActive() ? 'soft' : 'plain'"/>
         <span class="min-w-0 flex-1">
             <span class="block truncate font-medium">{{ $invite->title() }}</span>
             <span class="row-sub">
@@ -27,10 +27,10 @@
             </span>
         </span>
         <span class="flex shrink-0 items-center gap-2">
-            @if ($invite->isUsedUp())<x-ui.pill tone="open" class="!min-h-0 !py-1 text-xs">сработала</x-ui.pill>
-            @elseif ($invite->isExpired())<x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">истекла</x-ui.pill>
-            @elseif (!$invite->isActive())<x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">выключена</x-ui.pill>
-            @elseif (! $invite->forBuyer())<x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">одноразовая</x-ui.pill>@endif
+            @if ($invite->isUsedUp())<x-ui.state tone="open">сработала</x-ui.state>
+            @elseif ($invite->isExpired())<x-ui.state tone="closed">истекла</x-ui.state>
+            @elseif (!$invite->isActive())<x-ui.state tone="closed">выключена</x-ui.state>
+            @elseif (! $invite->forBuyer())<x-ui.state tone="urgent">одноразовая</x-ui.state>@endif
             <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
         </span>
     </button>
@@ -39,7 +39,7 @@
             <span class="tag">{{ $invite->kind() }}</span>
             @if ($invite->manager)<x-ui.person :user="$invite->manager"/>@endif
             @if ($invite->group)<span class="tag">→ {{ $invite->group->name }}</span>@endif
-            @if (! $invite->forBuyer())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">одноразовая</x-ui.pill>@if ($invite->expires_at)<span class="tag nums">до {{ $invite->expires_at->translatedFormat('j M H:i') }}</span>@endif @else
+            @if (! $invite->forBuyer())<x-ui.state tone="urgent">одноразовая</x-ui.state>@if ($invite->expires_at)<span class="tag nums">до {{ $invite->expires_at->translatedFormat('j M H:i') }}</span>@endif @else
                 @foreach ($invite->contactFields() as $f)<span class="tag">{{ mb_strtolower(\App\Users\Invite::FIELDS[$f]) }}</span>@endforeach
                 @if ($invite->contactFields() === [])<span class="tag">только имя и логин</span>@endif
             @endif
@@ -69,7 +69,7 @@
                             <span class="block truncate font-medium">{{ $person->name }}</span>
                             <span class="row-sub"><span class="tag">{{ $person->role->label() }}</span><span class="tag nums">{{ $person->created_at->translatedFormat('j M') }}</span></span>
                         </span>
-                        @if ($href)<x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>@endif
+                        @if ($href)<x-ui.chevron/>@endif
                     </{{ $href ? 'a' : 'div' }}>
                 @endforeach
             </div>

@@ -22,7 +22,7 @@
                     </div>
                     @if ($d['overdue'] > 0)<span class="nums shrink-0 text-danger">{{ Money::rub($d['overdue']) }}</span>
                     @elseif ($d['owed_to_us'] > 0)<span class="nums shrink-0">{{ Money::rub($d['owed_to_us']) }}</span>@endif
-                    <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                    <x-ui.chevron/>
                 </a>
             @endforeach
         </div>

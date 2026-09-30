@@ -18,7 +18,7 @@
         <span class="min-w-0 flex-1">
             <span class="flex items-center gap-2">
                 <span class="truncate font-medium">{{ $person ? $interest->user->name : $offer->titleWithYear() }}</span>
-                @unless ($new)<x-ui.pill tone="closed" class="!min-h-0 !py-0.5 text-xs">{{ $interest->state->label() }}</x-ui.pill>@endunless
+                @unless ($new)<x-ui.state tone="closed">{{ $interest->state->label() }}</x-ui.state>@endunless
             </span>
             @if ($car || ($person && $interest->user->phone))
                 <span class="row-sub">

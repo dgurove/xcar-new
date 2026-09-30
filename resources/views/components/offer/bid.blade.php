@@ -14,9 +14,9 @@
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span class="nums whitespace-nowrap text-lg font-semibold">{{ Money::rub($bid->amount) }}</span>
         @if ($diff)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }} от цены</span>@endif
-        @if ($best)<x-ui.pill tone="soft" class="!min-h-0 !py-1 text-xs">Лучшая</x-ui.pill>@endif
+        @if ($best)<x-ui.state tone="soft">Лучшая</x-ui.state>@endif
         @if ($low)<span class="tag tag-urgent">ниже минимальной</span>@endif
-        @if (! $active)<x-ui.pill :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')" class="!min-h-0 !py-1 text-xs">{{ $bid->state->label() }}</x-ui.pill>@endif
+        @if (! $active)<x-ui.state :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')">{{ $bid->state->label() }}</x-ui.state>@endif
     </div>
     <div class="mt-1 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$bid->user" full/><a href="tel:+{{ $bid->user->phone }}" class="tag nums">{{ $bid->user->phoneFormatted() }}</a><span class="tag nums">{{ $bid->created_at->translatedFormat('j M, H:i') }}</span></div>
     @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif

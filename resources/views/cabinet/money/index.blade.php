@@ -15,7 +15,7 @@
                             <span class="block">Оплатить <span class="nums font-semibold">{{ Money::rub($position['pay']) }}</span></span>
                             <span class="row-sub {{ $overdue ? '!text-danger' : '' }}">{{ $position['claimed'] > 0 ? 'сообщили об оплате '.Money::rub($position['claimed']).', ждёт подтверждения' : ($overdue ? 'просрочено '.Money::rub($position['overdue']) : 'до '.$position['pay_due']->translatedFormat('j M')) }}</span>
                         </span>
-                        <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                        <x-ui.chevron/>
                     </a>
                 @endif
                 @if ($position['payout'] > 0)
@@ -25,14 +25,14 @@
                             <span class="block">Вам к выплате <span class="nums font-semibold text-accent-text">{{ Money::rub($position['payout']) }}</span></span>
                             <span class="row-sub">до {{ $position['payout_due']->translatedFormat('j M') }}</span>
                         </span>
-                        <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                        <x-ui.chevron/>
                     </a>
                 @endif
                 @if ($needDetails && ($position['payout'] > 0 || $position['paid_out'] > 0))
                     <a href="/account/money/details" class="row">
                         <span class="money-ico money-ico--urgent"><x-ui.icon name="user"/></span>
                         <span class="min-w-0 flex-1 text-urgent">Реквизиты для выплат не указаны</span>
-                        <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                        <x-ui.chevron/>
                     </a>
                 @endif
             </div>
@@ -49,7 +49,7 @@
                                         <span class="block font-medium">Реквизиты</span>
                                         <span class="row-sub">@if ($party->filled())<span class="tag">{{ $party->kind->label() }}</span>@if ($party->bankDetails())<span class="tag truncate">{{ $party->bank_name ?: 'карта' }}</span>@endif @else<span class="tag">не указаны</span>@endif</span>
                                     </span>
-                                    <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                                    <x-ui.chevron/>
                                 </a>
                                 {{-- Акт сверки и Excel — одна форма, две кнопки; на телефоне во встроенный браузер. --}}
                                 <form method="get" action="/account/money/statement" class="mt-2 flex flex-col gap-3" data-turbo="false" data-controller="file" data-action="submit->file#share">

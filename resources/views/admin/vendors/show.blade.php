@@ -8,9 +8,9 @@
             <div class="min-w-0 flex-1">
                 <h1 class="text-2xl leading-tight"><x-vendor.name :vendor="$vendor"/></h1>
                 <div class="mt-2 flex flex-wrap gap-1.5">
-                    <x-ui.pill :tone="$vendor->is_active ? 'plain' : 'closed'" class="!min-h-0 !py-0.5 text-xs">{{ $vendor->is_active ? $vendor->kind->label() : 'выключен' }}</x-ui.pill>
+                    <x-ui.state :tone="$vendor->is_active ? 'plain' : 'closed'">{{ $vendor->is_active ? $vendor->kind->label() : 'выключен' }}</x-ui.state>
                     <span class="chip text-xs">{{ $vendor->deal_format->label() }}</span>
-                    @if ($vendor->silence_means_buy)<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">молчание = покупка</x-ui.pill>@endif
+                    @if ($vendor->silence_means_buy)<x-ui.state tone="urgent">молчание = покупка</x-ui.state>@endif
                 </div>
             </div>
             <button type="button" class="btn btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>

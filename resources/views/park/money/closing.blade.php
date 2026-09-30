@@ -20,8 +20,8 @@
                 <section>
                     {{-- Плательщик один на всю группу: и «некому выставить», и «нет реквизитов» — про него, в заголовке. --}}
                     <h2 class="list-head flex-wrap">{{ $partyName }} <span class="nums">{{ Money::rub($rows->sum('amount')) }}</span>
-                        @if (! $party)<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">некому выставить</x-ui.pill>
-                        @elseif (! $rows->first()['ready'])<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">нет реквизитов</x-ui.pill>@endif
+                        @if (! $party)<x-ui.state tone="danger">некому выставить</x-ui.state>
+                        @elseif (! $rows->first()['ready'])<x-ui.state tone="danger">нет реквизитов</x-ui.state>@endif
                     </h2>
                     <div class="list">
                         @foreach ($rows as $r)

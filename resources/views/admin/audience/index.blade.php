@@ -11,7 +11,7 @@
                             @if ($group->members->isNotEmpty())<span class="row-sub">{{ $group->members->map->shortName()->implode(', ') }}</span>@endif</span>
                         <span class="nums text-ink-dim">{{ $group->members->count() }}</span>
                     @else
-                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
+                        <x-ui.row-icon name="plus" tone="accent"/>
                         <span class="min-w-0 flex-1 font-medium">Новая группа</span>
                     @endif
                 </button>
@@ -49,7 +49,7 @@
                     @if ($preset)
                         <span class="min-w-0 flex-1"><span class="block font-medium">{{ $preset->name }}</span>@if ($preset->summary() !== $preset->name)<span class="row-sub">{{ $preset->summary() }}</span>@endif</span>
                     @else
-                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
+                        <x-ui.row-icon name="plus" tone="accent"/>
                         <span class="min-w-0 flex-1 font-medium">Новый шаблон</span>
                     @endif
                 </button>

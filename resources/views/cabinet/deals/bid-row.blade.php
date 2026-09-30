@@ -9,6 +9,6 @@
     </span>
     <span class="flex shrink-0 flex-col items-end gap-1.5">
         <span class="nums font-medium">{{ \App\Support\Money::rub($bid->amount) }}</span>
-        @if ($state)<x-ui.pill class="!min-h-0 !py-1 text-xs" :tone="$bid->state === \App\Offers\BidState::Declined ? 'danger' : 'closed'">{{ $bid->state->label() }}</x-ui.pill>@endif
+        @if ($state)<x-ui.state :tone="$bid->state === \App\Offers\BidState::Declined ? 'danger' : 'closed'">{{ $bid->state->label() }}</x-ui.state>@endif
     </span>
 </a>

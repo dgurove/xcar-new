@@ -8,8 +8,8 @@
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">
             <x-ui.contact :name="$user->name" :user="$user" sidebar>
                 <x-slot:chips>
-                    <x-ui.pill :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')" class="!min-h-0 !py-0.5 text-xs">{{ $user->role->label() }}</x-ui.pill>
-                    @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
+                    <x-ui.state :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')">{{ $user->role->label() }}</x-ui.state>
+                    @if ($user->isPending())<x-ui.state tone="urgent">Ждёт</x-ui.state>@elseif ($user->isRejected())<x-ui.state tone="danger">Отклонён</x-ui.state>@endif
                     @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}/{{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
                     @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif
                     @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="tag nums">{{ $user->phoneFormatted() }}</a>@endif

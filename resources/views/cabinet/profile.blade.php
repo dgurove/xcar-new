@@ -60,7 +60,7 @@
                             <span class="profile-icon"><x-ui.icon :name="$icon($link['href'])" class="size-[18px]"/></span>
                             <span class="min-w-0 flex-1 truncate">{{ $link['label'] }}</span>
                             <x-ui.badge :href="$link['href']" :badges="$badges"/>
-                            <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                            <x-ui.chevron/>
                         </a>
                     @endforeach
                 </div>
@@ -73,15 +73,7 @@
         <div class="[&>.list-head]:pt-0">
             <div class="list-head">Ваш менеджер</div>
             <div class="list">
-                @php $tag = $manager->phone ? 'a' : 'div'; @endphp
-                <{{ $tag }} @if ($manager->phone) href="tel:+{{ $manager->phone }}" @endif class="row">
-                    <x-ui.avatar :user="$manager" :size="44"/>
-                    <span class="min-w-0 flex-1">
-                        <span class="block truncate font-medium">{{ $manager->name }}</span>
-                        @if ($manager->phone)<span class="row-sub nums">{{ $manager->phoneFormatted() }}</span>@endif
-                    </span>
-                    @if ($manager->phone)<x-ui.icon name="phone" class="size-5 shrink-0 text-ink-muted"/>@endif
-                </{{ $tag }}>
+                <x-ui.person-row :user="$manager" :size="44" class="row"/>
             </div>
         </div>
     @endif
@@ -94,7 +86,7 @@
                 <button type="button" class="row w-full text-left" data-action="sheet#open">
                     <span class="profile-icon"><x-ui.icon name="key" class="size-[18px]"/></span>
                     <span class="min-w-0 flex-1">Сменить пароль</span>
-                    <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                    <x-ui.chevron/>
                 </button>
                 <x-ui.sheet id="password" title="Новый пароль" :open="$errors->has('current') || $errors->has('password')">
                     <form method="post" action="/account/password" class="flex flex-col gap-3">

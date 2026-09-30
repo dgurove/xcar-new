@@ -20,7 +20,7 @@
                         </span>
                     </span>
                     @if ($p['pay'] > 0)<span class="nums shrink-0">{{ Money::rub($p['pay']) }}</span>@endif
-                    <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                    <x-ui.chevron/>
                 </a>
             @endforeach
         </div>

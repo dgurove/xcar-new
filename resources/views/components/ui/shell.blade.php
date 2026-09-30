@@ -33,7 +33,8 @@
             {{ $slot }}
         @else
             <div {{ $attributes->merge(['class' => 'container-site pt-6 pb-10 sm:pt-8 sm:pb-14'.($narrow ? ' max-w-3xl' : '')]) }}>
-                @if ($site && !$installed)<x-ui.crumbs :trail="$trail"/>@endif
+                {{-- Крошки — веб-мебель для гостя и поисковиков; у вошедшего экран приложения, «назад» — в шапке. --}}
+                @if ($site && !$installed && ! auth()->check())<x-ui.crumbs :trail="$trail"/>@endif
                 @if ($heading || isset($actions) || ($back && $backRow))
                     {{-- Без заголовка и действий ряд нужен только ради круглой «‹» на десктопе: на телефоне она в шапке. --}}
                     <div @class(['has-back mb-4 flex-wrap items-center gap-x-4 gap-y-2', 'flex' => $heading || isset($actions), 'hidden md:flex' => !$heading && !isset($actions), 'max-md:hidden' => !$phoneHeading, 'md:hidden' => !$desktopHeading])>

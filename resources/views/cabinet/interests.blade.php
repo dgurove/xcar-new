@@ -16,7 +16,7 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <span class="truncate font-medium">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
-                            @if ($tag)<x-ui.pill tone="closed" class="!min-h-0 !py-0.5 text-xs">{{ $tag }}</x-ui.pill>@endif
+                            @if ($tag)<x-ui.state tone="closed">{{ $tag }}</x-ui.state>@endif
                         </div>
                         <div class="mt-1 flex flex-wrap items-center gap-1.5">
                             <span class="tag">{{ $status }}</span>

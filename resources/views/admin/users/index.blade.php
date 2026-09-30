@@ -43,7 +43,7 @@
                             @if (! $user->isBuyer() && $user->invite?->creator)<span>по ссылке {{ $user->invite->creator->shortName() }}</span>@endif
                         </div>
                     </div>
-                    @if ($user->isPending())<x-ui.pill tone="urgent" class="!min-h-0 shrink-0 !py-0.5 text-xs">Ждёт</x-ui.pill>@elseif ($user->isRejected())<x-ui.pill tone="danger" class="!min-h-0 shrink-0 !py-0.5 text-xs">Отклонён</x-ui.pill>@endif
+                    @if ($user->isPending())<x-ui.state tone="urgent" class="shrink-0">Ждёт</x-ui.state>@elseif ($user->isRejected())<x-ui.state tone="danger" class="shrink-0">Отклонён</x-ui.state>@endif
                     @if (!$user->isApproved() && !$user->is($me))
                         <x-admin.user-access :user="$user" :base="$base"/>
                     @endif

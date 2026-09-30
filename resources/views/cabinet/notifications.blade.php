@@ -5,7 +5,7 @@
         <span class="row">
             <span class="profile-icon"><x-ui.icon name="settings" class="size-[18px]"/></span>
             <span class="min-w-0 flex-1">Настройки уведомлений</span>
-            <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+            <x-ui.chevron/>
         </span>
     </a>
 

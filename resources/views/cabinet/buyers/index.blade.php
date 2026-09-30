@@ -14,20 +14,20 @@
     @unless ($term)
         <div class="list">
             <a href="/buyers/interest" class="row">
-                <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="flag" class="size-5"/></span>
+                <x-ui.row-icon name="flag"/>
                 <span class="min-w-0 flex-1 font-medium">Интерес</span>
                 @if ($interestNew)
                     <span class="badge">{{ $interestNew }}</span>
                 @elseif ($interestAll)
                     <span class="nums text-sm text-ink-muted">{{ $interestAll }}</span>
                 @endif
-                <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                <x-ui.chevron/>
             </a>
             {{-- На телефоне «Пригласить» — плашка внизу экрана; строкой — только на компьютере. --}}
             <a href="/account/invites" class="row max-md:!hidden">
-                <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="link" class="size-5"/></span>
+                <x-ui.row-icon name="link" tone="accent"/>
                 <span class="min-w-0 flex-1 font-medium">Пригласить</span>
-                <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                <x-ui.chevron/>
             </a>
         </div>
 
@@ -36,7 +36,7 @@
             <div class="list">
                 @foreach ($groups as $g)
                     <a href="/buyers/groups/{{ $g->id }}" class="row">
-                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="users" class="size-5"/></span>
+                        <x-ui.row-icon name="users"/>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate font-medium">{{ $g->name }}</span>
                             <span class="row-sub">
@@ -44,12 +44,12 @@
                                 @if ($groupSeen[$g->id] ?? 0)<span class="tag nums">видит {{ $groupSeen[$g->id] }}</span>@endif
                             </span>
                         </span>
-                        <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                        <x-ui.chevron/>
                     </a>
                 @endforeach
                 <div data-controller="sheet" class="contents">
                     <button type="button" class="row w-full text-left" data-action="sheet#open">
-                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
+                        <x-ui.row-icon name="plus" tone="accent"/>
                         <span class="min-w-0 flex-1 font-medium">Новая группа</span>
                     </button>
                     <x-ui.sheet id="group-new" title="Новая группа" :open="$errors->has('name')">
@@ -91,7 +91,7 @@
                             @if ($interests[$buyer->id] ?? 0)<span class="nums text-sm font-medium text-accent-text">интерес {{ $interests[$buyer->id] }}</span>@endif
                             @if ($seen[$buyer->id] ?? 0)<span class="nums text-sm text-ink-muted">видит {{ $seen[$buyer->id] }}</span>@endif
                         </span>
-                        <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                        <x-ui.chevron/>
                     </div>
                 @endforeach
             </div>

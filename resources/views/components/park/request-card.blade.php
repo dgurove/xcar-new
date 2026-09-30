@@ -23,7 +23,7 @@
         @if ($req->type === RequestType::Move && $req->yard)<span>{{ $req->yard->name }}</span>@endif
     </span>
     <x-slot:aside>
-        <x-ui.pill :tone="$tone" class="!min-h-0 !py-0.5 text-xs">{{ $req->type->label() }}</x-ui.pill>
+        <x-ui.state :tone="$tone">{{ $req->type->label() }}</x-ui.state>
         @if ($req->planned_at)<span class="nums text-xs {{ $req->isOverdue() ? 'text-danger' : 'text-ink-dim' }}">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif
     </x-slot:aside>
 </x-park.card>

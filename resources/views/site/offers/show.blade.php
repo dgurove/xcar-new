@@ -21,9 +21,6 @@
 <x-ui.shell :title="$offer->titleWithYear()" :back="[$gallery ? 'Галерея' : 'Предложения', $back]" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">
     <x-slot:actions>
         @if ($user?->role->canShare())<x-offer.share :offer="$offer" icon/>@endif
-        @if ($user?->isManager() && $offer->state->isPublic())
-            <button type="button" class="btn btn-s btn-quiet btn-round hidden lg:inline-flex" data-controller="emit" data-action="emit#send" data-emit-event-param="show:open" aria-label="Показать покупателям"><x-ui.icon name="users" class="size-5"/></button>
-        @endif
         @auth<x-offer.favorite :offer="$offer" variant="compact"/>@endauth
         <x-ui.nav-arrows class="ml-auto sm:ml-0"
             :prev="$position['prev'] ? $context->offerUrl($position['prev']) : null"
@@ -46,14 +43,14 @@
                 {{-- Менеджер: кому из его покупателей открыто (чип — и есть кнопка «закрыть», с подтверждением)
                      и кто проявил интерес. На телефоне — после цены и характеристик, в правой колонке — вторым. --}}
                 <section class="box order-3 lg:order-2" data-controller="sheet" data-action="show:open@window->sheet#open">
-                    <h2 class="text-lg">Покупатели</h2>
+                    <h2 class="box-title">Покупатели</h2>
                     @if ($showings->isEmpty())
                         <button type="button" class="btn btn-accent mt-4 w-full" data-action="sheet#open"><x-ui.icon name="users" class="size-5"/> Показать покупателям</button>
                     @else
                         <div class="mt-3 flex flex-wrap gap-1.5">
                             @foreach ($showings as $s)
                                 @php $who = $s->group ? 'группы «'.$s->group->name.'»' : $s->user?->shortName(); @endphp
-                                <form method="post" action="/buyers/showings" class="contents" data-turbo-confirm="Закрыть для {{ $who }}?" data-turbo-confirm-label="Закрыть" data-turbo-confirm-text="{{ $offer->titleWithYear() }} пропадёт из ленты.">
+                                <form method="post" action="/buyers/showings" class="contents" data-turbo-confirm="Закрыть для {{ $who }}?" data-turbo-confirm-label="Закрыть" data-turbo-confirm-text="{{ $offer->titleWithYear() }} пропадёт из ленты">
                                     @csrf @method('delete')
                                     <input type="hidden" name="offer" value="{{ $offer->id }}">
                                     <input type="hidden" name="{{ $s->group ? 'group' : 'user' }}" value="{{ $s->group_id ?? $s->user_id }}">
@@ -68,7 +65,7 @@
                         </div>
                     @endif
                     @if ($buyerInterests->isNotEmpty())
-                        <div class="mt-4 flex flex-col gap-2">
+                        <div class="list mt-4">
                             @foreach ($buyerInterests as $interest)
                                 @include('cabinet.buyers.interest-row', ['interest' => $interest, 'person' => true, 'car' => false])
                             @endforeach
@@ -83,12 +80,12 @@
             @endif
 
             @if ($dealInSheet && $price->shown())
-                <div class="nums order-1 text-[26px] leading-none lg:hidden" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
+                <div class="nums order-1 text-2xl leading-none lg:hidden" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
             @endif
 
             @if ($facts)
                 <section class="box order-2 lg:order-3">
-                    <h2 class="text-lg">Характеристики</h2>
+                    <h2 class="box-title">Характеристики</h2>
                     <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
                         @foreach ($facts as $label => $value)
                             <div @class(['min-w-0', 'col-span-2' => in_array($label, ['VIN', 'Осмотр', 'Повреждения'], true)])>
@@ -107,8 +104,8 @@
 
         @if ($offer->description)
             <section class="lg:col-start-1 lg:row-start-2">
-                <h2 class="text-xl">Описание</h2>
-                <p class="mt-4 whitespace-pre-line text-ink-muted">{{ $offer->description }}</p>
+                <h2 class="list-head">Описание</h2>
+                <p class="whitespace-pre-line text-ink-muted">{{ $offer->description }}</p>
             </section>
         @endif
     </div>

@@ -635,6 +635,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   span.pill:is(.pill-open, .pill-urgent, .pill-closed, .pill-danger, .pill-soft, .pill-plain),
   span.tag:is(.tag-urgent, .tag-danger) { background: none !important; padding-inline: 0 !important; min-height: 0; font-weight: 500; }
   span.pill.pill-plain { font-weight: 400; }
+  span.pill.pill-accent { background: none; padding-inline: 0; min-height: 0; color: var(--color-accent-text); }
+  /* x-ui.state — то же словом без капсулы, одним классом вместо «!min-h-0 !py-1 text-xs» у каждой пилюли. */
+  .state { @apply inline-flex items-center whitespace-nowrap text-xs font-medium; }
+  .state-open { @apply text-open; } .state-urgent { @apply text-urgent; } .state-closed { @apply text-closed; }
+  .state-danger { @apply text-danger; } .state-accent, .state-soft { @apply text-accent-text; } .state-plain { @apply font-normal text-ink-muted; }
 
   .badge { @apply inline-flex min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-4 text-white; }
 
@@ -665,6 +670,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 4.5rem; height: 3.25rem; }
   .row-photo img { @apply size-full object-cover; }
   .row-photo-s { width: 3rem; height: 2.25rem; }
+  .row-icon { @apply flex size-11 shrink-0 items-center justify-center rounded-full; }
+  .row-icon-plain { @apply bg-surface-3 text-ink; } .row-icon-accent { @apply bg-accent text-white; } .row-icon-soft { @apply bg-accent-soft text-accent-text; }
   /* Значок строки в «Настройках» (профиль): кружок поменьше аватара, чтобы группа читалась по иконкам, а не по кругам. */
   .profile-icon { @apply flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink; }
   .sheet .profile-icon, .box .profile-icon { @apply bg-surface; }

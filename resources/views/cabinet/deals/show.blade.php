@@ -34,7 +34,7 @@
                         <span class="nums block text-lg font-semibold">{{ \App\Support\Money::rub($deal->amount) }}</span>
                         <span class="row-sub nums">№ {{ $offer->number }}@if ($deal->state !== DealState::Active), <span class="{{ $deal->state === DealState::Done ? 'text-open' : 'text-danger' }}">{{ mb_strtolower($deal->state->label()) }}</span>@endif</span>
                     </span>
-                    <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                    <x-ui.chevron/>
                 </span>
             </a>
             @if ($deal->state !== DealState::Active)
@@ -44,7 +44,7 @@
                 {{-- Текущий этап — одной карточкой и первым. Просьба живёт внутри неё; ждут человека и срок вышел — карточка тревожная. --}}
                 <div class="box {{ $requirement && $position->isOverdue() ? 'box-urgent' : '' }}">
                     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        <h2 class="text-xl">{{ $position->stage->block?->name ?? 'Идёт работа' }}</h2>
+                        <h2>{{ $position->stage->block?->name ?? 'Идёт работа' }}</h2>
                         @if ($noInvoice)<p class="text-sm text-ink-muted">ждём нас</p>@else<x-route.clock :position="$position"/>@endif
                     </div>
                     {{-- Есть просьба — её текст и говорит, что делать; текст блока рядом повторял бы его слово в слово. --}}
@@ -78,7 +78,7 @@
 
                             @if ($payStep && $unpaid->isNotEmpty())
                                 <div class="mt-4 flex flex-wrap gap-2">
-                                    @foreach ($unpaid as $i)<x-ui.button :href="'/account/money/invoices/'.$i->id" size="s">Оплатить{{ $unpaid->count() > 1 ? ' '.$i->label() : '' }}</x-ui.button>@endforeach
+                                    @foreach ($unpaid as $i)<x-ui.button :href="'/account/money/deals/'.$deal->id" size="s">Оплатить{{ $unpaid->count() > 1 ? ' '.$i->label() : '' }}</x-ui.button>@endforeach
                                 </div>
                             @elseif ($requirement->asks === Asks::Document)
                                 <div class="mt-4" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files">
@@ -124,18 +124,19 @@
             @endif
 
             @if ($pastInvoices->isNotEmpty())
-                <div class="box">
-                    <h2 class="box-title">Счета</h2>
-                    <div class="list mt-3">
+                {{-- Счета и ответы — группами строк, как в «Настройках», а не списком внутри коробки. --}}
+                <section>
+                    <h2 class="list-head">Счета</h2>
+                    <div class="list">
                         @foreach ($pastInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@endforeach
                     </div>
-                </div>
+                </section>
             @endif
 
             @if ($deal->requirements->whereNotNull('done_at')->isNotEmpty())
-                <div class="box">
-                    <h2 class="box-title">Ваши ответы</h2>
-                    <div class="list mt-3">
+                <section>
+                    <h2 class="list-head">Ваши ответы</h2>
+                    <div class="list">
                         @foreach ($deal->requirements->whereNotNull('done_at') as $req)
                             @if (!empty($req->answer['exit']))
                                 <div class="px-4 py-3">
@@ -151,7 +152,7 @@
                             @endif
                         @endforeach
                     </div>
-                </div>
+                </section>
             @endif
         </div>
 
@@ -164,19 +165,9 @@
                     @endif
                     <div class="p-6">
                         <p class="nums text-[32px] font-bold leading-none">{{ \App\Support\Money::rub($deal->amount) }}</p>
-                        <p class="mt-2 text-sm text-ink-muted group-hover:text-accent-text">{{ $offer->titleWithYear() }}</p>
                     </div>
                 </a>
-                @if ($feeState !== CommissionState::Hidden)
-                    {{-- Вознаграждение открывается со счёта; до него менеджер видит только цену. --}}
-                    {{-- Подпись своей строкой, ниже сумма и состояние: в колонку 18rem три части в ряд не влезали, подпись рвалась.
-                         Пока ждёт — состояние серым текстом: серая пилюля на серой подложке пропадала. --}}
-                    <a href="/account/money/deals/{{ $deal->id }}" class="mx-6 mb-5 block rounded-(--radius-m) bg-surface-2 px-4 py-3 max-lg:mt-6">
-                        <span class="block text-sm text-ink-dim">Агентское вознаграждение</span>
-                        <span class="mt-0.5 flex flex-wrap items-center justify-between gap-2"><span class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</span>@if ($feeState->tone() === 'plain')<span class="text-sm text-ink-dim">{{ mb_strtolower($feeState->label()) }}</span>@else<x-ui.pill :tone="$feeState->tone()" class="!min-h-0 !py-1 text-xs">{{ mb_strtolower($feeState->label()) }}</x-ui.pill>@endif</span>
-                    </a>
-                @endif
-                <div class="px-6 pb-6 {{ $feeState === CommissionState::Hidden ? 'max-lg:pt-5' : '' }}">
+                <div class="px-6 pb-6 max-lg:pt-5">
                     {{-- На телефоне фото и цена — строкой сверху страницы, здесь остаются номера и адрес. --}}
                     <h2 class="box-title mb-3 lg:hidden">Транспортное средство</h2>
                     <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -184,6 +175,11 @@
                         @foreach (['Предложение' => $offer->number, 'ДЛ' => $offer->leaseRef(), 'Год' => $offer->year, 'VIN' => $offer->vin, 'Город' => $offer->settlement?->name, 'Адрес' => $offer->inspection_address] as $label => $value)
                             @if ($value)<div @class(['min-w-0', 'col-span-2' => in_array($label, ['VIN', 'Адрес'], true)])><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal">@if ($label === 'VIN')<x-ui.vin-code :vin="$value"/>@elseif (in_array($label, ['Город', 'Адрес'], true))<x-ui.place>{{ $value }}</x-ui.place>@elseif (in_array($label, ['ДЛ', 'Предложение'], true))<x-ui.copy-code :value="(string) $value"/>@else{{ $value }}@endif</dd></div>@endif
                         @endforeach
+                        {{-- Вознаграждение открывается со счёта (до него менеджер видит только цену) — фактом карточки, ссылкой на
+                             расчёт; раньше это была серая плашка внутри карточки. --}}
+                        @if ($feeState !== CommissionState::Hidden)
+                            <div class="col-span-2 min-w-0"><dt class="text-sm text-ink-dim">Агентское вознаграждение</dt><dd class="mt-0.5 flex flex-wrap items-baseline justify-between gap-2"><a href="/account/money/deals/{{ $deal->id }}" class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</a><x-ui.state :tone="$feeState->tone()">{{ mb_strtolower($feeState->label()) }}</x-ui.state></dd></div>
+                        @endif
                     </dl>
                 </div>
             </div>

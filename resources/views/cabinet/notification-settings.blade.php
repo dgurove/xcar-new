@@ -14,7 +14,7 @@
                 @if ($push)
                     {{-- Пуш — про это устройство, не про аккаунт: тумблером управляет push_controller, не форма. --}}
                     <label class="row row-switch" data-controller="push">
-                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="bell" class="size-5"/></span>
+                        <x-ui.row-icon name="bell"/>
                         <span class="min-w-0 flex-1">
                             <span class="block font-medium">На этот телефон</span>
                             <span class="row-sub text-danger" data-push-target="state"></span>
@@ -24,7 +24,7 @@
                 @endif
                 @if ($user->email)
                     <label class="row row-switch">
-                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="mail" class="size-5"/></span>
+                        <x-ui.row-icon name="mail"/>
                         <span class="min-w-0 flex-1">
                             <span class="block font-medium">На почту</span>
                             <span class="row-sub"><span class="tag">{{ $user->email }}</span></span>
@@ -73,7 +73,7 @@
             <h2 class="text-xl">Тихие часы</h2>
             <div class="mt-4 flex flex-col gap-2">
                 <label class="row row-switch">
-                    <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="moon" class="size-5"/></span>
+                    <x-ui.row-icon name="moon"/>
                     <span class="min-w-0 flex-1">
                         <span class="block font-medium">Без уведомлений на телефон ночью</span>
                         <span class="row-sub"><span class="tag nums">22:00 — 08:00</span></span>
@@ -87,7 +87,7 @@
     <form method="post" action="/account/notifications/check" class="contents">
         @csrf
         <button class="row w-full text-left">
-            <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="send" class="size-5"/></span>
+            <x-ui.row-icon name="send" tone="accent"/>
             <span class="min-w-0 flex-1 font-medium">Проверить</span>
         </button>
     </form>

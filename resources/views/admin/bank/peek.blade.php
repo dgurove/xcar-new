@@ -6,7 +6,7 @@
         <x-slot:marks>
             <span class="tag nums font-semibold">{{ Money::exact($tx->amount) }}</span>
             <span class="tag nums">{{ $tx->booked_at->translatedFormat('j M Y') }}</span>
-            <x-ui.pill :tone="$tx->tone()" class="!min-h-0 !py-1 text-xs">{{ mb_strtolower($tx->stateLabel()) }}</x-ui.pill>
+            <x-ui.state :tone="$tx->tone()">{{ mb_strtolower($tx->stateLabel()) }}</x-ui.state>
             @if ($tx->counterparty_inn)<span class="tag nums">ИНН {{ $tx->counterparty_inn }}</span>@endif
             @if ($tx->doc_number)<span class="tag nums">п/п {{ $tx->doc_number }}</span>@endif
         </x-slot:marks>

@@ -43,21 +43,11 @@
                 @if ($offers->isEmpty())
                     @if ($buyer && !$filters)
                         {{-- Покупателю пока ничего не открыли: одна фраза и контакт менеджера строкой. --}}
-                        <x-ui.empty id="catalog-empty" class="!py-16">{{ $manager ? $manager->shortName().' пока ничего вам не открыл.' : 'Вам пока ничего не открыли.' }}</x-ui.empty>
-                        @if ($manager)
-                            @php $tag = $manager->phone ? 'a' : 'div'; @endphp
-                            <{{ $tag }} @if ($manager->phone) href="tel:+{{ $manager->phone }}" @endif class="row mx-auto mt-4 max-w-sm">
-                                <x-ui.avatar :user="$manager" :size="44"/>
-                                <span class="min-w-0 flex-1">
-                                    <span class="block truncate">{{ $manager->name }}</span>
-                                    @if ($manager->phone)<span class="row-sub"><span class="nums">{{ $manager->phoneFormatted() }}</span></span>@endif
-                                </span>
-                                @if ($manager->phone)<span class="btn btn-s btn-quiet btn-round"><x-ui.icon name="phone" class="size-5"/></span>@endif
-                            </{{ $tag }}>
-                        @endif
+                        <x-ui.empty id="catalog-empty" class="!py-16">{{ $manager ? $manager->shortName().' пока ничего вам не открыл' : 'Вам пока ничего не открыли' }}</x-ui.empty>
+                        @if ($manager)<div class="list mx-auto mt-4 max-w-sm"><x-ui.person-row :user="$manager" :size="44" class="row"/></div>@endif
                     @else
                     <x-ui.empty :href="$gallery ? '/gallery' : '/offers'" :link="$filters ? 'Сбросить фильтры' : null" id="catalog-empty">
-                        @if ($filters) По этим условиям ничего нет. @elseif ($gallery) Пока пусто. @else Предложений пока нет. @endif
+                        @if ($filters) По этим условиям ничего нет @elseif ($gallery) Пока пусто @else Предложений пока нет @endif
                     </x-ui.empty>
                     @endif
                 @else

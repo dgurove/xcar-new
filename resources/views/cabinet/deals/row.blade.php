@@ -23,10 +23,10 @@
     <span class="flex max-w-[45%] shrink-0 flex-col items-end gap-1.5">
         <span class="nums font-medium">{{ \App\Support\Money::rub($deal->amount) }}</span>
         @if (! $active)
-            <x-ui.pill class="!min-h-0 !py-1 text-xs" :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.pill>
+            <x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.state>
         @else
             {{-- Этап в покое серый: лайм — глагол. Оранжевым становится просрочка. --}}
-            <x-ui.pill class="!min-h-0 max-w-full overflow-hidden !py-1 text-xs max-sm:!hidden" :tone="$alarm ? 'urgent' : 'plain'"><span class="min-w-0 truncate">{{ $position?->stage->block?->name ?? 'Идёт работа' }}</span></x-ui.pill>
+            <x-ui.state :tone="$alarm ? 'urgent' : 'plain'" class="max-w-full overflow-hidden max-sm:!hidden"><span class="min-w-0 truncate">{{ $position?->stage->block?->name ?? 'Идёт работа' }}</span></x-ui.state>
         @endif
     </span>
 </a>

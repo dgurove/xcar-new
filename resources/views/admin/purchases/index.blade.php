@@ -25,7 +25,7 @@
                     </div>
                 </div>
                 <span class="nums shrink-0 text-ink-dim">{{ $p->cars_count }} ТС</span>
-                <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                <x-ui.chevron/>
             </a>
         @empty
             <x-ui.empty>Закупок ещё нет</x-ui.empty>

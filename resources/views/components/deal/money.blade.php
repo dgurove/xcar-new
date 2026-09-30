@@ -26,8 +26,8 @@
     </dl>
     <div class="mt-3 flex flex-wrap items-center gap-1.5">
         @if ($deal->commission)<span class="tag">{{ mb_strtolower($deal->commission_mode->label()) }}</span>@endif
-        @if ($state !== CommissionState::Hidden)<x-ui.pill :tone="$state->tone()" class="!min-h-0 !py-1 text-xs">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.$fee->paid_at->translatedFormat('j M') : '' }}</x-ui.pill>@endif
-        @if ($deal->commission && $party && ! $party->payoutReady())<x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs">Реквизитов для выплаты нет</x-ui.pill>@endif
+        @if ($state !== CommissionState::Hidden)<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.$fee->paid_at->translatedFormat('j M') : '' }}</x-ui.state>@endif
+        @if ($deal->commission && $party && ! $party->payoutReady())<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
         @if ($deal->isActive())
             @if ($deal->commissionEditable())
                 <div data-controller="sheet" class="contents">

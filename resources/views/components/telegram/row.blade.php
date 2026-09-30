@@ -7,7 +7,7 @@
             <span class="profile-icon tg-tile"><x-telegram.logo plain class="size-[18px]"/></span>
             <span class="min-w-0 flex-1">Telegram</span>
             <span class="truncate text-ink-muted">{{ $user->telegram_username ? '@'.$user->telegram_username : 'подключён' }}</span>
-            <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+            <x-ui.chevron/>
         </button>
         <x-ui.sheet id="telegram-account" title="Telegram">
             <div class="flex flex-col gap-5">
@@ -41,6 +41,6 @@
         <span class="profile-icon tg-tile"><x-telegram.logo plain class="size-[18px]"/></span>
         <span class="min-w-0 flex-1">Telegram</span>
         <span class="font-medium" style="color: var(--color-telegram)">Подключить</span>
-        <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+        <x-ui.chevron/>
     </button>
 @endif

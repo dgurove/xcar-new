@@ -11,7 +11,7 @@
 <div class="list">
     <div data-controller="sheet" class="contents">
         <button type="button" class="row w-full text-left transition-colors hover:bg-hover" data-action="sheet#open">
-            <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
+            <x-ui.row-icon name="plus" tone="accent"/>
             <span class="min-w-0 flex-1 font-medium">Новая ссылка</span>
         </button>
         <x-ui.sheet id="invite-new" title="Новая ссылка" :open="$errors->any()">

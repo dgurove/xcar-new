@@ -14,11 +14,11 @@
                         </span>
                     </span>
                     @if (! $p->billable() && ($p->is_self || $p->kind !== PartyKind::Person || $p->invoices_count))
-                        <x-ui.pill tone="urgent" class="!min-h-0 shrink-0 !py-0.5 text-xs">{{ $p->filled() ? 'Нет банка' : 'Нет реквизитов' }}</x-ui.pill>
+                        <x-ui.state tone="urgent" class="shrink-0">{{ $p->filled() ? 'Нет банка' : 'Нет реквизитов' }}</x-ui.state>
                     @elseif ($p->invoices_count)
                         <span class="nums shrink-0 text-sm text-ink-dim">{{ $p->invoices_count }} {{ \App\Support\Plural::of($p->invoices_count, ['счёт', 'счёта', 'счетов']) }}</span>
                     @endif
-                    <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                    <x-ui.chevron/>
                 </button>
                 <x-ui.sheet id="party-{{ $p->id }}" :title="$p->name" wide>@include('park.money.party-form', ['party' => $p])</x-ui.sheet>
             </div>

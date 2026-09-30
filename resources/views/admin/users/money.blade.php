@@ -2,8 +2,8 @@
 @php use App\Support\Money; $p = $position; @endphp
 @if ($p['overdue'] > 0 || $p['claimed'] > 0 || $p['pay'] > 0 || $p['payout'] > 0 || $p['paid_out'] > 0)
     <div class="flex flex-wrap gap-1.5">
-        @if ($p['overdue'] > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-1 text-xs nums">просрочено {{ Money::rub($p['overdue']) }}</x-ui.pill>@endif
-        @if ($p['claimed'] > 0)<x-ui.pill tone="urgent" class="!min-h-0 !py-1 text-xs nums">сообщил об оплате {{ Money::rub($p['claimed']) }}</x-ui.pill>@endif
+        @if ($p['overdue'] > 0)<x-ui.state tone="danger" class="nums">просрочено {{ Money::rub($p['overdue']) }}</x-ui.state>@endif
+        @if ($p['claimed'] > 0)<x-ui.state tone="urgent" class="nums">сообщил об оплате {{ Money::rub($p['claimed']) }}</x-ui.state>@endif
         @if ($p['pay'] > 0)<span class="chip nums">нам {{ Money::rub($p['pay']) }}</span>@endif
         @if ($p['payout'] > 0)<span class="chip nums text-urgent">мы должны {{ Money::rub($p['payout']) }}</span>@endif
         @if ($p['paid_out'] > 0)<span class="tag nums">выплачено {{ Money::rub($p['paid_out']) }}</span>@endif
@@ -20,7 +20,7 @@
             @else
                 <div class="mt-1 text-sm text-ink-muted">Не указаны</div>
             @endif
-            @if (! $party->payoutReady())<x-ui.pill tone="urgent" class="mt-2 !min-h-0 !py-1 text-xs">Реквизитов для выплаты нет</x-ui.pill>@endif
+            @if (! $party->payoutReady())<x-ui.state tone="urgent" class="mt-2">Реквизитов для выплаты нет</x-ui.state>@endif
         </div>
         <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Изменить реквизиты"><x-ui.icon name="edit" class="size-5"/></button>
     </div>

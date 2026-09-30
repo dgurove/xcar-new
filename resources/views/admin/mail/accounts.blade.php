@@ -1,7 +1,7 @@
 <x-ui.cabinet title="Ящики">
     <div class="list">
         <a href="/settings/mailboxes/new" class="row">
-            <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-5"/></span>
+            <x-ui.row-icon name="plus" tone="accent"/>
             <span class="min-w-0 flex-1 font-medium">Новый ящик</span>
         </a>
         @foreach ($accounts as $account)

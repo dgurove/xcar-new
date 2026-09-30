@@ -10,10 +10,10 @@
     <div class="max-w-3xl">
         <div class="-mt-2 mb-4 flex items-center gap-1.5">
             <div class="flex min-w-0 flex-1 flex-wrap gap-1.5">
-            <x-ui.pill :tone="$vendor->is_active ? 'plain' : 'closed'" class="!min-h-0 !py-0.5 text-xs">{{ $vendor->is_active ? $vendor->kind->label() : 'не работаем' }}</x-ui.pill>
-            @if ($noBank)<x-ui.pill tone="urgent" class="!min-h-0 !py-0.5 text-xs">нет реквизитов для счёта</x-ui.pill>@endif
-            @if ($vendor->agreementExpired())<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs">договор истёк</x-ui.pill>@endif
-            @if ($vendor->release_by_qr)<x-ui.pill tone="soft" class="!min-h-0 !py-0.5 text-xs">выдача по QR</x-ui.pill>@endif
+            <x-ui.state :tone="$vendor->is_active ? 'plain' : 'closed'">{{ $vendor->is_active ? $vendor->kind->label() : 'не работаем' }}</x-ui.state>
+            @if ($noBank)<x-ui.state tone="urgent">нет реквизитов для счёта</x-ui.state>@endif
+            @if ($vendor->agreementExpired())<x-ui.state tone="danger">договор истёк</x-ui.state>@endif
+            @if ($vendor->release_by_qr)<x-ui.state tone="soft">выдача по QR</x-ui.state>@endif
             </div>
             @if ($manage)<button type="button" class="btn btn-quiet btn-round shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="vendor-form:open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>@endif
         </div>

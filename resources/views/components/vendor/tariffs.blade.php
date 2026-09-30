@@ -51,7 +51,7 @@
                             @endforeach
                         </span>
                     </span>
-                    @if ($manage)<x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>@endif
+                    @if ($manage)<x-ui.chevron/>@endif
                 </button>
                 @if ($manage)
                 {{-- Шторка остаётся открытой после сохранения (session('sheet')): прайс вводят лестницу за лестницей. --}}

@@ -11,7 +11,7 @@
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
         <x-slot:marks>
-            <x-ui.pill :tone="$state->tone()" class="!min-h-0 !py-1 text-xs">{{ $state->label() }}</x-ui.pill>
+            <x-ui.state :tone="$state->tone()">{{ $state->label() }}</x-ui.state>
             @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif
             @if ($vehicle->ref)<x-ui.copy-code class="tag" :value="$vehicle->ref"/>@endif
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>

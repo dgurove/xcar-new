@@ -10,7 +10,7 @@
 <form method="post" action="/offers/{{ $offer->number }}/confirm" class="mt-6" data-telegram-moment="bid" data-controller="bid draft" data-bid-asking-value="{{ $asking }}">
     @csrf
     @if ($myBid)
-        <p class="box-nested mb-4 text-sm">Ваша цена: <span class="nums font-semibold">{{ \App\Support\Money::rub($myBid->amount) }}</span> — {{ mb_strtolower($myBid->state->label()) }}</p>
+        <p class="mb-4 text-sm text-ink-muted">Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span>, {{ mb_strtolower($myBid->state->label()) }}</p>
     @endif
     @if ($asking)
         <div class="flex flex-wrap gap-2">

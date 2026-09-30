@@ -58,7 +58,7 @@
         @elseif ($days !== null)
             <span class="nums text-sm">{{ $days }}&nbsp;д</span>
             @if ($total && $total['amount'] > 0)<span class="nums">{{ Money::rub($total['amount']) }}</span>@endif
-            @if ($debt > 0)<x-ui.pill tone="danger" class="!min-h-0 !py-0.5 text-xs nums">{{ Money::rub($debt) }}</x-ui.pill>@endif
+            @if ($debt > 0)<x-ui.state tone="danger" class="nums">{{ Money::rub($debt) }}</x-ui.state>@endif
         @elseif ($state === VehicleState::Expected)
             <span class="text-sm text-ink-muted">{{ $noRequest ? 'без заявки' : 'ожидается' }}</span>
         @elseif ($state === VehicleState::Released && $vehicle->released_at)

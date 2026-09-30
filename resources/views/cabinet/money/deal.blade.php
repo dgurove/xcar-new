@@ -44,7 +44,7 @@
                     @endif
                     @if ($i->getFirstMedia('file'))
                         <x-ui.doc :doc="['url' => '/account/invoices/'.$i->id.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="row">
-                            <span class="money-ico"><x-ui.icon name="file"/></span><span class="min-w-0 flex-1">Счёт PDF</span><x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                            <span class="money-ico"><x-ui.icon name="file"/></span><span class="min-w-0 flex-1">Счёт PDF</span><x-ui.chevron/>
                         </x-ui.doc>
                     @endif
                 </div>
@@ -70,7 +70,7 @@
         @endif
 
         <div class="list">
-            <a href="/deals/{{ $deal->id }}" class="row"><span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span><span class="min-w-0 flex-1">Сделка<span class="row-sub nums">№ {{ $offer->number }}</span></span><x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/></a>
+            <a href="/deals/{{ $deal->id }}" class="row"><span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span><span class="min-w-0 flex-1">Сделка<span class="row-sub nums">№ {{ $offer->number }}</span></span><x-ui.chevron/></a>
         </div>
     </div>
 

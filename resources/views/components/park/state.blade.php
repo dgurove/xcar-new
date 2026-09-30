@@ -4,7 +4,7 @@
      нужен статус, а не всё про неё («номера и парковку я увижу в „Наличии“»). --}}
 @props(['vehicle', 'only' => false])
 @php $days = $vehicle->daysStored(); @endphp
-<x-ui.pill :tone="match ($vehicle->state->tone()) { 'open' => 'open', 'urgent' => 'urgent', default => 'closed' }" class="!min-h-0 !py-1 text-xs">{{ $vehicle->state->label() }}</x-ui.pill>
+<x-ui.state :tone="match ($vehicle->state->tone()) { 'open' => 'open', 'urgent' => 'urgent', default => 'closed' }">{{ $vehicle->state->label() }}</x-ui.state>
 @if ($only)
 @elseif ($vehicle->state === \App\Park\VehicleState::Stored)
     @if ($vehicle->yard)<x-ui.place class="chip">{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place>@endif
@@ -17,5 +17,5 @@
     <span class="chip">{{ $vehicle->cancel_reason }}</span>
 @endif
 @unless ($only)
-    @foreach (\App\Park\Alerts::of($vehicle) as $alert)<x-ui.pill :tone="$alert['tone']" class="!min-h-0 !py-1 text-xs">{{ $alert['label'] }}</x-ui.pill>@endforeach
+    @foreach (\App\Park\Alerts::of($vehicle) as $alert)<x-ui.state :tone="$alert['tone']">{{ $alert['label'] }}</x-ui.state>@endforeach
 @endunless

@@ -96,7 +96,7 @@
                     <x-ui.doc :doc="['url' => str_replace('{id}', $first->id, $pdf), 'type' => 'pdf', 'name' => 'schet-'.$first->number.'.pdf', 'label' => 'Счёт '.$first->label()]" class="row">
                         <span class="money-ico"><x-ui.icon name="qr"/></span>
                         <span class="min-w-0 flex-1">Счёт {{ $first->label() }} с QR для банка</span>
-                        <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                        <x-ui.chevron/>
                     </x-ui.doc>
                 </div>
             @endif

@@ -42,7 +42,7 @@
                             <div class="row-sub">@unless ($yard->is_active)<span class="text-ink">закрыта</span>@endunless<span>{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</span>@if ($yard->capacity)<span class="nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) }} свободно</span>@endif</div>
                         </div>
                         <span class="nums shrink-0 text-ink-dim">{{ $yard->stored_vehicles_count }}</span>
-                        <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                        <x-ui.chevron/>
                     </button>
                     <x-ui.sheet id="yard-{{ $yard->id }}" :title="$yard->name" wide>
                         @if ($yard->rows)<div class="mb-4"><x-park.yard-map :yard="$yard" :occupied="$yard->storedVehicles->whereNotNull('spot')->keyBy('spot')"/></div>@endif
@@ -57,7 +57,7 @@
                 <div class="box flex min-w-0 flex-col gap-3" data-controller="sheet">
                     <div class="flex items-start gap-2">
                         <div class="min-w-0 flex-1">
-                            <div class="font-medium">{{ $yard->name }}@unless ($yard->is_active) <x-ui.pill tone="closed" class="!min-h-0 !py-1 text-xs">закрыта</x-ui.pill>@endunless</div>
+                            <div class="font-medium">{{ $yard->name }}@unless ($yard->is_active) <x-ui.state tone="closed">закрыта</x-ui.state>@endunless</div>
                             <div class="mt-1 flex flex-wrap items-center gap-1.5">
                                 @if ($yard->settlement || $yard->address)<x-ui.place class="tag">{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</x-ui.place>@endif
                                 @if ($yard->capacity)<a href="/cars?yard={{ $yard->id }}" class="tag nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) }} свободно</a>@else<a href="/cars?yard={{ $yard->id }}" class="tag nums">{{ $yard->stored_vehicles_count }} ТС</a>@endif
