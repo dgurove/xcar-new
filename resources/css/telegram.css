@@ -8,6 +8,9 @@
   .dark { --tg-wall: #0e1621; --tg-bubble: #182533; --tg-bubble-ink: #e7ecf0; --tg-meta: #6d8196; --tg-key: rgb(255 255 255 / .1); }
 
   .btn-telegram { background: var(--color-telegram); color: #fff; }
+  /* Ник Telegram у человека — сама ссылка в чат: пилюля фирменного синего с белым знаком, отдельной кнопки нет. */
+  .tag.tag-telegram { --tag-bg: var(--color-telegram); --tag-text: #fff; --tag-bg-d: var(--color-telegram); --tag-text-d: #fff; gap: .25rem; }
+  @media (hover: hover) { a.tag.tag-telegram:hover { --tag-bg: var(--color-telegram-hover); --tag-bg-d: var(--color-telegram-hover); } }
   @media (hover: hover) { .btn-telegram:hover { background: var(--color-telegram-hover); } }
   .btn-telegram:active { background: var(--color-telegram-hover); }
 

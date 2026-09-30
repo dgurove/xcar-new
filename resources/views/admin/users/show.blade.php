@@ -14,7 +14,7 @@
                     @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif
                     @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="tag nums">{{ $user->phoneFormatted() }}</a>@endif
                     @if ($user->email)<a href="mailto:{{ $user->email }}" class="tag">{{ $user->email }}</a>@endif
-                    @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="tag">{{ '@'.$user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span class="tag">Telegram</span>@endif
+                    @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="tag tag-telegram"><x-telegram.logo plain class="size-3.5"/>{{ $user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span class="tag tag-telegram"><x-telegram.logo plain class="size-3.5"/>Telegram</span>@endif
                     <span class="tag nums">с {{ $user->created_at->translatedFormat('j M Y') }}</span>
                     @if ($user->isManager())<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="tag">{{ $buyersCount }} {{ \App\Support\Plural::of($buyersCount, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
                     @if ($seen !== null)<span class="tag">видит {{ $seen }}</span>@endif
@@ -23,7 +23,6 @@
                 <x-slot:acts>
                     @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif
                     @if ($user->email)<a href="mailto:{{ $user->email }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="mail"/></span>Написать</a>@endif
-                    @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="act"><span class="btn btn-telegram btn-round"><x-telegram.logo plain/></span>Telegram</a>@endif
                     @if ($me->isAdmin() && $user->telegram_chat_id && \App\Support\Surface::current() === \App\Support\Surface::Crm)<a href="/settings/telegram/{{ $user->telegram_chat_id }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="chat"/></span>Переписка</a>@endif
                     @if ($me->isAdmin())<button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="edit"/></span>Изменить</button>@endif
                     @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())
