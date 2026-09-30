@@ -17,6 +17,8 @@
     // Покупатель: интерес уже отмечен? Каталог грузит его интерес одним запросом, иначе — точечно.
     $myInterest = $user?->isBuyer() ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
     $seen = $user?->isManager() && !$gallery ? \App\Offers\Showing::remembered($offer->id) : null;
+    // «Показать покупателям» — круглой кнопкой рядом с «Подтвердить», число открытых — бейджем на ней (чипа «видят N» тогда нет).
+    $canShow = $user?->isManager() && $offer->state === \App\Offers\OfferState::Open;
     $sizes = \App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request()));
     // Первые две карточки страницы — кадр с высоким приоритетом (счётчик на запросе).
     $nth = request()->attributes->get('card.nth', 0);
@@ -63,7 +65,7 @@
 
     <div class="card-extra">
         <x-offer.tags :offer="$offer"/>
-        @if ($seen)<span class="tag nums">видят {{ $seen }}</span>@endif
+        @if ($seen && !$canShow)<span class="tag nums">видят {{ $seen }}</span>@endif
     </div>
     <span class="card-aside">
         @if ($prices)
@@ -87,6 +89,9 @@
             <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Подтвердить</a>
         @else
             <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Открыть</a>
+        @endif
+        @if ($canShow)
+            <a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="btn btn-s btn-quiet btn-round relative" aria-label="{{ $seen ? 'Показано '.$seen.' покупателям' : 'Показать покупателям' }}"><x-ui.icon name="users" class="size-5"/>@if ($seen)<span class="badge nums">{{ $seen }}</span>@endif</a>
         @endif
         @if (!$gallery && $user?->canChat() && $offer->chat_enabled)
             <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-s btn-quiet btn-round" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-5"/></a>
