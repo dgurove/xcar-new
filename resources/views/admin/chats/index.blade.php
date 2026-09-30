@@ -10,14 +10,14 @@
 <x-ui.shell :title="$chat ? $chat->displayName() : 'Чаты'" :heading="false" :back="$chat ? ['Чаты', '/work/chats'.$qs] : null" :back-row="false">
     <div class="chat-crm-top">
         <x-admin.work-titles current="chats" :count="$chats->total()"/>
-        <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\ChatController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" name="chats">
-            <x-slot:filters>
-                <input name="q" value="{{ $q }}" placeholder="Имя, телефон, менеджер, номер предложения" class="field-input field-s">
-            </x-slot:filters>
-        </x-ui.toolbar>
+        <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\ChatController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" name="chats"/>
     </div>
     <div class="chat-split chat-split-crm mt-6 {{ $current ? 'has-current' : '' }}" data-controller="split">
         <div class="chat-rows">
+            <form method="get" action="/work/chats" class="chat-rows-search" data-turbo-action="replace">
+                <input type="hidden" name="preset" value="{{ $preset }}">
+                <input name="q" value="{{ $q }}" placeholder="Имя, телефон, менеджер, номер" class="field-input field-s w-full" type="search" enterkeyhint="search">
+            </form>
             @if ($chats->isEmpty())
                 <x-ui.empty>Чатов нет</x-ui.empty>
             @else
