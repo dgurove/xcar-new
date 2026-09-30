@@ -206,6 +206,14 @@
   /* Заголовок блока — один размер на карточку, шторку и окно; вложенный блок не крупнее текста,
      иначе он спорит с шагом, внутрь которого вложен. Разметка размера не ставит. */
   .box > h2, .box > div > h2 { font-size: var(--text-lg); }
+  /* Интерфейс, а не текст страницы: строки, пилюли, теги, шаги, подписи и меню не выделяются и не дают курсор-
+     каретку, как в приложении. Содержимое (письма, комментарии, чаты, поля) выделяется как было. */
+  .row, .pill, .tag, .chip, .step-head, .step-title, .box-title, .list-head, .menu, .toolbar, .tabbar, .header, dt, label {
+    -webkit-user-select: none; user-select: none; cursor: default;
+  }
+  a.row, button.row, a.pill, button.pill, a.chip, button.chip, .menu a, .menu button, label:has(input) { cursor: pointer; }
+  /* Заголовок раздела — подписью группы, как в приложении: мелко, серым, без веса статьи. */
+  .box h2.box-title { font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-dim); letter-spacing: .01em; }
   .box-nested > h2, .box-nested > div > h2, .box-nested summary h2 { font-size: var(--text-base); }
 
   /* 16px — ниже iOS приближает страницу при фокусе в поле. Кнопке это не нужно: она не поле,
@@ -619,6 +627,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .pill-danger { @apply bg-danger-soft text-danger; }
   .pill-soft   { @apply bg-accent-soft text-accent-text; }
   .pill-plain  { @apply bg-surface-2 text-ink-muted; }
+  /* Состояние («оплачен», «просрочен», «идёт сделка») — цветным словом, как в приложении, а не капсулой: капсула
+     остаётся у того, что нажимается (a, button). Так же теги-предупреждения («ниже минимальной»). */
+  span.pill:is(.pill-open, .pill-urgent, .pill-closed, .pill-danger, .pill-soft, .pill-plain),
+  span.tag:is(.tag-urgent, .tag-danger) { background: none !important; padding-inline: 0 !important; min-height: 0; font-weight: 500; }
+  span.pill.pill-plain { font-weight: 400; }
 
   .badge { @apply inline-flex min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-4 text-white; }
 

@@ -82,7 +82,9 @@
 
     {{-- Десктоп --}}
     <div class="container-site hidden grid-cols-[auto_1fr] items-start gap-1 py-2 md:grid">
-        <a href="{{ $home }}" class="row-span-2 mr-1 flex shrink-0 items-center self-start" aria-label="XCar"><x-ui.brand class="h-16"/></a>
+        {{-- Знак приложения, а не шапка сайта: надпись CRM широкая — ниже ростом и по центру двух рядов, квадратные знаки как были. --}}
+        @php $wordmark = $surface === \App\Support\Surface::Crm; @endphp
+        <a href="{{ $home }}" class="row-span-2 mr-2 flex shrink-0 items-center {{ $wordmark ? 'self-center' : 'self-start' }}" aria-label="XCar"><x-ui.brand :class="$wordmark ? 'h-9' : 'h-16'"/></a>
         <div class="header-row">
             {{-- Поиск — по закрытому: гостю не нужен. --}}
             @if ($user)
@@ -92,7 +94,7 @@
             </form>
             @endif
             @foreach ($top as $item)
-                <a href="{{ $item['href'] }}" class="header-btn header-h flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>{{ $item['label'] }}@if (str_starts_with($item['href'], 'http')) ↗@endif</a>
+                <a href="{{ $item['href'] }}" class="header-btn header-h flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>{{ $item['label'] }}</a>
             @endforeach
             @if ($user)
                 <a href="{{ $cabinet }}" class="header-btn header-h ml-auto max-w-[11rem] gap-2 px-4 text-sm" @if (\App\Support\Nav::inCabinet($path, $user, 'desktop')) aria-current="page" @endif>

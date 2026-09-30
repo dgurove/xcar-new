@@ -46,7 +46,8 @@
         @endif
     </main>
 
-    @if ($site && !$installed)<x-ui.footer/>@endif
+    {{-- Подвал — у сайта для гостя; у вошедшего экран приложения, документы в кабинете (Nav::cabinet). --}}
+    @if ($site && !$installed && ! auth()->check())<x-ui.footer/>@endif
     @auth<x-ui.docs/>@endauth
     <x-ui.tabbar/>
     <x-ui.toasts/>

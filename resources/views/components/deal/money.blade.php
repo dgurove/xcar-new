@@ -42,27 +42,27 @@
         @endif
     </div>
     @if ($invoices->isNotEmpty())
-        <div class="mt-3 flex flex-col gap-2">
+        {{-- Счета — одной группой строк через линию, как список в приложении: слева счёт и его состояние словом,
+             справа сумма; «Выплатить» — только у вознаграждения к выплате. --}}
+        <div class="list mt-4">
             @foreach ($invoices as $i)
-                <div class="row !py-2.5 {{ $i->claims->isNotEmpty() ? 'bg-urgent-soft' : '' }}">
+                <div class="row {{ $i->claims->isNotEmpty() ? 'bg-urgent-soft' : '' }}">
                     <a href="/work/money/invoices/{{ $i->id }}" class="min-w-0 flex-1">
                         <span class="block truncate">{{ $i->isOwed() ? 'Вознаграждение менеджеру' : 'Счёт '.$i->label() }}@unless ($i->isOwed())<span class="text-ink-muted"> <x-vendor.name :party="$i->party"/></span>@endunless</span>
                         <span class="row-sub"><x-billing.light :invoice="$i"/>@if ($i->isPartial())<span class="tag nums">из {{ Money::rub($i->total) }}</span>@endif</span>
                     </a>
-                    <span class="flex shrink-0 flex-col items-end gap-1.5">
-                        <span class="nums font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
-                        @if ($i->isAgentFee() && $i->state === InvoiceState::Issued)
-                            <span data-controller="sheet" class="contents">
-                                <x-ui.button type="button" size="sm" data-action="sheet#open">Выплатить</x-ui.button>
-                                <x-ui.sheet id="pay-{{ $i->id }}" :title="'Выплата '.$i->party->name"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'"/></x-ui.sheet>
-                            </span>
-                        @endif
-                    </span>
+                    <span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
+                    @if ($i->isAgentFee() && $i->state === InvoiceState::Issued)
+                        <span data-controller="sheet" class="contents">
+                            <x-ui.button type="button" size="sm" data-action="sheet#open">Выплатить</x-ui.button>
+                            <x-ui.sheet id="pay-{{ $i->id }}" :title="'Выплата '.$i->party->name"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'"/></x-ui.sheet>
+                        </span>
+                    @endif
                 </div>
                 @foreach ($i->claims as $p)
-                    <div class="flex flex-wrap items-center gap-2 pl-3">
-                        <span class="text-sm">Сообщил об оплате</span><span class="nums font-semibold">{{ Money::rub($p->amount) }}</span><span class="tag nums">{{ $p->paid_at->translatedFormat('j M') }}</span>
-                        @if ($p->slip())<a href="/work/money/invoices/{{ $i->id }}/payments/{{ $p->id }}/slip" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>платёжка</a>@endif
+                    <div class="row flex-wrap bg-urgent-soft">
+                        <span class="min-w-0 flex-1 text-sm">Менеджер сообщил об оплате <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span> <span class="nums text-ink-dim">{{ $p->paid_at->translatedFormat('j M') }}</span></span>
+                        @if ($slip = $p->slip())<x-ui.doc :doc="\App\Support\Docs::media($slip)" class="chip"><x-ui.icon name="file" class="size-3.5"/>платёжка</x-ui.doc>@endif
                         @unless ($inStep)
                             <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>
                             <a href="/work/money/invoices/{{ $i->id }}" class="btn btn-s btn-ghost">Не поступила</a>

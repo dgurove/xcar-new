@@ -50,7 +50,7 @@
                     @endif
 
                     @if ($stepInvoices->isNotEmpty())
-                        <div class="mt-5 flex flex-col gap-2">
+                        <div class="list mt-5">
                             @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@endforeach
                         </div>
                     @endif
@@ -108,15 +108,15 @@
 
             @if ($blocks->isNotEmpty())
                 <div class="box">
-                    <h2 class="text-xl">Путь сделки</h2>
-                    <div class="mt-5"><x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :waiting="$waiting"/></div>
+                    <h2 class="box-title">Путь сделки</h2>
+                    <div class="mt-3"><x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :waiting="$waiting"/></div>
                 </div>
             @endif
 
             @if ($pastInvoices->isNotEmpty())
                 <div class="box">
-                    <h2 class="text-xl">Счета</h2>
-                    <div class="mt-4 flex flex-col gap-2">
+                    <h2 class="box-title">Счета</h2>
+                    <div class="list mt-3">
                         @foreach ($pastInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@endforeach
                     </div>
                 </div>
@@ -124,11 +124,11 @@
 
             @if ($deal->requirements->whereNotNull('done_at')->isNotEmpty())
                 <div class="box">
-                    <h2 class="text-xl">Ваши ответы</h2>
-                    <div class="mt-4 space-y-2">
+                    <h2 class="box-title">Ваши ответы</h2>
+                    <div class="list mt-3">
                         @foreach ($deal->requirements->whereNotNull('done_at') as $req)
                             @if (!empty($req->answer['exit']))
-                                <div class="rounded-(--radius-l) bg-surface-2 px-4 py-3">
+                                <div class="px-4 py-3">
                                     <div class="flex items-baseline justify-between gap-3">
                                         <span class="min-w-0 break-words">{{ $req->title }}: «{{ $req->answer['exit'] }}»@if (!empty($req->answer['fields'])), {{ implode(', ', $req->answer['fields']) }}@endif</span>
                                         <span class="nums shrink-0 text-sm font-normal text-ink-dim">{{ $req->done_at->translatedFormat('j M') }}</span>

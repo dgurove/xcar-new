@@ -8,7 +8,6 @@ use App\Billing\InvoiceState;
 use App\Billing\Payment;
 use App\Billing\PaymentState;
 use App\Chats\Chat;
-use App\Http\Middleware\MarkInstalled;
 use App\Mail\Boxes;
 use App\Mail\Scope;
 use App\Mail\Thread;
@@ -290,12 +289,8 @@ final class Nav
         }
         $links[] = self::link('Избранное', '/account/favorites');
         $links[] = self::link('Уведомления', '/account/notifications');
-        // В установленном приложении подвала нет — документы живут здесь.
-        if (MarkInstalled::installed(request())) {
-            return ['' => $links, 'Документы' => [self::link('Обработка данных', '/privacy'), self::link('Соглашение', '/terms')]];
-        }
-
-        return ['' => $links];
+        // У вошедшего подвала нет (приложение, а не сайт) — о компании и документы живут здесь.
+        return ['' => $links, 'Документы' => [self::link('О компании', '/company'), self::link('Обработка данных', '/privacy'), self::link('Соглашение', '/terms')]];
     }
 
     /**

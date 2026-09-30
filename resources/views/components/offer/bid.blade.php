@@ -1,5 +1,5 @@
 {{-- Подтверждение менеджера — одно на редактор и окошко строки: сумма, насколько она от цены продажи, «Лучшая» и «ниже
-     минимальной», менеджер с телефоном, когда, комментарий. У ждущего — «Принять» (у предложения в сделке — «Отдать»:
+     минимальной» (строкой группы .list в bids.blade), менеджер с телефоном, когда, комментарий. У ждущего — «Принять» (у предложения в сделке — «Отдать»:
      прежняя сделка отменится) шторкой с деньгами сделки и «Отклонить» рядом — одинаково в редакторе и окошке строки. --}}
 @props(['bid', 'offer', 'best' => false])
 @php
@@ -10,7 +10,7 @@
     $low = $active && ($min = $offer->minBid()) && $bid->amount < $min;
     $give = (bool) $offer->deal;
 @endphp
-<div class="box-nested">
+<div class="px-4 py-3">
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span class="nums whitespace-nowrap text-lg font-semibold">{{ Money::rub($bid->amount) }}</span>
         @if ($diff)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }} от цены</span>@endif
