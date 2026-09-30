@@ -300,7 +300,9 @@
   `storage/logs/lazy.log`. В кэш — массивы, не модели (`serializable_classes` выключен). Списки людей — с
   `User::withAvatar()`; счётчики страницы — раз на запрос (`once` только в веб-запросе, в очереди объект живёт весь job).
 - **Кит строк** (01.10.2026): состояние словом — `x-ui.state` (не `x-ui.pill` с `!min-h-0`), шеврон перехода —
-  `x-ui.chevron`, кружок значка — `x-ui.row-icon` (`tone` plain|accent|soft), человек с `tel:` — `x-ui.person-row`;
+  `x-ui.chevron`, кружок значка — `x-ui.row-icon` (`tone` plain|accent|soft|open|urgent|danger|muted, `size="s"` — строки
+  «Настроек» и «Денег»; значок пункта кабинета — `Nav::link(icon:)`), человек с `tel:` — `x-ui.person-row`; доступ к
+  разделу — `ability:<метод User>` (`isStaff`, `isManager`, `canSeePurchases`, `canGarage`), не свой класс middleware;
   документ из строки (вложение, PDF) — `data-doc` и шторка, не новая вкладка.
 - **Приложение, а не сайт** (30.09.2026, владелец: «от надписей, плашек, блоков ощущение сайта»):
   - состояние (`span.pill` с тоном, `span.tag-urgent/-danger`) — цветным словом без капсулы; капсула только у `a`/`button`;
