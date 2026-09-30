@@ -10,8 +10,8 @@ use App\Users\User;
  * Какие цены оффера видит человек. Одна дверь для карточки, страницы, поиска,
  * подписи шеринга и фильтров — иначе формула расползается по вьюхам.
  *
- * На xcar закупочной нет ни у кого (решение владельца 30.09.2026): сотрудник видит заявленная → продажи,
- * менеджер — продажи и подписанную «Заявленную» (её он считает закупочной), покупатель — только цену продажи,
+ * На xcar закупочной нет ни у кого (решение владельца 30.09.2026): сотрудник и менеджер видят заявленная → продажи
+ * одной строкой «97 000 → 160 000 ₽» (подписанную «заявленную» строкой ниже владелец не принял), покупатель — только цену продажи,
  * посетитель, гость и галерея — ничего. Закупочная → продажи с заявленной чипом — только в окошке строки CRM (crm).
  */
 final class PriceView
@@ -29,14 +29,13 @@ final class PriceView
         if (! $user || $offer->isGallery() || ! $user->role->canSeePrices()) {
             return new self(false, null, null, (bool) $offer->prices_include_vat, null);
         }
-        // Менеджеру «от» нет: его закупочная — заявленная, и она идёт подписанной строкой, а не безымянной стрелкой.
         $staffCrm = $crm && $user->isStaff();
-        $from = $user->isStaff() ? ($staffCrm ? $offer->floor_price : $offer->declaredPrice()) : null;
-        $declared = match (true) {
-            $staffCrm => $offer->declaredPrice() !== $offer->floor_price ? $offer->declaredPrice() : null,
-            $user->role === Role::Manager => $offer->declaredPrice(),
+        $from = match (true) {
+            $staffCrm => $offer->floor_price,
+            $user->isStaff(), $user->role === Role::Manager => $offer->declaredPrice(),
             default => null,
         };
+        $declared = $staffCrm && $offer->declaredPrice() !== $offer->floor_price ? $offer->declaredPrice() : null;
 
         return new self(true, $from ?: null, $offer->asking_price ?: null, (bool) $offer->prices_include_vat, $declared);
     }

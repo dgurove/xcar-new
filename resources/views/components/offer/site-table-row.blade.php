@@ -25,7 +25,7 @@
             @elseif ($bids && !$offer->bidsOpen())<span class="sm:hidden">приём закрыт</span>
             @elseif ($fresh)<span class="sm:hidden text-accent-text">новый</span>@endif
             @if ($city)<span class="sm:hidden">{{ $city }}</span>@endif
-            @if ($price->shown() && $price->declared)<span class="sm:hidden">{!! \App\Support\Ago::time($since) !!}</span>@endif
+            @if ($price->shown() && $price->withFrom())<span class="sm:hidden">{!! \App\Support\Ago::time($since) !!}</span>@endif
         </span>
     </td>
     <td class="cell-dim nums hidden sm:table-cell">{{ $n }}</td>
@@ -38,8 +38,8 @@
     <td class="cell-dim col-peek-hide hidden lg:table-cell">{{ $city }}</td>
     <td class="num nums">
         @if ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif
-        {{-- Заявленная (менеджеру — закупочная для него) под ценой; время тогда уходит под название. --}}
-        @if ($price->shown() && $price->declared)<span class="cell-sub">заявленная {{ $price::money($price->declared) }}</span>
+        {{-- Заявленная (менеджеру — закупочная для него) под ценой, пока стрелка «от → до» не влезает; время тогда уходит под название. --}}
+        @if ($price->shown() && $price->withFrom())<span class="cell-sub lg:hidden">{{ $price::money($price->from) }}</span>
         @else<span class="cell-sub sm:hidden">{!! \App\Support\Ago::time($since) !!}</span>@endif
     </td>
     <td class="cell-dim num col-peek-hide hidden sm:table-cell">{!! \App\Support\Ago::time($since) !!}</td>
