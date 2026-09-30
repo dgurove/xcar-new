@@ -40,7 +40,7 @@
         </x-slot:aside>
         <x-slot:actions>
             @if ($canBid)
-                <form method="post" action="/offers/{{ $n }}/confirm" class="flex w-full flex-col gap-2" data-controller="bid" data-bid-asking-value="{{ $asking }}">
+                <form method="post" action="/offers/{{ $n }}/confirm" class="flex w-full flex-col gap-2" data-telegram-moment="bid" data-controller="bid" data-bid-asking-value="{{ $asking }}">
                     @csrf
                     <div class="flex gap-2">
                         <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $myBid?->amount) }}">

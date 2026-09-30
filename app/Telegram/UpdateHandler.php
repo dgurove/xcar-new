@@ -10,6 +10,9 @@ use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
 use App\Billing\Robot;
+use App\Offers\Deal;
+use App\Offers\DealState;
+use App\Support\Plural;
 use App\Support\Surface;
 use App\Telegram\Actions\DecideLogin;
 use App\Telegram\Actions\LinkChat;
@@ -249,8 +252,33 @@ final class UpdateHandler
             return;
         }
         app(LinkChat::class)($user, $chatId, $username);
-        $what = $user->isManager() ? 'Сюда придут ваш ход в сделках, счета и выплаты' : 'Сюда придут сообщения владельца';
-        $this->reply($chatId, '<b>Telegram привязан</b>'."\n".e($user->name)."\n\n".$what, [[$this->open()]]);
+        [$line, $button] = $this->welcome($user);
+        $this->reply($chatId, '<b>'.e($user->firstName()).', готово</b>'."\n".$line, [[$button]]);
+    }
+
+    /**
+     * Первое слово бота после «Запустить» — о деле, а не о боте: сколько сделок в работе и где ждут ответа менеджера.
+     *
+     * @return array{0: string, 1: array{text: string, url: string}}
+     */
+    private function welcome(User $user): array
+    {
+        if (! $user->isManager()) {
+            return ['Сюда придут оплаты, выплаты и просроченные счета с кнопкой решения', $this->open()];
+        }
+        $deals = Deal::where('buyer_id', $user->id)->where('state', DealState::Active)->with('openRequirement')->get();
+        if ($deals->isEmpty()) {
+            return ['Напишем, когда выберут ваше подтверждение', $this->open()];
+        }
+        $waiting = $deals->filter(fn (Deal $d) => $d->openRequirement !== null);
+        $line = 'В работе '.$deals->count().' '.Plural::of($deals->count(), ['сделка', 'сделки', 'сделок'])
+            .match ($waiting->count()) {
+                0 => '', 1 => ', в одной ждут ваш ответ', default => ', в '.$waiting->count().' ждут ваш ответ'
+            };
+
+        return $waiting->isEmpty()
+            ? [$line, ['text' => 'Открыть сделки', 'url' => Surface::Site->url('/deals')]]
+            : [$line, ['text' => 'Открыть сделку', 'url' => Surface::Site->url('/deals/'.$waiting->first()->id)]];
     }
 
     /** Браузер просит войти: спрашиваем в чате, привязанном к аккаунту. */
@@ -277,7 +305,7 @@ final class UpdateHandler
 
     private function open(): array
     {
-        return ['text' => 'Открыть xcar.ru', 'url' => Surface::Site->url('/')];
+        return ['text' => 'Открыть xcar', 'url' => Surface::Site->url('/')];
     }
 
     private function profile(): array

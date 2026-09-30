@@ -46,6 +46,7 @@ use App\Push\Console\MakeKeys;
 use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
 use App\Telegram\Console\Poll;
+use App\Telegram\Console\SetProfile;
 use App\Users\Console\CreateUser;
 use App\Users\Console\SeedDemo;
 use App\Workflow\Console\RefillVendors;
@@ -86,7 +87,7 @@ return Application::configure(basePath: dirname(__DIR__))
         MoveConversionsHot::class,
         Gc::class,
         Report::class,
-        Poll::class,
+        Poll::class, SetProfile::class,
         LearnVins::class,
         SyncAcquiring::class,
         SyncBank::class,

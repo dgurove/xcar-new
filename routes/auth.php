@@ -29,7 +29,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/passkey/register/options', [PasskeyController::class, 'registerOptions'])->middleware('throttle:10,1');
     Route::post('/passkey/register', [PasskeyController::class, 'register'])->middleware('throttle:10,1');
     Route::delete('/passkey/{id}', [PasskeyController::class, 'destroy']);
-    Route::post('/account/telegram/later', [TelegramController::class, 'later'])->middleware('throttle:10,1');
+    Route::post('/account/telegram/seen', [TelegramController::class, 'seen'])->middleware('throttle:20,1');
+    Route::get('/account/telegram/state', [TelegramController::class, 'state']);
+    Route::put('/account/telegram', [TelegramController::class, 'update']);
+    Route::post('/account/telegram/test', [TelegramController::class, 'test'])->middleware('throttle:3,1');
     Route::delete('/account/telegram', [TelegramController::class, 'destroy']);
 });
 

@@ -50,10 +50,16 @@ abstract class Notice extends Notification implements ShouldQueue
         return false;
     }
 
-    /** В привязанный Telegram — только то, что требует человека: принятое подтверждение, его ход и сроки, деньги. */
-    public function telegram(): bool
+    /**
+     * Сообщение в привязанный Telegram: заголовок жирным, строки, подпись кнопки-ссылки на href. null — туда не шлём:
+     * в Telegram только то, что требует человека — принятое подтверждение, его ход и сроки, деньги. Без длинных тире:
+     * пример в шторке подключения (Telegram\Preview) выглядит так же.
+     *
+     * @return array{title: string, lines: list<?string>, button: string}|null
+     */
+    public function toTelegram(): ?array
     {
-        return false;
+        return null;
     }
 
     /**
@@ -73,7 +79,7 @@ abstract class Notice extends Notification implements ShouldQueue
             // Уведомления стоянки — через её ящик, если он есть; остальное — системный мейлер.
             $via[] = $this->category() === 'park' && MailboxChannel::account() ? MailboxChannel::class : 'mail';
         }
-        if ($this->telegram() && $user->wantsTelegram()) {
+        if ($user->wantsTelegram() && $this->toTelegram() !== null) {
             $via[] = TelegramChannel::class;
         }
 

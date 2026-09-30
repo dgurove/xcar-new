@@ -140,34 +140,7 @@
                 </button>
             </div>
 
-            @if ($user->telegram_chat_id)
-                {{-- Строка привязки и есть кнопка «Отвязать», с подтверждением. --}}
-                <form method="post" action="/account/telegram" class="contents"
-                    data-turbo-confirm="Отвязать Telegram?" data-turbo-confirm-label="Отвязать"
-                    data-turbo-confirm-text="Уведомления и вход через Telegram перестанут работать">
-                    @csrf @method('delete')
-                    <button class="row w-full text-left">
-                        <span class="profile-icon"><x-ui.icon name="telegram" class="size-[18px]"/></span>
-                        <span class="min-w-0 flex-1">
-                            <span class="block truncate">Telegram</span>
-                            <span class="row-sub">
-                                @if ($user->telegram_username)<span class="tag">{{ '@'.$user->telegram_username }}</span>@endif
-                                <span class="tag nums">{{ $user->telegram_linked_at?->translatedFormat('j M') }}</span>
-                            </span>
-                        </span>
-                        <x-ui.icon name="trash" class="size-5 shrink-0 text-ink-muted"/>
-                    </button>
-                </form>
-            @elseif (($user->isManager() || $user->isAdmin()) && app(\App\Telegram\Bot::class)->username())
-                <div data-controller="sheet" class="contents">
-                    <button type="button" class="row w-full text-left" data-action="sheet#open">
-                        <span class="profile-icon"><x-ui.icon name="telegram" class="size-[18px]"/></span>
-                        <span class="min-w-0 flex-1">Привязать Telegram</span>
-                        <x-ui.icon name="plus" class="size-5 shrink-0 text-ink-dim"/>
-                    </button>
-                    <x-telegram.sheet/>
-                </div>
-            @endif
+            <x-telegram.row/>
 
             <button type="button" class="row w-full text-left" hidden data-pwa-target="install" data-action="pwa#install">
                 <span class="profile-icon"><x-ui.icon name="download" class="size-[18px]"/></span>

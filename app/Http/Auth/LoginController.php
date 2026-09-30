@@ -17,8 +17,11 @@ class LoginController
     /** Ссылка «Войти через Telegram» — у каждого браузера своя попытка: подтверждённую кнопкой в чате заберёт только он. */
     public function show(Request $request, Bot $bot)
     {
+        $token = $bot->username() ? StartLink::login($request) : null;
+
         return view('auth.login', [
-            'telegram' => $bot->username() ? $bot->startUrl(StartLink::login($request)) : null,
+            'telegram' => $token ? $bot->startUrl($token) : null,
+            'telegramApp' => $token ? 'tg://resolve?domain='.$bot->username().'&start='.$token : null,
             'telegramToken' => $request->session()->get('telegram.login'),
         ]);
     }

@@ -20,15 +20,16 @@ final class TelegramChannel
 
     public function send(User $user, Notice $notice): void
     {
-        if (! $user->telegram_chat_id || ! $this->bot->configured()) {
+        $message = $notice->toTelegram();
+        if (! $user->telegram_chat_id || ! $message || ! $this->bot->configured()) {
             return;
         }
-        $text = '<b>'.e($notice->title()).'</b>'.($notice->text() ? "\n".e($notice->text()) : '');
+        $lines = array_filter($message['lines'], fn ($l) => $l !== null && $l !== '');
+        $text = implode("\n", ['<b>'.e($message['title']).'</b>', ...array_map(fn ($l) => e($l), $lines)]);
         $href = $notice->href();
         $url = str_starts_with($href, 'http') ? $href : Surface::Site->url($href);
-        $label = str_contains($href, '/deals/') ? 'Открыть сделку' : 'Открыть';
         try {
-            $this->bot->send((int) $user->telegram_chat_id, $text, [[['text' => $label, 'url' => $url]]], $user->quietHours());
+            $this->bot->send((int) $user->telegram_chat_id, $text, [[['text' => $message['button'], 'url' => $url]]], $user->quietHours());
         } catch (Throwable $e) {
             if (Bot::chatGone($e)) {
                 app(UnlinkChat::class)($user);

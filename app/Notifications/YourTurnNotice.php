@@ -41,8 +41,12 @@ final class YourTurnNotice extends Notice
         return true;
     }
 
-    public function telegram(): bool
+    public function toTelegram(): ?array
     {
-        return true;
+        $r = $this->requirement;
+
+        return ['title' => 'Ваш ход: '.mb_lcfirst($r->title), 'lines' => [
+            $r->offer->titleWithYear(), $r->due_at ? 'До '.$r->due_at->translatedFormat('j M, H:i') : null, '№ '.$r->offer->number,
+        ], 'button' => 'Открыть сделку'];
     }
 }

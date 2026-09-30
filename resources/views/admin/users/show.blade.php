@@ -23,7 +23,7 @@
                 <x-slot:acts>
                     @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif
                     @if ($user->email)<a href="mailto:{{ $user->email }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="mail"/></span>Написать</a>@endif
-                    @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="telegram"/></span>Telegram</a>@endif
+                    @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="act"><span class="btn btn-telegram btn-round"><x-telegram.logo plain/></span>Telegram</a>@endif
                     @if ($me->isAdmin())<button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="edit"/></span>Изменить</button>@endif
                     @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())
                         <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="contents"

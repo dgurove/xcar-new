@@ -1,0 +1,69 @@
+/* Telegram у аккаунта: шторка подключения (x-telegram.connect), карточка в «Сделках», строка профиля, вход.
+   Синий — фирменный цвет Telegram (решение владельца 30.09.2026): кнопку узнают сразу, как «Войти через Google»,
+   поэтому это исключение из «лайм — глагол». Лайм остаётся за успехом («Готово»). Сцена чата повторяет Telegram:
+   фон переписки, пузырь бота, inline-кнопка под ним — пример в точности такой, какое сообщение придёт. */
+
+@layer components {
+  :root { --color-telegram: #229ed9; --color-telegram-hover: #1a8bc2; --tg-wall: #c6d8e6; --tg-bubble: #fff; --tg-bubble-ink: #1d1d1b; --tg-meta: #8a9bab; --tg-key: rgb(38 72 99 / .42); }
+  .dark { --tg-wall: #0e1621; --tg-bubble: #182533; --tg-bubble-ink: #e7ecf0; --tg-meta: #6d8196; --tg-key: rgb(255 255 255 / .1); }
+
+  .btn-telegram { background: var(--color-telegram); color: #fff; }
+  @media (hover: hover) { .btn-telegram:hover { background: var(--color-telegram-hover); } }
+  .btn-telegram:active { background: var(--color-telegram-hover); }
+
+  /* Знак: синий круг с самолётиком; plain — только самолётик цветом текста (в кнопке). */
+  .tg-logo { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 999px; background: var(--color-telegram); color: #fff; }
+  .tg-logo > svg { width: 56%; height: 56%; margin-left: -6%; }
+  .tg-tile { background: var(--color-telegram) !important; color: #fff !important; }
+
+  /* Сцена чата: фон переписки, аватар бота, пузырь и inline-кнопка. */
+  .tg-scene { position: relative; display: flex; align-items: flex-end; gap: .5rem; padding: 1.25rem .875rem .875rem; border-radius: var(--radius-l); background: var(--tg-wall); overflow: hidden; }
+  .tg-avatar { width: 2rem; height: 2rem; flex-shrink: 0; border-radius: 999px; background: var(--color-chrome); object-fit: cover; }
+  .tg-message { position: relative; flex: 1; min-width: 0; max-width: 17rem; font-family: var(--font-ui); }
+  .tg-bubble { position: relative; padding: .5rem .75rem .375rem; border-radius: 1rem 1rem 1rem .3rem; background: var(--tg-bubble); color: var(--tg-bubble-ink); font-size: var(--text-sm); line-height: 1.4; }
+  .tg-bubble b { font-weight: 600; }
+  .tg-bubble-meta { float: right; margin: .35rem 0 0 .75rem; color: var(--tg-meta); font-size: 11px; line-height: 1; }
+  .tg-key { margin-top: .25rem; padding: .5rem; border-radius: .6rem; background: var(--tg-key); color: #fff; text-align: center; font-size: var(--text-sm); font-weight: 500; }
+  .dark .tg-key { color: #ededed; }
+  .tg-typing { position: absolute; left: 0; bottom: 0; display: inline-flex; gap: 3px; padding: .75rem .875rem; border-radius: 1rem 1rem 1rem .3rem; background: var(--tg-bubble); opacity: 0; }
+  .tg-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--tg-meta); animation: typing-dot 1.2s infinite ease-in-out; }
+  .tg-typing i:nth-child(2) { animation-delay: .2s; }
+  .tg-typing i:nth-child(3) { animation-delay: .4s; }
+  /* Открыли шторку — бот «печатает», потом приходит сообщение. */
+  .tg-scene.is-playing .tg-typing { animation: tg-typing 1s var(--ease-out) both; }
+  .tg-scene.is-playing .tg-bubble, .tg-scene.is-playing .tg-key { animation: tg-in .45s .8s var(--ease-spring) both; }
+  .tg-scene.is-playing .tg-key { animation-delay: .95s; }
+  @keyframes tg-typing { 0% { opacity: 0; transform: translateY(6px); } 15%, 70% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+  @keyframes tg-in { from { opacity: 0; transform: translateY(10px) scale(.96); transform-origin: left bottom; } }
+
+  /* Шаги в одной шторке: предложение → ожидание → готово. */
+  .tg-step:not([hidden]) { display: flex; flex-direction: column; gap: 1.25rem; animation: tg-step var(--dur) var(--ease-out); }
+  @keyframes tg-step { from { opacity: 0; transform: scale(.98); } }
+  .tg-lead { display: flex; flex-direction: column; align-items: center; gap: .375rem; text-align: center; }
+  .tg-lead p { color: var(--color-ink-muted); font-size: var(--text-sm); line-height: 1.4; max-width: 20rem; }
+
+  /* Ожидание: знак с мягко расходящимся кольцом. */
+  .tg-wait { position: relative; width: 4.5rem; height: 4.5rem; margin: 1rem auto .25rem; }
+  .tg-wait::before, .tg-wait::after { content: ''; position: absolute; inset: 0; border-radius: 999px; background: var(--color-telegram); opacity: .25; animation: tg-ring 1.8s var(--ease-out) infinite; }
+  .tg-wait::after { animation-delay: .9s; }
+  .tg-wait .tg-logo { position: relative; z-index: 1; }
+  @keyframes tg-ring { from { transform: scale(1); opacity: .3; } to { transform: scale(1.7); opacity: 0; } }
+
+  /* Готово: лаймовый круг, галка рисуется штрихом. */
+  .tg-done { display: flex; width: 4.5rem; height: 4.5rem; margin: 1rem auto .25rem; align-items: center; justify-content: center; border-radius: 999px; background: var(--color-accent); color: #fff; animation: pop .45s var(--ease-spring); }
+  .tg-done path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: tg-draw .35s .15s var(--ease-out) forwards; }
+  @keyframes tg-draw { to { stroke-dashoffset: 0; } }
+
+  .tg-qr { margin-inline: auto; width: 11rem; border-radius: var(--radius-l); background: #fff; padding: .75rem; color: #000; }
+  .tg-qr > svg { display: block; width: 100%; height: auto; }
+
+  /* Вход через Telegram: ожидание прямо в кнопке. */
+  .tg-spin { width: 1.125rem; height: 1.125rem; border-radius: 999px; border: 2px solid rgb(255 255 255 / .35); border-top-color: #fff; animation: spin .8s linear infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tg-scene.is-playing .tg-typing { animation: none; }
+    .tg-scene.is-playing .tg-bubble, .tg-scene.is-playing .tg-key, .tg-step:not([hidden]), .tg-done { animation: none; }
+    .tg-done path { stroke-dashoffset: 0; animation: none; }
+    .tg-wait::before, .tg-wait::after { animation: none; opacity: 0; }
+  }
+}

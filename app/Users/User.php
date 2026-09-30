@@ -254,16 +254,31 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->telegram_chat_id !== null && ($this->notification_settings['telegram'] ?? true) !== false;
     }
 
-    /**
-     * Окошко «Привяжите Telegram»: менеджеру и админу без привязки, пока не просили напомнить позже.
-     * Не за человека: админ, вошедший за менеджера, привязал бы свой чат к чужому аккаунту.
-     */
-    public function offerTelegram(): bool
+    /** Подключить Telegram можно: менеджеру и админу без привязки. Не за человека — админ привязал бы свой чат к чужому аккаунту. */
+    public function canLinkTelegram(): bool
     {
-        $later = $this->notification_settings['telegram_later'] ?? null;
-
         return ($this->isManager() || $this->isAdmin()) && $this->telegram_chat_id === null && ! $this->is_demo
-            && ! Impersonation::active() && (! $later || now()->greaterThan($later)) && app(Bot::class)->username() !== null;
+            && ! Impersonation::active() && app(Bot::class)->username() !== null;
+    }
+
+    /**
+     * Когда шторка подключения открывается сама (решение владельца 30.09.2026):
+     * intro — один раз за всё время при входе; bid — после подтверждения ценой, не чаще раза в неделю и не больше
+     * трёх раз; card — карточка в «Сделках», пока не скрыли. Отметки ставит TelegramController::seen.
+     *
+     * @return list<'intro'|'bid'|'card'>
+     */
+    public function telegramMoments(): array
+    {
+        $s = $this->notification_settings ?? [];
+        $bidAt = $s['telegram_bid_at'] ?? null;
+        $hidden = $s['telegram_card_hidden'] ?? null;
+
+        return array_values(array_filter([
+            empty($s['telegram_intro']) ? 'intro' : null,
+            ($s['telegram_bid_n'] ?? 0) < 3 && (! $bidAt || now()->subDays(7)->greaterThan($bidAt)) ? 'bid' : null,
+            ! $hidden || now()->greaterThan($hidden) ? 'card' : null,
+        ]));
     }
 
     /** Подписанная ссылка «не присылать на почту» — работает без входа. */
@@ -336,6 +351,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         }
 
         return $parts[0].' '.mb_substr($parts[1], 0, 1).'.';
+    }
+
+    /** «Иван» — обращение в приветствии. */
+    public function firstName(): string
+    {
+        return preg_split('/\s+/', trim($this->name))[0] ?? $this->name;
     }
 
     /** Одна-две буквы для кружка без фото. */

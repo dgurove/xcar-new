@@ -2,6 +2,8 @@
 
 namespace App\Http\Auth;
 
+use App\Notifications\TelegramChannel;
+use App\Notifications\TestNotice;
 use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\StartLink;
 use App\Users\Impersonation;
@@ -10,32 +12,54 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Telegram у аккаунта: «Напомнить позже», отвязать и вход через бота.
+ * Telegram у аккаунта: отметки шторки подключения, состояние, тумблер, пробное сообщение, отключить и вход через бота.
  * Привязка идёт в самом боте (`/start` со ссылкой, UpdateHandler), здесь её нет.
  */
 class TelegramController
 {
     /**
-     * Окошко «Привяжите Telegram» показали — не чаще раза в сутки; «Напомнить позже» — через 3 дня, дальше через неделю.
-     * За человека не пишем: админ, вошедший за менеджера, окошка не видит и отложить за него не может.
+     * Шторка подключения показалась сама или карточку скрыли — отметка, чтобы не навязываться (User::telegramMoments):
+     * intro — больше никогда, bid — не раньше чем через неделю и не больше трёх раз, card — скрыта на 30 дней.
+     * За человека не пишем: админ, вошедший за менеджера, шторки не видит.
      */
-    public function later(Request $request)
+    public function seen(Request $request)
     {
         $user = $request->user();
-        if (! Impersonation::active() && ! $user->telegram_chat_id) {
+        $moment = $request->string('moment')->toString();
+        if (! Impersonation::active() && ! $user->telegram_chat_id && in_array($moment, ['intro', 'bid', 'card'], true)) {
             $s = $user->notification_settings ?? [];
-            $asked = (int) ($s['telegram_asked'] ?? 0);
-            $until = $request->boolean('shown') ? now()->addDay() : now()->addDays($asked === 0 ? 3 : 7);
-            if (! isset($s['telegram_later']) || $until->greaterThan($s['telegram_later'])) {
-                $s['telegram_later'] = $until->toIso8601String();
-            }
-            if (! $request->boolean('shown')) {
-                $s['telegram_asked'] = $asked + 1;
-            }
+            match ($moment) {
+                'intro' => $s['telegram_intro'] = now()->toIso8601String(),
+                'bid' => [$s['telegram_bid_at'], $s['telegram_bid_n']] = [now()->toIso8601String(), ($s['telegram_bid_n'] ?? 0) + 1],
+                'card' => $s['telegram_card_hidden'] = now()->addDays(30)->toIso8601String(),
+            };
             $user->update(['notification_settings' => $s]);
         }
 
         return $request->expectsJson() ? response()->noContent() : back();
+    }
+
+    /** Шторка ждёт «Запустить»: событие хаба могло не дойти — вернувшись на вкладку, она спрашивает сама. */
+    public function state(Request $request)
+    {
+        return response()->json(['linked' => $request->user()->telegram_chat_id !== null]);
+    }
+
+    /** Тумблер «Уведомления» в шторке Telegram профиля. */
+    public function update(Request $request)
+    {
+        $user = $request->user();
+        Impersonation::active() || $user->update(['notification_settings' => ['telegram' => $request->boolean('on')] + ($user->notification_settings ?? [])]);
+
+        return back()->with('toast', $request->boolean('on') ? 'Уведомления в Telegram включены' : 'Уведомления в Telegram выключены');
+    }
+
+    /** «Отправить пробное» — только в Telegram, мимо ленты и пуша. */
+    public function test(Request $request, TelegramChannel $channel)
+    {
+        $channel->send($request->user(), new TestNotice);
+
+        return back()->with('toast', 'Отправили в Telegram');
     }
 
     public function destroy(Request $request, UnlinkChat $unlink)

@@ -7,6 +7,7 @@
 <x-ui.shell title="Сделки" :phone-heading="false" :desktop-heading="false">
 <div class="flex max-w-[56rem] flex-col gap-4">
     <x-deal.tabs current="/deals"/>
+    <x-telegram.card/>
 
     @if ($pending->isNotEmpty())
         <section>

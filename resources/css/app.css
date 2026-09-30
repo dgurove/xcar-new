@@ -1627,6 +1627,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* ------------------------------------------------------------- первый экран */
 
 @import "./hero.css";
+@import "./telegram.css";
 
 @layer components {
   .hero { position: sticky; top: 0; z-index: 0; height: 100svh; height: min(100svh, 100vh); }

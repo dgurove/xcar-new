@@ -25,8 +25,8 @@ final class TestNotice extends Notice
         return true;
     }
 
-    public function telegram(): bool
+    public function toTelegram(): ?array
     {
-        return true;
+        return ['title' => 'Так выглядят уведомления xcar', 'lines' => ['Всё работает'], 'button' => 'Открыть'];
     }
 }

@@ -2,10 +2,11 @@
      кнопкой data-action="sheet#open" в том же data-controller="sheet" или
      сервером через open, если есть ошибки формы. wide — 42rem, tall — окно чтения
      (письма): на телефоне во весь экран с «‹» слева, от 640 — 48rem по центру, в высоту
-     по содержимому до края экрана, прокрутка внутри; inflow — от 1024 стоит в потоке карточкой. --}}
-@props(['id', 'title' => null, 'open' => false, 'wide' => false, 'tall' => false, 'inflow' => false])
+     по содержимому до края экрана, прокрутка внутри; inflow — от 1024 стоит в потоке карточкой;
+     bare — без строки заголовка с крестиком: закрывают свайпом, фоном и своей кнопкой (подключение Telegram). --}}
+@props(['id', 'title' => null, 'open' => false, 'wide' => false, 'tall' => false, 'inflow' => false, 'bare' => false])
 <dialog id="{{ $id }}" class="sheet{{ $wide ? ' sheet-wide' : '' }}{{ $tall ? ' sheet-tall' : '' }}{{ $inflow ? ' sheet--inflow' : '' }}" data-sheet-target="dialog" data-action="click->sheet#backdrop" @if ($open) data-sheet-open-value="true" @endif {{ $attributes }}>
-    @if ($title || !$inflow)
+    @if (! $bare && ($title || !$inflow))
     <div class="mb-4 flex items-center justify-between gap-3{{ $tall ? ' sheet-head' : '' }}">
         @if ($tall)<button type="button" class="sheet-close sheet-back -ml-2" data-action="sheet#close" aria-label="Назад"><x-ui.icon name="chevron-left" class="size-5"/></button>@endif
         @if ($title)<h2 class="text-lg">{{ $title }}</h2>@endif

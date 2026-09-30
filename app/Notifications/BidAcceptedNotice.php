@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Deal;
+use App\Support\Money;
 
 final class BidAcceptedNotice extends Notice
 {
@@ -38,8 +39,10 @@ final class BidAcceptedNotice extends Notice
         return true;
     }
 
-    public function telegram(): bool
+    public function toTelegram(): ?array
     {
-        return true;
+        $offer = $this->deal->offer;
+
+        return ['title' => 'Подтверждение '.Money::rub($this->deal->amount).' принято', 'lines' => [$offer->titleWithYear(), '№ '.$offer->number], 'button' => 'Открыть сделку'];
     }
 }

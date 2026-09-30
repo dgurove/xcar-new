@@ -49,7 +49,7 @@
 
     {{-- Подвал — у сайта для гостя; у вошедшего экран приложения, документы в кабинете (Nav::cabinet). --}}
     @if ($site && !$installed && ! auth()->check())<x-ui.footer/>@endif
-    @auth<x-ui.docs/><x-telegram.offer/>@endauth
+    @auth<x-ui.docs/><x-telegram.connect/>@endauth
     <x-ui.tabbar/>
     <x-ui.toasts/>
 </x-ui.layout>

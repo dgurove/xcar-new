@@ -111,6 +111,13 @@ class Bot
         }
     }
 
+    /** Описание и короткое описание бота (telegram:profile). */
+    public function setProfile(string $description, string $short): void
+    {
+        $this->call('setMyDescription', ['description' => $description])->throw();
+        $this->call('setMyShortDescription', ['short_description' => $short])->throw();
+    }
+
     /** Всплывашка на нажатие; Telegram принимает не больше 200 знаков. */
     public function answer(string $queryId, string $text): void
     {

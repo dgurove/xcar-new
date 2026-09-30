@@ -32,9 +32,15 @@
                         <input type="checkbox" name="mail" value="1" class="switch" @checked($user->wantsMail()) data-action="change->autosubmit#submit">
                     </label>
                 @endif
-                @if ($user->telegram_chat_id)
+                @if ($user->canLinkTelegram())
+                    <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="telegram:open">
+                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full tg-tile"><x-telegram.logo plain/></span>
+                        <span class="min-w-0 flex-1 font-medium">В Telegram</span>
+                        <span class="font-medium" style="color: var(--color-telegram)">Подключить</span>
+                    </button>
+                @elseif ($user->telegram_chat_id)
                     <label class="row row-switch">
-                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink"><x-ui.icon name="telegram" class="size-5"/></span>
+                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full tg-tile"><x-telegram.logo plain/></span>
                         <span class="min-w-0 flex-1">
                             <span class="block font-medium">В Telegram</span>
                             @if ($user->telegram_username)<span class="row-sub"><span class="tag">{{ '@'.$user->telegram_username }}</span></span>@endif

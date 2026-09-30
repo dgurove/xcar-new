@@ -42,8 +42,12 @@ final class StageDueNotice extends Notice
     }
 
     /** В Telegram — только менеджеру по его сделке. */
-    public function telegram(): bool
+    public function toTelegram(): ?array
     {
-        return $this->dealId !== null;
+        return $this->dealId === null ? null : [
+            'title' => ($this->overdue ? 'Срок вышел: ' : 'Срок подходит: ').mb_lcfirst($this->position->stage->name),
+            'lines' => [$this->offer->titleWithYear(), 'До '.$this->position->deadline_at?->translatedFormat('j M, H:i'), '№ '.$this->offer->number],
+            'button' => 'Открыть сделку',
+        ];
     }
 }

@@ -18,9 +18,9 @@ final class MoneyNotice extends Notice
     public function __construct(private string $title, private ?string $text, private string $path, private ?int $offerNumber = null, private bool $toStaff = false) {}
 
     /** Менеджеру про его деньги — и в Telegram; сотрудникам только лентой. */
-    public function telegram(): bool
+    public function toTelegram(): ?array
     {
-        return ! $this->toStaff;
+        return $this->toStaff ? null : ['title' => $this->title, 'lines' => [$this->text], 'button' => 'Открыть'];
     }
 
     public static function invoiceIssued(Invoice $i): self
