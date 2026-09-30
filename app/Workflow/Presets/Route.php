@@ -87,9 +87,13 @@ abstract class Route
      * @param  list<array>|null  $confirm  кнопки подтверждения менеджера, если не две обычные
      * @param  list<array>  $draftExits  что ещё уводит с черновика
      */
-    protected function head(string $nobody = 'no_bids', ?array $confirm = null, array $draftExits = [], string $draftDeadline = 'own'): array
+    /**
+     * @param  ?array  $agreed  выходы «Поставщик согласовал» сразу дальше, без «Согласия менеджера»: у Совкомбанка
+     *                          согласие поставщика и есть покупка, второй раз менеджера не спрашивают
+     */
+    protected function head(string $nobody = 'no_bids', ?array $confirm = null, array $draftExits = [], string $draftDeadline = 'own', ?array $agreed = null): array
     {
-        return [
+        $head = [
             'draft' => [
                 'name' => 'Черновик', 'block' => 'sale', 'waits_for' => 'us', 'deadline_source' => $draftDeadline, 'offer_state' => 'draft',
                 'exits' => [['Опубликовать', 'staff', 'bidding'], ...$draftExits],
@@ -115,6 +119,12 @@ abstract class Route
                 'exits' => $confirm ?? [['Покупаю', 'manager', 'confirmed'], ['Отказываюсь', 'manager', 'bidding']],
             ],
         ];
+        if ($agreed) {
+            $head['claimed']['exits'] = [...$agreed, ['Поставщик отказал', 'staff', 'supplier_declined']];
+            unset($head['manager_confirm']);
+        }
+
+        return $head;
     }
 
     /** Подтвердили поставщику — этап ветки, а не общего начала: у Совкомбанка их два. */
