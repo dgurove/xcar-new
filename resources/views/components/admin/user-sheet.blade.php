@@ -1,7 +1,20 @@
 {{-- Шит «Изменить» человека (админ): имя, у покупателя менеджер, у остальных контакты, роль и доступ;
-     ниже ссылка на новый пароль, закрыть доступ или удалить. Открывается сам, если ссылка только что выдана. --}}
+     ниже «Войти как», ссылка на новый пароль, закрыть доступ или удалить. Открывается сам, если ссылка только что выдана. --}}
 @props(['user', 'managers', 'link' => null, 'base', 'me'])
-@php use App\Http\Admin\UserController; @endphp
+@php
+    use App\Http\Admin\UserController;
+    $as = (session('impersonation_link')['user'] ?? null) === $user->id ? session('impersonation_link') : null;
+@endphp
+{{-- Ссылка «Войти как» — своей шторкой: после выдачи Turbo морфит страницу, новая шторка подключается и открывается сама. --}}
+@if ($as)
+    <div data-controller="sheet" class="contents">
+        <x-ui.sheet :id="'as-'.$user->id" :title="'Вход как '.$user->shortName()" open>
+            <x-ui.copy-link :url="$as['url']" :title="'Вход как '.$user->shortName()">
+                <p class="text-sm text-ink-muted">Откройте в окне инкогнито, иначе в этом окне вы выйдете. Действует {{ \App\Users\Impersonation::MINUTES }} минут, один раз</p>
+            </x-ui.copy-link>
+        </x-ui.sheet>
+    </div>
+@endif
 <x-ui.sheet id="user-{{ $user->id }}" :title="$user->name" :open="($link['user'] ?? null) === $user->id">
     @if (($link['user'] ?? null) === $user->id)
         <x-ui.copy-link :url="$link['url']" title="Ссылка для нового пароля" class="mb-6">
@@ -31,6 +44,14 @@
         @endif
         <x-ui.button block>Сохранить</x-ui.button>
     </form>
+    @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())
+        <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="mt-3"
+            data-turbo-confirm="Войти как {{ $user->shortName() }}?" data-turbo-confirm-label="Получить ссылку"
+            data-turbo-confirm-text="Одноразовая ссылка на {{ \App\Users\Impersonation::MINUTES }} минут. Откройте её в окне инкогнито, иначе в этом окне вы выйдете">
+            @csrf
+            <x-ui.button type="submit" variant="secondary" block><x-ui.icon name="login" class="size-5"/> Войти как {{ $user->shortName() }}</x-ui.button>
+        </form>
+    @endif
     @unless ($user->is($me))
         <form method="post" action="{{ $base }}/{{ $user->id }}/password" class="mt-3"
             data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"

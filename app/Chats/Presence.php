@@ -2,6 +2,7 @@
 
 namespace App\Chats;
 
+use App\Users\Impersonation;
 use App\Users\User;
 use Illuminate\Support\Facades\Cache;
 
@@ -10,7 +11,8 @@ final class Presence
 {
     public static function touch(Chat $chat, ?User $user): void
     {
-        if ($user) {
+        // Админ за человека — не он у экрана: пуш о сообщении человеку всё равно нужен.
+        if ($user && ! Impersonation::active()) {
             Cache::put(self::key($chat, $user), 1, 45);
         }
     }

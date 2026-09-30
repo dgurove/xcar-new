@@ -4,6 +4,7 @@ namespace App\Http\Cabinet;
 
 use App\Notifications\Categories;
 use App\Notifications\TestNotice;
+use App\Users\Impersonation;
 use App\Users\User;
 use Illuminate\Http\Request;
 
@@ -29,7 +30,7 @@ class NotificationController
     public function open(Request $request, string $id)
     {
         $item = $request->user()->notifications()->findOrFail($id);
-        $item->markAsRead();
+        Impersonation::active() || $item->markAsRead();
 
         return redirect($item->data['href'] ?? '/account/notifications');
     }
@@ -37,7 +38,7 @@ class NotificationController
     /** Тап по строке ведёт сразу на объект; прочитанность отмечается маячком с клиента. */
     public function seen(Request $request, string $id)
     {
-        $request->user()->notifications()->whereKey($id)->first()?->markAsRead();
+        Impersonation::active() || $request->user()->notifications()->whereKey($id)->first()?->markAsRead();
 
         return response()->noContent();
     }
@@ -55,7 +56,8 @@ class NotificationController
 
     public function readAll(Request $request)
     {
-        $request->user()->unreadNotifications()->update(['read_at' => now()]);
+        // Колокольчик сам шлёт «прочитано» при открытии: за человека админ его не отмечает.
+        Impersonation::active() || $request->user()->unreadNotifications()->update(['read_at' => now()]);
 
         return $request->ajax() ? response()->noContent() : back();
     }

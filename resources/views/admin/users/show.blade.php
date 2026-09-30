@@ -23,6 +23,13 @@
                     @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif
                     @if ($user->email)<a href="mailto:{{ $user->email }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="mail"/></span>Написать</a>@endif
                     @if ($me->isAdmin())<button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="edit"/></span>Изменить</button>@endif
+                    @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())
+                        <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="contents"
+                            data-turbo-confirm="Войти как {{ $user->shortName() }}?" data-turbo-confirm-label="Получить ссылку"
+                            data-turbo-confirm-text="Одноразовая ссылка на {{ \App\Users\Impersonation::MINUTES }} минут. Откройте её в окне инкогнито, иначе в этом окне вы выйдете">
+                            @csrf<button type="submit" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="login"/></span>Войти как</button>
+                        </form>
+                    @endif
                 </x-slot:acts>
             </x-ui.contact>
             @if ($me->isAdmin() && !$user->isApproved() && !$user->is($me))

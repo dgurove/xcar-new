@@ -66,5 +66,18 @@
 </head>
 <body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value]) }}>
     {{ $slot }}
+    @if ($as = \App\Users\Impersonation::current())
+        {{-- Админ в чужом кабинете: плашка на каждом экране, чтобы не забыть, за кого действуешь. Телефон — над таб-баром
+             и полосой кнопок, ПК — левый нижний угол (кнопки действий парят справа). --}}
+        <form method="post" action="/login/as/exit" data-turbo="false" data-turbo-permanent id="impersonation"
+            class="fixed left-1/2 z-50 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-full bg-chrome py-1.5 pr-1.5 pl-2 text-sm text-white shadow-(--shadow-drop) bottom-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+.75rem)] max-md:[body:has(.action-bar)_&]:bottom-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+5rem)] md:bottom-6 md:left-6 md:translate-x-0">
+            @csrf
+            <x-ui.avatar :user="$as->user" :size="24"/>
+            <span class="min-w-0 truncate">Вы в кабинете {{ $as->user->name }}</span>
+            <button type="submit" class="shrink-0 rounded-full bg-white/15 px-3 py-1 font-medium hover:bg-white/25">Выйти</button>
+        </form>
+        {{-- Запас под плашку, чтобы конец страницы не прятался под ней. --}}
+        <div class="h-16 shrink-0" aria-hidden="true"></div>
+    @endif
 </body>
 </html>

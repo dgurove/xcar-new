@@ -4,6 +4,8 @@ namespace App\Http\Auth;
 
 use App\Support\Phone;
 use App\Support\Surface;
+use App\Users\Actions\EnterImpersonation;
+use App\Users\Impersonation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -35,6 +37,12 @@ class LoginController
 
     public function logout(Request $request)
     {
+        // Вход админа за человека: выходим только здесь, remember_token у человека не трогаем.
+        if (Impersonation::active()) {
+            EnterImpersonation::leave($request);
+
+            return redirect('/login');
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

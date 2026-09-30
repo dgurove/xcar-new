@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Auth\ImpersonationController;
 use App\Http\Auth\InviteController;
 use App\Http\Auth\LoginController;
 use App\Http\Auth\PasskeyController;
@@ -30,6 +31,11 @@ Route::middleware('auth')->group(function () {
 // Ссылка на новый пароль от менеджера или админа: вошедшего контроллер сам выводит — ссылка должна сработать с любого телефона.
 Route::get('/password/link/{token}', [PasswordController::class, 'link'])->middleware('throttle:30,1');
 Route::post('/password/link/{token}', [PasswordController::class, 'setByLink'])->middleware('throttle:5,1');
+
+// «Войти как» из CRM: гостем и вошедшим. GET только показывает, ссылка сгорает по кнопке.
+Route::post('/login/as/exit', [ImpersonationController::class, 'leave'])->middleware('auth');
+Route::get('/login/as/{token}', [ImpersonationController::class, 'show'])->middleware('throttle:30,1');
+Route::post('/login/as/{token}', [ImpersonationController::class, 'enter'])->middleware('throttle:5,1');
 
 // Пригласительная ссылка: и гостю, и вошедшему — контроллер сам решает, что показать.
 Route::get('/i/{invite}', [InviteController::class, 'show'])->middleware('throttle:30,1');

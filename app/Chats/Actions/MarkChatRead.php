@@ -5,6 +5,7 @@ namespace App\Chats\Actions;
 use App\Chats\Chat;
 use App\Chats\Events\ChatRead;
 use App\Support\Nav;
+use App\Users\Impersonation;
 use App\Users\User;
 
 /** Читающий дочитал до конца: его непрочитанное — ноль, read_seq — последний номер. Сотрудник в чужом чате ничего не меняет. */
@@ -12,7 +13,8 @@ final class MarkChatRead
 {
     public function __invoke(Chat $chat, ?User $by, ?string $token = null): void
     {
-        if (! $chat->canPost($by, $token)) {
+        // Админ, вошедший за человека, читает не за него: непрочитанное и квитанция остаются.
+        if (Impersonation::active() || ! $chat->canPost($by, $token)) {
             return;
         }
         $counterpart = $chat->isCounterpart($by);

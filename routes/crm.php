@@ -180,6 +180,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
         Route::post('/users/{user}/access', [UserController::class, 'decide']);
         Route::delete('/users/{user}', [UserController::class, 'destroy']);
         Route::post('/users/{user}/password', [UserController::class, 'passwordLink']);
+        Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate']);
         Route::put('/users/{user}/party', [UserController::class, 'party']);
         Route::get('/users/{user}/statement', [UserController::class, 'statement']);
         Route::get('/users/{user}/export', [UserController::class, 'export']);

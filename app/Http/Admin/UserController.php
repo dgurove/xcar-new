@@ -19,6 +19,7 @@ use App\Support\ListView;
 use App\Support\Phone;
 use App\Support\Surface;
 use App\Users\Actions\DecideAccess;
+use App\Users\Actions\IssueImpersonation;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\Actions\TransferBuyer;
 use App\Users\Invite;
@@ -178,6 +179,12 @@ class UserController
         abort_unless($request->user()->isAdmin(), 404);
 
         return back()->with('password_link', ['user' => $user->id, 'url' => $issue($user, $request->user())]);
+    }
+
+    /** «Войти как»: одноразовая ссылка на вход за человека — админу, за не сотрудника. Открывают её в окне инкогнито. */
+    public function impersonate(Request $request, User $user, IssueImpersonation $issue)
+    {
+        return back()->with('impersonation_link', ['user' => $user->id, 'url' => $issue($user, $request->user())]);
     }
 
     /**

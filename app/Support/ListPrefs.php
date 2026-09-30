@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Users\Impersonation;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
@@ -24,8 +25,8 @@ final class ListPrefs
         $table = fn ($v, $k) => ! $rememberTable && $k === ListView::PARAM && ListView::isTable($v);
         $saved = array_filter(self::all($request)[$list] ?? [], fn ($v, $k) => ! $table($v, $k), ARRAY_FILTER_USE_BOTH);
         $given = array_filter($request->only(self::KEYS), fn ($v, $k) => is_string($v) && $v !== '' && ! $table($v, $k), ARRAY_FILTER_USE_BOTH);
-        // Пришли по адресу с параметрами — это выбор, запоминаем.
-        if ($given && $given !== array_intersect_key($saved, $given)) {
+        // Пришли по адресу с параметрами — это выбор, запоминаем. Админ за человека его память не трогает.
+        if ($given && ! Impersonation::active() && $given !== array_intersect_key($saved, $given)) {
             self::remember($request, $list, $given + $saved);
         }
         foreach ($saved as $key => $value) {

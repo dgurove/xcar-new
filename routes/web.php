@@ -140,6 +140,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::delete('/account/users/{user}', [UserController::class, 'destroy']);
     Route::post('/account/users/{user}/access', [UserController::class, 'decide']);
     Route::post('/account/users/{user}/password', [UserController::class, 'passwordLink']);
+    Route::post('/account/users/{user}/impersonate', [UserController::class, 'impersonate']);
     Route::put('/account/users/{user}/party', [UserController::class, 'party']);
     Route::get('/account/users/{user}/statement', [UserController::class, 'statement']);
     Route::get('/account/users/{user}/export', [UserController::class, 'export']);
