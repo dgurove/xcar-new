@@ -54,9 +54,9 @@ final class Path
     }
 
     /**
-     * Этапы, в которые входило предложение, по порядку: блок, этап, выход, которым пришли, откуда, дата. Откат
-     * («Отменить шаг», «Вернуть на этот шаг») сматывает журнал до прежнего входа в тот же этап: отменённые шаги
-     * из пути пропадают (в «Истории» они остаются), и вернувшийся назад блок не стоит галочкой впереди текущего.
+     * Этапы, в которые входило предложение, по порядку: блок, этап, выход, которым пришли, откуда, дата. Вход в
+     * этап, где уже были, сматывает журнал до прежнего входа: отменённые и пройденные зря шаги из пути пропадают
+     * (в «Истории» они остаются), и вернувшийся назад блок не стоит галочкой впереди текущего.
      *
      * @return Collection<int, array{at: Carbon, block: string, stage: ?string, stage_id: ?int, from: ?string, from_id: ?int, exit: ?string}>
      */
@@ -69,14 +69,17 @@ final class Path
             $p = $e->payload;
             $entry = ['at' => $e->created_at, 'block' => $p['block'], 'stage' => $p['to'] ?? null, 'stage_id' => $p['to_id'] ?? null,
                 'from' => $p['from'] ?? null, 'from_id' => $p['from_id'] ?? null, 'exit' => $p['exit'] ?? null];
-            if (! empty($p['back'])) {
-                // Прежний вход в этот этап — по id, у старых записей — по имени.
-                for ($i = count($journal) - 1; $i >= 0; $i--) {
-                    $same = $entry['stage_id'] && $journal[$i]['stage_id'] ? $journal[$i]['stage_id'] === $entry['stage_id'] : $journal[$i]['stage'] === $entry['stage'];
-                    if ($same) {
-                        array_splice($journal, $i + 1);
+            // Снова в этапе, где уже были (откат, «Оплата не поступила», «Отказываюсь»), — всё после прежнего входа
+            // из пути уходит. Откат оставляет прежний вход (с ним и выход, которым пришли тогда, — его и отменит
+            // следующий откат), обычный возврат — новый: отменять надо уже его («Оплата не поступила»).
+            for ($i = count($journal) - 1; $i >= 0; $i--) {
+                $same = $entry['stage_id'] && $journal[$i]['stage_id'] ? $journal[$i]['stage_id'] === $entry['stage_id'] : $journal[$i]['stage'] === $entry['stage'];
+                if ($same) {
+                    array_splice($journal, empty($p['back']) ? $i : $i + 1);
+                    if (! empty($p['back'])) {
                         continue 2;
                     }
+                    break;
                 }
             }
             $journal[] = $entry;
@@ -97,9 +100,8 @@ final class Path
         $all = $stage->workflow->blocks()->with('stages.exits.to.block')->get();
         $current = $all->firstWhere('id', $stage->block_id);
         $behind = collect($passedNames)->map(fn ($name) => $all->firstWhere('name', $name))->filter()
-            ->reject(fn (Block $b) => $b->name === $current->name)->unique('name')
-            // Позади — в порядке маршрута, а не журнала: после «Вернуть на этот шаг» журнал идёт вразнобой.
-            ->sortBy('position')->values();
+            // Позади — в порядке журнала: он смотан на откатах, а порядок блоков в маршруте у веток «на себя» свой.
+            ->reject(fn (Block $b) => $b->name === $current->name)->unique('name')->values();
         $ladder = $behind->push($current);
         $seen = $ladder->pluck('id')->all();
         while (true) {

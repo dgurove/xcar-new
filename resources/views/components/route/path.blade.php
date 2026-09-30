@@ -72,10 +72,18 @@
                 @elseif ($step['state'] === Path::CURRENT)
                     <div class="step-head">
                         <span class="step-title">{{ $block->name }}</span>
-                        @if ($breaks->isNotEmpty())
+                        @if ($breaks->isNotEmpty() || $undo)
                             <div class="contents" data-controller="menu">
                                 <button type="button" class="btn btn-s btn-quiet btn-round -my-1 ml-auto shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="{{ $menu }}"><x-ui.icon name="more" class="size-5"/></button>
                                 <div id="{{ $menu }}" class="menu" popover data-menu-target="list" role="menu">
+                                    {{-- Отмена шага, которым сюда пришли (StepBack); сразу после нажатия она же — «Отменить» в тосте. --}}
+                                    @if ($undo)
+                                        @php $undoText = $undo['label'] ? 'Отменить «'.$undo['label'].'»' : 'Вернуть на «'.$undo['to']->name.'»'; @endphp
+                                        <form method="post" action="/offers/{{ $n }}/back" class="contents" data-step-back data-turbo-confirm="{{ $undoText }}?" data-turbo-confirm-text="Вернётся «{{ $undo['to']->name }}»" data-turbo-confirm-label="{{ $undo['label'] ? 'Отменить' : 'Вернуть' }}">
+                                            @csrf<input type="hidden" name="track" value="{{ $position->track->value }}">
+                                            <button class="menu-item w-full" role="menuitem"><x-ui.icon name="undo" class="size-4"/>{{ $undoText }}</button>
+                                        </form>
+                                    @endif
                                     @foreach ($breaks as $exit)
                                         <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="contents" data-turbo-confirm="{{ $exit->confirm ?: $exit->label.'?' }}">@csrf<button class="menu-item w-full text-danger" role="menuitem">{{ $exit->label }}</button></form>
                                     @endforeach
@@ -87,15 +95,7 @@
                     @elseif ($stage->name !== $block->name)<div>{{ $stage->name }}</div>@endif
                     @if (! $wantsInvoice && ($overdue || $stage->waits_for !== WaitsFor::Nobody || $clock))
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
-                        <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}"></span> назад@else{{ $stage->waits_for->label() }}@if ($position->deadline_at), <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-"></span>@elseif ($stage->timerMode() === 'stopwatch'), <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}"></span>@endif @endif</p>
-                    @endif
-                    {{-- Шаг, которым сюда пришли, — сам и отменяется: чип с подтверждением (StepBack). --}}
-                    @if ($undo)
-                        <form method="post" action="/offers/{{ $n }}/back" class="mt-2 flex flex-wrap items-center gap-2" data-turbo-confirm="Отменить «{{ $undo['label'] }}»?" data-turbo-confirm-text="Вернётся «{{ $undo['to']->name }}»" data-turbo-confirm-label="Отменить">
-                            @csrf<input type="hidden" name="track" value="{{ $position->track->value }}">
-                            <button class="chip" title="Отменить"><x-ui.icon name="undo" class="size-3.5"/>{{ $undo['label'] }}</button>
-                            <span class="nums text-sm text-ink-dim">{{ $undo['at']->translatedFormat('j M, H:i') }}</span>
-                        </form>
+                        <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $stage->waits_for->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true"></span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
                     @endif
                     @if ($position->payload)
                         <div class="mt-2 text-sm">@foreach ($position->payload as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>

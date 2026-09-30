@@ -39,7 +39,7 @@ final class StepBack
     /**
      * Что отменит «Отменить шаг» сейчас: каким выходом пришли, когда, куда вернётся. Одно место на вид и действие.
      *
-     * @return ?array{label: string, at: Carbon, to: Stage}
+     * @return ?array{label: ?string, at: Carbon, to: Stage}  label — выход, которым пришли; нет — переставили руками
      */
     public static function undoable(Offer $offer, Track $track): ?array
     {
@@ -58,6 +58,6 @@ final class StepBack
             return null;
         }
 
-        return ['label' => $last['exit'] ?? 'Переход на «'.$position->stage->name.'»', 'at' => $last['at'], 'to' => $to];
+        return ['label' => $last['exit'], 'at' => $last['at'], 'to' => $to];
     }
 }

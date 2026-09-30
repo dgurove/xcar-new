@@ -29,10 +29,12 @@ class RouteController
                 $payload[$field['key']] = $value;
             }
         }
-        $take($offer, $exit, Actor::Staff, $request->user(), $payload);
+        $offer = $take($offer, $exit, Actor::Staff, $request->user(), $payload);
 
         // Туда же, откуда нажали: страница сделки, редактор или окошко строки (PeekBack), а не всегда в редактор.
-        return back(fallback: "/offers/{$offer->number}")->with('toast', $exit->label);
+        // Шаг можно отменить — в тосте «Отменить».
+        return back(fallback: "/offers/{$offer->number}")->with('toast', $exit->label)
+            ->with('toast-undo', (bool) StepBack::undoable($offer, $exit->from->workflow->track));
     }
 
     /** «Вернуть на этот шаг» у пройденного блока пути: назад — только туда, где предложение уже было. */
@@ -51,10 +53,10 @@ class RouteController
     public function back(Request $request, Offer $offer, StepBack $back)
     {
         $track = Track::from($request->validate(['track' => ['required', 'string']])['track']);
-        $label = StepBack::undoable($offer, $track)['label'] ?? null;
+        $undo = StepBack::undoable($offer, $track);
         $back($offer, $track, $request->user());
 
-        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Отменено «'.$label.'»');
+        return back(fallback: "/offers/{$offer->number}")->with('toast', $undo['label'] ? 'Отменено «'.$undo['label'].'»' : 'Снова «'.$undo['to']->name.'»');
     }
 
     /** Вывоз по решению сотрудника — там, где он исключение, а не правило. */

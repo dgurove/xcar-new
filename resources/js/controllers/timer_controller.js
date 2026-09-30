@@ -4,8 +4,8 @@ import { Controller } from '@hotwired/stimulus';
 // («только что», «2 мин. назад»), тогда серверный текст остаётся первым кадром.
 // Один такт на все таймеры страницы, поправка на часы сервера (live.js читает
 // заголовок Date), при возврате из фона — тик сразу. На нуле шлёт timer:done
-// (bubbles) — экран закрывает приём сам, не дожидаясь серверного тика. coarse — без секунд, «21 ч 22 мин»: просрочка
-// и «идёт» в строках списка не тикают.
+// (bubbles) — экран закрывает приём сам, не дожидаясь серверного тика. coarse — без секунд, «21 ч 22 мин»: часы этапа
+// в строках списков и в шаге пути не тикают секундами.
 const timers = new Set();
 let interval = null;
 const tickAll = () => timers.forEach((t) => t.tick());
@@ -41,7 +41,7 @@ export default class extends Controller {
                 return;
             }
             this.element.classList.toggle('is-last', left < 60);
-            this.element.textContent = this.format(left);
+            this.element.textContent = this.coarseValue ? this.rough(left) : this.format(left);
         } else if (this.hasSinceValue && this.sinceValue) {
             const passed = Math.max(0, Math.floor((serverNow() - new Date(this.sinceValue)) / 1000));
             this.element.textContent = this.humanValue ? this.human(passed) : this.coarseValue ? this.rough(passed) : this.format(passed);

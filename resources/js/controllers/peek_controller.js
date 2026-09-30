@@ -148,7 +148,7 @@ export default class extends Controller {
         if (this.hasToolsTarget) this.toolsTarget.replaceChildren(...(tools ? tools.content.cloneNode(true).childNodes : []));
         tools?.remove();
         const flash = frame.querySelector('template[data-peek-toast]');
-        if (flash) { window.toast?.(flash.dataset.message, flash.dataset.kind); flash.remove(); }
+        if (flash) { window.toast?.(flash.dataset.message, window.flashOptions?.(flash, frame) ?? flash.dataset.kind); flash.remove(); }
         frame.querySelectorAll('form:not([data-turbo-frame])').forEach((f) => { f.dataset.turboFrame = 'peek'; });
         if (frame.querySelector('template[data-peek-advance]')) { this.advance(); return; }
         this.focus();

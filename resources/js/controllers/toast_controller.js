@@ -9,6 +9,7 @@ import { Controller } from '@hotwired/stimulus';
 export default class extends Controller {
     connect() {
         window.toast = (text, options) => this.show(text, options);
+        window.flashOptions = (flash, scope) => this.options(flash, scope);
         this.onRender = () => this.flash();
         document.addEventListener('turbo:load', this.onRender);
         document.addEventListener('turbo:render', this.onRender);
@@ -31,7 +32,23 @@ export default class extends Controller {
         const flash = document.getElementById('flash');
         if (!flash) return;
         flash.remove();
-        this.show(flash.dataset.message, flash.dataset.kind);
+        this.show(flash.dataset.message, this.options(flash, document));
+    }
+
+    // Серверный flash с data-undo — «Отменить» в тосте: отмена шага пути отправляет ту же форму, что пункт меню
+    // шага (form[data-step-back]), но без подтверждения — человек только что нажал сам.
+    options(flash, scope) {
+        const kind = flash.dataset.kind || '';
+        if (!('undo' in flash.dataset)) return kind;
+        return { kind, action: { label: 'Отменить', run: () => {
+            const form = scope.querySelector('form[data-step-back]');
+            if (!form) return;
+            const copy = form.cloneNode(true);
+            delete copy.dataset.turboConfirm;
+            copy.hidden = true;
+            form.after(copy);
+            copy.requestSubmit();
+        } } };
     }
 
     show(text, options = '') {
