@@ -56,7 +56,7 @@
                 @if ($chats->isEmpty())
                     <x-ui.empty class="mt-4">Чатов нет</x-ui.empty>
                 @else
-                    <div class="chat-rows-list mt-4 rounded-(--radius-l) border border-line">
+                    <div class="chat-rows-list mt-4">
                         @foreach ($chats as $c)
                             <x-chat.row :chat="$c" :me="$me" :href="($crm ? '/work/chats/' : '/account/chats/').$c->id" staff/>
                         @endforeach

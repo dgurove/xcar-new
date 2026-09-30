@@ -2275,8 +2275,8 @@ dialog.lightbox::backdrop { background: transparent; }
     a:has(+ .chat-split.has-current) { display: none !important; }
     .chat-split .chat-rows, .chat-split.has-current .chat-rows { display: flex; gap: 0; overflow-y: auto; border-right: 1px solid var(--color-line); scrollbar-width: thin; }
     .chat-rows-search { position: sticky; top: 0; z-index: 1; padding: .5rem; background: var(--color-surface); }
-    .chat-rows-list { border-radius: 0; padding: 0 .5rem .5rem; }
-    .chat-rows-list:first-child { padding-top: .5rem; }
+    .chat-split .chat-rows-list { border-radius: 0; padding: 0 .5rem .5rem; }
+    .chat-split .chat-rows-list:first-child { padding-top: .5rem; }
     .chat-rows > nav, .chat-rows .empty { margin: 1rem; }
     .chat-split .chat-pane, .chat-split.has-current .chat-pane { display: flex; flex-direction: column; }
     .chat-pane .chat-page { flex: 1 1 0; }
