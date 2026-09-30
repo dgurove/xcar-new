@@ -1,5 +1,6 @@
 {{-- Строка сделки в сгруппированном списке: фото, ТС, под ним номер, покупатель (person=false — на его карточке
-     не нужен) и чей ход с часами; справа сумма, под ней этап или состояние словом. --}}
+     не нужен) и чей ход с часами; справа сумма, под ней этап или состояние словом;
+     на телефоне этап идущей сделки не показан — чей ход и часы под названием. --}}
 @php
     $person ??= true;
     $offer = $deal->offer;
@@ -18,10 +19,10 @@
             <span class="nums">№ {{ $offer->number }}</span>
             @if ($person && $deal->buyer)<span>{{ $deal->buyer->name }}</span>@endif
         </div>
-        @if ($deal->state === \App\Offers\DealState::Active && $position)<x-route.clock :position="$position" side="staff" class="mt-0.5 truncate"/>@endif
+        @if ($deal->state === \App\Offers\DealState::Active && $position)<x-route.clock :position="$position" side="staff" class="mt-0.5 line-clamp-2 sm:truncate"/>@endif
     </div>
     <div class="shrink-0 text-right">
         <div class="nums">{{ \App\Support\Money::rub($deal->amount) }}</div>
-        <div class="max-w-40 truncate text-sm {{ $tone }}">{{ $word }}</div>
+        <div class="max-w-40 truncate text-sm sm:max-w-64 {{ $tone }} @if ($deal->state === \App\Offers\DealState::Active && $position) max-sm:hidden @endif">{{ $word }}</div>
     </div>
 </a>

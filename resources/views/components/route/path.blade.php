@@ -35,7 +35,10 @@
     @foreach ($path as $step)
         @php
             $block = $step['block'];
-            $answers = $requirements->filter(fn ($r) => $r->done_at && $r->stage?->block_id === $block->id)->sortBy('done_at');
+            $answers = $requirements->filter(fn ($r) => $r->done_at && $r->stage?->block_id === $block->id)
+                // Вернулись на этап («Оплата не поступила») — прежний ответ на нём уже не в силе, в текущем шаге его нет.
+                ->reject(fn ($r) => $step['state'] === Path::CURRENT && $r->stage_id === $position->stage_id && $r->done_at < $position->entered_at)
+                ->sortBy('done_at');
         @endphp
         <div class="step step--{{ $step['state'] }}">
             <span class="step-dot">@if ($step['state'] === Path::DONE)<x-ui.icon name="check" class="size-3"/>@endif</span>
@@ -103,8 +106,13 @@
                             </div>
                             <div class="mt-2 flex flex-wrap items-center gap-2">
                                 <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>
-                                <a href="/work/money/invoices/{{ $invoice->id }}" class="btn btn-s btn-quiet">Не поступила</a>
-                                @if ($p->slip())<a href="/work/money/invoices/{{ $invoice->id }}/payments/{{ $p->id }}/slip" class="btn btn-s btn-ghost" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-4"/>Платёжка</a>@endif
+                                <div data-controller="sheet" class="contents">
+                                    <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Не поступила</x-ui.button>
+                                    <x-ui.sheet id="reject-{{ $p->id }}" title="Оплата не поступила">
+                                        <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><x-ui.button variant="secondary" block>Не поступила</x-ui.button></form>
+                                    </x-ui.sheet>
+                                </div>
+                                @if ($slip = $p->slip())<x-ui.doc :doc="\App\Support\Docs::media($slip)" class="btn btn-s btn-ghost"><x-ui.icon name="file" class="size-4"/>Платёжка</x-ui.doc>@endif
                             </div>
                         </div>
                     @endforeach

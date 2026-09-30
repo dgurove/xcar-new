@@ -9,6 +9,12 @@
     $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
     // Оплата, а счёта ещё нет: просить оплатить и приложить платёжку нечего — счёт готовим.
     $noInvoice = $payStep && $invoices->reject(fn ($i) => $i->isOwed())->isEmpty();
+    // В шаге — счета, которые ещё ждут оплаты; оплаченные и аннулированные — отдельной карточкой «Счета» ниже пути.
+    $stepInvoices = $invoices->filter(fn ($i) => $i->state === \App\Billing\InvoiceState::Issued);
+    $pastInvoices = $invoices->diff($stepInvoices);
+    // Вернули на оплату («Оплата не поступила») — менеджер видит почему, пока не сообщил об оплате заново.
+    $rejected = $payStep && $stepInvoices->every(fn ($i) => $i->claimed() == 0)
+        ? \App\Billing\Payment::whereIn('invoice_id', $stepInvoices->pluck('id'))->where('state', \App\Billing\PaymentState::Rejected)->latest('id')->first() : null;
     $feeState = $deal->commissionState();
     $waiting = $position ? match ($position->stage->waits_for) {
         \App\Workflow\WaitsFor::Manager => 'Ваш ход', \App\Workflow\WaitsFor::Supplier => 'ждём поставщика', \App\Workflow\WaitsFor::Us => 'ждём нас', default => null,
@@ -43,17 +49,9 @@
                         </dl>
                     @endif
 
-                    @if ($invoices->isNotEmpty())
+                    @if ($stepInvoices->isNotEmpty())
                         <div class="mt-5 flex flex-col gap-2">
-                            @foreach ($invoices as $i)
-                                <a href="/account/money/invoices/{{ $i->id }}" class="row !py-3">
-                                    <x-ui.icon name="file" class="size-5 shrink-0 text-ink-muted"/>
-                                    {{-- Срок — в светофоре справа, словами его не повторяем. --}}
-                                    <span class="min-w-0 flex-1"><span class="whitespace-nowrap">Счёт {{ $i->label() }}</span>{{ $i->claimed() > 0 ? ', ждёт подтверждения' : '' }}</span>
-                                    <x-billing.light :invoice="$i"/>
-                                    <span class="nums font-semibold">{{ \App\Support\Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
-                                </a>
-                            @endforeach
+                            @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@endforeach
                         </div>
                     @endif
                     @if ($noInvoice)
@@ -61,8 +59,10 @@
                     @elseif ($requirement)
                         <div class="box-nested mt-5">
                             <h3 class="text-lg">{{ $requirement->title }}</h3>
+                            @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ $rejected->paid_at->translatedFormat('j M') }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
                             @if ($requirement->text)<p class="mt-2 whitespace-pre-line text-ink-muted">{{ $requirement->text }}</p>@endif
-                            @if ($requirement->due_at)
+                            {{-- Срок просьбы — тот же, что часы в шапке шага: второй раз его не пишем. --}}
+                            @if ($requirement->due_at && ! ($position->deadline_at && abs($position->deadline_at->diffInMinutes($requirement->due_at)) < 1))
                                 <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">до {{ $requirement->due_at->translatedFormat('j M, H:i') }}, <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-done-value="срок вышел"></span></p>
                             @endif
 
@@ -113,6 +113,15 @@
                 </div>
             @endif
 
+            @if ($pastInvoices->isNotEmpty())
+                <div class="box">
+                    <h2 class="text-xl">Счета</h2>
+                    <div class="mt-4 flex flex-col gap-2">
+                        @foreach ($pastInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@endforeach
+                    </div>
+                </div>
+            @endif
+
             @if ($deal->requirements->whereNotNull('done_at')->isNotEmpty())
                 <div class="box">
                     <h2 class="text-xl">Ваши ответы</h2>
@@ -122,7 +131,7 @@
                                 <div class="rounded-(--radius-l) bg-surface-2 px-4 py-3">
                                     <div class="flex items-baseline justify-between gap-3">
                                         <span class="min-w-0 break-words">{{ $req->title }}: «{{ $req->answer['exit'] }}»@if (!empty($req->answer['fields'])), {{ implode(', ', $req->answer['fields']) }}@endif</span>
-                                        <span class="nums shrink-0 text-sm font-normal text-ink-dim">{{ $req->done_at->translatedFormat('d.m.Y') }}</span>
+                                        <span class="nums shrink-0 text-sm font-normal text-ink-dim">{{ $req->done_at->translatedFormat('j M') }}</span>
                                     </div>
                                     {{-- Приложенное остаётся видно и после ответа. --}}
                                     @foreach ($req->getMedia('files') as $media)
@@ -150,10 +159,11 @@
                 </a>
                 @if ($feeState !== CommissionState::Hidden)
                     {{-- Вознаграждение открывается со счёта; до него менеджер видит только цену. --}}
-                    {{-- Подпись своей строкой, ниже сумма и состояние: в колонку 18rem три части в ряд не влезали, подпись рвалась. --}}
+                    {{-- Подпись своей строкой, ниже сумма и состояние: в колонку 18rem три части в ряд не влезали, подпись рвалась.
+                         Пока ждёт — состояние серым текстом: серая пилюля на серой подложке пропадала. --}}
                     <a href="/account/money/deals/{{ $deal->id }}" class="mx-6 mb-5 block rounded-(--radius-m) bg-surface-2 px-4 py-3">
                         <span class="block text-sm text-ink-dim">Агентское вознаграждение</span>
-                        <span class="mt-0.5 flex flex-wrap items-center justify-between gap-2"><span class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</span><x-ui.pill :tone="$feeState->tone()" class="!min-h-0 !py-1 text-xs">{{ mb_strtolower($feeState->label()) }}</x-ui.pill></span>
+                        <span class="mt-0.5 flex flex-wrap items-center justify-between gap-2"><span class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</span>@if ($feeState->tone() === 'plain')<span class="text-sm text-ink-dim">{{ mb_strtolower($feeState->label()) }}</span>@else<x-ui.pill :tone="$feeState->tone()" class="!min-h-0 !py-1 text-xs">{{ mb_strtolower($feeState->label()) }}</x-ui.pill>@endif</span>
                     </a>
                 @endif
                 <div class="px-6 pb-6">

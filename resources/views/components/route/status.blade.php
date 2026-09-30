@@ -9,11 +9,11 @@
     <x-ui.pill :tone="$tone">
         {{ $position->isOverdue() ? 'Срок вышел' : $stage->waits_for->label() }}
         @if ($position->deadline_at && $position->isOverdue())
-            <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}"></span> назад
+            <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад
         @elseif ($position->deadline_at)
             <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-"></span>
         @elseif ($stage->timerMode() === 'stopwatch')
-            <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}"></span>
+            <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>
         @endif
     </x-ui.pill>
 </span>

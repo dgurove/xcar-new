@@ -4,7 +4,8 @@ import { Controller } from '@hotwired/stimulus';
 // («только что», «2 мин. назад»), тогда серверный текст остаётся первым кадром.
 // Один такт на все таймеры страницы, поправка на часы сервера (live.js читает
 // заголовок Date), при возврате из фона — тик сразу. На нуле шлёт timer:done
-// (bubbles) — экран закрывает приём сам, не дожидаясь серверного тика.
+// (bubbles) — экран закрывает приём сам, не дожидаясь серверного тика. coarse — без секунд, «21 ч 22 мин»: просрочка
+// и «идёт» в строках списка не тикают.
 const timers = new Set();
 let interval = null;
 const tickAll = () => timers.forEach((t) => t.tick());
@@ -13,7 +14,7 @@ document.addEventListener('visibilitychange', () => document.visibilityState ===
 export const serverNow = () => Date.now() + (window.clockOffset || 0);
 
 export default class extends Controller {
-    static values = { until: String, since: String, done: { type: String, default: 'закрыт' }, human: Boolean };
+    static values = { until: String, since: String, done: { type: String, default: 'закрыт' }, human: Boolean, coarse: Boolean };
     static classes = ['last'];
 
     connect() {
@@ -43,13 +44,18 @@ export default class extends Controller {
             this.element.textContent = this.format(left);
         } else if (this.hasSinceValue && this.sinceValue) {
             const passed = Math.max(0, Math.floor((serverNow() - new Date(this.sinceValue)) / 1000));
-            this.element.textContent = this.humanValue ? this.human(passed) : this.format(passed);
+            this.element.textContent = this.humanValue ? this.human(passed) : this.coarseValue ? this.rough(passed) : this.format(passed);
         }
     }
 
     format(total) {
         const d = Math.floor(total / 86400), h = Math.floor((total % 86400) / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
         return d > 0 ? `${d} д ${h} ч` : h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    rough(total) {
+        const d = Math.floor(total / 86400), h = Math.floor((total % 86400) / 3600), m = Math.floor((total % 3600) / 60);
+        return d > 0 ? `${d} д ${h} ч` : h > 0 ? `${h} ч ${m} мин` : `${Math.max(1, m)} мин`;
     }
 
     human(seconds) {
