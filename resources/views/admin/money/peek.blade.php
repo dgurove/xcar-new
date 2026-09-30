@@ -69,7 +69,8 @@
             @foreach ($i->payments as $p)
                 @php $a = $p->source === PaymentSource::Acquiring ? $attempts->firstWhere('payment_id', $p->id) : null; @endphp
                 <div class="flex flex-wrap items-baseline gap-2 py-1.5 text-accent-text">
-                    <span class="min-w-0 flex-1">{{ $a ? 'По ссылке '.PayMethod::label($a->method) : $p->source->label().($p->ref ? ' № '.$p->ref : '') }}{{ ! $a && $p->note ? ', '.$p->note : '' }}@if ($a?->fee() > 0)<span class="text-ink-muted">, комиссия {{ Money::exact($a->fee()) }}</span>@endif@if ($a)<span class="text-ink-muted">, {{ $a->payout ? 'зачислено на счёт '.$a->payout->booked_at->translatedFormat('j M') : 'ждёт зачисления' }}</span>@endif</span>
+                    <span class="min-w-0 flex-1">{{ $a ? 'По ссылке '.PayMethod::label($a->method) : $p->source->label().($p->ref ? ' № '.$p->ref : '') }}{{ ! $a && $p->note ? ', '.$p->note : '' }}@if ($a?->fee() > 0)<span class="text-ink-muted">, комиссия {{ Money::exact($a->fee()) }}</span>@endif
+                        @if ($a)<span class="text-ink-muted">, {{ $a->payout ? 'зачислено на счёт '.$a->payout->booked_at->translatedFormat('j M') : 'ждёт зачисления' }}</span>@endif</span>
                     <span class="nums text-ink-muted">{{ $p->paid_at->translatedFormat('j M') }}</span><span class="nums shrink-0">− {{ Money::rub($p->amount) }}</span>
                     @if ($a && $a->refundable() > 0)
                         <form method="post" action="/work/money/acquiring/{{ $a->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($a->refundable()) }} плательщику? Оплата по счёту отменится">@csrf<button class="chip text-ink-muted">Вернуть</button></form>
