@@ -1,4 +1,5 @@
-{{-- Сообщение бота в сцене чата: то же, что придёт в Telegram (Telegram\Preview), с «печатает…» перед ним. --}}
+{{-- Сообщение бота в сцене чата: то же, что придёт в Telegram (Telegram\Preview), с «печатает…» перед ним.
+     Строка с VIN — HtmlString (<code>), {{ }} выводит её как есть, остальное экранирует. --}}
 @props(['message'])
 <div class="tg-scene" data-telegram-target="scene">
     <img src="/pwa/site/icon-maskable-512.png" alt="" class="tg-avatar">

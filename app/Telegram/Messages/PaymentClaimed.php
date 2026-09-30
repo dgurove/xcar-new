@@ -6,6 +6,7 @@ use App\Billing\Payment;
 use App\Garage\Car;
 use App\Support\Money;
 use App\Support\Surface;
+use App\Telegram\Text;
 
 /** Менеджер сообщил об оплате счёта: кто, сколько, платёжка; «Поступило» подтверждает одним нажатием. */
 final class PaymentClaimed extends Message
@@ -14,7 +15,10 @@ final class PaymentClaimed extends Message
 
     protected function title(): string
     {
-        return 'Сообщил об оплате: '.($this->payment->invoice->deal?->buyer?->name ?? $this->payment->invoice->party->name);
+        $i = $this->payment->invoice;
+        $offer = $i->deal?->offer ?? Car::ofInvoice($i)?->offer;
+
+        return ($i->deal?->buyer?->name ?? $i->party->name).' сообщил об оплате'.($offer ? ': '.$offer->titleWithYear() : '');
     }
 
     protected function lines(): array
@@ -22,11 +26,9 @@ final class PaymentClaimed extends Message
         $p = $this->payment;
         $i = $p->invoice;
 
-        return [
-            'Счёт '.$i->label().', '.$i->party->name,
+        return Text::lines($i->deal?->offer ?? Car::ofInvoice($i)?->offer,
             Money::rub($p->amount).' от '.$p->paid_at->translatedFormat('j M').($p->ref ? ', п/п № '.$p->ref : '').($p->slip() ? ', платёжка приложена' : ''),
-            $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(),
-        ];
+            'Счёт '.$i->label().', '.$i->party->name);
     }
 
     protected function decisions(): array

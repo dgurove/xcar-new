@@ -8,6 +8,7 @@ use App\Billing\Payment;
 use App\Garage\Car;
 use App\Support\Money;
 use App\Support\Surface;
+use App\Telegram\Text;
 
 /**
  * Деньги по сделке: менеджеру — счёт выставлен, оплата принята или не поступила, выплачено;
@@ -17,29 +18,57 @@ final class MoneyNotice extends Notice
 {
     public function __construct(private string $title, private ?string $text, private string $path, private ?int $offerNumber = null, private bool $toStaff = false) {}
 
-    /** Менеджеру про его деньги — и в Telegram; сотрудникам только лентой. */
+    /** @var array{title: string, lines: list<mixed>, button: string}|null */
+    private ?array $telegram = null;
+
+    /** Менеджеру про его деньги — и в Telegram (вид задаёт фабрика); сотрудникам только лентой. */
     public function toTelegram(): ?array
     {
-        return $this->toStaff ? null : ['title' => $this->title, 'lines' => [$this->text], 'button' => 'Открыть'];
+        return $this->toStaff ? null : $this->telegram;
+    }
+
+    /**
+     * Telegram-вид: событие с машиной в заголовке («Оплата по Kia Rio, 2021 принята»), VIN, суть, #номер (Telegram\Text).
+     * Счёт без машины — заголовок со счётом.
+     */
+    private function tg(Invoice $i, string $withCar, string $withoutCar, ?string $line, string $button = 'Открыть расчёт'): self
+    {
+        $offer = $i->deal?->offer ?? Car::ofInvoice($i)?->offer;
+        $this->telegram = [
+            'title' => $offer ? str_replace(':car', $offer->titleWithYear(), $withCar) : $withoutCar,
+            'lines' => Text::lines($offer, $line),
+            'button' => $button,
+        ];
+
+        return $this;
+    }
+
+    private static function rest(Invoice $i): string
+    {
+        return $i->remaining() > 0 ? 'остаток '.Money::rub($i->remaining()) : 'счёт оплачен';
     }
 
     public static function invoiceIssued(Invoice $i): self
     {
-        return new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'), $i->deal?->offer?->titleWithYear(), '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number);
+        return (new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'), $i->deal?->offer?->titleWithYear(), '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number))
+            ->tg($i, 'Счёт по :car', 'Счёт '.$i->label(), Money::rub($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'));
     }
 
     /** Расчёт по машине в гараже: счёт к оплате или то, что мы должны ему, — ведёт на машину. */
     public static function garageInvoice(Invoice $i, Car $car): self
     {
-        return new self($i->isOwed() ? 'Вам к выплате '.Money::exact($i->remaining()).' за '.$car->offer->titleWithYear() : 'Счёт '.$i->label().' на '.Money::exact($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'),
-            $car->offer->titleWithYear(), $car->url(), $car->offer->number);
+        return (new self($i->isOwed() ? 'Вам к выплате '.Money::exact($i->remaining()).' за '.$car->offer->titleWithYear() : 'Счёт '.$i->label().' на '.Money::exact($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'),
+            $car->offer->titleWithYear(), $car->url(), $car->offer->number))
+            ->tg($i, $i->isOwed() ? 'Вам к выплате по :car' : 'Счёт по :car', 'Счёт '.$i->label(),
+                Money::exact($i->remaining()).($i->isOwed() ? '' : ', оплатить до '.$i->due_at->translatedFormat('j M')), 'Открыть');
     }
 
     public static function paymentConfirmed(Payment $p): self
     {
         $i = $p->invoice;
 
-        return new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' принята', $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : 'Счёт оплачен', self::path($i), $i->deal?->offer?->number);
+        return (new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' принята', $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : 'Счёт оплачен', self::path($i), $i->deal?->offer?->number))
+            ->tg($i, 'Оплата по :car принята', 'Оплата по счёту '.$i->label().' принята', Money::rub($p->amount).', '.self::rest($i));
     }
 
     /** Куда вести менеджера по счёту: расчёт сделки на сайте или машина в гараже. */
@@ -52,14 +81,16 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        return new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' не поступила', $p->reject_reason ?: 'Проверьте платёж и сообщите снова', self::path($i), $i->deal?->offer?->number);
+        return (new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' не поступила', $p->reject_reason ?: 'Проверьте платёж и сообщите снова', self::path($i), $i->deal?->offer?->number))
+            ->tg($i, 'Оплата по :car не поступила', 'Оплата по счёту '.$i->label().' не поступила', Money::rub($p->amount).', '.mb_lcfirst($p->reject_reason ?: 'Проверьте платёж и сообщите снова'));
     }
 
     public static function payout(Payment $p): self
     {
         $i = $p->invoice;
 
-        return new self('Выплачено '.Money::rub($p->amount).($i->remaining() > 0 ? ', осталось '.Money::rub($i->remaining()) : ''), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), self::path($i), $i->deal?->offer?->number);
+        return (new self('Выплачено '.Money::rub($p->amount).($i->remaining() > 0 ? ', осталось '.Money::rub($i->remaining()) : ''), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), self::path($i), $i->deal?->offer?->number))
+            ->tg($i, 'Вознаграждение по :car выплачено', 'Вознаграждение выплачено', Money::rub($p->amount).($i->remaining() > 0 ? ', осталось '.Money::rub($i->remaining()) : ''));
     }
 
     public static function claimed(Payment $p): self
@@ -74,8 +105,9 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        return new self('Оплачено по ссылке '.Money::rub($p->amount).', счёт '.$i->label(), $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : ($i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear()),
-            self::path($i), $i->deal?->offer?->number);
+        return (new self('Оплачено по ссылке '.Money::rub($p->amount).', счёт '.$i->label(), $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : ($i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear()),
+            self::path($i), $i->deal?->offer?->number))
+            ->tg($i, 'Оплачено по ссылке: :car', 'Оплачено по ссылке, счёт '.$i->label(), Money::rub($p->amount).', '.self::rest($i));
     }
 
     /** Оплатили по ссылке — сотрудникам в «Деньги». */

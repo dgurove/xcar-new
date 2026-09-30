@@ -22,6 +22,9 @@
   .tg-message { position: relative; flex: 1; min-width: 0; max-width: 17rem; font-family: var(--font-ui); }
   .tg-bubble { position: relative; padding: .5rem .75rem .375rem; border-radius: 1rem 1rem 1rem .3rem; background: var(--tg-bubble); color: var(--tg-bubble-ink); font-size: var(--text-sm); line-height: 1.4; }
   .tg-bubble b { font-weight: 600; }
+  /* Номер — хештег: в Telegram он синий и находит все сообщения по машине. */
+  .tg-tag { color: var(--color-telegram); }
+  .tg-bubble code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; }
   .tg-bubble-meta { float: right; margin: .35rem 0 0 .75rem; color: var(--tg-meta); font-size: 11px; line-height: 1; }
   .tg-key { margin-top: .25rem; padding: .5rem; border-radius: .6rem; background: var(--tg-key); color: #fff; text-align: center; font-size: var(--text-sm); font-weight: 500; }
   .dark .tg-key { color: #ededed; }

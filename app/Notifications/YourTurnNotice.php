@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Telegram\Text;
 use App\Workflow\Requirement;
 
 /** Менеджеру: сделка ждёт его ответа. */
@@ -45,8 +46,9 @@ final class YourTurnNotice extends Notice
     {
         $r = $this->requirement;
 
-        return ['title' => 'Ваш ход: '.mb_lcfirst($r->title), 'lines' => [
-            $r->offer->titleWithYear(), $r->due_at ? 'До '.$r->due_at->translatedFormat('j M, H:i') : null, '№ '.$r->offer->number,
-        ], 'button' => 'Открыть сделку'];
+        // Просьба и срок одной строкой: «Приложите платёжку до 3 окт, 16:06».
+        $ask = $r->title.($r->due_at ? ' до '.$r->due_at->translatedFormat('j M, H:i') : '');
+
+        return ['title' => 'Ваш ход по '.$r->offer->titleWithYear(), 'lines' => Text::lines($r->offer, $ask), 'button' => 'Открыть сделку'];
     }
 }

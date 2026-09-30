@@ -6,6 +6,7 @@ use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Support\Money;
 use App\Support\Surface;
+use App\Telegram\Text;
 
 /** Приём подтверждений закрылся по сроку: сколько подтверждений и лучшая цена — выбирать нам. */
 final class BidsClosed extends Message
@@ -14,17 +15,14 @@ final class BidsClosed extends Message
 
     protected function title(): string
     {
-        return 'Приём закрыт';
+        return 'Приём закрыт: '.$this->offer->titleWithYear();
     }
 
     protected function lines(): array
     {
         $bids = $this->offer->bids()->where('state', BidState::Active)->get();
 
-        return [
-            $this->offer->titleWithYear().', №'.$this->offer->number,
-            $bids->isEmpty() ? 'Подтверждений нет' : 'Подтверждений: '.$bids->count().', лучшая '.Money::rub($bids->max('amount')),
-        ];
+        return Text::lines($this->offer, $bids->isEmpty() ? 'Подтверждений нет' : 'Подтверждений '.$bids->count().', лучшая '.Money::rub($bids->max('amount')));
     }
 
     protected function decisions(): array

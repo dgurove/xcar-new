@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Offer;
+use App\Telegram\Text;
 use App\Workflow\Position;
 
 /** Срок этапа подходит или вышел. Сотруднику — на оффер, менеджеру — на сделку. */
@@ -45,8 +46,8 @@ final class StageDueNotice extends Notice
     public function toTelegram(): ?array
     {
         return $this->dealId === null ? null : [
-            'title' => ($this->overdue ? 'Срок вышел: ' : 'Срок подходит: ').mb_lcfirst($this->position->stage->name),
-            'lines' => [$this->offer->titleWithYear(), 'До '.$this->position->deadline_at?->translatedFormat('j M, H:i'), '№ '.$this->offer->number],
+            'title' => ($this->overdue ? 'Срок вышел по ' : 'Срок подходит по ').$this->offer->titleWithYear(),
+            'lines' => Text::lines($this->offer, $this->position->stage->name.($this->position->deadline_at ? ' до '.$this->position->deadline_at->translatedFormat('j M, H:i') : '')),
             'button' => 'Открыть сделку',
         ];
     }

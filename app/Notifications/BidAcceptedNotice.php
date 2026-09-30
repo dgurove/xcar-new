@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Offers\Deal;
 use App\Support\Money;
+use App\Telegram\Text;
 
 final class BidAcceptedNotice extends Notice
 {
@@ -43,6 +44,6 @@ final class BidAcceptedNotice extends Notice
     {
         $offer = $this->deal->offer;
 
-        return ['title' => 'Подтверждение '.Money::rub($this->deal->amount).' принято', 'lines' => [$offer->titleWithYear(), '№ '.$offer->number], 'button' => 'Открыть сделку'];
+        return ['title' => 'Подтверждение '.$offer->titleWithYear().' принято', 'lines' => Text::lines($offer, Money::rub($this->deal->amount)), 'button' => 'Открыть сделку'];
     }
 }

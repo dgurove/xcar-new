@@ -5,6 +5,7 @@ namespace App\Telegram\Messages;
 use App\Billing\Invoice;
 use App\Support\Money;
 use App\Support\Surface;
+use App\Telegram\Text;
 
 /** Счета по сделке оплачены — менеджеру к выплате; «Выплачено» закрывает обязательство целиком. */
 final class AgentFeeDue extends Message
@@ -13,18 +14,18 @@ final class AgentFeeDue extends Message
 
     protected function title(): string
     {
-        return 'К выплате: '.$this->fee->party->name;
+        $offer = $this->fee->deal?->offer;
+
+        return 'К выплате '.$this->fee->party->name.($offer ? ': '.$offer->titleWithYear() : '');
     }
 
     protected function lines(): array
     {
         $f = $this->fee;
 
-        return [
-            'Агентское вознаграждение '.Money::rub($f->remaining()).', до '.$f->due_at->translatedFormat('j M'),
-            $f->deal?->offer ? $f->deal->offer->titleWithYear().', № '.$f->deal->offer->number : null,
-            $f->party->payoutReady() ? $f->party->bankDetails() : 'Реквизитов для выплаты нет',
-        ];
+        return Text::lines($f->deal?->offer,
+            'Агентское вознаграждение '.Money::rub($f->remaining()).' до '.$f->due_at->translatedFormat('j M'),
+            $f->party->payoutReady() ? $f->party->bankDetails() : 'Реквизитов для выплаты нет');
     }
 
     protected function decisions(): array
