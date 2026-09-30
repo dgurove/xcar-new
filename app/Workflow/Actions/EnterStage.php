@@ -21,7 +21,8 @@ final class EnterStage
 {
     public function __construct(private ChangeOfferState $changeState, private SetCarPlace $setPlace) {}
 
-    public function __invoke(Offer $offer, Stage $to, ?User $by = null, array $payload = [], ?Outcome $exit = null): Offer
+    /** @param  bool  $back  откат («Отменить шаг», «Вернуть на этот шаг»): журнал пути сматывается до прежнего входа сюда */
+    public function __invoke(Offer $offer, Stage $to, ?User $by = null, array $payload = [], ?Outcome $exit = null, bool $back = false): Offer
     {
         $to->loadMissing(['workflow', 'block', 'exits.to']);
         $track = $to->workflow->track;
@@ -77,6 +78,7 @@ final class EnterStage
 
         $offer->log(OfferEventType::StageEntered, $by, [
             'track' => $track->value, 'from' => $from?->name, 'to' => $to->name, 'block' => $to->block?->name, 'exit' => $exit?->label,
+            'from_id' => $from?->id, 'to_id' => $to->id, ...($back ? ['back' => true] : []),
         ]);
         StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal);
 

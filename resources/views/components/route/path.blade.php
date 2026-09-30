@@ -30,6 +30,7 @@
     if ($claims->isNotEmpty()) {
         $moves = $moves->reject($paidExit);
     }
+    $undo = \App\Workflow\Actions\StepBack::undoable($offer, $position->track);
 @endphp
 <div class="steps">
     @foreach ($path as $step)
@@ -58,9 +59,11 @@
                                 @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ is_array($v) ? implode(', ', $v) : $v }}</div>@endforeach
                                 @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                             @endforeach
-                            @if (($first = $block->stages->first()) && $block->id !== $stage->block_id)
-                                <form method="post" action="/offers/{{ $n }}/stage" class="mt-1" data-turbo-confirm="Вернуть на «{{ $block->name }}»?">
-                                    @csrf<input type="hidden" name="stage_id" value="{{ $first->id }}">
+                            {{-- Назад — на последний этап блока, где предложение было, а не на первый. --}}
+                            @php $lastIn = $step['stages']->last(); $target = $lastIn ? ($block->stages->firstWhere('id', $lastIn['stage_id']) ?? $block->stages->firstWhere('name', $lastIn['stage'])) : null; $target ??= $block->stages->first(); @endphp
+                            @if ($target && $block->id !== $stage->block_id)
+                                <form method="post" action="/offers/{{ $n }}/stage" class="mt-1" data-turbo-confirm="Вернуть на «{{ $target->name }}»?">
+                                    @csrf<input type="hidden" name="stage_id" value="{{ $target->id }}">
                                     <x-ui.button size="sm" variant="secondary">Вернуть на этот шаг</x-ui.button>
                                 </form>
                             @endif
@@ -85,6 +88,14 @@
                     @if (! $wantsInvoice && ($overdue || $stage->waits_for !== WaitsFor::Nobody || $clock))
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
                         <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}"></span> назад@else{{ $stage->waits_for->label() }}@if ($position->deadline_at), <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-"></span>@elseif ($stage->timerMode() === 'stopwatch'), <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}"></span>@endif @endif</p>
+                    @endif
+                    {{-- Шаг, которым сюда пришли, — сам и отменяется: чип с подтверждением (StepBack). --}}
+                    @if ($undo)
+                        <form method="post" action="/offers/{{ $n }}/back" class="mt-2 flex flex-wrap items-center gap-2" data-turbo-confirm="Отменить «{{ $undo['label'] }}»?" data-turbo-confirm-text="Вернётся «{{ $undo['to']->name }}»" data-turbo-confirm-label="Отменить">
+                            @csrf<input type="hidden" name="track" value="{{ $position->track->value }}">
+                            <button class="chip" title="Отменить"><x-ui.icon name="undo" class="size-3.5"/>{{ $undo['label'] }}</button>
+                            <span class="nums text-sm text-ink-dim">{{ $undo['at']->translatedFormat('j M, H:i') }}</span>
+                        </form>
                     @endif
                     @if ($position->payload)
                         <div class="mt-2 text-sm">@foreach ($position->payload as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>

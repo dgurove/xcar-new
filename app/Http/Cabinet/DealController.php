@@ -9,7 +9,6 @@ use App\Media\PhotoIngest;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
-use App\Offers\OfferEventType;
 use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
@@ -41,11 +40,8 @@ class DealController
         abort_unless($deal->buyer_id === $request->user()->id, 404);
         $deal->load(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'openRequirement.media', 'requirements']);
         $position = $deal->offer->position(Track::Sale);
-        $steps = $deal->offer->events()->where('type', OfferEventType::StageEntered)->where('created_at', '>=', $deal->created_at)->oldest()->get()
-            ->filter(fn ($e) => ($e->payload['track'] ?? 'sale') === 'sale')
-            ->map(fn ($e) => ['at' => $e->created_at, 'block' => $e->payload['block'] ?? null])
-            ->filter(fn ($s) => $s['block'])
-            ->values();
+        // Журнал с начала сделки, с учётом откатов — тот же, что путь в CRM.
+        $steps = Path::journal($deal->offer, Track::Sale, $deal->created_at);
         $blocks = $position ? Path::ladder($position->stage, $steps->pluck('block')->all()) : collect();
 
         return view('cabinet.deals.show', [

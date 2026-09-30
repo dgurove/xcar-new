@@ -60,6 +60,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'staff'])->group(fun
     Route::post('/offers/{offer}/garage', [OfferController::class, 'garage']);
     Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
     Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
+    Route::post('/offers/{offer}/back', [RouteController::class, 'back']);
     Route::post('/offers/{offer}/pickup', [RouteController::class, 'pickup']);
     Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);
 

@@ -12,12 +12,12 @@ final class PlaceOnStage
 {
     public function __construct(private EnterStage $enter) {}
 
-    public function __invoke(Offer $offer, Stage $stage, User $by): Offer
+    public function __invoke(Offer $offer, Stage $stage, User $by, bool $back = false): Offer
     {
-        return DB::transaction(function () use ($offer, $stage, $by) {
+        return DB::transaction(function () use ($offer, $stage, $by, $back) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
 
-            return ($this->enter)($offer, $stage, $by);
+            return ($this->enter)($offer, $stage, $by, back: $back);
         });
     }
 }

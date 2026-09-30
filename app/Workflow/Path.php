@@ -54,17 +54,35 @@ final class Path
     }
 
     /**
-     * Этапы, в которые входило предложение, по порядку: блок, этап, выход, которым пришли, дата.
+     * Этапы, в которые входило предложение, по порядку: блок, этап, выход, которым пришли, откуда, дата. Откат
+     * («Отменить шаг», «Вернуть на этот шаг») сматывает журнал до прежнего входа в тот же этап: отменённые шаги
+     * из пути пропадают (в «Истории» они остаются), и вернувшийся назад блок не стоит галочкой впереди текущего.
      *
-     * @return Collection<int, array{at: Carbon, block: string, stage: ?string, exit: ?string}>
+     * @return Collection<int, array{at: Carbon, block: string, stage: ?string, stage_id: ?int, from: ?string, from_id: ?int, exit: ?string}>
      */
     public static function journal(Offer $offer, Track $track, ?Carbon $since = null): Collection
     {
-        return $offer->events()->where('type', OfferEventType::StageEntered)->when($since, fn ($q) => $q->where('created_at', '>=', $since))->oldest()->get()
-            ->filter(fn ($e) => ($e->payload['track'] ?? Track::Sale->value) === $track->value)
-            ->map(fn ($e) => ['at' => $e->created_at, 'block' => $e->payload['block'] ?? null, 'stage' => $e->payload['to'] ?? null, 'exit' => $e->payload['exit'] ?? null])
-            ->filter(fn ($s) => $s['block'])
-            ->values();
+        $entries = $offer->events()->where('type', OfferEventType::StageEntered)->when($since, fn ($q) => $q->where('created_at', '>=', $since))->reorder()->orderBy('id')->get()
+            ->filter(fn ($e) => ($e->payload['track'] ?? Track::Sale->value) === $track->value && ($e->payload['block'] ?? null));
+        $journal = [];
+        foreach ($entries as $e) {
+            $p = $e->payload;
+            $entry = ['at' => $e->created_at, 'block' => $p['block'], 'stage' => $p['to'] ?? null, 'stage_id' => $p['to_id'] ?? null,
+                'from' => $p['from'] ?? null, 'from_id' => $p['from_id'] ?? null, 'exit' => $p['exit'] ?? null];
+            if (! empty($p['back'])) {
+                // Прежний вход в этот этап — по id, у старых записей — по имени.
+                for ($i = count($journal) - 1; $i >= 0; $i--) {
+                    $same = $entry['stage_id'] && $journal[$i]['stage_id'] ? $journal[$i]['stage_id'] === $entry['stage_id'] : $journal[$i]['stage'] === $entry['stage'];
+                    if ($same) {
+                        array_splice($journal, $i + 1);
+                        continue 2;
+                    }
+                }
+            }
+            $journal[] = $entry;
+        }
+
+        return collect($journal);
     }
 
     /**

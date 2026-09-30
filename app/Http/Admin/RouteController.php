@@ -8,6 +8,7 @@ use App\Park\Actions\RequestTowFromOffer;
 use App\Workflow\Actions\DropRoute;
 use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\StartRoute;
+use App\Workflow\Actions\StepBack;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
@@ -16,7 +17,7 @@ use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
 
-/** Маршрут на карточке оффера: наши исходы, вывоз и возврат на пройденный шаг. */
+/** Маршрут на карточке оффера: наши исходы, отмена шага, вывоз и возврат на пройденный шаг. */
 class RouteController
 {
     public function exit(Request $request, Offer $offer, Outcome $exit, TakeExit $take)
@@ -41,9 +42,19 @@ class RouteController
         abort_unless($stage->workflow->vendor_id === $offer->vendor_id, 403);
         $passed = Path::for($offer, $stage->workflow->track)->where('state', Path::DONE)->pluck('block.id')->all();
         abort_unless(in_array($stage->block_id, $passed, true), 422);
-        $place($offer, $stage, $request->user());
+        $place($offer, $stage, $request->user(), back: true);
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Снова «'.$stage->block->name.'»');
+    }
+
+    /** «Отменить шаг» в текущем шаге пути: назад туда, откуда увёл последний выход (`StepBack`). */
+    public function back(Request $request, Offer $offer, StepBack $back)
+    {
+        $track = Track::from($request->validate(['track' => ['required', 'string']])['track']);
+        $label = StepBack::undoable($offer, $track)['label'] ?? null;
+        $back($offer, $track, $request->user());
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Отменено «'.$label.'»');
     }
 
     /** Вывоз по решению сотрудника — там, где он исключение, а не правило. */
