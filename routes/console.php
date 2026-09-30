@@ -13,7 +13,8 @@ Schedule::command('acquiring:sync')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('bank:sync')->everyTenMinutes()->between('7:00', '23:00')->withoutOverlapping()->runInBackground();
 Schedule::command('bank:sync --days=1 --digest')->dailyAt('06:10')->withoutOverlapping();
 Schedule::command('mail:sync')->everyMinute()->withoutOverlapping()->runInBackground();
-Schedule::command('telegram:poll')->everyMinute()->withoutOverlapping(10)->runInBackground();
+// Без withoutOverlapping: очередь держит замок Postgres в самой команде — новый опрос ждёт прежний и подхватывает без паузы.
+Schedule::command('telegram:poll')->everyMinute()->runInBackground();
 Schedule::command('mail:reconcile')->dailyAt('04:10');
 Schedule::command('mail:archive-stale')->dailyAt('04:20');
 Schedule::command('queue:prune-batches')->daily();
