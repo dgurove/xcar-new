@@ -24,6 +24,9 @@ class Restriction extends Model
     /** @return list<string> */
     public static function hiddenFor(?User $user): array
     {
-        return $user ? (self::find($user->id)?->hidden_kinds ?? []) : [];
+        // В запросе — раз на человека: витрина спрашивает на каждую закупку.
+        $id = $user?->id;
+
+        return $id ? once(fn () => self::find($id)?->hidden_kinds ?? []) : [];
     }
 }

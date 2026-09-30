@@ -13,6 +13,7 @@ use App\Users\Actions\IssuePasswordLink;
 use App\Users\BuyerGroup;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /** Покупатели менеджера: группы и люди одним списком, страница человека. */
 class BuyerController
@@ -21,7 +22,12 @@ class BuyerController
     {
         $me = $request->user();
         $term = trim((string) $request->query('q'));
-        $q = $me->buyers()->with('groups')->orderBy('name');
+        // «Видит N» — подзапросом в той же выборке (было по два запроса на человека); аватары — сразу.
+        $q = $me->buyers()->with(['groups', 'media' => fn ($m) => $m->where('collection_name', 'avatar')])->orderBy('name')
+            ->addSelect(['seen_count' => Offer::query()->selectRaw('count(*)')->where('state', OfferState::Open)
+                ->whereHas('showings', fn ($s) => $s->where('manager_id', $me->id)->where(fn ($w) => $w->whereColumn('showings.user_id', 'users.id')
+                    ->orWhereIn('showings.group_id', DB::table('buyer_group_user')->select('group_id')->whereColumn('buyer_group_user.user_id', 'users.id'))))
+                ->whereHas('viewers', fn ($v) => $v->where('user_id', $me->id)->where('opens_at', '<=', now()))]);
         if ($term) {
             $q->where(fn ($w) => $w->where('name', 'ilike', "%{$term}%")->orWhere('login', 'ilike', "%{$term}%")->orWhere('phone', 'like', '%'.preg_replace('/\D+/', '', $term).'%'));
         }
@@ -36,10 +42,7 @@ class BuyerController
 
         // Числа на строках — одним проходом: сколько машин видит и сколько интересов в работе.
         $ids = $buyers->pluck('id')->all();
-        $seen = collect($ids)->mapWithKeys(fn ($id) => [$id => 0]);
-        foreach ($buyers as $buyer) {
-            $seen[$buyer->id] = Offer::where('state', OfferState::Open)->visibleTo($buyer)->count();
-        }
+        $seen = $buyers->getCollection()->mapWithKeys(fn ($b) => [$b->id => (int) $b->seen_count]);
         $interests = Interest::whereIn('user_id', $ids)->where('state', InterestState::New)->selectRaw('user_id, count(*) as n')->groupBy('user_id')->pluck('n', 'user_id');
         // Строка «Интерес» над списком: новых — лаймом, иначе сколько всего.
         $mine = Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id));
@@ -79,7 +82,7 @@ class BuyerController
             'offers' => $offers,
             'direct' => $direct,
             'via' => $via,
-            'interests' => $user->interests()->with('offer.brand', 'offer.model')->latest()->get(),
+            'interests' => $user->interests()->with('offer.brand', 'offer.model', 'offer.media')->latest()->get(),
             'chats' => Chat::where('user_id', $user->id)->where('manager_id', $me->id)->with(['offer.brand', 'offer.model'])
                 ->addSelect(['*', 'last_text' => Message::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'link' => session('password_link'),

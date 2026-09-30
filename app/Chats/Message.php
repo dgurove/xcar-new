@@ -37,10 +37,27 @@ class Message extends Model
         return $this->hasMany(File::class, 'message_id');
     }
 
-    /** Сообщение, на которое это — ответ (тот же чат, по номеру). */
+    /** Сообщение, на которое это — ответ (тот же чат, по номеру). Лента подгружает цитаты пачкой — `primeReplies`. */
     public function replied(): ?Message
     {
+        if ($this->relationLoaded('repliedTo')) {
+            return $this->getRelation('repliedTo');
+        }
+
         return $this->reply_to ? static::where('chat_id', $this->chat_id)->where('seq', $this->reply_to)->with('files')->first() : null;
+    }
+
+    /** Цитаты ответов для пачки сообщений одним запросом — иначе по два запроса на каждый ответ в ленте. */
+    public static function primeReplies(iterable $messages): void
+    {
+        $messages = collect($messages)->filter(fn (self $m) => $m->reply_to);
+        if ($messages->isEmpty()) {
+            return;
+        }
+        $quoted = static::with('files')
+            ->where(fn ($q) => $messages->groupBy('chat_id')->each(fn ($group, $chat) => $q->orWhere(fn ($w) => $w->where('chat_id', $chat)->whereIn('seq', $group->pluck('reply_to')->unique()->values()))))
+            ->get()->keyBy(fn (self $m) => $m->chat_id.':'.$m->seq);
+        $messages->each(fn (self $m) => $m->setRelation('repliedTo', $quoted->get($m->chat_id.':'.$m->reply_to)));
     }
 
     public function isDeleted(): bool

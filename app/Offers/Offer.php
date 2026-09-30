@@ -247,7 +247,7 @@ class Offer extends Model implements HasMedia
             if (! $user->manager_id) {
                 return $q->whereRaw('false');
             }
-            $groups = $user->groups()->pluck('buyer_groups.id')->all();
+            $groups = $user->groupIds();
 
             return $q->where('state', OfferState::Open)
                 ->whereHas('showings', fn ($s) => $s->where('manager_id', $user->manager_id)

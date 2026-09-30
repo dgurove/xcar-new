@@ -49,6 +49,13 @@ class CatalogController
         $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
         $states = $gallery ? [OfferState::Gallery] : [OfferState::Open];
 
+        $query = CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery);
+        $count = $query->count();
+        if (ListView::isTable(ListView::pick($request, $count))) {
+            // Строке таблицы кадры не нужны.
+            $query->without('media');
+        }
+
         // Счётчики на каждый запрос списка — полминуты в кэше, слабому серверу легче.
         // Сотруднику — общие; менеджеру и покупателю выдача своя, считаем по ней и без кэша: после «Показать…» число должно сойтись сразу.
         $counts = $user?->isStaff()
@@ -59,14 +66,15 @@ class CatalogController
                 'recommended_gallery' => Offer::where('state', OfferState::Gallery)->where('recommended', true)->count(),
             ])
             : [
-                'offers' => Offer::visibleTo($user)->where('state', OfferState::Open)->count(),
+                // Без фильтров «Все» — это и есть длина списка: второй раз не считаем.
+                'offers' => ! $gallery && ! array_diff_key($filters, ['sort' => 1]) ? $count : Offer::visibleTo($user)->where('state', OfferState::Open)->count(),
                 'gallery' => $user?->role->canSeeGallery() ? Offer::visibleTo($user)->where('state', OfferState::Gallery)->count() : 0,
                 'recommended' => Offer::visibleTo($user)->whereIn('state', $states)->where('recommended', true)->count(),
             ];
         // «Рекомендуем» — сколько отмеченных в этом разделе: пилюля с числом, без отмеченных пилюли нет.
         $recommended = $counts[$gallery && $user?->isStaff() ? 'recommended_gallery' : 'recommended'] ?? 0;
 
-        $offers = ListView::paginate($request, CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery));
+        $offers = ListView::paginate($request, $query, $count);
         Showing::remember($user, $offers->pluck('id')->all());
         $view = ListView::pick($request, $offers->total());
 
@@ -78,7 +86,11 @@ class CatalogController
             'views' => CatalogQuery::allowedViews($user, $gallery, $recommended),
             'view' => $view,
             'context' => ListContext::forList($gallery, $filters + ['sort' => $sort], $view),
-            'brands' => Brand::whereHas('offers', fn ($o) => $o->visibleTo($user)->whereIn('state', $states))->orderBy('name')->get(),
+            // Марки для фильтра меняются редко — полминуты в кэше (свои у каждого, кому выдача своя). В кэше —
+            // массивы, не модели: кэш объектов не восстанавливает (`serializable_classes` выключен).
+            'brands' => collect(Cache::remember('catalog.brands:'.($gallery ? 'g' : 'o').':'.($user?->isStaff() ? 'staff' : ($user?->id ?? 0)), 30,
+                fn () => Brand::whereHas('offers', fn ($o) => $o->visibleTo($user)->whereIn('state', $states))->orderBy('name')->get(['slug', 'name'])
+                    ->map(fn (Brand $b) => ['slug' => $b->slug, 'name' => $b->name])->all()))->map(fn (array $b) => (object) $b),
             'gallery' => $gallery,
             'prices' => $prices,
             'counts' => ['recommended' => $recommended] + $counts,

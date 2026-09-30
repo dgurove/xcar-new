@@ -58,7 +58,7 @@ class Chat extends Model
         // Есть ли у последнего сообщения не-картинка — чтобы превью говорило «Файл», а не «Фото».
         $doc = File::selectRaw('1')->whereIn('message_id', $last('id'))->where('mime', 'not like', 'image/%')->limit(1);
 
-        return $query->with(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager'])
+        return $query->with(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager', ...User::withAvatar('user.media'), ...User::withAvatar('manager.media')])
             ->addSelect(['*', 'last_text' => $last('text'), 'last_author_id' => $last('author_id'), 'last_deleted_at' => $last('deleted_at'), 'last_doc' => $doc]);
     }
 

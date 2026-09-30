@@ -96,7 +96,8 @@ class Invoice extends Model implements HasMedia
     /** Сколько заявлено и ждёт подтверждения. */
     public function claimed(): float
     {
-        return round((float) $this->claims()->sum('amount'), 2);
+        // Заявки уже загружены (списки «Денег», положение) — не спрашивать базу на каждый счёт.
+        return round((float) ($this->relationLoaded('claims') ? $this->claims->sum('amount') : $this->claims()->sum('amount')), 2);
     }
 
     public function scopeOfSeller($q, Seller $seller)

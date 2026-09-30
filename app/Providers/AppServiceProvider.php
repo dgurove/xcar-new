@@ -6,15 +6,15 @@ use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\YooKassa;
 use App\Billing\Events\InvoiceVoided;
 use App\Billing\Events\PaymentClaimed;
-use App\Billing\Events\PaymentRejected;
 use App\Billing\Events\PaymentConfirmed;
 use App\Billing\Events\PaymentRecorded;
+use App\Billing\Events\PaymentRejected;
 use App\Billing\Events\PaymentVoided;
 use App\Billing\Listeners\AdvanceOnClaim;
-use App\Billing\Listeners\ReturnOnReject;
 use App\Billing\Listeners\AdvanceOnPayment;
 use App\Billing\Listeners\CloseLinksWhenSettled;
 use App\Billing\Listeners\PayoutWhenPaid;
+use App\Billing\Listeners\ReturnOnReject;
 use App\Billing\Listeners\RevokeAgentFee;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Listeners\AttachGuestEnquiry;
@@ -34,9 +34,11 @@ use App\Users\Auth\WebAuthnProvider;
 use App\Users\Passkeys;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laragear\WebAuthn\Assertion\Validator\AssertionValidator;
@@ -54,6 +56,15 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Локально ленивая загрузка в цикле (N+1) пишется в storage/logs/lazy.log с адресом экрана: видно при проходе
+        // экранов, а работа соседних сессий в том же дереве не падает исключением.
+        if (! $this->app->isProduction() && ! $this->app->runningUnitTests()) {
+            Model::preventLazyLoading();
+            Model::handleLazyLoadingViolationUsing(function (Model $model, string $relation) {
+                Log::build(['driver' => 'single', 'path' => storage_path('logs/lazy.log')])
+                    ->info(($this->app->runningInConsole() ? 'console' : request()->method().' '.request()->path()).' '.$model::class.'::'.$relation);
+            });
+        }
         Event::subscribe(Notify::class);
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);

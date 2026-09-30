@@ -6,6 +6,7 @@ use App\Live\Stream;
 use App\Offers\Actions\MarkInterest;
 use App\Offers\Interest;
 use App\Offers\InterestState;
+use App\Users\User;
 use Illuminate\Http\Request;
 
 /** Интерес покупателей менеджера: новые сверху, «Связались» смахиванием. */
@@ -15,7 +16,7 @@ class BuyerInterestController
     {
         $me = $request->user();
         $preset = $request->query('preset', 'new');
-        $q = Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id))->with(['user', 'offer.brand', 'offer.model', 'offer.media'])->latest();
+        $q = Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id))->with(['user', ...User::withAvatar('user.media'), 'offer.brand', 'offer.model', 'offer.media'])->latest();
         if ($preset === 'new') {
             $q->where('state', InterestState::New);
         }

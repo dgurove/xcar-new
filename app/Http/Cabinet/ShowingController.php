@@ -29,7 +29,7 @@ class ShowingController
             'offers' => $offers,
             'single' => $single,
             'groups' => $me->ownGroups()->withCount('members')->get(),
-            'buyers' => $me->buyers()->orderBy('name')->get(),
+            'buyers' => $me->buyers()->with(User::withAvatar())->orderBy('name')->get(),
             'checkedUsers' => $current->pluck('user_id')->filter()->all(),
             'checkedGroups' => $current->pluck('group_id')->filter()->all(),
             'back' => $request->query('back', url()->previous()),

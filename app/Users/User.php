@@ -124,6 +124,17 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->belongsToMany(BuyerGroup::class, 'buyer_group_user', 'user_id', 'group_id')->withPivot('created_at');
     }
 
+    /** Группы покупателя id-шниками — круг видимости спрашивает их на каждый подсчёт: в запросе раз. */
+    public function groupIds(): array
+    {
+        if ($this->relationLoaded('groups')) {
+            return $this->groups->modelKeys();
+        }
+        $ids = fn () => $this->groups()->pluck('buyer_groups.id')->all();
+
+        return app()->runningInConsole() ? $ids() : once($ids);
+    }
+
     /** Группы, которые завёл менеджер. */
     public function ownGroups(): HasMany
     {
@@ -287,9 +298,13 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return URL::signedRoute('mail.unsubscribe', ['user' => $this->id]);
     }
 
+    /** Непрочитанные уведомления; в запросе считаются раз — их читают значок приложения, шапка и таб-бар. */
     public function unreadCount(): int
     {
-        return $this->unreadNotifications()->count();
+        $count = fn () => $this->unreadNotifications()->count();
+
+        // В очереди объект человека живёт весь job — там считаем каждый раз (значок пуша после нового уведомления).
+        return app()->runningInConsole() ? $count() : once($count);
     }
 
     /** Бейдж приложения: непрочитанные уведомления и сообщения в чатах вместе. */
@@ -301,12 +316,27 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Непрочитанное в чатах: свои чаты и чаты покупателей, где человек — вторая сторона. */
     public function unreadChats(): int
     {
-        $staff = $this->isStaff() ? (int) Chat::whereNull('manager_id')->sum('unread_for_staff') : 0;
-        if (! $this->canChat()) {
-            return $staff;
+        $staff = $this->isStaff();
+        $own = $this->canChat();
+        if (! $staff && ! $own) {
+            return 0;
         }
 
-        return $staff + (int) Chat::where('user_id', $this->id)->sum('unread_for_user') + (int) Chat::where('manager_id', $this->id)->sum('unread_for_staff');
+        // Одним запросом (было три суммы), в запросе — раз: его читают значок приложения, шапка и таб-бар.
+        $sum = function () use ($staff, $own) {
+            $sums = Chat::query()
+                ->where(fn ($q) => $q
+                    ->when($own, fn ($q) => $q->where('user_id', $this->id)->orWhere('manager_id', $this->id))
+                    ->when($staff, fn ($q) => $q->orWhereNull('manager_id')))
+                ->selectRaw('coalesce(sum(case when user_id = ? then unread_for_user end), 0) as mine,
+                    coalesce(sum(case when manager_id = ? then unread_for_staff end), 0) as buyers,
+                    coalesce(sum(case when manager_id is null then unread_for_staff end), 0) as platform', [$this->id, $this->id])
+                ->toBase()->first();
+
+            return ($own ? (int) $sums->mine + (int) $sums->buyers : 0) + ($staff ? (int) $sums->platform : 0);
+        };
+
+        return app()->runningInConsole() ? $sum() : once($sum);
     }
 
     /** «в сети» — был здесь только что; иначе когда: «в сети 12:40», «в сети вчера», «в сети 12 сен». */
@@ -375,6 +405,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('thumb')->fit(Fit::Crop, 128, 128)->format('webp')->nonQueued();
+    }
+
+    /** Жадная загрузка аватара для списков людей: без неё каждый кружок — свой запрос. `$path` — 'media', 'user.media'. */
+    public static function withAvatar(string $path = 'media'): array
+    {
+        return [$path => fn ($m) => $m->where('collection_name', 'avatar')];
     }
 
     public function avatarUrl(): ?string

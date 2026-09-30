@@ -98,10 +98,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo('/');
         $middleware->alias(['staff' => EnsureStaff::class, 'manager' => EnsureManager::class, 'ability' => EnsureAbility::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'park.area' => EnsureParkArea::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
-        $middleware->prepend([RedirectLegacyPaths::class, MarkPrefetch::class]);
+        $middleware->prepend([ServerTiming::class, RedirectLegacyPaths::class, MarkPrefetch::class]);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
-        $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, Impersonated::class, TouchSeen::class, DemoReadOnly::class]);
+        $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, MarkInstalled::class, PeekBack::class, Impersonated::class, TouchSeen::class, DemoReadOnly::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
         // Уведомления провайдеров: подписи у ЮKassa нет, статус перечитывается по API (`PayController::hook`).
         $middleware->validateCsrfTokens(except: ['hooks/*']);

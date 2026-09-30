@@ -52,7 +52,7 @@ class DealController
             'steps' => $steps,
             'requirement' => $deal->openRequirement,
             'exits' => $deal->openRequirement ? $position?->stage->exitsFor(Actor::Manager) : collect(),
-            'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->orderBy('id')->get(),
+            'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->with('claims')->orderBy('id')->get(),
         ]);
     }
 

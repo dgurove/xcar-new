@@ -10,6 +10,7 @@
     $firstUnread ??= 0;
     $prev = null;
     $today = now()->startOfDay();
+    \App\Chats\Message::primeReplies($messages);
 @endphp
 @if (!empty($more))<div class="chat-more" data-chat-target="more" data-seq="{{ $messages->first()->seq }}"></div>@endif
 @foreach ($messages as $m)

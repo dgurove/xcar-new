@@ -106,7 +106,10 @@ final class Path
         $seen = $ladder->pluck('id')->all();
         while (true) {
             // Возврат назад («Отказываюсь» → снова приём) — не развилка пути вперёд: блоки раньше текущего не считаются.
-            $next = $current->nextBlocks()->reject(fn (Block $b) => $b->isDeadEnd() || in_array($b->id, $seen, true) || $b->position < $current->position);
+            // Блоки из `to.block` — копии без этапов: берём те же блоки из уже загруженного маршрута, иначе каждый шаг
+            // лестницы догружал этапы, исходы и цели по одному.
+            $next = $current->nextBlocks()->map(fn (Block $b) => $all->firstWhere('id', $b->id) ?? $b)
+                ->reject(fn (Block $b) => $b->isDeadEnd() || in_array($b->id, $seen, true) || $b->position < $current->position);
             if ($next->count() !== 1) {
                 return $ladder;
             }

@@ -15,13 +15,17 @@ use Illuminate\Support\Collection;
  */
 final class ManagerLedger
 {
+    /** Все сделки-расчёты с раскладом: экран берёт и список пресета, и числа пилюль — считаем раз. */
+    private ?Collection $all = null;
+
     public function __construct(private User $manager) {}
 
     /** Наши счета к оплате: его контрагенту или по его сделкам (платит его покупатель). */
     public function toPay(): Collection
     {
         return Invoice::visibleToManager($this->manager)->where('direction', 'issued')->where('state', InvoiceState::Issued)
-            ->with(['party', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'claims'])->orderBy('due_at')->orderBy('id')->get();
+            // Для положения нужны суммы, сроки и заявки — ТС и фото сделки не рисуются.
+            ->with(['claims'])->orderBy('due_at')->orderBy('id')->get();
     }
 
     /** Все счета, что ему видны, — для истории и акта. */
@@ -38,11 +42,13 @@ final class ManagerLedger
      */
     public function deals(string $preset = 'all'): Collection
     {
-        $deals = Deal::where('buyer_id', $this->manager->id)
-            ->where(fn ($q) => $q->where('state', DealState::Active)->orWhereHas('invoices'))
-            ->with(['offer.brand', 'offer.model', 'offer.media', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
-        $deals->each(fn (Deal $d) => $d->setAttribute('money', DealMoney::of($d)));
-        $deals = $deals->filter(fn (Deal $d) => match ($preset) {
+        if (! $this->all) {
+            $this->all = Deal::where('buyer_id', $this->manager->id)
+                ->where(fn ($q) => $q->where('state', DealState::Active)->orWhereHas('invoices'))
+                ->with(['offer.brand', 'offer.model', 'offer.media', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
+            $this->all->each(fn (Deal $d) => $d->setAttribute('money', DealMoney::of($d)));
+        }
+        $deals = $this->all->filter(fn (Deal $d) => match ($preset) {
             'pay', 'payout', 'closed' => $d->money->preset === $preset,
             default => true,
         });

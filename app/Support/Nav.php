@@ -367,8 +367,21 @@ final class Nav
     private static function counts(User $user, Surface $surface): array
     {
         $scope = $user->isStaff() ? 'staff' : $user->id;
+        // Таб-бар, пилюли и бейджи читают это за страницу по два-три раза: из кэша (он в базе) — один раз на запрос.
+        $memo = app()->runningInConsole() ? null : request()->attributes;
+        $key = "nav.counts:{$surface->value}:{$scope}";
+        if ($memo?->has($key)) {
+            return $memo->get($key);
+        }
+        $counts = self::countsCached($user, $surface, $key);
+        $memo?->set($key, $counts);
 
-        return Cache::remember("nav.counts:{$surface->value}:{$scope}", 30, function () use ($user, $surface) {
+        return $counts;
+    }
+
+    private static function countsCached(User $user, Surface $surface, string $key): array
+    {
+        return Cache::remember($key, 30, function () use ($user, $surface) {
             $day = now()->subDay();
             if ($surface === Surface::Park) {
                 return ['totals' => [
@@ -394,7 +407,7 @@ final class Nav
             return ['totals' => array_filter([
                 '/offers' => (clone $open)->count(),
                 '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->count() : null,
-                '/purchases' => $user->role->canSeePurchases() ? count(Purchase::showcase($user)) : null,
+                '/purchases' => $user->role->canSeePurchases() ? Purchase::cardCount($user) : null,
                 // Всё, что стоит строкой на экране «Сделки»: сделки и подтверждения, ждущие решения.
                 '/deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count() : null,
                 '/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,

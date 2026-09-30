@@ -87,6 +87,21 @@ class Purchase extends Model
         return $cards;
     }
 
+    /**
+     * Сколько карточек на витрине — число для таб-бара: группы, в которых человеку что-то открыто, по открытым
+     * закупкам. Одним запросом, без подсчёта «названо» — `showcase` на это тратил по три запроса на закупку.
+     */
+    public static function cardCount(?User $user): int
+    {
+        $hidden = Restriction::hiddenFor($user);
+        $open = self::where('state', PurchaseState::Open)->get(['id', 'hide_priced']);
+
+        return $open->sum(fn (self $p) => $p->carsOnSite()->distinct()->pluck('kind')
+            ->map(fn ($k) => $k instanceof Kind ? $k : Kind::from($k))
+            ->reject(fn (Kind $k) => in_array($k->value, $hidden, true))
+            ->map(fn (Kind $k) => Group::of($k)->value)->unique()->count());
+    }
+
     /** @return list<PurchaseCard> */
     public static function showcase(?User $user): array
     {

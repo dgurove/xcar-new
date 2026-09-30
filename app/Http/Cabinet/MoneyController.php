@@ -18,6 +18,7 @@ use App\Billing\PartyRules;
 use App\Billing\Payment;
 use App\Garage\Car as GarageCar;
 use App\Offers\Deal;
+use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -56,15 +57,17 @@ class MoneyController
     {
         $me = $request->user();
         abort_unless($deal->buyer_id === $me->id, 404);
-        $deal->load(['offer.brand', 'offer.model', 'offer.media', 'agentFee.payments.media']);
-        $invoices = $deal->issuedInvoices()->with(['party', 'charges', 'allPayments.media'])->get();
+        // Счета сделки с заявками и ссылками — сразу: расклад (`DealMoney`) и состояние вознаграждения читают их по
+        // нескольку раз за страницу, без загрузки каждый раз шли в базу.
+        $deal->load(['offer.brand', 'offer.model', 'offer.media', 'agentFee.payments.media', 'invoices.claims', 'invoices.payLinks']);
+        $invoices = $deal->issuedInvoices()->with(['party', 'charges', 'allPayments.media', 'claims', 'payLinks'])->get();
         $links = PayLink::whereIn('invoice_id', $invoices->pluck('id'))->where('state', PayLinkState::Open)->with(['invoice', 'payerUser', 'creator'])->get();
 
         return view('cabinet.money.deal', [
             'deal' => $deal, 'offer' => $deal->offer, 'invoices' => $invoices, 'fee' => $deal->agentFee, 'state' => $deal->commissionState(),
             // Счёт вендору (вознаграждение от поставщика) платит не менеджер: его в «Оплатить» нет.
             'claimable' => $invoices->filter(fn (Invoice $i) => $i->state === InvoiceState::Issued && $i->kind !== ChargeKind::Reward && $i->remaining() - $i->claimed() > 0)->values(),
-            'links' => $links, 'buyers' => $me->buyers()->orderBy('name')->get(),
+            'links' => $links, 'buyers' => $me->buyers()->with(User::withAvatar())->orderBy('name')->get(),
         ]);
     }
 

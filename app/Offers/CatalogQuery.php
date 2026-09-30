@@ -34,7 +34,11 @@ final class CatalogQuery
         $prices = ! $gallery && ($user?->role->canSeePrices() ?? false);
 
         $q = Offer::query()
-            ->with(['brand', 'model', 'settlement', 'media', 'favorites'])
+            // Карточкам нужны только фото и своя закладка: все медиа (с документами) и чужое избранное по
+            // каждому предложению поднимались зря; таблице фото не нужны вовсе — их снимает контроллер (`without`).
+            ->with(['brand', 'model', 'settlement',
+                'media' => fn ($m) => $m->where('collection_name', 'photos'),
+                'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)])
             ->visibleTo($user)
             ->whereIn('state', $gallery ? [OfferState::Gallery] : [OfferState::Open]);
         if ($user?->isBuyer()) {

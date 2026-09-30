@@ -7,6 +7,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Users\BuyerGroup;
+use App\Users\User;
 use Illuminate\Http\Request;
 
 /** Группы покупателей: имя, состав, что группа видит. */
@@ -31,7 +32,7 @@ class GroupController
         return view('cabinet.buyers.group', [
             'group' => $group,
             // Участники сверху — состав читается сразу, остальных можно добавить ниже.
-            'buyers' => $me->buyers()->orderBy('name')->get()->sortByDesc(fn ($b) => $group->members->contains('id', $b->id))->values(),
+            'buyers' => $me->buyers()->with(User::withAvatar())->orderBy('name')->get()->sortByDesc(fn ($b) => $group->members->contains('id', $b->id))->values(),
             'offers' => Offer::with(['brand', 'model', 'settlement', 'media', 'favorites'])->whereIn('id', $offerIds)->where('state', OfferState::Open)->orderByDesc('published_at')->get(),
         ]);
     }
