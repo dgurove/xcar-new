@@ -7,7 +7,6 @@ use App\Billing\Party;
 use App\Cars\Category;
 use App\Mail\Account;
 use App\Mail\Scope;
-use App\Mail\Template;
 use App\Media\MediaUrl;
 use App\Offers\Audience;
 use App\Offers\Offer;
@@ -169,16 +168,6 @@ class Vendor extends Model implements HasMedia
     public function party(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'party_id');
-    }
-
-    public function reportTemplate(): BelongsTo
-    {
-        return $this->belongsTo(Template::class, 'report_template_id');
-    }
-
-    public function refusalTemplate(): BelongsTo
-    {
-        return $this->belongsTo(Template::class, 'refusal_template_id');
     }
 
     public function mailAccount(): BelongsTo

@@ -23,16 +23,4 @@ enum PartyKind: string
             self::Person => 'Физлицо',
         };
     }
-
-    /** Реквизиты компании: ИНН, КПП, ОГРН, адрес, руководитель. */
-    public function isCompany(): bool
-    {
-        return $this === self::Company;
-    }
-
-    /** Человек с паспортом: самозанятый и физлицо. */
-    public function isPerson(): bool
-    {
-        return $this === self::Person || $this === self::SelfEmployed;
-    }
 }

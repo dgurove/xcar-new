@@ -75,15 +75,6 @@ final class Ledger
             ->groupBy('vehicle_id')->map(fn ($invoices) => round($invoices->sum(fn (Invoice $i) => $i->remaining()), 2))->filter(fn ($d) => $d > 0)->all();
     }
 
-    /** Не выставленное по ТС: хранение по день (по умолчанию — сегодня) и начисления вне счёта. */
-    public static function vehicleUnbilled(Vehicle $vehicle, ?CarbonInterface $until = null): float
-    {
-        $storage = Accrual::storage($vehicle, $until)->sum('amount');
-        $charges = (float) Charge::where('vehicle_id', $vehicle->id)->whereNull('invoice_id')->whereNull('voided_at')->sum('amount');
-
-        return round($storage + $charges, 2);
-    }
-
     /**
      * Невыставленные дни покупателя: при выдаче их берут наличными на месте, поэтому они держат выдачу.
      */
@@ -115,35 +106,6 @@ final class Ledger
         }
 
         return $out;
-    }
-
-    /** Не выставленное контрагенту: хранение по его ТС на стоянке и начисления вне счёта. */
-    public static function unbilledOf(Party $party): float
-    {
-        $sum = (float) Charge::where('party_id', $party->id)->whereNull('invoice_id')->whereNull('voided_at')->sum('amount');
-        $vehicles = Vehicle::with(['vendor.party', 'offer.deal.buyer', 'ownerParty'])->whereIn('state', [VehicleState::Stored, VehicleState::InTransit])
-            ->where(fn ($q) => $q->whereHas('vendor', fn ($v) => $v->where('party_id', $party->id))->orWhere('owner_party_id', $party->id))->get();
-        foreach ($vehicles as $v) {
-            foreach (Accrual::storage($v) as $s) {
-                if (self::payerParty($v, $s['payer'], false)?->id === $party->id) {
-                    $sum += $s['amount'];
-                }
-            }
-        }
-
-        return round($sum, 2);
-    }
-
-    /** Сколько должен покупатель по этой ТС: его невыставленные дни хранения и неоплаченные счета ему. */
-    public static function buyerDebt(Vehicle $vehicle, ?CarbonInterface $until = null): float
-    {
-        $party = self::payerParty($vehicle, 'buyer', false);
-        $sum = Accrual::storage($vehicle, $until)->where('payer', 'buyer')->sum('amount');
-        if ($party?->id) {
-            $sum += $vehicle->invoices()->where('direction', 'issued')->where('state', InvoiceState::Issued)->where('party_id', $party->id)->get()->sum(fn (Invoice $i) => $i->remaining());
-        }
-
-        return round($sum, 2);
     }
 
     /** Кто платит отрезок хранения: вендор, страхователь или покупатель — их контрагенты; «никто» — null. */

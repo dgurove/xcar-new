@@ -41,8 +41,6 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Phone;
 use App\Users\User;
-use App\Vendors\Tariff;
-use App\Vendors\TariffService;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -420,19 +418,6 @@ class RequestController
         $report = $vehicle->reportUrl($act, "/cars/{$vehicle->id}");
 
         return "/cars/{$vehicle->id}".($report ? '?window='.urlencode($report) : '');
-    }
-
-    /** Стоимость эвакуации по прайсу: фикс по категории и площадке плюс километры сверх включённых. */
-    public static function towCost(Vehicle $vehicle, ?int $km): ?int
-    {
-        $fixed = Tariff::resolve($vehicle, TariffService::Tow);
-        if (! $fixed) {
-            return null;
-        }
-        $extra = max(0, ($km ?? 0) - ($fixed->km_included ?? 0));
-        $perKm = $extra ? Tariff::resolve($vehicle, TariffService::TowKm) : null;
-
-        return (int) round($fixed->price + $extra * ($perKm?->price ?? 0));
     }
 
     /** @return array<string, list<mixed>> что спрашивает приём и выдача, пока модуля осмотра нет: ключи, документы, кто сдал и подпись */

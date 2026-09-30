@@ -5,7 +5,6 @@ use App\Billing\Bank\Console\PerpetualSecret;
 use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
-use App\Cars\Console\LearnVins;
 use App\Http\Middleware\DemoReadOnly;
 use App\Http\Middleware\EnsureAbility;
 use App\Http\Middleware\EnsureParkArea;
@@ -24,17 +23,14 @@ use App\Http\Middleware\TouchSeen;
 use App\Live\SubscriberCookie;
 use App\Mail\Console\ArchiveStaleCandidates;
 use App\Mail\Console\BackfillMail;
-use App\Mail\Console\CandidateCardsCommand;
 use App\Mail\Console\ReadMail;
 use App\Mail\Console\RebuildChains;
 use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
 use App\Mail\Console\WatchMail;
 use App\Media\Console\MoveConversionsHot;
-use App\Media\Console\MovePapers;
 use App\Media\Console\Restamp;
 use App\Offers\Console\TickOffers;
-use App\Park\Console\FactCommand;
 use App\Park\Console\ParkDigestCommand;
 use App\Park\Console\ReleaseByLettersCommand;
 use App\Park\Console\StoreByLettersCommand;
@@ -65,7 +61,6 @@ return Application::configure(basePath: dirname(__DIR__))
         RefillVendors::class,
         TickPark::class,
         ParkDigestCommand::class,
-        FactCommand::class,
         StoreByLettersCommand::class,
         ReleaseByLettersCommand::class,
         TickBilling::class,
@@ -73,19 +68,16 @@ return Application::configure(basePath: dirname(__DIR__))
         SyncMail::class,
         WatchMail::class,
         ReconcileMail::class,
-        CandidateCardsCommand::class,
         ReadMail::class,
         RebuildChains::class,
         BackfillMail::class,
         ArchiveStaleCandidates::class,
         MakeKeys::class,
         Restamp::class,
-        MovePapers::class,
         MoveConversionsHot::class,
         Gc::class,
         Report::class,
         Poll::class, SetProfile::class,
-        LearnVins::class,
         SyncAcquiring::class,
         SyncBank::class,
         PerpetualSecret::class,

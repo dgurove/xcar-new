@@ -527,7 +527,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .mark { @apply inline-flex items-center rounded-(--radius-s) px-2 text-xs font-medium text-white; padding-block: 3px; background: var(--color-closed); }
   .mark-accent { background: var(--color-accent); }
   .mark-urgent { background: var(--color-urgent); }
-  .mark-danger { background: var(--color-danger); }
   .mark-glass  { background: rgb(18 18 18 / .55); backdrop-filter: blur(10px); }
 
   /* Тег-пилюля: цвет через переменные, нейтральный — серый. */
@@ -793,12 +792,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { .table tr:hover td .vincode > svg { opacity: 1; } }
   /* Окошко встало панелью справа — такой столбец уже написан в нём, а название снова читается целиком. */
   @media (min-width: 1024px) { .table-wrap:has(.peek:not([hidden])) .col-peek-hide { display: none !important; } }
-  /* Обратное: видно, пока столбцов col-peek-hide нет (логотип вендора за названием, когда его столбец спрятан). */
-  @media (min-width: 1024px) { .table-wrap:not(:has(.peek:not([hidden]))) .col-peek-show { display: none !important; } }
-  .table .dot { @apply mr-1.5 inline-block size-2 shrink-0 rounded-full bg-line align-[1px]; }
-  .table .dot-open { background: var(--color-accent); }
-  .table .dot-urgent { background: var(--color-urgent); }
-  .table .dot-danger { background: var(--color-danger); }
   /* «Подробной таблицей» (?vid=wide, x-ui.table view): на телефоне шапка и все столбцы, что видны на ПК,
      таблица листается вбок целиком, имя группы стоит на месте. То, что стояло во второй строке вместо
      столбцов (sm:hidden), здесь лишнее. Шапка при этом вниз не липнет: липкость считается от ближайшего
@@ -817,10 +810,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     /* Первый столбец не закреплён (26.09.2026, решение владельца): таблица листается вбок целиком. */
     .table-wrap.is-wide .table tr.table-group > th { position: static; overflow: visible; }
     .table-wrap.is-wide .table-group-name { display: inline-block; position: sticky; left: .75rem; }
-    /* Вендор здесь своим столбцом — логотип перед названием лишний. */
-    .table-wrap.is-wide .col-vendor-lead { display: none !important; }
-    /* Цена «от → до» целиком, как на широком ПК: столбцу здесь места хватает, таблица листается. */
-    .table-wrap.is-wide .price-from { display: inline !important; }
   }
 
   /* Узкая таблица на широком экране — вид телефона (29.09.2026, владелец): справа окошко строки и документ, таблице
@@ -1010,7 +999,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Столбец «Вендор, № убытка»: логотип с именем и номер в одну строку. Логотип перед названием ТС — только пока
      этого столбца нет (краткая таблица телефона). */
   .vendor-ref { display: inline-flex; align-items: center; gap: .5em; min-width: 0; max-width: 100%; }
-  @media (min-width: 640px) { .col-vendor-lead, .vendor-tip.col-vendor-lead { display: none; } }
   /* Имя вендора подсказкой у логотипа: наведение на ПК, нажатие на телефоне (кнопка — окошко строки не открывается).
      Справа от логотипа поверх номера, а не сверху: ячейка таблицы режет всё, что выходит за её высоту. */
   .vendor-tip { position: relative; display: inline-flex; line-height: 1; cursor: default; -webkit-tap-highlight-color: transparent; }
@@ -1635,25 +1623,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 @import "./telegram.css";
 
 @layer components {
-  .hero { position: sticky; top: 0; z-index: 0; height: 100svh; height: min(100svh, 100vh); }
-  .hero-ground { background-color: #e9eaea; }
-  .dark .hero-ground { background-color: var(--color-chrome); }
-  .hero-shade { background: linear-gradient(to right, rgb(255 255 255 / .82) 0%, rgb(255 255 255 / .38) 38%, rgb(255 255 255 / 0) 68%); }
-  .dark .hero-shade { background: linear-gradient(to right, rgb(18 18 18 / .78) 0%, rgb(18 18 18 / .34) 38%, rgb(18 18 18 / 0) 68%); }
-  .hero-count { font-size: clamp(84px, 24vw, 158px); font-weight: 700; line-height: .85; color: var(--color-ink); }
-  .dark .hero-count { color: #fff; }
-  @media (min-width: 640px) { .hero-count { font-size: clamp(76px, 10.5vw, 158px); } }
-  .hero-sub { color: rgb(29 29 27 / .72); }
-  .hero-cue { color: rgb(29 29 27 / .6); }
-  @media (hover: hover) { .hero-cue:hover { color: var(--color-ink); } }
-  .dark .hero-sub { color: rgb(255 255 255 / .7); }
-  .dark .hero-cue { color: rgb(255 255 255 / .6); }
-  @media (hover: hover) { .dark .hero-cue:hover { color: #fff; } }
-  /* Содержимое первого экрана — над таб-баром. */
-  .hero-content { padding-bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 6vh); }
-  @media (min-width: 768px) { .hero-content { padding-bottom: 9vh; } }
 
-  .over-hero { position: relative; z-index: 1; background: var(--color-ground); border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
 
   /* Лендинг `/` сайта и парковки. Фото стоит на месте (fixed), первый экран — текст и действия, лист с содержимым
      наезжает поверх со скруглением. --dock (0…1, landing_controller) — насколько лист подошёл к шапке: скругление
@@ -1705,16 +1675,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
   @media (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
-      .hero-content { animation: hero-fade linear both; animation-timeline: scroll(); animation-range: 0 90svh; }
       /* Появление по прокрутке — только у первых карточек: с `both` анимация держит каждую карточку отдельным слоем,
          а на сотне карточек это и память видеокарты, и дёрганая прокрутка на телефоне. */
       .rise:nth-child(-n + 12) { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 60%; }
-      .hero-cue { animation: cue 2.4s ease-in-out infinite; }
     }
   }
-  @keyframes hero-fade { to { opacity: 0; transform: translateY(-3rem); } }
   @keyframes rise { from { opacity: 0; transform: translateY(1.5rem); } to { opacity: 1; transform: none; } }
-  @keyframes cue { 0%, 100% { transform: translateY(0); opacity: .6; } 50% { transform: translateY(.4rem); opacity: 1; } }
 }
 
 /* ------------------------------------------------------------- карточки списка */
@@ -1920,10 +1886,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 .surface-crm .cards:not(.cards--grid) .card-extra, .surface-park .cards:not(.cards--grid) .card-extra { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 .surface-crm .cards:not(.cards--grid) .card-extra::-webkit-scrollbar, .surface-park .cards:not(.cards--grid) .card-extra::-webkit-scrollbar { display: none; }
 .surface-crm .cards:not(.cards--grid) .card-extra > *, .surface-park .cards:not(.cards--grid) .card-extra > * { flex: none; }
-/* Место в ряду уступает вендор, а не номер убытка: номер читают и копируют, вендор узнаётся по началу. */
-.surface-crm .cards:not(.cards--grid) .card-extra > .tag-shrink, .surface-park .cards:not(.cards--grid) .card-extra > .tag-shrink {
-  display: inline-block; flex: 0 1 auto; min-width: 2.5rem; overflow: hidden; text-overflow: ellipsis;
-}
 /* Факты под названием — одной строкой текста (.card-sub), как во второй строке таблицы, а не рядом чипов. */
 .card-sub { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-ink-muted); }
 .card-sub > * + * { margin-left: .5rem; }

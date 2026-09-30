@@ -82,7 +82,6 @@ return [
         'cert' => env('SBER_CERT'),                  // p12 или pem клиента
         'cert_password' => env('SBER_CERT_PASSWORD'),
         'ca' => env('SBER_CA'),                      // корневой «Russian Trusted Root CA»; пусто — системный набор
-        'account' => env('SBER_ACCOUNT'),            // расчётный счёт ПРАЙМ
     ],
 
     // Исходящий прокси для carcade.com: адрес прода у них в бане.

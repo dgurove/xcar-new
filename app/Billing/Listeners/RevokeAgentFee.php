@@ -5,7 +5,6 @@ namespace App\Billing\Listeners;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\Events\InvoiceVoided;
 use App\Billing\Events\PaymentVoided;
-use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 
 /** Оплата покупателя отменена или счёт аннулирован — невыплаченное вознаграждение менеджера снова не к выплате. */

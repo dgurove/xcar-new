@@ -54,13 +54,6 @@ final class AudienceRules
         return [...array_values($rows), $rest];
     }
 
-    public static function isEveryoneNow(array $rules): bool
-    {
-        $rules = self::normalize($rules ?: self::everyone());
-
-        return count($rules) === 1 && $rules[0]['delay'] === 0;
-    }
-
     /** @return array<int, int> id менеджера => через сколько минут после публикации он видит */
     public static function openings(array $rules): array
     {

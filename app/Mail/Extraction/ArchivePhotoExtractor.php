@@ -64,30 +64,6 @@ final class ArchivePhotoExtractor
     private const MAX_COMPRESSION_RATIO = 1000;
 
     /**
-     * Все фотографии из архива.
-     *
-     * Любая ошибка — битый архив, слишком большой файл, странная запись —
-     * возвращает пустой список: промоут кандидата не должен падать из-за
-     * одного письма.
-     *
-     * @return list<array{name: string, mime: string, contents: string}>
-     */
-    public function extractPhotos(Attachment $attachment, int $limit = 0): array
-    {
-        $photos = [];
-        foreach ($this->extractFiles($attachment) as $file) {
-            if ($file['photo']) {
-                $photos[] = ['name' => $file['name'], 'mime' => $this->mimeOf($file['name']), 'contents' => $file['contents']];
-                if ($limit > 0 && count($photos) >= $limit) {
-                    break;
-                }
-            }
-        }
-
-        return $photos;
-    }
-
-    /**
      * Всё содержимое архива письма: кадры и документы (PDF, СТС, Excel), со вложенными архивами.
      * Формат — по сигнатуре файла, а не по MIME: rar и 7z почта шлёт и `application/octet-stream`.
      *

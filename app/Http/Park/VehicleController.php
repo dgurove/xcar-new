@@ -15,7 +15,6 @@ use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
-use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Park\Actions\CancelVehicle;
 use App\Park\Actions\CloseRequest;

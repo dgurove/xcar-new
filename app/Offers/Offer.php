@@ -31,7 +31,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\HasMedia;
 
@@ -212,12 +211,6 @@ class Offer extends Model implements HasMedia
     public function showings(): HasMany
     {
         return $this->hasMany(Showing::class);
-    }
-
-    /** Менеджеры, которым предложение уже открыто (их волна наступила). */
-    public function allowedManagers(): Collection
-    {
-        return User::whereIn('id', $this->viewers()->where('opens_at', '<=', now())->select('user_id'))->orderBy('name')->get();
     }
 
     /**

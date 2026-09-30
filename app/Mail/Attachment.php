@@ -57,11 +57,6 @@ class Attachment extends Model
         return app(Parts::class)->local($this) !== null;
     }
 
-    public function isPinned(): bool
-    {
-        return $this->blob_sha !== null;
-    }
-
     public function isImage(): bool
     {
         return (str_starts_with((string) $this->mime, 'image/') && $this->mime !== 'image/svg+xml') || $this->isHeic();

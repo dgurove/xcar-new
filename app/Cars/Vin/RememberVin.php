@@ -6,7 +6,6 @@ use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Purchases\Car;
 use BackedEnum;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * Запоминает машину для декодера: VIN и то, что о ней записано руками.
@@ -36,19 +35,5 @@ final class RememberVin
             $facts[$field] = $value instanceof BackedEnum ? $value->value : $value;
         }
         VinFact::updateOrCreate(['source_type' => $type, 'source_id' => $car->getKey()], $facts);
-    }
-
-    /** Все машины базы — один раз после появления памяти. */
-    public static function learnAll(): int
-    {
-        $n = 0;
-        foreach ([Offer::class, Car::class, Vehicle::class] as $class) {
-            $class::query()->whereNotNull('vin')->whereNotNull('brand_id')->each(function (Model $car) use (&$n) {
-                (new self)($car);
-                $n++;
-            });
-        }
-
-        return $n;
     }
 }

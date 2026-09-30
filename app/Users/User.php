@@ -8,7 +8,6 @@ use App\Media\MediaUrl;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\Interest;
 use App\Park\Area;
-use App\Park\Yard;
 use App\Support\Demo\HidesDemo;
 use App\Support\Phone;
 use App\Telegram\Bot;
@@ -47,11 +46,6 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
                 app(SyncViewers::class)->all();
             }
         });
-    }
-
-    public function managerGroups(): BelongsToMany
-    {
-        return $this->belongsToMany(ManagerGroup::class, 'manager_group_user', 'user_id', 'group_id');
     }
 
     protected function casts(): array
@@ -230,11 +224,6 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function party(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'party_id');
-    }
-
-    public function parkYard(): BelongsTo
-    {
-        return $this->belongsTo(Yard::class, 'park_yard_id');
     }
 
     /** Парковка — админам и управляющим (роль «Парковка»); менеджерам, покупателям и модераторам её нет. */

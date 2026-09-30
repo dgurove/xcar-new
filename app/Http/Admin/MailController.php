@@ -51,8 +51,8 @@ use App\Park\Vehicle;
 use App\Support\Docs;
 use App\Support\Nav;
 use App\Support\OfficePreview;
-use App\Vendors\ContactRole;
 use App\Users\User;
+use App\Vendors\ContactRole;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -71,8 +71,6 @@ use Symfony\Component\Mime\MimeTypes;
 class MailController
 {
     public const GROUPS_PER_PAGE = 30;
-
-    public const ROWS_PER_PAGE = 50;
 
     /** `$queue` — адрес «Из писем»: оттуда же идут «Завести» и «Не заявка» у цепочки. */
     public function __construct(

@@ -39,9 +39,4 @@ class Payment extends Model implements HasMedia
     {
         return $this->getFirstMedia('slip');
     }
-
-    public function isClaim(): bool
-    {
-        return $this->state === PaymentState::Claimed;
-    }
 }

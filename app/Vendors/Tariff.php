@@ -288,19 +288,6 @@ class Tariff extends Model
         return self::ladderFor($vehicle, $service, $on)->first();
     }
 
-    /** Ставка на N-е сутки по лестнице: последняя ступень, чей from_day не больше N. */
-    public static function rateOnDay(Collection $ladder, int $day): ?float
-    {
-        $rate = null;
-        foreach ($ladder as $tier) {
-            if ($tier->from_day <= $day) {
-                $rate = $tier->price;
-            }
-        }
-
-        return $rate;
-    }
-
     /** «300 ₽/сут с 4 дн», «250…450 ₽/сут по стоимости», «5 000 ₽ до 30 км», «150 ₽/км». */
     public static function ladderLabel(Collection $ladder): ?string
     {
