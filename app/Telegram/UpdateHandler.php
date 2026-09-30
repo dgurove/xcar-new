@@ -228,11 +228,14 @@ final class UpdateHandler
             return;
         }
         $owner = $this->bot->ownerChatId();
+        // Владельцу объяснять нечего — «Бот на связи» ему не нужен.
+        if ($chatId === $owner) {
+            return;
+        }
         $linked = User::where('telegram_chat_id', $chatId)->first();
         [$text, $keyboard] = match (true) {
             $owner === null => ["Ваш chat_id: <code>{$chatId}</code>\nВпишите его в TELEGRAM_OWNER_CHAT_ID и перезапустите приложение", null],
             $linked !== null => ['Привязан к аккаунту '.e($linked->name).' на xcar.ru', [[$this->open()]]],
-            $chatId === $owner => ['Бот на связи', null],
             default => ['Служебный бот xcar.ru', [[$this->profile()]]],
         };
         $this->reply($chatId, $text, $keyboard);
