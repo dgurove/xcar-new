@@ -210,7 +210,7 @@ final class UpdateHandler
         }
     }
 
-    /** Личное сообщение: `/start` со ссылкой из приложения — привязка или вход; без неё — кто на связи. */
+    /** Личное сообщение: `/start` со ссылкой из приложения — привязка или вход; голый `/start` — кто на связи; остальное — молча. */
     private function message(array $message): void
     {
         $chatId = (int) data_get($message, 'chat.id', 0);
@@ -220,6 +220,11 @@ final class UpdateHandler
         if (preg_match('~^/start(?:@\w+)?\s+(\S+)$~', trim((string) ($message['text'] ?? '')), $m) === 1) {
             $this->start($chatId, $m[1], data_get($message, 'from.username'));
 
+            return;
+        }
+        // Нераспознанное — молча (решение владельца 30.09.2026: «Бот на связи» на каждое слово раздражал);
+        // на голый /start — кто на связи: это первое, что человек нажимает в боте.
+        if (preg_match('~^/start(?:@\w+)?$~', trim((string) ($message['text'] ?? ''))) !== 1) {
             return;
         }
         $owner = $this->bot->ownerChatId();
