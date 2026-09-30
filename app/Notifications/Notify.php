@@ -43,11 +43,9 @@ use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
 use App\Telegram\Messages\ParkLetter;
 use App\Telegram\Messages\ParkSold;
 use App\Telegram\Messages\PaymentClaimed as PaymentClaimedMessage;
-use App\Telegram\Messages\Registration;
 use App\Users\Events\AccessDecided;
 use App\Users\Events\BuyerJoined;
 use App\Users\Events\ManagerJoined;
-use App\Users\Events\UserRegistered;
 use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Events\StageDue;
@@ -73,7 +71,6 @@ final class Notify
             StageEntered::class => 'stageEntered',
             StageDue::class => 'stageDue',
             ChatMessagePosted::class => 'chat',
-            UserRegistered::class => 'registered',
             BuyerJoined::class => 'buyerJoined',
             ManagerJoined::class => 'managerJoined',
             AccessDecided::class => 'accessDecided',
@@ -95,12 +92,6 @@ final class Notify
             AgentFeeDue::class => 'agentFeeDue',
             PaidOnline::class => 'paidOnline',
         ];
-    }
-
-    /** Новый человек — владельцу в Telegram с кнопками решения. */
-    public function registered(UserRegistered $e): void
-    {
-        NotifyOwner::dispatch(new Registration($e->user));
     }
 
     /** Покупатель прошёл по ссылке: менеджеру — в ленту и push, владельцу — строка в Telegram. */

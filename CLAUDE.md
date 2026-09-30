@@ -17,7 +17,7 @@
 (`/account/deals` → `/deals`, `/account/buyers|interest|showings` → `/buyers…`, `Paths::MOVED`) —
 301 через `Support\Paths` + `RedirectLegacyPaths` (единственное место со старыми именами). **Сайт закрыт, саморегистрации нет**: новый человек
 приходит только по пригласительной ссылке `/i/{code}`; прежний допуск по
-заявке (`SiteWall`, `DecideAccess`, Telegram `Registration`) в коде остался,
+заявке (`SiteWall`, `DecideAccess` — «Ждут» в CRM) в коде остался (Telegram-кнопки допуска сняты 30.09.2026),
 но не используется. Без Filament и чужих админ-фреймворков — свой UI-кит.
 
 Старый проект `../xcar.ru` — донор, не источник. Подробности по модулям и

@@ -20,9 +20,6 @@ use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\Messages\AgentFeeDue;
 use App\Telegram\Messages\InvoiceOverdue;
 use App\Telegram\Messages\PaymentClaimed;
-use App\Telegram\Messages\Registration;
-use App\Users\Actions\DecideAccess;
-use App\Users\Role;
 use App\Users\User;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -34,7 +31,7 @@ use Throwable;
  */
 final class UpdateHandler
 {
-    public function __construct(private Bot $bot, private DecideAccess $decide, private Journal $journal) {}
+    public function __construct(private Bot $bot, private Journal $journal) {}
 
     /** @param array<string, mixed> $update */
     public function handle(array $update): void
@@ -75,42 +72,11 @@ final class UpdateHandler
             return;
         }
         match ($press->topic) {
-            'access' => $this->access($press),
             'invoice' => $this->invoice($press),
             'fee' => $this->fee($press),
             'claim' => $this->claim($press),
             default => $this->bot->answer($press->queryId, 'Кнопка устарела.'),
         };
-    }
-
-    private function access(Press $press): void
-    {
-        $user = User::find($press->id);
-        if (! $user) {
-            $this->bot->answer($press->queryId, 'Пользователь удалён.');
-
-            return;
-        }
-        $message = new Registration($user);
-        // Клиент мог показать старую клавиатуру: по уже решённому не перерешаем, только переписываем след.
-        if (! $user->isPending()) {
-            $this->bot->answer($press->queryId, $user->isRejected() ? 'Уже отклонён.' : "Уже решено: {$user->role->label()}.");
-            $this->bot->edit($press->chatId, $press->messageId, $message->text($message->decided()), $message->afterDecision());
-
-            return;
-        }
-        if ($press->action === 'reject') {
-            $this->decide->reject($user);
-            $this->bot->answer($press->queryId, 'Отклонён.');
-        } elseif ($role = Role::tryFrom($press->action)) {
-            $this->decide->approve($user, $role);
-            $this->bot->answer($press->queryId, "Роль: {$role->label()}, доступ открыт");
-        } else {
-            $this->bot->answer($press->queryId, 'Такой роли нет.');
-
-            return;
-        }
-        $this->bot->edit($press->chatId, $press->messageId, $message->text($message->decided()), $message->afterDecision());
     }
 
     /** «Оплачен» под просроченным счётом — оплата на весь остаток от имени владельца. */
