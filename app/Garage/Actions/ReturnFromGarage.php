@@ -20,7 +20,7 @@ final class ReturnFromGarage
     public function __invoke(Car $car, User $by): void
     {
         if ($car->isSold() || $car->costs()->exists()) {
-            throw ValidationException::withMessages(['car' => 'По машине уже есть расходы или продажа']);
+            throw ValidationException::withMessages(['car' => 'По ТС уже есть расходы или продажа']);
         }
 
         DB::transaction(function () use ($car, $by) {

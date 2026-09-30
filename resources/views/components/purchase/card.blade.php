@@ -58,7 +58,8 @@
                 <a href="{{ $href }}" class="btn btn-s btn-ghost w-full whitespace-nowrap text-ink-dim">Нет предложений</a>
             @endif
         @elseif ($mine)
-            <a href="{{ $href }}" class="btn btn-s btn-accent nums w-full whitespace-nowrap">{{ \App\Support\Money::rub($mine->amount) }}</a>
+            {{-- Своя цена — состояние (лаймовым словом с галкой), а не главная кнопка: лайм-заливка у глагола «Предложить». --}}
+            <a href="{{ $href }}" class="btn btn-s btn-quiet nums w-full gap-1.5 whitespace-nowrap text-accent-text"><x-ui.icon name="check" class="size-4"/>{{ \App\Support\Money::rub($mine->amount) }}</a>
         @else
             <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Предложить</a>
         @endif

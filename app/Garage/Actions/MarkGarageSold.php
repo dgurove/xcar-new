@@ -14,7 +14,7 @@ final class MarkGarageSold
     public function __invoke(Car $car, array $data, User $by): Car
     {
         if ($car->isFrozen()) {
-            throw ValidationException::withMessages(['sold_price' => 'По машине выставлен счёт: сначала аннулируйте его']);
+            throw ValidationException::withMessages(['sold_price' => 'По ТС выставлен счёт: сначала аннулируйте его']);
         }
 
         $car->update([

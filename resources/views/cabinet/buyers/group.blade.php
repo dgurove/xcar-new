@@ -3,7 +3,7 @@
 @php $n = $group->members->count(); @endphp
 <x-ui.cabinet :title="$group->name" :phone-heading="false">
 
-    <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,44rem)_18rem]">
         <div class="lg:col-start-2 lg:row-start-1">
             <x-ui.contact :name="$group->name" sidebar>
                 <x-slot:chips>

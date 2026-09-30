@@ -5,12 +5,12 @@
     $off = $settings['off'] ?? [];
 @endphp
 <x-ui.cabinet title="Настройки уведомлений" :back="['Уведомления', '/account/notifications']">
-    <form method="post" action="/account/notifications/settings" class="flex flex-col gap-6" data-controller="autosubmit">
+    <form method="post" action="/account/notifications/settings" class="flex flex-col gap-3" data-controller="autosubmit">
         @csrf @method('put')
 
         <section>
-            <h2 class="text-xl">Каналы</h2>
-            <div class="mt-4 flex flex-col gap-2">
+            <h2 class="list-head">Каналы</h2>
+            <div class="list">
                 @if ($push)
                     {{-- Пуш — про это устройство, не про аккаунт: тумблером управляет push_controller, не форма. --}}
                     <label class="row row-switch" data-controller="push">
@@ -52,8 +52,8 @@
         </section>
 
         <section>
-            <h2 class="text-xl">О чём</h2>
-            <div class="mt-4 flex flex-col gap-2">
+            <h2 class="list-head">О чём</h2>
+            <div class="list">
                 @foreach ($categories['on'] as $key => $label)
                     <label class="row row-switch">
                         <span class="min-w-0 flex-1 font-medium">{{ $label }}</span>
@@ -70,13 +70,13 @@
         </section>
 
         <section>
-            <h2 class="text-xl">Тихие часы</h2>
-            <div class="mt-4 flex flex-col gap-2">
+            <h2 class="list-head">Тихие часы</h2>
+            <div class="list">
                 <label class="row row-switch">
                     <x-ui.row-icon name="moon"/>
                     <span class="min-w-0 flex-1">
                         <span class="block font-medium">Без уведомлений на телефон ночью</span>
-                        <span class="row-sub"><span class="tag nums">22:00 — 08:00</span></span>
+                        <span class="row-sub"><span class="tag nums">22:00–08:00</span></span>
                     </span>
                     <input type="checkbox" name="quiet" value="1" class="switch" @checked($settings['quiet'] ?? false) data-action="change->autosubmit#submit">
                 </label>
@@ -84,7 +84,7 @@
         </section>
     </form>
 
-    <form method="post" action="/account/notifications/check" class="contents">
+    <form method="post" action="/account/notifications/check" class="list">
         @csrf
         <button class="row w-full text-left">
             <x-ui.row-icon name="send" tone="accent"/>

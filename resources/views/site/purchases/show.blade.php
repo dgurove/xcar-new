@@ -2,30 +2,18 @@
     $qs = http_build_query(array_filter($filters + [\App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)], fn ($v) => $v !== null && $v !== ''));
     $view = \App\Support\ListView::pick(request(), $cars->total());
 @endphp
-<x-ui.shell :title="$purchase->publicTitle($group)" :heading="false" :back="['Закупки', '/purchases']" :back-row="false" :trail="[['Главная', '/'], ['Закупки', '/purchases'], [$purchase->publicTitle($group)]]">
-    <div class="box">
-        <div class="has-back flex items-center gap-3">
-            <x-ui.back :back="['Закупки', '/purchases']"/>
-            <h1 class="min-w-0 text-[26px] sm:text-[32px]">{{ $purchase->publicTitle($group) }}</h1>
-        </div>
-        <div class="mt-4 flex flex-wrap items-center gap-2">
-            <x-purchase.deadline :purchase="$purchase"/>
-            @if (count($kinds) > 1)
-                <x-ui.pill tone="plain" :href="request()->fullUrlWithQuery(['kind' => null, 'page' => null])" :current="empty($filters['kind'])">Вся техника</x-ui.pill>
-                @foreach ($kinds as $kind)<x-ui.pill tone="plain" :href="request()->fullUrlWithQuery(['kind' => $kind->value, 'page' => null])" :current="($filters['kind'] ?? '') === $kind->value">{{ $kind->label() }}</x-ui.pill>@endforeach
-            @endif
-        </div>
-        @if ($total > 0)
-            <div class="mt-5">
-                @if ($done >= $total)
-                    <p>Названы все цены</p>
-                @else
-                    <p class="nums font-normal">Названо {{ $done }} из {{ $total }} {{ \App\Support\Plural::of($total, ['цены', 'цен', 'цен']) }}</p>
-                    <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full rounded-full bg-accent" style="width: {{ (int) round($done / $total * 100) }}%"></div></div>
-                @endif
-            </div>
-        @endif
+<x-ui.shell :title="$purchase->publicTitle($group)" :back="['Закупки', '/purchases']" :trail="[['Главная', '/'], ['Закупки', '/purchases'], [$purchase->publicTitle($group)]]">
+    {{-- Под заголовком — срок и сколько названо строкой, виды техники пилюлями; без коробки-героя и полосы прогресса. --}}
+    <div class="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <x-purchase.deadline :purchase="$purchase" class="text-sm"/>
+        @if ($total > 0)<span class="nums text-sm text-ink-muted">{{ $done >= $total ? 'названы все цены' : 'названо '.$done.' из '.$total.' '.\App\Support\Plural::of($total, ['цены', 'цен', 'цен']) }}</span>@endif
     </div>
+    @if (count($kinds) > 1)
+        <div class="mt-3 flex flex-wrap gap-2">
+            <x-ui.pill :href="request()->fullUrlWithQuery(['kind' => null, 'page' => null])" :current="empty($filters['kind'])">Вся техника</x-ui.pill>
+            @foreach ($kinds as $kind)<x-ui.pill :href="request()->fullUrlWithQuery(['kind' => $kind->value, 'page' => null])" :current="($filters['kind'] ?? '') === $kind->value">{{ $kind->label() }}</x-ui.pill>@endforeach
+        </div>
+    @endif
 
     <x-ui.toolbar class="mt-5" :sorts="\App\Http\Site\PurchaseController::SORTS" :sort="$filters['sort'] ?? 'dl'" :pills="\App\Http\Site\PurchaseController::PRESETS" :pill="$filters['preset'] ?? 'all'" pill-param="preset" :hidden="['group' => $group?->value, 'kind' => $filters['kind'] ?? null, \App\Support\ListView::PARAM => $view]" name="purchase">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>

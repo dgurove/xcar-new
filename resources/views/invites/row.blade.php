@@ -51,16 +51,16 @@
             {{-- Готовый текст для мессенджера: одноразовость и срок в нём уже сказаны. --}}
             <x-ui.copy-link :url="$invite->url()" title="Приглашение в xcar" :message="$invite->message()" class="mt-5"/>
         @elseif ($invite->isUsedUp())
-            <p class="mt-5 text-ink-muted">Ссылка сработала и больше не действует</p>
+            <p class="mt-5 text-ink-muted">Ссылка сработала</p>
         @elseif ($invite->isExpired())
-            <p class="mt-5 text-ink-muted">Срок ссылки вышел {{ $invite->expires_at->translatedFormat('j M H:i') }} — сделайте новую</p>
+            <p class="mt-5 text-ink-muted">Срок вышел {{ $invite->expires_at->translatedFormat('j M H:i') }}</p>
         @else
-            <p class="mt-5 text-ink-muted">Ссылка выключена: по ней больше нельзя зарегистрироваться</p>
+            <p class="mt-5 text-ink-muted">Ссылка выключена</p>
         @endif
 
         @if ($came->isNotEmpty())
-            <h3 class="mt-6 mb-2 text-base font-medium">Пришли по ссылке</h3>
-            <div class="flex flex-col gap-2">
+            <h3 class="list-head mt-3">Пришли по ссылке</h3>
+            <div class="list">
                 @foreach ($came as $person)
                     @php($href = $person->isBuyer() && $person->manager_id === $me->id ? '/buyers/'.$person->id : null)
                     <{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif class="row">
@@ -76,7 +76,7 @@
         @endif
 
         @if ($invite->isActive())
-            <form method="post" action="{{ $base }}/{{ $invite->code }}/off" class="mt-6" data-turbo-confirm="Выключить ссылку?" data-turbo-confirm-text="Те, кто уже зарегистрировался, останутся. Новые по ней не пройдут.">
+            <form method="post" action="{{ $base }}/{{ $invite->code }}/off" class="mt-6" data-turbo-confirm="Выключить ссылку?" data-turbo-confirm-text="Кто уже пришёл, останется, новые по ней не пройдут">
                 @csrf
                 <x-ui.button block variant="ghost">Выключить ссылку</x-ui.button>
             </form>

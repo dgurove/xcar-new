@@ -6,7 +6,7 @@
     $unpaid = $invoice && $invoice->remaining() > 0;
     $claimed = $unpaid ? $invoice->claimed() : 0;
     [$label, $value, $tone] = match (true) {
-        ! $car->isSold() => ['Вложено в машину', $s['invested'], ''],
+        ! $car->isSold() => ['Вложено в ТС', $s['invested'], ''],
         $unpaid && $invoice->isOwed() => [$staff ? 'Отдаём менеджеру' : 'Вам к выплате', $invoice->remaining(), 'text-accent-text'],
         $unpaid => [$staff ? 'Менеджер отдаёт нам' : 'Отдать нам', $invoice->remaining(), $invoice->isOverdue() ? 'text-danger' : ''],
         $car->state === \App\Garage\CarState::Sold && $staff => ['Прибыль', $s['profit'], $s['profit'] < 0 ? 'text-danger' : ''],
@@ -48,7 +48,7 @@
     @endif
     @if ($invoice)
         @php $pdf = $invoice->getFirstMedia('file'); @endphp
-        <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="/garage/cars/{{ $car->offer->number }}/invoice/pdf" data-turbo="false" target="_blank" @endif class="{{ $row }}">
+        <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="/garage/cars/{{ $car->offer->number }}/invoice/pdf" target="_blank" data-doc="pdf" data-doc-name="Счёт {{ $invoice?->label() }}" @endif class="{{ $row }}">
             <span class="min-w-0">
                 <span class="block">{{ $invoice->isOwed() ? 'К выплате менеджеру' : 'Счёт '.$invoice->label() }}</span>
                 <span class="row-sub">{{ $invoice->state->label() }}@if ($unpaid), до {{ $invoice->due_at->translatedFormat('j M') }}@endif</span>

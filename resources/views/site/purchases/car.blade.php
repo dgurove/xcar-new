@@ -15,7 +15,6 @@
 
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
         <x-purchase.deadline :purchase="$purchase"/>
-        @if ($mine)<x-ui.pill tone="soft">Ваша цена {{ \App\Support\Money::rub($mine->amount) }}</x-ui.pill>@endif
         @if ($car->fssp)<x-ui.pill tone="urgent">Ограничения ФССП</x-ui.pill>@endif
     </div>
 
@@ -28,9 +27,9 @@
             <div @if ($asSheet) data-controller="sheet" data-sheet-inflow-value="(min-width: 1024px)" data-action="deal:open@window->sheet#open" @endif class="contents">
                 <{{ $asSheet ? 'dialog' : 'div' }} id="deal" class="{{ $asSheet ? 'sheet sheet--inflow' : 'box' }}" @if ($asSheet) data-sheet-target="dialog" data-action="click->sheet#backdrop" aria-label="Цена" @endif @if ($asSheet && $errors->any()) data-sheet-open-value="true" @endif>
                     @if ($asSheet)<div class="mb-2 flex justify-end lg:hidden"><button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>@endif
-                    <h2 class="text-xl">Предложение</h2>
+                    <h2 class="box-title">Предложение</h2>
                     @if ($mine?->state === \App\Purchases\OfferState::Chosen)
-                        <p class="flash flash-accent mt-4">Ваша цена {{ \App\Support\Money::rub($mine->amount) }} выбрана — с Вами свяжутся</p>
+                        <p class="flash flash-accent mt-4">Ваша цена {{ \App\Support\Money::rub($mine->amount) }} выбрана, с Вами свяжутся</p>
                     @elseif ($purchase->acceptsOffers())
                         <form method="post" action="/purchases/{{ $purchase->number }}/{{ $car->ref }}/price{{ $suffix }}" class="mt-4 flex flex-col gap-3" data-controller="bid" data-bid-asking-value="0" data-bid-min-value="0">
                             @csrf
@@ -53,13 +52,13 @@
         <div class="min-w-0 lg:col-start-1 {{ $photos->isNotEmpty() ? 'lg:row-start-2' : 'lg:row-start-1' }}">
             @if ($car->description)
                 <section class="mb-8">
-                    <h2 class="text-xl">Описание</h2>
-                    <p class="mt-4 whitespace-pre-line text-ink-muted">{{ $car->description }}</p>
+                    <h2 class="list-head">Описание</h2>
+                    <p class="whitespace-pre-line text-ink-muted">{{ $car->description }}</p>
                 </section>
             @endif
             <section>
-                <h2 class="text-xl">Характеристики</h2>
-                <dl class="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3">
+                <h2 class="list-head">Характеристики</h2>
+                <dl class="mt-1 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3">
                     @foreach ($facts as $label => $value)
                         <div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-medium">@if ($label === 'VIN')<x-ui.vin-code :vin="$value"/>@elseif ($label === 'Где')<x-ui.place>{{ $value }}</x-ui.place>@else{{ $value }}@endif</dd></div>
                     @endforeach

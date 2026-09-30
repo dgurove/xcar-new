@@ -29,22 +29,23 @@
         $staff && $canAdd ? ['emit', 'cost-new', 'Записать расход'] : null,
         $staff && $car->state === CarState::Sold && ! $invoice ? ['form', 'DELETE', "/garage/cars/{$n}/sold", 'Не продана', 'Снять итог продажи?'] : null,
         $staff && $unpaid ? ['form', 'DELETE', "/garage/cars/{$n}/invoice", 'Аннулировать', 'Аннулировать документ? Расходы и итог снова можно будет поправить'] : null,
-        $staff && ! $car->isSold() && $car->costs->isEmpty() ? ['form', 'DELETE', "/garage/cars/{$n}", 'Отдали по ошибке', 'Вернуть машину в черновики?'] : null,
+        $staff && ! $car->isSold() && $car->costs->isEmpty() ? ['form', 'DELETE', "/garage/cars/{$n}", 'Отдали по ошибке', 'Вернуть ТС в черновики?'] : null,
     ]);
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Гараж', '/garage']">
-    <div class="-mt-3 mb-5 flex flex-wrap items-center gap-1.5">
-        <x-ui.pill :tone="$car->state->tone()">{{ $car->state->label() }}</x-ui.pill>
-        <span class="chip nums">{{ $car->days() }} {{ Plural::of($car->days(), ['день', 'дня', 'дней']) }} в гараже</span>
-        @if ($staff)<span class="chip">{{ $car->manager?->shortName() ?? 'Взяли под себя' }}</span>@endif
-        @if ($offer->vin)<span class="chip nums">{{ $offer->vin }}</span>@endif
+    {{-- Под заголовком — состояние словом, дни и чья строкой; VIN копируется. Чипов нет: это не метки, а факты. --}}
+    <div class="-mt-3 mb-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+        <x-ui.state :tone="$car->state->tone()" class="text-sm">{{ mb_strtolower($car->state->label()) }}</x-ui.state>
+        <span class="nums text-ink-muted">{{ $car->days() }} {{ Plural::of($car->days(), ['день', 'дня', 'дней']) }} в гараже</span>
+        @if ($staff)<span class="text-ink-muted">{{ $car->manager?->shortName() ?? 'взяли под себя' }}</span>@endif
+        @if ($offer->vin)<span class="nums text-ink-muted"><x-ui.vin-code :vin="$offer->vin"/></span>@endif
     </div>
     @error('car')<x-ui.flash tone="danger" class="mb-4">{{ $message }}</x-ui.flash>@enderror
 
     <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <aside class="flex flex-col gap-4 lg:sticky lg:top-24 lg:order-last">
             @if ($photo)
-                <img src="{{ \App\Media\MediaUrl::for($photo, 'w640') }}" alt="" width="640" height="480" class="aspect-video w-full rounded-(--radius-l) object-cover lg:aspect-[4/3]">
+                <x-offer.photo :media="$photo" sizes="(min-width: 1024px) 22rem, 100vw" class="aspect-video w-full rounded-(--radius-l) object-cover lg:aspect-[4/3]"/>
             @endif
             @include('garage.cars.money')
         </aside>
@@ -95,12 +96,13 @@
                 <span data-controller="sheet" class="contents">
                     <button type="button" class="btn btn-quiet btn-round btn-lg {{ $primary ? '' : 'ml-auto' }}" data-action="sheet#open" aria-label="Ещё"><x-ui.icon name="more" class="size-6"/></button>
                     <x-ui.sheet id="car-more" title="{{ $offer->titleWithYear() }}">
-                        <div class="flex flex-col gap-2">
+                        {{-- Меню строками, как «···» в приложении: редкое действие — словом, опасное — красным, не стопка кнопок. --}}
+                        <div class="list">
                             @foreach ($more as $item)
                                 @if ($item[0] === 'emit')
-                                    <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="{{ $item[1] }}:open">{{ $item[2] }}</x-ui.button>
+                                    <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="{{ $item[1] }}:open">{{ $item[2] }}</button>
                                 @else
-                                    <form method="post" action="{{ $item[2] }}" data-turbo-confirm="{{ $item[4] }}">@csrf @method($item[1])<x-ui.button type="submit" variant="danger" block>{{ $item[3] }}</x-ui.button></form>
+                                    <form method="post" action="{{ $item[2] }}" data-turbo-confirm="{{ $item[4] }}" class="contents">@csrf @method($item[1])<button type="submit" class="row w-full text-left text-danger">{{ $item[3] }}</button></form>
                                 @endif
                             @endforeach
                         </div>

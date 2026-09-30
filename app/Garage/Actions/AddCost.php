@@ -15,7 +15,7 @@ final class AddCost
     public function __invoke(Car $car, array $data, User $by): Cost
     {
         if ($car->isFrozen()) {
-            throw ValidationException::withMessages(['amount' => 'По машине выставлен счёт: сначала аннулируйте его']);
+            throw ValidationException::withMessages(['amount' => 'По ТС выставлен счёт: сначала аннулируйте его']);
         }
         $cost = $car->costs()->create([
             'title' => $data['title'],

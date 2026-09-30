@@ -25,7 +25,7 @@ final class TakeToGarage
     public function __invoke(Offer $offer, ?User $manager, ?int $cost, User $by, ?string $note = null): Car
     {
         if ($manager && ! $manager->isManager()) {
-            throw ValidationException::withMessages(['manager_id' => 'В гараж машину берёт менеджер']);
+            throw ValidationException::withMessages(['manager_id' => 'В гараж ТС берёт менеджер']);
         }
 
         return DB::transaction(function () use ($offer, $manager, $cost, $by, $note) {

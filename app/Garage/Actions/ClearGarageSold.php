@@ -13,7 +13,7 @@ final class ClearGarageSold
     public function __invoke(Car $car): void
     {
         if ($car->invoice_id) {
-            throw ValidationException::withMessages(['car' => 'По машине выставлен счёт: сначала аннулируйте его']);
+            throw ValidationException::withMessages(['car' => 'По ТС выставлен счёт: сначала аннулируйте его']);
         }
 
         $car->update(['sold_price' => null, 'sold_at' => null, 'buyer_name' => null, 'buyer_phone' => null, 'commission' => null, 'state' => CarState::Repair]);

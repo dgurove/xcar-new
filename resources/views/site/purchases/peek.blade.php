@@ -28,7 +28,7 @@
         <x-slot:actions>
             @if (!$staff)
                 @if ($mine?->state === \App\Purchases\OfferState::Chosen)
-                    <span class="flash flash-accent w-full text-sm">Ваша цена {{ \App\Support\Money::rub($mine->amount) }} выбрана — с Вами свяжутся</span>
+                    <span class="flash flash-accent w-full text-sm">Ваша цена {{ \App\Support\Money::rub($mine->amount) }} выбрана, с Вами свяжутся</span>
                 @elseif ($purchase->acceptsOffers())
                     <form method="post" action="/purchases/{{ $purchase->number }}/{{ $car->ref }}/price{{ $suffix }}" class="flex w-full flex-col gap-2" data-controller="bid" data-bid-asking-value="0" data-bid-min-value="0">
                         @csrf

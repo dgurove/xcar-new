@@ -15,7 +15,7 @@
     $searchAction = $park ? '/cars' : ($site ? '/offers' : '/');
     // Логотип ведёт вошедшего в его список, гостя — на первый экран.
     $home = $user ? $surface->home() : '/';
-    $searchHint = $park ? 'VIN, госномер, марка' : 'Поиск объявления…';
+    $searchHint = $park ? 'VIN, госномер, марка' : 'Марка, модель, номер';
     $cabinet = \App\Support\Nav::cabinetRoot();
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
 @endphp

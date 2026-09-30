@@ -4,7 +4,7 @@
 @php $me = auth()->user(); $link = ($link['user'] ?? null) === $buyer->id ? $link : null; @endphp
 <x-ui.cabinet :title="$buyer->name" :back="$back" :phone-heading="false">
 
-    <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,44rem)_18rem]">
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">
             <x-ui.contact :name="$buyer->name" :user="$buyer" sidebar>
                 <x-slot:chips>
@@ -40,7 +40,7 @@
             <x-ui.sheet id="password-link" title="Ссылка для нового пароля" :open="$link !== null">
                 @if ($link)
                     <x-ui.copy-link :url="$link['url']" title="Новый пароль на xcar">
-                        <p class="text-sm text-ink-muted">Отправьте её {{ $buyer->shortName() }}. Логин для входа — <span class="nums">{{ $buyer->loginLabel() }}</span>.</p>
+                        <p class="flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">{{ $buyer->shortName() }}, логин <span class="tag nums">{{ $buyer->loginLabel() }}</span></p>
                     </x-ui.copy-link>
                 @endif
             </x-ui.sheet>

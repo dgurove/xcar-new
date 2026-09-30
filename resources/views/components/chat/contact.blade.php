@@ -4,7 +4,7 @@
 <x-ui.sheet id="chat-contact">
     <div class="-mt-8 flex flex-col items-center text-center">
         <x-chat.avatar :user="$user" :size="72" :online="$status === 'в сети'" class="text-2xl"/>
-        <div class="mt-3 text-xl font-medium">{{ $name }}</div>
+        <div class="mt-3 text-lg font-medium">{{ $name }}</div>
         @if ($status)<div class="text-sm text-ink-muted">{{ $status }}</div>@endif
         @if ($user?->phone)
             <div class="acts mt-4 justify-center">
@@ -13,8 +13,8 @@
         @endif
     </div>
     @if ($chats?->isNotEmpty())
-        <h3 class="mt-6 text-lg">Ещё чаты</h3>
-        <div class="mt-3 flex flex-col gap-2">
+        <h3 class="list-head mt-3">Ещё чаты</h3>
+        <div class="list">
             @foreach ($chats as $c)
                 <a href="/account/chats/{{ $c->id }}" class="row" data-turbo-action="replace">
                     <div class="min-w-0 flex-1">

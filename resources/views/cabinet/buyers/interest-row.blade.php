@@ -31,7 +31,8 @@
         </span>
         <span class="flex shrink-0 flex-col items-end gap-2">
             <span class="nums text-sm text-ink-dim">{{ $interest->created_at->translatedFormat($interest->created_at->isToday() ? 'H:i' : 'j M') }}</span>
-            <button type="submit" form="interest-{{ $interest->id }}-form" class="btn btn-s {{ $new ? 'btn-accent' : 'btn-quiet' }} relative z-10 hidden md:inline-flex">{{ $verb[1] }}</button>
+            {{-- На ПК вместо смахивания — слово-действие в хвосте, а не лаймовая кнопка на каждой строке. --}}
+            <button type="submit" form="interest-{{ $interest->id }}-form" class="relative z-10 hidden text-sm font-medium md:inline {{ $new ? 'text-accent-text' : 'text-ink-muted' }} hover:underline">{{ $verb[1] }}</button>
         </span>
     </div>
     <form id="interest-{{ $interest->id }}-form" method="post" action="/buyers/interest/{{ $interest->id }}" hidden data-queue>@csrf<input type="hidden" name="state" value="{{ $verb[0] }}"><input type="hidden" name="row" value="1"></form>

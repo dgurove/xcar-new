@@ -9,7 +9,7 @@
 @endphp
 <x-ui.shell title="Гараж" :count="$cars->count() ?: null">
     @if ($cars->isEmpty())
-        <x-ui.empty class="mt-2">Машин в гараже нет</x-ui.empty>
+        <x-ui.empty class="mt-2">В гараже пусто</x-ui.empty>
     @else
         <div class="flex max-w-[56rem] flex-col">
             @foreach ($groups as $head => $state)
@@ -33,11 +33,8 @@
                             };
                         @endphp
                         <a href="/garage/cars/{{ $offer->number }}" class="row">
-                            @if ($photo)
-                                <img src="{{ \App\Media\MediaUrl::for($photo, 'thumb') }}" alt="" width="64" height="48" loading="lazy" class="h-12 w-16 shrink-0 rounded-(--radius-s) object-cover">
-                            @else
-                                <span class="flex h-12 w-16 shrink-0 items-center justify-center rounded-(--radius-s) bg-surface-3 text-ink-dim"><x-ui.icon name="cat-car" class="size-7"/></span>
-                            @endif
+                            {{-- Кадр — как у строк сделок (.row-photo); нет фото — силуэт в той же клетке. --}}
+                            <span class="row-photo flex items-center justify-center text-ink-dim">@if ($photo)<x-offer.photo :media="$photo" sizes="72px"/>@else<x-ui.icon name="cat-car" class="size-7"/>@endif</span>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate">{{ $offer->titleWithYear() }}</span>
                                 <span class="row-sub">{{ $sub }}</span>

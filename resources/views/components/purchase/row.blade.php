@@ -1,19 +1,10 @@
-{{-- Закупка в списке — одна группа: название, сколько машин оценено, шкала, срок. --}}
+{{-- Закупка строкой в группе: название во всю ширину, ниже срок словом и сколько цен названо. --}}
 @props(['card'])
 @php $purchase = $card->purchase; $cars = $card->cars; $rated = $card->rated; @endphp
-<a href="{{ $card->url() }}" class="box rise flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-x-4">
-    <span class="block min-w-0">
-        <h3 class="text-lg leading-snug sm:text-xl">{{ $card->title() }}</h3>
-        @if ($cars > 0)
-            <span class="mt-2 block max-w-sm">
-                @if ($rated >= $cars)
-                    <span class="block text-sm text-ink-dim">Названы все цены</span>
-                @else
-                    <span class="nums block text-sm font-normal text-ink-dim">Названо {{ $rated }} из {{ $cars }} {{ \App\Support\Plural::of($cars, ['цены', 'цен', 'цен']) }}</span>
-                    <span class="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-surface-3"><span class="block h-full rounded-full bg-accent" style="width: {{ (int) round($rated / $cars * 100) }}%"></span></span>
-                @endif
-            </span>
-        @endif
+<a href="{{ $card->url() }}" class="row">
+    <span class="min-w-0 flex-1">
+        <span class="block truncate">{{ $card->title() }}</span>
+        <span class="row-sub"><x-purchase.deadline :purchase="$purchase" class="!text-sm"/>@if ($cars > 0)<span class="nums">{{ $rated >= $cars ? 'названы все цены' : 'названо '.$rated.' из '.$cars }}</span>@endif</span>
     </span>
-    <x-purchase.deadline :purchase="$purchase" class="order-first self-start sm:order-none sm:self-auto"/>
+    <x-ui.chevron/>
 </a>
