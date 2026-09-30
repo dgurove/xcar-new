@@ -23,14 +23,23 @@
         $waiting = 'ждём нас';
     }
 @endphp
-<x-ui.cabinet :title="$offer->titleWithYear()" :back="['Сделки', '/account/deals']">
+<x-ui.cabinet :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
     <div class="grid gap-6 lg:grid-cols-[1fr_18rem]" data-deal-offer="{{ $offer->number }}">
         <div class="min-w-0 space-y-6">
+            {{-- Телефон: что за ТС и за сколько — первой строкой, как шапка разговора; справа на ПК это карточка. --}}
+            <a href="/offers/{{ $offer->number }}" class="list lg:hidden">
+                <span class="row">
+                    <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+                    <span class="min-w-0 flex-1">
+                        <span class="nums block text-lg font-semibold">{{ \App\Support\Money::rub($deal->amount) }}</span>
+                        <span class="row-sub nums">№ {{ $offer->number }}@if ($deal->state !== DealState::Active), <span class="{{ $deal->state === DealState::Done ? 'text-open' : 'text-danger' }}">{{ mb_strtolower($deal->state->label()) }}</span>@endif</span>
+                    </span>
+                    <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                </span>
+            </a>
             @if ($deal->state !== DealState::Active)
-                <div class="box">
-                    <x-ui.pill :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.pill>
-                    @if ($deal->closed_at)<span class="nums ml-2 text-sm font-normal text-ink-muted">{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span>@endif
-                </div>
+                {{-- Закончилась — состояние словом с датой, без своей плашки. --}}
+                <p class="max-lg:hidden"><span class="font-medium {{ $deal->state === DealState::Done ? 'text-open' : 'text-danger' }}">{{ $deal->state->label() }}</span>@if ($deal->closed_at) <span class="nums text-sm text-ink-muted">{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span>@endif</p>
             @elseif ($position)
                 {{-- Текущий этап — одной карточкой и первым. Просьба живёт внутри неё; ждут человека и срок вышел — карточка тревожная. --}}
                 <div class="box {{ $requirement && $position->isOverdue() ? 'box-urgent' : '' }}">
@@ -54,10 +63,11 @@
                             @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@endforeach
                         </div>
                     @endif
+                    {{-- Просьба — продолжение той же карточки, без плашки в плашке. --}}
                     @if ($noInvoice)
-                        <div class="box-nested mt-5"><h3 class="text-lg">Готовим счёт</h3></div>
+                        <p class="mt-5 font-medium">Готовим счёт</p>
                     @elseif ($requirement)
-                        <div class="box-nested mt-5">
+                        <div class="mt-6">
                             <h3 class="text-lg">{{ $requirement->title }}</h3>
                             @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ $rejected->paid_at->translatedFormat('j M') }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
                             @if ($requirement->text)<p class="mt-2 whitespace-pre-line text-ink-muted">{{ $requirement->text }}</p>@endif
@@ -71,7 +81,7 @@
                                     @foreach ($unpaid as $i)<x-ui.button :href="'/account/money/invoices/'.$i->id" size="s">Оплатить{{ $unpaid->count() > 1 ? ' '.$i->label() : '' }}</x-ui.button>@endforeach
                                 </div>
                             @elseif ($requirement->asks === Asks::Document)
-                                <div class="mt-4" data-controller="photos" data-photos-url-value="/account/deals/{{ $deal->id }}/files">
+                                <div class="mt-4" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files">
                                     <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-photos-target="input" data-action="change->photos#upload">
                                     @include('cabinet.deals.files', ['requirement' => $requirement])
                                     <div hidden data-photos-target="progress" class="my-2">
@@ -84,7 +94,7 @@
                             @endif
 
                             @unless ($payStep && $unpaid->isNotEmpty())
-                            <form method="post" action="/account/deals/{{ $deal->id }}/reply" class="mt-5 flex flex-col gap-4">
+                            <form method="post" action="/deals/{{ $deal->id }}/reply" class="mt-5 flex flex-col gap-4">
                                 @csrf
                                 @if ($requirement->asks === Asks::Fields)
                                     @foreach ($requirement->fields as $field)
@@ -148,7 +158,7 @@
         {{-- Правая колонка: машина, номер, сумма. Зеркало страницы оффера. --}}
         <aside class="lg:self-start">
             <div class="box overflow-hidden !p-0">
-                <a href="/offers/{{ $offer->number }}" class="group block">
+                <a href="/offers/{{ $offer->number }}" class="group block max-lg:hidden">
                     @if ($photo = $offer->mainPhoto())
                         <x-offer.photo :media="$photo" sizes="(min-width: 1024px) 320px, 100vw" class="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"/>
                     @endif
@@ -161,12 +171,14 @@
                     {{-- Вознаграждение открывается со счёта; до него менеджер видит только цену. --}}
                     {{-- Подпись своей строкой, ниже сумма и состояние: в колонку 18rem три части в ряд не влезали, подпись рвалась.
                          Пока ждёт — состояние серым текстом: серая пилюля на серой подложке пропадала. --}}
-                    <a href="/account/money/deals/{{ $deal->id }}" class="mx-6 mb-5 block rounded-(--radius-m) bg-surface-2 px-4 py-3">
+                    <a href="/account/money/deals/{{ $deal->id }}" class="mx-6 mb-5 block rounded-(--radius-m) bg-surface-2 px-4 py-3 max-lg:mt-6">
                         <span class="block text-sm text-ink-dim">Агентское вознаграждение</span>
                         <span class="mt-0.5 flex flex-wrap items-center justify-between gap-2"><span class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</span>@if ($feeState->tone() === 'plain')<span class="text-sm text-ink-dim">{{ mb_strtolower($feeState->label()) }}</span>@else<x-ui.pill :tone="$feeState->tone()" class="!min-h-0 !py-1 text-xs">{{ mb_strtolower($feeState->label()) }}</x-ui.pill>@endif</span>
                     </a>
                 @endif
-                <div class="px-6 pb-6">
+                <div class="px-6 pb-6 {{ $feeState === CommissionState::Hidden ? 'max-lg:pt-5' : '' }}">
+                    {{-- На телефоне фото и цена — строкой сверху страницы, здесь остаются номера и адрес. --}}
+                    <h2 class="box-title mb-3 lg:hidden">Транспортное средство</h2>
                     <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
                         {{-- Своя сделка — всё, что нужно забрать машину: полный VIN, ДЛ, адрес; номера копируются. --}}
                         @foreach (['Предложение' => $offer->number, 'ДЛ' => $offer->leaseRef(), 'Год' => $offer->year, 'VIN' => $offer->vin, 'Город' => $offer->settlement?->name, 'Адрес' => $offer->inspection_address] as $label => $value)

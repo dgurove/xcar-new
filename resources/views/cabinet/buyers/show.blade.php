@@ -2,7 +2,7 @@
      Ниже — что видит (строки, прямой показ снимается смахиванием) и интерес. Группы — действие «Группы» в том же ряду.
      Главное действие — «Открыть предложения» — в полосе внизу. --}}
 @php $me = auth()->user(); $link = ($link['user'] ?? null) === $buyer->id ? $link : null; @endphp
-<x-ui.cabinet :title="$buyer->name" :back="$back">
+<x-ui.cabinet :title="$buyer->name" :back="$back" :phone-heading="false">
 
     <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">
@@ -10,7 +10,7 @@
                 <x-slot:chips>
                     @if ($buyer->login)<span class="tag nums">{{ $buyer->login }}</span>@endif
                     <span class="tag nums">с {{ $buyer->created_at->translatedFormat('j M') }}</span>
-                    @foreach ($buyer->groups as $g)<a href="/account/buyers/groups/{{ $g->id }}" class="tag">{{ $g->name }}</a>@endforeach
+                    @foreach ($buyer->groups as $g)<a href="/buyers/groups/{{ $g->id }}" class="tag">{{ $g->name }}</a>@endforeach
                 </x-slot:chips>
                 <x-slot:acts>
                     @if ($buyer->phone)<a href="tel:+{{ $buyer->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif
@@ -19,7 +19,7 @@
                         <div data-controller="sheet" class="contents">
                             <button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="users"/></span>Группы</button>
                             <x-ui.sheet id="buyer-groups" title="Группы">
-                                <form method="post" action="/account/buyers/{{ $buyer->id }}/groups" class="flex flex-col gap-2" data-controller="autosubmit">
+                                <form method="post" action="/buyers/{{ $buyer->id }}/groups" class="flex flex-col gap-2" data-controller="autosubmit">
                                     @csrf @method('put')
                                     <input type="hidden" name="groups[]" value="" disabled>
                                     @foreach ($groups as $g)
@@ -29,7 +29,7 @@
                             </x-ui.sheet>
                         </div>
                     @endif
-                    <form method="post" action="/account/buyers/{{ $buyer->id }}/password" class="contents"
+                    <form method="post" action="/buyers/{{ $buyer->id }}/password" class="contents"
                         data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
                         data-turbo-confirm-text="{{ $buyer->shortName() }} откроет её и придумает новый пароль. Действует сутки, один раз.">
                         @csrf
@@ -48,16 +48,16 @@
 
         <div class="min-w-0 lg:col-start-1 lg:row-start-1">
             <section data-controller="sheet">
-                <h2 class="text-xl">Видит @if ($offers->isNotEmpty())<span class="nums text-ink-dim">{{ $offers->count() }}</span>@endif</h2>
+                <h2 class="list-head">Видит @if ($offers->isNotEmpty())<span class="nums">{{ $offers->count() }}</span>@endif</h2>
                 <x-ui.sheet id="pick" title="Открыть {{ $buyer->shortName() }}" wide>
-                    <turbo-frame id="pick-frame" src="/account/showings/pick?user={{ $buyer->id }}" loading="lazy" class="block min-h-40">
+                    <turbo-frame id="pick-frame" src="/buyers/showings/pick?user={{ $buyer->id }}" loading="lazy" class="block min-h-40">
                         <x-ui.skeleton :rows="3"/>
                     </turbo-frame>
                 </x-ui.sheet>
                 @if ($offers->isEmpty())
-                    <x-ui.empty class="mt-4">Пока ничего не открыто</x-ui.empty>
+                    <x-ui.empty>Пока ничего не открыто</x-ui.empty>
                 @else
-                    <div class="mt-4 flex flex-col gap-2">
+                    <div class="list">
                         @foreach ($offers as $offer)
                             @include('cabinet.buyers.offer-row', [
                                 'offer' => $offer,
@@ -74,9 +74,9 @@
             </section>
 
             @if ($chats->isNotEmpty())
-                <section class="mt-8">
-                    <h2 class="text-xl">Чаты</h2>
-                    <div class="mt-4 flex flex-col gap-2">
+                <section class="mt-6">
+                    <h2 class="list-head">Чаты</h2>
+                    <div class="list">
                         @foreach ($chats as $chat)
                             <a href="/account/chats/{{ $chat->id }}" class="row">
                                 <div class="min-w-0 flex-1">
@@ -90,9 +90,9 @@
                 </section>
             @endif
             @if ($interests->isNotEmpty())
-                <section class="mt-8">
-                    <h2 class="text-xl">Интерес</h2>
-                    <div class="mt-4 flex flex-col gap-2">
+                <section class="mt-6">
+                    <h2 class="list-head">Интерес</h2>
+                    <div class="list">
                         @foreach ($interests as $interest)
                             @include('cabinet.buyers.interest-row', ['interest' => $interest, 'person' => false])
                         @endforeach

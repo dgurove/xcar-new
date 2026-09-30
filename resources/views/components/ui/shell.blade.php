@@ -26,8 +26,9 @@
 <x-ui.layout :title="$title" :cache="$cache" :description="$description" :index="$index" class="min-h-dvh flex flex-col">
     <x-ui.header :over-hero="$overHero" :back="$phoneBack" :heading="$overHero ? null : ($heading ?? $title)"/>
 
-    {{-- Запас под таб-бар: у CRM и стоянки всегда, у сайта — в приложении, где подвала с запасом нет. --}}
-    <main id="main" class="grow {{ $overHero ? '' : 'relative' }}{{ $site && !$installed ? '' : ' main-app' }}">
+    {{-- Запас под таб-бар и плашку действий: везде, где нет подвала (у него свой запас) — CRM, стоянка, приложение
+         и вошедший на сайте в браузере (подвал только у гостя). --}}
+    <main id="main" class="grow {{ $overHero ? '' : 'relative' }}{{ $site && !$installed && ! auth()->check() ? '' : ' main-app' }}">
         @if ($overHero)
             {{ $slot }}
         @else

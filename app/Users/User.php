@@ -101,6 +101,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->role->canChat() && (! $this->isBuyer() || $this->manager_id);
     }
 
+    /** Гараж по роли; демо-кабинету его нет — гаражных машин у него не бывает. */
+    public function canGarage(): bool
+    {
+        return $this->role->canGarage() && ! $this->is_demo;
+    }
+
     /** Менеджер покупателя — тот, чью пригласительную ссылку он открыл. */
     public function manager(): BelongsTo
     {

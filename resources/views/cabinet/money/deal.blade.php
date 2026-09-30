@@ -70,7 +70,7 @@
         @endif
 
         <div class="list">
-            <a href="/account/deals/{{ $deal->id }}" class="row"><span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span><span class="min-w-0 flex-1">Сделка<span class="row-sub nums">№ {{ $offer->number }}</span></span><x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/></a>
+            <a href="/deals/{{ $deal->id }}" class="row"><span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span><span class="min-w-0 flex-1">Сделка<span class="row-sub nums">№ {{ $offer->number }}</span></span><x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/></a>
         </div>
     </div>
 

@@ -22,7 +22,7 @@
         @unless ($offer->state === OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $n" done="Номер в буфере"/></span>@endunless
         @if ($offer->claim_ref)<span class="tag nums gap-1">{{ $offer->leaseRef() ? 'ДЛ' : 'Убыток' }}<x-ui.copy-code :value="$offer->claim_ref"/></span>@endif
         @if ($garage)
-            <x-ui.pill tone="plain" :href="\App\Support\Surface::Garage->url('/cars/'.$n)" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }} ↗</x-ui.pill>
+            <x-ui.pill tone="plain" :href="$garage->url()" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
         @else
             {{-- В сделке пилюля состояния и есть вход в сделку: «Идёт сделка ›», второй пилюли «Сделка» рядом нет. --}}
             @if ($offer->deal)<x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>

@@ -62,7 +62,7 @@
             <h3 class="mt-6 mb-2 text-base font-medium">Пришли по ссылке</h3>
             <div class="flex flex-col gap-2">
                 @foreach ($came as $person)
-                    @php($href = $person->isBuyer() && $person->manager_id === $me->id ? '/account/buyers/'.$person->id : null)
+                    @php($href = $person->isBuyer() && $person->manager_id === $me->id ? '/buyers/'.$person->id : null)
                     <{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif class="row">
                         <x-ui.avatar :user="$person" :size="40"/>
                         <span class="min-w-0 flex-1">

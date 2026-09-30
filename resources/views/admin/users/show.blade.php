@@ -2,7 +2,7 @@
      ниже его чаты, у менеджера сделки, у покупателя интерес. Админу — «Изменить» тем же шитом, что в списке,
      ждущему — форма допуска. Из шапки чата открывается с «‹ Чат». --}}
 @php use App\Http\Admin\UserController; $me = auth()->user(); $base = UserController::base(); $crm = \App\Support\Surface::current() === \App\Support\Surface::Crm; $link = ($link['user'] ?? null) === $user->id ? $link : null; @endphp
-<x-ui.cabinet :title="$user->name" :back="$back">
+<x-ui.cabinet :title="$user->name" :back="$back" :phone-heading="false">
 
     <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">

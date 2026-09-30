@@ -27,12 +27,12 @@
     };
     $more = array_filter([
         $staff && $canAdd ? ['emit', 'cost-new', 'Записать расход'] : null,
-        $staff && $car->state === CarState::Sold && ! $invoice ? ['form', 'DELETE', "/cars/{$n}/sold", 'Не продана', 'Снять итог продажи?'] : null,
-        $staff && $unpaid ? ['form', 'DELETE', "/cars/{$n}/invoice", 'Аннулировать', 'Аннулировать документ? Расходы и итог снова можно будет поправить'] : null,
-        $staff && ! $car->isSold() && $car->costs->isEmpty() ? ['form', 'DELETE', "/cars/{$n}", 'Отдали по ошибке', 'Вернуть машину в черновики?'] : null,
+        $staff && $car->state === CarState::Sold && ! $invoice ? ['form', 'DELETE', "/garage/cars/{$n}/sold", 'Не продана', 'Снять итог продажи?'] : null,
+        $staff && $unpaid ? ['form', 'DELETE', "/garage/cars/{$n}/invoice", 'Аннулировать', 'Аннулировать документ? Расходы и итог снова можно будет поправить'] : null,
+        $staff && ! $car->isSold() && $car->costs->isEmpty() ? ['form', 'DELETE', "/garage/cars/{$n}", 'Отдали по ошибке', 'Вернуть машину в черновики?'] : null,
     ]);
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :back="['Машины', '/']">
+<x-ui.shell :title="$offer->titleWithYear()" :back="['Гараж', '/garage']">
     <div class="-mt-3 mb-5 flex flex-wrap items-center gap-1.5">
         <x-ui.pill :tone="$car->state->tone()">{{ $car->state->label() }}</x-ui.pill>
         <span class="chip nums">{{ $car->days() }} {{ Plural::of($car->days(), ['день', 'дня', 'дней']) }} в гараже</span>
@@ -66,12 +66,12 @@
                             </{{ $mine ? 'button' : 'div' }}>
                             @if ($mine)
                                 <x-ui.sheet id="cost-{{ $cost->id }}" title="Расход">
-                                    <form method="post" action="/costs/{{ $cost->id }}" class="flex flex-col gap-4">
+                                    <form method="post" action="/garage/costs/{{ $cost->id }}" class="flex flex-col gap-4">
                                         @csrf @method('put')
                                         @include('garage.cars.cost-fields', ['cost' => $cost])
                                         <x-ui.button type="submit" variant="primary" block>Сохранить</x-ui.button>
                                     </form>
-                                    <form method="post" action="/costs/{{ $cost->id }}" class="mt-2" data-turbo-confirm="Убрать расход?">
+                                    <form method="post" action="/garage/costs/{{ $cost->id }}" class="mt-2" data-turbo-confirm="Убрать расход?">
                                         @csrf @method('delete')
                                         <x-ui.button type="submit" variant="ghost" block>Убрать</x-ui.button>
                                     </form>

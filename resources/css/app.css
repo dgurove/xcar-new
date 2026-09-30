@@ -621,7 +621,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .pill-lg { @apply px-4; }
   .pill[aria-current="true"], .pill[aria-current="page"], .pill-accent { @apply bg-accent font-medium text-white; }
   @media (hover: hover) { a.pill[aria-current="true"]:hover, a.pill[aria-current="page"]:hover, a.pill-accent:hover { @apply bg-accent-hover text-white; } }
-  .pill-open   { @apply bg-open-soft text-open; }
+  /* Бейдж нового в пилюле: на лаймовой текущей лаймовый пропадал — инверсия, как у текущего таба. */
+  .pill .badge { min-width: 1.125rem; line-height: 1.125rem; }
+  .pill[aria-current="true"] .badge, .pill[aria-current="page"] .badge { background: var(--color-white, #fff); color: var(--color-accent); }
+  .pill-open  { @apply bg-open-soft text-open; }
   .pill-urgent { @apply bg-urgent-soft text-urgent; }
   .pill-closed { @apply bg-closed-soft text-closed; }
   .pill-danger { @apply bg-danger-soft text-danger; }
@@ -662,6 +665,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 4.5rem; height: 3.25rem; }
   .row-photo img { @apply size-full object-cover; }
   .row-photo-s { width: 3rem; height: 2.25rem; }
+  /* Значок строки в «Настройках» (профиль): кружок поменьше аватара, чтобы группа читалась по иконкам, а не по кругам. */
+  .profile-icon { @apply flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink; }
+  .sheet .profile-icon, .box .profile-icon { @apply bg-surface; }
+  /* Линия между строками со значком — от текста, как в iOS, а не от края значка. */
+  .list > *:has(> .profile-icon) + *::after, .list > * + *:has(> .profile-icon)::after { left: 3.75rem; }
+  .list > * + .contents > :first-child:has(> .profile-icon)::after { left: 3.75rem; }
   @media (hover: hover) { a.row:hover, button.row:hover, .row:has(> a:hover) { @apply bg-hover; } }
   .row[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--color-accent); }
 
@@ -674,7 +683,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet .list, .box .list { @apply bg-surface-2; }
   .list .row { border-radius: 0; background: transparent; min-height: 3.5rem; padding: .625rem 1rem; gap: .75rem; }
   .list > * + * { position: relative; }
-  .list > * + *::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
+  .list > * + *::after, .list > * + .contents > :first-child::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
+  /* Строка со шторкой обёрнута в .contents (у обёртки своей коробки нет): линию рисует сама строка — первая в обёртке. */
+  .list > * + .contents > :first-child { position: relative; }
+  .list > .contents::after { content: none; }
   .list .row-sub { display: block; margin-top: .125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .list .row-sub > * + * { margin-left: .5rem; }
   /* Факт-тег во второй строке списка — просто текст: подложка на каждом факте и давала стену чипов. Цвет тега

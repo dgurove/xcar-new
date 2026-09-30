@@ -97,7 +97,8 @@ http://127.0.0.1:2020 {
 }
 
 # Все имена сайта одним блоком: приложение само разбирает хост.
-# Пока домена нет — `http://<ip>` и имена nip.io; в бою — `xcar.ru, crm.xcar.ru, park.xcar.ru, garage.xcar.ru`.
+# Пока домена нет — `http://<ip>` и имена nip.io; в бою — `xcar.ru, crm.xcar.ru, park.xcar.ru, garage.xcar.ru`
+# (garage — прежний хост гаража: приложение отвечает 301 на xcar.ru/garage, имя держим ради сертификата).
 # `http://app` — внутреннее имя, по нему очередь публикует в хаб.
 {$SITE_ADDRESSES:http://localhost}, http://app {
 	import common

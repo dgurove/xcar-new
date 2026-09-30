@@ -21,7 +21,7 @@ final class BuyerJoinedNotice extends Notice
 
     public function href(): string
     {
-        return "/account/buyers/{$this->buyer->id}";
+        return "/buyers/{$this->buyer->id}";
     }
 
     public function category(): string

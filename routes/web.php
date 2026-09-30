@@ -12,6 +12,8 @@ use App\Http\Cabinet\MoneyController;
 use App\Http\Cabinet\NotificationController;
 use App\Http\Cabinet\ProfileController;
 use App\Http\Cabinet\ShowingController;
+use App\Http\Garage\CarController as GarageCarController;
+use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Live\FragmentController;
 use App\Http\Pwa\PushController;
 use App\Http\Pwa\PwaController;
@@ -102,15 +104,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/account/chats/offer/{offer}', [CabinetChatController::class, 'offer']);
     Route::get('/account/chats/support', [CabinetChatController::class, 'support']);
     Route::get('/account/chats/{chat}', [CabinetChatController::class, 'show']);
-    Route::permanentRedirect('/account/confirmations', '/account/deals');
     Route::get('/account/interests', [ListsController::class, 'interests']);
 
-    Route::get('/account/deals', [DealController::class, 'index']);
-    Route::get('/account/deals/{deal}', [DealController::class, 'show']);
     Route::get('/account/invoices/{invoice}/pdf', [MoneyController::class, 'pdf']);
-    Route::post('/account/deals/{deal}/reply', [DealController::class, 'answer']);
-    Route::post('/account/deals/{deal}/files', [DealController::class, 'upload']);
-    Route::delete('/account/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
     // Документы и файлы с закрытого диска — на любом хосте.
     Route::get('/files/{media}', [FileController::class, 'show']);
 
@@ -131,7 +127,6 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/account/invites', [InviteController::class, 'store']);
     Route::post('/account/invites/{invite}/off', [InviteController::class, 'disable']);
     Route::post('/account/invites/{invite}/on', [InviteController::class, 'enable']);
-    Route::permanentRedirect('/account/buyers/invites', '/account/invites');
 
     // Пользователи — админу тот же экран, что в CRM (чужому 404 в контроллере).
     Route::get('/account/users', [UserController::class, 'index']);
@@ -145,7 +140,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/account/users/{user}/statement', [UserController::class, 'statement']);
     Route::get('/account/users/{user}/export', [UserController::class, 'export']);
 
-    // Кабинет менеджера: покупатели, группы, приглашения, показы. Конкретные пути раньше {user}.
+    // Менеджеру: деньги в кабинете, сделки и покупатели — раздел таб-бара.
     Route::middleware('manager')->group(function () {
         // Деньги менеджера: счета к оплате, вознаграждение, история, реквизиты, акт сверки, выгрузка.
         Route::get('/account/money', [MoneyController::class, 'index']);
@@ -158,21 +153,48 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::delete('/account/money/links/{link}', [MoneyController::class, 'cancelLink']);
         Route::get('/account/money/invoices/{invoice}/payments/{payment}/slip', [MoneyController::class, 'slip']);
         Route::get('/account/money/deals/{deal}', [MoneyController::class, 'deal']);
-        Route::get('/account/buyers', [BuyerController::class, 'index']);
-        Route::get('/account/interest', [BuyerInterestController::class, 'index']);
-        Route::post('/account/interest/{interest}', [BuyerInterestController::class, 'update']);
-        Route::post('/account/buyers/groups', [GroupController::class, 'store']);
-        Route::get('/account/buyers/groups/{group}', [GroupController::class, 'show']);
-        Route::put('/account/buyers/groups/{group}', [GroupController::class, 'update']);
-        Route::put('/account/buyers/groups/{group}/members', [GroupController::class, 'members']);
-        Route::delete('/account/buyers/groups/{group}', [GroupController::class, 'destroy']);
-        Route::get('/account/buyers/{user}', [BuyerController::class, 'show']);
-        Route::put('/account/buyers/{user}/groups', [BuyerController::class, 'groups']);
-        Route::post('/account/buyers/{user}/password', [BuyerController::class, 'passwordLink']);
-        Route::get('/account/showings/new', [ShowingController::class, 'create']);
-        Route::get('/account/showings/pick', [ShowingController::class, 'pick']);
-        Route::post('/account/showings', [ShowingController::class, 'store']);
-        Route::delete('/account/showings', [ShowingController::class, 'destroy']);
+
+        // Сделки — раздел таб-бара; покупатели — его вторая пилюля (интерес, группы, показы внутри).
+        Route::get('/deals', [DealController::class, 'index']);
+        Route::get('/deals/{deal}', [DealController::class, 'show']);
+        Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
+        Route::post('/deals/{deal}/files', [DealController::class, 'upload']);
+        Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
+        Route::get('/buyers', [BuyerController::class, 'index']);
+        Route::get('/buyers/interest', [BuyerInterestController::class, 'index']);
+        Route::post('/buyers/interest/{interest}', [BuyerInterestController::class, 'update']);
+        Route::post('/buyers/groups', [GroupController::class, 'store']);
+        Route::get('/buyers/groups/{group}', [GroupController::class, 'show']);
+        Route::put('/buyers/groups/{group}', [GroupController::class, 'update']);
+        Route::put('/buyers/groups/{group}/members', [GroupController::class, 'members']);
+        Route::delete('/buyers/groups/{group}', [GroupController::class, 'destroy']);
+        Route::get('/buyers/showings/new', [ShowingController::class, 'create']);
+        Route::get('/buyers/showings/pick', [ShowingController::class, 'pick']);
+        Route::post('/buyers/showings', [ShowingController::class, 'store']);
+        Route::delete('/buyers/showings', [ShowingController::class, 'destroy']);
+        Route::get('/buyers/{user}', [BuyerController::class, 'show'])->whereNumber('user');
+        Route::put('/buyers/{user}/groups', [BuyerController::class, 'groups'])->whereNumber('user');
+        Route::post('/buyers/{user}/password', [BuyerController::class, 'passwordLink'])->whereNumber('user');
+    });
+
+    // Гараж — машины, выведенные из продажи менеджеру на ремонт (до 30.09.2026 — хост garage.xcar.ru).
+    // Внутрь — сотрудники и менеджеры (`ability:canGarage`), свои машины менеджеру — контроллер.
+    Route::prefix('garage')->middleware('ability:canGarage')->group(function () {
+        Route::get('/', [GarageCarController::class, 'index']);
+        Route::get('/cars/{offer}', [GarageCarController::class, 'show']);
+        Route::post('/cars/{offer}/costs', [GarageCarController::class, 'storeCost']);
+        Route::delete('/cars/{offer}', [GarageCarController::class, 'destroy']);
+        Route::put('/costs/{cost}', [GarageCarController::class, 'updateCost']);
+        Route::delete('/costs/{cost}', [GarageCarController::class, 'destroyCost']);
+        // Расчёт: итог продажи и счёт менеджеру вносим мы, об оплате сообщает он.
+        Route::post('/cars/{offer}/sold', [GarageSettlementController::class, 'sold']);
+        Route::delete('/cars/{offer}/sold', [GarageSettlementController::class, 'unsold']);
+        Route::post('/cars/{offer}/settle', [GarageSettlementController::class, 'settle']);
+        Route::post('/cars/{offer}/payments', [GarageSettlementController::class, 'pay']);
+        Route::post('/cars/{offer}/checkout', [GarageSettlementController::class, 'checkout']);
+        Route::delete('/cars/{offer}/links/{link}', [GarageSettlementController::class, 'cancelLink']);
+        Route::get('/cars/{offer}/invoice/pdf', [GarageSettlementController::class, 'pdf']);
+        Route::delete('/cars/{offer}/invoice', [GarageSettlementController::class, 'voidInvoice']);
     });
 
     Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('purchases');

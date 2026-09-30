@@ -66,6 +66,12 @@ enum Role: string
         return ! in_array($this, [self::Buyer, self::Parking, self::Reviewer], true);
     }
 
+    /** Гараж — машины на ремонте у менеджеров: сами менеджеры и сотрудники, что вносят итог и счёт. */
+    public function canGarage(): bool
+    {
+        return in_array($this, [self::Manager, self::Moderator, self::Admin], true);
+    }
+
     /** Проявляет интерес тот, кто не подтверждает ценой: покупатель и посетитель. */
     public function canInterest(): bool
     {

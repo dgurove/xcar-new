@@ -68,7 +68,7 @@ final class PublishLiveUpdates
         foreach (array_keys($e->fresh) as $buyerId) {
             $this->publish->refresh(Topics::user($buyerId), ['/offers', '/account']);
         }
-        $this->publish->refresh(Topics::user($e->manager), ['/offers', '/account/buyers']);
+        $this->publish->refresh(Topics::user($e->manager), ['/offers', '/buyers']);
     }
 
     public function hidden(OffersHidden $e): void
@@ -91,7 +91,7 @@ final class PublishLiveUpdates
     public function bidDecided(BidAccepted|BidDeclined $e): void
     {
         $n = $e->bid->offer->number;
-        $this->publish->refresh(Topics::user($e->bid->user_id), ['/account/deals', "/offers/{$n}"]);
+        $this->publish->refresh(Topics::user($e->bid->user_id), ['/deals', "/offers/{$n}"]);
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals']);
     }
 
@@ -101,7 +101,7 @@ final class PublishLiveUpdates
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
         // Интерес покупателя — менеджеру: страница оффера и его список интересов.
         if ($manager = $e->interest->user->manager_id) {
-            $this->publish->refresh(Topics::user($manager), ["/offers/{$n}", '/account/interest', "/account/buyers/{$e->interest->user_id}"]);
+            $this->publish->refresh(Topics::user($manager), ["/offers/{$n}", '/buyers/interest', "/buyers/{$e->interest->user_id}"]);
             $this->publish->badges(Topics::user($manager));
         }
     }
@@ -111,7 +111,7 @@ final class PublishLiveUpdates
         $n = $e->offer->number;
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals']);
         if ($deal = $e->deal ?? $e->offer->deal()->first()) {
-            $this->publish->refresh(Topics::user($deal->buyer_id), ['/account/deals', "/account/deals/{$deal->id}"]);
+            $this->publish->refresh(Topics::user($deal->buyer_id), ['/deals', "/deals/{$deal->id}"]);
         }
     }
 
@@ -170,14 +170,13 @@ final class PublishLiveUpdates
         return array_unique([$this->otherSide($chat), $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id), Topics::STAFF]);
     }
 
-    /** Гараж: машину перечитывают менеджер и сотрудники; список машин — только менеджер (у сотрудников «/» — ещё и предложения CRM). */
+    /** Гараж: машину и список машин перечитывают сотрудники и её менеджер. */
     public function garage(GarageChanged $e): void
     {
-        $car = $e->car;
-        $paths = ['/cars/'.$car->offer->number];
+        $paths = ['/garage', '/garage/cars/'.$e->car->offer->number];
         $this->publish->refresh(Topics::STAFF, $paths);
-        if ($car->manager_id) {
-            $this->publish->refresh(Topics::user($car->manager_id), [...$paths, '/']);
+        if ($e->car->manager_id) {
+            $this->publish->refresh(Topics::user($e->car->manager_id), $paths);
         }
     }
 
@@ -186,9 +185,10 @@ final class PublishLiveUpdates
     {
         $invoice = $e instanceof PaymentClaimed ? $e->payment->invoice : $e->invoice;
         $this->publish->refresh(Topics::STAFF, ['/work/money', '/work/money/bank', '/work/deals']);
-        $manager = $invoice->deal?->buyer_id ?? GarageCar::ofInvoice($invoice)?->manager_id;
+        $garage = $invoice->deal_id ? null : GarageCar::ofInvoice($invoice);
+        $manager = $invoice->deal?->buyer_id ?? $garage?->manager_id;
         if ($manager) {
-            $this->publish->refresh(Topics::user($manager), ['/account/money', $invoice->deal_id ? '/account/money/deals/'.$invoice->deal_id : '/']);
+            $this->publish->refresh(Topics::user($manager), ['/account/money', $garage ? '/garage/cars/'.$garage->offer->number : '/account/money/deals/'.$invoice->deal_id]);
         }
     }
 

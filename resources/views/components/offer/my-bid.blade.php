@@ -2,7 +2,7 @@
 @props(['offer', 'bid'])
 @php $deal = $bid->state === \App\Offers\BidState::Accepted ? $offer->deal()->where('bid_id', $bid->id)->first() : null; @endphp
 @if ($deal)
-    <a href="/account/deals/{{ $deal->id }}" {{ $attributes->class('row bg-surface-2') }}>
+    <a href="/deals/{{ $deal->id }}" {{ $attributes->class('row bg-surface-2') }}>
 @else
     <div {{ $attributes->class('row bg-surface-2') }}>
 @endif

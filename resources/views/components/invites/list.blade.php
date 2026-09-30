@@ -24,8 +24,8 @@
 </div>
 @if ($past->isNotEmpty())
     <section>
-        <h2 class="text-xl">Сработали и выключенные</h2>
-        <div class="mt-4 list">
+        <h2 class="list-head">Сработали и выключенные</h2>
+        <div class="list">
             @foreach ($past as $invite)
                 @include('invites.row')
             @endforeach

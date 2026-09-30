@@ -8,7 +8,7 @@
 @endphp
 <x-ui.shell :title="$gallery ? 'Скоро в продаже' : 'Предложения'" :heading="false" :trail="$trail">
 
-    <div id="catalog-section" @if ($selecting) data-controller="selection" data-selection-url-value="/account/showings/new" @endif>
+    <div id="catalog-section" @if ($selecting) data-controller="selection" data-selection-url-value="/buyers/showings/new" @endif>
         <div>
             {{-- Только название раздела: соседние разделы уже в шапке, а на телефоне и его место — лента пилюль тулбара. --}}
             <div class="hidden md:block">

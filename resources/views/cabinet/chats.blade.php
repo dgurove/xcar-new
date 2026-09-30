@@ -16,7 +16,7 @@
     $link = match (true) {
         ! $mine || ! $other => null,
         $me->isStaff() => '/account/users/'.$other->id.'?chat='.$chat->id,
-        $other->manager_id === $me->id => '/account/buyers/'.$other->id.'?chat='.$chat->id,
+        $other->manager_id === $me->id => '/buyers/'.$other->id.'?chat='.$chat->id,
         default => null,
     };
     $status = $mine ? false : \App\Chats\Hours::presence(feminine: $other === null);

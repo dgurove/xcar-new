@@ -3,7 +3,7 @@
      добавление. Грузится фреймом, чтобы галки были свежими. --}}
 @php $count = $offers->count(); $rows = $groups->count() + $buyers->count(); @endphp
 <turbo-frame id="show-frame">
-    <form method="post" action="/account/showings" class="flex flex-col gap-4" data-controller="select" data-turbo-frame="_top">
+    <form method="post" action="/buyers/showings" class="flex flex-col gap-4" data-controller="select" data-turbo-frame="_top">
         @csrf
         @foreach ($offers as $o)<input type="hidden" name="offers[]" value="{{ $o->id }}">@endforeach
         @if ($single)<input type="hidden" name="sync" value="1">@endif

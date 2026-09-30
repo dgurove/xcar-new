@@ -7,6 +7,7 @@ use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\LearnVins;
 use App\Http\Middleware\DemoReadOnly;
+use App\Http\Middleware\EnsureAbility;
 use App\Http\Middleware\EnsureManager;
 use App\Http\Middleware\EnsureParkArea;
 use App\Http\Middleware\EnsureParkManager;
@@ -15,6 +16,7 @@ use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\Impersonated;
 use App\Http\Middleware\MarkInstalled;
+use App\Http\Middleware\MarkPrefetch;
 use App\Http\Middleware\NormalizeNumbers;
 use App\Http\Middleware\PeekBack;
 use App\Http\Middleware\RedirectLegacyPaths;
@@ -55,7 +57,7 @@ use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: [__DIR__.'/../routes/park.php', __DIR__.'/../routes/garage.php', __DIR__.'/../routes/crm.php', __DIR__.'/../routes/web.php', __DIR__.'/../routes/auth.php'],
+        web: [__DIR__.'/../routes/park.php', __DIR__.'/../routes/crm.php', __DIR__.'/../routes/web.php', __DIR__.'/../routes/auth.php'],
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -94,8 +96,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo('/');
-        $middleware->alias(['staff' => EnsureStaff::class, 'manager' => EnsureManager::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'park.area' => EnsureParkArea::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
-        $middleware->prepend(RedirectLegacyPaths::class);
+        $middleware->alias(['staff' => EnsureStaff::class, 'manager' => EnsureManager::class, 'ability' => EnsureAbility::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'park.area' => EnsureParkArea::class, 'purchases' => EnsurePurchases::class, 'wall' => SiteWall::class]);
+        $middleware->prepend([RedirectLegacyPaths::class, MarkPrefetch::class]);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
         $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, ServerTiming::class, MarkInstalled::class, PeekBack::class, Impersonated::class, TouchSeen::class, DemoReadOnly::class]);

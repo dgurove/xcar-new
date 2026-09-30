@@ -4,11 +4,14 @@
     $active = $deals->getCollection()->filter(fn ($d) => $d->state === \App\Offers\DealState::Active)->sortBy(fn ($d) => $d->openRequirement ? 0 : 1)->values();
     $closed = $deals->getCollection()->reject(fn ($d) => $d->state === \App\Offers\DealState::Active)->values();
 @endphp
-<x-ui.cabinet title="Сделки">
+<x-ui.shell title="Сделки" :phone-heading="false" :desktop-heading="false">
+<div class="flex max-w-[56rem] flex-col gap-4">
+    <x-deal.tabs current="/deals"/>
+
     @if ($pending->isNotEmpty())
         <section>
-            <h2 class="text-xl">Ждут решения</h2>
-            <div class="mt-4 list">
+            <h2 class="list-head">Ждут решения</h2>
+            <div class="list">
                 @foreach ($pending as $bid)
                     @include('cabinet.deals.bid-row', ['bid' => $bid, 'state' => false])
                 @endforeach
@@ -23,8 +26,8 @@
     @foreach (['В работе' => $active, 'Закончены' => $closed] as $heading => $list)
         @continue($list->isEmpty())
         <section>
-            <h2 class="text-xl">{{ $heading }} <span class="nums text-ink-dim">{{ $list->count() }}</span></h2>
-            <div class="mt-4 list">
+            <h2 class="list-head">{{ $heading }} <span class="nums">{{ $list->count() }}</span></h2>
+            <div class="list">
                 @foreach ($list as $deal)
                     @include('cabinet.deals.row', ['deal' => $deal])
                 @endforeach
@@ -35,12 +38,13 @@
 
     @if ($lost->isNotEmpty())
         <section>
-            <h2 class="text-xl">Не состоялись</h2>
-            <div class="mt-4 list">
+            <h2 class="list-head">Не состоялись</h2>
+            <div class="list">
                 @foreach ($lost as $bid)
                     @include('cabinet.deals.bid-row', ['bid' => $bid, 'state' => true])
                 @endforeach
             </div>
         </section>
     @endif
-</x-ui.cabinet>
+</div>
+</x-ui.shell>

@@ -21,7 +21,7 @@
         @if ($claimed > 0)<span class="mt-1 text-sm text-urgent">Сообщили об оплате {{ Money::exact($claimed) }}, ждём подтверждения</span>@endif
     </div>
     @if ($unpaid && ! $invoice->isOwed() && ($link = $invoice->openLink()))
-        <x-billing.pay-link :link="$link" :cancel="'/cars/'.$car->offer->number.'/links/'.$link->id"/>
+        <x-billing.pay-link :link="$link" :cancel="'/garage/cars/'.$car->offer->number.'/links/'.$link->id"/>
     @endif
 
     @if ($car->isSold() && $label !== 'Продана за')
@@ -48,7 +48,7 @@
     @endif
     @if ($invoice)
         @php $pdf = $invoice->getFirstMedia('file'); @endphp
-        <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="/cars/{{ $car->offer->number }}/invoice/pdf" data-turbo="false" target="_blank" @endif class="{{ $row }}">
+        <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="/garage/cars/{{ $car->offer->number }}/invoice/pdf" data-turbo="false" target="_blank" @endif class="{{ $row }}">
             <span class="min-w-0">
                 <span class="block">{{ $invoice->isOwed() ? 'К выплате менеджеру' : 'Счёт '.$invoice->label() }}</span>
                 <span class="row-sub">{{ $invoice->state->label() }}@if ($unpaid), до {{ $invoice->due_at->translatedFormat('j M') }}@endif</span>

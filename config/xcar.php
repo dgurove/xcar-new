@@ -1,10 +1,9 @@
 <?php
 
 return [
-    // Хосты. CRM, стоянка и гараж — поддомены того же приложения; сайт — хост app.url.
+    // Хосты. CRM и стоянка — поддомены того же приложения; сайт — хост app.url (гараж — его раздел /garage).
     'crm_host' => env('CRM_HOST', 'crm.localhost'),
     'park_host' => env('PARK_HOST', 'park.localhost'),
-    'garage_host' => env('GARAGE_HOST', 'garage.localhost'),
 
     // ООО «ПРАЙМ» (`Seller::Prime`): счета сделок и гаража, страница «О компании» — по карточке предприятия.
     'company' => [

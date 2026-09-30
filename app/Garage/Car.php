@@ -96,10 +96,10 @@ class Car extends Model
         return $invoice->deal_id ? null : self::with(['offer.brand', 'offer.model', 'manager'])->where('invoice_id', $invoice->id)->first();
     }
 
-    /** Адрес машины в гараже — из уведомлений, писем и Telegram, откуда бы ни открыли. */
+    /** Адрес машины в гараже — из уведомлений, писем, Telegram и CRM: с хостом сайта, откуда бы ни открыли. */
     public function url(): string
     {
-        return Surface::Garage->url('/cars/'.$this->offer->number);
+        return Surface::Site->url('/garage/cars/'.$this->offer->number);
     }
 
     public function isSold(): bool

@@ -7,11 +7,11 @@
     $staff = auth()->user()->isStaff();
     $groups = ['Чинятся' => CarState::Repair, 'Проданы' => CarState::Sold, 'Рассчитались' => CarState::Settled];
 @endphp
-<x-ui.shell title="Машины" :count="$cars->count() ?: null">
+<x-ui.shell title="Гараж" :count="$cars->count() ?: null">
     @if ($cars->isEmpty())
         <x-ui.empty class="mt-2">Машин в гараже нет</x-ui.empty>
     @else
-        <div class="flex max-w-[40rem] flex-col">
+        <div class="flex max-w-[56rem] flex-col">
             @foreach ($groups as $head => $state)
                 @php $rows = $cars->where('state', $state); @endphp
                 @continue($rows->isEmpty())
@@ -32,7 +32,7 @@
                                 default => [$who.'рассчитались '.($car->settled_at ?? $car->sold_at)->translatedFormat('j M'), $car->sold_price, 'продана за'],
                             };
                         @endphp
-                        <a href="/cars/{{ $offer->number }}" class="row">
+                        <a href="/garage/cars/{{ $offer->number }}" class="row">
                             @if ($photo)
                                 <img src="{{ \App\Media\MediaUrl::for($photo, 'thumb') }}" alt="" width="64" height="48" loading="lazy" class="h-12 w-16 shrink-0 rounded-(--radius-s) object-cover">
                             @else

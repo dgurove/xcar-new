@@ -118,6 +118,19 @@ final class Paths
         'akty' => 'acts',
     ];
 
+    /**
+     * Разделы, переехавшие целиком (30.09.2026): сделки и покупатели ушли из кабинета в таб-бар.
+     * Начало пути → новое начало; хвост сохраняется. Первое совпадение выигрывает: частное — выше общего.
+     */
+    public const MOVED = [
+        'account/buyers/invites' => 'account/invites',
+        'account/deals' => 'deals',
+        'account/buyers' => 'buyers',
+        'account/interest' => 'buyers/interest',
+        'account/showings' => 'buyers/showings',
+        'account/confirmations' => 'deals',
+    ];
+
     /** Путь с переведёнными сегментами или null, если переводить нечего. */
     public static function translate(string $path): ?string
     {
@@ -129,7 +142,28 @@ final class Paths
                 $changed = true;
             }
         }
+        $new = implode('/', $segments);
+        $moved = self::move($new);
 
-        return $changed ? '/'.implode('/', $segments) : null;
+        return $moved !== null ? '/'.$moved : ($changed ? '/'.$new : null);
+    }
+
+    /** Путь переехавшего раздела или null. */
+    public static function moved(string $path): ?string
+    {
+        $moved = self::move(trim($path, '/'));
+
+        return $moved !== null ? '/'.$moved : null;
+    }
+
+    private static function move(string $path): ?string
+    {
+        foreach (self::MOVED as $from => $to) {
+            if ($path === $from || str_starts_with($path, $from.'/')) {
+                return $to.substr($path, strlen($from));
+            }
+        }
+
+        return null;
     }
 }

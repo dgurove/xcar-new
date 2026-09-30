@@ -8,7 +8,7 @@
 @if ($canAdd)
     <div {!! $wrap('cost-new') !!}>
         <x-ui.sheet id="cost-new" title="Записать расход" :open="$errors->has('title') || $errors->has('amount') && ! $unpaid">
-            <form method="post" action="/cars/{{ $n }}/costs" class="flex flex-col gap-4">
+            <form method="post" action="/garage/cars/{{ $n }}/costs" class="flex flex-col gap-4">
                 @csrf
                 @include('garage.cars.cost-fields', ['cost' => null])
                 <x-ui.button type="submit" variant="primary" block>Записать</x-ui.button>
@@ -20,7 +20,7 @@
 @if ($staff && ! $car->isSold())
     <div {!! $wrap('sold') !!}>
         <x-ui.sheet id="sold" title="Продана" :open="$errors->has('sold_price')">
-            <form method="post" action="/cars/{{ $n }}/sold" class="flex flex-col gap-4">
+            <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-4">
                 @csrf
                 <x-ui.field name="sold_price" label="За сколько, ₽" :value="old('sold_price')"/>
                 <x-ui.field name="sold_at" label="Когда" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
@@ -37,7 +37,7 @@
          минус вознаграждение; ушло в минус — отдаём мы, документ станет обязательством перед ним. --}}
     <div {!! $wrap('settle') !!}>
         <x-ui.sheet id="settle" :title="$car->manager ? 'Выставить счёт' : 'Закрыть расчёт'" :open="$errors->has('commission')">
-            <form method="post" action="/cars/{{ $n }}/settle" class="flex flex-col gap-4" @if ($car->manager) data-controller="commission" data-commission-margin-value="{{ $s['profit'] }}" data-commission-base-value="{{ $car->sold_price - $s['manager_costs'] }}" @endif>
+            <form method="post" action="/garage/cars/{{ $n }}/settle" class="flex flex-col gap-4" @if ($car->manager) data-controller="commission" data-commission-margin-value="{{ $s['profit'] }}" data-commission-base-value="{{ $car->sold_price - $s['manager_costs'] }}" @endif>
                 @csrf
                 <div class="list">
                     <div class="row justify-between"><span>Продана за</span><span class="nums">{{ Money::rub($car->sold_price) }}</span></div>
@@ -65,7 +65,7 @@
 @if ($staff && $unpaid)
     <div {!! $wrap('paid') !!}>
         <x-ui.sheet id="paid" :title="$invoice->isOwed() ? 'Выплатили менеджеру' : 'Деньги пришли'" :open="$errors->has('amount')">
-            <form method="post" action="/cars/{{ $n }}/payments" class="flex flex-col gap-4">
+            <form method="post" action="/garage/cars/{{ $n }}/payments" class="flex flex-col gap-4">
                 @csrf
                 <x-ui.field name="amount" label="Сколько, ₽" :value="$sum($invoice->remaining())"/>
                 <x-ui.field name="paid_at" label="Когда" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
@@ -77,6 +77,6 @@
 
 @if (! $staff && $unpaid && ! $invoice->isOwed() && $invoice->remaining() - $invoice->claimed() > 0)
     <div {!! $wrap('pay') !!}>
-        <x-billing.pay-sheet :invoices="collect([$invoice])" :action="'/cars/'.$n.'/checkout'" :pdf="'/cars/'.$n.'/invoice/pdf'" :buyers="$user->buyers()->orderBy('name')->get()" :open="$errors->any()" :other-name="$car->buyer_name" :other-phone="$car->buyer_phone"/>
+        <x-billing.pay-sheet :invoices="collect([$invoice])" :action="'/garage/cars/'.$n.'/checkout'" :pdf="'/garage/cars/'.$n.'/invoice/pdf'" :buyers="$user->buyers()->orderBy('name')->get()" :open="$errors->any()" :other-name="$car->buyer_name" :other-phone="$car->buyer_phone"/>
     </div>
 @endif

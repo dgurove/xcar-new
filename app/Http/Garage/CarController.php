@@ -66,7 +66,7 @@ class CarController
         abort_unless($request->user()->isStaff(), 403);
         $return($this->car($request, $offer), $request->user());
 
-        return redirect('/')->with('toast', 'Машина вернулась в черновики');
+        return redirect('/garage')->with('toast', 'Машина вернулась в черновики');
     }
 
     /** Машина этого человека или любая — сотруднику; чужая для менеджера не существует. */

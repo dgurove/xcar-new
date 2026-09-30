@@ -39,6 +39,6 @@
 {{ $slot }}
 @if ($row)<template data-peek-row>{{ $row }}</template>@endif
 @if ($tools && trim($tools) !== '')<template data-peek-tools>{{ $tools }}</template>@endif
-@if ($errors->any())<p class="field-error mt-3">{{ $errors->first() }}</p>@endif
+@if (($errors ?? null)?->any())<p class="field-error mt-3">{{ $errors->first() }}</p>@endif
 @if (session('toast') || session('toast-danger'))<template data-peek-toast data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}" @if (session('toast-undo')) data-undo @endif></template>@endif
 @if (session('peek-advance'))<template data-peek-advance></template>@endif

@@ -22,7 +22,7 @@ final class StageDueNotice extends Notice
 
     public function href(): string
     {
-        return $this->dealId ? "/account/deals/{$this->dealId}" : "/offers/{$this->offer->number}";
+        return $this->dealId ? "/deals/{$this->dealId}" : "/offers/{$this->offer->number}";
     }
 
     public function offerNumber(): ?int

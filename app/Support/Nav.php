@@ -9,6 +9,7 @@ use App\Billing\Payment;
 use App\Billing\PaymentState;
 use App\Billing\Seller;
 use App\Chats\Chat;
+use App\Garage\Car as GarageCar;
 use App\Mail\Boxes;
 use App\Mail\Scope;
 use App\Mail\Thread;
@@ -65,13 +66,6 @@ final class Nav
             ]));
         }
 
-        // Гараж: машины вне продажи у менеджеров. Разделы добавляются по мере готовности экранов.
-        if ($surface === Surface::Garage) {
-            return [
-                self::item('Машины', '/', ['/', '/cars']),
-            ];
-        }
-
         if ($surface === Surface::Crm) {
             return [
                 self::item('Предложения', '/', ['/', '/offers']),
@@ -84,23 +78,22 @@ final class Nav
             ];
         }
 
+        // Уведомлений в разделах нет: колокольчик в шапке, лента и настройки — строкой кабинета.
         if ($user?->isStaff()) {
             return [
                 self::item('Предложения', '/offers'),
                 self::item('Галерея', '/gallery'),
                 self::item('Закупки', '/purchases'),
-                self::item('Уведомления', '/account/notifications', capsule: false),
+                self::item('Гараж', '/garage'),
             ];
         }
 
-        // Демо-кабинет менеджера: каталог вместо закупок — закупки настоящие и ему закрыты.
+        // Сделки менеджера — раздел таб-бара; покупатели (интерес, приглашения, группы) — его вторая пилюля.
+        $deals = self::item('Сделки', '/deals', ['/deals', '/buyers', '/account/invites']);
+
+        // Демо-кабинет менеджера: каталог вместо закупок — закупки настоящие и ему закрыты; гаража у демо нет.
         if ($user?->role === Role::Manager && $user->is_demo) {
-            return [
-                self::item('Предложения', '/offers'),
-                self::item('Покупатели', '/account/buyers', ['/account/buyers', '/account/interest', '/account/invites']),
-                self::item('Сделки', '/account/deals', tab: false),
-                self::item('Уведомления', '/account/notifications', capsule: false),
-            ];
+            return [self::item('Предложения', '/offers'), $deals];
         }
 
         if ($user?->role === Role::Manager) {
@@ -108,9 +101,8 @@ final class Nav
                 self::item('Предложения', '/offers'),
                 self::item('Галерея', '/gallery', tab: false),
                 self::item('Закупки', '/purchases'),
-                self::item('Покупатели', '/account/buyers', ['/account/buyers', '/account/interest', '/account/invites']),
-                self::item('Сделки', '/account/deals', tab: false),
-                self::item('Уведомления', '/account/notifications', capsule: false),
+                $deals,
+                self::item('Гараж', '/garage'),
             ];
         }
 
@@ -119,12 +111,11 @@ final class Nav
             return [self::item('Предложения', '/offers')];
         }
 
-        // Покупатель: только то, что открыл менеджер, его интерес и уведомления.
+        // Покупатель: только то, что открыл менеджер, и его интерес.
         if ($user?->isBuyer()) {
             return [
                 self::item('Предложения', '/offers'),
                 self::item('Интерес', '/account/interests'),
-                self::item('Уведомления', '/account/notifications', capsule: false),
             ];
         }
 
@@ -133,7 +124,6 @@ final class Nav
                 self::item('Предложения', '/offers'),
                 self::item('Галерея', '/gallery'),
                 self::item('Избранное', '/account/favorites', capsule: false),
-                self::item('Уведомления', '/account/notifications', capsule: false),
             ];
         }
 
@@ -143,7 +133,7 @@ final class Nav
 
     /**
      * Пункты таб-бара: до четырёх разделов и «Кабинет». Кабинет горит и на экранах своего меню
-     * (Вендоры, Сделки, Тарифы — на телефоне они живут в кабинете, а не в таб-баре).
+     * (Вендоры, Деньги, Тарифы — на телефоне они живут в кабинете, а не в таб-баре).
      */
     public static function tabs(?User $user, ?Surface $surface = null): array
     {
@@ -196,15 +186,11 @@ final class Nav
             return [self::item('На сайт', Surface::Site->url())];
         }
 
-        if ($surface === Surface::Garage) {
-            return [self::item('На сайт', Surface::Site->url())];
-        }
-
         if ($surface === Surface::Crm) {
             return [
                 self::item('На сайт', Surface::Site->url()),
                 self::item('Парковка', Surface::Park->url()),
-                self::item('Гараж', Surface::Garage->url()),
+                self::item('Гараж', Surface::Site->url('/garage')),
             ];
         }
 
@@ -240,14 +226,6 @@ final class Nav
             ]))];
         }
 
-        if ($surface === Surface::Garage) {
-            return ['' => [
-                self::link('Профиль', '/account', exact: true),
-                self::link('Уведомления', '/account/notifications'),
-                self::link('На сайт', Surface::Site->url()),
-            ]];
-        }
-
         if ($surface === Surface::Crm) {
             // Один раздел «Настройки»: профиль — его первый пункт, как /account на сайте.
             return [
@@ -265,19 +243,15 @@ final class Nav
                 'Переходы' => [
                     self::link('На сайт', Surface::Site->url()),
                     self::link('Парковка', Surface::Park->url()),
-                    self::link('Гараж', Surface::Garage->url()),
+                    self::link('Гараж', Surface::Site->url('/garage')),
                 ],
             ];
         }
 
         $links = [self::link('Профиль', '/account', exact: true)];
         if ($user->role === Role::Manager) {
-            // Интерес и приглашения — про людей: живут внутри «Покупателей»; подтверждения — начало сделки.
-            $links[] = self::link('Покупатели', '/account/buyers', also: ['/account/interest', '/account/invites']);
-            $links[] = self::link('Сделки', '/account/deals');
+            // Сделки, покупатели и гараж — разделы таб-бара; в кабинете остаются деньги.
             $links[] = self::link('Деньги', '/account/money', also: ['/account/money/details']);
-            // Гараж — своё приложение: машины на ремонте и расходы по ним.
-            $links[] = self::link('Гараж', Surface::Garage->url());
         } elseif ($user->isAdmin()) {
             $links[] = self::link('Пользователи', '/account/users');
             $links[] = self::link('Приглашения', '/account/invites');
@@ -290,6 +264,7 @@ final class Nav
         }
         $links[] = self::link('Избранное', '/account/favorites');
         $links[] = self::link('Уведомления', '/account/notifications');
+
         // У вошедшего подвала нет (приложение, а не сайт) — о компании и документы живут здесь.
         return ['' => $links, 'Документы' => [self::link('О компании', '/company'), self::link('Обработка данных', '/privacy'), self::link('Соглашение', '/terms')]];
     }
@@ -332,7 +307,7 @@ final class Nav
     }
 
     /**
-     * «Назад» в шапке телефона: как на ПК, а корень пункта из меню кабинета (Вендоры, Сделки) — назад в кабинет:
+     * «Назад» в шапке телефона: как на ПК, а корень пункта из меню кабинета (Вендоры, Деньги) — назад в кабинет:
      * на ПК это раздел шапки или пилюля, на телефоне — экран, куда пришли из кабинета.
      */
     public static function phoneBack(string $path, ?User $user, ?Surface $surface = null): ?array
@@ -403,9 +378,6 @@ final class Nav
                     '/mail' => Thread::whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ], 'fresh' => []];
             }
-            if ($surface === Surface::Garage) {
-                return ['totals' => [], 'fresh' => []];
-            }
             if ($surface === Surface::Crm) {
                 return ['totals' => [
                     '/' => Offer::whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
@@ -422,10 +394,12 @@ final class Nav
                 '/offers' => (clone $open)->count(),
                 '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->count() : null,
                 '/purchases' => $user->role->canSeePurchases() ? count(Purchase::showcase($user)) : null,
-                '/account/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
+                // Всё, что стоит строкой на экране «Сделки»: сделки и подтверждения, ждущие решения.
+                '/deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count() : null,
+                '/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
+                '/garage' => $user->canGarage() ? GarageCar::of($user)->count() : null,
                 '/account/interests' => $user->isBuyer() ? Interest::where('user_id', $user->id)->count() : null,
                 '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
-                '/account/notifications' => $user->notifications()->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
                 '/offers' => (clone $open)->where('published_at', '>', $day)->count(),
                 '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->where('published_at', '>', $day)->count() : 0,
@@ -441,16 +415,12 @@ final class Nav
             return array_filter($badges + self::staffCounts($surface));
         }
 
-        // В гараже своих бейджей пока нет: только непрочитанные уведомления.
-        if ($surface === Surface::Garage) {
-            return array_filter($badges);
-        }
-
         if ($user->isManager()) {
-            $badges['/account/deals'] = Requirement::where('user_id', $user->id)->whereNull('done_at')->count();
-            // Новый интерес — на табе «Покупатели»: свой экран интереса вложен туда.
-            $badges['/account/interest'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
-            $badges['/account/buyers'] = $badges['/account/interest'];
+            // Новый интерес — на пилюле «Покупатели» и строке «Интерес»; таб «Сделки» горит и тем, что ждут от него, и им.
+            $badges['/buyers/interest'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
+            $badges['/buyers'] = $badges['/buyers/interest'];
+            $badges['/deals/asks'] = Requirement::where('user_id', $user->id)->whereNull('done_at')->count();
+            $badges['/deals'] = $badges['/deals/asks'] + $badges['/buyers'];
         }
         if ($user->canChat() || $user->isStaff()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.
@@ -520,8 +490,10 @@ final class Nav
         $paths[] = '/account/notifications';
         if ($surface === Surface::Site) {
             $paths[] = '/account/chats';
-            $paths[] = '/account/deals';
             $paths[] = '/account/money';
+            $paths[] = '/buyers';
+            $paths[] = '/buyers/interest';
+            $paths[] = '/deals/asks';
         }
         if ($surface === Surface::Crm) {
             $paths[] = '/work/deals';
@@ -550,9 +522,13 @@ final class Nav
         }
 
         $items = self::sections($user, $surface);
-        // Пилюли кабинета и заголовки «Работы» — корни своих экранов, а не глубина.
+        // Пилюли кабинета, заголовки «Работы» и пилюля «Покупатели» у «Сделок» — корни своих экранов, а не глубина.
         if ($user) {
-            foreach (self::cabinet($user, $surface) as $links) {
+            $cabinet = self::cabinet($user, $surface);
+            if ($surface === Surface::Site && $user->isManager()) {
+                $cabinet[] = [self::link('Покупатели', '/buyers', also: ['/account/invites'])];
+            }
+            foreach ($cabinet as $links) {
                 foreach ($links as $l) {
                     if (str_starts_with($l['match'], '=')) {
                         continue;

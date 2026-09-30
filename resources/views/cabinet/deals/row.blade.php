@@ -9,13 +9,13 @@
     $req = $active ? $deal->openRequirement : null;
     $alarm = $req?->due_at?->isPast() || ($position?->isOverdue() ?? false);
 @endphp
-<a href="/account/deals/{{ $deal->id }}" class="row">
+<a href="/deals/{{ $deal->id }}" class="row">
     <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
     <span class="min-w-0 flex-1">
         <span class="block truncate font-medium">{{ $offer->titleWithYear() }}</span>
         <span class="row-sub"><span class="tag nums">№ {{ $offer->number }}</span></span>
         @if ($req)
-            <span class="mt-1 line-clamp-3 text-sm font-medium text-urgent sm:truncate">{{ $req->title }}@if ($req->due_at && $req->due_at->isPast()), просрочено на <span class="nums" data-controller="timer" data-timer-since-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($req->due_at), до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</span>
+            <span class="mt-1 line-clamp-3 text-sm font-medium text-urgent sm:truncate">{{ $req->title }}@if ($req->due_at && $req->due_at->isPast()), просрочено на <span class="nums" data-controller="timer" data-timer-since-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($req->due_at), <span class="nums whitespace-nowrap">до {{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</span>
         @elseif ($position && $active)
             <x-route.clock :position="$position" class="mt-1 line-clamp-2 sm:truncate"/>
         @endif

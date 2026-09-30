@@ -13,17 +13,15 @@ class PwaController
         $dir = '/pwa/'.$surface->value;
 
         [$description, $shortcuts] = match ($surface) {
-            Surface::Site => ['Предложения, сделки, закупки', [
-                ['Предложения', '/offers', 'car'], ['Сделки', '/account/deals', 'deal'], ['Уведомления', '/account/notifications', 'bell'],
+            // Манифест один на всех и без cookie (браузер берёт его без входа): ярлыки — только то, что есть у каждой роли.
+            Surface::Site => ['Предложения, сделки, закупки, гараж', [
+                ['Предложения', '/offers', 'car'], ['Уведомления', '/account/notifications', 'bell'],
             ]],
             Surface::Crm => ['Предложения, галерея, работа, закупки', [
                 ['Предложения', '/', 'car'], ['Галерея', '/gallery', 'photo'], ['Работа', '/work', 'deal'], ['Закупки', '/purchases', 'cart'],
             ]],
             Surface::Park => ['Заявки, ТС, парковки', [
                 ['Заявки', '/requests', 'flag'], ['ТС', '/cars', 'car'],
-            ]],
-            Surface::Garage => ['Машины в гараже и расходы по ним', [
-                ['Машины', '/', 'car'],
             ]],
         };
 

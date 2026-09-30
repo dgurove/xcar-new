@@ -6,7 +6,6 @@
 @php
     $surface = \App\Support\Surface::current();
     $park = $surface === \App\Support\Surface::Park;
-    $garage = $surface === \App\Support\Surface::Garage;
     $site = $surface === \App\Support\Surface::Site;
     $user = auth()->user();
     $path = '/'.ltrim(request()->path(), '/');
@@ -16,7 +15,7 @@
     $searchAction = $park ? '/cars' : ($site ? '/offers' : '/');
     // Логотип ведёт вошедшего в его список, гостя — на первый экран.
     $home = $user ? $surface->home() : '/';
-    $searchHint = match (true) { $park => 'VIN, госномер, марка', $garage => 'Марка, модель, номер', default => 'Поиск объявления…' };
+    $searchHint = $park ? 'VIN, госномер, марка' : 'Поиск объявления…';
     $cabinet = \App\Support\Nav::cabinetRoot();
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
 @endphp
