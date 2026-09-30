@@ -71,6 +71,9 @@ final class Journal
         $this->safely(function () use ($update) {
             if (is_array($message = $update['message'] ?? null)) {
                 $this->incoming($message);
+            } elseif (is_array($message = $update['edited_message'] ?? null)) {
+                $this->touch(['chat_id' => data_get($message, 'chat.id'), 'message_id' => $message['message_id'] ?? 0],
+                    fn (ChatMessage $m) => $m->forceFill(['text' => $this->content($message)[1], 'edited_at' => now()]));
             } elseif (is_array($query = $update['callback_query'] ?? null)) {
                 $this->pressed($query);
             } elseif (is_array($member = $update['my_chat_member'] ?? null)) {

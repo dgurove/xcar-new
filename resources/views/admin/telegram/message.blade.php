@@ -13,8 +13,8 @@
     $kb = fn (int $b) => $b >= 1048576 ? round($b / 1048576, 1).' МБ' : max(1, (int) round($b / 1024)).' КБ';
 @endphp
 @if ($m->isEvent())
-    <div class="msg is-system" data-seq="{{ $m->id }}" data-day="{{ $day }}" data-author="event">
-        <div class="msg-system">{{ $m->preview(120) }} в {{ $m->created_at->format('H:i') }}</div>
+    <div class="msg is-system msg-event" data-seq="{{ $m->id }}" data-day="{{ $day }}" data-author="event">
+        <div class="msg-system">{{ $m->preview(120) }}, {{ $m->created_at->format('H:i') }}</div>
     </div>
 @else
 <div class="msg {{ $mine ? 'is-mine' : 'is-their' }} {{ $cont ? 'is-cont' : '' }} {{ $m->edited_at && !$deleted ? 'is-edited' : '' }} {{ $photoOnly ? 'is-photo' : '' }}" data-seq="{{ $m->id }}" data-day="{{ $day }}" data-author="{{ $who }}" @if ($m->isManual()) data-own @endif @if ($deleted) data-deleted @endif @unless ($deleted) data-action="contextmenu->chat#menu:prevent pointerdown->chat#press pointerup->chat#release pointercancel->chat#release pointermove->chat#drag" @endunless>

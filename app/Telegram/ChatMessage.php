@@ -109,7 +109,7 @@ class ChatMessage extends Model
         $text = trim(html_entity_decode(strip_tags((string) $text), ENT_QUOTES | ENT_HTML5));
 
         return match ($kind) {
-            'press' => 'Нажал «'.$text.'»',
+            'press' => 'Нажал кнопку «'.$text.'»',
             'photo' => $text ?: 'Фото',
             'document' => $text ?: 'Файл',
             'voice' => 'Голосовое',

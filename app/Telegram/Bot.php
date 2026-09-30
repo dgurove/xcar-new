@@ -195,7 +195,7 @@ class Bot
     /** Длинный опрос: Telegram держит запрос до `$timeout` секунд. @return list<array<string, mixed>> */
     public function updates(int $offset, int $timeout): array
     {
-        return $this->client($timeout + 10)->get('getUpdates', ['offset' => $offset, 'timeout' => $timeout, 'allowed_updates' => json_encode(['message', 'callback_query', 'my_chat_member'])])->throw()->json('result', []);
+        return $this->client($timeout + 10)->get('getUpdates', ['offset' => $offset, 'timeout' => $timeout, 'allowed_updates' => json_encode(['message', 'edited_message', 'callback_query', 'my_chat_member'])])->throw()->json('result', []);
     }
 
     /** Перед опросом: при живом вебхуке getUpdates отвечает 409. */
