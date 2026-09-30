@@ -4,7 +4,6 @@ namespace App\Billing\Actions;
 
 use App\Billing\Charge;
 use App\Billing\ChargeKind;
-use App\Billing\Events\ChargeAdded;
 use App\Billing\Party;
 use App\Offers\Deal;
 use App\Park\EventType;
@@ -24,7 +23,6 @@ final class AddCharge
             'period_from' => $from, 'period_to' => $to, 'created_by' => $by?->id,
         ]);
         $vehicle?->log(EventType::Charged, $by, ['title' => $title, 'amount' => $charge->amount]);
-        ChargeAdded::dispatch($charge, $by);
 
         return $charge;
     }

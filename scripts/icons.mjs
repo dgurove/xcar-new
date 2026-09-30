@@ -13,8 +13,8 @@ const at = (p) => new URL(p, import.meta.url).pathname;
 const BLACK = '#000000';
 const SURFACES = ['site', 'crm', 'park'];
 
-// Ярлыки манифеста (PwaController) → иконки кита.
-const SHORTCUT_ICONS = ['car', 'deal', 'bell', 'photo', 'cart', 'flag', 'park'];
+// Ярлыки манифеста по поверхностям → иконки кита; тот же список — в PwaController::manifest.
+const SHORTCUT_ICONS = { site: ['car', 'bell'], crm: ['car', 'photo', 'deal', 'cart'], park: ['flag', 'car'] };
 
 // Экраны iPhone в точках и плотности; тот же список — в components/ui/startup.blade.php.
 const SCREENS = [
@@ -77,7 +77,7 @@ for (const name of SURFACES) {
     await sharp(Buffer.from(mono)).resize(512, 512).png().toFile(out('icon-mono-512.png'));
 
     // Ярлыки: заливка кита в безопасной зоне на чёрном.
-    for (const icon of SHORTCUT_ICONS) {
+    for (const icon of SHORTCUT_ICONS[name]) {
         const kitIcon = kit[icon];
         if (!kitIcon) throw new Error(`нет заливки «${icon}» в icon.blade.php`);
         const { box, d } = kitIcon;

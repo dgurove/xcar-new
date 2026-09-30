@@ -14,6 +14,7 @@ class PwaController
 
         [$description, $shortcuts] = match ($surface) {
             // Манифест один на всех и без cookie (браузер берёт его без входа): ярлыки — только то, что есть у каждой роли.
+            // Иконки ярлыков делает scripts/icons.mjs по тому же списку (SHORTCUT_ICONS).
             Surface::Site => ['Предложения, сделки, закупки, гараж', [
                 ['Предложения', '/offers', 'car'], ['Уведомления', '/account/notifications', 'bell'],
             ]],

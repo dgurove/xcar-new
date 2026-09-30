@@ -2,7 +2,6 @@
 
 namespace App\Offers\Actions;
 
-use App\Offers\Events\InterestWithdrawn;
 use App\Offers\Interest;
 use App\Offers\OfferEventType;
 use App\Users\User;
@@ -15,6 +14,5 @@ final class WithdrawInterest
         $offer = $interest->offer;
         $interest->delete();
         $offer->log(OfferEventType::Interest, $by, ['withdrawn' => true]);
-        InterestWithdrawn::dispatch($offer, $by);
     }
 }
