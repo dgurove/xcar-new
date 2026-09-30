@@ -40,14 +40,9 @@
             <x-ui.vin-code :vin="$offer->vin" class="tag"/>
             @if ($gallery && $offer->interests_count)<span class="tag text-accent-text nums">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</span>@endif
         </x-slot:marks>
+        {{-- Цен в шапке нет: закупочная, заявленная и продажи — поля «Деньги» ниже. --}}
         <x-slot:aside>
-            @if ($price->shown())
-                <span class="nums block whitespace-nowrap text-lg">@if ($price->withFrom())<span class="text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="font-bold">{{ $price::money($price->to) }}&nbsp;₽</span>@if ($price->declared) <span class="text-xs font-normal text-ink-dim">заявленная {{ $price::money($price->declared) }}</span>@endif</span>
-            @elseif ($gallery)
-                <span class="text-sm text-accent-text">Скоро в продаже</span>
-            @elseif ($offer->floor_price)
-                <span class="block whitespace-nowrap text-lg"><span class="nums font-bold">{{ $price::money($offer->floor_price) }}&nbsp;₽</span> <span class="text-xs text-ink-dim">закупочная</span></span>
-            @endif
+            @if ($gallery)<span class="text-sm text-accent-text">Скоро в продаже</span>@endif
         </x-slot:aside>
         <x-slot:actions>
             @if ($offer->state === OfferState::Draft)
@@ -102,7 +97,6 @@
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
         </x-slot:actions>
         {{-- Последнее письмо, как в редакторе и деле ТС; вся переписка — окном поверх списка (x-mail.window на странице). --}}
-        @if ($lastLetter)<x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks" compact class="mt-4 rounded-(--radius-l) bg-surface-2 p-3"/>@endif
         @if ($bids->isNotEmpty())
             <div class="mt-4 flex flex-col gap-2">
                 @foreach ($bids as $bid)
@@ -163,6 +157,13 @@
             <h2 class="peek-section">Документы</h2>
             @include('admin.offers.papers-block')
         </section>
+        {{-- Письма — под документами: последнее словами, вся переписка — окном поверх списка. --}}
+        @if ($lastLetter)
+            <section class="mt-5">
+                <h2 class="peek-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
+                <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks" compact/>
+            </section>
+        @endif
         <a href="/offers/{{ $n }}" class="btn btn-quiet mt-5 w-full" data-turbo-frame="_top">Полный редактор</a>
         {{-- Поделиться — в полосу окошка справа, перед «Развернуть»; нечего отдавать (ни фото, ни цены) — кнопки нет. --}}
         <x-slot:tools>

@@ -53,12 +53,6 @@
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
-            {{-- Письма — как в деле ТС: последнее словами, вся переписка и ответ — окном поверх редактора. --}}
-            @if ($lastLetter)
-                <x-ui.card title="Письма" :count="$letters" class="order-1">
-                    <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks"/>
-                </x-ui.card>
-            @endif
             @if ($bids->isNotEmpty())
             <x-ui.card :title="'Подтверждения'.($waiting->isNotEmpty() ? ' '.$waiting->count() : '')" class="order-1 {{ $waiting->isNotEmpty() ? 'box-urgent' : '' }}">
                 <div class="flex flex-col gap-2">
@@ -174,6 +168,13 @@
         <x-ui.card title="Документы" class="order-4 @4xl:col-span-2">
             @include('admin.offers.papers-block')
         </x-ui.card>
+
+        {{-- Письма — под документами, как в деле ТС: последнее словами, вся переписка и ответ — окном поверх редактора. --}}
+        @if ($lastLetter)
+            <x-ui.card title="Письма" :count="$letters" class="order-4 @4xl:col-span-2">
+                <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks"/>
+            </x-ui.card>
+        @endif
     </div>
     </div>
 

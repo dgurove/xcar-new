@@ -14,7 +14,7 @@
          метки — во всю ширину рядом (узкая колонка рядом с ценой ставила их столбиком). --}}
     <div class="peek-head mt-3">
         <a href="{{ $href }}" class="peek-title block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}</span></a>
-        @if ($aside)<div class="peek-aside">{{ $aside }}</div>@endif
+        @if ($aside && trim($aside) !== '')<div class="peek-aside">{{ $aside }}</div>@endif
         {{-- Метки и факты — одной строкой с одним шагом: два ряда тегов с разными отступами смотрелись вразнобой. --}}
         @if ($marks || array_filter($facts))<div class="peek-marks flex flex-wrap items-center gap-1.5">{{ $marks }}@foreach (array_filter($facts) as $fact)<span class="tag nums">{{ $fact }}</span>@endforeach</div>@endif
     </div>
@@ -33,7 +33,7 @@
 @elseif ($action)
     <div class="mt-3 flex items-center gap-3">
         <a href="{{ $href }}" class="btn btn-s btn-accent flex-1 whitespace-nowrap sm:flex-none">{{ $action }}</a>
-        @if ($aside && $photos === null)<div class="ml-auto min-w-0 text-right">{{ $aside }}</div>@endif
+        @if ($aside && trim($aside) !== '' && $photos === null)<div class="ml-auto min-w-0 text-right">{{ $aside }}</div>@endif
     </div>
 @endif
 {{ $slot }}
