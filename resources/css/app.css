@@ -1247,6 +1247,30 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .toast-danger { @apply bg-danger; }
   .toast:has(.toast-action) { @apply flex items-center gap-4; }
   .toast-action { @apply rounded-full bg-white/15 px-3 py-1 text-sm font-medium; }
+
+  /* Админ в чужом кабинете: плашка на каждом экране. Телефон — над таб-баром (и над полосой кнопок, если она
+     есть), в чате — под баром собеседника: внизу там поле ввода; с клавиатурой прячется. ПК — левый нижний
+     угол, кнопки действий парят справа. Запас под ней — .impersonation-room в конце страницы. */
+  .impersonation { @apply fixed z-50 flex items-center gap-2 rounded-full bg-chrome py-1 pr-1 pl-1.5 text-sm text-white shadow-(--shadow-drop);
+    left: 50%; translate: -50% 0; max-width: calc(100% - 2rem);
+    bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + .75rem); }
+  .impersonation-name { @apply min-w-0 truncate; }
+  .impersonation-exit { @apply shrink-0 rounded-full bg-white/15 px-3 py-1 font-medium transition-colors hover:bg-white/25; }
+  .dark .impersonation { @apply bg-white text-chrome; }
+  .dark .impersonation-exit { @apply bg-chrome/10 hover:bg-chrome/20; }
+  .impersonation-room { @apply h-16 shrink-0; }
+  body:has(.action-bar) .impersonation { bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 5.25rem); }
+  @media (max-width: 767px) {
+    body:has(.tabbar.is-hidden) .impersonation { bottom: calc(max(env(safe-area-inset-bottom), 0px) + .75rem); }
+    html.kb-open .impersonation { display: none; }
+  }
+  @media (max-width: 1023px) {
+    body:has(.chat-page) .impersonation { bottom: auto; top: calc(env(safe-area-inset-top) + 7rem); }
+    body:has(.chat-page) .impersonation-room { display: none; }
+  }
+  @media (min-width: 768px) {
+    .impersonation, body:has(.action-bar) .impersonation { left: 1.5rem; translate: none; bottom: 1.5rem; }
+  }
 }
 
 /* ------------------------------------------------------------- шапка */
@@ -2161,6 +2185,8 @@ dialog.lightbox::backdrop { background: transparent; }
   @media (max-width: 1023px) {
     body:has(.chat-page) .header, body:has(.chat-page) .tabbar, body:has(.chat-page) .footer,
     body:has(.chat-page) nav:has(> .cabinet-pills), body:has(.chat-page) .chat-crm-top { display: none; }
+    /* Ряд h1 кабинета: имя собеседника и так в баре чата. flex у него утилитой — снимается только !important. */
+    body:has(.chat-page) #main > .container-site > .has-back { display: none !important; }
     /* Отступы контейнера — утилиты (слой выше): здесь их снимает !important. */
     body:has(.chat-page) #main > .container-site { max-width: none; padding: 0 !important; }
     body:has(.chat-page) .turbo-progress-bar { top: env(safe-area-inset-top); }

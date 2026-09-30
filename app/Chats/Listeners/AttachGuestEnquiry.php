@@ -3,6 +3,7 @@
 namespace App\Chats\Listeners;
 
 use App\Chats\GuestEnquiry;
+use App\Users\Impersonation;
 use Illuminate\Auth\Events\Login;
 
 /** Гость вошёл или зарегистрировался из того же браузера — его обращение становится чатом аккаунта. */
@@ -12,7 +13,8 @@ final class AttachGuestEnquiry
 
     public function handle(Login $event): void
     {
-        if (! app()->bound('request')) {
+        // Вход админа за человека — не тот гость: обращение этого браузера чужому аккаунту не отдаём.
+        if (! app()->bound('request') || Impersonation::active()) {
             return;
         }
         $chat = $this->guest->chat(request());

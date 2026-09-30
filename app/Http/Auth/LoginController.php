@@ -4,7 +4,7 @@ namespace App\Http\Auth;
 
 use App\Support\Phone;
 use App\Support\Surface;
-use App\Users\Actions\EnterImpersonation;
+use App\Users\Actions\LeaveImpersonation;
 use App\Users\Impersonation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,11 +35,11 @@ class LoginController
         return redirect()->intended(self::home());
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request, LeaveImpersonation $leave)
     {
         // Вход админа за человека: выходим только здесь, remember_token у человека не трогаем.
         if (Impersonation::active()) {
-            EnterImpersonation::leave($request);
+            $leave($request);
 
             return redirect('/login');
         }

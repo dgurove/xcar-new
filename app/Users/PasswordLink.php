@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['user_id', 'token_hash', 'created_by', 'expires_at', 'used_at'])]
 class PasswordLink extends Model
 {
+    use HashedToken;
+
     public const UPDATED_AT = null;
 
     protected function casts(): array
@@ -20,11 +22,6 @@ class PasswordLink extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public static function byToken(string $plain): ?self
-    {
-        return self::where('token_hash', hash('sha256', $plain))->first();
     }
 
     public function isLive(): bool

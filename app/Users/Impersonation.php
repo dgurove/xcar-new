@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Вход админа за человека. Ссылка одноразовая, 15 минут, в базе хэш; сессия за него — не дольше HOURS
- * и помечена impersonation_id: полоса «Вы в кабинете», без следов просмотра, без пароля и ключей.
+ * и помечена impersonation_id: плашка «Вы в кабинете», без следов просмотра, без пароля и ключей.
  */
 #[Fillable(['admin_id', 'user_id', 'token_hash', 'expires_at', 'used_at', 'ended_at', 'ip', 'user_agent', 'created_at'])]
 class Impersonation extends Model
 {
+    use HashedToken;
+
     public const UPDATED_AT = null;
 
     public const MINUTES = 15;
@@ -21,10 +23,6 @@ class Impersonation extends Model
     public const HOURS = 4;
 
     public const SESSION = 'impersonation_id';
-
-    private static ?self $current = null;
-
-    private static ?int $currentId = null;
 
     protected function casts(): array
     {
@@ -46,11 +44,6 @@ class Impersonation extends Model
         return $this->hasMany(ImpersonationAction::class);
     }
 
-    public static function byToken(string $plain): ?self
-    {
-        return self::where('token_hash', hash('sha256', $plain))->first();
-    }
-
     /** Ссылка ещё не открыта и не просрочена. */
     public function isLive(): bool
     {
@@ -67,22 +60,27 @@ class Impersonation extends Model
     public function isRunning(): bool
     {
         return $this->ended_at === null && $this->used_at?->copy()->addHours(self::HOURS)->isFuture()
-            && $this->admin && self::allowed($this->admin, $this->user);
+            && $this->admin && $this->user && self::allowed($this->admin, $this->user);
     }
 
-    /** Вход за человека в этом запросе — запись из сессии, один запрос в базу на запрос. */
+    /**
+     * Вход за человека в этом запросе — запись из сессии, один запрос в базу на запрос. Память — атрибут
+     * запроса, а не статика: воркер Octane живёт между запросами, и статика отдавала бы вчерашние права.
+     */
     public static function current(): ?self
     {
-        $id = session()->isStarted() ? session(self::SESSION) : null;
+        $request = app()->bound('request') ? request() : null;
+        $id = $request?->hasSession() ? $request->session()->get(self::SESSION) : null;
         if (! $id) {
             return null;
         }
-        if (self::$currentId !== $id) {
-            self::$currentId = $id;
-            self::$current = self::with(['admin', 'user'])->find($id);
+        $memo = $request->attributes->get(self::SESSION);
+        if (! is_array($memo) || $memo[0] !== $id) {
+            $memo = [$id, self::with(['admin', 'user'])->find($id)];
+            $request->attributes->set(self::SESSION, $memo);
         }
 
-        return self::$current;
+        return $memo[1];
     }
 
     public static function active(): bool

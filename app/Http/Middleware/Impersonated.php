@@ -2,7 +2,8 @@
 
 namespace App\Http\Middleware;
 
-use App\Users\Actions\EnterImpersonation;
+use App\Users\Actions\LeaveImpersonation;
+use App\Users\Actions\RecordImpersonatedRequest;
 use App\Users\Impersonation;
 use Closure;
 use Illuminate\Http\Request;
@@ -16,6 +17,8 @@ class Impersonated
 {
     private const CLOSED = ['account/password', 'passkey/*', 'push/subscription'];
 
+    public function __construct(private LeaveImpersonation $leave, private RecordImpersonatedRequest $record) {}
+
     public function handle(Request $request, Closure $next)
     {
         $as = Impersonation::current();
@@ -23,7 +26,7 @@ class Impersonated
             return $next($request);
         }
         if (! $as->isRunning() || ! $as->user->is($request->user())) {
-            EnterImpersonation::leave($request);
+            ($this->leave)($request);
 
             return $request->expectsJson() ? abort(401) : redirect('/login');
         }
@@ -33,13 +36,9 @@ class Impersonated
 
         $response = $next($request);
 
-        if (! $request->isMethodSafe() && ! $request->is('login/as/exit')) {
-            $as->actions()->create([
-                'method' => $request->method(),
-                'path' => mb_substr('/'.$request->path(), 0, 500),
-                'status' => $response instanceof Response ? $response->getStatusCode() : null,
-                'created_at' => now(),
-            ]);
+        // Запрос мог сменить вход (новая ссылка в том же окне, выход) — пишем, только если он ещё тот же.
+        if ($request->session()->get(Impersonation::SESSION) === $as->id && $response instanceof Response) {
+            ($this->record)($as, $request, $response->getStatusCode());
         }
 
         return $response;

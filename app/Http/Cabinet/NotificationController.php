@@ -56,8 +56,9 @@ class NotificationController
 
     public function readAll(Request $request)
     {
-        // Колокольчик сам шлёт «прочитано» при открытии: за человека админ его не отмечает.
-        Impersonation::active() || $request->user()->unreadNotifications()->update(['read_at' => now()]);
+        // Колокольчик сам шлёт «прочитано» при открытии (ajax): за человека это не отмечается.
+        // Кнопка «Всё прочитано» — осознанное действие, её слушаемся, как свайпа по строке.
+        ($request->ajax() && Impersonation::active()) || $request->user()->unreadNotifications()->update(['read_at' => now()]);
 
         return $request->ajax() ? response()->noContent() : back();
     }

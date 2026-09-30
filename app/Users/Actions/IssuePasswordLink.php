@@ -5,7 +5,6 @@ namespace App\Users\Actions;
 use App\Support\Surface;
 use App\Users\PasswordLink;
 use App\Users\User;
-use Illuminate\Support\Str;
 
 /**
  * Ссылка на новый пароль руками: менеджер — своему покупателю, админ — кому
@@ -19,10 +18,10 @@ final class IssuePasswordLink
     {
         PasswordLink::where('user_id', $for->id)->whereNull('used_at')->update(['used_at' => now()]);
 
-        $plain = Str::random(40);
+        [$plain, $hash] = PasswordLink::newToken();
         PasswordLink::create([
             'user_id' => $for->id,
-            'token_hash' => hash('sha256', $plain),
+            'token_hash' => $hash,
             'created_by' => $by->id,
             'expires_at' => now()->addHours(self::HOURS),
             'created_at' => now(),

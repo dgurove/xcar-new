@@ -17,10 +17,17 @@ export default class extends Controller {
             this.place();
         }
         if (this.dialogTarget.dataset.sheetOpenValue === 'true') this.open();
+        // POST → redirect на ту же страницу Turbo делает морфом: контроллер не переподключается, а сервер
+        // просит открыть шторку (выданная ссылка, ошибки формы) — открываем после морфа.
+        this.onMorph = () => {
+            if (this.hasDialogTarget && this.dialogTarget.dataset.sheetOpenValue === 'true' && !this.dialogTarget.open) this.open();
+        };
+        document.addEventListener('turbo:morph', this.onMorph);
     }
 
     disconnect() {
         this.media?.removeEventListener('change', this.onMedia);
+        document.removeEventListener('turbo:morph', this.onMorph);
         // Turbo сносит поддерево целиком — диалога может уже не быть, и обращение к цели роняло консоль.
         if (this.hasDialogTarget && this.dialogTarget.open) this.dialogTarget.close();
     }

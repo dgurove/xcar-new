@@ -3,6 +3,7 @@
 namespace App\Http\Auth;
 
 use App\Users\Actions\EnterImpersonation;
+use App\Users\Actions\LeaveImpersonation;
 use App\Users\Impersonation;
 use Illuminate\Http\Request;
 
@@ -32,10 +33,10 @@ class ImpersonationController
         return redirect()->to(LoginController::home());
     }
 
-    public function leave(Request $request)
+    public function leave(Request $request, LeaveImpersonation $leave)
     {
         $name = Impersonation::current()?->user?->shortName();
-        EnterImpersonation::leave($request);
+        $leave($request);
 
         return redirect('/login')->with('toast', $name ? "Вход как {$name} закончен" : 'Вход закончен');
     }

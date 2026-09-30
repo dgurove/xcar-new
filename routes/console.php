@@ -1,5 +1,6 @@
 <?php
 
+use App\Users\Actions\CloseStaleImpersonations;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('offers:tick')->everyMinute()->withoutOverlapping();
@@ -17,3 +18,5 @@ Schedule::command('mail:reconcile')->dailyAt('04:10');
 Schedule::command('mail:archive-stale')->dailyAt('04:20');
 Schedule::command('queue:prune-batches')->daily();
 Schedule::command('storage:gc')->dailyAt('04:30');
+// Входы админа за человека, из которых не вышли кнопкой, — закрыть сроком сессии.
+Schedule::call(fn () => app(CloseStaleImpersonations::class)())->hourly()->name('impersonations:close');

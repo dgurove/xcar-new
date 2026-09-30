@@ -4,6 +4,7 @@
      правой колонке от lg столбиком в карточке. user — аватар, без него — кружок с иконкой (группа). --}}
 @props(['name', 'user' => null, 'icon' => 'users', 'sidebar' => false])
 @php $col = $sidebar ? ' lg:flex-col lg:items-center lg:text-center lg:rounded-(--radius-xl) lg:bg-surface lg:p-6' : ''; $center = $sidebar ? ' lg:justify-center' : ''; @endphp
+{{-- В узкой карточке справа четыре действия (позвонить, написать, изменить, войти как) влезают одной строкой только с шагом 8. --}}
 <div {{ $attributes->merge(['class' => 'flex flex-wrap items-center gap-x-4 gap-y-3'.$col]) }}>
     @if ($user)
         <x-ui.avatar :user="$user" :size="56" class="text-xl sm:!size-16 sm:!text-2xl"/>
@@ -14,5 +15,5 @@
         <h1 class="truncate text-xl leading-tight sm:text-2xl">{{ $name }}</h1>
         @if (isset($chips) && !$chips->isEmpty())<div class="mt-1.5 flex flex-wrap gap-1.5{{ $center }}">{{ $chips }}</div>@endif
     </div>
-    @if (isset($acts) && !$acts->isEmpty())<div class="acts w-full shrink-0 sm:w-auto{{ $center }}">{{ $acts }}</div>@endif
+    @if (isset($acts) && !$acts->isEmpty())<div class="acts w-full shrink-0 sm:w-auto{{ $center }}{{ $sidebar ? ' lg:gap-x-2' : '' }}">{{ $acts }}</div>@endif
 </div>

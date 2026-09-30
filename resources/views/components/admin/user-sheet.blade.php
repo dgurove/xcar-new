@@ -9,9 +9,7 @@
 @if ($as)
     <div data-controller="sheet" class="contents">
         <x-ui.sheet :id="'as-'.$user->id" :title="'Вход как '.$user->shortName()" open>
-            <x-ui.copy-link :url="$as['url']" :title="'Вход как '.$user->shortName()">
-                <p class="text-sm text-ink-muted">Откройте в окне инкогнито, иначе в этом окне вы выйдете. Действует {{ \App\Users\Impersonation::MINUTES }} минут, один раз</p>
-            </x-ui.copy-link>
+            <x-ui.copy-link :url="$as['url']" :title="'Вход как '.$user->shortName()"/>
         </x-ui.sheet>
     </div>
 @endif
