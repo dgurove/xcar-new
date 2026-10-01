@@ -1113,12 +1113,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .chain-subject:not(:first-child) > span { padding-top: .75rem; }
   .letter-dot { position: relative; z-index: 1; margin-top: .5rem; justify-self: center; width: .75rem; height: .75rem; border-radius: 999px; background: var(--color-line); }
   .letter--ours .letter-dot { background: var(--color-surface); box-shadow: inset 0 0 0 2px var(--color-line); }
-  .letter--stage .letter-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-accent); box-shadow: none; }
-  .letter--ask .letter-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-urgent); box-shadow: none; }
-  /* Узел письма — кружок отправителя 24 px на линии; смысл прежней точки — кольцом: этап лаймовым, ждёт ответа оранжевым. */
+  /* Узел письма — кружок отправителя 24 px на линии, без обводок: этап и «ждёт ответа» говорят заголовок и тег. */
   .letter-face { position: relative; z-index: 1; justify-self: center; margin-top: .1875rem; width: 24px; height: 24px; border-radius: 999px; line-height: 0; }
-  .letter--stage .letter-face { box-shadow: 0 0 0 2px var(--color-accent); }
-  .letter--ask .letter-face { box-shadow: 0 0 0 2px var(--color-urgent); }
   .letter-body { min-width: 0; padding-bottom: .75rem; }
   /* Строка письма: на телефоне две строки (кто и дата, заголовок и скрепка), от 640 — одна. */
   .letter-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .5rem; align-items: baseline; min-height: 1.875rem; cursor: pointer; list-style: none; }
