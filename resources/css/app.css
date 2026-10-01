@@ -1119,7 +1119,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Строка письма: на телефоне две строки (кто и дата, заголовок и скрепка), от 640 — одна. */
   .letter-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .5rem; align-items: baseline; min-height: 1.875rem; cursor: pointer; list-style: none; }
   .letter-head::-webkit-details-marker { display: none; }
-  .letter-who { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .letter-who { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Полужирным — только непрочитанное: имя и заголовок; прочитанное письмо обычным начертанием. */
+  .letter--unread .letter-who { font-weight: 500; }
   .letter--ours .letter-who { color: var(--color-ink-muted); }
   .letter-when { grid-column: 2; grid-row: 1; font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; }
   .letter-title { grid-column: 1; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
