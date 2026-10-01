@@ -11,7 +11,7 @@
     <div class="mb-3 flex items-start gap-3">
         <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-baseline gap-x-2">
-                <span class="font-medium">{{ $out ? ($message->author?->name ?? $message->from_name ?? 'Мы') : ($message->from_name ?: $message->from_email) }}</span>
+                <span class="font-medium">{{ $out ? ($message->author?->name ?? ($message->from_name ?: $message->from_email)) : ($message->from_name ?: $message->from_email) }}</span>
                 @if (!$out && $message->from_name)<span class="text-sm text-ink-muted">{{ $message->from_email }}</span>@endif
             </div>
             <div class="text-sm text-ink-muted">Кому: {{ $message->to_preview ?: '—' }}</div>

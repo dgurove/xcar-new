@@ -71,8 +71,8 @@
                         <form method="post" action="{{ $base }}/{{ $section['threads']->first()->id }}/candidate" class="shrink-0">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                     </div>
                 @endif
-                {{-- Незаведённая цепочка — все её письма строками одной плашкой `.list`: заявка, с которой началось, видна всегда. --}}
-                <div class="{{ $section['candidate']?->state === CandidateState::New ? 'list' : 'flex flex-col gap-1.5' }}">
+                {{-- Незаведённая цепочка — все её письма лентой на линии одной плашкой: заявка, с которой началось, видна всегда. --}}
+                <div class="{{ $section['candidate']?->state === CandidateState::New ? 'chain rail' : 'flex flex-col gap-1.5' }}">
                     @if ($section['candidate']?->state === CandidateState::New)
                         @php
                             $letters = $section['candidate']->messages->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
@@ -81,10 +81,14 @@
                             // Ждёт ответа — последнее входящее ветки с `needs_reply_at`, как в ленте.
                             $waiting = $section['threads']->whereNotNull('needs_reply_at')->pluck('id')->all();
                             $asks = $letters->filter(fn ($m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->pluck('id')->all();
+                            $staged = collect($section['candidate']->stages ?? [])->pluck('message_id')->all();
+                            $prev = null;
                         @endphp
                         @foreach ($letters as $m)
                             @continue(isset($continued[$m->id]))
-                            <x-mail.letter-row :message="$m" :url="$queue.'/'.$section['candidate']->id.'/letters?at='.$m->id" :waits="in_array($m->id, $asks, true)" :files="$files[$m->id] ?? 0"/>
+                            <x-mail.letter-row :message="$m" :url="$queue.'/'.$section['candidate']->id.'/letters?at='.$m->id" :waits="in_array($m->id, $asks, true)"
+                                :stage="in_array($m->id, $staged, true)" :repeat="$prev?->from_email === $m->from_email" :files="$files[$m->id] ?? 0"/>
+                            @php $prev = $m; @endphp
                         @endforeach
                     @else
                         @foreach ($section['threads'] as $thread)

@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class ReadLetter
 {
-    public const VERSION = 7;
+    public const VERSION = 8;
 
     public function __construct(private ParkExtractor $park, private Extractor $offers, private CodeMatcher $codes) {}
 

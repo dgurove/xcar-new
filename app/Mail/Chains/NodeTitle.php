@@ -3,7 +3,6 @@
 namespace App\Mail\Chains;
 
 use App\Mail\Candidate;
-use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use Illuminate\Support\Str;
@@ -44,14 +43,14 @@ final class NodeTitle
         return self::for($m, $c) !== (self::words($m) ?: ($m->has_attachments ? 'Вложения' : 'Без своих слов'));
     }
 
-    /** Кто пишет: наше письмо — сотрудник или «Мы», письмо вендора — имя или адрес. */
+    /** Кто пишет: наше письмо — сотрудник или имя ящика («Storage XCar»), письмо вендора — имя или адрес. */
     public static function who(Message $m): string
     {
         if ($m->isForwardedByStaff()) {
             return $m->forwardedFrom() ?? ($m->from_name ?: $m->from_email);
         }
         if ($m->isOurs()) {
-            return $m->author?->name ?? ($m->direction === Direction::Out ? 'Мы' : ($m->from_name ?: $m->from_email));
+            return $m->author?->name ?? ($m->from_name ?: $m->from_email);
         }
 
         return $m->from_name ?: $m->from_email;
