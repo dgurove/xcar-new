@@ -15,10 +15,12 @@
                 $plain = ! $section['vehicle'] && ! $section['offer'] && ! $section['candidate'];
                 // В «Из писем» полоски нет: там каждая строка — то, что надо завести, и выделять нечего.
                 $mark = $forced ? null : $section['attention'];
+                // Незаведённая цепочка — карточка: шапка и письма на линии внутри одной плашки, как беседа в почте.
+                $card = $section['candidate']?->state === CandidateState::New;
             @endphp
             {{-- Смахивается дело целиком: архивировать одно письмо из цепочки смысла нет. --}}
             <x-ui.swipe id="case-{{ $section['kind'] }}-{{ $section['id'] }}" data-search-group>
-            <section class="case {{ $mark ? 'case--'.$mark : '' }}">
+            <section class="case {{ $card ? 'chain-card' : '' }} {{ $mark ? 'case--'.$mark : '' }}">
                 @if ($section['vehicle'])
                     @php $v = $section['vehicle']; @endphp
                     <div class="case-head">
@@ -37,6 +39,8 @@
                         </div>
                         <a href="/offers/{{ $o->number }}" class="case-go"><span class="tag">{{ $o->state->label() }}</span><span aria-hidden="true">›</span></a>
                     </div>
+                @elseif ($card)
+                    <x-mail.chain-head :candidate="$section['candidate']" :queue="$queue" :park="$park"/>
                 @elseif ($section['candidate'])
                     @php $c = $section['candidate']; @endphp
                     <div class="case-head">
@@ -71,9 +75,9 @@
                         <form method="post" action="{{ $base }}/{{ $section['threads']->first()->id }}/candidate" class="shrink-0">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                     </div>
                 @endif
-                {{-- Незаведённая цепочка — все её письма лентой на линии одной плашкой: заявка, с которой началось, видна всегда. --}}
-                <div class="{{ $section['candidate']?->state === CandidateState::New ? 'chain rail' : 'flex flex-col gap-1.5' }}">
-                    @if ($section['candidate']?->state === CandidateState::New)
+                {{-- Незаведённая цепочка — все её письма лентой на линии: заявка, с которой началось, видна всегда. --}}
+                <div class="{{ $card ? 'chain rail' : 'flex flex-col gap-1.5' }}">
+                    @if ($card)
                         @php
                             $letters = $section['candidate']->messages->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
                             $continued = \App\Mail\Chains\NodeTitle::continued($letters);

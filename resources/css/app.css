@@ -1139,37 +1139,36 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .letter-title { flex: 1 1 12rem; }
     .letter-when { margin-left: auto; }
   }
-  /* Лента цепочки в «Из писем» (.chain.rail, x-mail.letter-row): те же узлы, свёрнутые и плотнее, одной плашкой секции.
-     Телефон — две строки (кто, тег, дата; слова и скрепка), от 640 — одна. Подряд от того же адреса (.letter--repeat) —
-     точка и одна строка без имени. */
-  .rail { padding: .625rem .75rem 0; border-radius: var(--radius-l); background: var(--color-surface); }
+  /* Цепочка в «Из писем» — карточка, как беседа в почтовом приложении (.chain-card): шапка x-mail.chain-head (ТС; под ней
+     логотип вендора с номером убытка и этап словом; справа «Завести»), под ней письма на линии (.chain.rail,
+     x-mail.letter-row). Шаг отступов 4 px: карточка 14/16, шапка от писем 12, письма через 8 (телефон 10). */
+  .chain-card { padding: .875rem 1rem .375rem; border-radius: var(--radius-l); background: var(--color-surface); }
+  .chain-head { display: flex; align-items: center; gap: .5rem; }
+  .chain-head-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .chain-head-sub { display: flex; align-items: center; gap: .625rem; margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; overflow: hidden; }
+  .chain-card > .chain-head { margin-bottom: .75rem; }
+  /* Строка письма. Телефон — два этажа: кто, подпись, дата; слова и скрепка. От 640 — одна строка: кто, слова, скрепка,
+     подпись, дата. Подпись и дата — колонкой справа, как в почте. Подряд от того же адреса (.letter--repeat) — точка
+     и одна строка без имени. */
   .rail .letter-body { padding-bottom: .625rem; }
-  .rail .letter-head { grid-template-columns: minmax(0, max-content) auto minmax(0, 1fr) auto; min-height: 1.875rem; cursor: pointer; }
-  .rail .letter-who { grid-column: 1; }
-  .rail .letter-tag { grid-column: 2; grid-row: 1; align-self: center; margin-left: .375rem; }
-  .rail .letter-when { grid-column: 4; }
-  .rail .letter-title { grid-column: 1 / 4; }
-  .rail .letter-clip { grid-column: 4; }
-  .rail .letter--repeat .letter-head, .rail .letter-head { column-gap: .5rem; }
-  .rail .letter--repeat .letter-head { display: flex; }
-  /* Тег мельче текста и с отступами: по базовой линии слова рядом с ним прыгали по высоте — всё по центру строки. */
-  .rail .letter-head { align-items: center; }
-  .rail .letter-dot { margin-top: .5625rem; }
-  /* Подпись в строке — цветное слово того же шрифта и кегля, что имя и слова: мелкая капсула рядом с текстом смотрелась криво. */
-  /* Шрифт тоже текстовый: тег набран системным, и при одном кегле буквы садились на 4–5 px выше слов. */
+  .rail .letter-head { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-rows: 1.875rem auto; column-gap: .625rem; align-items: center; min-height: 1.875rem; cursor: pointer; }
+  .rail .letter-who { grid-column: 1; grid-row: 1; }
+  .rail .letter-tag { grid-column: 2; grid-row: 1; }
+  .rail .letter-when { grid-column: 3; grid-row: 1; min-width: 3.25rem; text-align: right; }
+  .rail .letter-title { grid-column: 1 / 3; grid-row: 2; }
+  .rail .letter-clip { grid-column: 3; grid-row: 2; }
+  /* Подпись — цветное слово того же шрифта и кегля, что текст: мелкая капсула системным шрифтом садилась выше слов. */
   .rail .letter-tag { display: block; font-family: inherit; font-size: inherit; line-height: inherit; font-weight: 500; padding: 0; min-height: 0; background: none; }
-  /* Телефон: первый этаж (кто, тег, дата) ростом с узел — его середина на уровне кружка. */
-  .rail .letter-head { grid-template-rows: 1.875rem auto; }
-  .rail .letter--repeat .letter-tag { margin-left: 0; }
+  .rail .letter-dot { margin-top: .5625rem; }
+  .rail .letter--repeat .letter-head { display: flex; gap: .625rem; }
   .rail .letter--repeat .letter-title { flex: 1 1 0; }
-  .rail .letter--repeat .letter-when { margin-left: auto; }
   .rail .letter-head:hover .letter-title { color: var(--color-ink); }
   @media (min-width: 640px) {
-    .rail .letter-head { flex-wrap: nowrap; }
-    .rail .letter-tag { margin-left: 0; }
+    .rail .letter-body { padding-bottom: .5rem; }
+    .rail .letter-head { display: flex; flex-wrap: nowrap; gap: .75rem; }
+    .rail .letter-who { flex: 0 1 auto; max-width: 14rem; }
     .rail .letter-title { flex: 1 1 0; }
-    .rail .letter-clip { margin-left: auto; }
-    .rail .letter-clip + .letter-when { margin-left: 0; }
+    .rail .letter-when { margin-left: 0; }
   }
   .letter-text { font-size: var(--text-base); line-height: 1.45; }
   .letter--ours .letter-text { padding: .75rem; border-radius: var(--radius-l); background: var(--color-surface-2); }

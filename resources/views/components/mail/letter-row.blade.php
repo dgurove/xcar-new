@@ -1,6 +1,6 @@
 {{-- Письмо цепочки «Из писем» — узел той же ленты, что в окне писем (`.chain` / `.letter`), только свёрнутый и кнопкой:
-     кружок отправителя 24 px на линии, кто, тег значимого смысла
-     (`Intent::marked`, у нашего письма тега нет), первые свои слова, скрепка, дата. На ПК одна строка, на телефоне две.
+     кружок отправителя 24 px на линии, кто, первые свои слова, скрепка, справа перед
+     датой — тег значимого смысла (`Intent::marked`, у нашего письма тега нет) или «Ждёт ответа». На ПК одна строка, на телефоне две.
      repeat — то же письмо от того же адреса подряд: точка вместо кружка и без имени, как сообщения подряд в мессенджере.
      Нажатие — окно всей цепочки на этом письме. files — файлы вместе с «ч.2». --}}
 @props(['message', 'url', 'waits' => false, 'stage' => false, 'repeat' => false, 'files' => 0])
@@ -22,9 +22,9 @@
             @unless ($repeat)
                 <span class="letter-who">{{ NodeTitle::who($m) }}</span>
             @endunless
-            @if ($waits)<span class="letter-tag tag tag-urgent">Ждёт ответа</span>@elseif ($tag)<span class="letter-tag tag {{ $intent === Intent::Intake ? 'tag-accent' : '' }}">{{ $tag }}</span>@endif
             <span class="letter-title">{{ $words }}</span>
             @if ($files)<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif
+            @if ($waits)<span class="letter-tag tag tag-urgent">Ждёт ответа</span>@elseif ($tag)<span class="letter-tag tag {{ $intent === Intent::Intake ? 'tag-accent' : '' }}">{{ $tag }}</span>@endif
             <span class="letter-when nums">{{ $when }}</span>
         </button>
     </div>
