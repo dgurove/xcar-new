@@ -45,7 +45,7 @@ final class ScanFields
         foreach ($docs as $doc) {
             [$attachment, $text] = $doc;
             foreach (self::values(DocumentFields::extract($text)) as $field => $value) {
-                $add($field, $value, ($doc[2] ?? false) ? 'фото' : Docs::label((string) $attachment->filename));
+                $add($field, $value, ($doc[2] ?? false) ? 'фото' : self::source((string) $attachment->filename));
             }
         }
 
@@ -108,6 +108,14 @@ final class ScanFields
         }
 
         return $out;
+    }
+
+    /** Подпись файла: «заявка», «эптс»; имя сканера из одних цифр («20260930142927…») — просто «скан». */
+    private static function source(string $filename): string
+    {
+        $label = Docs::label($filename);
+
+        return preg_match('/^[\d\s_\-\[\]()]+$|^\[?untitled\]?$/iu', $label) ? 'скан' : $label;
     }
 
     private static function text(string $field, mixed $value): string
