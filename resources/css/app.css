@@ -1108,6 +1108,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .chain { display: flex; flex-direction: column; }
   .chain-subject, .letter { position: relative; display: grid; grid-template-columns: 1.5rem minmax(0, 1fr); column-gap: .5rem; }
   .chain-subject::before, .letter::before { content: ''; position: absolute; left: calc(.75rem - 1px); top: 0; bottom: 0; width: 2px; background: var(--color-line); }
+  /* Отрезок письма — от центра своего кружка до центра следующего: линия начинается и кончается на кружках. */
+  .letter::before { top: .9375rem; bottom: -.9375rem; }
   .chain-subject:first-child::before, .letter:not(:has(~ .letter))::before { display: none; }
   .chain-subject > span { grid-column: 2; padding: .25rem 0 .375rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
   .chain-subject:not(:first-child) > span { padding-top: .75rem; }
@@ -1116,8 +1118,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Узел письма — кружок отправителя 24 px на линии, без обводок: этап и «ждёт ответа» говорят заголовок и тег. */
   /* Кружок центрирует флекс на всю колонку, а не строчный блок в узле 24 px: иначе в Safari он съезжал с линии. */
   .letter-face { position: relative; z-index: 1; display: flex; justify-content: center; align-items: flex-start; margin-top: .1875rem; height: 24px; line-height: 0; }
-  /* Линия начинается от центра первого кружка, а не торчит над ним. */
-  .chain > .letter:first-child::before, .chain > .chain-subject:first-child + .letter::before { top: .9375rem; }
   .letter-body { min-width: 0; padding-bottom: .75rem; }
   /* Строка письма: на телефоне две строки (кто и дата, заголовок и скрепка), от 640 — одна. */
   .letter-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .5rem; align-items: baseline; min-height: 1.875rem; cursor: pointer; list-style: none; }
