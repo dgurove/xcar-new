@@ -3,13 +3,15 @@
 namespace App\Mail\Extraction;
 
 use App\Cars\Brand;
+use App\Cars\CarModel;
 use App\Cars\Names;
 use App\Cars\Vin\VinDecoder;
+use App\Cars\Vin\VinMemory;
 
 /**
  * Марка и модель из слов документа, чаще скана после OCR: «СНАМСАМ | CS35PLUS_», «СЕЕГУ MONJARO», «Хавал НЗ».
  * Марка — словарём как есть, латиницей (`Names::latin`), с опечаткой (`Names::brandNear`) или по модели, которая
- * бывает только у одной марки (`Names::brandByModel`); по VIN (`brandOfVin`) — только когда слов нет вовсе.
+ * бывает только у одной марки (`Names::brandByModel`); по VIN (`carOfVin`) — только когда слов нет вовсе.
  * Модель — известная справочнику марки (пробелы и одна-две опечатки не мешают) или код с цифрой латиницей
  * («27772A», «X70»); незнакомое слово из скана («МОМТАКО», «ух») моделью не становится — пусть впишут руками.
  */
@@ -44,16 +46,25 @@ final class ScanCar
         return $brand ? ['brand' => $brand->name, 'model' => self::model($brand, $rest)] : null;
     }
 
-    /** Марка по VIN — только когда декодер уверен (схема завода, а не общий WMI концерна: LVT — и Chery, и Exeed). */
-    public static function brandOfVin(string $vin): ?Brand
+    /**
+     * Машина по VIN, когда слов нет: сначала память базы (`VinMemory` — у нас уже стояли ТС с тем же началом VIN и все
+     * они одной марки, тогда и модель), потом декодер, если уверен в марке (схема завода, а не общий WMI концерна:
+     * LFP — и FAW, и Hongqi). @return array{brand: Brand, model: ?string}|null
+     */
+    public static function carOfVin(string $vin): ?array
     {
+        $known = app(VinMemory::class)->recall($vin)['values'];
+        if (isset($known['brand_id']) && ($brand = Brand::find($known['brand_id']))) {
+            return ['brand' => $brand, 'model' => isset($known['model_id']) ? CarModel::find($known['model_id'])?->name : null];
+        }
         $result = app(VinDecoder::class)->decode($vin);
         $name = $result->get('brand');
         if (! is_string($name) || $result->confidence('brand') !== 'high') {
             return null;
         }
+        $brand = Names::brand($name) ?? Names::find($name)['brand'] ?? null;
 
-        return Names::brand($name) ?? Names::find($name)['brand'] ?? null;
+        return $brand ? ['brand' => $brand, 'model' => null] : null;
     }
 
     private static function model(Brand $brand, string $words): ?string

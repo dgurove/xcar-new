@@ -42,7 +42,7 @@ final class Names
         // Написания из имён файлов актов Альфы и тем писем, которых словарь не знал.
         'ликсианг' => 'lixiang', 'ликсиан' => 'lixiang', 'лихсианг' => 'lixiang', 'лехус' => 'lexus', 'лексуз' => 'lexus',
         'хуиндай' => 'hyundai', 'хундай' => 'hyundai', 'субар' => 'subaru', 'субару' => 'subaru', 'аккура' => 'acura',
-        'лэен ровер' => 'land-rover', 'ленд ровер' => 'land-rover', 'соллерс' => 'sollers', 'солерс' => 'sollers',
+        'лэен ровер' => 'land-rover', 'ленд ровер' => 'land-rover', 'соллерс' => 'sollers', 'солерс' => 'sollers', 'forland' => 'forland', 'форланд' => 'forland',
         'эволют' => 'evolute', 'эвалют' => 'evolute',
         // Опечатки из таблицы стоянки: «Mercedes-Benc GLE», «Mercedes-AMG», «Сhevrolet» с русской С, «Луидор».
         'mercedes-benc' => 'mercedes', 'mercedes-bens' => 'mercedes', 'mercedes-amg' => 'mercedes', 'сhevrolet' => 'chevrolet', 'луидор' => 'luidor', 'luidor' => 'luidor', 'черит' => 'chery', 'чанганг' => 'changan', 'джетур' => 'jetour', 'белава' => 'belava', 'ченлонг' => 'chenglong', 'chenglong' => 'chenglong',
@@ -93,7 +93,7 @@ final class Names
     ];
 
     /** Марки, которых в справочнике может не быть: как завести. */
-    private const CREATE = ['sollers' => 'Sollers', 'evolute' => 'Evolute', 'krone' => 'Krone', 'sitrak' => 'Sitrak', 'daf' => 'DAF', 'man' => 'MAN', 'belava' => 'Belava', 'chenglong' => 'Chenglong', 'moskvich' => 'Москвич', 'exeed' => 'Exeed', 'tonar' => 'Тонар', 'luidor' => 'Луидор', 'lada' => 'Lada', 'belgee' => 'Belgee', 'tenet' => 'Tenet', 'lixiang' => 'Lixiang', 'aito' => 'Aito', 'voyah' => 'Voyah', 'jaecoo' => 'Jaecoo', 'tank' => 'Tank', 'lynk-co' => 'Lynk & Co', 'jetour' => 'Jetour', 'hongqi' => 'Hongqi', 'zeekr' => 'Zeekr', 'omoda' => 'Omoda', 'kamaz' => 'КАМАЗ', 'uaz' => 'УАЗ', 'gaz' => 'ГАЗ'];
+    private const CREATE = ['sollers' => 'Sollers', 'evolute' => 'Evolute', 'krone' => 'Krone', 'sitrak' => 'Sitrak', 'daf' => 'DAF', 'man' => 'MAN', 'belava' => 'Belava', 'chenglong' => 'Chenglong', 'moskvich' => 'Москвич', 'exeed' => 'Exeed', 'tonar' => 'Тонар', 'luidor' => 'Луидор', 'lada' => 'Lada', 'belgee' => 'Belgee', 'tenet' => 'Tenet', 'lixiang' => 'Lixiang', 'aito' => 'Aito', 'voyah' => 'Voyah', 'jaecoo' => 'Jaecoo', 'tank' => 'Tank', 'lynk-co' => 'Lynk & Co', 'jetour' => 'Jetour', 'hongqi' => 'Hongqi', 'zeekr' => 'Zeekr', 'omoda' => 'Omoda', 'kamaz' => 'КАМАЗ', 'uaz' => 'УАЗ', 'gaz' => 'ГАЗ', 'forland' => 'Forland'];
 
     /** Тот же завод под другим slug в справочнике. */
     private const ALT = ['lada' => 'vaz', 'lixiang' => 'li-auto', 'lynk-co' => 'lynk-and-co', 'mercedes' => 'mercedes-benz'];

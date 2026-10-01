@@ -124,9 +124,12 @@ final class ParkExtractor
         if (! isset($fields['year']) && isset($fields['vin']) && ($year = self::yearFromVin($fields['vin']['value']))) {
             $fields['year'] = ['value' => $year, 'source' => 'vin'];
         }
-        // Марку не назвали нигде, а VIN есть — марка по VIN, если декодер в ней уверен.
-        if (! isset($fields['brand']) && isset($fields['vin']) && ($brand = ScanCar::brandOfVin($fields['vin']['value']))) {
-            $fields['brand'] = ['value' => $brand->name, 'source' => 'vin'];
+        // Марку не назвали нигде, а VIN есть — по VIN: память базы или декодер (`ScanCar::carOfVin`).
+        if (! isset($fields['brand']) && isset($fields['vin']) && ($car = ScanCar::carOfVin($fields['vin']['value']))) {
+            $fields['brand'] = ['value' => $car['brand']->name, 'source' => 'vin'];
+            if ($car['model']) {
+                $fields['model'] ??= ['value' => $car['model'], 'source' => 'vin'];
+            }
         }
         if ($vendor) {
             $fields['vendor_id'] = ['value' => $vendor->id, 'source' => 'sender'];

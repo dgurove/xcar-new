@@ -65,9 +65,10 @@ final class DocumentFields
                 $put('model', $found['model']);
             }
         }
-        // Марку так и не прочли — по VIN, если декодер в ней уверен (модели VIN не даёт).
-        if (! isset($f['brand']) && isset($f['vin']) && ($brand = ScanCar::brandOfVin($f['vin']['value']))) {
-            $put('brand', $brand->name);
+        // Марку так и не прочли — по VIN: память базы или декодер (`ScanCar::carOfVin`).
+        if (! isset($f['brand']) && isset($f['vin']) && ($car = ScanCar::carOfVin($f['vin']['value']))) {
+            $put('brand', $car['brand']->name);
+            $put('model', $car['model']);
         }
         foreach (self::values($text, 'Государственный\s+регистрационный\s+знак|Гос\.?\s*(?:рег\.?\s*)?(?:номер|знак)|\bг\/н\b') as $value) {
             if (preg_match(self::PLATE, mb_strtoupper($value), $m)) {
@@ -128,22 +129,27 @@ final class DocumentFields
         $vins = array_values(array_filter($rows, fn ($r) => $r['vin']));
         $row = $vins[0] ?? $rows[0];
         $put('vin', $row['vin']);
+        $after = $row['after'];
         if (! isset($f['brand'])) {
-            // Слева от VIN; нет — короткая строка над ним (акт, где OCR потерял подписи серых ячеек: «EXEED VX» строкой выше).
+            // Слева от VIN; пусто — строка над ним: акт, где OCR потерял подписи серых ячеек («EXEED VX» строкой выше),
+            // или заявка, где VIN в ячейке опустился ниже марки («FORLAND 27772A белый 2024 …», VIN строкой ниже).
+            // Марка с моделью — первые слова той строки, цвет и год — из её остатка.
             $found = ScanCar::of($row['before']);
-            for ($up = 1; ! $found && $up <= 3 && isset($lines[$row['line'] - $up]); $up++) {
-                $above = trim($lines[$row['line'] - $up]);
-                $found = $above !== '' && count(preg_split('/\s+/u', $above)) <= 4 ? ScanCar::of($above) : null;
+            for ($up = 1; ! $found && trim($row['before'], " \t|") === '' && $up <= 3 && isset($lines[$row['line'] - $up]); $up++) {
+                $words = preg_split('/\s+/u', trim($lines[$row['line'] - $up]), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                if ($words && ($found = ScanCar::of(implode(' ', array_slice($words, 0, 3))))) {
+                    $after .= ' '.implode(' ', array_slice($words, 1));
+                }
             }
             if ($found) {
                 $put('brand', $found['brand']);
                 $put('model', $found['model']);
             }
         }
-        if (preg_match('/^[\s|]*([А-Яа-яЁё]{3,}(?:ый|ий|ой|ая))\b/u', $row['after'], $m)) {
+        if (preg_match('/(?:^|[\s|])([А-Яа-яЁё]{3,}(?:ый|ий|ой|ая))\b/u', $after, $m)) {
             $put('color', mb_convert_case(mb_strtolower($m[1]), MB_CASE_TITLE));
         }
-        if (preg_match('/(?<![\d.,])(19[89]\d|20[0-3]\d)(?![\d.,])/u', $row['after'], $m)) {
+        if (preg_match('/(?<![\d.,\/])(19[89]\d|20[0-3]\d)(?![\d.,\/])/u', $after, $m)) {
             $put('year', (int) $m[1]);
         }
     }
