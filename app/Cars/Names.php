@@ -264,7 +264,7 @@ final class Names
     }
 
     /** Модель марки, известная словарю или справочнику: пробелы не важны («CS35PLUS» → CS35 Plus), у длинных имён — опечатка OCR. */
-    public static function knownModel(Brand $brand, string $phrase): ?string
+    public static function knownModel(Brand $brand, string $phrase, ?int $except = null): ?string
     {
         $phrase = self::clean((string) preg_replace('/\s+/u', ' ', $phrase));
         if ($phrase === '') {
@@ -276,7 +276,7 @@ final class Names
             }
         }
         $flat = self::flat($phrase);
-        $models = $brand->models()->get(['name', 'name_ru']);
+        $models = $brand->models()->when($except, fn ($q) => $q->where('id', '!=', $except))->get(['name', 'name_ru']);
         foreach ($models as $model) {
             if ($flat === self::flat($model->name) || ($model->name_ru && $flat === self::flat($model->name_ru))) {
                 return $model->name;

@@ -190,7 +190,8 @@ final class FillFromDocs
                 if (! $text) {
                     continue;
                 }
-                $source = $attachment->isPhoto() ? 'фото' : ScanFields::source((string) $attachment->filename);
+                // Имя файла — в историю дела: длинное («040 ВЫПИСКА ИЗ ЭЛЕКТРОННОГО ПАСПОРТА …») обрезается.
+                $source = $attachment->isPhoto() ? 'фото' : mb_strimwidth(ScanFields::source((string) $attachment->filename), 0, 40, '…');
                 $doc = DocumentFields::extract($text);
                 foreach (['vin', 'plate', 'year', 'color', 'value'] as $field) {
                     if (isset($doc[$field])) {

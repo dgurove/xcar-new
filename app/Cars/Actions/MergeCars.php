@@ -34,18 +34,21 @@ final class MergeCars
     }
 
     /**
-     * Модели, которые справочник узнаёт как другую, уже заведённую модель той же марки.
+     * Модели, вписанные людьми в карточку ТС по-русски («Ср-В»), которые справочник узнаёт как другую, уже
+     * заведённую модель той же марки (CR-V). Справочные русские имена («Волга», «C-Класс») не трогаются: на них не
+     * ссылается ни одна ТС парковки.
      *
      * @return list<array{CarModel, CarModel}>
      */
     public function modelPairs(): array
     {
         $pairs = [];
-        foreach (CarModel::with('brand')->get() as $model) {
+        $typed = DB::table('park_vehicles')->whereNotNull('model_id')->distinct()->pluck('model_id');
+        foreach (CarModel::with('brand')->whereIn('id', $typed)->get() as $model) {
             if (! $model->brand || ! preg_match('/\p{Cyrillic}/u', $model->name)) {
                 continue;
             }
-            $known = Names::knownModel($model->brand, $model->name);
+            $known = Names::knownModel($model->brand, $model->name, $model->id);
             $into = $known ? $model->brand->models()->whereRaw('lower(name) = ?', [mb_strtolower($known)])->where('id', '!=', $model->id)->first() : null;
             if ($into) {
                 $pairs[] = [$model, $into];
