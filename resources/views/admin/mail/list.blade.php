@@ -17,10 +17,12 @@
                 $mark = $forced ? null : $section['attention'];
                 // Незаведённая цепочка — карточка: шапка и письма на линии внутри одной плашки, как беседа в почте.
                 $card = $section['candidate']?->state === CandidateState::New;
+                // Письмо-заявка, которой парсер не нашёл машину, — та же карточка: шапка и письма ветки на линии.
+                $orphan = $section['kind'] === 't' && $section['register'];
             @endphp
             {{-- Смахивается дело целиком: архивировать одно письмо из цепочки смысла нет. --}}
             <x-ui.swipe id="case-{{ $section['kind'] }}-{{ $section['id'] }}" data-search-group>
-            <section class="case {{ $card ? 'chain-card' : '' }} {{ $mark ? 'case--'.$mark : '' }}">
+            <section class="case {{ $card || $orphan ? 'chain-card' : '' }} {{ $mark ? 'case--'.$mark : '' }}">
                 @if ($section['vehicle'])
                     @php $v = $section['vehicle']; @endphp
                     <div class="case-head">
@@ -65,32 +67,37 @@
                             @endif
                         </span>
                     </div>
-                @elseif ($section['register'])
-                    {{-- Заявка, которой парсер не нашёл машину: заводится руками. Вендор — в строке письма.
-                         У прочих писем без машины заголовка нет: писать в него нечего. --}}
-                    <div class="case-head">
-                        <div class="case-name"><span class="font-medium text-ink-muted">Машину в письме не нашли</span></div>
+                @elseif ($orphan)
+                    {{-- Заявка, которой парсер не нашёл машину: заводится руками. У прочих писем без машины заголовка нет. --}}
+                    @php $t = $section['threads']->first(); @endphp
+                    <div class="chain-head">
+                        <div class="min-w-0 flex-1">
+                            <div class="chain-head-title text-ink-muted">Машину в письме не нашли</div>
+                            @if ($t->vendor)<div class="chain-head-sub"><x-vendor.ref :vendor="$t->vendor"/><span>{{ $t->vendor->name }}</span></div>@endif
+                        </div>
                         {{-- «Не заявка» здесь — просто архив письма: цепочки у него ещё нет, отклонять нечего. --}}
                         <form method="post" action="{{ $base }}/case/t/{{ $section['id'] }}/archive" class="hidden md:contents" data-turbo-confirm="Не заявка? Письмо уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do"><span class="opacity-70">Не заявка</span></button></form>
-                        <form method="post" action="{{ $base }}/{{ $section['threads']->first()->id }}/candidate" class="shrink-0">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
+                        <form method="post" action="{{ $base }}/{{ $t->id }}/candidate" class="contents">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                     </div>
                 @endif
                 {{-- Незаведённая цепочка — все её письма лентой на линии: заявка, с которой началось, видна всегда. --}}
-                <div class="{{ $card ? 'chain rail' : 'flex flex-col gap-1.5' }}">
-                    @if ($card)
+                <div class="{{ $card || $orphan ? 'chain rail' : 'flex flex-col gap-1.5' }}">
+                    @if ($card || $orphan)
                         @php
-                            $letters = $section['candidate']->messages->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
+                            $letters = ($card ? $section['candidate']->messages : $section['threads']->flatMap->messages)->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
+                            // Окно — цепочки на этом письме; у письма без машины цепочки нет, окно — его ветки.
+                            $url = fn ($m) => $card ? $queue.'/'.$section['candidate']->id.'/letters?at='.$m->id : $base.'/'.$m->thread_id.'/window';
                             $continued = \App\Mail\Chains\NodeTitle::continued($letters);
                             $files = $letters->groupBy(fn ($m) => $continued[$m->id] ?? $m->id)->map(fn ($g) => $g->sum(fn ($m) => $m->files()->count()));
                             // Ждёт ответа — последнее входящее ветки с `needs_reply_at`, как в ленте.
                             $waiting = $section['threads']->whereNotNull('needs_reply_at')->pluck('id')->all();
                             $asks = $letters->filter(fn ($m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->pluck('id')->all();
-                            $staged = collect($section['candidate']->stages ?? [])->pluck('message_id')->all();
+                            $staged = collect($section['candidate']?->stages ?? [])->pluck('message_id')->all();
                             $prev = null;
                         @endphp
                         @foreach ($letters as $m)
                             @continue(isset($continued[$m->id]))
-                            <x-mail.letter-row :message="$m" :url="$queue.'/'.$section['candidate']->id.'/letters?at='.$m->id" :waits="in_array($m->id, $asks, true)"
+                            <x-mail.letter-row :message="$m" :url="$url($m)" :waits="in_array($m->id, $asks, true)"
                                 :stage="in_array($m->id, $staged, true)" :repeat="$prev?->from_email === $m->from_email" :files="$files[$m->id] ?? 0"/>
                             @php $prev = $m; @endphp
                         @endforeach

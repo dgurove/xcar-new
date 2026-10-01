@@ -175,6 +175,9 @@ class MailController
         // Незаведённая цепочка показывает все свои письма строками — письма грузятся только у таких, одним запросом.
         (new EloquentCollection($sections->pluck('candidate')->filter(fn (?Candidate $c) => $c?->state === CandidateState::New)->unique('id')->values()->all()))
             ->load(['messages.attachments', 'messages.author']);
+        // Письмо-заявка без машины — такая же карточка, письма ветки строками.
+        (new EloquentCollection($sections->filter(fn ($s) => $s['kind'] === 't' && $s['register'])->flatMap(fn ($s) => $s['threads'])->all()))
+            ->load(['messages.attachments', 'messages.author']);
         $threads = $paginator;
 
         // Список отдельным куском — им отвечает живой поиск, им же рисуется страница.
