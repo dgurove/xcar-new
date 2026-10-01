@@ -2,6 +2,8 @@
 
 namespace App\Http\Cabinet;
 
+use App\Live\Publisher;
+use App\Live\Topics;
 use App\Notifications\Categories;
 use App\Notifications\TestNotice;
 use App\Users\Impersonation;
@@ -35,30 +37,37 @@ class NotificationController
         return redirect($item->data['href'] ?? '/account/notifications');
     }
 
-    /** Тап по строке ведёт сразу на объект; прочитанность отмечается маячком с клиента. */
-    public function seen(Request $request, string $id)
+    /** Тап по строке ведёт сразу на объект; прочитанность отмечается маячком с клиента, значки — во всех вкладках. */
+    public function seen(Request $request, string $id, Publisher $publish)
     {
-        Impersonation::active() || $request->user()->notifications()->whereKey($id)->first()?->markAsRead();
+        $item = Impersonation::active() ? null : $request->user()->unreadNotifications()->whereKey($id)->first();
+        if ($item) {
+            $item->markAsRead();
+            $publish->badges(Topics::user($request->user()));
+        }
 
         return response()->noContent();
     }
 
-    /** Смахнули строку: прочитано ↔ не прочитано, ответ — та же строка стримом. */
-    public function toggleRead(Request $request, string $id)
+    /** Смахнули строку: прочитано ↔ не прочитано, ответ — та же строка стримом. Осознанное действие — и под «Войти как». */
+    public function toggleRead(Request $request, string $id, Publisher $publish)
     {
         $item = $request->user()->notifications()->findOrFail($id);
         $item->read_at ? $item->markAsUnread() : $item->markAsRead();
+        $publish->badges(Topics::user($request->user()));
 
         return response()
             ->view('cabinet.notification-row-stream', ['item' => $item->fresh()])
             ->header('Content-Type', 'text/vnd.turbo-stream.html');
     }
 
-    public function readAll(Request $request)
+    public function readAll(Request $request, Publisher $publish)
     {
         // Колокольчик сам шлёт «прочитано» при открытии (ajax): за человека это не отмечается.
         // Кнопка «Всё прочитано» — осознанное действие, её слушаемся, как свайпа по строке.
-        ($request->ajax() && Impersonation::active()) || $request->user()->unreadNotifications()->update(['read_at' => now()]);
+        if (! ($request->ajax() && Impersonation::active()) && $request->user()->unreadNotifications()->update(['read_at' => now()])) {
+            $publish->badges(Topics::user($request->user()));
+        }
 
         return $request->ajax() ? response()->noContent() : back();
     }

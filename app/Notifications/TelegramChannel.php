@@ -2,7 +2,6 @@
 
 namespace App\Notifications;
 
-use App\Support\Surface;
 use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\Bot;
 use App\Users\User;
@@ -26,10 +25,8 @@ final class TelegramChannel
         }
         $lines = array_filter($message['lines'], fn ($l) => $l !== null && $l !== '');
         $text = implode("\n", ['<b>'.e($message['title']).'</b>', ...array_map(fn ($l) => e($l), $lines)]);
-        $href = $notice->href();
-        $url = str_starts_with($href, 'http') ? $href : Surface::Site->url($href);
         try {
-            $this->bot->send((int) $user->telegram_chat_id, $text, [[['text' => $message['button'], 'url' => $url]]], $user->quietHours());
+            $this->bot->send((int) $user->telegram_chat_id, $text, [[['text' => $message['button'], 'url' => $notice->telegramUrl()]]], $user->quietHours());
         } catch (Throwable $e) {
             if (Bot::chatGone($e)) {
                 app(UnlinkChat::class)($user);

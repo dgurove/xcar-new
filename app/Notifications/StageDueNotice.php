@@ -42,6 +42,12 @@ final class StageDueNotice extends Notice
         return $this->dealId !== null;
     }
 
+    /** Менеджеру «срок вышел» только обновляет строку сделки: напоминание до срока он уже получил. */
+    public function quiet(): bool
+    {
+        return $this->dealId !== null && $this->overdue;
+    }
+
     /** В Telegram — только менеджеру по его сделке. */
     public function toTelegram(): ?array
     {

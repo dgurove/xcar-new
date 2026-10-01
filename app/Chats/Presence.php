@@ -6,7 +6,7 @@ use App\Users\Impersonation;
 use App\Users\User;
 use Illuminate\Support\Facades\Cache;
 
-/** Чат у человека на экране: лента с read=1 отмечается раз в запрос, живёт 45 с (опрос — каждые 20). Пуш такому не шлём. */
+/** Чат у человека на экране: лента с read=1 отмечается при каждом догоне и раз в 20 с, пока видна; живёт 45 с. Пуш, Telegram и строку в ленте такому не шлём. */
 final class Presence
 {
     public static function touch(Chat $chat, ?User $user): void

@@ -175,7 +175,8 @@ final class Notify
         $requirement = Requirement::where('deal_id', $deal->id)->where('stage_id', $e->to->id)->whereNull('done_at')->latest()->first();
         if ($requirement) {
             $deal->buyer->notify(new YourTurnNotice($requirement->load('offer')));
-        } elseif ($e->from?->block_id !== $e->to->block_id) {
+        } elseif ($e->from?->block_id !== $e->to->block_id && $deal->created_at->lt(now()->subMinute())) {
+            // Первый шаг только что открытой сделки не пишем: менеджеру уже идёт «подтверждение принято».
             $deal->buyer->notify(new DealStepNotice($deal->load('offer'), $e->to));
         }
     }
@@ -184,8 +185,11 @@ final class Notify
     {
         $stage = $e->position->stage;
         if ($stage->waits_for === WaitsFor::Manager) {
+            // Менеджеру — пока его просьба на этапе не выполнена: ответил — напоминать не о чем.
             $deal = $e->offer->deal()->with('buyer')->first();
-            $deal?->buyer?->notify(new StageDueNotice($e->offer, $e->position, $e->overdue, $deal->id));
+            if ($deal?->buyer && Requirement::where('deal_id', $deal->id)->where('stage_id', $stage->id)->whereNull('done_at')->exists()) {
+                $deal->buyer->notify(new StageDueNotice($e->offer, $e->position, $e->overdue, $deal->id));
+            }
         }
         Notification::send($this->staff(), new StageDueNotice($e->offer, $e->position, $e->overdue));
     }

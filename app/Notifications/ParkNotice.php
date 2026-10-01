@@ -81,11 +81,6 @@ final class ParkNotice extends Notice
         return Surface::Park->url($this->path);
     }
 
-    public function tag(): ?string
-    {
-        return $this->vehicleId ? 'park-'.$this->vehicleId : null;
-    }
-
     public function category(): string
     {
         return 'park';

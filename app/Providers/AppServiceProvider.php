@@ -26,6 +26,7 @@ use App\Mail\Extraction\AttachmentReader;
 use App\Mail\Extraction\TextAttachmentReader;
 use App\Mail\OnMessage;
 use App\Media\StampOnAdd;
+use App\Notifications\CollapseNotices;
 use App\Notifications\Notify;
 use App\Park\Actions\SendPickupLink;
 use App\Park\Events\VehicleSold;
@@ -35,6 +36,7 @@ use App\Users\Passkeys;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
@@ -66,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
             });
         }
         Event::subscribe(Notify::class);
+        Event::listen(NotificationSent::class, CollapseNotices::class);
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);
         Event::subscribe(SyncOffer::class);

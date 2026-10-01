@@ -229,7 +229,12 @@
 Группы `BuyerGroup`; показы `Offers\Showing` (ровно одно из user/group),
 `ShowOffers`/`HideOffers`, покупателю одно уведомление на пачку, live —
 `refresh` в `user/{id}` (тему `catalog` покупатель не слушает). Интерес
-покупателя — `BuyerInterestNotice` его менеджеру. Настройки уведомлений — `Notifications\Categories` (что можно выключить по роли), `Notice::category/critical`, `User::wants/quietHours`, экран `/account/notifications/settings`, отписка из письма подписанной ссылкой. Ссылка на новый пароль —
+покупателя — `BuyerInterestNotice` его менеджеру. Настройки уведомлений — `Notifications\Categories` (что можно выключить по роли), `Notice::category/critical`, `User::wants/quietHours`, экран `/account/notifications/settings`, отписка из письма подписанной ссылкой.
+**Лента — строка на объект** (01.10.2026, `notes/uvedomleniya-2026-10-01.md`): `Notice::subject()` — путь объекта без хоста
+(сделочные и деньги по сделке — `/deals/{id}`, чат — `/account/chats/{id}`, сотрудникам деньги — счёт), `CollapseNotices`
+убирает прежние строки темы, `ReadNoticesOnVisit` гасит их, когда человек открыл объект любым путём (через `pgsql_async`,
+под «Войти как» и предзагрузкой — нет); `Notice::quiet()` — только строка в ленте (шаг сделки без менеджера, «срок вышел»
+менеджеру), пуш тегом темы. Ссылка на новый пароль —
 `IssuePasswordLink` (`/password/link/{token}`, сутки, одноразовая) — менеджер
 покупателю, админ кому угодно. Админ передаёт покупателя `TransferBuyer`.
 Форма в шторке после успешного POST закрывается сама (`app.js`).
@@ -375,8 +380,9 @@
   (`EditMessage`/`DeleteMessage`, текст остаётся — сотрудник видит; live `chat-edit` перечитывает
   один пузырь `GET /chats/{id}/messages/{seq}`), «печатает…» — `POST …/typing` только в хаб,
   текст — через `Support\Linkify` (ссылки, телефоны, «№ N»), фото — превью до отправки, вставка из
-  буфера, просмотр `lightbox.js`. Уведомления: пуш на каждое сообщение (`ChatNotice` tag `chat-{id}`, в открытый
-  чат не шлётся — `Chats\Presence`), в ленту и на почту — только первое непрочитанное; тост — с
+  буфера, просмотр `lightbox.js`. Уведомления: пуш и Telegram на каждое сообщение (`ChatNotice`, в открытый
+  чат не шлётся — `Chats\Presence`, лента на экране держит её запросом раз в 20 с), в ленту и на почту — только первое
+  непрочитанное, прочтение чата гасит его строку у всей стороны (`MarkChatRead` → `ReadNotices`); тост — с
   live-события `chat` (`from`, `text`, `href`), если лента не на экране; значок приложения —
   `User::badgeCount()` (уведомления + чаты, meta `badge-count` обновляет `/live/badges`).
 - **Вендоры** (`app/Vendors`, с 19.09.2026) — одним справочником вместо `insurers` + `park_clients`;
@@ -1070,7 +1076,7 @@
   (CRM, витрина, выгрузка, новые цены), видна только в «В предложениях». Цену продажи ставят в «Оценить» по
   черновикам (`POST /offers/{n}/publish` из окошка, `peek-advance`); при публикации менеджерам с ценой по ТС в
   закупке — `PurchaseCarOnSaleNotice` вместо «Нового предложения», один раз (`announced_at`).
-- Telegram-бот без SDK (`Telegram\Bot`, IPv6, `telegram:poll`): владельцу и привязанным админам — кнопки решения, менеджерам — принятое подтверждение, ваш ход, сроки и деньги (`Notice::telegram`, `TelegramChannel`), шторка подключения `x-telegram.connect` (сама — один раз при входе и после подтверждения ценой), профиль, вход через бота (`StartLink`), вся переписка бота — Настройки → «Бот Telegram» админам (`Telegram\Journal` в `Bot::call` и `UpdateHandler::handle`, ответ от имени бота `SendAsBot`) — `notes/telegram-2026-09-30.md`.
+- Telegram-бот без SDK (`Telegram\Bot`, IPv6, `telegram:poll`): владельцу и привязанным админам — кнопки решения, менеджерам — принятое подтверждение, ваш ход, сроки, деньги и каждое сообщение чата (с 01.10.2026, админам — чаты площадки; `Notice::toTelegram`/`telegramUrl`, `TelegramChannel`), шторка подключения `x-telegram.connect` (сама — один раз при входе и после подтверждения ценой), профиль, вход через бота (`StartLink`), вся переписка бота — Настройки → «Бот Telegram» админам (`Telegram\Journal` в `Bot::call` и `UpdateHandler::handle`, ответ от имени бота `SendAsBot`) — `notes/telegram-2026-09-30.md`.
 - Медиа: `PhotoIngest` — всё входящее в 1600 px webp, `sha` исходника у
   каждого кадра; **просмотр фото один на три хоста** — `resources/js/lightbox.js` (PhotoSwipe 5, с 28.09.2026
   вместо Viewer.js): зовут `gallery`, `photos` (глаз, поворот, корзина и «Скачать» прямо в просмотре; `group` —

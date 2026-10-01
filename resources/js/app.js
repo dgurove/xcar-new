@@ -178,13 +178,15 @@ function imageFade() {
 function freshness() {
     const cachedAt = new Map();
     let action = null;
-    const quiet = () => document.querySelector('.cards, [data-list]') && !document.querySelector('form[data-dirty], dialog:modal');
+    const quiet = () => document.querySelector('.cards, [data-list], [data-fresh-on-back]') && !document.querySelector('form[data-dirty], dialog:modal');
     // Метка — чтобы net.js не перечитывал токен отдельным запросом: его принесёт этот же ответ.
     const refresh = () => { window.xcarRefreshedAt = Date.now(); Turbo.visit(location.href, { action: 'replace' }); };
     document.addEventListener('turbo:before-cache', () => cachedAt.set(location.href, Date.now()));
     document.addEventListener('turbo:visit', (event) => { action = event.detail.action; });
     document.addEventListener('turbo:load', () => {
-        if (action === 'restore' && Date.now() - (cachedAt.get(location.href) ?? Date.now()) > 120_000 && quiet()) refresh();
+        // Лента уведомлений и список чатов — сразу: точки «не прочитано» в снимке остались от времени до прочтения.
+        const stale = document.querySelector('[data-fresh-on-back]') || Date.now() - (cachedAt.get(location.href) ?? Date.now()) > 120_000;
+        if (action === 'restore' && stale && quiet()) refresh();
         action = null;
     });
     let hiddenAt = 0;
@@ -432,6 +434,8 @@ function noticeSeen() {
         const body = new FormData();
         body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
         navigator.sendBeacon(`/account/notifications/${link.dataset.notice}/opened`, body);
-        link.closest('.swipe, .block')?.querySelector('.rounded-full.bg-accent-soft')?.remove();
+        // Прочитано сразу: точка гаснет (в ленте — прозрачной, чтобы текст не съехал), заголовок — обычным.
+        link.querySelectorAll('.rounded-full.bg-accent').forEach((dot) => dot.classList.replace('bg-accent', 'bg-transparent'));
+        link.querySelector('.flex-1.font-medium')?.classList.remove('font-medium');
     }, true);
 }

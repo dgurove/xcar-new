@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Push\WebPushChannel;
+use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,10 +33,30 @@ abstract class Notice extends Notification implements ShouldQueue
         return null;
     }
 
-    /** Метка пуша: уведомления с одной меткой заменяют друг друга; по умолчанию — предложение. */
+    /**
+     * Объект, о котором уведомление, — путь без хоста (с запросом, если он и называет объект). В ленте у человека одна
+     * строка на объект: новое уведомление заменяет прежние (CollapseNotices), а открытый объект гасит его
+     * (ReadNoticesOnVisit). Сделочные отдают `/deals/{id}`, чтобы ход, сроки и деньги по сделке были одной строкой.
+     */
+    public function subject(): string
+    {
+        $href = $this->href();
+        $path = parse_url($href, PHP_URL_PATH) ?: '/';
+        $query = parse_url($href, PHP_URL_QUERY);
+
+        return $query ? $path.'?'.$query : $path;
+    }
+
+    /** Метка пуша: пуши одного объекта заменяют друг друга. */
     public function tag(): ?string
     {
-        return $this->offerNumber() ? 'offer-'.$this->offerNumber() : null;
+        return $this->subject();
+    }
+
+    /** Тихое — только обновляет строку объекта в ленте: без пуша, почты и Telegram (шаг сделки, где менеджер не нужен). */
+    public function quiet(): bool
+    {
+        return false;
     }
 
     /** Категория для настроек (Categories): что человек может выключить. */
@@ -52,7 +73,7 @@ abstract class Notice extends Notification implements ShouldQueue
 
     /**
      * Сообщение в привязанный Telegram: заголовок жирным, строки, подпись кнопки-ссылки на href. null — туда не шлём:
-     * в Telegram только то, что требует человека — принятое подтверждение, его ход и сроки, деньги. Без длинных тире:
+     * в Telegram только то, что требует человека — принятое подтверждение, его ход и сроки, деньги, сообщения чатов. Без длинных тире:
      * пример в шторке подключения (Telegram\Preview) выглядит так же.
      *
      * @return array{title: string, lines: list<?string>, button: string}|null
@@ -62,8 +83,16 @@ abstract class Notice extends Notification implements ShouldQueue
         return null;
     }
 
+    /** Куда ведёт кнопка в Telegram: абсолютный адрес как есть, путь — на сайте. */
+    public function telegramUrl(): string
+    {
+        $href = $this->href();
+
+        return str_starts_with($href, 'http') ? $href : Surface::Site->url($href);
+    }
+
     /**
-     * Куда: выключенная категория — никуда; лента всегда; пуш — не в тихие часы;
+     * Куда: выключенная категория — никуда; лента всегда; тихое — только в ленту; пуш — не в тихие часы;
      * почта — если есть адрес и не выключена; Telegram — если привязан и уведомление туда просится.
      */
     public function via(User $user): array
@@ -72,6 +101,9 @@ abstract class Notice extends Notification implements ShouldQueue
             return [];
         }
         $via = ['database'];
+        if ($this->quiet()) {
+            return $via;
+        }
         if (! $user->quietHours()) {
             $via[] = WebPushChannel::class;
         }
@@ -88,7 +120,7 @@ abstract class Notice extends Notification implements ShouldQueue
 
     public function toArray(User $user): array
     {
-        return ['title' => $this->title(), 'text' => $this->text(), 'href' => $this->href(), 'offer' => $this->offerNumber()];
+        return ['title' => $this->title(), 'text' => $this->text(), 'href' => $this->href(), 'offer' => $this->offerNumber(), 'subject' => $this->subject()];
     }
 
     public function toMail(User $user): MailMessage

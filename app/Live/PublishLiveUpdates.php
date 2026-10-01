@@ -150,12 +150,18 @@ final class PublishLiveUpdates
         $this->publish->refresh($this->otherSide($chat), $chat->manager_id ? ['/account/chats'] : ['/work/chats', '/account/chats']);
     }
 
-    /** Сторона дочитала — другой стороне двойные галочки. */
+    /**
+     * Сторона дочитала — другой стороне двойные галочки, своей — значки и список чатов: прочитанное гаснет и в
+     * соседней вкладке, и в списке слева на ПК, и на значке приложения.
+     */
     public function chatRead(ChatRead $e): void
     {
         $chat = $e->chat;
-        $topic = $e->byCounterpart ? ($chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)) : $this->otherSide($chat);
-        ($this->publish)($topic, 'chat-read', ['chat' => $chat->id, 'seq' => $e->seq]);
+        $participant = $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id);
+        $reader = $e->byCounterpart ? $this->otherSide($chat) : $participant;
+        ($this->publish)($e->byCounterpart ? $participant : $this->otherSide($chat), 'chat-read', ['chat' => $chat->id, 'seq' => $e->seq]);
+        $this->publish->badges($reader);
+        $this->publish->refresh($reader, $e->byCounterpart && ! $chat->manager_id ? ['/work/chats', '/account/chats'] : ['/account/chats']);
     }
 
     /** Вторая сторона — менеджер покупателя или сотрудники площадки. */

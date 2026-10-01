@@ -2,15 +2,19 @@
 
 namespace App\Notifications;
 
+use App\Chats\AuthorKind;
 use App\Chats\Chat;
 use App\Chats\Message;
 use App\Push\WebPushChannel;
+use App\Support\Surface;
+use App\Telegram\Text;
 use App\Users\User;
 
 /**
- * Сообщение в чате: пуш — на каждое (уведомления одного чата заменяют друг друга по tag), в ленту и
- * на почту — только первое непрочитанное. Адрес — экран чата в кабинете без хоста: сотруднику на
- * CRM он станет `/work/chats/{id}`, на сайте откроется там же. forStaff — адресат вторая сторона.
+ * Сообщение в чате: пуш и Telegram — на каждое (пуши одного чата заменяют друг друга по tag, в Telegram — каждое со
+ * звуком, решение владельца 01.10.2026), в ленту и на почту — только первое непрочитанное, лента держит строку на чат.
+ * Адрес — экран чата в кабинете без хоста: сотруднику на CRM он станет `/work/chats/{id}`, на сайте откроется там же.
+ * forStaff — адресат вторая сторона.
  */
 final class ChatNotice extends Notice
 {
@@ -20,18 +24,47 @@ final class ChatNotice extends Notice
     {
         $via = parent::via($user);
 
-        return $this->first ? $via : array_values(array_intersect($via, [WebPushChannel::class]));
+        return $this->first ? $via : array_values(array_intersect($via, [WebPushChannel::class, TelegramChannel::class]));
     }
 
-    public function tag(): ?string
+    public function subject(): string
     {
-        return 'chat-'.$this->message->chat_id;
+        return '/account/chats/'.$this->message->chat_id;
+    }
+
+    /** В Telegram — сообщение целиком; автоответ площадки (без автора) — нет: человек сам только что написал. */
+    public function toTelegram(): ?array
+    {
+        $m = $this->message;
+        if ($m->author_kind !== AuthorKind::Participant && ! $m->author_id) {
+            return null;
+        }
+        $chat = $m->chat;
+        $who = $this->who();
+        $title = $chat->isEnquiry() ? "{$who}: обращение с сайта" : "{$who} пишет по {$chat->offer->titleWithYear()}";
+
+        return ['title' => $title, 'lines' => Text::lines($chat->offer, $m->preview(1000)), 'button' => 'Открыть чат'];
+    }
+
+    /** Сотруднику в чате площадки — CRM (там и обращения с сайта), остальным — сайт. */
+    public function telegramUrl(): string
+    {
+        $chat = $this->message->chat;
+
+        return $this->forStaff && ! $chat->isBuyerChat() ? Surface::Crm->url('/work/chats/'.$chat->id) : parent::telegramUrl();
+    }
+
+    private function who(): string
+    {
+        $chat = $this->message->chat;
+
+        return $this->forStaff ? $chat->displayName() : ($chat->manager?->shortName() ?? Chat::PLATFORM);
     }
 
     public function title(): string
     {
         $chat = $this->message->chat;
-        $who = $this->forStaff ? $chat->displayName() : ($chat->manager?->shortName() ?? Chat::PLATFORM);
+        $who = $this->who();
 
         return $chat->isEnquiry() ? "{$who}: обращение с сайта" : "{$who}: сообщение по № {$chat->offer->number}";
     }

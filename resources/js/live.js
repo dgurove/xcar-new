@@ -28,6 +28,10 @@ export const liveOpen = () => source?.readyState === EventSource.OPEN;
 
 export function live() {
     document.addEventListener('turbo:load', retopic);
+    // «Назад» показывает снимок из кэша Turbo — с теми бейджами, что были до прочтения: перечитываем.
+    let restoring = false;
+    document.addEventListener('turbo:visit', (e) => { restoring = e.detail.action === 'restore'; });
+    document.addEventListener('turbo:load', () => { if (restoring) badges(); restoring = false; });
     // Бейджи при возврате — только после паузы дольше 30 с: переключились на секунду в другое приложение — не повод.
     let hiddenAt = 0;
     document.addEventListener('visibilitychange', () => {
@@ -138,7 +142,7 @@ function refresh({ paths }) {
     Turbo.renderStreamMessage('<turbo-stream action="refresh"></turbo-stream>');
 }
 
-async function badges() {
+export async function badges() {
     if (!topics.includes('user/')) return;
     try {
         const r = await fetch('/live/badges', { headers: { Accept: 'text/vnd.turbo-stream.html' } });

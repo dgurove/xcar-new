@@ -15,7 +15,7 @@
     @if ($items->isEmpty())
         <x-ui.empty>Уведомлений пока нет</x-ui.empty>
     @else
-        <div class="list">
+        <div class="list" data-fresh-on-back>
             @foreach ($items as $item)
                 @include('cabinet.notification-row')
             @endforeach

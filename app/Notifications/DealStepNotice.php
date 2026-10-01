@@ -39,4 +39,10 @@ final class DealStepNotice extends Notice
     {
         return true;
     }
+
+    /** Шаг, где менеджер не нужен, — только строка сделки в ленте, без пуша и Telegram (решение владельца 01.10.2026). */
+    public function quiet(): bool
+    {
+        return true;
+    }
 }

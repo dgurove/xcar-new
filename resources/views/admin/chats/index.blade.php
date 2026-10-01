@@ -21,7 +21,7 @@
             @if ($chats->isEmpty())
                 <x-ui.empty>Чатов нет</x-ui.empty>
             @else
-                <div class="chat-rows-list">
+                <div class="chat-rows-list" data-fresh-on-back>
                     @foreach ($chats as $c)
                         <x-chat.row :chat="$c" :me="$me" :href="'/work/chats/'.$c->id.$qs" :current="$c->id === $current" staff/>
                     @endforeach

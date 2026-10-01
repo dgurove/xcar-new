@@ -27,7 +27,7 @@
 <x-ui.cabinet :title="$current ? $name : 'Чаты'">
     <div class="chat-split {{ $current ? 'has-current' : '' }}" data-controller="split">
         <div class="chat-rows">
-            <div class="chat-rows-list">
+            <div class="chat-rows-list" data-fresh-on-back>
                 @foreach ($chats as $c)
                     <x-chat.row :chat="$c" :me="$me" :href="'/account/chats/'.$c->id" :current="$c->id === $current"/>
                 @endforeach

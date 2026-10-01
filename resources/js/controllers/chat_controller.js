@@ -1,6 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { openLightbox } from '../lightbox';
-import { liveOpen } from '../live';
+import { badges, liveOpen } from '../live';
 
 // Чат по офферу. Лента дополняется фрагментами «всё после N», где N —
 // последний номер на экране: догон после обрыва идемпотентен; старое
@@ -23,11 +23,14 @@ export default class extends Controller {
         document.addEventListener('visibilitychange', this.onVisible);
         window.addEventListener('chat:open', this.onOpen);
         window.addEventListener('online', this.onOnline);
-        // Страховка без живого канала: раз в 20 секунд, пока лента на экране и канал оборван.
-        this.timer = setInterval(() => { if (!liveOpen() && !document.hidden) this.fetch(); }, 20000);
+        // Раз в 20 секунд: без живого канала — страховка догоном; лента на экране — ещё и отметка «чат открыт»
+        // (Chats\Presence живёт 45 с): иначе через минуту сообщения в открытый чат шли бы в ленту уведомлений и пушем.
+        this.timer = setInterval(() => { if (!document.hidden && (!liveOpen() || this.visible())) this.fetch(); }, 20000);
         this.watchTop();
         this.scroll(this.listTarget.querySelector('#chat-new'));
         this.status = document.querySelector('[data-chat-status]');
+        // Шторка чата на ПК грузится лениво: chat:open уходил раньше, чем контроллер подключился, и чат не читался.
+        if (this.visible()) this.fetch(true);
     }
 
     disconnect() {
@@ -81,12 +84,14 @@ export default class extends Controller {
         return { Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' };
     }
 
-    async fetch() {
+    // Прочитали новое (или открыли) — значки перечитываются после отметки: посчитанные хабом раньше неё показали бы +1.
+    async fetch(opened = false) {
         if (!this.urlValue || this.fetching) return;
         this.fetching = true;
+        const read = this.visible();
         try {
-            const r = await fetch(`${this.urlValue}?after=${this.lastValue}&read=${this.visible() ? 1 : 0}`, { headers: this.headers() });
-            if (r.ok) this.append(await r.text());
+            const r = await fetch(`${this.urlValue}?after=${this.lastValue}&read=${read ? 1 : 0}`, { headers: this.headers() });
+            if (r.ok && this.append(await r.text()) + opened > 0 && read) badges();
         } catch {} finally { this.fetching = false; }
     }
 
@@ -107,10 +112,11 @@ export default class extends Controller {
     append(html) {
         const box = document.createElement('div');
         box.innerHTML = html;
-        // Первое сообщение завело чат: приветствие-заглушка уходит, лента дальше живёт по seq.
-        if (!this.lastValue) this.listTarget.replaceChildren();
+        // Первое сообщение завело чат: приветствие-заглушка уходит, лента дальше живёт по seq. Пустой догон её не трогает.
+        if (!this.lastValue && box.querySelector('[data-seq]')) this.listTarget.replaceChildren();
         const atBottom = this.atBottom();
         let mine = false;
+        let added = 0;
         for (const el of [...box.children]) {
             if (el.classList.contains('chat-day')) {
                 if (this.lastDay() !== el.dataset.day) this.listTarget.append(el);
@@ -122,11 +128,15 @@ export default class extends Controller {
             this.glue(el);
             this.listTarget.append(el);
             this.lastValue = seq;
+            added++;
             if (el.classList.contains('is-mine')) mine = true;
         }
+        if (!added) return 0;
         // Вниз — если и так были внизу или это своё; иначе читающего не дёргать, показать «↓».
         if (atBottom || mine) this.scroll();
         else this.unseen(1);
+
+        return added;
     }
 
     // Подряд идущее того же автора в пять минут — без имени, ближе к предыдущему.
