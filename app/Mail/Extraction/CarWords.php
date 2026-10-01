@@ -90,12 +90,4 @@ final class CarWords
 
         return $mapped ? Drive::tryFrom($mapped)?->value : null;
     }
-
-    /** VIN-заглушка из одинаковых знаков («11111111111111111» в оценке торгов) — не VIN. */
-    public static function realVin(?string $vin): ?string
-    {
-        $vin = $vin === null ? null : strtoupper(trim($vin));
-
-        return $vin !== null && strlen($vin) === 17 && strlen(count_chars($vin, 3)) > 1 ? $vin : null;
-    }
 }

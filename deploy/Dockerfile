@@ -22,12 +22,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends p7zip-full popp
     && pip3 install --no-cache-dir --break-system-packages pillow==12.3.0 pillow-heif==1.7.0
 COPY deploy/bin/heic2jpg /usr/local/bin/heic2jpg
 # ocr — «✨ Распознать» в «Из писем» (`DocumentText`): PaddleOCR PP-OCRv5 через RapidOCR на onnxruntime и модель
-# поворота страницы. rapidocr тянет полный opencv с libGL — ставим без зависимостей, opencv без экрана. Модели
+# поворота страницы. rapidocr тянет полный opencv с libGL — ставим без зависимостей, opencv без экрана; 4.10, а не 5.0:
+# в 5.0 ускоритель KleidiCV на ARM ронял resize (SIGSEGV на маке, 01.10.2026) — версия та же, что у разработчика. Модели
 # качаются при первом вызове: прогоняем его на сборке, в работе сеть не нужна. Отдельным слоем от pillow.
-RUN pip3 install --no-cache-dir --break-system-packages onnxruntime==1.30.0 opencv-python-headless==5.0.0.93 numpy==2.4.6 \
+RUN pip3 install --no-cache-dir --break-system-packages onnxruntime==1.30.0 opencv-python-headless==4.10.0.84 numpy==2.4.6 \
         pyclipper==1.4.0 shapely==2.1.2 omegaconf==2.3.1 colorlog==6.12.0 PyYAML==6.0.3 requests==2.34.2 six==1.17.0 tqdm==4.70.1 \
     && pip3 install --no-cache-dir --break-system-packages --no-deps rapidocr==3.9.2 rapid-orientation==0.0.11
 COPY deploy/bin/ocr /usr/local/bin/ocr
+# Телеметрия onnxruntime (Microsoft OneCollector) выключена для всего образа, не только в скрипте.
+ENV ORT_DISABLE_TELEMETRY=1
 RUN python3 -c "from PIL import Image; Image.new('RGB', (320, 80), 'white').save('/tmp/page-warm.png')" \
     && ocr /tmp/page-warm.png && rm /tmp/page-warm.png
 

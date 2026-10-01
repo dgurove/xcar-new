@@ -13,6 +13,7 @@ use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Thread;
+use App\Park\Actions\FillFromDocs;
 use App\Support\Docs;
 use App\Support\Money;
 use App\Users\User;
@@ -112,6 +113,8 @@ final class CaseView
             'chargePrices' => collect(self::CHARGES)->mapWithKeys(fn ($k) => [$k->value => VehicleInvoiceController::priceFor($vehicle, $k)])->filter()->all(),
             'spots' => $vehicle->yard?->freeSpots() ?? [],
             'canManage' => $user->canManagePark(),
+            // Карточка и документы дела расходятся — чип «в документе …» у полей (FillFromDocs, в кеше на день).
+            'differences' => $user->canManagePark() ? app(FillFromDocs::class)->differences($vehicle) : [],
             // Выдача по QR: живой пропуск (анкета покупателя), код из адреса — отсканировали камерой телефона.
             'byQr' => $vehicle->releasesByQr(),
             'pass' => $pass,

@@ -3,15 +3,28 @@
 # детектор строк и русская модель eslav (кириллица с латиницей и цифрами: VIN, номер). Модели грузятся один раз на
 # весь вызов, поэтому файлы передаются пачкой: `ocr page-1.png page-2.png photo.jpg`. На каждый файл — строка JSON
 # {"file": путь, "text": текст} сразу, как прочитан: PHP показывает готовность по файлам, не дожидаясь пачки.
-# Страница PDF (имя на «page-») сначала ставится прямо моделью ориентации — Альфа сканирует заявку боком; фото —
-# только по EXIF. Строка таблицы собирается из рамок по высоте: ячейки через три пробела, как ждёт `DocumentFields`.
+# Страница PDF (имя на «page-») сначала ставится прямо моделью ориентации — Альфа сканирует заявку боком; вышло
+# меньше SHORT знаков — перебор остальных поворотов. Фото — только по EXIF. Строка таблицы собирается из рамок по высоте: ячейки через три пробела, как ждёт `DocumentFields`.
 # `ocr --angle page.png` — только угол страницы (0/90/180/270, против часовой): миниатюра скана в окне «✨» стоит
 # прямо (`MailController::attachment`), модели OCR для этого не грузятся.
+import faulthandler
 import json
 import os
 import sys
 
-import numpy as np
+# Падение в C-коде (onnxruntime, OpenCV) — стек в stderr, его пишет лог PHP, а не голый «сигнал 11».
+faulthandler.enable()
+
+# onnxruntime 1.30 сам шлёт телеметрию Microsoft (mobile.events.data.microsoft.com): сканы чужих людей у нас, и
+# наружу не должно уходить ничего. Её же HTTP-поток ронял процесс на выходе (SIGABRT в 1DS Events, 01.10.2026).
+# Выключатель — до первого импорта onnxruntime (его тянет rapidocr), и ещё раз вызовом.
+os.environ['ORT_DISABLE_TELEMETRY'] = '1'
+import onnxruntime  # noqa: E402
+
+onnxruntime.disable_telemetry_events()
+
+import cv2  # noqa: E402
+import numpy as np  # noqa: E402
 import pillow_heif
 from PIL import Image, ImageOps
 from rapid_orientation import RapidOrientation
@@ -19,6 +32,9 @@ from rapidocr import EngineType, LangRec, ModelType, OCRVersion, RapidOCR
 
 pillow_heif.register_heif_opener()
 threads = int(os.environ.get('OCR_THREADS', '2'))
+# OpenCV в один поток: его параллельный resize на ARM (KleidiCV) падал с SIGSEGV на гонке потоков; считает в
+# основном onnxruntime, потоки OpenCV на наших картинках почти ничего не дают.
+cv2.setNumThreads(1)
 
 if sys.argv[1:2] == ['--angle']:
     image = np.asarray(ImageOps.exif_transpose(Image.open(sys.argv[2])).convert('RGB'))[:, :, ::-1]
@@ -35,15 +51,31 @@ engine = RapidOCR(params={
 orientation = None
 
 
+# Меньше знаков на странице — модель ориентации ошиблась (заявка Альфы боком читалась как «прямо»): перебрать
+# остальные три поворота и взять тот, где текста больше. Платят только неудачные страницы.
+SHORT = 150
+
+
 def load(path):
+    """Картинка и, у страницы PDF, угол модели ориентации (в четвертях оборота против часовой)."""
     image = np.asarray(ImageOps.exif_transpose(Image.open(path)).convert('RGB'))[:, :, ::-1]
-    if os.path.basename(path).startswith('page-'):
-        global orientation
-        orientation = orientation or RapidOrientation()
-        angle = int(orientation(image)[0])
-        if angle:
-            image = np.rot90(image, angle // 90)
-    return np.ascontiguousarray(image)
+    if not os.path.basename(path).startswith('page-'):
+        return image, None
+    global orientation
+    orientation = orientation or RapidOrientation()
+    return image, int(orientation(np.ascontiguousarray(image))[0]) // 90
+
+
+def read(path):
+    image, turn = load(path)
+    text = '\n'.join(lines(engine(np.ascontiguousarray(np.rot90(image, turn or 0)))))
+    if turn is None or len(text) >= SHORT:
+        return text
+    for k in (k for k in range(4) if k != turn):
+        other = '\n'.join(lines(engine(np.ascontiguousarray(np.rot90(image, k)))))
+        if len(other) > len(text):
+            text = other
+    return text
 
 
 def lines(result):
@@ -79,7 +111,7 @@ def lines(result):
 
 for path in sys.argv[1:]:
     try:
-        text = '\n'.join(lines(engine(load(path))))
+        text = read(path)
     except Exception as e:  # битый файл — пустой текст, пачка идёт дальше
         print(f'ocr: {path}: {e}', file=sys.stderr)
         text = ''

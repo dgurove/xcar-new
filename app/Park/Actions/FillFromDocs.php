@@ -1,0 +1,293 @@
+<?php
+
+namespace App\Park\Actions;
+
+use App\Cars\Colors;
+use App\Cars\Names;
+use App\Cars\Vin\VinDecoder;
+use App\Cars\Vin\VinText;
+use App\Mail\Direction;
+use App\Mail\Extraction\DocumentFields;
+use App\Mail\Extraction\DocumentText;
+use App\Mail\Extraction\Intent;
+use App\Mail\Extraction\ScanCar;
+use App\Mail\Extraction\ScanFields;
+use App\Mail\Message;
+use App\Park\Vehicle;
+use App\Park\VehicleState;
+use App\Users\User;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+
+/**
+ * Пустые поля ТС — из её писем и документов (прогон 01.10.2026: у 58 из 70 машин без VIN он лежал в заявке, акте
+ * или ЭПТС). Источники: разобранные входящие письма веток ТС (`Message::fields`, только своё — тема и тело) и
+ * текст их документов (`DocumentText::layer`: прочитанное «✨» или текстовый слой, OCR здесь не запускается).
+ * Пишется только в пустое поле и только одно значение: разные значения в разных источниках — «спорно», ТС не
+ * трогается. VIN — если ему можно верить (`VinText`) и марка по нему сходится с маркой ТС. Заполненное поле,
+ * которое документ называет иначе, тоже «спорно»: его решает человек.
+ */
+final class FillFromDocs
+{
+    private const FIELDS = ['vin', 'plate', 'year', 'color', 'value', 'model'];
+
+    /** Производитель по VIN другой марки, но та же машина: Belgee делает Geely, Skoda в Калуге — Volkswagen. */
+    private const MAKERS = [
+        'belgee' => ['geely'], 'skoda' => ['volkswagen'], 'audi' => ['volkswagen'], 'kia' => ['avtotor', 'hyundai'],
+        'genesis' => ['avtotor', 'hyundai'], 'hyundai' => ['avtotor'], 'solaris' => ['hyundai', 'avtotor'], 'jetour' => ['chery'],
+        'exeed' => ['chery'], 'omoda' => ['chery'], 'jaecoo' => ['chery'], 'tenet' => ['chery'], 'tank' => ['great wall'],
+        'haval' => ['great wall'], 'vaz' => ['lada', 'avtovaz'], 'lexus' => ['toyota'], 'subaru' => ['fuji'], 'gaz' => ['газ'],
+        'mini' => ['bmw'], 'li-auto' => ['lixiang', 'li auto'],
+    ];
+
+    public function __construct(private UpdateVehicle $update) {}
+
+    /** ТС на парковке и в пути с ветками писем. @return Collection<int, Vehicle> */
+    public function vehicles(array $ids = []): Collection
+    {
+        return Vehicle::with(['brand', 'model', 'threads.messages.attachments'])
+            ->whereIn('state', [VehicleState::Stored, VehicleState::Expected, VehicleState::InTransit])
+            ->when($ids, fn ($q) => $q->whereIn('id', $ids))
+            ->whereHas('threads')->orderBy('id')->get();
+    }
+
+    /**
+     * Что вписать и что спорно. Спорное с `current` и `value` — карточка и документ расходятся, это видно в деле
+     * (`differences`). @return array{fill: array<string, array{value: mixed, sources: list<string>}>,
+     * disputed: list<array{field: string, text: string, current?: string, value?: string, sources?: list<string>}>}
+     */
+    public function plan(Vehicle $vehicle): array
+    {
+        $found = $this->found($vehicle);
+        $fill = [];
+        $disputed = [];
+        foreach (self::FIELDS as $field) {
+            $values = $found[$field] ?? [];
+            if ($field === 'vin') {
+                $values = $this->vins($vehicle, $values, $disputed);
+            }
+            if (! $values) {
+                continue;
+            }
+            $current = $this->current($vehicle, $field);
+            if ($current !== null && $current !== '') {
+                $other = array_filter(array_keys($values), fn ($v) => ! $this->same($field, (string) $v, (string) $current));
+                foreach ($other as $v) {
+                    $disputed[] = ['field' => $field, 'current' => (string) $current, 'value' => (string) $v, 'sources' => $values[$v],
+                        'text' => $this->label($field)." в карточке «{$current}», в документе «{$v}» (".implode(', ', $values[$v]).')'];
+                }
+
+                continue;
+            }
+            if (count($values) > 1) {
+                $disputed[] = ['field' => $field, 'text' => $this->label($field).': '.implode(' / ', array_map(fn ($v) => "«{$v}» (".implode(', ', $values[$v]).')', array_keys($values)))];
+
+                continue;
+            }
+            $value = array_key_first($values);
+            $fill[$field] = ['value' => $value, 'sources' => $values[$value]];
+        }
+
+        return ['fill' => $fill, 'disputed' => $disputed];
+    }
+
+    /**
+     * Где карточка и документы расходятся: поле → значение документа и откуда. На день в кеше — страница дела не
+     * разбирает письма на каждом показе; правка карточки (`updated_at`) или новое письмо — пересчёт.
+     *
+     * @return array<string, array{value: string, sources: list<string>}>
+     */
+    public function differences(Vehicle $vehicle): array
+    {
+        $letters = $vehicle->threads()->withCount('messages')->get()->sum('messages_count');
+
+        return Cache::remember("park:docdiff:{$vehicle->id}:{$vehicle->updated_at?->timestamp}:{$letters}", 86400, function () use ($vehicle) {
+            $out = [];
+            foreach ($this->plan($vehicle->loadMissing(['brand', 'model', 'threads.messages.attachments']))['disputed'] as $d) {
+                if (isset($d['current'], $d['value']) && ! isset($out[$d['field']])) {
+                    $out[$d['field']] = ['value' => $d['value'], 'sources' => $d['sources']];
+                }
+            }
+
+            return $out;
+        });
+    }
+
+    /** Взять значение документа вместо карточки: только то, что `differences` и показывает. */
+    public function take(Vehicle $vehicle, string $field, string $value, User $by): bool
+    {
+        $diff = $this->differences($vehicle)[$field] ?? null;
+        if (! $diff || $diff['value'] !== $value) {
+            return false;
+        }
+        if ($field === 'model') {
+            $model = $vehicle->brand?->models()->whereRaw('lower(name) = ?', [mb_strtolower($value)])->first();
+            if (! $model) {
+                return false;
+            }
+            ($this->update)($vehicle, ['model_id' => $model->id], $by, $diff['sources']);
+
+            return true;
+        }
+        ($this->update)($vehicle, [$field => $value], $by, $diff['sources']);
+
+        return true;
+    }
+
+    /** Вписать план. @return array<string, mixed> что вписано */
+    public function __invoke(Vehicle $vehicle, ?array $plan = null): array
+    {
+        $plan ??= $this->plan($vehicle);
+        $data = [];
+        $sources = [];
+        foreach ($plan['fill'] as $field => $item) {
+            if ($field === 'model') {
+                $model = $vehicle->brand?->models()->whereRaw('lower(name) = ?', [mb_strtolower((string) $item['value'])])->first();
+                if (! $model) {
+                    continue;
+                }
+                $data['model_id'] = $model->id;
+            } else {
+                $data[$field] = $item['value'];
+            }
+            array_push($sources, ...$item['sources']);
+        }
+        if ($data) {
+            ($this->update)($vehicle, $data, null, $sources);
+        }
+
+        return $data;
+    }
+
+    /** Значения из писем и документов ТС: поле → значение → откуда. @return array<string, array<string, list<string>>> */
+    private function found(Vehicle $vehicle): array
+    {
+        $found = [];
+        $add = function (string $field, mixed $value, string $source) use (&$found) {
+            $value = $this->clean($field, $value);
+            if ($value !== null && ! in_array($source, $found[$field][$value] ?? [], true)) {
+                $found[$field][$value][] = $source;
+            }
+        };
+        $messages = $vehicle->threads->flatMap(fn ($t) => $t->messages)
+            ->filter(fn (Message $m) => $m->direction === Direction::In && ! in_array($m->intent, [Intent::Billing->value, Intent::Auto->value], true));
+        $seen = [];
+        foreach ($messages as $message) {
+            // Письмо о нескольких машинах («выдать ТС А и Б») — его VIN и номер про одну из них.
+            $single = count(array_filter($message->keys(), fn ($k) => str_starts_with($k, 'code:'))) <= 1;
+            foreach ($message->fields() as $field => $item) {
+                if ($single && in_array($field, ['vin', 'plate', 'year', 'color'], true) && in_array($item['source'] ?? '', ['subject', 'body', 'text'], true)) {
+                    $add($field, $item['value'], 'письмо');
+                }
+            }
+            foreach ($message->files() as $attachment) {
+                $key = $attachment->blob_sha ?: $attachment->fileKey();
+                if (isset($seen[$key]) || ! DocumentText::scannable($attachment)) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $text = $attachment->isImage() ? DocumentText::cached($attachment) : DocumentText::layer($attachment);
+                if (! $text) {
+                    continue;
+                }
+                $source = $attachment->isPhoto() ? 'фото' : ScanFields::source((string) $attachment->filename);
+                $doc = DocumentFields::extract($text);
+                foreach (['vin', 'plate', 'year', 'color', 'value'] as $field) {
+                    if (isset($doc[$field])) {
+                        $add($field, $doc[$field]['value'], $source);
+                    }
+                }
+                // Модель — только из документа той же марки.
+                if (isset($doc['brand'], $doc['model']) && $vehicle->brand && Names::brand((string) $doc['brand']['value'])?->id === $vehicle->brand_id) {
+                    $add('model', $doc['model']['value'], $source);
+                }
+            }
+        }
+
+        return $found;
+    }
+
+    /** VIN, которым можно верить и чья марка сходится с ТС; прочтения одного VIN по-разному — в одно. */
+    private function vins(Vehicle $vehicle, array $values, array &$disputed): array
+    {
+        $ok = [];
+        foreach ($values as $vin => $sources) {
+            $vin = (string) $vin;
+            if (! VinText::plausible($vin)) {
+                continue;
+            }
+            if ($vehicle->brand && ! $this->agrees($vehicle, $vin)) {
+                $disputed[] = ['field' => 'vin', 'text' => "VIN «{$vin}» (".implode(', ', $sources).") — по нему не {$vehicle->brand->name}"];
+
+                continue;
+            }
+            foreach (array_keys($ok) as $have) {
+                if ($best = VinText::better($have, $vin)) {
+                    $merged = array_values(array_unique([...$ok[$have], ...$sources]));
+                    unset($ok[$have]);
+                    $ok[$best] = $merged;
+
+                    continue 2;
+                }
+            }
+            $ok[$vin] = $sources;
+        }
+
+        return $ok;
+    }
+
+    /** Марка по VIN — та же, что у ТС: память базы, декодер или производитель WMI (с заводами-партнёрами). */
+    private function agrees(Vehicle $vehicle, string $vin): bool
+    {
+        if (($car = ScanCar::carOfVin($vin)) && $car['brand']->id === $vehicle->brand_id) {
+            return true;
+        }
+        $result = app(VinDecoder::class)->decode($vin);
+        $maker = mb_strtolower(trim(((string) $result->get('brand')).' '.((string) $result->get('manufacturer'))));
+        if ($maker === '') {
+            return false;
+        }
+        $brand = $vehicle->brand;
+        $tokens = array_filter([mb_strtolower((string) preg_replace('/\s*\(.*\)/u', '', $brand->name)), $brand->slug, mb_strtolower((string) $brand->name_ru), ...(self::MAKERS[$brand->slug] ?? [])]);
+        foreach ($tokens as $token) {
+            if (mb_strlen($token) >= 3 && str_contains($maker, $token)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function clean(string $field, mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return match ($field) {
+            'vin' => strlen($v = strtoupper($value)) === 17 ? $v : null,
+            'plate' => ($v = mb_strtoupper((string) preg_replace('/\s+/u', '', $value))) !== '' ? $v : null,
+            'year' => ((int) $value >= 1980 && (int) $value <= (int) date('Y') + 1) ? (string) (int) $value : null,
+            'color' => Colors::normalize($value),
+            'value' => (int) $value >= 10_000 ? (string) (int) $value : null,
+            'model' => $value !== '' ? $value : null,
+        };
+    }
+
+    private function current(Vehicle $vehicle, string $field): mixed
+    {
+        return $field === 'model' ? $vehicle->model?->name : $vehicle->{$field};
+    }
+
+    private function same(string $field, string $a, string $b): bool
+    {
+        return match ($field) {
+            'color' => Colors::normalize($a) === Colors::normalize($b) || mb_strtolower($a) === mb_strtolower($b),
+            'model' => mb_strtolower((string) preg_replace('/[\s\-]+/u', '', $a)) === mb_strtolower((string) preg_replace('/[\s\-]+/u', '', $b)),
+            default => mb_strtoupper((string) preg_replace('/\s+/u', '', $a)) === mb_strtoupper((string) preg_replace('/\s+/u', '', $b)),
+        };
+    }
+
+    private function label(string $field): string
+    {
+        return ['vin' => 'VIN', 'plate' => 'Госномер', 'year' => 'Год', 'color' => 'Цвет', 'value' => 'Стоимость', 'model' => 'Модель'][$field];
+    }
+}

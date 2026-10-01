@@ -5,11 +5,10 @@ namespace App\Mail\Jobs;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Attachment;
-use App\Mail\Candidate;
-use App\Mail\Chains\ChainBuilder;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Message;
 use App\Mail\Reading\ReadLetter;
+use App\Mail\Scan\Subjects;
 use App\Mail\Threads;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,10 +17,10 @@ use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
- * «✨ Распознать» (`ScanController`): прочитать отмеченные файлы цепочки одной пачкой (`DocumentText::read`), по
+ * «✨ Распознать» (`ScanController`): прочитать отмеченные файлы цепочки или ТС одной пачкой (`DocumentText::read`), по
  * каждому готовому — событие `scan` сотрудникам парковки (окно у всех, кто его открыл, перечитывается). Потом письма
  * с этими файлами перечитываются (`ReadLetter`: прочитанное лежит в кеше и идёт в разбор как слой), цепочка
- * сворачивается заново — марка из скана встаёт в карточку, даже если окно закрыли, не выбрав.
+ * сворачивается заново (у ТС — дело перечитывается) — марка из скана встаёт в карточку, даже если окно закрыли.
  * Пока файл в работе, на нём метка (`reading`): окно крутит его и не показывает поля, которые ещё сдвинет перечитка.
  * Метка у каждого файла своя — две пачки одной цепочки друг другу её не снимают; живёт не дольше задачи, а убитая
  * по таймауту задача снимает её в `failed`. Очередь `scan` на лёгком воркере: человек ждёт.
@@ -37,15 +36,15 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
 
     public int $tries = 1;
 
-    /** @param list<int> $ids */
-    public function __construct(public int $candidateId, public array $ids)
+    /** @param string $subject `c:93` — цепочка, `v:266` — ТС (`Scan\Subjects`) @param list<int> $ids */
+    public function __construct(public string $subject, public array $ids)
     {
         $this->onQueue('scan');
     }
 
     public function uniqueId(): string
     {
-        return $this->candidateId.':'.implode(',', $this->ids);
+        return $this->subject.':'.implode(',', $this->ids);
     }
 
     /** Метка «читается» на файлах пачки: ставит контроллер при постановке, снимает задача. */
@@ -62,12 +61,12 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
         return collect($attachments)->pluck('id')->filter(fn ($id) => Cache::has("scan:a:{$id}"))->values()->all();
     }
 
-    public function handle(ReadLetter $reader, ChainBuilder $chains, Threads $threads, Publisher $publish): void
+    public function handle(ReadLetter $reader, Threads $threads, Publisher $publish): void
     {
         try {
-            $candidate = Candidate::find($this->candidateId);
+            $subject = Subjects::find($this->subject);
             $attachments = Attachment::with('message.account')->whereIn('id', $this->ids)->get();
-            if (! $candidate || $attachments->isEmpty()) {
+            if (! $subject || $attachments->isEmpty()) {
                 return;
             }
             DocumentText::read($attachments, fn () => $this->ping($publish), $this->timeout - 60);
@@ -77,7 +76,7 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
                     $threads->refresh($message->thread);
                 }
             }
-            $chains->fold($candidate->refresh());
+            $subject->refresh();
         } finally {
             self::mark($this->ids, false);
             $this->ping($publish);
@@ -93,6 +92,6 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
 
     private function ping(Publisher $publish): void
     {
-        $publish(Topics::PARK, 'scan', ['candidate' => $this->candidateId]);
+        $publish(Topics::PARK, 'scan', ['subject' => $this->subject]);
     }
 }

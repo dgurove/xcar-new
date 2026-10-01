@@ -35,6 +35,12 @@ final class DocumentText
 
     private const PAGES = 2;
 
+    /** Картинок на один вызов `ocr`: модели грузятся раз на кусок (~4 с), память не копится. */
+    private const CHUNK = 6;
+
+    /** Секунд без ответа `ocr`, после которых он считается зависшим. */
+    private const IDLE = 120;
+
     /** Файл, который «✨» умеет прочитать: PDF или картинка, не встроенная в тело письма. */
     public static function scannable(Attachment $attachment): bool
     {
@@ -86,8 +92,7 @@ final class DocumentText
     }
 
     /**
-     * Прочитать пачку: прочитанное — сразу, слой — если читается, остальное — одним вызовом `ocr` (модели грузятся
-     * раз на пачку). `$done($attachment, $text)` зовётся по каждому файлу, как только он готов. Ошибка — пустой
+     * Прочитать пачку: прочитанное — сразу, слой — если читается, остальное — через `ocr` кусками по CHUNK картинок. `$done($attachment, $text)` зовётся по каждому файлу, как только он готов. Ошибка — пустой
      * текст в кеш, без повторов. `$timeout` — меньше таймаута задачи: иначе её убьют раньше, чем сработает `finally`.
      *
      * @param  iterable<Attachment>  $attachments
@@ -123,13 +128,14 @@ final class DocumentText
             if (! $owner) {
                 return;
             }
-            $buffer = '';
-            $take = function (string $line) use (&$owner, &$pages, $done) {
+            $seen = [];
+            $take = function (string $line) use (&$owner, &$pages, &$seen, $done) {
                 $row = json_decode($line, true);
                 $a = is_array($row) ? ($owner[$row['file'] ?? ''] ?? null) : null;
-                if (! $a) {
+                if (! $a || ! isset($pages[$a->id])) {
                     return;
                 }
+                $seen[$row['file']] = true;
                 $pages[$a->id][$row['file']] = (string) ($row['text'] ?? '');
                 if (! in_array(null, $pages[$a->id], true)) {
                     $text = trim(implode("\n\f\n", $pages[$a->id]));
@@ -138,19 +144,15 @@ final class DocumentText
                     $done($a, $text);
                 }
             };
-            $process = Process::timeout($timeout)->start([config('xcar.ocr', 'ocr'), ...array_keys($owner)], function (string $type, string $output) use (&$buffer, $take) {
-                if ($type !== 'out') {
-                    return;
+            // Кусками по CHUNK картинок: на длинной пачке ocr падал (сигнал 11, копится память), по одному — ни разу.
+            // Кусок упал — его непрочитанное дочитывается по одному; что не прочлось и так — пусто в finally.
+            $deadline = time() + $timeout;
+            foreach (array_chunk(array_keys($owner), self::CHUNK) as $chunk) {
+                if (! self::run($chunk, $deadline, $take)) {
+                    foreach (array_filter($chunk, fn ($file) => ! isset($seen[$file])) as $file) {
+                        self::run([$file], $deadline, $take);
+                    }
                 }
-                $buffer .= $output;
-                while (($n = strpos($buffer, "\n")) !== false) {
-                    $take(substr($buffer, 0, $n));
-                    $buffer = substr($buffer, $n + 1);
-                }
-            });
-            $result = $process->wait();
-            if (! $result->successful()) {
-                Log::warning('Почта: ocr упал', ['error' => mb_substr($result->errorOutput(), -500)]);
             }
         } catch (Throwable $e) {
             Log::warning('Почта: документы не прочитаны', ['error' => $e->getMessage()]);
@@ -164,6 +166,40 @@ final class DocumentText
             array_map('unlink', glob($dir.'/*') ?: []);
             @rmdir($dir);
         }
+    }
+
+    /** Один вызов `ocr` по картинкам, ответ — построчно в `$take` по мере готовности. false — упал или вышло время. */
+    private static function run(array $files, int $deadline, Closure $take): bool
+    {
+        if ($deadline - time() < 10) {
+            return false;
+        }
+        $buffer = '';
+        // nice: сайт и почта на двух ядрах впереди OCR. idleTimeout: страница на проде — до ~10 с; молчит две минуты —
+        // завис, кусок дочитается по одному.
+        $process = Process::timeout($deadline - time())->idleTimeout(self::IDLE)->start(['nice', '-n', '10', config('xcar.ocr', 'ocr'), ...$files], function (string $type, string $output) use (&$buffer, $take) {
+            if ($type !== 'out') {
+                return;
+            }
+            $buffer .= $output;
+            while (($n = strpos($buffer, "\n")) !== false) {
+                $take(substr($buffer, 0, $n));
+                $buffer = substr($buffer, $n + 1);
+            }
+        });
+        try {
+            $result = $process->wait();
+        } catch (Throwable $e) {
+            // Упал (сигнал) или завис: в stderr — стек faulthandler, по нему видно, где.
+            Log::warning('Почта: ocr упал', ['files' => count($files), 'error' => $e->getMessage(), 'stderr' => mb_substr($process->errorOutput(), -1500)]);
+
+            return false;
+        }
+        if (! $result->successful()) {
+            Log::warning('Почта: ocr упал', ['files' => count($files), 'error' => mb_substr($result->errorOutput(), -300)]);
+        }
+
+        return $result->successful();
     }
 
     /** Картинки для ocr: первые страницы PDF (имя «page-…» — скрипт ставит их прямо) или само фото. @return list<string> */

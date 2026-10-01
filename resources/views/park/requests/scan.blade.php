@@ -1,21 +1,21 @@
-{{-- «✨ Распознать» (ScanController) — содержимое окна x-mail.scan-window, три шага одного фрейма:
+{{-- «✨ Распознать» (ScanController) у цепочки «Из писем» и в деле ТС ($subject — Scan\Subject) — содержимое окна
+     x-mail.scan-window, три шага одного фрейма:
      files — документы (миниатюра первой страницы) и фото плитками, документы отмечены, у фото «Выбрать все»;
      reading — отмеченные списком с полосой готовности, у каждого кольцо или галка; фрейм перечитывается по событию
      scan (scan_controller, морфом — без мигания); fields — найденное строками списка: одно значение — строкой с
      источником, несколько — строка раскрывается вариантами с галкой. Кнопки — полосой у нижнего края шторки. --}}
 @php
     use App\Support\Docs;
-    $c = $candidate;
-    $url = "/requests/from-mail/{$c->id}/scan";
+    $url = $subject->url();
     $docs = $files->reject->isPhoto();
     $photos = $files->filter->isPhoto();
     $label = fn ($a) => $a->isPhoto() ? 'Фото' : Docs::label((string) $a->filename);
 @endphp
 <turbo-frame id="scan-frame">
-<div data-controller="scan" data-scan-candidate-value="{{ $c->id }}" data-scan-max-value="{{ $max }}" data-scan-url-value="{{ $url }}?{{ http_build_query(['ids' => $ids]) }}" @if ($step === 'reading' && $reading) data-scan-busy-value="true" @endif class="scan">
+<div data-controller="scan" data-scan-subject-value="{{ $subject->key() }}" data-scan-max-value="{{ $max }}" data-scan-url-value="{{ $url }}?{{ http_build_query(['ids' => $ids]) }}" @if ($step === 'reading' && $reading) data-scan-busy-value="true" @endif class="scan">
     <div class="scan-for">
-        <span class="font-medium {{ $c->hasCar() ? 'text-ink' : 'text-ink-muted' }}">{{ $c->title() }}</span>
-        <x-vendor.ref :vendor="$c->vendor" :ref="$c->code"/>
+        <span class="font-medium {{ $subject->hasCar() ? 'text-ink' : 'text-ink-muted' }}">{{ $subject->title() }}</span>
+        <x-vendor.ref :vendor="$subject->vendor()" :ref="$subject->ref()"/>
     </div>
 
     @if ($step === 'files')
@@ -128,8 +128,12 @@
             @endif
             <div class="scan-foot flex items-center gap-2">
                 <a href="{{ $url }}?{{ http_build_query(['ids' => $ids, 'files' => 1]) }}" class="btn btn-quiet !px-3" data-turbo-frame="scan-frame" aria-label="Файлы" title="Файлы"><x-ui.icon name="chevron-left" class="size-5"/></a>
-                @if ($rows)<button name="then" value="stay" class="btn btn-quiet flex-1">Подставить</button>@endif
-                <button name="then" value="create" class="btn btn-accent flex-1">Завести</button>
+                @if ($subject->creates())
+                    @if ($rows)<button name="then" value="stay" class="btn btn-quiet flex-1">Подставить</button>@endif
+                    <button name="then" value="create" class="btn btn-accent flex-1">Завести</button>
+                @elseif ($rows)
+                    <button name="then" value="stay" class="btn btn-accent flex-1">Подставить</button>
+                @endif
             </div>
         </form>
     @endif

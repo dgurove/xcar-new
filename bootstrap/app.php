@@ -5,6 +5,7 @@ use App\Billing\Bank\Console\PerpetualSecret;
 use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
+use App\Cars\Console\MergeCarsCommand;
 use App\Http\Middleware\DemoReadOnly;
 use App\Http\Middleware\EnsureAbility;
 use App\Http\Middleware\EnsureParkArea;
@@ -32,6 +33,7 @@ use App\Mail\Console\WatchMail;
 use App\Media\Console\MoveConversionsHot;
 use App\Media\Console\Restamp;
 use App\Offers\Console\TickOffers;
+use App\Park\Console\FillFromDocsCommand;
 use App\Park\Console\ParkDigestCommand;
 use App\Park\Console\ReleaseByLettersCommand;
 use App\Park\Console\StoreByLettersCommand;
@@ -83,6 +85,8 @@ return Application::configure(basePath: dirname(__DIR__))
         SyncBank::class,
         PerpetualSecret::class,
         SeedDemo::class,
+        MergeCarsCommand::class,
+        FillFromDocsCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');

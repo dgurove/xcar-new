@@ -2,6 +2,7 @@
 
 namespace App\Mail\Extraction;
 
+use App\Cars\Colors;
 use App\Cars\Vin\VinText;
 
 /**
@@ -37,7 +38,7 @@ final class DocumentFields
         };
 
         foreach (self::values($text, 'Идентификационный\s+номер(?:\s*\(VIN\))?|\bVIN(?:\s+ТС)?\b|\bВИН\b') as $value) {
-            if (preg_match(self::VIN, mb_strtoupper($value), $m) && ($vin = CarWords::realVin($m[0]))) {
+            if (preg_match(self::VIN, mb_strtoupper($value), $m) && ($vin = VinText::labelled($m[0]))) {
                 $put('vin', $vin);
                 break;
             }
@@ -83,9 +84,9 @@ final class DocumentFields
             }
         }
         foreach (self::values($text, 'Цвет(?:\s+(?:кузова|автомобиля))?') as $value) {
-            // Цвет — прилагательным («белый», «серый металлик»); «автомобиля», «Год» — соседние подписи шапки.
-            if (preg_match('/^[\p{L}\-]+(?:ый|ий|ой|ая)(?:[\p{L}\- ]{0,20})$/u', $value) && ! preg_match('/нет данных/ui', $value)) {
-                $put('color', mb_convert_case(mb_strtolower($value), MB_CASE_TITLE));
+            // Цвет — по словарю (`Colors`): «автомобиля», «Год» — соседние подписи шапки, «Черый» — опечатка OCR.
+            if ($color = Colors::normalize($value)) {
+                $put('color', $color);
                 break;
             }
         }
@@ -152,8 +153,13 @@ final class DocumentFields
                 $put('model', $found['model']);
             }
         }
-        if (preg_match('/(?:^|[\s|])([А-Яа-яЁё]{3,}(?:ый|ий|ой|ая))\b/u', $after, $m)) {
-            $put('color', mb_convert_case(mb_strtolower($m[1]), MB_CASE_TITLE));
+        // Цвет — первое слово справа от VIN, которое знает словарь (с соседним «металлик», «перламутр»).
+        $words = preg_split('/[\s|]+/u', trim($after), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        foreach ($words as $i => $word) {
+            if (preg_match('/^[А-Яа-яЁё\-]{3,}$/u', $word) && ($color = Colors::normalize($word.' '.($words[$i + 1] ?? '')) ?? Colors::normalize($word))) {
+                $put('color', $color);
+                break;
+            }
         }
         if (preg_match('/(?<![\d.,\/])(19[89]\d|20[0-3]\d)(?![\d.,\/])/u', $after, $m)) {
             $put('year', (int) $m[1]);

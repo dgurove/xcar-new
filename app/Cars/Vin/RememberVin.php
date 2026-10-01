@@ -34,6 +34,7 @@ final class RememberVin
             $value = $car->getAttribute($field);
             $facts[$field] = $value instanceof BackedEnum ? $value->value : $value;
         }
+        KnownWmi::saw($vin);
         VinFact::updateOrCreate(['source_type' => $type, 'source_id' => $car->getKey()], $facts);
     }
 }

@@ -1,16 +1,16 @@
 import { Controller } from '@hotwired/stimulus';
 
 // «✨ Распознать» (park/requests/scan). Файлы: число отмеченных на кнопке, больше max — кнопка молчит; «Выбрать все»
-// у фото. Чтение (busy): фрейм перечитывается по событию live:scan своей цепочки и при возврате на вкладку — без
+// у фото. Чтение (busy): фрейм перечитывается по событию live:scan своего предмета (цепочка c:…, ТС v:…) и при возврате на вкладку — без
 // опроса по таймеру. Поля: выбранный вариант встаёт в строку и сворачивает её.
 export default class extends Controller {
     static targets = ['count', 'submit', 'all'];
-    static values = { busy: Boolean, candidate: Number, max: Number, url: String };
+    static values = { busy: Boolean, subject: String, max: Number, url: String };
 
     connect() {
         this.count();
         if (!this.busyValue) return;
-        this.onScan = (e) => { if (Number(e.detail?.candidate) === this.candidateValue) this.reload(); };
+        this.onScan = (e) => { if (e.detail?.subject === this.subjectValue) this.reload(); };
         this.onVisible = () => { if (document.visibilityState === 'visible') this.reload(); };
         document.addEventListener('live:scan', this.onScan);
         document.addEventListener('visibilitychange', this.onVisible);

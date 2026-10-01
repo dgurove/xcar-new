@@ -2,6 +2,7 @@
 
 namespace App\Mail\Extraction;
 
+use App\Cars\Colors;
 use App\Cars\Names;
 use App\Mail\Extraction\Templates\Generic;
 use App\Mail\Extraction\Templates\Template;
@@ -88,8 +89,8 @@ final class ParkExtractor
         if ($phones = $this->phones(self::beforeSignature($text))) {
             $fields['phones'] = ['value' => $phones, 'source' => 'body'];
         }
-        if (preg_match('/\bцвет(?:\s+кузова)?\s*:\s*([а-яё\- ]{3,20})/iu', $text, $m)) {
-            $fields['color'] = ['value' => mb_strtolower(trim($m[1])), 'source' => 'body'];
+        if (preg_match('/\bцвет(?:\s+кузова)?\s*:\s*([а-яё\- ]{3,20})/iu', $text, $m) && ($color = Colors::normalize($m[1]))) {
+            $fields['color'] = ['value' => $color, 'source' => 'body'];
         }
         // Общие поля — сначала из своих слов письма (в цитате «From: Storage Storage» и телефон из подписи Альфы), потом из всего.
         $fields += Template::common($subject, $own !== '' ? $own : $text, $on);

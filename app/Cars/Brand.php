@@ -26,21 +26,23 @@ class Brand extends Model
         return Str::slug($name) ?: mb_strtolower($name);
     }
 
-    /** Найти по любому написанию; нет — null (разбор письма новых марок не заводит). */
+    /**
+     * Найти по любому написанию; нет — null (разбор письма новых марок не заводит). Сначала словарь `Names`: он знает,
+     * что «Lada» — это запись справочника vaz «Lada (ВАЗ)», и не даёт завести её второй раз.
+     */
     public static function known(string $name): ?self
     {
         $name = trim($name);
 
-        return self::query()->where('slug', self::slugFor($name))->orWhereRaw('lower(name) = ?', [mb_strtolower($name)])->orWhereRaw('lower(name_ru) = ?', [mb_strtolower($name)])->first();
+        return Names::brand($name)
+            ?? self::query()->where('slug', self::slugFor($name))->orWhereRaw('lower(name) = ?', [mb_strtolower($name)])->orWhereRaw('lower(name_ru) = ?', [mb_strtolower($name)])->first();
     }
 
     /** Найти по любому написанию, иначе завести. */
     public static function resolve(string $name): self
     {
         $name = trim($name);
-        $slug = self::slugFor($name);
 
-        return self::query()->where('slug', $slug)->orWhereRaw('lower(name) = ?', [mb_strtolower($name)])->orWhereRaw('lower(name_ru) = ?', [mb_strtolower($name)])->first()
-            ?? self::create(['slug' => $slug, 'name' => $name]);
+        return self::known($name) ?? self::create(['slug' => self::slugFor($name), 'name' => $name]);
     }
 }

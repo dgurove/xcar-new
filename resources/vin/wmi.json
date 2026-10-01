@@ -3227,10 +3227,19 @@
    "country_hint": "Russia",
    "brand": "Sollers"
   },
+  "EBK": {
+   "manufacturer": "Sollers (Russia)",
+   "country_hint": "Russia",
+   "brand": "Sollers"
+  },
   "EBZ": {
    "manufacturer": "Nizhekotrans bus (Russia)",
    "country_hint": "Russia",
    "brand": "Nizhekotrans"
+  },
+  "EC3": {
+   "manufacturer": "Сборка в России (Jetour), xcar 2026-10",
+   "country_hint": "Russia"
   },
   "ECE": {
    "manufacturer": "XCITE (Russia)",
@@ -3241,6 +3250,22 @@
    "manufacturer": "Trans-Alfa bus (Russia)",
    "country_hint": "Russia",
    "brand": "Trans-Alfa"
+  },
+  "ED3": {
+   "manufacturer": "Сборка в России (Changan), xcar 2026-10",
+   "country_hint": "Russia"
+  },
+  "EDA": {
+   "manufacturer": "Сборка в России (Voyah, Evolute), xcar 2026-10",
+   "country_hint": "Russia"
+  },
+  "EDE": {
+   "manufacturer": "Сборка в России (Tenet, Chery), xcar 2026-10",
+   "country_hint": "Russia"
+  },
+  "EDX": {
+   "manufacturer": "Сборка в России (Tenet, Jaecoo), xcar 2026-10",
+   "country_hint": "Russia"
   },
   "H0D": {
    "manufacturer": "Taizhou Qianxin Vehicle Co., Ltd. (motorcycle)",

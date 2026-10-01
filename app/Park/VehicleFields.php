@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Cars\Category;
+use App\Cars\Colors;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -34,12 +35,18 @@ final class VehicleFields
         ];
     }
 
-    /** Заявленная стоимость приходит разрядами («1 450 000», digits_controller) — до проверки остаются цифры. */
+    /**
+     * Заявленная стоимость приходит разрядами («1 450 000», digits_controller) — до проверки остаются цифры. Цвет —
+     * одним написанием со всеми (`Colors`): «белая» → «Белый»; слово не из словаря остаётся как написано.
+     */
     public static function clean(Request $request): void
     {
         if ($request->has('value')) {
             $digits = preg_replace('/\D+/', '', (string) $request->input('value'));
             $request->merge(['value' => $digits === '' ? null : $digits]);
+        }
+        if ($request->filled('color')) {
+            $request->merge(['color' => Colors::normalize($request->input('color')) ?? trim((string) $request->input('color'))]);
         }
     }
 

@@ -48,6 +48,8 @@
             </x-ui.sheet>
         @endif
         <x-ui.docs-pill :docs="$docs" class="!min-h-0 !py-1 text-xs"/>
+        {{-- «✨» — то же окно, что у цепочки «Из писем»: документы дела → что подставить в карточку. --}}
+        @if ($canManage && $letters)<button type="button" class="chip" aria-label="Распознать" title="Распознать" data-controller="emit" data-action="emit#send" data-emit-event-param="scan:open" data-emit-url-param="/cars/{{ $vehicle->id }}/scan">✨</button>@endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif
@@ -370,4 +372,5 @@
         </x-ui.sheet>
     </div>
     <x-mail.window :url="$window" :title="$vehicle->titleWithYear()"/>
+    @if ($canManage)<x-mail.scan-window/>@endif
 </x-ui.shell>

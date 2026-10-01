@@ -11,12 +11,15 @@ use App\Users\User;
 /**
  * Правка карточки ТС. Договор комиссии, вписанный после приёма, рождает обязательство перед вендором
  * (или пересчитывает неоплаченное); номер убытка или VIN изменились без привязки — предложение ищется заново.
+ * С `$sources` — поля взяты из документов и писем («✨», `park:fill-from-docs`): в истории дела «Заполнено по
+ * документам» с их именами; без пользователя — это сделала система.
  */
 final class UpdateVehicle
 {
     public function __construct(private IssueTransferObligation $transfer, private LinkOffer $linkOffer) {}
 
-    public function __invoke(Vehicle $vehicle, array $data, User $by): Vehicle
+    /** @param list<string> $sources имена документов и «письмо», откуда взяты поля */
+    public function __invoke(Vehicle $vehicle, array $data, ?User $by, array $sources = []): Vehicle
     {
         $vehicle->fill($data);
         $changed = array_diff(array_keys($vehicle->getDirty()), ['ref_key']);
@@ -24,9 +27,11 @@ final class UpdateVehicle
         if (! $changed) {
             return $vehicle;
         }
-        $vehicle->log(EventType::Updated, $by, ['fields' => array_values($changed)]);
+        $sources
+            ? $vehicle->log(EventType::FilledFromDocs, $by, ['fields' => array_values($changed), 'sources' => array_values(array_unique($sources))])
+            : $vehicle->log(EventType::Updated, $by, ['fields' => array_values($changed)]);
         (new RememberVin)($vehicle);
-        if ($vehicle->accepted_at && array_intersect($changed, ['contract_kind', 'assigned_price', 'contract_no'])) {
+        if ($by && $vehicle->accepted_at && array_intersect($changed, ['contract_kind', 'assigned_price', 'contract_no'])) {
             ($this->transfer)($vehicle, $by);
         }
         if (! $vehicle->offer_id && array_intersect($changed, ['ref', 'vin'])) {

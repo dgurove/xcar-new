@@ -282,10 +282,43 @@ final class Names
                 return $model->name;
             }
         }
+        // Латинская модель русскими буквами по звучанию, как её вписывают люди: «Глц250» → GLC250, «Ср-В» → CR-V.
+        if (preg_match('/\p{Cyrillic}/u', $phrase)) {
+            $sound = self::flat(self::sound($phrase));
+            foreach ($models as $model) {
+                if ($sound === self::flat($model->name)) {
+                    return $model->name;
+                }
+            }
+            // Модель и версия двигателя слитно: «Глц250» → GLC (250 — версия, отдельной модели нет).
+            $base = $models->filter(fn ($m) => preg_match('/^[a-z]{2,}$/', self::flat($m->name)) && preg_match('/^'.preg_quote(self::flat($m->name), '/').'\d{2,3}[a-z]?$/', $sound))->pluck('name')->unique();
+            if ($base->count() === 1) {
+                return $base->first();
+            }
+            // Опечатка в русском слове словаря: «Акркана» → «аркана» → Arkana, если такая модель у марки есть.
+            $typo = collect(self::MODELS)->filter(fn ($name, $key) => mb_strlen($key) >= 5 && self::sameDigits($key, $phrase)
+                && levenshtein(self::flat(self::sound($key)), $sound) <= 1
+                && $models->contains(fn ($m) => self::flat($m->name) === self::flat($name)))->unique();
+            if ($typo->count() === 1) {
+                return $typo->first();
+            }
+        }
+        // Опечатка OCR в латинице — только при тех же цифрах: Tiggo 7 и Tiggo 8 — разные модели, не опечатка.
         $limit = mb_strlen($flat) >= 7 ? 2 : (mb_strlen($flat) >= 4 ? 1 : 0);
-        $near = $models->filter(fn ($m) => $limit && levenshtein($flat, self::flat($m->name)) <= $limit)->pluck('name')->unique();
+        $near = $models->filter(fn ($m) => $limit && self::sameDigits($flat, $m->name) && levenshtein($flat, self::flat($m->name)) <= $limit)->pluck('name')->unique();
 
         return $near->count() === 1 ? $near->first() : null;
+    }
+
+    /** Русские буквы — латиницей по звучанию (с → c: модели пишут «С63», «СХ-5»). */
+    private static function sound(string $s): string
+    {
+        return strtr(mb_strtolower($s), ['а' => 'a', 'б' => 'b', 'в' => 'v', 'г' => 'g', 'д' => 'd', 'е' => 'e', 'ё' => 'e', 'ж' => 'zh', 'з' => 'z', 'и' => 'i', 'й' => 'y', 'к' => 'k', 'л' => 'l', 'м' => 'm', 'н' => 'n', 'о' => 'o', 'п' => 'p', 'р' => 'r', 'с' => 'c', 'т' => 't', 'у' => 'u', 'ф' => 'f', 'х' => 'x', 'ц' => 'c', 'ч' => 'ch', 'ш' => 'sh', 'щ' => 'sch', 'ы' => 'y', 'э' => 'e', 'ю' => 'yu', 'я' => 'ya', 'ъ' => '', 'ь' => '']);
+    }
+
+    private static function sameDigits(string $a, string $b): bool
+    {
+        return preg_replace('/\D/', '', $a) === preg_replace('/\D/', '', $b);
     }
 
     private static function flat(string $s): string
@@ -304,10 +337,17 @@ final class Names
         return (string) preg_replace('/^[\s.,;:\-–—"«»]+|[\s.,;:\-–—"«»]+$/u', '', $s);
     }
 
+    /** Дубль марки → запись справочника под другим slug: «lada» → vaz. @return array<string, string> */
+    public static function aliases(): array
+    {
+        return self::ALT;
+    }
+
     private static function bySlug(string $slug): ?Brand
     {
-        $brand = Brand::where('slug', $slug)->first()
-            ?? (isset(self::ALT[$slug]) ? Brand::where('slug', self::ALT[$slug])->first() : null)
+        // Запись справочника под другим slug — первой: «lada» — это vaz «Lada (ВАЗ)», даже если дубль «Lada» завели.
+        $brand = (isset(self::ALT[$slug]) ? Brand::where('slug', self::ALT[$slug])->first() : null)
+            ?? Brand::where('slug', $slug)->first()
             ?? Brand::where('slug', 'like', $slug.'-%')->first();
         if (! $brand && isset(self::CREATE[$slug])) {
             $brand = Brand::create(['slug' => $slug, 'name' => self::CREATE[$slug]]);

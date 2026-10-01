@@ -3,7 +3,7 @@
 @php $save = $save ?? false; @endphp
 @if ($vehicleOpen)
     <x-ui.card title="Транспортное средство">
-        <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/>
+        <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories" :differences="$differences ?? []"/>
         @if ($save)<div class="mt-3 flex justify-end"><x-ui.button variant="secondary" size="sm">Сохранить</x-ui.button></div>@endif
     </x-ui.card>
 @else
@@ -15,7 +15,7 @@
             <x-ui.icon name="chevron-down" class="phase-chevron ml-auto size-5 shrink-0 self-center text-ink-dim"/>
         </summary>
         <div class="phase-body px-3 pb-3 pt-1">
-            <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/>
+            <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories" :differences="$differences ?? []"/>
             @if ($save)<div class="mt-3 flex justify-end"><x-ui.button variant="secondary" size="sm">Сохранить</x-ui.button></div>@endif
         </div>
     </details>
