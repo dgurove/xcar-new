@@ -18,18 +18,19 @@ use Illuminate\Support\Collection;
 /**
  * Цепочка писем об одной ТС («Из писем»): письма, связанные номером убытка, VIN, госномером или веткой.
  * Всё вычисляемое (`code`, `key`, `vendor_id`, `extracted`, `stages`) — свёртка `Chains\ChainBuilder::fold` по
- * `messages()`; рукотворное — `state`, `vehicle_id`/`offer_id`. `message_id`/`thread_id` — первое письмо вендора.
+ * `messages()`; рукотворное — `state`, `vehicle_id`/`offer_id` и `chosen` — выбранное человеком в «✨ Распознать»
+ * (свёртка кладёт его поверх писем). `message_id`/`thread_id` — первое письмо вендора.
  * Своих фото у цепочки нет: вложения писем закреплены в blobs и видны лентой миниатюр в окне писем, а при
  * «Завести» их к ТС или предложению приносит импорт ветки (`LinkThread` → `ImportThreadFiles`).
  */
-#[Fillable(['scope', 'code', 'key', 'vendor_id', 'message_id', 'thread_id', 'subject', 'state', 'extracted', 'proposed', 'offer_id', 'vehicle_id', 'messages_count', 'last_message_at', 'closed_at'])]
+#[Fillable(['scope', 'code', 'key', 'vendor_id', 'message_id', 'thread_id', 'subject', 'state', 'extracted', 'proposed', 'chosen', 'offer_id', 'vehicle_id', 'messages_count', 'last_message_at', 'closed_at'])]
 class Candidate extends Model
 {
     protected $table = 'mail_candidates';
 
     protected function casts(): array
     {
-        return ['scope' => Scope::class, 'state' => CandidateState::class, 'stage' => CandidateStage::class, 'stages' => 'array', 'extracted' => 'array', 'proposed' => 'array', 'last_message_at' => 'datetime', 'closed_at' => 'datetime'];
+        return ['scope' => Scope::class, 'state' => CandidateState::class, 'stage' => CandidateStage::class, 'stages' => 'array', 'extracted' => 'array', 'proposed' => 'array', 'chosen' => 'array', 'last_message_at' => 'datetime', 'closed_at' => 'datetime'];
     }
 
     public function message(): BelongsTo

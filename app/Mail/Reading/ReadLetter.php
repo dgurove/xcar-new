@@ -5,12 +5,10 @@ namespace App\Mail\Reading;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Extraction\CodeMatcher;
-use App\Mail\Extraction\DocumentText;
 use App\Mail\Extraction\Extractor;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Extraction\QuotationStripper;
-use App\Mail\Jobs\ReadDocuments;
 use App\Mail\Message;
 use App\Mail\Scope;
 use Illuminate\Support\Facades\DB;
@@ -19,12 +17,12 @@ use Illuminate\Support\Facades\DB;
  * Чтение письма — один раз. Результат лежит у письма (`parsed`: поля ТС и заявки, номера-тождества, смысл,
  * свои слова без цитат и подписи) с версией читалки; номера дублируются в `mail_message_keys` для индекса.
  * Ветки, цепочки «Из писем», привязка к ТС — всё считается из `parsed`, само письмо больше никто не разбирает.
- * Поменялись правила — поднять VERSION, `mail:read` перечитает только старые письма. PDF парковки читаются из
- * кеша `DocumentText`; непрочитанные дочитывает очередь (`Jobs\ReadDocuments`) и перечитывает письмо сама.
+ * Поменялись правила — поднять VERSION, `mail:read` перечитает только старые письма. Документы парковки — их
+ * текстовым слоем или прочитанным «✨ Распознать» (`DocumentText::layer`); сам OCR письмо не запускает.
  */
 final class ReadLetter
 {
-    public const VERSION = 10;
+    public const VERSION = 11;
 
     public function __construct(private ParkExtractor $park, private Extractor $offers, private CodeMatcher $codes) {}
 
@@ -60,10 +58,6 @@ final class ReadLetter
                 DB::table('mail_message_keys')->insert(array_map(fn ($k) => ['message_id' => $message->id, 'key' => $k], $parsed['keys']));
             }
         });
-        // Скан во вложении ещё не читали — OCR в очереди, потом письмо перечитается с машиной из документа.
-        if (DocumentText::pending($message)->isNotEmpty()) {
-            ReadDocuments::dispatch($message->id)->afterCommit();
-        }
 
         return $parsed;
     }

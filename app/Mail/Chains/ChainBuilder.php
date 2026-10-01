@@ -124,7 +124,8 @@ final class ChainBuilder
         $ours = $live->filter(fn (Message $m) => $m->isOurs() && ! $m->isForwardedByStaff());
         // Письмо о нескольких машинах («выдать ТС А и Б») лежит в обеих цепочках — его VIN и госномер про одну из них, полей не даёт.
         $single = fn (Message $m) => count(array_filter($m->keys(), fn ($k) => str_starts_with($k, 'code:'))) <= 1;
-        $fields = [];
+        // Выбранное человеком в «✨ Распознать» — поверх писем: новое письмо его не перебивает.
+        $fields = $candidate->chosen ?? [];
         foreach ($theirs->filter($single) as $m) {
             $fields += $m->fields();
         }

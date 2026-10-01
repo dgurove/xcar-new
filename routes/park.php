@@ -7,6 +7,7 @@ use App\Http\Park\MoneyController;
 use App\Http\Park\PartyController;
 use App\Http\Park\PassController;
 use App\Http\Park\RequestController;
+use App\Http\Park\ScanController;
 use App\Http\Park\TariffController;
 use App\Http\Park\VehicleController;
 use App\Http\Park\VehicleInvoiceController;
@@ -28,6 +29,10 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/requests/from-mail', [MailController::class, 'fromMail']);
     Route::post('/requests/from-mail/{candidate}/decline', [MailController::class, 'decline']);
     Route::get('/requests/from-mail/{candidate}/letters', [MailController::class, 'candidateLetters']);
+    // «✨ Распознать»: файлы цепочки → OCR → что подставить (ScanController).
+    Route::get('/requests/from-mail/{candidate}/scan', [ScanController::class, 'show']);
+    Route::post('/requests/from-mail/{candidate}/scan', [ScanController::class, 'scan']);
+    Route::post('/requests/from-mail/{candidate}/scan/apply', [ScanController::class, 'apply']);
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests/{req}', [RequestController::class, 'show']);
     Route::get('/requests/{req}/peek', [RequestController::class, 'peek']);

@@ -36,4 +36,5 @@
         <div class="mt-4" id="threads" data-controller="endless">@include('admin.mail.list')</div>
     @endif
     <x-mail.window :url="$window ?? null"/>
+    @if ($park)<x-mail.scan-window/>@endif
 </x-ui.shell>

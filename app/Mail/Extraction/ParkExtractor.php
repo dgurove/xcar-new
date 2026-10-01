@@ -108,10 +108,11 @@ final class ParkExtractor
         if (preg_match('/\b(?:прием|приём|приемка|приёмка)\s+(?:ГОТС|ТС)\b|\bвывоз|\bвывезти|\bзабрать|связаться\s+с\s+клиентом|передач[аеи]\s+(?:ТС|ГОТС)|готов\w*\s+к\s+передаче/iu', $subject.' '.$text)) {
             $fields['request'] ??= ['value' => 'tow', 'source' => 'body'];
         }
-        // Вложения — скан заявки, акт, ЭПТС (`DocumentText`: слой или OCR из очереди). Парковке — только тождество
+        // Вложения — скан заявки, акт, ЭПТС, фото (`DocumentText`: слой или прочитанное «✨ Распознать»). Парковке — только тождество
         // машины, цены у неё свои. Модель документа — только к той же марке: «Мерседес» из темы + «GLE» из ЭПТС.
         if ($this->reader) {
-            foreach ($attachments as $attachment) {
+            // Документ вперёд фото: табличка VIN на снимке — запасной источник, заявка и акт — основной.
+            foreach (collect($attachments)->sortBy(fn ($a) => $a->isImage() ? 1 : 0) as $attachment) {
                 $doc = array_intersect_key($this->reader->read($attachment), array_flip(['brand', 'model', 'vin', 'plate', 'year', 'color']));
                 if (isset($doc['model'], $fields['brand']) && ($doc['brand']['value'] ?? null) !== $fields['brand']['value']) {
                     unset($doc['model']);

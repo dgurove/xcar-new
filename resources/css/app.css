@@ -1146,6 +1146,25 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .chain-head { display: flex; align-items: center; gap: .5rem; }
   .chain-head-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
   .chain-head-sub { display: flex; align-items: center; gap: .625rem; margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; overflow: hidden; }
+
+  /* «✨ Распознать»: файлы цепочки плитками. Отмеченная — с кругом-галкой и обводкой, неотмеченное фото притушено;
+     читается — кольцо поверх (aria-busy). */
+  .scan-grid { @apply grid grid-cols-3 gap-2 sm:grid-cols-4; }
+  .scan-tile { @apply relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 overflow-hidden rounded-(--radius-m) bg-surface-3 p-2 select-none; outline: 2px solid transparent; outline-offset: -2px; transition: outline-color var(--dur-fast); }
+  .scan-tile input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .scan-tile img { @apply absolute inset-0 size-full object-cover; transition: opacity var(--dur-fast); }
+  .scan-tile .scan-icon { @apply size-11 text-[11px]; }
+  .scan-name { @apply line-clamp-2 w-full text-center text-xs leading-tight text-ink; word-break: break-word; }
+  .scan-check { @apply absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full text-transparent; border: 1.5px solid rgb(255 255 255 / .9); background: rgb(0 0 0 / .18); }
+  .scan-tile:not(.scan-tile-photo) .scan-check { border-color: var(--color-line); background: var(--color-surface); }
+  .scan-tile:has(input:checked) { outline-color: var(--color-accent); }
+  .scan-tile:has(input:checked) .scan-check { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+  .scan-tile-photo:not(:has(input:checked)) img { opacity: .55; }
+  .scan-tile:has(input:focus-visible) { outline-color: var(--color-accent); outline-style: dashed; }
+  .scan-tile[aria-busy="true"]::after { content: ''; position: absolute; inset: 0; margin: auto; width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid var(--color-accent); border-top-color: transparent; animation: spin .8s linear infinite; }
+  .scan-tile[aria-busy="true"] > :not(input) { opacity: .35; }
+  /* Кнопки окна — полосой у нижнего края шторки: за тремя десятками фото их не искать. */
+  .scan-foot { position: sticky; z-index: 2; bottom: calc(-1.25rem - env(safe-area-inset-bottom)); margin: 1rem -1.25rem calc(-1.25rem - env(safe-area-inset-bottom)); padding: .75rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom)); background: var(--color-surface); }
   .chain-card > .chain-head { margin-bottom: .75rem; }
   /* Строка письма. Телефон — два этажа: кто, подпись с датой; слова и скрепка. От 640 — одна строка: кто, слова,
      скрепка, подпись с датой. Всё одним кеглем и шрифтом текста: мелкие дата и тег рядом со словами «скакали».

@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+# OCR страниц и фото для «✨ Распознать» (`DocumentText`): PaddleOCR PP-OCRv5 через RapidOCR (ONNX, процессор) —
+# детектор строк и русская модель eslav (кириллица с латиницей и цифрами: VIN, номер). Модели грузятся один раз на
+# весь вызов, поэтому файлы передаются пачкой: `ocr page-1.png page-2.png photo.jpg`. На каждый файл — строка JSON
+# {"file": путь, "text": текст} сразу, как прочитан: PHP показывает готовность по файлам, не дожидаясь пачки.
+# Страница PDF (имя на «page-») сначала ставится прямо моделью ориентации — Альфа сканирует заявку боком; фото —
+# только по EXIF. Строка таблицы собирается из рамок по высоте: ячейки через три пробела, как ждёт `DocumentFields`.
+import json
+import os
+import sys
+
+import numpy as np
+import pillow_heif
+from PIL import Image, ImageOps
+from rapid_orientation import RapidOrientation
+from rapidocr import EngineType, LangRec, ModelType, OCRVersion, RapidOCR
+
+pillow_heif.register_heif_opener()
+threads = int(os.environ.get('OCR_THREADS', '2'))
+engine = RapidOCR(params={
+    'Global.log_level': 'error',
+    'Global.use_cls': False,
+    'Det.engine_type': EngineType.ONNXRUNTIME, 'Det.ocr_version': OCRVersion.PPOCRV5, 'Det.model_type': ModelType.MOBILE,
+    'Rec.engine_type': EngineType.ONNXRUNTIME, 'Rec.ocr_version': OCRVersion.PPOCRV5, 'Rec.lang_type': LangRec.ESLAV, 'Rec.model_type': ModelType.MOBILE,
+    'EngineConfig.onnxruntime.intra_op_num_threads': threads,
+})
+orientation = None
+
+
+def load(path):
+    image = np.asarray(ImageOps.exif_transpose(Image.open(path)).convert('RGB'))[:, :, ::-1]
+    if os.path.basename(path).startswith('page-'):
+        global orientation
+        orientation = orientation or RapidOrientation()
+        angle = int(orientation(image)[0])
+        if angle:
+            image = np.rot90(image, angle // 90)
+    return np.ascontiguousarray(image)
+
+
+def lines(result):
+    if result.boxes is None:
+        return []
+    items = []
+    for box, text in zip(result.boxes, result.txts):
+        xs = [p[0] for p in box]
+        ys = [p[1] for p in box]
+        items.append({'x0': min(xs), 'x1': max(xs), 'y': (min(ys) + max(ys)) / 2, 'h': max(ys) - min(ys), 't': text})
+    items.sort(key=lambda i: i['y'])
+    rows = []
+    for item in items:
+        row = rows[-1] if rows else None
+        if row and abs(item['y'] - row['y']) < 0.5 * min(item['h'], row['h']):
+            row['items'].append(item)
+            row['y'] = sum(i['y'] for i in row['items']) / len(row['items'])
+        else:
+            rows.append({'y': item['y'], 'h': item['h'], 'items': [item]})
+    out = []
+    for row in rows:
+        row['items'].sort(key=lambda i: i['x0'])
+        text, prev = '', None
+        for item in row['items']:
+            if prev:
+                char = (prev['x1'] - prev['x0']) / max(len(prev['t']), 1)
+                text += '   ' if item['x0'] - prev['x1'] > 1.5 * char else ' '
+            text += item['t']
+            prev = item
+        out.append(text)
+    return out
+
+
+for path in sys.argv[1:]:
+    try:
+        text = '\n'.join(lines(engine(load(path))))
+    except Exception as e:  # битый файл — пустой текст, пачка идёт дальше
+        print(f'ocr: {path}: {e}', file=sys.stderr)
+        text = ''
+    print(json.dumps({'file': path, 'text': text}, ensure_ascii=False), flush=True)

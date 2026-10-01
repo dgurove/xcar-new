@@ -3,24 +3,22 @@
 namespace App\Mail\Extraction;
 
 use App\Mail\Attachment;
-use App\Mail\Direction;
-use App\Mail\Message;
 use App\Mail\Parts;
-use App\Mail\Scope;
-use Illuminate\Support\Collection;
+use Closure;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
- * Текст PDF из письма парковки — то, откуда берётся машина у Альфы Москва: «Заявка на приёмку» и акт приходят
- * сканом (Canon без текстового слоя или со слоем-мусором), часто боком. Текстовый слой берётся, если он читается
- * (`AttachmentText::readable`), иначе OCR: `pdftoppm` 300 dpi первых двух страниц, поворот по OSD tesseract
- * (поворачивает GD), `tesseract rus+eng --psm 6` с сохранёнными пробелами — строка таблицы выходит строкой.
- * Прочитанное лежит в `cache/doctext/{sha}.txt` навсегда, пустой файл — «текста нет»: одинаковый скан в «ч.1» и
- * в пересылке читается один раз. При приёме письма и в `mail:read` читается только кеш (`cached`), сам OCR —
- * в очереди (`Jobs\ReadDocuments`): страница стоит секунды, приём почты ждать не должен.
+ * Текст файла из письма парковки — то, откуда берётся машина у Альфы Москва: «Заявка на приёмку» и акт приходят
+ * сканом, часто боком. Два пути:
+ * - `layer` — текстовый слой PDF и текст docx/xlsx (`AttachmentText`), миллисекунды: разбор письма берёт его сам;
+ * - `read` — OCR по «✨ Распознать» (`ScanController`): слой, если читается (`AttachmentText::readable`), иначе
+ *   скрипт `ocr` (PaddleOCR через RapidOCR, deploy/bin/ocr) по двум первым страницам PDF или по фото. Сам по себе
+ *   OCR не запускается: страница на сервере — секунды, и большая часть писем в нём не нуждается.
+ * Прочитанное лежит в `cache/doctext/{sha}.txt` навсегда, пустой файл — «текста нет»: одинаковый скан в «ч.1» и в
+ * пересылке читается один раз, и разбор письма подхватывает прочитанное «✨» как свой слой.
  */
 final class DocumentText
 {
@@ -28,12 +26,14 @@ final class DocumentText
 
     private const MAX_BYTES = 15_000_000;
 
-    /** PDF вендора в письме парковки — кандидат на чтение. */
-    public static function wanted(Attachment $attachment): bool
-    {
-        $isPdf = $attachment->mime === 'application/pdf' || strtolower(pathinfo((string) $attachment->filename, PATHINFO_EXTENSION)) === 'pdf';
+    private const PAGES = 2;
 
-        return $isPdf && ! $attachment->is_inline && (int) $attachment->size <= self::MAX_BYTES;
+    /** Файл, который «✨» умеет прочитать: PDF или картинка, не встроенная в тело письма. */
+    public static function scannable(Attachment $attachment): bool
+    {
+        $isPdf = $attachment->isPdf() || strtolower(pathinfo((string) $attachment->filename, PATHINFO_EXTENSION)) === 'pdf';
+
+        return ($isPdf || $attachment->isImage()) && ! $attachment->is_inline && (int) $attachment->size <= self::MAX_BYTES;
     }
 
     /** Прочитанный текст из кеша; null — ещё не читали. */
@@ -45,79 +45,132 @@ final class DocumentText
     }
 
     /**
-     * Документы письма, которые ещё не читали: входящее письмо парковки, не замороженное, не в архиве и не в ветке
-     * заведённой ТС — у неё поля уже вписаны людьми, архиву («Не заявка») машина не нужна; вернули из архива —
-     * письмо перечитается, и скан прочтётся тогда. @return Collection<int, Attachment>
+     * Текст без OCR: прочитанное раньше или текстовый слой, если он читается (тогда он ложится в кеш). Файл — только
+     * с диска: `mail:read` перечитывает тысячи писем, и ходить за каждым вложением в ящик ему нельзя.
      */
-    public static function pending(Message $message): Collection
+    public static function layer(Attachment $attachment): ?string
     {
-        $message->loadMissing(['account', 'attachments', 'thread']);
-        if ($message->account?->scope !== Scope::Park || $message->direction !== Direction::In || $message->frozen_at || $message->thread?->vehicle_id || $message->thread?->archived_at) {
-            return collect();
+        if (($text = self::cached($attachment)) !== null) {
+            return $text;
         }
-
-        return $message->attachments->filter(fn (Attachment $a) => self::wanted($a) && self::cached($a) === null)->values();
-    }
-
-    /** Прочитать и положить в кеш: текстовый слой, если читается, иначе OCR. Ошибка — пустой текст, без повторов. */
-    public static function read(Attachment $attachment): string
-    {
-        $text = '';
-        try {
-            $path = $attachment->file();
-            if ($path) {
-                $layer = AttachmentText::of($path, (string) $attachment->filename, $attachment->mime);
-                $text = $layer !== null && AttachmentText::readable($layer) ? $layer : self::ocr($path);
-            }
-        } catch (Throwable $e) {
-            Log::warning('Почта: документ не прочитан', ['attachment' => $attachment->id, 'error' => $e->getMessage()]);
+        if ($attachment->is_inline || ! $attachment->isOnDisk() || ! ($path = $attachment->file())) {
+            return null;
         }
-        Storage::disk(Parts::CACHE_DISK)->put(self::key($attachment), $text);
+        $text = AttachmentText::of($path, (string) $attachment->filename, $attachment->mime);
+        if ($text === null || ! AttachmentText::readable($text)) {
+            return null;
+        }
+        self::put($attachment, $text);
 
         return $text;
     }
 
-    private static function key(Attachment $attachment): string
+    /**
+     * Прочитать пачку: прочитанное — сразу, слой — если читается, остальное — одним вызовом `ocr` (модели грузятся
+     * раз на пачку). `$done($attachment, $text)` зовётся по каждому файлу, как только он готов. Ошибка — пустой
+     * текст в кеш, без повторов.
+     *
+     * @param  iterable<Attachment>  $attachments
+     */
+    public static function read(iterable $attachments, ?Closure $done = null): void
     {
-        return self::DIR.'/'.($attachment->blob_sha ?: 'a'.$attachment->id).'.txt';
-    }
-
-    private static function ocr(string $pdf): string
-    {
+        $done ??= fn () => null;
         $dir = sys_get_temp_dir().'/xcar-ocr-'.bin2hex(random_bytes(6));
         @mkdir($dir, 0700, true);
-        // Сервер слабый: tesseract не должен занимать оба ядра.
-        $env = ['OMP_THREAD_LIMIT' => '1'];
+        /** @var array<string, Attachment> $owner страница или фото → вложение */
+        $owner = [];
+        /** @var array<int, array<string, ?string>> $pages вложение → его файлы для ocr и их текст */
+        $pages = [];
         try {
-            Process::timeout(60)->run(['pdftoppm', '-r', '300', '-png', '-l', '2', $pdf, $dir.'/p']);
-            $pages = glob($dir.'/p*.png') ?: [];
-            sort($pages);
-            $text = [];
-            foreach ($pages as $png) {
-                self::upright($png, $env);
-                $result = Process::timeout(120)->env($env)->run(['tesseract', $png, '-', '-l', 'rus+eng', '--psm', '6', '-c', 'preserve_interword_spaces=1']);
-                if ($result->successful()) {
-                    $text[] = $result->output();
+            foreach ($attachments as $a) {
+                if (($text = self::cached($a)) !== null || ($text = self::layer($a)) !== null) {
+                    $done($a, $text);
+
+                    continue;
+                }
+                $files = self::images($a, $dir);
+                if (! $files) {
+                    self::put($a, '');
+                    $done($a, '');
+
+                    continue;
+                }
+                foreach ($files as $file) {
+                    $owner[$file] = $a;
+                    $pages[$a->id][$file] = null;
                 }
             }
-
-            return trim(implode("\n\f\n", $text));
+            if (! $owner) {
+                return;
+            }
+            $buffer = '';
+            $take = function (string $line) use (&$owner, &$pages, $done) {
+                $row = json_decode($line, true);
+                $a = is_array($row) ? ($owner[$row['file'] ?? ''] ?? null) : null;
+                if (! $a) {
+                    return;
+                }
+                $pages[$a->id][$row['file']] = (string) ($row['text'] ?? '');
+                if (! in_array(null, $pages[$a->id], true)) {
+                    $text = trim(implode("\n\f\n", $pages[$a->id]));
+                    self::put($a, $text);
+                    unset($pages[$a->id]);
+                    $done($a, $text);
+                }
+            };
+            $process = Process::timeout(600)->start([config('xcar.ocr', 'ocr'), ...array_keys($owner)], function (string $type, string $output) use (&$buffer, $take) {
+                if ($type !== 'out') {
+                    return;
+                }
+                $buffer .= $output;
+                while (($n = strpos($buffer, "\n")) !== false) {
+                    $take(substr($buffer, 0, $n));
+                    $buffer = substr($buffer, $n + 1);
+                }
+            });
+            $result = $process->wait();
+            if (! $result->successful()) {
+                Log::warning('Почта: ocr упал', ['error' => mb_substr($result->errorOutput(), -500)]);
+            }
+        } catch (Throwable $e) {
+            Log::warning('Почта: документы не прочитаны', ['error' => $e->getMessage()]);
         } finally {
+            // Чего ocr не вернул — пусто: «распознать» не должен крутиться вечно.
+            foreach (array_keys($pages) as $id) {
+                $a = $owner[array_key_first($pages[$id])];
+                self::put($a, '');
+                $done($a, '');
+            }
             array_map('unlink', glob($dir.'/*') ?: []);
             @rmdir($dir);
         }
     }
 
-    /** Повернуть страницу по OSD: «Rotate: 90» — по часовой; GD крутит против, отсюда 360 − угол. */
-    private static function upright(string $png, array $env): void
+    /** Картинки для ocr: первые страницы PDF (имя «page-…» — скрипт ставит их прямо) или само фото. @return list<string> */
+    private static function images(Attachment $a, string $dir): array
     {
-        $osd = Process::timeout(60)->env($env)->run(['tesseract', $png, '-', '--psm', '0']);
-        if (! preg_match('/^Rotate:\s*(90|180|270)\b/m', $osd->output(), $m) || ! ($image = @imagecreatefrompng($png))) {
-            return;
+        $path = $a->file();
+        if (! $path) {
+            return [];
         }
-        $rotated = imagerotate($image, 360 - (int) $m[1], 0);
-        if ($rotated) {
-            imagepng($rotated, $png, 1);
+        if (! $a->isImage()) {
+            Process::timeout(60)->run(['pdftoppm', '-scale-to', '2000', '-png', '-l', (string) self::PAGES, $path, $dir.'/page-'.$a->id]);
+            $files = glob($dir.'/page-'.$a->id.'-*.png') ?: [];
+            sort($files);
+
+            return $files;
         }
+
+        return [$path];
+    }
+
+    private static function put(Attachment $attachment, string $text): void
+    {
+        Storage::disk(Parts::CACHE_DISK)->put(self::key($attachment), $text);
+    }
+
+    private static function key(Attachment $attachment): string
+    {
+        return self::DIR.'/'.($attachment->blob_sha ?: 'a'.$attachment->id).'.txt';
     }
 }

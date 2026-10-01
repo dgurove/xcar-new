@@ -8,8 +8,8 @@ use App\Mail\Scope;
 /**
  * Поля машины из вложения письма по его тексту (`DocumentFields`). Письма с предложениями (offer@): акт, договор
  * комиссии, оценка с торгов, исходное письмо .eml — текст тут же (`AttachmentText`, документы достаём и из ящика).
- * Парковка: только PDF и только уже прочитанное (`DocumentText::cached` — слой или OCR скана из очереди), чтобы
- * приём письма и `mail:read` не ждали OCR; непрочитанное дочитает `Jobs\ReadDocuments` и перечитает письмо.
+ * Парковка: текстовый слой PDF и документов сразу, сканы и фото — только прочитанные «✨ Распознать»
+ * (`DocumentText::layer`: кеш или слой) — приём письма и `mail:read` OCR не ждут и сами его не запускают.
  */
 final class TextAttachmentReader implements AttachmentReader
 {
@@ -17,13 +17,18 @@ final class TextAttachmentReader implements AttachmentReader
 
     public function read(Attachment $attachment): array
     {
+        $attachment->loadMissing('message.account');
+        if ($attachment->message?->account?->scope === Scope::Park && $attachment->isImage()) {
+            $text = DocumentText::cached($attachment);
+
+            return $text ? DocumentFields::extract($text) : [];
+        }
         $ext = strtolower(pathinfo((string) $attachment->filename, PATHINFO_EXTENSION));
         if ($attachment->is_inline || (! in_array($ext, self::TYPES, true) && ! in_array($attachment->mime, ['application/pdf', 'message/rfc822'], true))) {
             return [];
         }
-        $attachment->loadMissing('message.account');
         if ($attachment->message?->account?->scope === Scope::Park) {
-            $text = DocumentText::wanted($attachment) ? DocumentText::cached($attachment) : null;
+            $text = DocumentText::layer($attachment);
 
             return $text ? DocumentFields::extract($text) : [];
         }

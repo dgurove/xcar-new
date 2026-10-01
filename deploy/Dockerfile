@@ -21,9 +21,15 @@ RUN install-php-extensions bcmath exif gd intl pcntl pdo_pgsql zip
 RUN apt-get update && apt-get install -y --no-install-recommends p7zip-full poppler-utils python3 python3-pip && rm -rf /var/lib/apt/lists/* \
     && pip3 install --no-cache-dir --break-system-packages pillow==12.3.0 pillow-heif==1.7.0
 COPY deploy/bin/heic2jpg /usr/local/bin/heic2jpg
-# tesseract — OCR сканов заявок парковки (`DocumentText`): русский, английский и OSD (поворот страницы).
-# Отдельным слоем, чтобы не пересобирать pillow.
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-rus && rm -rf /var/lib/apt/lists/*
+# ocr — «✨ Распознать» в «Из писем» (`DocumentText`): PaddleOCR PP-OCRv5 через RapidOCR на onnxruntime и модель
+# поворота страницы. rapidocr тянет полный opencv с libGL — ставим без зависимостей, opencv без экрана. Модели
+# качаются при первом вызове: прогоняем его на сборке, в работе сеть не нужна. Отдельным слоем от pillow.
+RUN pip3 install --no-cache-dir --break-system-packages onnxruntime==1.30.0 opencv-python-headless==5.0.0.93 numpy==2.4.6 \
+        pyclipper==1.4.0 shapely==2.1.2 omegaconf==2.3.1 colorlog==6.12.0 PyYAML==6.0.3 requests==2.34.2 six==1.17.0 tqdm==4.70.1 \
+    && pip3 install --no-cache-dir --break-system-packages --no-deps rapidocr==3.9.2 rapid-orientation==0.0.11
+COPY deploy/bin/ocr /usr/local/bin/ocr
+RUN python3 -c "from PIL import Image; Image.new('RGB', (320, 80), 'white').save('/tmp/page-warm.png')" \
+    && ocr /tmp/page-warm.png && rm /tmp/page-warm.png
 
 COPY deploy/php/app.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY deploy/php/entrypoint.sh /usr/local/bin/entrypoint

@@ -62,9 +62,10 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+  # scan — «✨ Распознать»: человек ждёт ответа, поэтому здесь, а не за разбором почты в queue-long.
   queue:
     <<: *app
-    command: php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=notifications,default
+    command: php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=notifications,scan,default
     healthcheck:
       disable: true
 
@@ -72,7 +73,7 @@ services:
   # retry_after, чтобы работник не считал их зависшими.
   queue-long:
     <<: *app
-    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=long,mail,ocr
+    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=long,mail
     # Минута на SIGTERM: короткие задачи дочитываются, длинную выкачку добирает повтор джобы.
     stop_grace_period: 60s
     healthcheck:
