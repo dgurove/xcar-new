@@ -17,12 +17,16 @@ use Throwable;
  * - `read` — OCR по «✨ Распознать» (`ScanController`): слой, если читается (`AttachmentText::readable`), иначе
  *   скрипт `ocr` (PaddleOCR через RapidOCR, deploy/bin/ocr) по двум первым страницам PDF или по фото. Сам по себе
  *   OCR не запускается: страница на сервере — секунды, и большая часть писем в нём не нуждается.
- * Прочитанное лежит в `cache/doctext/{sha}.txt` навсегда, пустой файл — «текста нет»: одинаковый скан в «ч.1» и в
- * пересылке читается один раз, и разбор письма подхватывает прочитанное «✨» как свой слой.
+ * Прочитанное лежит в `cache/scantext/{sha}.txt` навсегда, пустой файл — «текста нет»: одинаковый скан в «ч.1» и в
+ * пересылке читается один раз, и разбор письма подхватывает прочитанное «✨» как свой слой. `cache/doctext` — то, что
+ * до 01.10.2026 прочёл tesseract сам по каждому письму: разбор письма его ещё берёт (марки цепочек не пропадают),
+ * «✨» его не считает прочитанным и читает файл заново.
  */
 final class DocumentText
 {
-    private const DIR = 'doctext';
+    private const DIR = 'scantext';
+
+    private const LEGACY = 'doctext';
 
     private const MAX_BYTES = 15_000_000;
 
@@ -50,9 +54,15 @@ final class DocumentText
      */
     public static function layer(Attachment $attachment): ?string
     {
-        if (($text = self::cached($attachment)) !== null) {
-            return $text;
-        }
+        $disk = Storage::disk(Parts::CACHE_DISK);
+        $legacy = self::LEGACY.'/'.($attachment->blob_sha ?: 'a'.$attachment->id).'.txt';
+
+        return self::cached($attachment) ?? ($disk->exists($legacy) ? (string) $disk->get($legacy) : null) ?? self::text($attachment);
+    }
+
+    /** Текстовый слой файла с диска, если он читается; ложится в кеш. */
+    private static function text(Attachment $attachment): ?string
+    {
         if ($attachment->is_inline || ! $attachment->isOnDisk() || ! ($path = $attachment->file())) {
             return null;
         }
@@ -83,7 +93,7 @@ final class DocumentText
         $pages = [];
         try {
             foreach ($attachments as $a) {
-                if (($text = self::cached($a)) !== null || ($text = self::layer($a)) !== null) {
+                if (($text = self::cached($a)) !== null || ($text = self::text($a)) !== null) {
                     $done($a, $text);
 
                     continue;
