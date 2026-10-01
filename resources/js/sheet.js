@@ -14,19 +14,29 @@ let settle = null;    // ждёт popstate после history.back() из closeS
 let pageTurbo;        // снятый у записи страницы ключ turbo — вернуть после шторки
 
 window.addEventListener('popstate', (event) => {
-    const forward = event.state?.sheet && event.state.sheet !== inHistory;
+    const under = event.state?.sheet;
+    // Шторка поверх шторки («Распознать» над окном писем): запись нижней снова сверху — это возврат к ней, не «вперёд».
+    const lower = under && under !== inHistory && document.getElementById(under)?.open;
+    const forward = under && under !== inHistory && !lower;
     if (!inHistory && !forward) return;
     if (forward) { history.back(); return; }
     const d = document.getElementById(inHistory);
-    inHistory = null;
+    inHistory = lower ? under : null;
     if (d?.open) closeSheet(d, 0, true);
-    // Страница снова сверху — ключ turbo на месте, «‹ Раздел» пойдёт шагом по истории.
-    if (pageTurbo !== undefined) history.replaceState({ ...(history.state || {}), turbo: pageTurbo }, '');
+    // Под шторкой — запись другой шторки или окошка строки: она остаётся своей (Turbo на пустой записи ставит свой
+    // ключ — тогда её не снять «Назад»). Страница снова сверху — ключ turbo на месте, «‹ Раздел» пойдёт шагом по истории.
+    if (lower || event.state?.peek) history.replaceState(event.state, '');
+    else if (pageTurbo !== undefined) history.replaceState({ ...(history.state || {}), turbo: pageTurbo }, '');
     settle?.();
     settle = null;
 });
 // Визит уводит со страницы (или заменяет запись) — верхняя запись больше не шторка.
 document.addEventListener('turbo:visit', () => { inHistory = null; });
+
+// Запись шторки ещё в истории. Снимок страницы (turbo:before-cache) в этот момент — не уход со страницы: шторку сняли
+// «Назад» или крестиком, запись под ней без ключа Turbo, и Turbo на этом popstate снимает снимок раньше нас. Окошко
+// строки и шторка документов под ней не закрываются (peek_controller, docs_controller); у визита запись уже снята.
+export const sheetInHistory = () => inHistory !== null;
 
 export function openSheet(d, { history: withHistory = true } = {}) {
     if (d.open) d.close();
@@ -43,7 +53,8 @@ export function openSheet(d, { history: withHistory = true } = {}) {
     }
     if (withHistory && d.id && inHistory !== d.id) {
         const { turbo, ...rest } = history.state || {};
-        pageTurbo = turbo;
+        // Ключ страницы снимает только первая шторка: у второй под ней запись шторки, ключа там нет.
+        if (!inHistory) pageTurbo = turbo;
         history.replaceState(rest, '');
         history.pushState({ ...rest, sheet: d.id }, '');
         inHistory = d.id;

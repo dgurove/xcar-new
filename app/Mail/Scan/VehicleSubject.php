@@ -36,6 +36,21 @@ final class VehicleSubject implements Subject
         return "/cars/{$this->vehicle->id}/scan";
     }
 
+    public function mail(): string
+    {
+        return '/mail';
+    }
+
+    public function topic(): string
+    {
+        return Topics::PARK;
+    }
+
+    public function fields(): array
+    {
+        return array_keys(ScanFields::LABELS);
+    }
+
     public function title(): string
     {
         return $this->vehicle->titleWithYear();
@@ -113,6 +128,8 @@ final class VehicleSubject implements Subject
     public function refresh(): void
     {
         FillFromDocs::forget($this->vehicle);
+        // Расхождения считаются сразу: метка «в документе иначе» встаёт в строке таблицы, не дожидаясь показа дела.
+        app(FillFromDocs::class)->differences($this->vehicle->refresh());
         app(Publisher::class)->refresh(Topics::PARK, ['/cars/'.$this->vehicle->id]);
     }
 }

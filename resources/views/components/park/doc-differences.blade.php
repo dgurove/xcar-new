@@ -6,11 +6,16 @@
 @if ($differences)
     <div {{ $attributes->merge(['class' => 'list doc-diff']) }}>
         @foreach ($differences as $field => $d)
-            @php $now = $field === 'model' ? $vehicle->model?->name : $vehicle->{$field}; $nums = in_array($field, ['vin', 'year', 'value'], true) ? 'nums' : ''; @endphp
+            @php
+                $now = $field === 'model' ? $vehicle->model?->name : $vehicle->{$field};
+                $nums = in_array($field, ['vin', 'year', 'value'], true) ? 'nums' : '';
+                // Стоимость — деньгами, как в окне «Распознать»; в форму уходит голое значение документа.
+                $show = fn ($v) => $field === 'value' && is_numeric($v) ? \App\Support\Money::rub((int) $v) : $v;
+            @endphp
             <button type="submit" class="row text-left" formaction="/cars/{{ $vehicle->id }}/take" formmethod="post" formnovalidate name="take" value="{{ $field }}|{{ $d['value'] }}"
-                data-turbo-confirm="{{ $labels[$field] }} из документа: {{ $d['value'] }}?" data-turbo-confirm-label="Взять">
+                data-turbo-confirm="{{ $labels[$field] }} из документа: {{ $show($d['value']) }}?" data-turbo-confirm-label="Взять">
                 <span class="min-w-0 flex-1">
-                    <span class="scan-value scan-change"><span class="text-ink-muted {{ $nums }}">{{ $now }}</span><span class="text-ink-dim" aria-hidden="true">→</span><span class="{{ $nums }}">{{ $d['value'] }}</span></span>
+                    <span class="scan-value scan-change"><span class="text-ink-muted {{ $nums }}">{{ $show($now) }}</span><span class="text-ink-dim" aria-hidden="true">→</span><span class="{{ $nums }}">{{ $show($d['value']) }}</span></span>
                     <span class="row-sub"><span>{{ $labels[$field] }}</span><span>{{ implode(', ', $d['sources']) }}</span></span>
                 </span>
                 <span class="shrink-0 text-sm text-accent-text">Взять</span>

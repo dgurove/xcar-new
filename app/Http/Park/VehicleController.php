@@ -18,6 +18,7 @@ use App\Media\PhotoIngest;
 use App\Offers\OfferNumber;
 use App\Park\Actions\CancelVehicle;
 use App\Park\Actions\CloseRequest;
+use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\LinkOffer;
 use App\Park\Actions\MarkDoc;
 use App\Park\Actions\MarkSold;
@@ -145,8 +146,11 @@ class VehicleController
             ->reject(fn (Vehicle $v) => Accrual::hasRate($v))->pluck('id')->all();
     }
 
-    /** Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка. */
-    public function peek(Vehicle $vehicle)
+    /**
+     * Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка;
+     * «✨» в полосе и расхождения с документами строками «Взять».
+     */
+    public function peek(Request $request, Vehicle $vehicle)
     {
         $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user', 'offer.deal'])->loadCount('threads');
 
@@ -156,6 +160,9 @@ class VehicleController
             // «Долг» в окошке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
             'debt' => Ledger::vehicleDebt($vehicle),
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
+            // «✨» и расхождения с документами — тем, кто правит ТС, и только когда письма есть.
+            'scan' => $scan = $request->user()->canManagePark() && $vehicle->threads_count > 0,
+            'differences' => $scan ? app(FillFromDocs::class)->differences($vehicle) : [],
         ]);
     }
 

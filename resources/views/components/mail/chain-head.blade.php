@@ -1,5 +1,5 @@
 {{-- Шапка незаведённой цепочки — в карточке «Из писем» и в окне цепочки: ТС по имени, под ней серой строкой логотип
-     вендора с номером убытка (`x-vendor.ref`) и этап словом; справа «Не заявка», у парковки «✨» (окно «Распознать»,
+     вендора с номером убытка (`x-vendor.ref`) и этап словом; справа «Не заявка», «✨ Распознать» (окно
      x-mail.scan-window) и «Завести». В списке «Не заявка» —
      только на компьютере (на телефоне цепочку отклоняет свайп), в окне — всегда; window — формы уводят из окна. --}}
 @props(['candidate', 'queue', 'park' => true, 'window' => false])
@@ -18,8 +18,8 @@
         </div>
     </div>
     <form method="post" action="{{ $queue }}/{{ $c->id }}/decline" class="{{ $window ? 'contents' : 'hidden md:contents' }}" {!! $frame !!} data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do"><span class="opacity-70">Не заявка</span></button></form>
+    <x-mail.scan-button :url="($park ? '/requests' : '/offers').'/from-mail/'.$c->id.'/scan'" look="head"/>
     @if ($park)
-        <button type="button" class="btn btn-s btn-quiet case-do" data-controller="emit" data-action="emit#send" data-emit-event-param="scan:open" data-emit-url-param="/requests/from-mail/{{ $c->id }}/scan"><span aria-hidden="true" class="mr-1">✨</span>Распознать</button>
         <a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent case-do" {!! $frame !!}>Завести</a>
     @else
         <form method="post" action="{{ $queue }}/{{ $c->id }}/create" class="contents" {!! $frame !!}>@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>

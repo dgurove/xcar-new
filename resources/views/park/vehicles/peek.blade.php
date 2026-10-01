@@ -1,12 +1,16 @@
 {{-- Окошко строки таблицы машин стоянки (фрейм peek) — работа с ТС без страницы:
      лента фото, метки, дней на стоянке; действия по состоянию — «Принять на стоянку»
      (ожидаемая), переставить (стоянка выбором, отправка сразу), выдать (дата, с
-     подтверждением), акты; ниже заявки строками и заметка с последними событиями.
+     подтверждением), акты; ниже расхождения карточки с документами строками «Взять» (FillFromDocs), заявки строками и
+     заметка с последними событиями. «✨» — значком в полосе окошка (tools), а пока в карточке нет марки, VIN, года
+     или цвета — ещё и чипом «Из документов» в ряду действий: окно «Распознать» встаёт поверх, окошко остаётся.
      Формы отвечают в окошко (PeekBack), строка — свежей из row. --}}
 @php
     use App\Park\VehicleState;
     $state = $vehicle->state;
     $href = '/cars/'.$vehicle->id;
+    $scanUrl = $href.'/scan';
+    $gaps = ! $vehicle->brand_id || ! $vehicle->model_id || $vehicle->vinProblem() || ! $vehicle->year || ! $vehicle->color;
 @endphp
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
@@ -18,7 +22,7 @@
             @if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
             @if ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
             @if ($total && $total['rate'])<span class="tag nums">{{ \App\Support\Money::rub($total['rate']) }}/д</span>@endif
-            <x-park.alerts :vehicle="$vehicle"/>
+            <x-park.alerts :vehicle="$vehicle" :skip="$differences ? [\App\Park\Alerts::DOCS] : []"/>
             @if ($vehicle->accepted_at)<span class="tag nums">принята {{ $vehicle->accepted_at->translatedFormat('j M Y') }}</span>@endif
             @if ($state === VehicleState::Released && $vehicle->released_at)<span class="tag nums">выдана {{ $vehicle->released_at->translatedFormat('j M Y') }}</span>@endif
         </x-slot:marks>
@@ -55,7 +59,14 @@
                 <a href="/acts/{{ $vehicle->id }}/release" class="pill pill-plain" data-turbo="false" target="_blank">Акт выдачи</a>
             @endif
             @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Осмотр</a>@endunless
+            @if ($scan && $gaps)<x-mail.scan-button :url="$scanUrl"/>@endif
         </x-slot:actions>
+        @if ($scan)
+            <x-slot:tools><x-mail.scan-button :url="$scanUrl" look="icon"/></x-slot:tools>
+        @endif
+        @if ($differences)
+            <form method="post" action="{{ $href }}/take" class="mt-3">@csrf<x-park.doc-differences :vehicle="$vehicle" :differences="$differences"/></form>
+        @endif
         @if ($vehicle->requests->isNotEmpty())
             <div class="mt-3 flex flex-wrap gap-1.5">
                 @foreach ($vehicle->requests as $r)

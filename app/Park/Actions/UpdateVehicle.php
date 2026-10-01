@@ -12,7 +12,8 @@ use App\Users\User;
  * Правка карточки ТС. Договор комиссии, вписанный после приёма, рождает обязательство перед вендором
  * (или пересчитывает неоплаченное); номер убытка или VIN изменились без привязки — предложение ищется заново.
  * С `$sources` — поля взяты из документов и писем («✨», `park:fill-from-docs`): в истории дела «Заполнено по
- * документам» с их именами; без пользователя — это сделала система.
+ * документам» с их именами; без пользователя — это сделала система. Правка полей, которые сверяются с документами,
+ * снимает метку «в документе иначе» до пересчёта (`FillFromDocs::forget`).
  */
 final class UpdateVehicle
 {
@@ -31,6 +32,9 @@ final class UpdateVehicle
             ? $vehicle->log(EventType::FilledFromDocs, $by, ['fields' => array_values($changed), 'sources' => array_values(array_unique($sources))])
             : $vehicle->log(EventType::Updated, $by, ['fields' => array_values($changed)]);
         (new RememberVin)($vehicle);
+        if (array_intersect($changed, ['vin', 'plate', 'year', 'color', 'value', 'brand_id', 'model_id'])) {
+            FillFromDocs::forget($vehicle);
+        }
         if ($by && $vehicle->accepted_at && array_intersect($changed, ['contract_kind', 'assigned_price', 'contract_no'])) {
             ($this->transfer)($vehicle, $by);
         }

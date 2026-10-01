@@ -1,5 +1,6 @@
 {{-- Состояние машины пилюлями: где стоит и сколько (светофор простоя), в пути сколько дней, когда выдана или почему не привезена,
-     и предупреждения «что не так» (`Park\Alerts` — те же, что тегами в «Наличии»).
+     и предупреждения «что не так» (`Park\Alerts` — те же, что тегами в «Наличии», кроме «В документе иначе»: в деле
+     это видно у полей).
      only — одна пилюля состояния, без места, дней и предупреждений: в почте рядом с названием машины
      нужен статус, а не всё про неё («номера и парковку я увижу в „Наличии“»). --}}
 @props(['vehicle', 'only' => false])
@@ -17,5 +18,5 @@
     <span class="chip">{{ $vehicle->cancel_reason }}</span>
 @endif
 @unless ($only)
-    @foreach (\App\Park\Alerts::of($vehicle) as $alert)<x-ui.state :tone="$alert['tone']">{{ $alert['label'] }}</x-ui.state>@endforeach
+    @foreach (\App\Park\Alerts::of($vehicle, docs: false) as $alert)<x-ui.state :tone="$alert['tone']">{{ $alert['label'] }}</x-ui.state>@endforeach
 @endunless

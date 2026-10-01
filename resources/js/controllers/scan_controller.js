@@ -1,12 +1,17 @@
 import { Controller } from '@hotwired/stimulus';
+import * as Turbo from '@hotwired/turbo';
+import { closeSheet } from '../sheet';
 
-// «✨ Распознать» (park/requests/scan). Фрейм обновляется морфом — контроллер не переподключается, поэтому всё
+// «✨ Распознать» (admin/mail/scan). Фрейм обновляется морфом — контроллер не переподключается, поэтому всё
 // держится на колбэках Stimulus: появилась кнопка шага — пересчитать её, поменялся busy — включить или снять
-// ожидание. Файлы: число отмеченных на кнопке, больше max — кнопка молчит; «Выбрать все» у фото. Чтение (busy):
-// фрейм перечитывается по событию live:scan своего предмета (цепочка c:…, ТС v:…) и при возврате на вкладку — без
-// опроса по таймеру. Поля: «Подставить N» — сколько полей изменится; ничего — кнопка молчит.
+// ожидание. Файлы: число отмеченных на кнопке, больше max — кнопка молчит; «Выбрать все» у фото; форма с
+// data-scan-go (один файл из шторки документов) уходит сама. Чтение (busy): фрейм перечитывается по событию live:scan
+// своего предмета (цепочка c:…, ТС v:…, предложение o:…) и при возврате на вкладку — без опроса по таймеру.
+// Поля: «Подставить N» — сколько полей изменится; ничего — кнопка молчит. Итог (done): окно закрывается, тост, и
+// перечитывается то, откуда окно открыли: открытое окошко строки — само, без страницы; под окном писем — страница,
+// когда его закроют; иначе страница морфом на месте.
 export default class extends Controller {
-    static targets = ['count', 'submit', 'all', 'apply', 'changes'];
+    static targets = ['count', 'submit', 'all', 'apply', 'changes', 'done'];
     static values = { busy: Boolean, subject: String, max: Number, url: String };
 
     initialize() {
@@ -27,7 +32,29 @@ export default class extends Controller {
         }
     }
 
-    submitTargetConnected() { this.count(); }
+    submitTargetConnected(button) {
+        this.count();
+        const form = button.form;
+        if (form?.hasAttribute('data-scan-go') && !button.disabled) {
+            form.removeAttribute('data-scan-go');
+            form.requestSubmit(button);
+        }
+    }
+
+    doneTargetConnected(el) {
+        const dialog = this.element.closest('dialog');
+        const frame = this.element.closest('turbo-frame');
+        window.toast?.(el.dataset.message);
+        (dialog ? closeSheet(dialog) : Promise.resolve()).then(() => {
+            // Итог показан — фрейм без адреса: перечитка страницы морфом не должна снова его показать.
+            frame?.removeAttribute('src');
+            const peek = document.querySelector('.peek:not([hidden]) turbo-frame#peek');
+            if (peek?.src) { peek.reload(); return; }
+            const refresh = () => Turbo.visit(location.href, { action: 'replace' });
+            const under = [...document.querySelectorAll('dialog[open]')].find((d) => d !== dialog && d.matches(':modal'));
+            under ? under.addEventListener('close', refresh, { once: true }) : refresh();
+        });
+    }
 
     applyTargetConnected() { this.tally(); }
 

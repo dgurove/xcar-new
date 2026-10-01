@@ -17,10 +17,11 @@ use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
- * «✨ Распознать» (`ScanController`): прочитать отмеченные файлы цепочки или ТС одной пачкой (`DocumentText::read`), по
- * каждому готовому — событие `scan` сотрудникам парковки (окно у всех, кто его открыл, перечитывается). Потом письма
- * с этими файлами перечитываются (`ReadLetter`: прочитанное лежит в кеше и идёт в разбор как слой), цепочка
- * сворачивается заново (у ТС — дело перечитывается) — марка из скана встаёт в карточку, даже если окно закрыли.
+ * «✨ Распознать» (`ScanController`): прочитать отмеченные файлы цепочки, ТС или предложения одной пачкой
+ * (`DocumentText::read`), по каждому готовому — событие `scan` тем, кто может открыть окно (`Subject::topic`): у всех,
+ * кто его открыл, оно перечитывается. Потом письма с этими файлами перечитываются (`ReadLetter`: прочитанное лежит в
+ * кеше и идёт в разбор как слой), цепочка сворачивается заново (у ТС — дело перечитывается) — марка из скана встаёт в
+ * карточку, даже если окно закрыли.
  * Пока файл в работе, на нём метка (`reading`): окно крутит его и не показывает поля, которые ещё сдвинет перечитка.
  * Метка у каждого файла своя — две пачки одной цепочки друг другу её не снимают; живёт не дольше задачи, а убитая
  * по таймауту задача снимает её в `failed`. Очередь `scan` на лёгком воркере: человек ждёт.
@@ -36,7 +37,9 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
 
     public int $tries = 1;
 
-    /** @param string $subject `c:93` — цепочка, `v:266` — ТС (`Scan\Subjects`) @param list<int> $ids */
+    private ?string $topic = null;
+
+    /** @param string $subject `c:93` — цепочка, `v:266` — ТС, `o:512` — предложение (`Scan\Subjects`) @param list<int> $ids */
     public function __construct(public string $subject, public array $ids)
     {
         $this->onQueue('scan');
@@ -92,6 +95,7 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
 
     private function ping(Publisher $publish): void
     {
-        $publish(Topics::PARK, 'scan', ['subject' => $this->subject]);
+        $this->topic ??= Subjects::find($this->subject)?->topic() ?? Topics::STAFF;
+        $publish($this->topic, 'scan', ['subject' => $this->subject]);
     }
 }

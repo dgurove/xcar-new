@@ -372,6 +372,7 @@ class MailController
             ->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
 
         return view('admin.offers.letters', [
+            'offer' => $offer,
             'messages' => $threads->flatMap->messages,
             'candidate' => Candidate::where('offer_id', $offer->id)->latest('id')->first(),
             'base' => $this->base,

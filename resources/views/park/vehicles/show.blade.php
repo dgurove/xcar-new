@@ -370,5 +370,4 @@
         </x-ui.sheet>
     </div>
     <x-mail.window :url="$window" :title="$vehicle->titleWithYear()"/>
-    @if ($canManage)<x-mail.scan-window/>@endif
 </x-ui.shell>

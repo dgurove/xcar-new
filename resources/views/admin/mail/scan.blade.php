@@ -1,13 +1,15 @@
-{{-- «✨ Распознать» (ScanController) у цепочки «Из писем» и в деле ТС ($subject — Scan\Subject) — содержимое окна
-     x-mail.scan-window, три шага одного фрейма:
-     files — документы (миниатюра первой страницы) и фото плитками, документы отмечены, у фото «Выбрать все»;
-     reading — отмеченные списком с полосой готовности, у каждого кольцо или галка; фрейм перечитывается по событию
-     scan (scan_controller, морфом — без мигания); fields — что изменится, тремя группами `.list` (ScanFields::of):
-     «Новое» — переключатель включён, «Расходится» — «было → в документе», выключен; спор документов — выбор
-     галкой; «Совпадает» — свёрнуто. Кнопка считает, сколько полей изменится. Кнопки — полосой у края шторки. --}}
+{{-- «✨ Распознать» (ScanController) — содержимое окна x-mail.scan-window для цепочки «Из писем», ТС и предложения
+     ($subject — Scan\Subject), три шага одного фрейма:
+     files — документы (миниатюра первой страницы) и фото плитками, документы отмечены, у фото «Выбрать все»; go — один
+     файл из шторки документов, форма уходит сама; reading — отмеченные списком с полосой готовности, у каждого кольцо
+     или галка; фрейм перечитывается по событию scan (scan_controller, морфом — без мигания); fields — что изменится,
+     тремя группами `.list` (ScanFields::of): «Новое» — переключатель включён, «Расходится» — «было → в документе»,
+     выключен; спор документов — выбор галкой; «Совпадает» — свёрнуто. Кнопка считает, сколько полей изменится и
+     отвечает в окно итогом (scan-done); «Завести» уводит из окна. Кнопки — полосой у края шторки. --}}
 @php
     use App\Support\Docs;
     $url = $subject->url();
+    $thumb = fn ($a) => $subject->mail().'/attachments/'.$a->id.'?thumb=1';
     $docs = $files->reject->isPhoto();
     $photos = $files->filter->isPhoto();
     $label = fn ($a) => $a->isPhoto() ? 'Фото' : Docs::label((string) $a->filename);
@@ -15,7 +17,7 @@
 <turbo-frame id="scan-frame">
 <div data-controller="scan" data-scan-subject-value="{{ $subject->key() }}" data-scan-max-value="{{ $max }}" data-scan-url-value="{{ $url }}?{{ http_build_query(['ids' => $ids]) }}" @if ($step === 'reading' && $reading) data-scan-busy-value="true" @endif class="scan">
     <div class="scan-for">
-        <span class="font-medium {{ $subject->hasCar() ? 'text-ink' : 'text-ink-muted' }}">{{ $subject->title() }}</span>
+        <span class="font-medium {{ $subject->hasCar() ? 'text-ink' : 'text-ink-muted' }}">{{ $subject->hasCar() ? $subject->title() : 'Марка не распознана' }}</span>
         <x-vendor.ref :vendor="$subject->vendor()" :ref="$subject->ref()"/>
     </div>
 
@@ -23,7 +25,7 @@
         @if ($files->isEmpty())
             <x-ui.empty class="py-8">Файлов нет</x-ui.empty>
         @else
-            <form method="post" action="{{ $url }}" data-action="change->scan#count">
+            <form method="post" action="{{ $url }}" data-action="change->scan#count" @if ($go) data-scan-go @endif>
                 @csrf
                 @if ($docs->isNotEmpty())
                     <div class="list-head">Документы <span class="nums">{{ $docs->count() }}</span></div>
@@ -33,7 +35,7 @@
                                 <input type="checkbox" name="ids[]" value="{{ $a->id }}" @checked(in_array($a->id, $checked, true))>
                                 <span class="scan-sheet">
                                     <x-ui.file-icon :name="$a->filename" :mime="$a->mime" class="scan-icon"/>
-                                    <img src="/mail/attachments/{{ $a->id }}?thumb=1" alt="" loading="lazy" onerror="this.remove()">
+                                    <img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
                                     <span class="scan-check"><x-ui.icon name="check" class="size-3.5"/></span>
                                 </span>
                                 <span class="scan-name">{{ $label($a) }}</span>
@@ -49,7 +51,7 @@
                         @foreach ($photos as $a)
                             <label class="scan-tile" title="{{ $a->filename }}">
                                 <input type="checkbox" name="ids[]" value="{{ $a->id }}" data-photo @checked(in_array($a->id, $checked, true))>
-                                <img src="/mail/attachments/{{ $a->id }}?thumb=1" alt="" loading="lazy">
+                                <img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
                                 <span class="scan-check"><x-ui.icon name="check" class="size-3.5"/></span>
                             </label>
                         @endforeach
@@ -71,7 +73,7 @@
             @foreach ($picked as $a)
                 @php $text = $texts[$a->id]; @endphp
                 <div class="row">
-                    <span class="row-photo row-photo-s"><img src="/mail/attachments/{{ $a->id }}?thumb=1" alt="" loading="lazy" onerror="this.remove()"></span>
+                    <span class="row-photo row-photo-s"><img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()"></span>
                     <span class="min-w-0 flex-1 truncate">{{ $label($a) }}</span>
                     @if ($text !== null && trim($text) !== '')
                         <x-ui.icon name="check-circle" class="size-5 shrink-0 text-accent-text"/>
@@ -98,7 +100,7 @@
             $groups = collect($rows)->groupBy('state', true);
             $sub = fn (string $label, array $from) => '<span>'.e($label).'</span><span>'.e(implode(', ', $from)).'</span>';
         @endphp
-        <form method="post" action="{{ $url }}/apply" data-turbo-frame="_top" data-action="change->scan#tally">
+        <form method="post" action="{{ $url }}/apply" data-action="change->scan#tally">
             @csrf
             @foreach ($ids as $id)<input type="hidden" name="ids[]" value="{{ $id }}">@endforeach
 
@@ -109,14 +111,14 @@
                         @if (count($row['options']) === 1)
                             @php $o = $row['options'][0]; @endphp
                             <label class="row row-switch">
-                                <span class="min-w-0 flex-1"><span class="scan-value">@include('park.requests.scan-value', ['field' => $field, 'text' => $o['text']])</span><span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span></span>
+                                <span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span><span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span></span>
                                 <input type="checkbox" switch class="switch shrink-0" name="pick[{{ $field }}]" value="{{ $o['text'] }}" checked>
                             </label>
                         @else
                             {{-- Документы называют поле по-разному: выбрать одно или оставить пустым. --}}
                             @foreach ($row['options'] as $i => $o)
                                 <label class="row row-check">
-                                    <span class="min-w-0 flex-1"><span class="scan-value">@include('park.requests.scan-value', ['field' => $field, 'text' => $o['text']])</span><span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span></span>
+                                    <span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span><span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span></span>
                                     <span class="check"><input type="radio" name="pick[{{ $field }}]" value="{{ $o['text'] }}" @checked($i === 0)></span>
                                 </label>
                             @endforeach
@@ -137,19 +139,19 @@
                             @php $o = $row['options'][0]; @endphp
                             <label class="row row-switch">
                                 <span class="min-w-0 flex-1">
-                                    <span class="scan-value scan-change"><span class="text-ink-muted">@include('park.requests.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span><span class="text-ink-dim" aria-hidden="true">→</span>@include('park.requests.scan-value', ['field' => $field, 'text' => $o['text']])</span>
+                                    <span class="scan-value scan-change"><span class="text-ink-muted">@include('admin.mail.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span><span class="text-ink-dim" aria-hidden="true">→</span>@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span>
                                     <span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span>
                                 </span>
                                 <input type="checkbox" switch class="switch shrink-0" name="pick[{{ $field }}]" value="{{ $o['text'] }}">
                             </label>
                         @else
                             <label class="row row-check">
-                                <span class="min-w-0 flex-1"><span class="scan-value">@include('park.requests.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span><span class="row-sub">{!! $sub($row['label'], $row['current']['from']) !!}</span></span>
+                                <span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span><span class="row-sub">{!! $sub($row['label'], $row['current']['from']) !!}</span></span>
                                 <span class="check"><input type="radio" name="pick[{{ $field }}]" value="" checked></span>
                             </label>
                             @foreach ($row['options'] as $o)
                                 <label class="row row-check">
-                                    <span class="min-w-0 flex-1"><span class="scan-value scan-change"><span class="text-ink-dim" aria-hidden="true">→</span>@include('park.requests.scan-value', ['field' => $field, 'text' => $o['text']])</span><span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span></span>
+                                    <span class="min-w-0 flex-1"><span class="scan-value scan-change"><span class="text-ink-dim" aria-hidden="true">→</span>@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span><span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span></span>
                                     <span class="check"><input type="radio" name="pick[{{ $field }}]" value="{{ $o['text'] }}"></span>
                                 </label>
                             @endforeach
@@ -163,7 +165,7 @@
                     <summary class="list-head">Совпадает <span class="nums">{{ $groups['same']->count() }}</span><x-ui.icon name="chevron-down" class="scan-chevron size-4 text-ink-dim"/></summary>
                     <div class="list">
                         @foreach ($groups['same'] as $field => $row)
-                            <div class="row"><span class="min-w-0 flex-1"><span class="scan-value">@include('park.requests.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span><span class="row-sub">{!! $sub($row['label'], $row['current']['from']) !!}</span></span></div>
+                            <div class="row"><span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span><span class="row-sub">{!! $sub($row['label'], $row['current']['from']) !!}</span></span></div>
                         @endforeach
                     </div>
                 </details>
@@ -173,13 +175,24 @@
                 <x-ui.empty class="py-8">{{ $groups->has('same') ? 'Документы подтверждают то, что есть' : 'Ничего не нашлось' }}</x-ui.empty>
             @endif
 
+            @php
+                $files = $url.'?'.http_build_query(['ids' => $ids, 'files' => 1]);
+                // Сколько изменится сразу: «Новое» включено, «Расходится» выключено (то же считает scan#tally).
+                $changes = count($groups['new'] ?? []);
+            @endphp
             <div class="scan-foot flex items-center gap-2">
-                <a href="{{ $url }}?{{ http_build_query(['ids' => $ids, 'files' => 1]) }}" class="btn btn-quiet !px-3" data-turbo-frame="scan-frame" aria-label="Файлы" title="Файлы"><x-ui.icon name="chevron-left" class="size-5"/></a>
-                @if ($subject->creates())
-                    <button name="then" value="stay" class="btn btn-quiet flex-1" data-scan-target="apply">Подставить <span class="nums" data-scan-target="changes"></span></button>
-                    <button name="then" value="create" class="btn btn-accent flex-1">Завести</button>
+                @if (! $groups->has('new') && ! $groups->has('differs'))
+                    {{-- Подставлять нечего — только назад к файлам: может, нужный документ не отмечен. --}}
+                    <a href="{{ $files }}" class="btn btn-quiet flex-1" data-turbo-frame="scan-frame">Другие файлы</a>
+                    @if ($subject->creates())<button name="then" value="create" class="btn btn-accent flex-1" data-turbo-frame="_top">Завести</button>@endif
                 @else
-                    <button name="then" value="stay" class="btn btn-accent flex-1" data-scan-target="apply">Подставить <span class="nums" data-scan-target="changes"></span></button>
+                    <a href="{{ $files }}" class="btn btn-quiet !px-3" data-turbo-frame="scan-frame" aria-label="Файлы" title="Файлы"><x-ui.icon name="chevron-left" class="size-5"/></a>
+                    @if ($subject->creates())
+                        <button name="then" value="stay" class="btn btn-quiet flex-1" data-scan-target="apply" @disabled(! $changes)>Подставить <span class="nums" data-scan-target="changes">{{ $changes ?: '' }}</span></button>
+                        <button name="then" value="create" class="btn btn-accent flex-1" data-turbo-frame="_top">Завести</button>
+                    @else
+                        <button name="then" value="stay" class="btn btn-accent flex-1" data-scan-target="apply" @disabled(! $changes)>Подставить <span class="nums" data-scan-target="changes">{{ $changes ?: '' }}</span></button>
+                    @endif
                 @endif
             </div>
         </form>

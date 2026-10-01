@@ -103,14 +103,40 @@ final class FillFromDocs
                 }
             }
 
+            Cache::forever(self::flagKey($vehicle->id), (bool) $out);
+
             return $out;
         });
     }
 
-    /** Документы ТС прочитаны заново («✨»): расхождения пересчитать при следующем показе дела. */
+    /**
+     * Метка «в документе иначе» без разбора писем — для строк таблицы, плиток и окошка (`Park\Alerts`): ставит
+     * `differences`, снимает `forget`. Пока дело с документами никто не открывал — метки нет.
+     */
+    public static function flagged(Vehicle $vehicle): bool
+    {
+        return (bool) Cache::memo()->get(self::flagKey($vehicle->id));
+    }
+
+    /** Метки многих ТС одним чтением кэша (ключ строки таблицы, `TableRows`). @return array<int, bool> */
+    public static function flags(iterable $vehicles): array
+    {
+        $ids = collect($vehicles)->pluck('id');
+        $got = $ids->isEmpty() ? [] : Cache::memo()->many($ids->map(fn ($id) => self::flagKey($id))->all());
+
+        return $ids->mapWithKeys(fn ($id) => [$id => (bool) ($got[self::flagKey($id)] ?? false)])->all();
+    }
+
+    /** Документы ТС прочитаны заново («✨») или правили её поля: расхождения пересчитать при следующем показе дела. */
     public static function forget(Vehicle $vehicle): void
     {
         Cache::forever("park:docdiff:v:{$vehicle->id}", (int) Cache::get("park:docdiff:v:{$vehicle->id}", 0) + 1);
+        Cache::forget(self::flagKey($vehicle->id));
+    }
+
+    private static function flagKey(int $id): string
+    {
+        return "park:docdiff:has:{$id}";
     }
 
     /** Взять значение документа вместо карточки: только то, что `differences` и показывает. */

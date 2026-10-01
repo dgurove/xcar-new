@@ -11,7 +11,7 @@
     <x-ui.card title="Транспортное средство">
         @if ($scan)
             <x-slot:actions>
-                <x-park.scan-button :vehicle="$vehicle"/>
+                <x-mail.scan-button :url="'/cars/'.$vehicle->id.'/scan'"/>
             </x-slot:actions>
         @endif
         <x-park.doc-differences :vehicle="$vehicle" :differences="$differences" class="mb-3"/>
@@ -27,7 +27,7 @@
             @if ($differences)<x-ui.state tone="urgent">в документе иначе</x-ui.state>@endif
             <span class="ml-auto flex items-center gap-2 self-center">
                 @if ($scan)
-                    <x-park.scan-button :vehicle="$vehicle"/>
+                    <x-mail.scan-button :url="'/cars/'.$vehicle->id.'/scan'"/>
                 @endif
                 <x-ui.icon name="chevron-down" class="phase-chevron size-5 shrink-0 text-ink-dim"/>
             </span>

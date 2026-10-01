@@ -5,12 +5,17 @@ namespace App\Mail\Scan;
 use App\Mail\Actions\ApplyScan;
 use App\Mail\Candidate;
 use App\Mail\Chains\ChainBuilder;
+use App\Live\Topics;
 use App\Mail\Extraction\ScanFields;
+use App\Mail\Scope;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Collection;
 
-/** «✨» у цепочки «Из писем»: файлы всех её писем, выбор — в `Candidate::chosen`, после чтения — свёртка заново. */
+/**
+ * «✨» у цепочки «Из писем» парковки или CRM: файлы всех её писем, выбор — в `Candidate::chosen` (оттуда его берут
+ * «Завести» и разбор письма), после чтения — свёртка заново.
+ */
 final class CandidateSubject implements Subject
 {
     public function __construct(public readonly Candidate $candidate) {}
@@ -22,7 +27,22 @@ final class CandidateSubject implements Subject
 
     public function url(): string
     {
-        return "/requests/from-mail/{$this->candidate->id}/scan";
+        return $this->park() ? "/requests/from-mail/{$this->candidate->id}/scan" : "/offers/from-mail/{$this->candidate->id}/scan";
+    }
+
+    public function mail(): string
+    {
+        return $this->park() ? '/mail' : '/work/mail';
+    }
+
+    public function topic(): string
+    {
+        return $this->park() ? Topics::PARK : Topics::STAFF;
+    }
+
+    public function fields(): array
+    {
+        return $this->park() ? array_keys(ScanFields::LABELS) : ScanFields::CAR;
     }
 
     public function title(): string
@@ -45,9 +65,10 @@ final class CandidateSubject implements Subject
         return $this->candidate->code;
     }
 
+    /** «Завести» из окна — разбор письма парковки; в CRM заводят кнопкой шапки цепочки, черновиком сразу. */
     public function creates(): bool
     {
-        return true;
+        return $this->park();
     }
 
     public function files(): Collection
@@ -70,5 +91,10 @@ final class CandidateSubject implements Subject
     public function refresh(): void
     {
         app(ChainBuilder::class)->fold($this->candidate->refresh());
+    }
+
+    private function park(): bool
+    {
+        return $this->candidate->scope === Scope::Park;
     }
 }

@@ -27,6 +27,7 @@ use App\Http\Admin\VendorController;
 use App\Http\Admin\WorkflowController;
 use App\Http\Cabinet\InviteController;
 use App\Http\Cabinet\ProfileController;
+use App\Http\Mail\ScanController;
 use App\Http\Site\ShareController;
 use App\Purchases\Car;
 use App\Purchases\Purchase;
@@ -44,9 +45,16 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::post('/offers/from-mail/{candidate}/create', [MailController::class, 'promote']);
     Route::post('/offers/from-mail/{candidate}/decline', [MailController::class, 'decline']);
     Route::get('/offers/from-mail/{candidate}/letters', [MailController::class, 'candidateLetters']);
+    // «✨ Распознать» — то же окно, что на парковке (ScanController): у цепочки «Из писем» и у предложения.
+    Route::get('/offers/from-mail/{candidate}/scan', [ScanController::class, 'show']);
+    Route::post('/offers/from-mail/{candidate}/scan', [ScanController::class, 'scan']);
+    Route::post('/offers/from-mail/{candidate}/scan/apply', [ScanController::class, 'apply']);
     Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
     Route::get('/offers/{offer}/peek', [OfferController::class, 'peek']);
     Route::get('/offers/{offer}/letters', [MailController::class, 'offerLetters']);
+    Route::get('/offers/{offer}/scan', [ScanController::class, 'offerShow']);
+    Route::post('/offers/{offer}/scan', [ScanController::class, 'offerScan']);
+    Route::post('/offers/{offer}/scan/apply', [ScanController::class, 'offerApply']);
     Route::get('/offers/{offer}/row', [OfferController::class, 'row']);
     Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
     Route::post('/work/invoices', [InvoiceController::class, 'store']);

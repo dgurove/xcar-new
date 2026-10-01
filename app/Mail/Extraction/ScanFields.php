@@ -2,11 +2,14 @@
 
 namespace App\Mail\Extraction;
 
+use App\Cars\Brand;
+use App\Cars\CarModel;
 use App\Cars\Colors;
 use App\Cars\Names;
 use App\Mail\Attachment;
 use App\Mail\Candidate;
 use App\Mail\Scan\Files;
+use App\Offers\Offer;
 use App\Park\Vehicle;
 
 /**
@@ -17,6 +20,9 @@ use App\Park\Vehicle;
 final class ScanFields
 {
     public const LABELS = ['car' => 'Машина', 'vin' => 'VIN', 'year' => 'Год', 'color' => 'Цвет', 'plate' => 'Госномер', 'value' => 'Стоимость'];
+
+    /** Поля предложения CRM: госномера и страховой стоимости у него нет. */
+    public const CAR = ['car', 'vin', 'year', 'color'];
 
     /** Что знает цепочка «Из писем»: поле → значение и откуда («письмо», «выбрано», «по VIN»). */
     public static function ofCandidate(Candidate $candidate): array
@@ -35,12 +41,28 @@ final class ScanFields
         return $current;
     }
 
+    /** Что стоит в карточке предложения CRM — «в карточке». */
+    public static function ofOffer(Offer $offer): array
+    {
+        $current = [];
+        if ($offer->brand) {
+            $current['car'] = ['value' => self::car($offer->brand, $offer->model), 'from' => 'в карточке'];
+        }
+        foreach (['vin', 'year', 'color'] as $field) {
+            if (! blank($offer->{$field})) {
+                $current[$field] = ['value' => $offer->{$field}, 'from' => 'в карточке'];
+            }
+        }
+
+        return $current;
+    }
+
     /** Что стоит в карточке заведённой ТС — «в деле». */
     public static function ofVehicle(Vehicle $vehicle): array
     {
         $current = [];
         if ($vehicle->brand) {
-            $current['car'] = ['value' => ['brand' => preg_replace('/\s*\(.*\)/u', '', $vehicle->brand->name) ?: $vehicle->brand->name, 'model' => $vehicle->model?->name], 'from' => 'в деле'];
+            $current['car'] = ['value' => self::car($vehicle->brand, $vehicle->model), 'from' => 'в деле'];
         }
         foreach (['vin', 'year', 'color', 'plate', 'value'] as $field) {
             if (! blank($vehicle->{$field})) {
@@ -49,6 +71,12 @@ final class ScanFields
         }
 
         return $current;
+    }
+
+    /** Марка без «(ВАЗ)» — как её пишут документы, с моделью карточки. */
+    private static function car(Brand $brand, ?CarModel $model): array
+    {
+        return ['brand' => preg_replace('/\s*\(.*\)/u', '', $brand->name) ?: $brand->name, 'model' => $model?->name];
     }
 
     /**
@@ -60,19 +88,21 @@ final class ScanFields
      *
      * @param  array<string, array{value: mixed, from: string}>  $current  что уже знает цепочка или ТС (`ofCandidate`, `ofVehicle`)
      * @param  iterable<array{0: Attachment, 1: string, 2?: bool}>  $docs  вложение, его текст и «это фото»
+     * @param  list<string>|null  $fields  какие поля у предмета бывают (`Subject::fields`), null — все
      * @return array<string, array{label: string, state: string, current: ?array{value: mixed, text: string, from: list<string>}, options: list<array{value: mixed, text: string, from: list<string>}>}>
      */
-    public static function of(array $current, iterable $docs): array
+    public static function of(array $current, iterable $docs, ?array $fields = null): array
     {
+        $labels = $fields === null ? self::LABELS : array_intersect_key(self::LABELS, array_flip($fields));
         $found = [];
         foreach ($docs as $doc) {
             [$attachment, $text] = $doc;
             $from = Files::label($attachment, (bool) ($doc[2] ?? false));
-            $fields = self::values(DocumentFields::extract($text));
-            if (self::otherCar($current, $fields)) {
+            $values = self::values(DocumentFields::extract($text));
+            if (self::otherCar($current, $values)) {
                 continue;
             }
-            foreach ($fields as $field => $value) {
+            foreach ($values as $field => $value) {
                 $label = self::text($field, $value);
                 if ($label === '') {
                     continue;
@@ -85,7 +115,7 @@ final class ScanFields
         }
 
         $out = [];
-        foreach (self::LABELS as $field => $label) {
+        foreach ($labels as $field => $label) {
             $now = isset($current[$field]) ? ['value' => $current[$field]['value'], 'text' => self::text($field, $current[$field]['value']), 'from' => [$current[$field]['from']]] : null;
             $options = $found[$field] ?? [];
             if ($now && isset($options[self::key($now['text'])])) {

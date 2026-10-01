@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Billing\Accrual;
+use App\Park\Actions\FillFromDocs;
 use App\Vendors\Tariff;
 use App\Vendors\TariffService;
 
@@ -17,8 +18,15 @@ final class Alerts
     /** У вендора нет прайса на эту ТС — списком не починить, нужны цены из договора. */
     public const NO_TARIFF = 'Нет тарифа';
 
-    /** @return list<array{label: string, tone: string}> */
-    public static function of(Vehicle $vehicle): array
+    /** Карточка ТС и её документы расходятся (`FillFromDocs::flagged`). */
+    public const DOCS = 'В документе иначе';
+
+    /**
+     * docs=false — без «В документе иначе»: в шапке дела его показывают сами поля.
+     *
+     * @return list<array{label: string, tone: string}>
+     */
+    public static function of(Vehicle $vehicle, bool $docs = true): array
     {
         $state = $vehicle->state;
         $out = [];
@@ -38,6 +46,9 @@ final class Alerts
         }
         if (! $state->isFinal() && $vehicle->noLetters()) {
             $out[] = ['label' => 'Писем нет', 'tone' => 'urgent'];
+        }
+        if ($docs && ! $state->isFinal() && FillFromDocs::flagged($vehicle)) {
+            $out[] = ['label' => self::DOCS, 'tone' => 'urgent'];
         }
 
         return $out;

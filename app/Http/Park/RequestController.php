@@ -113,7 +113,7 @@ class RequestController
     {
         abort_unless(Scope::allows($http->user(), $req->vehicle), 404);
 
-        return $vehicles->peek($req->vehicle);
+        return $vehicles->peek($http, $req->vehicle);
     }
 
     /**

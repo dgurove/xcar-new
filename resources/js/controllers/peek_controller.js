@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
-import { reduce } from '../sheet';
+import { reduce, sheetInHistory } from '../sheet';
 
 // Таблица списка и её окошко (peek). Нажатие по строке выделяет её и открывает
 // окошко (фрейм peek грузит карточку строки), по той же — закрывает, по другой —
@@ -27,7 +27,7 @@ export default class extends Controller {
         this.onKey = (e) => { if (e.key === 'Escape' && !this.panelTarget.hidden && !document.body.classList.contains('viewer-open')) this.close(); };
         this.onPop = (e) => this.popped(e);
         this.onVisit = () => { this.inHistory = false; };
-        this.onCache = () => this.reset();
+        this.onCache = () => { if (!sheetInHistory()) this.reset(); };
         this.onClick = (e) => this.leave(e);
         this.onSubmit = (e) => this.submit(e);
         addEventListener('keydown', this.onKey, true);

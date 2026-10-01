@@ -1,13 +1,13 @@
 <?php
 
 use App\Http\Admin\ReferenceController;
+use App\Http\Mail\ScanController;
 use App\Http\Park\ActController;
 use App\Http\Park\MailController;
 use App\Http\Park\MoneyController;
 use App\Http\Park\PartyController;
 use App\Http\Park\PassController;
 use App\Http\Park\RequestController;
-use App\Http\Park\ScanController;
 use App\Http\Park\TariffController;
 use App\Http\Park\VehicleController;
 use App\Http\Park\VehicleInvoiceController;

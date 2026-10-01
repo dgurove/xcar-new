@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
-import { reduce } from '../sheet';
+import { reduce, sheetInHistory } from '../sheet';
 
 // Шторка документов (x-ui.docs, одна на страницу в x-ui.shell): скан заявки, СТС, Excel, письмо, фото —
 // внутри интерфейса, а не в Quick Look, из которого установленное приложение на iPhone не выпускает.
@@ -12,7 +12,10 @@ import { reduce } from '../sheet';
 // Рисует ../docs/viewer.js (pdf.js, картинка, Excel и Word с сервера, письмо, фото) — отдельным куском.
 // Высота и ширина помнятся (localStorage); форма, отправленная при открытой шторке, вернётся на ту же
 // страницу — шторка откроется снова на том же документе. `a[data-doc-auto]` открывается сам.
+// ✨ — открытое вложение письма (скан, фото) в окно «Распознать» предмета страницы (`[data-scan-subject]` у
+// x-mail.scan-button): окно сразу читает этот файл (`?only=`).
 const FILE = /^\/(?:files|(?:[\w-]+\/)*mail\/attachments)\/\d+\/?$/;
+const ATTACHMENT = /\/mail\/attachments\/(\d+)\/?$/;
 const SNAPS = [.3, .55, .88];
 const wide = matchMedia('(min-width: 1024px)');
 const store = {
@@ -22,7 +25,7 @@ const store = {
 const html = document.documentElement;
 
 export default class extends Controller {
-    static targets = ['tabs', 'body', 'count', 'rotate', 'download'];
+    static targets = ['tabs', 'body', 'count', 'rotate', 'download', 'scan'];
 
     connect() {
         this.items = [];
@@ -30,7 +33,8 @@ export default class extends Controller {
         this.onClick = (e) => this.intercept(e);
         this.onFocus = (e) => this.focused(e);
         this.onSubmit = () => this.rememberOpen();
-        this.onCache = () => this.close(true);
+        this.onCache = () => { if (!sheetInHistory()) this.close(true); };
+        this.onMorph = () => this.restore({ auto: false });
         this.onViewport = () => this.fit();
         this.onWide = () => this.relayout();
         this.onMove = (e) => this.dragMove(e);
@@ -42,6 +46,7 @@ export default class extends Controller {
         document.addEventListener('focusin', this.onFocus);
         document.addEventListener('turbo:submit-start', this.onSubmit);
         document.addEventListener('turbo:before-cache', this.onCache);
+        document.addEventListener('turbo:morph', this.onMorph);
         window.visualViewport?.addEventListener('resize', this.onViewport);
         addEventListener('resize', this.onViewport);
         wide.addEventListener('change', this.onWide);
@@ -55,6 +60,7 @@ export default class extends Controller {
         document.removeEventListener('focusin', this.onFocus);
         document.removeEventListener('turbo:submit-start', this.onSubmit);
         document.removeEventListener('turbo:before-cache', this.onCache);
+        document.removeEventListener('turbo:morph', this.onMorph);
         window.visualViewport?.removeEventListener('resize', this.onViewport);
         removeEventListener('resize', this.onViewport);
         wide.removeEventListener('change', this.onWide);
@@ -65,8 +71,9 @@ export default class extends Controller {
         html.style.removeProperty('--docs-w');
     }
 
-    // После сохранения формы — тот же документ; иначе тот, что страница просит открыть сразу.
-    restore() {
+    // После сохранения формы — тот же документ; иначе тот, что страница просит открыть сразу. Перечитка страницы на
+    // месте (морф: «Подставить» в окне «Распознать», открытом из шторки) — только тот же документ.
+    restore({ auto = true } = {}) {
         let again = null;
         try {
             again = JSON.parse(sessionStorage.getItem('docs:again') || 'null');
@@ -77,8 +84,8 @@ export default class extends Controller {
             const a = links.find((l) => this.key(l) === again.key);
             if (a) { this.open(a, { instant: true }); return; }
         }
-        const auto = links.find((l) => l.hasAttribute('data-doc-auto'));
-        if (auto) this.open(auto, { auto: true });
+        const first = auto && links.find((l) => l.hasAttribute('data-doc-auto'));
+        if (first) this.open(first, { auto: true });
     }
 
     rememberOpen() {
@@ -163,6 +170,7 @@ export default class extends Controller {
         this.tabsTarget.children[i]?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
         this.countTarget.textContent = '';
         this.rotateTarget.hidden = !['pdf', 'image', ''].includes(item.type);
+        this.scanTarget.hidden = !this.scanUrl(item);
         const file = !['letter', 'photos'].includes(item.type);
         this.downloadTarget.hidden = !file;
         if (file) this.downloadTarget.href = item.url;
@@ -187,6 +195,20 @@ export default class extends Controller {
 
     rotate() {
         this.view?.rotate?.();
+    }
+
+    // Адрес окна «Распознать» с этим файлом: вложение письма (не файл из архива), скан или фото, и на странице есть
+    // предмет с ✨ — вне окон: под окном писем шторка не открывается.
+    scanUrl(item) {
+        const url = new URL(item.url, location.href);
+        const id = ['pdf', 'image'].includes(item.type) && !url.searchParams.has('entry') && url.pathname.match(ATTACHMENT)?.[1];
+        const subject = id && [...document.querySelectorAll('[data-scan-subject]')].find((b) => !b.closest('dialog'))?.dataset.scanSubject;
+        return subject ? `${subject}?only=${id}` : null;
+    }
+
+    scan() {
+        const url = this.scanUrl(this.items[this.index] ?? {});
+        if (url) window.dispatchEvent(new CustomEvent('scan:open', { detail: { url } }));
     }
 
     reveal(instant) {

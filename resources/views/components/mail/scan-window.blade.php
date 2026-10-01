@@ -1,6 +1,8 @@
-{{-- Окно «✨ Распознать» — одно на страницу, как окно писем: шторка tall с фреймом scan-frame. Событие scan:open
-     с url (кнопка ✨ в x-mail.chain-head) грузит во фрейм файлы цепочки (ScanController). --}}
-<div data-controller="sheet window" data-action="scan:open@window->window#open" class="contents">
+{{-- Окно «✨ Распознать» — одно на приложение (x-ui.shell у сотрудников парковки и CRM), как шторка документов:
+     шторка tall с фреймом scan-frame поверх того, откуда её открыли. Событие scan:open с url (x-mail.scan-button)
+     грузит во фрейм файлы цепочки, ТС или предложения (ScanController); страницу после «Подставить» перечитывает
+     scan_controller, не закрытие окна. --}}
+<div data-controller="sheet window" data-window-reload-value="false" data-action="scan:open@window->window#open" class="contents">
     <x-ui.sheet id="scan" title="Распознать" tall>
         <template data-skeleton><x-ui.skeleton :rows="2"/></template>
         <turbo-frame id="scan-frame" refresh="morph" data-window-target="frame"><x-ui.skeleton :rows="2"/></turbo-frame>
