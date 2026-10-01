@@ -264,7 +264,16 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function canLinkTelegram(): bool
     {
         return ($this->isManager() || $this->isAdmin()) && $this->telegram_chat_id === null && ! $this->is_demo
-            && ! Impersonation::active() && app(Bot::class)->username() !== null;
+            && app(Bot::class)->username() !== null;
+    }
+
+    /**
+     * Привязать по-настоящему можно только свой Telegram: под «Войти как» админ видит всё, что видит человек,
+     * но шторка в Telegram не ведёт — иначе к чужому аккаунту привязался бы Telegram админа (решение владельца 01.10.2026).
+     */
+    public function linksOwnTelegram(): bool
+    {
+        return ! Impersonation::active();
     }
 
     /**

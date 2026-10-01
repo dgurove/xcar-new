@@ -7,15 +7,21 @@
     $user = auth()->user();
     $bot = app(\App\Telegram\Bot::class);
     $can = $user?->canLinkTelegram() ?? false;
-    $start = $can ? \App\Telegram\StartLink::link($user) : null;
+    // Под «Войти как» ссылки привязки нет вовсе: кнопка показывает, что подключает сам человек.
+    $foreign = $can && ! $user->linksOwnTelegram();
+    $start = $can && ! $foreign ? \App\Telegram\StartLink::link($user) : null;
     $moments = $can ? $user->telegramMoments() : [];
 @endphp
 @if ($can)
     {{-- Постоянная между визитами: морф после подтверждения ценой не закрывает только что открытую шторку. --}}
     <div class="contents" id="telegram-connect" data-turbo-permanent data-controller="sheet telegram" data-telegram-mode-value="link"
         data-telegram-moments-value='@json($moments)'
-        data-telegram-app-value="tg://resolve?domain={{ $bot->username() }}&start={{ $start }}"
-        data-telegram-web-value="{{ $bot->startUrl($start) }}">
+        @if ($foreign)
+            data-telegram-foreign-value="1"
+        @else
+            data-telegram-app-value="tg://resolve?domain={{ $bot->username() }}&start={{ $start }}"
+            data-telegram-web-value="{{ $bot->startUrl($start) }}"
+        @endif>
         <x-ui.sheet id="telegram-connect-sheet" bare>
             <div class="tg-step" data-telegram-target="step" data-step="offer">
                 <x-telegram.bubble :message="\App\Telegram\Preview::for($user)"/>
@@ -24,6 +30,7 @@
                     <p>{{ $user->isManager() ? 'Когда выбрали вас, нужен ваш ответ или пришли деньги. Без рассылок' : 'Оплаты, выплаты и просроченные счета с кнопкой решения' }}</p>
                 </div>
                 <div class="flex flex-col gap-1">
+                    @if ($foreign)<p class="tg-stop" data-telegram-target="stop" hidden>Вы вошли как {{ $user->firstName() }}. Telegram {{ $user->isManager() ? 'менеджер' : 'человек' }} подключает сам, со своего телефона</p>@endif
                     <button type="button" class="btn btn-telegram w-full" data-action="telegram#go"><x-telegram.logo plain/>Подключить Telegram</button>
                     <button type="button" class="btn btn-ghost w-full" data-action="telegram#dismiss">Не сейчас</button>
                 </div>
@@ -36,7 +43,7 @@
                     <p>Вернитесь сюда, всё подключится само</p>
                 </div>
                 {{-- С компьютера Telegram обычно в телефоне: камерой по коду. --}}
-                <div class="tg-qr hidden sm:block">{!! \App\Support\Qr::svg($bot->startUrl($start)) !!}</div>
+                @if ($start)<div class="tg-qr hidden sm:block">{!! \App\Support\Qr::svg($bot->startUrl($start)) !!}</div>@endif
                 <div class="flex flex-col gap-1">
                     <button type="button" class="btn btn-quiet w-full" data-action="telegram#go">Открыть Telegram</button>
                     <button type="button" class="btn btn-ghost w-full" data-action="telegram#dismiss">Отмена</button>

@@ -7,11 +7,12 @@ import { openSheet, closeSheet } from '../sheet';
 //           telegram:open (карточка «Сделок», строка профиля, настройки) и сама: один раз при входе на
 //           /offers или /deals и после подтверждения ценой — если сервер разрешил момент (moments).
 //   login — «Войти через Telegram» на странице входа: ожидание прямо в кнопке, вход после «Войти» в чате.
+// Под «Войти как» (foreign) шторка, строка и карточка те же, а «Подключить» останавливает тостом.
 // Переход в Telegram — сразу в приложение (tg://), а если его нет — через t.me. Ответ приходит событием хаба
 // live:telegram или, когда человек вернулся на вкладку, вопросом серверу.
 export default class extends Controller {
-    static targets = ['step', 'scene', 'label', 'cancel', 'title'];
-    static values = { mode: String, token: String, moments: Array, app: String, web: String };
+    static targets = ['step', 'scene', 'label', 'cancel', 'title', 'stop'];
+    static values = { mode: String, token: String, moments: Array, app: String, web: String, foreign: Boolean };
 
     connect() {
         this.onLive = (e) => this.live(e.detail || {});
@@ -63,7 +64,8 @@ export default class extends Controller {
         if (!dialog || dialog.open) return;
         if (moment) {
             this.momentsValue = this.momentsValue.filter((m) => m !== moment);
-            this.post('/account/telegram/seen', { moment });
+            // Под «Войти как» у человека ничего не тратим: он увидит шторку сам.
+            if (!this.foreignValue) this.post('/account/telegram/seen', { moment });
         }
         // После подтверждения ценой заголовок — про эту минуту: «Узнайте первым, если выберут вас».
         if (this.hasTitleTarget) {
@@ -89,6 +91,12 @@ export default class extends Controller {
 
     // «Подключить Telegram» / «Открыть Telegram» / «Войти через Telegram».
     go() {
+        // Чужой аккаунт («Войти как»): всё видно, но в Telegram не ведём — привязался бы Telegram админа.
+        if (this.foreignValue) {
+            if (this.hasStopTarget) this.stopTarget.hidden = false;
+            navigator.vibrate?.([10, 40, 10]);
+            return;
+        }
         this.waiting = true;
         if (this.modeValue === 'login') this.pending(true);
         else this.show('wait');
