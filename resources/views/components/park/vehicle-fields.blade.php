@@ -1,23 +1,12 @@
 {{-- Поля тождества ТС одной сеткой — дело и новая заявка (одни имена, правила — Park\VehicleFields).
      Без ТС — новая, значения из $values (разбор письма, old). Негабарита и повреждений тут нет.
      Такая ТС уже есть (номер убытка, VIN, госномер) — строками под полями сразу при вводе (twins_controller). --}}
-@props(['vehicle' => null, 'values' => [], 'vendors', 'categories', 'brand' => null, 'model' => null, 'cols' => 'grid-cols-2 sm:grid-cols-3', 'candidate' => null, 'differences' => []])
+@props(['vehicle' => null, 'values' => [], 'vendors', 'categories', 'brand' => null, 'model' => null, 'cols' => 'grid-cols-2 sm:grid-cols-3', 'candidate' => null])
 @php
     $v = fn (string $k) => old($k, $vehicle?->{$k} ?? $values[$k] ?? null);
     $brand ??= $vehicle?->brand; $model ??= $vehicle?->model;
 @endphp
 <div {{ $attributes->merge(['class' => 'grid gap-3 '.$cols]) }} data-controller="twins" data-twins-url-value="/reference/twins" data-twins-except-value="{{ $vehicle?->id }}" data-twins-candidate-value="{{ $candidate }}" data-action="input->twins#changed">
-    {{-- Карточка и документы дела расходятся (FillFromDocs::differences): чип — взять значение документа. Кнопка
-         отправляет форму вокруг на свой адрес — вложенной формы быть не может. --}}
-    @if ($vehicle && $differences)
-        <div class="col-span-full flex flex-wrap gap-1.5">
-            @foreach ($differences as $field => $d)
-                <button type="submit" class="chip" formaction="/cars/{{ $vehicle->id }}/take" formmethod="post" formnovalidate name="take" value="{{ $field }}|{{ $d['value'] }}"
-                    data-turbo-confirm="{{ \App\Support\FieldLabels::list([$field === 'model' ? 'model_id' : $field]) }}: «{{ $d['value'] }}» из документа ({{ implode(', ', $d['sources']) }})?"
-                    data-turbo-confirm-label="Взять"><span class="text-ink-dim">в документе</span> <span class="{{ in_array($field, ['vin', 'year', 'value'], true) ? 'nums' : '' }}">{{ $d['value'] }}</span></button>
-            @endforeach
-        </div>
-    @endif
     <x-ui.field name="ref" label="Номер убытка" :value="$v('ref')" autocapitalize="characters" autocorrect="off" spellcheck="false" copy/>
     <x-ui.field name="policy_no" label="№ полиса" :value="$v('policy_no')" copy/>
     <x-ui.field name="vendor_id" label="Вендор" :options="$vendors" placeholder="—" :value="$v('vendor_id')"/>

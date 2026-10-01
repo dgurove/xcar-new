@@ -5,14 +5,15 @@ namespace App\Park\Actions;
 use App\Cars\Colors;
 use App\Cars\Names;
 use App\Cars\Vin\VinDecoder;
+use App\Cars\Vin\VinFact;
 use App\Cars\Vin\VinText;
 use App\Mail\Direction;
 use App\Mail\Extraction\DocumentFields;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ScanCar;
-use App\Mail\Extraction\ScanFields;
 use App\Mail\Message;
+use App\Mail\Scan\Files;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Users\User;
@@ -30,15 +31,6 @@ use Illuminate\Support\Facades\Cache;
 final class FillFromDocs
 {
     private const FIELDS = ['vin', 'plate', 'year', 'color', 'value', 'model'];
-
-    /** Производитель по VIN другой марки, но та же машина: Belgee делает Geely, Skoda в Калуге — Volkswagen. */
-    private const MAKERS = [
-        'belgee' => ['geely'], 'skoda' => ['volkswagen'], 'audi' => ['volkswagen'], 'kia' => ['avtotor', 'hyundai'],
-        'genesis' => ['avtotor', 'hyundai'], 'hyundai' => ['avtotor'], 'solaris' => ['hyundai', 'avtotor'], 'jetour' => ['chery'],
-        'exeed' => ['chery'], 'omoda' => ['chery'], 'jaecoo' => ['chery'], 'tenet' => ['chery'], 'tank' => ['great wall'],
-        'haval' => ['great wall'], 'vaz' => ['lada', 'avtovaz'], 'lexus' => ['toyota'], 'subaru' => ['fuji'], 'gaz' => ['газ'],
-        'mini' => ['bmw'], 'li-auto' => ['lixiang', 'li auto'],
-    ];
 
     public function __construct(private UpdateVehicle $update) {}
 
@@ -101,7 +93,9 @@ final class FillFromDocs
     {
         $letters = $vehicle->threads()->withCount('messages')->get()->sum('messages_count');
 
-        return Cache::remember("park:docdiff:{$vehicle->id}:{$vehicle->updated_at?->timestamp}:{$letters}", 86400, function () use ($vehicle) {
+        $version = Cache::get("park:docdiff:v:{$vehicle->id}", 0);
+
+        return Cache::remember("park:docdiff:{$vehicle->id}:{$vehicle->updated_at?->timestamp}:{$letters}:{$version}", 86400, function () use ($vehicle) {
             $out = [];
             foreach ($this->plan($vehicle->loadMissing(['brand', 'model', 'threads.messages.attachments']))['disputed'] as $d) {
                 if (isset($d['current'], $d['value']) && ! isset($out[$d['field']])) {
@@ -111,6 +105,12 @@ final class FillFromDocs
 
             return $out;
         });
+    }
+
+    /** Документы ТС прочитаны заново («✨»): расхождения пересчитать при следующем показе дела. */
+    public static function forget(Vehicle $vehicle): void
+    {
+        Cache::forever("park:docdiff:v:{$vehicle->id}", (int) Cache::get("park:docdiff:v:{$vehicle->id}", 0) + 1);
     }
 
     /** Взять значение документа вместо карточки: только то, что `differences` и показывает. */
@@ -128,6 +128,9 @@ final class FillFromDocs
             ($this->update)($vehicle, ['model_id' => $model->id], $by, $diff['sources']);
 
             return true;
+        }
+        if ($field === 'vin' && $this->vinTaken($vehicle, $value)) {
+            return false;
         }
         ($this->update)($vehicle, [$field => $value], $by, $diff['sources']);
 
@@ -171,7 +174,6 @@ final class FillFromDocs
         };
         $messages = $vehicle->threads->flatMap(fn ($t) => $t->messages)
             ->filter(fn (Message $m) => $m->direction === Direction::In && ! in_array($m->intent, [Intent::Billing->value, Intent::Auto->value], true));
-        $seen = [];
         foreach ($messages as $message) {
             // Письмо о нескольких машинах («выдать ТС А и Б») — его VIN и номер про одну из них.
             $single = count(array_filter($message->keys(), fn ($k) => str_starts_with($k, 'code:'))) <= 1;
@@ -180,28 +182,26 @@ final class FillFromDocs
                     $add($field, $item['value'], 'письмо');
                 }
             }
-            foreach ($message->files() as $attachment) {
-                $key = $attachment->blob_sha ?: $attachment->fileKey();
-                if (isset($seen[$key]) || ! DocumentText::scannable($attachment)) {
-                    continue;
+        }
+        // Файлы — те же, что видит «✨» в деле (`Scan\Files`), подписи — те же, что уйдут в историю дела.
+        foreach (Files::of($messages) as $attachment) {
+            $text = $attachment->isImage() ? DocumentText::cached($attachment) : DocumentText::layer($attachment);
+            if (! $text) {
+                continue;
+            }
+            $source = Files::label($attachment);
+            $doc = DocumentFields::extract($text);
+            if ($this->otherCar($vehicle, $doc)) {
+                continue;
+            }
+            foreach (['vin', 'plate', 'year', 'color', 'value'] as $field) {
+                if (isset($doc[$field])) {
+                    $add($field, $doc[$field]['value'], $source);
                 }
-                $seen[$key] = true;
-                $text = $attachment->isImage() ? DocumentText::cached($attachment) : DocumentText::layer($attachment);
-                if (! $text) {
-                    continue;
-                }
-                // Имя файла — в историю дела: длинное («040 ВЫПИСКА ИЗ ЭЛЕКТРОННОГО ПАСПОРТА …») обрезается.
-                $source = $attachment->isPhoto() ? 'фото' : mb_strimwidth(ScanFields::source((string) $attachment->filename), 0, 40, '…');
-                $doc = DocumentFields::extract($text);
-                foreach (['vin', 'plate', 'year', 'color', 'value'] as $field) {
-                    if (isset($doc[$field])) {
-                        $add($field, $doc[$field]['value'], $source);
-                    }
-                }
-                // Модель — только из документа той же марки.
-                if (isset($doc['brand'], $doc['model']) && $vehicle->brand && Names::brand((string) $doc['brand']['value'])?->id === $vehicle->brand_id) {
-                    $add('model', $doc['model']['value'], $source);
-                }
+            }
+            // Модель — только из документа той же марки.
+            if (isset($doc['brand'], $doc['model']) && $vehicle->brand && Names::brand((string) $doc['brand']['value'])?->id === $vehicle->brand_id) {
+                $add('model', $doc['model']['value'], $source);
             }
         }
 
@@ -215,6 +215,11 @@ final class FillFromDocs
         foreach ($values as $vin => $sources) {
             $vin = (string) $vin;
             if (! VinText::plausible($vin)) {
+                continue;
+            }
+            if ($twin = $this->vinTaken($vehicle, $vin)) {
+                $disputed[] = ['field' => 'vin', 'text' => "VIN «{$vin}» (".implode(', ', $sources).") уже у ТС {$twin->id} {$twin->titleWithYear()}"];
+
                 continue;
             }
             if ($vehicle->brand && ! $this->agrees($vehicle, $vin)) {
@@ -237,26 +242,52 @@ final class FillFromDocs
         return $ok;
     }
 
-    /** Марка по VIN — та же, что у ТС: память базы, декодер или производитель WMI (с заводами-партнёрами). */
+    /**
+     * Марка по VIN — та же, что у ТС: память базы или декодер называют её марку; у нас уже стоят машины этой марки с
+     * тем же WMI (Belgee у Geely, Skoda в Калуге у Volkswagen, Kia у Автотора — это знает база, а не список
+     * заводов в коде); или производитель WMI в справочнике называет марку.
+     */
     private function agrees(Vehicle $vehicle, string $vin): bool
     {
         if (($car = ScanCar::carOfVin($vin)) && $car['brand']->id === $vehicle->brand_id) {
             return true;
         }
+        $wmi = strtoupper(substr($vin, 0, 3));
+        if (VinFact::where('brand_id', $vehicle->brand_id)->where('prefix', 'like', $wmi.'%')->exists()) {
+            return true;
+        }
         $result = app(VinDecoder::class)->decode($vin);
         $maker = mb_strtolower(trim(((string) $result->get('brand')).' '.((string) $result->get('manufacturer'))));
-        if ($maker === '') {
-            return false;
-        }
         $brand = $vehicle->brand;
-        $tokens = array_filter([mb_strtolower((string) preg_replace('/\s*\(.*\)/u', '', $brand->name)), $brand->slug, mb_strtolower((string) $brand->name_ru), ...(self::MAKERS[$brand->slug] ?? [])]);
-        foreach ($tokens as $token) {
+        foreach (array_filter([mb_strtolower((string) preg_replace('/\s*\(.*\)/u', '', $brand->name)), $brand->slug, mb_strtolower((string) $brand->name_ru)]) as $token) {
             if (mb_strlen($token) >= 3 && str_contains($maker, $token)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Документ о другой машине (в ветке ТС пересланное письмо о соседней, общий акт): его VIN не тот — дальше двух
+     * знаков от VIN карточки (ближе — ошибка OCR той же машины), или марка в нём другая. Такой документ не даёт ни
+     * года, ни цвета, ни стоимости.
+     */
+    private function otherCar(Vehicle $vehicle, array $doc): bool
+    {
+        $vin = (string) ($doc['vin']['value'] ?? '');
+        if ($vin !== '' && $vehicle->vin && strlen($vehicle->vin) === 17 && levenshtein(strtoupper($vehicle->vin), strtoupper($vin)) > 2) {
+            return true;
+        }
+        $brand = isset($doc['brand']) ? Names::brand((string) $doc['brand']['value']) : null;
+
+        return $brand && $vehicle->brand_id && $brand->id !== $vehicle->brand_id;
+    }
+
+    /** VIN уже стоит у другой ТС: второй раз его не пишем — письма и предложения ищут машину по VIN. */
+    public function vinTaken(Vehicle $vehicle, string $vin): ?Vehicle
+    {
+        return Vehicle::where('vin', strtoupper($vin))->where('id', '!=', $vehicle->id)->whereNull('cancelled_at')->first();
     }
 
     private function clean(string $field, mixed $value): ?string

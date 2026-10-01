@@ -4,13 +4,13 @@ import { openSheet, closeSheet } from './sheet';
 // вопрос заголовком, кнопка с глаголом («Удалить», «Отклонить», «Выдать») и
 // «Отмена»; data-turbo-confirm-text у формы — абзац под вопросом, data-turbo-confirm-quote
 // (+ -quote-by) — цитата с подписью, например комментарий менеджера.
-// Глагол — data-turbo-confirm-label у формы, иначе подпись нажатой
-// кнопки, иначе первое слово вопроса. Опасное — btn-danger, если кнопка была
+// Глагол — data-turbo-confirm-label у нажатой кнопки (у кнопки со своим подтверждением, как строка
+// «в документе …»), иначе у формы, иначе подпись нажатой кнопки, иначе первое слово вопроса. Опасное — btn-danger, если кнопка была
 // опасной или вопрос начинается с «Удалить»/«Отклонить»/«Отменить»/«Снять».
 // Turbo зовёт confirmSheet через Turbo.config.forms.confirm, контроллеры — сами.
 export function confirmSheet(message, options = {}) {
     const { form, submitter } = options;
-    const label = form?.dataset.turboConfirmLabel || shortText(submitter) || message.trim().split(/\s+/)[0].replace(/[?,.!]+$/, '');
+    const label = submitter?.dataset?.turboConfirmLabel || form?.dataset.turboConfirmLabel || shortText(submitter) || message.trim().split(/\s+/)[0].replace(/[?,.!]+$/, '');
     const danger = options.danger ?? (submitter?.matches?.('.btn-danger, .text-danger') || /^(удалить|отклонить|отменить|снять)/i.test(message));
 
     return new Promise((resolve) => {

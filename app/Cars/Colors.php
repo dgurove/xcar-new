@@ -19,7 +19,7 @@ final class Colors
     private const TAIL = ['металлик', 'перламутр', 'матовый', 'темно', 'светло', 'асфальт', 'мокрый'];
 
     /** Цвет по слову или фразе; не цвет — null. */
-    public static function normalize(?string $value): ?string
+    public static function normalize(?string $value, bool $fuzzy = true): ?string
     {
         $value = mb_strtolower(trim((string) $value));
         $value = str_replace('ё', 'е', $value);
@@ -30,31 +30,61 @@ final class Colors
         if (preg_match('/^мокр\w*\s+асфальт\w*$/u', $value)) {
             return 'Мокрый асфальт';
         }
-        $words = preg_split('/[\s,]+/u', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        $out = [];
-        $color = false;
-        foreach ($words as $word) {
-            // «темно-синий»: каждая часть через дефис.
-            $parts = [];
-            foreach (explode('-', $word) as $part) {
-                $fixed = self::word($part);
-                if ($fixed === null) {
-                    return $out && $color ? self::title($out) : null;
-                }
-                $color = $color || in_array(self::stem($fixed), array_map(fn ($b) => self::stem($b), self::BASE), true) && ! in_array($fixed, ['темный', 'светлый'], true);
-                $parts[] = $fixed;
+        // «Красный, черный» — два цвета: каждый по отдельности, запятая остаётся.
+        $pieces = [];
+        foreach (preg_split('/\s*,\s*/u', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $piece) {
+            $color = self::piece($piece, $fuzzy);
+            if ($color === null) {
+                return null;
             }
-            $out[] = implode('-', $parts);
+            $pieces[] = $color;
         }
 
-        return $color ? self::title($out) : null;
+        return $pieces ? self::title([implode(', ', $pieces)]) : null;
     }
 
-    /** Слово словаря в мужском роде, как у машины («серая», «красн» → «серый», «красный»), с одной опечаткой. */
-    private static function word(string $word): ?string
+    /**
+     * Один цвет словами («серый металлик», «черно-белый»). Незнакомое слово — не цвет целиком: «Белая ночь» не
+     * становится «Белым», иначе человек потерял бы свой цвет. Без `$fuzzy` (форма) слова остаются как написаны —
+     * опечатки правятся только у OCR.
+     */
+    private static function piece(string $piece, bool $fuzzy): ?string
+    {
+        $words = [];
+        $color = false;
+        foreach (preg_split('/\s+/u', $piece, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+            $parts = explode('-', $word);
+            $fixed = [];
+            foreach ($parts as $i => $part) {
+                $known = self::word($part, $fuzzy, $i < count($parts) - 1);
+                if ($known === null) {
+                    return null;
+                }
+                $color = $color || (in_array(self::stem($known), array_map(fn ($b) => self::stem($b), self::BASE), true) && ! in_array($known, ['темный', 'светлый'], true))
+                    || (bool) preg_match('/[ое]$/u', $known) && $i < count($parts) - 1 && ! in_array($known, self::TAIL, true);
+                $fixed[] = $fuzzy ? $known : $part;
+            }
+            $words[] = implode('-', $fixed);
+        }
+
+        return $color ? implode(' ', $words) : null;
+    }
+
+    /**
+     * Слово словаря в мужском роде, как у машины («серая», «красн» → «серый», «красный»), с одной опечаткой при `$fuzzy`.
+     * Первая часть составного цвета («черно-», «серо-», «сине-») остаётся как есть.
+     */
+    private static function word(string $word, bool $fuzzy = true, bool $prefix = false): ?string
     {
         if (in_array($word, self::TAIL, true)) {
             return $word;
+        }
+        if ($prefix && preg_match('/^(.+)[ое]$/u', $word, $m)) {
+            foreach (self::BASE as $base) {
+                if (self::stem($base) === $m[1]) {
+                    return $word;
+                }
+            }
         }
         $stem = self::stem($word);
         foreach (self::BASE as $base) {
@@ -62,7 +92,7 @@ final class Colors
                 return $base;
             }
         }
-        if (mb_strlen($word) < 5) {
+        if (! $fuzzy || mb_strlen($word) < 5) {
             return null;
         }
         $near = array_values(array_filter(self::BASE, fn ($base) => self::distance(self::stem($base), $stem) <= 1));

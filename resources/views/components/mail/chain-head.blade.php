@@ -19,7 +19,7 @@
     </div>
     <form method="post" action="{{ $queue }}/{{ $c->id }}/decline" class="{{ $window ? 'contents' : 'hidden md:contents' }}" {!! $frame !!} data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do"><span class="opacity-70">Не заявка</span></button></form>
     @if ($park)
-        <button type="button" class="btn btn-s btn-quiet case-do" aria-label="Распознать" title="Распознать" data-controller="emit" data-action="emit#send" data-emit-event-param="scan:open" data-emit-url-param="/requests/from-mail/{{ $c->id }}/scan">✨</button>
+        <button type="button" class="btn btn-s btn-quiet case-do" data-controller="emit" data-action="emit#send" data-emit-event-param="scan:open" data-emit-url-param="/requests/from-mail/{{ $c->id }}/scan"><span aria-hidden="true" class="mr-1">✨</span>Распознать</button>
         <a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent case-do" {!! $frame !!}>Завести</a>
     @else
         <form method="post" action="{{ $queue }}/{{ $c->id }}/create" class="contents" {!! $frame !!}>@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>

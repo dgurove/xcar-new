@@ -1,9 +1,21 @@
 {{-- Поля ТС в деле: пока ТС ожидается — карточка сверху (данные из письма сверяют); после приёма — строка среди фаз,
-     раскрывается в ту же форму. save — своя кнопка (когда формы этапа нет). --}}
-@php $save = $save ?? false; @endphp
+     раскрывается в ту же форму. save — своя кнопка (когда формы этапа нет). У полей — «✨ Из документов» (окно
+     «Распознать»), а когда карточка и документы расходятся — строки «в карточке → в документе» над полями и
+     оранжевое «в документе иначе» в свёрнутой строке. --}}
+@php
+    $save = $save ?? false;
+    $differences = $differences ?? [];
+    $scan = ($canManage ?? false) && ($letters ?? 0);
+@endphp
 @if ($vehicleOpen)
     <x-ui.card title="Транспортное средство">
-        <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories" :differences="$differences ?? []"/>
+        @if ($scan)
+            <x-slot:actions>
+                <x-park.scan-button :vehicle="$vehicle"/>
+            </x-slot:actions>
+        @endif
+        <x-park.doc-differences :vehicle="$vehicle" :differences="$differences" class="mb-3"/>
+        <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/>
         @if ($save)<div class="mt-3 flex justify-end"><x-ui.button variant="secondary" size="sm">Сохранить</x-ui.button></div>@endif
     </x-ui.card>
 @else
@@ -12,10 +24,17 @@
             @if ($vehicle->ref)<x-ui.copy-code class="tag" :value="$vehicle->ref"/>@endif
             @if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
             @if ($vehicle->plate)<x-ui.copy-code class="tag" :value="$vehicle->plate" done="Госномер в буфере"/>@endif
-            <x-ui.icon name="chevron-down" class="phase-chevron ml-auto size-5 shrink-0 self-center text-ink-dim"/>
+            @if ($differences)<x-ui.state tone="urgent">в документе иначе</x-ui.state>@endif
+            <span class="ml-auto flex items-center gap-2 self-center">
+                @if ($scan)
+                    <x-park.scan-button :vehicle="$vehicle"/>
+                @endif
+                <x-ui.icon name="chevron-down" class="phase-chevron size-5 shrink-0 text-ink-dim"/>
+            </span>
         </summary>
         <div class="phase-body px-3 pb-3 pt-1">
-            <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories" :differences="$differences ?? []"/>
+            <x-park.doc-differences :vehicle="$vehicle" :differences="$differences" class="mb-3"/>
+            <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/>
             @if ($save)<div class="mt-3 flex justify-end"><x-ui.button variant="secondary" size="sm">Сохранить</x-ui.button></div>@endif
         </div>
     </details>

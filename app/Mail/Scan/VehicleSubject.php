@@ -4,15 +4,19 @@ namespace App\Mail\Scan;
 
 use App\Cars\Brand;
 use App\Cars\CarModel;
+use App\Cars\Colors;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Direction;
 use App\Mail\Extraction\ScanFields;
+use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\Vehicle;
+use App\Park\VehicleFields;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * «✨» у заведённой ТС: файлы входящих писем её веток; что выбрал человек — в карточку через `UpdateVehicle`
@@ -69,21 +73,38 @@ final class VehicleSubject implements Subject
         return ScanFields::ofVehicle($this->vehicle->loadMissing(['brand', 'model']));
     }
 
+    /**
+     * Выбранное — в карточку тем же путём, что форма: правила `VehicleFields`, госномер слитно заглавными, цвет
+     * словарём, VIN — не тот, что уже у другой ТС. Сменили марку без модели — модель прежней марки снимается.
+     * Не прошедшее правила поле пропускается, остальное пишется.
+     */
     public function apply(array $chosen, User $by): void
     {
         $data = [];
         $sources = [];
         foreach ($chosen as $field => $item) {
             $sources = [...$sources, ...($item['from'] ?? [])];
-            if ($field === 'brand') {
-                $data['brand_id'] = Brand::known((string) $item['value'])?->id ?? $this->vehicle->brand_id;
-            } elseif ($field !== 'model') {
-                $data[$field] = $item['value'];
-            }
+            $value = $item['value'];
+            match ($field) {
+                'brand' => $data['brand_id'] = Brand::known((string) $value)?->id ?? $this->vehicle->brand_id,
+                'model' => null,
+                'plate' => $data['plate'] = mb_strtoupper((string) preg_replace('/\s+/u', '', (string) $value)),
+                'vin' => $data['vin'] = strtoupper((string) $value),
+                'color' => $data['color'] = Colors::normalize((string) $value) ?? (string) $value,
+                default => $data[$field] = $value,
+            };
         }
-        if (isset($chosen['model']['value']) && ($brand = Brand::find($data['brand_id'] ?? $this->vehicle->brand_id))) {
+        $brandId = $data['brand_id'] ?? $this->vehicle->brand_id;
+        if (isset($chosen['model']['value']) && ($brand = Brand::find($brandId))) {
             $data['model_id'] = CarModel::resolve($brand, (string) $chosen['model']['value'])->id;
+        } elseif ($brandId !== $this->vehicle->brand_id) {
+            $data['model_id'] = null;
         }
+        if (isset($data['vin']) && app(FillFromDocs::class)->vinTaken($this->vehicle, $data['vin'])) {
+            unset($data['vin']);
+        }
+        $errors = Validator::make($data, array_intersect_key(VehicleFields::rules(identity: false), $data))->errors();
+        $data = array_diff_key($data, array_flip($errors->keys()));
         if ($data) {
             app(UpdateVehicle::class)($this->vehicle, $data, $by, $sources ?: ['документ']);
         }
@@ -91,6 +112,7 @@ final class VehicleSubject implements Subject
 
     public function refresh(): void
     {
+        FillFromDocs::forget($this->vehicle);
         app(Publisher::class)->refresh(Topics::PARK, ['/cars/'.$this->vehicle->id]);
     }
 }

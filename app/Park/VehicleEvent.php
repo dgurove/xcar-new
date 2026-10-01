@@ -40,7 +40,7 @@ class VehicleEvent extends Model
             EventType::Released => 'Выдана'.(! empty($p['to']) ? ' — '.$p['to'] : '').(! empty($p['pass']) ? ', по QR' : '').(! empty($p['without_qr']) ? ', без QR: '.$p['without_qr'] : '').(! empty($p['unpaid']) ? ', с долгом '.Money::rub($p['unpaid']) : ''),
             EventType::Note => (string) ($p['text'] ?? ''),
             EventType::Updated => 'Изменена: '.FieldLabels::list($p['fields'] ?? []),
-            EventType::FilledFromDocs => 'Заполнено по документам: '.FieldLabels::list($p['fields'] ?? []).(! empty($p['sources']) ? ' — '.implode(', ', $p['sources']) : ''),
+            EventType::FilledFromDocs => (! empty($p['sources']) ? 'Из документов '.implode(', ', array_map(fn ($s) => '«'.$s.'»', $p['sources'])) : 'Из документов').': '.FieldLabels::list($p['fields'] ?? []),
             EventType::DocSent => ($p['direction'] ?? 'out') === 'in' ? 'Получено от вендора: '.($p['doc'] ?? '') : 'Отправлено вендору: '.($p['doc'] ?? ''),
             EventType::DocBack => 'Снята отметка: '.($p['doc'] ?? ''),
             EventType::Scheduled => 'Эвакуация назначена'.(! empty($p['at']) ? ' на '.$p['at'] : '').(! empty($p['from']) ? ', '.$p['from'] : ''),

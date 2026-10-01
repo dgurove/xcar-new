@@ -1,25 +1,35 @@
 import { Controller } from '@hotwired/stimulus';
 
-// «✨ Распознать» (park/requests/scan). Файлы: число отмеченных на кнопке, больше max — кнопка молчит; «Выбрать все»
-// у фото. Чтение (busy): фрейм перечитывается по событию live:scan своего предмета (цепочка c:…, ТС v:…) и при возврате на вкладку — без
-// опроса по таймеру. Поля: выбранный вариант встаёт в строку и сворачивает её.
+// «✨ Распознать» (park/requests/scan). Фрейм обновляется морфом — контроллер не переподключается, поэтому всё
+// держится на колбэках Stimulus: появилась кнопка шага — пересчитать её, поменялся busy — включить или снять
+// ожидание. Файлы: число отмеченных на кнопке, больше max — кнопка молчит; «Выбрать все» у фото. Чтение (busy):
+// фрейм перечитывается по событию live:scan своего предмета (цепочка c:…, ТС v:…) и при возврате на вкладку — без
+// опроса по таймеру. Поля: «Подставить N» — сколько полей изменится; ничего — кнопка молчит.
 export default class extends Controller {
-    static targets = ['count', 'submit', 'all'];
+    static targets = ['count', 'submit', 'all', 'apply', 'changes'];
     static values = { busy: Boolean, subject: String, max: Number, url: String };
 
-    connect() {
-        this.count();
-        if (!this.busyValue) return;
+    initialize() {
         this.onScan = (e) => { if (e.detail?.subject === this.subjectValue) this.reload(); };
         this.onVisible = () => { if (document.visibilityState === 'visible') this.reload(); };
-        document.addEventListener('live:scan', this.onScan);
-        document.addEventListener('visibilitychange', this.onVisible);
     }
 
     disconnect() {
+        this.busyValueChanged(false);
+    }
+
+    busyValueChanged(busy) {
         document.removeEventListener('live:scan', this.onScan);
         document.removeEventListener('visibilitychange', this.onVisible);
+        if (busy && this.element.isConnected) {
+            document.addEventListener('live:scan', this.onScan);
+            document.addEventListener('visibilitychange', this.onVisible);
+        }
     }
+
+    submitTargetConnected() { this.count(); }
+
+    applyTargetConnected() { this.tally(); }
 
     count() {
         if (!this.hasSubmitTarget) return;
@@ -36,12 +46,11 @@ export default class extends Controller {
         this.count();
     }
 
-    pick(event) {
-        const details = event.target.closest('details');
-        const shown = details?.querySelector('[data-scan-shown]');
-        const option = event.target.closest('label')?.querySelector('[data-scan-option]');
-        if (shown && option) shown.innerHTML = option.innerHTML;
-        if (details) details.open = false;
+    tally() {
+        if (!this.hasApplyTarget) return;
+        const n = new Set([...this.element.querySelectorAll('input[name^="pick["]:checked')].filter((i) => i.value !== '').map((i) => i.name)).size;
+        this.changesTarget.textContent = n || '';
+        this.applyTarget.disabled = n === 0;
     }
 
     // Адрес шага с отмеченными файлами: после отправки формы src фрейма — ещё адрес открытия окна.

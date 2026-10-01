@@ -157,11 +157,10 @@ final class DocumentText
         } catch (Throwable $e) {
             Log::warning('Почта: документы не прочитаны', ['error' => $e->getMessage()]);
         } finally {
-            // Чего ocr не вернул — пусто: «распознать» не должен крутиться вечно.
+            // Чего ocr не вернул (упал, не уложился) — в кеш не кладётся: это сбой, а не «текста нет». Окно покажет
+            // «не прочитан» с «Повторить», задача снимет метку и окно отпустит.
             foreach (array_keys($pages) as $id) {
-                $a = $owner[array_key_first($pages[$id])];
-                self::put($a, '');
-                $done($a, '');
+                $done($owner[array_key_first($pages[$id])], null);
             }
             array_map('unlink', glob($dir.'/*') ?: []);
             @rmdir($dir);

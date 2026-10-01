@@ -3,24 +3,20 @@
 namespace App\Mail\Extraction;
 
 use App\Cars\Colors;
+use App\Cars\Names;
 use App\Mail\Attachment;
 use App\Mail\Candidate;
+use App\Mail\Scan\Files;
 use App\Park\Vehicle;
-use App\Support\Docs;
 
 /**
- * Поля шага «что подставить» в «✨ Распознать»: по каждому полю — варианты из цепочки (`extracted`, что карточка
- * знает сейчас) и из каждого прочитанного файла (`DocumentFields` по тексту `DocumentText`). Одинаковые значения
- * сливаются, источники копятся. Выбрано по умолчанию письмо (или выбранное раньше), без него — первый документ:
- * файлы приходят документами вперёд, фото подписано просто «фото». Машина — одним полем: модель без своей марки
- * не имеет смысла.
+ * Поля шага «что подставить» в «✨ Распознать»: что уже знает цепочка или ТС и что нашлось в каждом прочитанном
+ * файле (`DocumentFields` по тексту `DocumentText`). Одинаковые значения сливаются, источники копятся. Машина — одним
+ * полем: модель без своей марки не имеет смысла.
  */
 final class ScanFields
 {
     public const LABELS = ['car' => 'Машина', 'vin' => 'VIN', 'year' => 'Год', 'color' => 'Цвет', 'plate' => 'Госномер', 'value' => 'Стоимость'];
-
-    /** Источники «уже стоит»: их вариант выбран по умолчанию, а единственный такой — не запоминается. */
-    private const OWN = ['письмо', 'выбрано', 'в деле'];
 
     /** Что знает цепочка «Из писем»: поле → значение и откуда («письмо», «выбрано», «по VIN»). */
     public static function ofCandidate(Candidate $candidate): array
@@ -56,58 +52,60 @@ final class ScanFields
     }
 
     /**
+     * Поля шага «что подставить», разложенные по тому, что изменится:
+     * - `new` — у цепочки или ТС поля нет, документ его нашёл: по умолчанию подставить;
+     * - `differs` — уже стоит, а документ говорит иначе: по умолчанию оставить, человек берёт значение документа;
+     * - `same` — документ подтверждает то, что стоит.
+     * Нашлось в документах несколько разных значений — выбор из них (`options`), одно — включить или нет.
+     *
      * @param  array<string, array{value: mixed, from: string}>  $current  что уже знает цепочка или ТС (`ofCandidate`, `ofVehicle`)
      * @param  iterable<array{0: Attachment, 1: string, 2?: bool}>  $docs  вложение, его текст и «это фото»
-     * @return array<string, array{label: string, options: list<array{value: mixed, text: string, from: list<string>}>, pick: int}>
+     * @return array<string, array{label: string, state: string, current: ?array{value: mixed, text: string, from: list<string>}, options: list<array{value: mixed, text: string, from: list<string>}>}>
      */
     public static function of(array $current, iterable $docs): array
     {
-        $rows = [];
-        $add = function (string $field, mixed $value, string $from) use (&$rows) {
-            $text = self::text($field, $value);
-            if ($text === '') {
-                return;
-            }
-            $key = mb_strtolower((string) preg_replace('/[\s\-.]+/u', '', $text));
-            $rows[$field][$key] ??= ['value' => $value, 'text' => $text, 'from' => []];
-            if (! in_array($from, $rows[$field][$key]['from'], true)) {
-                $rows[$field][$key]['from'][] = $from;
-            }
-        };
-        foreach ($current as $field => $item) {
-            $add($field, $item['value'], $item['from']);
-        }
+        $found = [];
         foreach ($docs as $doc) {
             [$attachment, $text] = $doc;
-            foreach (self::values(DocumentFields::extract($text)) as $field => $value) {
-                $add($field, $value, ($doc[2] ?? false) ? 'фото' : self::source((string) $attachment->filename));
+            $from = Files::label($attachment, (bool) ($doc[2] ?? false));
+            $fields = self::values(DocumentFields::extract($text));
+            if (self::otherCar($current, $fields)) {
+                continue;
+            }
+            foreach ($fields as $field => $value) {
+                $label = self::text($field, $value);
+                if ($label === '') {
+                    continue;
+                }
+                $found[$field][self::key($label)] ??= ['value' => $value, 'text' => $label, 'from' => []];
+                if (! in_array($from, $found[$field][self::key($label)]['from'], true)) {
+                    $found[$field][self::key($label)]['from'][] = $from;
+                }
             }
         }
 
         $out = [];
         foreach (self::LABELS as $field => $label) {
-            if (empty($rows[$field])) {
-                continue;
+            $now = isset($current[$field]) ? ['value' => $current[$field]['value'], 'text' => self::text($field, $current[$field]['value']), 'from' => [$current[$field]['from']]] : null;
+            $options = $found[$field] ?? [];
+            if ($now && isset($options[self::key($now['text'])])) {
+                $now['from'] = [...$now['from'], ...$options[self::key($now['text'])]['from']];
+                unset($options[self::key($now['text'])]);
+                $state = $options ? 'differs' : 'same';
+            } else {
+                $state = $now ? ($options ? 'differs' : null) : ($options ? 'new' : null);
             }
-            $options = array_values($rows[$field]);
-            $pick = 0;
-            foreach ($options as $i => $o) {
-                if (array_intersect($o['from'], self::OWN)) {
-                    $pick = $i;
-                    break;
-                }
+            if ($state) {
+                $out[$field] = ['label' => $label, 'state' => $state, 'current' => $now, 'options' => array_values($options)];
             }
-            $out[$field] = ['label' => $label, 'options' => $options, 'pick' => $pick];
         }
 
         return $out;
     }
 
     /**
-     * Выбранное → поля цепочки (`Candidate::chosen`), источник `scan`. Выбор — текстом варианта, не номером: пока
-     * человек выбирал, могло прийти письмо и сдвинуть варианты; без выбора у поля — вариант по умолчанию.
-     * Единственное значение из файла тоже запоминается: разбор письма берёт из файлов не всё (стоимость — нет).
-     * Единственное значение из письма — нет: оно и так у цепочки, а запомненное не дало бы письму его поправить.
+     * Выбранное → поля (`Candidate::chosen` или карточка ТС), источник `scan`. Выбор — текстом варианта из документа:
+     * не выбрано — поле не трогается. Выбор текстом, а не номером: пока человек выбирал, могло прийти письмо.
      *
      * @param  array<string, string>  $picks
      */
@@ -115,22 +113,43 @@ final class ScanFields
     {
         $chosen = [];
         foreach ($rows as $field => $row) {
-            $option = collect($row['options'])->firstWhere('text', $picks[$field] ?? null) ?? $row['options'][$row['pick']];
-            // Уже стоит в карточке ТС — менять нечего; единственное из письма — тоже.
-            if (in_array('в деле', $option['from'], true) || (count($row['options']) < 2 && array_intersect($option['from'], self::OWN))) {
+            $option = collect($row['options'])->firstWhere('text', $picks[$field] ?? null);
+            if (! $option) {
                 continue;
             }
             $value = $option['value'];
-            $from = array_values(array_diff($option['from'], self::OWN));
             if ($field === 'car') {
-                $chosen['brand'] = ['value' => $value['brand'], 'source' => 'scan', 'from' => $from];
-                $chosen['model'] = ['value' => $value['model'], 'source' => 'scan', 'from' => $from];
+                $chosen['brand'] = ['value' => $value['brand'], 'source' => 'scan', 'from' => $option['from']];
+                $chosen['model'] = ['value' => $value['model'], 'source' => 'scan', 'from' => $option['from']];
             } else {
-                $chosen[$field] = ['value' => $value, 'source' => 'scan', 'from' => $from];
+                $chosen[$field] = ['value' => $value, 'source' => 'scan', 'from' => $option['from']];
             }
         }
 
         return $chosen;
+    }
+
+    /**
+     * Файл о другой машине (в цепочке пересланное письмо о соседней): VIN дальше двух знаков от известного (ближе —
+     * ошибка OCR той же машины) или другая марка. Его поля не предлагаются — иначе «Новое» включало бы чужой год.
+     */
+    private static function otherCar(array $current, array $fields): bool
+    {
+        $vin = (string) ($current['vin']['value'] ?? '');
+        if ($vin !== '' && isset($fields['vin']) && strlen($vin) === 17 && levenshtein(strtoupper($vin), strtoupper((string) $fields['vin'])) > 2) {
+            return true;
+        }
+        $brand = fn (?array $car) => $car ? Names::brand((string) $car['brand'])?->id : null;
+        $now = $brand($current['car']['value'] ?? null);
+        $doc = $brand($fields['car'] ?? null);
+
+        return $now && $doc && $now !== $doc;
+    }
+
+    /** Ключ сравнения: «Lada (ВАЗ) Granta» и «Lada Granta», «А 123 ВС» и «А123ВС» — одно. */
+    private static function key(string $text): string
+    {
+        return mb_strtolower((string) preg_replace(['/\s*\(.*?\)/u', '/[\s\-.]+/u'], ['', ''], $text));
     }
 
     /** Поля в виде шага: марка с моделью — `car`. @return array<string, mixed> */
@@ -150,18 +169,11 @@ final class ScanFields
         return $out;
     }
 
-    /** Подпись файла: «заявка», «эптс»; имя сканера из одних цифр («20260930142927…») — просто «скан». */
-    public static function source(string $filename): string
-    {
-        $label = Docs::label($filename);
-
-        return preg_match('/^[\d\s_\-\[\]()]+$|^\[?untitled\]?$/iu', $label) ? 'скан' : $label;
-    }
-
     private static function text(string $field, mixed $value): string
     {
         return match ($field) {
-            'car' => trim($value['brand'].' '.($value['model'] ?? '')),
+            // Марка без «(ВАЗ)»: в карточке и в документе она должна читаться одинаково.
+            'car' => trim((preg_replace('/\s*\(.*?\)/u', '', (string) $value['brand']) ?: $value['brand']).' '.($value['model'] ?? '')),
             'value' => number_format((int) $value, 0, ',', ' ').' ₽',
             'color' => Colors::normalize((string) $value) ?? mb_convert_case(mb_strtolower((string) $value), MB_CASE_TITLE),
             default => (string) $value,
