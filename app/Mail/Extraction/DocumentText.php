@@ -45,13 +45,14 @@ final class DocumentText
     }
 
     /**
-     * Документы письма, которые ещё не читали: входящее письмо парковки, не замороженное и не в ветке заведённой ТС —
-     * у неё поля уже вписаны людьми, OCR ей ничего не даст. @return Collection<int, Attachment>
+     * Документы письма, которые ещё не читали: входящее письмо парковки, не замороженное, не в архиве и не в ветке
+     * заведённой ТС — у неё поля уже вписаны людьми, архиву («Не заявка») машина не нужна; вернули из архива —
+     * письмо перечитается, и скан прочтётся тогда. @return Collection<int, Attachment>
      */
     public static function pending(Message $message): Collection
     {
         $message->loadMissing(['account', 'attachments', 'thread']);
-        if ($message->account?->scope !== Scope::Park || $message->direction !== Direction::In || $message->frozen_at || $message->thread?->vehicle_id) {
+        if ($message->account?->scope !== Scope::Park || $message->direction !== Direction::In || $message->frozen_at || $message->thread?->vehicle_id || $message->thread?->archived_at) {
             return collect();
         }
 
