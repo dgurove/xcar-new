@@ -25,7 +25,7 @@ final class DocumentFields
     /** @return array<string, array{value: mixed, source: string}> */
     public static function extract(string $text): array
     {
-        $text = str_replace(["\u{00A0}", "\u{2007}", "\u{202F}", "\r"], [' ', ' ', ' ', ''], $text);
+        $text = self::cyrillic(str_replace(["\u{00A0}", "\u{2007}", "\u{202F}", "\r"], [' ', ' ', ' ', ''], $text));
         if (trim($text) === '') {
             return [];
         }
@@ -70,7 +70,7 @@ final class DocumentFields
             $put('brand', $car['brand']->name);
             $put('model', $car['model']);
         }
-        foreach (self::values($text, 'Государственный\s+регистрационный\s+знак|Гос\.?\s*(?:рег\.?\s*)?(?:номер|знак)|\bг\/н\b') as $value) {
+        foreach (self::values($text, 'Государственный\s+регистрационный\s+знак|Регистрац\w*\.?\s*знак|Гос\.?\s*(?:рег\.?\s*)?(?:номер|знак)|\bг\/н\b') as $value) {
             if (preg_match(self::PLATE, mb_strtoupper($value), $m)) {
                 $put('plate', (string) preg_replace('/\s+/u', '', $m[0]));
                 break;
@@ -126,17 +126,23 @@ final class DocumentFields
         if (! $rows || count(array_unique(array_filter(array_column($rows, 'vin')))) > 1) {
             return;
         }
+        // Строка с прочитанным VIN; VIN не прочёлся — та «почти VIN», слева от которой машина: шапка «Марка ТС
+        // модификация VIN ТС Цвет» тоже похожа на строку с VIN, но марки в ней нет.
         $vins = array_values(array_filter($rows, fn ($r) => $r['vin']));
-        $row = $vins[0] ?? $rows[0];
+        $row = $vins[0] ?? collect($rows)->first(fn ($r) => ScanCar::of($r['before'])) ?? $rows[0];
         $put('vin', $row['vin']);
         $after = $row['after'];
         if (! isset($f['brand'])) {
             // Слева от VIN; пусто — строка над ним: акт, где OCR потерял подписи серых ячеек («EXEED VX» строкой выше),
-            // или заявка, где VIN в ячейке опустился ниже марки («FORLAND 27772A белый 2024 …», VIN строкой ниже).
-            // Марка с моделью — первые слова той строки, цвет и год — из её остатка.
+            // или заявка, где VIN в ячейке опустился ниже марки («FORLAND 27772A белый 2024 …», VIN строкой ниже),
+            // или под ним, где ниже опустилась марка («омода S5 стр. 10»). Марка с моделью — первые слова той строки,
+            // цвет и год — из её остатка.
             $found = ScanCar::of($row['before']);
-            for ($up = 1; ! $found && trim($row['before'], " \t|") === '' && $up <= 3 && isset($lines[$row['line'] - $up]); $up++) {
-                $words = preg_split('/\s+/u', trim($lines[$row['line'] - $up]), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            foreach ([-1, -2, -3, 1, 2] as $step) {
+                if ($found || trim($row['before'], " \t|") !== '' || ! isset($lines[$row['line'] + $step])) {
+                    continue;
+                }
+                $words = preg_split('/\s+/u', trim($lines[$row['line'] + $step]), -1, PREG_SPLIT_NO_EMPTY) ?: [];
                 if ($words && ($found = ScanCar::of(implode(' ', array_slice($words, 0, 3))))) {
                     $after .= ' '.implode(' ', array_slice($words, 1));
                 }
@@ -152,6 +158,18 @@ final class DocumentFields
         if (preg_match('/(?<![\d.,\/])(19[89]\d|20[0-3]\d)(?![\d.,\/])/u', $after, $m)) {
             $put('year', (int) $m[1]);
         }
+    }
+
+    /**
+     * OCR путает кириллицу с похожей латиницей и греческим: «Мapka», «cтp.», «ΠTC», номер «X 559 CB 797». Слово, где
+     * кириллица смешана с чужими буквами, и номер по форме — в кириллицу; чисто латинские слова (марка, VIN) не трогаем.
+     */
+    private static function cyrillic(string $text): string
+    {
+        $map = ['A' => 'А', 'a' => 'а', 'B' => 'В', 'C' => 'С', 'c' => 'с', 'E' => 'Е', 'e' => 'е', 'H' => 'Н', 'K' => 'К', 'k' => 'к', 'M' => 'М', 'O' => 'О', 'o' => 'о', 'P' => 'Р', 'p' => 'р', 'T' => 'Т', 'X' => 'Х', 'x' => 'х', 'Y' => 'У', 'y' => 'у', 'Π' => 'П', 'Φ' => 'Ф', 'Λ' => 'Л', 'Γ' => 'Г', 'Δ' => 'Д', 'Ω' => 'О', 'Ρ' => 'Р', 'Τ' => 'Т', 'Ν' => 'Н', 'Μ' => 'М', 'Κ' => 'К', 'Α' => 'А', 'Β' => 'В', 'Ε' => 'Е', 'Χ' => 'Х', 'Ο' => 'О'];
+        $text = (string) preg_replace_callback('/[\p{L}]+/u', fn ($m) => preg_match('/\p{Cyrillic}/u', $m[0]) && preg_match('/[^\p{Cyrillic}]/u', $m[0]) ? strtr($m[0], $map) : $m[0], $text);
+
+        return (string) preg_replace_callback('/\b[ABEKMHOPCTYX]\s?\d{3}\s?[ABEKMHOPCTYX]{2}\s?\d{2,3}\b/u', fn ($m) => strtr($m[0], $map), $text);
     }
 
     /**
