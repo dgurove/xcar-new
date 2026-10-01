@@ -1155,8 +1155,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Тег мельче текста и с отступами: по базовой линии слова рядом с ним прыгали по высоте — всё по центру строки. */
   .rail .letter-head { align-items: center; }
   .rail .letter-dot { margin-top: .5625rem; }
-  /* Подпись в строке — цветное слово того же кегля, что имя и слова: мелкая капсула рядом с текстом 15 px смотрелась криво. */
-  .rail .letter-tag { font-size: inherit; line-height: inherit; font-weight: 500; padding: 0; min-height: 0; background: none; }
+  /* Подпись в строке — цветное слово того же шрифта и кегля, что имя и слова: мелкая капсула рядом с текстом смотрелась криво. */
+  /* Шрифт тоже текстовый: тег набран системным, и при одном кегле буквы садились на 4–5 px выше слов. */
+  .rail .letter-tag { display: block; font-family: inherit; font-size: inherit; line-height: inherit; font-weight: 500; padding: 0; min-height: 0; background: none; }
   /* Телефон: первый этаж (кто, тег, дата) ростом с узел — его середина на уровне кружка. */
   .rail .letter-head { grid-template-rows: 1.875rem auto; }
   .rail .letter--repeat .letter-tag { margin-left: 0; }
