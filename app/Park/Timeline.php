@@ -88,9 +88,9 @@ final class Timeline
         if ($v->accepted_at) {
             $releasing = $release?->isOpen() && $v->state === VehicleState::Stored;
             $storageState = $v->released_at || $releasing ? Step::DONE : ($v->state === VehicleState::Stored && ! $noYard ? Step::CURRENT : Step::NEXT);
-            $chips = array_values(array_filter([$v->sold_at ? 'продано '.$v->sold_at->translatedFormat('j M') : null, $v->pickup_name ? 'заберёт '.$v->pickup_name : null]));
+            $chips = array_values(array_filter([$v->sold_at ? 'на выдачу с '.$v->sold_at->translatedFormat('j M') : null, $v->pickup_name ? 'заберёт '.$v->pickup_name : null]));
             $steps[] = new Step('storage', $storageState === Step::CURRENT ? 'На хранении' : 'Хранение', $storageState,
-                $storageState === Step::CURRENT ? ($v->sold_at ? 'Продана, ждём покупателя за ТС' : 'Страховая пришлёт письмо о продаже, шаг сменится сам; когда за ТС приедут, выдайте') : null,
+                $storageState === Step::CURRENT ? ($v->sold_at ? 'На выдачу, ждём покупателя за ТС' : 'Вендор пришлёт письмо, что ТС реализовано, шаг сменится сам; когда за ТС приедут, выдайте') : null,
                 $v->sold_at, $chips, $storageState === Step::CURRENT ? ['kind' => 'spawn', 'label' => 'Выдать'] : null);
 
             // Покупатель приехал и не взял: продажа снята, ТС снова просто стоит — исход виден шагом, а не заметкой.

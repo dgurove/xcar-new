@@ -32,7 +32,7 @@
         <x-park.state :vehicle="$vehicle"/>
         @if ($debt > 0 && $money)<x-ui.pill tone="danger" :href="'/money?preset=all&car='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ Money::rub($debt) }}</x-ui.pill>@endif
         @if ($vehicle->sold_at)
-            <button type="button" class="pill pill-urgent !min-h-0 !py-1 text-xs nums" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">Продано {{ $vehicle->sold_at->translatedFormat('j M') }}</button>
+            <button type="button" class="pill pill-urgent !min-h-0 !py-1 text-xs nums" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">На выдачу {{ $vehicle->sold_at->translatedFormat('j M') }}</button>
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->pickup_name ? $vehicle->pickup_name.' ' : 'Заберёт ' }}{{ $vehicle->pickup_phone }}</a>@elseif ($vehicle->pickup_name)<span class="chip">Заберёт {{ $vehicle->pickup_name }}</span>@endif
         @endif
         {{-- Исполнитель ставится сам первым действием; чип с аватаром, нажатие — передать другому. --}}
@@ -268,7 +268,7 @@
                 <form method="post" action="/cars/{{ $vehicle->id }}/sold" class="flex flex-col gap-3">
                     @csrf
                     <div class="grid grid-cols-2 gap-3">
-                        <x-ui.field name="sold_at" label="Дата продажи" type="date" :value="($vehicle->sold_at ?? now())->toDateString()" required/>
+                        <x-ui.field name="sold_at" label="Дата реализации" type="date" :value="($vehicle->sold_at ?? now())->toDateString()" required/>
                         <x-ui.field name="pickup_phone" label="Телефон" type="tel" :value="$vehicle->pickup_phone"/>
                         <x-ui.field name="pickup_name" label="Кто заберёт" :value="$vehicle->pickup_name" span="col-span-2"/>
                         {{-- Срок из письма страховой: опоздал — дальше сутки идут покупателю по множителю вендора.
@@ -277,7 +277,7 @@
                     </div>
                     <div class="flex gap-2">
                         <x-ui.button class="flex-1">{{ $vehicle->sold_at ? 'Сохранить' : 'Записать' }}</x-ui.button>
-                        @if ($vehicle->sold_at)<x-ui.button variant="ghost" name="clear" value="1" data-turbo-confirm="Не продано?">Не продано</x-ui.button>@endif
+                        @if ($vehicle->sold_at)<x-ui.button variant="ghost" name="clear" value="1" data-turbo-confirm="Снять выдачу?">Снять выдачу</x-ui.button>@endif
                     </div>
                 </form>
             </x-ui.sheet>

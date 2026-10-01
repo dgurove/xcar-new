@@ -91,7 +91,7 @@
                             </div>
                         </div>
                         <div class="flex flex-col gap-3">
-                            <x-ui.check name="stages[sold]" :checked="(bool) $sv('sold')">Продана, покупатель заберёт</x-ui.check>
+                            <x-ui.check name="stages[sold]" :checked="(bool) $sv('sold')">На выдачу, покупатель заберёт</x-ui.check>
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <x-ui.field name="stages[sold_at]" label="Когда" type="date" :value="$sv('sold_at')"/>
                                 <x-ui.field name="stages[pickup_name]" label="Кому выдать" :value="$sv('pickup_name')"/>

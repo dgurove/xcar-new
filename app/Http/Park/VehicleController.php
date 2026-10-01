@@ -223,10 +223,10 @@ class VehicleController
         abort_unless(Scope::allows($request->user(), $vehicle) && $request->user()->canManagePark(), 404);
         if ($request->boolean('clear')) {
             // Заявка на выдачу, которую завело «продано», снимается вместе с продажей.
-            $sold->clear($vehicle, $request->user(), 'Не продано');
+            $sold->clear($vehicle, $request->user(), 'Выдача снята');
             $vehicle->log(EventType::Updated, $request->user(), ['fields' => ['sold_at']]);
 
-            return redirect("/cars/{$vehicle->id}")->with('toast', 'Не продано');
+            return redirect("/cars/{$vehicle->id}")->with('toast', 'Выдача снята');
         }
         $data = $request->validate(['sold_at' => ['required', 'date'], 'pickup_name' => ['nullable', 'string', 'max:120'], 'pickup_phone' => ['nullable', 'string', 'max:20'],
             'buyer_free_until' => ['nullable', 'date', 'after_or_equal:sold_at']]);
@@ -236,7 +236,7 @@ class VehicleController
             $vehicle->update(['buyer_free_until' => $data['buyer_free_until'] ?? null]);
         }
 
-        return redirect("/cars/{$vehicle->id}")->with('toast', 'Продано');
+        return redirect("/cars/{$vehicle->id}")->with('toast', 'На выдачу');
     }
 
     public function upload(Request $request, Vehicle $vehicle, PhotoIngest $ingest)

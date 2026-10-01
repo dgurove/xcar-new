@@ -34,7 +34,7 @@ final class Status
             };
         }
         if ($v->sold_at) {
-            return $say('продана, ждём покупателя');
+            return $say('на выдачу, ждём покупателя');
         }
         if (! $v->yard_id) {
             return $say('указать парковку', true);

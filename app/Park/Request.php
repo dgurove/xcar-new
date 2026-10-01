@@ -94,7 +94,7 @@ class Request extends Model
             $v?->state === VehicleState::InTransit => 'В пути, принять по приезде',
             $this->type === RequestType::Intake => ($when ? 'Привезут '.$when : 'Привезут, дата не назначена').($this->delivery === Delivery::Self ? ' сами' : '').': принять',
             $this->type === RequestType::Release => $v?->state === VehicleState::Stored
-                ? 'Выдать'.(($buyer = trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? '')) ?: $contact) ? ' покупателю '.$buyer : '').($v->sold_at ? ', продана '.$v->sold_at->translatedFormat('j M') : '')
+                ? 'Выдать'.(($buyer = trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? '')) ?: $contact) ? ' покупателю '.$buyer : '').($v->sold_at ? ', реализовано '.$v->sold_at->translatedFormat('j M') : '')
                 : 'Выдать после приёма',
             $this->type === RequestType::Move => 'Переставить'.($this->yard ? ' на «'.$this->yard->name.'»' : ''),
             $this->type === RequestType::Inspection => 'Осмотр'.($when ? ' '.$when : '').($contact ? ', '.$contact : ''),

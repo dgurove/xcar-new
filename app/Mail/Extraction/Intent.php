@@ -176,7 +176,7 @@ enum Intent: string
             self::Hold => 'Вендор просит не выдавать ТС',
             self::Auto => 'Автоответ',
             self::Question => 'Вендор спрашивает',
-            self::Sold => 'Продано, покупатель заберёт',
+            self::Sold => 'Данное ТС реализовано',
             self::Accepted => 'Вендор пишет, что ТС принята',
             self::Released => 'ТС выдана',
             self::Billing => 'Бухгалтерия',
@@ -190,7 +190,7 @@ enum Intent: string
     {
         return match ($this) {
             self::Intake => 'Заявка',
-            self::Sold => 'Продано',
+            self::Sold => 'На выдачу',
             self::Inspect => 'Осмотр',
             self::Docs => 'Документы',
             self::Accepted => 'Принята',

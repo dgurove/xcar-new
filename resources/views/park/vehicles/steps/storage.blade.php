@@ -2,7 +2,7 @@
 {{-- Шаг «На хранении»: сколько стоит, продано ли; исходы — «Покупатель» (шторка: кто заберёт, обычно приходит письмом страховой) и «Выдать» (заявка на выдачу, форма spawn-form). --}}<div class="mt-2 flex flex-wrap items-center gap-1.5">
     @if ($vehicle->daysStored() !== null)<span class="chip nums">{{ $vehicle->daysStored() }} дн</span>@endif
     @if ($storageRate)<span class="chip nums">{{ $storageRate }}</span>@endif
-    @if ($vehicle->sold_at)<span class="chip nums bg-urgent-soft text-urgent">продано {{ $vehicle->sold_at->translatedFormat('j M') }}</span>@endif
+    @if ($vehicle->sold_at)<span class="chip nums bg-urgent-soft text-urgent">на выдачу с {{ $vehicle->sold_at->translatedFormat('j M') }}</span>@endif
     @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->pickup_name ? $vehicle->pickup_name.' ' : 'заберёт ' }}{{ $vehicle->pickup_phone }}</a>@elseif ($vehicle->pickup_name)<span class="chip">заберёт {{ $vehicle->pickup_name }}</span>@endif
     @if ($buyerFrom)<span class="chip nums {{ $buyerFrom->isPast() ? 'bg-danger-soft text-danger' : '' }}">покупатель с {{ $buyerFrom->translatedFormat('j M') }}, {{ Money::rub($buyerRate) }}/сут</span>@endif
 </div>

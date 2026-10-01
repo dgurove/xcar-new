@@ -13,7 +13,7 @@ final class ParkSold extends Message
 
     protected function title(): string
     {
-        return 'Продано';
+        return 'На выдачу';
     }
 
     protected function lines(): array

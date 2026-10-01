@@ -17,7 +17,7 @@ final class ParkLetter extends Message
         $v = fn (string $f) => $this->candidate->extracted[$f]['value'] ?? null;
 
         return match ($this->candidate->stage) {
-            CandidateStage::Sold => 'Продано, покупатель заберёт',
+            CandidateStage::Sold => 'Данное ТС реализовано',
             CandidateStage::Released => 'ТС выдана',
             CandidateStage::Stored => 'Уже на парковке',
             default => $v('request') === 'tow' ? 'На вывоз' : 'На приём',

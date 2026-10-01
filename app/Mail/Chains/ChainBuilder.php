@@ -311,7 +311,7 @@ final class ChainBuilder
                 $more = ParkExtractor::soldNotice($later->subject, $later->ownText()) ?? [];
                 $notice = array_filter($notice) + array_filter($more);
             }
-            $stages[] = ['stage' => CandidateStage::Sold->value, 'at' => $sold->date_at?->toDateTimeString(), 'message_id' => $sold->id, 'title' => 'Продана',
+            $stages[] = ['stage' => CandidateStage::Sold->value, 'at' => $sold->date_at?->toDateTimeString(), 'message_id' => $sold->id, 'title' => 'На выдачу',
                 'name' => $notice['name'] ?? null, 'phone' => $notice['phone'] ?? null, 'note' => $notice['note'] ?? null];
         }
         if ($released && ! $messages->contains(fn (Message $m) => ! $m->isOurs() && $m->date_at > $released->date_at && $m->intent !== Intent::Other->value)) {

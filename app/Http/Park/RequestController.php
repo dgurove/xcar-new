@@ -245,7 +245,7 @@ class RequestController
                 $vehicle = $register($request->user(), $candidate, VehicleFields::only($data) + ['flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? []], $data['stages']);
                 $promote->attach($candidate, $vehicle);
 
-                return redirect("/cars/{$vehicle->id}")->with('toast', ! empty($data['stages']['sold']) ? 'Заведена, продана, ждёт выдачи' : 'Заведена стоящей');
+                return redirect("/cars/{$vehicle->id}")->with('toast', ! empty($data['stages']['sold']) ? 'Заведена, ждёт выдачи' : 'Заведена стоящей');
             }
         }
         $req = $create($request->user(), $type, $vehicle, $data);

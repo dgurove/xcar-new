@@ -55,7 +55,7 @@ class VehicleEvent extends Model
             EventType::Letter => (isset($p['intent']) && ($i = Intent::tryFrom($p['intent'])) && $i !== Intent::Other ? $i->title() : 'Письмо').' от '.($p['from'] ?? '').': '.($p['subject'] ?? 'без темы'),
             EventType::LetterAnswered => 'Ответили на письмо'.(isset($p['subject']) ? ': '.$p['subject'] : ''),
             EventType::Called => ! empty($p['reached']) ? 'Дозвонились: '.($p['outcome'] ?? '').(! empty($p['at']) ? ' '.$p['at'] : '') : 'Не дозвонились'.(! empty($p['again']) ? ', снова '.$p['again'] : ''),
-            EventType::Sold => 'Продано'.(! empty($p['who']) ? ', заберёт '.$p['who'] : ''),
+            EventType::Sold => 'Данное ТС реализовано'.(! empty($p['who']) ? ', заберёт '.$p['who'] : ''),
             EventType::ReleaseRefused => 'От получения отказался'.(! empty($p['note']) ? ': '.$p['note'] : ''),
             EventType::ReportSent => ($p['what'] ?? 'Отчёт').' отправлен вендору',
             EventType::Restored => 'Снова ждём'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),

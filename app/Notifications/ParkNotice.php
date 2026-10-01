@@ -38,7 +38,7 @@ final class ParkNotice extends Notice
     {
         $who = trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? ''));
 
-        return new self('Продано: '.$v->titleWithYear(), $who ? 'Заберёт '.$who : ($m?->subject ?: null), '/cars/'.$v->id, $v->id);
+        return new self('На выдачу: '.$v->titleWithYear(), $who ? 'Заберёт '.$who : ($m?->subject ?: null), '/cars/'.$v->id, $v->id);
     }
 
     public static function closing(CarbonInterface $month, int $count, float $sum): self

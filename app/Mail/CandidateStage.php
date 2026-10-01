@@ -15,7 +15,7 @@ enum CandidateStage: string
         return match ($this) {
             self::Intake => 'ждёт приёма',
             self::Stored => 'на парковке',
-            self::Sold => 'продана, заберёт покупатель',
+            self::Sold => 'на выдачу, заберёт покупатель',
             self::Released => 'выдана',
         };
     }
