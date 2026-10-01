@@ -24,8 +24,8 @@
             @endunless
             <span class="letter-title">{{ $words }}</span>
             @if ($files)<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif
-            @if ($waits)<span class="letter-tag tag tag-urgent">Ждёт ответа</span>@elseif ($tag)<span class="letter-tag tag {{ $intent === Intent::Intake ? 'tag-accent' : '' }}">{{ $tag }}</span>@endif
-            <span class="letter-when nums">{{ $when }}</span>
+            {{-- Подпись и дата — одним куском через пробел. --}}
+            <span class="letter-meta">@if ($waits)<span class="letter-tag tag tag-urgent">Ждёт ответа</span> @elseif ($tag)<span class="letter-tag tag {{ $intent === Intent::Intake ? 'tag-accent' : '' }}">{{ $tag }}</span> @endif<span class="letter-when nums">{{ $when }}</span></span>
         </button>
     </div>
 </div>

@@ -1147,18 +1147,18 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .chain-head-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
   .chain-head-sub { display: flex; align-items: center; gap: .625rem; margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; overflow: hidden; }
   .chain-card > .chain-head { margin-bottom: .75rem; }
-  /* Строка письма. Телефон — два этажа: кто, подпись, дата; слова и скрепка. От 640 — одна строка: кто, слова, скрепка,
-     подпись, дата. Подпись и дата — колонкой справа, как в почте. Подряд от того же адреса (.letter--repeat) — точка
-     и одна строка без имени. */
+  /* Строка письма. Телефон — два этажа: кто, подпись с датой; слова и скрепка. От 640 — одна строка: кто, слова,
+     скрепка, подпись с датой. Всё одним кеглем и шрифтом текста: мелкие дата и тег рядом со словами «скакали».
+     Подряд от того же адреса (.letter--repeat) — точка и одна строка без имени. */
   .rail .letter-body { padding-bottom: .625rem; }
-  .rail .letter-head { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-rows: 1.875rem auto; column-gap: .625rem; align-items: center; min-height: 1.875rem; cursor: pointer; }
+  .rail .letter-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 1.875rem auto; column-gap: .625rem; align-items: center; min-height: 1.875rem; cursor: pointer; }
   .rail .letter-who { grid-column: 1; grid-row: 1; }
-  .rail .letter-tag { grid-column: 2; grid-row: 1; }
-  .rail .letter-when { grid-column: 3; grid-row: 1; min-width: 3.25rem; text-align: right; }
-  .rail .letter-title { grid-column: 1 / 3; grid-row: 2; }
-  .rail .letter-clip { grid-column: 3; grid-row: 2; }
-  /* Подпись — цветное слово того же шрифта и кегля, что текст: мелкая капсула системным шрифтом садилась выше слов. */
-  .rail .letter-tag { display: block; font-family: inherit; font-size: inherit; line-height: inherit; font-weight: 500; padding: 0; min-height: 0; background: none; }
+  .rail .letter-meta { grid-column: 2; grid-row: 1; white-space: nowrap; }
+  .rail .letter-title { grid-column: 1; grid-row: 2; }
+  .rail .letter-clip { grid-column: 2; grid-row: 2; font-size: inherit; }
+  .rail .letter-when { font-size: inherit; }
+  /* Подпись — цветное слово того же шрифта, кегля и начертания, что текст: мелкая капсула системным шрифтом садилась выше слов. */
+  .rail .letter-tag { display: inline; font-family: inherit; font-size: inherit; line-height: inherit; font-weight: 400; padding: 0; min-height: 0; background: none; }
   .rail .letter-dot { margin-top: .5625rem; }
   .rail .letter--repeat .letter-head { display: flex; gap: .625rem; }
   .rail .letter--repeat .letter-title { flex: 1 1 0; }
@@ -1168,7 +1168,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .rail .letter-head { display: flex; flex-wrap: nowrap; gap: .75rem; }
     .rail .letter-who { flex: 0 1 auto; max-width: 14rem; }
     .rail .letter-title { flex: 1 1 0; }
-    .rail .letter-when { margin-left: 0; }
   }
   .letter-text { font-size: var(--text-base); line-height: 1.45; }
   .letter--ours .letter-text { padding: .75rem; border-radius: var(--radius-l); background: var(--color-surface-2); }
