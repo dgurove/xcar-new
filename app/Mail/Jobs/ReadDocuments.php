@@ -28,7 +28,8 @@ final class ReadDocuments implements ShouldBeUniqueUntilProcessing, ShouldQueue
 
     public function __construct(public int $messageId)
     {
-        $this->onConnection('database-long')->onQueue('mail');
+        // Своя очередь последней у воркера: страница скана — секунды, разбор новой почты за ней не ждёт.
+        $this->onConnection('database-long')->onQueue('ocr');
     }
 
     public function uniqueId(): string

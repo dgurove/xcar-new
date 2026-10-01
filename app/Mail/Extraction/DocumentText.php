@@ -44,11 +44,14 @@ final class DocumentText
         return $disk->exists(self::key($attachment)) ? (string) $disk->get(self::key($attachment)) : null;
     }
 
-    /** Документы письма, которые ещё не читали: входящее письмо парковки, не замороженное. @return Collection<int, Attachment> */
+    /**
+     * Документы письма, которые ещё не читали: входящее письмо парковки, не замороженное и не в ветке заведённой ТС —
+     * у неё поля уже вписаны людьми, OCR ей ничего не даст. @return Collection<int, Attachment>
+     */
     public static function pending(Message $message): Collection
     {
-        $message->loadMissing(['account', 'attachments']);
-        if ($message->account?->scope !== Scope::Park || $message->direction !== Direction::In || $message->frozen_at) {
+        $message->loadMissing(['account', 'attachments', 'thread']);
+        if ($message->account?->scope !== Scope::Park || $message->direction !== Direction::In || $message->frozen_at || $message->thread?->vehicle_id) {
             return collect();
         }
 

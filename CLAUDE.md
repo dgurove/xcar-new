@@ -809,7 +809,8 @@
   PDF и только из кеша `Extraction\DocumentText` (`cache/doctext/{sha}.txt`: текстовый слой, если он читается —
   `AttachmentText::readable`, сканер Альфы кладёт под картинку мусор; иначе OCR — `pdftoppm` 300 dpi, поворот по OSD
   через GD, `tesseract rus+eng --psm 6`, ~3 с страница, tesseract в образе); непрочитанное дочитывает очередь
-  `Mail\Jobs\ReadDocuments` (ставит `ReadLetter::apply`) и перечитывает письмо, сворачивая цепочку. Поля из текста —
+  `ocr` (`Mail\Jobs\ReadDocuments`, ставит `ReadLetter::apply`, воркер берёт её последней — почта не ждёт) и
+  перечитывает письмо, сворачивая цепочку; письма веток заведённой ТС не читаются — поля у неё вписаны людьми. Поля из текста —
   `DocumentFields`: подписи строками и **строка таблицы с VIN** (`carRow`: слева марка и модель, справа цвет и год);
   VIN — `Cars\Vin\VinText` (склейка кусков, O→0, кириллица; известный WMI, у Китая и Северной Америки — контрольная
   цифра, одна правка 8↔B/5↔S допустима, если она единственная); марка и модель скана — `Extraction\ScanCar`
@@ -1087,7 +1088,7 @@
 
 ```bash
 ./serve-local.sh                 # http://xcar.localhost:8010 (php@8.5 и postgres из brew)
-php artisan queue:work database-long --queue=long,mail --stop-when-empty   # почта, фото, закупки
+php artisan queue:work database-long --queue=long,mail,ocr --stop-when-empty   # почта, фото, закупки, OCR
 php artisan queue:work --stop-when-empty                                   # конверсии, уведомления
 php artisan offers:tick | park:tick | park:digest | billing:tick | mail:sync | mail:reconcile | push:keys | media:restamp | vendors:refill
 npm run build                    # ассеты; npm run dev — с горячей перезагрузкой
