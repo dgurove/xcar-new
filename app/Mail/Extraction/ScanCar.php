@@ -7,6 +7,7 @@ use App\Cars\CarModel;
 use App\Cars\Names;
 use App\Cars\Vin\VinDecoder;
 use App\Cars\Vin\VinMemory;
+use App\Cars\Vin\VinText;
 
 /**
  * Марка и модель из слов документа, чаще скана после OCR: «СНАМСАМ | CS35PLUS_», «СЕЕГУ MONJARO», «Хавал НЗ».
@@ -81,6 +82,17 @@ final class ScanCar
         }
         $first = $tokens[0] ?? '';
         $code = Names::latin($first);
+        // OCR спутал знак в коде модели: «HS» у Hongqi — это H5 (S↔5, O↔0, B↔8 — `VinText::SLIPS`). Одна замена и
+        // только если она даёт ровно одну известную модель марки.
+        $fixed = [];
+        foreach (str_split(strtoupper($code)) as $i => $char) {
+            if (isset(VinText::SLIPS[$char]) && ($known = Names::knownModel($brand, substr_replace(strtoupper($code), VinText::SLIPS[$char], $i, 1)))) {
+                $fixed[$known] = true;
+            }
+        }
+        if (count($fixed) === 1 && $code !== '' && ! Names::knownModel($brand, $code)) {
+            return array_key_first($fixed);
+        }
 
         return preg_match('/^[A-Z0-9][A-Z0-9\-]{0,11}$/i', $code) && preg_match('/\d/', $code) ? strtoupper($code) : (preg_match('/^[A-Za-z][A-Za-z\-]{1,15}$/', $first) && $code === $first ? $first : null);
     }
