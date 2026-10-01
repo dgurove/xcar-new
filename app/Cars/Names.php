@@ -101,6 +101,9 @@ final class Names
     /** Год, номер акта, госномер, VIN, скобка, тире, служебные слова — на них модель заканчивается. */
     private const STOP = '/^(?:\(|[-–—]|,|;|:|фото|гос\.?|госномер|vin|вин|г\.?в\.?|\d{4}|\d{2}\.\d{2}\.\d{2,4}|[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}|[АВЕКМНОРСТУХ]{2}\d{4}\d{2,3}|[A-HJ-NPR-Z0-9]{17}|на|в|по|для|от|и)$/iu';
 
+    /** Заглавные кириллические буквы, которые OCR ставит вместо латинских (и «З» вместо тройки). */
+    private const LATIN = ['А' => 'A', 'В' => 'B', 'С' => 'C', 'Е' => 'E', 'Н' => 'H', 'К' => 'K', 'М' => 'M', 'О' => 'O', 'Р' => 'P', 'Т' => 'T', 'Х' => 'X', 'У' => 'Y', 'З' => '3'];
+
     /**
      * Первая марка в строке и модель за ней. @return array{brand: Brand, model: ?string, before: string, after: string}|null
      */
@@ -208,6 +211,86 @@ final class Names
         $raw = self::clean((string) preg_replace('/\s+/u', ' ', $raw));
 
         return [$raw === '' ? null : (preg_match('/[А-Яа-я]/u', $raw) ? mb_convert_case($raw, MB_CASE_TITLE) : $raw), count($take)];
+    }
+
+    /**
+     * Слова скана латиницей: OCR с русским словарём читает «HAVAL H3» как «НАVАL НЗ», «CHANGAN» как «СНАМСАМ».
+     * Переводится только слово из заглавных букв, у которых есть латинский двойник; «ауди» и «Омода» остаются.
+     */
+    public static function latin(string $s): string
+    {
+        return (string) preg_replace_callback('/[\p{Lu}\d\-]+/u', fn ($m) => preg_match('/^[A-ZАВСЕНКМОРТХУЗ0-9\-]+$/u', $m[0]) ? strtr($m[0], self::LATIN) : $m[0], $s);
+    }
+
+    /** Марка по слову с одной-двумя опечатками OCR («CHAMCAM» → Changan): только латиница от четырёх букв и единственный ближайший. */
+    public static function brandNear(string $word): ?Brand
+    {
+        $key = self::key($word);
+        if (! preg_match('/^[a-z]{4,}$/', $key)) {
+            return null;
+        }
+        $limit = strlen($key) >= 6 ? 2 : 1;
+        $best = [];
+        foreach (array_merge(array_map(fn ($slug) => [$slug, null], self::BRANDS), array_map(fn ($id) => [null, $id], self::index())) as $name => [$slug, $id]) {
+            $name = (string) $name;
+            if (! preg_match('/^[a-z]{4,}$/', $name) || ($d = levenshtein($key, $name)) > $limit) {
+                continue;
+            }
+            $best[$d][$slug ?? 'id:'.$id] = [$slug, $id];
+        }
+        if (! $best) {
+            return null;
+        }
+        ksort($best);
+        $top = reset($best);
+        if (count($top) !== 1) {
+            return null;
+        }
+        [$slug, $id] = reset($top);
+
+        return $slug ? self::bySlug($slug) : Brand::find($id);
+    }
+
+    /** Марка по модели, которая в справочнике есть только у одной марки: «MONJARO» → Geely, «JOLION» → Haval; «H5» — у трёх, нет. */
+    public static function brandByModel(string $phrase): ?Brand
+    {
+        $flat = self::flat($phrase);
+        if (mb_strlen($flat) < 3 || ! preg_match('/\p{L}/u', $flat)) {
+            return null;
+        }
+        $ids = CarModel::query()->where(fn ($q) => $q->whereRaw("lower(replace(replace(name, ' ', ''), '-', '')) = ?", [$flat])->orWhereRaw("lower(replace(replace(coalesce(name_ru, ''), ' ', ''), '-', '')) = ?", [$flat]))->distinct()->pluck('brand_id');
+
+        return $ids->count() === 1 ? Brand::find($ids->first()) : null;
+    }
+
+    /** Модель марки, известная словарю или справочнику: пробелы не важны («CS35PLUS» → CS35 Plus), у длинных имён — опечатка OCR. */
+    public static function knownModel(Brand $brand, string $phrase): ?string
+    {
+        $phrase = self::clean((string) preg_replace('/\s+/u', ' ', $phrase));
+        if ($phrase === '') {
+            return null;
+        }
+        foreach ([self::key($brand->name.' '.$phrase), self::key($phrase)] as $key) {
+            if (isset(self::MODELS[$key])) {
+                return self::MODELS[$key];
+            }
+        }
+        $flat = self::flat($phrase);
+        $models = $brand->models()->get(['name', 'name_ru']);
+        foreach ($models as $model) {
+            if ($flat === self::flat($model->name) || ($model->name_ru && $flat === self::flat($model->name_ru))) {
+                return $model->name;
+            }
+        }
+        $limit = mb_strlen($flat) >= 7 ? 2 : (mb_strlen($flat) >= 4 ? 1 : 0);
+        $near = $models->filter(fn ($m) => $limit && levenshtein($flat, self::flat($m->name)) <= $limit)->pluck('name')->unique();
+
+        return $near->count() === 1 ? $near->first() : null;
+    }
+
+    private static function flat(string $s): string
+    {
+        return (string) preg_replace('/[\s\-]+/u', '', mb_strtolower($s));
     }
 
     private static function key(string $s): string

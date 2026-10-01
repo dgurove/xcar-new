@@ -8,7 +8,7 @@ use Throwable;
 use Webklex\PHPIMAP\Message as ImapMessage;
 
 /**
- * Текст вложения письма для разбора — без OCR: docx и xlsx (тем же разбором, что шторка документов),
+ * Текст вложения письма для разбора — без OCR (скан парковки читает `DocumentText`): docx и xlsx (тем же разбором, что шторка документов),
  * текстовый PDF (`pdftotext`, poppler в образе), txt, вложенное письмо .eml (тема, текст и его документы —
  * страховая, пересланная сотрудником, прикладывает исходное письмо так). Скан-картинка текста не даёт — пусто.
  */
@@ -36,6 +36,21 @@ final class AttachmentText
         } catch (Throwable) {
             return null;
         }
+    }
+
+    /**
+     * Текстовый слой можно читать: сканер Альфы кладёт под картинку свой OCR-мусор («=e{ (\l !t EO .': c{»), и
+     * такой слой хуже, чем никакого. Читаемый — больше трети слов из трёх и больше букв одного алфавита.
+     */
+    public static function readable(string $text): bool
+    {
+        $tokens = preg_split('/\s+/u', trim($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if (count($tokens) < 5) {
+            return false;
+        }
+        $words = count(array_filter($tokens, fn ($t) => preg_match('/^[«("]?(?:\p{Cyrillic}{3,}|[A-Za-z]{3,})[.,:;»)"]?$/u', $t)));
+
+        return $words / count($tokens) >= 0.35;
     }
 
     /** Первые пять страниц: оценка и акт — одна-две, дальше в PDF бывают только сканы. */

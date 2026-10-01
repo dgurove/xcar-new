@@ -6,10 +6,10 @@ use App\Mail\Attachment;
 use App\Mail\Scope;
 
 /**
- * Поля машины из вложения письма по его тексту (`AttachmentText` → `DocumentFields`): акт, договор комиссии,
- * оценка с торгов, исходное письмо .eml. Без OCR — скан-картинка ничего не даёт. Только письма с предложениями
- * (offer@): их несколько в день, документы достаём и из ящика. У парковки тысячи сканов заявок без текстового
- * слоя — им нужен OCR, а `pdftotext` на каждом при перечитке ящика только грузил бы сервер.
+ * Поля машины из вложения письма по его тексту (`DocumentFields`). Письма с предложениями (offer@): акт, договор
+ * комиссии, оценка с торгов, исходное письмо .eml — текст тут же (`AttachmentText`, документы достаём и из ящика).
+ * Парковка: только PDF и только уже прочитанное (`DocumentText::cached` — слой или OCR скана из очереди), чтобы
+ * приём письма и `mail:read` не ждали OCR; непрочитанное дочитает `Jobs\ReadDocuments` и перечитает письмо.
  */
 final class TextAttachmentReader implements AttachmentReader
 {
@@ -22,6 +22,11 @@ final class TextAttachmentReader implements AttachmentReader
             return [];
         }
         $attachment->loadMissing('message.account');
+        if ($attachment->message?->account?->scope === Scope::Park) {
+            $text = DocumentText::wanted($attachment) ? DocumentText::cached($attachment) : null;
+
+            return $text ? DocumentFields::extract($text) : [];
+        }
         if ($attachment->message?->account?->scope !== Scope::Offers) {
             return [];
         }

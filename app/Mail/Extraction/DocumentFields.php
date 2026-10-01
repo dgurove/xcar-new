@@ -2,15 +2,17 @@
 
 namespace App\Mail\Extraction;
 
-use App\Cars\Names;
+use App\Cars\Vin\VinText;
 
 /**
  * Поля машины из текста документа во вложении письма — то, что страховая в самом письме не пишет:
  * акт приёма-передачи и договор комиссии (таблица «Марка/модель | XCITE X-CROSS 8», госномер, цвет, год, VIN,
  * «назначает цену … 151 429,00»), оценка с торгов (БитАвто: колонки «Пробег, км  11405  КПП  АКПП»,
  * migtorg: «Год выпуска — 2014», «максимальное предложение … 151 429 руб.»).
- * Подпись и значение — в одной строке через «|», «—», «:» или широкий пробел; значение кончается там же.
- * Марка — только из словаря (`Names`), VIN-заглушка «111…1» — не VIN. Источник — `file`.
+ * Подпись и значение — в одной строке через «|», «—», «:» или широкий пробел; значение кончается там же;
+ * таблица столбцами — по строке с VIN (`carRow`). Текст часто из OCR скана: VIN — `VinText` (контрольная цифра),
+ * марка и модель — `ScanCar` (словарь, латиница вместо кириллицы, опечатки, VIN). VIN-заглушка «111…1» — не VIN.
+ * Источник — `file`.
  */
 final class DocumentFields
 {
@@ -34,18 +36,38 @@ final class DocumentFields
             }
         };
 
-        foreach (self::values($text, 'Марка\s*\/\s*модель|Марка,\s*модель|Марка\s+и\s+модель|Наименование\s+ТС') as $car) {
-            if ($found = Names::find($car)) {
-                $put('brand', $found['brand']->name);
-                $put('model', $found['model']);
-                break;
-            }
-        }
-        foreach (self::values($text, 'Идентификационный\s+номер\s*\(VIN\)|\bVIN\b|\bВИН\b') as $value) {
+        foreach (self::values($text, 'Идентификационный\s+номер(?:\s*\(VIN\))?|\bVIN(?:\s+ТС)?\b|\bВИН\b') as $value) {
             if (preg_match(self::VIN, mb_strtoupper($value), $m) && ($vin = CarWords::realVin($m[0]))) {
                 $put('vin', $vin);
                 break;
             }
+            if ($place = VinText::locate($value)) {
+                $put('vin', $place['vin']);
+                if ($place['vin']) {
+                    break;
+                }
+            }
+        }
+        // Марка с моделью одной строкой (акт, договор), иначе «Марка» и «Модель» порознь (акт Альфы, ЭПТС: «Марка HONDA»,
+        // «Коммерческое наименование CR-V» или «GEELY EX5 EM-i» — с маркой внутри).
+        foreach (self::values($text, 'Марка\s*\/\s*модель|Марка,\s*модель|Марка\s+и\s+модель|Наименование\s+ТС') as $car) {
+            if ($found = ScanCar::of($car)) {
+                $put('brand', $found['brand']);
+                $put('model', $found['model']);
+                break;
+            }
+        }
+        self::carRow($text, $f, $put);
+        if (! isset($f['brand']) && ($mark = self::values($text, 'Марка(?:\s+ТС)?')[0] ?? null)) {
+            $model = self::values($text, 'Модель(?:,\s*модификация)?(?:\s+ТС)?|Коммерческое\s+наименование')[0] ?? '';
+            if ($found = ScanCar::of(str_starts_with(mb_strtolower($model), mb_strtolower($mark)) ? $model : $mark.' '.$model)) {
+                $put('brand', $found['brand']);
+                $put('model', $found['model']);
+            }
+        }
+        // Марку так и не прочли — по VIN, если декодер в ней уверен (модели VIN не даёт).
+        if (! isset($f['brand']) && isset($f['vin']) && ($brand = ScanCar::brandOfVin($f['vin']['value']))) {
+            $put('brand', $brand->name);
         }
         foreach (self::values($text, 'Государственный\s+регистрационный\s+знак|Гос\.?\s*(?:рег\.?\s*)?(?:номер|знак)|\bг\/н\b') as $value) {
             if (preg_match(self::PLATE, mb_strtoupper($value), $m)) {
@@ -59,8 +81,9 @@ final class DocumentFields
                 break;
             }
         }
-        foreach (self::values($text, 'Цвет(?:\s+кузова)?') as $value) {
-            if (preg_match('/^[\p{L}\- ]{3,30}$/u', $value) && ! preg_match('/нет данных/ui', $value)) {
+        foreach (self::values($text, 'Цвет(?:\s+(?:кузова|автомобиля))?') as $value) {
+            // Цвет — прилагательным («белый», «серый металлик»); «автомобиля», «Год» — соседние подписи шапки.
+            if (preg_match('/^[\p{L}\-]+(?:ый|ий|ой|ая)(?:[\p{L}\- ]{0,20})$/u', $value) && ! preg_match('/нет данных/ui', $value)) {
                 $put('color', mb_convert_case(mb_strtolower($value), MB_CASE_TITLE));
                 break;
             }
@@ -83,6 +106,46 @@ final class DocumentFields
         $put('offer_until', self::until($text));
 
         return $f;
+    }
+
+    /**
+     * Таблица столбцами — «Заявка на Приёмку/Выдачу» Альфы: шапка «Марка ТС | Модель | VIN ТС | Цвет | Год выпуска»,
+     * под ней строка значений. Строка с VIN и есть строка машины: слева марка с моделью, справа цвет и год. Документ
+     * с разными VIN (реестр, акт по нескольким ТС) — не про одну машину, строку не берём.
+     */
+    private static function carRow(string $text, array $f, \Closure $put): void
+    {
+        $lines = preg_split('/\n/u', $text) ?: [];
+        $rows = [];
+        foreach ($lines as $n => $line) {
+            if ($place = VinText::locate($line)) {
+                $rows[] = $place + ['line' => $n];
+            }
+        }
+        if (! $rows || count(array_unique(array_filter(array_column($rows, 'vin')))) > 1) {
+            return;
+        }
+        $vins = array_values(array_filter($rows, fn ($r) => $r['vin']));
+        $row = $vins[0] ?? $rows[0];
+        $put('vin', $row['vin']);
+        if (! isset($f['brand'])) {
+            // Слева от VIN; нет — короткая строка над ним (акт, где OCR потерял подписи серых ячеек: «EXEED VX» строкой выше).
+            $found = ScanCar::of($row['before']);
+            for ($up = 1; ! $found && $up <= 3 && isset($lines[$row['line'] - $up]); $up++) {
+                $above = trim($lines[$row['line'] - $up]);
+                $found = $above !== '' && count(preg_split('/\s+/u', $above)) <= 4 ? ScanCar::of($above) : null;
+            }
+            if ($found) {
+                $put('brand', $found['brand']);
+                $put('model', $found['model']);
+            }
+        }
+        if (preg_match('/^[\s|]*([А-Яа-яЁё]{3,}(?:ый|ий|ой|ая))\b/u', $row['after'], $m)) {
+            $put('color', mb_convert_case(mb_strtolower($m[1]), MB_CASE_TITLE));
+        }
+        if (preg_match('/(?<![\d.,])(19[89]\d|20[0-3]\d)(?![\d.,])/u', $row['after'], $m)) {
+            $put('year', (int) $m[1]);
+        }
     }
 
     /**

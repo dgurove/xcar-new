@@ -15,8 +15,9 @@ use Carbon\Carbon;
  * 7805/046/01243/26 Медведев Белджи Р621ВЕ126»), ВСК — в теме и таблицей в теле («11 575 256 прием ГОТС Changan
  * CS35 Plus О400КА977 LS5A…», «Фамилия И.О. клиента / Контактный телефон / Дата / Время / Вид услуги»), ВСК СПб —
  * «ТС готово к передаче Renault Arkana Е789СВ198 X7L…» и дата в теме, Совкомбанк — блоком «МАРКА МОДЕЛЬ»,
- * Альфа Москва — ничего, кроме телефона: машина у неё в скане заявки (`AttachmentReader`) или в имени файла
- * нашего ответа («Альфа акт 1 чанган алсвин 8592.PDF»). Марка и модель — через справочник и словарь `Cars\Names`.
+ * Альфа Москва — ничего, кроме телефона: машина у неё в скане заявки (`AttachmentReader` → `DocumentText`, OCR)
+ * или в имени файла нашего ответа («Альфа акт 1 чанган алсвин 8592.PDF»). Марка и модель — через справочник и
+ * словарь `Cars\Names`; нет нигде — по VIN.
  */
 final class ParkExtractor
 {
@@ -104,20 +105,28 @@ final class ParkExtractor
         if (preg_match('/\bЮр\.?\s*л(?:ицо|\.)/iu', $text) && ! isset($fields['holder'])) {
             $fields['holder_kind'] = ['value' => 'legal', 'source' => 'body'];
         }
-        if (! isset($fields['year']) && isset($fields['vin']) && ($year = self::yearFromVin($fields['vin']['value']))) {
-            $fields['year'] = ['value' => $year, 'source' => 'vin'];
-        }
         if (preg_match('/\b(?:прием|приём|приемка|приёмка)\s+(?:ГОТС|ТС)\b|\bвывоз|\bвывезти|\bзабрать|связаться\s+с\s+клиентом|передач[аеи]\s+(?:ТС|ГОТС)|готов\w*\s+к\s+передаче/iu', $subject.' '.$text)) {
             $fields['request'] ??= ['value' => 'tow', 'source' => 'body'];
         }
-        // Вложения: `TextAttachmentReader` читает пока только письма с предложениями, у парковки сканы без текстового
-        // слоя — место для OCR. Когда подключится, парковке — только тождество машины, цены у неё свои.
+        // Вложения — скан заявки, акт, ЭПТС (`DocumentText`: слой или OCR из очереди). Парковке — только тождество
+        // машины, цены у неё свои. Модель документа — только к той же марке: «Мерседес» из темы + «GLE» из ЭПТС.
         if ($this->reader) {
             foreach ($attachments as $attachment) {
-                foreach (array_intersect_key($this->reader->read($attachment), array_flip(['brand', 'model', 'vin', 'plate', 'year', 'color'])) as $field => $value) {
+                $doc = array_intersect_key($this->reader->read($attachment), array_flip(['brand', 'model', 'vin', 'plate', 'year', 'color']));
+                if (isset($doc['model'], $fields['brand']) && ($doc['brand']['value'] ?? null) !== $fields['brand']['value']) {
+                    unset($doc['model']);
+                }
+                foreach ($doc as $field => $value) {
                     $fields[$field] ??= $value;
                 }
             }
+        }
+        if (! isset($fields['year']) && isset($fields['vin']) && ($year = self::yearFromVin($fields['vin']['value']))) {
+            $fields['year'] = ['value' => $year, 'source' => 'vin'];
+        }
+        // Марку не назвали нигде, а VIN есть — марка по VIN, если декодер в ней уверен.
+        if (! isset($fields['brand']) && isset($fields['vin']) && ($brand = ScanCar::brandOfVin($fields['vin']['value']))) {
+            $fields['brand'] = ['value' => $brand->name, 'source' => 'vin'];
         }
         if ($vendor) {
             $fields['vendor_id'] = ['value' => $vendor->id, 'source' => 'sender'];

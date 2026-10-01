@@ -21,6 +21,9 @@ RUN install-php-extensions bcmath exif gd intl pcntl pdo_pgsql zip
 RUN apt-get update && apt-get install -y --no-install-recommends p7zip-full poppler-utils python3 python3-pip && rm -rf /var/lib/apt/lists/* \
     && pip3 install --no-cache-dir --break-system-packages pillow==12.3.0 pillow-heif==1.7.0
 COPY deploy/bin/heic2jpg /usr/local/bin/heic2jpg
+# tesseract — OCR сканов заявок парковки (`DocumentText`): русский, английский и OSD (поворот страницы).
+# Отдельным слоем, чтобы не пересобирать pillow.
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-rus && rm -rf /var/lib/apt/lists/*
 
 COPY deploy/php/app.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY deploy/php/entrypoint.sh /usr/local/bin/entrypoint
