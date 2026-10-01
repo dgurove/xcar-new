@@ -1,7 +1,7 @@
 {{-- Лента писем о ТС: по времени сверху вниз, на линии слева, как история посылки. Узел — письмо (x-mail.letter):
      этап цепочки лаймовой точкой, наше письмо серой с рамкой, письмо без нашего ответа оранжевой; автоответы и
      бухгалтерия подряд свёрнуты в один узел «3 служебных». Тема пишется строкой-разделителем, когда меняется
-     (subjects). Раскрыты непрочитанные и последнее, к ним и прокрутка (focus). reply — один «Ответить {кому}» внизу,
+     (subjects). Раскрыты непрочитанные и последнее, к ним и прокрутка (focus; id письма — раскрыто и в фокусе оно). reply — один «Ответить {кому}» внизу,
      редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов.
      «Ч.2» того же письма (те же слова от того же адреса в сутки) — узел «Ещё файлы к письму» без текста.
      fold — разбор письма: раскрыты только письмо-заявка и то, что ждёт ответа, прочие подряд идущие письма свёрнуты
@@ -13,7 +13,9 @@
     use App\Mail\Message;
     $messages = collect($messages)->sortBy(fn (Message $m) => $m->date_at?->getTimestamp() ?? 0)->values();
     $lastId = $messages->last()?->id;
-    $focusId = $focus ? ($messages->first(fn (Message $m) => ! $m->is_seen && ! $m->isOurs())?->id ?? $lastId) : null;
+    // focus — id письма (строка «Из писем» открывает окно на нём) или true: первое непрочитанное, иначе последнее.
+    $focusId = is_numeric($focus) && $messages->contains('id', (int) $focus) ? (int) $focus
+        : ($focus ? ($messages->first(fn (Message $m) => ! $m->is_seen && ! $m->isOurs())?->id ?? $lastId) : null);
     $staged = collect($candidate?->stages ?? [])->pluck('message_id')->all();
     // Ждёт ответа — одно правило на почту, дело и ленту: ветка с `needs_reply_at`, письмо — её последнее входящее.
     $waiting = \App\Mail\Thread::whereIn('id', $messages->pluck('thread_id')->filter()->unique())->whereNotNull('needs_reply_at')->pluck('id')->all();
@@ -26,16 +28,7 @@
     // Разбор письма: на виду только письмо-заявка, то, что ждёт ответа, и то, на чём стоит фокус.
     $keep = $fold ? (array_values(array_filter(array_unique([$candidate?->message_id, ...$asks, $focusId]))) ?: array_filter([$lastId])) : [];
     $hidden = fn (Message $m) => $m->id !== $focusId && ($service($m) || ($fold && ! in_array($m->id, $keep, true)));
-    // «Ч.2» того же письма: тот же адрес и те же слова не позже суток — продолжение, текст не повторяется, только файлы.
-    $continued = [];
-    $prev = null;
-    foreach ($messages as $m) {
-        if ($prev && $prev->from_email === $m->from_email && trim($m->ownText()) !== '' && trim($m->ownText()) === trim($prev->ownText()) && $m->date_at && $prev->date_at && $m->date_at->diffInHours($prev->date_at, true) <= 24) {
-            $continued[$m->id] = true;
-        } else {
-            $prev = $m;
-        }
-    }
+    $continued = NodeTitle::continued($messages);
     // Группы: письмо или пачка свёрнутых подряд (служебные, а при fold — и всё, что не на виду).
     $nodes = [];
     foreach ($messages as $m) {
@@ -76,9 +69,9 @@
             </div>
         @else
             @if (isset($continued[$node->id]))
-                <x-mail.letter :message="$node" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="! $node->is_seen || $node->id === $lastId" :focus="$node->id === $focusId" :reply="$reply" continuation/>
+                <x-mail.letter :message="$node" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="! $node->is_seen || $node->id === $lastId || $node->id === $focusId" :focus="$node->id === $focusId" :reply="$reply" continuation/>
             @else
-                <x-mail.letter :message="$node" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :open="! $node->is_seen || ($fold ? in_array($node->id, $keep, true) : $node->id === $lastId)" :focus="$node->id === $focusId" :reply="$reply"/>
+                <x-mail.letter :message="$node" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :open="! $node->is_seen || $node->id === $focusId || ($fold ? in_array($node->id, $keep, true) : $node->id === $lastId)" :focus="$node->id === $focusId" :reply="$reply"/>
             @endif
         @endif
     @empty

@@ -71,10 +71,26 @@
                         <form method="post" action="{{ $base }}/{{ $section['threads']->first()->id }}/candidate" class="shrink-0">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                     </div>
                 @endif
-                <div class="flex flex-col gap-1.5">
-                    @foreach ($section['threads'] as $thread)
-                        <x-mail.thread-row :thread="$thread" :base="$base" :park="$park" :linked="$plain"/>
-                    @endforeach
+                {{-- Незаведённая цепочка — все её письма строками одной плашкой `.list`: заявка, с которой началось, видна всегда. --}}
+                <div class="{{ $section['candidate']?->state === CandidateState::New ? 'list' : 'flex flex-col gap-1.5' }}">
+                    @if ($section['candidate']?->state === CandidateState::New)
+                        @php
+                            $letters = $section['candidate']->messages->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
+                            $continued = \App\Mail\Chains\NodeTitle::continued($letters);
+                            $files = $letters->groupBy(fn ($m) => $continued[$m->id] ?? $m->id)->map(fn ($g) => $g->sum(fn ($m) => $m->files()->count()));
+                            // Ждёт ответа — последнее входящее ветки с `needs_reply_at`, как в ленте.
+                            $waiting = $section['threads']->whereNotNull('needs_reply_at')->pluck('id')->all();
+                            $asks = $letters->filter(fn ($m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->pluck('id')->all();
+                        @endphp
+                        @foreach ($letters as $m)
+                            @continue(isset($continued[$m->id]))
+                            <x-mail.letter-row :message="$m" :url="$queue.'/'.$section['candidate']->id.'/letters?at='.$m->id" :waits="in_array($m->id, $asks, true)" :files="$files[$m->id] ?? 0"/>
+                        @endforeach
+                    @else
+                        @foreach ($section['threads'] as $thread)
+                            <x-mail.thread-row :thread="$thread" :base="$base" :park="$park" :linked="$plain"/>
+                        @endforeach
+                    @endif
                 </div>
             </section>
             <x-slot:actions>

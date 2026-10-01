@@ -54,6 +54,7 @@ use App\Support\OfficePreview;
 use App\Users\User;
 use App\Vendors\ContactRole;
 use App\Vendors\Vendor;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -171,6 +172,9 @@ class MailController
                 'attention' => $list->contains(fn (Thread $t) => $t->needs_reply_at !== null) ? 'reply' : ($register ? 'register' : null),
             ];
         })->filter(fn ($s) => $s['threads']->isNotEmpty())->values();
+        // Незаведённая цепочка показывает все свои письма строками — письма грузятся только у таких, одним запросом.
+        (new EloquentCollection($sections->pluck('candidate')->filter(fn (?Candidate $c) => $c?->state === CandidateState::New)->unique('id')->values()->all()))
+            ->load(['messages.attachments', 'messages.author']);
         $threads = $paginator;
 
         // Список отдельным куском — им отвечает живой поиск, им же рисуется страница.
@@ -408,6 +412,26 @@ class MailController
         }
 
         return view('admin.mail.window', ['thread' => $thread, 'base' => $this->base]);
+    }
+
+    /** Окно цепочки «Из писем»: письма всех её веток одной лентой; ?at= — открыть на этом письме (строка списка). */
+    public function candidateLetters(Request $request, Candidate $candidate, MarkThreadRead $markRead)
+    {
+        abort_unless($candidate->scope === $this->scope, 404);
+        $candidate->load(['vendor', 'messages.account', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        if (! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
+            foreach ($candidate->threads() as $thread) {
+                $markRead($thread);
+            }
+        }
+
+        return view('admin.mail.candidate-window', [
+            'candidate' => $candidate,
+            'base' => $this->base,
+            'queue' => $this->queue,
+            'park' => $this->scope === Scope::Park,
+            'at' => (int) $request->query('at') ?: true,
+        ]);
     }
 
     public function show(Request $request, Thread $thread, MarkThreadRead $markRead, BodyRenderer $renderer)

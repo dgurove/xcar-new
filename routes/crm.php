@@ -43,6 +43,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::get('/offers/twins', [OfferController::class, 'twins']);
     Route::post('/offers/from-mail/{candidate}/create', [MailController::class, 'promote']);
     Route::post('/offers/from-mail/{candidate}/decline', [MailController::class, 'decline']);
+    Route::get('/offers/from-mail/{candidate}/letters', [MailController::class, 'candidateLetters']);
     Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
     Route::get('/offers/{offer}/peek', [OfferController::class, 'peek']);
     Route::get('/offers/{offer}/letters', [MailController::class, 'offerLetters']);

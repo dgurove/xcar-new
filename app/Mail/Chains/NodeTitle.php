@@ -63,6 +63,25 @@ final class NodeTitle
         return Str::limit(trim((string) preg_replace('/\s+/u', ' ', $m->ownText())), $limit, '…');
     }
 
+    /**
+     * «Ч.2» того же письма: тот же адрес и те же слова не позже суток — продолжение, текст не повторяется, только файлы.
+     * Письма — по времени. @return array<int, int> id продолжения → id письма, которое оно продолжает
+     */
+    public static function continued(iterable $messages): array
+    {
+        $continued = [];
+        $prev = null;
+        foreach ($messages as $m) {
+            if ($prev && $prev->from_email === $m->from_email && trim($m->ownText()) !== '' && trim($m->ownText()) === trim($prev->ownText()) && $m->date_at && $prev->date_at && $m->date_at->diffInHours($prev->date_at, true) <= 24) {
+                $continued[$m->id] = $prev->id;
+            } else {
+                $prev = $m;
+            }
+        }
+
+        return $continued;
+    }
+
     /** @param array{stage: string, title: string, name?: ?string, phone?: ?string} $s */
     private static function stage(array $s): string
     {

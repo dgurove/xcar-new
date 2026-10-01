@@ -27,6 +27,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     // Из писем: та же почта с вшитой выборкой «надо завести»; «Завести» ведёт в разбор письма `/requests/new`.
     Route::get('/requests/from-mail', [MailController::class, 'fromMail']);
     Route::post('/requests/from-mail/{candidate}/decline', [MailController::class, 'decline']);
+    Route::get('/requests/from-mail/{candidate}/letters', [MailController::class, 'candidateLetters']);
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests/{req}', [RequestController::class, 'show']);
     Route::get('/requests/{req}/peek', [RequestController::class, 'peek']);
