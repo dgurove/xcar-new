@@ -2,8 +2,9 @@
      лента фото, метки, дней на стоянке; действия по состоянию — «Принять на стоянку»
      (ожидаемая), переставить (стоянка выбором, отправка сразу), выдать (дата, с
      подтверждением), акты; ниже расхождения карточки с документами строками «Взять» (FillFromDocs), заявки строками и
-     заметка с последними событиями. «✨» — значком в полосе окошка (tools), а пока в карточке нет марки, VIN, года
-     или цвета — ещё и чипом «Из документов» в ряду действий: окно «Распознать» встаёт поверх, окошко остаётся.
+     заметка с последними событиями. Под действиями — группа документов: расхождения и «Заполнить из документов»
+     (пока нет марки, модели, VIN, года или цвета) или «Сверить с документами»; искра — ещё и в полосе окошка (tools).
+     Окно «Из документов» встаёт поверх, окошко остаётся и перечитывается после «Подставить».
      Формы отвечают в окошко (PeekBack), строка — свежей из row. --}}
 @php
     use App\Park\VehicleState;
@@ -59,13 +60,16 @@
                 <a href="/acts/{{ $vehicle->id }}/release" class="pill pill-plain" data-turbo="false" target="_blank">Акт выдачи</a>
             @endif
             @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Осмотр</a>@endunless
-            @if ($scan && $gaps)<x-mail.scan-button :url="$scanUrl"/>@endif
         </x-slot:actions>
-        @if ($scan)
+        @if ($scanFiles->isNotEmpty())
             <x-slot:tools><x-mail.scan-button :url="$scanUrl" look="icon"/></x-slot:tools>
         @endif
-        @if ($differences)
-            <form method="post" action="{{ $href }}/take" class="mt-3">@csrf<x-park.doc-differences :vehicle="$vehicle" :differences="$differences"/></form>
+        @if ($differences || $scanFiles->isNotEmpty())
+            <form method="post" action="{{ $href }}/take" class="mt-3">@csrf
+                <x-park.doc-differences :vehicle="$vehicle" :differences="$differences">
+                    @if ($scanFiles->isNotEmpty())<x-mail.scan-button :url="$scanUrl" :fill="$gaps" :files="$scanFiles"/>@endif
+                </x-park.doc-differences>
+            </form>
         @endif
         @if ($vehicle->requests->isNotEmpty())
             <div class="mt-3 flex flex-wrap gap-1.5">

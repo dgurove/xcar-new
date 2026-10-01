@@ -7,7 +7,7 @@
         <span class="docs-handle" aria-hidden="true"></span>
         <div class="docs-tabs" data-docs-target="tabs"></div>
         <span class="docs-count nums" data-docs-target="count"></span>
-        <button type="button" class="peek-close" data-docs-target="scan" data-action="docs#scan" aria-label="Распознать" title="Распознать" hidden><span aria-hidden="true">✨</span></button>
+        <button type="button" class="peek-close" data-docs-target="scan" data-action="docs#scan" aria-label="Из документов" title="Из документов" hidden><x-ui.spark class="size-[18px] text-accent-text"/></button>
         <button type="button" class="peek-close" data-docs-target="rotate" data-action="docs#rotate" aria-label="Повернуть"><x-ui.icon name="rotate" class="size-[18px]"/></button>
         <a href="#" class="peek-close" data-docs-target="download" download aria-label="Скачать" data-controller="file" data-action="file#share"><x-ui.icon name="download" class="size-[18px]"/></a>
         <button type="button" class="peek-close" data-action="docs#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button>

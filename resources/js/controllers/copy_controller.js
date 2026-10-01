@@ -12,6 +12,13 @@ export default class extends Controller {
     connect() {
         if (this.hasShareTarget && !navigator.share) this.shareTarget.hidden = true;
         this.sync();
+        // Перечитка страницы морфом возвращает кнопке вид с сервера, контроллер при этом не переподключается.
+        this.onMorph = () => this.sync();
+        document.addEventListener('turbo:morph', this.onMorph);
+    }
+
+    disconnect() {
+        document.removeEventListener('turbo:morph', this.onMorph);
     }
 
     // Копировать нечего — кнопки нет: у пустого поля зелёная иконка только сбивает.

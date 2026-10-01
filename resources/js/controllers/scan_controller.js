@@ -9,7 +9,7 @@ import { closeSheet } from '../sheet';
 // своего предмета (цепочка c:…, ТС v:…, предложение o:…) и при возврате на вкладку — без опроса по таймеру.
 // Поля: «Подставить N» — сколько полей изменится; ничего — кнопка молчит. Итог (done): окно закрывается, тост, и
 // перечитывается то, откуда окно открыли: открытое окошко строки — само, без страницы; под окном писем — страница,
-// когда его закроют; иначе страница морфом на месте.
+// когда его закроют; иначе страница морфом на месте, а открытая шторка документов возвращается на тот же файл.
 export default class extends Controller {
     static targets = ['count', 'submit', 'all', 'apply', 'changes', 'done'];
     static values = { busy: Boolean, subject: String, max: Number, url: String };
@@ -50,7 +50,13 @@ export default class extends Controller {
             frame?.removeAttribute('src');
             const peek = document.querySelector('.peek:not([hidden]) turbo-frame#peek');
             if (peek?.src) { peek.reload(); return; }
-            const refresh = () => Turbo.visit(location.href, { action: 'replace' });
+            const refresh = () => {
+                window.dispatchEvent(new CustomEvent('docs:keep'));
+                // Раскрытое под руками (поля ТС в деле) остаётся раскрытым: морф вернул бы свёрнутое с сервера.
+                const open = [...document.querySelectorAll('details[open][id]')].map((d) => d.id);
+                document.addEventListener('turbo:morph', () => open.forEach((id) => { const d = document.getElementById(id); if (d) d.open = true; }), { once: true });
+                Turbo.visit(location.href, { action: 'replace' });
+            };
             const under = [...document.querySelectorAll('dialog[open]')].find((d) => d !== dialog && d.matches(':modal'));
             under ? under.addEventListener('close', refresh, { once: true }) : refresh();
         });

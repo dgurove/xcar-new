@@ -132,11 +132,7 @@
             @csrf @method('put')
 
             <x-ui.card title="Транспортное средство" class="order-2">
-                @if ($letters)
-                    <x-slot:actions>
-                        <x-mail.scan-button :url="'/offers/'.$n.'/scan'"/>
-                    </x-slot:actions>
-                @endif
+                @include('admin.offers.scan-row')
                 @include('admin.offers.fields.car')
             </x-ui.card>
 

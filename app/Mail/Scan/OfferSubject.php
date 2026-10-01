@@ -100,7 +100,7 @@ final class OfferSubject implements Subject
         foreach ($chosen as $field => $item) {
             $value = $item['value'];
             match ($field) {
-                'brand' => $data['brand_id'] = Brand::known((string) $value)?->id ?? $this->offer->brand_id,
+                'brand' => ($id = Brand::known((string) $value)?->id) ? $data['brand_id'] = $id : null,
                 'model' => null,
                 'vin' => $data['vin'] = strtoupper((string) $value),
                 'color' => $data['color'] = Colors::normalize((string) $value) ?? (string) $value,
@@ -109,7 +109,9 @@ final class OfferSubject implements Subject
             };
         }
         $brandId = $data['brand_id'] ?? $this->offer->brand_id;
-        if (isset($chosen['model']['value']) && ($brand = Brand::find($brandId))) {
+        // Марки документа нет в справочнике — его модель не заводится под прежней маркой («Kia H5» из документа Hongqi).
+        $unknown = isset($chosen['brand']) && ! Brand::known((string) $chosen['brand']['value']);
+        if (! $unknown && isset($chosen['model']['value']) && ($brand = Brand::find($brandId))) {
             $data['model_id'] = CarModel::resolve($brand, (string) $chosen['model']['value'])->id;
         } elseif ($brandId !== $this->offer->brand_id) {
             $data['model_id'] = null;

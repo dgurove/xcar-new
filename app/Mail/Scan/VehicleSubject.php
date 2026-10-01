@@ -101,7 +101,7 @@ final class VehicleSubject implements Subject
             $sources = [...$sources, ...($item['from'] ?? [])];
             $value = $item['value'];
             match ($field) {
-                'brand' => $data['brand_id'] = Brand::known((string) $value)?->id ?? $this->vehicle->brand_id,
+                'brand' => ($id = Brand::known((string) $value)?->id) ? $data['brand_id'] = $id : null,
                 'model' => null,
                 'plate' => $data['plate'] = mb_strtoupper((string) preg_replace('/\s+/u', '', (string) $value)),
                 'vin' => $data['vin'] = strtoupper((string) $value),
@@ -110,7 +110,9 @@ final class VehicleSubject implements Subject
             };
         }
         $brandId = $data['brand_id'] ?? $this->vehicle->brand_id;
-        if (isset($chosen['model']['value']) && ($brand = Brand::find($brandId))) {
+        // Марки документа нет в справочнике — его модель не заводится под прежней маркой («Kia H5» из документа Hongqi).
+        $unknown = isset($chosen['brand']) && ! Brand::known((string) $chosen['brand']['value']);
+        if (! $unknown && isset($chosen['model']['value']) && ($brand = Brand::find($brandId))) {
             $data['model_id'] = CarModel::resolve($brand, (string) $chosen['model']['value'])->id;
         } elseif ($brandId !== $this->vehicle->brand_id) {
             $data['model_id'] = null;

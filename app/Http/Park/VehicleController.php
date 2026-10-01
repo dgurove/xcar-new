@@ -11,6 +11,7 @@ use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Candidate;
 use App\Mail\Message;
+use App\Mail\Scan\VehicleSubject;
 use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\Actions\RotatePhoto;
@@ -161,7 +162,7 @@ class VehicleController
             'debt' => Ledger::vehicleDebt($vehicle),
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
             // «✨» и расхождения с документами — тем, кто правит ТС, и только когда письма есть.
-            'scan' => $scan = $request->user()->canManagePark() && $vehicle->threads_count > 0,
+            'scanFiles' => ($scan = $request->user()->canManagePark() && $vehicle->threads_count > 0) ? (new VehicleSubject($vehicle))->files() : collect(),
             'differences' => $scan ? app(FillFromDocs::class)->differences($vehicle) : [],
         ]);
     }

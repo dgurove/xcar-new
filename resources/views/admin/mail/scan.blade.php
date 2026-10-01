@@ -68,22 +68,35 @@
             $ready = $texts->reject(fn ($t) => $t === null)->count();
             $lost = $reading ? collect() : $picked->filter(fn ($a) => $texts[$a->id] === null);
         @endphp
-        <div class="scan-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ $picked->count() }}" aria-valuenow="{{ $ready }}"><span style="width: {{ $picked->count() ? round(100 * $ready / $picked->count()) : 0 }}%"></span></div>
-        <div class="list mt-4">
+        <div class="scan-progress">
+            <div class="scan-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ $picked->count() }}" aria-valuenow="{{ $ready }}"><span style="width: {{ $picked->count() ? max(4, round(100 * $ready / $picked->count())) : 0 }}%"></span></div>
+            <span class="nums shrink-0 text-sm text-ink-muted">{{ $ready }} из {{ $picked->count() }}</span>
+        </div>
+        {{-- Те же листы, что на шаге файлов: читаемый притушен и над ним колдует искра, готовый — с галкой. --}}
+        <div class="scan-docs mt-4">
             @foreach ($picked as $a)
-                @php $text = $texts[$a->id]; @endphp
-                <div class="row">
-                    <span class="row-photo row-photo-s"><img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()"></span>
-                    <span class="min-w-0 flex-1 truncate">{{ $label($a) }}</span>
-                    @if ($text !== null && trim($text) !== '')
-                        <x-ui.icon name="check-circle" class="size-5 shrink-0 text-accent-text"/>
-                    @elseif ($text !== null)
-                        <x-ui.state>пусто</x-ui.state>
-                    @elseif (in_array($a->id, $reading, true))
-                        <span class="scan-spin" aria-label="Читается"></span>
-                    @else
-                        <x-ui.state tone="danger">не прочитан</x-ui.state>
-                    @endif
+                @php
+                    $text = $texts[$a->id];
+                    $state = match (true) {
+                        $text !== null && trim($text) !== '' => 'done',
+                        $text !== null => 'empty',
+                        in_array($a->id, $reading, true) => 'busy',
+                        default => 'lost',
+                    };
+                @endphp
+                <div class="scan-doc scan-doc--{{ $state }}">
+                    <span class="scan-sheet">
+                        <x-ui.file-icon :name="$a->filename" :mime="$a->mime" class="scan-icon"/>
+                        <img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
+                        @if ($state === 'busy')<span class="scan-veil spark-busy" aria-label="Читается"><x-ui.spark class="size-7"/></span>
+                        @elseif ($state === 'done')<span class="scan-check"><x-ui.icon name="check" class="size-3.5"/></span>
+                        @endif
+                    </span>
+                    <span class="scan-name">
+                        @if ($state === 'empty')<span class="text-ink-dim">текста нет</span>
+                        @elseif ($state === 'lost')<span class="text-danger">не прочитан</span>
+                        @else{{ $label($a) }}@endif
+                    </span>
                 </div>
             @endforeach
         </div>
@@ -98,7 +111,9 @@
     @else
         @php
             $groups = collect($rows)->groupBy('state', true);
-            $sub = fn (string $label, array $from) => '<span>'.e($label).'</span><span>'.e(implode(', ', $from)).'</span>';
+            // Подпись поля — колонкой слева, как в форме; откуда значение — мелко под ним.
+            $from = fn (array $from) => '<span class="scan-from">'.e(implode(', ', $from)).'</span>';
+            $name = fn (string $label) => '<span class="scan-label">'.e($label).'</span>';
         @endphp
         <form method="post" action="{{ $url }}/apply" data-action="change->scan#tally">
             @csrf
@@ -110,20 +125,22 @@
                     @foreach ($groups['new'] as $field => $row)
                         @if (count($row['options']) === 1)
                             @php $o = $row['options'][0]; @endphp
-                            <label class="row row-switch">
-                                <span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span><span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span></span>
+                            <label class="row row-switch scan-field">
+                                {!! $name($row['label']) !!}
+                                <span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span>{!! $from($o['from']) !!}</span>
                                 <input type="checkbox" switch class="switch shrink-0" name="pick[{{ $field }}]" value="{{ $o['text'] }}" checked>
                             </label>
                         @else
                             {{-- Документы называют поле по-разному: выбрать одно или оставить пустым. --}}
                             @foreach ($row['options'] as $i => $o)
-                                <label class="row row-check">
-                                    <span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span><span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span></span>
+                                <label class="row row-check scan-field">
+                                    {!! $name($i === 0 ? $row['label'] : '') !!}
+                                    <span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span>{!! $from($o['from']) !!}</span>
                                     <span class="check"><input type="radio" name="pick[{{ $field }}]" value="{{ $o['text'] }}" @checked($i === 0)></span>
                                 </label>
                             @endforeach
-                            <label class="row row-check">
-                                <span class="min-w-0 flex-1 text-ink-muted">Не заполнять<span class="row-sub"><span>{{ $row['label'] }}</span></span></span>
+                            <label class="row row-check scan-field">
+                                <span class="scan-label"></span><span class="min-w-0 flex-1 text-ink-muted">Не заполнять</span>
                                 <span class="check"><input type="radio" name="pick[{{ $field }}]" value=""></span>
                             </label>
                         @endif
@@ -137,21 +154,24 @@
                     @foreach ($groups['differs'] as $field => $row)
                         @if (count($row['options']) === 1)
                             @php $o = $row['options'][0]; @endphp
-                            <label class="row row-switch">
+                            <label class="row row-switch scan-field">
+                                {!! $name($row['label']) !!}
                                 <span class="min-w-0 flex-1">
                                     <span class="scan-value scan-change"><span class="text-ink-muted">@include('admin.mail.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span><span class="text-ink-dim" aria-hidden="true">→</span>@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span>
-                                    <span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span>
+                                    {!! $from($o['from']) !!}
                                 </span>
                                 <input type="checkbox" switch class="switch shrink-0" name="pick[{{ $field }}]" value="{{ $o['text'] }}">
                             </label>
                         @else
-                            <label class="row row-check">
-                                <span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span><span class="row-sub">{!! $sub($row['label'], $row['current']['from']) !!}</span></span>
+                            <label class="row row-check scan-field">
+                                {!! $name($row['label']) !!}
+                                <span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span>{!! $from($row['current']['from']) !!}</span>
                                 <span class="check"><input type="radio" name="pick[{{ $field }}]" value="" checked></span>
                             </label>
                             @foreach ($row['options'] as $o)
-                                <label class="row row-check">
-                                    <span class="min-w-0 flex-1"><span class="scan-value scan-change"><span class="text-ink-dim" aria-hidden="true">→</span>@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span><span class="row-sub">{!! $sub($row['label'], $o['from']) !!}</span></span>
+                                <label class="row row-check scan-field">
+                                    <span class="scan-label"></span>
+                                    <span class="min-w-0 flex-1"><span class="scan-value scan-change"><span class="text-ink-dim" aria-hidden="true">→</span>@include('admin.mail.scan-value', ['field' => $field, 'text' => $o['text']])</span>{!! $from($o['from']) !!}</span>
                                     <span class="check"><input type="radio" name="pick[{{ $field }}]" value="{{ $o['text'] }}"></span>
                                 </label>
                             @endforeach
@@ -165,7 +185,7 @@
                     <summary class="list-head">Совпадает <span class="nums">{{ $groups['same']->count() }}</span><x-ui.icon name="chevron-down" class="scan-chevron size-4 text-ink-dim"/></summary>
                     <div class="list">
                         @foreach ($groups['same'] as $field => $row)
-                            <div class="row"><span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span><span class="row-sub">{!! $sub($row['label'], $row['current']['from']) !!}</span></span></div>
+                            <div class="row scan-field">{!! $name($row['label']) !!}<span class="min-w-0 flex-1"><span class="scan-value">@include('admin.mail.scan-value', ['field' => $field, 'text' => $row['current']['text']])</span>{!! $from($row['current']['from']) !!}</span></div>
                         @endforeach
                     </div>
                 </details>

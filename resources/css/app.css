@@ -486,6 +486,16 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .field-filled .field-input, .field-filled.field-input { animation: field-glow 1.2s ease-out 1; }
     .vin-magic.is-shaking { animation: vin-shake .4s ease-in-out 1; }
   }
+  /* Искра x-ui.spark — та же, что у VIN; у предка .spark-busy колдует, как VIN при расшифровке. */
+  .spark { overflow: visible; }
+  .spark path { transform-box: fill-box; transform-origin: center; }
+  @media (prefers-reduced-motion: no-preference) {
+    .spark-busy .spark { animation: spark-glow 1.6s ease-in-out infinite; }
+    .spark-busy .spark-1 { animation: spark-big 1.6s ease-in-out infinite; }
+    .spark-busy .spark-2 { --dx: 2px; --dy: -2px; animation: spark-blink 1.6s ease-in-out infinite; }
+    .spark-busy .spark-3 { --dx: 2px; --dy: 2px; animation: spark-blink 1.6s ease-in-out infinite .55s; }
+    .spark-busy .spark-4 { --dx: -2px; --dy: -2px; animation: spark-blink 1.6s ease-in-out infinite 1.1s; }
+  }
   @keyframes vin-knock { 40% { translate: -3px 0; } }
   @keyframes vin-shimmer { to { background-position: -200% 0; } }
   /* Искра переливается: большая звезда дышит и медленно вращается (четыре
@@ -684,7 +694,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      Детьми плашки бывают и обёртки строки (шторка, свайп) — разделитель рисует сам ребёнок. .list-head —
      заголовок группы над плашкой. */
   .list { @apply flex flex-col overflow-clip rounded-(--radius-l) bg-surface; }
-  .sheet .list, .box .list { @apply bg-surface-2; }
+  .sheet .list, .box .list, .peek .list { @apply bg-surface-2; }
   .list .row { border-radius: 0; background: transparent; min-height: 3.5rem; padding: .625rem 1rem; gap: .75rem; }
   .list > * + * { position: relative; }
   .list > * + *::after, .list > * + .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
@@ -1164,7 +1174,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .scan-sheet img { @apply absolute inset-0 size-full bg-white object-contain; transition: opacity var(--dur-fast); }
   .scan-sheet .scan-icon { @apply size-10 text-[11px]; }
   .scan-name { @apply truncate px-0.5 text-xs text-ink-muted; }
-  .scan-grid { @apply grid grid-cols-4 gap-1.5 sm:grid-cols-6; }
+  .scan-grid { @apply grid grid-cols-4 gap-1.5 sm:grid-cols-8; }
   .scan-tile { @apply relative block aspect-square cursor-pointer overflow-hidden rounded-(--radius-s) bg-surface-3 select-none; }
   .scan-tile img { @apply absolute inset-0 size-full object-cover; transition: opacity var(--dur-fast); }
   .scan-check { @apply absolute top-1.5 right-1.5 flex size-[22px] items-center justify-center rounded-full text-transparent; border: 1.5px solid rgb(255 255 255 / .95); background: rgb(0 0 0 / .25); transition: background-color var(--dur-fast), border-color var(--dur-fast); }
@@ -1172,6 +1182,30 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .scan-doc:has(input:checked) .scan-name { @apply text-ink; }
   .scan-tile:not(:has(input:checked)) img, .scan-doc:not(:has(input:checked)) .scan-sheet img { opacity: .5; }
   .scan-doc:has(input:focus-visible) .scan-check, .scan-tile:has(input:focus-visible) .scan-check { scale: 1.15; }
+  /* Окно одной высоты на всех шагах: файлы, чтение, поля не дёргают его вверх-вниз. */
+  @media (min-width: 640px) {
+    .sheet-scan { height: min(44rem, calc(100dvh - 4rem)); }
+    .sheet-scan .scan { min-height: calc(min(44rem, 100dvh - 4rem) - 6.25rem); }
+  }
+  .scan-progress { @apply mt-2 flex items-center gap-3; }
+  .scan-progress .scan-bar { @apply mt-0 flex-1; }
+  /* Чтение: лист притушен, поверх колдует искра и бежит полоса скана. */
+  .scan-veil { @apply absolute inset-0 flex items-center justify-center text-accent; background: rgb(18 18 18 / .45); }
+  .scan-veil::after { content: ''; position: absolute; inset-inline: 0; height: 30%; top: -30%; background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--color-accent) 35%, transparent), transparent); }
+  @media (prefers-reduced-motion: no-preference) { .scan-veil::after { animation: scan-sweep 1.8s ease-in-out infinite; } }
+  @keyframes scan-sweep { to { top: 100%; } }
+  .scan-doc--busy .scan-sheet img { opacity: .6; }
+  .scan-doc--done .scan-check { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+  .scan-doc--lost .scan-sheet, .scan-doc--empty .scan-sheet { opacity: .55; }
+  /* Поле — подпись колонкой слева, как в форме; значение крупно, откуда — мелко под ним. */
+  .scan-field { @apply flex-wrap items-start gap-y-0.5 sm:flex-nowrap; }
+  .scan-field > .switch, .scan-field > .check, .scan-field > :last-child { @apply self-center; }
+  /* Подпись колонкой — от 640; на телефоне строкой над значением, иначе «537 142 ₽» не влезало. */
+  .scan-label { @apply w-full shrink-0 text-sm text-ink-muted empty:hidden sm:w-24 sm:pt-px sm:empty:block; }
+  .phase .list { @apply bg-surface-2; }
+  .scan-from { @apply mt-0.5 block truncate text-xs text-ink-dim; }
+  /* Искра в свёрнутой строке полей дела: в карточке пусто — подсвечена. */
+  .scan-wants { @apply bg-accent-soft; }
   .scan-bar { @apply mt-3 h-1.5 overflow-hidden rounded-full bg-surface-3; }
   .scan-bar > span { @apply block h-full rounded-full bg-accent; transition: width var(--dur-slow) var(--ease-out); }
   .scan-spin { @apply size-5 shrink-0 rounded-full; border: 2px solid var(--color-accent); border-top-color: transparent; animation: spin .8s linear infinite; }

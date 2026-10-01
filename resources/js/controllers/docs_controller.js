@@ -34,7 +34,14 @@ export default class extends Controller {
         this.onFocus = (e) => this.focused(e);
         this.onSubmit = () => this.rememberOpen();
         this.onCache = () => { if (!sheetInHistory()) this.close(true); };
-        this.onMorph = () => this.restore({ auto: false });
+        // «Подставить» в окне «Распознать» перечитывает страницу на месте (docs:keep перед этим) — тот же документ снова.
+        this.onKeep = () => { this.kept = !this.element.hidden && this.items[this.index] ? this.items[this.index].key : null; };
+        this.onMorph = () => {
+            const key = this.kept;
+            this.kept = null;
+            const a = key && this.links().find((l) => this.key(l) === key);
+            if (a) this.open(a, { instant: true });
+        };
         this.onViewport = () => this.fit();
         this.onWide = () => this.relayout();
         this.onMove = (e) => this.dragMove(e);
@@ -47,6 +54,7 @@ export default class extends Controller {
         document.addEventListener('turbo:submit-start', this.onSubmit);
         document.addEventListener('turbo:before-cache', this.onCache);
         document.addEventListener('turbo:morph', this.onMorph);
+        window.addEventListener('docs:keep', this.onKeep);
         window.visualViewport?.addEventListener('resize', this.onViewport);
         addEventListener('resize', this.onViewport);
         wide.addEventListener('change', this.onWide);
@@ -61,6 +69,7 @@ export default class extends Controller {
         document.removeEventListener('turbo:submit-start', this.onSubmit);
         document.removeEventListener('turbo:before-cache', this.onCache);
         document.removeEventListener('turbo:morph', this.onMorph);
+        window.removeEventListener('docs:keep', this.onKeep);
         window.visualViewport?.removeEventListener('resize', this.onViewport);
         removeEventListener('resize', this.onViewport);
         wide.removeEventListener('change', this.onWide);
@@ -71,9 +80,8 @@ export default class extends Controller {
         html.style.removeProperty('--docs-w');
     }
 
-    // После сохранения формы — тот же документ; иначе тот, что страница просит открыть сразу. Перечитка страницы на
-    // месте (морф: «Подставить» в окне «Распознать», открытом из шторки) — только тот же документ.
-    restore({ auto = true } = {}) {
+    // После сохранения формы — тот же документ; иначе тот, что страница просит открыть сразу.
+    restore() {
         let again = null;
         try {
             again = JSON.parse(sessionStorage.getItem('docs:again') || 'null');
@@ -84,8 +92,8 @@ export default class extends Controller {
             const a = links.find((l) => this.key(l) === again.key);
             if (a) { this.open(a, { instant: true }); return; }
         }
-        const first = auto && links.find((l) => l.hasAttribute('data-doc-auto'));
-        if (first) this.open(first, { auto: true });
+        const auto = links.find((l) => l.hasAttribute('data-doc-auto'));
+        if (auto) this.open(auto, { auto: true });
     }
 
     rememberOpen() {

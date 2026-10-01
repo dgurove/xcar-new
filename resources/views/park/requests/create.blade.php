@@ -1,8 +1,8 @@
 {{-- Разбор письма (`?candidate=`): поля дела, над ними документы письма — скан заявки страховой открывается
      шторкой сам, читаешь и тут же переписываешь, не уходя со страницы; цепочка писем лентой рядом (ниже на телефоне). Заголовок — сама ТС, под ним теги, как в почте;
      своими словами письмо не пересказывается. Кнопка называет исход: заявка на приём, стоящей, и выдать,
-     привязать письма к уже заведённой ТС. «✨ Из документов» у полей — окно «Распознать» этой цепочки: подставленное
-     ложится в выбор цепочки, и форма перерисовывается уже с ним.
+     привязать письма к уже заведённой ТС. Над полями — строка «Заполнить из документов» (окно «Из документов» этой
+     цепочки): подставленное ложится в выбор цепочки, и форма перерисовывается уже с ним.
      Без кандидата это прежняя ручная «Новая заявка» одной колонкой; тип «приём» / «эвакуация» решает «Доставка». --}}
 @php
     use App\Mail\CandidateStage;
@@ -69,10 +69,9 @@
                 <input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}">
             @elseif (in_array($type, [RequestType::Intake, RequestType::Tow], true))
                 <x-ui.card title="Транспортное средство">
-                    @if ($candidate?->state === \App\Mail\CandidateState::New)
-                        <x-slot:actions>
-                            <x-mail.scan-button :url="'/requests/from-mail/'.$candidate->id.'/scan'"/>
-                        </x-slot:actions>
+                    @php $scanFiles = $candidate?->state === \App\Mail\CandidateState::New ? (new \App\Mail\Scan\CandidateSubject($candidate))->files() : collect(); @endphp
+                    @if ($scanFiles->isNotEmpty())
+                        <div class="list mb-3"><x-mail.scan-button :url="'/requests/from-mail/'.$candidate->id.'/scan'" :fill="! ($v('brand') && $v('model') && $v('vin') && $v('year') && $v('color'))" :files="$scanFiles"/></div>
                     @endif
                     <x-park.vehicle-fields :values="$p" :brand="$p['brand'] ?? null" :model="$p['model'] ?? null" :vendors="$vendors" :categories="$categories" :cols="$letters ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'" :candidate="$candidate?->id"/>
                 </x-ui.card>

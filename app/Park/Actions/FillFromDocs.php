@@ -95,7 +95,7 @@ final class FillFromDocs
 
         $version = Cache::get("park:docdiff:v:{$vehicle->id}", 0);
 
-        return Cache::remember("park:docdiff:{$vehicle->id}:{$vehicle->updated_at?->timestamp}:{$letters}:{$version}", 86400, function () use ($vehicle) {
+        $out = Cache::remember("park:docdiff:{$vehicle->id}:{$vehicle->updated_at?->timestamp}:{$letters}:{$version}", 86400, function () use ($vehicle) {
             $out = [];
             foreach ($this->plan($vehicle->loadMissing(['brand', 'model', 'threads.messages.attachments']))['disputed'] as $d) {
                 if (isset($d['current'], $d['value']) && ! isset($out[$d['field']])) {
@@ -103,10 +103,14 @@ final class FillFromDocs
                 }
             }
 
-            Cache::forever(self::flagKey($vehicle->id), (bool) $out);
-
             return $out;
         });
+        // Метка — и при попадании в кеш: расхождения, посчитанные раньше метки, иначе её бы не ставили.
+        if (self::flagged($vehicle) !== (bool) $out) {
+            Cache::memo()->forever(self::flagKey($vehicle->id), (bool) $out);
+        }
+
+        return $out;
     }
 
     /**
@@ -131,7 +135,7 @@ final class FillFromDocs
     public static function forget(Vehicle $vehicle): void
     {
         Cache::forever("park:docdiff:v:{$vehicle->id}", (int) Cache::get("park:docdiff:v:{$vehicle->id}", 0) + 1);
-        Cache::forget(self::flagKey($vehicle->id));
+        Cache::memo()->forget(self::flagKey($vehicle->id));
     }
 
     private static function flagKey(int $id): string
