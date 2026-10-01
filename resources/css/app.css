@@ -1114,7 +1114,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .letter-dot { position: relative; z-index: 1; margin-top: .5rem; justify-self: center; width: .75rem; height: .75rem; border-radius: 999px; background: var(--color-line); }
   .letter--ours .letter-dot { background: var(--color-surface); box-shadow: inset 0 0 0 2px var(--color-line); }
   /* Узел письма — кружок отправителя 24 px на линии, без обводок: этап и «ждёт ответа» говорят заголовок и тег. */
-  .letter-face { position: relative; z-index: 1; justify-self: center; margin-top: .1875rem; width: 24px; height: 24px; border-radius: 999px; line-height: 0; }
+  /* Кружок центрирует флекс на всю колонку, а не строчный блок в узле 24 px: иначе в Safari он съезжал с линии. */
+  .letter-face { position: relative; z-index: 1; display: flex; justify-content: center; align-items: flex-start; margin-top: .1875rem; height: 24px; line-height: 0; }
+  /* Линия начинается от центра первого кружка, а не торчит над ним. */
+  .chain > .letter:first-child::before, .chain > .chain-subject:first-child + .letter::before { top: .9375rem; }
   .letter-body { min-width: 0; padding-bottom: .75rem; }
   /* Строка письма: на телефоне две строки (кто и дата, заголовок и скрепка), от 640 — одна. */
   .letter-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .5rem; align-items: baseline; min-height: 1.875rem; cursor: pointer; list-style: none; }
