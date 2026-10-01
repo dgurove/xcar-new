@@ -5,6 +5,8 @@
 # {"file": путь, "text": текст} сразу, как прочитан: PHP показывает готовность по файлам, не дожидаясь пачки.
 # Страница PDF (имя на «page-») сначала ставится прямо моделью ориентации — Альфа сканирует заявку боком; фото —
 # только по EXIF. Строка таблицы собирается из рамок по высоте: ячейки через три пробела, как ждёт `DocumentFields`.
+# `ocr --angle page.png` — только угол страницы (0/90/180/270, против часовой): миниатюра скана в окне «✨» стоит
+# прямо (`MailController::attachment`), модели OCR для этого не грузятся.
 import json
 import os
 import sys
@@ -17,6 +19,12 @@ from rapidocr import EngineType, LangRec, ModelType, OCRVersion, RapidOCR
 
 pillow_heif.register_heif_opener()
 threads = int(os.environ.get('OCR_THREADS', '2'))
+
+if sys.argv[1:2] == ['--angle']:
+    image = np.asarray(ImageOps.exif_transpose(Image.open(sys.argv[2])).convert('RGB'))[:, :, ::-1]
+    print(int(RapidOrientation()(np.ascontiguousarray(image))[0]))
+    sys.exit(0)
+
 engine = RapidOCR(params={
     'Global.log_level': 'error',
     'Global.use_cls': False,

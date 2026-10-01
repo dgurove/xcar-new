@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Mail\Extraction\AttachmentClassifier;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -66,6 +67,18 @@ class Attachment extends Model
     public function isHeic(): bool
     {
         return in_array($this->mime, ['image/heic', 'image/heif'], true) || preg_match('/\.hei[cf]$/i', (string) $this->filename) === 1;
+    }
+
+    /** Фото — картинка без вида документа в имени: «СТС.jpg» и «акт.png» — документы (шторка, «✨ Распознать»). */
+    public function isPhoto(): bool
+    {
+        return $this->isImage() && AttachmentClassifier::kindOf($this->filename) === null;
+    }
+
+    /** Один и тот же файл в нескольких письмах цепочки (пересылка, «ч.2»): имя без регистра и размер. */
+    public function fileKey(): string
+    {
+        return mb_strtolower((string) $this->filename).'|'.$this->size;
     }
 
     public function isPdf(): bool

@@ -122,8 +122,8 @@ final class Docs
         $photos = [];
         foreach ($messages as $m) {
             foreach ($m->files() as $a) {
-                $key = mb_strtolower((string) $a->filename).'|'.$a->size;
-                if ($a->isImage() && AttachmentClassifier::kindOf($a->filename) === null) {
+                $key = $a->fileKey();
+                if ($a->isPhoto()) {
                     $photos[$key] = $a;
                 } elseif ($entries = self::archive($a)) {
                     // Архив раскрыт: каждый файл — своей вкладкой, кадры — во «Фото».

@@ -39,7 +39,9 @@ final class ScanFields
             $source = $field === 'car' ? ($candidate->extracted['brand']['source'] ?? '') : ($candidate->extracted[$field]['source'] ?? '');
             // Из файла взятое раньше — источник файл, его покажет сам файл ниже.
             if ($source !== 'file') {
-                $add($field, $value, $source === 'scan' ? 'выбрано' : 'письмо');
+                $add($field, $value, match ($source) {
+                    'scan' => 'выбрано', 'vin' => 'по VIN', default => 'письмо'
+                });
             }
         }
         foreach ($docs as $doc) {
@@ -70,15 +72,18 @@ final class ScanFields
 
     /**
      * Выбранное → поля цепочки (`Candidate::chosen`), источник `scan`. Выбор — текстом варианта, не номером: пока
-     * человек выбирал, могло прийти письмо и сдвинуть варианты. @param array<string, string> $picks
+     * человек выбирал, могло прийти письмо и сдвинуть варианты; без выбора у поля — вариант по умолчанию.
+     * Единственное значение из файла тоже запоминается: разбор письма берёт из файлов не всё (стоимость — нет).
+     * Единственное значение из письма — нет: оно и так у цепочки, а запомненное не дало бы письму его поправить.
+     *
+     * @param  array<string, string>  $picks
      */
     public static function chosen(array $rows, array $picks): array
     {
         $chosen = [];
         foreach ($rows as $field => $row) {
-            $option = collect($row['options'])->firstWhere('text', $picks[$field] ?? null);
-            // Выбирать было не из чего — запоминать нечего: значение и так у цепочки.
-            if (count($row['options']) < 2 || ! $option) {
+            $option = collect($row['options'])->firstWhere('text', $picks[$field] ?? null) ?? $row['options'][$row['pick']];
+            if (count($row['options']) < 2 && in_array('письмо', $option['from'], true)) {
                 continue;
             }
             $value = $option['value'];

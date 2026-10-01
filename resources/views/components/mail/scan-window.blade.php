@@ -3,6 +3,6 @@
 <div data-controller="sheet window" data-action="scan:open@window->window#open" class="contents">
     <x-ui.sheet id="scan" title="Распознать" tall>
         <template data-skeleton><x-ui.skeleton :rows="2"/></template>
-        <turbo-frame id="scan-frame" data-window-target="frame"><x-ui.skeleton :rows="2"/></turbo-frame>
+        <turbo-frame id="scan-frame" refresh="morph" data-window-target="frame"><x-ui.skeleton :rows="2"/></turbo-frame>
     </x-ui.sheet>
 </div>

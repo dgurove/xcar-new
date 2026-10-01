@@ -58,6 +58,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -688,6 +689,32 @@ class MailController
             if (is_file($small)) {
                 return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
             }
+        }
+        // ?thumb у PDF — первая страница картинкой (плитка документа в «✨ Распознать»), тоже раз и в cache/mail.
+        if ($size === 320 && $attachment->isPdf()) {
+            $small = Storage::disk('cache')->path("mail/thumb-{$attachment->id}.webp");
+            if (! is_file($small)) {
+                $page = sys_get_temp_dir().'/xcar-thumb-'.$attachment->id.'-'.bin2hex(random_bytes(4));
+                try {
+                    Process::timeout(20)->run(['pdftoppm', '-png', '-singlefile', '-f', '1', '-l', '1', '-scale-to', '640', $file, $page]);
+                    // Скан Альфы лежит боком: угол — моделью ориентации того же `ocr` (доли секунды, раз на файл).
+                    $angle = (int) trim(Process::timeout(20)->run([config('xcar.ocr', 'ocr'), '--angle', $page.'.png'])->output());
+                    if ($angle && ($gd = @imagecreatefrompng($page.'.png')) && ($turned = imagerotate($gd, $angle, 0))) {
+                        imagepng($turned, $page.'.png', 1);
+                    }
+                    if (is_file($page.'.png')) {
+                        rename($photos->shrink($page.'.png', 320), $small);
+                    }
+                } catch (\Throwable) {
+                    // Не отрисовалась — плитка останется значком PDF.
+                } finally {
+                    @unlink($page.'.png');
+                }
+            }
+            if (is_file($small)) {
+                return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
+            }
+            abort(404);
         }
         // SVG — не картинка, а документ со скриптами: только на скачивание.
         $inline = ($attachment->isImage() && $mime !== 'image/svg+xml') || $attachment->isPdf();

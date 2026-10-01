@@ -28,6 +28,9 @@ final class DocumentText
 
     private const LEGACY = 'doctext';
 
+    /** Метка «текстового слоя нет» (скан): разбор письма не гоняет pdftotext по тому же файлу при каждой перечитке. */
+    private const NO_LAYER = 'nolayer';
+
     private const MAX_BYTES = 15_000_000;
 
     private const PAGES = 2;
@@ -55,19 +58,26 @@ final class DocumentText
     public static function layer(Attachment $attachment): ?string
     {
         $disk = Storage::disk(Parts::CACHE_DISK);
-        $legacy = self::LEGACY.'/'.($attachment->blob_sha ?: 'a'.$attachment->id).'.txt';
+        $legacy = self::LEGACY.'/'.self::name($attachment);
 
         return self::cached($attachment) ?? ($disk->exists($legacy) ? (string) $disk->get($legacy) : null) ?? self::text($attachment);
     }
 
-    /** Текстовый слой файла с диска, если он читается; ложится в кеш. */
-    private static function text(Attachment $attachment): ?string
+    /**
+     * Текстовый слой файла, если он читается; ложится в кеш. Нечитаемый слой помечается и больше не достаётся.
+     * Без `$fetch` — только файл с диска (разбор письма), с ним — и из ящика («✨»: человек ждёт этот файл).
+     */
+    private static function text(Attachment $attachment, bool $fetch = false): ?string
     {
-        if ($attachment->is_inline || ! $attachment->isOnDisk() || ! ($path = $attachment->file())) {
+        $disk = Storage::disk(Parts::CACHE_DISK);
+        $none = self::NO_LAYER.'/'.self::name($attachment);
+        if ($attachment->is_inline || $disk->exists($none) || (! $fetch && ! $attachment->isOnDisk()) || ! ($path = $attachment->file())) {
             return null;
         }
         $text = AttachmentText::of($path, (string) $attachment->filename, $attachment->mime);
         if ($text === null || ! AttachmentText::readable($text)) {
+            $disk->put($none, '');
+
             return null;
         }
         self::put($attachment, $text);
@@ -78,11 +88,11 @@ final class DocumentText
     /**
      * Прочитать пачку: прочитанное — сразу, слой — если читается, остальное — одним вызовом `ocr` (модели грузятся
      * раз на пачку). `$done($attachment, $text)` зовётся по каждому файлу, как только он готов. Ошибка — пустой
-     * текст в кеш, без повторов.
+     * текст в кеш, без повторов. `$timeout` — меньше таймаута задачи: иначе её убьют раньше, чем сработает `finally`.
      *
      * @param  iterable<Attachment>  $attachments
      */
-    public static function read(iterable $attachments, ?Closure $done = null): void
+    public static function read(iterable $attachments, ?Closure $done = null, int $timeout = 600): void
     {
         $done ??= fn () => null;
         $dir = sys_get_temp_dir().'/xcar-ocr-'.bin2hex(random_bytes(6));
@@ -93,7 +103,7 @@ final class DocumentText
         $pages = [];
         try {
             foreach ($attachments as $a) {
-                if (($text = self::cached($a)) !== null || ($text = self::text($a)) !== null) {
+                if (($text = self::cached($a)) !== null || ($text = self::text($a, true)) !== null) {
                     $done($a, $text);
 
                     continue;
@@ -128,7 +138,7 @@ final class DocumentText
                     $done($a, $text);
                 }
             };
-            $process = Process::timeout(600)->start([config('xcar.ocr', 'ocr'), ...array_keys($owner)], function (string $type, string $output) use (&$buffer, $take) {
+            $process = Process::timeout($timeout)->start([config('xcar.ocr', 'ocr'), ...array_keys($owner)], function (string $type, string $output) use (&$buffer, $take) {
                 if ($type !== 'out') {
                     return;
                 }
@@ -181,6 +191,11 @@ final class DocumentText
 
     private static function key(Attachment $attachment): string
     {
-        return self::DIR.'/'.($attachment->blob_sha ?: 'a'.$attachment->id).'.txt';
+        return self::DIR.'/'.self::name($attachment);
+    }
+
+    private static function name(Attachment $attachment): string
+    {
+        return ($attachment->blob_sha ?: 'a'.$attachment->id).'.txt';
     }
 }
