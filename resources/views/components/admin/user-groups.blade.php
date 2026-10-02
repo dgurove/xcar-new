@@ -7,7 +7,9 @@
     $people = User::where('role', UserGroup::roleOf($kind))->orderBy('name')->get();
     $who = $kind === UserGroup::MODERATORS ? 'Модераторы' : 'Менеджеры';
 @endphp
-<div class="list-head mt-6">Группы @if ($groups->isNotEmpty())<span class="nums">{{ $groups->count() }}</span>@endif</div>
+{{-- Заголовок и плашка — один блок: между блоками экрана отступ ставит сам экран (gap), своих отступов тут нет. --}}
+<section>
+<div class="list-head pt-0">Группы @if ($groups->isNotEmpty())<span class="nums">{{ $groups->count() }}</span>@endif</div>
 <div class="list">
     @foreach ([null, ...$groups] as $group)
         <div data-controller="sheet" class="contents">
@@ -45,4 +47,4 @@
         </div>
     @endforeach
 </div>
-<div class="list-head mt-6">{{ $kind === UserGroup::MODERATORS ? 'Сотрудники' : 'Менеджеры' }}</div>
+</section>

@@ -20,11 +20,14 @@
 
     @if ($groupKind && ! request('q'))<x-admin.user-groups :groups="$groups" :kind="$groupKind"/>@endif
     @if ($preset === 'invites')
-        <div class="mt-6"><x-invites.list :invites="$invites" admin :managers="$managers" :fresh="$fresh"/></div>
+        <x-invites.list :invites="$invites" admin :managers="$managers" :fresh="$fresh"/>
     @elseif ($users->isEmpty())
-        <x-ui.empty class="mt-6">{{ $preset === 'buyers' ? 'Покупателей пока нет — они приходят по ссылкам менеджеров.' : 'Никого нет.' }}</x-ui.empty>
+        <x-ui.empty>{{ $preset === 'buyers' ? 'Покупателей пока нет — они приходят по ссылкам менеджеров.' : 'Никого нет.' }}</x-ui.empty>
     @else
-        <div class="list {{ $groupKind && ! request('q') ? '' : 'mt-6' }}">
+        <section>
+        {{-- Под группами — люди своим блоком с заголовком; отступ между блоками — gap экрана. --}}
+        @if ($groupKind && ! request('q'))<div class="list-head pt-0">{{ $groupKind === \App\Users\UserGroup::MODERATORS ? 'Сотрудники' : 'Менеджеры' }}</div>@endif
+        <div class="list">
             @foreach ($users as $user)
                 <div class="row" data-controller="sheet">
                     <x-ui.avatar :user="$user" :size="36"/>
@@ -52,6 +55,7 @@
                 </div>
             @endforeach
         </div>
-        <div class="mt-8"><x-ui.pager :of="$users"/></div>
+        </section>
+        <x-ui.pager :of="$users"/>
     @endif
 </x-ui.cabinet>
