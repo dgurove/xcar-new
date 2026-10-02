@@ -884,7 +884,7 @@ Telegram, с почтой — «Новое из писем» (`OfferLetterNotice
   «Документы» с миниатюрой первой страницы, поставленной прямо `ocr --angle`, и «Фото» с «Выбрать все» — документы
   отмечены, не больше `ScanAttachments::MAX_FILES`; чтение — список с полосой и кольцом у каждого файла, метка
   `scan:a:{id}` на файле, событие `scan` всем сотрудникам парковки, без опроса; поля — строки списка, несколько
-  вариантов — `<details>` с галками) → `Mail\Jobs\ScanAttachments` в очереди `scan` лёгкого воркера → `DocumentText::read`
+  вариантов — `<details>` с галками) → `Mail\Jobs\ScanAttachments` в очереди `scan` своим работником `queue-scan` (соединение `database-scan`, retry_after 960 больше таймаута 900) → `DocumentText::read`
   через `deploy/bin/ocr` (PaddleOCR PP-OCRv5 через RapidOCR на onnxruntime, русская модель eslav, поворот страницы —
   rapid-orientation, текста меньше 150 знаков — перебор четырёх поворотов; на проде ~6 с страница и ~4 с загрузка
   моделей; tesseract выкинут — на 31 скане Альфы он проигрывал Paddle и не читал фото). **Сторожа OCR** (01.10.2026):
@@ -1237,7 +1237,8 @@ Telegram, с почтой — «Новое из писем» (`OfferLetterNotice
 ```bash
 ./serve-local.sh                 # http://xcar.localhost:8010 (php@8.5 и postgres из brew)
 php artisan queue:work database-long --queue=long,mail --stop-when-empty      # почта, фото, закупки
-php artisan queue:work --queue=notifications,scan,default --stop-when-empty  # конверсии, уведомления, «✨ Распознать»
+php artisan queue:work --queue=notifications,default --stop-when-empty       # конверсии, уведомления
+php artisan queue:work database-scan --queue=scan --stop-when-empty         # «✨ Распознать»
 php artisan offers:tick | park:tick | park:digest | billing:tick | mail:sync | mail:reconcile | push:keys | media:restamp | vendors:refill
 npm run build                    # ассеты; npm run dev — с горячей перезагрузкой
 node scripts/icons.mjs           # иконки, экраны запуска, водяной знак из resources/icons

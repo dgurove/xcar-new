@@ -28,7 +28,8 @@ use Throwable;
  * Файлы — вложения писем (`812`) и документы предложения (`m45`, `Scan\Paper`): письма перечитываются только у первых.
  * Пока файл в работе, на нём метка (`reading`): окно крутит его и не показывает поля, которые ещё сдвинет перечитка.
  * Метка у каждого файла своя — две пачки одной цепочки друг другу её не снимают; живёт не дольше задачи, а убитая
- * по таймауту задача снимает её в `failed`. Очередь `scan` на лёгком воркере: человек ждёт.
+ * по таймауту задача снимает её в `failed`. Очередь `scan` — своим соединением `database-scan` (retry_after 960 больше
+ * таймаута) и своим работником `queue-scan`: человек ждёт, а уведомления не ждут чтения.
  */
 final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -49,7 +50,7 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
      */
     public function __construct(public string $subject, public array $ids)
     {
-        $this->onQueue('scan');
+        $this->onConnection('database-scan')->onQueue('scan');
     }
 
     public function uniqueId(): string

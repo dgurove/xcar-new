@@ -56,6 +56,17 @@ return [
             'after_commit' => false,
         ],
 
+        // «✨ Распознать» (`ScanAttachments`): пачка OCR идёт до 15 минут — retry_after больше таймаута задачи (900),
+        // иначе Laravel считает её зависшей. Свой работник `queue-scan`: уведомления за чтением не стоят.
+        'database-scan' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => 'scan',
+            'retry_after' => 960,
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),

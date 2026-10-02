@@ -62,10 +62,17 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
-  # scan — «✨ Распознать»: человек ждёт ответа, поэтому здесь, а не за разбором почты в queue-long.
   queue:
     <<: *app
-    command: php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=notifications,scan,default
+    command: php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=notifications,default
+    healthcheck:
+      disable: true
+
+  # «✨ Распознать»: человек ждёт ответа, поэтому не за разбором почты в queue-long, и не впереди уведомлений —
+  # пачка OCR идёт до 15 минут. Своё соединение database-scan: retry_after 960 больше таймаута задачи.
+  queue-scan:
+    <<: *app
+    command: php artisan queue:work database-scan --tries=1 --max-time=3600 --memory=256 --sleep=3 --queue=scan
     healthcheck:
       disable: true
 
