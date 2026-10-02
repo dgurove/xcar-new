@@ -215,8 +215,8 @@ class OfferController
     }
 
     /**
-     * «Сохранить»; у черновика «Опубликовать» — та же форма с `then=open`: сначала поля, потом в продажу; «Сохранить и
-     * новое» (`then=next`) — сразу следующий черновик с тем же вендором: пачку заводят подряд.
+     * «Сохранить» — и в список предложений; у черновика «Опубликовать» — та же форма с `then=open`: сначала поля, потом
+     * в продажу; «+ Новый» (`then=next`) — сразу следующий черновик с тем же вендором: пачку заводят подряд.
      */
     public function update(OfferRequest $request, Offer $offer, UpdateOffer $update, ChangeOfferState $change, CreateOffer $create)
     {
@@ -237,7 +237,8 @@ class OfferController
             return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number);
         }
 
-        return redirect("/offers/{$offer->number}")->with('toast', 'Сохранено');
+        // «Сохранить» — обратно в список предложений (владелец 02.10.2026): правку сделали, дальше следующее.
+        return redirect('/')->with('toast', 'Сохранено');
     }
 
     /**

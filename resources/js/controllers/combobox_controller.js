@@ -51,7 +51,8 @@ export default class extends Controller {
     option(label, hint, onPick, isCreate = false) {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'combobox-option' + (isCreate ? ' combobox-create' : '');
+        // Длинная подсказка (район и регион у места) — строкой под названием; короткая (русское имя марки) — справа.
+        b.className = 'combobox-option' + (isCreate ? ' combobox-create' : '') + (hint && hint.length > 16 ? ' combobox-option-stack' : '');
         b.innerHTML = `<span>${label}</span>` + (hint ? `<span class="text-ink-muted text-sm">${hint}</span>` : '');
         b.addEventListener('click', onPick);
         return b;

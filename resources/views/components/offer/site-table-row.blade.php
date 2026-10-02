@@ -13,7 +13,7 @@
     $peek = "/offers/{$n}/peek".($context ? '?'.http_build_query($context->query()) : '');
     $fresh = !$gallery && $offer->isFresh();
     $since = $offer->published_at ?? $offer->created_at;
-    $city = $offer->settlement?->name;
+    $city = $offer->settlement?->title();
 @endphp
 <tr id="offer-{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="{{ $peek }}" data-href="{{ $href }}" tabindex="0">
     <td class="grow">

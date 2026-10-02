@@ -23,8 +23,10 @@
     $offer->loadMissing('parkVehicle:id,offer_id,category');
     $draft = $offer->state === OfferState::Draft;
     $unpriced = $draft && ! $offer->asking_price;
+    // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
+    $rate = $unpriced && auth()->user()?->canManageCrm();
 @endphp
-<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-row-key="offer-{{ $offer->id }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0" @if ($unpriced) data-unpriced @endif>
+<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-row-key="offer-{{ $offer->id }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0" @if ($rate) data-unpriced @endif>
     <td class="grow">
         <span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
         <span class="cell-sub" data-controller="fitline">
@@ -47,7 +49,8 @@
     <td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>
     {{-- Цена продажи (у черновика без неё — «оценить»), справа закупочная; на телефоне закупочная — под ценой. --}}
     <td class="num nums">
-        @if ($unpriced)<span class="text-accent-text">оценить</span>
+        @if ($rate)<span class="text-accent-text">оценить</span>
+        @elseif ($unpriced)
         @elseif ($price->shown()){{ $price::money($price->to) }}
         @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
         @if ($offer->floor_price)<span class="cell-sub sm:hidden">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif

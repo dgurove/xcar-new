@@ -19,7 +19,7 @@
                 @unless ($car->is_published)<span>скрыта</span>@endunless
                 <span class="nums">{{ $car->dl }}</span>
                 <span>{{ mb_strtolower($car->kind->label()) }}</span>
-                @if ($car->settlement?->name ?? $car->city)<span>{{ $car->settlement?->name ?? $car->city }}</span>@endif
+                @if ($car->settlement?->title() ?? $car->city)<span>{{ $car->settlement?->title() ?? $car->city }}</span>@endif
                 @if ($car->price_listing)<span class="nums">размещение {{ \App\Support\Money::rub($car->price_listing) }}</span>@endif
                 @if ($car->price_revalued)<span class="nums">переоценка {{ \App\Support\Money::rub($car->price_revalued) }}</span>@endif
             </div>

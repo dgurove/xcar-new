@@ -26,7 +26,7 @@ class Yard extends Model
     /** Адрес для людей: город и улица; без адреса — название парковки. */
     public function fullAddress(): string
     {
-        return trim(($this->settlement?->name ?? '').', '.($this->address ?? ''), ', ') ?: $this->name;
+        return trim(($this->settlement?->title() ?? '').', '.($this->address ?? ''), ', ') ?: $this->name;
     }
 
     /** Ссылка на карту — покупателю, который едет забирать ТС. */

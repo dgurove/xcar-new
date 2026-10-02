@@ -105,7 +105,7 @@ class Car extends Model implements HasMedia
             'Тип' => $this->kind->label(), 'Год' => $this->year, 'Пробег' => $this->mileage !== null ? number_format($this->mileage, 0, '', ' ').' км' : null,
             'Коробка' => $this->transmission?->label(), 'Топливо' => $this->fuel?->label(), 'Объём' => $this->engine_volume ? number_format($this->engine_volume / 1000, 1, ',', '').' л' : null,
             'Мощность' => $this->engine_power ? $this->engine_power.' л. с.' : null, 'Цвет' => $this->color, 'Руль' => $this->steering, 'Ключи' => $this->keys,
-            'Состояние' => $this->condition, 'VIN' => $this->vin, 'Номер' => $this->dl, 'Где' => $this->settlement?->name ?? $this->city ?? $this->address, 'Обременения' => $this->encumbrance,
+            'Состояние' => $this->condition, 'VIN' => $this->vin, 'Номер' => $this->dl, 'Где' => $this->settlement?->title() ?? $this->city ?? $this->address, 'Обременения' => $this->encumbrance,
         ], fn ($v) => $v !== null && $v !== '');
     }
 

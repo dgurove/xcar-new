@@ -122,22 +122,10 @@ final class Importer
         return [$found->id, $carModel?->id];
     }
 
+    /** Место из адреса Carcade («Пермский край, д. Ванюки, …»): регион, тип места, справочник ОКТМО — `Settlement::inAddress`. */
     private function settlement(?string $address): ?int
     {
-        if (! $address) {
-            return null;
-        }
-        foreach (preg_split('/[,;]+/u', $address) as $part) {
-            $part = trim(preg_replace('/^(г\.?|город|пос\.?|с\.?|д\.?)\s+/iu', '', trim($part)));
-            if (mb_strlen($part) < 3) {
-                continue;
-            }
-            if ($s = Settlement::whereRaw('lower(name) = ?', [mb_strtolower($part)])->first()) {
-                return $s->id;
-            }
-        }
-
-        return null;
+        return Settlement::inAddress($address)['id'] ?? null;
     }
 
     private function fssp(?string $encumbrance): ?bool

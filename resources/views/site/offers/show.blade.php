@@ -15,7 +15,7 @@
         'Повреждения' => $offer->damage_zones ? implode(', ', array_map(fn ($z) => \App\Cars\DamageZone::labelOf($z), $offer->damage_zones)) : null,
         'На ходу' => $offer->is_runnable === null ? null : ($offer->is_runnable ? 'Да' : 'Нет'),
         'Ключи' => $offer->has_keys === null ? null : ($offer->has_keys ? 'Есть' : 'Нет'), 'Документы' => $offer->papers?->label(),
-        'Город' => $offer->settlement?->name, 'Осмотр' => $offer->show_address ? $offer->inspection_address : null,
+        'Город' => $offer->settlement?->title(), 'Осмотр' => $offer->show_address ? $offer->inspection_address : null,
     ], fn ($v) => $v !== null && $v !== '');
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="[$gallery ? 'Галерея' : 'Предложения', $back]" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">

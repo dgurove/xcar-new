@@ -23,9 +23,9 @@
                 <tr id="yard-{{ $yard->id }}" data-peek-url="/yards/{{ $yard->id }}/peek" data-href="/cars?yard={{ $yard->id }}" tabindex="0" class="{{ $yard->is_active ? '' : 'text-ink-dim' }}">
                     <td class="grow">
                         <span class="cell-title">{{ $yard->name }}</span>
-                        <span class="cell-sub">@unless ($yard->is_active)<span>закрыта</span>@endunless<span class="sm:hidden">{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</span></span>
+                        <span class="cell-sub">@unless ($yard->is_active)<span>закрыта</span>@endunless<span class="sm:hidden">{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</span></span>
                     </td>
-                    <td class="cell-dim hidden sm:table-cell">{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</td>
+                    <td class="cell-dim hidden sm:table-cell">{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</td>
                     <td class="num nums hidden sm:table-cell">{{ $yard->capacity ?: '' }}</td>
                     <td class="num nums">{{ $yard->stored_vehicles_count }}</td>
                     <td class="num nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) ?? '' }}</td>
@@ -39,7 +39,7 @@
                     <button type="button" class="row w-full text-left" data-action="sheet#open">
                         <div class="min-w-0 flex-1">
                             <div class="truncate">{{ $yard->name }}</div>
-                            <div class="row-sub">@unless ($yard->is_active)<span class="text-ink">закрыта</span>@endunless<span>{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</span>@if ($yard->capacity)<span class="nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) }} свободно</span>@endif</div>
+                            <div class="row-sub">@unless ($yard->is_active)<span class="text-ink">закрыта</span>@endunless<span>{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</span>@if ($yard->capacity)<span class="nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) }} свободно</span>@endif</div>
                         </div>
                         <span class="nums shrink-0 text-ink-dim">{{ $yard->stored_vehicles_count }}</span>
                         <x-ui.chevron/>
@@ -59,7 +59,7 @@
                         <div class="min-w-0 flex-1">
                             <div class="font-medium">{{ $yard->name }}@unless ($yard->is_active) <x-ui.state tone="closed">закрыта</x-ui.state>@endunless</div>
                             <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                                @if ($yard->settlement || $yard->address)<x-ui.place class="tag">{{ trim(($yard->settlement?->name ?? '').', '.($yard->address ?? ''), ', ') }}</x-ui.place>@endif
+                                @if ($yard->settlement || $yard->address)<x-ui.place class="tag">{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</x-ui.place>@endif
                                 @if ($yard->capacity)<a href="/cars?yard={{ $yard->id }}" class="tag nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) }} свободно</a>@else<a href="/cars?yard={{ $yard->id }}" class="tag nums">{{ $yard->stored_vehicles_count }} ТС</a>@endif
                             </div>
                         </div>

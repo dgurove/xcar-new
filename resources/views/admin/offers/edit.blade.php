@@ -15,21 +15,21 @@
     $grid = 'grid grid-cols-2 gap-3 @4xl:grid-cols-3';
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
-    <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
-        @if ($admin)
-            <span class="order-last ml-auto flex items-center gap-1">
-                @include('admin.offers.share-button')
-            </span>
-        @endif
-        {{-- Номер предложения и номер ДЛ или убытка копируются нажатием, как VIN. --}}
-        @unless ($offer->state === OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $n" done="Номер в буфере"/></span>@endunless
-        @if ($offer->claim_ref)<span class="tag nums gap-1">{{ $offer->leaseRef() ? 'ДЛ' : 'Убыток' }}<x-ui.copy-code :value="$offer->claim_ref"/></span>@endif
+    {{-- Под заголовком — только состояние и метки, пилюлями одного роста (номер, убыток и документы — в полях и блоках
+         ниже). Метки: выбранные пилюлями, «+» и нажатие на метку — шторка со списком и своей меткой; галки ходят в форму
+         оффера через form=, пилюли перерисовывает tag-chips сразу. Срок приёма, чаты и импорт — только когда они есть. --}}
+    @php
+        $own = $offer->tag_colors ?? [];
+        $tagStyle = fn (string $name) => \App\Offers\Tag::style(\App\Offers\Tag::colorOf($name, $own));
+    @endphp
+    <div class="offer-head -mt-3 mb-4 flex flex-wrap items-center gap-1.5">
         @if ($garage)
             <x-ui.pill tone="plain" :href="$garage->url()" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
+        @elseif ($admin && $offer->deal)
+            {{-- В сделке пилюля состояния и есть вход в сделку: «Идёт сделка ›». --}}
+            <x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
         @else
-            {{-- В сделке пилюля состояния и есть вход в сделку: «Идёт сделка ›», второй пилюли «Сделка» рядом нет. --}}
-            @if ($admin && $offer->deal)<x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
-            @else<x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>@endif
+            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
         @endif
         @if ($offer->closed())
             <x-ui.pill tone="closed">Приём закрыт с {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</x-ui.pill>
@@ -38,16 +38,29 @@
         @endif
         @if ($offer->state === OfferState::Open && $offer->bids_close_at)
             {{-- Продлить приём на ходу, как в закупке: от текущего срока, если он не прошёл, иначе от сейчас. --}}
-            <span class="flex shrink-0 items-center gap-1.5">
-                @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
-                    <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
-                @endforeach
-            </span>
+            @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
+                <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
+            @endforeach
         @endif
-        {{-- Письмо, документы и фото — шторкой рядом с полями (x-ui.docs); переписка — карточкой «Письма» и окном. --}}
-        @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
         @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
         @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
+        @if ($admin)
+            <div class="contents" data-controller="sheet tag-chips" data-action="change->tag-chips#render">
+                <span class="contents" data-tag-chips-target="chips">
+                    @foreach ($offer->tags ?? [] as $name)<button type="button" class="pill pill-tag" style="{{ $tagStyle($name) }}" data-action="sheet#open">{{ $name }}</button>@endforeach
+                </span>
+                <button type="button" class="pill pill-plain" data-action="sheet#open" aria-label="Метки"><x-ui.icon name="plus" class="size-4"/><span data-tag-chips-target="word" @if ($offer->tags) hidden @endif>Метка</span></button>
+                <x-ui.sheet id="offer-tags" title="Метки">
+                    <div class="flex flex-col gap-4">
+                        @include('admin.offers.fields.tags', ['form' => 'offer-form', 'label' => false])
+                        <x-ui.button type="button" block data-action="sheet#close">Готово</x-ui.button>
+                    </div>
+                </x-ui.sheet>
+            </div>
+            <span class="ml-auto flex items-center gap-1">
+                @include('admin.offers.share-button')
+            </span>
+        @endif
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>
 
@@ -103,37 +116,35 @@
             </x-ui.card>
             @endif
 
-            {{-- Кому показывать: сводка волн, правка в шторке. Поля живут в форме оффера через form=. --}}
-            @if ($admin)
-            <x-ui.card title="Кому показывать" class="order-5">
-                @include('admin.offers.fields.audience', ['form' => 'offer-form'])
-                @if ($showingSummary->isNotEmpty())
-                    <div class="mt-4 flex flex-col gap-1.5 text-sm">
-                        @foreach ($showingSummary as $row)
-                            <div class="flex items-center gap-2"><x-ui.person :user="$row['manager']"/><span class="text-ink-muted">открыл {{ $row['buyers'] }} {{ \App\Support\Plural::of($row['buyers'], ['покупателю', 'покупателям', 'покупателям']) }}</span></div>
-                        @endforeach
-                    </div>
+            {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС.
+                 Кому показывать — строкой внизу того же блока (своей карточкой занимал место ради одной строки). --}}
+            <x-ui.card title="Деньги" class="order-3">
+                @include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false])
+                @if ($admin)
+                    <div class="field mt-4"><span class="field-label">Кому показывать</span>@include('admin.offers.fields.audience', ['form' => 'offer-form'])</div>
+                    @if ($showingSummary->isNotEmpty())
+                        <div class="mt-3 flex flex-col gap-1.5 text-sm">
+                            @foreach ($showingSummary as $row)
+                                <div class="flex items-center gap-2"><x-ui.person :user="$row['manager']"/><span class="text-ink-muted">открыл {{ $row['buyers'] }} {{ \App\Support\Plural::of($row['buyers'], ['покупателю', 'покупателям', 'покупателям']) }}</span></div>
+                            @endforeach
+                        </div>
+                    @endif
                 @endif
             </x-ui.card>
-            @endif
 
-            {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
-            <x-ui.card title="Деньги" class="order-3">
-                @include('admin.offers.fields.money', ['form' => 'offer-form'])
-            </x-ui.card>
-
+            {{-- История — последние четыре записи, остальное по «Ещё N»: лента в тридцать строк занимала экран. --}}
+            @php $events = $offer->events->take(30); @endphp
             <x-ui.card title="История" class="order-6">
                 <div class="flex flex-col gap-3 text-sm">
-                    @foreach ($offer->events->take(30) as $event)
-                        {{-- Как история дела ТС: сверху мелко дата, ниже текст во всю ширину, справа кто — в узкой колонке строка не ломается лесенкой. --}}
-                        <div>
-                            <div class="nums text-xs text-ink-dim">{{ $event->created_at->translatedFormat('j M, H:i') }}</div>
-                            <div class="mt-0.5 flex items-start justify-between gap-3">
-                                <div class="min-w-0 flex-1 leading-snug">{{ $event->text() }}</div>
-                                @if ($event->user)<span class="shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
+                    @foreach ($events->take(4) as $e)@include('admin.offers.event', ['event' => $e])@endforeach
+                    @if ($events->count() > 4)
+                        <details class="group flex flex-col gap-3">
+                            <summary class="cursor-pointer list-none text-ink-muted group-open:hidden">Ещё {{ $events->count() - 4 }}</summary>
+                            <div class="flex flex-col gap-3">
+                                @foreach ($events->slice(4) as $e)@include('admin.offers.event', ['event' => $e])@endforeach
                             </div>
-                        </div>
-                    @endforeach
+                        </details>
+                    @endif
                 </div>
             </x-ui.card>
         </div>

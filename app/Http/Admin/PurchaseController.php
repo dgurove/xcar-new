@@ -2,7 +2,6 @@
 
 namespace App\Http\Admin;
 
-use App\Cars\Settlement;
 use App\Purchases\Actions\ChangePurchaseState;
 use App\Purchases\Actions\ChooseOffer;
 use App\Purchases\Actions\CreatePurchase;
@@ -304,7 +303,7 @@ class PurchaseController
         abort_unless($car->purchase_id === $purchase->id, 404);
         $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
 
-        return view('admin.purchases.car', ['purchase' => $purchase, 'car' => $car, 'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id')]);
+        return view('admin.purchases.car', ['purchase' => $purchase, 'car' => $car]);
     }
 
     /** Окошко строки таблицы: фото, факты, цены Carcade, предложения менеджеров, наша цена. */

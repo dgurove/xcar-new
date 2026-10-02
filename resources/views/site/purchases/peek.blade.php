@@ -16,7 +16,7 @@
         <x-slot:marks>
             <span class="tag nums">№ {{ $car->ref }}</span>
             <span class="tag">{{ $car->kind->label() }}</span>
-            @if ($car->settlement?->name ?? $car->city)<x-ui.place class="tag">{{ $car->settlement?->name ?? $car->city }}</x-ui.place>@endif
+            @if ($car->settlement?->title() ?? $car->city)<x-ui.place class="tag">{{ $car->settlement?->title() ?? $car->city }}</x-ui.place>@endif
             <x-ui.vin-code :vin="$car->vin" class="tag"/>
             @if ($car->fssp)<span class="tag">Ограничения ФССП</span>@endif
         </x-slot:marks>

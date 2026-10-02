@@ -77,7 +77,7 @@
             <span class="text-sm text-accent-text">Узнать цену</span>
         @endif
     </span>
-    <div class="card-place">@if ($offer->settlement)<x-ui.place class="truncate text-sm text-ink-dim">{{ $offer->settlement->name }}</x-ui.place>@endif</div>
+    <div class="card-place">@if ($offer->settlement)<x-ui.place class="truncate text-sm text-ink-dim">{{ $offer->settlement->title() }}</x-ui.place>@endif</div>
 
     <div class="card-action">
         @if ($user?->isBuyer())

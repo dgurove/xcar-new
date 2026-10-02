@@ -2,7 +2,6 @@
 
 namespace App\Http\Park;
 
-use App\Cars\Settlement;
 use App\Park\Request as ParkRequest;
 use App\Park\Vehicle;
 use App\Park\Yard;
@@ -22,7 +21,6 @@ class YardController
 
         return view('park.yards.index', [
             'yards' => $closed ? $yards : $yards->where('is_active', true), 'closed' => $closed, 'closedCount' => $yards->where('is_active', false)->count(),
-            'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 
@@ -31,7 +29,7 @@ class YardController
     {
         $yard->loadCount('storedVehicles')->load(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand']);
 
-        return view('park.yards.peek', ['yard' => $yard, 'settlements' => Settlement::orderByDesc('is_federal_city')->orderBy('name')->pluck('name', 'id')]);
+        return view('park.yards.peek', ['yard' => $yard]);
     }
 
     public function store(Request $request)

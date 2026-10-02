@@ -68,15 +68,26 @@ class ReferenceController
         return response()->json($brands->map(fn ($b) => ['id' => $b->id, 'label' => $b->name, 'hint' => $b->name_ru]));
     }
 
-    /** Города для поля «Город» предложения: поиском, а не списком из тысячи восьмисот строк в каждом окошке. */
+    /**
+     * Поле «Город» (предложение, парковка, закупка): поиском по началу имени среди 155 тысяч мест ОКТМО — сначала
+     * города, потом посёлки, сёла, деревни. Число в запросе — номер региона («никольское 47»). Подпись — «Серпухов, 50»,
+     * ниже район и регион: одноимённых мест бывают сотни.
+     */
     public function settlements(Request $request)
     {
-        $q = mb_strtolower(trim($request->query('q', '')));
-        $towns = Settlement::query()
-            ->when($q, fn ($s) => $s->whereRaw('lower(name) like ?', ["{$q}%"]))
-            ->orderByDesc('is_federal_city')->orderBy('name')->limit(20)->get(['id', 'name']);
+        $q = mb_strtolower(trim((string) $request->query('q', '')));
+        $plate = preg_match('/\s(\d{2,3})$/u', $q, $m) ? str_pad($m[1], 2, '0', STR_PAD_LEFT) : null;
+        $q = trim((string) preg_replace('/\s\d{2,3}$/u', '', $q));
+        $places = Settlement::query()->with('region:id,short')
+            ->when($q, fn ($s) => $s->whereRaw('lower(name) like ?', [str_replace(['%', '_'], ['\\%', '\\_'], $q).'%']))
+            ->when($plate, fn ($s) => $s->where('region_code', $plate))
+            ->orderBy('rank')->orderBy('name')->limit(20)->get(['id', 'name', 'region_code', 'region_id', 'district']);
 
-        return response()->json($towns->map(fn ($s) => ['id' => $s->id, 'label' => $s->name]));
+        return response()->json($places->map(fn (Settlement $s) => [
+            'id' => $s->id,
+            'label' => $s->title(),
+            'hint' => implode(', ', array_filter([$s->districtShort(), $s->region?->short])),
+        ]));
     }
 
     public function models(Request $request)

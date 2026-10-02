@@ -113,6 +113,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/reference/vin', [ReferenceController::class, 'vin']);
     Route::post('/reference/car-text', [ReferenceController::class, 'carText']);
     Route::get('/reference/brands', [ReferenceController::class, 'brands']);
+    Route::get('/reference/settlements', [ReferenceController::class, 'settlements']);
     Route::get('/reference/models', [ReferenceController::class, 'models']);
     Route::post('/reference/brands', [ReferenceController::class, 'createBrand']);
     Route::post('/reference/models', [ReferenceController::class, 'createModel']);

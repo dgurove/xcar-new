@@ -11,12 +11,12 @@
     <x-ui.field name="ref" label="Номер убытка" :value="$v('ref')" autocapitalize="characters" autocorrect="off" spellcheck="false" copy/>
     <x-ui.field name="policy_no" label="№ полиса" :value="$v('policy_no')" copy/>
     <x-ui.field name="vendor_id" label="Вендор" :options="$vendors" placeholder="—" :value="$v('vendor_id')"/>
-    <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="old('brand_id', $brand?->id)" :text="$brand?->name" resets="#cb-model_id" required/>
-    <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="old('model_id', $model?->id)" :text="$model?->name" required/>
-    <x-ui.field name="year" label="Год" :value="$v('year')"/>
     <x-ui.vin :value="$v('vin')" span="col-span-full sm:col-span-2"/>
     <x-ui.field name="plate" label="Госномер" :value="$v('plate')" autocapitalize="characters" copy/>
     <div class="col-span-full flex flex-col gap-2 empty:hidden" data-twins-target="box"></div>
+    <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="old('brand_id', $brand?->id)" :text="$brand?->name" resets="#cb-model_id" required/>
+    <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="old('model_id', $model?->id)" :text="$model?->name" required/>
+    <x-ui.field name="year" label="Год" :value="$v('year')"/>
     <x-ui.field name="color" label="Цвет" :value="$v('color')"/>
     <x-ui.field name="category" label="Категория" :options="$categories" placeholder="—" :value="$vehicle?->category?->value ?? $v('category')"/>
     {{-- Свои id: у формы звонка и эвакуации могут быть те же имена. --}}

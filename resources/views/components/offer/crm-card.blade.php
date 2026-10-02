@@ -15,6 +15,8 @@
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
     $draft = $offer->state === OfferState::Draft;
     $unpriced = $draft && ! $offer->asking_price;
+    // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
+    $rate = $unpriced && auth()->user()?->canManageCrm();
     $left = $gallery ? null : $offer->secondsLeft();
     $timer = $left !== null && $left > 0;
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => 'text-ink' };
@@ -59,7 +61,7 @@
     </div>
     <div class="card-aside">
         @if ($unpriced)
-            <a href="/?preset=draft&vid=table&peek={{ $n }}" class="text-sm text-accent-text" data-turbo-action="replace">оценить</a>
+            @if ($rate)<a href="/?preset=draft&vid=table&peek={{ $n }}" class="text-sm text-accent-text" data-turbo-action="replace">оценить</a>@endif
             @if ($offer->floor_price)<span class="nums text-sm text-ink-dim">{{ Money::nums($offer->floor_price) }}</span>@endif
         @else
             @if ($price->shown())<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>

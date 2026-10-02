@@ -636,6 +636,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Бейдж нового в пилюле: на лаймовой текущей лаймовый пропадал — инверсия, как у текущего таба. */
   .pill .badge { min-width: 1.125rem; line-height: 1.125rem; }
   .pill[aria-current="true"] .badge, .pill[aria-current="page"] .badge { background: var(--color-white, #fff); color: var(--color-accent); }
+  /* Метка предложения пилюлей (шапка редактора) — того же роста, что состояние рядом, своим цветом. */
+  .pill-tag { background: var(--tag-bg); color: var(--tag-text); }
+  .dark .pill-tag { background: var(--tag-bg-d); color: var(--tag-text-d); }
   .pill-open  { @apply bg-open-soft text-open; }
   .pill-urgent { @apply bg-urgent-soft text-urgent; }
   .pill-closed { @apply bg-closed-soft text-closed; }
@@ -648,6 +651,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   span.tag:is(.tag-urgent, .tag-danger) { background: none !important; padding-inline: 0 !important; min-height: 0; font-weight: 500; }
   span.pill.pill-plain { font-weight: 400; }
   span.pill.pill-accent { background: none; padding-inline: 0; min-height: 0; color: var(--color-accent-text); }
+  /* Шапка редактора предложения: состояние стоит в одном ряду с метками и сроком — капсулой того же роста, иначе
+     слово рядом с пилюлями выглядит другим размером. */
+  .offer-head span.pill:is(.pill-open, .pill-urgent, .pill-closed, .pill-danger, .pill-soft, .pill-plain) { padding-inline: .875rem !important; min-height: 1.875rem; font-weight: 400; }
+  .offer-head span.pill-open { background: var(--color-open-soft) !important; }
+  .offer-head span.pill-urgent { background: var(--color-urgent-soft) !important; }
+  .offer-head span.pill-closed { background: var(--color-closed-soft) !important; }
+  .offer-head span.pill-danger { background: var(--color-danger-soft) !important; }
+  .offer-head span.pill-soft { background: var(--color-accent-soft) !important; }
+  .offer-head span.pill-plain { background: var(--color-surface-2) !important; }
   /* x-ui.state — то же словом без капсулы, одним классом вместо «!min-h-0 !py-1 text-xs» у каждой пилюли. */
   .state { @apply inline-flex items-center whitespace-nowrap text-xs font-medium; }
   .state-open { @apply text-open; } .state-urgent { @apply text-urgent; } .state-closed { @apply text-closed; }
@@ -2087,6 +2099,8 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   /* В top layer: геометрию под полем считает контроллер (place). */
   .combobox-list:popover-open { position: fixed; inset: auto; margin: 0; border: 0; color: inherit; }
   .combobox-option { @apply flex w-full items-baseline justify-between gap-3 rounded-(--radius-s) px-3 py-2 text-left hover:bg-surface-3; min-height: 44px; }
+  .combobox-option-stack { @apply flex-col items-start justify-center gap-0.5; }
+  .combobox-option-stack > span:last-child { @apply text-xs leading-snug; }
   .combobox-create { @apply text-accent-text; }
 
   /* Полоса фото: прокрутка вбок, плитка фиксированной высоты, первая — «добавить».

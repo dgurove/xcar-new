@@ -7,7 +7,7 @@
     $mine = $staff ? null : $car->offerOf(auth()->user());
     $best = $staff ? $car->bestOffer() : null;
     $href = "/purchases/{$purchase->number}/{$car->ref}".($query ? '?'.$query : '');
-    $city = $car->settlement?->name ?? $car->city;
+    $city = $car->settlement?->title() ?? $car->city;
 @endphp
 <tr id="car-{{ $car->id }}" data-peek-url="/purchases/{{ $purchase->number }}/{{ $car->ref }}/peek{{ $query ? '?'.$query : '' }}" data-href="{{ $href }}" tabindex="0">
     <td class="grow">

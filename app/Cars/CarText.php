@@ -17,10 +17,12 @@ use App\Park\Vehicle;
  * Строка — до перевода строки, табуляции или трёх пробелов подряд (так WhatsApp склеивает строки при копировании).
  * Строка с подписью («Привод Передний», «Год: 2019») даёт своё поле; без подписи — номер убытка, VIN, госномер, цена,
  * телефон, марка с моделью и город узнаются по виду. Кирпичи те же, что у писем и документов: `CodeMatcher`,
- * `Patterns`, `Names`, `CarWords`, `Colors`, `Settlement::named`. Вендор — по номеру: у кого прошлые номера того же вида.
+ * `Patterns`, `Names`, `CarWords`, `Colors`, `Settlement::named|inAddress`. Вендор — по номеру: у кого прошлые номера того же вида.
  */
 final class CarText
 {
+    private static ?Region $region = null;
+
     /** Подписи полей; первая подходящая забирает строку. Порядок важен: «Тип двигателя» раньше «Двигателя». */
     private const LABELS = [
         'claim_ref' => 'номер\s+убытка|№\s*убытка|убыток|номер\s+дела|номер\s+дл',
@@ -48,6 +50,8 @@ final class CarText
     public static function parse(string $text): array
     {
         $text = str_replace(["\u{00A0}", "\u{202F}", "\u{2007}"], ' ', $text);
+        // Регион, названный где угодно в тексте («Пермский край»), сужает поиск места: с ним находятся и деревни.
+        self::$region = Region::inText($text);
         $lines = array_values(array_filter(array_map('trim', preg_split('/\R|\t| {3,}/u', $text) ?: []), fn ($l) => $l !== ''));
         $out = [];
         $free = [];
@@ -222,27 +226,26 @@ final class CarText
         $out['model'] = $model->name;
     }
 
+    /** Место справочника: «Серпухов», «г. Тула», «д. Ванюки»; регион из текста сужает поиск и пускает деревни. */
     private static function city(array &$out, string $value): bool
     {
-        $name = trim((string) preg_replace('/^(?:г\.|город)\s*/iu', '', $value));
-        $city = Settlement::named($name);
-        if (! $city) {
+        $place = Settlement::inAddress($value) ?? Settlement::named((string) preg_replace('/^(?:г\.|город)\s*/iu', '', $value), self::$region);
+        if (! $place) {
             return false;
         }
-        $out['settlement_id'] ??= $city['id'];
-        $out['city'] ??= $city['name'];
+        $out['settlement_id'] ??= $place['id'];
+        $out['city'] ??= $place['title'];
 
         return true;
     }
 
-    /** Адрес осмотра — как написан; город из него («г. Серпухов, ул. …») — в «Город», если его ещё нет. */
+    /** Адрес осмотра — как написан; место из него («Пермский край, д. Ванюки, ул. …») — в «Город», если его ещё нет. */
     private static function address(array &$out, string $value): void
     {
         $out['inspection_address'] ??= mb_substr($value, 0, 255);
-        if (! isset($out['settlement_id'])) {
-            if (preg_match('/(?:^|[\s,])г\.?\s*([А-ЯЁ][а-яё\-]+(?:\s[А-ЯЁ][а-яё\-]+)?)/u', $value, $m) || preg_match('/^([А-ЯЁ][а-яё\-]+)(?=,|$)/u', $value, $m)) {
-                self::city($out, $m[1]);
-            }
+        if (! isset($out['settlement_id']) && ($place = Settlement::inAddress($value))) {
+            $out['settlement_id'] = $place['id'];
+            $out['city'] = $place['title'];
         }
     }
 

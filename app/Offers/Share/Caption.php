@@ -26,7 +26,7 @@ final class Caption
             ['number', 'Номер', '#'.$offer->number, true],
             ['dl', 'ДЛ', $offer->leaseRef() ? 'ДЛ '.$offer->leaseRef() : null, true],
             ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
-            ['city', 'Город', $offer->settlement?->name, true],
+            ['city', 'Город', $offer->settlement?->title(), true],
             ['specs', 'КПП, привод, кузов', implode(', ', array_filter([$offer->transmission?->label(), $offer->drive?->label(), $offer->body?->label()])) ?: null, true],
             ['engine', 'Двигатель', $offer->engine_volume ? number_format($offer->engine_volume / 1000, 1, ',', '').' л'.($offer->engine_power ? ', '.$offer->engine_power.' л. с.' : '') : null, true],
             ['mileage', 'Пробег', $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null, false],
@@ -51,7 +51,7 @@ final class Caption
         $prices = $user?->role->canSeePrices() ?? false;
         $rows = [
             ['number', 'Номер', str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl, true],
-            ['city', 'Город', $car->settlement?->name ?? $car->city, true],
+            ['city', 'Город', $car->settlement?->title() ?? $car->city, true],
             ['model', 'Марка, модель, год', $car->titleWithYear(), true],
             ['specs', 'КПП, топливо', implode(', ', array_filter([$car->transmission?->label(), $car->fuel?->label()])) ?: null, true],
             ['engine', 'Двигатель', $car->engine_volume ? number_format($car->engine_volume / 1000, 1, ',', '').' л'.($car->engine_power ? ', '.$car->engine_power.' л. с.' : '') : null, true],

@@ -172,7 +172,7 @@
                     <h2 class="box-title mb-3 lg:hidden">Транспортное средство</h2>
                     <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
                         {{-- Своя сделка — всё, что нужно забрать машину: полный VIN, ДЛ, адрес; номера копируются. --}}
-                        @foreach (['Предложение' => $offer->number, 'ДЛ' => $offer->leaseRef(), 'Год' => $offer->year, 'VIN' => $offer->vin, 'Город' => $offer->settlement?->name, 'Адрес' => $offer->inspection_address] as $label => $value)
+                        @foreach (['Предложение' => $offer->number, 'ДЛ' => $offer->leaseRef(), 'Год' => $offer->year, 'VIN' => $offer->vin, 'Город' => $offer->settlement?->title(), 'Адрес' => $offer->inspection_address] as $label => $value)
                             @if ($value)<div @class(['min-w-0', 'col-span-2' => in_array($label, ['VIN', 'Адрес'], true)])><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal">@if ($label === 'VIN')<x-ui.vin-code :vin="$value"/>@elseif (in_array($label, ['Город', 'Адрес'], true))<x-ui.place>{{ $value }}</x-ui.place>@elseif (in_array($label, ['ДЛ', 'Предложение'], true))<x-ui.copy-code :value="(string) $value"/>@else{{ $value }}@endif</dd></div>@endif
                         @endforeach
                         {{-- Вознаграждение открывается со счёта (до него менеджер видит только цену) — фактом карточки, ссылкой на
