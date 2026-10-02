@@ -132,7 +132,6 @@
         </form>
         <section class="mt-5">
             <h2 class="peek-section">Документы</h2>
-            @include('admin.offers.scan-row')
             @include('admin.offers.papers-block')
         </section>
         {{-- Письма — под документами: последнее словами, вся переписка — окном поверх списка. --}}

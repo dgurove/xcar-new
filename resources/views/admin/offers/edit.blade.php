@@ -147,7 +147,6 @@
         </x-ui.card>
 
         <x-ui.card title="Документы" class="order-4 @4xl:col-span-2">
-            @include('admin.offers.scan-row')
             @include('admin.offers.papers-block')
         </x-ui.card>
 

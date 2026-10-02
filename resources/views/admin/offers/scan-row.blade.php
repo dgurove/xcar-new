@@ -1,7 +1,6 @@
-{{-- Блок «Документы» предложения, первой строкой — один на редактор и окошко: «Заполнить из документов», пока нет
-     марки, модели, VIN, года или цвета, иначе «Сверить с документами» (окно «Из документов», Scan\OfferSubject). Нет
-     файлов во входящих — строки нет. --}}
-@php $scanFiles = $letters ? (new \App\Mail\Scan\OfferSubject($offer))->files() : collect(); @endphp
+{{-- Блок «Документы» предложения, рядом с «Добавить документ» — один на редактор и окошко: круглая кнопка с искрой, окно
+     «Из документов» (Scan\OfferSubject). Нет файлов во входящих — кнопки нет. --}}
+@php $scanFiles = ($letters ?? 0) ? (new \App\Mail\Scan\OfferSubject($offer))->files() : collect(); @endphp
 @if ($scanFiles->isNotEmpty())
-    <div class="list mb-3"><x-mail.scan-button :url="'/offers/'.$offer->number.'/scan'" :fill="! ($offer->brand_id && $offer->model_id && $offer->vin && $offer->year && $offer->color)" :files="$scanFiles"/></div>
+    <x-mail.scan-button :url="'/offers/'.$offer->number.'/scan'" look="round" :fill="! ($offer->brand_id && $offer->model_id && $offer->vin && $offer->year && $offer->color)"/>
 @endif
