@@ -241,7 +241,7 @@ final class UpdateHandler
     {
         // Модератор: новые цепочки «Из писем» (с галкой почты) и вход в CRM — кнопка в CRM, не на сайт.
         if ($user->isModerator()) {
-            return [$user->canCrmMail() ? 'Сюда придут новые письма, которые надо завести, и вход в CRM без пароля' : 'Входите в CRM через Telegram, без пароля',
+            return [$user->canCrmMail() ? 'Сюда придут заявки с почты, которые надо завести' : 'Заявки с почты придут, когда вам откроют почту в CRM',
                 ['text' => 'Открыть CRM', 'url' => Surface::Crm->url('/')]];
         }
         if (! $user->isManager()) {

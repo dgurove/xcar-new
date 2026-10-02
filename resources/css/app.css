@@ -223,6 +223,8 @@
 
   ::selection { background: var(--color-accent-soft); }
   :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  /* Шторка без крестика (подключение Telegram) берёт фокус сама — обводка вокруг всей шторки ничего не значит. */
+  dialog:focus-visible { outline: none; }
   [hidden] { display: none !important; }
 
   /* Переходы между страницами (view transitions, iOS 18.2 и Chrome 126). Сдвига экрана нет:
