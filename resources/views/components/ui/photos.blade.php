@@ -8,7 +8,7 @@
      deletable=false — без корзины (удаляют только в полном редакторе). --}}
 @props(['photos', 'hide' => true, 'main' => true, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true])
 <div id="{{ $id }}" class="{{ $grid ? 'photo-grid' : 'photo-row' }}">
-    @unless ($readonly)<button type="button" class="photo-add" data-action="photos#pick" aria-label="Добавить фото"><x-ui.icon name="camera" class="size-7"/></button>@endunless
+    @unless ($readonly)<button type="button" class="photo-add" data-action="photos#pick" aria-label="Добавить фото"><x-ui.icon name="camera" class="size-6"/></button>@endunless
     <div class="{{ $grid ? 'contents' : 'photo-strip' }}" data-photos-target="grid">
     @php $mainShown = false; @endphp
     @foreach ($photos as $media)
