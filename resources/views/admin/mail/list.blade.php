@@ -58,7 +58,8 @@
                     <div class="chain-head">
                         <div class="min-w-0 flex-1">
                             <div class="chain-head-title text-ink-muted">Машину в письме не нашли</div>
-                            @if ($t->vendor)<div class="chain-head-sub"><x-vendor.ref :vendor="$t->vendor"/><span>{{ $t->vendor->name }}</span></div>@endif
+                            {{-- Имя вендора — подписью логотипа (ref): у одного логотипа нет базовой линии, и строка садилась ниже имени дела. --}}
+                            @if ($t->vendor)<div class="chain-head-sub"><x-vendor.ref :vendor="$t->vendor" :ref="$t->vendor->name"/></div>@endif
                         </div>
                         {{-- «Не заявка» здесь — просто архив письма: цепочки у него ещё нет, отклонять нечего. --}}
                         <form method="post" action="{{ $base }}/case/t/{{ $section['id'] }}/archive" class="hidden md:contents" data-turbo-confirm="Не заявка? Письмо уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do"><span class="opacity-70">Не заявка</span></button></form>
