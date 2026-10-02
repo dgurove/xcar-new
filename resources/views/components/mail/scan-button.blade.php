@@ -1,6 +1,6 @@
 {{-- Вход в окно «Из документов» (x-mail.scan-window, одно на приложение) для предмета по адресу окна (ScanController:
      /cars/{v}/scan, /offers/{n}/scan, …/from-mail/{c}/scan). Знак — искра x-ui.spark, та же, что у VIN. Вид по месту:
-     round — круглая рядом с «+ Документ» в блоке «Документы» (подсказкой «Заполнить из документов», пока в карточке
+     Искра белая, при наведении — лаймовая (.scan-spark). round — круглая у правого края блока «Документы» (подсказкой «Заполнить из документов», пока в карточке
      пусто — fill, иначе «Сверить с документами»); row — строка списка там, где блока «Документы» нет (окошко
      «Наличия», разбор письма), под ней сколько есть документов и фото (files); head — «Распознать» в шапке цепочки и
      окна писем; icon — значок в полосе окошка строки и шторки документов. data-scan-subject — тот же адрес для ✨
@@ -24,9 +24,9 @@
         <x-ui.chevron/>
     </button>
 @elseif ($look === 'round')
-    <button type="button" {{ $attributes->merge(['class' => 'btn btn-s btn-quiet btn-round shrink-0']) }} {!! $emit !!} aria-label="{{ $fill ? 'Заполнить из документов' : 'Сверить с документами' }}" title="{{ $fill ? 'Заполнить из документов' : 'Сверить с документами' }}"><x-ui.spark class="size-5 text-accent-text"/></button>
+    <button type="button" {{ $attributes->merge(['class' => 'btn btn-s btn-quiet btn-round scan-spark ml-auto shrink-0']) }} {!! $emit !!} aria-label="{{ $fill ? 'Заполнить из документов' : 'Сверить с документами' }}" title="{{ $fill ? 'Заполнить из документов' : 'Сверить с документами' }}"><x-ui.spark class="size-5"/></button>
 @elseif ($look === 'head')
-    <button type="button" {{ $attributes->merge(['class' => 'btn btn-s btn-quiet case-do gap-1.5']) }} {!! $emit !!}><x-ui.spark class="size-4 text-accent-text"/>Распознать</button>
+    <button type="button" {{ $attributes->merge(['class' => 'btn btn-s btn-quiet case-do scan-spark gap-1.5']) }} {!! $emit !!}><x-ui.spark class="size-4"/>Распознать</button>
 @else
-    <button type="button" {{ $attributes->merge(['class' => 'peek-close']) }} {!! $emit !!} aria-label="Из документов" title="Из документов"><x-ui.spark class="size-[18px] text-accent-text"/></button>
+    <button type="button" {{ $attributes->merge(['class' => 'peek-close scan-spark']) }} {!! $emit !!} aria-label="Из документов" title="Из документов"><x-ui.spark class="size-[18px]"/></button>
 @endif

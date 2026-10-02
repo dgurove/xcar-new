@@ -8,7 +8,6 @@ use App\Cars\Colors;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Account;
-use App\Mail\Direction;
 use App\Mail\Extraction\ScanFields;
 use App\Mail\Message;
 use App\Mail\Scope;
@@ -21,8 +20,9 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 
 /**
- * «✨» у предложения CRM: файлы входящих писем его веток в ящиках CRM (как окно писем предложения); что выбрал человек — в карточку через `UpdateOffer` (правка в
- * истории предложения). Поля — машина, VIN, год, цвет: госномера и страховой стоимости у предложения нет.
+ * «✨» у предложения CRM: файлы всех писем его веток в ящиках CRM, наших пересылок тоже (как окно писем предложения);
+ * что выбрал человек — в карточку через `UpdateOffer` (правка в истории предложения). Поля — машина, VIN, год, цвет:
+ * госномера и оценочной стоимости у предложения нет.
  */
 final class OfferSubject implements Subject
 {
@@ -82,7 +82,7 @@ final class OfferSubject implements Subject
     {
         $threads = Thread::where('offer_id', $this->offer->id)->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'))->select('id');
 
-        return Files::of(Message::whereIn('thread_id', $threads)->where('direction', Direction::In)->with('attachments')->get());
+        return Files::of(Message::whereIn('thread_id', $threads)->with('attachments')->get());
     }
 
     public function current(): array

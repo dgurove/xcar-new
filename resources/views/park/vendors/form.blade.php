@@ -37,6 +37,8 @@
                 <x-ui.field name="storage_payer" label="Платит" :options="['vendor' => 'Вендор', 'owner' => 'Страхователь', 'nobody' => 'Никто']" :value="$vendor->storage_payer"/>
                 <x-ui.field name="billing_cadence" label="Счёт" :options="Cadence::options()" :value="$vendor->billing_cadence->value"/>
                 <div class="col-span-2 flex flex-col gap-3">
+                    {{-- Ставка по оценочной стоимости (договор Альфы): включено — в деле ТС поле «Оценочная стоимость». --}}
+                    <x-ui.check name="rate_by_value" :checked="$vendor->rate_by_value">Ставка от оценочной стоимости</x-ui.check>
                     <x-ui.check name="buyer_pays_late" :checked="$vendor->buyer_pays_late">Опоздавший покупатель платит</x-ui.check>
                     <div data-late><x-ui.field name="buyer_rate_multiplier" label="Опоздавший платит, × прайс" :value="rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.')"/></div>
                     <x-ui.check name="release_without_payment" :checked="$vendor->release_without_payment">Выдавать без оплаты</x-ui.check>

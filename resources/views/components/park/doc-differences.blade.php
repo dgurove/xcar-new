@@ -3,7 +3,7 @@
      отправляет форму вокруг на свой адрес (вложенной формы быть не может). Последней строкой — слот: вход в окно
      «Из документов» (x-mail.scan-button). Пусто и то и другое — группы нет. --}}
 @props(['vehicle', 'differences' => []])
-@php $labels = ['vin' => 'VIN', 'plate' => 'Госномер', 'year' => 'Год', 'color' => 'Цвет', 'value' => 'Стоимость', 'model' => 'Модель']; @endphp
+@php $labels = ['vin' => 'VIN', 'plate' => 'Госномер', 'year' => 'Год', 'color' => 'Цвет', 'value' => 'Оценочная стоимость', 'model' => 'Модель']; @endphp
 @if ($differences || $slot->isNotEmpty())
     <div {{ $attributes->merge(['class' => 'list doc-diff']) }}>
         @foreach ($differences as $field => $d)

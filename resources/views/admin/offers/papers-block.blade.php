@@ -1,4 +1,4 @@
-{{-- Документы предложения: «Добавить документ» и рядом искра «Из документов», полоса загрузки и список файлов (удалить — у файла). Один кусок на редактор
+{{-- Документы предложения: «Добавить документ» и у правого края искра «Из документов», полоса загрузки и список файлов (удалить — у файла). Один кусок на редактор
      и окошко строки. --}}
 <div data-controller="photos" data-photos-url-value="/offers/{{ $offer->number }}/media" data-photos-collection-value="papers">
     <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx" multiple hidden data-photos-target="input" data-action="change->photos#upload">

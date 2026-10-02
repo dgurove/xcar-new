@@ -37,7 +37,7 @@ final class FillFromDocs
     /** ТС на парковке и в пути с ветками писем. @return Collection<int, Vehicle> */
     public function vehicles(array $ids = []): Collection
     {
-        return Vehicle::with(['brand', 'model', 'threads.messages.attachments'])
+        return Vehicle::with(['brand', 'model', 'vendor', 'threads.messages.attachments'])
             ->whereIn('state', [VehicleState::Stored, VehicleState::Expected, VehicleState::InTransit])
             ->when($ids, fn ($q) => $q->whereIn('id', $ids))
             ->whereHas('threads')->orderBy('id')->get();
@@ -54,6 +54,10 @@ final class FillFromDocs
         $fill = [];
         $disputed = [];
         foreach (self::FIELDS as $field) {
+            // Оценочная стоимость нужна только вендорам, чья ставка от неё (`rate_by_value`): остальным её не пишем и не сверяем.
+            if ($field === 'value' && ! $vehicle->vendor?->rate_by_value) {
+                continue;
+            }
             $values = $found[$field] ?? [];
             if ($field === 'vin') {
                 $values = $this->vins($vehicle, $values, $disputed);
@@ -202,8 +206,10 @@ final class FillFromDocs
                 $found[$field][$value][] = $source;
             }
         };
-        $messages = $vehicle->threads->flatMap(fn ($t) => $t->messages)
-            ->filter(fn (Message $m) => $m->direction === Direction::In && ! in_array($m->intent, [Intent::Billing->value, Intent::Auto->value], true));
+        $all = $vehicle->threads->flatMap(fn ($t) => $t->messages)
+            ->reject(fn (Message $m) => in_array($m->intent, [Intent::Billing->value, Intent::Auto->value], true));
+        // Слова письма — только входящих: в нашем ответе они пересказ; файлы — всех писем, наши пересылки документов тоже.
+        $messages = $all->filter(fn (Message $m) => $m->direction === Direction::In);
         foreach ($messages as $message) {
             // Письмо о нескольких машинах («выдать ТС А и Б») — его VIN и номер про одну из них.
             $single = count(array_filter($message->keys(), fn ($k) => str_starts_with($k, 'code:'))) <= 1;
@@ -214,7 +220,7 @@ final class FillFromDocs
             }
         }
         // Файлы — те же, что видит «✨» в деле (`Scan\Files`), подписи — те же, что уйдут в историю дела.
-        foreach (Files::of($messages) as $attachment) {
+        foreach (Files::of($all) as $attachment) {
             $text = $attachment->isImage() ? DocumentText::cached($attachment) : DocumentText::layer($attachment);
             if (! $text) {
                 continue;

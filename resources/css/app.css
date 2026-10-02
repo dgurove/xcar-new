@@ -1204,8 +1204,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .scan-label { @apply w-full shrink-0 text-sm text-ink-muted empty:hidden sm:w-24 sm:pt-px sm:empty:block; }
   .phase .list { @apply bg-surface-2; }
   .scan-from { @apply mt-0.5 block truncate text-xs text-ink-dim; }
-  /* Искра в свёрнутой строке полей дела: в карточке пусто — подсвечена. */
-  .scan-wants { @apply bg-accent-soft; }
+  /* Кнопка с искрой — белая, при наведении лаймовая: глагол, но не главный на экране. */
+  .scan-spark { color: var(--color-ink); transition: color var(--dur-fast); }
+  @media (hover: hover) { .scan-spark:hover { color: var(--color-accent-text); } }
+  .scan-spark:focus-visible { color: var(--color-accent-text); }
   .scan-bar { @apply mt-3 h-1.5 overflow-hidden rounded-full bg-surface-3; }
   .scan-bar > span { @apply block h-full rounded-full bg-accent; transition: width var(--dur-slow) var(--ease-out); }
   .scan-spin { @apply size-5 shrink-0 rounded-full; border: 2px solid var(--color-accent); border-top-color: transparent; animation: spin .8s linear infinite; }

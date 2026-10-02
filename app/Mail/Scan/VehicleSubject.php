@@ -7,7 +7,6 @@ use App\Cars\CarModel;
 use App\Cars\Colors;
 use App\Live\Publisher;
 use App\Live\Topics;
-use App\Mail\Direction;
 use App\Mail\Extraction\ScanFields;
 use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\UpdateVehicle;
@@ -19,8 +18,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 
 /**
- * «✨» у заведённой ТС: файлы входящих писем её веток; что выбрал человек — в карточку через `UpdateVehicle`
- * («Заполнено по документам» в истории дела). Марка и модель — по справочнику: марку заводить не будем.
+ * «✨» у заведённой ТС: файлы всех писем её веток, наших пересылок тоже; что выбрал человек — в карточку через
+ * `UpdateVehicle` («Заполнено по документам» в истории дела). Марка и модель — по справочнику: марку заводить не будем.
  */
 final class VehicleSubject implements Subject
 {
@@ -46,9 +45,10 @@ final class VehicleSubject implements Subject
         return Topics::PARK;
     }
 
+    /** Оценочная стоимость — только у вендора, чья ставка от неё (`rate_by_value`). */
     public function fields(): array
     {
-        return array_keys(ScanFields::LABELS);
+        return array_values(array_diff(array_keys(ScanFields::LABELS), $this->vehicle->vendor?->rate_by_value ? [] : ['value']));
     }
 
     public function title(): string
@@ -80,7 +80,8 @@ final class VehicleSubject implements Subject
     {
         $this->vehicle->loadMissing('threads.messages.attachments');
 
-        return Files::of($this->vehicle->threads->flatMap(fn ($t) => $t->messages)->filter(fn ($m) => $m->direction === Direction::In));
+        // Все письма веток, и наши тоже: документы машины часто лежат в нашей пересылке или ответе вендору.
+        return Files::of($this->vehicle->threads->flatMap(fn ($t) => $t->messages));
     }
 
     public function current(): array
