@@ -6,5 +6,5 @@
     @if ($files && auth()->user()->canManagePark())
         <template data-window-tools><x-mail.scan-button :url="'/cars/'.$vehicle->id.'/scan'" look="head"/></template>
     @endif
-    <x-mail.chain :messages="$messages" base="/mail" :candidate="$candidate" reply :reply-open="request()->boolean('reply')"/>
+    <x-mail.chain :messages="$messages" base="/mail" :candidate="$candidate" :focus="(int) request('at') ?: true" reply :reply-open="request()->boolean('reply')"/>
 </turbo-frame>

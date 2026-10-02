@@ -604,23 +604,16 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Пока список сужен набранным, скрытые строки просто не рисуются — без анимации и скачка. */
   [data-live-hidden] { display: none !important; }
 
-  /* Дело в почте: письма одной машины одной секцией. Требует нас — полоска слева: лаймовая у того, что надо
-     завести, оранжевая у того, что ждёт ответа. Больше цветного в списке нет. */
-  .case--register, .case--reply { position: relative; padding-left: .625rem; }
+  /* Дело в почте — карточка .chain-card. Требует нас — полоска слева: лаймовая у того, что надо завести,
+     оранжевая у того, что ждёт ответа. Больше цветного в списке нет. */
+  .case--register, .case--reply { position: relative; }
   .case--register::before, .case--reply::before {
     content: ''; position: absolute; left: 0; top: .125rem; bottom: .125rem; width: 3px; border-radius: 999px;
   }
   .case--register::before { background: var(--color-accent); }
   .case--reply::before { background: var(--color-urgent); }
-  /* Заголовок дела: имя с тегами слева переносится на вторую строку, действие справа остаётся по середине
-     этих строк — иначе на телефоне вторая строка съезжала под кнопку. Кнопка в списке ростом не с форму. */
-  .case-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .375rem; }
-  .case-name { display: flex; min-width: 0; flex: 1; flex-wrap: wrap; align-items: center; gap: .375rem; }
+  /* Кнопка в шапке дела ростом не с форму. */
   .btn-s.case-do { height: 1.875rem; padding-inline: .875rem; border-radius: 999px; }
-  /* Переход в дело — само состояние: слова «Дело» рядом с каждой машиной не говорят ничего. */
-  .case-go { display: inline-flex; flex-shrink: 0; align-items: center; gap: .25rem; color: var(--color-ink-muted); }
-  .case-go > [aria-hidden] { font-size: var(--text-sm); color: var(--color-ink-dim); }
-  @media (hover: hover) { .case-go:hover { color: var(--color-ink); } .case-go:hover > [aria-hidden] { color: var(--color-accent-text); } }
   .pill {
     @apply inline-flex shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1 text-sm text-ink-muted transition-colors;
     /* Высота кнопок разделов в шапке (.header-h): пилюли и капсулы — одного роста. */

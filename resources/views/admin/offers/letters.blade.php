@@ -6,5 +6,5 @@
     @if ($files)
         <template data-window-tools><x-mail.scan-button :url="'/offers/'.$offer->number.'/scan'" look="head"/></template>
     @endif
-    <x-mail.chain :messages="$messages" :base="$base" :candidate="$candidate" reply :reply-open="request()->boolean('reply')"/>
+    <x-mail.chain :messages="$messages" :base="$base" :candidate="$candidate" :focus="(int) request('at') ?: true" reply :reply-open="request()->boolean('reply')"/>
 </turbo-frame>

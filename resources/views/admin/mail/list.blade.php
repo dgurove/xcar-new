@@ -1,7 +1,8 @@
-{{-- Список дел: секция — машина, цепочка «Из писем» или предложение; письма дела стоят все, даже если под
-     пилюлю подошло одно из них — действие требуется от дела. Заголовок говорит, что с делом: не заведено —
-     лаймовая «Завести», заведено — состояние ТС и «Дело ›». У дела, которое требует нас, полоска слева;
-     в «Из писем» её нет — там всё до последней строки надо завести, и красить нечего.
+{{-- Список дел: секция — машина, цепочка «Из писем», предложение или письмо без них; каждая — карточка беседы
+     (.chain-card): шапка, под ней письма дела лентой на линии (x-mail.letter-row), даже если под пилюлю подошло одно
+     из них — действие требуется от дела. Шапка: незаведённая цепочка — x-mail.chain-head с «Завести»; заведённое —
+     имя дела ссылкой, под ним логотип вендора с номером и состояние словом, справа шеврон в дело. У дела, которое
+     требует нас, полоска слева. Длинное дело — первое письмо, «Ещё N писем» и последние: остальное в окне.
      Этим же куском отвечает живой поиск (X-List) — он подменяет содержимое #threads целиком; data-search-row
      и data-search-group — то, что live_search прячет на первом же знаке, пока не пришёл ответ сервера. --}}
 @php use App\Mail\CandidateState; @endphp
@@ -12,64 +13,51 @@
     <div class="flex flex-col gap-4">
         @foreach ($sections as $section)
             @php
-                $plain = ! $section['vehicle'] && ! $section['offer'] && ! $section['candidate'];
-                // В «Из писем» полоски нет: там каждая строка — то, что надо завести, и выделять нечего.
                 $mark = $forced ? null : $section['attention'];
-                // Незаведённая цепочка — карточка: шапка и письма на линии внутри одной плашки, как беседа в почте.
-                $card = $section['candidate']?->state === CandidateState::New;
-                // Письмо-заявка, которой парсер не нашёл машину, — та же карточка: шапка и письма ветки на линии.
+                $c = $section['candidate'];
+                $v = $section['vehicle'];
+                $o = $section['offer'];
+                $t = $section['threads']->first();
+                // Незаведённая цепочка — шапка с «Завести»; письмо-заявка без машины — с «Завести» руками.
+                $fresh = $c?->state === CandidateState::New;
                 $orphan = $section['kind'] === 't' && $section['register'];
+                // Шапка заведённого дела: имя, вендор с номером, состояние словом, переход.
+                $head = match (true) {
+                    (bool) $v => ['title' => $v->titleWithYear(), 'href' => \App\Support\Surface::Park->url('/cars/'.$v->id), 'vendor' => $v->vendor, 'ref' => $v->ref,
+                        'state' => $v->state->label(), 'urgent' => $v->state->tone() === 'urgent'],
+                    (bool) $o => ['title' => $o->title().($o->published_at ? ' № '.$o->number : ''), 'href' => '/offers/'.$o->number, 'vendor' => $o->vendor, 'ref' => $o->claim_ref,
+                        'state' => $o->state->label(), 'urgent' => false],
+                    $c && ! $fresh => ['title' => $c->title(), 'href' => $c->state === CandidateState::Promoted ? ($park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number) : null,
+                        'vendor' => $c->vendor, 'ref' => $c->code, 'state' => $c->state->label(), 'urgent' => false],
+                    ! $orphan && ! $c => ['title' => \App\Mail\Extraction\Patterns::cleanSubject($t->subject) ?: '(без темы)', 'href' => null, 'vendor' => $t->vendor, 'ref' => null, 'state' => null, 'urgent' => false],
+                    default => null,
+                };
+                // Окно писем — всё дело на этом письме.
+                $url = fn ($m) => match (true) {
+                    (bool) $v => '/cars/'.$v->id.'/letters?at='.$m->id,
+                    (bool) $o => '/offers/'.$o->number.'/letters?at='.$m->id,
+                    (bool) $c => $queue.'/'.$c->id.'/letters?at='.$m->id,
+                    default => $base.'/'.$m->thread_id.'/window?at='.$m->id,
+                };
+                $letters = ($fresh ? $c->messages : $section['threads']->flatMap->messages)->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
+                $continued = \App\Mail\Chains\NodeTitle::continued($letters);
+                $files = $letters->groupBy(fn ($m) => $continued[$m->id] ?? $m->id)->map(fn ($g) => $g->sum(fn ($m) => $m->files()->count()));
+                $nodes = $letters->reject(fn ($m) => isset($continued[$m->id]))->values();
+                // Длинное дело: первое письмо (с чего началось), «Ещё N писем», последние четыре.
+                $hidden = $nodes->count() > 6 ? $nodes->slice(1, $nodes->count() - 5) : collect();
+                // Ждёт ответа — последнее входящее ветки с `needs_reply_at`, как в ленте.
+                $waiting = $section['threads']->whereNotNull('needs_reply_at')->pluck('id')->all();
+                $asks = $letters->filter(fn ($m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->pluck('id')->all();
+                $staged = collect($c?->stages ?? [])->pluck('message_id')->all();
+                $prev = null;
             @endphp
             {{-- Смахивается дело целиком: архивировать одно письмо из цепочки смысла нет. --}}
             <x-ui.swipe id="case-{{ $section['kind'] }}-{{ $section['id'] }}" data-search-group>
-            <section class="case {{ $card || $orphan ? 'chain-card' : '' }} {{ $mark ? 'case--'.$mark : '' }}">
-                @if ($section['vehicle'])
-                    @php $v = $section['vehicle']; @endphp
-                    <div class="case-head">
-                        <div class="case-name">
-                            <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="font-medium hover:text-accent-text" @if ($crm) data-turbo="false" @endif>{{ $v->titleWithYear() }}</a>
-                            @if ($v->vendor)<x-vendor.name :vendor="$v->vendor" class="tag"/>@endif
-                        </div>
-                        <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="case-go" @if ($crm) data-turbo="false" @endif><x-park.state :vehicle="$v" only/><span aria-hidden="true">›</span></a>
-                    </div>
-                @elseif ($section['offer'])
-                    @php $o = $section['offer']; @endphp
-                    <div class="case-head">
-                        <div class="case-name">
-                            <a href="/offers/{{ $o->number }}" class="font-medium hover:text-accent-text">{{ $o->title() }}@if ($o->published_at) <span class="nums font-normal text-ink-muted">№ {{ $o->number }}</span>@endif</a>
-                            @if ($o->vendor)<x-vendor.name :vendor="$o->vendor" class="tag"/>@endif
-                        </div>
-                        <a href="/offers/{{ $o->number }}" class="case-go"><span class="tag">{{ $o->state->label() }}</span><span aria-hidden="true">›</span></a>
-                    </div>
-                @elseif ($card)
-                    <x-mail.chain-head :candidate="$section['candidate']" :queue="$queue" :park="$park"/>
-                @elseif ($section['candidate'])
-                    @php $c = $section['candidate']; @endphp
-                    <div class="case-head">
-                        <div class="case-name">
-                            <span class="font-medium {{ $c->hasCar() ? '' : 'text-ink-muted' }}">{{ $c->title() }}</span>
-                            <span class="tag {{ $c->stage === \App\Mail\CandidateStage::Sold ? 'tag-urgent' : '' }}">{{ $c->stage === \App\Mail\CandidateStage::Intake ? $c->requestTag() : $c->stageLabel() }}</span>
-                            @if ($c->vendor)<x-vendor.name :vendor="$c->vendor" class="tag"/>@endif
-                        </div>
-                        <span class="flex shrink-0 items-center gap-1.5">
-                            @if ($c->state === CandidateState::New)
-                                {{-- На телефоне цепочку отклоняет свайп, на компьютере свайпа нет — там кнопка. --}}
-                                <form method="post" action="{{ $queue }}/{{ $c->id }}/decline" class="hidden md:contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do"><span class="opacity-70">Не заявка</span></button></form>
-                                @if ($park)
-                                    <a href="/requests/new?candidate={{ $c->id }}" class="btn btn-s btn-accent case-do">Завести</a>
-                                @else
-                                    <form method="post" action="{{ $queue }}/{{ $c->id }}/create" class="contents">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
-                                @endif
-                            @elseif ($c->state === CandidateState::Promoted)
-                                <a href="{{ $park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number }}" class="case-go"><span class="tag">{{ $c->state->label() }}</span><span aria-hidden="true">›</span></a>
-                            @else
-                                <span class="text-sm text-ink-dim">{{ $c->state->label() }}</span>
-                            @endif
-                        </span>
-                    </div>
+            <section class="chain-card {{ $mark ? 'case--'.$mark : '' }}">
+                @if ($fresh)
+                    <x-mail.chain-head :candidate="$c" :queue="$queue" :park="$park"/>
                 @elseif ($orphan)
-                    {{-- Заявка, которой парсер не нашёл машину: заводится руками. У прочих писем без машины заголовка нет. --}}
-                    @php $t = $section['threads']->first(); @endphp
+                    {{-- Заявка, которой парсер не нашёл машину: заводится руками. --}}
                     <div class="chain-head">
                         <div class="min-w-0 flex-1">
                             <div class="chain-head-title text-ink-muted">Машину в письме не нашли</div>
@@ -79,33 +67,40 @@
                         <form method="post" action="{{ $base }}/case/t/{{ $section['id'] }}/archive" class="hidden md:contents" data-turbo-confirm="Не заявка? Письмо уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do"><span class="opacity-70">Не заявка</span></button></form>
                         <form method="post" action="{{ $base }}/{{ $t->id }}/candidate" class="contents">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                     </div>
+                @elseif ($head)
+                    <div class="chain-head">
+                        <div class="min-w-0 flex-1">
+                            @if ($head['href'])
+                                <a href="{{ $head['href'] }}" class="chain-head-title block hover:text-accent-text" @if ($v && $crm) data-turbo="false" @endif>{{ $head['title'] }}</a>
+                            @else
+                                <div class="chain-head-title">{{ $head['title'] }}</div>
+                            @endif
+                            @if ($head['vendor'] || $head['ref'] || $head['state'])
+                                <div class="chain-head-sub">
+                                    <x-vendor.ref :vendor="$head['vendor']" :ref="$head['ref']"/>
+                                    @if ($head['state'])<span class="{{ $head['urgent'] ? 'text-urgent' : '' }}">{{ $head['state'] }}</span>@endif
+                                </div>
+                            @endif
+                        </div>
+                        @if ($head['href'])<a href="{{ $head['href'] }}" class="-mr-1.5 shrink-0 p-1.5" aria-label="Открыть" @if ($v && $crm) data-turbo="false" @endif><x-ui.chevron/></a>@endif
+                    </div>
                 @endif
-                {{-- Незаведённая цепочка — все её письма лентой на линии: заявка, с которой началось, видна всегда. --}}
-                <div class="{{ $card || $orphan ? 'chain rail' : 'flex flex-col gap-1.5' }}">
-                    @if ($card || $orphan)
-                        @php
-                            $letters = ($card ? $section['candidate']->messages : $section['threads']->flatMap->messages)->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
-                            // Окно — цепочки на этом письме; у письма без машины цепочки нет, окно — его ветки.
-                            $url = fn ($m) => $card ? $queue.'/'.$section['candidate']->id.'/letters?at='.$m->id : $base.'/'.$m->thread_id.'/window';
-                            $continued = \App\Mail\Chains\NodeTitle::continued($letters);
-                            $files = $letters->groupBy(fn ($m) => $continued[$m->id] ?? $m->id)->map(fn ($g) => $g->sum(fn ($m) => $m->files()->count()));
-                            // Ждёт ответа — последнее входящее ветки с `needs_reply_at`, как в ленте.
-                            $waiting = $section['threads']->whereNotNull('needs_reply_at')->pluck('id')->all();
-                            $asks = $letters->filter(fn ($m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->pluck('id')->all();
-                            $staged = collect($section['candidate']?->stages ?? [])->pluck('message_id')->all();
-                            $prev = null;
-                        @endphp
-                        @foreach ($letters as $m)
-                            @continue(isset($continued[$m->id]))
-                            <x-mail.letter-row :message="$m" :url="$url($m)" :waits="in_array($m->id, $asks, true)"
-                                :stage="in_array($m->id, $staged, true)" :repeat="$prev?->from_email === $m->from_email" :files="$files[$m->id] ?? 0"/>
-                            @php $prev = $m; @endphp
-                        @endforeach
-                    @else
-                        @foreach ($section['threads'] as $thread)
-                            <x-mail.thread-row :thread="$thread" :base="$base" :park="$park" :linked="$plain"/>
-                        @endforeach
-                    @endif
+                <div class="chain rail">
+                    @foreach ($nodes as $i => $m)
+                        @if ($hidden->isNotEmpty() && $i === $hidden->keys()->first())
+                            @php $n = $hidden->count(); @endphp
+                            <div class="letter letter--service">
+                                <span class="letter-dot"></span>
+                                <div class="letter-body">
+                                    <button type="button" class="letter-head w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $url($m) }}"><span class="letter-who font-normal text-ink-muted">Ещё {{ $n }} {{ \App\Support\Plural::of($n, ['письмо', 'письма', 'писем']) }}</span></button>
+                                </div>
+                            </div>
+                        @endif
+                        @continue($hidden->has($i))
+                        <x-mail.letter-row :message="$m" :url="$url($m)" :waits="in_array($m->id, $asks, true)"
+                            :stage="in_array($m->id, $staged, true)" :repeat="$prev?->from_email === $m->from_email" :files="$files[$m->id] ?? 0"/>
+                        @php $prev = $m; @endphp
+                    @endforeach
                 </div>
             </section>
             <x-slot:actions>

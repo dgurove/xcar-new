@@ -172,12 +172,11 @@ class MailController
                 'attention' => $list->contains(fn (Thread $t) => $t->needs_reply_at !== null) ? 'reply' : ($register ? 'register' : null),
             ];
         })->filter(fn ($s) => $s['threads']->isNotEmpty())->values();
-        // Незаведённая цепочка показывает все свои письма строками — письма грузятся только у таких, одним запросом.
+        // Незаведённая цепочка показывает письма всех своих веток, и тех, что не попали в секцию.
         (new EloquentCollection($sections->pluck('candidate')->filter(fn (?Candidate $c) => $c?->state === CandidateState::New)->unique('id')->values()->all()))
             ->load(['messages.attachments', 'messages.author']);
-        // Письмо-заявка без машины — такая же карточка, письма ветки строками.
-        (new EloquentCollection($sections->filter(fn ($s) => $s['kind'] === 't' && $s['register'])->flatMap(fn ($s) => $s['threads'])->all()))
-            ->load(['messages.attachments', 'messages.author']);
+        // Каждое дело — карточка с письмами строками: письма всех веток секций одним запросом.
+        (new EloquentCollection($sections->flatMap(fn ($s) => $s['threads'])->all()))->load(['messages.attachments', 'messages.author']);
         $threads = $paginator;
 
         // Список отдельным куском — им отвечает живой поиск, им же рисуется страница.
@@ -364,11 +363,15 @@ class MailController
     }
 
     /** Окно писем предложения (как `/cars/{v}/letters` у ТС): все ветки одной лентой, этапы — из его цепочки, «Ответить» внизу. */
-    public function offerLetters(Request $request, Offer $offer)
+    public function offerLetters(Request $request, Offer $offer, MarkThreadRead $markRead)
     {
         abort_if($this->scope !== Scope::Offers, 404);
         $threads = Thread::where('offer_id', $offer->id)->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'))
             ->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
+        // Открыли со строки списка (?at=) — письма прочитаны, как у окна ветки.
+        if ($request->query('at') && ! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
+            $threads->each(fn (Thread $t) => $markRead($t));
+        }
 
         return view('admin.offers.letters', [
             'offer' => $offer,
