@@ -751,6 +751,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Режется только название: столбец .grow забирает остаток ширины, цифры — ровно по содержимому. */
   .table th.grow { width: 100%; }
   .table td.grow { max-width: 0; }
+  @media (min-width: 1280px) { .table th.grow.title-cap { width: 20rem; min-width: 20rem; } .table th.fill { width: 100%; } }
   .table th, .table td { @apply text-left align-middle; padding: .375rem .25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .table th:first-child, .table td:first-child { padding-left: .75rem; }
   .table th:last-child, .table td:last-child { padding-right: .75rem; }
