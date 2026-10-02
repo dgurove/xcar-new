@@ -45,8 +45,19 @@ fi
 last="$(cat "$DATA/backups/last-ok" 2>/dev/null || echo 0)"
 [ $(( $(date +%s) - last )) -lt $((26 * 3600)) ] || problems+=("бэкап в S3 старше суток")
 
-failed="$(docker exec xcar-postgres-1 psql -U "$(sed -nE 's/^DB_USERNAME=(.*)$/\1/p' "$ROOT/env/.env.app")" -d "$(sed -nE 's/^DB_DATABASE=(.*)$/\1/p' "$ROOT/env/.env.app")" -tAc 'select count(*) from failed_jobs' 2>/dev/null || echo '?')"
-[ "$failed" = 0 ] || [ "$failed" = '?' ] || problems+=("упавших задач: $failed")
+sql() { docker exec xcar-postgres-1 psql -U "$(sed -nE 's/^DB_USERNAME=(.*)$/\1/p' "$ROOT/env/.env.app")" -d "$(sed -nE 's/^DB_DATABASE=(.*)$/\1/p' "$ROOT/env/.env.app")" -tAc "$1" 2>/dev/null; }
+# Упавшая задача — событие, а не состояние сайта: о каждой новой — одно сообщение с её именем, без «снова всё в
+# порядке» следом. Прежде считалось «упавших задач: N», и одна упавшая напоминала о себе каждый час неделю, пока
+# её не убирала уборка (storage:gc, 7 дней). Последний виденный номер — на диске: /run чистится перезагрузкой.
+failed_seen=/var/lib/xcar-check.failed-id
+failed_max="$(sql 'select coalesce(max(id), 0) from failed_jobs')"
+failed_new=''
+if [ -n "$failed_max" ]; then
+    failed_prev="$(cat $failed_seen 2>/dev/null || echo "$failed_max")"
+    if [ "$failed_max" -gt "$failed_prev" ] 2>/dev/null; then
+        failed_new="$(sql "select string_agg(distinct reverse(split_part(reverse(payload::json->>'displayName'), chr(92), 1)), ', ') from failed_jobs where id > $failed_prev")"
+    fi
+fi
 
 report() {
     echo "корень: $(df -h / | awk 'NR==2{print $3 " из " $2}'); docker — $(docker system df --format '{{.Type}} {{.Size}}' 2>/dev/null | paste -sd, - | sed 's/,/, /g')"
@@ -63,6 +74,15 @@ telegram() {
     curl -6 -sS -m 10 --retry 2 -o /dev/null "https://api.telegram.org/bot$token/sendMessage" --data-urlencode "chat_id=$chat" --data-urlencode "text=$1"
 }
 stamp=/run/xcar-check.last
+
+if [ -n "$failed_new" ]; then
+    echo "xcar: упала задача $failed_new"
+    if [ "${1:-}" = "--telegram" ]; then
+        telegram "xcar: упала задача $failed_new (php artisan queue:failed)" && echo "$failed_max" > $failed_seen
+    fi
+elif [ -n "$failed_max" ] && [ "${1:-}" = "--telegram" ]; then
+    echo "$failed_max" > $failed_seen
+fi
 
 if [ ${#problems[@]} -eq 0 ]; then
     echo "xcar: всё в порядке"
