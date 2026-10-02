@@ -35,6 +35,9 @@ export default class extends Controller {
             label.className = 'choice choice-tag';
             label.setAttribute('style', dot?.getAttribute('style') ?? '');
             box = Object.assign(document.createElement('input'), { type: 'checkbox', name: 'tags[]', value: name });
+            // Блок меток вне формы (редактор: «Деньги» справа) — новая галка идёт в ту же форму, что остальные.
+            const form = this.colorsTarget.getAttribute('form');
+            if (form) box.setAttribute('form', form);
             const text = document.createElement('span');
             text.textContent = name;
             label.append(box, text);

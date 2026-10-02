@@ -31,4 +31,6 @@
     <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">
         <x-slot:after-label><x-ui.eye-check name="show_address" :checked="$offer->show_address"/></x-slot:after-label>
     </x-ui.field>
+    {{-- Описание — о машине: с полями ТС, а не в «Деньгах» (их блок в редакторе — узкой колонкой справа). --}}
+    <x-ui.field name="description" label="Описание" type="textarea" :value="$offer->description" span="col-span-full"/>
 </div>

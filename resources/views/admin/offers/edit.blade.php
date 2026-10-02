@@ -117,6 +117,11 @@
             </x-ui.card>
             @endif
 
+            {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
+            <x-ui.card title="Деньги" class="order-3">
+                @include('admin.offers.fields.money', ['form' => 'offer-form'])
+            </x-ui.card>
+
             <x-ui.card title="История" class="order-6">
                 <div class="flex flex-col gap-3 text-sm">
                     @foreach ($offer->events->take(30) as $event)
@@ -139,10 +144,6 @@
             <x-ui.card title="Транспортное средство" class="order-2">
                 @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
                 @include('admin.offers.fields.car')
-            </x-ui.card>
-
-            <x-ui.card title="Деньги" class="order-2">
-                @include('admin.offers.fields.money')
             </x-ui.card>
 
         </form>

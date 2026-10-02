@@ -10,20 +10,21 @@ export default class extends Controller {
 
     connect() {
         this.dirty = false;
-        this.onInput = () => { this.dirty = true; };
+        // Поля бывают и вне формы (form=: «Деньги» справа) — ввод ловится на документе.
+        this.onInput = (e) => { if (e.target.form === this.element || this.element.contains(e.target)) this.dirty = true; };
         this.onSubmit = () => { this.dirty = true; };
         this.onVisit = (e) => this.leave(e.detail?.url);
         this.onHide = () => this.leave();
-        this.element.addEventListener('input', this.onInput);
-        this.element.addEventListener('change', this.onInput);
+        document.addEventListener('input', this.onInput);
+        document.addEventListener('change', this.onInput);
         this.element.addEventListener('submit', this.onSubmit);
         document.addEventListener('turbo:visit', this.onVisit);
         window.addEventListener('pagehide', this.onHide);
     }
 
     disconnect() {
-        this.element.removeEventListener('input', this.onInput);
-        this.element.removeEventListener('change', this.onInput);
+        document.removeEventListener('input', this.onInput);
+        document.removeEventListener('change', this.onInput);
         this.element.removeEventListener('submit', this.onSubmit);
         document.removeEventListener('turbo:visit', this.onVisit);
         window.removeEventListener('pagehide', this.onHide);

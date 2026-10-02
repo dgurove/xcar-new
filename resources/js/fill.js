@@ -14,6 +14,9 @@ export function glow(el) {
     field.addEventListener('animationend', () => field.classList.remove('field-filled'), { once: true });
 }
 
+// Поле по имени: у формы — и те, что стоят вне её с form= («Деньги» в редакторе справа).
+const field = (root, name) => (root.elements?.namedItem(name) ?? null) || root.querySelector(`[name="${name}"]`);
+
 export function filler(root, { overwrite = false } = {}) {
     const steps = [];
     const writable = (el) => el && !el.disabled && (overwrite || el.value === '');
@@ -22,7 +25,7 @@ export function filler(root, { overwrite = false } = {}) {
         get count() { return steps.length; },
 
         plain(name, value) {
-            const el = root.querySelector(`[name="${name}"]`);
+            const el = field(root, name);
             if (value == null || value === '' || !writable(el) || String(el.value) === String(value)) return;
             if (el.tagName === 'SELECT' && ![...el.options].some((o) => o.value === String(value))) return;
             steps.push(() => {
@@ -34,8 +37,8 @@ export function filler(root, { overwrite = false } = {}) {
         },
 
         combo(name, id, text) {
-            const hidden = root.querySelector(`[name="${name}"]`);
-            const shown = root.querySelector(`#f-${name}`);
+            const hidden = field(root, name);
+            const shown = document.getElementById(`f-${name}`);
             if (!id || !writable(hidden) || String(hidden.value) === String(id)) return;
             steps.push(() => {
                 hidden.value = id;

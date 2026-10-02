@@ -65,14 +65,14 @@ export default class extends Controller {
         fill.plain('inspection_address', v.inspection_address);
         fill.plain('contact_name', v.contact_name);
         fill.plain('contact_phone', v.contact_phone);
-        const value = form.querySelector('[name="value"]');
-        if (form.querySelector('[name="floor_price"]')) fill.plain('floor_price', v.price);
+        const value = form.elements.namedItem('value');
+        if (form.elements.namedItem('floor_price')) fill.plain('floor_price', v.price);
         else if (value && !value.closest('[hidden]')) fill.plain('value', v.price);
 
         if (!fill.count) { window.toast?.('В тексте не нашлось ничего для полей'); return; }
         await fill.run();
         // Сменили марку, а модели в тексте нет — прежняя модель чужой марки не остаётся.
-        const model = form.querySelector('[name="model_id"]');
+        const model = form.elements.namedItem('model_id');
         if (v.brand_id && !v.model_id && model) {
             model.value = '';
             const shown = form.querySelector('#f-model_id');

@@ -16,6 +16,8 @@ export default class extends Controller {
         this.store = `draft:${user}:${this.keyValue || new URL(this.element.action || location.href).pathname}`;
         this.restore();
         this.onInput = () => { clearTimeout(this.timer); this.timer = setTimeout(() => this.save(), 300); };
+        // Поля вне формы с form= (шторка волн, «Деньги» справа в редакторе) — их ввод до формы не всплывает.
+        this.onOuter = (e) => e.target.form === this.element && !this.element.contains(e.target) && this.onInput();
         this.onHide = () => document.visibilityState === 'hidden' && this.save();
         this.onCache = () => this.save();
         this.onEnd = (e) => e.detail.success && this.clear();
@@ -24,12 +26,16 @@ export default class extends Controller {
         this.element.addEventListener('trix-change', this.onInput);
         this.element.addEventListener('turbo:submit-end', this.onEnd);
         this.element.addEventListener('draft:clear', () => this.clear());
+        document.addEventListener('input', this.onOuter);
+        document.addEventListener('change', this.onOuter);
         document.addEventListener('visibilitychange', this.onHide);
         document.addEventListener('turbo:before-cache', this.onCache);
     }
 
     disconnect() {
         clearTimeout(this.timer);
+        document.removeEventListener('input', this.onOuter);
+        document.removeEventListener('change', this.onOuter);
         document.removeEventListener('visibilitychange', this.onHide);
         document.removeEventListener('turbo:before-cache', this.onCache);
     }
