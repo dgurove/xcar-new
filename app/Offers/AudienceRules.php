@@ -2,9 +2,9 @@
 
 namespace App\Offers;
 
-use App\Users\ManagerGroup;
 use App\Users\Role;
 use App\Users\User;
+use App\Users\UserGroup;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -23,10 +23,10 @@ final class AudienceRules
         return [['type' => 'rest', 'id' => null, 'delay' => 0]];
     }
 
-    /** Свои правила предложения; нет своих — шаблон вендора по умолчанию; нет и его — всем сразу. */
+    /** Свои правила предложения; нет своих — волны вендора; нет и их — всем сразу. */
     public static function of(Offer $offer): array
     {
-        return self::normalize($offer->audience_rules ?: ($offer->vendor?->audience?->rules ?: self::everyone()));
+        return self::normalize($offer->audience_rules ?: ($offer->vendor?->audience_rules ?: self::everyone()));
     }
 
     /** Из формы (JSON-строка или массив) — чистые строки без повторов, «Остальные» одна и в конце. */
@@ -62,7 +62,7 @@ final class AudienceRules
         $managers = User::withoutGlobalScope('demo')->where('role', Role::Manager)->pluck('id')->all();
         $groups = collect($rules)->where('type', 'group');
         $members = $groups->isNotEmpty()
-            ? DB::table('manager_group_user')->whereIn('group_id', $groups->pluck('id'))->get()->groupBy('user_id')->map(fn ($r) => $r->pluck('group_id')->all())
+            ? DB::table('user_group_user')->whereIn('group_id', UserGroup::where('kind', UserGroup::MANAGERS)->whereIn('id', $groups->pluck('id'))->select('id'))->get()->groupBy('user_id')->map(fn ($r) => $r->pluck('group_id')->all())
             : collect();
         $groupDelay = $groups->pluck('delay', 'id');
         $own = collect($rules)->where('type', 'user')->pluck('delay', 'id');
@@ -94,7 +94,7 @@ final class AudienceRules
         if (count($rules) === 1) {
             return $rest['delay'] === null ? 'Никому' : 'Всем '.self::when($rest['delay']);
         }
-        $groups = ManagerGroup::whereIn('id', collect($rules)->where('type', 'group')->pluck('id'))->pluck('name', 'id');
+        $groups = UserGroup::whereIn('id', collect($rules)->where('type', 'group')->pluck('id'))->pluck('name', 'id');
         $users = User::whereIn('id', collect($rules)->where('type', 'user')->pluck('id'))->get()->keyBy('id');
         $parts = [];
         foreach ($rules as $r) {
@@ -112,13 +112,12 @@ final class AudienceRules
         return mb_strtoupper(mb_substr($text, 0, 1)).mb_substr($text, 1);
     }
 
-    /** Для шторки «Кому»: группы, менеджеры (короткими именами), шаблоны со строками и варианты времени. */
-    public static function options(bool $presets = true): array
+    /** Для шторки «Кому»: группы менеджеров, менеджеры (короткими именами) и варианты времени. */
+    public static function options(): array
     {
         return [
-            'groups' => ManagerGroup::orderBy('position')->orderBy('name')->get(['id', 'name'])->map(fn ($g) => ['id' => $g->id, 'name' => $g->name])->all(),
+            'groups' => UserGroup::ofKind(UserGroup::MANAGERS)->get(['id', 'name'])->map(fn ($g) => ['id' => $g->id, 'name' => $g->name])->all(),
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get()->map(fn ($u) => ['id' => $u->id, 'name' => $u->shortName()])->all(),
-            'presets' => $presets ? Audience::orderBy('position')->orderBy('name')->get()->map(fn ($a) => ['id' => $a->id, 'name' => $a->name, 'rules' => self::normalize($a->rules)])->all() : [],
             'delays' => collect(self::DELAYS)->map(fn ($label, $min) => [$min, $label])->values()->all(),
         ];
     }

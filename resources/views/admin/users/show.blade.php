@@ -10,7 +10,8 @@
                 <x-slot:chips>
                     <x-ui.state :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')">{{ $user->role->label().' с '.$user->created_at->format('d.m.Y') }}</x-ui.state>
                     {{-- Группа модератора: с кем он видит и правит предложения друг друга. --}}
-                    @if ($user->isModerator())@foreach ($user->teammates() as $i => $mate)<x-ui.person :user="$mate" full :prefix="$i ? null : 'вместе с'"/>@endforeach @endif
+                    {{-- Группы человека (менеджеров или модераторов) — ведутся в «Пользователях». --}}
+                    @foreach ($user->userGroups as $g)<span class="tag">{{ $g->name }}</span>@endforeach
                     @if ($user->isPending())<x-ui.state tone="urgent">Ждёт</x-ui.state>@elseif ($user->isRejected())<x-ui.state tone="danger">Отклонён</x-ui.state>@endif
                     @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}/{{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
                     @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif
@@ -19,7 +20,6 @@
                     @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="tag tag-telegram"><x-telegram.logo plain class="size-3.5"/>{{ $user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span class="tag tag-telegram"><x-telegram.logo plain class="size-3.5"/>Telegram</span>@endif
                     @if ($user->isManager())<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="tag">{{ $buyersCount }} {{ \App\Support\Plural::of($buyersCount, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
                     @if ($seen !== null)<span class="tag">видит {{ $seen }}</span>@endif
-                    @if (! $user->isBuyer() && $user->invite?->creator)<x-ui.person :user="$user->invite->creator" full/>@endif
                 </x-slot:chips>
                 <x-slot:acts>
                     @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif

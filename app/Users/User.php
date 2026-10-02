@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
 use Laragear\WebAuthn\WebAuthnAuthentication;
@@ -30,7 +30,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'phone', 'login', 'email', 'password', 'role', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_yard_id', 'park_readonly', 'party_id', 'crm_team_id'])]
+#[Fillable(['name', 'phone', 'login', 'email', 'password', 'role', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_yard_id', 'park_readonly', 'party_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -200,41 +200,32 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /**
-     * Модераторы его группы, он сам — первым: их предложения он видит и правит (`Offer::visibleTo`). Без группы — один.
+     * Модераторы его групп, он сам — первым: их предложения он видит и правит (`Offer::visibleTo`). Без группы — один.
      *
      * @return list<int>
      */
     public function teamIds(): array
     {
-        $ids = fn () => $this->crm_team_id
-            ? array_values(array_unique([$this->id, ...self::where('role', Role::Moderator)->where('crm_team_id', $this->crm_team_id)->pluck('id')->all()]))
-            : [$this->id];
+        $ids = fn () => array_values(array_unique([$this->id, ...DB::table('user_group_user as mine')
+            ->join('user_groups as g', fn ($j) => $j->on('g.id', '=', 'mine.group_id')->where('g.kind', UserGroup::MODERATORS))
+            ->join('user_group_user as theirs', 'theirs.group_id', '=', 'mine.group_id')
+            ->where('mine.user_id', $this->id)->pluck('theirs.user_id')->all()]));
 
         // В очереди объект живёт весь job — там считаем каждый раз, как unreadCount.
         return app()->runningInConsole() ? $ids() : once($ids);
     }
 
-    /** С кем он в группе — для чипа «Вместе с» в карточке. */
-    public function teammates(): Collection
+    /** Группы человека в «Пользователях»: менеджеру — для волн показа, модератору — общие предложения (UserGroup). */
+    public function userGroups(): BelongsToMany
     {
-        return self::whereIn('id', array_diff($this->teamIds(), [$this->id]))->orderBy('name')->get();
+        return $this->belongsToMany(UserGroup::class, 'user_group_user', 'user_id', 'group_id')->orderBy('position')->orderBy('name');
     }
 
-    /**
-     * «Вместе с» из ссылки и карточки → номер группы: группа того модератора, а нет её — его id, и он записывается ему
-     * самому. Пусто или не модератор — без группы.
-     */
-    public static function crmTeamWith(mixed $id): ?int
+    /** В группы его вида, только они: из ссылки, из шторки «Изменить». Чужого вида id отбрасываются. */
+    public function syncUserGroups(array $ids): void
     {
-        $with = $id ? self::where('role', Role::Moderator)->find((int) $id) : null;
-        if (! $with) {
-            return null;
-        }
-        if (! $with->crm_team_id) {
-            $with->update(['crm_team_id' => $with->id]);
-        }
-
-        return $with->crm_team_id;
+        $kind = UserGroup::kindFor($this->role);
+        $this->userGroups()->sync($kind ? UserGroup::where('kind', $kind)->whereIn('id', array_map('intval', $ids))->pluck('id')->all() : []);
     }
 
     /** Почта CRM — для `ability:canCrmMail` на маршрутах. */

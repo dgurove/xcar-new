@@ -7,6 +7,7 @@ use App\Users\CrmArea;
 use App\Users\Invite;
 use App\Users\Role;
 use App\Users\User;
+use App\Users\UserGroup;
 use Illuminate\Validation\Rule;
 
 /**
@@ -57,7 +58,13 @@ final class IssueInvite
                 'park_readonly' => (bool) ($data['park_readonly'] ?? false),
             ] : []),
             // Модератору — что открыто сверх черновиков.
-            ...($role === Role::Moderator ? ['access' => array_values($data['crm_areas'] ?? []), 'crm_team_id' => User::crmTeamWith($data['crm_team_with'] ?? null)] : []),
+            ...($role === Role::Moderator ? ['access' => array_values($data['crm_areas'] ?? [])] : []),
+            // Менеджер и модератор — сразу в группе своего вида (UserGroup), если выбрана.
+            'user_group_id' => match ($role) {
+                Role::Manager => ($data['manager_group_id'] ?? null) ?: null,
+                Role::Moderator => ($data['moderator_group_id'] ?? null) ?: null,
+                default => null,
+            },
         ]);
     }
 
@@ -75,7 +82,8 @@ final class IssueInvite
             $rules['park_readonly'] = ['exclude_unless:role,parking', 'boolean'];
             $rules['crm_areas'] = ['exclude_unless:role,moderator', 'nullable', 'array'];
             $rules['crm_areas.*'] = [Rule::in(CrmArea::values())];
-            $rules['crm_team_with'] = ['exclude_unless:role,moderator', 'nullable', Rule::exists('users', 'id')->where('role', Role::Moderator->value)];
+            $rules['manager_group_id'] = ['exclude_unless:role,manager', 'nullable', Rule::exists('user_groups', 'id')->where('kind', UserGroup::MANAGERS)];
+            $rules['moderator_group_id'] = ['exclude_unless:role,moderator', 'nullable', Rule::exists('user_groups', 'id')->where('kind', UserGroup::MODERATORS)];
         } else {
             $rules['group_id'] = ['nullable', Rule::exists('buyer_groups', 'id')->where('manager_id', $by->id)];
         }

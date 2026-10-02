@@ -24,7 +24,7 @@ export default class extends Controller {
         if (el.closest('[data-controller~="audience"]')) {
             // В шторке «Кому» свои списки без имён — сохраняет только итог в скрытом поле.
             if (el.name !== 'audience_rules') return;
-            this.dirty.add('audience_rules').add('audience_id');
+            this.dirty.add('audience_rules');
         } else if (el.name && !el.name.startsWith('_')) {
             this.dirty.add(el.name.replace(/\[\]$/, ''));
         } else return;

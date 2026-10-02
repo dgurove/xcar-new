@@ -8,7 +8,6 @@ use App\Cars\Category;
 use App\Mail\Account;
 use App\Mail\Scope;
 use App\Media\MediaUrl;
-use App\Offers\Audience;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Workflow\Track;
@@ -36,7 +35,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
     'deal_format', 'reward_kind', 'reward_value', 'payment_days', 'offers_include_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
     'storage_payer', 'buyer_pays_late', 'release_without_payment', 'release_by_qr', 'rate_by_value', 'buyer_rate_multiplier', 'billing_cadence',
     'senders', 'parser', 'park_senders', 'park_parser', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id',
-    'intake_docs', 'intake_note', 'audience_id',
+    'intake_docs', 'intake_note', 'audience_rules',
 ])]
 class Vendor extends Model implements HasMedia
 {
@@ -68,6 +67,7 @@ class Vendor extends Model implements HasMedia
             'buyer_rate_multiplier' => 'float',
             'billing_cadence' => Cadence::class,
             'senders' => 'array',
+            'audience_rules' => 'array',
             'parser' => Parser::class,
             'park_senders' => 'array',
             'park_parser' => Parser::class,
@@ -123,12 +123,6 @@ class Vendor extends Model implements HasMedia
         if ($id) {
             self::whereKey($id)->where('on_park', false)->update(['on_park' => true]);
         }
-    }
-
-    /** Кому показывать его предложения, если у предложения нет своих правил. */
-    public function audience(): BelongsTo
-    {
-        return $this->belongsTo(Audience::class);
     }
 
     public function workflows(): HasMany

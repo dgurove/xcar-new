@@ -405,6 +405,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   :is(.invite-form, .user-form):has(select[name="role"] option:checked:not([value="parking"])) [data-park] { display: none !important; }
   /* Доступ модератора — только при роли «Модератор». */
   :is(.invite-form, .user-form):has(select[name="role"] option:checked:not([value="moderator"])) [data-crm] { display: none !important; }
+  /* Группы менеджеров — только при роли «Менеджер». */
+  :is(.invite-form, .user-form):has(select[name="role"] option:checked:not([value="manager"])) [data-managers] { display: none !important; }
   .row-sub { @apply mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted; }
   /* Значение строки системным выбором (время показа): текст справа с шевроном, без фона, на телефоне — барабан. */
   .row-select { @apply shrink-0 cursor-pointer appearance-none bg-transparent pr-5 text-right text-ink-muted outline-none; font-size: 16px;

@@ -253,7 +253,6 @@ final class Nav
                     ...($user->isAdmin() ? [self::link('Бот Telegram', '/settings/telegram')] : []),
                     self::link('Ящики', '/settings/mailboxes'),
                     self::link('Шаблоны', '/settings/templates'),
-                    self::link('Кому показывать', '/settings/audience'),
                     self::link('Метки', '/settings/tags'),
                     self::link('Уведомления', '/account/notifications'),
                 ],

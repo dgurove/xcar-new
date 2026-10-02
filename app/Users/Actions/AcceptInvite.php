@@ -3,6 +3,7 @@
 namespace App\Users\Actions;
 
 use App\Media\PhotoIngest;
+use App\Offers\Actions\SyncViewers;
 use App\Users\Events\BuyerJoined;
 use App\Users\Events\ManagerJoined;
 use App\Users\Invite;
@@ -45,11 +46,17 @@ final class AcceptInvite
                 'access' => in_array($invite->role, [Role::Parking, Role::Moderator], true) ? ($invite->access ?? []) : [],
                 'park_yard_id' => $invite->role === Role::Parking ? $invite->park_yard_id : null,
                 'park_readonly' => $invite->role === Role::Parking && $invite->park_readonly,
-                // Модератор сразу в группе, выбранной в ссылке («Вместе с»).
-                'crm_team_id' => $invite->role === Role::Moderator ? $invite->crm_team_id : null,
             ]);
             if ($buyer && $invite->group_id) {
                 $user->groups()->attach($invite->group_id, ['created_at' => now()]);
+            }
+            // Менеджер или модератор — сразу в группе из ссылки (её вида; удалённая группа — без группы).
+            if ($invite->user_group_id) {
+                $user->syncUserGroups([$invite->user_group_id]);
+                // Новый менеджер уже посчитан в волнах без группы — с группой его время показа другое.
+                if ($user->isManager()) {
+                    app(SyncViewers::class)->all();
+                }
             }
             $invite->increment('uses_count');
 

@@ -85,7 +85,6 @@ class OfferRequest extends FormRequest
             'chat_enabled' => ['boolean'],
             'share_locked' => ['boolean'],
             'recommended' => ['boolean'],
-            'audience_id' => ['nullable', 'exists:audiences,id'],
             'audience_rules' => ['nullable', 'json'],
             'vendor_id' => ['nullable', 'exists:vendors,id'],
             'answer_by' => ['nullable', 'date'],

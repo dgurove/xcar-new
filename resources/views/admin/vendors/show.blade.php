@@ -30,7 +30,13 @@
                     <x-ui.field name="reward_value" label="Процент или сумма" :value="$vendor->reward_value"/>
                     <x-ui.field name="answer_hours" label="Ответ, часов" :value="$vendor->answer_hours"/>
                     <x-ui.field name="binding_days" label="Предложение держим, дней" :value="$vendor->binding_days"/>
-                    <x-ui.field name="audience_id" label="Кому показывать" :options="$audiences" placeholder="Все сразу" :value="$vendor->audience_id" span="col-span-2"/>
+                    {{-- Волны показа его предложений, у которых нет своих: группы менеджеров и люди, через сколько. --}}
+                    <div class="col-span-2 flex flex-col gap-1.5" data-controller="audience" data-audience-options-value="{{ json_encode($audienceOptions) }}"
+                        data-audience-effective-value="{{ json_encode(\App\Offers\AudienceRules::normalize($vendor->audience_rules ?: \App\Offers\AudienceRules::everyone())) }}">
+                        <span class="field-label">Кому показывать</span>
+                        <input type="hidden" name="audience_rules" value="{{ $vendor->audience_rules ? json_encode($vendor->audience_rules) : '' }}" data-audience-target="rules">
+                        <x-audience.editor/>
+                    </div>
                     <div class="col-span-2 flex flex-col gap-3">
                         <x-ui.check name="silence_means_buy" :checked="$vendor->silence_means_buy">Молчание — обязанность купить</x-ui.check>
                         <x-ui.check name="offers_include_vat" :checked="$vendor->offers_include_vat">Цены предложений с НДС</x-ui.check>

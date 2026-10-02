@@ -11,6 +11,9 @@
         <div data-park class="flex flex-col gap-3">
             <x-park.access-fields/>
         </div>
+        <div data-managers class="flex flex-col gap-3">
+            <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" name="manager"/>
+        </div>
         <div data-crm class="flex flex-col gap-3">
             <x-admin.crm-access-fields/>
         </div>

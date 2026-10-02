@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Admin\AudienceController;
 use App\Http\Admin\BankController;
 use App\Http\Admin\BidController;
 use App\Http\Admin\ChatController;
@@ -22,6 +21,7 @@ use App\Http\Admin\RouteController;
 use App\Http\Admin\TagController;
 use App\Http\Admin\TelegramChatController;
 use App\Http\Admin\UserController;
+use App\Http\Admin\UserGroupController;
 use App\Http\Admin\VendorContactController;
 use App\Http\Admin\VendorController;
 use App\Http\Admin\WorkflowController;
@@ -200,6 +200,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Настройки: справочное, что меняется редко.
         Route::prefix('settings')->group(function () {
             Route::get('/users', [UserController::class, 'index']);
+            // Группы менеджеров и модераторов — до `/users/{user}`, иначе «groups» приняли бы за человека.
+            Route::post('/users/groups', [UserGroupController::class, 'store']);
+            Route::put('/users/groups/{group}', [UserGroupController::class, 'update']);
+            Route::delete('/users/groups/{group}', [UserGroupController::class, 'destroy']);
             Route::get('/users/{user}', [UserController::class, 'show'])->whereNumber('user');
             Route::put('/users/{user}', [UserController::class, 'update']);
             Route::post('/users/{user}/access', [UserController::class, 'decide']);
@@ -212,14 +216,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::post('/users/invites', [InviteController::class, 'store']);
             Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
             Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);
-
-            Route::get('/audience', [AudienceController::class, 'index']);
-            Route::post('/audience/groups', [AudienceController::class, 'storeGroup']);
-            Route::put('/audience/groups/{group}', [AudienceController::class, 'updateGroup']);
-            Route::delete('/audience/groups/{group}', [AudienceController::class, 'destroyGroup']);
-            Route::post('/audience/presets', [AudienceController::class, 'storePreset']);
-            Route::put('/audience/presets/{audience}', [AudienceController::class, 'updatePreset']);
-            Route::delete('/audience/presets/{audience}', [AudienceController::class, 'destroyPreset']);
 
             Route::get('/tags', [TagController::class, 'index']);
             Route::post('/tags', [TagController::class, 'store']);

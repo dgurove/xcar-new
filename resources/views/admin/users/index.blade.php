@@ -18,18 +18,19 @@
         </x-slot:filters>
     </x-ui.toolbar>
 
+    @if ($groupKind && ! request('q'))<x-admin.user-groups :groups="$groups" :kind="$groupKind"/>@endif
     @if ($preset === 'invites')
         <div class="mt-6"><x-invites.list :invites="$invites" admin :managers="$managers" :fresh="$fresh"/></div>
     @elseif ($users->isEmpty())
         <x-ui.empty class="mt-6">{{ $preset === 'buyers' ? 'Покупателей пока нет — они приходят по ссылкам менеджеров.' : 'Никого нет.' }}</x-ui.empty>
     @else
-        <div class="list mt-6">
+        <div class="list {{ $groupKind && ! request('q') ? '' : 'mt-6' }}">
             @foreach ($users as $user)
                 <div class="row" data-controller="sheet">
                     <x-ui.avatar :user="$user" :size="36"/>
                     <div class="min-w-0 flex-1">
                         <a href="{{ $base }}/{{ $user->id }}" class="block truncate">{{ $user->name }}</a>
-                        {{-- Всё о человеке одной строкой текста: роль, чей покупатель, логин, телефон, почта, покупатели. --}}
+                        {{-- Всё о человеке одной строкой текста: роль, чей покупатель, логин, телефон, почта, покупатели, группы. --}}
                         <div class="row-sub">
                             <span class="{{ $user->isAdmin() ? 'text-accent-text' : '' }}">{{ mb_strtolower($user->role->label()) }}</span>
                             @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}?preset=buyers&manager={{ $user->manager_id }}" class="text-ink">{{ $user->manager->shortName() }}</a>@endif
@@ -39,8 +40,7 @@
                             @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false">{{ '@'.$user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span>Telegram</span>@endif
                             @if ($user->isManager() && isset($user->buyers_count))<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="text-ink">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
                             @if ($user->isPending() || $user->isBuyer())<span class="nums">с {{ $user->created_at->translatedFormat('j M') }}</span>@endif
-                            {{-- Сотрудник или менеджер пришёл по одноразовой ссылке — чьей: без этого непонятно, кто его позвал. --}}
-                            @if (! $user->isBuyer() && $user->invite?->creator)<span>по ссылке {{ $user->invite->creator->shortName() }}</span>@endif
+                            @foreach ($user->userGroups as $g)<span class="text-ink">{{ $g->name }}</span>@endforeach
                         </div>
                     </div>
                     @if ($user->isPending())<x-ui.state tone="urgent" class="shrink-0">Ждёт</x-ui.state>@elseif ($user->isRejected())<x-ui.state tone="danger" class="shrink-0">Отклонён</x-ui.state>@endif

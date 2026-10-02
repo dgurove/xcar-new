@@ -9,6 +9,7 @@ use App\Billing\Party;
 use App\Billing\PartyRules;
 use App\Chats\Chat;
 use App\Http\Cabinet\InviteController;
+use App\Offers\Actions\SyncViewers;
 use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Offers\Offer;
@@ -26,6 +27,7 @@ use App\Users\CrmArea;
 use App\Users\Invite;
 use App\Users\Role;
 use App\Users\User;
+use App\Users\UserGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -55,7 +57,7 @@ class UserController
         if ($preset === 'invites' && Surface::current() !== Surface::Crm) {
             return redirect('/account/invites');
         }
-        $q = User::query()->with(['manager', 'invite.creator'])->orderBy('name');
+        $q = User::query()->with(['manager', 'userGroups'])->orderBy('name');
         match ($preset) {
             'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->reorder('created_at', 'desc'),
             'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
@@ -69,6 +71,10 @@ class UserController
         if ($manager = (int) $request->query('manager')) {
             $q->where('manager_id', $manager);
         }
+        // Группы — над списком своего вида: менеджеров в «Менеджерах», модераторов в «Сотрудниках» (только в CRM).
+        $kind = Surface::current() === Surface::Crm ? match ($preset) {
+            'managers' => UserGroup::MANAGERS, 'staff' => UserGroup::MODERATORS, default => null
+        } : null;
         if ($term = trim((string) $request->query('q'))) {
             $digits = preg_replace('/\D+/', '', $term);
             $q->where(fn ($w) => $w->where('name', 'ilike', "%{$term}%")->orWhere('login', 'ilike', "%{$term}%")->orWhere('email', 'ilike', "%{$term}%")
@@ -98,6 +104,8 @@ class UserController
             'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
             // Все ссылки — и админские, и менеджерские: админ видит, кто кого зовёт.
             'invites' => $preset === 'invites' ? InviteController::listFor($request->user()) : collect(),
+            'groupKind' => $kind,
+            'groups' => $kind ? UserGroup::ofKind($kind)->with('members')->get() : collect(),
             'fresh' => session('invite'),
         ]);
     }
@@ -110,7 +118,7 @@ class UserController
     {
         $me = $request->user();
         abort_unless($me->isAdmin(), 404);
-        $user->load(['manager', 'invite.creator']);
+        $user->load('manager');
         $chats = Chat::where('user_id', $user->id)->when($user->isManager(), fn ($q) => $q->orWhere('manager_id', $user->id))
             ->withLast()->with(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager'])->orderByDesc('last_message_at')->limit(50)->get();
         // Пришли из шапки чата — «‹ Чат» вместо «‹ Пользователи».
@@ -231,7 +239,7 @@ class UserController
         return back()->with('toast', "Доступ открыт: {$role->label()}");
     }
 
-    public function update(Request $request, User $user, TransferBuyer $transfer)
+    public function update(Request $request, User $user, TransferBuyer $transfer, SyncViewers $sync)
     {
         abort_unless($request->user()->isAdmin(), 404);
         if ($user->isBuyer()) {
@@ -251,6 +259,12 @@ class UserController
             $data += ['approved_at' => now(), 'approved_by' => $request->user()->id, 'rejected_at' => null];
         }
         $user->update($data);
+        // Группы — его вида (UserGroup): менеджеру — для волн показа, модератору — общие предложения.
+        $before = $user->userGroups()->pluck('user_groups.id')->all();
+        $user->syncUserGroups((array) $request->input($user->isModerator() ? 'moderator_groups' : 'manager_groups', []));
+        if ($user->isManager() && $before !== $user->userGroups()->pluck('user_groups.id')->all()) {
+            $sync->all();
+        }
 
         return back()->with('toast', 'Сохранено');
     }
@@ -283,11 +297,7 @@ class UserController
         // Доступ к парковке — только у роли «Парковка»: что открыто сверх основы, своя парковка, только приёмка.
         $park = $data['role'] === Role::Parking;
         $request->validate(['areas' => ['nullable', 'array'], 'areas.*' => [Rule::in(Area::values())], 'park_yard_id' => ['nullable', Rule::exists('park_yards', 'id')]]);
-        $request->validate(['crm_areas' => ['nullable', 'array'], 'crm_areas.*' => [Rule::in(CrmArea::values())],
-            'crm_team_with' => ['nullable', Rule::exists('users', 'id')->where('role', Role::Moderator->value)]]);
-        // Группа модератора — «Вместе с»; у другой роли группы нет.
-        $data['crm_team_id'] = $data['role'] === Role::Moderator && (int) $request->input('crm_team_with') !== $user?->id
-            ? User::crmTeamWith($request->input('crm_team_with')) : null;
+        $request->validate(['crm_areas' => ['nullable', 'array'], 'crm_areas.*' => [Rule::in(CrmArea::values())]]);
         $data['access'] = match ($data['role']) {
             Role::Parking => array_values(array_intersect(Area::values(), (array) $request->input('areas', []))),
             // Модератору — что открыто сверх черновиков (почта CRM).

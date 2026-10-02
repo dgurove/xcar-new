@@ -1,11 +1,11 @@
 import { Controller } from '@hotwired/stimulus';
 
 // «Кому показывать» — список «кто → когда»: строки групп и менеджеров, последней «Остальные». Время у строки —
-// системный выбор справа (минуты от публикации, «Не показывать» — null, у своих строк ещё «Убрать»). Чип шаблона
-// подставляет его строки; правка строки делает настройки своими (audience_id пустеет). Итог — JSON в скрытом
-// поле и change с него: окошко сохраняет само, форма настроек — кнопкой. Сводка — те же слова, что AudienceRules::summary.
+// системный выбор справа (минуты от публикации, «Не показывать» — null, у своих строк ещё «Убрать»). Итог — JSON в
+// скрытом поле и change с него: окошко сохраняет само, форма вендора — кнопкой. Сводка — те же слова, что
+// AudienceRules::summary.
 export default class extends Controller {
-    static targets = ['rules', 'audience', 'summary', 'list', 'add', 'preset'];
+    static targets = ['rules', 'summary', 'list', 'add'];
     static values = { options: Object, effective: Array };
 
     connect() {
@@ -29,14 +29,6 @@ export default class extends Controller {
         return [...own, { type: 'rest', id: null, delay: rest ? rest.delay ?? null : 0 }];
     }
 
-    preset({ params: { id } }) {
-        const preset = (this.optionsValue.presets || []).find((p) => p.id === id);
-        if (!preset) return;
-        this.rows = this.clean(preset.rules);
-        if (this.hasAudienceTarget) this.audienceTarget.value = id;
-        this.commit();
-    }
-
     add() {
         const [type, id] = this.addTarget.value.split(':');
         this.addTarget.value = '';
@@ -45,9 +37,7 @@ export default class extends Controller {
         this.changed();
     }
 
-    // Правка строк: настройки становятся своими.
     changed() {
-        if (this.hasAudienceTarget) this.audienceTarget.value = '';
         this.commit();
     }
 
@@ -61,10 +51,6 @@ export default class extends Controller {
         this.listTarget.replaceChildren(...this.rows.map((r, i) => this.row(r, i)));
         this.fillAdd();
         if (this.hasSummaryTarget) this.summaryTarget.textContent = this.summary();
-        // Подсвечен шаблон, с которым строки совпадают сейчас, — а не тот, с которого когда-то начали.
-        const now = JSON.stringify(this.rows);
-        const same = (this.optionsValue.presets || []).find((p) => JSON.stringify(this.clean(p.rules)) === now);
-        this.presetTargets.forEach((p) => p.setAttribute('aria-pressed', String(same?.id === Number(p.dataset.audienceIdParam))));
     }
 
     row(r, i) {
