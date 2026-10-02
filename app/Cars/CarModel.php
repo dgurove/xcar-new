@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['brand_id', 'slug', 'name', 'name_ru', 'class', 'year_from', 'year_to'])]
 class CarModel extends Model
 {
+    /** Модель завели, переименовали или удалили — словарь `Names` перечитает справочник. */
+    protected static function booted(): void
+    {
+        static::saved(fn () => Names::forget());
+        static::deleted(fn () => Names::forget());
+    }
+
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);

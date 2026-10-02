@@ -258,9 +258,9 @@ final class Names
         if (mb_strlen($flat) < 3 || ! preg_match('/\p{L}/u', $flat)) {
             return null;
         }
-        $ids = CarModel::query()->where(fn ($q) => $q->whereRaw("lower(replace(replace(name, ' ', ''), '-', '')) = ?", [$flat])->orWhereRaw("lower(replace(replace(coalesce(name_ru, ''), ' ', ''), '-', '')) = ?", [$flat]))->distinct()->pluck('brand_id');
+        $ids = self::models()[$flat] ?? [];
 
-        return $ids->count() === 1 ? Brand::find($ids->first()) : null;
+        return count($ids) === 1 ? Brand::find(array_key_first($ids)) : null;
     }
 
     /** Модель марки, известная словарю или справочнику: пробелы не важны («CS35PLUS» → CS35 Plus), у длинных имён — опечатка OCR. */
@@ -364,10 +364,39 @@ final class Names
 
     private static int $indexAt = 0;
 
-    /** Справочник марок поменялся — указатель собрать заново (`Brand::booted`). */
+    /** @var array<string, array<int, true>>|null модель без пробелов и дефисов, строчными → её марки (`brandByModel`) */
+    private static ?array $models = null;
+
+    private static int $modelsAt = 0;
+
+    /** Справочник марок или моделей поменялся — указатели собрать заново (`Brand::booted`, `CarModel::booted`). */
     public static function forget(): void
     {
         self::$index = null;
+        self::$models = null;
+    }
+
+    /**
+     * Модели справочника по имени без пробелов и дефисов — в памяти процесса минуту. Раньше это был запрос на каждое
+     * слово-кандидат, и без индекса он перебирал весь справочник моделей: ~10 мс на HDD прода, десятки раз на письмо.
+     *
+     * @return array<string, array<int, true>>
+     */
+    private static function models(): array
+    {
+        if (self::$models !== null && time() - self::$modelsAt < 60) {
+            return self::$models;
+        }
+        self::$modelsAt = time();
+        $flat = fn (?string $name) => mb_strtolower(str_replace([' ', '-'], '', (string) $name));
+        $models = [];
+        foreach (CarModel::query()->get(['brand_id', 'name', 'name_ru']) as $m) {
+            foreach (array_filter([$flat($m->name), $flat($m->name_ru)]) as $key) {
+                $models[$key][$m->brand_id] = true;
+            }
+        }
+
+        return self::$models = $models;
     }
 
     /**
