@@ -17,10 +17,6 @@ use App\Cars\Vin\VinText;
  */
 final class DocumentFields
 {
-    private const VIN = '/\b[A-HJ-NPR-Z0-9]{17}\b/u';
-
-    private const PLATE = '/\b[АВЕКМНОРСТУХ]\s?\d{3}\s?[АВЕКМНОРСТУХ]{2}\s?\d{2,3}\b/u';
-
     private const MONTHS = ['январ' => 1, 'феврал' => 2, 'март' => 3, 'апрел' => 4, 'ма' => 5, 'июн' => 6, 'июл' => 7, 'август' => 8, 'сентябр' => 9, 'октябр' => 10, 'ноябр' => 11, 'декабр' => 12];
 
     /** @return array<string, array{value: mixed, source: string}> */
@@ -38,7 +34,7 @@ final class DocumentFields
         };
 
         foreach (self::values($text, 'Идентификационный\s+номер(?:\s*\(VIN\))?|\bVIN(?:\s+ТС)?\b|\bВИН\b') as $value) {
-            if (preg_match(self::VIN, mb_strtoupper($value), $m) && ($vin = VinText::labelled($m[0]))) {
+            if (preg_match(Patterns::VIN, mb_strtoupper($value), $m) && ($vin = VinText::labelled($m[0]))) {
                 $put('vin', $vin);
                 break;
             }
@@ -72,13 +68,13 @@ final class DocumentFields
             $put('model', $car['model']);
         }
         foreach (self::values($text, 'Государственный\s+регистрационный\s+знак|Регистрац\w*\.?\s*знак|Гос\.?\s*(?:рег\.?\s*)?(?:номер|знак)|\bг\/н\b') as $value) {
-            if (preg_match(self::PLATE, mb_strtoupper($value), $m)) {
-                $put('plate', (string) preg_replace('/\s+/u', '', $m[0]));
+            if (preg_match(Patterns::PLATE_SPACED, mb_strtoupper($value), $m)) {
+                $put('plate', Patterns::plateKey($m[0]));
                 break;
             }
         }
         foreach (self::values($text, 'Год\s+выпуска|Год\s+изготовления') as $value) {
-            if (preg_match('/\b(19[89]\d|20[0-3]\d)\b/u', $value, $m)) {
+            if (preg_match('/\b('.Patterns::YEAR.')\b/u', $value, $m)) {
                 $put('year', (int) $m[1]);
                 break;
             }
@@ -129,7 +125,7 @@ final class DocumentFields
         if (! array_filter(array_column($rows, 'vin')) && preg_match('/\bVIN\s*T[CС]\b/u', $text)) {
             $found = [];
             foreach ($lines as $n => $line) {
-                foreach (preg_match_all(self::VIN, mb_strtoupper($line), $m) ? $m[0] : [] as $token) {
+                foreach (preg_match_all(Patterns::VIN, mb_strtoupper($line), $m) ? $m[0] : [] as $token) {
                     if ($vin = VinText::labelled($token)) {
                         $at = mb_strpos(mb_strtoupper($line), $token);
                         $found[$vin] = ['vin' => $vin, 'before' => mb_substr($line, 0, $at), 'after' => mb_substr($line, $at + 17), 'line' => $n];
@@ -173,12 +169,12 @@ final class DocumentFields
         // («многоцветный 2021 707.000,00», ниже «Форд транзит», ещё ниже VIN). Справа от VIN года нет — берём ближайшую
         // соседнюю строку значений таблицы: год отдельным словом и рядом стоимость с копейками или цвет из словаря.
         // Дата договора («от 24 августа 2023 г.»), масса «2000Kr», код модели «CC2030BV22B» такой строкой не станут.
-        $year = '/(?<![\d.,\/])(19[89]\d|20[0-3]\d)(?![\d.,\/])/u';
+        $year = '/(?<![\d.,\/])('.Patterns::YEAR.')(?![\d.,\/])/u';
         if (! preg_match($year, $after)) {
             foreach ([-1, 1, -2, 2, -3] as $step) {
                 $near = $lines[$row['line'] + $step] ?? null;
                 $cells = $near === null ? [] : (preg_split('/[\s|]+/u', trim($near), -1, PREG_SPLIT_NO_EMPTY) ?: []);
-                $hasYear = (bool) array_filter($cells, fn ($c) => preg_match('/^(19[89]\d|20[0-3]\d)$/', $c));
+                $hasYear = (bool) array_filter($cells, fn ($c) => preg_match('/^(?:'.Patterns::YEAR.')$/', $c));
                 $hasPrice = (bool) preg_match('/(?<![\d.,])\d{1,3}(?:[. ]\d{3}){1,3},\d{2}(?![\d])/u', (string) $near);
                 $hasColor = (bool) array_filter($cells, fn ($c) => preg_match('/^[А-Яа-яЁё\-]{3,}$/u', $c) && Colors::normalize($c));
                 if ($hasYear && ($hasPrice || $hasColor)) {

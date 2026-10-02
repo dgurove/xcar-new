@@ -10,6 +10,7 @@ use App\Live\Stream;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Candidate;
+use App\Mail\Extraction\Patterns;
 use App\Mail\Message;
 use App\Mail\Scan\VehicleSubject;
 use App\Mail\Thread;
@@ -468,7 +469,7 @@ class VehicleController
     {
         $ref = mb_strlen((string) $request->query('ref')) >= 4 ? Vehicle::keyFor((string) $request->query('ref')) : '';
         $vin = strtoupper(trim((string) $request->query('vin')));
-        $plate = mb_strlen((string) $request->query('plate')) >= 6 ? Candidate::plateKey($request->query('plate')) : null;
+        $plate = mb_strlen((string) $request->query('plate')) >= 6 ? Patterns::plateKey($request->query('plate')) : null;
         $vin = strlen($vin) === 17 ? $vin : '';
         $vehicles = $ref === '' && $vin === '' && ! $plate ? collect() : Vehicle::with(['brand', 'model', 'yard', 'media'])
             ->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])

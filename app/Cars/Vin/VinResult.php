@@ -31,9 +31,6 @@ class VinResult
 
     private const CONFIDENCE_RANK = ['low' => 1, 'medium' => 2, 'high' => 3];
 
-    /** Поля формы «Машина» в админке. Больше туда ничего не подставляем. */
-    public const FORM_FIELDS = ['brand', 'model', 'year', 'transmission_type', 'drive_type'];
-
     public function put(string $name, mixed $value, string $source, string $confidence): void
     {
         if ($value === null || $value === '' || $value === []) {
@@ -68,14 +65,5 @@ class VinResult
     public function addError(string $code, string $detail): void
     {
         $this->errors[] = ['code' => $code, 'detail' => $detail];
-    }
-
-    /** @return array<string, mixed> Справочное: показываем, но не сохраняем. */
-    public function reference(): array
-    {
-        return array_diff_key(
-            array_map(static fn (array $f) => $f['value'], $this->fields),
-            array_flip(self::FORM_FIELDS),
-        );
     }
 }

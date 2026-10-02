@@ -13,6 +13,7 @@ use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Extractor;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
+use App\Mail\Extraction\Patterns;
 use App\Mail\Extraction\QuotationStripper;
 use App\Mail\Jobs\ImportCandidateFiles;
 use App\Mail\Message;
@@ -264,7 +265,7 @@ final class ChainBuilder
     {
         $code = isset($fields['code']['value']) ? Code::key($fields['code']['value']) : null;
         $vin = isset($fields['vin']['value']) ? strtoupper((string) $fields['vin']['value']) : null;
-        $plate = Candidate::plateKey($fields['plate']['value'] ?? null);
+        $plate = Patterns::plateKey($fields['plate']['value'] ?? null);
         if ($park) {
             // Выданная или отменённая ТС не в счёт: второй заезд той же машины — новая заявка.
             $live = fn () => Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled]);

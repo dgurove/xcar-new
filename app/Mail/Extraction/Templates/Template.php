@@ -3,8 +3,10 @@
 namespace App\Mail\Extraction\Templates;
 
 use App\Cars\Category;
+use App\Cars\Names;
 use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Extraction\ParkExtractor;
+use App\Mail\Extraction\Patterns;
 use App\Mail\Extraction\QuotationStripper;
 use App\Support\Phone;
 use Carbon\Carbon;
@@ -15,12 +17,8 @@ use Carbon\Carbon;
  */
 abstract class Template
 {
-    protected const VIN = '/\b[A-HJ-NPR-Z0-9]{17}\b/u';
-
-    protected const PLATE = '/\b[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}\b/u';
-
-    // Год не из номера убытка («677209-2026», «0790/046/00728/25») и не из будущего.
-    protected const YEAR = '/(?<![\d\-\/])\b(?:19[89]\d|20[0-2]\d)\b(?![\d\-\/])/u';
+    // Год не из номера убытка («677209-2026», «0790/046/00728/25»).
+    protected const YEAR = '/(?<![\d\-\/])\b(?:'.Patterns::YEAR.')\b(?![\d\-\/])/u';
 
     protected const STOP_WORDS = ['ТС', 'авто', 'автомашина', 'транспортное средство'];
 
@@ -64,9 +62,10 @@ abstract class Template
         if (preg_match('/\b(?:находится|находятся|стоит)\s+(?:в|на)?\s*([^\n;]{3,80})/iu', $plain, $m)) {
             $put('location', rtrim(trim($m[1]), ' ,.'));
         }
-        if (preg_match('/\bМарка\s+([A-Za-zА-Яа-яЁё-]{2,})\s+Модель\s+([^\n]{1,30})/u', $plain, $m)) {
-            $put('brand', trim($m[1]));
-            $put('model', trim($m[2]));
+        // «Марка X Модель Y» — только марка из словаря: «Марка не указана Модель …» маркой не станет и в справочник не попадёт.
+        if (preg_match('/\bМарка\s+([A-Za-zА-Яа-яЁё-]{2,})\s+Модель\s+([^\n]{1,30})/u', $plain, $m) && ($found = Names::find(trim($m[1]).' '.trim($m[2])))) {
+            $put('brand', $found['brand']->name);
+            $put('model', $found['model'] ?: trim($m[2]));
         }
         if (preg_match('/\b(?:вывоз|вывезти|забрать|связаться\s+с\s+клиентом|передач[аеи]\s+(?:ТС|ГОТС))/iu', $subject.' '.$joined)) {
             $fields['request'] = ['value' => 'tow', 'source' => 'body'];
@@ -113,7 +112,7 @@ abstract class Template
      */
     private static function insured(string $text): array
     {
-        $phone = '(?:\+?7|8)[\s(\-]*\d{3}[\s)\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}(?!\d)';
+        $phone = Patterns::PHONE;
         $lines = array_values(array_filter(array_map('trim', preg_split('/\R/u', $text) ?: [])));
         $line = null;
         foreach ($lines as $i => $l) {
@@ -228,9 +227,7 @@ abstract class Template
 
     protected function subjectOf(?string $subject, ?string $body): string
     {
-        $subject = QuotationStripper::forwardedSubject($body) ?? trim((string) $subject);
-
-        return trim((string) preg_replace('/^\s*(?:(?:fwd|fw|re|пересылка|пересл)\s*:\s*)+/ui', '', $subject));
+        return Patterns::cleanSubject(QuotationStripper::forwardedSubject($body) ?? $subject);
     }
 
     protected function firstCode(string $text): ?string
@@ -241,6 +238,12 @@ abstract class Template
     protected function match(string $pattern, string $text): ?string
     {
         return $text !== '' && preg_match($pattern, mb_strtoupper($text), $m) ? $m[0] : null;
+    }
+
+    /** VIN из текста письма — общая форма и заглушки (`Patterns::vin`). */
+    protected function vin(string $text): ?string
+    {
+        return Patterns::vin($text);
     }
 
     protected function put(array &$fields, string $field, mixed $value, string $source): void
@@ -293,8 +296,7 @@ abstract class Template
         } else {
             foreach ($this->matcher->findAll($head) as $code) {
                 // Код в теме бывает кириллицей («У-001-…»), а найден он нормализованным — вырезаем по обеим азбукам.
-                $pattern = strtr(preg_quote($code, '/'), ['Y' => '[YУ]', 'A' => '[AА]', 'C' => '[CС]', 'K' => '[KК]', 'T' => '[TТ]', 'E' => '[EЕ]', 'H' => '[HН]', 'M' => '[MМ]', 'O' => '[OО]', 'P' => '[PР]', 'B' => '[BВ]', 'X' => '[XХ]']);
-                if (preg_match('/'.$pattern.'/iu', $head, $m, PREG_OFFSET_CAPTURE)) {
+                if (preg_match(Patterns::codeRegex($code), $head, $m, PREG_OFFSET_CAPTURE)) {
                     $head = substr($head, $m[0][1] + strlen($m[0][0]));
                 }
             }

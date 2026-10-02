@@ -4,9 +4,11 @@ namespace App\Purchases\Jobs;
 
 use App\Cars\Brand;
 use App\Cars\CarModel;
+use App\Cars\Colors;
 use App\Cars\Fuel;
 use App\Cars\Transmission;
 use App\Cars\Vin\RememberVin;
+use App\Mail\Extraction\CarWords;
 use App\Purchases\Car;
 use App\Purchases\Carcade;
 use App\Purchases\Gone;
@@ -69,7 +71,7 @@ final class FetchSpecs implements ShouldQueue
         $set('mileage', $s['mileage']);
         $set('engine_power', $s['engine_power']);
         $set('engine_volume', $s['engine_volume']);
-        $set('color', $s['color']);
+        $set('color', $s['color'] !== null ? (Colors::normalize($s['color'], fuzzy: false) ?? $s['color']) : null);
         $set('keys', $s['keys']);
         $set('steering', $s['steering']);
         $set('condition', $s['condition']);
@@ -78,23 +80,9 @@ final class FetchSpecs implements ShouldQueue
         if ($s['fssp'] !== null) {
             $car->fssp = $s['fssp'];
         }
-        $set('transmission', match (true) {
-            $s['transmission'] === null => null,
-            str_contains(mb_strtolower($s['transmission']), 'автомат') => Transmission::Automatic,
-            str_contains(mb_strtolower($s['transmission']), 'вариат') => Transmission::Cvt,
-            str_contains(mb_strtolower($s['transmission']), 'робот') => Transmission::DualClutch,
-            str_contains(mb_strtolower($s['transmission']), 'механ') => Transmission::Manual,
-            default => null,
-        });
-        $set('fuel', match (true) {
-            $s['fuel'] === null => null,
-            str_contains(mb_strtolower($s['fuel']), 'дизел') => Fuel::Diesel,
-            str_contains(mb_strtolower($s['fuel']), 'бензин') => Fuel::Petrol,
-            str_contains(mb_strtolower($s['fuel']), 'гибрид') => Fuel::Hybrid,
-            str_contains(mb_strtolower($s['fuel']), 'электр') => Fuel::Electric,
-            str_contains(mb_strtolower($s['fuel']), 'газ') => Fuel::Gas,
-            default => null,
-        });
+        // Слова «Коробка», «Топливо» — теми же правилами, что в письмах (`CarWords`).
+        $set('transmission', Transmission::tryFrom((string) CarWords::transmission($s['transmission'])));
+        $set('fuel', Fuel::tryFrom((string) CarWords::fuel($s['fuel'])));
         if ($s['brand'] && ! $car->isLocked('brand_id')) {
             $brand = Brand::resolve($s['brand']);
             $car->brand_id = $brand->id;

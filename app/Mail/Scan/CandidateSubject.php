@@ -2,10 +2,10 @@
 
 namespace App\Mail\Scan;
 
+use App\Live\Topics;
 use App\Mail\Actions\ApplyScan;
 use App\Mail\Candidate;
 use App\Mail\Chains\ChainBuilder;
-use App\Live\Topics;
 use App\Mail\Extraction\ScanFields;
 use App\Mail\Scope;
 use App\Users\User;

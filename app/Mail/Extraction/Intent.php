@@ -26,13 +26,25 @@ enum Intent: string
     case Auto = 'auto';
     case Other = 'other';
 
+    /** Служебный отправитель почтовых сервисов и роботов — письмо не о ТС и не предложение. */
+    private const SERVICE_SENDERS = '/^(?:security|noreply\w*|no-reply|no_reply|notify|notifications?|mailer-daemon|postmaster|robot)@/iu';
+
+    /** Служебная тема: автоответ, недоставка, отзыв, вход и пароль, регистрация. */
+    private const SERVICE_SUBJECTS = '/^\s*(?:automatic reply|autoreply|undeliverable|отзыв|delivery status|mail delivery|out of office|уведомление о регистрации|ваше сообщение не доставлено)\b|вход с нового устройства|пытаются войти|добавлен номер телефона|восстановлени\w* пароля|подтвердите (?:адрес|почту)|автоответ|out of office|undeliver|не доставлено/iu';
+
+    /** Служебное письмо по отправителю и теме — одно правило на CRM и парковку (у парковки ещё и по словам, `of`). */
+    public static function isService(?string $subject, ?string $fromEmail): bool
+    {
+        return preg_match(self::SERVICE_SENDERS, (string) $fromEmail) === 1 || preg_match(self::SERVICE_SUBJECTS, (string) $subject) === 1;
+    }
+
     public static function of(?string $subject, ?string $body): self
     {
         // Только свои слова письма: цитаты и подпись внизу про другое («ТС продано» в истории переписки).
         $text = self::body($body);
         $all = trim((string) $subject)."\n".$text;
         // Служебное: автоответ, недоставка, отзыв письма, рассылка — не письмо о ТС.
-        if (preg_match('/^\s*(?:automatic reply|autoreply|undeliverable|отзыв|delivery status|mail delivery|out of office|уведомление о регистрации|ваше сообщение не доставлено|вход с нового устройства|в аккаунт пытаются войти|добавлен номер телефона)\b/iu', (string) $subject)
+        if (preg_match(self::SERVICE_SUBJECTS, (string) $subject)
             || preg_match('/^\s*(?:в данный момент|с \d{2}\.\d{2}\.\d{2,4}[^\n]{0,40}(?:отпуск|отсутству))|нахожусь в отпуске|отсутствую (?:на рабочем месте|в офисе)|доступ к почте ограничен|delivery has failed|хотел бы отозвать сообщение|отписаться от рассылки|unsubscribe|дайджест|зарегистрировано в автоматическом режиме|письмо создано автоматически/iu', $text)) {
             return self::Auto;
         }
@@ -83,11 +95,10 @@ enum Intent: string
         return self::Other;
     }
 
-    /** Бухгалтерия: отчёт-акт, счета, сверка, акты хранения за период — не про одну ТС, ключей и кандидатов не даёт. */
     /** Тема бухгалтерской переписки: месячные отчёты и сверки с вендором — вся ветка про десятки машин, не про одну. */
     public static function billingSubject(?string $subject): bool
     {
-        $s = (string) preg_replace('/^\s*(?:(?:re|fwd?|fw|ответ|пересл\w*)\s*(?:\[\d+\])?\s*:\s*)+/iu', '', (string) $subject);
+        $s = Patterns::cleanSubject($subject);
         $period = 'за\s+(?:январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр)\w*(?:\s*[-–]\s*\w+)?\s*20\d\d';
         $months = '(?:январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр)\w*';
 
@@ -143,7 +154,7 @@ enum Intent: string
 
     public static function ofMessage(Message $message): self
     {
-        if (preg_match('/^(?:security|mailer-daemon|no-?reply|postmaster|notification|noreply\w*)@/iu', (string) $message->from_email)) {
+        if (preg_match(self::SERVICE_SENDERS, (string) $message->from_email)) {
             return self::Auto;
         }
         $body = $message->text_body ?: strip_tags((string) $message->html_body);

@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Mail\Extraction\Code;
+use App\Mail\Extraction\Patterns;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Vendors\Vendor;
@@ -148,14 +149,6 @@ class Candidate extends Model
         return (bool) $this->value('brand');
     }
 
-    /** Госномер и VIN в письме пишут как попало — ключ одинаков для «а123вс716» и «А 123 ВС 716». */
-    public static function plateKey(?string $plate): ?string
-    {
-        $plate = mb_strtoupper((string) preg_replace('/\s+/u', '', (string) $plate));
-
-        return $plate !== '' ? $plate : null;
-    }
-
     /** Самое сильное из тождеств: убыток → VIN → госномер → ветка → письмо. */
     public static function strongest(array $keys): ?string
     {
@@ -179,7 +172,7 @@ class Candidate extends Model
         return array_values(array_filter([
             $value('code') ? 'code:'.Code::key($value('code')) : null,
             $value('vin') ? 'vin:'.strtoupper((string) $value('vin')) : null,
-            self::plateKey($value('plate')) ? 'plate:'.self::plateKey($value('plate')) : null,
+            Patterns::plateKey($value('plate')) ? 'plate:'.Patterns::plateKey($value('plate')) : null,
             $threadId ? 'thread:'.$threadId : null,
         ]));
     }

@@ -99,7 +99,8 @@ final class ScanFields
             [$attachment, $text] = $doc;
             $from = Files::label($attachment, (bool) ($doc[2] ?? false));
             $values = self::values(DocumentFields::extract($text));
-            if (self::otherCar($current, $values)) {
+            $nowBrand = isset($current['car']) ? Names::brand((string) $current['car']['value']['brand'])?->id : null;
+            if (self::otherCar($current['vin']['value'] ?? null, $nowBrand, $values['vin'] ?? null, $values['car']['brand'] ?? null)) {
                 continue;
             }
             foreach ($values as $field => $value) {
@@ -163,17 +164,14 @@ final class ScanFields
      * Файл о другой машине (в цепочке пересланное письмо о соседней): VIN дальше двух знаков от известного (ближе —
      * ошибка OCR той же машины) или другая марка. Его поля не предлагаются — иначе «Новое» включало бы чужой год.
      */
-    private static function otherCar(array $current, array $fields): bool
+    public static function otherCar(?string $vin, ?int $brandId, ?string $docVin, ?string $docBrand): bool
     {
-        $vin = (string) ($current['vin']['value'] ?? '');
-        if ($vin !== '' && isset($fields['vin']) && strlen($vin) === 17 && levenshtein(strtoupper($vin), strtoupper((string) $fields['vin'])) > 2) {
+        if ($vin && $docVin && strlen($vin) === 17 && levenshtein(strtoupper($vin), strtoupper($docVin)) > 2) {
             return true;
         }
-        $brand = fn (?array $car) => $car ? Names::brand((string) $car['brand'])?->id : null;
-        $now = $brand($current['car']['value'] ?? null);
-        $doc = $brand($fields['car'] ?? null);
+        $doc = $docBrand ? Names::brand($docBrand)?->id : null;
 
-        return $now && $doc && $now !== $doc;
+        return $brandId && $doc && $brandId !== $doc;
     }
 
     /** Ключ сравнения: «Lada (ВАЗ) Granta» и «Lada Granta», «А 123 ВС» и «А123ВС» — одно. */

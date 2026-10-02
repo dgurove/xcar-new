@@ -112,11 +112,12 @@ final class Importer
         if (! $brand) {
             return [null, null];
         }
-        $found = Brand::whereRaw('lower(name) = ?', [mb_strtolower(trim($brand))])->orWhereRaw('lower(name_ru) = ?', [mb_strtolower(trim($brand))])->first();
+        // Марка и модель — как везде (`Brand::known`, `CarModel::known`): словарь знает «Lada» и «ВАЗ» одной маркой.
+        $found = Brand::known($brand);
         if (! $found) {
             return [null, null];
         }
-        $carModel = $model ? CarModel::where('brand_id', $found->id)->whereRaw('lower(name) = ?', [mb_strtolower(trim($model))])->first() : null;
+        $carModel = $model ? CarModel::known($found, $model) : null;
 
         return [$found->id, $carModel?->id];
     }

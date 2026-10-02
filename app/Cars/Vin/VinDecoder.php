@@ -75,6 +75,18 @@ class VinDecoder
         return strlen($vin) === self::LENGTH && strspn($vin, self::ALLOWED) === self::LENGTH;
     }
 
+    /**
+     * Год выпуска по VIN — одно правило на разбор писем и «Заполнить по VIN»: только если марка его кодирует (уверенность
+     * не низкая: Renault, Mercedes, BMW год в VIN не пишут) и не из будущего.
+     */
+    public static function year(string $vin): ?int
+    {
+        $result = (new self)->decode($vin);
+        $year = $result->get('year');
+
+        return $result->confidence('year') !== 'low' && is_int($year) && $year >= 1980 && $year <= (int) date('Y') + 1 ? $year : null;
+    }
+
     public function decode(string $raw): VinResult
     {
         $vin = self::normalize($raw);

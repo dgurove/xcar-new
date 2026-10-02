@@ -10,7 +10,7 @@ final class Energogarant extends Template
         $subject = $this->subjectOf($subject, $body);
         $fields = [];
         $this->put($fields, 'code', $this->firstCode($subject), 'subject');
-        $this->put($fields, 'vin', $this->match(self::VIN, $subject), 'subject');
+        $this->put($fields, 'vin', $this->vin($subject), 'subject');
         [$brand, $model] = $this->brandAndModel($subject);
         $this->put($fields, 'brand', $brand, 'subject');
         $this->put($fields, 'model', $model, 'subject');

@@ -3,6 +3,7 @@
 namespace App\Mail\Extraction\Templates;
 
 use App\Mail\Extraction\CarWords;
+use App\Mail\Extraction\Patterns;
 
 /** Совкомбанк: блок «МАРКА МОДЕЛЬ:/ГОД ВЫПУСКА:/КПП:/ПРИВОД:…», «оценены N руб», VIN в теле или без него. */
 final class Sovcombank extends Template
@@ -19,7 +20,7 @@ final class Sovcombank extends Template
         $this->put($fields, 'mileage', CarWords::digits($this->block($body, 'ПРОБЕГ')), 'body');
         $this->put($fields, 'fuel', CarWords::fuel($this->block($body, 'ТИП ДВИГАТЕЛЯ')), 'body');
         $this->put($fields, 'engine_power', CarWords::digits($this->block($body, 'МОЩНОСТЬ ДВИГАТЕЛЯ')), 'body');
-        $this->put($fields, 'engine_volume', CarWords::digits($this->block($body, 'ОБЪЕМ ДВИГАТЕЛЯ')), 'body');
+        $this->put($fields, 'engine_volume', CarWords::cc($this->block($body, 'ОБЪЕМ ДВИГАТЕЛЯ')), 'body');   // «1.5» — литры, «1598» — см³
         $this->put($fields, 'transmission', CarWords::transmission($this->block($body, 'КПП')), 'body');
         $this->put($fields, 'drive', CarWords::drive($this->block($body, 'ПРИВОД')), 'body');
         $this->put($fields, 'location', $this->block($body, 'МЕСТОНАХОЖДЕНИЕ ТС'), 'body');
@@ -30,7 +31,7 @@ final class Sovcombank extends Template
             }
         }
         $this->put($fields, 'vin', $this->vinOf($body), 'body');
-        $this->put($fields, 'plate', $this->match(self::PLATE, $body), 'body');
+        $this->put($fields, 'plate', $this->match(Patterns::PLATE, $body), 'body');
 
         return $fields;
     }
@@ -50,7 +51,7 @@ final class Sovcombank extends Template
     private function freeForm(string $body): array
     {
         $clean = $this->stripMarkdown($body);
-        if ($clean === '' || ! preg_match('/([^,]+),\s*(19[89]\d|20[0-4]\d)\s*г\.?\s*в\.?/u', $clean, $m, PREG_OFFSET_CAPTURE)) {
+        if ($clean === '' || ! preg_match('/([^,]+),\s*('.Patterns::YEAR.')\s*г\.?\s*в\.?/u', $clean, $m, PREG_OFFSET_CAPTURE)) {
             return [];
         }
         $words = preg_split('/\s+/u', trim($m[1][0]));
@@ -88,14 +89,11 @@ final class Sovcombank extends Template
             return null;
         }
         $text = mb_strtoupper($body);
+        // Подписанный «ВИН:» важнее; в строке их бывает несколько — последний (заглушки отсеивает `Patterns`).
         $haystacks = preg_match('/\b(?:ВИН|VIN)\s*:?\s*(.+)$/um', $text, $m) ? [$m[1], $text] : [$text];
         foreach ($haystacks as $haystack) {
-            if (preg_match_all(self::VIN, $haystack, $all)) {
-                foreach (array_reverse($all[0]) as $vin) {
-                    if (strlen(count_chars($vin, 3)) > 1) {  // заглушка из одинаковых цифр
-                        return $vin;
-                    }
-                }
+            if ($vins = Patterns::vins($haystack)) {
+                return end($vins);
             }
         }
 

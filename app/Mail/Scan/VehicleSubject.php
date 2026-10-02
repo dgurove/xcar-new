@@ -7,6 +7,7 @@ use App\Cars\CarModel;
 use App\Cars\Colors;
 use App\Live\Publisher;
 use App\Live\Topics;
+use App\Mail\Extraction\Patterns;
 use App\Mail\Extraction\ScanFields;
 use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\UpdateVehicle;
@@ -104,7 +105,7 @@ final class VehicleSubject implements Subject
             match ($field) {
                 'brand' => ($id = Brand::known((string) $value)?->id) ? $data['brand_id'] = $id : null,
                 'model' => null,
-                'plate' => $data['plate'] = mb_strtoupper((string) preg_replace('/\s+/u', '', (string) $value)),
+                'plate' => $data['plate'] = Patterns::plateKey((string) $value),
                 'vin' => $data['vin'] = strtoupper((string) $value),
                 'color' => $data['color'] = Colors::normalize((string) $value) ?? (string) $value,
                 default => $data[$field] = $value,

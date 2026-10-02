@@ -8,7 +8,7 @@ use App\Cars\Settlement;
 use App\Cars\Vin\VinAutofill;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
-use App\Mail\Jobs\ExtractCandidate;
+use App\Mail\Extraction\Code;
 use App\Mail\Scope;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
@@ -62,9 +62,7 @@ final class PromoteCandidate
         $v = fn (string $f) => $candidate->value($f);
         $brand = $v('brand') ? Brand::known($this->clean($v('brand'))) : null;
         $model = $brand && $v('model') ? CarModel::resolve($brand, $this->clean($v('model'))) : null;
-        // Кандидаты до вендоров несли только имя страховой — старым ещё нужен поиск по нему.
-        $vendor = $v('vendor_id') ? Vendor::find($v('vendor_id')) : Vendor::forSender($v('sender'), Scope::Offers)
-            ?? ($v('insurer') ? Vendor::whereRaw('lower(name) = ?', [mb_strtolower($v('insurer'))])->first() : null);
+        $vendor = $v('vendor_id') ? Vendor::find($v('vendor_id')) : Vendor::forSender($v('sender'), Scope::Offers);
         $answerBy = $v('answer_by') ? Carbon::parse($v('answer_by')) : null;
 
         $data = array_filter([
@@ -128,7 +126,7 @@ final class PromoteCandidate
         $live = fn () => Offer::where('state', '!=', OfferState::Archived)->latest();
         $vin = $candidate->value('vin') ? strtoupper((string) $candidate->value('vin')) : null;
 
-        return ($candidate->code ? $live()->where('claim_ref_key', ExtractCandidate::key($candidate->code))->first() : null)
+        return ($candidate->code ? $live()->where('claim_ref_key', Code::key($candidate->code))->first() : null)
             ?? ($vin ? $live()->where('vin', $vin)->first() : null);
     }
 

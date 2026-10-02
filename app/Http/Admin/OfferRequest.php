@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Cars\Body;
+use App\Cars\Colors;
 use App\Cars\DamageCause;
 use App\Cars\DamageZone;
 use App\Cars\Drive;
@@ -24,6 +25,10 @@ class OfferRequest extends FormRequest
         // Числа приходят с пробелами и знаком рубля — чистим до цифр.
         if ($this->has('engine_volume')) {
             $this->merge(['engine_volume' => Liters::parse($this->input('engine_volume'), $this->route('offer')?->engine_volume)]);
+        }
+        // Цвет — как в форме ТС парковки: словарь пишет его одинаково («черный» → «Черный»), опечаток не правит.
+        if ($this->filled('color')) {
+            $this->merge(['color' => Colors::normalize($this->input('color'), fuzzy: false) ?? trim((string) $this->input('color'))]);
         }
         $this->merge(collect($this->only(['mileage', 'floor_price', 'publish_price', 'asking_price', 'min_bid_price', 'engine_power']))
             ->map(fn ($v) => $v === null || $v === '' ? null : (int) preg_replace('/\D+/', '', (string) $v))

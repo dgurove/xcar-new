@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class ReadLetter
 {
-    public const VERSION = 12;
+    public const VERSION = 13;
 
     public function __construct(private ParkExtractor $park, private Extractor $offers, private CodeMatcher $codes) {}
 
@@ -33,15 +33,15 @@ final class ReadLetter
         $body = $message->text_body ?: strip_tags((string) $message->html_body);
         $isPark = $message->account?->scope === Scope::Park;
         $fields = $isPark
-            ? $this->park->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments->pluck('filename')->all(), $message->attachments)
+            ? $this->park->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments)
             : $this->offers->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments);
         // У писем с предложениями смысла нет, кроме служебного: «Вход с нового устройства» не даёт ни полей, ни номеров.
-        $intent = $isPark ? Intent::ofMessage($message) : (Extractor::isService($message->subject, $message->from_email) ? Intent::Auto : null);
+        $intent = $isPark ? Intent::ofMessage($message) : (Intent::isService($message->subject, $message->from_email) ? Intent::Auto : null);
         $own = QuotationStripper::ownText($body);
 
         return [
             'fields' => $fields,
-            'keys' => $this->keys($message, $fields, $intent, $isPark),
+            'keys' => $this->keys($message, $fields, $intent),
             'intent' => $intent?->value,
             'own_text' => mb_substr(Intent::excerpt($own !== '' ? $own : $body, 2000), 0, 2000),
         ];
@@ -68,16 +68,15 @@ final class ReadLetter
      *
      * @return list<string>
      */
-    private function keys(Message $message, array $fields, ?Intent $intent, bool $isPark): array
+    private function keys(Message $message, array $fields, ?Intent $intent): array
     {
         if (in_array($intent, [Intent::Billing, Intent::Auto], true)) {
             return [];
         }
         $keys = Candidate::identities($fields, null);
-        if ($isPark) {
-            foreach ($this->codes->findAll($message->subject) as $code) {
-                $keys[] = 'code:'.Code::key($code);
-            }
+        // Все номера убытка темы — и у парковки, и у CRM: по ним привязка ветки к ТС или предложению (`LinkThread`).
+        foreach ($this->codes->findAll($message->subject) as $code) {
+            $keys[] = 'code:'.Code::key($code);
         }
 
         return array_values(array_unique($keys));

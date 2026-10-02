@@ -6,6 +6,7 @@ use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
+use App\Mail\Extraction\Patterns;
 use App\Mail\Scope;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -64,7 +65,7 @@ final class PromoteCandidate
     {
         $live = fn () => Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->latest();
         $vin = $candidate->value('vin') ? strtoupper((string) $candidate->value('vin')) : null;
-        $plate = Candidate::plateKey($candidate->value('plate'));
+        $plate = Patterns::plateKey($candidate->value('plate'));
 
         return ($candidate->code ? $live()->where('ref_key', Vehicle::keyFor($candidate->code))->first() : null)
             ?? ($vin ? $live()->where('vin', $vin)->first() : null)
@@ -79,7 +80,7 @@ final class PromoteCandidate
      */
     private function openFor(Vehicle $vehicle): Collection
     {
-        $plate = Candidate::plateKey($vehicle->plate);
+        $plate = Patterns::plateKey($vehicle->plate);
         if (! $vehicle->ref_key && ! $vehicle->vin && ! $plate) {
             return collect();
         }
@@ -99,7 +100,7 @@ final class PromoteCandidate
             })->get()
             ->filter(fn (Candidate $c) => ($vehicle->ref_key && $c->code && Vehicle::keyFor($c->code) === $vehicle->ref_key)
                 || ($vehicle->vin && $c->value('vin') && strtoupper((string) $c->value('vin')) === $vehicle->vin)
-                || ($plate && Candidate::plateKey($c->value('plate')) === $plate))
+                || ($plate && Patterns::plateKey($c->value('plate')) === $plate))
             ->values();
     }
 }

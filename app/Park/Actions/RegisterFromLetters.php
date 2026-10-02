@@ -31,7 +31,7 @@ final class RegisterFromLetters
     public function __construct(private OpenDocs $openDocs, private MarkSold $sold, private MarkDoc $markDoc, private ReleasePast $releasePast) {}
 
     /**
-     * @param  array{accepted_at?: ?string, yard_id?: ?int, spot?: ?string, sold?: bool, sold_at?: ?string, pickup_name?: ?string, pickup_phone?: ?string, released_at?: ?string, released_note?: ?string, source?: string}  $stages
+     * @param  array{accepted_at?: ?string, yard_id?: ?int, spot?: ?string, sold?: bool, sold_at?: ?string, pickup_name?: ?string, pickup_phone?: ?string, released_at?: ?string, released_note?: ?string}  $stages
      */
     public function __invoke(?User $by, ?Candidate $candidate, array $data, array $stages): Vehicle
     {
@@ -41,7 +41,7 @@ final class RegisterFromLetters
         $acceptedAt = ! empty($stages['accepted_at']) ? Carbon::parse($stages['accepted_at']) : (($stored['at'] ?? null) ? Carbon::parse($stored['at']) : null);
         $yard = ! empty($stages['yard_id']) ? Yard::findOrFail($stages['yard_id']) : null;
         $releasedAt = ! empty($stages['released_at']) ? Carbon::parse($stages['released_at']) : null;
-        $mark = ['by_letters' => true] + (($stages['source'] ?? null) === 'fact' ? ['by_fact' => true] : []);
+        $mark = ['by_letters' => true];
 
         $vehicle = DB::transaction(function () use ($by, $candidate, $data, $stages, $stored, $yard, $acceptedAt, $mark) {
             $spot = Vehicle::takeSpot($yard, $stages['spot'] ?? null);

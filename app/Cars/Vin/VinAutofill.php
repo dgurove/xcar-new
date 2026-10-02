@@ -146,9 +146,15 @@ class VinAutofill
         return ['result' => $result, 'values' => $values, 'filled' => $filled, 'skipped' => $skipped];
     }
 
-    /** Ищем по slug, имени и русскому имени, через алиасы: «Li Auto» из VIN и «Lixiang» из справочника — одна марка. */
+    /**
+     * Марка из декодера — как везде (`Brand::known`: словарь `Names`, slug, имя), потом через алиасы таблиц VIN: «Li Auto»
+     * из VIN и «Lixiang» из справочника — одна марка.
+     */
     private function findBrand(string $name): ?Brand
     {
+        if ($brand = Brand::known($name)) {
+            return $brand;
+        }
         $names = [$name];
         foreach ($this->tables->brandAliases() as $canonical => $aliases) {
             if (in_array(mb_strtolower($name), array_map('mb_strtolower', [$canonical, ...$aliases]), true)) {
@@ -164,9 +170,7 @@ class VinAutofill
 
     private function findModel(Brand $brand, string $name): ?CarModel
     {
-        return CarModel::where('brand_id', $brand->id)
-            ->where(fn ($q) => $q->where('slug', Brand::slugFor($name))->orWhereRaw('lower(name) = ?', [mb_strtolower($name)]))
-            ->first();
+        return CarModel::known($brand, $name);
     }
 
     private function bodyOf(mixed $text): ?Body

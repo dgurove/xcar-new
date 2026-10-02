@@ -2,7 +2,6 @@
 
 namespace App\Mail\Extraction;
 
-use App\Mail\Candidate;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 
@@ -19,7 +18,7 @@ final class Keys
         return array_values(array_filter([
             $vehicle->ref_key ? 'code:'.$vehicle->ref_key : null,
             $vehicle->vin ? 'vin:'.strtoupper($vehicle->vin) : null,
-            Candidate::plateKey($vehicle->plate) ? 'plate:'.Candidate::plateKey($vehicle->plate) : null,
+            Patterns::plateKey($vehicle->plate) ? 'plate:'.Patterns::plateKey($vehicle->plate) : null,
         ]));
     }
 
@@ -43,7 +42,7 @@ final class Keys
             $keys[] = 'vin:'.strtoupper(trim($q));
         }
         if (preg_match('/^[А-ЯA-Z]\s?\d{3}\s?[А-ЯA-Z]{2}\s?\d{2,3}$/iu', trim($q))) {
-            $keys[] = 'plate:'.Candidate::plateKey($q);
+            $keys[] = 'plate:'.Patterns::plateKey($q);
         }
 
         return $keys;

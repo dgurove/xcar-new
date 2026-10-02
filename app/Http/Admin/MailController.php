@@ -24,7 +24,6 @@ use App\Mail\Direction;
 use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\Keys;
-use App\Mail\Jobs\ExtractCandidate;
 use App\Mail\Jobs\ImportCandidateFiles;
 use App\Mail\Jobs\ParseMessage;
 use App\Mail\Jobs\PushFlag;
@@ -251,7 +250,7 @@ class MailController
         $message = $thread->messages()->with(['thread', 'account'])->where('direction', Direction::In)->orderByDesc('date_at')->first()
             ?? $thread->messages()->with(['thread', 'account'])->orderByDesc('date_at')->first();
         abort_if(! $message, 404);
-        $candidate = $thread->candidate ?? ExtractCandidate::run($message, force: true, quiet: true);
+        $candidate = $thread->candidate ?? app(ChainBuilder::class)->attach($message, force: true, quiet: true);
         abort_if(! $candidate, 404);
         if ($this->scope === Scope::Park) {
             return redirect('/requests/new?candidate='.$candidate->id);

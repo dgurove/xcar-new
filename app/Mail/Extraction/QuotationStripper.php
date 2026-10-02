@@ -68,7 +68,7 @@ final class QuotationStripper
         if ($text === null || ! preg_match('/^\s*(?:Тема|Subject)\s*:\s*(.+)$/umi', $text, $m)) {
             return null;
         }
-        $subject = (string) preg_replace('/^\s*(?:(?:fwd|fw|re|пересылка|пересл)\s*:\s*)+/ui', '', trim($m[1]));
+        $subject = Patterns::cleanSubject($m[1]);
 
         return $subject !== '' ? $subject : null;
     }

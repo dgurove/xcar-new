@@ -12,6 +12,7 @@ use App\Cars\Category;
 use App\Cars\DamageZone;
 use App\Cars\Vin\VinDecoder;
 use App\Mail\Extraction\Code;
+use App\Mail\Extraction\Patterns;
 use App\Mail\Template;
 use App\Mail\Thread;
 use App\Media\HasPhotos;
@@ -68,7 +69,7 @@ class Vehicle extends Model implements HasMedia
 
     public function setPlateAttribute(?string $value): void
     {
-        $this->attributes['plate'] = $value ? mb_strtoupper(preg_replace('/\s+/u', '', $value)) ?: null : null;
+        $this->attributes['plate'] = Patterns::plateKey($value);
     }
 
     public static function keyFor(string $ref): string

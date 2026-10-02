@@ -4,12 +4,12 @@ namespace App\Mail\Extraction;
 
 use App\Cars\Colors;
 use App\Cars\Names;
+use App\Cars\Vin\VinDecoder;
 use App\Mail\Extraction\Templates\Generic;
 use App\Mail\Extraction\Templates\Template;
 use App\Mail\Scope;
 use App\Support\Phone;
 use App\Vendors\Vendor;
-use Carbon\Carbon;
 
 /**
  * Письмо о хранении → поля ТС и заявки. Страховые пишут по-разному: Альфа СПб — всё в теме («заявка на прием ТС
@@ -25,23 +25,15 @@ final class ParkExtractor
     /** Формы номеров, которые встречаются только в переписке стоянки. */
     private const REFS = ['\d{4}-\d{7}-\d{2}', '\d{10}', '\d{8}'];
 
-    private const PLATE = '/\b([АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3})\b/u';
-
-    /** Прицеп: две буквы, четыре цифры, регион. */
-    private const TRAILER = '/\b([АВЕКМНОРСТУХ]{2}\d{4}\d{2,3})\b/u';
-
-    private const VIN = '/\b([A-HJ-NPR-Z0-9]{17})\b/';
-
     /** Тема: служебные слова до машины и страхователя. */
     private const SUBJECT_NOISE = '/^(?:(?:re|fw|fwd|отв|ответ)\s*:\s*)+|\b(?:заявка\s+на\s+при[её]м(?:ку)?|при[её]м(?:ка)?\s+(?:ГОТС|ТС)|передача\s+ТС|на\s+вывоз|вывоз\s+(?:ГОТС|ТС)|готов\w*\s+к\s+передаче.*$|запрос|ТС|ГОТС|фото\s*\d*|ч\.?\s*\d+|наш\s+лизинг|на\s+стоянку\s+\S+.*$)\b/iu';
 
     public function __construct(private ?AttachmentReader $reader = null) {}
 
-    /**
-     * @param  list<string>  $filenames  имена вложений письма (марка бывает только там)
-     */
-    public function extract(?string $subject, ?string $body, ?string $fromEmail = null, ?\DateTimeInterface $on = null, array $filenames = [], iterable $attachments = []): array
+    /** @param  iterable<\App\Mail\Attachment>  $attachments  вложения письма: документы и имена файлов (марка бывает только там) */
+    public function extract(?string $subject, ?string $body, ?string $fromEmail = null, ?\DateTimeInterface $on = null, iterable $attachments = []): array
     {
+        $filenames = collect($attachments)->pluck('filename')->all();
         $text = QuotationStripper::strip($body);
         $sender = QuotationStripper::forwardedSender($body) ?? $fromEmail;
         $vendor = Vendor::forSender($sender, Scope::Park);
@@ -86,7 +78,7 @@ final class ParkExtractor
                 }
             }
         }
-        if ($phones = $this->phones(self::beforeSignature($text))) {
+        if ($phones = Patterns::phones(self::beforeSignature($text))) {
             $fields['phones'] = ['value' => $phones, 'source' => 'body'];
         }
         if (preg_match('/\bцвет(?:\s+кузова)?\s*:\s*([а-яё\- ]{3,20})/iu', $text, $m) && ($color = Colors::normalize($m[1]))) {
@@ -123,7 +115,7 @@ final class ParkExtractor
                 }
             }
         }
-        if (! isset($fields['year']) && isset($fields['vin']) && ($year = self::yearFromVin($fields['vin']['value']))) {
+        if (! isset($fields['year']) && isset($fields['vin']) && ($year = VinDecoder::year($fields['vin']['value']))) {
             $fields['year'] = ['value' => $year, 'source' => 'vin'];
         }
         // Марку не назвали нигде, а VIN есть — по VIN: память базы или декодер (`ScanCar::carOfVin`).
@@ -145,7 +137,7 @@ final class ParkExtractor
     /** Тема: номер заказа ВСК, госномер, VIN, дата передачи, марка с моделью. */
     private function fromSubject(array &$fields, string $subject): void
     {
-        $clean = trim((string) preg_replace('/^\s*(?:(?:re|fw|fwd|отв|ответ)\s*:\s*)+/iu', '', $subject));
+        $clean = Patterns::cleanSubject($subject);
         if ($clean === '') {
             return;
         }
@@ -156,9 +148,9 @@ final class ParkExtractor
         if (preg_match('/готов\w*\s+к\s+передаче\s+(\d{2})\.(\d{2})\.(\d{4})(?:\s*(?:г\.?|года)?)?\s*(?:в|к)?\s*(\d{1,2})[.:](\d{2})/iu', $clean, $m)) {
             $fields['planned_at'] ??= ['value' => sprintf('%s-%s-%s %02d:%s', $m[3], $m[2], $m[1], (int) $m[4], $m[5]), 'source' => 'subject'];
         }
-        $this->putMatch($fields, 'plate', self::PLATE, $clean, 'subject');
-        $this->putMatch($fields, 'plate', self::TRAILER, $clean, 'subject');
-        $this->putMatch($fields, 'vin', self::VIN, mb_strtoupper($clean), 'subject');
+        $this->putMatch($fields, 'plate', Patterns::PLATE, $clean, 'subject');
+        $this->putMatch($fields, 'plate', Patterns::TRAILER, $clean, 'subject');
+        $this->putVin($fields, $clean, 'subject');
         if (! isset($fields['brand']) && ($found = Names::find($this->carPart($clean)))) {
             $this->putCar($fields, $found, 'subject');
         }
@@ -189,7 +181,7 @@ final class ParkExtractor
             }
         }
         if ($plate = $kv('Гос\.?\s*(?:регистрационный\s+)?номер(?:\s+ТС)?')) {
-            $this->putMatch($fields, 'plate', self::PLATE, $plate, 'body');
+            $this->putMatch($fields, 'plate', Patterns::PLATE, $plate, 'body');
         }
         if ($who = $kv('Фамилия\s+И\.?\s*О\.?\s+клиента')) {
             $fields['insured_name'] ??= ['value' => mb_convert_case(mb_strtolower($who), MB_CASE_TITLE), 'source' => 'body'];
@@ -219,7 +211,7 @@ final class ParkExtractor
         // «ТС Hyundai Solaris гос. номер …» — марка ищется только в строках с номером, VIN или словом о ТС.
         foreach ($lines as $line) {
             $about = preg_match('/готов\w*\s+к\s+передаче|\b(?:ТС|автомобил\w*|а\/м|марк[аи])\b/iu', $line);
-            $hasId = preg_match(self::PLATE, $line) || preg_match(self::VIN, mb_strtoupper($line));
+            $hasId = preg_match(Patterns::PLATE, $line) || Patterns::vin($line);
             if (! $about && ! $hasId) {
                 continue;
             }
@@ -228,14 +220,14 @@ final class ParkExtractor
                 $this->putCar($fields, $found, 'body');
             }
             if ($hasId) {
-                $this->putMatch($fields, 'plate', self::PLATE, $line, 'body');
-                $this->putMatch($fields, 'vin', self::VIN, mb_strtoupper($line), 'body');
+                $this->putMatch($fields, 'plate', Patterns::PLATE, $line, 'body');
+                $this->putVin($fields, $line, 'body');
             }
             if (isset($fields['brand'], $fields['plate'], $fields['vin'])) {
                 break;
             }
         }
-        $this->putMatch($fields, 'plate', self::TRAILER, $text, 'body');
+        $this->putMatch($fields, 'plate', Patterns::TRAILER, $text, 'body');
     }
 
     /** Имена файлов: «Альфа акт 1 чанган алсвин 8592.PDF», «Выписка ЭПТС WMW31BS00M3M37937.pdf». */
@@ -246,8 +238,8 @@ final class ParkExtractor
             if (preg_match('/^(?:img|dsc|photo|scan|image|\d+)/iu', $base)) {
                 continue;
             }
-            $this->putMatch($fields, 'vin', self::VIN, mb_strtoupper($base), 'file');
-            $this->putMatch($fields, 'plate', self::PLATE, $base, 'file');
+            $this->putVin($fields, $base, 'file');
+            $this->putMatch($fields, 'plate', Patterns::PLATE, $base, 'file');
             if (! isset($fields['brand'])) {
                 // «Альфа акт 1 чанган алсвин 8592» — служебные слова спереди, четыре цифры номера сзади.
                 // «Альфа Эптс воях фри 2290», «Согаз акт выдачи kia sportage 9699» — служебных слов может быть несколько.
@@ -267,19 +259,19 @@ final class ParkExtractor
         }
     }
 
+    /** Госномер по форме (`Patterns::PLATE`, `TRAILER`) — первый в тексте, слитно заглавными. */
     private function putMatch(array &$fields, string $field, string $pattern, string $text, string $source): void
     {
-        if (isset($fields[$field]) || ! preg_match_all($pattern, $text, $m)) {
-            return;
+        if (! isset($fields[$field]) && preg_match($pattern, $text, $m)) {
+            $fields[$field] = ['value' => Patterns::plateKey($m[0]), 'source' => $source];
         }
-        foreach ($m[1] as $value) {
-            // VIN из одного знака («11111111111111111» у Совкомбанка) — заглушка.
-            if ($field === 'vin' && strlen(count_chars($value, 3)) < 4) {
-                continue;
-            }
-            $fields[$field] = ['value' => $field === 'plate' ? mb_strtoupper($value) : $value, 'source' => $source];
+    }
 
-            return;
+    /** VIN — первый в тексте, не заглушка (`Patterns::vin`). */
+    private function putVin(array &$fields, string $text, string $source): void
+    {
+        if (! isset($fields['vin']) && ($vin = Patterns::vin($text))) {
+            $fields['vin'] = ['value' => $vin, 'source' => $source];
         }
     }
 
@@ -288,10 +280,9 @@ final class ParkExtractor
     {
         $part = $subject;
         foreach ((new CodeMatcher)->findAll($part) as $code) {
-            $pattern = strtr(preg_quote($code, '/'), ['Y' => '[YУ]', 'A' => '[AА]', 'C' => '[CС]', 'K' => '[KК]', 'T' => '[TТ]', 'E' => '[EЕ]', 'H' => '[HН]', 'M' => '[MМ]', 'O' => '[OО]', 'P' => '[PР]', 'B' => '[BВ]', 'X' => '[XХ]']);
-            $part = (string) preg_replace('/'.$pattern.'/iu', ' ', $part, 1);
+            $part = (string) preg_replace(Patterns::codeRegex($code), ' ', $part, 1);
         }
-        $part = (string) preg_replace(['/\b\d{2,4}[\/-]\d{3}[\/-]\d{5}[\/-]\d{2}\b/u', '/\b[A-Z0-9]{1,4}\/\d{3}\/\d{5}\/\d{2}\b/iu', '/\b\d{6}-\d{4}\b/u', '/^\s*\d{2}\s?\d{3}\s?\d{3}\b/u', self::PLATE, self::TRAILER, self::VIN, '/\d{2}\.\d{2}\.\d{2,4}/'], ' ', $part);
+        $part = (string) preg_replace(['/\b\d{2,4}[\/-]\d{3}[\/-]\d{5}[\/-]\d{2}\b/u', '/\b[A-Z0-9]{1,4}\/\d{3}\/\d{5}\/\d{2}\b/iu', '/\b\d{6}-\d{4}\b/u', '/^\s*\d{2}\s?\d{3}\s?\d{3}\b/u', Patterns::PLATE, Patterns::TRAILER, Patterns::VIN, '/\d{2}\.\d{2}\.\d{2,4}/'], ' ', $part);
         $part = (string) preg_replace(self::SUBJECT_NOISE, ' ', $part);
 
         return Names::clean((string) preg_replace('/\s+/u', ' ', $part));
@@ -302,7 +293,7 @@ final class ParkExtractor
     {
         $part = $this->carPart($subject);
         $found = Names::find($part);
-        if (! $found && ! preg_match(self::PLATE, $subject)) {
+        if (! $found && ! preg_match(Patterns::PLATE, $subject)) {
             return null;
         }
         $who = Names::clean($found ? $found['before'] : $part);
@@ -319,7 +310,7 @@ final class ParkExtractor
     }
 
     /** Дата и время приёма из текста: рядом со словами о приёме, передаче, доставке или в строке про дату. */
-    public static function plannedAt(string $text): ?string
+    private static function plannedAt(string $text): ?string
     {
         $date = '(\d{1,2})\.(\d{2})\.(\d{4}|\d{2})';
         $time = '(\d{1,2})[:.](\d{2})';
@@ -336,20 +327,6 @@ final class ParkExtractor
         }
 
         return null;
-    }
-
-    /** Год из 10-го знака VIN — у японцев, корейцев, китайцев и американцев; европейские (S…Z) год не кодируют. */
-    public static function yearFromVin(string $vin): ?int
-    {
-        $vin = strtoupper($vin);
-        if (strlen($vin) !== 17 || preg_match('/^[S-Z]/', $vin)) {
-            return null;
-        }
-        $c = $vin[9];
-        $letters = 'ABCDEFGHJKLMNPRSTVWXY';
-        $year = ctype_digit($c) && $c !== '0' ? 2000 + (int) $c : (($pos = strpos($letters, $c)) !== false ? 2010 + $pos : null);
-
-        return $year && $year <= (int) Carbon::now()->format('Y') + 1 ? $year : null;
     }
 
     /**
@@ -385,7 +362,7 @@ final class ParkExtractor
             && ! preg_match('/\b(выдать|передать|отдать|забер[ёе]т|заберут|вывезет|вывезут)\b[^\n]{0,80}\b(ТС|ГОТС|автомобил|машин)/iu', $text)) {
             return null;
         }
-        $phone = '((?:\+?7|8)[\s(\-]*\d{3}[\s)\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2})(?!\d)';
+        $phone = '('.Patterns::PHONE.')';
         $word = '[А-ЯЁ][а-яё]{2,}';
         $name = null;
         $tel = null;
@@ -430,17 +407,9 @@ final class ParkExtractor
         return null;
     }
 
-    /** @return list<string> */
     /** Текст без подписей: «С уважением, … тел.: (495) 788-09-99 доб.» — телефон офиса, не клиента; цитата ниже подписи остаётся. */
     public static function beforeSignature(string $text): string
     {
         return trim((string) preg_replace('/^\s*(?:С\s+уважением|C уважением|Best regards|--\s*$).*?(?=^\s*(?:От|От кого|From|Sent|Отправлено|-{3,})\b|\z)/imsu', '', $text));
-    }
-
-    private function phones(string $text): array
-    {
-        preg_match_all('/(?:\+?7|8)[\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}(?!\d)/u', $text, $m);
-
-        return array_values(array_unique(array_map(fn ($p) => Phone::format(Phone::normalize($p) ?? $p), $m[0])));
     }
 }

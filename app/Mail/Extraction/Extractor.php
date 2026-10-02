@@ -18,21 +18,11 @@ use App\Vendors\Vendor;
  */
 final class Extractor
 {
-    /** Служебные письма почтовых сервисов («Вход с нового устройства») — не предложение, полей не дают. */
-    private const SERVICE_SENDERS = '/^(?:security|noreply|no-reply|no_reply|notify|notifications?|mailer-daemon|postmaster|robot)@/i';
-
-    private const SERVICE_SUBJECTS = '/вход с нового устройства|пытаются войти|восстановлени\w* пароля|подтвердите (?:адрес|почту)|автоответ|out of office|undeliver|не доставлено/iu';
-
     public function __construct(private ?AttachmentReader $reader = null) {}
-
-    public static function isService(?string $subject, ?string $fromEmail): bool
-    {
-        return preg_match(self::SERVICE_SENDERS, (string) $fromEmail) === 1 || preg_match(self::SERVICE_SUBJECTS, (string) $subject) === 1;
-    }
 
     public function extract(?string $subject, ?string $body, ?string $fromEmail = null, ?\DateTimeInterface $on = null, iterable $attachments = []): array
     {
-        if (self::isService($subject, $fromEmail)) {
+        if (Intent::isService($subject, $fromEmail)) {
             return [];
         }
         $text = QuotationStripper::strip($body);
@@ -43,7 +33,7 @@ final class Extractor
         $template = new $class;
         $fields = $template->extract(trim((string) $subject), $text);
         $fields += Template::common(trim((string) $subject), $text, $on);
-        $topic = trim((string) preg_replace('/^\s*(?:(?:fwd|fw|re|пересылка|пересл)\s*:\s*)+/ui', '', QuotationStripper::forwardedSubject($body) ?? (string) $subject));
+        $topic = Patterns::cleanSubject(QuotationStripper::forwardedSubject($body) ?? $subject);
 
         $this->car($fields, $topic);
         $this->body($fields, $text);
@@ -158,7 +148,7 @@ final class Extractor
                 $fields['floor_price'] = ['value' => reset($prices), 'source' => 'body'];
             }
         }
-        if (preg_match('/готов\w*\s+к\s+передаче\s*[–—:\-]?\s*((?:\+7|8)[\d\s\-()]{9,16}\d)\s*([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){0,2})?/u', $text, $m)) {
+        if (preg_match('/готов\w*\s+к\s+передаче\s*[–—:\-]?\s*('.Patterns::PHONE.')\s*([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){0,2})?/u', $text, $m)) {
             $phone = Phone::normalize($m[1]);
             $fields['insured_phone'] ??= ['value' => $phone ? Phone::format($phone) : trim($m[1]), 'source' => 'body'];
             if (! empty($m[2])) {

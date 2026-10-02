@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Cars\CarModel;
 use App\Cars\Colors;
 use App\Cars\Names;
 use App\Cars\Vin\VinDecoder;
@@ -11,7 +12,9 @@ use App\Mail\Direction;
 use App\Mail\Extraction\DocumentFields;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Extraction\Intent;
+use App\Mail\Extraction\Patterns;
 use App\Mail\Extraction\ScanCar;
+use App\Mail\Extraction\ScanFields;
 use App\Mail\Message;
 use App\Mail\Scan\Files;
 use App\Park\Vehicle;
@@ -155,7 +158,7 @@ final class FillFromDocs
             return false;
         }
         if ($field === 'model') {
-            $model = $vehicle->brand?->models()->whereRaw('lower(name) = ?', [mb_strtolower($value)])->first();
+            $model = $vehicle->brand ? CarModel::known($vehicle->brand, $value) : null;
             if (! $model) {
                 return false;
             }
@@ -179,7 +182,7 @@ final class FillFromDocs
         $sources = [];
         foreach ($plan['fill'] as $field => $item) {
             if ($field === 'model') {
-                $model = $vehicle->brand?->models()->whereRaw('lower(name) = ?', [mb_strtolower((string) $item['value'])])->first();
+                $model = $vehicle->brand ? CarModel::known($vehicle->brand, (string) $item['value']) : null;
                 if (! $model) {
                     continue;
                 }
@@ -311,13 +314,7 @@ final class FillFromDocs
      */
     private function otherCar(Vehicle $vehicle, array $doc): bool
     {
-        $vin = (string) ($doc['vin']['value'] ?? '');
-        if ($vin !== '' && $vehicle->vin && strlen($vehicle->vin) === 17 && levenshtein(strtoupper($vehicle->vin), strtoupper($vin)) > 2) {
-            return true;
-        }
-        $brand = isset($doc['brand']) ? Names::brand((string) $doc['brand']['value']) : null;
-
-        return $brand && $vehicle->brand_id && $brand->id !== $vehicle->brand_id;
+        return ScanFields::otherCar($vehicle->vin, $vehicle->brand_id, $doc['vin']['value'] ?? null, $doc['brand']['value'] ?? null);
     }
 
     /** VIN уже стоит у другой ТС: второй раз его не пишем — письма и предложения ищут машину по VIN. */
@@ -332,7 +329,7 @@ final class FillFromDocs
 
         return match ($field) {
             'vin' => strlen($v = strtoupper($value)) === 17 ? $v : null,
-            'plate' => ($v = mb_strtoupper((string) preg_replace('/\s+/u', '', $value))) !== '' ? $v : null,
+            'plate' => Patterns::plateKey($value),
             'year' => ((int) $value >= 1980 && (int) $value <= (int) date('Y') + 1) ? (string) (int) $value : null,
             'color' => Colors::normalize($value),
             'value' => (int) $value >= 10_000 ? (string) (int) $value : null,
@@ -350,7 +347,7 @@ final class FillFromDocs
         return match ($field) {
             'color' => Colors::normalize($a) === Colors::normalize($b) || mb_strtolower($a) === mb_strtolower($b),
             'model' => mb_strtolower((string) preg_replace('/[\s\-]+/u', '', $a)) === mb_strtolower((string) preg_replace('/[\s\-]+/u', '', $b)),
-            default => mb_strtoupper((string) preg_replace('/\s+/u', '', $a)) === mb_strtoupper((string) preg_replace('/\s+/u', '', $b)),
+            default => Patterns::plateKey($a) === Patterns::plateKey($b),
         };
     }
 
