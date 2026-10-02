@@ -700,6 +700,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 4.5rem; height: 3.25rem; }
   .row-photo img { @apply size-full object-cover; }
   .row-photo-s { width: 3rem; height: 2.25rem; }
+  /* Кадр в шторке «Водяной знак»: целиком, не выше половины экрана, «Без знака / Со знаком» меняют его на месте. */
+  .mark-view { @apply flex items-center justify-center overflow-hidden rounded-(--radius-m) bg-surface-3; height: min(50vh, 24rem); }
+  .mark-view img { @apply max-h-full max-w-full object-contain; }
   /* Кружок значка в начале строки (x-ui.row-icon): 44 — раздел или действие, s (36) — строка «Настроек» и «Денег». */
   .row-icon { @apply flex size-11 shrink-0 items-center justify-center rounded-full; }
   .row-icon-s { @apply size-9; }

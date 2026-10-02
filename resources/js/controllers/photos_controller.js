@@ -3,6 +3,7 @@ import * as Turbo from '@hotwired/turbo';
 import { confirmSheet } from '../confirm';
 import { loadSortable } from '../lib/sortable';
 import { openLightbox } from '../lightbox';
+import { openSheet, closeSheet } from '../sheet';
 
 // Фотографии: загрузка по одному файлу с прогрессом (выбор или drop на карточку), перестановка перетаскиванием,
 // действия глаз, поворот, корзина на плитке и в просмотрщике.
@@ -13,7 +14,7 @@ import { openLightbox } from '../lightbox';
 // и архив сервер разложит сам, картинку из буфера кладёт ⌘V в любом месте страницы.
 export default class extends Controller {
     static targets = ['input', 'progress', 'grid'];
-    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean };
+    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, mark: Boolean };
 
     connect() {
         if (this.readonlyValue) return;
@@ -339,6 +340,7 @@ export default class extends Controller {
         const can = (i, act) => {
             const it = (this.viewer?.items ?? items)[i];
             if (!it?.id || it.owner.readonlyValue) return false;
+            if (act === 'mark') return it.owner.markValue;
             return act !== 'hide' || !!it.owner.element.querySelector(`.photo-cell[data-id="${it.id}"] [data-act="hide"]`);
         };
         const act = (act, confirm) => async (i) => {
@@ -355,10 +357,75 @@ export default class extends Controller {
                 { name: 'eye', icon: 'eye-off', title: 'Скрыть', iconFor: (i) => (hidden(i) ? 'eye' : 'eye-off'), titleFor: (i) => (hidden(i) ? 'Показать' : 'Скрыть'), shown: (i) => can(i, 'hide'), run: act('hide') },
                 { name: 'rotate', icon: 'rotate', title: 'Повернуть', shown: (i) => can(i, 'rotate'), run: act('rotate') },
                 { name: 'trash', icon: 'trash', title: 'Удалить', shown: (i) => can(i, 'delete'), run: act('delete', 'Удалить фото?') },
+                { name: 'mark', icon: 'mark', title: 'Водяной знак', shown: (i) => can(i, 'mark'), run: (i) => this.markSheet(this.viewer.items[i]) },
             ],
             onClose: () => { this.viewer = null; },
         });
         if (lightbox) this.viewer = lightbox;
+    }
+
+    // ---- шторка «Водяной знак» поверх просмотрщика (только фото предложений CRM, data-photos-mark-value): кадр
+    // «Без знака / Со знаком», «Вернуть со знаком», «Заменить своим файлом». Разметку отдаёт сервер (mark-sheet).
+
+    async markSheet(it) {
+        const owner = it.owner;
+        const r = await fetch(`${owner.urlValue}/${it.id}/mark`, { headers: { Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!r.ok) { window.toast?.('Не получилось', 'danger'); return; }
+        document.getElementById('mark-sheet')?.remove();
+        const d = document.createElement('dialog');
+        d.id = 'mark-sheet';
+        d.className = 'sheet';
+        d.dataset.turboTemporary = '';
+        d.innerHTML = await r.text();
+        document.body.append(d);
+        d.addEventListener('click', (e) => { if (e.target === d) closeSheet(d); });
+        d.addEventListener('close', () => d.remove());
+        d.querySelector('[data-mark-close]')?.addEventListener('click', () => closeSheet(d));
+
+        const img = d.querySelector('.mark-view img');
+        d.querySelectorAll('[data-mark-show]').forEach((b) => b.addEventListener('click', () => {
+            img.src = img.dataset[b.dataset.markShow];
+            d.querySelectorAll('[data-mark-show]').forEach((x) => x.setAttribute('aria-current', String(x === b)));
+        }));
+
+        const send = async (body) => {
+            if (d.getAttribute('aria-busy') === 'true') return;
+            d.setAttribute('aria-busy', 'true');
+            try {
+                const res = await fetch(`${owner.urlValue}/${it.id}/mark`, {
+                    method: 'POST',
+                    headers: { Accept: 'text/vnd.turbo-stream.html', 'X-CSRF-TOKEN': owner.token, 'X-Requested-With': 'XMLHttpRequest', ...(owner.rowId ? { 'X-Photos-Target': owner.rowId } : {}) },
+                    body,
+                });
+                if (!res.ok) {
+                    const message = (await res.json().catch(() => null))?.message;
+                    window.toast?.(message || 'Не получилось', 'danger');
+                    return;
+                }
+                owner.apply(await res.text());
+                owner.bust(it.id);
+                closeSheet(d);
+                const next = this.items();
+                this.viewer?.refresh(next, Math.max(0, next.findIndex((n) => n.id === it.id)));
+            } finally {
+                d.removeAttribute('aria-busy');
+            }
+        };
+        d.querySelector('[data-mark-act="undo"]')?.addEventListener('click', async (e) => {
+            if (!(await confirmSheet(e.currentTarget.dataset.confirm))) return;
+            const body = new FormData();
+            body.append('act', 'undo');
+            send(body);
+        });
+        d.querySelector('[data-mark-file]')?.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const body = new FormData();
+            body.append('file', file);
+            send(body);
+        });
+        // Без своей записи в истории: «Назад» закрывает просмотрщик под шторкой, как у подтверждения.
+        openSheet(d, { history: false });
     }
 
     showProgress(label, ratio) {

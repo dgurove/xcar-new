@@ -19,6 +19,9 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 final class UnmarkPhoto
 {
+    /** `unmarked` у кадра, заменённого своим файлом. */
+    public const MANUAL = 'manual';
+
     public function __construct(private Unmark $unmark, private FileManipulator $files, private CoolPhotos $cool) {}
 
     public static function markedPath(Media $media): string
@@ -56,6 +59,30 @@ final class UnmarkPhoto
         return $clean['mark'];
     }
 
+    /**
+     * Свой файл вместо кадра (почистили знак в фотошопе): тот же media — порядок, «скрыт», главный кадр, наш знак.
+     * Кадр со знаком уходит в `markedPath`, если его там ещё нет: «Вернуть со знаком» работает и после замены.
+     */
+    public function replace(Media $media, string $file, PhotoIngest $ingest): void
+    {
+        $source = $this->source($media);
+        $backup = self::markedPath($media);
+        if (! is_file($backup)) {
+            @mkdir(dirname($backup), 0775, true);
+            if (! copy($source, $backup)) {
+                throw new RuntimeException("Кадр {$media->id}: копия со знаком не записалась");
+            }
+        }
+        $webp = $ingest->shrink($file);
+        try {
+            $this->encode($webp, $source);
+        } finally {
+            @unlink($webp);
+        }
+        $media->setCustomProperty('unmarked', self::MANUAL);
+        $this->refresh($media);
+    }
+
     /** Вернуть кадр со знаком площадки. */
     public function undo(Media $media): bool
     {
@@ -78,11 +105,11 @@ final class UnmarkPhoto
     }
 
     /** В формат и размер прежнего файла: webp из PhotoIngest, jpg со старого сайта. */
-    private function encode(string $jpeg, string $target): void
+    private function encode(string $image, string $target): void
     {
         $tmp = $target.'.tmp.'.(strtolower(pathinfo($target, PATHINFO_EXTENSION)) ?: 'webp');
         $ext = pathinfo($tmp, PATHINFO_EXTENSION);
-        Image::load($jpeg)->fit(Fit::Max, PhotoIngest::MAX_DIMENSION, PhotoIngest::MAX_DIMENSION)
+        Image::load($image)->fit(Fit::Max, PhotoIngest::MAX_DIMENSION, PhotoIngest::MAX_DIMENSION)
             ->format($ext === 'jpeg' ? 'jpg' : $ext)->quality(PhotoIngest::QUALITY)->save($tmp);
         if (! is_file($tmp) || filesize($tmp) === 0) {
             @unlink($tmp);

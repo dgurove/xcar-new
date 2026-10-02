@@ -152,7 +152,7 @@
 
         </form>
 
-        <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true">
+        <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
             @include('admin.offers.photo-upload')
             @include('admin.offers.gallery')
         </x-ui.card>

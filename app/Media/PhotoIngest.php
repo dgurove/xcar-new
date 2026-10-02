@@ -2,6 +2,7 @@
 
 namespace App\Media;
 
+use App\Media\Actions\UnmarkPhoto;
 use App\Offers\Offer;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -53,6 +54,7 @@ final class PhotoIngest
     {
         $webp = null;
         $clean = null;
+        $marked = null;
         try {
             $path = $this->fromHeic($path);
             $this->checkSize($path);
@@ -63,16 +65,28 @@ final class PhotoIngest
                 $properties += ['unmarked' => $clean['mark']];
             }
             $webp = $this->shrink($clean['path'] ?? $path, $max);
+            // Кадр со знаком остаётся на закрытом диске: «Вернуть со знаком» в просмотрщике и выборка для уточнения знака.
+            $marked = $clean ? $this->shrink($path, $max) : null;
 
-            return $model->addMedia($webp)
+            $media = $model->addMedia($webp)
                 ->usingFileName($this->fileName($name))
                 ->usingName(pathinfo($name, PATHINFO_FILENAME))
                 ->withCustomProperties($properties)
                 ->toMediaCollection($collection);
+            if ($marked) {
+                $backup = UnmarkPhoto::markedPath($media);
+                @mkdir(dirname($backup), 0775, true);
+                rename($marked, $backup);
+            }
+
+            return $media;
         } finally {
             @unlink($path);
             if ($clean) {
                 @unlink($clean['path']);
+            }
+            if ($marked && is_file($marked)) {
+                @unlink($marked);
             }
             if ($webp && is_file($webp)) {
                 @unlink($webp);

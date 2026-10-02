@@ -25,7 +25,7 @@
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         <x-slot:media>
-            <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true">
+            <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
                 @include('admin.offers.photo-upload')
                 @include('admin.offers.peek-photos')
             </div>

@@ -4,7 +4,9 @@ namespace App\Http\Admin;
 
 use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Media\Actions\RotatePhoto;
+use App\Media\Actions\UnmarkPhoto;
 use App\Media\PhotoIngest;
+use App\Media\Watermarks;
 use App\Offers\Jobs\ImportOfferArchive;
 use App\Offers\Offer;
 use Illuminate\Http\Request;
@@ -62,6 +64,53 @@ class OfferPhotoController
     {
         $this->own($offer, $media);
         $rotate($media);
+
+        return $this->gallery($offer->refresh());
+    }
+
+    /** Шторка «Водяной знак» из просмотрщика: снят ли знак, сравнить со знаком, вернуть, заменить своим файлом. */
+    public function mark(Offer $offer, Media $media)
+    {
+        $this->own($offer, $media);
+        $unmarked = $media->getCustomProperty('unmarked');
+
+        return view('admin.offers.mark-sheet', [
+            'offer' => $offer,
+            'media' => $media,
+            'manual' => $unmarked === UnmarkPhoto::MANUAL,
+            'title' => $unmarked === UnmarkPhoto::MANUAL ? null : Watermarks::title($unmarked),
+            'marked' => is_file(UnmarkPhoto::markedPath($media)),
+        ]);
+    }
+
+    /** Кадр со знаком площадки — копия на закрытом диске, для сравнения в шторке. */
+    public function marked(Offer $offer, Media $media)
+    {
+        $this->own($offer, $media);
+        $path = UnmarkPhoto::markedPath($media);
+        abort_unless(is_file($path), 404);
+
+        return response()->file($path, ['Cache-Control' => 'private, no-cache']);
+    }
+
+    /** «Вернуть со знаком» (`act=undo`) или свой файл вместо кадра (`file`: почистили знак сами). */
+    public function unmark(Request $request, Offer $offer, Media $media, UnmarkPhoto $unmark, PhotoIngest $ingest)
+    {
+        $this->own($offer, $media);
+        try {
+            if ($request->hasFile('file')) {
+                $request->validate(['file' => ['file', 'max:65536']]);
+                $file = $request->file('file');
+                if (! $this->isImage($file, $ingest)) {
+                    return response()->json(['message' => 'Это не фото'], 422);
+                }
+                $unmark->replace($media, $file->getRealPath(), $ingest);
+            } elseif ($request->input('act') !== 'undo' || ! $unmark->undo($media)) {
+                return response()->json(['message' => 'Кадра со знаком нет'], 422);
+            }
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return $this->gallery($offer->refresh());
     }

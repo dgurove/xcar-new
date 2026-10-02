@@ -72,6 +72,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/media/order', [OfferPhotoController::class, 'reorder']);
         Route::post('/offers/{offer}/media/{media}/hide', [OfferPhotoController::class, 'toggle']);
         Route::post('/offers/{offer}/media/{media}/rotate', [OfferPhotoController::class, 'rotate']);
+        // Чужой водяной знак кадра: шторка из просмотрщика, кадр со знаком для сравнения, «Вернуть» и свой файл.
+        Route::get('/offers/{offer}/media/{media}/mark', [OfferPhotoController::class, 'mark']);
+        Route::get('/offers/{offer}/media/{media}/marked', [OfferPhotoController::class, 'marked']);
+        Route::post('/offers/{offer}/media/{media}/mark', [OfferPhotoController::class, 'unmark']);
         Route::delete('/offers/{offer}/media/{media}', [OfferPhotoController::class, 'destroy']);
     });
     Route::prefix('work/mail')->middleware('ability:canCrmMail')->group(function () {
