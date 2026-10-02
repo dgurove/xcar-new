@@ -2,7 +2,6 @@
 
 namespace App\Http\Mail;
 
-use App\Mail\Attachment;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Extraction\DocumentText;
@@ -10,6 +9,7 @@ use App\Mail\Extraction\ScanFields;
 use App\Mail\Jobs\ScanAttachments;
 use App\Mail\Scan\CandidateSubject;
 use App\Mail\Scan\OfferSubject;
+use App\Mail\Scan\ScanFile;
 use App\Mail\Scan\Subject;
 use App\Mail\Scan\VehicleSubject;
 use App\Mail\Scope;
@@ -23,7 +23,8 @@ use Illuminate\Support\Collection;
 
 /**
  * «✨ Распознать» — одно окно на парковку и CRM (`x-mail.scan-window` в шелле) для цепочки «Из писем», ТС и
- * предложения (`Scan\Subject`), в три шага одного фрейма.
+ * предложения (`Scan\Subject`), в три шага одного фрейма. Файлы — `Scan\ScanFile` по номеру `scanId`: `812` —
+ * вложение письма, `m45` — документ предложения.
  * - Файлы: документы и фото плитками; документы и фото с VIN/СТС/ПТС в имени отмечены; `?only=` — один файл
  *   (✨ в шторке документов), окно сразу его читает.
  * - Чтение: отмеченные списком, у каждого — крутится или готов; ставит `Jobs\ScanAttachments`, окно перечитывается
@@ -78,17 +79,17 @@ final class ScanController
 
     public function offerShow(Request $request, Offer $offer)
     {
-        return $this->window($request, new OfferSubject($offer));
+        return $this->window($request, OfferSubject::for($offer, $request->user()));
     }
 
     public function offerScan(Request $request, Offer $offer)
     {
-        return $this->start($request, new OfferSubject($offer));
+        return $this->start($request, OfferSubject::for($offer, $request->user()));
     }
 
     public function offerApply(Request $request, Offer $offer)
     {
-        $subject = new OfferSubject($offer);
+        $subject = OfferSubject::for($offer, $request->user());
 
         return $this->done($subject, $this->put($request, $subject));
     }
@@ -113,10 +114,10 @@ final class ScanController
             ]);
         }
         $files = $subject->files();
-        $ids = array_map('intval', (array) $request->query('ids', []));
-        $only = $files->firstWhere('id', (int) $request->query('only'));
-        $picked = $ids ? $files->whereIn('id', $ids)->values() : collect();
-        $texts = $picked->mapWithKeys(fn (Attachment $a) => [$a->id => DocumentText::cached($a)]);
+        $ids = $this->ids($request->query('ids', []));
+        $only = $files->first(fn (ScanFile $f) => $f->scanId() === (string) $request->query('only'));
+        $picked = $this->pick($files, $ids);
+        $texts = $this->texts($picked);
         $reading = ScanAttachments::reading($picked);
         $step = match (true) {
             $picked->isEmpty() || $request->boolean('files') => 'files',
@@ -129,7 +130,7 @@ final class ScanController
             'step' => $step,
             'files' => $files,
             'picked' => $picked,
-            'checked' => $only ? [$only->id] : ($ids ?: $this->checked($files)),
+            'checked' => $only ? [$only->scanId()] : ($ids ?: $this->checked($files)),
             'go' => (bool) $only,
             'texts' => $texts,
             'reading' => $reading,
@@ -141,12 +142,12 @@ final class ScanController
 
     private function start(Request $request, Subject $subject)
     {
-        $ids = $subject->files()->whereIn('id', array_map('intval', (array) $request->input('ids', [])))
-            ->take(ScanAttachments::MAX_FILES)->pluck('id')->sort()->values()->all();
+        $picked = $this->pick($subject->files(), $this->ids($request->input('ids', [])))->take(ScanAttachments::MAX_FILES);
+        $ids = $picked->map->scanId()->sort()->values()->all();
         if (! $ids) {
             return redirect($subject->url());
         }
-        $todo = Attachment::whereIn('id', $ids)->get()->filter(fn (Attachment $a) => DocumentText::cached($a) === null)->pluck('id')->values()->all();
+        $todo = $picked->filter(fn (ScanFile $f) => DocumentText::cached($f) === null)->map->scanId()->sort()->values()->all();
         if ($todo) {
             ScanAttachments::mark($todo);
             ScanAttachments::dispatch($subject->key(), $todo);
@@ -158,8 +159,8 @@ final class ScanController
     /** Положить выбранное; сколько полей ушло — для итога (машина — одно поле). */
     private function put(Request $request, Subject $subject): int
     {
-        $picked = $subject->files()->whereIn('id', array_map('intval', (array) $request->input('ids', [])))->values();
-        $rows = $this->rows($subject, $picked, $picked->mapWithKeys(fn (Attachment $a) => [$a->id => DocumentText::cached($a)]));
+        $picked = $this->pick($subject->files(), $this->ids($request->input('ids', [])));
+        $rows = $this->rows($subject, $picked, $this->texts($picked));
         $chosen = ScanFields::chosen($rows, (array) $request->input('pick', []));
         $subject->apply($chosen, $request->user());
 
@@ -181,18 +182,36 @@ final class ScanController
         return new CandidateSubject($candidate);
     }
 
-    /** Отмечены сразу: документы и фото таблички VIN, СТС, ПТС (по имени), не больше лимита пачки. @return list<int> */
+    /** Отмечены сразу: документы и фото таблички VIN, СТС, ПТС (по имени), не больше лимита пачки. @return list<string> */
     private function checked(Collection $files): array
     {
-        $docs = $files->reject->isPhoto()->pluck('id');
-        $photos = $files->filter(fn (Attachment $a) => $a->isPhoto() && preg_match(self::PHOTO_WITH_TEXT, (string) $a->filename))->take(self::PHOTOS_CHECKED)->pluck('id');
+        $docs = $files->reject->isPhoto()->map->scanId();
+        $photos = $files->filter(fn (ScanFile $f) => $f->isPhoto() && preg_match(self::PHOTO_WITH_TEXT, $f->scanName()))->take(self::PHOTOS_CHECKED)->map->scanId();
 
         return $docs->concat($photos)->take(ScanAttachments::MAX_FILES)->values()->all();
     }
 
-    /** @param Collection<int, Attachment> $picked @param Collection<int, ?string> $texts */
+    /** Номера файлов из адреса или формы: `812`, `m45`; прочее отбрасывается. @return list<string> */
+    private function ids(mixed $ids): array
+    {
+        return array_values(array_filter(array_map('strval', (array) $ids), fn (string $id) => preg_match('/^m?\d+$/', $id) === 1));
+    }
+
+    /** Файлы предмета с этими номерами, в порядке предмета. @param Collection<int, ScanFile> $files @param list<string> $ids @return Collection<int, ScanFile> */
+    private function pick(Collection $files, array $ids): Collection
+    {
+        return $ids ? $files->filter(fn (ScanFile $f) => in_array($f->scanId(), $ids, true))->values() : collect();
+    }
+
+    /** Прочитанное по файлам; null — ещё не читали. @return Collection<string, ?string> */
+    private function texts(Collection $picked): Collection
+    {
+        return $picked->mapWithKeys(fn (ScanFile $f) => [$f->scanId() => DocumentText::cached($f)]);
+    }
+
+    /** @param Collection<int, ScanFile> $picked @param Collection<string, ?string> $texts */
     private function rows(Subject $subject, Collection $picked, Collection $texts): array
     {
-        return ScanFields::of($subject->current(), $picked->map(fn (Attachment $a) => [$a, (string) $texts[$a->id], $a->isPhoto()]), $subject->fields());
+        return ScanFields::of($subject->current(), $picked->map(fn (ScanFile $f) => [$f, (string) $texts[$f->scanId()], $f->isPhoto()]), $subject->fields());
     }
 }

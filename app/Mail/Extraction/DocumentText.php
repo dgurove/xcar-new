@@ -2,8 +2,8 @@
 
 namespace App\Mail\Extraction;
 
-use App\Mail\Attachment;
 use App\Mail\Parts;
+use App\Mail\Scan\ScanFile;
 use Closure;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
@@ -12,13 +12,13 @@ use Throwable;
 
 /**
  * Текст файла из письма парковки — то, откуда берётся машина у Альфы Москва: «Заявка на приёмку» и акт приходят
- * сканом, часто боком. Два пути:
+ * сканом, часто боком. Файл — вложение письма или документ, загруженный в предложение руками (`Scan\ScanFile`). Два пути:
  * - `layer` — текстовый слой PDF и текст docx/xlsx (`AttachmentText`), миллисекунды: разбор письма берёт его сам;
  * - `read` — OCR по «✨ Распознать» (`ScanController`): слой, если читается (`AttachmentText::readable`), иначе
  *   скрипт `ocr` (PaddleOCR через RapidOCR, deploy/bin/ocr) по двум первым страницам PDF или по фото. Сам по себе
  *   OCR не запускается: страница на сервере — секунды, и большая часть писем в нём не нуждается.
  * Прочитанное лежит в `cache/scantext/{sha}.txt` навсегда, пустой файл — «текста нет»: одинаковый скан в «ч.1» и в
- * пересылке читается один раз, и разбор письма подхватывает прочитанное «✨» как свой слой. `cache/doctext` — то, что
+ * пересылке (и он же в документах предложения) читается один раз, и разбор письма подхватывает прочитанное «✨» как свой слой. `cache/doctext` — то, что
  * до 01.10.2026 прочёл tesseract сам по каждому письму: разбор письма его ещё берёт (марки цепочек не пропадают),
  * «✨» его не считает прочитанным и читает файл заново.
  */
@@ -42,15 +42,15 @@ final class DocumentText
     private const IDLE = 120;
 
     /** Файл, который «✨» умеет прочитать: PDF или картинка, не встроенная в тело письма. */
-    public static function scannable(Attachment $attachment): bool
+    public static function scannable(ScanFile $file): bool
     {
-        $isPdf = $attachment->isPdf() || strtolower(pathinfo((string) $attachment->filename, PATHINFO_EXTENSION)) === 'pdf';
+        $isPdf = $file->isPdf() || strtolower(pathinfo($file->scanName(), PATHINFO_EXTENSION)) === 'pdf';
 
-        return ($isPdf || $attachment->isImage()) && ! $attachment->is_inline && (int) $attachment->size <= self::MAX_BYTES;
+        return ($isPdf || $file->isImage()) && ! $file->isInline() && $file->scanSize() <= self::MAX_BYTES;
     }
 
     /** Прочитанный текст из кеша; null — ещё не читали. */
-    public static function cached(Attachment $attachment): ?string
+    public static function cached(ScanFile $attachment): ?string
     {
         $disk = Storage::disk(Parts::CACHE_DISK);
 
@@ -61,7 +61,7 @@ final class DocumentText
      * Текст без OCR: прочитанное раньше или текстовый слой, если он читается (тогда он ложится в кеш). Файл — только
      * с диска: `mail:read` перечитывает тысячи писем, и ходить за каждым вложением в ящик ему нельзя.
      */
-    public static function layer(Attachment $attachment): ?string
+    public static function layer(ScanFile $attachment): ?string
     {
         $disk = Storage::disk(Parts::CACHE_DISK);
         $legacy = self::LEGACY.'/'.self::name($attachment);
@@ -73,14 +73,14 @@ final class DocumentText
      * Текстовый слой файла, если он читается; ложится в кеш. Нечитаемый слой помечается и больше не достаётся.
      * Без `$fetch` — только файл с диска (разбор письма), с ним — и из ящика («✨»: человек ждёт этот файл).
      */
-    private static function text(Attachment $attachment, bool $fetch = false): ?string
+    private static function text(ScanFile $attachment, bool $fetch = false): ?string
     {
         $disk = Storage::disk(Parts::CACHE_DISK);
         $none = self::NO_LAYER.'/'.self::name($attachment);
-        if ($attachment->is_inline || $disk->exists($none) || (! $fetch && ! $attachment->isOnDisk()) || ! ($path = $attachment->file())) {
+        if ($attachment->isInline() || $disk->exists($none) || (! $fetch && ! $attachment->isOnDisk()) || ! ($path = $attachment->file())) {
             return null;
         }
-        $text = AttachmentText::of($path, (string) $attachment->filename, $attachment->mime);
+        $text = AttachmentText::of($path, $attachment->scanName(), $attachment->scanMime());
         if ($text === null || ! AttachmentText::readable($text)) {
             $disk->put($none, '');
 
@@ -95,16 +95,16 @@ final class DocumentText
      * Прочитать пачку: прочитанное — сразу, слой — если читается, остальное — через `ocr` кусками по CHUNK картинок. `$done($attachment, $text)` зовётся по каждому файлу, как только он готов. Ошибка — пустой
      * текст в кеш, без повторов. `$timeout` — меньше таймаута задачи: иначе её убьют раньше, чем сработает `finally`.
      *
-     * @param  iterable<Attachment>  $attachments
+     * @param  iterable<ScanFile>  $attachments
      */
     public static function read(iterable $attachments, ?Closure $done = null, int $timeout = 600): void
     {
         $done ??= fn () => null;
         $dir = sys_get_temp_dir().'/xcar-ocr-'.bin2hex(random_bytes(6));
         @mkdir($dir, 0700, true);
-        /** @var array<string, Attachment> $owner страница или фото → вложение */
+        /** @var array<string, ScanFile> $owner страница или фото → файл */
         $owner = [];
-        /** @var array<int, array<string, ?string>> $pages вложение → его файлы для ocr и их текст */
+        /** @var array<string, array<string, ?string>> $pages файл (`scanId`) → его картинки для ocr и их текст */
         $pages = [];
         try {
             foreach ($attachments as $a) {
@@ -122,7 +122,7 @@ final class DocumentText
                 }
                 foreach ($files as $file) {
                     $owner[$file] = $a;
-                    $pages[$a->id][$file] = null;
+                    $pages[$a->scanId()][$file] = null;
                 }
             }
             if (! $owner) {
@@ -132,15 +132,15 @@ final class DocumentText
             $take = function (string $line) use (&$owner, &$pages, &$seen, $done) {
                 $row = json_decode($line, true);
                 $a = is_array($row) ? ($owner[$row['file'] ?? ''] ?? null) : null;
-                if (! $a || ! isset($pages[$a->id])) {
+                if (! $a || ! isset($pages[$a->scanId()])) {
                     return;
                 }
                 $seen[$row['file']] = true;
-                $pages[$a->id][$row['file']] = (string) ($row['text'] ?? '');
-                if (! in_array(null, $pages[$a->id], true)) {
-                    $text = trim(implode("\n\f\n", $pages[$a->id]));
+                $pages[$a->scanId()][$row['file']] = (string) ($row['text'] ?? '');
+                if (! in_array(null, $pages[$a->scanId()], true)) {
+                    $text = trim(implode("\n\f\n", $pages[$a->scanId()]));
                     self::put($a, $text);
-                    unset($pages[$a->id]);
+                    unset($pages[$a->scanId()]);
                     $done($a, $text);
                 }
             };
@@ -202,15 +202,15 @@ final class DocumentText
     }
 
     /** Картинки для ocr: первые страницы PDF (имя «page-…» — скрипт ставит их прямо) или само фото. @return list<string> */
-    private static function images(Attachment $a, string $dir): array
+    private static function images(ScanFile $a, string $dir): array
     {
         $path = $a->file();
         if (! $path) {
             return [];
         }
         if (! $a->isImage()) {
-            Process::timeout(60)->run(['pdftoppm', '-scale-to', '2000', '-png', '-l', (string) self::PAGES, $path, $dir.'/page-'.$a->id]);
-            $files = glob($dir.'/page-'.$a->id.'-*.png') ?: [];
+            Process::timeout(60)->run(['pdftoppm', '-scale-to', '2000', '-png', '-l', (string) self::PAGES, $path, $dir.'/page-'.$a->scanId()]);
+            $files = glob($dir.'/page-'.$a->scanId().'-*.png') ?: [];
             sort($files);
 
             return $files;
@@ -219,18 +219,19 @@ final class DocumentText
         return [$path];
     }
 
-    private static function put(Attachment $attachment, string $text): void
+    private static function put(ScanFile $attachment, string $text): void
     {
         Storage::disk(Parts::CACHE_DISK)->put(self::key($attachment), $text);
     }
 
-    private static function key(Attachment $attachment): string
+    private static function key(ScanFile $attachment): string
     {
         return self::DIR.'/'.self::name($attachment);
     }
 
-    private static function name(Attachment $attachment): string
+    /** Без отпечатка — по номеру: `a812` у вложения, `am45` у документа предложения. */
+    private static function name(ScanFile $attachment): string
     {
-        return ($attachment->blob_sha ?: 'a'.$attachment->id).'.txt';
+        return ($attachment->scanSha() ?: 'a'.$attachment->scanId()).'.txt';
     }
 }

@@ -5,10 +5,13 @@ namespace App\Mail\Extraction;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Colors;
+use App\Cars\Drive;
+use App\Cars\Fuel;
 use App\Cars\Names;
-use App\Mail\Attachment;
+use App\Cars\Transmission;
 use App\Mail\Candidate;
 use App\Mail\Scan\Files;
+use App\Mail\Scan\ScanFile;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 
@@ -23,6 +26,12 @@ final class ScanFields
 
     /** Поля предложения CRM: госномера и страховой стоимости у него нет. */
     public const CAR = ['car', 'vin', 'year', 'color'];
+
+    /**
+     * Характеристики, которые документ знает, а карточка предложения ждёт (`OfferSubject`): только дописываются —
+     * стоящее в карточке документ не правит, расхождений по ним нет. У цепочек и ТС их не бывает.
+     */
+    public const SPECS = ['mileage' => 'Пробег', 'transmission' => 'КПП', 'drive' => 'Привод', 'fuel' => 'Топливо', 'engine_volume' => 'Объём', 'engine_power' => 'Мощность', 'city' => 'Город'];
 
     /** Что знает цепочка «Из писем»: поле → значение и откуда («письмо», «выбрано», «по VIN»). */
     public static function ofCandidate(Candidate $candidate): array
@@ -48,10 +57,14 @@ final class ScanFields
         if ($offer->brand) {
             $current['car'] = ['value' => self::car($offer->brand, $offer->model), 'from' => 'в карточке'];
         }
-        foreach (['vin', 'year', 'color'] as $field) {
-            if (! blank($offer->{$field})) {
-                $current[$field] = ['value' => $offer->{$field}, 'from' => 'в карточке'];
+        foreach (['vin', 'year', 'color', 'mileage', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power'] as $field) {
+            $value = $offer->{$field} instanceof \BackedEnum ? $offer->{$field}->value : $offer->{$field};
+            if (! blank($value)) {
+                $current[$field] = ['value' => $value, 'from' => 'в карточке'];
             }
+        }
+        if ($offer->settlement) {
+            $current['city'] = ['value' => $offer->settlement->name, 'from' => 'в карточке'];
         }
 
         return $current;
@@ -84,20 +97,21 @@ final class ScanFields
      * - `new` — у цепочки или ТС поля нет, документ его нашёл: по умолчанию подставить;
      * - `differs` — уже стоит, а документ говорит иначе: по умолчанию оставить, человек берёт значение документа;
      * - `same` — документ подтверждает то, что стоит.
+     * Характеристики (`SPECS`) только дописываются: у заполненной расхождения нет, есть лишь «совпадает».
      * Нашлось в документах несколько разных значений — выбор из них (`options`), одно — включить или нет.
      *
      * @param  array<string, array{value: mixed, from: string}>  $current  что уже знает цепочка или ТС (`ofCandidate`, `ofVehicle`)
-     * @param  iterable<array{0: Attachment, 1: string, 2?: bool}>  $docs  вложение, его текст и «это фото»
+     * @param  iterable<array{0: ScanFile, 1: string, 2?: bool}>  $docs  файл, его текст и «это фото»
      * @param  list<string>|null  $fields  какие поля у предмета бывают (`Subject::fields`), null — все
      * @return array<string, array{label: string, state: string, current: ?array{value: mixed, text: string, from: list<string>}, options: list<array{value: mixed, text: string, from: list<string>}>}>
      */
     public static function of(array $current, iterable $docs, ?array $fields = null): array
     {
-        $labels = $fields === null ? self::LABELS : array_intersect_key(self::LABELS, array_flip($fields));
+        $labels = $fields === null ? self::LABELS : array_intersect_key(self::LABELS + self::SPECS, array_flip($fields));
         $found = [];
         foreach ($docs as $doc) {
-            [$attachment, $text] = $doc;
-            $from = Files::label($attachment, (bool) ($doc[2] ?? false));
+            [$file, $text] = $doc;
+            $from = Files::label($file, (bool) ($doc[2] ?? false));
             $values = self::values(DocumentFields::extract($text));
             $nowBrand = isset($current['car']) ? Names::brand((string) $current['car']['value']['brand'])?->id : null;
             if (self::otherCar($current['vin']['value'] ?? null, $nowBrand, $values['vin'] ?? null, $values['car']['brand'] ?? null)) {
@@ -119,12 +133,16 @@ final class ScanFields
         foreach ($labels as $field => $label) {
             $now = isset($current[$field]) ? ['value' => $current[$field]['value'], 'text' => self::text($field, $current[$field]['value']), 'from' => [$current[$field]['from']]] : null;
             $options = $found[$field] ?? [];
-            if ($now && isset($options[self::key($now['text'])])) {
+            $confirmed = $now && isset($options[self::key($now['text'])]);
+            if ($confirmed) {
                 $now['from'] = [...$now['from'], ...$options[self::key($now['text'])]['from']];
                 unset($options[self::key($now['text'])]);
                 $state = $options ? 'differs' : 'same';
             } else {
                 $state = $now ? ($options ? 'differs' : null) : ($options ? 'new' : null);
+            }
+            if ($state === 'differs' && isset(self::SPECS[$field])) {
+                [$state, $options] = [$confirmed ? 'same' : null, []];
             }
             if ($state) {
                 $out[$field] = ['label' => $label, 'state' => $state, 'current' => $now, 'options' => array_values($options)];
@@ -188,7 +206,7 @@ final class ScanFields
         if ($v('brand')) {
             $out['car'] = ['brand' => (string) $v('brand'), 'model' => $v('model') ? (string) $v('model') : null];
         }
-        foreach (['vin', 'year', 'color', 'plate', 'value'] as $f) {
+        foreach (['vin', 'year', 'color', 'plate', 'value', ...array_keys(self::SPECS)] as $f) {
             if ($v($f) !== null && $v($f) !== '') {
                 $out[$f] = $v($f);
             }
@@ -203,6 +221,12 @@ final class ScanFields
             // Марка без «(ВАЗ)»: в карточке и в документе она должна читаться одинаково.
             'car' => trim((preg_replace('/\s*\(.*?\)/u', '', (string) $value['brand']) ?: $value['brand']).' '.($value['model'] ?? '')),
             'value' => number_format((int) $value, 0, ',', ' ').' ₽',
+            'mileage' => number_format((int) $value, 0, ',', ' ').' км',
+            'transmission' => Transmission::tryFrom((string) $value)?->label() ?? (string) $value,
+            'drive' => Drive::tryFrom((string) $value)?->label() ?? (string) $value,
+            'fuel' => Fuel::tryFrom((string) $value)?->label() ?? (string) $value,
+            'engine_volume' => number_format((int) $value / 1000, 1, ',', '').' л',
+            'engine_power' => (int) $value.' л. с.',
             'color' => Colors::normalize((string) $value) ?? mb_convert_case(mb_strtolower((string) $value), MB_CASE_TITLE),
             default => (string) $value,
         };

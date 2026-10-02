@@ -16,6 +16,7 @@ import { reduce, sheetInHistory } from '../sheet';
 // x-mail.scan-button): окно сразу читает этот файл (`?only=`).
 const FILE = /^\/(?:files|(?:[\w-]+\/)*mail\/attachments)\/\d+\/?$/;
 const ATTACHMENT = /\/mail\/attachments\/(\d+)\/?$/;
+const PAPER = /^\/files\/(\d+)\/?$/;
 const SNAPS = [.3, .55, .88];
 const wide = matchMedia('(min-width: 1024px)');
 const store = {
@@ -205,13 +206,16 @@ export default class extends Controller {
         this.view?.rotate?.();
     }
 
-    // Адрес окна «Распознать» с этим файлом: вложение письма (не файл из архива), скан или фото, и на странице есть
-    // предмет с ✨ — вне окон: под окном писем шторка не открывается.
+    // Адрес окна «Распознать» с этим файлом: вложение письма (не файл из архива) или документ предложения (`m45`,
+    // если предмет их читает — data-scan-papers), скан или фото, и на странице есть предмет с ✨ — вне окон: под окном
+    // писем шторка не открывается.
     scanUrl(item) {
+        if (!['pdf', 'image'].includes(item.type)) return null;
         const url = new URL(item.url, location.href);
-        const id = ['pdf', 'image'].includes(item.type) && !url.searchParams.has('entry') && url.pathname.match(ATTACHMENT)?.[1];
-        const subject = id && [...document.querySelectorAll('[data-scan-subject]')].find((b) => !b.closest('dialog'))?.dataset.scanSubject;
-        return subject ? `${subject}?only=${id}` : null;
+        const button = [...document.querySelectorAll('[data-scan-subject]')].find((b) => !b.closest('dialog'));
+        const paper = button?.hasAttribute('data-scan-papers') && url.pathname.match(PAPER)?.[1];
+        const id = paper ? `m${paper}` : !url.searchParams.has('entry') && url.pathname.match(ATTACHMENT)?.[1];
+        return id && button ? `${button.dataset.scanSubject}?only=${id}` : null;
     }
 
     scan() {

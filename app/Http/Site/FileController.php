@@ -3,6 +3,7 @@
 namespace App\Http\Site;
 
 use App\Media\PhotoIngest;
+use App\Media\Thumb;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Support\OfficePreview;
@@ -40,7 +41,16 @@ final class FileController
                 return response()->file($jpeg, ['Content-Type' => 'image/jpeg', 'Cache-Control' => 'private, max-age=86400']);
             }
         }
-        $inline = (str_starts_with((string) $media->mime_type, 'image/') && $media->mime_type !== 'image/svg+xml') || $media->mime_type === 'application/pdf';
+        $image = (str_starts_with((string) $media->mime_type, 'image/') && $media->mime_type !== 'image/svg+xml') || preg_match('/\.hei[cf]$/i', $media->file_name) === 1;
+        $pdf = $media->mime_type === 'application/pdf';
+        // ?thumb — плитка документа в «✨ Распознать»: первая страница PDF или ужатая картинка, раз и в cache/mail.
+        if ($request->boolean('thumb') && ($image || $pdf)) {
+            $small = Thumb::of($media->getPath(), $pdf, "thumb-m{$media->id}");
+            abort_unless($small, 404);
+
+            return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
+        }
+        $inline = (str_starts_with((string) $media->mime_type, 'image/') && $media->mime_type !== 'image/svg+xml') || $pdf;
 
         return response()->file($media->getPath(), [
             'Content-Type' => $media->mime_type,

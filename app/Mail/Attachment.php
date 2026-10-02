@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Mail\Extraction\AttachmentClassifier;
+use App\Mail\Scan\ScanFile;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
  * path — только у ещё не отправленного письма: файл в outbox на диске cache.
  */
 #[Fillable(['message_id', 'filename', 'mime', 'size', 'path', 'section', 'encoding', 'blob_sha', 'pinned_at', 'content_id', 'is_inline', 'position'])]
-class Attachment extends Model
+class Attachment extends Model implements ScanFile
 {
     protected $table = 'mail_attachments';
 
@@ -84,6 +85,36 @@ class Attachment extends Model
     public function isPdf(): bool
     {
         return $this->mime === 'application/pdf';
+    }
+
+    public function scanId(): string
+    {
+        return (string) $this->id;
+    }
+
+    public function scanSha(): ?string
+    {
+        return $this->blob_sha;
+    }
+
+    public function scanName(): string
+    {
+        return (string) $this->filename;
+    }
+
+    public function scanMime(): ?string
+    {
+        return $this->mime;
+    }
+
+    public function scanSize(): int
+    {
+        return (int) $this->size;
+    }
+
+    public function isInline(): bool
+    {
+        return (bool) $this->is_inline;
     }
 
     public function humanSize(): string

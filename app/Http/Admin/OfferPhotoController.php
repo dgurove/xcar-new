@@ -30,7 +30,8 @@ class OfferPhotoController
                 $path = $file->storeAs('archives', Str::uuid().'.'.strtolower($file->getClientOriginalExtension()), 'private');
                 ImportOfferArchive::dispatch($offer->id, $path, $name);
             } elseif ($request->input('collection') === 'papers' || ! $this->isImage($file, $ingest)) {
-                $offer->addMedia($file)->usingFileName(self::safeName($name))->toMediaCollection('papers');
+                // Отпечаток — как у документов из писем: «✨» читает один и тот же скан один раз (кеш текста по sha).
+                $offer->addMedia($file)->usingFileName(self::safeName($name))->withCustomProperties(['sha' => hash_file('sha256', $file->getRealPath())])->toMediaCollection('papers');
             } else {
                 $ingest->fromPhone($offer, 'photos', $request);
             }

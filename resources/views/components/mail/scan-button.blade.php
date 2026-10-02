@@ -4,10 +4,11 @@
      пусто — fill, иначе «Сверить с документами»); row — строка списка там, где блока «Документы» нет (окошко
      «Наличия», разбор письма), под ней сколько есть документов и фото (files); head — «Распознать» в шапке цепочки и
      окна писем; icon — значок в полосе окошка строки и шторки документов. data-scan-subject — тот же адрес для ✨
-     шторки документов: она читает открытый файл. --}}
-@props(['url', 'look' => 'row', 'fill' => false, 'files' => null])
+     шторки документов: она читает открытый файл; papers — окно читает и документы /files/{id} (предложение), не только
+     вложения писем. --}}
+@props(['url', 'look' => 'row', 'fill' => false, 'files' => null, 'papers' => false])
 @php
-    $emit = 'data-controller="emit" data-action="emit#send" data-emit-event-param="scan:open" data-emit-url-param="'.e($url).'" data-scan-subject="'.e($url).'"';
+    $emit = 'data-controller="emit" data-action="emit#send" data-emit-event-param="scan:open" data-emit-url-param="'.e($url).'" data-scan-subject="'.e($url).'"'.($papers ? ' data-scan-papers' : '');
     if ($look === 'row' && $files !== null) {
         $docs = $files->reject->isPhoto()->count();
         $photos = $files->count() - $docs;

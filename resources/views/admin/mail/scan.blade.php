@@ -5,14 +5,15 @@
      или галка; фрейм перечитывается по событию scan (scan_controller, морфом — без мигания); fields — что изменится,
      тремя группами `.list` (ScanFields::of): «Новое» — переключатель включён, «Расходится» — «было → в документе»,
      выключен; спор документов — выбор галкой; «Совпадает» — свёрнуто. Кнопка считает, сколько полей изменится и
-     отвечает в окно итогом (scan-done); «Завести» уводит из окна. Кнопки — полосой у края шторки. --}}
+     отвечает в окно итогом (scan-done); «Завести» уводит из окна. Кнопки — полосой у края шторки. Файл — Scan\ScanFile:
+     вложение письма (миниатюра из почты) или документ предложения (Scan\Paper, миниатюра /files/{id}?thumb=1). --}}
 @php
     use App\Support\Docs;
     $url = $subject->url();
-    $thumb = fn ($a) => $subject->mail().'/attachments/'.$a->id.'?thumb=1';
+    $thumb = fn ($a) => $a instanceof \App\Mail\Scan\Paper ? '/files/'.$a->media->id.'?thumb=1' : $subject->mail().'/attachments/'.$a->id.'?thumb=1';
     $docs = $files->reject->isPhoto();
     $photos = $files->filter->isPhoto();
-    $label = fn ($a) => $a->isPhoto() ? 'Фото' : Docs::label((string) $a->filename);
+    $label = fn ($a) => $a->isPhoto() ? 'Фото' : Docs::label($a->scanName());
 @endphp
 <turbo-frame id="scan-frame">
 <div data-controller="scan" data-scan-subject-value="{{ $subject->key() }}" data-scan-max-value="{{ $max }}" data-scan-url-value="{{ $url }}?{{ http_build_query(['ids' => $ids]) }}" @if ($step === 'reading' && $reading) data-scan-busy-value="true" @endif class="scan">
@@ -31,10 +32,10 @@
                     <div class="list-head">Документы <span class="nums">{{ $docs->count() }}</span></div>
                     <div class="scan-docs">
                         @foreach ($docs as $a)
-                            <label class="scan-doc" title="{{ $a->filename }}">
-                                <input type="checkbox" name="ids[]" value="{{ $a->id }}" @checked(in_array($a->id, $checked, true))>
+                            <label class="scan-doc" title="{{ $a->scanName() }}">
+                                <input type="checkbox" name="ids[]" value="{{ $a->scanId() }}" @checked(in_array($a->scanId(), $checked, true))>
                                 <span class="scan-sheet">
-                                    <x-ui.file-icon :name="$a->filename" :mime="$a->mime" class="scan-icon"/>
+                                    <x-ui.file-icon :name="$a->scanName()" :mime="$a->scanMime()" class="scan-icon"/>
                                     <img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
                                     <span class="scan-check"><x-ui.icon name="check" class="size-3.5"/></span>
                                 </span>
@@ -49,8 +50,8 @@
                     </div>
                     <div class="scan-grid">
                         @foreach ($photos as $a)
-                            <label class="scan-tile" title="{{ $a->filename }}">
-                                <input type="checkbox" name="ids[]" value="{{ $a->id }}" data-photo @checked(in_array($a->id, $checked, true))>
+                            <label class="scan-tile" title="{{ $a->scanName() }}">
+                                <input type="checkbox" name="ids[]" value="{{ $a->scanId() }}" data-photo @checked(in_array($a->scanId(), $checked, true))>
                                 <img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
                                 <span class="scan-check"><x-ui.icon name="check" class="size-3.5"/></span>
                             </label>
@@ -66,7 +67,7 @@
     @elseif ($step === 'reading')
         @php
             $ready = $texts->reject(fn ($t) => $t === null)->count();
-            $lost = $reading ? collect() : $picked->filter(fn ($a) => $texts[$a->id] === null);
+            $lost = $reading ? collect() : $picked->filter(fn ($a) => $texts[$a->scanId()] === null);
         @endphp
         <div class="scan-progress">
             <div class="scan-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ $picked->count() }}" aria-valuenow="{{ $ready }}"><span style="width: {{ $picked->count() ? max(4, round(100 * $ready / $picked->count())) : 0 }}%"></span></div>
@@ -76,17 +77,17 @@
         <div class="scan-docs mt-4">
             @foreach ($picked as $a)
                 @php
-                    $text = $texts[$a->id];
+                    $text = $texts[$a->scanId()];
                     $state = match (true) {
                         $text !== null && trim($text) !== '' => 'done',
                         $text !== null => 'empty',
-                        in_array($a->id, $reading, true) => 'busy',
+                        in_array($a->scanId(), $reading, true) => 'busy',
                         default => 'lost',
                     };
                 @endphp
                 <div class="scan-doc scan-doc--{{ $state }}">
                     <span class="scan-sheet">
-                        <x-ui.file-icon :name="$a->filename" :mime="$a->mime" class="scan-icon"/>
+                        <x-ui.file-icon :name="$a->scanName()" :mime="$a->scanMime()" class="scan-icon"/>
                         <img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
                         @if ($state === 'busy')<span class="scan-veil spark-busy" aria-label="Читается"><x-ui.spark class="size-7"/></span>
                         @elseif ($state === 'done')<span class="scan-check"><x-ui.icon name="check" class="size-3.5"/></span>
@@ -103,7 +104,7 @@
         @if ($lost->isNotEmpty())
             <form method="post" action="{{ $url }}" class="scan-foot">
                 @csrf
-                @foreach ($picked as $a)<input type="hidden" name="ids[]" value="{{ $a->id }}">@endforeach
+                @foreach ($picked as $a)<input type="hidden" name="ids[]" value="{{ $a->scanId() }}">@endforeach
                 <button class="btn btn-accent w-full">Повторить</button>
             </form>
         @endif

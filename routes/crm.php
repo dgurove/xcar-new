@@ -58,12 +58,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
         Route::get('/offers/{offer}/peek', [OfferController::class, 'peek']);
         Route::get('/offers/{offer}/letters', [MailController::class, 'offerLetters'])->middleware('ability:canCrmMail');
-        // «✨» читает вложения писем — пока окно не умеет документы предложения, оно только с почтой.
-        Route::middleware('ability:canCrmMail')->group(function () {
-            Route::get('/offers/{offer}/scan', [ScanController::class, 'offerShow']);
-            Route::post('/offers/{offer}/scan', [ScanController::class, 'offerScan']);
-            Route::post('/offers/{offer}/scan/apply', [ScanController::class, 'offerApply']);
-        });
+        // «✨» читает документы предложения, а вложения писем — только тем, кому открыта почта (`OfferSubject::for`).
+        Route::get('/offers/{offer}/scan', [ScanController::class, 'offerShow']);
+        Route::post('/offers/{offer}/scan', [ScanController::class, 'offerScan']);
+        Route::post('/offers/{offer}/scan/apply', [ScanController::class, 'offerApply']);
         Route::get('/offers/{offer}/row', [OfferController::class, 'row']);
         Route::put('/offers/{offer}', [OfferController::class, 'update']);
         // Черновик из писем до первого сохранения: «Отменить» и «Не заявка» (decline) — черновика не было, письма снова ждут.
