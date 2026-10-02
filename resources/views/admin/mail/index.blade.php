@@ -8,16 +8,16 @@
      Этим же видом стоит «Из писем» ($forced): выборка «надо завести» вшита, пилюль нет и снять её нечем. --}}
 @php $title = $forced ? 'Из писем' : 'Почта'; @endphp
 <x-ui.shell :title="$title" :count="$crm && ! $forced ? null : $threads->total()" :heading="$crm && ! $forced ? false : $title">
-    {{-- Кнопка стоит в строке заголовка и на телефоне: своей строки она не стоит. --}}
-    <x-slot:actions class="!ml-auto !w-auto">
-        @if ($box === 'other' && $threads->total())
-            <form method="post" action="{{ $base }}/archive-other" class="contents" data-turbo-confirm="Убрать всё «Прочее» в архив?">@csrf<button class="btn btn-s btn-quiet shrink-0 rounded-full"><x-ui.icon name="archive" class="size-4"/>Всё в архив</button></form>
-        @endif
-        {{-- На «Из писем» писать нечего: у экрана одно дело — заводить. --}}
-        @unless ($forced)<a href="{{ $base }}/new" class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="edit" class="size-4"/>Написать</a>@endunless
-    </x-slot:actions>
-
-    @if ($crm && ! $forced)<x-admin.work-titles current="mail" :count="$threads->total()"/>@endif
+    {{-- Кнопки стоят в строке заголовка и на телефоне: своей строки они не стоят. В CRM заголовок — строка
+         разделов «Работы» (x-admin.work-titles), кнопки справа в ней же. --}}
+    @if ($crm && ! $forced)
+        <div class="flex items-center gap-3">
+            <div class="min-w-0 flex-1"><x-admin.work-titles current="mail" :count="$threads->total()"/></div>
+            @include('admin.mail.actions')
+        </div>
+    @else
+        <x-slot:actions class="!ml-auto !w-auto">@include('admin.mail.actions')</x-slot:actions>
+    @endif
 
     {{-- Пустой :pill обязателен: иначе форма фильтров подложила бы box=register в адрес. --}}
     <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sorts="\App\Mail\Boxes::SORTS" :sort="$sort" :pills="$forced ? [] : \App\Mail\Boxes::BOXES" :pill="$forced ? '' : $box" pill-param="box" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
