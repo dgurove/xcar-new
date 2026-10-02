@@ -403,6 +403,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .invite-form:has(select[name="role"] option[value="buyer"]:checked) [data-once] { display: none !important; }
   /* Доступ управляющего парковкой — только при роли «Парковка» (ссылка админа и карточка человека). */
   :is(.invite-form, .user-form):has(select[name="role"] option:checked:not([value="parking"])) [data-park] { display: none !important; }
+  /* Доступ модератора — только при роли «Модератор». */
+  :is(.invite-form, .user-form):has(select[name="role"] option:checked:not([value="moderator"])) [data-crm] { display: none !important; }
   .row-sub { @apply mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted; }
   /* Значение строки системным выбором (время показа): текст справа с шевроном, без фона, на телефоне — барабан. */
   .row-select { @apply shrink-0 cursor-pointer appearance-none bg-transparent pr-5 text-right text-ink-muted outline-none; font-size: 16px;
@@ -1144,8 +1146,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   /* Цепочка в «Из писем» — карточка, как беседа в почтовом приложении (.chain-card): шапка x-mail.chain-head (ТС; под ней
      логотип вендора с номером убытка и этап словом; справа «Завести»), под ней письма на линии (.chain.rail,
-     x-mail.letter-row). Шаг отступов 4 px: карточка 14/16, шапка от писем 12, письма через 8 (телефон 10). */
-  .chain-card { padding: .875rem 1rem .375rem; border-radius: var(--radius-l); background: var(--color-surface); }
+     x-mail.letter-row). Плотно, как список писем: карточки через 8, внутри 10/14, шапка от писем 6, письма через 6
+     (телефон 8). От 768 имя и строка вендора с номером — одной строкой, шапка ростом с кнопку. */
+  .chain-card { padding: .625rem .875rem .25rem; border-radius: var(--radius-l); background: var(--color-surface); }
   .chain-head { display: flex; align-items: center; gap: .5rem; }
   .chain-head-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
   .chain-head-sub { display: flex; align-items: center; gap: .625rem; margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; overflow: hidden; }
@@ -1215,11 +1218,16 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Кнопка в работе — только кольцо: число в ней просвечивало сквозь него. */
   .scan-foot .btn[aria-busy="true"] > * { visibility: hidden; }
   @media (prefers-reduced-motion: reduce) { .scan-spin { animation: none; border-top-color: var(--color-accent); opacity: .5; } }
-  .chain-card > .chain-head { margin-bottom: .75rem; }
+  .chain-card > .chain-head { margin-bottom: .375rem; min-height: 1.875rem; }
+  @media (min-width: 768px) {
+    .chain-card > .chain-head > :first-child { display: flex; align-items: baseline; gap: .75rem; }
+    .chain-card > .chain-head .chain-head-title { min-width: 0; flex: 0 1 auto; }
+    .chain-card > .chain-head .chain-head-sub { margin-top: 0; flex-shrink: 0; }
+  }
   /* Строка письма. Телефон — два этажа: кто, подпись с датой; слова и скрепка. От 640 — одна строка: кто, слова,
      скрепка, подпись с датой. Всё одним кеглем и шрифтом текста: мелкие дата и тег рядом со словами «скакали».
      Подряд от того же адреса (.letter--repeat) — точка и одна строка без имени. */
-  .rail .letter-body { padding-bottom: .625rem; }
+  .rail .letter-body { padding-bottom: .5rem; }
   .rail .letter-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 1.875rem auto; column-gap: .625rem; align-items: center; min-height: 1.875rem; cursor: pointer; }
   .rail .letter-who { grid-column: 1; grid-row: 1; }
   .rail .letter-meta { grid-column: 2; grid-row: 1; white-space: nowrap; }
@@ -1233,7 +1241,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .rail .letter--repeat .letter-title { flex: 1 1 0; }
   .rail .letter-head:hover .letter-title { color: var(--color-ink); }
   @media (min-width: 640px) {
-    .rail .letter-body { padding-bottom: .5rem; }
+    .rail .letter-body { padding-bottom: .375rem; }
     .rail .letter-head { display: flex; flex-wrap: nowrap; gap: .75rem; }
     .rail .letter-who { flex: 0 1 auto; max-width: 14rem; }
     .rail .letter-title { flex: 1 1 0; }

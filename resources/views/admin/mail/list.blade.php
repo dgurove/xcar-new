@@ -10,7 +10,7 @@
     <x-ui.empty class="py-6">{{ $q !== '' || $filter ? 'Ничего не нашлось' : match ($box) {
         'attention' => 'Дел нет', 'register' => 'Заводить нечего', 'other' => 'Прочего нет', 'sent' => 'Отправленных нет', 'archive' => 'Архив пуст', default => 'Писем нет' } }}</x-ui.empty>
 @else
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-2">
         @foreach ($sections as $section)
             @php
                 $mark = $forced ? null : $section['attention'];
