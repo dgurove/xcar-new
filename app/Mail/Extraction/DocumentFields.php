@@ -171,12 +171,17 @@ final class DocumentFields
         }
         // Ячейки строки машины OCR разносит и по строкам: цвет, год и стоимость строкой над VIN или под ним
         // («многоцветный 2021 707.000,00», ниже «Форд транзит», ещё ниже VIN). Справа от VIN года нет — берём ближайшую
-        // соседнюю строку с годом, кроме шапки и реквизитов договора.
+        // соседнюю строку значений таблицы: год отдельным словом и рядом стоимость с копейками или цвет из словаря.
+        // Дата договора («от 24 августа 2023 г.»), масса «2000Kr», код модели «CC2030BV22B» такой строкой не станут.
         $year = '/(?<![\d.,\/])(19[89]\d|20[0-3]\d)(?![\d.,\/])/u';
         if (! preg_match($year, $after)) {
             foreach ([-1, 1, -2, 2, -3] as $step) {
                 $near = $lines[$row['line'] + $step] ?? null;
-                if ($near !== null && preg_match($year, $near) && ! preg_match('/договор|заявк|приложени|выпуска/ui', $near)) {
+                $cells = $near === null ? [] : (preg_split('/[\s|]+/u', trim($near), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+                $hasYear = (bool) array_filter($cells, fn ($c) => preg_match('/^(19[89]\d|20[0-3]\d)$/', $c));
+                $hasPrice = (bool) preg_match('/(?<![\d.,])\d{1,3}(?:[. ]\d{3}){1,3},\d{2}(?![\d])/u', (string) $near);
+                $hasColor = (bool) array_filter($cells, fn ($c) => preg_match('/^[А-Яа-яЁё\-]{3,}$/u', $c) && Colors::normalize($c));
+                if ($hasYear && ($hasPrice || $hasColor)) {
                     $after .= ' '.$near;
                     break;
                 }
