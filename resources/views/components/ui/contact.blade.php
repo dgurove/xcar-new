@@ -11,8 +11,9 @@
     @else
         <span class="flex size-14 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink sm:size-16"><x-ui.icon :name="$icon" class="size-7"/></span>
     @endif
-    <div class="min-w-0 flex-1">
-        <h1 class="truncate text-xl leading-tight sm:text-2xl">{{ $name }}</h1>
+    {{-- В карточке справа имя во всю её ширину и по центру; длинное — в две строки поровну, а не за край. --}}
+    <div class="min-w-0 flex-1{{ $sidebar ? ' lg:w-full' : '' }}">
+        <h1 class="truncate text-xl leading-tight sm:text-2xl{{ $sidebar ? ' lg:whitespace-normal lg:text-balance' : '' }}">{{ $name }}</h1>
         @if (isset($chips) && !$chips->isEmpty())<div class="mt-1.5 flex flex-wrap gap-1.5{{ $center }}">{{ $chips }}</div>@endif
     </div>
     @if (isset($acts) && !$acts->isEmpty())<div class="acts w-full shrink-0 sm:w-auto{{ $center }}{{ $sidebar ? ' lg:gap-x-2' : '' }}">{{ $acts }}</div>@endif

@@ -11,7 +11,8 @@
         @if ($current)
             <p class="mt-4 text-sm text-ink-muted">Сейчас здесь вы вошли как {{ $current->shortName() }}, этот вход закончится</p>
         @endif
-        <form method="post" action="/login/as/{{ $token }}" class="mt-6">
+        {{-- Без Turbo: за модератора вход уводит на хост CRM, а редирект на чужой хост fetch не проходит («Нет связи»). --}}
+        <form method="post" action="/login/as/{{ $token }}" class="mt-6" data-turbo="false">
             @csrf
             <button type="submit" class="btn btn-accent w-full">Войти как {{ $as->user->shortName() }}</button>
         </form>
