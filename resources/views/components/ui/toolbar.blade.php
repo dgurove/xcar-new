@@ -5,6 +5,7 @@
      sorts: ключ → [подпись, есть ли направление] или ключ → подпись;
      pills: ключ → подпись; counts: ключ → число; tones: ключ → класс пилюли (pill-danger у «Просрочено»); hidden: поля, которые переживают фильтр;
      pillDefault=false — первая пилюля («Все») не выделяется: зелёное только у сужающего фильтра;
+     pillHome — пилюля экрана по умолчанию, её ключа нет в адресе (обычно первая; у почты первая «Требуют внимания», а открывается «Все»);
      search — подсказка в поле поиска (пусто — поля нет), searchTarget — что подменять ответом;
      слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»);
      слот extra — кнопки экрана в левой группе после сортировки и фильтров (переключатель вида),
@@ -12,7 +13,7 @@
      Сортировка — только исходы словами, по строке на исход: «Сначала дешёвые», «Дольше ждут».
      Направления как отдельной кнопки нет — у каталога это два ключа («price» и «-price»): стрелку
      вверх-вниз никто не находил, а «по возрастанию» ни о чём не говорит. --}}
-@props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'counts' => [], 'tones' => [], 'hidden' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => null, 'q' => ''])
+@props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'counts' => [], 'tones' => [], 'hidden' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => null, 'q' => ''])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -35,7 +36,7 @@
         <div class="toolbar-pills min-w-0 flex-1 snap-x overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-md:order-first max-md:-mx-4 max-md:basis-full max-md:px-4" data-title-anchor>
             <div class="flex flex-nowrap items-center gap-2">
                 @foreach ($pills as $key => $label)
-                    <a href="{{ $url([$pillParam => $key === '' || $key === array_key_first($pills) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
+                    <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
                         {{ $label }}@if (!empty($counts[$key])) <span class="nums opacity-70">{{ $counts[$key] }}</span>@endif
                     </a>
                 @endforeach

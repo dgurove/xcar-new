@@ -20,7 +20,7 @@
     @endif
 
     {{-- Пустой :pill обязателен: иначе форма фильтров подложила бы box=register в адрес. --}}
-    <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sorts="\App\Mail\Boxes::SORTS" :sort="$sort" :pills="$forced ? [] : \App\Mail\Boxes::BOXES" :pill="$forced ? '' : $box" pill-param="box" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
+    <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sorts="\App\Mail\Boxes::SORTS" :sort="$sort" :pills="$forced ? [] : \App\Mail\Boxes::BOXES" :pill="$forced ? '' : $box" pill-param="box" pill-home="all" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
                   search="Найти письмо" search-target="#threads" :q="$q">
         <x-slot:filters>
             <select name="vendor" class="field-input"><option value="">Все вендоры</option>@foreach ($vendors as $id => $name)<option value="{{ $id }}" @selected(($filter['vendor'] ?? null) === $id)>{{ $name }}</option>@endforeach</select>

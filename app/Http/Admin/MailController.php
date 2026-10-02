@@ -35,6 +35,7 @@ use App\Mail\SendState;
 use App\Mail\Template;
 use App\Mail\Thread;
 use App\Media\PhotoIngest;
+use App\Media\Thumb;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
@@ -57,7 +58,6 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -172,11 +172,19 @@ class MailController
                 'attention' => $list->contains(fn (Thread $t) => $t->needs_reply_at !== null) ? 'reply' : ($register ? 'register' : null),
             ];
         })->filter(fn ($s) => $s['threads']->isNotEmpty())->values();
-        // Незаведённая цепочка показывает письма всех своих веток, и тех, что не попали в секцию.
-        (new EloquentCollection($sections->pluck('candidate')->filter(fn (?Candidate $c) => $c?->state === CandidateState::New)->unique('id')->values()->all()))
-            ->load(['messages.attachments', 'messages.author']);
-        // Каждое дело — карточка с письмами строками: письма всех веток секций одним запросом.
-        (new EloquentCollection($sections->flatMap(fn ($s) => $s['threads'])->all()))->load(['messages.attachments', 'messages.author']);
+        // Карточка дела показывает все его письма — и веток в архиве, и тех, что не подошли под пилюлю: дело целиком.
+        // Машина или предложение — все их ветки одним запросом, цепочка — её письма, письмо без них — его ветка.
+        $own = $park ? 'vehicle_id' : 'offer_id';
+        $owners = $sections->whereIn('kind', ['v', 'o'])->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $byOwner = $owners ? Thread::whereIn('account_id', $accounts->pluck('id'))->whereIn($own, $owners)
+            ->with(['messages.attachments', 'messages.author'])->get()->groupBy($own) : collect();
+        (new EloquentCollection($sections->pluck('candidate')->filter()->unique('id')->values()->all()))->load(['messages.attachments', 'messages.author']);
+        (new EloquentCollection($sections->where('kind', 't')->flatMap(fn ($s) => $s['threads'])->all()))->load(['messages.attachments', 'messages.author']);
+        $sections = $sections->map(fn ($s) => $s + ['letters' => match (true) {
+            in_array($s['kind'], ['v', 'o'], true) => $byOwner->get((int) $s['id'], collect())->flatMap->messages,
+            (bool) $s['candidate'] => $s['candidate']->messages,
+            default => $s['threads']->flatMap->messages,
+        }]);
         $threads = $paginator;
 
         // Список отдельным куском — им отвечает живой поиск, им же рисуется страница.
@@ -679,45 +687,16 @@ class MailController
         // ?thumb — миниатюра для ленты в письме, ?large — кадр для просмотра во весь экран (1600, как у медиатеки:
         // с камеры приходят мегабайты). Считаются раз, живут в cache/mail (storage:gc чистит по сроку).
         $size = $request->boolean('thumb') ? 320 : ($request->boolean('large') ? PhotoIngest::MAX_DIMENSION : null);
-        if ($size && $attachment->isImage() && $mime !== 'image/svg+xml') {
-            $small = Storage::disk('cache')->path('mail/'.($size === 320 ? 'thumb' : 'large')."-{$attachment->id}.webp");
-            if (! is_file($small)) {
-                try {
-                    $made = $photos->shrink($file, $size);
-                    rename($made, $small);
-                } catch (\Throwable) {
-                    // Не пережалось (битый файл) — отдаём как есть.
-                }
-            }
-            if (is_file($small)) {
-                return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
-            }
+        if ($size && $attachment->isImage() && $mime !== 'image/svg+xml'
+            && ($small = Thumb::of($file, false, ($size === 320 ? 'thumb' : 'large')."-{$attachment->id}", $size))) {
+            return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
         }
         // ?thumb у PDF — первая страница картинкой (плитка документа в «✨ Распознать»), тоже раз и в cache/mail.
         if ($size === 320 && $attachment->isPdf()) {
-            $small = Storage::disk('cache')->path("mail/thumb-{$attachment->id}.webp");
-            if (! is_file($small)) {
-                $page = sys_get_temp_dir().'/xcar-thumb-'.$attachment->id.'-'.bin2hex(random_bytes(4));
-                try {
-                    Process::timeout(20)->run(['pdftoppm', '-png', '-singlefile', '-f', '1', '-l', '1', '-scale-to', '640', $file, $page]);
-                    // Скан Альфы лежит боком: угол — моделью ориентации того же `ocr` (доли секунды, раз на файл).
-                    $angle = (int) trim(Process::timeout(20)->run([config('xcar.ocr', 'ocr'), '--angle', $page.'.png'])->output());
-                    if ($angle && ($gd = @imagecreatefrompng($page.'.png')) && ($turned = imagerotate($gd, $angle, 0))) {
-                        imagepng($turned, $page.'.png', 1);
-                    }
-                    if (is_file($page.'.png')) {
-                        rename($photos->shrink($page.'.png', 320), $small);
-                    }
-                } catch (\Throwable) {
-                    // Не отрисовалась — плитка останется значком PDF.
-                } finally {
-                    @unlink($page.'.png');
-                }
-            }
-            if (is_file($small)) {
-                return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
-            }
-            abort(404);
+            $small = Thumb::of($file, true, "thumb-{$attachment->id}");
+            abort_unless($small, 404);
+
+            return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
         }
         // SVG — не картинка, а документ со скриптами: только на скачивание.
         $inline = ($attachment->isImage() && $mime !== 'image/svg+xml') || $attachment->isPdf();

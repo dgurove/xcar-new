@@ -2,7 +2,7 @@
      (.chain-card): шапка, под ней письма дела лентой на линии (x-mail.letter-row), даже если под пилюлю подошло одно
      из них — действие требуется от дела. Шапка: незаведённая цепочка — x-mail.chain-head с «Завести»; заведённое —
      имя дела ссылкой, под ним логотип вендора с номером и состояние словом, справа шеврон в дело. У дела, которое
-     требует нас, полоска слева. Длинное дело — первое письмо, «Ещё N писем» и последние: остальное в окне.
+     требует нас, полоска слева. Писем — все, и веток в архиве тоже (`letters` секции).
      Этим же куском отвечает живой поиск (X-List) — он подменяет содержимое #threads целиком; data-search-row
      и data-search-group — то, что live_search прячет на первом же знаке, пока не пришёл ответ сервера. --}}
 @php use App\Mail\CandidateState; @endphp
@@ -39,12 +39,9 @@
                     (bool) $c => $queue.'/'.$c->id.'/letters?at='.$m->id,
                     default => $base.'/'.$m->thread_id.'/window?at='.$m->id,
                 };
-                $letters = ($fresh ? $c->messages : $section['threads']->flatMap->messages)->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
+                $letters = $section['letters']->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
                 $continued = \App\Mail\Chains\NodeTitle::continued($letters);
                 $files = $letters->groupBy(fn ($m) => $continued[$m->id] ?? $m->id)->map(fn ($g) => $g->sum(fn ($m) => $m->files()->count()));
-                $nodes = $letters->reject(fn ($m) => isset($continued[$m->id]))->values();
-                // Длинное дело: первое письмо (с чего началось), «Ещё N писем», последние четыре.
-                $hidden = $nodes->count() > 6 ? $nodes->slice(1, $nodes->count() - 5) : collect();
                 // Ждёт ответа — последнее входящее ветки с `needs_reply_at`, как в ленте.
                 $waiting = $section['threads']->whereNotNull('needs_reply_at')->pluck('id')->all();
                 $asks = $letters->filter(fn ($m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->pluck('id')->all();
@@ -86,17 +83,8 @@
                     </div>
                 @endif
                 <div class="chain rail">
-                    @foreach ($nodes as $i => $m)
-                        @if ($hidden->isNotEmpty() && $i === $hidden->keys()->first())
-                            @php $n = $hidden->count(); @endphp
-                            <div class="letter letter--service">
-                                <span class="letter-dot"></span>
-                                <div class="letter-body">
-                                    <button type="button" class="letter-head w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $url($m) }}"><span class="letter-who font-normal text-ink-muted">Ещё {{ $n }} {{ \App\Support\Plural::of($n, ['письмо', 'письма', 'писем']) }}</span></button>
-                                </div>
-                            </div>
-                        @endif
-                        @continue($hidden->has($i))
+                    @foreach ($letters as $m)
+                        @continue(isset($continued[$m->id]))
                         <x-mail.letter-row :message="$m" :url="$url($m)" :waits="in_array($m->id, $asks, true)"
                             :stage="in_array($m->id, $staged, true)" :repeat="$prev?->from_email === $m->from_email" :files="$files[$m->id] ?? 0"/>
                         @php $prev = $m; @endphp
