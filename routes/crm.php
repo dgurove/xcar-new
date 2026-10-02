@@ -98,6 +98,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     // Кабинет CRM = «Настройки»: корень — профиль (общий экран с сайтом), /account сюда же.
     Route::get('/settings', [ProfileController::class, 'profile']);
     Route::permanentRedirect('/account', '/settings');
+    // Форма профиля (имя, фото) шлёт PUT /account. Редирект выше ловит любой метод, а маршрут того же адреса перекрывает
+    // объявленный раньше — поэтому PUT строго после него; без него фото и имя в CRM молча терялись.
+    Route::put('/account', [ProfileController::class, 'update']);
     Route::get('/reference/vin', [ReferenceController::class, 'vin']);
     Route::post('/reference/car-text', [ReferenceController::class, 'carText']);
     Route::get('/reference/brands', [ReferenceController::class, 'brands']);

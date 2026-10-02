@@ -5,12 +5,15 @@
 @php
     use App\Cars\{Body, Transmission, Drive, Fuel};
     $vendors = once(fn () => \App\Vendors\Vendor::where('is_active', true)->orWhere('id', $offer->vendor_id)->orderBy('name')->pluck('name', 'id'));
+    // Вендоры с ценами «с НДС» — сменили вендора, и галка у закупочной встаёт по нему (vendor_vat_controller).
+    $vatVendors = once(fn () => \App\Vendors\Vendor::where('offers_include_vat', true)->pluck('id')->all());
     // Без них черновик не сохраняется (`OfferRequest::rules`); у опубликованного — уже есть.
     $required = $offer->state === \App\Offers\OfferState::Draft;
 @endphp
 <div class="{{ $grid }}" data-controller="twins" data-twins-url-value="/offers/twins" data-twins-except-value="{{ $offer->id }}" data-action="input->twins#changed">
     {{-- У опубликованного вендор ведёт маршрут и волны показа: модератор меняет его только в черновике. --}}
     <x-ui.field name="vendor_id" label="Вендор" :options="$vendors" placeholder="—" :value="$offer->vendor_id" :required="$required"
+        data-controller="vendor-vat" data-vendor-vat-ids-value="{{ json_encode($vatVendors) }}" data-action="change->vendor-vat#sync"
         :disabled="! auth()->user()->canManageCrm() && $offer->state !== \App\Offers\OfferState::Draft"/>
     <x-ui.field name="claim_ref" :label="$offer->leaseRef() ? 'Номер ДЛ' : 'Номер убытка'" :value="$offer->claim_ref" :required="$required" autocapitalize="characters" autocorrect="off" spellcheck="false" copy/>
     <x-ui.vin :value="$offer->vin" span="col-span-2 lg:col-span-1">
@@ -32,6 +35,14 @@
     <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">
         <x-slot:after-label><x-ui.eye-check name="show_address" :checked="$offer->show_address"/></x-slot:after-label>
     </x-ui.field>
+    {{-- Как предложение показывается — решает админ: «Рекомендуем», чат с покупателями, запрет шеринга. --}}
+    @if (auth()->user()->canManageCrm())
+        <div class="col-span-full flex flex-wrap gap-x-6 gap-y-3">
+            <x-ui.check name="recommended" :checked="$offer->recommended">Рекомендуем</x-ui.check>
+            <x-ui.check name="chat_enabled" :checked="$offer->chat_enabled">Чат с покупателями</x-ui.check>
+            <x-ui.check name="share_locked" :checked="$offer->share_locked">Запретить шеринг</x-ui.check>
+        </div>
+    @endif
     {{-- Описание — о машине: с полями ТС, а не в «Деньгах» (их блок в редакторе — узкой колонкой справа). --}}
     <x-ui.field name="description" label="Описание" type="textarea" :value="$offer->description" span="col-span-full"/>
 </div>
