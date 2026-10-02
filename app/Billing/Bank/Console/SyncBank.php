@@ -56,7 +56,7 @@ final class SyncBank extends Command
                 }
             }
             if ($fresh->isNotEmpty()) {
-                Notification::send(User::whereIn('role', [Role::Moderator, Role::Admin])->get(), MoneyNotice::bankUnmatched($fresh->count(), $fresh->sum('amount')));
+                Notification::send(User::where('role', Role::Admin)->get(), MoneyNotice::bankUnmatched($fresh->count(), $fresh->sum('amount')));
             }
             if ($this->option('digest')) {
                 $open = Transaction::where('state', Transaction::UNMATCHED);

@@ -13,9 +13,10 @@
     $left = $gallery ? null : $offer->secondsLeft();
     // «В гараже» ставится на странице предложения: там выбирают менеджера и цену, одной кнопкой не обойтись.
     // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
-    $transitions = collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]);
-    $bids = $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]);
-    $waiting = $offer->bids->where('state', BidState::Active);
+    // Модератору — поля, кадры и документы: оценки, состояния, подтверждений, интереса и круга показа у него нет.
+    $transitions = $admin ? collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
+    $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
+    $waiting = $bids->where('state', BidState::Active);
     $unread = $chats->sum('unread_for_staff');
     // Две колонки, которые не распирает содержимое (дата-время, VIN с кнопкой): иначе окошко листалось вбок.
     $grid = 'grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-2.5';
@@ -23,7 +24,7 @@
 <turbo-frame id="peek" target="_top">
     <x-ui.peek :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         <x-slot:media>
-            <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media">
+            <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true">
                 @include('admin.offers.photo-upload')
                 @include('admin.offers.peek-photos')
             </div>
@@ -45,7 +46,7 @@
             @if ($gallery)<span class="text-sm text-accent-text">Скоро в продаже</span>@endif
         </x-slot:aside>
         <x-slot:actions>
-            @if ($offer->state === OfferState::Draft)
+            @if ($admin && $offer->state === OfferState::Draft)
                 {{-- «Оценить» одним блоком: цена продажи и «В продажу» (окошко переходит к следующему черновику; пустое поле —
                      просто дальше), под ними ориентиры из закупки, если черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
                 <div class="w-full rounded-(--radius-l) bg-surface-2 p-3">
@@ -92,7 +93,7 @@
                     </div>
                 </div>
             @endif
-            @if ($offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
+            @if ($admin && $offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
             @if ($chats->isNotEmpty())<x-ui.pill :tone="$unread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($unread) <span class="badge">{{ $unread }}</span>@endif</x-ui.pill>@endif
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
         </x-slot:actions>
@@ -100,7 +101,7 @@
         @if ($bids->isNotEmpty())
             <div class="mt-4">@include('admin.offers.bids')</div>
         @endif
-        @if ($offer->interests->isNotEmpty())
+        @if ($admin && $offer->interests->isNotEmpty())
             <div class="mt-4 flex flex-col gap-2">
                 @foreach ($offer->interests as $interest)
                     <div class="box-nested">
@@ -125,17 +126,19 @@
                 <h2 class="peek-section">Транспортное средство</h2>
                 @include('admin.offers.fields.car')
             </section>
-            <section>
-                <h2 class="peek-section">Кому показывать</h2>
-                @include('admin.offers.fields.audience')
-            </section>
+            @if ($admin)
+                <section>
+                    <h2 class="peek-section">Кому показывать</h2>
+                    @include('admin.offers.fields.audience')
+                </section>
+            @endif
         </form>
         <section class="mt-5">
             <h2 class="peek-section">Документы</h2>
             @include('admin.offers.papers-block')
         </section>
         {{-- Письма — под документами: последнее словами, вся переписка — окном поверх списка. --}}
-        @if ($lastLetter)
+        @if ($lastLetter && auth()->user()->canCrmMail())
             <section class="mt-5">
                 <h2 class="peek-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
                 <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks" compact/>

@@ -92,6 +92,12 @@ class Vendor extends Model implements HasMedia
         return once(fn () => self::with(['media' => fn ($q) => $q->where('collection_name', 'logo')])->get(['id', 'name', 'kind', 'party_id'])->keyBy('id'));
     }
 
+    /** НДС цен предложений этого вендора по умолчанию — одна дверь для письма, ручного черновика и смены вендора. */
+    public static function offersVat(?int $id): bool
+    {
+        return (bool) ($id ? self::whereKey($id)->value('offers_include_vat') : false);
+    }
+
     /** Вендор, чей это контрагент счёта, — для логотипа перед именем контрагента. */
     public static function ofParty(?int $partyId): ?self
     {

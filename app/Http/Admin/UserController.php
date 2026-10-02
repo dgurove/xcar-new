@@ -22,6 +22,7 @@ use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssueImpersonation;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\Actions\TransferBuyer;
+use App\Users\CrmArea;
 use App\Users\Invite;
 use App\Users\Role;
 use App\Users\User;
@@ -102,13 +103,13 @@ class UserController
     }
 
     /**
-     * Карточка человека — любому сотруднику, из шапки чата и из списка: контакт, его чаты (у менеджера —
+     * Карточка человека — админу, из шапки чата и из списка: контакт, его чаты (у менеджера —
      * и чаты его покупателей), менеджеру сделки, покупателю интерес. Правки — админу тем же шитом, что в списке.
      */
     public function show(Request $request, User $user)
     {
         $me = $request->user();
-        abort_unless($me->isStaff(), 404);
+        abort_unless($me->isAdmin(), 404);
         $user->load(['manager', 'invite.creator']);
         $chats = Chat::where('user_id', $user->id)->when($user->isManager(), fn ($q) => $q->orWhere('manager_id', $user->id))
             ->withLast()->with(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager'])->orderByDesc('last_message_at')->limit(50)->get();
@@ -138,7 +139,7 @@ class UserController
     /** Реквизиты менеджера — сотрудник правит те же, что менеджер в кабинете. */
     public function party(Request $request, User $user)
     {
-        abort_unless($request->user()->isStaff() && $user->isManager(), 404);
+        abort_unless($request->user()->isAdmin() && $user->isManager(), 404);
         $data = $request->validate(PartyRules::rules());
         // НДС ПРАЙМ в его счетах — в сумме (разница цен), «НДС сверху» — если так договорились.
         Party::forUser($user)->update($data + ['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null, 'vat_on_top' => $request->boolean('vat_on_top')]);
@@ -148,7 +149,7 @@ class UserController
 
     public function statement(Request $request, User $user, StatementPdf $pdf)
     {
-        abort_unless($request->user()->isStaff() && $user->isManager(), 404);
+        abort_unless($request->user()->isAdmin() && $user->isManager(), 404);
         [$from, $to] = $this->period($request);
         $name = 'akt-sverki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.pdf';
 
@@ -157,7 +158,7 @@ class UserController
 
     public function export(Request $request, User $user, ManagerStatement $xlsx)
     {
-        abort_unless($request->user()->isStaff() && $user->isManager(), 404);
+        abort_unless($request->user()->isAdmin() && $user->isManager(), 404);
         [$from, $to] = $this->period($request);
         $path = $xlsx->write($user, $from, $to, tempnam(sys_get_temp_dir(), 'sdelki-').'.xlsx');
 
@@ -282,7 +283,13 @@ class UserController
         // Доступ к парковке — только у роли «Парковка»: что открыто сверх основы, своя парковка, только приёмка.
         $park = $data['role'] === Role::Parking;
         $request->validate(['areas' => ['nullable', 'array'], 'areas.*' => [Rule::in(Area::values())], 'park_yard_id' => ['nullable', Rule::exists('park_yards', 'id')]]);
-        $data['access'] = $park ? array_values(array_intersect(Area::values(), (array) $request->input('areas', []))) : [];
+        $request->validate(['crm_areas' => ['nullable', 'array'], 'crm_areas.*' => [Rule::in(CrmArea::values())]]);
+        $data['access'] = match ($data['role']) {
+            Role::Parking => array_values(array_intersect(Area::values(), (array) $request->input('areas', []))),
+            // Модератору — что открыто сверх черновиков (почта CRM).
+            Role::Moderator => array_values(array_intersect(CrmArea::values(), (array) $request->input('crm_areas', []))),
+            default => [],
+        };
         $data['park_yard_id'] = $park && $request->filled('park_yard_id') ? (int) $request->input('park_yard_id') : null;
         $data['park_readonly'] = $park && $request->boolean('park_readonly');
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);

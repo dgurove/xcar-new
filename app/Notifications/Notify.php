@@ -279,7 +279,7 @@ final class Notify
         $invoice = $e->invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'deal.offer']);
         NotifyOwner::dispatch(new \App\Telegram\Messages\InvoiceOverdue($invoice));
         if ($invoice->seller === Seller::Prime) {
-            Notification::send($this->staff()->filter->isAdmin(), MoneyNotice::overdue($invoice));
+            Notification::send($this->staff(), MoneyNotice::overdue($invoice));
 
             return;
         }
@@ -356,8 +356,9 @@ final class Notify
         return User::parkStaff()->whereNotNull('approved_at')->get();
     }
 
+    /** Сторона площадки: подтверждения, интерес, сроки, деньги, чаты — админам; модератору их нет. */
     private function staff()
     {
-        return User::whereIn('role', [Role::Moderator, Role::Admin])->get();
+        return User::where('role', Role::Admin)->get();
     }
 }

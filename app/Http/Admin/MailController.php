@@ -767,6 +767,9 @@ class MailController
 
             return $back()->with('toast', $vehicle ? 'Привязано' : 'Отвязано');
         }
+        // Модератор перевязывает письма только между предложениями, которые ему можно открыть: опубликованное и закупку
+        // он не трогает ни привязкой, ни отвязкой.
+        abort_unless(! $thread->offer || $thread->offer->isEditableBy($request->user()), 404);
         $number = (int) preg_replace('/\D/', '', (string) $request->input('number'));
         if ($number === 0) {
             $link->unlink($thread);
@@ -774,7 +777,7 @@ class MailController
             return $back()->with('toast', 'Отвязано');
         }
         $offer = OfferNumber::find($number);
-        if (! $offer) {
+        if (! $offer || ! $offer->isEditableBy($request->user())) {
             return $back()->withErrors(['number' => 'Нет такого предложения']);
         }
         $link($thread, $offer);

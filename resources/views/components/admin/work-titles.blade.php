@@ -3,7 +3,8 @@
 @props(['current', 'count' => null])
 @php
     $badges = \App\Support\Nav::badges(auth()->user());
-    $titles = ['deals' => 'Сделки', 'mail' => 'Почта', 'chats' => 'Чаты', 'money' => 'Деньги'];
+    // Модератору из «Работы» открыта только почта — остальные заголовки вели бы в 404.
+    $titles = auth()->user()->canManageCrm() ? ['deals' => 'Сделки', 'mail' => 'Почта', 'chats' => 'Чаты', 'money' => 'Деньги'] : ['mail' => 'Почта'];
 @endphp
 <div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">
     @foreach ($titles as $key => $label)

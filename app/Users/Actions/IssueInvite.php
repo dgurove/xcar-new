@@ -3,6 +3,7 @@
 namespace App\Users\Actions;
 
 use App\Park\Area;
+use App\Users\CrmArea;
 use App\Users\Invite;
 use App\Users\Role;
 use App\Users\User;
@@ -55,6 +56,8 @@ final class IssueInvite
                 'park_yard_id' => ($data['park_yard_id'] ?? null) ?: null,
                 'park_readonly' => (bool) ($data['park_readonly'] ?? false),
             ] : []),
+            // Модератору — что открыто сверх черновиков.
+            ...($role === Role::Moderator ? ['access' => array_values($data['crm_areas'] ?? [])] : []),
         ]);
     }
 
@@ -70,6 +73,8 @@ final class IssueInvite
             $rules['areas.*'] = [Rule::in(Area::values())];
             $rules['park_yard_id'] = ['exclude_unless:role,parking', 'nullable', Rule::exists('park_yards', 'id')];
             $rules['park_readonly'] = ['exclude_unless:role,parking', 'boolean'];
+            $rules['crm_areas'] = ['exclude_unless:role,moderator', 'nullable', 'array'];
+            $rules['crm_areas.*'] = [Rule::in(CrmArea::values())];
         } else {
             $rules['group_id'] = ['nullable', Rule::exists('buyer_groups', 'id')->where('manager_id', $by->id)];
         }

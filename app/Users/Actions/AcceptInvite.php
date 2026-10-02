@@ -41,8 +41,8 @@ final class AcceptInvite
                 'contact_fields' => $buyer ? $invite->contactFields() : [],
                 'approved_at' => now(),
                 'approved_by' => $invite->created_by,
-                // Управляющий парковкой получает доступ, заданный в ссылке.
-                'access' => $invite->role === Role::Parking ? ($invite->access ?? []) : [],
+                // Управляющий парковкой и модератор получают доступ, заданный в ссылке.
+                'access' => in_array($invite->role, [Role::Parking, Role::Moderator], true) ? ($invite->access ?? []) : [],
                 'park_yard_id' => $invite->role === Role::Parking ? $invite->park_yard_id : null,
                 'park_readonly' => $invite->role === Role::Parking && $invite->park_readonly,
             ]);

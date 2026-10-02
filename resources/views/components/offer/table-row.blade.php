@@ -37,7 +37,8 @@
     </td>
     {{-- Вендор и номер убытка одним столбцом, как в «Наличии»: логотип (имя — подсказкой), номер с копированием. --}}
     <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</span></td>
-    <td class="cell-dim nums hidden sm:table-cell">@unless ($draft){{ $n }}@endunless</td>
+    {{-- У черновика номера ещё нет — на его месте тот, кто завёл: девчонки заводят пачками, админ видит чьё. --}}
+    <td class="cell-dim nums hidden sm:table-cell">@if (! $draft){{ $n }}@elseif ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="22" title="{{ $offer->moderator->name }}"/>@endif</td>
     <td class="hidden sm:table-cell">
         @if ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
         @elseif ($pick)<span class="{{ $count ? 'text-urgent' : 'text-ink-muted' }}">{{ $count ? 'Выбрать' : 'Приём закрыт' }}</span>

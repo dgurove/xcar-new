@@ -5,6 +5,8 @@ namespace App\Http\Admin;
 use App\Chats\Chat;
 use App\Chats\Message as ChatMessage;
 use App\Garage\Actions\TakeToGarage;
+use App\Mail\Candidate;
+use App\Mail\Extraction\Code;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
@@ -22,6 +24,7 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Users\Role;
 use App\Users\User;
+use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
@@ -37,11 +40,14 @@ class OfferController
 
     public function index(Request $request)
     {
-        $preset = $request->query('preset', 'all');
+        $admin = $request->user()->canManageCrm();
+        // Модератору пресетов нет: у него одни черновики (Offer::visibleTo).
+        $preset = $admin ? $request->query('preset', 'all') : 'all';
         ListPrefs::sync($request, 'crm-offers');
         $sort = $request->query('sort', 'fresh');
 
-        $q = Offer::query()->with(['brand', 'model', 'parkVehicle:id,offer_id,category'])->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
+        $q = Offer::query()->visibleTo($request->user())->with(['brand', 'model', 'parkVehicle:id,offer_id,category'])
+            ->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
         match ($preset) {
             'recommended' => $q->where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),
@@ -73,40 +79,62 @@ class OfferController
         if (! ListView::isTable(ListView::pick($request, $offers->total()))) {
             $offers->loadMissing('media');
         }
+        // Кто завёл — аватар только у черновика: остальным строкам люди не нужны.
+        $offers->getCollection()->where('state', OfferState::Draft)->load('moderator.media');
         // ?peek=номер (или first) — открыть окошко этой строки сразу: так «Оценить» ведёт по черновикам — first значит
         // первый неоценённый черновик страницы, а нет таких — первая строка.
         $want = (string) $request->query('peek');
         $peek = match (true) {
             $want === '' => null,
-            $want === 'first' => $offers->first(fn ($o) => $o->state === OfferState::Draft && ! $o->asking_price) ?? $offers->first(),
+            $want === 'first' => $offers->first(fn ($o) => $o->state === OfferState::Draft && ! $o->asking_price && $o->brand_id) ?? $offers->first(),
             default => $offers->first(fn ($o) => (string) $o->number === $want),
         };
 
         return view('admin.offers.index', [
             'offers' => $offers,
             'peek' => $peek ? 'admin-offer-'.$peek->number : null,
-            'unpriced' => Offer::where('state', OfferState::Draft)->whereNull('asking_price')->count(),
+            // Оценивать есть что, когда черновик заполнен хотя бы маркой: пустой «+ Новый» очередь не надувает.
+            'unpriced' => $admin ? Offer::where('state', OfferState::Draft)->whereNull('asking_price')->whereNotNull('brand_id')->count() : 0,
+            'presets' => $admin ? self::PRESETS : [],
+            'sorts' => $admin ? self::SORTS : [],
             'preset' => $preset,
             'sort' => $sort,
-            'counts' => [
+            // Числа у пилюль — пилюли есть только у админа.
+            'counts' => $admin ? [
                 'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
                 'draft' => Offer::where('state', OfferState::Draft)->count(),
                 'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->count(),
-            ],
+            ] : [],
         ]);
     }
 
     public function store(Request $request, CreateOffer $create)
     {
-        $offer = $create($request->user());
+        $offer = $create($request->user(), $this->carried($request->user()));
 
         return redirect("/offers/{$offer->number}");
     }
 
-    public function edit(Offer $offer)
+    /**
+     * Вендор не спрашивается второй раз: новый черновик человека получает вендора его прошлого заведённого руками
+     * (перенос из закупки и «Завести» из писем не в счёт — иначе после Carcade ручное встало бы на его маршрут) и НДС
+     * цен этого вендора. Подряд заводят пачку от одной страховой.
+     */
+    private function carried(User $user): array
     {
-        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'events.user', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
-            'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer']);
+        $vendorId = Offer::where('moderator_id', $user->id)->whereNotNull('vendor_id')->whereDoesntHave('purchaseCar')
+            ->whereNotIn('id', Candidate::whereNotNull('offer_id')->select('offer_id'))->latest('id')->value('vendor_id');
+
+        return $vendorId ? ['vendor_id' => $vendorId, 'prices_include_vat' => Vendor::offersVat($vendorId)] : [];
+    }
+
+    public function edit(Request $request, Offer $offer)
+    {
+        // Модератору — поля, фото, документы и история: подтверждений, интереса, сделки, маршрута, чатов и круга показа
+        // он не видит, и грузить их незачем.
+        $admin = $request->user()->canManageCrm();
+        $offer->load(['brand', 'model', 'settlement', 'media', 'events.user', ...($admin ? ['bids.user', 'interests.user.manager', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
+            'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer'] : [])]);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
             app(WarmPhotos::class)($offer);
@@ -116,16 +144,17 @@ class OfferController
 
         return view('admin.offers.edit', OfferFiles::letters($offer, $threads) + [
             'offer' => $offer,
+            'admin' => $admin,
             'threads' => $threads,
             // ?window= — открыть окно писем сразу (ссылка «Вся переписка» из шторки документов).
             'window' => str_starts_with((string) request()->query('window'), "/offers/{$offer->number}/letters") ? request()->query('window') : null,
             'docs' => OfferFiles::docs($offer, $threads),
-            'chats' => Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
+            'chats' => $admin ? Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get() : collect(),
             'import' => ImportThreadFiles::progress($offer->id),
-            'tags' => Tag::orderBy('sort')->get(),
-            'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
-            'audienceOptions' => AudienceRules::options(),
-            'showingSummary' => Showing::summary($offer),
+            'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
+            'managers' => $admin ? User::where('role', Role::Manager)->orderBy('name')->get() : collect(),
+            'audienceOptions' => $admin ? AudienceRules::options() : null,
+            'showingSummary' => $admin ? Showing::summary($offer) : collect(),
             // Черновик только что заведён из писем и ещё ни разу не сохранён: внизу «Отменить» и «Не заявка».
             'fromMail' => $offer->state === OfferState::Draft && session()->has("mail-draft.{$offer->id}"),
         ]);
@@ -138,33 +167,45 @@ class OfferController
      * @param  Collection<int, Thread>  $threads
      * @return list<array<string, mixed>>
      */
-    /** Другие предложения с тем же VIN (twins_controller под полем VIN): второе на ту же машину видно до сохранения. */
+    /**
+     * Другие предложения с тем же VIN или номером убытка (twins_controller под полями): второе на ту же машину видно до
+     * сохранения. Чужое модератору (опубликованное, из закупки) — строкой без ссылки: знать, что оно есть, надо.
+     */
     public function twins(Request $request)
     {
         $vin = strtoupper(trim((string) $request->query('vin')));
-        $offers = strlen($vin) !== 17 ? collect() : Offer::with(['brand', 'model'])->where('vin', $vin)
+        $claim = Code::key((string) $request->query('claim_ref'));
+        $vin = strlen($vin) === 17 ? $vin : null;
+        $offers = ! $vin && ! $claim ? collect() : Offer::with(['brand', 'model'])
+            ->where(fn ($w) => $w->when($vin, fn ($w) => $w->where('vin', $vin))->when($claim, fn ($w) => $w->orWhere('claim_ref_key', $claim)))
             ->when($request->query('except'), fn ($q, $id) => $q->whereKeyNot((int) $id))->latest('id')->limit(3)->get();
 
-        return view('admin.offers.twins', ['offers' => $offers]);
+        return view('admin.offers.twins', ['offers' => $offers, 'user' => $request->user()]);
     }
 
     /** Окошко строки таблицы: фото, метки, цена, действия, подтверждения, интерес; ?gallery=1 — строка списка галереи. */
     public function peek(Request $request, Offer $offer)
     {
-        $offer->load(['brand', 'model', 'settlement', 'media', 'bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
+        $admin = $request->user()->canManageCrm();
+        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user'] : [])])
+            ->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
 
         return view('admin.offers.peek', OfferFiles::letters($offer, Thread::where('offer_id', $offer->id)->get()) + [
             'offer' => $offer,
-            // Поля редактора в окошке — те же справочники, что у страницы.
-            'audienceOptions' => AudienceRules::options(),
-            'tags' => Tag::orderBy('sort')->get(),
-            'chats' => Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']),
+            'admin' => $admin,
+            // Поля редактора в окошке — те же справочники, что у страницы; модератору денег, кроме закупочной, и круга нет.
+            'audienceOptions' => $admin ? AudienceRules::options() : null,
+            'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
+            'chats' => $admin ? Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']) : collect(),
             'list' => $request->boolean('gallery'),
         ]);
     }
 
-    /** «Сохранить»; у черновика «Опубликовать» — та же форма с `then=open`: сначала поля, потом в продажу. */
-    public function update(OfferRequest $request, Offer $offer, UpdateOffer $update, ChangeOfferState $change)
+    /**
+     * «Сохранить»; у черновика «Опубликовать» — та же форма с `then=open`: сначала поля, потом в продажу; «Сохранить и
+     * новое» (`then=next`) — сразу следующий черновик с тем же вендором: пачку заводят подряд.
+     */
+    public function update(OfferRequest $request, Offer $offer, UpdateOffer $update, ChangeOfferState $change, CreateOffer $create)
     {
         $update($offer, $request->payload(), $request->user());
         session()->forget("mail-draft.{$offer->id}");
@@ -172,7 +213,12 @@ class OfferController
         if ($request->expectsJson()) {
             return redirect("/offers/{$offer->number}/row");
         }
-        if ($request->input('then') === 'open' && $offer->state === OfferState::Draft) {
+        if ($request->input('then') === 'next') {
+            $next = $create($request->user(), $this->carried($request->user()));
+
+            return redirect("/offers/{$next->number}")->with('toast', 'Сохранено');
+        }
+        if ($request->input('then') === 'open' && $offer->state === OfferState::Draft && $request->user()->canManageCrm()) {
             $change($offer->refresh(), OfferState::Open, $request->user());
 
             return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number);

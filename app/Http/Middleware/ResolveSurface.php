@@ -28,9 +28,10 @@ class ResolveSurface
 
             // Чужой вошедший упирается в стену без шапки и разделов; гостя `auth` уводит на /login этого хоста.
             $allowed = $surface->opensFor($user);
-            // Управляющего парковкой из CRM — сразу к себе, а не в стену.
-            if ($user?->isParking() && $surface === Surface::Crm && ! in_array($first, self::ANYONE, true) && ! $request->expectsJson()) {
-                return redirect()->away(Surface::Park->url());
+            // Управляющего из CRM и модератора с парковки — сразу к себе, а не в стену.
+            $home = Surface::onlyFor($user);
+            if ($home && $home !== $surface && ! in_array($first, self::ANYONE, true) && ! $request->expectsJson()) {
+                return redirect()->away($home->url());
             }
             if ($user && ! $allowed && ! in_array($first, self::ANYONE, true)) {
                 abort_if($request->expectsJson(), 403);

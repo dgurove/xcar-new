@@ -2,24 +2,35 @@
 
 namespace App\Http\Admin;
 
+use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
+use App\Offers\Jobs\ImportOfferArchive;
 use App\Offers\Offer;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 
-/** Фото и документы оффера. Загрузка по одному файлу за запрос — так работает прогресс на телефоне. */
+/**
+ * Фото и документы оффера. Загрузка по одному файлу за запрос — так работает прогресс на телефоне. В «Фотографии» можно
+ * бросить что угодно: документ уйдёт в документы, архив разберёт очередь (кадры — к фото, остальное — к документам).
+ */
 class OfferPhotoController
 {
     public function store(Request $request, Offer $offer, PhotoIngest $ingest)
     {
         $request->validate(['file' => ['required', 'file', 'max:65536']]);
         $file = $request->file('file');
+        $name = $file->getClientOriginalName();
 
         try {
-            if ($request->input('collection') === 'papers') {
-                $offer->addMedia($file)->usingFileName(self::safeName($file->getClientOriginalName()))->toMediaCollection('papers');
+            if ($request->input('collection') !== 'papers' && ArchivePhotoExtractor::isArchiveName($name)) {
+                $path = $file->storeAs('archives', Str::uuid().'.'.strtolower($file->getClientOriginalExtension()), 'private');
+                ImportOfferArchive::dispatch($offer->id, $path, $name);
+            } elseif ($request->input('collection') === 'papers' || ! $this->isImage($file, $ingest)) {
+                $offer->addMedia($file)->usingFileName(self::safeName($name))->toMediaCollection('papers');
             } else {
                 $ingest->fromPhone($offer, 'photos', $request);
             }
@@ -60,6 +71,12 @@ class OfferPhotoController
         $media->delete();
 
         return $this->gallery($offer->refresh());
+    }
+
+    /** Кадр по содержимому: картинка или HEIC (его mime бывает любым). */
+    private function isImage(UploadedFile $file, PhotoIngest $ingest): bool
+    {
+        return str_starts_with((string) $file->getMimeType(), 'image/') || $ingest->isHeic($file->getRealPath());
     }
 
     private function own(Offer $offer, Media $media): void

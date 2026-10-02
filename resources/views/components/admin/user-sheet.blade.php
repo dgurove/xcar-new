@@ -38,6 +38,9 @@
             <div data-park class="flex flex-col gap-3">
                 <x-park.access-fields :areas="$user->isParking() ? ($user->access ?? []) : []" :yard="$user->park_yard_id" :readonly="$user->park_readonly"/>
             </div>
+            <div data-crm class="flex flex-col gap-3">
+                <x-admin.crm-access-fields :areas="$user->isModerator() ? ($user->access ?? []) : []"/>
+            </div>
             <x-ui.check name="mail" :checked="$user->wantsMail()">Письма о событиях</x-ui.check>
         @endif
         <x-ui.button block>Сохранить</x-ui.button>

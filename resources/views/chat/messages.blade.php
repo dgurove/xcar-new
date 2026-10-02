@@ -5,7 +5,7 @@
 @php
     use App\Chats\AuthorKind;
     $readonly ??= $user !== null && ! $chat->canPost($user);
-    $staffEyes = $user?->isStaff() ?? false;
+    $staffEyes = $user?->isAdmin() ?? false;
     $readSeq = $chat->readSeqOf($user);
     $firstUnread ??= 0;
     $prev = null;

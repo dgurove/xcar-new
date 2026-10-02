@@ -80,6 +80,33 @@ final class AttachmentImporter
         return $added;
     }
 
+    /**
+     * Архив с диска (брошен руками в «Фотографии»): кадры — к фото, остальное (PDF, СТС, Excel) — к документам, как архив
+     * письма; что уже лежит — пропускается. Не открылся (битый, с паролем) — null.
+     *
+     * @return array{photos: int, documents: int}|null
+     */
+    public function importArchive(HasMedia $model, string $path, string $photosCollection, string $documentsCollection, ?callable $progress = null): ?array
+    {
+        $extracted = $this->archives->extractPath($path);
+        if (! $extracted) {
+            return null;
+        }
+        $added = ['photos' => 0, 'documents' => 0];
+        foreach ($extracted as $i => $file) {
+            $progress && $progress('Разбираем архив', $i, count($extracted));
+            if ($file['photo'] && ! $this->classifier->looksLikeDocument(mb_strtolower($file['name']))) {
+                $this->guard(function () use ($model, $photosCollection, $file, &$added) {
+                    $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $file['contents'], $file['name'], []);
+                });
+            } else {
+                $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $file['name'], $file['contents'], null);
+            }
+        }
+
+        return $added;
+    }
+
     private function addPhoto(HasMedia $model, string $collection, string $contents, string $name, array $properties): bool
     {
         if ($model->hasFile(hash('sha256', $contents))) {
@@ -116,7 +143,8 @@ final class AttachmentImporter
         return $contents !== null && $this->addDocumentFile($model, $collection, $document->filename, $contents);
     }
 
-    private function addDocumentFile(HasMedia $model, string $collection, string $name, string $contents): bool
+    /** `source: null` — файл не из письма (архив, загруженный руками). */
+    private function addDocumentFile(HasMedia $model, string $collection, string $name, string $contents, ?string $source = 'mail'): bool
     {
         if ($collection === '' || $model->hasFile($sha = hash('sha256', $contents))) {
             return false;
@@ -124,7 +152,7 @@ final class AttachmentImporter
         $this->guard(fn () => $model->addMediaFromString($contents)
             ->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $name) ?: 'dokument')
             ->usingName(pathinfo($name, PATHINFO_FILENAME))
-            ->withCustomProperties(array_filter(['sha' => $sha, 'kind' => AttachmentClassifier::kindOf($name), 'source' => 'mail']))
+            ->withCustomProperties(array_filter(['sha' => $sha, 'kind' => AttachmentClassifier::kindOf($name), 'source' => $source]))
             ->toMediaCollection($collection));
 
         return true;

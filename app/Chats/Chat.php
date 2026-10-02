@@ -84,10 +84,10 @@ class Chat extends Model
         return $this->manager_id !== null;
     }
 
-    /** Вторая сторона чата: менеджер покупателя или любой сотрудник площадки. Одна дверь для счётчиков, «моих» сообщений и доступа. */
+    /** Вторая сторона чата: менеджер покупателя или админ площадки (модератор чатов не ведёт). Одна дверь для счётчиков, «моих» сообщений и доступа. */
     public function isCounterpart(?User $user): bool
     {
-        return $user !== null && ($this->manager_id ? $user->id === $this->manager_id : $user->isStaff());
+        return $user !== null && ($this->manager_id ? $user->id === $this->manager_id : $user->isAdmin());
     }
 
     /** Имя собеседника для второй стороны. */
@@ -130,8 +130,8 @@ class Chat extends Model
      */
     public function allows(?User $user, ?string $token = null): bool
     {
-        // Сотрудник читает любой чат — и переписку покупателя с менеджером тоже, но не пишет в неё (canPost).
-        if ($user && ($user->id === $this->user_id || $this->isCounterpart($user) || $user->isStaff())) {
+        // Админ читает любой чат — и переписку покупателя с менеджером тоже, но не пишет в неё (canPost).
+        if ($user && ($user->id === $this->user_id || $this->isCounterpart($user) || $user->isAdmin())) {
             return true;
         }
 

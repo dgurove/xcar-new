@@ -181,6 +181,29 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->role === Role::Admin;
     }
 
+    /** Вся CRM, а не только черновики (Role::canManageCrm) — для `ability:canManageCrm` и проверок в видах. */
+    public function canManageCrm(): bool
+    {
+        return $this->role->canManageCrm();
+    }
+
+    public function isModerator(): bool
+    {
+        return $this->role === Role::Moderator;
+    }
+
+    /** Раздел CRM сверх черновиков (почта): админу — всё, модератору — отмеченное. */
+    public function canCrm(CrmArea $area): bool
+    {
+        return $this->isAdmin() || ($this->isModerator() && in_array($area->value, $this->access ?? [], true));
+    }
+
+    /** Почта CRM — для `ability:canCrmMail` на маршрутах. */
+    public function canCrmMail(): bool
+    {
+        return $this->canCrm(CrmArea::Mail);
+    }
+
     /** Сайт закрыт: внутрь — сотрудник или тот, кому доступ открыли. */
     public function isApproved(): bool
     {
@@ -320,7 +343,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Непрочитанное в чатах: свои чаты и чаты покупателей, где человек — вторая сторона. */
     public function unreadChats(): int
     {
-        $staff = $this->isStaff();
+        $staff = $this->isAdmin();
         $own = $this->canChat();
         if (! $staff && ! $own) {
             return 0;

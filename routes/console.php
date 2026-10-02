@@ -19,5 +19,6 @@ Schedule::command('mail:reconcile')->dailyAt('04:10');
 Schedule::command('mail:archive-stale')->dailyAt('04:20');
 Schedule::command('queue:prune-batches')->daily();
 Schedule::command('storage:gc')->dailyAt('04:30');
+Schedule::command('offers:prune-drafts')->dailyAt('04:40');
 // Входы админа за человека, из которых не вышли кнопкой, — закрыть сроком сессии.
 Schedule::call(fn () => app(CloseStaleImpersonations::class)())->hourly()->name('impersonations:close');

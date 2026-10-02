@@ -52,6 +52,19 @@ enum Surface: string
         return ($app['scheme'] ?? 'http').'://'.$this->host().$port.'/'.ltrim($path, '/');
     }
 
+    /**
+     * Единственный дом человека: управляющему — парковка, модератору — CRM. С чужого хоста их уводят туда
+     * (SiteWall, ResolveSurface, вход, регистрация по ссылке); остальные работают там, где вошли.
+     */
+    public static function onlyFor(?User $user): ?self
+    {
+        return match (true) {
+            (bool) $user?->isParking() => self::Park,
+            (bool) $user?->isModerator() => self::Crm,
+            default => null,
+        };
+    }
+
     /** Кому хост открыт: CRM — сотрудникам, стоянка — по разделу. Одна дверь на ResolveSurface и вход. */
     public function opensFor(?User $user): bool
     {

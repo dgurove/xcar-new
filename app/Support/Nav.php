@@ -66,6 +66,15 @@ final class Nav
             ]));
         }
 
+        // Модератор: черновики, почта по галке и профиль — остальное в CRM админу.
+        if ($surface === Surface::Crm && ! $user?->canManageCrm()) {
+            return array_values(array_filter([
+                self::item('Предложения', '/', ['/', '/offers']),
+                $user?->canCrmMail() ? self::item('Почта', '/work/mail') : null,
+                self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
+            ]));
+        }
+
         if ($surface === Surface::Crm) {
             return [
                 self::item('Предложения', '/', ['/', '/offers']),
@@ -186,6 +195,10 @@ final class Nav
             return [self::item('На сайт', Surface::Site->url())];
         }
 
+        // Модератору переходить некуда: сайт уводит его обратно в CRM, парковки и гаража у него нет.
+        if ($surface === Surface::Crm && ! $user?->canManageCrm()) {
+            return [];
+        }
         if ($surface === Surface::Crm) {
             return [
                 self::item('На сайт', Surface::Site->url()),
@@ -226,6 +239,9 @@ final class Nav
             ]))];
         }
 
+        if ($surface === Surface::Crm && ! $user->canManageCrm()) {
+            return ['' => [self::link('Профиль', '/settings', exact: true), self::link('Уведомления', '/account/notifications')]];
+        }
         if ($surface === Surface::Crm) {
             // Один раздел «Настройки»: профиль — его первый пункт, как /account на сайте.
             return [
@@ -376,7 +392,7 @@ final class Nav
 
     private static function counts(User $user, Surface $surface): array
     {
-        $key = "nav.counts:{$surface->value}:".($user->isStaff() ? 'staff' : $user->id);
+        $key = "nav.counts:{$surface->value}:".($user->isAdmin() ? 'staff' : $user->id);
 
         // Кэш в базе — за страницу его читают по два-три раза: из него один раз на запрос.
         return self::perRequest($key, fn () => self::countsCached($user, $surface, $key));
@@ -394,6 +410,9 @@ final class Nav
                     '/money' => Invoice::ofSeller(Seller::Park)->where('state', InvoiceState::Issued)->count(),
                     '/mail' => Thread::whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ], 'fresh' => []];
+            }
+            if ($surface === Surface::Crm && ! $user->canManageCrm()) {
+                return ['totals' => ['/' => Offer::visibleTo($user)->count()], 'fresh' => []];
             }
             if ($surface === Surface::Crm) {
                 return ['totals' => [
@@ -428,6 +447,12 @@ final class Nav
     {
         $badges = ['/account/notifications' => $user->unreadCount()];
 
+        if ($surface === Surface::Crm && ! $user->canManageCrm()) {
+            // Модератору из общих бейджей — только почта, и то по галке.
+            $mail = $user->canCrmMail() ? array_intersect_key(self::staffCounts($surface), array_flip(['/offers/from-mail', '/work/mail'])) : [];
+
+            return array_filter($badges + $mail);
+        }
         if ($surface === Surface::Park || $surface === Surface::Crm) {
             return array_filter($badges + self::staffCounts($surface));
         }

@@ -100,7 +100,8 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         return Cache::get(self::key($offerId));
     }
 
-    private static function key(int $offerId): string
+    /** Ключ хода разбора — его же пишет разбор архива, брошенного руками (ImportOfferArchive): пилюля в редакторе одна. */
+    public static function key(int $offerId): string
     {
         return "import:offer:{$offerId}";
     }

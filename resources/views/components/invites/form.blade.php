@@ -1,5 +1,6 @@
 {{-- Форма новой ссылки. Админ: менеджеру, сотруднику или управляющему парковкой (одноразовая, со сроком; управляющему —
-     сразу с доступом: что открыто сверх заявок и наличия, какая парковка, только приёмка) или покупателю от имени
+     сразу с доступом: что открыто сверх заявок и наличия, какая парковка, только приёмка; модератору — почта сверх
+     черновиков) или покупателю от имени
      менеджера; менеджер: покупателю, сразу в группу. Что покупатель укажет о себе — по умолчанию ничего. --}}
 @props(['action', 'admin' => false, 'managers' => collect(), 'groups' => collect()])
 <form method="post" action="{{ $action }}" class="invite-form flex flex-col gap-4">
@@ -9,6 +10,9 @@
         <x-ui.field name="role" label="Кому" :options="['manager' => 'Менеджеру', 'moderator' => 'Модератору', 'admin' => 'Администратору', 'parking' => 'Управляющему парковкой', 'buyer' => 'Покупателю']" :value="old('role', 'manager')"/>
         <div data-park class="flex flex-col gap-3">
             <x-park.access-fields/>
+        </div>
+        <div data-crm class="flex flex-col gap-3">
+            <x-admin.crm-access-fields/>
         </div>
     @endif
     @if ($admin)

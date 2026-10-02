@@ -84,7 +84,12 @@ class LoginController
         $user = Auth::user();
         $allowed = $surface->opensFor($user);
 
-        // Управляющий парковкой, вошедший на сайте или в CRM, — сразу на парковку.
-        return $allowed && ! ($user?->isParking() && $surface !== Surface::Park) ? $surface->home() : ($user?->isParking() ? Surface::Park->url(Surface::Park->home()) : Surface::Site->url(Surface::Site->home()));
+        // Управляющий парковкой и модератор, вошедшие не у себя, — сразу к себе.
+        $only = Surface::onlyFor($user);
+        if ($only && $only !== $surface) {
+            return $only->url($only->home());
+        }
+
+        return $allowed ? $surface->home() : Surface::Site->url(Surface::Site->home());
     }
 }

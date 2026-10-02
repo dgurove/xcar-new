@@ -214,7 +214,8 @@ class Offer extends Model implements HasMedia
     }
 
     /**
-     * Одна дверь видимости. Сотрудник видит всё; менеджер — открытые и галерею
+     * Одна дверь видимости. Админ видит всё; модератор — черновики, кроме перенесённых из закупки (там цены
+     * Carcade и менеджеров), опубликованное уже не его; менеджер — открытые и галерею
      * из своего круга, когда его волна показа наступила; покупатель — открытые, которые ему показал его менеджер
      * (лично или группе) и которые этому менеджеру доступны; посетитель —
      * галерею; гость — ничего.
@@ -224,8 +225,11 @@ class Offer extends Model implements HasMedia
         if (! $user) {
             return $q->whereRaw('false');
         }
-        if ($user->isStaff()) {
+        if ($user->isAdmin()) {
             return $q;
+        }
+        if ($user->isModerator()) {
+            return $q->where('state', OfferState::Draft)->whereDoesntHave('purchaseCar');
         }
         if ($user->role === Role::Manager) {
             return $q->whereIn('state', [OfferState::Open, OfferState::Gallery])
@@ -254,8 +258,14 @@ class Offer extends Model implements HasMedia
     /** Страница предложения: круг видимости, а своё подтверждение открывает её в любом состоянии — без 404 после решения. */
     public function isVisibleTo(?User $user): bool
     {
-        return $user?->isStaff() || self::query()->whereKey($this->id)->visibleTo($user)->exists()
+        return $user?->isAdmin() || self::query()->whereKey($this->id)->visibleTo($user)->exists()
             || ($user && $this->bids()->where('user_id', $user->id)->exists());
+    }
+
+    /** CRM: что человеку можно открыть и править. Админу — всё, модератору — его круг (черновики не из закупки). */
+    public function isEditableBy(User $user): bool
+    {
+        return $user->isAdmin() || ($user->isModerator() && self::query()->whereKey($this->id)->visibleTo($user)->exists());
     }
 
     // ------------------------------------------------------------ подписи

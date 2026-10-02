@@ -25,8 +25,8 @@ class InviteController
             if ($user->isBuyer() && $user->manager_id === $invite->manager_id) {
                 return redirect(Surface::current()->home())->with('toast', 'Вы уже в xcar');
             }
-            // Свою ссылку менеджер смотрит глазами покупателя, сотрудник — любую; остальным тут делать нечего.
-            if ($user->id !== $invite->manager_id && ! $user->isStaff()) {
+            // Свою ссылку менеджер смотрит глазами покупателя, админ — любую; остальным тут делать нечего.
+            if ($user->id !== $invite->manager_id && ! $user->isAdmin()) {
                 return redirect(Surface::current()->home())->with('toast', 'Вы уже вошли как '.$user->shortName());
             }
         }
@@ -70,8 +70,8 @@ class InviteController
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        if ($user->isParking()) {
-            return redirect()->away(Surface::Park->url());
+        if ($home = Surface::onlyFor($user)) {
+            return redirect()->away($home->url());
         }
 
         return redirect($user->isManager() ? '/account' : '/')->with('toast', 'Добро пожаловать, '.$user->name);

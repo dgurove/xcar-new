@@ -9,10 +9,11 @@ import { openLightbox } from '../lightbox';
 // Сервер на каждое действие возвращает turbo-stream с новой полосой; полоса
 // подменяется сразу (не через Turbo), чтобы просмотрщик и Sortable пересобрались
 // на новом узле тут же. readonly — только смотреть (кадры из письма рядом с приёмом): без
-// перестановки, без действий на плитке и в просмотрщике.
+// перестановки, без действий на плитке и в просмотрщике. any — зона принимает любой файл (предложение CRM): документ
+// и архив сервер разложит сам, картинку из буфера кладёт ⌘V в любом месте страницы.
 export default class extends Controller {
     static targets = ['input', 'progress', 'grid'];
-    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String };
+    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean };
 
     connect() {
         if (this.readonlyValue) return;
@@ -25,6 +26,18 @@ export default class extends Controller {
             this.element.classList.remove('is-dropping');
             this.uploadFiles([...e.dataTransfer.files]);
         });
+        // Скриншот или кадр, скопированный с портала страховой или из мессенджера: ⌘V — и он в фото. В поле ввода
+        // вставка своя: кусок страницы портала несёт и текст, и картинку — человеку нужен текст. Скрытое окошко
+        // (закрытый peek) кадры не ловит.
+        if (this.anyValue) {
+            document.addEventListener('paste', this.paste = (e) => {
+                const files = [...(e.clipboardData?.files || [])].filter(isImage);
+                const typing = e.target.closest?.('input, textarea, select, [contenteditable]');
+                if (!files.length || typing || !this.element.checkVisibility?.()) return;
+                e.preventDefault();
+                this.uploadFiles(files);
+            });
+        }
     }
 
     async gridTargetConnected(grid) {
@@ -47,6 +60,7 @@ export default class extends Controller {
         this.element.removeEventListener('dragover', this.over);
         this.element.removeEventListener('dragleave', this.leave);
         this.element.removeEventListener('drop', this.drop);
+        if (this.paste) document.removeEventListener('paste', this.paste);
         this.sortable?.destroy();
         // Просмотр не гасим: ответ на действие из него подменяет карточку вместе с этим контроллером.
     }
@@ -63,31 +77,47 @@ export default class extends Controller {
     // ужимается до 1600 px ещё в телефоне (4 МБ → ~300 КБ), отпечаток исходника
     // считается здесь же, чтобы дубли из писем и архивов по-прежнему отсекались.
     // Экран не гаснет, пока идёт очередь; неудавшийся кадр — повтор тапом.
+    // Кадры идут по три сразу: ответы приходят вразнобой, и ряд из ответа, где кадров меньше уже показанного, устарел —
+    // его пропускаем (последний сохранённый кадр приносит полный ряд). Документы и архивы зоны any — полосой следом.
     async uploadFiles(files) {
         if (this.uploading || !files.length) return;
         if (!this.hasGridTarget || this.collectionValue !== 'photos') return this.uploadWithBar(files);
+        const other = this.anyValue ? files.filter((f) => !isImage(f)) : [];
+        files = this.anyValue ? files.filter(isImage) : files;
+        if (!files.length) return this.uploadWithBar(other);
         this.uploading = true;
         this.pendingCells ??= new Map();
-        const cells = files.map((file) => this.pendingCell(file));
+        this.shown = this.gridTarget.querySelectorAll('.photo-cell[data-id]').length;
+        const queue = files.map((file) => ({ file, cell: this.pendingCell(file) }));
         const wake = await navigator.wakeLock?.request?.('screen').catch(() => null);
-        let next = this.prepare(files[0]);
-        for (let i = 0; i < files.length; i++) {
-            const cell = cells[i];
-            const prepared = await next;
-            next = files[i + 1] ? this.prepare(files[i + 1]) : null;
-            try {
-                const html = await this.send(prepared, (p) => cell.style.setProperty('--p', p));
-                this.pendingCells.delete(cell);
-                cell.remove();
-                this.apply(html);
-                this.restorePending();
-            } catch (e) {
-                cell.classList.add('is-failed');
-                cell.title = e.message || 'Не загрузилось';
+        const worker = async () => {
+            for (let job = queue.shift(); job; job = queue.shift()) {
+                try {
+                    const html = await this.send(await this.prepare(job.file), (p) => job.cell.style.setProperty('--p', p));
+                    this.pendingCells.delete(job.cell);
+                    job.cell.remove();
+                    if (this.fresher(html)) {
+                        this.apply(html);
+                        this.restorePending();
+                    }
+                } catch (e) {
+                    job.cell.classList.add('is-failed');
+                    job.cell.title = e.message || 'Не загрузилось';
+                }
             }
-        }
+        };
+        await Promise.all(Array.from({ length: Math.min(3, queue.length) }, worker));
         wake?.release?.().catch(() => {});
         this.uploading = false;
+        if (other.length) await this.uploadWithBar(other);
+    }
+
+    fresher(html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const n = [...doc.querySelectorAll('turbo-stream template')].reduce((sum, t) => sum + t.content.querySelectorAll('.photo-cell[data-id]').length, 0);
+        if (n < this.shown) return false;
+        this.shown = n;
+        return true;
     }
 
     // Документы и файлы без ленты кадров — полоса «n из N», как раньше.
@@ -99,6 +129,7 @@ export default class extends Controller {
             this.showProgress(`${n} из ${files.length}`, 0);
             try {
                 this.apply(await this.send(await this.prepare(file), (p) => this.showProgress(`${n} из ${files.length}`, p)));
+                if (/\.(zip|7z|rar)$/i.test(file.name)) window.toast?.('Архив разбирается, кадры появятся сами');
             } catch (e) {
                 window.toast?.(e.message || 'Файл не загрузился', 'danger');
             }
@@ -343,3 +374,6 @@ export default class extends Controller {
 }
 
 const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+
+// Кадр — картинка или HEIC (у HEIC на Windows и Android тип бывает пустым).
+const isImage = (f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name);

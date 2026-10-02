@@ -1,6 +1,8 @@
-{{-- Поля «Деньги» — одни на редактор и окошко строки. Серые подсказки заявленной и минимальной считаются на ходу (min-bid). --}}
+{{-- Поля «Деньги» — одни на редактор и окошко строки. Серые подсказки заявленной и минимальной считаются на ходу (min-bid).
+     Модератору — закупочная и описание: цены продажи, галки, метки и приём ставит админ (OfferRequest::MODERATOR). --}}
 <div class="{{ $grid }}" data-controller="min-bid">
     <x-ui.field name="floor_price" data-controller="digits" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price"/>
+    @if (auth()->user()->canManageCrm())
     <x-ui.field name="publish_price" data-controller="digits" data-action="input->digits#format" label="Заявленная, ₽" :value="$offer->publish_price" :placeholder="$offer->floor_price ? \App\Support\Money::nums(\App\Offers\Offer::declaredFrom($offer->floor_price)) : null"/>
     {{-- В окошке у черновика цена продажи стоит в «Оценке» рядом с «В продажу» — второй раз не нужна. --}}
     @unless ($askingElsewhere ?? false)<x-ui.field name="asking_price" data-controller="digits" data-action="input->digits#format" label="Цена продажи, ₽" :value="$offer->asking_price"/>@endunless
@@ -36,5 +38,6 @@
             </span>
         </div>
     </div>
+    @endif
     <x-ui.field name="description" label="Описание" type="textarea" :value="$offer->description" span="col-span-full"/>
 </div>

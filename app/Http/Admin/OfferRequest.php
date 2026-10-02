@@ -20,6 +20,15 @@ use Illuminate\Validation\Rule;
 
 class OfferRequest extends FormRequest
 {
+    /**
+     * Что правит модератор: ТС, вендор и номер убытка, закупочная, описание. Цена продажи, заявленная, минимальная,
+     * галки, метки, приём и круг показа — админу; лишнее из запроса отбрасывается, а не сохраняется.
+     */
+    public const MODERATOR = [
+        'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'show_address', 'body', 'transmission', 'drive', 'fuel',
+        'engine_volume', 'engine_power', 'color', 'settlement_id', 'inspection_address', 'description', 'floor_price', 'vendor_id', 'claim_ref',
+    ];
+
     protected function prepareForValidation(): void
     {
         // Числа приходят с пробелами и знаком рубля — чистим до цифр.
@@ -141,6 +150,6 @@ class OfferRequest extends FormRequest
             }
         }
 
-        return $data;
+        return $this->user()->canManageCrm() ? $data : Arr::only($data, self::MODERATOR);
     }
 }

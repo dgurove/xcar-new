@@ -52,8 +52,12 @@ final class FileController
 
     private function allowed(User $user, Media $media): bool
     {
-        if ($user->isStaff()) {
+        if ($user->isAdmin()) {
             return true;
+        }
+        // Модератору — документы и фото только тех предложений, что ему можно открыть в CRM.
+        if ($user->isModerator()) {
+            return $media->model_type === Offer::class && Offer::find($media->model_id)?->isEditableBy($user);
         }
 
         return match ($media->model_type) {

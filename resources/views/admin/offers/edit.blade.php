@@ -4,20 +4,23 @@
     $n = $offer->number;
     // «В гараже» ставит не кнопка состояния, а «Отдать в гараж»: там выбирают менеджера и цену.
     // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
-    $transitions = collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]);
+    // Модератор правит только поля черновика: состояния, гаража, подтверждений и круга показа у него нет.
+    $transitions = $admin ? collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
     $garage = $offer->state === OfferState::Garage ? \App\Garage\Car::with('manager')->where('offer_id', $offer->id)->first() : null;
     // Машину из гаража уводит только «Отдали по ошибке» там же: кнопки состояния тут отбились бы ошибкой.
     if ($garage) $transitions = collect();
     // Подтверждения: ждущие по сумме вниз, потом решённые.
-    $bids = $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]);
-    $waiting = $offer->bids->where('state', BidState::Active);
+    $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
+    $waiting = $bids->where('state', BidState::Active);
     $grid = 'grid grid-cols-2 gap-3 @4xl:grid-cols-3';
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
     <div class="-mt-3 mb-4 flex flex-wrap items-center gap-1.5">
-        <span class="order-last ml-auto flex items-center gap-1">
-            @include('admin.offers.share-button')
-        </span>
+        @if ($admin)
+            <span class="order-last ml-auto flex items-center gap-1">
+                @include('admin.offers.share-button')
+            </span>
+        @endif
         {{-- Номер предложения и номер ДЛ или убытка копируются нажатием, как VIN. --}}
         @unless ($offer->state === OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $n" done="Номер в буфере"/></span>@endunless
         @if ($offer->claim_ref)<span class="tag nums gap-1">{{ $offer->leaseRef() ? 'ДЛ' : 'Убыток' }}<x-ui.copy-code :value="$offer->claim_ref"/></span>@endif
@@ -25,7 +28,7 @@
             <x-ui.pill tone="plain" :href="$garage->url()" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
         @else
             {{-- В сделке пилюля состояния и есть вход в сделку: «Идёт сделка ›», второй пилюли «Сделка» рядом нет. --}}
-            @if ($offer->deal)<x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
+            @if ($admin && $offer->deal)<x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
             @else<x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>@endif
         @endif
         @if ($offer->closed())
@@ -61,7 +64,7 @@
             </x-ui.card>
             @endif
 
-            @if ($offer->positions->isNotEmpty())
+            @if ($admin && $offer->positions->isNotEmpty())
                 @include('admin.offers.route')
             @endif
 
@@ -82,7 +85,7 @@
             </x-ui.card>
             @endif
 
-            @if ($offer->interests->isNotEmpty())
+            @if ($admin && $offer->interests->isNotEmpty())
             <x-ui.card title="Интерес" class="order-5">
                 <div class="flex flex-col gap-2">
                     @foreach ($offer->interests as $interest)
@@ -101,6 +104,7 @@
             @endif
 
             {{-- Кому показывать: сводка волн, правка в шторке. Поля живут в форме оффера через form=. --}}
+            @if ($admin)
             <x-ui.card title="Кому показывать" class="order-5">
                 @include('admin.offers.fields.audience', ['form' => 'offer-form'])
                 @if ($showingSummary->isNotEmpty())
@@ -111,6 +115,7 @@
                     </div>
                 @endif
             </x-ui.card>
+            @endif
 
             <x-ui.card title="История" class="order-6">
                 <div class="flex flex-col gap-3 text-sm">
@@ -141,7 +146,7 @@
 
         </form>
 
-        <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media">
+        <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true">
             @include('admin.offers.photo-upload')
             @include('admin.offers.gallery')
         </x-ui.card>
@@ -151,7 +156,7 @@
         </x-ui.card>
 
         {{-- Письма — под документами, как в деле ТС: последнее словами, вся переписка и ответ — окном поверх редактора. --}}
-        @if ($lastLetter)
+        @if ($lastLetter && auth()->user()->canCrmMail())
             <x-ui.card title="Письма" :count="$letters" class="order-4 @4xl:col-span-2">
                 <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks"/>
             </x-ui.card>
@@ -186,6 +191,10 @@
             <form method="post" action="/offers/{{ $n }}/drop" class="contents">@csrf<x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Отменить</x-ui.button></form>
             <form method="post" action="/offers/{{ $n }}/drop" class="contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<input type="hidden" name="decline" value="1"><x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Не заявка</x-ui.button></form>
             <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
+        @elseif ($draft && ! $admin)
+            {{-- Модератор заводит пачку подряд: следующий черновик сразу, с тем же вендором; публикует админ. --}}
+            <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>
+            <x-ui.button form="offer-form" name="then" value="next" class="min-w-0 flex-1">Сохранить и новое</x-ui.button>
         @elseif ($draft)
             <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>
             <x-ui.button form="offer-form" name="then" value="open" class="min-w-0 flex-1">Опубликовать</x-ui.button>

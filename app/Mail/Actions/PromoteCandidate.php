@@ -82,7 +82,7 @@ final class PromoteCandidate
             'settlement_id' => $v('city') ? Settlement::named($v('city'))['id'] ?? null : null,
             'claim_ref' => $candidate->code,
             'vendor_id' => $vendor?->id,
-            'prices_include_vat' => $v('vat') ?? $vendor?->offers_include_vat,
+            'prices_include_vat' => $v('vat') ?? Vendor::offersVat($vendor?->id),
             'answer_by' => $v('answer_by'),
             'insurer_deadline_at' => $answerBy?->toDateString(),
             'insured_name' => $v('insured_name'),

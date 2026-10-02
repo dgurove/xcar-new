@@ -72,7 +72,18 @@ final class ArchivePhotoExtractor
     public function extractFiles(Attachment $attachment): array
     {
         $path = $attachment->file();
-        if ($path === null || ! is_file($path)) {
+
+        return $path === null ? [] : $this->extractPath($path);
+    }
+
+    /**
+     * То же из файла на диске — архив, брошенный руками в «Фотографии» предложения.
+     *
+     * @return list<array{name: string, contents: string, photo: bool}>
+     */
+    public function extractPath(string $path): array
+    {
+        if (! is_file($path)) {
             return [];
         }
         $files = [];
