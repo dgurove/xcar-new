@@ -11,7 +11,7 @@ final class FieldLabels
         'engine_volume' => 'объём двигателя', 'engine_power' => 'мощность', 'damage_cause' => 'причина повреждений', 'damage_zones' => 'повреждения', 'damage_note' => 'что заметили',
         'is_runnable' => 'на ходу', 'has_keys' => 'ключи', 'papers' => 'документы', 'incident_date' => 'дата события', 'description' => 'описание',
         'settlement_id' => 'город', 'inspection_address' => 'адрес осмотра', 'floor_price' => 'закупочная цена', 'publish_price' => 'заявленная цена', 'asking_price' => 'цена продажи',
-        'min_bid_price' => 'минимальная цена', 'min_bid_share' => 'доля от цены', 'prices_include_vat' => 'НДС', 'tags' => 'метки', 'bids_close_at' => 'срок приёма',
+        'min_bid_price' => 'минимальная цена', 'min_bid_share' => 'доля от цены', 'prices_include_vat' => 'НДС', 'tags' => 'метки', 'tag_colors' => 'цвета меток', 'bids_close_at' => 'срок приёма',
         'chat_enabled' => 'чат', 'share_locked' => 'запрет шеринга', 'recommended' => 'рекомендуем', 'managers_limited' => 'круг менеджеров', 'managers' => 'менеджеры', 'audience_rules' => 'кому показывать', 'audience_id' => 'шаблон показа',
         'vendor_id' => 'вендор', 'answer_by' => 'ответ до', 'insured_name' => 'страхователь', 'insured_phone' => 'телефон страхователя', 'flags' => 'признаки', 'holder' => 'держатель',
         'contact_name' => 'контакт', 'contact_phone' => 'телефон', 'contact_email' => 'почта ответственного', 'insurer_deadline_at' => 'срок от вендора',

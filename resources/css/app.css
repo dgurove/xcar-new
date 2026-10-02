@@ -347,6 +347,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .check input { @apply size-5 shrink-0 appearance-none rounded-(--radius-s) bg-surface-3 bg-center bg-no-repeat outline-none
       checked:bg-accent focus-visible:ring-2 focus-visible:ring-accent/60; }
   .check input:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5'%3E%3Cpath d='m3.5 8.5 3 3 6-7'/%3E%3C/svg%3E"); }
+  /* Подгруппа полей внутри карточки («Показ» под описанием ТС): подпись тоном подписи поля, чуть крупнее, без линий. */
+  .form-subtitle { @apply mb-3 text-sm font-medium text-ink-dim; }
+  /* Галки в ряд под полями: текстом подписи поля (13), квадрат 18, шаг как у полей формы. */
+  .flags { @apply flex flex-wrap items-center gap-x-6 gap-y-3 pt-1; }
+  .flags .check { @apply gap-2 text-sm text-ink; }
+  .flags .check input { @apply size-[18px]; }
 
   /* Чип-переключатель: чекбокс-switch лежит невидимым поверх капсулы — палец попадает
      в сам switch, и iOS даёт тактильный тик (Safari 17.4+); вид рисует span. */

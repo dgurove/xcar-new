@@ -126,12 +126,7 @@
                 <h2 class="peek-section">Транспортное средство</h2>
                 @include('admin.offers.fields.car')
             </section>
-            @if ($admin)
-                <section>
-                    <h2 class="peek-section">Кому показывать</h2>
-                    @include('admin.offers.fields.audience')
-                </section>
-            @endif
+            @include('admin.offers.fields.show')
         </form>
         <section class="mt-5">
             <h2 class="peek-section">Документы</h2>

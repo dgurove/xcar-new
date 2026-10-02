@@ -117,19 +117,9 @@
             @endif
 
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС.
-                 Кому показывать — строкой внизу того же блока (своей карточкой занимал место ради одной строки). --}}
+                 Срок приёма, кому показывать и галки показа — «Показ» под описанием ТС. --}}
             <x-ui.card title="Деньги" class="order-3">
                 @include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false])
-                @if ($admin)
-                    <div class="field mt-4"><span class="field-label">Кому показывать</span>@include('admin.offers.fields.audience', ['form' => 'offer-form'])</div>
-                    @if ($showingSummary->isNotEmpty())
-                        <div class="mt-3 flex flex-col gap-1.5 text-sm">
-                            @foreach ($showingSummary as $row)
-                                <div class="flex items-center gap-2"><x-ui.person :user="$row['manager']"/><span class="text-ink-muted">открыл {{ $row['buyers'] }} {{ \App\Support\Plural::of($row['buyers'], ['покупателю', 'покупателям', 'покупателям']) }}</span></div>
-                            @endforeach
-                        </div>
-                    @endif
-                @endif
             </x-ui.card>
 
             {{-- История — последние четыре записи, остальное по «Ещё N»: лента в тридцать строк занимала экран. --}}
@@ -155,6 +145,7 @@
             <x-ui.card title="Транспортное средство" class="order-2">
                 @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
                 @include('admin.offers.fields.car')
+                @include('admin.offers.fields.show', ['summary' => $showingSummary])
             </x-ui.card>
 
         </form>

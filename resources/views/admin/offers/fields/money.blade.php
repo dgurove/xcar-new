@@ -1,24 +1,23 @@
-{{-- Поля «Деньги» — одни на редактор и окошко строки, узкой колонкой в две: закупочная во всю ширину с «С НДС», заявленная и цена продажи, минимальная и доля, срок приёма, «С НДС» у закупочной (и у модератора: цены от страховой бывают и так, и так), метки — в окошке строки (в редакторе они в
-     шапке); «Рекомендуем», «Чат», «Без шеринга» — в «Транспортном средстве». В редакторе блок стоит справа над
+{{-- Поля «Деньги» — одни на редактор и окошко строки, узкой колонкой в две: закупочная во всю ширину с «С НДС», заявленная и цена продажи, минимальная и доля; «С НДС» у закупочной (и у модератора: цены от страховой бывают и так, и так), метки — в окошке строки (в редакторе они в
+     шапке); срок приёма, кому показывать и галки показа — «Показ» (fields/show) под описанием. В редакторе блок стоит справа над
      «Историей», вне формы — поля ходят в неё через `form` ($form). Серые подсказки заявленной и минимальной считаются на
      ходу (min-bid). Модератору — закупочная и НДС: цены продажи, галки, метки и приём ставит админ (OfferRequest::MODERATOR). --}}
 @php $form ??= null; @endphp
 <div class="grid grid-cols-2 gap-3" data-controller="min-bid">
     @if (auth()->user()->canManageCrm())
     <x-ui.field name="floor_price" data-controller="digits" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
-        <x-slot:after-label><span class="ml-auto"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
+        <x-slot:after-label><span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
     </x-ui.field>
     <x-ui.field name="publish_price" data-controller="digits" data-action="input->digits#format" label="Заявленная, ₽" :value="$offer->publish_price" :form="$form" :placeholder="$offer->floor_price ? \App\Support\Money::nums(\App\Offers\Offer::declaredFrom($offer->floor_price)) : null"/>
     {{-- В окошке у черновика цена продажи стоит в «Оценке» рядом с «В продажу» — второй раз не нужна. --}}
     @unless ($askingElsewhere ?? false)<x-ui.field name="asking_price" data-controller="digits" data-action="input->digits#format" label="Цена продажи, ₽" :value="$offer->asking_price" :form="$form"/>@endunless
     <x-ui.field name="min_bid_price" data-controller="digits" data-action="input->digits#format" label="Минимальная, ₽" :value="$offer->min_bid_price" :form="$form" :placeholder="$offer->minBid() ? \App\Support\Money::nums($offer->minBid()) : null"/>
     <x-ui.field name="min_bid_share" label="Доля до продажной" :value="$offer->min_bid_share" :form="$form" placeholder="0,6"/>
-    <x-ui.field name="bids_close_at" label="Приём подтверждений до" type="datetime-local" data-controller="evening" data-action="change->evening#fix" :value="$offer->bids_close_at?->format('Y-m-d\TH:i')" :form="$form" span="col-span-2"/>
     {{-- Метки: в редакторе — в шапке пилюлями, здесь только в окошке строки. --}}
     @if ($withTags ?? true)<div class="col-span-2">@include('admin.offers.fields.tags')</div>@endif
     @else
     <x-ui.field name="floor_price" data-controller="digits" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
-        <x-slot:after-label><span class="ml-auto"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
+        <x-slot:after-label><span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
     </x-ui.field>
     @endif
 </div>

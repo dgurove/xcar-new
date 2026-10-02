@@ -35,14 +35,6 @@
     <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">
         <x-slot:after-label><x-ui.eye-check name="show_address" :checked="$offer->show_address"/></x-slot:after-label>
     </x-ui.field>
-    {{-- Как предложение показывается — решает админ: «Рекомендуем», чат с покупателями, запрет шеринга. --}}
-    @if (auth()->user()->canManageCrm())
-        <div class="col-span-full flex flex-wrap gap-x-6 gap-y-3">
-            <x-ui.check name="recommended" :checked="$offer->recommended">Рекомендуем</x-ui.check>
-            <x-ui.check name="chat_enabled" :checked="$offer->chat_enabled">Чат с покупателями</x-ui.check>
-            <x-ui.check name="share_locked" :checked="$offer->share_locked">Запретить шеринг</x-ui.check>
-        </div>
-    @endif
     {{-- Описание — о машине: с полями ТС, а не в «Деньгах» (их блок в редакторе — узкой колонкой справа). --}}
     <x-ui.field name="description" label="Описание" type="textarea" :value="$offer->description" span="col-span-full"/>
 </div>
