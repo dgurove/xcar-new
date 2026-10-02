@@ -50,10 +50,13 @@ class Impersonation extends Model
         return $this->used_at === null && $this->expires_at->isFuture();
     }
 
-    /** За кого можно войти: не сотрудник (админ, модератор) и не сам. */
+    /**
+     * За кого можно войти: за любого, кроме админа и себя. Модератора тоже (02.10.2026, владелец): проверить, что
+     * видят девчонки в CRM, — ссылка ведёт через `LoginController::home`, и модератор оказывается в CRM.
+     */
     public static function allowed(User $by, User $for): bool
     {
-        return $by->isAdmin() && ! $for->isStaff() && ! $for->is($by);
+        return $by->isAdmin() && ! $for->isAdmin() && ! $for->is($by);
     }
 
     /** Сессия за человека ещё в силе: не вышли, не прошли часы, админ всё ещё админ. */
