@@ -26,7 +26,8 @@
             @endif
             @unless ($readonly)
             <div class="photo-actions">
-                @if ($hide)<button type="button" data-action="photos#act" data-act="hide" aria-label="{{ $hidden ? 'Показать' : 'Скрыть' }}"><x-ui.icon name="{{ $hidden ? 'eye' : 'eye-off' }}" class="size-4"/></button>@endif
+                {{-- Обе иконки сразу: глаз переключается классом плитки, не дожидаясь ответа сервера. --}}
+                @if ($hide)<button type="button" data-action="photos#act" data-act="hide" aria-label="{{ $hidden ? 'Показать' : 'Скрыть' }}"><x-ui.icon name="eye-off" class="photo-eye-off size-4"/><x-ui.icon name="eye" class="photo-eye-on size-4"/></button>@endif
                 <button type="button" data-action="photos#act" data-act="rotate" aria-label="Повернуть"><x-ui.icon name="rotate" class="size-4"/></button>
                 @if ($deletable)<button type="button" data-action="photos#act" data-act="delete" data-confirm="Удалить фото?" aria-label="Удалить"><x-ui.icon name="trash" class="size-4"/></button>@endif
             </div>

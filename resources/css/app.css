@@ -2140,6 +2140,12 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .photo-cell { @apply relative h-20 min-w-16 shrink-0 snap-start overflow-hidden rounded-(--radius-m) bg-surface-3 sm:h-24; touch-action: pan-x; }
   .photo-cell img { @apply h-full w-auto max-w-[16rem] cursor-zoom-in object-contain; }
   .photo-cell.is-hidden img { @apply opacity-40 grayscale; }
+  /* Глаз и поворот — сразу на экране, сервер догоняет (photos_controller#hide/#rotate): иконка — по классу плитки,
+     поворот — CSS по --turn (четверти) и --fit (вписать боком), пока не пришёл повёрнутый файл. */
+  .photo-cell .photo-eye-on, .photo-cell.is-hidden .photo-eye-off, .photo-cell.is-hidden .photo-star { display: none; }
+  .photo-cell.is-hidden .photo-eye-on { display: block; }
+  .photo-cell.is-turning img { rotate: calc(var(--turn, 0) * 90deg); scale: var(--fit, 1); }
+  @media (prefers-reduced-motion: no-preference) { .photo-cell.is-turning img { transition: rotate var(--dur-fast) var(--ease-out), scale var(--dur-fast) var(--ease-out); } }
   /* Кадр в очереди: превью сразу, кольцо прогресса (--p от 0 до 1), красная точка — не ушёл, тап — повтор. */
   .photo-cell.is-uploading img { opacity: .55; }
   .photo-cell.is-uploading::after {

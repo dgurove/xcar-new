@@ -61,10 +61,10 @@ class OfferPhotoController
         return $this->gallery($offer->refresh());
     }
 
-    public function rotate(Offer $offer, Media $media, RotatePhoto $rotate)
+    public function rotate(Request $request, Offer $offer, Media $media, RotatePhoto $rotate)
     {
         $this->own($offer, $media);
-        $rotate($media);
+        $rotate($media, RotatePhoto::turns($request));
 
         return $this->gallery($offer->refresh());
     }

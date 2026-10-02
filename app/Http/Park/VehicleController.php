@@ -295,10 +295,10 @@ class VehicleController
         return $this->gallery($vehicle, PhotoStage::of($photos->firstWhere('id', $ids[0]))->value);
     }
 
-    public function rotateMedia(Vehicle $vehicle, Media $media, RotatePhoto $rotate)
+    public function rotateMedia(Request $request, Vehicle $vehicle, Media $media, RotatePhoto $rotate)
     {
         abort_unless($media->model_id === $vehicle->id && $media->model_type === $vehicle::class, 404);
-        $rotate($media);
+        $rotate($media, RotatePhoto::turns($request));
 
         return $media->collection_name === 'photos' ? $this->gallery($vehicle, PhotoStage::of($media)->value) : $this->papers($vehicle);
     }

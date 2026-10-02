@@ -94,7 +94,7 @@ function unwind() {
  *   (по умолчанию src).
  * actions: [{ name, icon, title, run(index), iconFor?(index), titleFor?(index), shown?(index) }] — свои кнопки в верхней полосе.
  * download: кнопка «Скачать». onChange(index) — кадр сменился. onClose(index) — просмотр закрыт.
- * Возвращает { items, index, refresh(items, index), close(), destroy() }.
+ * Возвращает { items, index, refresh(items, index), reload(items), redraw(), spin(id, turns), close(), destroy() }.
  */
 export async function openLightbox({ items, index = 0, actions = [], download = false, onChange, onClose }) {
     const PhotoSwipe = await load();
@@ -233,6 +233,25 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
             p?.destroy();
             view.host?.close();
             view.host?.remove();
+        },
+        // Кнопки полосы заново по текущему кадру (глаз сменил иконку, пока сервер ещё отвечает).
+        redraw() { view.pswp?.dispatch('change'); },
+        // Поворот на экране, пока сервер крутит файл: картинка текущего слайда CSS-ом, боком — вписать в экран.
+        spin(id, turns) {
+            const p = view.pswp, slide = p?.currSlide, img = slide?.content?.element;
+            if (!img || String(slide.data.item?.id) !== String(id)) return;
+            const zoom = slide.currZoomLevel || 1, w = slide.data.width * zoom, h = slide.data.height * zoom;
+            const k = turns % 2 ? Math.min(p.viewportSize.x / h, p.viewportSize.y / w) : 1;
+            if (!matchMedia('(prefers-reduced-motion: reduce)').matches) img.style.transition = 'rotate .16s, scale .16s';
+            img.style.rotate = `${turns * 90}deg`;
+            img.style.scale = String(k);
+        },
+        // Файлы повернулись: собрать просмотр заново на том же кадре, когда новый кадр уже в кэше — без мигания.
+        async reload(list) {
+            const it = list.find((x) => String(x.id) === String(view.items[view.index]?.id));
+            const src = it && ((phone() && it.mid) || it.src);
+            if (src) await withTimeout(Object.assign(new Image(), { src }).decode().catch(() => {}), 4000);
+            api.refresh(list, Math.max(0, list.indexOf(it)));
         },
         // Список сменился (скрыли, повернули, удалили): пересобрать на месте, без анимации и новой записи в истории.
         refresh(list, at = view.index) {

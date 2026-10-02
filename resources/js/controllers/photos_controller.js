@@ -7,11 +7,15 @@ import { openSheet, closeSheet } from '../sheet';
 
 // Фотографии: загрузка по одному файлу с прогрессом (выбор или drop на карточку), перестановка перетаскиванием,
 // действия глаз, поворот, корзина на плитке и в просмотрщике.
-// Сервер на каждое действие возвращает turbo-stream с новой полосой; полоса
-// подменяется сразу (не через Turbo), чтобы просмотрщик и Sortable пересобрались
-// на новом узле тут же. readonly — только смотреть (кадры из письма рядом с приёмом): без
+// Сервер на каждое действие возвращает turbo-stream с новой полосой; свою полосу контроллер морфит сам (не через
+// Turbo): плитки и картинки остаются теми же узлами, лента не прыгает. Глаз и поворот — сразу на экране, сервер
+// догоняет в фоне (hide, rotate, queue). readonly — только смотреть (кадры из письма рядом с приёмом): без
 // перестановки, без действий на плитке и в просмотрщике. any — зона принимает любой файл (предложение CRM): документ
 // и архив сервер разложит сам, картинку из буфера кладёт ⌘V в любом месте страницы.
+// Открытый просмотр — один на страницу; действие в нём делает карточка, чей кадр на экране (группа карточек ТС),
+// а показывает — тот, кто его открыл.
+let shown = null;
+
 export default class extends Controller {
     static targets = ['input', 'progress', 'grid'];
     static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, mark: Boolean };
@@ -251,7 +255,11 @@ export default class extends Controller {
         this.perform(button.closest('.photo-cell').dataset.id, button.dataset.act, button.dataset.confirm);
     }
 
+    // Глаз и поворот — сразу на экране, запрос в фоне, у каждого кадра своя очередь: второй глаз или три поворота
+    // подряд не теряются за общим замком. Удаление ждёт ответа: ряд без кадра рисует сервер.
     async perform(id, act, confirm) {
+        if (act === 'hide') return this.hide(id);
+        if (act === 'rotate') return this.rotate(id);
         if (this.busy) return false;
         if (confirm && !(await confirmSheet(confirm, { danger: act === 'delete' }))) return false;
         this.busy = true;
@@ -263,8 +271,86 @@ export default class extends Controller {
         const r = await this.post(url, act === 'delete' ? '_method=delete' : '', 'application/x-www-form-urlencoded');
         if (!r.ok) { window.toast?.('Не получилось', 'danger'); return false; }
         this.apply(await r.text());
-        if (act === 'rotate') this.bust(id);
         return true;
+    }
+
+    // Кадр в полёте: ops — запросов ещё идёт, pending — четверти нажаты, но не отправлены, sent — отправлены, но
+    // повёрнутого файла на экране ещё нет. На экране всегда pending + sent.
+    flight(id) {
+        this.flights ??= new Map();
+        if (!this.flights.has(id)) this.flights.set(id, { ops: 0, pending: 0, sent: 0, waiting: false, chain: Promise.resolve() });
+        return this.flights.get(id);
+    }
+
+    hide(id) {
+        const cell = this.cell(id);
+        if (!cell) return false;
+        const flip = () => {
+            const hidden = cell.dataset.hidden !== '1';
+            cell.dataset.hidden = hidden ? '1' : '0';
+            cell.classList.toggle('is-hidden', hidden);
+            cell.querySelector('[data-act="hide"]')?.setAttribute('aria-label', hidden ? 'Показать' : 'Скрыть');
+        };
+        flip();
+        shown?.lb.redraw();
+        this.queue(id, () => this.post(`${this.urlValue}/${id}/hide`, '', 'application/x-www-form-urlencoded'), () => { flip(); shown?.lb.redraw(); });
+        return true;
+    }
+
+    rotate(id) {
+        const f = this.flight(id);
+        f.pending++;
+        this.spin(id, f.pending + f.sent);
+        // Нажатия, пока запрос в пути, копятся и уходят одним следующим запросом: один проход перекодирования.
+        if (f.waiting) return true;
+        f.waiting = true;
+        this.queue(id, () => {
+            const turns = f.pending;
+            f.waiting = false;
+            f.pending = 0;
+            f.sent += turns;
+            return this.post(`${this.urlValue}/${id}/rotate`, `turns=${turns % 4}`, 'application/x-www-form-urlencoded');
+        }, () => { f.pending = f.sent = 0; this.spin(id, 0); });
+        return true;
+    }
+
+    // Запрос кадра встаёт за предыдущими; ответ применяется, только когда за ним в очереди пусто, — иначе ряд из
+    // ответа откатил бы то, что человек уже нажал после. undo — вернуть экран при ошибке.
+    queue(id, send, undo) {
+        const f = this.flight(id);
+        f.ops++;
+        f.chain = f.chain.then(async () => {
+            let r = null;
+            try { r = await send(); } catch {}
+            f.ops--;
+            if (!r?.ok) {
+                undo?.();
+                window.toast?.('Не получилось', 'danger');
+                return;
+            }
+            const html = await r.text();
+            if (f.ops > 0) return;
+            const turned = f.sent > 0;
+            await this.apply(html, true);
+            // Повёрнутый файл на экране: морф снял поворот CSS, остаются только нажатия, сделанные за время ответа.
+            f.sent = 0;
+            if (f.pending) this.spin(id, f.pending);
+            if (turned && shown) shown.lb.reload(shown.items());
+        });
+        return f.chain;
+    }
+
+    // Поворот на экране, пока сервер крутит файл: плитка и открытый просмотр. turns — четверти сверх того, что уже
+    // в файле; 0 — снять (повёрнутый файл пришёл).
+    spin(id, turns) {
+        const cell = this.cell(id), img = cell?.querySelector('img');
+        if (img) {
+            const odd = turns % 2 === 1, w = img.offsetWidth, h = img.offsetHeight;
+            cell.classList.toggle('is-turning', turns !== 0);
+            cell.style.setProperty('--turn', turns);
+            cell.style.setProperty('--fit', odd && w && h ? Math.min(w, h) / Math.max(w, h) : 1);
+        }
+        shown?.lb.spin(id, turns);
     }
 
     post(url, body, type) {
@@ -280,10 +366,18 @@ export default class extends Controller {
         return this.element.querySelector('.photo-row[id], .photo-grid[id]')?.id ?? '';
     }
 
-    // Применить turbo-stream прямо сейчас (replace / append / prepend / update).
-    apply(html) {
+    // Применить turbo-stream прямо сейчас (replace / append / prepend / update). replace — морфом: те же плитки и
+    // картинки остаются на месте, лента не прыгает в начало, Sortable и просмотр не пересобираются. quiet — ответ на
+    // глаз или поворот: сначала догрузить новые адреса кадров, потом подменить разом, чтобы плитка не мигнула пустой.
+    async apply(html, quiet = false) {
         const doc = new DOMParser().parseFromString(html, 'text/html');
-        doc.querySelectorAll('turbo-stream').forEach((stream) => {
+        const streams = [...doc.querySelectorAll('turbo-stream')];
+        if (quiet) {
+            const fresh = new Set(streams.flatMap((s) => [...(s.querySelector('template')?.content.querySelectorAll('.photo-cell img') ?? [])].map((i) => i.getAttribute('src'))));
+            document.querySelectorAll('.photo-cell img').forEach((i) => fresh.delete(i.getAttribute('src')));
+            await Promise.all([...fresh].map((src) => withTimeout(Object.assign(new Image(), { src }).decode().catch(() => {}), 4000)));
+        }
+        streams.forEach((stream) => {
             const target = document.getElementById(stream.getAttribute('target'));
             const content = stream.querySelector('template')?.content.cloneNode(true);
             if (!target || !content) return;
@@ -291,9 +385,18 @@ export default class extends Controller {
                 case 'append': target.append(content); break;
                 case 'prepend': target.prepend(content); break;
                 case 'update': target.replaceChildren(content); break;
-                default: target.replaceWith(content);
+                default: {
+                    // Морф — только своему ряду кадров: карточку с контроллером (стадии парковки) подменяем целиком, чтобы
+                    // контроллер переподключился с новыми значениями (камера, только чтение).
+                    const next = content.firstElementChild;
+                    const own = this.element.contains(target) && target !== this.element && !target.querySelector('[data-controller]');
+                    if (own && next && content.childElementCount === 1 && next.id === target.id) Turbo.morphElements(target, next);
+                    else target.replaceWith(content);
+                }
             }
         });
+        if (this.pendingCells?.size) this.restorePending();
+        if (quiet) shown?.lb.redraw();
     }
 
     // После поворота у файла тот же адрес: добавить метку времени, чтобы браузер не показал старый кадр.
@@ -348,6 +451,8 @@ export default class extends Controller {
         const act = (act, confirm) => async (i) => {
             const it = this.viewer.items[i];
             if (!can(i, act) || !(await it.owner.perform(it.id, act, confirm))) return;
+            // Глаз и поворот просмотр показывает сам (redraw, spin), пересобирать его — только после удаления.
+            if (act !== 'delete') return;
             const next = this.items();
             const at = act === 'delete' ? Math.min(i, next.length - 1) : next.findIndex((n) => n.id === it.id);
             this.viewer.refresh(next, at);
@@ -361,9 +466,12 @@ export default class extends Controller {
                 { name: 'trash', icon: 'trash', title: 'Удалить', shown: (i) => can(i, 'delete'), run: act('delete', 'Удалить фото?') },
                 { name: 'mark', icon: 'mark', title: 'Водяной знак', shown: (i) => can(i, 'mark'), run: (i) => this.markSheet(this.viewer.items[i]) },
             ],
-            onClose: () => { this.viewer = null; },
+            onClose: () => { this.viewer = null; shown = null; },
         });
-        if (lightbox) this.viewer = lightbox;
+        if (lightbox) {
+            this.viewer = lightbox;
+            shown = { lb: lightbox, items: () => this.items() };
+        }
     }
 
     // ---- шторка «Водяной знак» поверх просмотрщика (только фото предложений CRM, data-photos-mark-value): кадр
@@ -520,3 +628,7 @@ const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
 
 // Кадр — картинка или HEIC (у HEIC на Windows и Android тип бывает пустым).
 const isImage = (f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name);
+
+function withTimeout(promise, ms) {
+    return Promise.race([promise, new Promise((r) => setTimeout(r, ms))]);
+}

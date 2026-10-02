@@ -40,10 +40,10 @@ class PurchaseCarPhotoController
         return $this->gallery($car->refresh());
     }
 
-    public function rotate(Car $car, Media $media, RotatePhoto $rotate)
+    public function rotate(Request $request, Car $car, Media $media, RotatePhoto $rotate)
     {
         $this->own($car, $media);
-        $rotate($media);
+        $rotate($media, RotatePhoto::turns($request));
 
         return $this->gallery($car->refresh());
     }
