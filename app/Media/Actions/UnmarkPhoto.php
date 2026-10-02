@@ -29,8 +29,8 @@ final class UnmarkPhoto
         return Storage::disk('private')->path("marked/{$media->id}.".strtolower(pathinfo($media->file_name, PATHINFO_EXTENSION) ?: 'webp'));
     }
 
-    /** Имя снятого знака или null — знака нет, кадр не тронут. */
-    public function __invoke(Media $media): ?string
+    /** Имя снятого знака или null — знака нет, кадр не тронут. $mark — знак выбрал человек (`Unmark`). */
+    public function __invoke(Media $media, ?string $mark = null): ?string
     {
         if ($media->getCustomProperty('unmarked')) {
             return null;
@@ -39,7 +39,7 @@ final class UnmarkPhoto
         if (! is_file($source)) {
             return null;
         }
-        $clean = ($this->unmark)($source);
+        $clean = ($this->unmark)($source, $mark);
         if (! $clean) {
             return null;
         }

@@ -388,41 +388,54 @@ export default class extends Controller {
             d.querySelectorAll('[data-mark-show]').forEach((x) => x.setAttribute('aria-current', String(x === b)));
         }));
 
-        const send = async (body) => {
+        const post = (id, body) => fetch(`${owner.urlValue}/${id}/mark`, {
+            method: 'POST',
+            headers: { Accept: 'text/vnd.turbo-stream.html', 'X-CSRF-TOKEN': owner.token, 'X-Requested-With': 'XMLHttpRequest', ...(owner.rowId ? { 'X-Photos-Target': owner.rowId } : {}) },
+            body,
+        });
+        const form = (fields) => { const f = new FormData(); Object.entries(fields).forEach(([k, v]) => f.append(k, v)); return f; };
+        const finish = (ids) => {
+            ids.forEach((id) => owner.bust(id));
+            closeSheet(d);
+            const next = this.items();
+            this.viewer?.refresh(next, Math.max(0, next.findIndex((n) => n.id === it.id)));
+        };
+        const busy = async (job) => {
             if (d.getAttribute('aria-busy') === 'true') return;
             d.setAttribute('aria-busy', 'true');
-            try {
-                const res = await fetch(`${owner.urlValue}/${it.id}/mark`, {
-                    method: 'POST',
-                    headers: { Accept: 'text/vnd.turbo-stream.html', 'X-CSRF-TOKEN': owner.token, 'X-Requested-With': 'XMLHttpRequest', ...(owner.rowId ? { 'X-Photos-Target': owner.rowId } : {}) },
-                    body,
-                });
-                if (!res.ok) {
-                    const message = (await res.json().catch(() => null))?.message;
-                    window.toast?.(message || 'Не получилось', 'danger');
-                    return;
-                }
-                owner.apply(await res.text());
-                owner.bust(it.id);
-                closeSheet(d);
-                const next = this.items();
-                this.viewer?.refresh(next, Math.max(0, next.findIndex((n) => n.id === it.id)));
-            } finally {
-                d.removeAttribute('aria-busy');
-            }
+            try { await job(); } finally { d.removeAttribute('aria-busy'); }
         };
+        const send = (body) => busy(async () => {
+            const res = await post(it.id, body);
+            if (!res.ok) {
+                const message = (await res.json().catch(() => null))?.message;
+                window.toast?.(message || 'Не получилось', 'danger');
+                return;
+            }
+            owner.apply(await res.text());
+            finish([it.id]);
+        });
+        d.querySelectorAll('[data-mark-act="mark"]').forEach((b) => b.addEventListener('click', () => send(form({ act: 'mark', mark: b.dataset.mark }))));
+        // «Со всех фото»: по кадру за запрос (ручной поиск знака — секунды на кадр), ход — в подписи строки.
+        d.querySelectorAll('[data-mark-all]').forEach((b) => b.addEventListener('click', () => busy(async () => {
+            const ids = b.dataset.markAll.split(',');
+            const label = b.querySelector('[data-mark-label]');
+            let done = 0, last = null;
+            for (const [k, id] of ids.entries()) {
+                label.textContent = `Снимаем ${k + 1} из ${ids.length}`;
+                const res = await post(id, form({ act: 'mark', mark: b.dataset.mark }));
+                if (res.ok) { done++; last = await res.text(); }
+            }
+            if (last) owner.apply(last);
+            window.toast?.(done === ids.length ? `Снято со всех ${ids.length}` : `Снято ${done} из ${ids.length}`, done ? undefined : 'danger');
+            finish(ids);
+        })));
         d.querySelector('[data-mark-act="undo"]')?.addEventListener('click', async (e) => {
-            if (!(await confirmSheet(e.currentTarget.dataset.confirm))) return;
-            const body = new FormData();
-            body.append('act', 'undo');
-            send(body);
+            if (await confirmSheet(e.currentTarget.dataset.confirm)) send(form({ act: 'undo' }));
         });
         d.querySelector('[data-mark-file]')?.addEventListener('change', (e) => {
             const file = e.target.files?.[0];
-            if (!file) return;
-            const body = new FormData();
-            body.append('file', file);
-            send(body);
+            if (file) send(form({ file }));
         });
         // Без своей записи в истории: «Назад» закрывает просмотрщик под шторкой, как у подтверждения.
         openSheet(d, { history: false });

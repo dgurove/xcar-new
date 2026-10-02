@@ -13,15 +13,20 @@ use Throwable;
  */
 final class Unmark
 {
-    /** @return array{path: string, mark: string}|null чистый кадр во временном JPEG (удалить — забота вызвавшего) */
-    public function __invoke(string $path): ?array
+    /**
+     * $mark — знак выбрал человек (шторка «Водяной знак»): только он, место и масштаб ищутся шире, порог ниже.
+     *
+     * @return array{path: string, mark: string}|null чистый кадр во временном JPEG (удалить — забота вызвавшего)
+     */
+    public function __invoke(string $path, ?string $mark = null): ?array
     {
         $base = tempnam(sys_get_temp_dir(), 'unmark-');
         @unlink($base);
         $out = $base.'.jpg';
         try {
             // nice: сайт и почта на двух ядрах впереди; на кадр ~0,1 с, на 48 МП — секунды.
-            $result = Process::timeout(60)->run(['nice', '-n', '10', config('xcar.unmark', 'unmark'), resource_path('watermarks'), $path, $out]);
+            $only = $mark === null ? [] : ['--mark', $mark];
+            $result = Process::timeout(60)->run(['nice', '-n', '10', config('xcar.unmark', 'unmark'), ...$only, resource_path('watermarks'), $path, $out]);
             $line = trim((string) collect(explode("\n", trim($result->output())))->last());
             $answer = json_decode($line, true);
             if (! $result->successful() || ! is_array($answer)) {

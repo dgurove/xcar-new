@@ -8,8 +8,11 @@
 # мягче вектора, px), `width` (ширина знака — доля ширины кадра; знак по центру). Пути красятся по порядку, верхний
 # закрывает нижний: белые буквы поверх флажка дают «дырки» со своей прозрачностью.
 #
-#   unmark <каталог> <вход> <выход>       — строка JSON {"mark": имя, "k": сила, "x": …, "y": …, "s": …, "ms": …}
-#                                           и чистый кадр в <выход>; знака нет — {"mark": null}, файл не пишется
+#   unmark [--mark <имя>] <каталог> <вход> <выход>
+#                                         — строка JSON {"mark": имя, "k": сила, "x": …, "y": …, "s": …, "ms": …}
+#                                           и чистый кадр в <выход>; знака нет — {"mark": null}, файл не пишется.
+#                                           --mark: человек сам выбрал знак в CRM — только он, место ищется шире
+#                                           (±12 px), порог силы ниже (от 0,3): знак, который не взялся сам
 #   unmark --calibrate <знак.json> <фото…> — прозрачности по фото площадки (на каждом кадре знак): печатает json знака
 #                                           с новыми `fills`; так заводится новая площадка
 #
@@ -33,6 +36,8 @@ cv2.setNumThreads(1)
 SS = 4  # суперсэмплинг растеризации: край логотипа с точностью до четверти пикселя
 SEARCH = 4  # на сколько пикселей уточняется место от правила площадки
 K_MIN, K_MAX = 0.6, 1.5
+SEARCH_CHOSEN, K_MIN_CHOSEN, K_MAX_CHOSEN = 12, 0.3, 2.0  # знак выбрал человек
+SCALES_CHOSEN = tuple(1 + d / 100 for d in range(-6, 7))  # и масштаб ±6 %: кадр могли обрезать
 
 NUM = r'[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?'
 
@@ -240,40 +245,62 @@ def strength(gray, a, white):
     return (lo + hi) / 2
 
 
-def locate(gray, mark, fills=None):
-    """Место знака: правило площадки (по центру, доля ширины), уточнённое по кадру до четверти пикселя."""
+def locate(gray, mark, fills=None, search=SEARCH, scales=(1.0,)):
+    """Место знака: правило площадки (по центру, доля ширины), уточнённое по кадру до четверти пикселя.
+    scales — множители масштаба правила: у обрезанного кадра ширина другая, и знак выбранный руками ищется ещё и
+    по масштабу (сначала грубо шагом 3 px на каждом, потом точно на лучшем)."""
     H, W = gray.shape
-    s = mark.width * W / mark.w
-    maps = mark.render(s)
-    a0 = mark.alpha(maps[(0, 0)], fills)
-    h, w = a0.shape
-    # левый верхний угол карты (на пиксель выше и левее логотипа) по правилу
-    rx = int(round((W - mark.w * s) / 2)) - 1
-    ry = int(round((H - mark.h * s) / 2)) - 1
-    cx0, cy0 = rx - SEARCH - 2, ry - SEARCH - 2
-    if cx0 < 0 or cy0 < 0 or cx0 + w + 2 * SEARCH + 4 > W or cy0 + h + 2 * SEARCH + 4 > H:
+    s0 = mark.width * W / mark.w
+
+    def setup(s):
+        maps = mark.render(s)
+        alphas = {ph: mark.alpha(m, fills) for ph, m in maps.items()}
+        h, w = alphas[(0, 0)].shape
+        # левый верхний угол карты (на пиксель выше и левее логотипа) по правилу
+        rx = int(round((W - mark.w * s) / 2)) - 1
+        ry = int(round((H - mark.h * s) / 2)) - 1
+        cx0, cy0 = rx - search - 2, ry - search - 2
+        if cx0 < 0 or cy0 < 0 or cx0 + w + 2 * search + 4 > W or cy0 + h + 2 * search + 4 > H:
+            return None
+        crop = gray[cy0:cy0 + h + 2 * search + 4, cx0:cx0 + w + 2 * search + 4]
+        bands = {}
+
+        def energy(ix, iy, ph):
+            a = np.zeros(crop.shape, np.float32)
+            a[iy - cy0:iy - cy0 + h, ix - cx0:ix - cx0 + w] = alphas[ph]
+            if ph not in bands:
+                bands[ph] = band_of(alphas[ph])
+            band = np.zeros(crop.shape, bool)
+            band[iy - cy0:iy - cy0 + h, ix - cx0:ix - cx0 + w] = bands[ph]
+            return edge_energy(crop, a, mark.white, band)
+
+        return {'s': s, 'maps': maps, 'alphas': alphas, 'rx': rx, 'ry': ry, 'energy': energy}
+
+    def grid(c, step, around=None, radius=search):
+        bx, by = around or (c['rx'], c['ry'])
+        cand = [(c['energy'](bx + dx, by + dy, (0, 0)), bx + dx, by + dy)
+                for dy in range(-radius, radius + 1, step) for dx in range(-radius, radius + 1, step)
+                if abs(bx + dx - c['rx']) <= search and abs(by + dy - c['ry']) <= search]
+        return min(cand)
+
+    fits = [c for c in (setup(s0 * k) for k in scales) if c]
+    if not fits:
         return None
-    crop = gray[cy0:cy0 + h + 2 * SEARCH + 4, cx0:cx0 + w + 2 * SEARCH + 4]
-    alphas = {ph: mark.alpha(m, fills) for ph, m in maps.items()}
-    bands = {}
-
-    def energy(ix, iy, ph):
-        a = np.zeros(crop.shape, np.float32)
-        a[iy - cy0:iy - cy0 + h, ix - cx0:ix - cx0 + w] = alphas[ph]
-        if ph not in bands:
-            bands[ph] = band_of(alphas[ph])
-        band = np.zeros(crop.shape, bool)
-        band[iy - cy0:iy - cy0 + h, ix - cx0:ix - cx0 + w] = bands[ph]
-        return edge_energy(crop, a, mark.white, band)
-
-    best = min(((energy(rx + dx, ry + dy, (0, 0)), rx + dx, ry + dy) for dy in range(-SEARCH, SEARCH + 1) for dx in range(-SEARCH, SEARCH + 1)))
-    _, bx, by = best
+    if len(fits) > 1:
+        c = min(fits, key=lambda c: grid(c, 3)[0])
+        # и точно: шаг перебора 1 %, а край знака съезжает уже от 0,3 %
+        step = (scales[1] - scales[0]) / 4
+        fine = [f for f in (setup(c['s'] * (1 + d * step)) for d in (-3, -2, -1, 1, 2, 3)) if f] + [c]
+        scored = [(grid(f, 1), f) for f in fine]
+        (_, bx, by), c = min(scored, key=lambda t: t[0][0])
+    else:
+        c = fits[0]
+        _, bx, by = grid(c, 1)
     # дробная часть: сдвиг на четверть пикселя вправо-вниз внутри соседних целых
-    best = min(((energy(bx + dx, by + dy, ph), bx + dx, by + dy, ph)
-                for dy in (-1, 0) for dx in (-1, 0) for ph in alphas
-                if abs(bx + dx - rx) <= SEARCH and abs(by + dy - ry) <= SEARCH), default=None)
-    _, ix, iy, ph = best
-    return {'ix': ix, 'iy': iy, 'ph': ph, 'maps': maps[ph], 'alpha': alphas[ph], 's': s,
+    _, ix, iy, ph = min((c['energy'](bx + dx, by + dy, ph), bx + dx, by + dy, ph)
+                        for dy in (-1, 0) for dx in (-1, 0) for ph in c['alphas']
+                        if abs(bx + dx - c['rx']) <= search and abs(by + dy - c['ry']) <= search)
+    return {'ix': ix, 'iy': iy, 'ph': ph, 'maps': c['maps'][ph], 'alpha': c['alphas'][ph], 's': c['s'],
             'x': ix + 1 + ph[0] / SS, 'y': iy + 1 + ph[1] / SS}
 
 
@@ -307,18 +334,22 @@ def marks_in(folder):
     return [Mark(p) for p in sorted(Path(folder).glob('*.json'))]
 
 
-def remove(folder, src, dst):
+def remove(folder, src, dst, only=None):
     t = time.time()
     img = read(src)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
-    for mark in marks_in(folder):
-        at = locate(gray, mark)
+    marks = [m for m in marks_in(folder) if only is None or m.name == only]
+    if only is not None and not marks:
+        raise ValueError(f'знака {only} в реестре нет')
+    search, scales, lo, hi = (SEARCH_CHOSEN, SCALES_CHOSEN, K_MIN_CHOSEN, K_MAX_CHOSEN) if only else (SEARCH, (1.0,), K_MIN, K_MAX)
+    for mark in marks:
+        at = locate(gray, mark, search=search, scales=scales)
         if at is None:
             continue
         h, w = at['alpha'].shape
         crop = gray[at['iy']:at['iy'] + h, at['ix']:at['ix'] + w]
         k = strength(crop, at['alpha'], mark.white)
-        if K_MIN <= k <= K_MAX:
+        if lo <= k <= hi:
             ok = cv2.imwrite(str(dst), unmark(img, mark, at), [cv2.IMWRITE_JPEG_QUALITY, 95])
             if not ok:
                 raise ValueError(f'не записался {dst}')
@@ -381,12 +412,13 @@ if __name__ == '__main__':
     args = sys.argv[1:]
     if args[:1] == ['--calibrate'] and len(args) >= 3:
         calibrate(args[1], args[2:])
-    elif len(args) == 3:
+    elif len(args) == 5 and args[0] == '--mark' or len(args) == 3:
+        only = args[1] if args[0] == '--mark' else None
         try:
-            print(json.dumps(remove(*args), ensure_ascii=False), flush=True)
+            print(json.dumps(remove(*args[-3:], only=only), ensure_ascii=False), flush=True)
         except ValueError as e:
             print(json.dumps({'mark': None, 'error': str(e)}, ensure_ascii=False), flush=True)
             sys.exit(2)
     else:
-        print(__doc__ or 'unmark <каталог знаков> <вход> <выход> | unmark --calibrate <знак.json> <фото…>', file=sys.stderr)
+        print('unmark [--mark <имя>] <каталог знаков> <вход> <выход> | unmark --calibrate <знак.json> <фото…>', file=sys.stderr)
         sys.exit(64)

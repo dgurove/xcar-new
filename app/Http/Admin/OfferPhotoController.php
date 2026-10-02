@@ -80,6 +80,10 @@ class OfferPhotoController
             'manual' => $unmarked === UnmarkPhoto::MANUAL,
             'title' => $unmarked === UnmarkPhoto::MANUAL ? null : Watermarks::title($unmarked),
             'marked' => is_file(UnmarkPhoto::markedPath($media)),
+            'marks' => Watermarks::all(),
+            // «Со всех фото» — кадры предложения, с которых знак ещё не снимали (этот — первым)
+            'rest' => $offer->photos()->reject(fn (Media $m) => $m->getCustomProperty('unmarked'))
+                ->sortBy(fn (Media $m) => $m->id === $media->id ? 0 : 1)->pluck('id')->values()->all(),
         ]);
     }
 
@@ -93,7 +97,10 @@ class OfferPhotoController
         return response()->file($path, ['Cache-Control' => 'private, no-cache']);
     }
 
-    /** «Вернуть со знаком» (`act=undo`) или свой файл вместо кадра (`file`: почистили знак сами). */
+    /**
+     * «Вернуть со знаком» (`act=undo`), снять выбранный знак (`act=mark`, `mark`: не определился сам) или свой файл вместо
+     * кадра (`file`: почистили знак сами). «Со всех фото» шлёт `act=mark` по кадру за запрос: ручной поиск — секунды.
+     */
     public function unmark(Request $request, Offer $offer, Media $media, UnmarkPhoto $unmark, PhotoIngest $ingest)
     {
         $this->own($offer, $media);
@@ -105,6 +112,15 @@ class OfferPhotoController
                     return response()->json(['message' => 'Это не фото'], 422);
                 }
                 $unmark->replace($media, $file->getRealPath(), $ingest);
+            } elseif ($request->input('act') === 'mark') {
+                $mark = (string) $request->input('mark');
+                abort_unless(array_key_exists($mark, Watermarks::all()), 422);
+                if ($media->getCustomProperty('unmarked')) {
+                    return $this->gallery($offer->refresh());
+                }
+                if (! $unmark($media, $mark)) {
+                    return response()->json(['message' => 'Знак не нашёлся на фото'], 422);
+                }
             } elseif ($request->input('act') !== 'undo' || ! $unmark->undo($media)) {
                 return response()->json(['message' => 'Кадра со знаком нет'], 422);
             }
