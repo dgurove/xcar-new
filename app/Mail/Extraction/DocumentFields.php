@@ -124,6 +124,22 @@ final class DocumentFields
                 $rows[] = $place + ['line' => $n];
             }
         }
+        // Таблица со столбцом «VIN ТС», а производитель VIN нам незнаком («X2F…» — Форд Соллерс, такой ТС у нас ещё не
+        // было): одна строка по форме VIN в этой таблице и есть VIN, как с подписью рядом (`VinText::labelled`).
+        if (! array_filter(array_column($rows, 'vin')) && preg_match('/\bVIN\s*T[CС]\b/u', $text)) {
+            $found = [];
+            foreach ($lines as $n => $line) {
+                foreach (preg_match_all(self::VIN, mb_strtoupper($line), $m) ? $m[0] : [] as $token) {
+                    if ($vin = VinText::labelled($token)) {
+                        $at = mb_strpos(mb_strtoupper($line), $token);
+                        $found[$vin] = ['vin' => $vin, 'before' => mb_substr($line, 0, $at), 'after' => mb_substr($line, $at + 17), 'line' => $n];
+                    }
+                }
+            }
+            if (count($found) === 1) {
+                $rows = array_values($found);
+            }
+        }
         if (! $rows || count(array_unique(array_filter(array_column($rows, 'vin')))) > 1) {
             return;
         }
@@ -153,6 +169,19 @@ final class DocumentFields
                 $put('model', $found['model']);
             }
         }
+        // Ячейки строки машины OCR разносит и по строкам: цвет, год и стоимость строкой над VIN или под ним
+        // («многоцветный 2021 707.000,00», ниже «Форд транзит», ещё ниже VIN). Справа от VIN года нет — берём ближайшую
+        // соседнюю строку с годом, кроме шапки и реквизитов договора.
+        $year = '/(?<![\d.,\/])(19[89]\d|20[0-3]\d)(?![\d.,\/])/u';
+        if (! preg_match($year, $after)) {
+            foreach ([-1, 1, -2, 2, -3] as $step) {
+                $near = $lines[$row['line'] + $step] ?? null;
+                if ($near !== null && preg_match($year, $near) && ! preg_match('/договор|заявк|приложени|выпуска/ui', $near)) {
+                    $after .= ' '.$near;
+                    break;
+                }
+            }
+        }
         // Цвет — первое слово справа от VIN, которое знает словарь (с соседним «металлик», «перламутр»).
         $words = preg_split('/[\s|]+/u', trim($after), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         foreach ($words as $i => $word) {
@@ -161,7 +190,7 @@ final class DocumentFields
                 break;
             }
         }
-        if (preg_match('/(?<![\d.,\/])(19[89]\d|20[0-3]\d)(?![\d.,\/])/u', $after, $m)) {
+        if (preg_match($year, $after, $m)) {
             $put('year', (int) $m[1]);
         }
         // Стоимость столбцом заявки Альфы «1.477.000,00» или «1 477 000,00»; парковке её подставляет только человек в «✨».
