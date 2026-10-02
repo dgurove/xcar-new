@@ -142,6 +142,21 @@ def parse_path(d):
     return polys
 
 
+PHASES = [(px, py) for py in range(SS) for px in range(SS)]
+
+
+class Phases(dict):
+    """Карты по сдвигу на четверть пикселя {(px, py): …}, каждая считается при первом обращении."""
+
+    def __init__(self, make):
+        super().__init__()
+        self.make = make
+
+    def __missing__(self, ph):
+        self[ph] = self.make(*ph)
+        return self[ph]
+
+
 class Mark:
     def __init__(self, path):
         path = Path(path)
@@ -187,15 +202,12 @@ class Mark:
             c = canvas.astype(np.float32) / 255
             vis[fill] = vis.get(fill, 0) + c * occl
             occl *= 1 - c
-        out = {}
-        for py in range(SS):
-            for px in range(SS):
-                out[(px, py)] = {
-                    f: cv2.resize(np.pad(m, ((py, SS - py), (px, SS - px)))[:h * SS, :w * SS], (w, h), interpolation=cv2.INTER_AREA)
-                    for f, m in vis.items()
-                }
-        # Карта начинается на пиксель левее и выше логотипа (отступ SS в субпикселях)
-        return out
+        # Карта начинается на пиксель левее и выше логотипа (отступ SS в субпикселях). Сдвиги считаются по запросу:
+        # грубому проходу по масштабам нужен один, точному — шестнадцать у одного масштаба.
+        return Phases(lambda px, py: {
+            f: cv2.resize(np.pad(m, ((py, SS - py), (px, SS - px)))[:h * SS, :w * SS], (w, h), interpolation=cv2.INTER_AREA)
+            for f, m in vis.items()
+        })
 
     def alpha(self, vis, fills=None):
         fills = fills or self.fills
@@ -254,7 +266,7 @@ def locate(gray, mark, fills=None, search=SEARCH, scales=(1.0,)):
 
     def setup(s):
         maps = mark.render(s)
-        alphas = {ph: mark.alpha(m, fills) for ph, m in maps.items()}
+        alphas = Phases(lambda px, py: mark.alpha(maps[(px, py)], fills))
         h, w = alphas[(0, 0)].shape
         # левый верхний угол карты (на пиксель выше и левее логотипа) по правилу
         rx = int(round((W - mark.w * s) / 2)) - 1
@@ -287,18 +299,18 @@ def locate(gray, mark, fills=None, search=SEARCH, scales=(1.0,)):
     if not fits:
         return None
     if len(fits) > 1:
-        c = min(fits, key=lambda c: grid(c, 3)[0])
-        # и точно: шаг перебора 1 %, а край знака съезжает уже от 0,3 %
+        (_, gx, gy), c = min(((grid(c, 3), c) for c in fits), key=lambda t: t[0][0])
+        # и точно: шаг перебора 1 %, а край знака съезжает уже от 0,3 %; место — рядом с найденным грубо
         step = (scales[1] - scales[0]) / 4
         fine = [f for f in (setup(c['s'] * (1 + d * step)) for d in (-3, -2, -1, 1, 2, 3)) if f] + [c]
-        scored = [(grid(f, 1), f) for f in fine]
+        scored = [(grid(f, 1, around=(gx, gy), radius=3), f) for f in fine]
         (_, bx, by), c = min(scored, key=lambda t: t[0][0])
     else:
         c = fits[0]
         _, bx, by = grid(c, 1)
     # дробная часть: сдвиг на четверть пикселя вправо-вниз внутри соседних целых
     _, ix, iy, ph = min((c['energy'](bx + dx, by + dy, ph), bx + dx, by + dy, ph)
-                        for dy in (-1, 0) for dx in (-1, 0) for ph in c['alphas']
+                        for dy in (-1, 0) for dx in (-1, 0) for ph in PHASES
                         if abs(bx + dx - c['rx']) <= search and abs(by + dy - c['ry']) <= search)
     return {'ix': ix, 'iy': iy, 'ph': ph, 'maps': c['maps'][ph], 'alpha': c['alphas'][ph], 's': c['s'],
             'x': ix + 1 + ph[0] / SS, 'y': iy + 1 + ph[1] / SS}
