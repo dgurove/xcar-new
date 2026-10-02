@@ -79,7 +79,7 @@ final class PromoteCandidate
             'color' => $v('color'),
             'floor_price' => $v('floor_price'),
             'inspection_address' => $v('location'),
-            'settlement_id' => $v('city') ? Settlement::whereRaw("replace(lower(name), 'ё', 'е') = ?", [str_replace('ё', 'е', mb_strtolower($v('city')))])->value('id') : null,
+            'settlement_id' => $v('city') ? Settlement::named($v('city'))['id'] ?? null : null,
             'claim_ref' => $candidate->code,
             'vendor_id' => $vendor?->id,
             'prices_include_vat' => $v('vat') ?? $vendor?->offers_include_vat,

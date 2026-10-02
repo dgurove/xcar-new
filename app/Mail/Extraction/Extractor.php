@@ -128,15 +128,10 @@ final class Extractor
         return null;
     }
 
-    /** Город справочника по имени: без регистра, «ё» как «е». */
+    /** Город справочника по имени (`Settlement::named`). */
     public static function settlement(string $name): ?string
     {
-        $name = trim((string) preg_replace('/\s+/u', ' ', $name), " .,;:");
-        if ($name === '' || mb_strlen($name) > 40) {
-            return null;
-        }
-
-        return Settlement::whereRaw("replace(lower(name), 'ё', 'е') = ?", [str_replace('ё', 'е', mb_strtolower($name))])->value('name');
+        return Settlement::named($name)['name'] ?? null;
     }
 
     /** Совкомбанк в теле пишет цену голой строкой «1 259 990 руб.» и «Готовы к передаче – 8-903-333-18-94 Екатерина». */

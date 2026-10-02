@@ -65,9 +65,10 @@ class Message extends Model
         return $this->hasMany(Address::class, 'message_id')->orderBy('position');
     }
 
+    /** Вложение знает своё письмо без запроса (`chaperone`): файл ищется через письмо и ящик — разбор письма делал по запросу на каждое. */
     public function attachments(): HasMany
     {
-        return $this->hasMany(Attachment::class, 'message_id')->orderBy('position');
+        return $this->hasMany(Attachment::class, 'message_id')->orderBy('position')->chaperone('message');
     }
 
     public function isOutgoing(): bool

@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Mail\Extraction\Patterns;
+
 /**
  * Текст сообщения в HTML: экранирование, а потом ссылки — адреса сайтов, телефоны и «№ 123»
  * (предложение). Единственное место, откуда текст чата попадает в разметку без {{ }}.
@@ -19,7 +21,8 @@ final class Linkify
         $html = e((string) $text);
         // Текст уже экранирован: кавычка после адреса — это &quot;, она в ссылку не входит.
         $html = preg_replace_callback('~(?<![\w/])(https?://(?:(?!&(?:quot|#039|lt|gt);)[^\s<])+?)(?=[.,;:!?)\]}»]*(?:\s|$|&(?:quot|#039|lt|gt);|<))~u', fn ($m) => '<a href="'.$m[1].'" target="_blank" rel="noopener">'.$m[1].'</a>', $html);
-        $html = preg_replace_callback('~(?<![\d\w])(\+7|8)[\s(-]*(\d{3})[\s)-]*(\d{3})[\s-]*(\d{2})[\s-]*(\d{2})(?!\d)~u', fn ($m) => '<a href="tel:+7'.$m[2].$m[3].$m[4].$m[5].'" class="nums">'.$m[0].'</a>', $html);
+        // Телефон — общей формой (`Patterns::PHONE`), номер для звонка — `Phone::normalize`.
+        $html = preg_replace_callback('~(?<![\d\w+])'.Patterns::PHONE.'~u', fn ($m) => ($n = Phone::normalize($m[0])) ? '<a href="tel:+'.$n.'" class="nums">'.$m[0].'</a>' : $m[0], $html);
         $html = preg_replace('~(?<![\w/])№\s?(\d{1,7})(?!\d)~u', '<a href="/offers/$1" class="nums">№&nbsp;$1</a>', $html);
         // [слова](/путь) — ссылка на свою страницу; пишет так только автоответ администрации (AutoReply).
         $html = preg_replace('~\[([^\[\]]{1,80})\]\((/[\w/?=&#.-]*)\)~u', '<a href="$2">$1</a>', $html);

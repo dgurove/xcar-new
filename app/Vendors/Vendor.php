@@ -42,6 +42,13 @@ class Vendor extends Model implements HasMedia
 {
     use InteractsWithMedia;
 
+    /** Правка вендора (адреса отправителей, разбор) — `forSender` спрашивает базу заново. */
+    protected static function booted(): void
+    {
+        static::saved(fn () => self::forgetSenders());
+        static::deleted(fn () => self::forgetSenders());
+    }
+
     protected function casts(): array
     {
         return [
@@ -238,10 +245,32 @@ class Vendor extends Model implements HasMedia
         if ($email === '' || ! str_contains($email, '@')) {
             return null;
         }
+        // Разбор письма спрашивает вендора на каждое письмо: ответ помнится в процессе минуту, правка вендора — сброс.
+        if (time() - self::$sendersAt >= 60) {
+            self::$senders = [];
+            self::$sendersAt = time();
+        }
+        $key = $column.':'.$email;
+        if (array_key_exists($key, self::$senders)) {
+            return self::$senders[$key] ? self::find(self::$senders[$key]) : null;
+        }
         $domain = (string) preg_replace('/.*@/u', '', $email);
-
-        return self::whereJsonContains($column, $email)->first()
+        $vendor = self::whereJsonContains($column, $email)->first()
             ?? self::whereJsonContains($column, $domain)->first();
+        self::$senders[$key] = $vendor?->id;
+
+        return $vendor;
+    }
+
+    /** @var array<string, ?int> «сторона:адрес» → id вендора (`forSender`) */
+    private static array $senders = [];
+
+    private static int $sendersAt = 0;
+
+    /** Адреса вендоров поменялись — `forSender` спрашивает базу заново. */
+    public static function forgetSenders(): void
+    {
+        self::$senders = [];
     }
 
     public static function sendersColumn(Scope $scope): string

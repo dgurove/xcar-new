@@ -356,10 +356,32 @@ final class Names
         return $brand;
     }
 
-    /** Все написания марок справочника → id, в кэше на час. */
+    /**
+     * Указатель в памяти процесса: марку ищут десятки раз на письмо, а справочник меняется редко. Живёт минуту —
+     * марку, заведённую другим процессом (воркер Octane, очередь), увидят все; в своём процессе — сразу (`forget`).
+     */
+    private static ?array $index = null;
+
+    private static int $indexAt = 0;
+
+    /** Справочник марок поменялся — указатель собрать заново (`Brand::booted`). */
+    public static function forget(): void
+    {
+        self::$index = null;
+    }
+
+    /**
+     * Все написания марок справочника → id: в памяти процесса, между процессами — в кэше на час по числу марок.
+     * Раньше кэш спрашивали на каждый поиск, и разбор письма делал полсотни пар запросов «кэш + число марок».
+     */
     private static function index(): array
     {
-        return Cache::remember('cars.names.index:'.Brand::count(), 3600, function () {
+        if (self::$index !== null && time() - self::$indexAt < 60) {
+            return self::$index;
+        }
+        self::$indexAt = time();
+
+        return self::$index = Cache::remember('cars.names.index:'.Brand::count(), 3600, function () {
             $index = [];
             foreach (Brand::query()->get(['id', 'slug', 'name', 'name_ru']) as $b) {
                 foreach (array_filter([$b->name, $b->name_ru, $b->slug]) as $name) {

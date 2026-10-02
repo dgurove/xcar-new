@@ -11,6 +11,13 @@ use Illuminate\Support\Str;
 #[Fillable(['slug', 'name', 'name_ru', 'country', 'is_popular'])]
 class Brand extends Model
 {
+    /** Марку завели, переименовали или удалили — словарь `Names` перечитает справочник. */
+    protected static function booted(): void
+    {
+        static::saved(fn () => Names::forget());
+        static::deleted(fn () => Names::forget());
+    }
+
     public function offers(): HasMany
     {
         return $this->hasMany(Offer::class);

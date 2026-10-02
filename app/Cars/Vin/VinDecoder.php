@@ -69,6 +69,15 @@ class VinDecoder
         return $remainder === 10 ? 'X' : (string) $remainder;
     }
 
+    /**
+     * Контрольная цифра (9-й знак) — там, где её ставят всегда: Северная Америка (1–5) и Китай (L). Россия, Европа,
+     * Корея её часто не считают — у них проверки нет. Одно правило на разбор документов (`VinText`) и «Ошибка в VIN».
+     */
+    public static function checkDigitOk(string $vin): bool
+    {
+        return ! preg_match('/^[1-5L]/', $vin) || self::expectedCheckChar($vin) === ($vin[8] ?? null);
+    }
+
     /** Семнадцать допустимых знаков — без разбора, для памяти и форм. */
     public static function looksValid(string $vin): bool
     {

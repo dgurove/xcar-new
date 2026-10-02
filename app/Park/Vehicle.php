@@ -292,10 +292,7 @@ class Vehicle extends Model implements HasMedia
         if (! $this->vin) {
             return 'VIN отсутствует';
         }
-        if (! VinDecoder::looksValid($this->vin)) {
-            return 'Ошибка в VIN';
-        }
-        if (in_array($this->vin[0], ['1', '2', '3', '4', '5'], true) && VinDecoder::expectedCheckChar($this->vin) !== $this->vin[8]) {
+        if (! VinDecoder::looksValid($this->vin) || ! VinDecoder::checkDigitOk($this->vin)) {
             return 'Ошибка в VIN';
         }
 

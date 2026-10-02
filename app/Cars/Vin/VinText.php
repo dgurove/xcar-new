@@ -67,7 +67,7 @@ final class VinText
         if (! self::plausible($vin)) {
             return null;
         }
-        if (self::knownWmi($vin) && (VinDecoder::expectedCheckChar($vin) === $vin[8] || ! preg_match('/^[1-5L]/', $vin))) {
+        if (self::knownWmi($vin) && VinDecoder::checkDigitOk($vin)) {
             return $vin;
         }
         // Ошибка бывает и в самом WMI («LSSA…» вместо «LS5A…» у Changan): правка проверяется целиком.
@@ -97,7 +97,7 @@ final class VinText
             return $trusted;
         }
 
-        return self::plausible($vin) && (! preg_match('/^[1-5L]/', $vin) || VinDecoder::expectedCheckChar($vin) === $vin[8]) ? $vin : null;
+        return self::plausible($vin) && VinDecoder::checkDigitOk($vin) ? $vin : null;
     }
 
     /**
