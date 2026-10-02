@@ -24,6 +24,7 @@ use App\Http\Admin\UserController;
 use App\Http\Admin\UserGroupController;
 use App\Http\Admin\VendorContactController;
 use App\Http\Admin\VendorController;
+use App\Http\Admin\WatermarkController;
 use App\Http\Admin\WorkflowController;
 use App\Http\Cabinet\InviteController;
 use App\Http\Cabinet\ProfileController;
@@ -76,6 +77,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/offers/{offer}/media/{media}/mark', [OfferPhotoController::class, 'mark']);
         Route::get('/offers/{offer}/media/{media}/marked', [OfferPhotoController::class, 'marked']);
         Route::post('/offers/{offer}/media/{media}/mark', [OfferPhotoController::class, 'unmark']);
+        Route::post('/offers/{offer}/media/{media}/learn', [OfferPhotoController::class, 'learn']);
         Route::delete('/offers/{offer}/media/{media}', [OfferPhotoController::class, 'destroy']);
     });
     Route::prefix('work/mail')->middleware('ability:canCrmMail')->group(function () {
@@ -232,6 +234,11 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::post('/tags/order', [TagController::class, 'reorder']);
             Route::put('/tags/{tag}', [TagController::class, 'update']);
             Route::delete('/tags/{tag}', [TagController::class, 'destroy']);
+
+            Route::get('/watermarks', [WatermarkController::class, 'index']);
+            Route::get('/watermarks/{name}/image', [WatermarkController::class, 'image']);
+            Route::put('/watermarks/{name}', [WatermarkController::class, 'update']);
+            Route::delete('/watermarks/{name}', [WatermarkController::class, 'destroy']);
 
             Route::get('/vendors', [VendorController::class, 'index']);
             Route::post('/vendors', [VendorController::class, 'store']);

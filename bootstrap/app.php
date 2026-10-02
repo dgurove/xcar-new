@@ -33,6 +33,7 @@ use App\Mail\Console\SyncMail;
 use App\Mail\Console\WatchMail;
 use App\Media\Console\MoveConversionsHot;
 use App\Media\Console\Restamp;
+use App\Media\Console\TuneWatermarks;
 use App\Media\Console\UnmarkPhotos;
 use App\Offers\Console\PruneEmptyDrafts;
 use App\Offers\Console\TickOffers;
@@ -82,6 +83,7 @@ return Application::configure(basePath: dirname(__DIR__))
         MakeKeys::class,
         Restamp::class,
         UnmarkPhotos::class,
+        TuneWatermarks::class,
         MoveConversionsHot::class,
         Gc::class,
         Report::class,

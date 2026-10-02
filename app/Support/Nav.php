@@ -254,6 +254,7 @@ final class Nav
                     self::link('Ящики', '/settings/mailboxes'),
                     self::link('Шаблоны', '/settings/templates'),
                     self::link('Метки', '/settings/tags'),
+                    self::link('Водяные знаки', '/settings/watermarks'),
                     self::link('Уведомления', '/account/notifications'),
                 ],
                 'Переходы' => [

@@ -98,6 +98,17 @@ final class UnmarkPhoto
         return true;
     }
 
+    /** Кадр со знаком площадки для сборки знака: копия до снятия, если знак уже сняли, иначе сам файл. */
+    public static function markedSource(Media $media): ?string
+    {
+        if ($media->getCustomProperty('unmarked')) {
+            return is_file($path = self::markedPath($media)) ? $path : null;
+        }
+        $path = $media->getCustomProperty('watermarked', false) ? Watermark::cleanPath($media) : $media->getPath();
+
+        return is_file($path) ? $path : null;
+    }
+
     /** Файл, с которого снимается знак: чистая копия, если поверх лежит наш знак, иначе сам оригинал. */
     private function source(Media $media): string
     {

@@ -8,13 +8,18 @@
 # мягче вектора, px), `width` (ширина знака — доля ширины кадра; знак по центру). Пути красятся по порядку, верхний
 # закрывает нижний: белые буквы поверх флажка дают «дырки» со своей прозрачностью.
 #
-#   unmark [--mark <имя>] <каталог> <вход> <выход>
+#   unmark [--mark <имя>] <каталоги через «:»> <вход> <выход>
 #                                         — строка JSON {"mark": имя, "k": сила, "x": …, "y": …, "s": …, "ms": …}
 #                                           и чистый кадр в <выход>; знака нет — {"mark": null}, файл не пишется.
 #                                           --mark: человек сам выбрал знак в CRM — только он, место ищется шире
 #                                           (±12 px), порог силы ниже (от 0,3): знак, который не взялся сам
 #   unmark --calibrate <знак.json> <фото…> — прозрачности по фото площадки (на каждом кадре знак): печатает json знака
-#                                           с новыми `fills`; так заводится новая площадка
+#                                           с новыми `fills`
+#   unmark --tune <имя> <каталоги> [кадр…] [--pairs со_знаком почищенный …]
+#                                         — уточнить прозрачности по накопленному (`media:unmark-tune` ночью)
+#   unmark --learn <имя> <x0,y0,x1,y1> <каталог> <фото с рамкой> <фото…>
+#                                         — новый знак без вектора: рамка долями первого фото, знак собирается по всем
+#                                           (от 5) и ложится в <каталог> как <имя>.png + <имя>.json; строка JSON с итогом
 #
 # Есть ли знак, решает сила k: при найденном месте k — во сколько раз знак на кадре сильнее записанного в реестре.
 # Свой знак даёт k ≈ 1 (на 11 кадрах черновика 89 — 1,00…1,05), чистый кадр — около нуля. Только 0,6 ≤ k ≤ 1,5 —
@@ -22,6 +27,7 @@
 import faulthandler
 import json
 import math
+import os
 import re
 import sys
 import time
@@ -166,7 +172,17 @@ class Mark:
         self.white = float(conf['white'])
         self.soft = float(conf.get('soft', 0))
         self.width = float(conf['width'])
+        self.cx, self.cy = float(conf.get('cx', 0.5)), float(conf.get('cy', 0.5))
         self.fills = {k.lower(): float(v) for k, v in conf['fills'].items()}
+        self.raster = None
+        if conf.get('png'):
+            # знак, собранный по фото (`--learn`): форма — серый PNG 16 бит (0…1), прозрачность — fills['mark']
+            img = cv2.imread(str(path.parent / conf['png']), cv2.IMREAD_UNCHANGED)
+            if img is None:
+                raise ValueError(f'{conf["png"]}: не читается')
+            self.raster = img.astype(np.float32) / (65535 if img.dtype == np.uint16 else 255)
+            self.h, self.w = self.raster.shape[:2]
+            return
         svg = (path.parent / conf['svg']).read_text()
         box = re.search(r'viewBox="([^"]+)"', svg)
         if not box:
@@ -188,6 +204,11 @@ class Mark:
     def render(self, s):
         """Видимое покрытие каждой заливки при масштабе s в 16 сдвигах на четверть пикселя: {(px, py): {заливка: карта}}."""
         w, h = int(math.ceil(self.w * s)) + 3, int(math.ceil(self.h * s)) + 3
+        if self.raster is not None:
+            # растр: в масштаб кадра площадью (без лесенки), сдвиг на четверть пикселя — линейно; отступ пиксель, как у вектора
+            base = cv2.resize(self.raster, (max(1, round(self.w * s)), max(1, round(self.h * s))), interpolation=cv2.INTER_AREA)
+            return Phases(lambda px, py: {'mark': cv2.warpAffine(
+                base, np.float32([[1, 0, 1 + px / SS], [0, 1, 1 + py / SS]]), (w, h), flags=cv2.INTER_LINEAR)})
         layers = []
         for fill, polys in self.paths:
             canvas = np.zeros((h * SS, w * SS), np.uint8)
@@ -258,7 +279,7 @@ def strength(gray, a, white):
 
 
 def locate(gray, mark, fills=None, search=SEARCH, scales=(1.0,)):
-    """Место знака: правило площадки (по центру, доля ширины), уточнённое по кадру до четверти пикселя.
+    """Место знака: правило площадки (центр cx, cy и ширина — доли кадра), уточнённое по кадру до четверти пикселя.
     scales — множители масштаба правила: у обрезанного кадра ширина другая, и знак выбранный руками ищется ещё и
     по масштабу (сначала грубо шагом 3 px на каждом, потом точно на лучшем)."""
     H, W = gray.shape
@@ -269,8 +290,8 @@ def locate(gray, mark, fills=None, search=SEARCH, scales=(1.0,)):
         alphas = Phases(lambda px, py: mark.alpha(maps[(px, py)], fills))
         h, w = alphas[(0, 0)].shape
         # левый верхний угол карты (на пиксель выше и левее логотипа) по правилу
-        rx = int(round((W - mark.w * s) / 2)) - 1
-        ry = int(round((H - mark.h * s) / 2)) - 1
+        rx = int(round(mark.cx * W - mark.w * s / 2)) - 1
+        ry = int(round(mark.cy * H - mark.h * s / 2)) - 1
         cx0, cy0 = rx - search - 2, ry - search - 2
         if cx0 < 0 or cy0 < 0 or cx0 + w + 2 * search + 4 > W or cy0 + h + 2 * search + 4 > H:
             return None
@@ -342,8 +363,19 @@ def read(path):
     return img
 
 
-def marks_in(folder):
-    return [Mark(p) for p in sorted(Path(folder).glob('*.json'))]
+def marks_in(folders):
+    """Знаки из каталогов через «:» (встроенные и собранные по фото). settings.json в каталоге — названия, выключенные и
+    уточнённые прозрачности {"имя": {"title": …, "off": true, "fills": {…}}}: выключенный знак не ищется."""
+    dirs = [Path(f) for f in str(folders).split(os.pathsep) if f]
+    over = {}
+    for d in dirs:
+        if (d / 'settings.json').is_file():
+            over.update(json.loads((d / 'settings.json').read_text()))
+    marks = [Mark(p) for d in dirs for p in sorted(d.glob('*.json')) if p.name != 'settings.json']
+    for m in marks:
+        if over.get(m.name, {}).get('fills'):  # уточнено ночью по снятым кадрам (`--tune`)
+            m.fills.update({k.lower(): float(v) for k, v in over[m.name]['fills'].items()})
+    return [m for m in marks if not over.get(m.name, {}).get('off')]
 
 
 def remove(folder, src, dst, only=None):
@@ -370,9 +402,9 @@ def remove(folder, src, dst, only=None):
     return {'mark': None, 'ms': int((time.time() - t) * 1000)}
 
 
-def calibrate(conf, photos):
-    """Прозрачности заливок: на всех кадрах проекция градиента результата на контуры каждой заливки — ноль."""
-    mark = Mark(conf)
+def fit_fills(mark, photos, scales=(1.0,), search=SEARCH):
+    """Прозрачности заливок: на всех кадрах проекция градиента результата на контуры каждой заливки — ноль.
+    Возвращает (fills, число кадров, остаток)."""
     crops = []
     for f in photos:
         try:
@@ -381,14 +413,14 @@ def calibrate(conf, photos):
             print(e, file=sys.stderr)
             continue
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
-        at = locate(gray, mark)
+        at = locate(gray, mark, search=search, scales=scales)
         if at is None:
             print(f'{f}: знак не помещается в кадр', file=sys.stderr)
             continue
         h, w = at['alpha'].shape
         crops.append((gray[at['iy']:at['iy'] + h, at['ix']:at['ix'] + w], at['maps']))
     if not crops:
-        raise SystemExit('ни одного кадра')
+        raise ValueError('ни одного кадра')
     names = list(mark.fills)
     blur = (lambda x: cv2.GaussianBlur(x, (0, 0), mark.soft)) if mark.soft else (lambda x: x)
 
@@ -414,16 +446,234 @@ def calibrate(conf, photos):
             d[i] = 0.01
             Jm[:, i] = (residuals(q + d) - r) / 0.01
         q = np.clip(q - np.linalg.lstsq(Jm, r, rcond=None)[0], 0.0, 0.9)  # прозрачность не бывает отрицательной
-    conf_out = dict(mark.conf)
-    conf_out['fills'] = {n: round(float(v), 4) for n, v in zip(names, q)}
-    print(json.dumps(conf_out, ensure_ascii=False, indent=2))
-    print(f'кадров: {len(crops)}, остаток: {np.round(residuals(q), 3).tolist()}', file=sys.stderr)
+    return {n: round(float(v), 4) for n, v in zip(names, q)}, len(crops), np.round(residuals(q), 3).tolist()
+
+
+def calibrate(conf, photos):
+    mark = Mark(conf)
+    fills, n, rest = fit_fills(mark, photos)
+    print(json.dumps(dict(mark.conf, fills=fills), ensure_ascii=False, indent=2))
+    print(f'кадров: {n}, остаток: {rest}', file=sys.stderr)
+
+
+LEARN_MIN = 5  # меньше кадров — медиана градиентов не отделяет знак от кузова
+
+
+def poisson(gx, gy):
+    """Поле по его градиентам (уравнение Пуассона через DCT, поток через край — ноль)."""
+    h, w = gx.shape
+    div = np.zeros((h, w), np.float64)
+    div[:, 0] += gx[:, 0]
+    div[:, 1:] += gx[:, 1:] - gx[:, :-1]
+    div[0, :] += gy[0, :]
+    div[1:, :] += gy[1:, :] - gy[:-1, :]
+    d = cv2.dct(div)
+    yy, xx = np.mgrid[0:h, 0:w]
+    den = (2 * np.cos(np.pi * xx / w) - 2) + (2 * np.cos(np.pi * yy / h) - 2)
+    den[0, 0] = 1
+    d /= den
+    d[0, 0] = 0
+    return cv2.idct(d).astype(np.float32)
+
+
+def learn(name, rect, folder, photos):
+    """Новый знак по рамке на первом фото (доли кадра x0,y0,x1,y1) и остальным фото с тем же знаком.
+
+    Знак на всех кадрах один и стоит в тех же долях кадра, а кузов везде разный: медиана градиентов вырезок — градиент
+    самого знака (Dekel и др., 2017), уравнение Пуассона возвращает знак. Его форма (0…1) ложится PNG рядом с json, место —
+    долями первого кадра, прозрачность подбирается по тем же фото, как у `--calibrate`."""
+    if len(photos) < LEARN_MIN:
+        raise ValueError(f'мало фото: нужно {LEARN_MIN} с этим знаком')
+    x0, y0, x1, y1 = rect
+    ref = read(photos[0])
+    H, W = ref.shape[:2]
+    cw, ch = int((x1 - x0) * W) // 2 * 2, int((y1 - y0) * H) // 2 * 2
+    if cw < 16 or ch < 16:
+        raise ValueError('рамка слишком маленькая')
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+
+    def cut(img):
+        h, w = img.shape[:2]
+        k = w / W  # знак площадки — доля ширины кадра, как у правила `width`
+        M = np.float32([[1 / k, 0, -(cx * w - cw * k / 2) / k], [0, 1 / k, -(cy * h - ch * k / 2) / k]])
+        return cv2.warpAffine(img, M, (cw, ch), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+
+    def grads(x):
+        gx, gy = np.zeros_like(x), np.zeros_like(x)
+        gx[:, :-1] = x[:, 1:] - x[:, :-1]
+        gy[:-1, :] = x[1:, :] - x[:-1, :]
+        return gx, gy
+
+    crops = []
+    for f in photos:
+        try:
+            crops.append(cut(cv2.cvtColor(read(f), cv2.COLOR_BGR2GRAY).astype(np.float32)))
+        except ValueError as e:
+            print(e, file=sys.stderr)
+    if len(crops) < LEARN_MIN:
+        raise ValueError(f'мало фото: нужно {LEARN_MIN} с этим знаком')
+    # кадры могли обрезать по-разному: сдвиг к медиане по фазовой корреляции градиентов, дважды
+    for _ in range(2):
+        gx = np.median([grads(c)[0] for c in crops], 0)
+        gy = np.median([grads(c)[1] for c in crops], 0)
+        model = np.hypot(gx, gy)
+        moved = []
+        for c in crops:
+            (dx, dy), _ = cv2.phaseCorrelate(model, np.hypot(*grads(c)))
+            if abs(dx) < 8 and abs(dy) < 8:
+                c = cv2.warpAffine(c, np.float32([[1, 0, -dx], [0, 1, -dy]]), (cw, ch), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+            moved.append(c)
+        crops = moved
+    P = poisson(np.median([grads(c)[0] for c in crops], 0), np.median([grads(c)[1] for c in crops], 0))
+    edge = np.concatenate([P[:3].ravel(), P[-3:].ravel(), P[:, :3].ravel(), P[:, -3:].ravel()])
+    P -= np.median(edge)  # у края рамки знака нет
+    lo, hi = np.percentile(P, [1, 99])
+    white = 235.0
+    if abs(lo) > abs(hi):  # тёмный знак
+        P, white = -P, 20.0
+    P = cv2.medianBlur(P, 3)
+    # Два уровня — фон и знак — по Оцу; форма — линейно между ними: край знака остаётся сглаженным, «облака» фона гасятся
+    top = float(np.percentile(P, 99.5)) or 1.0
+    q8 = np.clip(P / top * 255, 0, 255).astype(np.uint8)
+    t, _ = cv2.threshold(q8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    fg = q8 > t
+    if fg.sum() < 30:
+        raise ValueError('знак в рамке не найден')
+    bg_level, fg_level = float(np.median(P[~fg])), float(np.median(P[fg]))
+    shape = np.clip((P - bg_level) / max(fg_level - bg_level, 1e-6), 0, 1)
+    shape[shape < 0.2] = 0
+    # мелкие пятна — шум кузова, не знак: оставить связные куски от 0,1 % рамки
+    n, lab, stats, _ = cv2.connectedComponentsWithStats((shape > 0.5).astype(np.uint8))
+    keep = np.zeros(lab.shape, np.uint8)
+    for i in range(1, n):
+        if stats[i, cv2.CC_STAT_AREA] >= max(12, cw * ch // 1000):
+            keep[lab == i] = 1
+    shape *= cv2.dilate(keep, np.ones((5, 5), np.uint8)).astype(np.float32)
+    ys, xs = np.nonzero(shape)
+    if not len(xs):
+        raise ValueError('знак в рамке не найден')
+    m = 3
+    bx0, by0 = max(xs.min() - m, 0), max(ys.min() - m, 0)
+    bx1, by1 = min(xs.max() + m + 1, cw), min(ys.max() + m + 1, ch)
+    shape = shape[by0:by1, bx0:bx1]
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    png = folder / f'{name}.png'
+    if not cv2.imwrite(str(png), np.round(shape * 65535).astype(np.uint16)):
+        raise ValueError(f'не записался {png}')
+    conf = {
+        'png': png.name,
+        'fills': {'mark': 0.2},
+        'white': white,
+        'soft': 0,
+        'width': round(shape.shape[1] / W, 5),
+        'cx': round((cx * W - cw / 2 + (bx0 + bx1) / 2) / W, 5),
+        'cy': round((cy * H - ch / 2 + (by0 + by1) / 2) / H, 5),
+    }
+    path = folder / f'{name}.json'
+    path.write_text(json.dumps(conf, ensure_ascii=False, indent=2) + '\n')
+    mark = Mark(path)
+    fills, used, rest = fit_fills(mark, photos)
+    conf['fills'] = fills
+    path.write_text(json.dumps(conf, ensure_ascii=False, indent=2) + '\n')
+    return {'mark': name, 'photos': len(crops), 'used': used, 'fills': fills, 'white': white, 'residual': rest}
+
+
+def fit_pairs(mark, pairs):
+    """Прозрачности по точным парам «кадр со знаком — тот же кадр, почищенный руками»: I − J = Σ a·покрытие·(W − J),
+    линейно по a — наименьшие квадраты по пикселям знака. Пара, где кадры не совпадают вне знака (обрезали, другой
+    кадр), пропускается."""
+    names = list(mark.fills)
+    blur = (lambda x: cv2.GaussianBlur(x, (0, 0), mark.soft)) if mark.soft else (lambda x: x)
+    rows, rhs, used = [], [], 0
+    for marked, clean in pairs:
+        try:
+            gi = cv2.cvtColor(read(marked), cv2.COLOR_BGR2GRAY).astype(np.float32)
+            gj = cv2.cvtColor(read(clean), cv2.COLOR_BGR2GRAY).astype(np.float32)
+        except ValueError as e:
+            print(e, file=sys.stderr)
+            continue
+        if gj.shape != gi.shape:
+            gj = cv2.resize(gj, gi.shape[::-1], interpolation=cv2.INTER_AREA)
+        at = locate(gi, mark)
+        if at is None:
+            continue
+        h, w = at['alpha'].shape
+        I = gi[at['iy']:at['iy'] + h, at['ix']:at['ix'] + w]
+        if not K_MIN <= strength(I, at['alpha'], mark.white) <= K_MAX:
+            continue  # ручная замена не помнит, какой знак был на кадре: чужой знак сюда не идёт
+        J = gj[at['iy']:at['iy'] + h, at['ix']:at['ix'] + w]
+        outside = at['alpha'] < 0.005
+        if not outside.any() or float(np.abs(I - J)[outside].mean()) > 6:
+            continue
+        cover = np.stack([blur(at['maps'][n]) for n in names], -1)
+        inside = cover.sum(-1) > 0.5
+        rows.append(cover[inside] * (mark.white - J[inside])[:, None])
+        rhs.append((I - J)[inside])
+        used += 1
+    if not used:
+        return None, 0
+    q, *_ = np.linalg.lstsq(np.concatenate(rows), np.concatenate(rhs), rcond=None)
+    return {n: round(float(np.clip(v, 0.0, 0.9)), 4) for n, v in zip(names, q)}, used
+
+
+def leftover(mark, photos, fills):
+    """Сколько края знака остаётся после снятия с этими прозрачностями — среднее по кадрам."""
+    out = []
+    for f in photos:
+        try:
+            gray = cv2.cvtColor(read(f), cv2.COLOR_BGR2GRAY).astype(np.float32)
+        except ValueError:
+            continue
+        at = locate(gray, mark, fills=fills)
+        if at is None:
+            continue
+        h, w = at['alpha'].shape
+        out.append(edge_energy(gray[at['iy']:at['iy'] + h, at['ix']:at['ix'] + w], at['alpha'], mark.white, band_of(at['alpha'])))
+    return round(float(np.mean(out)), 3) if out else None
+
+
+def tune(name, folders, photos, pairs):
+    """Ночное уточнение знака: по ручным парам (от трёх — точнее всего), иначе по снятым автоматически кадрам (от десяти).
+    Печатает новые прозрачности и остаток на контуре до и после — принимать, только если остаток меньше."""
+    mark = next((m for m in marks_in(folders) if m.name == name), None)
+    if mark is None:
+        raise ValueError(f'знака {name} в реестре нет')
+    fills, used = fit_pairs(mark, pairs) if len(pairs) >= 3 else (None, 0)
+    source = 'pairs'
+    if fills is None or used < 3:
+        if len(photos) < 10:
+            return {'mark': name, 'fills': None, 'reason': 'мало кадров'}
+        fills, used, _ = fit_fills(mark, photos)
+        source = 'photos'
+    check = photos or [m for m, _ in pairs]
+    return {'mark': name, 'fills': fills, 'source': source, 'used': used,
+            'before': leftover(mark, check, mark.fills), 'after': leftover(mark, check, fills)}
 
 
 if __name__ == '__main__':
     args = sys.argv[1:]
     if args[:1] == ['--calibrate'] and len(args) >= 3:
         calibrate(args[1], args[2:])
+    elif args[:1] == ['--tune'] and len(args) >= 3:
+        # --tune <имя> <каталоги> [кадр…] [--pairs со_знаком почищенный …]
+        rest = args[3:]
+        cut = rest.index('--pairs') if '--pairs' in rest else len(rest)
+        flat = rest[cut + 1:]
+        try:
+            print(json.dumps(tune(args[1], args[2], rest[:cut], list(zip(flat[::2], flat[1::2]))), ensure_ascii=False), flush=True)
+        except ValueError as e:
+            print(json.dumps({'mark': None, 'error': str(e)}, ensure_ascii=False), flush=True)
+            sys.exit(2)
+    elif args[:1] == ['--learn'] and len(args) >= 5:
+        try:
+            rect = [float(v) for v in args[2].split(',')]
+            if len(rect) != 4:
+                raise ValueError('рамка — четыре доли кадра x0,y0,x1,y1')
+            print(json.dumps(learn(args[1], rect, args[3], args[4:]), ensure_ascii=False), flush=True)
+        except ValueError as e:
+            print(json.dumps({'mark': None, 'error': str(e)}, ensure_ascii=False), flush=True)
+            sys.exit(2)
     elif len(args) == 5 and args[0] == '--mark' or len(args) == 3:
         only = args[1] if args[0] == '--mark' else None
         try:
@@ -432,5 +682,6 @@ if __name__ == '__main__':
             print(json.dumps({'mark': None, 'error': str(e)}, ensure_ascii=False), flush=True)
             sys.exit(2)
     else:
-        print('unmark [--mark <имя>] <каталог знаков> <вход> <выход> | unmark --calibrate <знак.json> <фото…>', file=sys.stderr)
+        print('unmark [--mark <имя>] <каталог знаков> <вход> <выход> | unmark --calibrate <знак.json> <фото…> | '
+              'unmark --learn <имя> <x0,y0,x1,y1> <каталог> <фото с рамкой> <фото…>', file=sys.stderr)
         sys.exit(64)

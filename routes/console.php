@@ -7,6 +7,8 @@ Schedule::command('offers:tick')->everyMinute()->withoutOverlapping();
 Schedule::command('park:tick')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('park:digest')->weekdays()->dailyAt('09:00');
 Schedule::command('billing:tick')->dailyAt('09:05');
+// Прозрачности водяных знаков по снятым и почищенным вручную кадрам — ночью, процессор свободен.
+Schedule::command('media:unmark-tune')->dailyAt('04:20')->withoutOverlapping();
 Schedule::command('billing:close-month')->monthlyOn(1, '06:00');
 // Оплаты по ссылкам — подстраховка уведомлений ЮKassa; выписка Сбера — днём сегодняшняя, утром вчерашняя целиком и сводка.
 Schedule::command('acquiring:sync')->everyFiveMinutes()->withoutOverlapping();

@@ -6,6 +6,7 @@ use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Media\Actions\RotatePhoto;
 use App\Media\Actions\UnmarkPhoto;
 use App\Media\PhotoIngest;
+use App\Media\Unmark;
 use App\Media\Watermarks;
 use App\Offers\Jobs\ImportOfferArchive;
 use App\Offers\Offer;
@@ -129,6 +130,33 @@ class OfferPhotoController
         }
 
         return $this->gallery($offer->refresh());
+    }
+
+    /**
+     * Новый знак рамкой: обвели знак на этом фото, знак собирается по нему и остальным фото предложения (до 12 — хватает
+     * с запасом, а запрос укладывается в лимит Octane). Ответ — название и сколько фото пошло; шторка открывается заново.
+     */
+    public function learn(Request $request, Offer $offer, Media $media, Unmark $unmark)
+    {
+        $this->own($offer, $media);
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:40'],
+            'x0' => ['required', 'numeric', 'between:0,1'], 'y0' => ['required', 'numeric', 'between:0,1'],
+            'x1' => ['required', 'numeric', 'between:0,1'], 'y1' => ['required', 'numeric', 'between:0,1'],
+        ]);
+        if ($data['x1'] - $data['x0'] < 0.03 || $data['y1'] - $data['y0'] < 0.02) {
+            return response()->json(['message' => 'Обведите знак целиком'], 422);
+        }
+        $photos = collect([$media])->merge($offer->photos()->reject(fn (Media $m) => $m->id === $media->id))
+            ->reject(fn (Media $m) => $m->getCustomProperty('unmarked') === UnmarkPhoto::MANUAL)
+            ->map(fn (Media $m) => UnmarkPhoto::markedSource($m))->filter()->take(12)->values()->all();
+        try {
+            $mark = $unmark->learn(trim($data['title']), [$data['x0'], $data['y0'], $data['x1'], $data['y1']], $photos);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => "Знак «{$data['title']}» собран по {$mark['used']} фото"]);
     }
 
     public function destroy(Offer $offer, Media $media)

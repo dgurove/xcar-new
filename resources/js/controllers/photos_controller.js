@@ -437,6 +437,67 @@ export default class extends Controller {
             const file = e.target.files?.[0];
             if (file) send(form({ file }));
         });
+        // «Новый знак»: рамка по кадру (доли кадра), название площадки — знак собирается по фото предложения.
+        const frame = d.querySelector('[data-mark-frame]');
+        const box = d.querySelector('[data-mark-box]');
+        const learn = d.querySelector('[data-mark-learn]');
+        const title = learn?.querySelector('input');
+        const go = learn?.querySelector('[data-mark-learn-go]');
+        let start = null, rect = null;
+        const point = (e) => {
+            const r = img.getBoundingClientRect();
+            const clamp = (v) => Math.min(1, Math.max(0, v));
+            return [clamp((e.clientX - r.left) / r.width), clamp((e.clientY - r.top) / r.height)];
+        };
+        const sync = () => {
+            box.hidden = !rect;
+            if (rect) Object.assign(box.style, { left: `${rect[0] * 100}%`, top: `${rect[1] * 100}%`, width: `${(rect[2] - rect[0]) * 100}%`, height: `${(rect[3] - rect[1]) * 100}%` });
+            if (go) go.disabled = !(rect && rect[2] - rect[0] > 0.03 && rect[3] - rect[1] > 0.02 && title.value.trim());
+        };
+        d.querySelector('[data-mark-learn-open]')?.addEventListener('click', () => {
+            d.querySelectorAll('[data-mark-main]').forEach((el) => { el.hidden = true; });
+            learn.hidden = false;
+            d.querySelector('[data-mark-head]').textContent = 'Обведите знак';
+            frame.classList.add('is-drawing');
+        });
+        frame.addEventListener('pointerdown', (e) => {
+            if (!frame.classList.contains('is-drawing')) return;
+            e.preventDefault();
+            frame.setPointerCapture(e.pointerId);
+            start = point(e);
+            rect = null;
+            sync();
+        });
+        frame.addEventListener('pointermove', (e) => {
+            if (!start) return;
+            const p = point(e);
+            rect = [Math.min(start[0], p[0]), Math.min(start[1], p[1]), Math.max(start[0], p[0]), Math.max(start[1], p[1])];
+            sync();
+        });
+        frame.addEventListener('pointerup', () => { start = null; sync(); });
+        // шторка тянется за палец с любого места: рамку рисуют, а не закрывают шторку
+        ['touchstart', 'touchmove'].forEach((t) => frame.addEventListener(t, (e) => {
+            if (frame.classList.contains('is-drawing')) e.stopPropagation();
+        }, { passive: true }));
+        title?.addEventListener('input', sync);
+        go?.addEventListener('click', () => busy(async () => {
+            const label = go.textContent;
+            go.textContent = 'Собираем знак';
+            try {
+                const res = await fetch(`${owner.urlValue}/${it.id}/learn`, {
+                    method: 'POST',
+                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': owner.token, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: form({ title: title.value.trim(), x0: rect[0], y0: rect[1], x1: rect[2], y1: rect[3] }),
+                });
+                const answer = await res.json().catch(() => ({}));
+                if (!res.ok) { window.toast?.(answer.message || 'Не получилось', 'danger'); return; }
+                window.toast?.(answer.message);
+                closeSheet(d);
+                this.markSheet(it);
+            } finally {
+                go.textContent = label;
+            }
+        }));
         // Без своей записи в истории: «Назад» закрывает просмотрщик под шторкой, как у подтверждения.
         openSheet(d, { history: false });
     }

@@ -4,6 +4,7 @@ namespace App\Media;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -26,7 +27,7 @@ final class Unmark
         try {
             // nice: сайт и почта на двух ядрах впереди; на кадр ~0,1 с, на 48 МП — секунды.
             $only = $mark === null ? [] : ['--mark', $mark];
-            $result = Process::timeout(60)->run(['nice', '-n', '10', config('xcar.unmark', 'unmark'), ...$only, resource_path('watermarks'), $path, $out]);
+            $result = Process::timeout(60)->run(['nice', '-n', '10', config('xcar.unmark', 'unmark'), ...$only, Watermarks::dirs(), $path, $out]);
             $line = trim((string) collect(explode("\n", trim($result->output())))->last());
             $answer = json_decode($line, true);
             if (! $result->successful() || ! is_array($answer)) {
@@ -44,6 +45,30 @@ final class Unmark
 
             return $this->none($out);
         }
+    }
+
+    /**
+     * Новый знак по рамке (доли кадра x0, y0, x1, y1) на первом фото и остальным фото с тем же знаком: `unmark --learn`
+     * кладёт форму и json в `Watermarks::learnedDir()`, название — в реестр.
+     *
+     * @param  list<string>  $photos  первое — то, на котором обвели
+     * @return array{name: string, used: int} сколько фото пошло в подбор прозрачности
+     *
+     * @throws RuntimeException с причиной для человека («мало фото…», «знак в рамке не найден»)
+     */
+    public function learn(string $title, array $rect, array $photos): array
+    {
+        $name = 'm'.now()->format('ymdHis');
+        $result = Process::timeout(180)->run(['nice', '-n', '10', config('xcar.unmark', 'unmark'), '--learn', $name,
+            implode(',', array_map(fn ($v) => round((float) $v, 5), $rect)), Watermarks::learnedDir(), ...$photos]);
+        $answer = json_decode(trim((string) collect(explode("\n", trim($result->output())))->last()), true);
+        if (! is_array($answer) || empty($answer['mark'])) {
+            Log::warning('unmark --learn', ['exit' => $result->exitCode(), 'stderr' => mb_substr($result->errorOutput(), -1500)]);
+            throw new RuntimeException(is_array($answer) && ! empty($answer['error']) ? $answer['error'] : 'Знак не собрался');
+        }
+        Watermarks::set($name, ['title' => $title]);
+
+        return ['name' => $name, 'used' => (int) ($answer['used'] ?? 0)];
     }
 
     private function none(string $out): null
