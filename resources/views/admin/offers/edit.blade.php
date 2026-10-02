@@ -132,7 +132,6 @@
             @csrf @method('put')
 
             <x-ui.card title="Транспортное средство" class="order-2">
-                @include('admin.offers.scan-row')
                 @include('admin.offers.fields.car')
             </x-ui.card>
 
@@ -148,6 +147,7 @@
         </x-ui.card>
 
         <x-ui.card title="Документы" class="order-4 @4xl:col-span-2">
+            @include('admin.offers.scan-row')
             @include('admin.offers.papers-block')
         </x-ui.card>
 
