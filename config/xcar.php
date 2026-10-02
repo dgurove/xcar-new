@@ -35,6 +35,8 @@ return [
     'park_docs_days' => 3,           // бумаги вендору не отправлены столько дней после приёма — дело дня
     // «✨ Распознать»: скрипт deploy/bin/ocr (в образе — /usr/local/bin/ocr), локально — путь к обёртке над venv.
     'ocr' => env('XCAR_OCR', 'ocr'),
+    // Чужой водяной знак с фото предложения (Мигторг): deploy/bin/unmark, реестр знаков — resources/watermarks.
+    'unmark' => env('XCAR_UNMARK', 'unmark'),
 
     // Хаб живых обновлений (Mercure внутри Caddy). Пусто — публикация молча пропускается.
     'mercure' => [

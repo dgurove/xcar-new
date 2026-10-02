@@ -2,6 +2,7 @@
 
 namespace App\Media;
 
+use App\Offers\Offer;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
@@ -51,12 +52,17 @@ final class PhotoIngest
     public function add(HasMedia $model, string $collection, string $path, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
         $webp = null;
+        $clean = null;
         try {
             $path = $this->fromHeic($path);
             $this->checkSize($path);
             // Отпечаток исходника — чтобы тот же файл (из письма, с телефона, из архива) не лёг второй раз.
             $properties += ['sha' => hash_file('sha256', $path)];
-            $webp = $this->shrink($path, $max);
+            // Чужой знак площадки снимается до сжатия: webp размывает край знака, и формула снятия перестаёт сходиться.
+            if ($collection === 'photos' && $model instanceof Offer && ($clean = app(Unmark::class)($path))) {
+                $properties += ['unmarked' => $clean['mark']];
+            }
+            $webp = $this->shrink($clean['path'] ?? $path, $max);
 
             return $model->addMedia($webp)
                 ->usingFileName($this->fileName($name))
@@ -65,6 +71,9 @@ final class PhotoIngest
                 ->toMediaCollection($collection);
         } finally {
             @unlink($path);
+            if ($clean) {
+                @unlink($clean['path']);
+            }
             if ($webp && is_file($webp)) {
                 @unlink($webp);
             }

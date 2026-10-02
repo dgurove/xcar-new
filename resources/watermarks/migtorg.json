@@ -1,0 +1,11 @@
+{
+  "svg": "migtorg.svg",
+  "fills": {
+    "#d6514a": 0.2252,
+    "black": 0.2082,
+    "white": 0.0151
+  },
+  "white": 235,
+  "soft": 0.3,
+  "width": 0.6022
+}

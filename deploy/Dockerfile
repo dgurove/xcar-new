@@ -34,6 +34,10 @@ ENV ORT_DISABLE_TELEMETRY=1
 RUN python3 -c "from PIL import Image; Image.new('RGB', (320, 80), 'white').save('/tmp/page-warm.png')" \
     && ocr /tmp/page-warm.png && rm /tmp/page-warm.png
 
+# unmark — чужой водяной знак с фото предложения (`Media\Unmark`): обратное смешивание на том же opencv и numpy.
+COPY deploy/bin/unmark /usr/local/bin/unmark
+RUN python3 -c "import ast; ast.parse(open('/usr/local/bin/unmark').read())"
+
 COPY deploy/php/app.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY deploy/php/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint

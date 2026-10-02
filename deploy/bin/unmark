@@ -1,0 +1,392 @@
+#!/usr/bin/env python3
+# Снятие водяного знака площадки (Мигторг и др.) обратным смешиванием: знак кладут поверх кадра как I = a·W + (1−a)·J,
+# поэтому J = (I − a·W) / (1 − a) возвращает настоящие пиксели. Ничего не дорисовывается: повреждения под знаком —
+# то, по чему покупатель ставит цену, — остаются как были.
+#
+# Реестр знаков — каталог `resources/watermarks`: на площадку `<имя>.json` и её логотип вектором. В json: `svg`, `fills`
+# (цвет заливки пути → прозрачность, с которой площадка его кладёт), `white` (цвет знака), `soft` (насколько край
+# мягче вектора, px), `width` (ширина знака — доля ширины кадра; знак по центру). Пути красятся по порядку, верхний
+# закрывает нижний: белые буквы поверх флажка дают «дырки» со своей прозрачностью.
+#
+#   unmark <каталог> <вход> <выход>       — строка JSON {"mark": имя, "k": сила, "x": …, "y": …, "s": …, "ms": …}
+#                                           и чистый кадр в <выход>; знака нет — {"mark": null}, файл не пишется
+#   unmark --calibrate <знак.json> <фото…> — прозрачности по фото площадки (на каждом кадре знак): печатает json знака
+#                                           с новыми `fills`; так заводится новая площадка
+#
+# Есть ли знак, решает сила k: при найденном месте k — во сколько раз знак на кадре сильнее записанного в реестре.
+# Свой знак даёт k ≈ 1 (на 11 кадрах черновика 89 — 1,00…1,05), чистый кадр — около нуля. Только 0,6 ≤ k ≤ 1,5 —
+# снимаем, иначе кадр не трогаем: снятие несуществующего знака впечатало бы в кадр тёмный негатив логотипа.
+import faulthandler
+import json
+import math
+import re
+import sys
+import time
+from pathlib import Path
+
+import cv2
+import numpy as np
+
+faulthandler.enable()
+cv2.setNumThreads(1)
+
+SS = 4  # суперсэмплинг растеризации: край логотипа с точностью до четверти пикселя
+SEARCH = 4  # на сколько пикселей уточняется место от правила площадки
+K_MIN, K_MAX = 0.6, 1.5
+
+NUM = r'[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?'
+
+
+def parse_path(d):
+    """Контуры пути SVG ломаными. Команды M L H V C S Q T Z в обоих регистрах; дуги (A) не поддерживаются — ошибка."""
+    tokens = re.findall(r'[A-Za-z]|' + NUM, d)
+    polys, cur = [], []
+    x = y = sx = sy = 0.0
+    cx = cy = None  # вторая контрольная точка прошлой кривой — для S и T
+    i, cmd, prev = 0, None, ''
+
+    def nums(n):
+        nonlocal i
+        chunk = tokens[i:i + n]
+        if len(chunk) < n or any(re.fullmatch('[A-Za-z]', v) for v in chunk):
+            raise ValueError(f'обрыв аргументов команды {cmd}')
+        i += n
+        return [float(v) for v in chunk]
+
+    def bezier(pts):
+        for t in np.linspace(0, 1, 9)[1:]:
+            u = 1 - t
+            if len(pts) == 4:
+                w = (u ** 3, 3 * u * u * t, 3 * u * t * t, t ** 3)
+            else:
+                w = (u * u, 2 * u * t, t * t)
+            cur.append((sum(k * p[0] for k, p in zip(w, pts)), sum(k * p[1] for k, p in zip(w, pts))))
+
+    while i < len(tokens):
+        if re.fullmatch('[A-Za-z]', tokens[i]):
+            cmd = tokens[i]
+            i += 1
+            if cmd in 'Zz':
+                if cur:
+                    polys.append(np.array(cur))
+                cur = []
+                x, y = sx, sy  # после Z текущая точка — начало контура
+                cx = cy = None
+                continue
+            if cmd in 'Aa':
+                raise ValueError('дуги (A) в логотипе не поддерживаются — переведите их в кривые')
+            if cmd not in 'MmLlHhVvCcSsQqTt':
+                raise ValueError(f'неизвестная команда пути {cmd}')
+            continue
+        if cmd is None:
+            raise ValueError('путь начинается не с команды')
+        rel = cmd.islower()
+        ox, oy = (x, y) if rel else (0.0, 0.0)
+        c = cmd.upper()
+        if c != 'M' and not cur:
+            cur = [(x, y)]  # рисование сразу после Z продолжает от начала контура
+        if c == 'M':
+            if cur:
+                polys.append(np.array(cur))
+            px, py = nums(2)
+            x, y = ox + px, oy + py
+            sx, sy = x, y
+            cur = [(x, y)]
+            cmd = 'l' if rel else 'L'  # пары после M — это L
+            cx = cy = None
+        elif c == 'L':
+            px, py = nums(2)
+            x, y = ox + px, oy + py
+            cur.append((x, y))
+            cx = cy = None
+        elif c == 'H':
+            (px,) = nums(1)
+            x = ox + px
+            cur.append((x, y))
+            cx = cy = None
+        elif c == 'V':
+            (py,) = nums(1)
+            y = oy + py
+            cur.append((x, y))
+            cx = cy = None
+        elif c in 'CS':
+            if c == 'C':
+                x1, y1, x2, y2, x3, y3 = nums(6)
+                p1 = (ox + x1, oy + y1)
+            else:
+                x2, y2, x3, y3 = nums(4)
+                p1 = (2 * x - cx, 2 * y - cy) if cx is not None and prev in 'CS' else (x, y)
+            p2, p3 = (ox + x2, oy + y2), (ox + x3, oy + y3)
+            bezier([(x, y), p1, p2, p3])
+            cx, cy = p2
+            x, y = p3
+        elif c in 'QT':
+            if c == 'Q':
+                x1, y1, x3, y3 = nums(4)
+                p1 = (ox + x1, oy + y1)
+            else:
+                x3, y3 = nums(2)
+                p1 = (2 * x - cx, 2 * y - cy) if cx is not None and prev in 'QT' else (x, y)
+            p3 = (ox + x3, oy + y3)
+            bezier([(x, y), p1, p3])
+            cx, cy = p1
+            x, y = p3
+        prev = c
+    if cur:
+        polys.append(np.array(cur))
+    return polys
+
+
+class Mark:
+    def __init__(self, path):
+        path = Path(path)
+        conf = json.loads(path.read_text())
+        self.name = path.stem
+        self.conf = conf
+        self.white = float(conf['white'])
+        self.soft = float(conf.get('soft', 0))
+        self.width = float(conf['width'])
+        self.fills = {k.lower(): float(v) for k, v in conf['fills'].items()}
+        svg = (path.parent / conf['svg']).read_text()
+        box = re.search(r'viewBox="([^"]+)"', svg)
+        if not box:
+            raise ValueError(f'{conf["svg"]}: нет viewBox')
+        vx, vy, self.w, self.h = (float(v) for v in re.split(r'[\s,]+', box[1].strip()))
+        self.paths = []  # (заливка, контуры) в порядке рисования
+        for tag in re.findall(r'<path\b[^>]*>', svg):
+            d = re.search(r'\sd="([^"]+)"', tag)
+            fill = re.search(r'\sfill="([^"]+)"', tag)
+            if not d:
+                continue
+            fill = (fill[1] if fill else 'black').lower()
+            if fill not in self.fills:
+                raise ValueError(f'{conf["svg"]}: у заливки {fill} нет прозрачности в fills')
+            self.paths.append((fill, [p - [vx, vy] for p in parse_path(d[1])]))
+        if not self.paths:
+            raise ValueError(f'{conf["svg"]}: путей нет')
+
+    def render(self, s):
+        """Видимое покрытие каждой заливки при масштабе s в 16 сдвигах на четверть пикселя: {(px, py): {заливка: карта}}."""
+        w, h = int(math.ceil(self.w * s)) + 3, int(math.ceil(self.h * s)) + 3
+        layers = []
+        for fill, polys in self.paths:
+            canvas = np.zeros((h * SS, w * SS), np.uint8)
+            # fillPoly с несколькими контурами красит по чёт-нечёт: внутренность «О» остаётся пустой
+            pts = [np.round((p * s * SS + SS) * 16).astype(np.int32) for p in polys]
+            cv2.fillPoly(canvas, pts, 255, lineType=cv2.LINE_8, shift=4)
+            layers.append((fill, canvas))
+        # Верхний путь закрывает нижние: видимая доля пути — его покрытие за вычетом всего, что нарисовано позже.
+        vis = {}
+        occl = np.ones((h * SS, w * SS), np.float32)
+        for fill, canvas in reversed(layers):
+            c = canvas.astype(np.float32) / 255
+            vis[fill] = vis.get(fill, 0) + c * occl
+            occl *= 1 - c
+        out = {}
+        for py in range(SS):
+            for px in range(SS):
+                out[(px, py)] = {
+                    f: cv2.resize(np.pad(m, ((py, SS - py), (px, SS - px)))[:h * SS, :w * SS], (w, h), interpolation=cv2.INTER_AREA)
+                    for f, m in vis.items()
+                }
+        # Карта начинается на пиксель левее и выше логотипа (отступ SS в субпикселях)
+        return out
+
+    def alpha(self, vis, fills=None):
+        fills = fills or self.fills
+        a = sum(fills[f] * m for f, m in vis.items()).astype(np.float32)
+        return cv2.GaussianBlur(a, (0, 0), self.soft) if self.soft else a
+
+
+def grad(x):
+    return cv2.Sobel(x, cv2.CV_32F, 1, 0), cv2.Sobel(x, cv2.CV_32F, 0, 1)
+
+
+def band_of(a):
+    gx, gy = grad(a)
+    return cv2.dilate((np.hypot(gx, gy) > 0.01).astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)
+
+
+def edge_energy(gray, a, white, band):
+    """Сколько края знака осталось после снятия: средний квадрат градиента результата у контуров логотипа."""
+    J = (gray - a * white) / (1 - a)
+    gx, gy = grad(J)
+    gx, gy = np.clip(gx, -60, 60), np.clip(gy, -60, 60)
+    return float((gx * gx + gy * gy)[band].mean())
+
+
+def strength(gray, a, white):
+    """Сила знака k: при каком множителе прозрачности снятие обнуляет проекцию градиента на контуры логотипа."""
+    ax, ay = grad(a)
+    norm = float((ax * ax + ay * ay).sum())
+
+    def proj(k):
+        ak = np.minimum(a * k, 0.95)
+        J = (gray - ak * white) / (1 - ak)
+        jx, jy = grad(J)
+        return float((np.clip(jx, -60, 60) * ax + np.clip(jy, -60, 60) * ay).sum()) / norm
+
+    lo, hi = 0.0, 3.0
+    if proj(lo) <= 0:
+        return 0.0
+    if proj(hi) > 0:
+        return hi
+    for _ in range(24):
+        mid = (lo + hi) / 2
+        if proj(mid) > 0:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def locate(gray, mark, fills=None):
+    """Место знака: правило площадки (по центру, доля ширины), уточнённое по кадру до четверти пикселя."""
+    H, W = gray.shape
+    s = mark.width * W / mark.w
+    maps = mark.render(s)
+    a0 = mark.alpha(maps[(0, 0)], fills)
+    h, w = a0.shape
+    # левый верхний угол карты (на пиксель выше и левее логотипа) по правилу
+    rx = int(round((W - mark.w * s) / 2)) - 1
+    ry = int(round((H - mark.h * s) / 2)) - 1
+    cx0, cy0 = rx - SEARCH - 2, ry - SEARCH - 2
+    if cx0 < 0 or cy0 < 0 or cx0 + w + 2 * SEARCH + 4 > W or cy0 + h + 2 * SEARCH + 4 > H:
+        return None
+    crop = gray[cy0:cy0 + h + 2 * SEARCH + 4, cx0:cx0 + w + 2 * SEARCH + 4]
+    alphas = {ph: mark.alpha(m, fills) for ph, m in maps.items()}
+    bands = {}
+
+    def energy(ix, iy, ph):
+        a = np.zeros(crop.shape, np.float32)
+        a[iy - cy0:iy - cy0 + h, ix - cx0:ix - cx0 + w] = alphas[ph]
+        if ph not in bands:
+            bands[ph] = band_of(alphas[ph])
+        band = np.zeros(crop.shape, bool)
+        band[iy - cy0:iy - cy0 + h, ix - cx0:ix - cx0 + w] = bands[ph]
+        return edge_energy(crop, a, mark.white, band)
+
+    best = min(((energy(rx + dx, ry + dy, (0, 0)), rx + dx, ry + dy) for dy in range(-SEARCH, SEARCH + 1) for dx in range(-SEARCH, SEARCH + 1)))
+    _, bx, by = best
+    # дробная часть: сдвиг на четверть пикселя вправо-вниз внутри соседних целых
+    best = min(((energy(bx + dx, by + dy, ph), bx + dx, by + dy, ph)
+                for dy in (-1, 0) for dx in (-1, 0) for ph in alphas
+                if abs(bx + dx - rx) <= SEARCH and abs(by + dy - ry) <= SEARCH), default=None)
+    _, ix, iy, ph = best
+    return {'ix': ix, 'iy': iy, 'ph': ph, 'maps': maps[ph], 'alpha': alphas[ph], 's': s,
+            'x': ix + 1 + ph[0] / SS, 'y': iy + 1 + ph[1] / SS}
+
+
+def unmark(img, mark, at):
+    """Яркость снимается резкой альфой, цвет — размытой: jpeg и webp хранят цвет вдвое грубее яркости."""
+    a = at['alpha']
+    h, w = a.shape
+    y0, x0 = at['iy'], at['ix']
+    m = 3
+    region = img[y0 - m:y0 + h + m, x0 - m:x0 + w + m].astype(np.float32)
+    full = np.zeros(region.shape[:2], np.float32)
+    full[m:m + h, m:m + w] = a
+    soft = cv2.GaussianBlur(full, (0, 0), 0.8)
+    ycc = cv2.cvtColor(region, cv2.COLOR_BGR2YCrCb)
+    wy = cv2.cvtColor(np.full((1, 1, 3), mark.white, np.float32), cv2.COLOR_BGR2YCrCb)[0, 0]
+    for ch, aa in ((0, full), (1, soft), (2, soft)):
+        ycc[..., ch] = (ycc[..., ch] - aa * wy[ch]) / (1 - aa)
+    out = img.copy()
+    out[y0 - m:y0 + h + m, x0 - m:x0 + w + m] = np.clip(cv2.cvtColor(ycc, cv2.COLOR_YCrCb2BGR) + 0.5, 0, 255).astype(np.uint8)
+    return out
+
+
+def read(path):
+    img = cv2.imread(str(path), cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError(f'не читается как изображение: {path}')
+    return img
+
+
+def marks_in(folder):
+    return [Mark(p) for p in sorted(Path(folder).glob('*.json'))]
+
+
+def remove(folder, src, dst):
+    t = time.time()
+    img = read(src)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    for mark in marks_in(folder):
+        at = locate(gray, mark)
+        if at is None:
+            continue
+        h, w = at['alpha'].shape
+        crop = gray[at['iy']:at['iy'] + h, at['ix']:at['ix'] + w]
+        k = strength(crop, at['alpha'], mark.white)
+        if K_MIN <= k <= K_MAX:
+            ok = cv2.imwrite(str(dst), unmark(img, mark, at), [cv2.IMWRITE_JPEG_QUALITY, 95])
+            if not ok:
+                raise ValueError(f'не записался {dst}')
+            return {'mark': mark.name, 'k': round(k, 3), 'x': round(at['x'], 2), 'y': round(at['y'], 2),
+                    's': round(at['s'], 4), 'ms': int((time.time() - t) * 1000)}
+    return {'mark': None, 'ms': int((time.time() - t) * 1000)}
+
+
+def calibrate(conf, photos):
+    """Прозрачности заливок: на всех кадрах проекция градиента результата на контуры каждой заливки — ноль."""
+    mark = Mark(conf)
+    crops = []
+    for f in photos:
+        try:
+            img = read(f)
+        except ValueError as e:
+            print(e, file=sys.stderr)
+            continue
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
+        at = locate(gray, mark)
+        if at is None:
+            print(f'{f}: знак не помещается в кадр', file=sys.stderr)
+            continue
+        h, w = at['alpha'].shape
+        crops.append((gray[at['iy']:at['iy'] + h, at['ix']:at['ix'] + w], at['maps']))
+    if not crops:
+        raise SystemExit('ни одного кадра')
+    names = list(mark.fills)
+    blur = (lambda x: cv2.GaussianBlur(x, (0, 0), mark.soft)) if mark.soft else (lambda x: x)
+
+    def residuals(q):
+        fills = dict(zip(names, q))
+        num, den = np.zeros(len(names)), np.zeros(len(names))
+        for g, maps in crops:
+            a = mark.alpha(maps, fills)
+            jx, jy = grad((g - a * mark.white) / (1 - a))
+            jx, jy = np.clip(jx, -60, 60), np.clip(jy, -60, 60)
+            for i, n in enumerate(names):
+                cx, cy = grad(blur(maps[n]))
+                num[i] += float((jx * cx + jy * cy).sum())
+                den[i] += float((cx * cx + cy * cy).sum())
+        return num / np.maximum(den, 1e-9)
+
+    q = np.array([mark.fills[n] for n in names])
+    for _ in range(8):
+        r = residuals(q)
+        Jm = np.zeros((len(names), len(names)))
+        for i in range(len(names)):
+            d = np.zeros(len(names))
+            d[i] = 0.01
+            Jm[:, i] = (residuals(q + d) - r) / 0.01
+        q = np.clip(q - np.linalg.lstsq(Jm, r, rcond=None)[0], 0.0, 0.9)  # прозрачность не бывает отрицательной
+    conf_out = dict(mark.conf)
+    conf_out['fills'] = {n: round(float(v), 4) for n, v in zip(names, q)}
+    print(json.dumps(conf_out, ensure_ascii=False, indent=2))
+    print(f'кадров: {len(crops)}, остаток: {np.round(residuals(q), 3).tolist()}', file=sys.stderr)
+
+
+if __name__ == '__main__':
+    args = sys.argv[1:]
+    if args[:1] == ['--calibrate'] and len(args) >= 3:
+        calibrate(args[1], args[2:])
+    elif len(args) == 3:
+        try:
+            print(json.dumps(remove(*args), ensure_ascii=False), flush=True)
+        except ValueError as e:
+            print(json.dumps({'mark': None, 'error': str(e)}, ensure_ascii=False), flush=True)
+            sys.exit(2)
+    else:
+        print(__doc__ or 'unmark <каталог знаков> <вход> <выход> | unmark --calibrate <знак.json> <фото…>', file=sys.stderr)
+        sys.exit(64)
