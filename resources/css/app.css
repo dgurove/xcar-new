@@ -2070,6 +2070,18 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 .surface-crm .cards--grid, .surface-park .cards--grid { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-self: end; --aside-align: end; --aside-pad: .5rem .75rem .75rem; }
 @media (min-width: 640px) { .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-self: end; --aside-align: end; --aside-pad: .5rem .75rem .75rem; } }
 .surface-crm .cards--grid .card-aside, .surface-crm .cards:not(.cards--list) .card-aside, .surface-park .cards--grid .card-aside, .surface-park .cards:not(.cards--list) .card-aside { flex-direction: row; }
+/* Цена и город предложения CRM (x-offer.crm-card): цена обычным текстом, город приглушённым с меткой. В строке — цена
+   справа, город под ней; в плитке — одной нижней строкой: город слева, цена справа. */
+.card-price { display: inline-flex; align-items: baseline; gap: .5rem; white-space: nowrap; color: var(--color-ink); }
+.card-price:empty { display: none; }
+.card-city { min-width: 0; max-width: 10rem; order: 2; }
+.card-city .place-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.surface-crm .cards--grid .card-aside { justify-self: stretch; justify-content: space-between; flex-wrap: nowrap; align-items: baseline; }
+.surface-crm .cards--grid .card-city { order: 0; max-width: none; }
+@media (min-width: 640px) {
+  .surface-crm .cards:not(.cards--list) .card-aside { justify-self: stretch; justify-content: space-between; flex-wrap: nowrap; align-items: baseline; }
+  .surface-crm .cards:not(.cards--list) .card-city { order: 0; max-width: none; }
+}
 /* Плитки чуть уже и без зазора в 1.25rem — их помещается заметно больше. */
 .surface-crm .cards--grid, .surface-park .cards--grid { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; }
 @media (min-width: 640px) { .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; } }

@@ -10,7 +10,8 @@
     $n = $offer->number;
     $gallery = $offer->isGallery();
     $price = \App\Offers\PriceView::for($offer, auth()->user(), crm: true);
-    $left = $gallery ? null : $offer->secondsLeft();
+    // Срок приёма — админу: подтверждения принимает только он; модератору открытое — «В продаже».
+    $left = $gallery || ! auth()->user()->canManageCrm() ? null : $offer->secondsLeft();
     // «В гараже» ставится на странице предложения: там выбирают менеджера и цену, одной кнопкой не обойтись.
     // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
     // Модератору — поля, кадры и документы: оценки, состояния, подтверждений, интереса и круга показа у него нет.
@@ -33,9 +34,9 @@
             {{-- Номер предложения и номер ДЛ или убытка копируются нажатием, как VIN. --}}
             @unless ($offer->state === OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $n" done="Номер в буфере"/></span>@endunless
             @if ($offer->claim_ref)<span class="tag nums gap-1">{{ $offer->leaseRef() ? 'ДЛ' : 'Убыток' }}<x-ui.copy-code :value="$offer->claim_ref"/></span>@endif
-            <span class="tag {{ match ($offer->state->tone()) { 'open' => 'tag-accent', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' } }}">{{ $offer->state->label() }}</span>
+            <span class="tag {{ match ($offer->state->tone()) { 'open' => 'tag-accent', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' } }}">{{ $offer->state->labelFor(auth()->user()) }}</span>
             @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
-            @elseif (!$gallery && $offer->closed())<span class="tag">приём закрыт</span>@endif
+            @elseif (! $gallery && $offer->closed() && auth()->user()->canManageCrm())<span class="tag">приём закрыт</span>@endif
             @if ($offer->car_place)<x-ui.place class="tag">{{ $offer->car_place->label() }}</x-ui.place>@endif
             @if ($offer->settlement)<x-ui.place class="tag">{{ $offer->settlement->title() }}</x-ui.place>@endif
             <x-ui.vin-code :vin="$offer->vin" class="tag"/>
@@ -75,7 +76,7 @@
                     @endif
                 </div>
             @endif
-            @if ($offer->state === OfferState::Open && $offer->bids_close_at)
+            @if ($admin && $offer->state === OfferState::Open && $offer->bids_close_at)
                 @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
                     <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
                 @endforeach

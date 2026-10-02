@@ -3,6 +3,7 @@
 namespace App\Offers;
 
 use App\Cars\HasLabels;
+use App\Users\User;
 
 enum OfferState: string
 {
@@ -16,6 +17,15 @@ enum OfferState: string
     case Delivered = 'delivered';
     case Cancelled = 'cancelled';
     case Archived = 'archived';
+
+    /**
+     * Состояние в CRM для того, кто смотрит: модератору подтверждения не видны (принимает их только админ), открытое
+     * для него — «В продаже», а не «Приём подтверждений».
+     */
+    public function labelFor(?User $user): string
+    {
+        return $this === self::Open && ! $user?->canManageCrm() ? 'В продаже' : $this->label();
+    }
 
     public function label(): string
     {

@@ -18,7 +18,7 @@ class GalleryController
     {
         ListPrefs::sync($request, 'crm-gallery');
         $sort = $request->query('sort', 'fresh');
-        $q = Offer::query()->where('state', OfferState::Gallery)->with(['brand', 'model', 'parkVehicle:id,offer_id,category'])->withCount(['activeBids', 'interests']);
+        $q = Offer::query()->where('state', OfferState::Gallery)->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category'])->withCount(['activeBids', 'interests']);
         if ($term = trim((string) $request->query('q'))) {
             $q->search($term);
         }

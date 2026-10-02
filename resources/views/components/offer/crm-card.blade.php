@@ -1,7 +1,8 @@
 {{-- Предложение в плитках и строках CRM — как ТС парковки (x-park.card): кадр, название, одна строка текста (логотип
-     страховой с номером убытка, номер предложения, состояние или таймер приёма, подтверждения или интерес), справа цена
-     и сколько прошло. Номера у черновика нет — он ещё не выставлен; неоценённый — лаймовым «оценить»: ведёт в окошко
-     таблицы черновиков на этой строке. Тегов года, коробки и НДС нет — они в окошке и на странице. Кнопок нет: вся
+     страховой с номером убытка — копируется нажатием, состояние или таймер приёма, подтверждения или интерес; номер
+     предложения — в таблице), цена обычным текстом и город приглушённым с меткой: в плитке внизу — город слева, цена
+     справа, в строке — цена справа, город под ней. Неоценённый черновик — лаймовым «оценить» (только админу): ведёт в
+     окошко таблицы черновиков на этой строке, рядом закупочная. Тегов года, коробки и НДС нет — они в окошке и на странице. Кнопок нет: вся
      карточка — ссылка на предложение. --}}
 @props(['offer', 'gallery' => false])
 @php
@@ -14,14 +15,15 @@
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
     $draft = $offer->state === OfferState::Draft;
+    // Подтверждения принимает только админ: модератору ни их числа, ни отсчёта приёма — открытое для него «в продаже».
+    $admin = (bool) auth()->user()?->canManageCrm();
     $unpriced = $draft && ! $offer->asking_price;
     // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
-    $rate = $unpriced && auth()->user()?->canManageCrm();
-    $left = $gallery ? null : $offer->secondsLeft();
+    $rate = $unpriced && $admin;
+    $left = $gallery || ! $admin ? null : $offer->secondsLeft();
     $timer = $left !== null && $left > 0;
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => 'text-ink' };
-    $count = $gallery ? (int) ($offer->interests_count ?? 0) : (int) ($offer->active_bids_count ?? 0);
-    $since = $gallery ? $offer->created_at : ($offer->published_at ?? $offer->updated_at);
+    $count = ! $admin ? 0 : ($gallery ? (int) ($offer->interests_count ?? 0) : (int) ($offer->active_bids_count ?? 0));
 @endphp
 <article id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" class="card rise group">
     <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1"></a>
@@ -52,21 +54,21 @@
     </div>
     <div class="card-extra">
         <span class="card-sub" data-controller="fitline">
-            {{-- Номера первыми и одним куском (fitline ужимает строку, чтобы они влезли), состояние — после, его можно обрезать. --}}
-            <span class="fit-core"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/>@unless ($draft)<span class="nums">№ {{ $n }}</span>@endunless</span>
+            {{-- Номер первым и одним куском (fitline ужимает строку, чтобы он влез), состояние — после, его можно обрезать. --}}
+            @if ($vendor || $offer->claim_ref)<span class="fit-core"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy/></span>@endif
             @if ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт"></span>
-            @elseif (! $draft)<span class="{{ $tone }}">{{ mb_strtolower($offer->state->label()) }}</span>@endif
+            @elseif (! $draft)<span class="{{ $tone }}">{{ mb_strtolower($offer->state->labelFor(auth()->user())) }}</span>@endif
             @if ($count)<span class="{{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count }} {{ $gallery ? \App\Support\Plural::of($count, ['интерес', 'интереса', 'интересов']) : 'подтв.' }}</span>@endif
         </span>
     </div>
     <div class="card-aside">
-        @if ($unpriced)
-            @if ($rate)<a href="/?preset=draft&vid=table&peek={{ $n }}" class="text-sm text-accent-text" data-turbo-action="replace">оценить</a>@endif
-            @if ($offer->floor_price)<span class="nums text-sm text-ink-dim">{{ Money::nums($offer->floor_price) }}</span>@endif
-        @else
-            @if ($price->shown())<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>
+        @if ($offer->settlement)<x-ui.place class="card-city text-sm text-ink-dim">{{ $offer->settlement->title() }}</x-ui.place>@endif
+        <span class="card-price">
+            @if ($unpriced)
+                @if ($rate)<a href="/?preset=draft&vid=table&peek={{ $n }}" class="text-sm text-accent-text" data-turbo-action="replace">оценить</a>@endif
+                @if ($offer->floor_price)<span class="nums">{{ Money::nums($offer->floor_price) }}&nbsp;₽</span>@endif
+            @elseif ($price->shown())<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>
             @elseif ($gallery)<span class="text-sm text-accent-text">скоро</span>@endif
-            <span class="text-sm text-ink-dim">{!! \App\Support\Ago::time($since) !!}</span>
-        @endif
+        </span>
     </div>
 </article>

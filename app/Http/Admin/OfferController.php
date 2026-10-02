@@ -51,7 +51,7 @@ class OfferController
         $sort = $request->query('sort', 'fresh');
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
-        $q = Offer::query()->visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'parkVehicle:id,offer_id,category'])
+        $q = Offer::query()->visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category'])
             ->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
         match ($preset) {

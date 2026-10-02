@@ -29,14 +29,16 @@
             {{-- В сделке пилюля состояния и есть вход в сделку: «Идёт сделка ›». --}}
             <x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
         @else
-            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>
+            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
         @endif
-        @if ($offer->closed())
+        {{-- Срок приёма и продление — админу: подтверждения принимает только он. --}}
+        @if (! $admin)
+        @elseif ($offer->closed())
             <x-ui.pill tone="closed">Приём закрыт с {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</x-ui.pill>
         @elseif ($offer->bids_close_at && $offer->state === OfferState::Open)
             <x-ui.pill tone="plain"><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}"></span></x-ui.pill>
         @endif
-        @if ($offer->state === OfferState::Open && $offer->bids_close_at)
+        @if ($admin && $offer->state === OfferState::Open && $offer->bids_close_at)
             {{-- Продлить приём на ходу, как в закупке: от текущего срока, если он не прошёл, иначе от сейчас. --}}
             @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
                 <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
