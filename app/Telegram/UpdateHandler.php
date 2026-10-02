@@ -239,6 +239,11 @@ final class UpdateHandler
      */
     private function welcome(User $user): array
     {
+        // Модератор: новые цепочки «Из писем» (с галкой почты) и вход в CRM — кнопка в CRM, не на сайт.
+        if ($user->isModerator()) {
+            return [$user->canCrmMail() ? 'Сюда придут новые письма, которые надо завести, и вход в CRM без пароля' : 'Входите в CRM через Telegram, без пароля',
+                ['text' => 'Открыть CRM', 'url' => Surface::Crm->url('/')]];
+        }
         if (! $user->isManager()) {
             return ['Сюда придут оплаты, выплаты и просроченные счета с кнопкой решения', $this->open()];
         }

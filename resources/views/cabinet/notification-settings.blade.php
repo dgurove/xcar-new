@@ -51,6 +51,23 @@
             </div>
         </section>
 
+        {{-- В Telegram — только то, что туда вообще идёт (Categories::telegram); критичное приходит всегда. --}}
+        @if ($user->telegram_chat_id && $user->wantsTelegram() && $telegram)
+            <section>
+                <h2 class="list-head">В Telegram</h2>
+                <input type="hidden" name="tg_shown" value="1">
+                <div class="list">
+                    @foreach ($telegram as $key => $label)
+                        <label class="row row-switch">
+                            <span class="min-w-0 flex-1 font-medium">{{ $label }}</span>
+                            <input type="checkbox" name="tg[]" value="{{ $key }}" class="switch" @checked(! in_array($key, $settings['telegram_off'] ?? [], true)) data-action="change->autosubmit#submit">
+                        </label>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
+        @if ($categories['on'] || $categories['always'])
         <section>
             <h2 class="list-head">О чём</h2>
             <div class="list">
@@ -68,6 +85,7 @@
                 @endforeach
             </div>
         </section>
+        @endif
 
         <section>
             <h2 class="list-head">Тихие часы</h2>

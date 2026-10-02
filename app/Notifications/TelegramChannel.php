@@ -26,7 +26,11 @@ final class TelegramChannel
         $lines = array_filter($message['lines'], fn ($l) => $l !== null && $l !== '');
         $text = implode("\n", ['<b>'.e($message['title']).'</b>', ...array_map(fn ($l) => e($l), $lines)]);
         try {
-            $this->bot->send((int) $user->telegram_chat_id, $text, [[['text' => $message['button'], 'url' => $notice->telegramUrl()]]], $user->quietHours());
+            $sent = $this->bot->send((int) $user->telegram_chat_id, $text, [[['text' => $message['button'], 'url' => $notice->telegramUrl()]]], $user->quietHours());
+            // О чём сообщение — чтобы удалить его у всех, когда предмет ушёл (завели цепочку «Из писем»).
+            if ($sent && ($subject = $notice->telegramSubject())) {
+                $sent->update(['subject' => $subject]);
+            }
         } catch (Throwable $e) {
             if (Bot::chatGone($e)) {
                 app(UnlinkChat::class)($user);

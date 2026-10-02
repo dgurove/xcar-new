@@ -97,7 +97,8 @@ final class ChainBuilder
                 ImportCandidateFiles::dispatch($candidate->id, $message->id);
             }
         }
-        if ($fresh && $park && ! $quiet) {
+        // Новая цепочка — людям: парковке письмо на приём, CRM — «Новое из писем» модераторам (Notify::candidateArrived).
+        if ($fresh && ! $quiet) {
             CandidateArrived::dispatch($matches->first());
         }
 

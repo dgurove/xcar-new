@@ -12,7 +12,7 @@ import { openSheet, closeSheet } from '../sheet';
 // live:telegram или, когда человек вернулся на вкладку, вопросом серверу.
 export default class extends Controller {
     static targets = ['step', 'scene', 'label', 'cancel', 'title', 'stop'];
-    static values = { mode: String, token: String, moments: Array, app: String, web: String, foreign: Boolean };
+    static values = { mode: String, token: String, moments: Array, app: String, web: String, foreign: Boolean, intro: { type: Array, default: ['/offers', '/deals'] } };
 
     connect() {
         this.onLive = (e) => this.live(e.detail || {});
@@ -33,7 +33,8 @@ export default class extends Controller {
     // Один раз при входе и только на главных экранах: дать странице встать и не лезть поверх другой шторки.
     intro() {
         clearTimeout(this.introTimer);
-        if (!this.may('intro') || !['/offers', '/deals'].includes(location.pathname)) return;
+        // Где шторка открывается сама — с сервера: на сайте списки менеджера, в CRM у модератора — «Предложения» (/).
+        if (!this.may('intro') || !this.introValue.includes(location.pathname)) return;
         this.introTimer = setTimeout(() => !document.querySelector('dialog:modal') && this.open('intro'), 1500);
     }
 

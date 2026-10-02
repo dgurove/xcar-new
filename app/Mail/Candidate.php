@@ -6,6 +6,7 @@ use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Patterns;
+use App\Mail\Jobs\RetractCandidateNotices;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Vendors\Vendor;
@@ -28,6 +29,18 @@ use Illuminate\Support\Collection;
 class Candidate extends Model
 {
     protected $table = 'mail_candidates';
+
+    /**
+     * Цепочка предложений вышла из «Ждёт» (завели, в архив, закрыта) или удалена — её «Новое из писем» убирается у всех
+     * (`RetractCandidateNotices`): одна дверь на «Завести», «Не заявка», свёртку и пересборку цепочек.
+     */
+    protected static function booted(): void
+    {
+        $retract = fn (self $c) => $c->scope === Scope::Offers && RetractCandidateNotices::dispatch($c->id);
+        // Только что созданная цепочка ещё не знает своего состояния — в базе оно «Ждёт» по умолчанию.
+        static::updated(fn (self $c) => $c->wasChanged('state') && ($c->getOriginal('state') ?? CandidateState::New) === CandidateState::New && $retract($c));
+        static::deleted($retract);
+    }
 
     protected function casts(): array
     {

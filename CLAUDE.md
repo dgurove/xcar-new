@@ -174,7 +174,12 @@
 `Users\CrmArea` в `users.access` (`crm.mail`: почта CRM и «Из писем», `User::canCrm`), задаётся в ссылке и в карточке
 (`x-admin.crm-access-fields`). Сайта у него нет — `Surface::onlyFor` уводит в CRM, как управляющего на парковку; денег,
 сделок, чатов, закупок, гаража, людей, настроек и уведомлений площадки (`Notify::staff` — админы) нет; письма перевязывает
-только между своими черновиками (`MailController::link`), «✨» предложения — с галкой почты. Привилегии
+только между своими черновиками (`MailController::link`), «✨» предложения — с галкой почты.
+Telegram модератору (02.10.2026): привязка как у менеджера (`canLinkTelegram`, шторка сама на CRM `/`), вход через
+Telegram, с почтой — «Новое из писем» (`OfferLetterNotice`, категория `letters`, событие `CandidateArrived` теперь и для
+предложений). Цепочка вышла из «Ждёт» — её сообщения в Telegram (`telegram_messages.subject`) и строки ленты удаляются
+у всех (`Candidate::booted` → `RetractCandidateNotices`). У всех в настройках — «В Telegram» по категориям, что туда
+идут (`Categories::telegram`, `notification_settings.telegram_off`, `User::wantsTelegram($category)`). Привилегии
 «сотрудника» (чаты, файлы, карточки людей) — `isAdmin`, не `isStaff`. `manager` —
 внешний партнёр: подтверждает ценой, ведёт сделки, закупки и **своих
 покупателей** в кабинете на сайте; `buyer` — покупатель менеджера: видит

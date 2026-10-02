@@ -317,15 +317,22 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /** Telegram привязан и не выключен в настройках уведомлений. */
-    public function wantsTelegram(): bool
+    /** Telegram привязан и включён; с категорией — она ещё и не выключена «в Telegram» (`telegram_off`, Categories::telegram). */
+    public function wantsTelegram(?string $category = null): bool
     {
-        return $this->telegram_chat_id !== null && ($this->notification_settings['telegram'] ?? true) !== false;
+        $s = $this->notification_settings ?? [];
+
+        return $this->telegram_chat_id !== null && ($s['telegram'] ?? true) !== false
+            && ($category === null || ! in_array($category, $s['telegram_off'] ?? [], true));
     }
 
-    /** Подключить Telegram можно: менеджеру и админу без привязки. Не за человека — админ привязал бы свой чат к чужому аккаунту. */
+    /**
+     * Подключить Telegram можно: менеджеру, админу и модератору (вход в CRM, новое из писем) без привязки. Не за человека —
+     * админ привязал бы свой чат к чужому аккаунту.
+     */
     public function canLinkTelegram(): bool
     {
-        return ($this->isManager() || $this->isAdmin()) && $this->telegram_chat_id === null && ! $this->is_demo
+        return ($this->isManager() || $this->isAdmin() || $this->isModerator()) && $this->telegram_chat_id === null && ! $this->is_demo
             && app(Bot::class)->username() !== null;
     }
 

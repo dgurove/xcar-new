@@ -17,6 +17,8 @@ use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
 use App\Garage\Car as GarageCar;
+use App\Mail\CandidateState;
+use App\Mail\Scope;
 use App\Offers\Actions\NotifyViewers;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
@@ -74,7 +76,7 @@ final class Notify
             BuyerJoined::class => 'buyerJoined',
             ManagerJoined::class => 'managerJoined',
             AccessDecided::class => 'accessDecided',
-            CandidateArrived::class => 'parkLetter',
+            CandidateArrived::class => 'candidateArrived',
             LetterArrived::class => 'parkMail',
             RequestAssigned::class => 'parkAssigned',
             RequestDue::class => 'parkDue',
@@ -212,11 +214,23 @@ final class Notify
         Notification::send($to->reject(fn (User $u) => Presence::viewing($chat, $u)), $notice);
     }
 
-    /** Письмо на стоянку — всем со стоянки в ленту и пуш, владельцу — строка в Telegram. */
-    public function parkLetter(CandidateArrived $e): void
+    /**
+     * Новая цепочка «Из писем». Стоянка — всем со стоянки в ленту и пуш, владельцу — строка в Telegram. CRM — модераторам
+     * с почтой «Новое из писем», пока цепочка ждёт (завели раньше, чем ушло, — не шлём).
+     */
+    public function candidateArrived(CandidateArrived $e): void
     {
-        Notification::send($this->parkStaff(), ParkNotice::letter($e->candidate));
-        NotifyOwner::dispatch(new ParkLetter($e->candidate));
+        $c = $e->candidate;
+        if ($c->scope === Scope::Park) {
+            Notification::send($this->parkStaff(), ParkNotice::letter($c));
+            NotifyOwner::dispatch(new ParkLetter($c));
+
+            return;
+        }
+        if ($c->fresh()?->state !== CandidateState::New) {
+            return;
+        }
+        Notification::send(User::where('role', Role::Moderator)->get()->filter->canCrmMail(), new OfferLetterNotice($c));
     }
 
     /** Письмо в ветку привязанной ТС — исполнителю её открытой заявки, без него — всем со стоянки. */

@@ -11,11 +11,19 @@
     $foreign = $can && ! $user->linksOwnTelegram();
     $start = $can && ! $foreign ? \App\Telegram\StartLink::link($user) : null;
     $moments = $can ? $user->telegramMoments() : [];
+    // Сама шторка — на сайте в списках менеджера, в CRM у модератора на «Предложениях»; с почтой ему есть что получать.
+    $intro = $user?->isModerator() ? ['/'] : ['/offers', '/deals'];
+    [$head, $lead] = match (true) {
+        (bool) $user?->isManager() => ['Узнавайте о сделках первым', 'Когда выбрали вас, нужен ваш ответ или пришли деньги. Без рассылок'],
+        (bool) $user?->isModerator() && $user->canCrmMail() => ['Новые письма в Telegram', 'Пришла цепочка, которую надо завести, и вход в CRM без пароля'],
+        (bool) $user?->isModerator() => ['Вход в CRM через Telegram', 'Без пароля: подтверждаете вход кнопкой в Telegram'],
+        default => ['Счета и оплаты в Telegram', 'Оплаты, выплаты и просроченные счета с кнопкой решения'],
+    };
 @endphp
 @if ($can)
     {{-- Постоянная между визитами: морф после подтверждения ценой не закрывает только что открытую шторку. --}}
     <div class="contents" id="telegram-connect" data-turbo-permanent data-controller="sheet telegram" data-telegram-mode-value="link"
-        data-telegram-moments-value='@json($moments)'
+        data-telegram-moments-value='@json($moments)' data-telegram-intro-value='@json($intro)'
         @if ($foreign)
             data-telegram-foreign-value="1"
         @else
@@ -26,8 +34,8 @@
             <div class="tg-step" data-telegram-target="step" data-step="offer">
                 <x-telegram.bubble :message="\App\Telegram\Preview::for($user)"/>
                 <div class="tg-lead">
-                    <h2 class="text-lg" data-telegram-target="title" @if ($user->isManager()) data-bid="Узнайте первым, если выберут вас" @endif>{{ $user->isManager() ? 'Узнавайте о сделках первым' : 'Счета и оплаты в Telegram' }}</h2>
-                    <p>{{ $user->isManager() ? 'Когда выбрали вас, нужен ваш ответ или пришли деньги. Без рассылок' : 'Оплаты, выплаты и просроченные счета с кнопкой решения' }}</p>
+                    <h2 class="text-lg" data-telegram-target="title" @if ($user->isManager()) data-bid="Узнайте первым, если выберут вас" @endif>{{ $head }}</h2>
+                    <p>{{ $lead }}</p>
                 </div>
                 <div class="flex flex-col gap-1">
                     @if ($foreign)<p class="tg-stop" data-telegram-target="stop" hidden>Вы вошли как {{ $user->firstName() }}. Telegram {{ $user->isManager() ? 'менеджер' : 'человек' }} подключает сам, со своего телефона</p>@endif

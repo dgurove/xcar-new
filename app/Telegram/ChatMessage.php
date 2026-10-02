@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  * У исходящих text — HTML, как ушёл в Telegram; у входящих — обычный текст или подпись к файлу.
  * kind: text, photo, document, voice, sticker, press (нажал кнопку — text её подпись), system (запустил/остановил бота).
  */
-#[Fillable(['chat_id', 'message_id', 'direction', 'kind', 'text', 'keyboard', 'reply_to', 'file_id', 'file_unique_id', 'file_name', 'file_mime', 'file_size', 'author_id', 'failed', 'edited_at', 'deleted_at'])]
+#[Fillable(['chat_id', 'message_id', 'direction', 'kind', 'text', 'keyboard', 'reply_to', 'file_id', 'file_unique_id', 'file_name', 'file_mime', 'file_size', 'author_id', 'failed', 'edited_at', 'deleted_at', 'subject'])]
 class ChatMessage extends Model
 {
     public const IN = 'in';

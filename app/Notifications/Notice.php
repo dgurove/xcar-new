@@ -83,6 +83,15 @@ abstract class Notice extends Notification implements ShouldQueue
         return null;
     }
 
+    /**
+     * Предмет сообщения в Telegram (`candidate:12`): ушёл предмет — сообщение удаляется у всех (`telegram_messages.subject`).
+     * null — сообщение остаётся, как было.
+     */
+    public function telegramSubject(): ?string
+    {
+        return null;
+    }
+
     /** Куда ведёт кнопка в Telegram: абсолютный адрес как есть, путь — на сайте. */
     public function telegramUrl(): string
     {
@@ -111,7 +120,8 @@ abstract class Notice extends Notification implements ShouldQueue
             // Уведомления стоянки — через её ящик, если он есть; остальное — системный мейлер.
             $via[] = $this->category() === 'park' && MailboxChannel::account() ? MailboxChannel::class : 'mail';
         }
-        if ($user->wantsTelegram() && $this->toTelegram() !== null) {
+        // В Telegram — если он включён и эта категория там не выключена; критичное — всегда.
+        if ($user->wantsTelegram($this->critical() ? null : $this->category()) && $this->toTelegram() !== null) {
             $via[] = TelegramChannel::class;
         }
 
