@@ -102,21 +102,40 @@ final class Gc extends Command
             return "{$orphans} шт., ".self::human($bytes);
         });
 
-        $this->step('чистые копии кадров под знаком, у которых кадра уже нет', function () {
-            $disk = Storage::disk('private');
-            $orphans = 0;
+        // clean — чистые копии под нашим знаком, marked — кадры с чужим знаком до снятия («Вернуть со знаком»)
+        foreach (['clean' => 'чистые копии кадров под знаком', 'marked' => 'кадры с чужим знаком до снятия'] as $dir => $title) {
+            $this->step("{$title}, у которых кадра уже нет", function () use ($dir) {
+                $disk = Storage::disk('private');
+                $orphans = 0;
+                $bytes = 0;
+                foreach ($disk->files($dir) as $file) {
+                    $id = (int) pathinfo($file, PATHINFO_FILENAME);
+                    if ($id && Media::whereKey($id)->exists()) {
+                        continue;
+                    }
+                    $orphans++;
+                    $bytes += (int) $disk->size($file);
+                    $this->dry || $disk->delete($file);
+                }
+
+                return "{$orphans} шт., ".self::human($bytes);
+            });
+        }
+
+        $this->step('временные кадры приёма старше суток', function () {
+            // tempnam() приёма фото, снятия знака и HEIC: чистит finally, но процесс, убитый посреди кадра, их оставляет
+            $count = 0;
             $bytes = 0;
-            foreach ($disk->files('clean') as $file) {
-                $id = (int) pathinfo($file, PATHINFO_FILENAME);
-                if ($id && Media::whereKey($id)->exists()) {
+            foreach (glob(sys_get_temp_dir().'/{kadr-,unmark-,heic-}*', GLOB_BRACE) ?: [] as $file) {
+                if (! is_file($file) || filemtime($file) >= now()->subDay()->timestamp) {
                     continue;
                 }
-                $orphans++;
-                $bytes += (int) $disk->size($file);
-                $this->dry || $disk->delete($file);
+                $count++;
+                $bytes += (int) filesize($file);
+                $this->dry || @unlink($file);
             }
 
-            return "{$orphans} шт., ".self::human($bytes);
+            return "{$count} файлов, ".self::human($bytes);
         });
 
         $this->step('файлы конверсий, которых в коде больше нет', function () {

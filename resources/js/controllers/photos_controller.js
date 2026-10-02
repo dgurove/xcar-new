@@ -94,7 +94,7 @@ export default class extends Controller {
         const worker = async () => {
             for (let job = queue.shift(); job; job = queue.shift()) {
                 try {
-                    const html = await this.send(await this.prepare(job.file), (p) => job.cell.style.setProperty('--p', p));
+                    const html = await this.send(await this.prepare(job.file), (p) => job.cell.style.setProperty('--p', p), () => job.cell.classList.add('is-processing'));
                     this.pendingCells.delete(job.cell);
                     job.cell.remove();
                     if (this.fresher(html)) {
@@ -102,7 +102,7 @@ export default class extends Controller {
                         this.restorePending();
                     }
                 } catch (e) {
-                    job.cell.classList.add('is-failed');
+                    job.cell.classList.replace('is-processing', 'is-failed') || job.cell.classList.add('is-failed');
                     job.cell.title = e.message || 'Не загрузилось';
                 }
             }
@@ -188,7 +188,8 @@ export default class extends Controller {
         } catch { return ''; }
     }
 
-    send({ file, sha }, onProgress) {
+    // onSent — файл ушёл целиком, дальше сервер пережимает кадр и снимает чужой знак (секунда-две на кадр)
+    send({ file, sha }, onProgress, onSent) {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             const form = new FormData();
@@ -203,6 +204,7 @@ export default class extends Controller {
             xhr.setRequestHeader('Accept', 'text/vnd.turbo-stream.html');
             if (this.rowId) xhr.setRequestHeader('X-Photos-Target', this.rowId);
             xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+            xhr.upload.onload = () => onSent?.();
             xhr.onload = () => {
                 if (xhr.status < 300) resolve(xhr.responseText);
                 else {

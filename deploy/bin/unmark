@@ -9,7 +9,8 @@
 # закрывает нижний: белые буквы поверх флажка дают «дырки» со своей прозрачностью.
 #
 #   unmark [--mark <имя>] [--no-refine] <каталоги через «:»> <вход> <выход>
-#                                         — строка JSON {"mark": имя, "k": сила, "x": …, "y": …, "s": …, "ms": …}
+#                                         — строка JSON {"mark": имя, "k": сила, "x": …, "y": …, "s": …, "refined": дочищен
+#                                           ли сетью, "ms": …}; кадр крупнее 1600 px сначала уменьшается
 #                                           и чистый кадр в <выход>; знака нет — {"mark": null}, файл не пишется.
 #                                           --mark: человек сам выбрал знак в CRM — только он, место ищется шире
 #                                           (±12 px), порог силы ниже (от 0,3): знак, который не взялся сам
@@ -365,18 +366,27 @@ def unmark(img, mark, at):
 
 REFINE = 'refine.onnx'
 REFINE_MARGIN = 16  # поле вокруг карты знака: так резали кадры при обучении
+REFINE_WIDTH = 1100  # сеть училась на кадрах шириной 680–1100: шире — считаем на уменьшенном кропе, поправку растягиваем
+MAX_SIDE = 1600  # больше в медиатеке кадров нет (PhotoIngest::MAX_DIMENSION): крупный оригинал сначала уменьшается
 
 
 def refine(out, at, folders):
-    """Дочистка следа сетью по кропу знака; вход — YCrCb после снятия, карта знака и модуль её градиента."""
+    """Дочистка следа сетью. Возвращает (кадр, дочищен ли). Нет модели или onnxruntime, сеть упала — кадр как был:
+    снятый знак важнее дочистки, из-за неё кадр со знаком не остаётся."""
     model = next((p for p in (Path(f) / REFINE for f in str(folders).split(os.pathsep) if f) if p.is_file()), None)
     if model is None:
-        return out
+        return out, False
     try:
         os.environ['ORT_DISABLE_TELEMETRY'] = '1'
         import onnxruntime
-    except ImportError:
-        return out
+        return polish_crop(out, at, model, onnxruntime), True
+    except Exception as e:  # noqa: BLE001 — любой сбой сети не должен отменять снятие
+        print(f'дочистка пропущена: {e!r}', file=sys.stderr)
+        return out, False
+
+
+def polish_crop(out, at, model, onnxruntime):
+    """Кроп знака с полем → входы сети (YCrCb после снятия, карта знака, модуль её градиента) → поправка под маской."""
     a = at['alpha']
     h, w = a.shape
     H, W = out.shape[:2]
@@ -385,8 +395,11 @@ def refine(out, at, folders):
     A = np.zeros((y1 - y0, x1 - x0), np.float32)
     A[at['iy'] - y0:at['iy'] - y0 + h, at['ix'] - x0:at['ix'] - x0 + w] = a
     crop = out[y0:y1, x0:x1]
-    gx, gy = grad(A)
-    x = np.concatenate([cv2.cvtColor(crop, cv2.COLOR_BGR2YCrCb).astype(np.float32) / 255, A[..., None] * 3,
+    s = min(1.0, REFINE_WIDTH / W)
+    size = (max(8, round(crop.shape[1] * s)), max(8, round(crop.shape[0] * s)))
+    small, As = (crop, A) if s == 1 else (cv2.resize(crop, size, interpolation=cv2.INTER_AREA), cv2.resize(A, size, interpolation=cv2.INTER_AREA))
+    gx, gy = grad(As)
+    x = np.concatenate([cv2.cvtColor(small, cv2.COLOR_BGR2YCrCb).astype(np.float32) / 255, As[..., None] * 3,
                         np.minimum(np.hypot(gx, gy) * 4, 1)[..., None]], 2)
     ph, pw = (-x.shape[0]) % 8, (-x.shape[1]) % 8  # три понижения разрешения
     x = np.pad(x, ((0, ph), (0, pw), (0, 0)), mode='reflect').transpose(2, 0, 1)[None]
@@ -394,13 +407,24 @@ def refine(out, at, folders):
     so.intra_op_num_threads, so.inter_op_num_threads = int(os.environ.get('UNMARK_THREADS', '1')), 1
     onnxruntime.disable_telemetry_events()
     y = onnxruntime.InferenceSession(str(model), so, providers=['CPUExecutionProvider']).run(None, {'x': x})[0]
-    y = np.clip(y[0].transpose(1, 2, 0)[:y1 - y0, :x1 - x0] * 255 + 0.5, 0, 255).astype(np.uint8)
+    y = np.clip(y[0].transpose(1, 2, 0)[:small.shape[0], :small.shape[1]] * 255 + 0.5, 0, 255).astype(np.uint8)
+    fixed = cv2.cvtColor(y, cv2.COLOR_YCrCb2BGR)
+    if s < 1:  # поправка, а не кадр: мелкие детали остаются от полного разрешения
+        delta = cv2.resize(fixed.astype(np.float32) - small.astype(np.float32), crop.shape[1::-1], interpolation=cv2.INTER_LINEAR)
+        fixed = np.clip(crop.astype(np.float32) + delta + 0.5, 0, 255).astype(np.uint8)
     res = out.copy()
-    res[y0:y1, x0:x1] = cv2.cvtColor(y, cv2.COLOR_YCrCb2BGR)
-    # вне маски сеть не меняет кадр, но перевод YCrCb туда-обратно сдвинул бы пиксели на единицу — их не трогаем
+    # вне маски сеть кадр не меняет, но перевод YCrCb туда-обратно сдвинул бы пиксели на единицу — их не трогаем
     keep = cv2.dilate((A > 0.003).astype(np.uint8), np.ones((7, 7), np.uint8)) == 0
-    res[y0:y1, x0:x1][keep] = crop[keep]
+    fixed[keep] = crop[keep]
+    res[y0:y1, x0:x1] = fixed
     return res
+
+
+def fit_side(img):
+    """Крупный кадр — до MAX_SIDE по длинной стороне площадью: смешивание линейно, формула снятия не меняется, а поиск
+    и сеть на 48 МП стоили бы секунды и гигабайты."""
+    k = MAX_SIDE / max(img.shape[:2])
+    return img if k >= 1 else cv2.resize(img, (round(img.shape[1] * k), round(img.shape[0] * k)), interpolation=cv2.INTER_AREA)
 
 
 def read(path):
@@ -427,7 +451,7 @@ def marks_in(folders):
 
 def remove(folder, src, dst, only=None, polish=True):
     t = time.time()
-    img = read(src)
+    img = fit_side(read(src))
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
     marks = [m for m in marks_in(folder) if only is None or m.name == only]
     if only is not None and not marks:
@@ -443,13 +467,12 @@ def remove(folder, src, dst, only=None, polish=True):
         if lo <= k <= hi:
             out = unmark(img, mark, at)
             r = time.time()
-            if polish:
-                out = refine(out, at, folder)
+            out, refined = refine(out, at, folder) if polish else (out, False)
             ok = cv2.imwrite(str(dst), out, [cv2.IMWRITE_JPEG_QUALITY, 95])
             if not ok:
                 raise ValueError(f'не записался {dst}')
             return {'mark': mark.name, 'k': round(k, 3), 'x': round(at['x'], 2), 'y': round(at['y'], 2),
-                    's': round(at['s'], 4), 'refine_ms': int((time.time() - r) * 1000) if polish else None,
+                    's': round(at['s'], 4), 'refined': refined, 'refine_ms': int((time.time() - r) * 1000) if refined else None,
                     'ms': int((time.time() - t) * 1000)}
     return {'mark': None, 'ms': int((time.time() - t) * 1000)}
 
