@@ -8,7 +8,7 @@
 # мягче вектора, px), `width` (ширина знака — доля ширины кадра; знак по центру). Пути красятся по порядку, верхний
 # закрывает нижний: белые буквы поверх флажка дают «дырки» со своей прозрачностью.
 #
-#   unmark [--mark <имя>] <каталоги через «:»> <вход> <выход>
+#   unmark [--mark <имя>] [--no-refine] <каталоги через «:»> <вход> <выход>
 #                                         — строка JSON {"mark": имя, "k": сила, "x": …, "y": …, "s": …, "ms": …}
 #                                           и чистый кадр в <выход>; знака нет — {"mark": null}, файл не пишется.
 #                                           --mark: человек сам выбрал знак в CRM — только он, место ищется шире
@@ -20,6 +20,13 @@
 #   unmark --learn <имя> <x0,y0,x1,y1> <каталог> <фото с рамкой> <фото…>
 #                                         — новый знак без вектора: рамка долями первого фото, знак собирается по всем
 #                                           (от 5) и ложится в <каталог> как <имя>.png + <имя>.json; строка JSON с итогом
+#
+# Дочистка: после вычитания по контуру знака остаётся след — шум сжатия webp/jpeg на резком крае, растянутый в 1/(1−a),
+# у каждого кадра свой, формулой не снимается. Его убирает маленькая сеть `refine.onnx` в каталоге знаков (0,8 млн
+# параметров, учена на чистых фото с прода с наложенным знаком): поправка только под знаком и в 3 px вокруг, остальной
+# кадр не меняется. Сравнивали с дозаливкой полосы (OpenCV Telea/NS, xphoto FSR, шум, LaMa) и чистильщиком JPEG FBCNN —
+# дозаливка стирает настоящие края под полосой и оставляет светлую «заливку» букв, FBCNN контур не трогает. Нет файла
+# модели или onnxruntime — кадр без дочистки, как раньше.
 #
 # Есть ли знак, решает сила k: при найденном месте k — во сколько раз знак на кадре сильнее записанного в реестре.
 # Свой знак даёт k ≈ 1 (на 11 кадрах черновика 89 — 1,00…1,05), чистый кадр — около нуля. Только 0,6 ≤ k ≤ 1,5 —
@@ -356,6 +363,46 @@ def unmark(img, mark, at):
     return out
 
 
+REFINE = 'refine.onnx'
+REFINE_MARGIN = 16  # поле вокруг карты знака: так резали кадры при обучении
+
+
+def refine(out, at, folders):
+    """Дочистка следа сетью по кропу знака; вход — YCrCb после снятия, карта знака и модуль её градиента."""
+    model = next((p for p in (Path(f) / REFINE for f in str(folders).split(os.pathsep) if f) if p.is_file()), None)
+    if model is None:
+        return out
+    try:
+        os.environ['ORT_DISABLE_TELEMETRY'] = '1'
+        import onnxruntime
+    except ImportError:
+        return out
+    a = at['alpha']
+    h, w = a.shape
+    H, W = out.shape[:2]
+    y0, x0 = max(0, at['iy'] - REFINE_MARGIN), max(0, at['ix'] - REFINE_MARGIN)
+    y1, x1 = min(H, at['iy'] + h + REFINE_MARGIN), min(W, at['ix'] + w + REFINE_MARGIN)
+    A = np.zeros((y1 - y0, x1 - x0), np.float32)
+    A[at['iy'] - y0:at['iy'] - y0 + h, at['ix'] - x0:at['ix'] - x0 + w] = a
+    crop = out[y0:y1, x0:x1]
+    gx, gy = grad(A)
+    x = np.concatenate([cv2.cvtColor(crop, cv2.COLOR_BGR2YCrCb).astype(np.float32) / 255, A[..., None] * 3,
+                        np.minimum(np.hypot(gx, gy) * 4, 1)[..., None]], 2)
+    ph, pw = (-x.shape[0]) % 8, (-x.shape[1]) % 8  # три понижения разрешения
+    x = np.pad(x, ((0, ph), (0, pw), (0, 0)), mode='reflect').transpose(2, 0, 1)[None]
+    so = onnxruntime.SessionOptions()
+    so.intra_op_num_threads, so.inter_op_num_threads = int(os.environ.get('UNMARK_THREADS', '1')), 1
+    onnxruntime.disable_telemetry_events()
+    y = onnxruntime.InferenceSession(str(model), so, providers=['CPUExecutionProvider']).run(None, {'x': x})[0]
+    y = np.clip(y[0].transpose(1, 2, 0)[:y1 - y0, :x1 - x0] * 255 + 0.5, 0, 255).astype(np.uint8)
+    res = out.copy()
+    res[y0:y1, x0:x1] = cv2.cvtColor(y, cv2.COLOR_YCrCb2BGR)
+    # вне маски сеть не меняет кадр, но перевод YCrCb туда-обратно сдвинул бы пиксели на единицу — их не трогаем
+    keep = cv2.dilate((A > 0.003).astype(np.uint8), np.ones((7, 7), np.uint8)) == 0
+    res[y0:y1, x0:x1][keep] = crop[keep]
+    return res
+
+
 def read(path):
     img = cv2.imread(str(path), cv2.IMREAD_COLOR)
     if img is None:
@@ -378,7 +425,7 @@ def marks_in(folders):
     return [m for m in marks if not over.get(m.name, {}).get('off')]
 
 
-def remove(folder, src, dst, only=None):
+def remove(folder, src, dst, only=None, polish=True):
     t = time.time()
     img = read(src)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
@@ -394,11 +441,16 @@ def remove(folder, src, dst, only=None):
         crop = gray[at['iy']:at['iy'] + h, at['ix']:at['ix'] + w]
         k = strength(crop, at['alpha'], mark.white)
         if lo <= k <= hi:
-            ok = cv2.imwrite(str(dst), unmark(img, mark, at), [cv2.IMWRITE_JPEG_QUALITY, 95])
+            out = unmark(img, mark, at)
+            r = time.time()
+            if polish:
+                out = refine(out, at, folder)
+            ok = cv2.imwrite(str(dst), out, [cv2.IMWRITE_JPEG_QUALITY, 95])
             if not ok:
                 raise ValueError(f'не записался {dst}')
             return {'mark': mark.name, 'k': round(k, 3), 'x': round(at['x'], 2), 'y': round(at['y'], 2),
-                    's': round(at['s'], 4), 'ms': int((time.time() - t) * 1000)}
+                    's': round(at['s'], 4), 'refine_ms': int((time.time() - r) * 1000) if polish else None,
+                    'ms': int((time.time() - t) * 1000)}
     return {'mark': None, 'ms': int((time.time() - t) * 1000)}
 
 
@@ -653,6 +705,8 @@ def tune(name, folders, photos, pairs):
 
 if __name__ == '__main__':
     args = sys.argv[1:]
+    polish = '--no-refine' not in args  # без дочистки сетью — сравнить «до и после»
+    args = [a for a in args if a != '--no-refine']
     if args[:1] == ['--calibrate'] and len(args) >= 3:
         calibrate(args[1], args[2:])
     elif args[:1] == ['--tune'] and len(args) >= 3:
@@ -677,11 +731,11 @@ if __name__ == '__main__':
     elif len(args) == 5 and args[0] == '--mark' or len(args) == 3:
         only = args[1] if args[0] == '--mark' else None
         try:
-            print(json.dumps(remove(*args[-3:], only=only), ensure_ascii=False), flush=True)
+            print(json.dumps(remove(*args[-3:], only=only, polish=polish), ensure_ascii=False), flush=True)
         except ValueError as e:
             print(json.dumps({'mark': None, 'error': str(e)}, ensure_ascii=False), flush=True)
             sys.exit(2)
     else:
-        print('unmark [--mark <имя>] <каталог знаков> <вход> <выход> | unmark --calibrate <знак.json> <фото…> | '
+        print('unmark [--mark <имя>] [--no-refine] <каталог знаков> <вход> <выход> | unmark --calibrate <знак.json> <фото…> | '
               'unmark --learn <имя> <x0,y0,x1,y1> <каталог> <фото с рамкой> <фото…>', file=sys.stderr)
         sys.exit(64)
