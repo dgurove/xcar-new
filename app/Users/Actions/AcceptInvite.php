@@ -45,6 +45,8 @@ final class AcceptInvite
                 'access' => in_array($invite->role, [Role::Parking, Role::Moderator], true) ? ($invite->access ?? []) : [],
                 'park_yard_id' => $invite->role === Role::Parking ? $invite->park_yard_id : null,
                 'park_readonly' => $invite->role === Role::Parking && $invite->park_readonly,
+                // Модератор сразу в группе, выбранной в ссылке («Вместе с»).
+                'crm_team_id' => $invite->role === Role::Moderator ? $invite->crm_team_id : null,
             ]);
             if ($buyer && $invite->group_id) {
                 $user->groups()->attach($invite->group_id, ['created_at' => now()]);

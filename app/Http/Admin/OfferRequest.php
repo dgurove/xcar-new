@@ -12,6 +12,7 @@ use App\Cars\Papers;
 use App\Cars\Transmission;
 use App\Offers\AudienceRules;
 use App\Offers\Flag;
+use App\Offers\OfferState;
 use App\Offers\Tag;
 use App\Support\Liters;
 use Illuminate\Foundation\Http\FormRequest;
@@ -150,6 +151,12 @@ class OfferRequest extends FormRequest
             }
         }
 
-        return $this->user()->canManageCrm() ? $data : Arr::only($data, self::MODERATOR);
+        if ($this->user()->canManageCrm()) {
+            return $data;
+        }
+        // Вендор у опубликованного ведёт маршрут и волны показа — модератор меняет его только в черновике.
+        $draft = $this->route('offer')?->state === OfferState::Draft;
+
+        return Arr::only($data, $draft ? self::MODERATOR : array_diff(self::MODERATOR, ['vendor_id']));
     }
 }

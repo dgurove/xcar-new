@@ -6,7 +6,9 @@
     $vendors = once(fn () => \App\Vendors\Vendor::where('is_active', true)->orWhere('id', $offer->vendor_id)->orderBy('name')->pluck('name', 'id'));
 @endphp
 <div class="{{ $grid }}" data-controller="twins" data-twins-url-value="/offers/twins" data-twins-except-value="{{ $offer->id }}" data-action="input->twins#changed">
-    <x-ui.field name="vendor_id" label="Вендор" :options="$vendors" placeholder="—" :value="$offer->vendor_id"/>
+    {{-- У опубликованного вендор ведёт маршрут и волны показа: модератор меняет его только в черновике. --}}
+    <x-ui.field name="vendor_id" label="Вендор" :options="$vendors" placeholder="—" :value="$offer->vendor_id"
+        :disabled="! auth()->user()->canManageCrm() && $offer->state !== \App\Offers\OfferState::Draft"/>
     <x-ui.field name="claim_ref" :label="$offer->leaseRef() ? 'Номер ДЛ' : 'Номер убытка'" :value="$offer->claim_ref" autocapitalize="characters" autocorrect="off" spellcheck="false" copy/>
     <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id"/>
     <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="$offer->model_id" :text="$offer->model?->name"/>

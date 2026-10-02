@@ -57,7 +57,7 @@ final class IssueInvite
                 'park_readonly' => (bool) ($data['park_readonly'] ?? false),
             ] : []),
             // Модератору — что открыто сверх черновиков.
-            ...($role === Role::Moderator ? ['access' => array_values($data['crm_areas'] ?? [])] : []),
+            ...($role === Role::Moderator ? ['access' => array_values($data['crm_areas'] ?? []), 'crm_team_id' => User::crmTeamWith($data['crm_team_with'] ?? null)] : []),
         ]);
     }
 
@@ -75,6 +75,7 @@ final class IssueInvite
             $rules['park_readonly'] = ['exclude_unless:role,parking', 'boolean'];
             $rules['crm_areas'] = ['exclude_unless:role,moderator', 'nullable', 'array'];
             $rules['crm_areas.*'] = [Rule::in(CrmArea::values())];
+            $rules['crm_team_with'] = ['exclude_unless:role,moderator', 'nullable', Rule::exists('users', 'id')->where('role', Role::Moderator->value)];
         } else {
             $rules['group_id'] = ['nullable', Rule::exists('buyer_groups', 'id')->where('manager_id', $by->id)];
         }

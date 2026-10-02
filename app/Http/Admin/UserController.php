@@ -283,7 +283,11 @@ class UserController
         // Доступ к парковке — только у роли «Парковка»: что открыто сверх основы, своя парковка, только приёмка.
         $park = $data['role'] === Role::Parking;
         $request->validate(['areas' => ['nullable', 'array'], 'areas.*' => [Rule::in(Area::values())], 'park_yard_id' => ['nullable', Rule::exists('park_yards', 'id')]]);
-        $request->validate(['crm_areas' => ['nullable', 'array'], 'crm_areas.*' => [Rule::in(CrmArea::values())]]);
+        $request->validate(['crm_areas' => ['nullable', 'array'], 'crm_areas.*' => [Rule::in(CrmArea::values())],
+            'crm_team_with' => ['nullable', Rule::exists('users', 'id')->where('role', Role::Moderator->value)]]);
+        // Группа модератора — «Вместе с»; у другой роли группы нет.
+        $data['crm_team_id'] = $data['role'] === Role::Moderator && (int) $request->input('crm_team_with') !== $user?->id
+            ? User::crmTeamWith($request->input('crm_team_with')) : null;
         $data['access'] = match ($data['role']) {
             Role::Parking => array_values(array_intersect(Area::values(), (array) $request->input('areas', []))),
             // Модератору — что открыто сверх черновиков (почта CRM).

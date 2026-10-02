@@ -36,13 +36,16 @@ class OfferController
         'bids' => 'Выбрать', 'sold' => 'В сделке', 'archive' => 'Архив',
     ];
 
+    /** Модератору — предложения его группы по состоянию: выбирать победителя и рекомендовать — дело админа. */
+    public const MODERATOR_PRESETS = ['all' => 'Все', 'draft' => 'Черновики', 'open' => 'В продаже', 'sold' => 'В сделке', 'archive' => 'Архив'];
+
     public const SORTS = ['fresh' => 'Сначала новые', 'bids' => 'По подтверждениям', 'closing' => 'Скоро закроются', 'number' => 'По номеру'];
 
     public function index(Request $request)
     {
         $admin = $request->user()->canManageCrm();
-        // Модератору пресетов нет: у него одни черновики (Offer::visibleTo).
-        $preset = $admin ? $request->query('preset', 'all') : 'all';
+        $presets = $admin ? self::PRESETS : self::MODERATOR_PRESETS;
+        $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : 'all';
         ListPrefs::sync($request, 'crm-offers');
         $sort = $request->query('sort', 'fresh');
 
@@ -57,8 +60,8 @@ class OfferController
             'bids' => $q->where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
             'sold' => $q->whereIn('state', [OfferState::Sold, OfferState::Delivered]),
             'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
-            // Галерея — свой раздел.
-            default => $q->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),
+            // Галерея — свой раздел у админа; у модератора своего раздела нет, его «скоро в продаже» — во «Все».
+            default => $q->whereNotIn('state', $admin ? [OfferState::Archived, OfferState::Gallery] : [OfferState::Archived, OfferState::Cancelled]),
         };
         if ($term = trim((string) $request->query('q'))) {
             $q->search($term);
@@ -95,16 +98,16 @@ class OfferController
             'peek' => $peek ? 'admin-offer-'.$peek->number : null,
             // Оценивать есть что, когда черновик заполнен хотя бы маркой: пустой «+ Новый» очередь не надувает.
             'unpriced' => $admin ? Offer::where('state', OfferState::Draft)->whereNull('asking_price')->whereNotNull('brand_id')->count() : 0,
-            'presets' => $admin ? self::PRESETS : [],
+            'presets' => $presets,
             'sorts' => $admin ? self::SORTS : [],
             'preset' => $preset,
             'sort' => $sort,
-            // Числа у пилюль — пилюли есть только у админа.
+            // Числа у пилюль; модератору — в пределах его группы.
             'counts' => $admin ? [
                 'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
                 'draft' => Offer::where('state', OfferState::Draft)->count(),
                 'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->count(),
-            ] : [],
+            ] : ['draft' => Offer::visibleTo($request->user())->where('state', OfferState::Draft)->count()],
         ]);
     }
 

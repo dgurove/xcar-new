@@ -9,6 +9,8 @@
             <x-ui.contact :name="$user->name" :user="$user" sidebar>
                 <x-slot:chips>
                     <x-ui.state :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')">{{ $user->role->label().' с '.$user->created_at->format('d.m.Y') }}</x-ui.state>
+                    {{-- Группа модератора: с кем он видит и правит предложения друг друга. --}}
+                    @if ($user->isModerator())@foreach ($user->teammates() as $i => $mate)<x-ui.person :user="$mate" full :prefix="$i ? null : 'вместе с'"/>@endforeach @endif
                     @if ($user->isPending())<x-ui.state tone="urgent">Ждёт</x-ui.state>@elseif ($user->isRejected())<x-ui.state tone="danger">Отклонён</x-ui.state>@endif
                     @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}/{{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
                     @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif

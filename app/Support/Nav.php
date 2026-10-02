@@ -412,7 +412,7 @@ final class Nav
                 ], 'fresh' => []];
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
-                return ['totals' => ['/' => Offer::visibleTo($user)->count()], 'fresh' => []];
+                return ['totals' => ['/' => Offer::visibleTo($user)->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])->count()], 'fresh' => []];
             }
             if ($surface === Surface::Crm) {
                 return ['totals' => [
