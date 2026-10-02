@@ -1,5 +1,7 @@
-{{-- copy — иконка внутри поля справа: кладёт в буфер то, что сейчас введено (номер убытка, госномер, ПТС). --}}
-@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false])
+{{-- copy — иконка внутри поля справа: кладёт в буфер то, что сейчас введено (номер убытка, госномер, ПТС).
+     required — звёздочка у подписи; без поля сервер не сохранит (атрибута required нет: поле в свёрнутом блоке
+     браузер не покажет, и форма молча не уйдёт). --}}
+@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false, 'required' => false])
 @php
     $id = $attributes->get('id', 'f-'.str_replace(['[', ']'], ['-', ''], $name));
     // Поле набора (`rows[0][price]`): ошибки и old() лежат под точками — иначе строка лестницы прайса
@@ -24,8 +26,8 @@
     unset($keys['type']);
 @endphp
 <div class="field {{ $span }} {{ $error ? 'field-invalid' : '' }}">
-    @if ($label && $afterLabel)<span class="field-label flex items-center gap-1.5"><label for="{{ $id }}">{{ $label }}</label>{{ $afterLabel }}</span>
-    @elseif ($label)<label for="{{ $id }}" class="field-label">{{ $label }}</label>@endif
+    @if ($label && $afterLabel)<span class="field-label flex items-center gap-1.5"><label for="{{ $id }}">{{ $label }}@if ($required)<x-ui.req/>@endif</label>{{ $afterLabel }}</span>
+    @elseif ($label)<label for="{{ $id }}" class="field-label">{{ $label }}@if ($required)<x-ui.req/>@endif</label>@endif
     @if ($options !== null)
         <select id="{{ $id }}" name="{{ $name }}" {{ $attributes->except('id')->merge(['class' => 'field-input']) }}>
             @if ($placeholder)<option value="">{{ $placeholder }}</option>@endif

@@ -257,6 +257,12 @@ class RequestController
             $promote->forVehicle($req->vehicle);
         }
 
+        // «Завести и ещё» — пачкой подряд: сразу пустая форма следующей. Адрес другой (`after`), иначе Turbo освежит ту же
+        // страницу морфом и оставит в полях прошлую ТС.
+        if ($request->input('then') === 'next') {
+            return redirect('/requests/new?after='.$req->vehicle_id)->with('toast', 'Заявка заведена');
+        }
+
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Заявка заведена');
     }
 

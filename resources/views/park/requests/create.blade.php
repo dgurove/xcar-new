@@ -73,6 +73,8 @@
                     @if ($scanFiles->isNotEmpty())
                         <div class="list mb-3"><x-mail.scan-button :url="'/requests/from-mail/'.$candidate->id.'/scan'" :fill="! ($v('brand') && $v('model') && $v('vin') && $v('year') && $v('color'))" :files="$scanFiles"/></div>
                     @endif
+                    {{-- Руками (не из письма): первым — поле для текста про машину, поля заполнятся из него. --}}
+                    @unless ($candidate)<div class="mb-3"><x-ui.paste/></div>@endunless
                     <x-park.vehicle-fields :values="$p" :brand="$p['brand'] ?? null" :model="$p['model'] ?? null" :vendors="$vendors" :categories="$categories" :cols="$letters ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'" :candidate="$candidate?->id"/>
                 </x-ui.card>
             @else
@@ -153,6 +155,14 @@
     </div>
     </div>
     @unless ($letters)
-        <x-ui.action-bar><x-ui.button form="request-form" class="min-w-0 flex-1">{{ $act }}</x-ui.button></x-ui.action-bar>
+        {{-- Руками заводят пачкой: «+ Новый» сохраняет и сразу открывает пустую форму следующей. --}}
+        <x-ui.action-bar>
+            @if (! $candidate && ! $vehicle && $type === RequestType::Intake)
+                <x-ui.button form="request-form" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>
+                <x-ui.button form="request-form" name="then" value="next" class="min-w-0 flex-1"><x-ui.icon name="plus" class="size-5"/>Новый</x-ui.button>
+            @else
+                <x-ui.button form="request-form" class="min-w-0 flex-1">{{ $act }}</x-ui.button>
+            @endif
+        </x-ui.action-bar>
     @endunless
 </x-ui.shell>

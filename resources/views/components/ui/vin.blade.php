@@ -1,14 +1,14 @@
 {{-- Поле VIN с ✨: кнопка загорается на семнадцатом знаке, по клику декодер
      заполняет пустые поля формы. Форма несёт data-controller="vin". --}}
-@props(['name' => 'vin', 'label' => 'VIN', 'value' => null, 'afterLabel' => null, 'span' => null])
+@props(['name' => 'vin', 'label' => 'VIN', 'value' => null, 'afterLabel' => null, 'span' => null, 'required' => false])
 @php
     $id = 'f-'.$name;
     $error = $errors->first($name);
     $bound = old($name, $value);
 @endphp
 <div class="field vin {{ $span }} {{ $error ? 'field-invalid' : '' }}">
-    @if ($afterLabel)<span class="field-label flex items-center gap-1.5"><label for="{{ $id }}">{{ $label }}</label>{{ $afterLabel }}</span>
-    @else<label for="{{ $id }}" class="field-label">{{ $label }}</label>@endif
+    @if ($afterLabel)<span class="field-label flex items-center gap-1.5"><label for="{{ $id }}">{{ $label }}@if ($required)<x-ui.req/>@endif</label>{{ $afterLabel }}</span>
+    @else<label for="{{ $id }}" class="field-label">{{ $label }}@if ($required)<x-ui.req/>@endif</label>@endif
     <div class="vin-box">
         <input id="{{ $id }}" name="{{ $name }}" type="text" value="{{ $bound }}" maxlength="17" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false"
             data-vin-target="input" data-action="input->vin#check keydown.enter->vin#enter"

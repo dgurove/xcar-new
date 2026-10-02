@@ -15,6 +15,8 @@ use App\Offers\Flag;
 use App\Offers\OfferState;
 use App\Offers\Tag;
 use App\Support\Liters;
+use App\Vendors\Kind;
+use App\Vendors\Vendor;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
@@ -47,9 +49,16 @@ class OfferRequest extends FormRequest
 
     public function rules(): array
     {
+        // Черновик без вендора, номера убытка (ДЛ), марки и модели не сохраняется (владелец 02.10.2026): по номеру письма
+        // страховой находят предложение, от вендора — маршрут, круг показа и НДС. Номер — у страховой и лизинговой, у
+        // своего транспорта и физлица его нет. Окошко строки шлёт только тронутые поля — там прежнее «можно пусто».
+        $full = ! $this->has('_fields') && $this->route('offer')?->state === OfferState::Draft;
+        $vendor = $this->filled('vendor_id') ? Vendor::badges()->get((int) $this->input('vendor_id')) : null;
+        $need = fn (bool $when = true) => $full && $when ? 'required' : 'nullable';
+
         return [
-            'brand_id' => ['nullable', 'exists:brands,id'],
-            'model_id' => ['nullable', 'exists:car_models,id'],
+            'brand_id' => [$need(), 'exists:brands,id'],
+            'model_id' => [$need(), 'exists:car_models,id'],
             'year' => ['nullable', 'integer', 'between:1950,'.(now()->year + 1)],
             'mileage' => ['nullable', 'integer', 'max:5000000'],
             'vin' => ['nullable', 'string', 'max:17'],
@@ -86,7 +95,7 @@ class OfferRequest extends FormRequest
             'share_locked' => ['boolean'],
             'recommended' => ['boolean'],
             'audience_rules' => ['nullable', 'json'],
-            'vendor_id' => ['nullable', 'exists:vendors,id'],
+            'vendor_id' => [$need(), 'exists:vendors,id'],
             'answer_by' => ['nullable', 'date'],
             'insured_name' => ['nullable', 'string', 'max:80'],
             'insured_phone' => ['nullable', 'string', 'max:20'],
@@ -95,14 +104,14 @@ class OfferRequest extends FormRequest
             'holder' => ['nullable', 'string', 'max:80'],
             'contact_name' => ['nullable', 'string', 'max:80'],
             'contact_email' => ['nullable', 'email', 'max:120'],
-            'claim_ref' => ['nullable', 'string', 'max:60'],
+            'claim_ref' => [$need(in_array($vendor?->kind, [Kind::Insurer, Kind::Leasing], true)), 'string', 'max:60'],
             'insurer_deadline_at' => ['nullable', 'date'],
         ];
     }
 
     public function attributes(): array
     {
-        return ['brand_id' => 'марка', 'model_id' => 'модель', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'publish_price' => 'заявленная цена'];
+        return ['brand_id' => 'марка', 'model_id' => 'модель', 'vendor_id' => 'вендор', 'claim_ref' => 'номер', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'publish_price' => 'заявленная цена'];
     }
 
     /**

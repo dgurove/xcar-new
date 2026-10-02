@@ -21,6 +21,18 @@ final class CodeMatcher
         'C\d{7}',                           // Интери: С2500291 (кириллическая С)
     ];
 
+    /** Шаблон, под который подходит номер целиком (`Code::normalize` уже прошёл): по нему ищут номера того же вида. */
+    public static function patternOf(string $code): ?string
+    {
+        foreach (self::PATTERNS as $pattern) {
+            if (preg_match('/^(?:'.$pattern.')$/u', $code)) {
+                return $pattern;
+            }
+        }
+
+        return null;
+    }
+
     /** @return list<string> в порядке появления в тексте */
     public function findAll(?string $text): array
     {

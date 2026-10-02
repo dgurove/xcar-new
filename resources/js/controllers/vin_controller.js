@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { filler, wait } from '../fill.js';
 
 // Поле VIN с ✨ (x-ui.vin): кнопка загорается на семнадцатом знаке, по клику
 // (или Enter в поле) декодер заполняет пустые поля формы — марку, модель, год,
@@ -6,7 +7,6 @@ import { Controller } from '@hotwired/stimulus';
 // трогается. Поля заполняются по очереди и вспыхивают; сообщение — только
 // о том, чего в полях не видно (модель не нашлась, год не читается).
 const ALLOWED = /[^ABCDEFGHJKLMNPRSTUVWXYZ0-9]/g;
-const STEP = 90;
 
 export default class extends Controller {
     static targets = ['input', 'button'];
@@ -62,48 +62,24 @@ export default class extends Controller {
         if (!data.valid) { this.shake(); window.toast?.('VIN не разбирается: семнадцать знаков, без букв I, O и Q', 'danger'); return; }
 
         const v = data.values;
-        const steps = [];
-        const plain = (name, value) => {
-            const el = this.element.querySelector(`[name="${name}"]`);
-            if (!el || value == null || value === '' || el.value !== '') return;
-            steps.push({ run: () => { el.value = value; el.dispatchEvent(new Event('change', { bubbles: true })); this.glow(el); } });
-        };
-        const combo = (name, id, text) => {
-            const hidden = this.element.querySelector(`[name="${name}"]`);
-            const shown = this.element.querySelector(`#f-${name}`);
-            if (!hidden || !id || hidden.value !== '') return;
-            steps.push({ run: () => {
-                hidden.value = id;
-                if (shown) shown.value = text || '';
-                hidden.dispatchEvent(new Event('change', { bubbles: true }));
-                this.glow(shown || hidden);
-            } });
-        };
+        const fill = filler(this.element);
         const brand = this.element.querySelector('[name="brand_id"]');
-        combo('brand_id', v.brand_id, v.brand);
+        fill.combo('brand_id', v.brand_id, v.brand);
         // Модель — только к своей марке: в форме BMW модели Haval не место.
-        if (brand && (brand.value === '' || String(brand.value) === String(v.brand_id))) combo('model_id', v.model_id, v.model);
-        plain('year', v.year);
-        plain('body', v.body);
-        plain('transmission', v.transmission);
-        plain('drive', v.drive);
-        plain('fuel', v.fuel);
+        if (brand && (brand.value === '' || String(brand.value) === String(v.brand_id))) fill.combo('model_id', v.model_id, v.model);
+        fill.plain('year', v.year);
+        fill.plain('body', v.body);
+        fill.plain('transmission', v.transmission);
+        fill.plain('drive', v.drive);
+        fill.plain('fuel', v.fuel);
         // Объём в форме — литрами («1,6»), из VIN приходит в см³.
-        plain('engine_volume', v.engine_volume ? (v.engine_volume / 1000).toFixed(1).replace('.', ',') : v.engine_volume);
-        plain('engine_power', v.engine_power);
+        fill.plain('engine_volume', v.engine_volume ? (v.engine_volume / 1000).toFixed(1).replace('.', ',') : v.engine_volume);
+        fill.plain('engine_power', v.engine_power);
 
         // Что заполнилось — видно по вспышкам полей; словами — только то, чего в них не видно.
-        if (!steps.length) this.shake();
-        for (const step of steps) { step.run(); await wait(STEP); }
+        if (!fill.count) this.shake();
+        await fill.run();
         if (data.skipped?.length) window.toast?.(data.skipped.join('; '));
-    }
-
-    glow(el) {
-        const field = el.closest('.field') || el;
-        field.classList.remove('field-filled');
-        void field.offsetWidth;
-        field.classList.add('field-filled');
-        field.addEventListener('animationend', () => field.classList.remove('field-filled'), { once: true });
     }
 
     shake() {
@@ -115,4 +91,3 @@ export default class extends Controller {
     }
 }
 
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));

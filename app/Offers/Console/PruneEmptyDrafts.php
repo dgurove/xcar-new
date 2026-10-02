@@ -2,16 +2,13 @@
 
 namespace App\Offers\Console;
 
-use App\Mail\Thread;
 use App\Offers\Offer;
-use App\Offers\OfferState;
 use App\Support\Nav;
 use Illuminate\Console\Command;
 
 /**
- * «+ Новый» заводит черновик сразу, чтобы было куда грузить фото; брошенный пустым он висел бы в списке вечно. Ночью
- * уходят черновики старше суток без марки, VIN, номера убытка, цены, описания, фото, документов и писем — вендор,
- * подставленный с прошлого черновика, работой не считается.
+ * Пустой черновик (`Offer::emptyDraft`) удаляется, как только из редактора ушли; закрытую вкладку редактор не
+ * заметит — такие уходят ночью, старше суток.
  */
 class PruneEmptyDrafts extends Command
 {
@@ -21,12 +18,7 @@ class PruneEmptyDrafts extends Command
 
     public function handle(): int
     {
-        $empty = Offer::where('state', OfferState::Draft)->whereNull('published_at')->where('created_at', '<', now()->subDay())
-            ->whereNull('brand_id')->whereNull('model_id')->whereNull('vin')->whereNull('claim_ref')->whereNull('floor_price')
-            ->whereNull('asking_price')->whereNull('description')
-            ->whereDoesntHave('media')->whereDoesntHave('purchaseCar')->whereDoesntHave('parkVehicle')->whereDoesntHave('positions')
-            ->whereNotIn('id', Thread::whereNotNull('offer_id')->select('offer_id'))
-            ->get();
+        $empty = Offer::emptyDraft()->where('created_at', '<', now()->subDay())->get();
         $empty->each->delete();
         if ($empty->isNotEmpty()) {
             Nav::forgetStaffCounts();

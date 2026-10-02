@@ -133,10 +133,11 @@
             </x-ui.card>
         </div>
 
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft next" class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft next{{ $empty ? ' drop-empty' : '' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             @csrf @method('put')
 
             <x-ui.card title="Транспортное средство" class="order-2">
+                @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
                 @include('admin.offers.fields.car')
             </x-ui.card>
 
@@ -192,9 +193,9 @@
             <form method="post" action="/offers/{{ $n }}/drop" class="contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<input type="hidden" name="decline" value="1"><x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Не заявка</x-ui.button></form>
             <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @elseif ($draft && ! $admin)
-            {{-- Модератор заводит пачку подряд: следующий черновик сразу, с тем же вендором; публикует админ. --}}
+            {{-- Модератор заводит пачку подряд: «+ Новый» сохраняет и открывает следующий черновик с тем же вендором; публикует админ. --}}
             <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>
-            <x-ui.button form="offer-form" name="then" value="next" class="min-w-0 flex-1">Сохранить и новое</x-ui.button>
+            <x-ui.button form="offer-form" name="then" value="next" class="min-w-0 flex-1"><x-ui.icon name="plus" class="size-5"/>Новый</x-ui.button>
         @elseif ($draft)
             <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>
             <x-ui.button form="offer-form" name="then" value="open" class="min-w-0 flex-1">Опубликовать</x-ui.button>

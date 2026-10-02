@@ -66,6 +66,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/offers/{offer}', [OfferController::class, 'update']);
         // Черновик из писем до первого сохранения: «Отменить» и «Не заявка» (decline) — черновика не было, письма снова ждут.
         Route::post('/offers/{offer}/drop', [MailController::class, 'dropDraft'])->middleware('ability:canCrmMail');
+        // Ушли из пустого черновика «+ Новый» — его нет (sendBeacon при уходе; не пустой сервер не трогает).
+        Route::post('/offers/{offer}/drop-empty', [OfferController::class, 'dropEmpty']);
         Route::post('/offers/{offer}/media', [OfferPhotoController::class, 'store']);
         Route::post('/offers/{offer}/media/order', [OfferPhotoController::class, 'reorder']);
         Route::post('/offers/{offer}/media/{media}/hide', [OfferPhotoController::class, 'toggle']);
@@ -97,6 +99,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::get('/settings', [ProfileController::class, 'profile']);
     Route::permanentRedirect('/account', '/settings');
     Route::get('/reference/vin', [ReferenceController::class, 'vin']);
+    Route::post('/reference/car-text', [ReferenceController::class, 'carText']);
     Route::get('/reference/brands', [ReferenceController::class, 'brands']);
     Route::get('/reference/models', [ReferenceController::class, 'models']);
     Route::get('/reference/settlements', [ReferenceController::class, 'settlements']);

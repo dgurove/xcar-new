@@ -15,6 +15,7 @@ use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\AudienceRules;
 use App\Offers\BidState;
+use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\OfferState;
@@ -49,7 +50,8 @@ class OfferController
         ListPrefs::sync($request, 'crm-offers');
         $sort = $request->query('sort', 'fresh');
 
-        $q = Offer::query()->visibleTo($request->user())->with(['brand', 'model', 'parkVehicle:id,offer_id,category'])
+        // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
+        $q = Offer::query()->visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'parkVehicle:id,offer_id,category'])
             ->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
         match ($preset) {
@@ -105,9 +107,9 @@ class OfferController
             // Числа у пилюль; модератору — в пределах его группы.
             'counts' => $admin ? [
                 'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
-                'draft' => Offer::where('state', OfferState::Draft)->count(),
+                'draft' => Offer::where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())->count(),
                 'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->count(),
-            ] : ['draft' => Offer::visibleTo($request->user())->where('state', OfferState::Draft)->count()],
+            ] : ['draft' => Offer::visibleTo($request->user())->where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())->count()],
         ]);
     }
 
@@ -144,6 +146,13 @@ class OfferController
         }
 
         $threads = Thread::where('offer_id', $offer->id)->get();
+        $fromMail = $offer->state === OfferState::Draft && session()->has("mail-draft.{$offer->id}");
+        // Пустой «+ Новый»: первым — поле для текста про машину; уйдут, ничего не внеся, — черновика нет. Открыли снова
+        // (в том числе обновили страницу) — отметка, чтобы удаление по прошлому уходу его не тронуло.
+        $empty = ! $fromMail && $offer->state === OfferState::Draft && Offer::emptyDraft()->whereKey($offer->id)->exists();
+        if ($empty) {
+            Offer::whereKey($offer->id)->update(['updated_at' => now()]);
+        }
 
         return view('admin.offers.edit', OfferFiles::letters($offer, $threads) + [
             'offer' => $offer,
@@ -159,7 +168,8 @@ class OfferController
             'audienceOptions' => $admin ? AudienceRules::options() : null,
             'showingSummary' => $admin ? Showing::summary($offer) : collect(),
             // Черновик только что заведён из писем и ещё ни разу не сохранён: внизу «Отменить» и «Не заявка».
-            'fromMail' => $offer->state === OfferState::Draft && session()->has("mail-draft.{$offer->id}"),
+            'fromMail' => $fromMail,
+            'empty' => $empty,
         ]);
     }
 
@@ -228,6 +238,20 @@ class OfferController
         }
 
         return redirect("/offers/{$offer->number}")->with('toast', 'Сохранено');
+    }
+
+    /**
+     * Ушли из редактора черновика, ничего не внеся (`drop_empty_controller`, sendBeacon): черновика вскоре нет
+     * (`DropEmptyDraft`). Внесли хоть что-то, загрузили фото, пришли письма — сервер не тронет его, что бы ни прислал
+     * браузер.
+     */
+    public function dropEmpty(Offer $offer)
+    {
+        if ($offer->state === OfferState::Draft) {
+            DropEmptyDraft::dispatch($offer->id, now());
+        }
+
+        return response()->noContent();
     }
 
     /** Строка таблицы и полоса окошка после автосохранения: окошко не перерисовывается, меняются только они. */

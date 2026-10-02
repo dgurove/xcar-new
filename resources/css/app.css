@@ -304,6 +304,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
   .field { @apply flex flex-col gap-1.5; }
   .field-label { @apply text-sm text-ink-dim; }
+  /* Звёздочка обязательного поля (x-ui.req) — вплотную к подписи. */
+  .field-req { @apply ml-0.5 text-danger; }
+  /* Текст про машину кучей (x-ui.paste): поле над полями формы, во всю ширину сетки. */
+  .paste-input { min-height: 5.5rem; resize: none; }
   .field-input {
     @apply w-full rounded-(--radius-m) bg-surface-3 px-4 text-ink placeholder:text-ink-dim outline-none disabled:opacity-60;
     padding-block: .875rem;

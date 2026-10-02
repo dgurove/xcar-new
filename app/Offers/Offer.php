@@ -12,7 +12,9 @@ use App\Cars\Fuel;
 use App\Cars\Papers;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
+use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
+use App\Mail\Thread;
 use App\Media\HasPhotos;
 use App\Park\Vehicle;
 use App\Purchases\Car;
@@ -206,6 +208,22 @@ class Offer extends Model implements HasMedia
     public function showings(): HasMany
     {
         return $this->hasMany(Showing::class);
+    }
+
+    /**
+     * Черновик, в который ничего не внесли: «+ Новый» заводит его сразу, чтобы было куда грузить фото. Нет марки,
+     * модели, VIN, номера убытка, цен, описания, фото, документов, писем, закупки и вывоза; вендор, подставленный с
+     * прошлого черновика, работой не считается. Такой не показывается в списке, удаляется при уходе из редактора
+     * (`OfferController::dropEmpty`) и ночью (`offers:prune-drafts`).
+     */
+    public function scopeEmptyDraft(Builder $q): Builder
+    {
+        return $q->where('state', OfferState::Draft)->whereNull('published_at')
+            ->whereNull('brand_id')->whereNull('model_id')->whereNull('vin')->whereNull('claim_ref')->whereNull('floor_price')
+            ->whereNull('asking_price')->whereNull('description')
+            ->whereDoesntHave('media')->whereDoesntHave('purchaseCar')->whereDoesntHave('parkVehicle')->whereDoesntHave('positions')
+            ->whereNotIn('id', Thread::whereNotNull('offer_id')->select('offer_id'))
+            ->whereNotIn('id', Candidate::whereNotNull('offer_id')->select('offer_id'));
     }
 
     /**

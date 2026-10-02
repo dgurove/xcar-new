@@ -5,11 +5,13 @@ namespace App\Http\Admin;
 use App\Cars\Body;
 use App\Cars\Brand;
 use App\Cars\CarModel;
+use App\Cars\CarText;
 use App\Cars\Drive;
 use App\Cars\Fuel;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Cars\Vin\VinAutofill;
+use App\Support\Liters;
 use Illuminate\Http\Request;
 
 /** Подсказки комбобоксов и создание записей справочника на лету. */
@@ -40,6 +42,20 @@ class ReferenceController
         }
 
         return response()->json(['valid' => $guess['result']->valid, 'values' => $values, 'filled' => $guess['filled'], 'skipped' => $guess['skipped']]);
+    }
+
+    /**
+     * Текст про машину кучей («+ Новый», вставка из WhatsApp) — значения полей формы (`CarText`); объём — литрами,
+     * как в поле, у списков — подписи для сообщения. Текст едет телом POST: в нём телефоны и имена.
+     */
+    public function carText(Request $request)
+    {
+        $values = CarText::parse($request->validate(['text' => ['required', 'string', 'max:5000']])['text']);
+        if (isset($values['engine_volume'])) {
+            $values['engine_volume'] = Liters::format($values['engine_volume']);
+        }
+
+        return response()->json(['values' => $values]);
     }
 
     public function brands(Request $request)
