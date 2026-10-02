@@ -2,16 +2,22 @@
 
 namespace App\Mail\Extraction\Templates;
 
+use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Patterns;
 
-/** ИНСАЙТ: тема «код VIN марка модель город», «Максимальное предложение N руб», фото ссылкой. Код — `CodeMatcher`. */
+/**
+ * ИНСАЙТ: тема «код VIN марка модель город», «Максимальное предложение N руб», фото ссылкой. Код — `CodeMatcher`
+ * («АС26К166877»), а формы, которых он не знает («ВК25Т123456»), — своей: две буквы, две цифры, буква, шесть цифр.
+ */
 final class Insight extends Template
 {
+    private const CODE = '/\b[А-ЯA-Z]{2}\d{2}[А-ЯA-Z]\d{6}\b/u';
+
     public function extract(string $subject, string $body): array
     {
         $subject = $this->subjectOf($subject, $body);
         $fields = [];
-        $code = $this->firstCode($subject);
+        $code = $this->firstCode($subject) ?? (($raw = $this->match(self::CODE, $subject)) ? Code::normalize($raw) : null);
         $vin = $this->vin($subject);
         $this->put($fields, 'code', $code, 'subject');
         $this->put($fields, 'vin', $vin, 'subject');

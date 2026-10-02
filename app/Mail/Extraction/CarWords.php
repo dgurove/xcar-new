@@ -67,7 +67,7 @@ final class CarWords
         $mapped = match (true) {
             str_contains($word, 'акпп') || str_contains($word, 'автомат') => 'automatic',
             str_contains($word, 'мкпп') || str_contains($word, 'механ') => 'manual',
-            str_contains($word, 'вариатор') => 'cvt',
+            str_contains($word, 'вариат') => 'cvt',   // «вариатор», «вариат.», «вариатная»
             str_contains($word, 'робот') => 'dual_clutch',
             default => null,
         };

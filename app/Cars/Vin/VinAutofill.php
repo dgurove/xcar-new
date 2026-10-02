@@ -147,25 +147,23 @@ class VinAutofill
     }
 
     /**
-     * Марка из декодера — как везде (`Brand::known`: словарь `Names`, slug, имя), потом через алиасы таблиц VIN: «Li Auto»
-     * из VIN и «Lixiang» из справочника — одна марка.
+     * Марка из декодера: сначала алиасы таблиц VIN — они знают каноническое имя («Li Auto» из VIN и «Lixiang» из
+     * справочника — одна марка, случайный дубль «Li Auto» в справочнике не перебьёт); нет — как везде (`Brand::known`).
      */
     private function findBrand(string $name): ?Brand
     {
-        if ($brand = Brand::known($name)) {
-            return $brand;
-        }
-        $names = [$name];
         foreach ($this->tables->brandAliases() as $canonical => $aliases) {
             if (in_array(mb_strtolower($name), array_map('mb_strtolower', [$canonical, ...$aliases]), true)) {
                 $names = array_unique([$canonical, ...$aliases, $name]);
-                break;
+                $lower = array_map('mb_strtolower', $names);
+                $slugs = array_map(Brand::slugFor(...), $names);
+                if ($brand = Brand::whereIn('slug', $slugs)->orWhereIn(DB::raw('lower(name)'), $lower)->orWhereIn(DB::raw('lower(name_ru)'), $lower)->orderByRaw('lower(name) = ? desc', [mb_strtolower($canonical)])->first()) {
+                    return $brand;
+                }
             }
         }
-        $lower = array_map('mb_strtolower', $names);
-        $slugs = array_map(Brand::slugFor(...), $names);
 
-        return Brand::whereIn('slug', $slugs)->orWhereIn(DB::raw('lower(name)'), $lower)->orWhereIn(DB::raw('lower(name_ru)'), $lower)->first();
+        return Brand::known($name);
     }
 
     private function findModel(Brand $brand, string $name): ?CarModel

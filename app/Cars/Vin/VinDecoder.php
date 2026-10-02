@@ -81,7 +81,8 @@ class VinDecoder
      */
     public static function year(string $vin): ?int
     {
-        $result = (new self)->decode($vin);
+        static $decoder;   // таблицы VIN читаются один раз на процесс, а не на каждое письмо
+        $result = ($decoder ??= new self)->decode($vin);
         $year = $result->get('year');
 
         return $result->confidence('year') !== 'low' && is_int($year) && $year >= 1980 && $year <= (int) date('Y') + 1 ? $year : null;

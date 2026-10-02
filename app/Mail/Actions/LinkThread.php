@@ -2,7 +2,10 @@
 
 namespace App\Mail\Actions;
 
+use App\Mail\Extraction\Code;
+use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Extraction\Keys;
+use App\Mail\Extraction\Patterns;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
 use App\Mail\Scope;
@@ -12,12 +15,15 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 
 /**
- * Ветка ↔ машина (оффер или машина стоянки): по номерам письма (`Message::keys` — убыток из темы, VIN, госномер, как
- * их прочёл `ReadLetter`; цитаты в счёт не идут) либо руками. Одна дверь: как бы ни привязали, файлы ветки едут в
+ * Ветка ↔ машина (оффер или машина стоянки): по номерам письма (`Message::keys`, как их прочёл `ReadLetter`), а нет —
+ * по номеру убытка и VIN во всём письме вместе с цитатой: ответ «RE:» без номера в теме несёт его в цитате исходного,
+ * а машина уже заведена — ошибиться некуда. Либо руками. Одна дверь: как бы ни привязали, файлы ветки едут в
  * медиатеку машины (ImportThreadFiles).
  */
 final class LinkThread
 {
+    public function __construct(private CodeMatcher $matcher) {}
+
     /** `files: false` — привязать без импорта файлов (ТС уже выдана: из писем ничего не хранится). */
     public function __invoke(Thread $thread, Offer|Vehicle $to, bool $files = true): void
     {
@@ -73,14 +79,15 @@ final class LinkThread
         if ($thread->offer_id || $thread->unlinked_at) {
             return null;
         }
-        foreach ($this->keyed($message, 'code') as $code) {
+        $codes = array_unique([...$this->keyed($message, 'code'), ...array_map(fn ($c) => (string) Code::key($c), $this->matcher->findAll($this->whole($message)))]);
+        foreach ($codes as $code) {
             if ($offer = Offer::where('claim_ref_key', $code)->first()) {
                 $this($thread, $offer);
 
                 return $offer;
             }
         }
-        if ($vin = $this->keyed($message, 'vin')[0] ?? null) {
+        if ($vin = $this->vin($message)) {
             if ($offer = Offer::where('vin', $vin)->latest()->first()) {
                 $this($thread, $offer);
 
@@ -104,13 +111,24 @@ final class LinkThread
         if ($code = $fields['code']['value'] ?? null) {
             $vehicle = $live()->where('ref_key', Vehicle::keyFor($code))->first();
         }
-        $vehicle ??= ($vin = $this->keyed($message, 'vin')[0] ?? null) ? $live()->where('vin', $vin)->first() : null;
+        $vehicle ??= ($vin = $this->vin($message)) ? $live()->where('vin', $vin)->first() : null;
         $vehicle ??= ($plate = $fields['plate']['value'] ?? null) ? $live()->where('plate', mb_strtoupper($plate))->first() : null;
         if ($vehicle) {
             $this($thread, $vehicle);
         }
 
         return $vehicle;
+    }
+
+    /** VIN письма: прочитанный `ReadLetter`, иначе первый во всём письме с цитатой (`Patterns::vin` — без заглушек). */
+    private function vin(Message $message): ?string
+    {
+        return $this->keyed($message, 'vin')[0] ?? Patterns::vin($this->whole($message));
+    }
+
+    private function whole(Message $message): string
+    {
+        return $message->subject."\n".($message->text_body ?: strip_tags((string) $message->html_body));
     }
 
     /** Номера письма одного вида (`code`, `vin`, `plate`) без приставки. @return list<string> */

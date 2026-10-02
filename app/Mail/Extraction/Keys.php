@@ -38,7 +38,7 @@ final class Keys
         if (($code = Code::key($q)) && strlen((string) $code) >= 6) {
             $keys[] = 'code:'.$code;
         }
-        if (preg_match('/^[A-HJ-NPR-Z0-9]{17}$/i', trim($q))) {
+        if (preg_match('/^'.Patterns::VIN_CHARS.'$/i', trim($q))) {
             $keys[] = 'vin:'.strtoupper(trim($q));
         }
         if (preg_match('/^[А-ЯA-Z]\s?\d{3}\s?[А-ЯA-Z]{2}\s?\d{2,3}$/iu', trim($q))) {

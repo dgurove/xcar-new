@@ -2,7 +2,6 @@
 
 namespace App\Mail;
 
-use App\Mail\Extraction\Patterns;
 use DateTimeImmutable;
 use Throwable;
 use Webklex\PHPIMAP\Address as ImapAddress;
@@ -60,10 +59,17 @@ final class Parser
 
     public function normalizeSubject(?string $subject): ?string
     {
-        $value = Patterns::cleanSubject($subject);
+        // Ключ ветки: приставки — ровно те, что были, когда ветки заводились (`Patterns::cleanSubject` шире — с ним
+        // новое «Re: Пересл: …» не нашло бы ветку «пересл: …» и завело вторую).
+        $value = trim((string) $subject);
         if ($value === '') {
             return null;
         }
+        $prefixes = 're|re\[\d+\]|rе|fw|fwd|отв|ответ|пересылка';
+        do {
+            $previous = $value;
+            $value = preg_replace('/^\s*(?:'.$prefixes.')\s*:\s*/iu', '', $value) ?? $value;
+        } while ($value !== $previous);
         $value = mb_strtolower(trim(preg_replace('/\s+/u', ' ', $value) ?? $value));
 
         return $value !== '' ? mb_substr($value, 0, 255) : null;

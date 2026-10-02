@@ -11,8 +11,10 @@ use App\Support\Phone;
  */
 final class Patterns
 {
-    /** VIN: 17 знаков без I, O, Q. */
-    public const VIN = '/\b[A-HJ-NPR-Z0-9]{17}\b/u';
+    /** VIN: 17 знаков без I, O, Q — кусок регулярки и она сама. */
+    public const VIN_CHARS = '[A-HJ-NPR-Z0-9]{17}';
+
+    public const VIN = '/\b'.self::VIN_CHARS.'\b/u';
 
     /** Госномер слитно: «Р621ВЕ126». */
     public const PLATE = '/\b[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}\b/u';

@@ -26,16 +26,23 @@ enum Intent: string
     case Auto = 'auto';
     case Other = 'other';
 
-    /** Служебный отправитель почтовых сервисов и роботов — письмо не о ТС и не предложение. */
-    private const SERVICE_SENDERS = '/^(?:security|noreply\w*|no-reply|no_reply|notify|notifications?|mailer-daemon|postmaster|robot)@/iu';
+    /**
+     * Служебные письма — правила здесь, но у сторон они разные, и это намеренно. Парковка: тема служебная, только если
+     * с этого начинается («ТС не доставлено на стоянку» — заявка, не недоставка письма), а robot@ и notify@ страховых
+     * присылают заявки. В offer@ людей с такими темами нет — там шире: почтовые сервисы, вход, пароль, роботы.
+     */
+    private const PARK_SENDERS = '/^(?:security|mailer-daemon|no-?reply|postmaster|notification|noreply\w*)@/iu';
 
-    /** Служебная тема: автоответ, недоставка, отзыв, вход и пароль, регистрация. */
-    private const SERVICE_SUBJECTS = '/^\s*(?:automatic reply|autoreply|undeliverable|отзыв|delivery status|mail delivery|out of office|уведомление о регистрации|ваше сообщение не доставлено)\b|вход с нового устройства|пытаются войти|добавлен номер телефона|восстановлени\w* пароля|подтвердите (?:адрес|почту)|автоответ|out of office|undeliver|не доставлено/iu';
+    private const PARK_SUBJECTS = '/^\s*(?:automatic reply|autoreply|undeliverable|отзыв|delivery status|mail delivery|out of office|уведомление о регистрации|ваше сообщение не доставлено|вход с нового устройства|в аккаунт пытаются войти|добавлен номер телефона)\b/iu';
 
-    /** Служебное письмо по отправителю и теме — одно правило на CRM и парковку (у парковки ещё и по словам, `of`). */
+    private const OFFER_SENDERS = '/^(?:security|noreply|no-reply|no_reply|notify|notifications?|mailer-daemon|postmaster|robot)@/i';
+
+    private const OFFER_SUBJECTS = '/вход с нового устройства|пытаются войти|восстановлени\w* пароля|подтвердите (?:адрес|почту)|автоответ|out of office|undeliver|не доставлено/iu';
+
+    /** Служебное письмо ящика предложений (offer@): не предложение, полей не даёт. */
     public static function isService(?string $subject, ?string $fromEmail): bool
     {
-        return preg_match(self::SERVICE_SENDERS, (string) $fromEmail) === 1 || preg_match(self::SERVICE_SUBJECTS, (string) $subject) === 1;
+        return preg_match(self::OFFER_SENDERS, (string) $fromEmail) === 1 || preg_match(self::OFFER_SUBJECTS, (string) $subject) === 1;
     }
 
     public static function of(?string $subject, ?string $body): self
@@ -44,7 +51,7 @@ enum Intent: string
         $text = self::body($body);
         $all = trim((string) $subject)."\n".$text;
         // Служебное: автоответ, недоставка, отзыв письма, рассылка — не письмо о ТС.
-        if (preg_match(self::SERVICE_SUBJECTS, (string) $subject)
+        if (preg_match(self::PARK_SUBJECTS, (string) $subject)
             || preg_match('/^\s*(?:в данный момент|с \d{2}\.\d{2}\.\d{2,4}[^\n]{0,40}(?:отпуск|отсутству))|нахожусь в отпуске|отсутствую (?:на рабочем месте|в офисе)|доступ к почте ограничен|delivery has failed|хотел бы отозвать сообщение|отписаться от рассылки|unsubscribe|дайджест|зарегистрировано в автоматическом режиме|письмо создано автоматически/iu', $text)) {
             return self::Auto;
         }
@@ -154,7 +161,7 @@ enum Intent: string
 
     public static function ofMessage(Message $message): self
     {
-        if (preg_match(self::SERVICE_SENDERS, (string) $message->from_email)) {
+        if (preg_match(self::PARK_SENDERS, (string) $message->from_email)) {
             return self::Auto;
         }
         $body = $message->text_body ?: strip_tags((string) $message->html_body);

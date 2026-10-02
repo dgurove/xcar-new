@@ -2,6 +2,8 @@
 
 namespace App\Mail\Extraction\Templates;
 
+use App\Mail\Extraction\Patterns;
+
 /** Энергогарант: тема «код, ТС Марка Модель / VIN», цены в первом письме нет. */
 final class Energogarant extends Template
 {
@@ -20,7 +22,7 @@ final class Energogarant extends Template
 
     protected function brandAndModel(string $text): array
     {
-        if (preg_match('/ТС\s+(.+?)\s*\/\s*[A-HJ-NPR-Z0-9]{17}\b/ui', $text, $m)) {
+        if (preg_match('/ТС\s+(.+?)\s*\/\s*'.Patterns::VIN_CHARS.'\b/ui', $text, $m)) {
             return $this->splitBrandModel($m[1]);
         }
 

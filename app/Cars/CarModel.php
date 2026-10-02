@@ -22,17 +22,23 @@ class CarModel extends Model
     {
         $name = trim($name);
         $find = fn (string $n) => $brand->models()->where('slug', Brand::slugFor($n))->orWhere(fn ($q) => $q->where('brand_id', $brand->id)->whereRaw('lower(name) = ?', [mb_strtolower($n)]))->first();
+        if ($model = $find($name)) {
+            return $model;
+        }
         $known = Names::knownModel($brand, $name);
 
-        return $find($name) ?? ($known ? $find($known) : null);
+        return $known ? $find($known) : null;
     }
 
     /** Найти модель марки (`known`), иначе завести — под именем из словаря, если он её знает. */
     public static function resolve(Brand $brand, string $name): self
     {
+        if ($model = self::known($brand, $name)) {
+            return $model;
+        }
         $name = trim($name);
         $known = Names::knownModel($brand, $name);
 
-        return self::known($brand, $name) ?? $brand->models()->create(['slug' => Brand::slugFor($known ?? $name), 'name' => $known ?? $name]);
+        return $brand->models()->create(['slug' => Brand::slugFor($known ?? $name), 'name' => $known ?? $name]);
     }
 }
