@@ -10,6 +10,7 @@ use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
+use App\Park\Sale;
 use App\Users\User;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\StartRoute;
@@ -41,6 +42,8 @@ final class UpdateOffer
             // Ключ номера убытка — производная колонка, в истории это тот же «номер убытка».
             $offer->log(OfferEventType::Updated, $by, ['fields' => array_values(array_diff($changed, ['claim_ref_key']))]);
             (new RememberVin)($offer);
+            // Машина одна: тождество связанной ТС парковки правится там же, предложение — её зеркало.
+            Sale::toVehicle($offer, $changed, $by);
         }
         // Номер убытка или VIN вписали руками — письма о той же ТС, что уже пришли и ни к чему не привязаны, едут к ней.
         if (array_intersect(['claim_ref', 'vin'], $changed)) {

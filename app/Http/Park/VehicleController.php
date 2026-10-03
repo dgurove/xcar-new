@@ -26,6 +26,7 @@ use App\Park\Actions\MarkDoc;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
 use App\Park\Actions\PromoteCandidate;
+use App\Park\Actions\PutOnSale;
 use App\Park\Actions\RestoreVehicle;
 use App\Park\Actions\SetYard;
 use App\Park\Actions\UndoIntake;
@@ -386,6 +387,15 @@ class VehicleController
         return $candidate
             ? redirect('/requests/from-mail')->with('toast', $stored ? 'Заведение отменено, письма снова в «Из писем»' : 'Заявка отменена, письмо снова в «Из писем»')
             : redirect('/requests')->with('toast', $stored ? 'Заведение отменено' : 'Заявка отменена');
+    }
+
+    /** «В продажу»: черновик предложения этой ТС в CRM; чип в шапке становится ссылкой на него. */
+    public function sell(Request $request, Vehicle $vehicle, PutOnSale $sell)
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $sell($vehicle, $request->user());
+
+        return back()->with('toast', 'Черновик продажи в CRM');
     }
 
     /** Связать с предложением CRM: по номеру, руками. */

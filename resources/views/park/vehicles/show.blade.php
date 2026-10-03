@@ -48,6 +48,14 @@
             </x-ui.sheet>
         @endif
         <x-ui.docs-pill :docs="$docs" class="!min-h-0 !py-1 text-xs"/>
+        {{-- Продажа этой ТС в CRM — админу: предложение ссылкой, нет его — «В продажу» (черновик, фото и документы — её же). --}}
+        @if (auth()->user()->isAdmin())
+            @if ($vehicle->offer)
+                <a href="{{ \App\Support\Surface::Crm->url('/offers/'.$vehicle->offer->number) }}" class="chip" data-turbo="false">Продажа: {{ mb_strtolower($vehicle->offer->state->label()) }}</a>
+            @elseif (! $state->isFinal())
+                <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="В CRM появится черновик с фото и документами этой ТС">@csrf<button class="chip">В продажу</button></form>
+            @endif
+        @endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif

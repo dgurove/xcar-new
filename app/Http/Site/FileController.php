@@ -65,17 +65,24 @@ final class FileController
         if ($user->isAdmin()) {
             return true;
         }
+        // Файл ТС парковки в продаже — и файл её предложения (`SaleMedia`).
+        $offer = match ($media->model_type) {
+            Offer::class => Offer::find($media->model_id),
+            Vehicle::class => Vehicle::find($media->model_id)?->offer,
+            default => null,
+        };
         // Модератору — документы и фото только тех предложений, что ему можно открыть в CRM.
         if ($user->isModerator()) {
-            return $media->model_type === Offer::class && Offer::find($media->model_id)?->isEditableBy($user);
+            return (bool) $offer?->isEditableBy($user);
         }
+        // Документы предложения — менеджеру по сделке.
+        $dealt = fn () => $offer && $offer->deal()->where('buyer_id', $user->id)->exists();
 
         return match ($media->model_type) {
-            // Документы предложения — покупателю по сделке.
-            Offer::class => Offer::whereKey($media->model_id)->whereHas('deal', fn ($q) => $q->where('buyer_id', $user->id))->exists(),
+            Offer::class => $dealt(),
             // Файл просьбы — тому, кого просили.
             Requirement::class => Requirement::whereKey($media->model_id)->where('user_id', $user->id)->exists(),
-            Vehicle::class => $user->canAccess(Section::Park),
+            Vehicle::class => $user->canAccess(Section::Park) || $dealt(),
             default => false,
         };
     }

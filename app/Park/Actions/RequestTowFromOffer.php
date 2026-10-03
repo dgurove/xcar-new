@@ -31,7 +31,8 @@ final class RequestTowFromOffer
         ];
         $request = ($this->create)($by, RequestType::Tow, $vehicle, $data);
         if (! $vehicle) {
-            Vehicle::whereKey($request->vehicle_id)->update(['offer_id' => $offer->id]);
+            // Моделью, а не запросом: связь переносит файлы предложения к ТС (`Vehicle::saved`).
+            Vehicle::find($request->vehicle_id)?->update(['offer_id' => $offer->id]);
         }
 
         return $request;

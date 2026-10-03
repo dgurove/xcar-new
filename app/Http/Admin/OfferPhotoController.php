@@ -5,11 +5,13 @@ namespace App\Http\Admin;
 use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Media\Actions\RotatePhoto;
 use App\Media\Actions\UnmarkPhoto;
+use App\Media\Hidden;
 use App\Media\PhotoIngest;
 use App\Media\Unmark;
 use App\Media\Watermarks;
 use App\Offers\Jobs\ImportOfferArchive;
 use App\Offers\Offer;
+use App\Park\Sale;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
@@ -56,7 +58,7 @@ class OfferPhotoController
     public function toggle(Offer $offer, Media $media)
     {
         $this->own($offer, $media);
-        $media->setCustomProperty('hidden', ! $media->getCustomProperty('hidden', false))->save();
+        Hidden::toggle($media);
 
         return $this->gallery($offer->refresh());
     }
@@ -162,6 +164,8 @@ class OfferPhotoController
     public function destroy(Offer $offer, Media $media)
     {
         $this->own($offer, $media);
+        // Кадр парковки — её запись о машине: из продажи он уходит глазом, а не корзиной.
+        abort_if(Sale::parkOwned($media), 403);
         $media->delete();
 
         return $this->gallery($offer->refresh());
@@ -175,7 +179,8 @@ class OfferPhotoController
 
     private function own(Offer $offer, Media $media): void
     {
-        abort_unless($media->model_id === $offer->id && $media->model_type === $offer::class, 404);
+        // Свой кадр или кадр ТС парковки, что идёт в продажу (`SaleMedia`).
+        abort_unless($offer->media()->whereKey($media->id)->exists(), 404);
     }
 
     private function gallery(Offer $offer)

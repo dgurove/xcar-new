@@ -10,10 +10,8 @@ use App\Mail\Extraction\AttachmentImporter;
 use App\Mail\Extraction\Intent;
 use App\Mail\Thread;
 use App\Offers\Events\OfferStateChanged;
-use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\PhotoStage;
-use App\Park\Vehicle;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -25,8 +23,9 @@ use Illuminate\Support\Facades\Cache;
  * новое письмо в уже привязанной ветке. Сначала закрепить вложения в blobs
  * (письма страховых — по 30 кадров, из ящика это минуты), потом разобрать:
  * документы в `papers`, фото и архивы в `photos`. Что уже лежит — по
- * отпечатку `sha` — не дублируется. В оффер, который уже не черновик, кадры
- * ложатся скрытыми: что на сайте — решает сотрудник глазом в полосе.
+ * отпечатку `sha` — не дублируется. У предложения с ТС парковки файлы — у ТС
+ * (машина одна). В оффер, который уже не черновик, кадры ложатся скрытыми: что
+ * на сайте — решает сотрудник глазом в полосе.
  */
 final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -51,11 +50,18 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
     public function handle(PinThread $pin, AttachmentImporter $importer, Publisher $publish): void
     {
         $thread = Thread::find($this->threadId);
-        $model = $thread?->offer ?? $thread?->vehicle;
+        // Машина одна: ветка ящика парковки — в медиатеку ТС со стадией кадра; ветка предложения — в предложение, а
+        // `SaleMedia` кладёт файл к его ТС («от страховой»), если она есть. Ветка с ТС и чужим предложением — к предложению.
+        $vehicle = $thread?->vehicle;
+        $offer = $thread?->offer ?? $vehicle?->offer;
+        if ($vehicle && $thread->offer_id && $thread->offer_id !== $vehicle->offer_id) {
+            $vehicle = null;
+        }
+        $model = $vehicle ?? $offer;
         if (! $model) {
             return;
         }
-        $offer = $model instanceof Offer ? $model : null;
+        $car = $vehicle ?? $offer->parkVehicle;
         $key = $offer ? self::key($offer->id) : null;
         $report = fn (string $stage, ?int $i = null, ?int $n = null) => $key && Cache::put($key, ['stage' => $stage, 'i' => $i, 'n' => $n], 1800);
         try {
@@ -63,19 +69,22 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $pin($thread);
             $report('Читаем письмо');
             $attachments = $importer->attachmentsOf($this->messageId, $this->messageId ? null : $thread->id);
-            $hidden = $offer && $offer->state !== OfferState::Draft;
-            $added = $importer->import($model, $attachments, 'photos', 'papers', $hidden ? ['hidden' => true] : ($model instanceof Vehicle ? self::stageOf(...) : []), $report);
+            $hidden = $offer && $offer->state !== OfferState::Draft ? ['hidden' => true] : [];
+            $properties = $vehicle ? fn (Attachment $a) => self::stageOf($a) + $hidden : $hidden;
+            $added = $importer->import($model, $attachments, 'photos', 'papers', $properties, $report);
         } finally {
             $key && Cache::forget($key);
         }
         if ($offer) {
             OfferStateChanged::dispatch($offer->fresh());
-        } elseif ($model instanceof Vehicle) {
-            $publish->refresh(Topics::PARK, ["/cars/{$model->id}"]);
+        }
+        if ($car) {
+            $publish->refresh(Topics::PARK, ["/cars/{$car->id}"]);
         }
         if ($added['photos'] || $added['documents']) {
-            $what = array_filter([$added['photos'] ? "фото: {$added['photos']}" : null, $added['documents'] ? "документов: {$added['documents']}" : null]);
-            $publish->toast($offer ? Topics::STAFF : Topics::PARK, 'Из письма — '.implode(', ', $what), $offer ? "/offers/{$offer->number}" : "/cars/{$model->id}");
+            $what = 'Из письма — '.implode(', ', array_filter([$added['photos'] ? "фото: {$added['photos']}" : null, $added['documents'] ? "документов: {$added['documents']}" : null]));
+            $offer && $publish->toast(Topics::STAFF, $what, "/offers/{$offer->number}");
+            $car && $publish->toast(Topics::PARK, $what, "/cars/{$car->id}");
         }
     }
 

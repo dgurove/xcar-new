@@ -4,6 +4,7 @@ namespace App\Media;
 
 use App\Media\Actions\StampPhoto;
 use App\Offers\Offer;
+use App\Park\Vehicle;
 use App\Purchases\Car;
 use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
 
@@ -21,6 +22,8 @@ final class StampOnAdd
     {
         $media = $event->media;
         $model = $media->model;
+        // Кадр ТС парковки в продаже — под знак её предложения.
+        $model = $model instanceof Vehicle ? $model->offer : $model;
         if ($media->collection_name === 'photos' && ($model instanceof Offer || $model instanceof Car) && $model->share_locked) {
             ($this->stamp)($media, conversions: false);
         }

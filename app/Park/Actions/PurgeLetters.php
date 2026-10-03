@@ -11,7 +11,7 @@ use App\Park\Vehicle;
 /**
  * ТС выдана: то, что пришло из писем, больше не хранится — кадры и документы из писем в галерее и бумагах ТС
  * стираются, письма её веток замораживаются (`FreezeMessages`), кадр кандидата снимается. Снятое в приложении
- * остаётся: в ящике его нет. При возврате выдачи `ImportThreadFiles` принесёт стёртое из ящика снова.
+ * остаётся: в ящике его нет. Кадры ТС с предложением не стираются — это фото продажи. При возврате выдачи `ImportThreadFiles` принесёт стёртое из ящика снова.
  */
 final class PurgeLetters
 {
@@ -19,7 +19,8 @@ final class PurgeLetters
 
     public function __invoke(Vehicle $vehicle): int
     {
-        foreach ($vehicle->media()->where('collection_name', 'photos')->where('custom_properties->source', 'mail')->get() as $media) {
+        // ТС была в продаже — кадры остаются: на них стоят предложение, сделка и гараж.
+        foreach ($vehicle->offer_id ? [] : $vehicle->media()->where('collection_name', 'photos')->where('custom_properties->source', 'mail')->get() as $media) {
             $media->delete();
         }
         foreach ($vehicle->media()->where('collection_name', 'papers')->where('custom_properties->source', 'mail')->get() as $media) {

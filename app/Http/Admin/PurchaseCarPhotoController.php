@@ -4,6 +4,7 @@ namespace App\Http\Admin;
 
 use App\Live\Stream;
 use App\Media\Actions\RotatePhoto;
+use App\Media\Hidden;
 use App\Media\PhotoIngest;
 use App\Purchases\Car;
 use Illuminate\Http\Request;
@@ -35,7 +36,7 @@ class PurchaseCarPhotoController
     public function toggle(Car $car, Media $media)
     {
         $this->own($car, $media);
-        $media->setCustomProperty('hidden', ! $media->getCustomProperty('hidden', false))->save();
+        Hidden::toggle($media);
 
         return $this->gallery($car->refresh());
     }

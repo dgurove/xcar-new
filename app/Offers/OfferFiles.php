@@ -41,7 +41,8 @@ final class OfferFiles
 
     public static function docs(Offer $offer, Collection $threads): array
     {
-        // Входящие, а не «не наши»: сотрудник пересылает письмо вендора со своего ящика — это оно же, в цитате.
+        // Входящие, а не «не наши»: сотрудник пересылает письмо вендора со своего ящика — это оно же, в цитате. Письма
+        // ТС парковки сюда не идут (почта сторон не пересекается) — их файлы уже лежат у ТС, `papers()` их видит.
         $letters = Message::with(['attachments', 'account'])->whereIn('thread_id', $threads->pluck('id'))->where('direction', Direction::In)->orderBy('date_at')->get();
         $letter = $letters->first(fn (Message $m) => ! $m->isOurs()) ?? $letters->first();
         // «Вся переписка» у письма в шторке — окно-лента всех веток предложения на его же странице.

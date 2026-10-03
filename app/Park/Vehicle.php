@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 #[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id',
     'contact_name', 'contact_phone', 'flags', 'docs_required', 'value', 'policy_no',
@@ -42,10 +43,25 @@ class Vehicle extends Model implements HasMedia
 
     protected $table = 'park_vehicles';
 
+    /** ТС стирают («Заведена по ошибке»), предложение остаётся — его файлы уходят к нему. Раньше spatie: тот стирает всё. */
+    protected static function booting(): void
+    {
+        static::deleting(fn (self $v) => $v->offer_id ? Sale::release($v) : null);
+    }
+
     protected static function booted(): void
     {
         // ТС вендора на парковке — вендор становится её вендором (раздел «Вендоры» парковки).
         static::saved(fn (self $v) => $v->wasChanged('vendor_id') || $v->wasRecentlyCreated ? Vendor::markOnPark($v->vendor_id) : null);
+        // Машина одна (`Sale`): связали или отвязали предложение — файлы переходят, тождество ТС зеркалит предложение.
+        static::saved(function (self $v) {
+            if ($v->wasChanged('offer_id') || ($v->wasRecentlyCreated && $v->offer_id)) {
+                Sale::relinked($v, $v->wasRecentlyCreated ? null : $v->getOriginal('offer_id'));
+            }
+            if ($v->offer_id && ($v->wasRecentlyCreated || $v->wasChanged(['offer_id', ...array_keys(Sale::MAP)]))) {
+                Sale::toOffer($v);
+            }
+        });
         // Тип ТС предложения берётся и с парковки — сменили категорию или связь, пересчитываем колонку предложения.
         static::saved(function (self $v) {
             if ($v->wasChanged(['category', 'offer_id']) || $v->wasRecentlyCreated) {
@@ -264,6 +280,12 @@ class Vehicle extends Model implements HasMedia
     public function yard(): BelongsTo
     {
         return $this->belongsTo(Yard::class, 'yard_id');
+    }
+
+    /** Скрытие кадра — показ в продаже (CRM), дело на парковке видит все кадры. */
+    protected function hides(Media $media): bool
+    {
+        return false;
     }
 
     public function offer(): BelongsTo

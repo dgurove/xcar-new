@@ -66,6 +66,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/docs', [VehicleController::class, 'doc']);
     Route::post('/cars/{vehicle}/docs/{doc}', [VehicleController::class, 'doc']);
     Route::post('/cars/{vehicle}/offer', [VehicleController::class, 'link'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/sell', [VehicleController::class, 'sell'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/cancel', [VehicleController::class, 'cancel'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/sold', [VehicleController::class, 'sold'])->middleware('park.manage');
     // Выдача по QR: проверка кода при выдаче, подтверждение покупателя, ссылка страховой ещё раз.

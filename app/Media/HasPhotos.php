@@ -10,8 +10,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 /**
  * Фотографии и документы у машины: коллекции `photos` (публичный диск, Caddy
  * отдаёт сам) и `papers` (закрытый диск: ПТС и договоры наружу только через
- * /files с проверкой прав), конверсии под srcset. Скрытый кадр — custom
- * property `hidden`, главный — первый по порядку.
+ * /files с проверкой прав), конверсии под srcset. Скрытый кадр — `Hidden::is`,
+ * главный — первый по порядку. У предложения с ТС парковки файлы — её (`SaleMedia`).
  */
 trait HasPhotos
 {
@@ -45,7 +45,13 @@ trait HasPhotos
     /** @return Collection<int, Media> */
     public function visiblePhotos(): Collection
     {
-        return $this->photos()->reject(fn (Media $m) => $m->getCustomProperty('hidden', false))->values();
+        return $this->photos()->reject(fn (Media $m) => $this->hides($m))->values();
+    }
+
+    /** Скрыт ли кадр здесь. У ТС парковки скрытых нет: глаз — это показ в продаже, а не в деле. */
+    protected function hides(Media $media): bool
+    {
+        return Hidden::is($media);
     }
 
     public function mainPhoto(): ?Media

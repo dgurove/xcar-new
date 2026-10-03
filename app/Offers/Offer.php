@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\HasMedia;
 
@@ -135,6 +136,25 @@ class Offer extends Model implements HasMedia
     public function parkVehicle(): HasOne
     {
         return $this->hasOne(Vehicle::class, 'offer_id');
+    }
+
+    /** Кадры и документы предложения — свои и ТС парковки, новые ложатся к ТС (`SaleMedia`). */
+    public function media(): MorphMany
+    {
+        return new SaleMedia($this->newRelatedInstance($this->getMediaModel())->newQuery(), $this, 'model_type', 'model_id', $this->getKeyName());
+    }
+
+    /** Только свои файлы предложения: при удалении черновика файлы ТС остаются у ТС. */
+    public function ownMedia(): MorphMany
+    {
+        return $this->morphMany($this->getMediaModel(), 'model');
+    }
+
+    public function deleteAllMedia(): self
+    {
+        $this->ownMedia()->cursor()->each(fn ($media) => $media->delete());
+
+        return $this;
     }
 
     /** @return list<Flag> */
@@ -261,7 +281,7 @@ class Offer extends Model implements HasMedia
         return $q->where('state', OfferState::Draft)->whereNull('published_at')
             ->whereNull('brand_id')->whereNull('model_id')->whereNull('vin')->whereNull('claim_ref')->whereNull('floor_price')
             ->whereNull('asking_price')->whereNull('description')
-            ->whereDoesntHave('media')->whereDoesntHave('purchaseCar')->whereDoesntHave('parkVehicle')->whereDoesntHave('positions')
+            ->whereDoesntHave('ownMedia')->whereDoesntHave('purchaseCar')->whereDoesntHave('parkVehicle')->whereDoesntHave('positions')
             ->whereNotIn('id', Thread::whereNotNull('offer_id')->select('offer_id'))
             ->whereNotIn('id', Candidate::whereNotNull('offer_id')->select('offer_id'));
     }
@@ -379,7 +399,7 @@ class Offer extends Model implements HasMedia
     public function guessCategory(): Category
     {
         $park = $this->relationLoaded('parkVehicle') ? $this->parkVehicle?->category
-            : ($this->exists ? Category::tryFrom((string) Vehicle::where('offer_id', $this->id)->value('category')) : null);
+            : ($this->exists ? Vehicle::where('offer_id', $this->id)->first(['category'])?->category : null);
 
         return $this->body?->category() ?? $park ?? Category::guess($this->title()) ?? Category::Passenger;
     }
