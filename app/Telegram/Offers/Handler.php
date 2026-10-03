@@ -74,8 +74,8 @@ final class Handler
         $chatId = (int) ($q['message']['chat']['id'] ?? 0);
         $sub = Subscriber::with('user')->where('chat_id', $chatId)->first();
         $this->bot->answer((string) ($q['id'] ?? ''), '');
-        if ($sub && ($q['data'] ?? '') === Invites::NEW) {
-            $this->invites->ask($sub);
+        if ($sub && str_starts_with((string) ($q['data'] ?? ''), 'invite:')) {
+            $this->invites->press($sub, (string) $q['data']);
         }
     }
 
