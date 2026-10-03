@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 /**
  * Вид списка: без выбора — строки на телефоне и плитки от 640 (решает CSS),
  * `?vid=list`, `?vid=grid`, `?vid=table` и `?vid=wide` (подробная таблица) — явный выбор, он живёт в адресе;
- * без выбора список длиннее 20 строк открывается таблицей (pick).
+ * без выбора в CRM всегда таблица, на сайте и парковке список длиннее 20 строк открывается таблицей (pick).
  * Таблица — своя разметка (x-ui.table), не .cards.
  * Сколько на странице — `?per=` из набора вида (perPage): плиткам 24 / 48 / 96 (три колонки по
  * восемь рядов), строкам 30 / 60 / 120 (та же длина прокрутки), плотным спискам без вида
@@ -84,10 +84,11 @@ final class ListView
         return $q->paginate($per, total: $count)->withQueryString();
     }
 
-    /** Вид без выбора: длинный список (больше 20) сразу таблицей, короткий — решает CSS. */
+    /** Вид без выбора: в CRM всегда таблица (и на телефоне, и на ПК), на сайте и парковке длинный список (больше 20) таблицей, короткий — решает CSS. */
     public static function pick(Request $request, int $count): ?string
     {
-        return self::fromRequest($request) ?? ($count > 20 ? self::TABLE : null);
+        return self::fromRequest($request)
+            ?? (Surface::current() === Surface::Crm ? self::TABLE : ($count > 20 ? self::TABLE : null));
     }
 
     /**
