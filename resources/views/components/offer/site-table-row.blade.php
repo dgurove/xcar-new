@@ -15,7 +15,7 @@
     $since = $offer->published_at ?? $offer->created_at;
     $city = $offer->settlement?->title();
 @endphp
-<tr id="offer-{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="{{ $peek }}" data-href="{{ $href }}" tabindex="0">
+<tr data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="{{ $peek }}" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
         <span class="cell-title">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
         <span class="cell-sub">

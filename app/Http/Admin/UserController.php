@@ -15,6 +15,10 @@ use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Area;
+use App\Support\Facets\Common;
+use App\Support\Facets\Facet;
+use App\Support\Facets\Facets;
+use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Phone;
@@ -23,6 +27,7 @@ use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssueImpersonation;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\Actions\TransferBuyer;
+use App\Users\BuyerGroup;
 use App\Users\CrmArea;
 use App\Users\Invite;
 use App\Users\Role;
@@ -50,26 +55,33 @@ class UserController
 
     public function index(Request $request)
     {
-        ListPrefs::sync($request, 'crm-users');
         abort_unless($request->user()->isAdmin(), 404);
+        // Чипы — своего вида: менеджер есть только у покупателей, группы у каждого вида свои (ключ в адресе — свой).
+        $kindOf = (string) $request->query('preset', 'staff');
+        $facets = Facets::for($request, 'crm-users', ...array_filter([
+            $kindOf === 'buyers' ? Common::manager('users.manager_id') : null,
+            self::groupFacet($kindOf),
+        ]));
+        ListPrefs::sync($request, 'crm-users', keep: $facets->keys());
         $preset = $request->query('preset', 'staff');
+        $searching = $facets->searching();
         // На сайте ссылки — своя пилюля кабинета, а не пресет.
         if ($preset === 'invites' && Surface::current() !== Surface::Crm) {
             return redirect('/account/invites');
         }
         $q = User::query()->with(['manager', 'userGroups'])->orderBy('name');
-        match ($preset) {
-            'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->reorder('created_at', 'desc'),
-            'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
-            'managers' => $q->where('role', Role::Manager)->withCount('buyers'),
-            'park' => $q->where('role', Role::Parking),
-            'buyers' => $q->where('role', Role::Buyer)->reorder('created_at', 'desc'),
-            'visitors' => $q->where('role', Role::Visitor)->whereNotNull('approved_at'),
-            'invites' => $q->whereRaw('false'),
-            default => $q->whereIn('role', [Role::Admin, Role::Moderator]),
-        };
-        if ($manager = (int) $request->query('manager')) {
-            $q->where('manager_id', $manager);
+        // Лупа — по всем людям, мимо пилюли и чипов.
+        if (! $searching) {
+            match ($preset) {
+                'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->reorder('created_at', 'desc'),
+                'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
+                'managers' => $q->where('role', Role::Manager)->withCount('buyers'),
+                'park' => $q->where('role', Role::Parking),
+                'buyers' => $q->where('role', Role::Buyer)->reorder('created_at', 'desc'),
+                'visitors' => $q->where('role', Role::Visitor)->whereNotNull('approved_at'),
+                'invites' => $q->whereRaw('false'),
+                default => $q->whereIn('role', [Role::Admin, Role::Moderator]),
+            };
         }
         // Группы — над списком своего вида: менеджеров в «Менеджерах», модераторов в «Сотрудниках» (только в CRM).
         $kind = Surface::current() === Surface::Crm ? match ($preset) {
@@ -80,6 +92,7 @@ class UserController
             $q->where(fn ($w) => $w->where('name', 'ilike', "%{$term}%")->orWhere('login', 'ilike', "%{$term}%")->orWhere('email', 'ilike', "%{$term}%")
                 ->when($digits !== '', fn ($w) => $w->orWhere('phone', 'like', "%{$digits}%")));
         }
+        $facets->apply($q);
         $counts = [
             'staff' => User::whereIn('role', [Role::Admin, Role::Moderator])->count(),
             'managers' => User::where('role', Role::Manager)->count(),
@@ -107,7 +120,31 @@ class UserController
             'groupKind' => $kind,
             'groups' => $kind ? UserGroup::ofKind($kind)->with('members')->get() : collect(),
             'fresh' => session('invite'),
+            'facets' => $facets,
         ]);
+    }
+
+    /**
+     * Чип «Группа»: у менеджеров и сотрудников — группы CRM (волны показа, модераторы), у покупателей — группы их
+     * менеджеров; одноимённые группы разных менеджеров различает имя менеджера подсказкой.
+     */
+    private static function groupFacet(string $preset): ?Facet
+    {
+        $key = match ($preset) {
+            'buyers' => 'bgroup', 'managers' => 'group', 'staff' => 'team', default => null
+        };
+        if (! $key) {
+            return null;
+        }
+        $pivot = $preset === 'buyers' ? 'buyer_group_user' : 'user_group_user';
+
+        return Facet::custom($key, 'Группа', ['группа', 'группы', 'групп'],
+            fn ($q, array $ids) => $q->whereExists(fn ($e) => $e->from($pivot)->whereColumn("{$pivot}.user_id", 'users.id')->whereIn("{$pivot}.group_id", Common::ints($ids))),
+            fn ($q) => DB::table($pivot)->whereIn('user_id', Facet::bare($q->toBase())->select('users.id'))
+                ->groupBy('group_id')->selectRaw('group_id::text as v, count(*) as n')->pluck('n', 'v')->map(fn ($n) => (int) $n)->all(),
+        )->labels(fn (array $ids) => $preset === 'buyers'
+            ? BuyerGroup::whereIn('id', Common::ints($ids))->with('manager')->get()->mapWithKeys(fn (BuyerGroup $g) => [(string) $g->id => new Option((string) $g->id, $g->name, hint: $g->manager?->shortName())])->all()
+            : UserGroup::whereIn('id', Common::ints($ids))->get()->mapWithKeys(fn (UserGroup $g) => [(string) $g->id => new Option((string) $g->id, $g->name)])->all());
     }
 
     /**

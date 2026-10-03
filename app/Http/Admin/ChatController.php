@@ -6,6 +6,8 @@ use App\Chats\Actions\MarkChatRead;
 use App\Chats\Chat;
 use App\Chats\Presence;
 use App\Http\Site\ChatController as Feed;
+use App\Support\Facets\Common;
+use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use Illuminate\Http\Request;
@@ -20,8 +22,6 @@ class ChatController
 
     public function index(Request $request)
     {
-        ListPrefs::sync($request, 'crm-chats');
-
         return view('admin.chats.index', $this->list($request) + ['current' => null]);
     }
 
@@ -44,23 +44,26 @@ class ChatController
     /** Список по пресету и поиску из адреса; открытый чат его не меняет. */
     private function list(Request $request): array
     {
+        $facets = Facets::for($request, 'crm-chats', Common::manager('chats.manager_id'))->at('/work/chats');
+        ListPrefs::sync($request, 'crm-chats', keep: $facets->keys());
         $preset = $request->query('preset', 'unread');
         $q = trim((string) $request->query('q'));
         $like = '%'.mb_strtolower($q).'%';
-        $chats = Chat::withLast()
+        // Лупа — по всем чатам, мимо пилюли и чипа.
+        $chats = Chat::withLast()->when($q === '', fn ($all) => $all
             ->when($preset === 'buyers', fn ($c) => $c->whereNotNull('manager_id'), fn ($c) => $c->when($preset !== 'all', fn ($c) => $c->whereNull('manager_id')))
             ->when($preset === 'unread', fn ($c) => $c->where('unread_for_staff', '>', 0))
             ->when($preset === 'offers', fn ($c) => $c->whereNotNull('offer_id'))
-            ->when($preset === 'enquiries', fn ($c) => $c->whereNull('offer_id'))
+            ->when($preset === 'enquiries', fn ($c) => $c->whereNull('offer_id')))
             ->when($q !== '', fn ($c) => $c->where(fn ($w) => $w->whereHas('user', fn ($u) => $u->whereRaw('lower(name) like ?', [$like])->orWhere('phone', 'like', '%'.preg_replace('/\D/', '', $q).'%'))
                 ->orWhereHas('manager', fn ($u) => $u->whereRaw('lower(name) like ?', [$like]))
                 ->orWhereRaw('lower(guest_name) like ?', [$like])
-                ->orWhereHas('offer', fn ($o) => $o->where('number', (int) $q))))
-            // Страницы списка ведут на список, даже когда справа открыт чат.
-            ->orderByDesc('last_message_at')->paginate(ListView::perPage($request, ListView::PER_ROWS))->withPath('/work/chats')->withQueryString();
+                ->orWhereHas('offer', fn ($o) => $o->where('number', (int) $q))));
+        // Страницы списка ведут на список, даже когда справа открыт чат.
+        $chats = $facets->apply($chats)->orderByDesc('last_message_at')->paginate(ListView::perPage($request, ListView::PER_ROWS))->withPath('/work/chats')->withQueryString();
 
         return [
-            'chats' => $chats, 'preset' => $preset, 'q' => $q,
+            'chats' => $chats, 'preset' => $preset, 'q' => $q, 'facets' => $facets,
             'unread' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
         ];
     }

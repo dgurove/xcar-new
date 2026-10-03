@@ -15,6 +15,9 @@ use App\Mail\Template;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
+use App\Support\Facets\Facet;
+use App\Support\Facets\Facets;
+use App\Support\ListPrefs;
 use App\Support\Surface;
 use App\Vendors\Actions\SetLogo;
 use App\Vendors\DocRequirement;
@@ -40,19 +43,21 @@ class VendorController
 
     public function index(Request $request)
     {
+        $facets = Facets::for($request, 'park-vendors', Facet::column('kind', 'Тип', ['тип', 'типа', 'типов'], 'vendors.kind')->enum(Kind::class, 'plural'));
+        ListPrefs::sync($request, 'park-vendors', keep: $facets->keys(), view: false);
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'active';
         $q = trim((string) $request->query('q'));
-        $kind = Kind::tryFrom((string) $request->query('kind'));
-        $vendors = Vendor::onPark()->with(['contacts', 'party'])->when($kind, fn ($w) => $w->where('kind', $kind))->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
+        $vendors = $facets->apply(Vendor::onPark())->with(['contacts', 'party'])->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s->where('name', 'ilike', "%{$q}%")->orWhere('legal_name', 'ilike', "%{$q}%")->orWhere('inn', 'like', "%{$q}%")))
             ->orderBy('name')->get();
         $counts = ['active' => $vendors->where('is_active', true)->count(), 'stored' => $vendors->where('stored_count', '>', 0)->count(), 'inactive' => $vendors->where('is_active', false)->count()];
 
         return view('park.vendors.index', [
-            'vendors' => match ($preset) {
+            // Лупа — по всем вендорам, мимо пилюли и чипа.
+            'vendors' => $q !== '' ? $vendors : match ($preset) {
                 'stored' => $vendors->where('stored_count', '>', 0), 'inactive' => $vendors->where('is_active', false), default => $vendors->where('is_active', true)
             },
-            'preset' => $preset, 'presets' => self::PRESETS, 'counts' => $counts, 'q' => $q, 'kind' => $kind,
+            'preset' => $preset, 'presets' => self::PRESETS, 'counts' => $counts, 'q' => $q, 'facets' => $facets,
         ]);
     }
 

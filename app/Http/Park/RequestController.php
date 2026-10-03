@@ -37,6 +37,9 @@ use App\Park\VehicleFields;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\Docs;
+use App\Support\Facets\Common;
+use App\Support\Facets\Facet;
+use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Phone;
@@ -53,27 +56,35 @@ class RequestController
     /** Главная стоянки и список заявок: пресеты «Просрочено», «Связаться», типы и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с окошком строки. */
     public function index(Request $request)
     {
-        ListPrefs::sync($request, 'park-requests');
+        $vehicle = fn (string $col) => "(select v.{$col} from park_vehicles v where v.id = park_requests.vehicle_id)";
+        $facets = Facets::for($request, 'park-requests',
+            Common::vendor($vehicle('vendor_id')),
+            Common::yard('coalesce(park_requests.yard_id, '.$vehicle('yard_id').')'),
+            Common::category($vehicle('category'), 'Без типа'),
+            Facet::toggle('mine', 'Мои', fn ($w) => $w->where('assignee_id', $request->user()->id)),
+        );
+        ListPrefs::sync($request, 'park-requests', keep: $facets->keys());
         $type = $request->query('preset', 'all');
         $qs = trim((string) $request->query('q'));
-        $filters = fn ($q) => $q
-            ->when($request->query('vendor'), fn ($w, $id) => $w->whereHas('vehicle', fn ($v) => $v->where('vendor_id', $id)))
-            ->when($request->query('yard'), fn ($w, $id) => $w->where(fn ($s) => $s->where('yard_id', $id)->orWhereHas('vehicle', fn ($v) => $v->where('yard_id', $id))))
-            ->when($request->boolean('mine'), fn ($w) => $w->where('assignee_id', $request->user()->id))
+        // Счётчики пилюль — с выбранными чипами; лупа — по всем открытым заявкам, мимо пилюли и чипов.
+        $filters = fn ($q) => $facets->applyTo($q)
             ->when($qs !== '', fn ($w) => $w->whereHas('vehicle', fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%')
                 ->orWhereHas('brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%")->orWhere('name_ru', 'ilike', "%{$qs}%"))));
         // Связаться — то же условие, что `Request::needsCall()`, но запросом.
         $needsCall = fn ($q) => $q->where('state', RequestState::New)->whereIn('type', [RequestType::Intake, RequestType::Tow])
             ->where(fn ($w) => $w->where(fn ($n) => $n->whereNull('delivery')->whereNull('contacted_at')->whereNull('planned_at'))->orWhere('next_call_at', '<=', now()));
-        $q = $filters(Scope::requests($request->user())->with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee']));
+        $q = (Scope::requests($request->user())->with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee']));
         $q->whereIn('state', RequestState::open());
-        if ($t = RequestType::tryFrom($type)) {
+        if ($qs !== '') {
+            $filters($q);
+        } elseif ($t = RequestType::tryFrom($type)) {
             $q->where('type', $t);
         } elseif ($type === 'call') {
             $needsCall($q);
         } elseif ($type === 'overdue') {
             $q->where('planned_at', '<', now());
         }
+        $facets->apply($q);
         match ($request->query('sort')) {
             'fresh' => $q->latest(),
             'type' => $q->orderBy('type')->orderByRaw('planned_at asc nulls last')->latest(),
@@ -103,8 +114,7 @@ class RequestController
             'counts' => $counts,
             'sort' => $request->query('sort', 'planned'),
             'q' => $qs,
-            'vendors' => Vendor::onPark()->where('is_active', true)->orderBy('name')->pluck('name', 'id'),
-            'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            'facets' => $facets,
         ]);
     }
 

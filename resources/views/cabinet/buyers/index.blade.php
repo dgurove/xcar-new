@@ -1,15 +1,15 @@
 {{-- Покупатели менеджера — вторая пилюля раздела «Сделки», один вход для всего, что про людей: сверху «Интерес» и
      «Пригласить» (свои экраны вложены сюда), затем группы — свои строки, последняя «Новая группа»; ниже люди.
-     Поле поиска над всем (при поиске верхних блоков нет: ищут людей). --}}
+     Лупа справа от пилюль (при поиске верхних блоков нет: ищут людей). --}}
 <x-ui.shell title="Покупатели" :phone-heading="false" :desktop-heading="false">
 <div class="flex max-w-[56rem] flex-col gap-4">
-    <x-deal.tabs current="/buyers"/>
+    {{-- Лупа — справа от пилюль раздела; в поиске поле встаёт на их место. --}}
+    <div class="search-head">
+        <div class="min-w-0 flex-1"><x-deal.tabs current="/buyers"/></div>
+        <x-ui.toolbar search="Имя, логин, телефон" name="buyers"/>
+    </div>
 
-    {{-- Поиск — поле прямо на экране, без тулбара с одной кнопкой фильтра. --}}
-    <form method="get" action="/buyers" data-turbo-action="replace" class="header-btn header-search relative h-11 justify-start rounded-full px-4" role="search">
-        <x-ui.icon name="search" class="size-[18px] shrink-0 text-ink-muted"/>
-        <input type="search" name="q" value="{{ $term }}" placeholder="Имя, логин, телефон" enterkeyhint="search" autocomplete="off" aria-label="Поиск">
-    </form>
+    <div id="list" class="contents">
 
     @unless ($term)
         <div class="list">
@@ -75,7 +75,7 @@
         @else
             <div class="list">
                 @foreach ($buyers as $buyer)
-                    <div class="row relative">
+                    <div class="row relative" data-search-row>
                         <a href="/buyers/{{ $buyer->id }}" class="absolute inset-0 rounded-(--radius-l)" aria-label="{{ $buyer->name }}"></a>
                         <x-ui.avatar :user="$buyer" :size="44"/>
                         <span class="min-w-0 flex-1">
@@ -98,6 +98,7 @@
             <x-ui.pager :of="$buyers" :sizes="[]"/>
         @endif
     </section>
+    </div>
 
     {{-- На телефоне — ещё и плашка внизу; на компьютере хватает строки в списке. --}}
     <div class="contents md:hidden">

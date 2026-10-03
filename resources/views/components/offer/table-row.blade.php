@@ -33,7 +33,7 @@
     // Поставлено в слот — «выйдет сегодня в 16:00» на месте состояния.
     $slot = $offer->isScheduled() ? 'выйдет '.\App\Offers\Slots::phrase($offer->slot_at) : null;
 @endphp
-<tr id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-row-key="offer-{{ $offer->id }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0" @if ($rate) data-unpriced @endif>
+<tr data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" data-row-key="offer-{{ $offer->id }}" data-peek-url="/offers/{{ $n }}/peek{{ $gallery ? '?gallery=1' : '' }}" data-href="/offers/{{ $n }}" tabindex="0" @if ($rate) data-unpriced @endif>
     <td class="grow">
         <span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
         <span class="cell-sub" data-controller="fitline">

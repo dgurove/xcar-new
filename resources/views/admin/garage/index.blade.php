@@ -3,7 +3,7 @@
      машины на сайте, где её ведут. --}}
 <x-ui.shell title="Гараж" :heading="false">
     <x-admin.work-titles current="garage" :count="$total"/>
-    <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage"/>
+    <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage" :facets="$facets"/>
 
     @if ($groups->isEmpty())
         <x-ui.empty class="mt-6">В гараже пусто</x-ui.empty>

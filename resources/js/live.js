@@ -137,7 +137,7 @@ function pending() {
 
 function refresh({ paths }) {
     if (!paths?.includes(location.pathname)) return;
-    if (document.querySelector('form[data-dirty]') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+    if (document.querySelector('form[data-dirty], [data-searching]') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
     // Блок в потоке (sheet--inflow) открыт всегда — мешает только модальная шторка.
     if (document.querySelector('dialog:modal')) return;
     Turbo.renderStreamMessage('<turbo-stream action="refresh"></turbo-stream>');

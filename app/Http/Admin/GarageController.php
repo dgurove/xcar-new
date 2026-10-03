@@ -5,6 +5,10 @@ namespace App\Http\Admin;
 use App\Garage\Car;
 use App\Garage\CarState;
 use App\Offers\Offer;
+use App\Support\Facets\Common;
+use App\Support\Facets\Facet;
+use App\Support\Facets\Facets;
+use App\Support\ListPrefs;
 use Illuminate\Http\Request;
 
 /**
@@ -17,18 +21,21 @@ class GarageController
 
     public function index(Request $request)
     {
+        $facets = Facets::for($request, 'crm-garage',
+            Common::manager('garage_cars.manager_id')->none('Взяли под себя'),
+            Facet::column('stage', 'Этап', ['этап', 'этапа', 'этапов'], 'garage_cars.state')->enum(CarState::class)->natural(),
+        );
+        ListPrefs::sync($request, 'crm-garage', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset'), self::PRESETS) ? $request->query('preset') : 'work';
-        $stage = CarState::tryFrom((string) $request->query('stage'));
 
-        $cars = Car::with(['offer.brand', 'offer.model', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal'])
-            ->when($stage, fn ($c) => $c->where('state', $stage))
-            ->when(! $stage, fn ($c) => match ($preset) {
-                'sold' => $c->where('state', CarState::Sold),
-                'settled' => $c->where('state', CarState::Settled),
-                'all' => $c,
-                default => $c->whereIn('state', [CarState::Waiting, CarState::Delivery, CarState::Repair, CarState::Selling]),
-            })
-            ->orderBy('stage_at')->get();
+        $q = Car::with(['offer.brand', 'offer.model', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal']);
+        match ($preset) {
+            'sold' => $q->where('state', CarState::Sold),
+            'settled' => $q->where('state', CarState::Settled),
+            'all' => $q,
+            default => $q->whereIn('state', [CarState::Waiting, CarState::Delivery, CarState::Repair, CarState::Selling]),
+        };
+        $cars = $facets->apply($q)->orderBy('stage_at')->get();
 
         // Группы — менеджеры по имени, взятые под себя — последними; внутри — по этапу, потом дольше стоящие.
         $groups = $cars->sortBy(fn (Car $c) => [$c->state->order(), $c->stage_at?->timestamp ?? 0])
@@ -39,6 +46,7 @@ class GarageController
             'groups' => $groups,
             'total' => $cars->count(),
             'preset' => $preset,
+            'facets' => $facets,
         ]);
     }
 

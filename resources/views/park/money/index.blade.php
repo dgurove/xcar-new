@@ -1,16 +1,12 @@
-{{-- Деньги: счета с пресетами, сортировкой, поиском и контрагентом в фильтрах — только таблицей с окошком
+{{-- Деньги: счета с пресетами, сортировкой, лупой и чипом «Контрагент» — только таблицей с окошком
      (плиток и строк у счетов нет); «Долги», «Закрытие месяца» и «Реквизиты» — одной плашкой над списком; счёт выставляется
      из ТС. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
 <x-ui.shell :title="$party ? $party->name : 'Оплаты'" :count="$invoices->total()" :back="$party ? ['Долги', '/money/debts'] : false" :phone-heading="(bool) $party">
     <x-slot:lead>@if ($partyVendor = $party ? \App\Vendors\Vendor::ofParty($party->id) : null)<x-vendor.logo :vendor="$partyVendor"/>@endif</x-slot:lead>
-    <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :hidden="array_filter(['party' => request('party'), 'car' => request('car')])" name="money">
+    <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="money" :facets="$facets" search="Номер, контрагент, убыток, VIN">
         {{-- Счета — только таблицей; на телефоне её можно развернуть в подробную. --}}
         <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::WIDE]" :current="$view"/></x-slot:extra>
-        <x-slot:filters>
-            <input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Номер, контрагент, убыток, VIN" enterkeyhint="search">
-            @if ($parties->isNotEmpty())<select name="party" class="field-input"><option value="">Все контрагенты</option>@foreach ($parties as $id => $name)<option value="{{ $id }}" @selected((string) request('party') === (string) $id)>{{ $name }}</option>@endforeach</select>@endif
-        </x-slot:filters>
     </x-ui.toolbar>
     @unless ($party)
         <div class="list mt-4">
@@ -19,6 +15,7 @@
             @if (auth()->user()->isAdmin())<a href="/money/parties" class="row"><span class="min-w-0 flex-1">Реквизиты</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>@endif
         </div>
     @endunless
+    <div id="list">
     @if ($invoices->isEmpty())
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Счетов нет' }}</x-ui.empty>
     @else
@@ -28,4 +25,5 @@
         </x-ui.table>
     @endif
     @if ($invoices->hasPages())<div class="mt-8"><x-ui.pager :of="$invoices" :sizes="ListView::PER_ROWS"/></div>@endif
+    </div>
 </x-ui.shell>

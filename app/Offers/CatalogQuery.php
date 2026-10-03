@@ -2,6 +2,8 @@
 
 namespace App\Offers;
 
+use App\Support\Facets\Common;
+use App\Support\Facets\Facet;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -25,7 +27,8 @@ final class CatalogQuery
 
     public const VIEWS = ['' => 'Все', 'recommended' => 'Рекомендуем', 'fresh' => 'Новые', 'ending' => 'Горящие', 'favorite' => 'Избранное'];
 
-    public const FILTERS = ['brand', 'q', 'year_from', 'year_to', 'price_from', 'price_to', 'view', 'sort'];
+    /** city и category — чипы (`CatalogQuery::facets`), значения через запятую; марки, года и цены нет (03.10.2026). */
+    public const FILTERS = ['city', 'category', 'q', 'view', 'sort'];
 
     public const DEFAULT_SORT = '-published';
 
@@ -47,37 +50,32 @@ final class CatalogQuery
             $q->with(['interests' => fn ($i) => $i->where('user_id', $user->id)]);
         }
 
-        if (! empty($filters['brand'])) {
-            $q->whereHas('brand', fn ($b) => $b->where('slug', $filters['brand']));
+        // Чипы — тем же правилом, что в списке (`facets`): стрелки на странице предложения идут по тому же ряду.
+        $search = trim((string) ($filters['q'] ?? ''));
+        if ($search === '') {
+            foreach (self::facets() as $facet) {
+                $facet->constrain($q, array_values(array_filter(explode(',', (string) ($filters[$facet->key] ?? '')))));
+            }
         }
-        if (! empty($filters['q'])) {
-            $term = '%'.mb_strtolower(trim($filters['q'])).'%';
+        // Лупа — по всему разделу, мимо пилюли и чипов.
+        if ($search !== '') {
+            $term = '%'.mb_strtolower($search).'%';
             $q->where(fn ($w) => $w
                 ->whereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$term])->orWhereRaw('lower(name_ru) like ?', [$term]))
                 ->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$term]))
                 ->orWhereRaw('cast(number as text) like ?', [$term])
                 ->orWhereRaw('lower(vin) like ?', [$term]));
         }
-        if (! empty($filters['year_from'])) {
-            $q->where('year', '>=', (int) $filters['year_from']);
-        }
-        if (! empty($filters['year_to'])) {
-            $q->where('year', '<=', (int) $filters['year_to']);
-        }
-        if ($prices && ! empty($filters['price_from'])) {
-            $q->where('asking_price', '>=', (int) preg_replace('/\D/', '', $filters['price_from']));
-        }
-        if ($prices && ! empty($filters['price_to'])) {
-            $q->where('asking_price', '<=', (int) preg_replace('/\D/', '', $filters['price_to']));
-        }
 
-        match ($filters['view'] ?? '') {
-            'recommended' => $q->where('recommended', true),
-            'fresh' => $q->where('published_at', '>=', now()->subDay()),
-            'ending' => $q->where('state', OfferState::Open)->whereBetween('bids_close_at', [now(), now()->addDay()]),
-            'favorite' => $user ? $q->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id)) : $q->whereRaw('false'),
-            default => null,
-        };
+        if ($search === '') {
+            match ($filters['view'] ?? '') {
+                'recommended' => $q->where('recommended', true),
+                'fresh' => $q->where('published_at', '>=', now()->subDay()),
+                'ending' => $q->where('state', OfferState::Open)->whereBetween('bids_close_at', [now(), now()->addDay()]),
+                'favorite' => $user ? $q->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id)) : $q->whereRaw('false'),
+                default => null,
+            };
+        }
 
         $sort = self::sort($filters, $gallery, $prices, $user);
         $desc = str_starts_with($sort, '-');
@@ -90,6 +88,12 @@ final class CatalogQuery
         };
 
         return $q->orderByDesc('id');
+    }
+
+    /** @return list<Facet> чипы каталога и галереи: город и тип ТС */
+    public static function facets(): array
+    {
+        return [Common::city('offers.settlement_id'), Common::category('offers.vehicle_category')];
     }
 
     /** Действующая сортировка: то, что в адресе, если она разрешена, иначе по умолчанию. */

@@ -111,16 +111,20 @@ class PurchaseController
     {
         $user = $request->user();
         $q = $this->visible($purchase, $request, $this->group($filters))->with(['brand', 'model', 'settlement', 'media', 'offers' => fn ($o) => $o->where('user_id', $user->id)]);
-        match ($filters['preset'] ?? 'all') {
-            'mine' => $q->whereHas('offers', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [OfferState::Active, OfferState::Chosen])),
-            'none' => $q->whereDoesntHave('offers', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [OfferState::Active, OfferState::Chosen])),
-            'photos' => $q->where('photos_count', '>', 0),
-            default => null,
-        };
-        if (! empty($filters['kind'])) {
+        // Лупа — по всей закупке, мимо пилюли и типа.
+        $search = trim((string) ($filters['q'] ?? ''));
+        if ($search === '') {
+            match ($filters['preset'] ?? 'all') {
+                'mine' => $q->whereHas('offers', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [OfferState::Active, OfferState::Chosen])),
+                'none' => $q->whereDoesntHave('offers', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [OfferState::Active, OfferState::Chosen])),
+                'photos' => $q->where('photos_count', '>', 0),
+                default => null,
+            };
+        }
+        if (! empty($filters['kind']) && $search === '') {
             $q->where('kind', $filters['kind']);
         }
-        if (! empty($filters['q'])) {
+        if ($search !== '') {
             $term = '%'.mb_strtolower(trim($filters['q'])).'%';
             $q->where(fn ($w) => $w->whereRaw('lower(dl) like ?', [$term])->orWhereRaw('lower(vin) like ?', [$term])->orWhereRaw('lower(brand_raw) like ?', [$term])->orWhereRaw('lower(model_raw) like ?', [$term])
                 ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$term])->orWhereRaw('lower(name_ru) like ?', [$term])));

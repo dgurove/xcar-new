@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use Illuminate\Http\Request;
@@ -16,12 +17,14 @@ class GalleryController
 
     public function index(Request $request)
     {
-        ListPrefs::sync($request, 'crm-gallery');
+        $facets = Facets::for($request, 'crm-gallery', ...OfferController::facets());
+        ListPrefs::sync($request, 'crm-gallery', keep: $facets->keys());
         $sort = $request->query('sort', 'fresh');
         $q = Offer::query()->where('state', OfferState::Gallery)->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])->withCount(['activeBids', 'interests']);
         if ($term = trim((string) $request->query('q'))) {
-            $q->search($term);
+            $q->where(fn ($w) => $w->search($term)->orWhereRaw('lower(claim_ref) like ?', ['%'.mb_strtolower($term).'%']));
         }
+        $facets->apply($q);
         match ($sort) {
             'interest' => $q->orderByDesc('interests_count')->orderByDesc('published_at'),
             'number' => $q->orderByDesc('number'),
@@ -37,6 +40,7 @@ class GalleryController
         return view('admin.gallery.index', [
             'offers' => $offers,
             'sort' => $sort,
+            'facets' => $facets,
         ]);
     }
 

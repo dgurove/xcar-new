@@ -52,6 +52,8 @@ document.addEventListener('turbo:before-morph-attribute', (event) => {
     if (el.matches('.card-dot') && attributeName === 'class') event.preventDefault();
     // Блок ключа открывает JS; серверный `hidden` при морфе его бы снова спрятал.
     if (el.matches('[data-controller~="passkey"]') && attributeName === 'hidden') event.preventDefault();
+    // Режим поиска лупой ставит JS; морф по live-обновлению его бы снял.
+    if (el.matches('[data-controller~="live-search"]') && attributeName === 'data-searching') event.preventDefault();
 });
 document.addEventListener('turbo:before-morph-element', (event) => {
     const el = event.target;

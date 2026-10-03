@@ -1,6 +1,8 @@
 <x-ui.shell title="Сделки" :heading="false">
     <x-admin.work-titles current="deals" :count="$deals->total()"/>
-    <x-ui.toolbar class="mt-5" :sorts="\App\Http\Admin\DealController::SORTS" :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" name="deals"/>
+    <x-ui.toolbar class="mt-5" :sorts="\App\Http\Admin\DealController::SORTS" :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" name="deals" :facets="$facets" search="Номер, марка, VIN, менеджер"/>
+
+    <div id="list">
 
     @if ($deals->isEmpty())
         <x-ui.empty class="mt-6">Сделок нет</x-ui.empty>
@@ -12,4 +14,5 @@
         </div>
         <div class="mt-8"><x-ui.pager :of="$deals"/></div>
     @endif
+    </div>
 </x-ui.shell>

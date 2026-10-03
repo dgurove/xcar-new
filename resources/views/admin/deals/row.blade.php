@@ -11,7 +11,7 @@
         default => [$offer->state->label(), 'text-ink-muted'],
     };
 @endphp
-<a href="/work/deals/{{ $deal->id }}" class="row">
+<a href="/work/deals/{{ $deal->id }}" class="row" data-search-row>
     <div class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="64px"/></div>
     <div class="min-w-0 flex-1">
         <div class="truncate">{{ $offer->titleWithYear() }}</div>

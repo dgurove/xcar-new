@@ -19,6 +19,10 @@ use App\Purchases\OfferState;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
 use App\Purchases\Restriction;
+use App\Support\Facets\Common;
+use App\Support\Facets\Facet;
+use App\Support\Facets\Facets;
+use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Liters;
@@ -60,11 +64,34 @@ class PurchaseController
      */
     public function show(Request $request, Purchase $purchase)
     {
-        ListPrefs::sync($request, 'crm-purchase-cars');
+        $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen]);
+        // Числа чипов считаются ниже одним проходом по всей закупке — шторки берут их готовыми.
+        $counts = [];
+        $offered = collect();
+        $facets = Facets::for($request, 'crm-purchase-cars',
+            // Состояние — один выбор группами; применяется ниже своим match, сам чип запрос не трогает.
+            Facet::custom('preset', 'Какие ТС', [], fn () => null, function () use (&$counts) {
+                return $counts;
+            })->single('all')->groups(self::PRESET_GROUPS)->natural()
+                ->labels(fn (array $keys) => collect(self::PRESETS)->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()),
+            Facet::custom('user', 'Менеджер', ['менеджер', 'менеджера', 'менеджеров'],
+                fn ($c, array $ids) => $c->whereHas('offers', fn ($o) => $live($o)->whereIn('user_id', Common::ints($ids))),
+                function () use (&$offered) {
+                    return $offered->all();
+                })->labels(fn (array $ids) => User::whereIn('id', Common::ints($ids))->with(User::withAvatar())->get()
+                ->mapWithKeys(fn (User $u) => [(string) $u->id => new Option((string) $u->id, $u->name, user: $u)])->all()),
+        );
+        ListPrefs::sync($request, 'crm-purchase-cars', keep: $facets->keys());
         $q = trim((string) $request->query('q'));
-        $preset = array_key_exists($request->query('preset', 'all'), self::PRESETS) ? $request->query('preset', 'all') : 'all';
+        $preset = $facets->selected('preset')[0] ?? 'all';
+        $preset = array_key_exists($preset, self::PRESETS) ? $preset : 'all';
         $sort = array_key_exists($request->query('sort', 'dl'), self::SORTS) ? $request->query('sort', 'dl') : 'dl';
         $kind = Kind::tryFrom((string) $request->query('kind'));
+        // Лупа — по всей закупке, мимо типа, состояния и менеджера.
+        if ($q !== '') {
+            [$preset, $kind] = ['all', null];
+        }
+        $users = $q !== '' ? [] : Common::ints($facets->selected('user'));
         $pending = $purchase->cars()->whereNull('offer_id')->where(fn ($w) => $w->whereIn('specs_state', ['pending', 'running'])->orWhereIn('photos_state', ['pending', 'running']))->count();
 
         // Числа — один проход по лёгкой выборке всей закупки, без поиска; перекрёстные: у каждого
@@ -72,7 +99,6 @@ class PurchaseController
         // ТС, ушедшие в предложения по контрпредложению, из закупки исключены — видны только в «В предложениях».
         $all = $purchase->cars()->with('offers:id,car_id,user_id,state')->get(['id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state', 'offer_id']);
         $managers = User::where('role', Role::Manager)->orWhereIn('id', $all->flatMap(fn ($c) => $c->activeOfferList()->pluck('user_id'))->unique())->get();
-        $user = $managers->firstWhere('id', (int) $request->query('user'));
         $match = [
             'all' => fn ($c) => true,
             'priced' => fn ($c) => $c->activeOfferList()->isNotEmpty(),
@@ -85,19 +111,16 @@ class PurchaseController
         ];
         $match = array_map(fn ($f) => fn ($c) => ! $c->offer_id && $f($c), $match) + ['moved' => fn ($c) => (bool) $c->offer_id];
         $byKind = fn ($c) => ! $kind || $c->kind === $kind;
-        $byUser = fn ($c) => ! $user || $c->activeOfferList()->contains('user_id', $user->id);
+        $byUser = fn ($c) => ! $users || $c->activeOfferList()->whereIn('user_id', $users)->isNotEmpty();
         $counts = array_map(fn ($f) => $all->filter($byKind)->filter($byUser)->filter($f)->count(), $match);
         // Типы — все, что есть в закупке, число — при выбранных состоянии и менеджере (бывает 0: тип не пропадает, его можно снять).
         $kinds = $all->groupBy(fn ($c) => $c->kind->value)->map(fn ($g) => $g->filter($match[$preset])->filter($byUser)->count())->all();
-        $offered = $managers->mapWithKeys(fn ($u) => [$u->id => $all->filter($byKind)->filter($match[$preset])->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $u->id))->count()]);
-        $managers = $managers->sortBy([fn ($a, $b) => $offered[$b->id] <=> $offered[$a->id], fn ($a, $b) => strcmp($a->name, $b->name)])->values();
+        $offered = $managers->mapWithKeys(fn ($u) => [(string) $u->id => $all->filter($byKind)->filter($match[$preset])->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $u->id))->count()]);
 
-        $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen]);
         $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user', 'offer:id,number,state'])
             ->when($preset === 'moved', fn ($c) => $c->whereNotNull('offer_id'), fn ($c) => $c->whereNull('offer_id'))
             ->when($q !== '', $this->search($q))
-            ->when($kind, fn ($c) => $c->where('kind', $kind))
-            ->when($user, fn ($c) => $c->whereHas('offers', fn ($o) => $live($o)->where('user_id', $user->id)));
+            ->when($kind, fn ($c) => $c->where('kind', $kind));
         match ($preset) {
             'priced' => $cars->whereHas('offers', $live),
             'unpriced' => $cars->whereDoesntHave('offers', $live),
@@ -108,6 +131,7 @@ class PurchaseController
             'hidden' => $cars->where('is_published', false),
             default => null,
         };
+        $facets->apply($cars);
         match ($sort) {
             'best' => $cars->withMax(['offers as top_offer' => $live], 'amount')->orderByDesc('top_offer')->orderBy('dl'),
             'final' => $cars->orderByRaw('price_final desc nulls last')->orderBy('dl'),
@@ -122,7 +146,9 @@ class PurchaseController
         return view('admin.purchases.show', [
             'purchase' => $purchase, 'q' => $q, 'pending' => $pending, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state),
             'cars' => $cars, 'preset' => $preset, 'sort' => $sort, 'peek' => $peek ? 'car-'.$peek->id : null,
-            'counts' => $counts, 'kind' => $kind, 'kinds' => $kinds, 'managers' => $managers, 'offered' => $offered, 'user' => $user,
+            'counts' => $counts, 'kind' => $kind, 'kinds' => $kinds, 'facets' => $facets,
+            // Один менеджер выбран — его цена в строке подсвечена.
+            'highlight' => count($users) === 1 ? $users[0] : null,
             'vendors' => Vendor::where('is_active', true)->orWhere('id', $purchase->vendor_id)->orderBy('name')->pluck('name', 'id'),
         ]);
     }

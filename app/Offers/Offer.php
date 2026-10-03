@@ -53,6 +53,21 @@ class Offer extends Model implements HasMedia
 
     public const DEFAULT_SHARE = 0.6;
 
+    protected static function booted(): void
+    {
+        // Тип ТС колонкой — для фильтра; марка сменилась — прежняя связь уже не та.
+        static::saving(function (self $o) {
+            if ($o->vehicle_category === null || $o->isDirty(['body', 'brand_id', 'model_id'])) {
+                foreach (['brand' => 'brand_id', 'model' => 'model_id'] as $rel => $col) {
+                    if ($o->isDirty($col)) {
+                        $o->unsetRelation($rel);
+                    }
+                }
+                $o->vehicle_category = $o->guessCategory()->value;
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [
@@ -349,15 +364,24 @@ class Offer extends Model implements HasMedia
     }
 
     /**
-     * Тип ТС для иконки перед названием в таблице CRM: по кузову, иначе как у этой ТС на парковке (только если связь
-     * подгружена — в списке это одна выборка), иначе по марке и модели («Газель», «КАМАЗ»); не понять — легковой.
+     * Тип ТС — иконка перед названием и фильтр «Тип ТС»: хранится колонкой `vehicle_category` (её считает `saving`),
+     * так что иконка и фильтр не расходятся.
      */
     public function category(): Category
     {
-        return $this->body?->category()
-            ?? ($this->relationLoaded('parkVehicle') ? $this->parkVehicle?->category : null)
-            ?? Category::guess($this->title())
-            ?? Category::Passenger;
+        return Category::tryFrom((string) $this->vehicle_category) ?? $this->guessCategory();
+    }
+
+    /**
+     * Тип ТС заново: по кузову, иначе как у этой ТС на парковке, иначе по марке и модели («Газель», «КАМАЗ»); не
+     * понять — легковой.
+     */
+    public function guessCategory(): Category
+    {
+        $park = $this->relationLoaded('parkVehicle') ? $this->parkVehicle?->category
+            : ($this->exists ? Category::tryFrom((string) Vehicle::where('offer_id', $this->id)->value('category')) : null);
+
+        return $this->body?->category() ?? $park ?? Category::guess($this->title()) ?? Category::Passenger;
     }
 
     /** Строка фактов под названием: год, пробег, коробка, привод. */

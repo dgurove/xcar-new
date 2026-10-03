@@ -27,7 +27,7 @@
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => 'text-ink' };
     $count = ! $admin ? 0 : ($gallery ? (int) ($offer->interests_count ?? 0) : (int) ($offer->active_bids_count ?? 0));
 @endphp
-<article id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" class="card rise group">
+<article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" class="card rise group">
     <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1"></a>
     @if ($photos->isNotEmpty())
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">

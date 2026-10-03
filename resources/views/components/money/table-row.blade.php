@@ -13,7 +13,7 @@
     $tone = match ($i->light()) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => '' };
     $left = $i->remaining();
 @endphp
-<tr id="invoice-{{ $i->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
+<tr data-search-row id="invoice-{{ $i->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
         <span class="cell-title">@if ($i->deal?->buyer){{ $i->deal->buyer->name }}@else<x-vendor.name :party="$i->party"/>@endif</span>
         <span class="cell-sub">

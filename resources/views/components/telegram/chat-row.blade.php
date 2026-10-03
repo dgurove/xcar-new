@@ -2,7 +2,7 @@
      («Бот: …» — написал бот), «остановил», если человек заблокировал бота. --}}
 @props(['chat', 'href', 'current' => false])
 @php $at = $chat->last_message_at; @endphp
-<a href="{{ $href }}" class="chat-row" @if ($current) aria-current="true" @endif data-turbo-action="advance">
+<a href="{{ $href }}" class="chat-row" data-search-row @if ($current) aria-current="true" @endif data-turbo-action="advance">
     <x-telegram.avatar :chat="$chat" :size="44"/>
     <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">

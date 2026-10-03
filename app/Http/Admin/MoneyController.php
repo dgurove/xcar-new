@@ -13,7 +13,9 @@ use App\Billing\InvoiceState;
 use App\Billing\ManagerLedger;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
-use App\Billing\PaymentState;
+use App\Support\Facets\Common;
+use App\Support\Facets\Facet;
+use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Nav;
@@ -35,40 +37,50 @@ class MoneyController
 
     public function index(Request $request)
     {
-        ListPrefs::sync($request, 'crm-money');
+        $facets = Facets::for($request, 'crm-money',
+            Common::manager('(select buyer_id from deals where deals.id = billing_invoices.deal_id)'),
+            Common::vendor('(select o.vendor_id from deals d join offers o on o.id = d.offer_id where d.id = billing_invoices.deal_id)'),
+            Facet::column('kind', 'Вид счёта', ['вида', 'вида', 'видов'], 'billing_invoices.kind')->enum(ChargeKind::class),
+        );
+        ListPrefs::sync($request, 'crm-money', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'claims';
         $qs = trim((string) $request->query('q'));
         $q = Invoice::whereNotNull('deal_id')->with(['party', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer', 'claims'])
-            ->when($request->query('manager'), fn ($w, $id) => $w->whereHas('deal', fn ($d) => $d->where('buyer_id', $id)))
             ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s
                 ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs)->orWhereHas('deal.offer', fn ($o) => $o->where('number', (int) $qs)))
                 ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', "%{$qs}%"))
                 ->orWhereHas('deal.buyer', fn ($u) => $u->where('name', 'ilike', "%{$qs}%"))
                 ->orWhereHas('deal.offer.brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%"))
                 ->orWhereHas('deal.offer.model', fn ($m) => $m->where('name', 'ilike', "%{$qs}%"))));
-        match ($preset) {
-            'claims' => $q->whereHas('claims'),
-            'payouts' => $q->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued),
-            'unpaid' => $q->where('direction', 'issued')->where('state', InvoiceState::Issued),
-            'paid' => $q->where('state', InvoiceState::Paid),
-            default => $q,
-        };
+        // Лупа — по всем счетам, мимо пилюли и чипов.
+        if ($qs === '') {
+            match ($preset) {
+                'claims' => $q->whereHas('claims'),
+                'payouts' => $q->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued),
+                'unpaid' => $q->where('direction', 'issued')->where('state', InvoiceState::Issued),
+                'paid' => $q->where('state', InvoiceState::Paid),
+                default => $q,
+            };
+        }
+        $facets->apply($q);
         $sort = $request->query('sort') === 'fresh' ? 'fresh' : 'due';
         $sort === 'fresh' ? $q->latest('issued_at')->latest('id') : $q->orderBy('due_at')->orderBy('id');
 
         return view('admin.money.index', [
             'invoices' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
-            'preset' => $preset, 'sort' => $sort, 'q' => $qs, 'counts' => array_filter(self::counts()),
+            'preset' => $preset, 'sort' => $sort, 'q' => $qs, 'counts' => array_filter(self::counts($facets)), 'facets' => $facets,
         ]);
     }
 
     /** Числа пилюль: заявки, к выплате, не оплачены. */
-    public static function counts(): array
+    public static function counts(?Facets $facets = null): array
     {
+        $f = fn ($q) => $facets ? $facets->applyTo($q) : $q;
+
         return [
-            'claims' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereNotNull('deal_id'))->count(),
-            'payouts' => Invoice::whereNotNull('deal_id')->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued)->count(),
-            'unpaid' => Invoice::whereNotNull('deal_id')->where('direction', 'issued')->where('state', InvoiceState::Issued)->count(),
+            'claims' => $f(Invoice::whereNotNull('deal_id')->whereHas('claims'))->count(),
+            'payouts' => $f(Invoice::whereNotNull('deal_id')->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued))->count(),
+            'unpaid' => $f(Invoice::whereNotNull('deal_id')->where('direction', 'issued')->where('state', InvoiceState::Issued))->count(),
         ];
     }
 

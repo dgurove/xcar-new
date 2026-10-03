@@ -15,31 +15,15 @@
                 <x-ui.section-title level="h1" :count="$gallery ? $counts['gallery'] : $counts['offers']">{{ $gallery ? 'Галерея' : 'Предложения' }}</x-ui.section-title>
             </div>
 
-            <x-ui.toolbar class="md:mt-5" :sorts="$sorts" :sort="$sort" :pills="$views" :pill="$filters['view'] ?? ''" :counts="$counts" :hidden="[\App\Support\ListView::PARAM => $view]" :name="$gallery ? 'gallery' : 'catalog'">
+            {{-- Лупа сайта — в шапке (поиск по разделам); пришли из неё — тулбар сразу в поиске, с полем и «Отмена». --}}
+            <x-ui.toolbar class="md:mt-5" :sorts="$sorts" :sort="$sort" :pills="$views" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && ! \App\Support\ListView::isTable($view))<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
                     <x-ui.view-switch :current="$view"/>
                 </x-slot:extra>
-                <x-slot:filters>
-                    <input name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Марка, модель, VIN" class="field-input field-s">
-                    <select name="brand" class="field-input field-s" aria-label="Марка">
-                        <option value="">Любая марка</option>
-                        @foreach ($brands as $brand)<option value="{{ $brand->slug }}" @selected(($filters['brand'] ?? '') === $brand->slug)>{{ $brand->name }}</option>@endforeach
-                    </select>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input name="year_from" value="{{ $filters['year_from'] ?? '' }}" placeholder="Год от" class="field-input field-s nums">
-                        <input name="year_to" value="{{ $filters['year_to'] ?? '' }}" placeholder="до" class="field-input field-s nums">
-                    </div>
-                    @if ($prices)
-                        <div class="grid grid-cols-2 gap-2">
-                            <input name="price_from" value="{{ $filters['price_from'] ?? '' }}" placeholder="Цена от" class="field-input field-s nums">
-                            <input name="price_to" value="{{ $filters['price_to'] ?? '' }}" placeholder="до" class="field-input field-s nums">
-                        </div>
-                    @endif
-                </x-slot:filters>
             </x-ui.toolbar>
 
-            <div class="mt-6">
+            <div class="mt-6" id="catalog-list">
                 {{-- Подписка на бот предложений — строкой в начале списка (владелец 03.10.2026), только в каталоге. --}}
                 @unless ($gallery)<x-offers-bot.card/>@endunless
                 @if ($offers->isEmpty())

@@ -9,7 +9,7 @@
     $href = "/purchases/{$purchase->number}/{$car->ref}".($query ? '?'.$query : '');
     $city = $car->settlement?->title() ?? $car->city;
 @endphp
-<tr id="car-{{ $car->id }}" data-peek-url="/purchases/{{ $purchase->number }}/{{ $car->ref }}/peek{{ $query ? '?'.$query : '' }}" data-href="{{ $href }}" tabindex="0">
+<tr data-search-row id="car-{{ $car->id }}" data-peek-url="/purchases/{{ $purchase->number }}/{{ $car->ref }}/peek{{ $query ? '?'.$query : '' }}" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
         <span class="cell-title">{{ $car->titleWithYear() }}</span>
         <span class="cell-sub">

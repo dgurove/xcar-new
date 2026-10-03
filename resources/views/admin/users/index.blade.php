@@ -2,22 +2,14 @@
 {{-- Пользователи; пилюля «Ссылки» — все пригласительные ссылки тем же списком, что в кабинете
      (x-invites.list): первая строка — новая, менеджеру или покупателю от имени менеджера. --}}
 <x-ui.cabinet title="Пользователи">
-    <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" name="users">
+    <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" name="users" :facets="$facets" search="Имя, логин, телефон, почта">
         <x-slot:actions>
             {{-- Руками людей не заводят: только пригласительной ссылкой — кнопка ведёт к ним. --}}
             @if ($preset !== 'invites')<a href="{{ \App\Http\Cabinet\InviteController::home() }}" class="btn btn-s btn-accent shrink-0 rounded-full" data-turbo-action="replace"><x-ui.icon name="link" class="size-4"/><span class="hidden sm:inline">Пригласить</span></a>@endif
         </x-slot:actions>
-        <x-slot:filters>
-            <input name="q" value="{{ request('q') }}" placeholder="Имя, логин, телефон, почта" class="field-input field-s">
-            @if ($preset === 'buyers')
-                <select name="manager" class="field-input field-s" aria-label="Менеджер">
-                    <option value="">Все менеджеры</option>
-                    @foreach ($managers as $m)<option value="{{ $m->id }}" @selected((int) request('manager') === $m->id)>{{ $m->name }}</option>@endforeach
-                </select>
-            @endif
-        </x-slot:filters>
     </x-ui.toolbar>
 
+    <div id="list" class="contents">
     @if ($groupKind && ! request('q'))<x-admin.user-groups :groups="$groups" :kind="$groupKind"/>@endif
     @if ($preset === 'invites')
         <x-invites.list :invites="$invites" admin :managers="$managers" :fresh="$fresh"/>
@@ -29,7 +21,7 @@
         @if ($groupKind && ! request('q'))<div class="list-head pt-0">{{ $groupKind === \App\Users\UserGroup::MODERATORS ? 'Сотрудники' : 'Менеджеры' }}</div>@endif
         <div class="list">
             @foreach ($users as $user)
-                <div class="row" data-controller="sheet">
+                <div class="row" data-controller="sheet" data-search-row>
                     <x-ui.avatar :user="$user" :size="36"/>
                     <div class="min-w-0 flex-1">
                         <a href="{{ $base }}/{{ $user->id }}" class="block truncate">{{ $user->name }}</a>
@@ -58,4 +50,5 @@
         </section>
         <x-ui.pager :of="$users"/>
     @endif
+    </div>
 </x-ui.cabinet>

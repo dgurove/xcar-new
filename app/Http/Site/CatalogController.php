@@ -2,11 +2,11 @@
 
 namespace App\Http\Site;
 
-use App\Cars\Brand;
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
+use App\Support\Facets\Facets;
 use App\Support\ListContext;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -43,12 +43,14 @@ class CatalogController
     private function list(Request $request, bool $gallery)
     {
         $user = $request->user();
-        ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog');
+        $facets = Facets::for($request, $gallery ? 'gallery' : 'catalog', ...CatalogQuery::facets());
+        ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog', keep: $facets->keys());
         $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
         $prices = ! $gallery && ($user?->role->canSeePrices() ?? false);
         $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
 
-        $query = CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery);
+        // Чипы кладёт Facets (ему нужна база без них — для вариантов и чисел), остальное — CatalogQuery.
+        $query = $facets->apply(CatalogQuery::for($user, array_diff_key($filters, array_flip($facets->keys())) + ['sort' => $sort], $gallery));
         $count = $query->count();
         if (ListView::isTable(ListView::pick($request, $count))) {
             // Строке таблицы кадры не нужны.
@@ -86,11 +88,7 @@ class CatalogController
             'views' => CatalogQuery::allowedViews($user, $gallery, $recommended),
             'view' => $view,
             'context' => ListContext::forList($gallery, $filters + ['sort' => $sort], $view),
-            // Марки для фильтра меняются редко — полминуты в кэше (свои у каждого, кому выдача своя). В кэше —
-            // массивы, не модели: кэш объектов не восстанавливает (`serializable_classes` выключен).
-            'brands' => collect(Cache::remember('catalog.brands:'.($gallery ? 'g' : 'o').':'.($user?->isStaff() ? 'staff' : ($user?->id ?? 0)), 30,
-                fn () => Brand::whereHas('offers', fn ($o) => $gallery ? $o->visibleTo($user)->where('state', OfferState::Gallery) : $o->visibleTo($user)->onSale())->orderBy('name')->get(['slug', 'name'])
-                    ->map(fn (Brand $b) => ['slug' => $b->slug, 'name' => $b->name])->all()))->map(fn (array $b) => (object) $b),
+            'facets' => $facets,
             'gallery' => $gallery,
             'prices' => $prices,
             'counts' => ['recommended' => $recommended] + $counts,

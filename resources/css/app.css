@@ -321,9 +321,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .signature.is-signed .signature-pad { @apply ring-2 ring-accent/50; }
   select.field-input { @apply appearance-none bg-no-repeat pr-10; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23808080' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-position: right 14px center; }
   textarea.field-input { @apply min-h-28; field-sizing: content; }
-  /* Выбор-фильтр (x-ui.choose): зелёный, пока сужает список. */
-  select.choose[data-choose-active] { background-color: var(--color-accent) !important; color: #fff; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23fff' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); }
-  /* Компактное поле тулбара и шторок фильтра. */
+  /* Компактное поле: поиск в шторке чипа и формы в шторках. */
   .field-input.field-s { @apply px-3 py-0 leading-none; min-height: 2.75rem; }
   @media (min-width: 640px) { .field-input.field-s { @apply text-sm; min-height: 2.5rem; } }
 
@@ -631,6 +629,39 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .toolbar-search { min-height: 2.75rem; max-width: none; }
     .toolbar-search input { font-size: 16px; }
   }
+  /* Лупа (03.10.2026): поле и «Отмена» есть только в режиме поиска — тогда уходят кнопки, действия и чипы, поле
+     растягивается на их место. Пилюли остаются, но не горят: результат их не учитывает. */
+  /* !important: у обёрток кнопок утилита .contents из слоя утилит сильнее. */
+  .toolbar:not([data-searching]) > .toolbar-search, .toolbar:not([data-searching]) > .toolbar-cancel { display: none !important; }
+  .toolbar[data-searching] > :not(.toolbar-pills, .toolbar-search, .toolbar-cancel) { display: none !important; }
+  .toolbar[data-searching] > .toolbar-search { order: 5; flex: 1 1 0; max-width: none; }
+  .toolbar[data-searching] .toolbar-pills [aria-current] { @apply bg-surface font-normal text-ink-muted; }
+  .toolbar-cancel { @apply shrink-0 px-1 text-sm font-medium text-accent-text; order: 6; }
+  @media (hover: hover) { .toolbar-cancel:hover { @apply text-accent; } }
+  /* Чипы фильтра — своей строкой под кнопками, листаются вбок от края до края, как пилюли. На ПК без пилюль
+     встают в ту же строку после кнопок. */
+  .toolbar-chips { @apply min-w-0 basis-full overflow-x-auto; order: 10; scrollbar-width: none; overscroll-behavior: contain; }
+  .toolbar-chips::-webkit-scrollbar { display: none; }
+  @media (max-width: 767px) { .toolbar-chips { @apply -mx-4 px-4; scroll-padding-inline: 1rem; } }
+  @media (min-width: 768px) {
+    .toolbar:not(:has(> .toolbar-pills)) > .toolbar-spacer { display: none; }
+    .toolbar:has(> .toolbar-chips) { flex-wrap: wrap; row-gap: .75rem; }
+    .toolbar:not(:has(> .toolbar-pills)) > .toolbar-chips { order: 4; flex: 1 1 0; }
+    .toolbar:not(:has(> .toolbar-pills)) > .toolbar-actions { order: 5; }
+  }
+  /* Лупа рядом с пилюлями раздела (Покупатели): в поиске поле встаёт на их место. */
+  .search-head { @apply flex items-center gap-2; }
+  .search-head > .toolbar { @apply shrink-0; }
+  .search-head:has(> .toolbar[data-searching]) > :first-child { display: none; }
+  .search-head > .toolbar[data-searching] { @apply flex-1; }
+  /* Выбранный чип — одна капсула из двух нажатий: значение (шторка) и × (снять). */
+  .pill.facet-on { @apply gap-0 p-0; }
+  .facet-open { @apply py-1 pl-3.5 pr-1.5; min-height: 1.875rem; }
+  .facet-x { @apply flex items-center self-stretch rounded-r-full pl-1 pr-2.5 opacity-80; }
+  @media (hover: hover) { .facet-x:hover { opacity: 1; } }
+  .facet-reset { background: none; }
+  .facet-submit { @apply sticky bottom-0 -mx-1 bg-surface px-1 pb-1 pt-2; }
+  .facet-submit [aria-busy] .nums { opacity: .5; }
   /* Пока список сужен набранным, скрытые строки просто не рисуются — без анимации и скачка. */
   [data-live-hidden] { display: none !important; }
 
@@ -2409,7 +2440,6 @@ dialog.lightbox::backdrop { background: transparent; }
     .chat-row:hover + .chat-row::before, .chat-row:hover::before, .chat-row:has(+ .chat-row:hover)::before { display: none; }
   }
   /* Поиск — шапкой списка: окно переписки начинается вровень с ним; поле той же ширины и скругления, что строки. */
-  .chat-rows-search .field-input { border-radius: var(--radius-m); }
   .chat-row[aria-current] { background: var(--color-accent-soft); }
   .chat-row[aria-current]::before, .chat-row[aria-current] + .chat-row::before { display: none; }
   .chat-row-photo { position: relative; flex-shrink: 0; width: 3.5rem; height: 2.5rem; }
@@ -2425,7 +2455,6 @@ dialog.lightbox::backdrop { background: transparent; }
     /* «‹ Чаты» над двумя колонками не нужна: список и так слева. */
     a:has(+ .chat-split.has-current) { display: none !important; }
     .chat-split .chat-rows, .chat-split.has-current .chat-rows { display: flex; gap: 0; overflow-y: auto; border-right: 1px solid var(--color-line); scrollbar-width: thin; }
-    .chat-rows-search { position: sticky; top: 0; z-index: 1; padding: .5rem; background: var(--color-surface); }
     .chat-split .chat-rows-list { border-radius: 0; padding: 0 .5rem .5rem; }
     .chat-split .chat-rows-list:first-child { padding-top: .5rem; }
     .chat-rows > nav, .chat-rows .empty { margin: 1rem; }

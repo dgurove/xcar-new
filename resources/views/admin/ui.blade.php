@@ -56,9 +56,8 @@
         </x-ui.card>
 
         <x-ui.card title="Тулбар">
-            <x-ui.toolbar :sorts="['published' => ['Дата публикации', true], 'price' => ['Стоимость', true]]" sort="-published" :pills="['' => 'Все', 'fresh' => 'Новые', 'ending' => 'Горящие']" pill="" name="demo">
+            <x-ui.toolbar :sorts="['published' => ['Дата публикации', true], 'price' => ['Стоимость', true]]" sort="-published" :pills="['' => 'Все', 'fresh' => 'Новые', 'ending' => 'Горящие']" pill="" name="demo" search="Марка, модель, VIN" search-target="#demo-list">
                 <x-slot:extra><x-ui.view-switch/></x-slot:extra>
-                <x-slot:filters><input name="q" placeholder="Марка, модель, VIN" class="field-input field-s"></x-slot:filters>
             </x-ui.toolbar>
         </x-ui.card>
 

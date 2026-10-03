@@ -71,22 +71,16 @@
     @if ($errors->any())<x-ui.flash tone="danger" class="mb-4">{{ $errors->first() }}</x-ui.flash>@endif
 
     @php $kindPills = count($kinds) > 1 ? ['' => 'Все'] + collect(Kind::cases())->filter(fn ($k) => isset($kinds[$k->value]))->mapWithKeys(fn ($k) => [$k->value => $k->label()])->all() : []; @endphp
-    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :pill-default="false" :counts="['' => array_sum($kinds)] + $kinds" :hidden="['preset' => $preset, 'kind' => $kind?->value, 'user' => $user?->id, \App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)]" name="purchase">
+    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :pill-default="false" :counts="['' => array_sum($kinds)] + $kinds" name="purchase" :facets="$facets" search="ДЛ, VIN, марка">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
-        <x-slot:filters><input name="q" value="{{ $q }}" placeholder="ДЛ, VIN, марка" class="field-input field-s"></x-slot:filters>
     </x-ui.toolbar>
 
-    {{-- Состояние и менеджер — по одному выбору, сочетаются с типом и поиском; менеджер выбран — только машины с его ценой. --}}
-    <div class="mt-3 flex flex-wrap items-center gap-2">
-        <x-ui.choose name="preset" :options="$ctl::PRESETS" :groups="$ctl::PRESET_GROUPS" :value="$preset" default="all" :counts="$counts" title="Какие ТС" id="preset-purchase"/>
-        @if ($managers->isNotEmpty())
-            <x-ui.choose name="user" :options="['' => 'Все менеджеры'] + $managers->mapWithKeys(fn ($u) => [$u->id => $u->shortName()])->all()" :value="$user?->id ?? ''" default="" :counts="$offered->all()" title="Менеджер" id="user-purchase"/>
-        @endif
-        {{-- Оценка идёт в окошке таблицы: первая без нашей цены открывается сразу, «Дальше» ведёт по строкам. --}}
-        @if ($counts['unfinal'] > 0 && !($preset === 'unfinal' && \App\Support\ListView::isTable($view)))
-            <a href="/purchases/{{ $n }}?preset=unfinal&vid=table&peek=first{{ $kind ? '&kind='.$kind->value : '' }}" class="btn btn-s btn-accent ml-auto" data-turbo-action="replace">Оценить</a>
-        @endif
-    </div>
+    {{-- Оценка идёт в окошке таблицы: первая без нашей цены открывается сразу, «Дальше» ведёт по строкам. --}}
+    @if ($counts['unfinal'] > 0 && !($preset === 'unfinal' && \App\Support\ListView::isTable($view)))
+        <div class="mt-3 flex"><a href="/purchases/{{ $n }}?preset=unfinal&vid=table&peek=first{{ $kind ? '&kind='.$kind->value : '' }}" class="btn btn-s btn-accent w-full sm:ml-auto sm:w-auto" data-turbo-action="replace">Оценить</a></div>
+    @endif
+
+    <div id="list">
 
     @if ($cars->isEmpty())
         <x-ui.empty class="mt-4">Ничего не нашлось</x-ui.empty>
@@ -110,9 +104,10 @@
     @else
     <div class="list mt-4">
         @foreach ($cars as $car)
-            <x-purchase.crm-row :car="$car" :purchase="$purchase" :highlight="$user?->id" price/>
+            <x-purchase.crm-row :car="$car" :purchase="$purchase" :highlight="$highlight" price/>
         @endforeach
     </div>
     @endif
     <div class="mt-8"><x-ui.pager :of="$cars" :sizes="\App\Support\ListView::perSizes($view)"/></div>
+    </div>
 </x-ui.shell>

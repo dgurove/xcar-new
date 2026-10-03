@@ -12,7 +12,7 @@
     $what = $i->vehicle ? $i->vehicle->titleWithYear() : ($i->deal ? 'сделка' : $i->kind->label());
     $left = $i->remaining();
 @endphp
-<tr id="invoice-{{ $i->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
+<tr data-search-row id="invoice-{{ $i->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
         <span class="cell-title"><x-vendor.name :party="$i->party"/></span>
         <span class="cell-sub">

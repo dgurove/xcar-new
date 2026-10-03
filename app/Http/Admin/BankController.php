@@ -31,7 +31,8 @@ class BankController
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'unmatched';
         $qs = trim((string) $request->query('q'));
         $q = Transaction::where('direction', 'in')->with('invoice')
-            ->when($preset !== 'all', fn ($w) => $w->where('state', $preset))
+            // Лупа — по всем поступлениям, мимо пилюли.
+            ->when($preset !== 'all' && $qs === '', fn ($w) => $w->where('state', $preset))
             ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s->where('counterparty', 'ilike', "%{$qs}%")->orWhere('purpose', 'ilike', "%{$qs}%")->orWhere('counterparty_inn', $qs)))
             ->latest('booked_at')->latest('id');
 

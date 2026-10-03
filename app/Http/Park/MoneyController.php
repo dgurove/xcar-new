@@ -17,6 +17,8 @@ use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\Seller;
 use App\Park\Scope;
+use App\Support\Facets\Common;
+use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
@@ -38,25 +40,30 @@ class MoneyController
 
     public function index(Request $request)
     {
-        ListPrefs::sync($request, 'park-money');
+        $facets = Facets::for($request, 'park-money', Common::party('billing_invoices.party_id'));
+        ListPrefs::sync($request, 'park-money', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'unpaid';
         $qs = trim((string) $request->query('q'));
         $q = self::scoped($request->user(), Invoice::with(['party', 'vehicle.brand', 'vehicle.model']))
-            ->when($request->query('party'), fn ($w, $id) => $w->where('party_id', $id))
             ->when($request->query('car'), fn ($w, $id) => $w->where('vehicle_id', $id))
             ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s->where('external_no', 'ilike', "%{$qs}%")
                 ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs))
                 ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', "%{$qs}%"))
                 ->orWhereHas('vehicle', fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%'))));
-        match ($preset) {
-            'unpaid' => $q->where('direction', 'issued')->where('state', InvoiceState::Issued),
-            'overdue' => $q->where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString()),
-            'owed' => $q->where('direction', 'owed')->where('state', InvoiceState::Issued),
-            'paid' => $q->where('state', InvoiceState::Paid),
-            default => $q,
-        };
+        // Лупа — по всем счетам, мимо пилюли и чипа.
+        if ($qs === '') {
+            match ($preset) {
+                'unpaid' => $q->where('direction', 'issued')->where('state', InvoiceState::Issued),
+                'overdue' => $q->where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString()),
+                'owed' => $q->where('direction', 'owed')->where('state', InvoiceState::Issued),
+                'paid' => $q->where('state', InvoiceState::Paid),
+                default => $q,
+            };
+        }
+        $facets->apply($q);
         $request->query('sort') === 'fresh' ? $q->latest('issued_at')->latest('id') : $q->orderBy('due_at')->orderBy('id');
-        $open = self::scoped($request->user(), Invoice::query())->where('state', InvoiceState::Issued)->get();
+        $open = $facets->applyTo(self::scoped($request->user(), Invoice::query()))->where('state', InvoiceState::Issued)->get();
+        $parties = Common::ints($facets->selected('party'));
 
         return view('park.money.index', [
             'invoices' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
@@ -67,9 +74,10 @@ class MoneyController
                 'overdue' => $open->filter->isOverdue()->count(),
                 'owed' => $open->where('direction', 'owed')->count(),
             ],
-            'party' => $request->query('party') ? Party::find($request->query('party')) : null,
+            // Один контрагент выбран (пришли из «Долгов») — экран называется им.
+            'party' => count($parties) === 1 ? Party::find($parties[0]) : null,
             'q' => $qs,
-            'parties' => Party::where('is_self', false)->whereHas('invoices', fn ($i) => $i->ofSeller(Seller::Park))->orderBy('name')->pluck('name', 'id'),
+            'facets' => $facets,
         ]);
     }
 

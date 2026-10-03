@@ -46,6 +46,16 @@ class Vehicle extends Model implements HasMedia
     {
         // ТС вендора на парковке — вендор становится её вендором (раздел «Вендоры» парковки).
         static::saved(fn (self $v) => $v->wasChanged('vendor_id') || $v->wasRecentlyCreated ? Vendor::markOnPark($v->vendor_id) : null);
+        // Тип ТС предложения берётся и с парковки — сменили категорию или связь, пересчитываем колонку предложения.
+        static::saved(function (self $v) {
+            if ($v->wasChanged(['category', 'offer_id']) || $v->wasRecentlyCreated) {
+                foreach (array_filter([$v->offer_id, $v->getOriginal('offer_id')]) as $id) {
+                    if ($offer = Offer::withoutGlobalScopes()->find($id)) {
+                        Offer::withoutGlobalScopes()->whereKey($id)->toBase()->update(['vehicle_category' => $offer->guessCategory()->value]);
+                    }
+                }
+            }
+        });
     }
 
     protected function casts(): array

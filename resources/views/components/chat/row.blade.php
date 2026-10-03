@@ -9,7 +9,7 @@
     $unread = $staff ? ($chat->manager_id ? 0 : $chat->unread_for_staff) : ($chat->isCounterpart($me) ? $chat->unread_for_staff : $chat->unread_for_user);
     $at = $chat->last_message_at;
 @endphp
-<a href="{{ $href }}" class="chat-row" @if ($current) aria-current="true" @endif data-turbo-action="advance">
+<a href="{{ $href }}" class="chat-row" data-search-row @if ($current) aria-current="true" @endif data-turbo-action="advance">
     @if ($chat->offer)
         <div class="chat-row-photo">
             <x-offer.photo :media="$chat->offer->mainPhoto()" sizes="56px"/>

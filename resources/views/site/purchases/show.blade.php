@@ -15,14 +15,11 @@
         </div>
     @endif
 
-    <x-ui.toolbar class="mt-5" :sorts="\App\Http\Site\PurchaseController::SORTS" :sort="$filters['sort'] ?? 'dl'" :pills="\App\Http\Site\PurchaseController::PRESETS" :pill="$filters['preset'] ?? 'all'" pill-param="preset" :hidden="['group' => $group?->value, 'kind' => $filters['kind'] ?? null, \App\Support\ListView::PARAM => $view]" name="purchase">
+    <x-ui.toolbar class="mt-5" :sorts="\App\Http\Site\PurchaseController::SORTS" :sort="$filters['sort'] ?? 'dl'" :pills="\App\Http\Site\PurchaseController::PRESETS" :pill="$filters['preset'] ?? 'all'" pill-param="preset" name="purchase" search="ДЛ, VIN, марка">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
-        <x-slot:filters>
-            <input name="q" value="{{ $filters['q'] ?? '' }}" placeholder="ДЛ, VIN, марка" class="field-input field-s">
-        </x-slot:filters>
     </x-ui.toolbar>
 
-    <div class="mt-6">
+    <div class="mt-6" id="list">
         @if ($cars->isEmpty())
             <x-ui.empty :href="'/purchases/'.$purchase->number.($group ? '?group='.$group->value : '')" link="Сбросить фильтры">По этим условиям ничего не нашлось</x-ui.empty>
         @else

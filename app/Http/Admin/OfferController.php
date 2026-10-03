@@ -28,11 +28,14 @@ use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Offers\Slots;
 use App\Offers\Tag;
+use App\Support\Facets\Common;
+use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
@@ -60,36 +63,44 @@ class OfferController
         if ($admin && ! $scheduled && $preset !== 'slot') {
             unset($presets['slot']);
         }
-        ListPrefs::sync($request, 'crm-offers');
+        $facets = Facets::for($request, 'crm-offers', ...self::facets());
+        ListPrefs::sync($request, 'crm-offers', keep: $facets->keys());
         $sort = $request->query('sort', 'fresh');
+        // Поиск лупой идёт по всему списку — мимо пилюли и чипов.
+        $searching = $facets->searching();
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
         $q = Offer::query()->visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])
             ->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
-        match ($preset) {
-            'recommended' => $q->where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),
-            // У админа поставленные в слот — своей пилюлей, в «Черновиках» их нет; модератору это всё ещё черновики.
-            'draft' => $q->where('state', OfferState::Draft)->when($admin, fn ($d) => $d->whereNull('slot_at')),
-            'slot' => $q->scheduled(),
-            'open' => $q->where('state', OfferState::Open),
-            // Выбрать победителя: в продаже и с подтверждениями. У предложения в сделке оставшиеся — резерв, не очередь.
-            'bids' => $q->where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
-            'sold' => $q->whereIn('state', [OfferState::Sold, OfferState::Delivered]),
-            'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
-            // Из закупок — только своей пилюлей, в любом состоянии: из остальных они скрыты.
-            'purchase' => $q->whereHas('purchaseCar'),
-            // Галерея — свой раздел у админа; у модератора своего раздела нет, его «скоро в продаже» — во «Все».
-            default => $q->whereNotIn('state', $admin ? [OfferState::Archived, OfferState::Gallery] : [OfferState::Archived, OfferState::Cancelled]),
-        };
+        if (! $searching) {
+            match ($preset) {
+                'recommended' => $q->where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),
+                // У админа поставленные в слот — своей пилюлей, в «Черновиках» их нет; модератору это всё ещё черновики.
+                'draft' => $q->where('state', OfferState::Draft)->when($admin, fn ($d) => $d->whereNull('slot_at')),
+                'slot' => $q->scheduled(),
+                'open' => $q->where('state', OfferState::Open),
+                // Выбрать победителя: в продаже и с подтверждениями. У предложения в сделке оставшиеся — резерв, не очередь.
+                'bids' => $q->where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
+                'sold' => $q->whereIn('state', [OfferState::Sold, OfferState::Delivered]),
+                'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
+                // Из закупок — только своей пилюлей, в любом состоянии: из остальных они скрыты.
+                'purchase' => $q->whereHas('purchaseCar'),
+                // Галерея — свой раздел у админа; у модератора своего раздела нет, его «скоро в продаже» — во «Все».
+                default => $q->whereNotIn('state', $admin ? [OfferState::Archived, OfferState::Gallery] : [OfferState::Archived, OfferState::Cancelled]),
+            };
+        }
         // Предложения из закупок (контрпредложение Carcade → «В предложения») по умолчанию скрыты — их смотрят
         // своей пилюлей. Модератор их не видит вовсе (`Offer::scopeVisibleTo`).
-        if ($preset !== 'purchase') {
+        if ($preset !== 'purchase' && ! $searching) {
             $q->whereDoesntHave('purchaseCar');
         }
-        if ($term = trim((string) $request->query('q'))) {
-            $q->search($term);
+        if ($searching) {
+            $term = trim((string) $request->query('q'));
+            // В CRM ищут и по номеру убытка.
+            $q->where(fn ($w) => $w->search($term)->orWhereRaw('lower(claim_ref) like ?', ['%'.mb_strtolower($term).'%']));
         }
+        $facets->apply($q);
         // В «Выбрать» сначала те, у кого приём уже закрыт, — по ним решать сейчас.
         if ($preset === 'bids' && ! $request->has('sort')) {
             $sort = 'closing';
@@ -131,14 +142,21 @@ class OfferController
             'preset' => $preset,
             'sort' => $sort,
             // Числа у пилюль; модератору — в пределах его группы.
-            'counts' => $admin ? [
-                'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->whereDoesntHave('purchaseCar')->count(),
-                'draft' => Offer::where('state', OfferState::Draft)->whereNull('slot_at')->whereNot(fn ($o) => $o->emptyDraft())->whereDoesntHave('purchaseCar')->count(),
+            'facets' => $facets,
+            'counts' => array_map(fn ($c) => $c instanceof Builder ? $facets->applyTo($c)->count() : $c, $admin ? [
+                'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->whereDoesntHave('purchaseCar'),
+                'draft' => Offer::where('state', OfferState::Draft)->whereNull('slot_at')->whereNot(fn ($o) => $o->emptyDraft())->whereDoesntHave('purchaseCar'),
                 'slot' => $scheduled,
-                'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->whereDoesntHave('purchaseCar')->count(),
-                'purchase' => Offer::whereHas('purchaseCar')->count(),
-            ] : ['draft' => Offer::visibleTo($request->user())->where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())->count()],
+                'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->whereDoesntHave('purchaseCar'),
+                'purchase' => Offer::whereHas('purchaseCar'),
+            ] : ['draft' => Offer::visibleTo($request->user())->where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())]),
         ]);
+    }
+
+    /** Чипы списка предложений — те же у галереи. */
+    public static function facets(): array
+    {
+        return [Common::vendor('offers.vendor_id'), Common::city('offers.settlement_id'), Common::category('offers.vehicle_category')];
     }
 
     public function store(Request $request, CreateOffer $create)

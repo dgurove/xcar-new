@@ -2,14 +2,7 @@
      для счёта), тип, если не страховая, и контакт по хранению; справа — сколько ТС стоит. --}}
 @php use App\Vendors\ContactRole; use App\Vendors\Kind; @endphp
 <x-ui.shell title="Вендоры">
-    <x-ui.toolbar :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="vendors">
-        <x-slot:filters>
-            <input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Название, ИНН" enterkeyhint="search">
-            <select name="kind" class="field-input field-s" aria-label="Тип">
-                <option value="">Все типы</option>
-                @foreach (Kind::cases() as $k)<option value="{{ $k->value }}" @selected($kind === $k)>{{ $k->plural() }}</option>@endforeach
-            </select>
-        </x-slot:filters>
+    <x-ui.toolbar :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="vendors" :facets="$facets" search="Название, ИНН">
         @if (auth()->user()->canManagePark())
             <x-slot:actions>
                 <div data-controller="sheet" class="contents">
@@ -26,12 +19,13 @@
             </x-slot:actions>
         @endif
     </x-ui.toolbar>
+    <div id="list">
     @if ($vendors->isEmpty())<x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Вендоров нет' }}</x-ui.empty>@endif
     @if ($vendors->isNotEmpty())
         <div class="list mt-6">
             @foreach ($vendors as $vendor)
                 @php $cs = $vendor->sideContacts(false); $c = $cs->firstWhere("role", ContactRole::Storage) ?? $cs->first(); @endphp
-                <a href="/vendors/{{ $vendor->id }}" class="row">
+                <a href="/vendors/{{ $vendor->id }}" class="row" data-search-row>
                     <x-vendor.logo :vendor="$vendor" class="size-9"/>
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $vendor->name }}</span>
@@ -49,4 +43,5 @@
             @endforeach
         </div>
     @endif
+    </div>
 </x-ui.shell>

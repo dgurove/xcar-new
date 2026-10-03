@@ -49,11 +49,15 @@ use App\Park\InspectionKind;
 use App\Park\PhotoStage;
 use App\Park\Vehicle;
 use App\Support\Docs;
+use App\Support\Facets\Common;
+use App\Support\Facets\Facet;
+use App\Support\Facets\Facets;
+use App\Support\Facets\Option;
+use App\Support\ListPrefs;
 use App\Support\Nav;
 use App\Support\OfficePreview;
 use App\Users\User;
 use App\Vendors\ContactRole;
-use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -102,12 +106,17 @@ class MailController
         // В делах, требующих нас, сверху самое старое: свежее и так на виду.
         $sort = array_key_exists($request->query('sort', ''), Boxes::SORTS) ? $request->query('sort') : (in_array($box, ['attention', 'register'], true) ? 'waiting' : 'fresh');
         $q = trim((string) $request->query('q'));
-        $filter = array_filter([
-            'vendor' => (int) $request->query('vendor') ?: null,
-            'intent' => Intent::tryFrom((string) $request->query('intent'))?->value,
-            'unread' => $request->boolean('unread') ?: null,
-            'files' => $request->boolean('files') ?: null,
-        ]);
+        // Память — своя у почты CRM и парковки и у «Из писем».
+        $list = ($this->scope === Scope::Park ? 'park' : 'offers').($forced ? '-candidates' : '-mail');
+        $facets = Facets::for($request, $list,
+            Common::vendor('mail_threads.vendor_id'),
+            Facet::column('intent', 'Смысл', ['смысл', 'смысла', 'смыслов'], Boxes::LAST_INTENT)->labels(fn (array $keys) => collect(Intent::cases())
+                ->filter(fn (Intent $i) => $i->short() && in_array($i->value, $keys, true))
+                ->mapWithKeys(fn (Intent $i) => [$i->value => new Option($i->value, $i->title())])->all()),
+            Facet::toggle('unread', 'Непрочитанные', fn ($t) => $t->where('unread_count', '>', 0)),
+            Facet::toggle('files', 'С файлами', fn ($t) => $t->where('has_attachments', true)),
+        )->countBy('count(distinct '.Boxes::group($this->scope).')');
+        ListPrefs::sync($request, $list, keep: $facets->keys(), view: false);
         $park = $this->scope === Scope::Park;
         $with = ['account', 'vendor', 'offer.brand', 'offer.model', 'offer.vendor', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
 
@@ -122,8 +131,9 @@ class MailController
             'other' => (clone $all)->whereNull('archived_at')->where(fn ($w) => Boxes::noise($w)),
             default => (clone $all)->whereNull('archived_at')->where(fn ($w) => Boxes::notNoise($w)),
         };
-        $threads = $pick($box);
-        // Поиск — не фильтр: он сужает то, что уже выбрано пилюлей и фильтрами, и адрес не меняет.
+        // Поиск — не фильтр и идёт мимо пилюли и чипов, по всем письмам (архив тоже); «Из писем» — внутри своей
+        // вшитой выборки: экран про одно дело. Адрес он не меняет.
+        $threads = $q !== '' && ! $forced ? (clone $all) : $pick($box);
         if ($q !== '') {
             $tsquery = self::tsquery($q);
             $threads->where(fn ($w) => $w
@@ -132,10 +142,7 @@ class MailController
                 ->orWhereHas('attachments', fn ($a) => $a->where('filename', 'ilike', '%'.$q.'%'))
                 ->when(Keys::fromQuery($q), fn ($w, $keys) => $w->orWhere(fn ($k) => $k->withAnyKey($keys))));
         }
-        $threads->when($filter['vendor'] ?? null, fn ($t, $id) => $t->where('vendor_id', $id))
-            ->when($filter['intent'] ?? null, fn ($t, $i) => $t->whereRaw(Boxes::LAST_INTENT.' = ?', [$i]))
-            ->when($filter['unread'] ?? null, fn ($t) => $t->where('unread_count', '>', 0))
-            ->when($filter['files'] ?? null, fn ($t) => $t->where('has_attachments', true));
+        $facets->apply($threads);
         $order = fn ($t) => $sort === 'waiting' ? $t->orderBy('last_message_at') : $t->orderByDesc('last_message_at');
 
         // Дело — машина, цепочка «Из писем» или предложение. Письмо, которому парсер не нашёл машину, — дело само
@@ -148,7 +155,11 @@ class MailController
         $slice = $keys->forPage($page, self::GROUPS_PER_PAGE)->values();
         $paginator = new LengthAwarePaginator($slice, $keys->count(), self::GROUPS_PER_PAGE, $page, ['path' => $request->url(), 'query' => $request->query()]);
         // Письма дела — все, что лежат в том же ящике: пилюля выбрала дела, а не письма, и секция не разваливается.
-        $rowsOf = $box === 'archive' ? (clone $all)->whereNotNull('archived_at') : (clone $all)->whereNull('archived_at');
+        $rowsOf = match (true) {
+            $q !== '' && ! $forced => clone $all,
+            $box === 'archive' => (clone $all)->whereNotNull('archived_at'),
+            default => (clone $all)->whereNull('archived_at'),
+        };
         $rows = $slice->isEmpty() ? collect() : $order($rowsOf->with($with)
             ->whereRaw("{$group} in (".implode(',', array_fill(0, $slice->count(), '?')).')', $slice->all()))->get();
         $byGroup = $rows->groupBy(fn (Thread $t) => $park
@@ -192,7 +203,8 @@ class MailController
             'threads' => $threads,
             'sections' => $sections,
             'q' => $q,
-            'filter' => $filter,
+            'filtered' => $facets->active(),
+            'facets' => $facets,
             'base' => $this->base,
             'queue' => $this->queue,
             'park' => $park,
@@ -207,16 +219,15 @@ class MailController
         // Счётчики пилюль — число дел, одним правилом на все (раньше «Входящие» считали ветки с непрочитанными,
         // а «Ждут ответа» — все ветки, и числа были несравнимы).
         $counts = $forced ? [] : [
-            'attention' => (int) $pick('attention')->selectRaw('count(distinct '.$group.') as n')->value('n'),
+            'attention' => (int) $facets->applyTo($pick('attention'))->selectRaw('count(distinct '.$group.') as n')->value('n'),
             // В «Прочем» дело — само письмо: тождества у него нет, собирать нечего.
-            'other' => $pick('other')->count(),
+            'other' => $facets->applyTo($pick('other'))->count(),
         ];
 
         return view('admin.mail.index', $data + [
             'sort' => $sort,
             'accounts' => $accounts,
             'counts' => array_filter($counts),
-            'vendors' => Vendor::whereIn('id', (clone $all)->whereNotNull('vendor_id')->distinct()->pluck('vendor_id'))->orderBy('name')->pluck('name', 'id'),
             // ?window=id — ссылка на ветку: список с открытым окном этой ветки.
             'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window' : null,
         ]);

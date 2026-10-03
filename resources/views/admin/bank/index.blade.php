@@ -2,13 +2,13 @@
      действия (привязать к счёту, «не наше») — в окошке. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
 <x-ui.shell title="Поступления" :back="['Деньги', '/work/money']">
-    <x-ui.toolbar :pills="\App\Http\Admin\BankController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['unmatched' => !empty($counts['unmatched']) ? 'pill-urgent' : '']" name="bank">
+    <x-ui.toolbar :pills="\App\Http\Admin\BankController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['unmatched' => !empty($counts['unmatched']) ? 'pill-urgent' : '']" name="bank" search="Плательщик, ИНН, назначение">
         <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::WIDE]" :current="$view"/></x-slot:extra>
-        <x-slot:filters><input type="search" name="q" value="{{ $q }}" class="field-input" placeholder="Плательщик, ИНН, назначение" enterkeyhint="search"></x-slot:filters>
     </x-ui.toolbar>
     @if (! $connection->connected())
         <div class="list mt-4"><a href="/settings/bank" class="row"><span class="min-w-0 flex-1">СберБизнес не подключён</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a></div>
     @endif
+    <div id="list">
     @if ($transactions->isEmpty())
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : ($preset === 'unmatched' ? 'Все поступления разобраны' : 'Поступлений нет') }}</x-ui.empty>
     @else
@@ -18,4 +18,5 @@
         </x-ui.table>
     @endif
     @if ($transactions->hasPages())<div class="mt-8"><x-ui.pager :of="$transactions" :sizes="ListView::PER_ROWS"/></div>@endif
+    </div>
 </x-ui.shell>
