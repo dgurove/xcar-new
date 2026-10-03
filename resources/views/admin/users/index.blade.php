@@ -14,7 +14,7 @@
     @if ($preset === 'invites')
         <x-invites.list :invites="$invites" admin :managers="$managers" :fresh="$fresh"/>
     @elseif ($users->isEmpty())
-        <x-ui.empty>{{ $preset === 'buyers' ? 'Покупателей пока нет — они приходят по ссылкам менеджеров.' : 'Никого нет.' }}</x-ui.empty>
+        <x-ui.empty>{{ request('q') ? 'Никого не нашлось' : ($preset === 'buyers' ? 'Покупателей пока нет' : 'Никого нет') }}</x-ui.empty>
     @else
         <section>
         {{-- Под группами — люди своим блоком с заголовком; отступ между блоками — gap экрана. --}}

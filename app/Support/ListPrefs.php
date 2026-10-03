@@ -37,8 +37,9 @@ final class ListPrefs
         // Пришли по адресу с параметрами — это выбор, запоминаем. Админ за человека его память не трогает, а «сколько
         // будет» из шторки чипа (X-Count) — ещё не выбор.
         $next = array_diff_key($given + $raw, array_flip($cleared));
-        // Предзагрузка при наведении (`MarkPrefetch`) — тоже не выбор: иначе «×», над которым прошёл курсор, стирал фильтр.
-        if (($given || $cleared) && ! Impersonation::active() && ! $request->headers->has('X-Count') && ! $request->prefetch() && $next != $raw) {
+        // Предзагрузку Turbo берёт за клик (`touch-prefetch.js` отдаёт тот же ответ), поэтому её нельзя отбрасывать здесь;
+        // у «×» и «Сбросить» предзагрузки нет (`data-turbo-prefetch="false"`), иначе курсор над ними стирал бы фильтр.
+        if (($given || $cleared) && ! Impersonation::active() && ! $request->headers->has('X-Count') && $next != $raw) {
             self::remember($request, $list, $next);
         }
         foreach ($saved as $key => $value) {

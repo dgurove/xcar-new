@@ -22,7 +22,7 @@ class GalleryController
         $sort = $request->query('sort', 'fresh');
         $q = Offer::query()->where('state', OfferState::Gallery)->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])->withCount(['activeBids', 'interests']);
         if ($term = trim((string) $request->query('q'))) {
-            $q->where(fn ($w) => $w->search($term)->orWhereRaw('lower(claim_ref) like ?', ['%'.mb_strtolower($term).'%']));
+            $q->searchCrm($term);
         }
         $facets->apply($q);
         match ($sort) {

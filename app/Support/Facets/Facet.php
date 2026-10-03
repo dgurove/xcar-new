@@ -27,6 +27,9 @@ final class Facet
 
     public bool $toggle = false;
 
+    /** Значения — числа (id): в запрос идут целыми, чужое в адресе отбрасывается, а не роняет запрос ошибкой типа. */
+    public bool $numeric = false;
+
     public bool $single = false;
 
     /** Вариант одиночного выбора, которого нет в адресе («Все ТС»). */
@@ -108,6 +111,13 @@ final class Facet
         });
     }
 
+    public function numeric(): self
+    {
+        $this->numeric = true;
+
+        return $this;
+    }
+
     public function single(?string $default = null): self
     {
         $this->single = true;
@@ -158,13 +168,20 @@ final class Facet
             return;
         }
         $none = $this->none !== null && in_array('none', $values, true);
-        $keys = array_values(array_filter($values, fn ($v) => $v !== 'none'));
+        $keys = array_values(array_filter($values, fn ($v) => $v !== 'none' && (! $this->numeric || ctype_digit($v))));
+        if ($this->numeric) {
+            $keys = array_map('intval', $keys);
+        }
+        // Колонка сравнивается как есть, без приведения типа: так работает индекс (вендор, парковка, тип ТС).
         $q->where(function (Builder $w) use ($keys, $none) {
             if ($keys) {
-                $w->whereRaw("({$this->expr})::text in (".implode(',', array_fill(0, count($keys), '?')).')', $keys);
+                $w->whereRaw("{$this->expr} in (".implode(',', array_fill(0, count($keys), '?')).')', $keys);
             }
             if ($none) {
                 $w->orWhereRaw("({$this->expr}) is null");
+            }
+            if (! $keys && ! $none) {
+                $w->whereRaw('false');
             }
         });
     }
@@ -176,7 +193,7 @@ final class Facet
             return ($this->count)($q);
         }
         $rows = self::bare($q->toBase())
-            ->selectRaw("({$this->expr})::text as v, {$countExpr} as n")
+            ->selectRaw("{$this->expr} as v, {$countExpr} as n")
             ->groupByRaw('1')
             ->get();
         $out = [];

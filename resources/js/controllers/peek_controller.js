@@ -30,6 +30,11 @@ export default class extends Controller {
         this.onCache = () => { if (!sheetInHistory()) this.reset(); };
         this.onClick = (e) => this.leave(e);
         this.onSubmit = (e) => this.submit(e);
+        // Панель справа липнет под шапкой, но стоит там, где её поставила страница: ниже ряда чипов и «Оценить N» её
+        // низ уезжал за экран. Высота — от того места, где она стоит сейчас (--peek-room).
+        this.onFit = () => { this.fitting ||= requestAnimationFrame(() => { this.fitting = 0; this.fit(); }); };
+        addEventListener('scroll', this.onFit, { passive: true });
+        addEventListener('resize', this.onFit);
         addEventListener('keydown', this.onKey, true);
         addEventListener('popstate', this.onPop);
         document.addEventListener('turbo:visit', this.onVisit);
@@ -59,12 +64,22 @@ export default class extends Controller {
 
     disconnect() {
         this.linked = false;
+        cancelAnimationFrame(this.fitting);
+        removeEventListener('scroll', this.onFit);
+        removeEventListener('resize', this.onFit);
         removeEventListener('keydown', this.onKey, true);
         removeEventListener('popstate', this.onPop);
         document.removeEventListener('turbo:visit', this.onVisit);
         document.removeEventListener('turbo:before-cache', this.onCache);
         document.removeEventListener('turbo:click', this.onClick);
         document.removeEventListener('submit', this.onSubmit, true);
+    }
+
+    // Панель справа (от 1024): низ — чуть выше низа экрана, где бы она ни стояла.
+    fit() {
+        const panel = this.panelTarget;
+        if (panel.hidden || !matchMedia('(min-width: 1024px)').matches) return panel.style.removeProperty('--peek-room');
+        panel.style.setProperty('--peek-room', `${Math.max(240, Math.floor(innerHeight - panel.getBoundingClientRect().top - 16))}px`);
     }
 
     get rows() { return [...this.bodyTarget.querySelectorAll('tr[data-peek-url]')]; }
@@ -119,6 +134,7 @@ export default class extends Controller {
             panel.classList.remove('is-closing');
             panel.classList.toggle('is-full', this.full);
             this.remember();
+            this.fit();
         }
         this.openTarget.href = row.dataset.href;
         this.countTarget.textContent = `${rows.indexOf(row) + 1} из ${rows.length}`;

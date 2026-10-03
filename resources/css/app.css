@@ -1445,7 +1445,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table-wrap:has(.peek:not([hidden])) { display: grid; grid-template-columns: minmax(0, 1fr) 26rem; gap: 1rem; align-items: start; }
     .peek, .peek.is-full {
       position: sticky; inset: auto; top: calc(var(--spacing-header) + env(safe-area-inset-top) + .75rem);
-      margin: 0; width: auto; max-width: none; height: auto; max-height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 1.5rem);
+      margin: 0; width: auto; max-width: none; height: auto; max-height: var(--peek-room, calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 1.5rem));
       padding-bottom: 0; border-radius: var(--radius-xl); box-shadow: none; animation: dialog-in var(--dur) var(--ease-out);
     }
     .peek-handle { display: none; }

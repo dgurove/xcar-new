@@ -500,6 +500,12 @@ class Offer extends Model implements HasMedia
             ->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$like])));
     }
 
+    /** Поиск в CRM: то же, что `search`, плюс номер убытка (`claim_ref`) — на витрине его нет. */
+    public function scopeSearchCrm(Builder $q, string $term): Builder
+    {
+        return $q->where(fn ($w) => $w->search($term)->orWhereRaw('lower(claim_ref) like ?', ['%'.mb_strtolower(trim($term)).'%']));
+    }
+
     // -------------------------------------------------------------- метки
 
     public function isGallery(): bool

@@ -15,6 +15,7 @@ final class Common
     public static function vendor(string $expr, string $key = 'vendor'): Facet
     {
         return Facet::column($key, 'Вендор', ['вендор', 'вендора', 'вендоров'], $expr)
+            ->numeric()
             ->labels(fn (array $ids) => Vendor::whereIn('id', self::ints($ids))->get(['id', 'name'])
                 ->mapWithKeys(fn (Vendor $v) => [(string) $v->id => new Option((string) $v->id, $v->name, vendor: $v)])->all());
     }
@@ -22,6 +23,7 @@ final class Common
     public static function manager(string $expr, string $key = 'manager', string $title = 'Менеджер'): Facet
     {
         return Facet::column($key, $title, ['менеджер', 'менеджера', 'менеджеров'], $expr)
+            ->numeric()
             ->labels(fn (array $ids) => User::whereIn('id', self::ints($ids))->with(User::withAvatar())->get()
                 ->mapWithKeys(fn (User $u) => [(string) $u->id => new Option((string) $u->id, $u->name ?: ($u->login ?? '№ '.$u->id), user: $u)])->all());
     }
@@ -29,6 +31,7 @@ final class Common
     public static function city(string $expr): Facet
     {
         return Facet::column('city', 'Город', ['город', 'города', 'городов'], $expr)
+            ->numeric()
             ->labels(fn (array $ids) => Settlement::whereIn('id', self::ints($ids))->get()
                 ->mapWithKeys(fn (Settlement $s) => [(string) $s->id => new Option((string) $s->id, $s->title())])->all());
     }
@@ -45,6 +48,7 @@ final class Common
     public static function yard(string $expr): Facet
     {
         return Facet::column('yard', 'Парковка', ['парковка', 'парковки', 'парковок'], $expr)
+            ->numeric()
             ->none('Без парковки')
             ->labels(fn (array $ids) => Yard::whereIn('id', self::ints($ids))->orderBy('name')->get(['id', 'name'])
                 ->mapWithKeys(fn (Yard $y) => [(string) $y->id => new Option((string) $y->id, $y->name)])->all());
@@ -53,6 +57,7 @@ final class Common
     public static function party(string $expr): Facet
     {
         return Facet::column('party', 'Контрагент', ['контрагент', 'контрагента', 'контрагентов'], $expr)
+            ->numeric()
             ->labels(fn (array $ids) => Party::whereIn('id', self::ints($ids))->get(['id', 'name'])
                 ->mapWithKeys(fn (Party $p) => [(string) $p->id => new Option((string) $p->id, $p->name, vendor: Vendor::ofParty($p->id))])->all());
     }

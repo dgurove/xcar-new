@@ -13,6 +13,7 @@ use App\Billing\InvoiceState;
 use App\Billing\ManagerLedger;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
+use App\Billing\PaymentState;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
@@ -78,7 +79,8 @@ class MoneyController
         $f = fn ($q) => $facets ? $facets->applyTo($q) : $q;
 
         return [
-            'claims' => $f(Invoice::whereNotNull('deal_id')->whereHas('claims'))->count(),
+            // Заявки — оплаты, а не счета: то же число, что на табе «Работа» (`Nav::totals`), но с выбранными чипами.
+            'claims' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $f($i->whereNotNull('deal_id')))->count(),
             'payouts' => $f(Invoice::whereNotNull('deal_id')->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued))->count(),
             'unpaid' => $f(Invoice::whereNotNull('deal_id')->where('direction', 'issued')->where('state', InvoiceState::Issued))->count(),
         ];

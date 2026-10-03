@@ -24,7 +24,7 @@
     $norm = collect($sorts)->map(fn ($v) => is_array($v) ? $v[0] : $v);
     $current = (string) $sort;
     $sortUrl = fn (string $key) => $url([$sortParam => $key, 'page' => null]);
-    $q ??= (string) request('q');
+    $q ??= is_string(request('q')) ? request('q') : '';
     $searching = $search && trim($q) !== '';
 @endphp
 <div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-2 max-md:gap-y-3']) }} @if ($search) data-controller="live-search" data-live-search-target-value="{{ $searchTarget }}" @if ($searchUrl) data-live-search-url-value="{{ $searchUrl }}" @endif @endif @if ($searching) data-searching @endif>

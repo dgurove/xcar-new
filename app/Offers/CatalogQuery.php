@@ -59,12 +59,7 @@ final class CatalogQuery
         }
         // Лупа — по всему разделу, мимо пилюли и чипов.
         if ($search !== '') {
-            $term = '%'.mb_strtolower($search).'%';
-            $q->where(fn ($w) => $w
-                ->whereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$term])->orWhereRaw('lower(name_ru) like ?', [$term]))
-                ->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$term]))
-                ->orWhereRaw('cast(number as text) like ?', [$term])
-                ->orWhereRaw('lower(vin) like ?', [$term]));
+            $q->search($search);
         }
 
         if ($search === '') {

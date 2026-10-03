@@ -81,7 +81,9 @@ class PurchaseController
                 })->labels(fn (array $ids) => User::whereIn('id', Common::ints($ids))->with(User::withAvatar())->get()
                 ->mapWithKeys(fn (User $u) => [(string) $u->id => new Option((string) $u->id, $u->name, user: $u)])->all()),
         );
-        ListPrefs::sync($request, 'crm-purchase-cars', keep: $facets->keys());
+        // Вид и сортировка помнятся одни на все закупки, чипы («Какие ТС», менеджер) — у каждой своя: ТС и цены у закупок разные.
+        ListPrefs::sync($request, 'crm-purchase-cars');
+        ListPrefs::sync($request, 'crm-purchase-'.$purchase->id, keep: $facets->keys(), view: false);
         $q = trim((string) $request->query('q'));
         $preset = $facets->selected('preset')[0] ?? 'all';
         $preset = array_key_exists($preset, self::PRESETS) ? $preset : 'all';

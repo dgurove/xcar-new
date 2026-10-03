@@ -20,6 +20,7 @@ use App\Http\Middleware\PeekBack;
 use App\Http\Middleware\ReadNoticesOnVisit;
 use App\Http\Middleware\RedirectLegacyPaths;
 use App\Http\Middleware\ResolveSurface;
+use App\Http\Middleware\ScalarSearch;
 use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
 use App\Http\Middleware\TouchSeen;
@@ -104,7 +105,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo('/');
         $middleware->alias(['ability' => EnsureAbility::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'park.area' => EnsureParkArea::class, 'offer.edit' => EnsureOfferEditable::class, 'wall' => SiteWall::class]);
-        $middleware->prepend([ServerTiming::class, RedirectLegacyPaths::class, MarkPrefetch::class]);
+        $middleware->prepend([ServerTiming::class, RedirectLegacyPaths::class, MarkPrefetch::class, ScalarSearch::class]);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
         $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, MarkInstalled::class, PeekBack::class, Impersonated::class, TouchSeen::class, ReadNoticesOnVisit::class, DemoReadOnly::class]);

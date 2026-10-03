@@ -78,7 +78,9 @@ final class Facets
 
     public function searching(): bool
     {
-        return trim((string) $this->request->query('q')) !== '';
+        $q = $this->request->query('q');
+
+        return is_string($q) && trim($q) !== '';
     }
 
     /** @return list<string> */
@@ -229,7 +231,8 @@ final class Facets
     /** Адрес с заменой: '' остаётся в адресе — это «снять и забыть» для ListPrefs. */
     public function url(array $set): string
     {
-        $query = array_merge($this->request->query(), $set, ['page' => null]);
+        // Окошко строки (peek) после смены фильтра не открывается заново: открытая строка могла из списка уйти.
+        $query = array_merge($this->request->query(), $set, ['page' => null, 'peek' => null]);
         $query = array_filter($query, fn ($v) => $v !== null && (is_string($v) || is_int($v)));
 
         return $this->action().($query ? '?'.str_replace('%2C', ',', http_build_query($query)) : '');

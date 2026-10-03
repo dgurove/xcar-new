@@ -97,8 +97,7 @@ class OfferController
         }
         if ($searching) {
             $term = trim((string) $request->query('q'));
-            // В CRM ищут и по номеру убытка.
-            $q->where(fn ($w) => $w->search($term)->orWhereRaw('lower(claim_ref) like ?', ['%'.mb_strtolower($term).'%']));
+            $q->searchCrm($term);
         }
         $facets->apply($q);
         // В «Выбрать» сначала те, у кого приём уже закрыт, — по ним решать сейчас.
