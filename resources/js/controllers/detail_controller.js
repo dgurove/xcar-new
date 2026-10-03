@@ -3,22 +3,19 @@ import { Controller } from '@hotwired/stimulus';
 // Список и карточка строки рядом (x-ui.shell :detail). Открывает и закрывает Turbo: строка — ссылка
 // (a[data-detail-link]) в фрейм detail с data-turbo-action="replace", «Закрыть» — ссылка на список без ?peek=. Здесь
 // только то, чего Turbo не умеет: нажатие мимо ссылки по строке, выделение строки, ↑/↓ и Esc, формы карточки — в фрейм,
-// «следующий без цены» (поток advance). Телефон: лист — нативная прокрутка фрейма со scroll-snap (точки «закрыто»,
-// «полэкрана», «во весь экран»), тут лишь стартовая точка и закрытие, когда лист опустили до конца.
+// «следующий без цены» (поток advance). Телефон: лист полэкрана или во весь экран, высоту меняет только полоса сверху
+// (grab), тело карточки листается внутри само.
 export default class extends Controller {
     static targets = ['frame', 'close'];
 
     connect() {
         this.wide = matchMedia('(min-width: 1024px)');
-        this.full = false;
-        this.onScroll = () => { this.clip(); this.scrolled(); };
         this.onAdvance = () => this.advance();
         this.onRender = () => { this.rendering = true; };
         this.onStream = (e) => {
             const render = e.detail.render;
             e.detail.render = async (stream) => { await render(stream); this.mark(); };
         };
-        this.frameTarget.addEventListener('scroll', this.onScroll, { passive: true });
         this.frameTarget.addEventListener('turbo:before-frame-render', this.onRender);
         document.addEventListener('detail:advance', this.onAdvance);
         document.addEventListener('turbo:before-stream-render', this.onStream);
@@ -26,8 +23,6 @@ export default class extends Controller {
     }
 
     disconnect() {
-        clearTimeout(this.timer);
-        this.frameTarget.removeEventListener('scroll', this.onScroll);
         this.frameTarget.removeEventListener('turbo:before-frame-render', this.onRender);
         document.removeEventListener('detail:advance', this.onAdvance);
         document.removeEventListener('turbo:before-stream-render', this.onStream);
@@ -96,67 +91,52 @@ export default class extends Controller {
         this.element.toggleAttribute('data-open', open);
         this.frameTarget.querySelectorAll('form:not([data-turbo-frame])').forEach((f) => { f.dataset.turboFrame = 'detail'; });
         this.mark();
-        if (!open || this.wide.matches) { this.rendering = false; return; }
-        // Лист: впервые — на полэкрана (выезжает анимацией CSS), при смене строки — остаётся там, где был.
-        const pad = this.frameTarget.querySelector('.detail-pad');
-        if (!pad) { this.rendering = false; return; }
-        this.frameTarget.scrollTop = was && this.full ? pad.offsetHeight : pad.offsetHeight / 2;
-        this.clip();
-        requestAnimationFrame(() => { this.rendering = false; });
+        // Лист открывается на полэкрана; при смене строки остаётся, каким был.
+        if (!open || !was) this.frameTarget.removeAttribute('data-full');
+        if (!open) { this.frameTarget.style.translate = ''; this.frameTarget.style.transition = ''; }
+        this.rendering = false;
     }
 
-    // Где сейчас верх карточки: выше обрезано (clip-path), там нажатия достаются таблице.
-    clip() {
-        if (this.wide.matches) return;
-        this.clipping ||= requestAnimationFrame(() => {
-            this.clipping = 0;
-            const pad = this.frameTarget.querySelector('.detail-pad');
-            if (pad) this.frameTarget.style.setProperty('--sheet-top', `${Math.max(0, pad.offsetHeight - this.frameTarget.scrollTop)}px`);
-        });
-    }
-
-    // Тянут за полосу: лист едет за пальцем (или мышью), отпустили — к ближайшей точке с учётом взмаха; до низа — закрыть.
+    // Тянут за полосу: лист едет за пальцем (translate, без перекладки содержимого), отпустили — полэкрана, во весь
+    // экран или закрыть, с учётом взмаха; тогда уже меняется высота.
     grab(event) {
-        const frame = this.frameTarget, pad = frame.querySelector('.detail-pad');
-        if (this.wide.matches || !pad || event.button > 0 || event.target.closest('a, button')) return;
+        const frame = this.frameTarget;
+        if (this.wide.matches || event.button > 0 || event.target.closest('a, button')) return;
         event.preventDefault();
-        const y0 = event.clientY, top0 = frame.scrollTop, h = pad.offsetHeight;
-        let lastY = y0, lastT = event.timeStamp, speed = 0;
-        this.dragging = true;
-        frame.style.scrollSnapType = 'none';
+        const h0 = frame.offsetHeight;
+        frame.setAttribute('data-full', '');
+        const full = frame.offsetHeight, half = Math.min(full, innerHeight / 2);
+        const y0 = event.clientY, off0 = full - h0;
+        let off = off0, lastY = y0, lastT = event.timeStamp, speed = 0;
+        frame.style.transition = 'none';
+        frame.style.translate = `0 ${off}px`;
         const move = (e) => {
             speed = (e.clientY - lastY) / Math.max(1, e.timeStamp - lastT);
             lastY = e.clientY;
             lastT = e.timeStamp;
-            frame.scrollTop = top0 - (e.clientY - y0);
+            off = Math.min(full, Math.max(0, off0 + e.clientY - y0));
+            frame.style.translate = `0 ${off}px`;
         };
         const up = () => {
             removeEventListener('pointermove', move);
             removeEventListener('pointerup', up);
             removeEventListener('pointercancel', up);
-            const aim = frame.scrollTop - speed * 250;
-            const stop = aim > h * 0.75 ? h : aim > h * 0.2 ? h / 2 : 0;
-            const settle = () => { frame.style.scrollSnapType = ''; this.dragging = false; this.scrolled(); };
-            if (frame.scrollTop > h + 8 && Math.abs(speed) < 0.3) { settle(); return; }
-            frame.scrollTo({ top: stop, behavior: 'smooth' });
-            setTimeout(settle, 350);
+            const aim = full - off - speed * 250;
+            const to = aim > (half + full) / 2 ? full : aim > half / 2 ? half : 0;
+            frame.style.transition = 'translate var(--dur) var(--ease-out)';
+            frame.style.translate = `0 ${full - to}px`;
+            setTimeout(() => {
+                // Закрыли — лист остаётся внизу, пока фрейм не опустеет (settle снимет сдвиг).
+                if (!to) { this.close(); return; }
+                frame.style.transition = 'none';
+                frame.style.translate = '';
+                frame.toggleAttribute('data-full', to === full);
+                requestAnimationFrame(() => { frame.style.transition = ''; });
+            }, 260);
         };
         addEventListener('pointermove', move);
         addEventListener('pointerup', up);
         addEventListener('pointercancel', up);
-    }
-
-    // Лист отпустили: у самого низа — закрыть; запоминаем, во весь ли экран.
-    scrolled() {
-        if (this.wide.matches || this.rendering || this.dragging || !this.open) return;
-        clearTimeout(this.timer);
-        this.timer = setTimeout(() => {
-            const pad = this.frameTarget.querySelector('.detail-pad');
-            if (!pad || this.rendering) return;
-            const top = this.frameTarget.scrollTop;
-            this.full = top >= pad.offsetHeight * 0.9;
-            if (top < 8) this.close();
-        }, 140);
     }
 
     close() {

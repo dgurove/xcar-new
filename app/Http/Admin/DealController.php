@@ -7,6 +7,7 @@ use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\OfferFiles;
+use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
@@ -26,6 +27,10 @@ class DealController
 
     public function index(Request $request)
     {
+        $detail = Detail::of($request, fn (string $key) => ($deal = Deal::find($key)) ? $this->detail($deal) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         $stage = "(select left(md5(coalesce(b.name, s.name)), 8) from offer_positions p join workflow_stages s on s.id = p.stage_id
             left join workflow_blocks b on b.id = s.block_id where p.offer_id = deals.offer_id and p.track = 'sale' order by p.id limit 1)";
         $facets = Facets::for($request, 'crm-deals',
@@ -76,11 +81,24 @@ class DealController
             'preset' => $preset,
             'sort' => $sort,
             'facets' => $facets,
+            'detail' => $detail,
         ]);
     }
 
     /** Сделка целиком: маршрут с исходами, деньги, письма и документы, просьбы менеджеру и ответы, машина и покупатель, история. */
     public function show(Deal $deal)
+    {
+        return view('admin.deals.show', $this->data($deal));
+    }
+
+    /** Карточка сделки рядом со списком (Detail): путь, деньги, письма, заметка — без истории. */
+    private function detail(Deal $deal)
+    {
+        return view('admin.deals.detail', $this->data($deal));
+    }
+
+    /** Сделка целиком — одна выборка на страницу и карточку. */
+    private function data(Deal $deal): array
     {
         $deal->load(['buyer', 'bid', 'requirements.media', 'requirements.stage.block', 'offer.brand', 'offer.model', 'offer.media', 'offer.settlement',
             'offer.vendor.workflows', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.positions.stage.workflow', 'offer.events.user']);
@@ -89,12 +107,12 @@ class DealController
         $threads = OfferFiles::threads($offer);
 
         // Письма и документы — как в редакторе: письмо вендору, документы к подписанию и ответ страховой ведут отсюда.
-        return view('admin.deals.show', OfferFiles::letters($offer, $threads) + [
+        return OfferFiles::letters($offer, $threads) + [
             'docs' => OfferFiles::docs($offer, $threads),
             'deal' => $deal,
             'offer' => $offer,
             'events' => $offer->events->where('created_at', '>=', $deal->created_at),
-        ]);
+        ];
     }
 
     /** Вознаграждение и режим — пока по сделке нет счёта. */
