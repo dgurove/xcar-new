@@ -421,7 +421,8 @@ final class Nav
                     '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),
                 ], 'fresh' => []];
             }
-            $open = Offer::visibleTo($user)->where('state', OfferState::Open);
+            // Таб «Предложения» — то же, что в каталоге: срок вышел или идёт сделка — с сайта ушло (`Offer::scopeOnSale`).
+            $open = Offer::visibleTo($user)->onSale();
             $gallery = Offer::visibleTo($user)->where('state', OfferState::Gallery);
 
             // Ноль — тоже число («Покупатели 0»), нет только разделов, которых у роли нет.

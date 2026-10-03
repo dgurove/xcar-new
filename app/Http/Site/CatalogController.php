@@ -47,7 +47,6 @@ class CatalogController
         $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
         $prices = ! $gallery && ($user?->role->canSeePrices() ?? false);
         $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
-        $states = $gallery ? [OfferState::Gallery] : [OfferState::Open];
 
         $query = CatalogQuery::for($user, $filters + ['sort' => $sort], $gallery);
         $count = $query->count();
@@ -58,18 +57,19 @@ class CatalogController
 
         // Счётчики на каждый запрос списка — полминуты в кэше, слабому серверу легче.
         // Сотруднику — общие; менеджеру и покупателю выдача своя, считаем по ней и без кэша: после «Показать…» число должно сойтись сразу.
+        // Везде — только то, что в продаже (`Offer::scopeOnSale`): срок вышел или идёт сделка — с сайта ушло.
         $counts = $user?->isStaff()
             ? Cache::remember('catalog.counts', 30, fn () => [
-                'offers' => Offer::where('state', OfferState::Open)->count(),
+                'offers' => Offer::onSale()->count(),
                 'gallery' => Offer::where('state', OfferState::Gallery)->count(),
-                'recommended' => Offer::where('state', OfferState::Open)->where('recommended', true)->count(),
+                'recommended' => Offer::onSale()->where('recommended', true)->count(),
                 'recommended_gallery' => Offer::where('state', OfferState::Gallery)->where('recommended', true)->count(),
             ])
             : [
                 // Без фильтров «Все» — это и есть длина списка: второй раз не считаем.
-                'offers' => ! $gallery && ! array_diff_key($filters, ['sort' => 1]) ? $count : Offer::visibleTo($user)->where('state', OfferState::Open)->count(),
+                'offers' => ! $gallery && ! array_diff_key($filters, ['sort' => 1]) ? $count : Offer::visibleTo($user)->onSale()->count(),
                 'gallery' => $user?->role->canSeeGallery() ? Offer::visibleTo($user)->where('state', OfferState::Gallery)->count() : 0,
-                'recommended' => Offer::visibleTo($user)->whereIn('state', $states)->where('recommended', true)->count(),
+                'recommended' => Offer::visibleTo($user)->when($gallery, fn ($q) => $q->where('state', OfferState::Gallery), fn ($q) => $q->onSale())->where('recommended', true)->count(),
             ];
         // «Рекомендуем» — сколько отмеченных в этом разделе: пилюля с числом, без отмеченных пилюли нет.
         $recommended = $counts[$gallery && $user?->isStaff() ? 'recommended_gallery' : 'recommended'] ?? 0;
@@ -89,7 +89,7 @@ class CatalogController
             // Марки для фильтра меняются редко — полминуты в кэше (свои у каждого, кому выдача своя). В кэше —
             // массивы, не модели: кэш объектов не восстанавливает (`serializable_classes` выключен).
             'brands' => collect(Cache::remember('catalog.brands:'.($gallery ? 'g' : 'o').':'.($user?->isStaff() ? 'staff' : ($user?->id ?? 0)), 30,
-                fn () => Brand::whereHas('offers', fn ($o) => $o->visibleTo($user)->whereIn('state', $states))->orderBy('name')->get(['slug', 'name'])
+                fn () => Brand::whereHas('offers', fn ($o) => $gallery ? $o->visibleTo($user)->where('state', OfferState::Gallery) : $o->visibleTo($user)->onSale())->orderBy('name')->get(['slug', 'name'])
                     ->map(fn (Brand $b) => ['slug' => $b->slug, 'name' => $b->name])->all()))->map(fn (array $b) => (object) $b),
             'gallery' => $gallery,
             'prices' => $prices,

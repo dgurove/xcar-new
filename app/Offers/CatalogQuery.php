@@ -39,8 +39,9 @@ final class CatalogQuery
             ->with(['brand', 'model', 'settlement',
                 'media' => fn ($m) => $m->where('collection_name', 'photos'),
                 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)])
-            ->visibleTo($user)
-            ->whereIn('state', $gallery ? [OfferState::Gallery] : [OfferState::Open]);
+            ->visibleTo($user);
+        // Витрина — только то, что в продаже: срок вышел или идёт сделка — с сайта ушло (`Offer::scopeOnSale`).
+        $gallery ? $q->where('state', OfferState::Gallery) : $q->onSale();
         if ($user?->isBuyer()) {
             // Покупателю на карточке нужен его собственный интерес — грузим одним запросом на список.
             $q->with(['interests' => fn ($i) => $i->where('user_id', $user->id)]);
