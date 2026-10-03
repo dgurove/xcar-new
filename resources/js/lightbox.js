@@ -250,7 +250,14 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
         async reload(list) {
             const it = list.find((x) => String(x.id) === String(view.items[view.index]?.id));
             const src = it && ((phone() && it.mid) || it.src);
-            if (src) await withTimeout(Object.assign(new Image(), { src }).decode().catch(() => {}), 4000);
+            if (src) {
+                await withTimeout(new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => withTimeout(img.decode().catch(() => {}), 300).then(resolve);
+                    img.onerror = resolve;
+                    img.src = src;
+                }), 4000);
+            }
             api.refresh(list, Math.max(0, list.indexOf(it)));
         },
         // Список сменился (скрыли, повернули, удалили): пересобрать на месте, без анимации и новой записи в истории.

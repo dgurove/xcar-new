@@ -375,7 +375,7 @@ export default class extends Controller {
         if (quiet) {
             const fresh = new Set(streams.flatMap((s) => [...(s.querySelector('template')?.content.querySelectorAll('.photo-cell img') ?? [])].map((i) => i.getAttribute('src'))));
             document.querySelectorAll('.photo-cell img').forEach((i) => fresh.delete(i.getAttribute('src')));
-            await Promise.all([...fresh].map((src) => withTimeout(Object.assign(new Image(), { src }).decode().catch(() => {}), 4000)));
+            await Promise.all([...fresh].map((src) => withTimeout(preload(src), 4000)));
         }
         streams.forEach((stream) => {
             const target = document.getElementById(stream.getAttribute('target'));
@@ -386,11 +386,10 @@ export default class extends Controller {
                 case 'prepend': target.prepend(content); break;
                 case 'update': target.replaceChildren(content); break;
                 default: {
-                    // Морф — только своему ряду кадров: карточку с контроллером (стадии парковки) подменяем целиком, чтобы
-                    // контроллер переподключился с новыми значениями (камера, только чтение).
+                    // Морф, если контроллеры внутри остались теми же (карточки стадий парковки: та же камера, то же «только
+                    // чтение»); сменились значения — подменить целиком, чтобы контроллер переподключился с новыми.
                     const next = content.firstElementChild;
-                    const own = this.element.contains(target) && target !== this.element && !target.querySelector('[data-controller]');
-                    if (own && next && content.childElementCount === 1 && next.id === target.id) Turbo.morphElements(target, next);
+                    if (next && content.childElementCount === 1 && next.id === target.id && controllers(target) === controllers(next)) Turbo.morphElements(target, next);
                     else target.replaceWith(content);
                 }
             }
@@ -628,6 +627,23 @@ const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
 
 // Кадр — картинка или HEIC (у HEIC на Windows и Android тип бывает пустым).
 const isImage = (f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name);
+
+// Кадр в кэше браузера: по load, decode — только ускорение (в фоновой вкладке он не завершается вовсе).
+function preload(src) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => withTimeout(img.decode().catch(() => {}), 300).then(resolve);
+        img.onerror = resolve;
+        img.src = src;
+    });
+}
+
+// Контроллеры узла и его потомков с их значениями — одной строкой для сравнения.
+function controllers(root) {
+    return [root, ...root.querySelectorAll('[data-controller]')].filter((el) => el.dataset.controller)
+        .map((el) => [...el.attributes].filter((a) => a.name === 'data-controller' || a.name.endsWith('-value')).map((a) => `${a.name}=${a.value}`).sort().join(' '))
+        .join('|');
+}
 
 function withTimeout(promise, ms) {
     return Promise.race([promise, new Promise((r) => setTimeout(r, ms))]);
