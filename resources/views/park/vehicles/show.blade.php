@@ -48,6 +48,7 @@
             </x-ui.sheet>
         @endif
         <x-ui.docs-pill :docs="$docs" class="!min-h-0 !py-1 text-xs"/>
+        <x-park.sale :vehicle="$vehicle" class="!min-h-0 !py-1 text-xs"/>
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif
@@ -358,7 +359,16 @@
                 @if ($state->isBefore() && ! $open)
                     <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="secondary" block>Забрать эвакуатором</x-ui.button>
                 @endif
-                @if ($canManage)
+                {{-- Продажа — только админу: черновик предложения в CRM; ушла — ссылка туда, и, пока черновик не тронут, отмена. --}}
+                @if (auth()->user()->isAdmin() && $state === VehicleState::Stored)
+                    @if ($vehicle->offer)
+                        <x-ui.button :href="\App\Support\Surface::Crm->url('/offers/'.$vehicle->offer->number)" variant="secondary" block data-turbo="false">Предложение № {{ $vehicle->offer->number }} в CRM</x-ui.button>
+                        @if ($vehicle->events->contains(fn ($e) => $e->type === \App\Park\EventType::SentToSale))
+                            <form method="post" action="/cars/{{ $vehicle->id }}/sale" data-turbo-confirm="Снять с продажи? Черновик в CRM удалится, если в нём ещё ничего не меняли">@csrf @method('delete')<x-ui.button variant="ghost" block>Отправлена по ошибке</x-ui.button></form>
+                        @endif
+                    @else
+                        <form method="post" action="/cars/{{ $vehicle->id }}/sale" data-turbo-confirm="Отправить в продажу? В CRM появится черновик предложения">@csrf<x-ui.button variant="secondary" block>В продажу</x-ui.button></form>
+                    @endif
                 @endif
                 @if ($canManage && UndoIntake::allowed($vehicle))
                     <form method="post" action="/cars/{{ $vehicle->id }}/undo-intake" data-turbo-confirm="Отменить приём? ТС снова будет ожидаться">@csrf<x-ui.button variant="ghost" block>Принята по ошибке</x-ui.button></form>

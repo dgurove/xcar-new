@@ -17,6 +17,7 @@
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
             @if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
             @if ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
+            <x-park.sale :vehicle="$vehicle"/>
             @if ($total && $total['rate'])<span class="tag nums">{{ \App\Support\Money::rub($total['rate']) }}/д</span>@endif
             <x-park.alerts :vehicle="$vehicle"/>
             @if ($vehicle->accepted_at)<span class="tag nums">принята {{ $vehicle->accepted_at->translatedFormat('j M Y') }}</span>@endif
@@ -46,6 +47,9 @@
                     <a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Выдать</a>
                 @else
                     <form method="post" action="/requests" class="contents" data-turbo-frame="_top">@csrf<input type="hidden" name="type" value="release"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Выдать</button></form>
+                @endif
+                @if (auth()->user()->isAdmin() && ! $vehicle->offer_id)
+                    <form method="post" action="{{ $href }}/sale" class="contents" data-turbo-frame="_top" data-turbo-confirm="Отправить в продажу? В CRM появится черновик предложения">@csrf<button class="btn btn-s btn-quiet">В продажу</button></form>
                 @endif
                 @if ($debt > 0)<span class="pill pill-danger !min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</span>@endif
                 <a href="/acts/{{ $vehicle->id }}/intake" class="pill pill-plain" data-turbo="false" target="_blank">Акт приёма</a>

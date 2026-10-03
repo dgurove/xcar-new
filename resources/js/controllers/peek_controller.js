@@ -71,7 +71,7 @@ export default class extends Controller {
     get current() { return this.bodyTarget.querySelector('tr[aria-selected="true"]'); }
 
     tap(event) {
-        if (event.target.closest('a, button, form')) return;
+        if (event.target.closest('a, button, form, [data-no-peek]')) return;
         const row = event.target.closest('tr[data-peek-url]');
         if (!row) return;
         row === this.current ? this.close() : this.show(row, { focus: 'fine' });
@@ -79,7 +79,7 @@ export default class extends Controller {
 
     open(event) {
         const row = event.target.closest('tr[data-href]');
-        if (row && !event.target.closest('a, button, form')) this.visit(row.dataset.href);
+        if (row && !event.target.closest('a, button, form, [data-no-peek]')) this.visit(row.dataset.href);
     }
 
     key(event) {

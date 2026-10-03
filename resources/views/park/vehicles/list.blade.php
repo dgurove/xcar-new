@@ -30,7 +30,8 @@
                     <th class="num"><a href="{{ $sortBy('amount') }}" data-turbo-action="replace" @if ($sort === 'amount') aria-current="true" @endif>Начислено</a></th>
                 </tr>
             </x-slot:head>
-            @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $q !== ''); @endphp
+            @php $admin = auth()->user()->isAdmin();
+               $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $q !== '', $admin, $admin && request()->boolean('select')); @endphp
             @foreach ($groups as $yardId => $group)
                 @if ($grouped)
                     <tr class="table-group"><th colspan="7"><span class="table-group-name">{{ $yardId ? $group->first()->yard->name : 'Без парковки' }} <span class="nums">{{ $group->count() }}</span></span></th></tr>

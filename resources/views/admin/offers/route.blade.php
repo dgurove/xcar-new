@@ -7,6 +7,8 @@
     $service = $offer->vendor?->workflow(Track::Service);
     $pickup = $offer->position(Track::Service);
     $pv = $offer->parkVehicle;
+    // Дело на парковке открывают те, у кого она открыта; модератору — то же словами, без ссылки в стену 403.
+    $parkOpen = \App\Support\Surface::Park->opensFor(auth()->user());
     $canPickup = $service?->is_active && ! $pickup && ! in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true);
     $canDrop = $pickup && ! $service?->auto_start && $pickup->stage->is($service?->startStage());
     $positions = $offer->positions->sortBy(fn ($p) => $p->track === Track::Sale ? 0 : 1)->values();
@@ -32,13 +34,13 @@
         @if ($isService && $pv)
             {{-- ТС на парковке: где она и эвакуация словом, всё остальное — в деле на парковке. --}}
             @php $tow = $pv->openRequest(\App\Park\RequestType::Tow); @endphp
-            <a href="{{ \App\Support\Surface::Park->url('/cars/'.$pv->id) }}" class="row mt-1 items-center gap-2 rounded-(--radius-m) bg-surface-2" data-turbo="false">
+            <{{ $parkOpen ? 'a' : 'div' }} @if ($parkOpen) href="{{ \App\Support\Surface::Park->url('/cars/'.$pv->id) }}" data-turbo="false" @endif class="row mt-1 items-center gap-2 rounded-(--radius-m) bg-surface-2">
                 <span class="min-w-0 flex-1">
                     <span class="block text-sm text-ink-muted">Парковка</span>
                     <span class="flex flex-wrap items-center gap-1.5"><x-park.state :vehicle="$pv" only/>@if ($tow)<span class="text-sm">эвакуация {{ mb_strtolower($tow->state->label()) }}{{ $tow->planned_at ? ', '.$tow->planned_at->translatedFormat('j M') : '' }}</span>@endif @if ($pv->docsPending())<span class="text-sm text-urgent">бумаги вендору не отправлены</span>@endif</span>
                 </span>
-                <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
-            </a>
+                @if ($parkOpen)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>@endif
+            </{{ $parkOpen ? 'a' : 'div' }}>
         @endif
         @if ($errors->has('exit'))<p class="field-error mt-2">{{ $errors->first('exit') }}</p>@endif
     </x-ui.card>

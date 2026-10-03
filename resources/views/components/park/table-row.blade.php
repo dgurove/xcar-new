@@ -3,7 +3,7 @@
      Справа сутки («216 д», одним цветом: долгая стоянка — не беда) и набежавшая сумма; ставка на телефоне под суммой, на ПК своим
      столбцом. Парковки в строке нет — она заголовком группы; place — список без групп (поиск), тогда
      парковку пишем словом. Вендор — логотипом перед названием, пока его столбца (вместе с номером убытка) не видно, — до 640. Нажатие — окошко (peek). --}}
-@props(['vehicle', 'total' => null, 'debt' => 0, 'place' => false])
+@props(['vehicle', 'total' => null, 'debt' => 0, 'place' => false, 'admin' => false, 'select' => false])
 @php
     use App\Park\VehicleState;
     use App\Support\Money;
@@ -17,11 +17,12 @@
 @endphp
 <tr id="vehicle-{{ $vehicle->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
     <td class="grow">
-        <span class="cell-title"><span class="cat-icon {{ $vehicle->category ? 'cat-'.$vehicle->category->value : 'cat-unknown' }}" title="{{ $vehicle->category?->label() ?? 'Тип не указан' }}"><x-ui.icon :name="$vehicle->category?->icon() ?? 'cat-unknown'" class="size-full"/></span><span class="cell-name">{{ $vehicle->titleWithYear() }}</span><x-ui.plate :value="$vehicle->plate" class="title-plate"/></span>
+        <span class="cell-title">@if ($select)<span class="check mr-2 align-middle" data-no-peek><input type="checkbox" form="sale-form" name="ids[]" value="{{ $vehicle->id }}" aria-label="Выбрать" @disabled($vehicle->offer_id)></span>@endif<span class="cat-icon {{ $vehicle->category ? 'cat-'.$vehicle->category->value : 'cat-unknown' }}" title="{{ $vehicle->category?->label() ?? 'Тип не указан' }}"><x-ui.icon :name="$vehicle->category?->icon() ?? 'cat-unknown'" class="size-full"/></span><span class="cell-name">{{ $vehicle->titleWithYear() }}</span><x-ui.plate :value="$vehicle->plate" class="title-plate"/></span>
         <span class="cell-sub" data-controller="fitline">
             {{-- Номера, потом ошибки данных («нет VIN», «нет тарифа»); тип не указан — знак вопроса вместо иконки, не слово.
                  Статус — своим столбцом; в краткой таблице телефона его нет, там то, что требует действия, — третьей строкой. --}}
             <span class="fit-core"><x-park.ref :vehicle="$vehicle" class="sm:hidden"/><x-ui.plate :value="$vehicle->plate" class="sub-plate"/></span>
+            <x-park.sale :vehicle="$vehicle" :admin="$admin" class="!bg-transparent !p-0 text-accent-text"/>
             @if ($hasAlerts)<span class="alerts-inline"><x-park.alerts :vehicle="$vehicle" plain :place="$place" :skip="['Нет типа']"/></span>@endif
             @if ($place && $vehicle->yard)<span>{{ $vehicle->yard->name }}</span>@endif
         </span>

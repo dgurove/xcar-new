@@ -16,6 +16,7 @@ use App\Mail\Threads;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Offers\OfferNumber;
+use App\Offers\OfferState;
 use App\Park\Actions\CancelVehicle;
 use App\Park\Actions\CloseRequest;
 use App\Park\Actions\LinkOffer;
@@ -24,9 +25,11 @@ use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
 use App\Park\Actions\PromoteCandidate;
 use App\Park\Actions\RestoreVehicle;
+use App\Park\Actions\SendToSale;
 use App\Park\Actions\SetYard;
 use App\Park\Actions\UndoIntake;
 use App\Park\Actions\UndoRelease;
+use App\Park\Actions\UndoSendToSale;
 use App\Park\Actions\UnwindVehicle;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\CaseView;
@@ -48,6 +51,7 @@ use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class VehicleController
@@ -85,7 +89,8 @@ class VehicleController
             ->when($request->query('vendor'), fn ($v, $id) => $v->where('vendor_id', $id))
             ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
                 ->orWhere('plate', 'like', '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%')->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
-        $request->query('sort') === 'fresh' ? $vehicles->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
+        // «Сначала новые» — по приёму: так находят последние принятые, которые отправляют в продажу.
+        $request->query('sort') === 'fresh' ? $vehicles->orderByRaw('accepted_at desc nulls last')->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
 
         // Кадры нужны плиткам и строкам; таблице — нет (миниатюр в ней нет, окошко грузит своё).
         $vehicles->when(! ListView::isTable(ListView::fromRequest($request)), fn ($v) => $v->with('media'));
@@ -379,8 +384,14 @@ class VehicleController
     public function link(Request $request, Vehicle $vehicle, LinkOffer $link)
     {
         $data = $request->validate(['number' => ['nullable', 'integer']]);
+        // Предложение, что уже в работе в CRM (публикация, подтверждения, сделка), парковка не отвязывает и не подменяет молча.
+        $current = $vehicle->offer;
+        if ($current && ! in_array($current->state, [OfferState::Draft, OfferState::Archived, OfferState::Cancelled], true) && (int) ($data['number'] ?? 0) !== (int) $current->number) {
+            return back()->withErrors(['number' => 'Предложение № '.$current->number.' уже в работе в CRM, связь меняется там']);
+        }
         if (empty($data['number'])) {
             $vehicle->update(['offer_id' => null]);
+            $current && $vehicle->log(EventType::Note, $request->user(), ['text' => 'Связь с предложением № '.$current->number.' снята']);
 
             return back()->with('toast', 'Связь снята');
         }
@@ -391,6 +402,44 @@ class VehicleController
         $linked = $link($vehicle, $offer, $request->user());
 
         return back()->with('toast', $linked ? 'Связана с № '.$offer->number : 'Это предложение уже связано с другой ТС');
+    }
+
+    /** «В продажу»: в CRM появляется черновик предложения (только админ — `ability:isAdmin` в маршруте). */
+    public function sale(Request $request, Vehicle $vehicle, SendToSale $send)
+    {
+        ['offer' => $offer, 'status' => $status] = $send($vehicle, $request->user());
+
+        return back()->with('toast', match ($status) {
+            SendToSale::CREATED => 'Отправлена в продажу, черновик № '.$offer->number,
+            SendToSale::LINKED => 'Привязана к предложению № '.$offer->number,
+            default => 'Уже в продаже, предложение № '.$offer->number,
+        });
+    }
+
+    public function unsale(Request $request, Vehicle $vehicle, UndoSendToSale $undo)
+    {
+        $undo($vehicle, $request->user());
+
+        return back()->with('toast', 'Снята с продажи');
+    }
+
+    /** Пачкой из «Наличия»: каждая ТС своим вызовом, итог — одним тостом. */
+    public function toSale(Request $request, SendToSale $send)
+    {
+        $ids = $request->validate(['ids' => ['required', 'array', 'max:200'], 'ids.*' => ['integer']])['ids'];
+        $sent = $already = $failed = 0;
+        foreach (Scope::vehicles($request->user())->whereIn('id', $ids)->get() as $vehicle) {
+            try {
+                ['status' => $status] = $send($vehicle, $request->user());
+                $status === SendToSale::ALREADY ? $already++ : $sent++;
+            } catch (ValidationException) {
+                $failed++;
+            }
+        }
+
+        return redirect('/cars')->with('toast', implode(', ', array_filter([
+            $sent ? 'Ушло в продажу: '.$sent : null, $already ? 'уже в продаже: '.$already : null, $failed ? 'не принято: '.$failed : null,
+        ])) ?: 'Ничего не выбрано');
     }
 
     public function move(Request $request, Vehicle $vehicle, Move $move)

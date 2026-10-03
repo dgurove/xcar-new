@@ -47,6 +47,7 @@
                 @if ($state !== VehicleState::Stored)<span class="text-ink">{{ mb_strtolower($state->label()) }}</span>@endif
                 <span class="fit-core"><x-park.ref :vehicle="$vehicle"/></span>
                 <x-park.alerts :vehicle="$vehicle" plain/>
+                <x-park.sale :vehicle="$vehicle" class="!bg-transparent !p-0 text-accent-text"/>
                 @if ($state === VehicleState::Stored && $vehicle->yard)<span>{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</span>@endif
             </span>
         @endif

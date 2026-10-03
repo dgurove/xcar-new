@@ -38,4 +38,6 @@ enum EventType: string
     case BuyerForm = 'buyer_form';
     case BuyerConfirmed = 'buyer_confirmed';
     case BuyerRejected = 'buyer_rejected';
+    case SentToSale = 'sent_to_sale';
+    case SaleWithdrawn = 'sale_withdrawn';
 }

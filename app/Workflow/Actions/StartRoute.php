@@ -4,6 +4,8 @@ namespace App\Workflow\Actions;
 
 use App\Offers\Offer;
 use App\Park\Actions\RequestTowFromOffer;
+use App\Park\Vehicle;
+use App\Park\VehicleState;
 use App\Users\User;
 use App\Workflow\Stage;
 use App\Workflow\Track;
@@ -28,6 +30,10 @@ final class StartRoute
         }
         foreach ($track ? [$track] : Track::cases() as $t) {
             if ($offer->position($t)) {
+                continue;
+            }
+            // ТС уже стоит на нашей парковке (её отправили в продажу оттуда): вывозить нечего, маршрут «Вывоз» сам не стартует.
+            if ($t === Track::Service && ! $track && Vehicle::where('offer_id', $offer->id)->where('state', VehicleState::Stored)->exists()) {
                 continue;
             }
             $workflow = $vendor->workflow($t);

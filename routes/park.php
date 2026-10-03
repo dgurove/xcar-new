@@ -55,6 +55,12 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/docs', [VehicleController::class, 'doc']);
     Route::post('/cars/{vehicle}/docs/{doc}', [VehicleController::class, 'doc']);
     Route::post('/cars/{vehicle}/offer', [VehicleController::class, 'link'])->middleware('park.manage');
+    // В продажу — только админу: черновик предложения в CRM; пачкой — галочками в «Наличии».
+    Route::middleware('ability:isAdmin')->group(function () {
+        Route::post('/cars/to-sale', [VehicleController::class, 'toSale']);
+        Route::post('/cars/{vehicle}/sale', [VehicleController::class, 'sale']);
+        Route::delete('/cars/{vehicle}/sale', [VehicleController::class, 'unsale']);
+    });
     Route::post('/cars/{vehicle}/cancel', [VehicleController::class, 'cancel'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/sold', [VehicleController::class, 'sold'])->middleware('park.manage');
     // Выдача по QR: проверка кода при выдаче, подтверждение покупателя, ссылка страховой ещё раз.

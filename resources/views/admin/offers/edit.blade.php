@@ -28,6 +28,16 @@
             @if ($offer->deal)<x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
             @else<x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->label() }}</x-ui.pill>@endif
         @endif
+        {{-- ТС стоит на парковке (или отправлена оттуда): где она, и в дело на парковке — тем, у кого парковка открыта. --}}
+        @if ($pv = $offer->parkVehicle)
+            @php $parkLabel = 'Парковка, '.mb_strtolower($pv->state->label()).($pv->yard ? ' · '.$pv->yard->name : ''); @endphp
+            @if (\App\Support\Surface::Park->opensFor(auth()->user()))
+                <x-ui.pill tone="plain" :href="\App\Support\Surface::Park->url('/cars/'.$pv->id)" data-turbo="false">{{ $parkLabel }} ›</x-ui.pill>
+            @else
+                <x-ui.pill tone="plain">{{ $parkLabel }}</x-ui.pill>
+            @endif
+            @if ($pv->plate)<x-ui.plate :value="$pv->plate"/>@endif
+        @endif
         @if ($offer->closed())
             <x-ui.pill tone="closed">Приём закрыт с {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</x-ui.pill>
         @elseif ($offer->bids_close_at && $offer->state === OfferState::Open)

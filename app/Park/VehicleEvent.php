@@ -65,6 +65,8 @@ class VehicleEvent extends Model
             EventType::PickupLinkRenewed => 'Ссылка на анкету покупателя заменена, прежняя отключена',
             EventType::BuyerForm => 'Покупатель заполнил анкету: '.($p['name'] ?? '').(! empty($p['date']) ? ', заберёт '.$p['date'] : ''),
             EventType::BuyerConfirmed => 'Покупатель подтверждён'.(! empty($p['name']) ? ': '.$p['name'] : '').(! empty($p['note']) ? ', '.$p['note'] : ''),
+            EventType::SentToSale => 'Отправлена в продажу, предложение № '.($p['number'] ?? '').(! empty($p['linked']) ? ' (было заведено)' : ''),
+            EventType::SaleWithdrawn => 'Снята с продажи, предложение № '.($p['number'] ?? '').' отвязано',
             EventType::BuyerRejected => 'Не покупатель'.(! empty($p['name']) ? ': '.$p['name'] : '').(! empty($p['reason']) ? ', '.$p['reason'] : ''),
         };
     }
