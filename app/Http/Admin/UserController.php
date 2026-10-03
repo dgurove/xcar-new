@@ -54,7 +54,7 @@ class UserController
         if ($preset === 'invites' && Surface::current() !== Surface::Crm) {
             return redirect('/account/invites');
         }
-        $q = User::query()->with(['manager', 'invite.creator'])->orderBy('name');
+        $q = User::query()->with(['manager', 'invite.creator', 'settlements'])->orderBy('name');
         match ($preset) {
             'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->reorder('created_at', 'desc'),
             'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
@@ -109,7 +109,7 @@ class UserController
     {
         $me = $request->user();
         abort_unless($me->isStaff(), 404);
-        $user->load(['manager', 'invite.creator']);
+        $user->load(['manager', 'invite.creator', 'settlements']);
         $chats = Chat::where('user_id', $user->id)->when($user->isManager(), fn ($q) => $q->orWhere('manager_id', $user->id))
             ->withLast()->with(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager'])->orderByDesc('last_message_at')->limit(50)->get();
         // Пришли из шапки чата — «‹ Чат» вместо «‹ Пользователи».

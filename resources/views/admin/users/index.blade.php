@@ -32,6 +32,7 @@
                         {{-- Всё о человеке одной строкой текста: роль, чей покупатель, логин, телефон, почта, покупатели. --}}
                         <div class="row-sub">
                             <span class="{{ $user->isAdmin() ? 'text-accent-text' : '' }}">{{ mb_strtolower($user->role->label()) }}</span>
+                            @if ($user->isManager() && $user->settlements->isNotEmpty())<x-ui.place>{{ $user->settlements->pluck('name')->join(', ') }}</x-ui.place>@endif
                             @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}?preset=buyers&manager={{ $user->manager_id }}" class="text-ink">{{ $user->manager->shortName() }}</a>@endif
                             @if ($user->login)<span>{{ $user->login }}</span>@endif
                             @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="nums">{{ $user->phoneFormatted() }}</a>@endif
