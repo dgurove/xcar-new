@@ -33,7 +33,7 @@
             {{-- В сделке пилюля состояния и есть вход в сделку: «Идёт сделка ›». --}}
             <x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
         @else
-            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
+            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->parkWord() ?? $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
         @endif
         {{-- Срок приёма и продление — админу: подтверждения принимает только он. --}}
         @if (! $admin)

@@ -3,6 +3,7 @@
      по тону) и подтверждения; от 640 они встают своими столбцами (вендор с номером убытка — одним). Справа цена
      продажи (у черновика без неё — лаймовое «оценить»), последним столбцом закупочная; на телефоне она под ценой.
      У черновика нет ни номера (он ещё не выставлен), ни слова «черновик»: его и так видно по «оценить» и цене.
+     Черновик из парковки — исключение: на месте состояния «парковка с …» (дата приёма ТС).
      В галерее вместо подтверждений — интерес. Нажатие — окошко; data-unpriced — черновик без цены продажи,
      по ним окошко идёт «Дальше» («Оценить»). --}}
 @props(['offer', 'gallery' => false])
@@ -22,8 +23,10 @@
     $stateWord = $offer->state === OfferState::Open ? ($admin ? ($pick ? ($count ? 'выбрать' : 'приём закрыт') : 'приём') : 'в продаже') : mb_strtolower($offer->state->label());
     // Логотип — из одной выборки вендоров на страницу, а не связью на каждую строку.
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
-    $offer->loadMissing('parkVehicle:id,offer_id,category');
+    $offer->loadMissing('parkVehicle:id,offer_id,category,accepted_at,created_at');
     $draft = $offer->state === OfferState::Draft;
+    // Черновик из парковки — «парковка с …» на месте состояния.
+    $park = $offer->parkWord();
     $unpriced = $draft && ! $offer->asking_price;
     // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
     $rate = $unpriced && auth()->user()?->canManageCrm();
@@ -38,6 +41,7 @@
             <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/>@unless ($draft)<span>№ {{ $n }}</span>@endunless</span>
             @if ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт"></span>
             @elseif ($slot)<span class="sm:hidden text-accent-text">{{ $slot }}</span>
+            @elseif ($park)<span class="sm:hidden">{{ mb_strtolower($park) }}</span>
             @elseif (! $draft)<span class="sm:hidden {{ $tone }}">{{ $stateWord }}</span>@endif
             @if ($count)<span class="sm:hidden {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $countWord }}</span>@endif
         </span>
@@ -50,7 +54,7 @@
         @if ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
         @elseif ($slot)<span class="text-accent-text">{{ $slot }}</span>
         @elseif ($pick)<span class="{{ $count ? 'text-urgent' : 'text-ink-muted' }}">{{ $count ? 'Выбрать' : 'Приём закрыт' }}</span>
-        @else<span class="{{ $tone }}">{{ $offer->state === OfferState::Open ? ($admin ? 'Приём' : 'В продаже') : $offer->state->label() }}</span>@endif
+        @else<span class="{{ $tone }}">{{ $park ?? ($offer->state === OfferState::Open ? ($admin ? 'Приём' : 'В продаже') : $offer->state->label()) }}</span>@endif
     </td>
     @if ($admin)<td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>@endif
     {{-- Цена продажи (у черновика без неё — «оценить»), справа закупочная; на телефоне закупочная — под ценой. --}}

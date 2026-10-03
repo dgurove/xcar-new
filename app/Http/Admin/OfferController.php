@@ -63,7 +63,7 @@ class OfferController
         $sort = $request->query('sort', 'fresh');
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
-        $q = Offer::query()->visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category'])
+        $q = Offer::query()->visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])
             ->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
         match ($preset) {
@@ -227,7 +227,7 @@ class OfferController
     public function peek(Request $request, Offer $offer)
     {
         $admin = $request->user()->canManageCrm();
-        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user'] : [])])
+        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'parkVehicle:id,offer_id,accepted_at,created_at'] : [])])
             ->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
 
         return view('admin.offers.peek', OfferFiles::letters($offer, Thread::where('offer_id', $offer->id)->get()) + [
