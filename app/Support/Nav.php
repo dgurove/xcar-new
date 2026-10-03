@@ -89,11 +89,10 @@ final class Nav
         }
 
         // Уведомлений в разделах нет: колокольчик в шапке, лента и настройки — строкой кабинета.
+        // Закупки и галерея на сайте пока скрыты (владелец 03.10.2026): прямые ссылки работают.
         if ($user?->isStaff()) {
             return [
                 self::item('Предложения', '/offers'),
-                self::item('Галерея', '/gallery'),
-                self::item('Закупки', '/purchases'),
                 self::item('Гараж', '/garage'),
             ];
         }
@@ -109,8 +108,6 @@ final class Nav
         if ($user?->role === Role::Manager) {
             return [
                 self::item('Предложения', '/offers'),
-                self::item('Галерея', '/gallery', tab: false),
-                self::item('Закупки', '/purchases'),
                 $deals,
                 self::item('Гараж', '/garage'),
             ];
