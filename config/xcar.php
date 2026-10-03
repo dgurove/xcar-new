@@ -102,6 +102,11 @@ return [
     // Исходящий прокси для carcade.com: адрес прода у них в бане.
     'carcade_proxy' => env('CARCADE_PROXY'),
 
+    // migtorg.com: открытый список лотов и вход за полным набором фото совпавшего (`Offers\Migtorg`).
+    'migtorg_email' => env('MIGTORG_EMAIL'),
+    'migtorg_password' => env('MIGTORG_PASSWORD'),
+    'migtorg_proxy' => env('MIGTORG_PROXY'),
+
     // Слот публикации — каждый день в 16:00 МСК; приём подтверждений — через 3 дня после выхода, до 21:00
     // (владелец 03.10.2026, `Offers\Slots`). Напоминание перед сроком этапа.
     'slot_hour' => 16,

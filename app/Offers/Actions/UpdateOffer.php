@@ -8,6 +8,7 @@ use App\Media\Jobs\StampPhotos;
 use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\BidState;
+use App\Offers\Jobs\FetchMigtorgPhotos;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Sale;
@@ -48,6 +49,10 @@ final class UpdateOffer
         // Номер убытка или VIN вписали руками — письма о той же ТС, что уже пришли и ни к чему не привязаны, едут к ней.
         if (array_intersect(['claim_ref', 'vin'], $changed)) {
             app(LinkThread::class)->forOffer($offer);
+        }
+        // Номер убытка нашёлся среди лотов Мигторга — фото оттуда сразу, не дожидаясь синхронизации.
+        if (in_array('claim_ref', $changed, true)) {
+            FetchMigtorgPhotos::auto($offer);
         }
         // Гараж запретили — ждущие «В гараж» отклоняются (решение владельца 03.10.2026), принять их уже нельзя.
         if (in_array('garage_allowed', $changed, true) && ! $offer->garage_allowed) {

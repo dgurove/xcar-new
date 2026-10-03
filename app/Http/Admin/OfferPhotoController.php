@@ -9,6 +9,7 @@ use App\Media\Hidden;
 use App\Media\PhotoIngest;
 use App\Media\Unmark;
 use App\Media\Watermarks;
+use App\Offers\Jobs\FetchMigtorgPhotos;
 use App\Offers\Jobs\ImportOfferArchive;
 use App\Offers\Offer;
 use App\Park\Sale;
@@ -45,6 +46,16 @@ class OfferPhotoController
         }
 
         return $this->gallery($offer);
+    }
+
+    /** «С Мигторга»: фото лота по номеру убытка к тем, что уже есть (сами они берутся только в пустой ряд). */
+    public function migtorg(Offer $offer)
+    {
+        $lot = FetchMigtorgPhotos::lotFor($offer);
+        abort_unless($lot, 404);
+        FetchMigtorgPhotos::start($offer, $lot);
+
+        return back()->with('toast', 'Фото с Мигторга скоро будут');
     }
 
     public function reorder(Request $request, Offer $offer)

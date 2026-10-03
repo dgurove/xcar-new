@@ -22,5 +22,7 @@ Schedule::command('mail:archive-stale')->dailyAt('04:20');
 Schedule::command('queue:prune-batches')->daily();
 Schedule::command('storage:gc')->dailyAt('04:30');
 Schedule::command('offers:prune-drafts')->dailyAt('04:40');
+// Номера дел лотов Мигторга и фото совпавшим предложениям: пять запросов списка раз в полчаса.
+Schedule::command('migtorg:sync')->everyThirtyMinutes()->withoutOverlapping()->runInBackground();
 // Входы админа за человека, из которых не вышли кнопкой, — закрыть сроком сессии.
 Schedule::call(fn () => app(CloseStaleImpersonations::class)())->hourly()->name('impersonations:close');

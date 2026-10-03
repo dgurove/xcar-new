@@ -73,6 +73,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Черновик из парковки завели в продажу зря — отвязать ТС и удалить («Снять с продажи»).
         Route::post('/offers/{offer}/unlist', [OfferController::class, 'unlist']);
         Route::post('/offers/{offer}/media', [OfferPhotoController::class, 'store']);
+        Route::post('/offers/{offer}/media/migtorg', [OfferPhotoController::class, 'migtorg']);
         Route::post('/offers/{offer}/media/order', [OfferPhotoController::class, 'reorder']);
         Route::post('/offers/{offer}/media/{media}/hide', [OfferPhotoController::class, 'toggle']);
         Route::post('/offers/{offer}/media/{media}/rotate', [OfferPhotoController::class, 'rotate']);

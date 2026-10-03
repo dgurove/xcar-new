@@ -61,7 +61,8 @@ final class PhotoIngest
             // Отпечаток исходника — чтобы тот же файл (из письма, с телефона, из архива) не лёг второй раз.
             $properties += ['sha' => hash_file('sha256', $path)];
             // Чужой знак площадки снимается до сжатия: webp размывает край знака, и формула снятия перестаёт сходиться.
-            if ($collection === 'photos' && $model instanceof Offer && ($clean = app(Unmark::class)($path))) {
+            // Оригинал Мигторга (`migtorg`) приходит без их знака — снимать нечего.
+            if ($collection === 'photos' && $model instanceof Offer && ! isset($properties['migtorg']) && ($clean = app(Unmark::class)($path))) {
                 $properties += ['unmarked' => $clean['mark']];
             }
             $webp = $this->shrink($clean['path'] ?? $path, $max);
