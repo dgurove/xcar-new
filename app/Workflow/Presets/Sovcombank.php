@@ -22,7 +22,7 @@ final class Sovcombank extends Route
 {
     public function blocks(): array
     {
-        return $this->saleBlocks() + [
+        return self::withGarageBlocks($this->saleBlocks()) + [
             'handover' => ['name' => 'Передача автомобиля', 'text' => 'Осталось передать автомобиль покупателю.'],
             // Ветке «на себя» блоки свои: общий на две ветки оборвал бы лестницу
             // на первом же шаге — из него вело бы два продолжения.
@@ -42,7 +42,8 @@ final class Sovcombank extends Route
             draftDeadline: 'insurer_deadline',
             // Согласовал поставщик — покупка решена, второй раз менеджера не спрашиваем (владелец, 30.09.2026).
             // На кого оформляется, сотрудник знает от менеджера и выбирает выходом.
-            agreed: [['Поставщик согласовал', 'staff', 'confirmed'], ['Поставщик согласовал, на себя', 'staff', 'confirmed_self']],
+            // Гаражная сделка «платим мы» — третьим выходом в свою ветку, покупательские ей не видны.
+            agreed: [['Поставщик согласовал', 'staff', 'confirmed', 'buyer'], ['Поставщик согласовал, на себя', 'staff', 'confirmed_self', 'buyer'], ['Поставщик согласовал, в гараж', 'staff', 'garage_confirmed', 'garage']],
         )
             // Для клиента — деньги вперёд: счёт, документы, передача.
             + ['confirmed' => $this->confirmed('invoice')]
@@ -52,6 +53,7 @@ final class Sovcombank extends Route
             // На себя — можно постоплатой: автомобиль уезжает, счёт следом.
             + $this->self()
             + $this->insurerBuyer()
+            + self::garageSegment()
             + $this->tail();
     }
 

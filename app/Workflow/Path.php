@@ -2,6 +2,7 @@
 
 namespace App\Workflow;
 
+use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use Illuminate\Support\Carbon;
@@ -30,7 +31,7 @@ final class Path
             return collect();
         }
         $journal = self::journal($offer, $track, $since);
-        $blocks = self::ladder($position->stage, $journal->pluck('block')->all());
+        $blocks = self::ladder($position->stage, $journal->pluck('block')->all(), $offer->deal);
         $passed = true;
 
         return $blocks->map(function (Block $block) use (&$passed, $position, $journal) {
@@ -95,7 +96,7 @@ final class Path
      *
      * @return Collection<int, Block>
      */
-    public static function ladder(Stage $stage, array $passedNames): Collection
+    public static function ladder(Stage $stage, array $passedNames, ?Deal $deal = null): Collection
     {
         $all = $stage->workflow->blocks()->with('stages.exits.to.block')->get();
         $current = $all->firstWhere('id', $stage->block_id);
@@ -108,7 +109,7 @@ final class Path
             // Возврат назад («Отказываюсь» → снова приём) — не развилка пути вперёд: блоки раньше текущего не считаются.
             // Блоки из `to.block` — копии без этапов: берём те же блоки из уже загруженного маршрута, иначе каждый шаг
             // лестницы догружал этапы, исходы и цели по одному.
-            $next = $current->nextBlocks()->map(fn (Block $b) => $all->firstWhere('id', $b->id) ?? $b)
+            $next = $current->nextBlocks($deal)->map(fn (Block $b) => $all->firstWhere('id', $b->id) ?? $b)
                 ->reject(fn (Block $b) => $b->isDeadEnd() || in_array($b->id, $seen, true) || $b->position < $current->position);
             if ($next->count() !== 1) {
                 return $ladder;

@@ -3,7 +3,8 @@
     <x-ui.field name="title" label="Что" :value="$cost?->title" placeholder="Доставка" autocomplete="off" data-suggest-target="field"/>
     @unless ($cost)
         <div class="mt-2 flex flex-wrap gap-1.5">
-            @foreach (['Доставка', 'Запчасти', 'Работы', 'Покраска', 'Шины', 'Документы'] as $hint)
+            {{-- На доставке первым — эвакуатор: это и есть расход этапа. --}}
+            @foreach (isset($car) && $car->state === \App\Garage\CarState::Delivery ? ['Эвакуатор', 'Доставка', 'Документы'] : ['Запчасти', 'Работы', 'Покраска', 'Шины', 'Доставка', 'Документы'] as $hint)
                 <button type="button" class="chip" data-action="suggest#fill" data-suggest-value="{{ $hint }}">{{ $hint }}</button>
             @endforeach
         </div>

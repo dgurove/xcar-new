@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Garage\GaragePayer;
 use App\Support\FieldLabels;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -33,8 +34,8 @@ class OfferEvent extends Model
             OfferEventType::Updated => 'Изменён: '.FieldLabels::list($p['fields'] ?? []),
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
             OfferEventType::StateChanged => OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),
-            OfferEventType::BidPlaced => 'Подтверждение '.number_format($p['amount'] ?? 0, 0, '', ' ').' ₽',
-            OfferEventType::BidAccepted => 'Подтверждение принято',
+            OfferEventType::BidPlaced => ! empty($p['garage']) ? 'Подтверждение в гараж' : 'Подтверждение '.number_format($p['amount'] ?? 0, 0, '', ' ').' ₽',
+            OfferEventType::BidAccepted => isset($p['garage']) ? 'В гараж, поставщику платит '.mb_strtolower(GaragePayer::tryFrom($p['garage'])?->label() ?? '') : 'Подтверждение принято',
             OfferEventType::BidDeclined => 'Подтверждение отклонено',
             OfferEventType::BidWithdrawn => 'Подтверждение отозвано',
             OfferEventType::Interest => ! empty($p['withdrawn']) ? 'Интерес снят' : 'Интерес',

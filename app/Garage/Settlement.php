@@ -10,6 +10,7 @@ namespace App\Garage;
  * К оплате нам = цена продажи − расходы менеджера − вознаграждение: деньги покупателя
  * у него на руках, свои траты и вознаграждение он оставляет себе. Наши расходы в долг
  * не идут — они уменьшают только нашу прибыль.
+ * Платит покупатель — деньги у нас, и наоборот: менеджеру к выплате его расходы плюс вознаграждение.
  */
 final class Settlement
 {
@@ -28,6 +29,7 @@ final class Settlement
             'fee' => $fee,
             'ours' => $profit === null ? null : round($profit - $fee, 2),
             'due' => $car->sold_price === null || ! $car->manager_id ? null : round($car->sold_price - $mine - $fee, 2),
+            'payout' => $car->manager_id ? round($mine + $fee, 2) : 0.0,
         ];
     }
 }

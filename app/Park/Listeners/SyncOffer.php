@@ -79,7 +79,7 @@ final class SyncOffer
             return;
         }
         $offer->log(OfferEventType::Note, $e->by, ['text' => 'Выдана с парковки'.($e->vehicle->yard ? ' «'.$e->vehicle->yard->name.'»' : '')]);
-        $exit = $offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff)->first(fn ($x) => mb_strtolower($x->label) === 'автомобиль передан');
+        $exit = $offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff, $offer->deal)->first(fn ($x) => mb_strtolower($x->label) === 'автомобиль передан');
         if ($exit) {
             ($this->take)($offer, $exit, Actor::Staff, $e->by ?? $this->system());
         }

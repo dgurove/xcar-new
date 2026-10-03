@@ -68,8 +68,9 @@ final class ApplyPreset
             }
 
             foreach ($rows as $key => $row) {
-                foreach ($row['exits'] ?? [] as $i => [$label, $actor, $to]) {
-                    $stages[$key]->exits()->create(['label' => $label, 'actor' => $actor, 'to_stage_id' => $stages[$to]->id, 'position' => $i]);
+                foreach ($row['exits'] ?? [] as $i => $exit) {
+                    [$label, $actor, $to] = $exit;
+                    $stages[$key]->exits()->create(['label' => $label, 'actor' => $actor, 'to_stage_id' => $stages[$to]->id, 'position' => $i, 'branch' => $exit[3] ?? null]);
                 }
             }
 

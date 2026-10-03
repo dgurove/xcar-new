@@ -22,7 +22,7 @@ final class ReturnOnReject
         if (! $offer || ! $deal->isActive()) {
             return;
         }
-        $exit = $offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff)->first(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата не поступила'));
+        $exit = $offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff, $deal)->first(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата не поступила'));
         if ($exit) {
             ($this->take)($offer, $exit, Actor::Staff, $e->by);
         }

@@ -1,5 +1,5 @@
 {{-- Подтверждение строкой: фото, название, чипы № и дата, справа цена; состояние — только в истории,
-     в секции «Ждут решения» его называет заголовок. --}}
+     в секции «Ждут решения» его называет заголовок. Гаражное — словом «В гараж» вместо цены. --}}
 @php $offer = $bid->offer; @endphp
 <a href="/offers/{{ $offer->number }}" class="row">
     <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
@@ -8,7 +8,7 @@
         <span class="row-sub"><span class="tag nums">№ {{ $offer->number }}</span><span class="tag nums">{{ $bid->created_at->translatedFormat('j M') }}</span></span>
     </span>
     <span class="flex shrink-0 flex-col items-end gap-1.5">
-        <span class="nums font-medium">{{ \App\Support\Money::rub($bid->amount) }}</span>
+        <span class="nums font-medium">{{ $bid->isGarage() ? 'В гараж' : \App\Support\Money::rub($bid->amount) }}</span>
         @if ($state)<x-ui.state :tone="$bid->state === \App\Offers\BidState::Declined ? 'danger' : 'closed'">{{ $bid->state->label() }}</x-ui.state>@endif
     </span>
 </a>

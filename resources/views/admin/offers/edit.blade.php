@@ -9,6 +9,8 @@
     $garage = $offer->state === OfferState::Garage ? \App\Garage\Car::with('manager')->where('offer_id', $offer->id)->first() : null;
     // Машину из гаража уводит только «Отдали по ошибке» там же: кнопки состояния тут отбились бы ошибкой.
     if ($garage) $transitions = collect();
+    // Руками в гараж — не из сделки: идущую сначала отменяют, гаражная сделка сама доводит машину туда маршрутом.
+    $canGarage = $admin && ! $garage && $offer->state !== OfferState::Sold && $offer->state->allows(OfferState::Garage);
     // Подтверждения: ждущие по сумме вниз, потом решённые.
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
@@ -170,14 +172,38 @@
     </div>
     </div>
 
-    {{-- Гараж: машина уходит из продажи менеджеру на ремонт — нужен человек и цена, поэтому своя шторка. --}}
-    @if (! $garage && $offer->state->allows(OfferState::Garage))
+    {{-- Гараж минуя подтверждение: этап, с которого начать. «Ждёт страховую» — гаражная сделка по маршруту (нужен
+         менеджер и кто платит поставщику), остальное — сразу: машина уже у нас или у менеджера. --}}
+    @if ($canGarage)
+        @php $branch = $offer->garageBranch(); @endphp
         <div data-controller="sheet" data-action="garage:open@window->sheet#open" class="contents">
             <x-ui.sheet id="offer-garage" title="Отдать в гараж">
-                <form method="post" action="/offers/{{ $n }}/garage" class="flex flex-col gap-4">
+                <form method="post" action="/offers/{{ $n }}/garage" class="flex flex-col gap-4" data-controller="reveal">
                     @csrf
-                    <x-ui.field name="manager_id" label="Кому" :options="$managers->pluck('name', 'id')" placeholder="Взяли под себя"/>
-                    <x-ui.field name="cost" label="Отдали за, ₽" :value="$offer->floor_price"/>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach ([\App\Garage\CarState::Waiting, \App\Garage\CarState::Delivery, \App\Garage\CarState::Repair, \App\Garage\CarState::Selling] as $stage)
+                            <label class="choice"><input type="radio" name="stage" value="{{ $stage->value }}" @checked(old('stage', 'waiting') === $stage->value) data-action="reveal#pick"><span>{{ $stage->label() }}</span></label>
+                        @endforeach
+                    </div>
+                    <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="waiting">
+                        <x-ui.field name="manager_id" id="garage-manager-route" label="Кому" :options="$managers->pluck('name', 'id')" required/>
+                        @if ($branch)
+                            <div class="flex flex-col gap-1.5">
+                                <span class="field-label">Платит поставщику</span>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach (\App\Garage\GaragePayer::cases() as $payer)
+                                        <label class="choice"><input type="radio" name="payer" value="{{ $payer->value }}" @checked(old('payer', 'us') === $payer->value)><span>{{ $payer->label() }}</span></label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                    @foreach (['delivery', 'repair', 'selling'] as $key)
+                        <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="{{ $key }}" hidden>
+                            <x-ui.field name="manager_id" id="garage-manager-{{ $key }}" label="Кому" :options="$managers->pluck('name', 'id')" placeholder="Взяли под себя"/>
+                            <x-ui.field name="cost" id="garage-cost-{{ $key }}" label="Отдали за, ₽" :value="$offer->floor_price"/>
+                        </div>
+                    @endforeach
                     <x-ui.button type="submit" variant="primary" block>Отдать в гараж</x-ui.button>
                 </form>
             </x-ui.sheet>
@@ -217,7 +243,7 @@
                             <x-ui.button block :variant="$next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary')">{{ $label }}</x-ui.button>
                         </form>
                     @endforeach
-                    @if (! $garage && $offer->state->allows(OfferState::Garage))
+                    @if ($canGarage)
                         <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="garage:open">Отдать в гараж</x-ui.button>
                     @endif
                 </div>

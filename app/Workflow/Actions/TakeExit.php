@@ -29,6 +29,9 @@ final class TakeExit
             if ($exit->actor !== $as) {
                 throw ValidationException::withMessages(['exit' => 'Эта кнопка не для вас']);
             }
+            if (! $exit->fits($offer->deal()->first())) {
+                throw ValidationException::withMessages(['exit' => 'Эта кнопка не для этой сделки']);
+            }
             if ($exit->acceptsBid()) {
                 throw ValidationException::withMessages(['exit' => 'Подтверждение принимают кнопкой «Принять» у самого подтверждения']);
             }

@@ -22,7 +22,7 @@
         @if ($deal->state === \App\Offers\DealState::Active && $position)<x-route.clock :position="$position" side="staff" class="mt-0.5 line-clamp-2 sm:truncate"/>@endif
     </div>
     <div class="shrink-0 text-right">
-        <div class="nums">{{ \App\Support\Money::rub($deal->amount) }}</div>
+        <div class="nums">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</div>
         <div class="max-w-40 truncate text-sm sm:max-w-64 {{ $tone }} @if ($deal->state === \App\Offers\DealState::Active && $position) max-sm:hidden @endif">{{ $word }}</div>
     </div>
 </a>

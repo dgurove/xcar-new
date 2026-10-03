@@ -10,6 +10,10 @@ final class BidPlacedNotice extends Notice
 
     public function title(): string
     {
+        if ($this->bid->isGarage()) {
+            return 'В гараж: № '.$this->bid->offer->number;
+        }
+
         return 'Подтверждение '.number_format($this->bid->amount, 0, '', ' ').' ₽ по № '.$this->bid->offer->number;
     }
 

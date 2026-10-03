@@ -14,14 +14,14 @@ final class Stock extends Route
     {
         $sale = $this->saleBlocks();
 
-        return [
+        return self::withGarageBlocks([
             'sale' => $sale['sale'],
             'confirm' => ['name' => 'Согласие на покупку', 'text' => 'Автомобиль Ваш по Вашей цене. Подтвердите покупку.'],
             'payment' => ['name' => 'Оплата', 'text' => 'Счёт выставлен. После оплаты передадим автомобиль.'],
             'handover' => ['name' => 'Получение автомобиля', 'text' => 'Автомобиль оплачен, его можно забирать с площадки поставщика.'],
             'won' => $sale['won'],
             'nobody' => $sale['nobody'],
-        ];
+        ]);
     }
 
     public function stages(): array
@@ -36,7 +36,8 @@ final class Stock extends Route
                 'name' => 'Согласие менеджера', 'block' => 'confirm', 'waits_for' => 'manager', 'limit_minutes' => 240, 'offer_state' => 'sold',
                 'ask_title' => 'Подтвердите покупку', 'ask_text' => 'Автомобиль Ваш по Вашей цене. Подтвердите покупку или откажитесь от неё.',
                 // Отказ — обычный исход в приём: вход туда отменяет сделку, остальные подтверждения ждут в резерве.
-                'exits' => [['Покупаю', 'manager', 'invoice'], ['Отказываюсь', 'manager', 'bidding']],
+                // «Забираю в гараж» — гаражной сделке «платим мы»: без счёта менеджеру, сразу оплата поставщику.
+                'exits' => [['Покупаю', 'manager', 'invoice', 'buyer'], ['Забираю в гараж', 'manager', 'garage_payment', 'garage'], ['Отказываюсь', 'manager', 'bidding']],
             ],
             'invoice' => [
                 'name' => 'Счёт выставлен менеджеру', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY, 'asks' => 'document',
@@ -58,6 +59,7 @@ final class Stock extends Route
                 'staff_fields' => [['label' => 'Адрес площадки', 'type' => 'textarea'], ['label' => 'Контакт на площадке'], ['label' => 'Дата выдачи']],
                 'exits' => [['Автомобиль забрал', 'manager', 'closed_won'], ['Автомобиль передан', 'staff', 'closed_won']],
             ],
+            ...self::garageSegment(confirm: false),
             'closed_won' => $this->tail()['closed_won'],
             'no_bids' => $this->tail()['no_bids'],
         ];

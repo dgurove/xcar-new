@@ -4,6 +4,7 @@ namespace App\Workflow;
 
 use App\Mail\Template;
 use App\Offers\CarPlace;
+use App\Offers\Deal;
 use App\Offers\OfferState;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -60,21 +61,26 @@ class Stage extends Model
         return $this->hasMany(Outcome::class, 'stage_id')->orderBy('position');
     }
 
-    /** @return Collection<int, Outcome> */
-    public function exitsFor(Actor $actor): Collection
+    /**
+     * Исходы для того, кто жмёт, и той сделки, что сейчас идёт: гаражная «платим мы» видит гаражную ветку вместо
+     * покупательской (`Outcome::fits`). Без сделки — как у обычной.
+     *
+     * @return Collection<int, Outcome>
+     */
+    public function exitsFor(Actor $actor, ?Deal $deal = null): Collection
     {
-        return $this->loadedExits()->where('actor', $actor)->values();
+        return $this->loadedExits()->where('actor', $actor)->filter(fn (Outcome $e) => $e->fits($deal))->values();
     }
 
-    public function awaitsManager(): bool
+    public function awaitsManager(?Deal $deal = null): bool
     {
-        return $this->exitsFor(Actor::Manager)->isNotEmpty();
+        return $this->exitsFor(Actor::Manager, $deal)->isNotEmpty();
     }
 
     /** Наш исход, ведущий на этап с таким состоянием оффера: так кнопка «Опубликовать» догоняет маршрут. */
-    public function exitInto(OfferState $state): ?Outcome
+    public function exitInto(OfferState $state, ?Deal $deal = null): ?Outcome
     {
-        return $this->exitsFor(Actor::Staff)->first(fn (Outcome $e) => $e->to?->offer_state === $state);
+        return $this->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $e) => $e->to?->offer_state === $state);
     }
 
     public function timerExit(): ?Outcome

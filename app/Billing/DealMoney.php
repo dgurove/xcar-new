@@ -32,6 +32,8 @@ final class DealMoney
         $unpaid = $issued->first(fn (Invoice $i) => $i->state === InvoiceState::Issued);
         $fee = $invoices->first(fn (Invoice $i) => $i->isAgentFee());
         $state = $deal->commissionState();
+        // Гаражная сделка цены подтверждения не знает: её счёт (Каркаде, платит менеджер) — от закупочной.
+        $label = $deal->isGarage() ? 'В гараж' : 'Цена подтверждения';
 
         if ($deal->state === DealState::Cancelled) {
             return new self('Сделка отменена', null, 'muted', 'closed');
@@ -53,8 +55,8 @@ final class DealMoney
         }
         if ($issued->isEmpty()) {
             return $deal->state === DealState::Done
-                ? new self('Сделка закрыта', (float) $deal->amount, 'muted', 'closed', 'Цена подтверждения')
-                : new self('Счёт ещё не выставлен', (float) $deal->amount, 'muted', 'open', 'Цена подтверждения');
+                ? new self('Сделка закрыта', (float) $deal->base(), 'muted', 'closed', $label)
+                : new self('Счёт ещё не выставлен', (float) $deal->base(), 'muted', 'open', $label);
         }
 
         return match ($state) {
@@ -62,7 +64,7 @@ final class DealMoney
             CommissionState::Paid => new self('Выплачено '.$fee->paid_at?->translatedFormat('j M'), (float) $deal->commission, 'muted', 'closed', 'Вознаграждение'),
             CommissionState::Withheld => new self('Вознаграждение удержано из счёта', (float) $deal->commission, 'muted', 'closed', 'Вознаграждение'),
             CommissionState::Awaiting => new self('Счёт оплачен', (float) $deal->commission, 'muted', 'closed', 'Вознаграждение'),
-            default => new self('Счёт оплачен', (float) $deal->amount, 'muted', 'closed', 'Цена подтверждения'),
+            default => new self('Счёт оплачен', (float) $deal->base(), 'muted', 'closed', $label),
         };
     }
 

@@ -14,17 +14,17 @@
     $stage = $position->stage;
     $path = Path::for($offer, $position->track);
     // «Подтверждение принято» — не кнопка: в сделку ведёт только «Принять» у подтверждения.
-    $exits = $stage->exitsFor(Actor::Staff)->reject(fn ($x) => $x->acceptsBid());
+    // Деньги сделки на этапах оплаты; её же ветка решает, какие кнопки видны (гараж «платим мы» — гаражные).
+    $deal = $offer->deal?->isActive() ? $offer->deal : null;
+    $exits = $stage->exitsFor(Actor::Staff, $deal)->reject(fn ($x) => $x->acceptsBid());
     [$breaks, $moves] = $exits->partition(fn ($x) => $x->to?->block && $x->to->block_id !== $stage->block_id && $x->to->block->isDeadEnd())->all();
     $overdue = $position->isOverdue();
     $tone = $overdue ? 'text-danger' : match ($stage->waits_for->tone()) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted' };
     $clock = $position->deadline_at || $stage->timerMode() === 'stopwatch';
     $requirements = $offer->requirements()->with(['media', 'stage'])->get();
     $menu = 'route-more-'.$position->id;
-    // Деньги сделки на этапах оплаты.
-    $deal = $offer->deal?->isActive() ? $offer->deal : null;
     $invoices = $deal ? $deal->invoices()->with('claims.media')->get()->reject(fn ($i) => $i->isOwed() || $i->state === InvoiceState::Void) : collect();
-    $wantsInvoice = $deal && $invoices->isEmpty() && $stage->exitsFor(Actor::Manager)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
+    $wantsInvoice = $deal && $invoices->isEmpty() && $stage->exitsFor(Actor::Manager, $deal)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
     $paidExit = fn ($x) => preg_match('/^оплата (получена|не поступила)/u', mb_strtolower($x->label)) === 1;
     $claims = $moves->contains($paidExit) ? $invoices->flatMap(fn ($i) => $i->claims->map(fn ($p) => [$i, $p])) : collect();
     if ($claims->isNotEmpty()) {
@@ -100,7 +100,7 @@
                     @if ($position->payload)
                         <div class="mt-2 text-sm">@foreach ($position->payload as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
                     @endif
-                    @if (! $wantsInvoice && $stage->awaitsManager() && ($req = $requirements->first(fn ($r) => ! $r->done_at && $r->stage_id === $stage->id)))
+                    @if (! $wantsInvoice && $stage->awaitsManager($deal) && ($req = $requirements->first(fn ($r) => ! $r->done_at && $r->stage_id === $stage->id)))
                         <div class="mt-1 text-sm text-ink-muted">Менеджеру: «{{ $req->title }}»@if ($req->due_at) до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</div>
                     @endif
                     @foreach ($answers as $r)

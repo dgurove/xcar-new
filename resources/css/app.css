@@ -555,6 +555,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .mark-urgent { background: var(--color-urgent); }
   .mark-glass  { background: rgb(18 18 18 / .55); backdrop-filter: blur(10px); }
 
+  /* Наклейка-ёжик «NEW!» на углу новой кнопки (гараж, 03.10.2026): красная звезда, белая надпись, чуть наискось.
+     Висит, пока владелец не скажет убрать. Кнопке-носителю нужен position: relative. */
+  .burst {
+    position: absolute; top: -.875rem; right: -.375rem; z-index: 1; width: 2.875rem; height: 2.875rem;
+    display: grid; place-items: center; background: var(--color-danger); color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: -.01em; line-height: 1; rotate: 14deg; pointer-events: none;
+    clip-path: polygon(50.0% 0.0%, 58.7% 12.0%, 71.7% 5.0%, 74.3% 19.5%, 89.1% 18.8%, 85.1% 33.1%, 98.7% 38.9%, 89.0% 50.0%, 98.7% 61.1%, 85.1% 66.9%, 89.1% 81.2%, 74.3% 80.5%, 71.7% 95.0%, 58.7% 88.0%, 50.0% 100.0%, 41.3% 88.0%, 28.3% 95.0%, 25.7% 80.5%, 10.9% 81.2%, 14.9% 66.9%, 1.3% 61.1%, 11.0% 50.0%, 1.3% 38.9%, 14.9% 33.1%, 10.9% 18.8%, 25.7% 19.5%, 28.3% 5.0%, 41.3% 12.0%);
+  }
+
   /* Тег-пилюля: цвет через переменные, нейтральный — серый. */
   .tag {
     @apply inline-flex items-center rounded-full text-xs font-medium;

@@ -3,10 +3,11 @@ import { Controller } from '@hotwired/stimulus';
 // Деньги при вознаграждении менеджеру: поле с разделителями (на сервер — число) и суммы,
 // пересчитанные на месте. ours — «нам остаётся» (разница минус вознаграждение), due —
 // сколько менеджер отдаёт (база минус вознаграждение); ушло в минус — подпись dueLabel
-// меняется на data-negative: тогда отдаём мы.
+// меняется на data-negative: тогда отдаём мы. payout — сколько выплатим менеджеру, когда за машину из гаража платит
+// его покупатель: его расходы (spent) плюс вознаграждение.
 export default class extends Controller {
-    static targets = ['display', 'amount', 'ours', 'due', 'dueLabel'];
-    static values = { margin: Number, base: Number };
+    static targets = ['display', 'amount', 'ours', 'due', 'dueLabel', 'payout'];
+    static values = { margin: Number, base: Number, spent: Number };
 
     connect() {
         this.input();
@@ -32,5 +33,6 @@ export default class extends Controller {
             this.dueTarget.textContent = this.money(Math.abs(due));
             if (this.hasDueLabelTarget) this.dueLabelTarget.textContent = due < 0 ? this.dueLabelTarget.dataset.negative : this.dueLabelTarget.dataset.positive;
         }
+        if (this.hasPayoutTarget) this.payoutTarget.textContent = this.money(this.spentValue + value);
     }
 }

@@ -7,21 +7,20 @@ use App\Garage\Actions\RemoveCost;
 use App\Garage\Actions\ReturnFromGarage;
 use App\Garage\Actions\UpdateCost;
 use App\Garage\Car;
-use App\Garage\CarState;
 use App\Garage\Cost;
+use App\Http\Cabinet\DealController;
 use App\Offers\Offer;
 use App\Support\Money;
 use Illuminate\Http\Request;
 
 class CarController
 {
-    /** Машины в гараже: менеджеру — свои, сотруднику — все; чинящиеся первыми. */
+    /** Машины в гараже: менеджеру — свои, сотруднику — все; группами по этапу, внутри — дольше стоящие первыми. */
     public function index(Request $request)
     {
         $cars = Car::of($request->user())
-            ->with(['offer.brand', 'offer.model', 'offer.media', 'manager', 'costs', 'invoice'])
-            ->orderByRaw('case when state = ? then 0 else 1 end', [CarState::Repair->value])
-            ->orderByDesc('taken_at')
+            ->with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.openRequirement'])
+            ->orderBy('stage_at')
             ->get();
 
         return view('garage.cars.index', ['cars' => $cars]);
@@ -29,7 +28,12 @@ class CarController
 
     public function show(Request $request, Offer $offer)
     {
-        return view('garage.cars.show', ['car' => $this->car($request, $offer)]);
+        $car = $this->car($request, $offer);
+        // Ждёт страховую — шаг сделки и путь, как на её странице: просьбы менеджеру («Забираю», «Отказываюсь») — тут.
+        // Сотрудник ведёт маршрут в CRM — ему шаг не нужен.
+        $step = $car->isWaiting() && $car->deal && ! $request->user()->isStaff() ? DealController::stepData($car->deal) : null;
+
+        return view('garage.cars.show', ['car' => $car, 'step' => $step]);
     }
 
     public function storeCost(Request $request, Offer $offer, AddCost $add)
@@ -72,7 +76,7 @@ class CarController
     /** Машина этого человека или любая — сотруднику; чужая для менеджера не существует. */
     private function car(Request $request, Offer $offer): Car
     {
-        $car = Car::where('offer_id', $offer->id)->with(['offer.brand', 'offer.model', 'offer.media', 'manager', 'costs.author', 'invoice'])->firstOrFail();
+        $car = Car::where('offer_id', $offer->id)->with(['offer.brand', 'offer.model', 'offer.media', 'manager', 'costs.author', 'invoice', 'payoutInvoice', 'deal'])->firstOrFail();
         $car->costs->each->setRelation('car', $car);
         abort_unless($request->user()->isStaff() || $car->manager_id === $request->user()->id, 404);
 

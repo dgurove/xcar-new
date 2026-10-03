@@ -10,6 +10,7 @@ use App\Billing\PaymentState;
 use App\Billing\Seller;
 use App\Chats\Chat;
 use App\Garage\Car as GarageCar;
+use App\Garage\CarState;
 use App\Mail\Boxes;
 use App\Mail\Scope;
 use App\Mail\Thread;
@@ -203,7 +204,6 @@ final class Nav
             return [
                 self::item('На сайт', Surface::Site->url()),
                 self::item('Парковка', Surface::Park->url()),
-                self::item('Гараж', Surface::Site->url('/garage')),
             ];
         }
 
@@ -260,7 +260,6 @@ final class Nav
                 'Переходы' => [
                     self::link('На сайт', Surface::Site->url()),
                     self::link('Парковка', Surface::Park->url()),
-                    self::link('Гараж', Surface::Site->url('/garage')),
                 ],
             ];
         }
@@ -431,9 +430,10 @@ final class Nav
                 '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->count() : null,
                 '/purchases' => $user->canSeePurchases() ? Purchase::cardCount($user) : null,
                 // Всё, что стоит строкой на экране «Сделки»: сделки и подтверждения, ждущие решения.
-                '/deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count() : null,
+                '/deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count() : null,
                 '/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
-                '/garage' => $user->canGarage() ? GarageCar::of($user)->count() : null,
+                // Как в заголовке «Гаража»: машины в работе, рассчитанные не считаются.
+                '/garage' => $user->canGarage() ? GarageCar::of($user)->where('state', '!=', CarState::Settled)->count() : null,
                 '/account/interests' => $user->isBuyer() ? Interest::where('user_id', $user->id)->count() : null,
                 '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
@@ -461,8 +461,12 @@ final class Nav
             // Новый интерес — на пилюле «Покупатели» и строке «Интерес»; таб «Сделки» горит и тем, что ждут от него, и им.
             $badges['/buyers/interest'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
             $badges['/buyers'] = $badges['/buyers/interest'];
-            $badges['/deals/asks'] = Requirement::where('user_id', $user->id)->whereNull('done_at')->count();
+            // Просьбы по гаражной сделке (страховая ещё идёт) — на табе «Гараж»: там её и ведут.
+            $asks = Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->join('deals', 'deals.id', '=', 'requirements.deal_id')
+                ->selectRaw('count(*) filter (where deals.garage_payer is null) as deals, count(*) filter (where deals.garage_payer is not null) as garage')->first();
+            $badges['/deals/asks'] = (int) $asks->deals;
             $badges['/deals'] = $badges['/deals/asks'] + $badges['/buyers'];
+            $badges['/garage'] = (int) $asks->garage;
         }
         if ($user->canChat() || $user->isStaff()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.
@@ -586,7 +590,7 @@ final class Nav
             }
         }
         if ($surface === Surface::Crm) {
-            array_push($items, self::link('Сделки', '/work/deals'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Деньги', '/work/money'));
+            array_push($items, self::link('Сделки', '/work/deals'), self::link('Гараж', '/work/garage'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Деньги', '/work/money'));
         }
 
         // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен.

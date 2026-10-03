@@ -40,11 +40,12 @@
         </x-slot:aside>
         <x-slot:actions>
             @if ($canBid)
-                <form method="post" action="/offers/{{ $n }}/confirm" class="flex w-full flex-col gap-2" data-telegram-moment="bid" data-controller="bid" data-bid-asking-value="{{ $asking }}">
+                @php $garage = $offer->garageAllowedFor(auth()->user()); @endphp
+                <form method="post" action="/offers/{{ $n }}/confirm" class="flex w-full flex-col gap-2" data-telegram-moment="bid" data-controller="bid" data-bid-asking-value="{{ $asking }}" data-bid-garage-value="{{ $garage ? 'true' : 'false' }}" data-action="submit->bid#guard">
                     @csrf
                     <div class="flex gap-2">
                         <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $myBid?->amount) }}">
-                        <input type="text" required autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена, ₽" aria-label="Цена, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" data-peek-focus>
+                        <input type="text" @unless ($garage) required @endunless autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена, ₽" aria-label="Цена, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" data-peek-focus>
                         <button type="submit" class="btn btn-s btn-accent shrink-0" data-bid-target="submit">{{ $myBid ? 'Изменить' : 'Подтвердить' }}</button>
                     </div>
                     @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror
@@ -55,9 +56,10 @@
                         @endif
                         <input name="comment" class="field-input field-s min-w-0 flex-1 text-sm" placeholder="Комментарий" value="{{ old('comment', $myBid?->comment) }}">
                     </div>
+                    @if ($garage)<x-offer.bid-choice :offer="$offer"/>@endif
                 </form>
                 @if ($myBid)
-                    <span class="text-sm text-ink-muted">Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span>, {{ mb_strtolower($myBid->state->label()) }}</span>
+                    <span class="text-sm text-ink-muted">@if ($myBid->isGarage())<span class="font-semibold text-ink">В гараж</span>@else Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span>@endif, {{ mb_strtolower($myBid->state->label()) }}</span>
                     <form method="post" action="/confirmations/{{ $myBid->id }}/withdraw" class="contents">@csrf<button type="submit" class="pill pill-plain">Отозвать</button></form>
                 @endif
             @elseif ($myBid)

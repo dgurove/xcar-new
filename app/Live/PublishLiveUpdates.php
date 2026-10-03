@@ -109,9 +109,10 @@ final class PublishLiveUpdates
     public function stage(StageEntered $e): void
     {
         $n = $e->offer->number;
-        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals']);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals', '/work/garage']);
         if ($deal = $e->deal ?? $e->offer->deal()->first()) {
-            $this->publish->refresh(Topics::user($deal->buyer_id), ['/deals', "/deals/{$deal->id}"]);
+            // Гаражная сделка живёт в гараже: шаг со страховой менеджер видит в карточке машины.
+            $this->publish->refresh(Topics::user($deal->buyer_id), $deal->isGarage() ? ['/garage', "/garage/cars/{$n}"] : ['/deals', "/deals/{$deal->id}"]);
         }
     }
 
@@ -180,7 +181,7 @@ final class PublishLiveUpdates
     public function garage(GarageChanged $e): void
     {
         $paths = ['/garage', '/garage/cars/'.$e->car->offer->number];
-        $this->publish->refresh(Topics::STAFF, $paths);
+        $this->publish->refresh(Topics::STAFF, [...$paths, '/work/garage']);
         if ($e->car->manager_id) {
             $this->publish->refresh(Topics::user($e->car->manager_id), $paths);
         }
@@ -190,7 +191,7 @@ final class PublishLiveUpdates
     public function payment(PaymentRecorded|PaymentClaimed $e): void
     {
         $invoice = $e instanceof PaymentClaimed ? $e->payment->invoice : $e->invoice;
-        $this->publish->refresh(Topics::STAFF, ['/work/money', '/work/money/bank', '/work/deals']);
+        $this->publish->refresh(Topics::STAFF, ['/work/money', '/work/money/bank', '/work/deals', '/work/garage']);
         $garage = $invoice->deal_id ? null : GarageCar::ofInvoice($invoice);
         $manager = $invoice->deal?->buyer_id ?? $garage?->manager_id;
         if ($manager) {

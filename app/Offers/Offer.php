@@ -23,6 +23,7 @@ use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
+use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Requirement;
 use App\Workflow\Stage;
@@ -43,6 +44,7 @@ use Spatie\MediaLibrary\HasMedia;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
+    'garage_allowed',
 ])]
 class Offer extends Model implements HasMedia
 {
@@ -77,6 +79,7 @@ class Offer extends Model implements HasMedia
             'chat_enabled' => 'bool',
             'share_locked' => 'bool',
             'recommended' => 'bool',
+            'garage_allowed' => 'bool',
             'audience_rules' => 'array',
             'incident_date' => 'date',
             'published_at' => 'datetime',
@@ -174,7 +177,28 @@ class Offer extends Model implements HasMedia
 
     public function activeBids(): HasMany
     {
-        return $this->hasMany(Bid::class)->where('state', BidState::Active)->orderByDesc('amount');
+        // Гаражные (без суммы) — после ценовых: «Лучшая» и сортировка смотрят на цену.
+        return $this->hasMany(Bid::class)->where('state', BidState::Active)->orderByRaw('amount desc nulls last')->orderBy('id');
+    }
+
+    /** Может ли человек забрать машину себе в гараж подтверждением: галка у предложения и менеджер с гаражом. */
+    public function garageAllowedFor(?User $user): bool
+    {
+        return $this->garage_allowed && $user !== null && $user->isManager() && $user->canGarage();
+    }
+
+    /**
+     * Есть ли у маршрута продажи гаражная ветка — «платим поставщику мы». Нет (Т-Страхование: машину забирают у
+     * владельца по договору с ним) — платит менеджер, путём обычной сделки. Нет маршрута вовсе — выбор свободный.
+     */
+    public function garageBranch(): bool
+    {
+        $workflow = $this->stage()?->workflow ?? $this->vendor?->workflow(Track::Sale);
+        if (! $workflow) {
+            return true;
+        }
+
+        return Outcome::whereIn('stage_id', Stage::where('workflow_id', $workflow->id)->select('id'))->where('branch', Outcome::GARAGE)->exists();
     }
 
     public function interests(): HasMany

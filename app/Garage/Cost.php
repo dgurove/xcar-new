@@ -8,10 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** Расход по машине одной строкой: что и сколько стоило. */
-#[Fillable(['garage_car_id', 'title', 'amount', 'spent_at', 'payer', 'created_by'])]
+#[Fillable(['garage_car_id', 'title', 'amount', 'spent_at', 'payer', 'kind', 'created_by'])]
 class Cost extends Model
 {
     protected $table = 'garage_costs';
+
+    public const SUPPLIER = 'supplier';
 
     protected function casts(): array
     {
@@ -30,7 +32,13 @@ class Cost extends Model
             return false;
         }
 
-        return $user->isStaff() || ($this->payer === Payer::Manager && ! $car->isSold() && $car->manager_id === $user->id);
+        return $user->isStaff() || ($this->payer === Payer::Manager && ! $this->isSupplier() && ! $car->isSold() && $car->manager_id === $user->id);
+    }
+
+    /** «Оплата поставщику», которую гараж записал сам по сделке: сумма — закупочная, менеджер её не правит. */
+    public function isSupplier(): bool
+    {
+        return $this->kind === self::SUPPLIER;
     }
 
     public function car(): BelongsTo

@@ -5,6 +5,8 @@ namespace App\Offers;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Garage\Car as GarageCar;
+use App\Garage\GaragePayer;
 use App\Support\Demo\HidesDemo;
 use App\Users\User;
 use App\Workflow\Requirement;
@@ -20,14 +22,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'commission', 'commission_mode', 'state', 'notes', 'closed_at'])]
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'commission', 'commission_mode', 'garage_payer', 'state', 'notes', 'closed_at'])]
 class Deal extends Model
 {
     use HidesDemo;
 
     protected function casts(): array
     {
-        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'closed_at' => 'datetime'];
+        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -73,6 +75,40 @@ class Deal extends Model
         return $this->hasOne(Invoice::class)->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', '!=', InvoiceState::Void)->latestOfMany();
     }
 
+    /** Машина в гараже по этой сделке: пока ждёт страховую, маршрут сделки и есть её этап. */
+    public function garageCar(): HasOne
+    {
+        return $this->hasOne(GarageCar::class);
+    }
+
+    /** Гаражная сделка: менеджер забирает машину себе на подготовку, цены у неё нет. */
+    public function isGarage(): bool
+    {
+        return $this->garage_payer !== null;
+    }
+
+    /** Гаражная, и поставщику платим мы: маршрут идёт гаражной веткой. */
+    public function isGarageUs(): bool
+    {
+        return $this->garage_payer === GaragePayer::Us;
+    }
+
+    /** От чего считать счёт и письма: цена подтверждения, у гаражной — закупочная. */
+    public function base(): ?int
+    {
+        return $this->amount ?? $this->cost;
+    }
+
+    /** Куда ведёт сделка менеджера: гаражная живёт в гараже, а не в «Сделках». */
+    public function href(): string
+    {
+        if ($this->isGarage() && ($car = $this->garageCar ?? GarageCar::where('offer_id', $this->offer_id)->first())) {
+            return $car->url();
+        }
+
+        return '/deals/'.$this->id;
+    }
+
     public function isActive(): bool
     {
         return $this->state === DealState::Active;
@@ -81,7 +117,7 @@ class Deal extends Model
     /** Разница между ценой подтверждения и закупочной; без закупочной — null. */
     public function margin(): ?int
     {
-        return $this->cost === null ? null : $this->amount - $this->cost;
+        return $this->cost === null || $this->amount === null ? null : $this->amount - $this->cost;
     }
 
     /** Что остаётся нам после вознаграждения менеджера. */

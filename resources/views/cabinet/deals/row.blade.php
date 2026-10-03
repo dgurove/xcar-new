@@ -21,7 +21,7 @@
         @endif
     </span>
     <span class="flex max-w-[45%] shrink-0 flex-col items-end gap-1.5">
-        <span class="nums font-medium">{{ \App\Support\Money::rub($deal->amount) }}</span>
+        <span class="nums font-medium">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span>
         @if (! $active)
             <x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.state>
         @else

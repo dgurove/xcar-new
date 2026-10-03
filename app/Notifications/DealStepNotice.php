@@ -12,7 +12,7 @@ final class DealStepNotice extends Notice
 
     public function title(): string
     {
-        return 'Сделка № '.$this->deal->offer->number.': '.$this->stage->managerTitle();
+        return ($this->deal->isGarage() ? 'В гараж № ' : 'Сделка № ').$this->deal->offer->number.': '.$this->stage->managerTitle();
     }
 
     public function text(): ?string
@@ -22,7 +22,7 @@ final class DealStepNotice extends Notice
 
     public function href(): string
     {
-        return "/deals/{$this->deal->id}";
+        return $this->deal->href();
     }
 
     public function offerNumber(): ?int

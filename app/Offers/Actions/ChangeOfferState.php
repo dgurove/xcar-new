@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Garage\Actions\ReceiveFromRoute;
 use App\Garage\Car as GarageCar;
 use App\Offers\BidState;
 use App\Offers\DealState;
@@ -29,6 +30,11 @@ final class ChangeOfferState
         return DB::transaction(function () use ($offer, $next, $by, $followRoute) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
             $from = $offer->state;
+            // Гаражная сделка кончается не выдачей покупателю, а гаражом: конец маршрута («Сделка закрыта») ставит
+            // машину менеджеру в гараж. Одна дверь — здесь, маршруты и их конечные этапы о гараже не знают.
+            if ($next === OfferState::Delivered && $offer->deal()->first()?->isGarage()) {
+                $next = OfferState::Garage;
+            }
 
             if ($from === $next) {
                 return $offer;
@@ -67,7 +73,7 @@ final class ChangeOfferState
                 OfferPublished::dispatch($offer, $by);
             }
 
-            if ($followRoute && ($exit = $offer->stage()?->exitInto($next))) {
+            if ($followRoute && ($exit = $offer->stage()?->exitInto($next, $offer->deal()->first()))) {
                 $offer = app(EnterStage::class)($offer, $exit->to, $by, [], $exit);
             }
 
@@ -101,22 +107,26 @@ final class ChangeOfferState
     }
 
     /**
-     * Сделка живёт, пока оффер в сделке: выдан — завершена, всё остальное — сорвалась. Резерв (остальные живые
+     * Сделка живёт, пока оффер в сделке: выдан (гаражная — в гараже) — завершена, всё остальное — сорвалась. Резерв (остальные живые
      * подтверждения) ждёт до выдачи или архива и закрывается тихо, без уведомлений: снятие с продажи и черновик
      * его не трогают — к подтвердившим возвращаются, если выбранный передумал.
      */
     private function settleDeal(Offer $offer, OfferState $next, ?User $by = null): void
     {
-        if (in_array($next, [OfferState::Delivered, OfferState::Archived], true)) {
+        $deal = $offer->deal()->first();
+        $garage = $next === OfferState::Garage && $deal?->isGarage();
+        if ($garage || in_array($next, [OfferState::Delivered, OfferState::Archived], true)) {
             $offer->bids()->where('state', BidState::Active)->update(['state' => BidState::Declined, 'decided_at' => now(), 'decided_by' => $by?->id]);
         }
-        $deal = $offer->deal()->first();
         if (! $deal || in_array($next, [OfferState::Sold], true)) {
             return;
         }
-        if ($next === OfferState::Delivered) {
+        if ($next === OfferState::Delivered || $garage) {
             $deal->update(['state' => DealState::Done, 'closed_at' => now()]);
             Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'deal'])]);
+            if ($garage) {
+                app(ReceiveFromRoute::class)($deal, $by);
+            }
         } else {
             app(CancelDeal::class)($deal, $by);
         }

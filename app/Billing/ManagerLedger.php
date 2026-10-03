@@ -2,6 +2,7 @@
 
 namespace App\Billing;
 
+use App\Garage\Car as GarageCar;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Users\User;
@@ -43,8 +44,11 @@ final class ManagerLedger
     public function deals(string $preset = 'all'): Collection
     {
         if (! $this->all) {
+            // Гаражная сделка без счёта — не расчёт (там страховая, деньги — в гараже); со счётом (Каркаде, платит
+            // менеджер) — как любая.
             $this->all = Deal::where('buyer_id', $this->manager->id)
                 ->where(fn ($q) => $q->where('state', DealState::Active)->orWhereHas('invoices'))
+                ->where(fn ($q) => $q->whereNull('garage_payer')->orWhereHas('invoices'))
                 ->with(['offer.brand', 'offer.model', 'offer.media', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
             $this->all->each(fn (Deal $d) => $d->setAttribute('money', DealMoney::of($d)));
         }
@@ -95,9 +99,14 @@ final class ManagerLedger
     public function history(?CarbonInterface $from = null, ?CarbonInterface $to = null): Collection
     {
         $rows = collect();
-        foreach ($this->invoices() as $i) {
-            $offer = $i->deal?->offer?->titleWithYear();
-            $href = '/account/money/deals/'.$i->deal_id;
+        $invoices = $this->invoices();
+        // Гаражные счета и выплаты — без сделки: ведут на машину в гараже, а не в пустой расчёт сделки.
+        $cars = GarageCar::with(['offer.brand', 'offer.model'])->where(fn ($q) => $q->whereIn('invoice_id', $invoices->whereNull('deal_id')->pluck('id'))
+            ->orWhereIn('payout_invoice_id', $invoices->whereNull('deal_id')->pluck('id')))->get();
+        foreach ($invoices as $i) {
+            $car = $i->deal_id ? null : $cars->first(fn ($c) => $c->invoice_id === $i->id || $c->payout_invoice_id === $i->id);
+            $offer = $i->deal?->offer?->titleWithYear() ?? $car?->offer->titleWithYear();
+            $href = $car ? $car->url() : '/account/money/deals/'.$i->deal_id;
             $rows->push(['at' => $i->issued_at->copy()->setTimeFrom($i->created_at), 'title' => $i->isAgentFee() ? 'Вознаграждение к выплате' : 'Счёт '.$i->label().' выставлен', 'amount' => $i->total, 'kind' => $i->isAgentFee() ? 'fee' : 'invoice', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id]);
             foreach ($i->allPayments as $p) {
                 $rows->push(match (true) {

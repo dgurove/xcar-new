@@ -39,10 +39,10 @@ class InvoiceController
             'kinds' => [ChargeKind::Sale->value => ChargeKind::Sale->label(), ChargeKind::Selection->value => ChargeKind::Selection->label(), ChargeKind::Reward->value => ChargeKind::Reward->label(), ChargeKind::Other->value => ChargeKind::Other->label()],
             // База по виду: продажа — цена подтверждения, подбор — разница, вознаграждение — по условиям вендора.
             'bases' => [
-                'sale' => $deal->amount,
+                'sale' => $deal->base(),
                 'selection' => max(0, (int) $deal->margin()),
-                'reward' => $this->reward($deal->amount, $deal->cost, $vendor?->reward_kind, $vendor?->reward_value),
-                'other' => $deal->amount,
+                'reward' => $this->reward((int) $deal->base(), $deal->cost, $vendor?->reward_kind, $vendor?->reward_value),
+                'other' => $deal->base(),
             ],
             'partyKinds' => PartyKind::options(),
         ]);

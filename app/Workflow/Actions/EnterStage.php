@@ -62,14 +62,15 @@ final class EnterStage
             $offer = ($this->setPlace)($offer, $to->car_place, $by);
         }
 
-        if ($to->awaitsManager() && $deal && $deal->isActive() && $deal->buyer_id) {
+        if ($deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
             Requirement::create([
                 'offer_id' => $offer->id,
                 'deal_id' => $deal->id,
                 'stage_id' => $to->id,
                 'user_id' => $deal->buyer_id,
                 'title' => $to->managerTitle(),
-                'text' => $to->managerText(),
+                // Гаражная сделка цены не называла: «по Вашей цене» из общего текста ей не про неё.
+                'text' => $deal->isGarage() ? preg_replace('/ по Вашей цене/u', '', (string) $to->managerText()) ?: null : $to->managerText(),
                 'asks' => $to->asks,
                 'fields' => $to->fields ?? [],
                 'due_at' => $position->deadline_at,

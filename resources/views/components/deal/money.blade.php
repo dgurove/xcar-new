@@ -12,13 +12,18 @@
     $state = $deal->commissionState();
     $party = $deal->buyer ? \App\Billing\Party::forUser($deal->buyer, false) : null;
     // Этап «Проверка оплаты» сам показывает заявку менеджера с «Поступило» — здесь она только строкой, без второй пары кнопок.
-    $inStep = $deal->isActive() && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Staff)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата получена'));
+    $inStep = $deal->isActive() && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Staff, $deal)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата получена'));
     // Первый счёт на этапе оплаты предлагает сам шаг пути — здесь его второй раз не ставим.
-    $stepInvoices = $deal->isActive() && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Manager)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
+    $stepInvoices = $deal->isActive() && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Manager, $deal)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
 @endphp
 <x-ui.card title="Деньги" {{ $attributes }}>
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
-        <dt class="text-sm text-ink-dim">Цена подтверждения</dt><dd class="nums text-right font-medium">{{ Money::rub($deal->amount) }}</dd>
+        @if ($deal->isGarage())
+            {{-- Гаражная: цены нет, вознаграждение назначат при продаже из гаража; важно, кто платит поставщику. --}}
+            <dt class="text-sm text-ink-dim">В гараж</dt><dd class="text-right font-medium">поставщику платит {{ mb_strtolower($deal->garage_payer->label()) }}</dd>
+        @else
+            <dt class="text-sm text-ink-dim">Цена подтверждения</dt><dd class="nums text-right font-medium">{{ Money::rub($deal->amount) }}</dd>
+        @endif
         <dt class="text-sm text-ink-dim">Закупочная</dt><dd class="nums text-right">{{ $deal->cost === null ? 'не указана' : Money::rub($deal->cost) }}</dd>
         @if ($deal->margin() !== null)<dt class="text-sm text-ink-dim">Разница</dt><dd class="nums text-right {{ $deal->margin() < 0 ? 'text-danger' : '' }}">{{ Money::rub($deal->margin()) }}</dd>@endif
         <dt class="text-sm text-ink-dim">Вознаграждение</dt><dd class="nums text-right">{{ $deal->commission ? Money::rub($deal->commission) : 'нет' }}</dd>
@@ -29,7 +34,7 @@
         @if ($state !== CommissionState::Hidden)<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.$fee->paid_at->translatedFormat('j M') : '' }}</x-ui.state>@endif
         @if ($deal->commission && $party && ! $party->payoutReady())<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
         @if ($deal->isActive())
-            @if ($deal->commissionEditable())
+            @if ($deal->commissionEditable() && ! $deal->isGarage())
                 <div data-controller="sheet" class="contents">
                     <button type="button" class="chip" data-action="sheet#open">Изменить</button>
                     <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Агентское вознаграждение" :open="$errors->has('commission')">

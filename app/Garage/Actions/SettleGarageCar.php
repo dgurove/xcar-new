@@ -25,12 +25,17 @@ use Illuminate\Validation\ValidationException;
  * к оплате — цена продажи минус его расходы минус вознаграждение. Продали в минус —
  * наоборот, обязательство перед ним на разницу (`owed`, попадёт в его «Вам к выплате»).
  * Ноль или машина, взятая под себя, — расчёт закрывается без документа.
+ *
+ * Платит покупатель менеджера (как у сделки, плательщика выбирают при счёте) — счёт ему на всю цену продажи, а
+ * расходы менеджера и вознаграждение после оплаты становятся выплатой ему (`PayoutWhenBuyerPaid`). Поставщику
+ * платил сам менеджер — документы на нём, покупателю мы машину не продаём: счёт только менеджеру.
  */
 final class SettleGarageCar
 {
     public function __construct(private IssueInvoice $issue, private RecordPayment $record, private InvoicePdf $pdf) {}
 
-    public function __invoke(Car $car, User $by, ?int $commission = null): ?Invoice
+    /** @param  Party|array|null  $buyer  кто платит вместо менеджера: контрагент или поля нового (kind, name, inn, phone) */
+    public function __invoke(Car $car, User $by, ?int $commission = null, Party|array|null $buyer = null): ?Invoice
     {
         if ($car->sold_price === null) {
             throw ValidationException::withMessages(['car' => 'Сначала внесите итог продажи']);
@@ -38,13 +43,20 @@ final class SettleGarageCar
         if ($car->invoice_id) {
             throw ValidationException::withMessages(['car' => 'Счёт уже выставлен']);
         }
+        if ($buyer && (! $car->manager || $car->managerPaidSupplier())) {
+            throw ValidationException::withMessages(['party_id' => 'Поставщику платил менеджер: счёт — только ему']);
+        }
 
         if ($car->manager) {
             $car->update(['commission' => $commission]);
         }
+        if ($buyer) {
+            // Новый плательщик заводится только здесь, после проверок: отказ не оставляет пустых контрагентов.
+            return $this->toBuyer($car, $by, is_array($buyer) ? Party::create($buyer) : $buyer);
+        }
         $due = Settlement::of($car)['due'];
         if (! $car->manager || abs((float) $due) < 0.005) {
-            $car->update(['settled_at' => now(), 'state' => CarState::Settled]);
+            $car->moveTo(CarState::Settled, ['settled_at' => now()]);
             GarageChanged::dispatch($car);
 
             return null;
@@ -69,13 +81,29 @@ final class SettleGarageCar
                     $this->pdf->attach($invoice->fresh(['charges', 'party', 'payments']));
                 }
             }
-            $car->update(['invoice_id' => $invoice->id]);
+            $car->update(['invoice_id' => $invoice->id, 'invoice_to' => 'manager']);
 
             return $invoice;
         });
 
         GarageChanged::dispatch($car);
         $car->manager->notify(MoneyNotice::garageInvoice($invoice->fresh(), $car));
+
+        return $invoice;
+    }
+
+    /** Покупателю — одной строкой на всю цену: что из неё менеджеру, он узнает выплатой после оплаты. */
+    private function toBuyer(Car $car, User $by, Party $buyer): Invoice
+    {
+        $invoice = DB::transaction(function () use ($car, $by, $buyer) {
+            $offer = $car->offer;
+            $invoice = ($this->issue)($buyer, $by, 'issued', ChargeKind::Sale, WorkDays::add(now(), 5),
+                lines: [['title' => 'Транспортное средство '.$offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $car->sold_price, 'kind' => ChargeKind::Sale->value]], offerId: $offer->id);
+            $car->update(['invoice_id' => $invoice->id, 'invoice_to' => 'buyer']);
+
+            return $invoice;
+        });
+        GarageChanged::dispatch($car);
 
         return $invoice;
     }

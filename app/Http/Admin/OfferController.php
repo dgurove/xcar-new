@@ -4,7 +4,10 @@ namespace App\Http\Admin;
 
 use App\Chats\Chat;
 use App\Chats\Message as ChatMessage;
+use App\Garage\Actions\SendViaRoute;
 use App\Garage\Actions\TakeToGarage;
+use App\Garage\CarState;
+use App\Garage\GaragePayer;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Jobs\ImportThreadFiles;
@@ -29,6 +32,7 @@ use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Validation\Rule;
 
 class OfferController
 {
@@ -276,15 +280,26 @@ class OfferController
         return back()->with('toast', 'Приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'));
     }
 
-    /** Отдать машину менеджеру в гараж: из продажи она уходит, дальше её ведут там. */
-    public function garage(Request $request, Offer $offer, TakeToGarage $take)
+    /**
+     * Отдать машину менеджеру в гараж, минуя подтверждение: с этапа «Ждёт страховую» — гаражной сделкой по маршруту
+     * (`SendViaRoute`), с доставки, подготовки или продажи — сразу (`TakeToGarage`): машина бывает уже у нас или у него.
+     */
+    public function garage(Request $request, Offer $offer, TakeToGarage $take, SendViaRoute $send)
     {
         $data = $request->validate([
-            'manager_id' => ['nullable', 'exists:users,id'],
+            'stage' => ['required', Rule::in([CarState::Waiting->value, CarState::Delivery->value, CarState::Repair->value, CarState::Selling->value])],
+            'manager_id' => [Rule::requiredIf($request->input('stage') === CarState::Waiting->value), 'nullable', 'exists:users,id'],
+            'payer' => ['nullable', Rule::enum(GaragePayer::class)],
             'cost' => ['nullable', 'integer', 'min:0'],
             'note' => ['nullable', 'string', 'max:500'],
-        ]);
-        $take($offer, $data['manager_id'] ? User::findOrFail($data['manager_id']) : null, $data['cost'] ?? null, $request->user(), $data['note'] ?? null);
+        ], ['manager_id.required' => 'Ждать страховую будет менеджер — выберите кому']);
+        $manager = $data['manager_id'] ? User::findOrFail($data['manager_id']) : null;
+        $stage = CarState::from($data['stage']);
+        if ($stage === CarState::Waiting) {
+            $send($offer, $manager, GaragePayer::tryFrom($data['payer'] ?? '') ?? GaragePayer::Us, $request->user());
+        } else {
+            $take($offer, $manager, $data['cost'] ?? null, $request->user(), $data['note'] ?? null, $stage);
+        }
 
         return redirect("/offers/{$offer->number}")->with('toast', 'В гараже');
     }

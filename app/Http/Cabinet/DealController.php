@@ -22,8 +22,9 @@ class DealController
     public function index(Request $request)
     {
         $me = $request->user();
+        // Гаражные сделки живут в «Гараже» (решение владельца 03.10.2026), здесь — только ждущее решения «В гараж».
         $deals = Deal::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
-            ->where('buyer_id', $me->id)
+            ->where('buyer_id', $me->id)->whereNull('garage_payer')
             ->orderByRaw("case when state = 'active' then 0 else 1 end")->latest()->paginate(30);
 
         // Подтверждения — на том же экране: ждущие решения — будущие сделки, отклонённые и отозванные —
@@ -38,22 +39,33 @@ class DealController
     public function show(Request $request, Deal $deal)
     {
         abort_unless($deal->buyer_id === $request->user()->id, 404);
+        // Гаражная сделка живёт в гараже: старые ссылки ленты и Telegram ведут туда же.
+        if ($deal->isGarage() && $deal->garageCar()->exists()) {
+            return redirect($deal->href());
+        }
+
+        return view('cabinet.deals.show', self::stepData($deal));
+    }
+
+    /** Сделка с текущим шагом, путём и счетами — для её страницы и карточки машины в гараже. */
+    public static function stepData(Deal $deal): array
+    {
         $deal->load(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'openRequirement.media', 'requirements']);
         $position = $deal->offer->position(Track::Sale);
         // Журнал с начала сделки, с учётом откатов — тот же, что путь в CRM.
         $steps = Path::journal($deal->offer, Track::Sale, $deal->created_at);
-        $blocks = $position ? Path::ladder($position->stage, $steps->pluck('block')->all()) : collect();
+        $blocks = $position ? Path::ladder($position->stage, $steps->pluck('block')->all(), $deal) : collect();
 
-        return view('cabinet.deals.show', [
+        return [
             'deal' => $deal,
             'offer' => $deal->offer,
             'position' => $position,
             'blocks' => $blocks,
             'steps' => $steps,
             'requirement' => $deal->openRequirement,
-            'exits' => $deal->openRequirement ? $position?->stage->exitsFor(Actor::Manager) : collect(),
+            'exits' => $deal->openRequirement ? $position?->stage->exitsFor(Actor::Manager, $deal) : collect(),
             'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->with('claims')->orderBy('id')->get(),
-        ]);
+        ];
     }
 
     public function answer(Request $request, Deal $deal, AnswerRequirement $answer)
@@ -63,7 +75,8 @@ class DealController
         $exit = Outcome::findOrFail($request->validate(['exit' => ['required', 'integer']])['exit']);
         $answer($requirement, $exit, $request->user(), (array) $request->input('fields', []));
 
-        return redirect("/deals/{$deal->id}")->with('toast', $exit->label);
+        // Сразу туда, где сделку смотрят (гаражная — в гараж): второй редирект съел бы тост.
+        return redirect($deal->refresh()->href())->with('toast', $exit->label);
     }
 
     public function upload(Request $request, Deal $deal, PhotoIngest $ingest)

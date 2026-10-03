@@ -2,6 +2,7 @@
 
 namespace App\Telegram\Messages;
 
+use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Support\Money;
@@ -21,8 +22,15 @@ final class BidsClosed extends Message
     protected function lines(): array
     {
         $bids = $this->offer->bids()->where('state', BidState::Active)->get();
+        // «Лучшая» — среди цен покупателю: гаражные без цены считаются отдельно.
+        [$garage, $priced] = $bids->partition(fn ($b) => $b->kind === BidKind::Garage);
+        $summary = match (true) {
+            $bids->isEmpty() => 'Подтверждений нет',
+            $priced->isEmpty() => 'В гараж '.$garage->count(),
+            default => 'Подтверждений '.$priced->count().', лучшая '.Money::rub($priced->max('amount')).($garage->isNotEmpty() ? ', в гараж '.$garage->count() : ''),
+        };
 
-        return Text::lines($this->offer, $bids->isEmpty() ? 'Подтверждений нет' : 'Подтверждений '.$bids->count().', лучшая '.Money::rub($bids->max('amount')));
+        return Text::lines($this->offer, $summary);
     }
 
     protected function decisions(): array

@@ -5,6 +5,9 @@ namespace App\Offers\Actions;
 use App\Cars\Vin\RememberVin;
 use App\Mail\Actions\LinkThread;
 use App\Media\Jobs\StampPhotos;
+use App\Offers\Bid;
+use App\Offers\BidKind;
+use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Users\User;
@@ -42,6 +45,10 @@ final class UpdateOffer
         // Номер убытка или VIN вписали руками — письма о той же ТС, что уже пришли и ни к чему не привязаны, едут к ней.
         if (array_intersect(['claim_ref', 'vin'], $changed)) {
             app(LinkThread::class)->forOffer($offer);
+        }
+        // Гараж запретили — ждущие «В гараж» отклоняются (решение владельца 03.10.2026), принять их уже нельзя.
+        if (in_array('garage_allowed', $changed, true) && ! $offer->garage_allowed) {
+            $offer->bids()->where('state', BidState::Active)->where('kind', BidKind::Garage)->get()->each(fn (Bid $bid) => app(DeclineBid::class)($bid, $by));
         }
         if (in_array('share_locked', $changed, true)) {
             StampPhotos::dispatch($offer);

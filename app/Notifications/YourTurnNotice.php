@@ -24,7 +24,7 @@ final class YourTurnNotice extends Notice
 
     public function href(): string
     {
-        return "/deals/{$this->requirement->deal_id}";
+        return $this->requirement->deal?->href() ?? "/deals/{$this->requirement->deal_id}";
     }
 
     public function offerNumber(): ?int

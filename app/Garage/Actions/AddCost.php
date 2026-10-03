@@ -14,6 +14,9 @@ final class AddCost
 {
     public function __invoke(Car $car, array $data, User $by): Cost
     {
+        if ($car->isWaiting()) {
+            throw ValidationException::withMessages(['amount' => 'Машина ещё ждёт страховую: расходы — с доставки']);
+        }
         if ($car->isFrozen()) {
             throw ValidationException::withMessages(['amount' => 'По ТС выставлен счёт: сначала аннулируйте его']);
         }

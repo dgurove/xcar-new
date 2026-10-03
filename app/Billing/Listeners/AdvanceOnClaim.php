@@ -25,7 +25,7 @@ final class AdvanceOnClaim
         }
         $offer = $deal->offer;
         $position = $offer->position(Track::Sale);
-        $exit = $position?->stage->exitsFor(Actor::Manager)->first(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
+        $exit = $position?->stage->exitsFor(Actor::Manager, $deal)->first(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
         if (! $exit) {
             return;
         }

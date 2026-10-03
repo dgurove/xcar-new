@@ -144,7 +144,8 @@ class WorkflowController
             'limit_value' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'limit_unit' => ['nullable', Rule::in(['minutes', 'hours', 'days'])],
             'deadline_source' => ['required', Rule::enum(DeadlineSource::class)],
-            'offer_state' => ['nullable', Rule::enum(OfferState::class)],
+            // «В гараже» маршрут не ставит: в гараж машину ведёт гаражная сделка (её конец) или «Отдать в гараж».
+            'offer_state' => ['nullable', Rule::enum(OfferState::class)->except([OfferState::Garage])],
             'car_place' => ['nullable', Rule::enum(CarPlace::class)],
             'ask_title' => ['nullable', 'string', 'max:120'],
             'ask_text' => ['nullable', 'string', 'max:2000'],

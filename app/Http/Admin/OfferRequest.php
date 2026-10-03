@@ -96,6 +96,7 @@ class OfferRequest extends FormRequest
             'chat_enabled' => ['boolean'],
             'share_locked' => ['boolean'],
             'recommended' => ['boolean'],
+            'garage_allowed' => ['boolean'],
             'audience_rules' => ['nullable', 'json'],
             'vendor_id' => [$need(), 'exists:vendors,id'],
             'answer_by' => ['nullable', 'date'],
@@ -129,7 +130,7 @@ class OfferRequest extends FormRequest
         if ($only !== null) {
             $data = Arr::only($data, $only);
         }
-        foreach (['show_vin', 'show_address', 'chat_enabled', 'share_locked', 'recommended', 'prices_include_vat'] as $flag) {
+        foreach (['show_vin', 'show_address', 'chat_enabled', 'share_locked', 'recommended', 'prices_include_vat', 'garage_allowed'] as $flag) {
             if ($sent($flag)) {
                 $data[$flag] = $this->boolean($flag);
             }

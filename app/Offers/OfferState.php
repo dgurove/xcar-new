@@ -95,7 +95,8 @@ enum OfferState: string
             self::Open => [self::Draft, self::Sold, self::Garage, self::Cancelled, self::Archived],
             // Из гаража машина на витрину не возвращается: «отдали по ошибке» — обратно в черновик.
             self::Garage => [self::Draft, self::Archived],
-            self::Sold => [self::Delivered, self::Cancelled, self::Open],
+            // В гараж из сделки — только гаражной, концом её маршрута (`ChangeOfferState`); руками «Отдать в гараж» у Sold нет.
+            self::Sold => [self::Delivered, self::Garage, self::Cancelled, self::Open],
             self::Archived => [self::Draft],
             self::Delivered, self::Cancelled => [self::Archived],
         }, true);

@@ -16,7 +16,8 @@ namespace App\Workflow\Presets;
  *
  * Строка этапа: name, block, waits_for, limit_minutes, deadline_source,
  * offer_state, car_place, ask_title, ask_text, asks, fields, staff_fields,
- * letter, exits — [[label, actor, to], …].
+ * letter, exits — [[label, actor, to, branch?], …]. Ветка исхода (`Outcome::fits`): garage — только гаражной
+ * сделке, где поставщику платим мы, buyer — всем остальным.
  */
 abstract class Route
 {
@@ -91,7 +92,7 @@ abstract class Route
      * @param  ?array  $agreed  выходы «Поставщик согласовал» сразу дальше, без «Согласия менеджера»: у Совкомбанка
      *                          согласие поставщика и есть покупка, второй раз менеджера не спрашивают
      */
-    protected function head(string $nobody = 'no_bids', ?array $confirm = null, array $draftExits = [], string $draftDeadline = 'own', ?array $agreed = null): array
+    protected function head(string $nobody = 'no_bids', ?array $confirm = null, array $draftExits = [], string $draftDeadline = 'own', ?array $agreed = null, bool $garage = false): array
     {
         $head = [
             'draft' => [
@@ -116,7 +117,10 @@ abstract class Route
                 'name' => 'Согласие менеджера', 'block' => 'agreement', 'waits_for' => 'manager', 'limit_minutes' => 240,
                 'ask_title' => 'Подтвердите покупку', 'ask_text' => 'Поставщик согласовал продажу автомобиля по Вашей цене. Подтвердите покупку или откажитесь от неё.',
                 // Отказ — обычный исход в приём: вход туда отменяет сделку и отклоняет подтверждение.
-                'exits' => $confirm ?? [['Покупаю', 'manager', 'confirmed'], ['Отказываюсь', 'manager', 'bidding']],
+                // Гаражная сделка «платим мы» вместо «Покупаю» видит «Забираю в гараж» — дальше её ветка.
+                'exits' => $confirm ?? ($garage
+                    ? [['Покупаю', 'manager', 'confirmed', 'buyer'], ['Забираю в гараж', 'manager', 'garage_confirmed', 'garage'], ['Отказываюсь', 'manager', 'bidding']]
+                    : [['Покупаю', 'manager', 'confirmed'], ['Отказываюсь', 'manager', 'bidding']]),
             ],
         ];
         if ($agreed) {
@@ -125,6 +129,66 @@ abstract class Route
         }
 
         return $head;
+    }
+
+    /**
+     * Блоки с гаражной веткой перед «Сделка закрыта»: лестница не ведёт к блоку, что стоит раньше текущего, и
+     * гаражные в хвосте оборвали бы её до конца сделки.
+     */
+    protected static function withGarageBlocks(array $blocks): array
+    {
+        $at = array_search('won', array_keys($blocks), true);
+        $at = $at === false ? count($blocks) : $at;
+
+        return array_slice($blocks, 0, $at, true) + self::garageBlocks() + array_slice($blocks, $at, null, true);
+    }
+
+    /** Блоки гаражной ветки: имена свои — лестница сравнивает блоки по имени. */
+    public static function garageBlocks(): array
+    {
+        return [
+            'agreement_garage' => ['name' => 'Оформляем на нас', 'text' => 'Машина уходит к Вам в гараж: подтверждаем покупку поставщику, оплачиваем и оформляем документы на нас.'],
+            'handover_garage' => ['name' => 'Забрать в гараж', 'text' => 'Автомобиль оплачен и оформлен. Заберите его и отметьте, что забрали.'],
+        ];
+    }
+
+    /**
+     * Гаражная ветка «платим мы» (03.10.2026): подтвердили поставщику, оплатили, получили документы на нас, менеджер
+     * забрал машину — конец маршрута ставит её ему в гараж на доставку (`ChangeOfferState`). Выдачу с нашей парковки
+     * «Автомобиль передан» жмёт сама (`SyncOffer`). $confirm — со своим письмом поставщику (у Каркаде писем нет).
+     */
+    public static function garageSegment(bool $confirm = true): array
+    {
+        $rows = [
+            'garage_confirmed' => [
+                'name' => 'Подтвердили покупку поставщику', 'block' => 'agreement_garage', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'confirmed',
+                'exits' => [['Ответ поставщика получен', 'staff', 'garage_payment']],
+            ],
+            'garage_payment' => [
+                'name' => 'Оплата поставщику', 'block' => 'agreement_garage', 'waits_for' => 'us', 'limit_minutes' => 2 * self::DAY,
+                'staff_fields' => [['label' => 'Дата оплаты'], ['label' => 'Номер платёжки']],
+                'exits' => [['Поставщику оплачено', 'staff', 'garage_papers']],
+            ],
+            'garage_papers' => [
+                'name' => 'Документы на нас', 'block' => 'agreement_garage', 'waits_for' => 'supplier', 'limit_minutes' => 5 * self::DAY,
+                'exits' => [['Документы получены', 'staff', 'garage_pickup']],
+            ],
+            'garage_pickup' => [
+                'name' => 'Выдача автомобиля', 'block' => 'handover_garage', 'waits_for' => 'manager', 'limit_minutes' => 5 * self::DAY,
+                'ask_title' => 'Заберите автомобиль', 'ask_text' => 'Автомобиль оплачен и оформлен на нас. Заберите его и отметьте, что забрали.',
+                'staff_fields' => [['label' => 'Адрес', 'type' => 'textarea'], ['label' => 'Контакт'], ['label' => 'Дата выдачи']],
+                'exits' => [['Автомобиль забрал', 'manager', 'closed_won'], ['Автомобиль передан', 'staff', 'closed_won']],
+            ],
+        ];
+        if (! $confirm) {
+            unset($rows['garage_confirmed']);
+        }
+        // Имена этапов в маршруте уникальны: у веток «на себя» и «в гараж» — пометка.
+        foreach ($rows as &$row) {
+            $row['name'] .= ' — в гараж';
+        }
+
+        return $rows;
     }
 
     /** Подтвердили поставщику — этап ветки, а не общего начала: у Совкомбанка их два. */

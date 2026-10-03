@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Park\Actions\CloseRequest;
 use App\Park\Actions\RequestTowFromOffer;
 use App\Workflow\Actions\DropRoute;
@@ -42,6 +43,8 @@ class RouteController
     {
         $stage = Stage::with('block', 'workflow')->findOrFail($request->validate(['stage_id' => ['required', 'integer']])['stage_id']);
         abort_unless($stage->workflow->vendor_id === $offer->vendor_id, 403);
+        // Маршрут гаражной сделки кончился машиной в гараже — назад его ведёт «Отдали по ошибке», не шаг пути.
+        abort_if($offer->state === OfferState::Garage, 422);
         $passed = Path::for($offer, $stage->workflow->track)->where('state', Path::DONE)->pluck('block.id')->all();
         abort_unless(in_array($stage->block_id, $passed, true), 422);
         $place($offer, $stage, $request->user(), back: true);

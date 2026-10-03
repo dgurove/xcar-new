@@ -801,7 +801,7 @@ class MailController
             'car' => $offer->titleWithYear(),
             'vin' => $offer->vin ?? '',
             'claim_ref' => $offer->claim_ref ?? '',
-            'price' => $offer->deal?->amount ? number_format($offer->deal->amount, 0, '', ' ').' ₽' : ($offer->asking_price ? number_format($offer->asking_price, 0, '', ' ').' ₽' : ''),
+            'price' => $offer->deal?->base() ? number_format($offer->deal->base(), 0, '', ' ').' ₽' : ($offer->asking_price ? number_format($offer->asking_price, 0, '', ' ').' ₽' : ''),
             'manager' => $offer->deal?->buyer?->name ?? '',
             'insurer' => $offer->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),

@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Telegram\Text;
 use App\Workflow\Position;
@@ -23,7 +24,8 @@ final class StageDueNotice extends Notice
 
     public function href(): string
     {
-        return $this->dealId ? "/deals/{$this->dealId}" : "/offers/{$this->offer->number}";
+        // Гаражная сделка ведёт в гараж — её шаги менеджер видит в карточке машины.
+        return $this->dealId ? (Deal::find($this->dealId)?->href() ?? "/deals/{$this->dealId}") : "/offers/{$this->offer->number}";
     }
 
     public function offerNumber(): ?int

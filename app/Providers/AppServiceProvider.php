@@ -20,6 +20,7 @@ use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Listeners\AttachGuestEnquiry;
 use App\Chats\Listeners\ScheduleAutoReply;
 use App\Garage\Listeners\CloseWhenPaid;
+use App\Garage\Listeners\PayoutWhenBuyerPaid;
 use App\Garage\Listeners\ReopenWhenVoided;
 use App\Live\PublishLiveUpdates;
 use App\Mail\Extraction\AttachmentReader;
@@ -75,6 +76,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(VehicleSold::class, SendPickupLink::class);
         Event::listen(PaymentRecorded::class, AdvanceOnPayment::class);
         Event::listen(PaymentRecorded::class, PayoutWhenPaid::class);
+        Event::listen(PaymentRecorded::class, PayoutWhenBuyerPaid::class);
         Event::listen(PaymentRecorded::class, CloseWhenPaid::class);
         Event::listen(PaymentClaimed::class, AdvanceOnClaim::class);
         Event::listen(PaymentConfirmed::class, AdvanceOnPayment::class);

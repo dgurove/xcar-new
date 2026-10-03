@@ -18,7 +18,7 @@
                 <x-ui.field name="block_id" label="Блок" :options="$w->blocks->pluck('name', 'id')" :value="$stage->block_id"/>
                 <x-ui.field name="waits_for" label="Чей ход" :options="WaitsFor::options()" :value="$stage->waits_for?->value"/>
                 @if ($w->track === Track::Sale)
-                    <x-ui.field name="offer_state" label="Что становится с предложением" :options="OfferState::options()" placeholder="Не меняется" :value="$stage->offer_state?->value"/>
+                    <x-ui.field name="offer_state" label="Что становится с предложением" :options="collect(OfferState::options())->except(OfferState::Garage->value)" placeholder="Не меняется" :value="$stage->offer_state?->value"/>
                 @else
                     <x-ui.field name="car_place" label="Где ТС" :options="CarPlace::options()" placeholder="Не меняется" :value="$stage->car_place?->value"/>
                 @endif

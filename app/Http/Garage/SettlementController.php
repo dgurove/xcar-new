@@ -6,8 +6,13 @@ use App\Billing\Acquiring\Actions\CancelPayLink;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
+use App\Billing\InvoiceState;
+use App\Billing\Party;
+use App\Billing\PartyKind;
 use App\Billing\PaymentSource;
+use App\Garage\Actions\AdvanceCar;
 use App\Garage\Actions\ClearGarageSold;
+use App\Garage\Actions\IssueGaragePayout;
 use App\Garage\Actions\MarkGarageSold;
 use App\Garage\Actions\SettleGarageCar;
 use App\Garage\Car;
@@ -16,22 +21,35 @@ use App\Offers\Offer;
 use App\Support\Money;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 /** Итог по машине и расчёт с менеджером: продажа, вознаграждение, счёт и оплата. */
 class SettlementController
 {
+    /** «Продана» от сотрудника (с датой и покупателем) или «Продаю» от менеджера — только цена. */
     public function sold(Request $request, Offer $offer, MarkGarageSold $sold)
     {
-        $car = $this->staffCar($request, $offer);
+        $car = $this->car($request, $offer);
+        $request->merge(['sold_price' => preg_replace('/\D+/', '', (string) $request->input('sold_price'))]);
         $data = $request->validate([
             'sold_price' => ['required', 'integer', 'min:1'],
             'sold_at' => ['nullable', 'date', 'before_or_equal:today'],
             'buyer_name' => ['nullable', 'string', 'max:120'],
             'buyer_phone' => ['nullable', 'string', 'max:32'],
         ]);
-        $sold($car, $data + ['sold_at' => now()], $request->user());
+        $sold($car, ['sold_at' => now()] + array_filter($data), $request->user());
 
         return back()->with('toast', 'Продана за '.Money::rub($data['sold_price']));
+    }
+
+    /** «Привёз», «Готова» — следующий этап кнопкой; менеджер или сотрудник. */
+    public function advance(Request $request, Offer $offer, AdvanceCar $advance)
+    {
+        $car = $this->car($request, $offer);
+        $label = $car->state->advance()[1] ?? null;
+        $advance($car, $request->user());
+
+        return back()->with('toast', $label ?? 'Готово');
     }
 
     public function unsold(Request $request, Offer $offer, ClearGarageSold $clear)
@@ -41,11 +59,26 @@ class SettlementController
         return back()->with('toast', 'Не продана');
     }
 
+    /** Счёт с вознаграждением: платит менеджер (как раньше) или его покупатель — плательщик, как у сделки. */
     public function settle(Request $request, Offer $offer, SettleGarageCar $settle)
     {
         $car = $this->staffCar($request, $offer);
-        $commission = $request->validate(['commission' => ['nullable', 'integer', 'min:0']])['commission'] ?? null;
-        $invoice = $settle($car, $request->user(), $commission);
+        $data = $request->validate([
+            'commission' => ['nullable', 'integer', 'min:0'],
+            'payer' => ['nullable', 'in:manager,buyer'],
+            'party_id' => ['nullable', Rule::when(fn () => ! in_array($request->input('party_id'), [null, '', 'new'], true), ['exists:billing_parties,id'])],
+            'party_name' => [Rule::requiredIf(fn () => $request->input('payer') === 'buyer' && $request->input('party_id') === 'new'), 'nullable', 'string', 'max:255'],
+            'party_kind' => ['nullable', Rule::enum(PartyKind::class)],
+            'party_inn' => ['nullable', 'string', 'max:12'],
+            'party_phone' => ['nullable', 'string', 'max:32'],
+        ], ['party_name.required' => 'Кто платит — название или ФИО']);
+        $buyer = null;
+        if (($data['payer'] ?? 'manager') === 'buyer') {
+            $buyer = ($data['party_id'] ?? 'new') === 'new'
+                ? ['kind' => PartyKind::tryFrom($data['party_kind'] ?? '') ?? PartyKind::Person, 'name' => $data['party_name'], 'inn' => $data['party_inn'] ?? null, 'phone' => $data['party_phone'] ?? null]
+                : Party::findOrFail($data['party_id']);
+        }
+        $invoice = $settle($car, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, $buyer);
 
         return back()->with('toast', $invoice ? 'Счёт '.$invoice->label() : 'Расчёт закрыт');
     }
@@ -54,14 +87,16 @@ class SettlementController
     public function pay(Request $request, Offer $offer, RecordPayment $record)
     {
         $car = $this->staffCar($request, $offer);
-        abort_unless($car->invoice, 404);
+        // Покупатель уже оплатил — дальше ждёт выплата менеджеру: «Выплатили» отмечает её.
+        $invoice = $car->payoutInvoice ?? $car->invoice;
+        abort_unless($invoice, 404);
         $request->merge(['amount' => Money::parse($request->input('amount'))]);
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
             'paid_at' => ['nullable', 'date', 'before_or_equal:today'],
         ]);
-        $claim = $car->invoice->claims()->first();
-        $record($car->invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, $claim?->source ?? PaymentSource::Bank, null, null, $claim);
+        $claim = $invoice->claims()->first();
+        $record($invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, $claim?->source ?? PaymentSource::Bank, null, null, $claim);
 
         return back()->with('toast', 'Поступило '.Money::exact($data['amount']));
     }
@@ -85,13 +120,26 @@ class SettlementController
         return back()->with('toast', 'Ссылка отменена');
     }
 
+    /** Аннулировать открытый документ: выплату менеджеру, если покупатель уже заплатил, иначе сам счёт. */
     public function voidInvoice(Request $request, Offer $offer, VoidInvoice $void)
     {
         $car = $this->staffCar($request, $offer);
-        abort_unless($car->invoice, 404);
-        $void($car->invoice, $request->user(), $request->input('reason'));
+        $payout = $car->payoutInvoice?->state === InvoiceState::Void ? null : $car->payoutInvoice;
+        $document = $payout ?? $car->invoice;
+        abort_unless($document, 404);
+        $void($document, $request->user(), $request->input('reason'));
 
-        return back()->with('toast', 'Счёт аннулирован');
+        return back()->with('toast', $payout ? 'Выплата аннулирована' : 'Счёт аннулирован');
+    }
+
+    /** Выплата менеджеру заново: покупатель заплатил, а выплаты нет (аннулировали или оплата пришла без автора). */
+    public function payout(Request $request, Offer $offer, IssueGaragePayout $issue)
+    {
+        $car = $this->staffCar($request, $offer);
+        $commission = $request->validate(['commission' => ['nullable', 'integer', 'min:0']])['commission'] ?? null;
+        $invoice = $issue($car, $request->user(), $commission !== null ? (int) $commission : null);
+
+        return back()->with('toast', $invoice ? 'К выплате '.Money::exact($invoice->remaining()) : 'Расчёт закрыт');
     }
 
     /** PDF счёта — сотруднику и хозяину машины; на сайте свой адрес, но туда из гаража не ходят. */
@@ -106,7 +154,7 @@ class SettlementController
 
     private function car(Request $request, Offer $offer): Car
     {
-        $car = Car::where('offer_id', $offer->id)->with(['offer', 'manager', 'costs', 'invoice.payments'])->firstOrFail();
+        $car = Car::where('offer_id', $offer->id)->with(['offer', 'manager', 'costs', 'invoice.payments', 'payoutInvoice', 'deal'])->firstOrFail();
         abort_unless($request->user()->isStaff() || $car->manager_id === $request->user()->id, 404);
 
         return $car;

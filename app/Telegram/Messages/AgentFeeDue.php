@@ -14,7 +14,7 @@ final class AgentFeeDue extends Message
 
     protected function title(): string
     {
-        $offer = $this->fee->deal?->offer;
+        $offer = $this->fee->deal?->offer ?? $this->fee->offer;
 
         return 'К выплате '.$this->fee->party->name.($offer ? ': '.$offer->titleWithYear() : '');
     }
@@ -23,7 +23,7 @@ final class AgentFeeDue extends Message
     {
         $f = $this->fee;
 
-        return Text::lines($f->deal?->offer,
+        return Text::lines($f->deal?->offer ?? $f->offer,
             'Агентское вознаграждение '.Money::rub($f->remaining()).' до '.$f->due_at->translatedFormat('j M'),
             $f->party->payoutReady() ? $f->party->bankDetails() : 'Реквизитов для выплаты нет');
     }

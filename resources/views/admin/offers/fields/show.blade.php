@@ -1,5 +1,5 @@
 {{-- «Показ» — под описанием «Транспортного средства», только админу: до когда принимаем подтверждения, кому показывать
-     (волны, шторкой), «Рекомендуем», чат с покупателями, запрет шеринга. Одно на редактор и окошко строки; $grid — сетка
+     (волны, шторкой), «Рекомендуем», чат с покупателями, запрет шеринга, «Можно в гараж» (менеджер выбирает «В гараж» при подтверждении). Одно на редактор и окошко строки; $grid — сетка
      колонок, $summary — кто кому из покупателей уже открыл (только редактор). --}}
 @if (auth()->user()->canManageCrm())
 <section class="mt-6">
@@ -21,6 +21,7 @@
             <x-ui.check name="recommended" :checked="$offer->recommended">Рекомендуем</x-ui.check>
             <x-ui.check name="chat_enabled" :checked="$offer->chat_enabled">Чат с покупателями</x-ui.check>
             <x-ui.check name="share_locked" :checked="$offer->share_locked">Запретить шеринг</x-ui.check>
+            <x-ui.check name="garage_allowed" :checked="$offer->garage_allowed">Можно в гараж</x-ui.check>
         </div>
     </div>
 </section>

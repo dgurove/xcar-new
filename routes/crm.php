@@ -5,6 +5,7 @@ use App\Http\Admin\BidController;
 use App\Http\Admin\ChatController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\GalleryController;
+use App\Http\Admin\GarageController;
 use App\Http\Admin\InterestController;
 use App\Http\Admin\InvoiceController;
 use App\Http\Admin\MailAccountController;
@@ -139,6 +140,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::redirect('/work', '/work/deals');
         Route::get('/work/deals', [DealController::class, 'index']);
         Route::get('/work/deals/{deal}', [DealController::class, 'show']);
+        // У кого что в гараже и во что обошлось.
+        Route::get('/work/garage', [GarageController::class, 'index']);
+        Route::get('/work/garage/{offer}/peek', [GarageController::class, 'peek']);
         Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
         // Деньги по сделкам: заявки менеджеров об оплате, вознаграждения к выплате, счета; карточка счёта — общая со стоянкой.
