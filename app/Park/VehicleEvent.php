@@ -48,6 +48,7 @@ class VehicleEvent extends Model
             EventType::Assigned => 'Исполнитель: '.($p['user'] ?? ''),
             EventType::Cancelled => 'Не привезена'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
             EventType::Linked => 'Связана с предложением № '.($p['number'] ?? ''),
+            EventType::Unlinked => 'Снята с продажи (была № '.($p['number'] ?? '').')',
             EventType::Charged => 'Начислено: '.($p['title'] ?? '').' — '.Money::rub($p['amount'] ?? 0),
             EventType::Invoiced => 'Счёт '.($p['label'] ?? '').' на '.Money::rub($p['amount'] ?? 0).' — '.($p['party'] ?? ''),
             EventType::Owed => 'Должны '.($p['party'] ?? '').' '.Money::rub($p['amount'] ?? 0),

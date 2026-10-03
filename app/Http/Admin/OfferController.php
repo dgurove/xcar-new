@@ -16,6 +16,7 @@ use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\ScheduleOffer;
+use App\Offers\Actions\UnlistParkOffer;
 use App\Offers\Actions\UnscheduleOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\AudienceRules;
@@ -280,6 +281,14 @@ class OfferController
         }
 
         return response()->noContent();
+    }
+
+    /** Черновик из парковки завели в продажу зря: отвязать ТС и удалить («Снять с продажи» в шапке редактора). */
+    public function unlist(Offer $offer, UnlistParkOffer $unlist)
+    {
+        $unlist($offer, request()->user());
+
+        return redirect('/')->with('toast', 'Снято с продажи');
     }
 
     /** Строка таблицы и полоса окошка после автосохранения: окошко не перерисовывается, меняются только они. */
