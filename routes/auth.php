@@ -48,6 +48,8 @@ Route::post('/login/as/{token}', [ImpersonationController::class, 'enter'])->mid
 // Пригласительная ссылка: и гостю, и вошедшему — контроллер сам решает, что показать.
 Route::get('/i/{invite}', [InviteController::class, 'show'])->middleware('throttle:30,1');
 Route::post('/i/{invite}', [InviteController::class, 'accept'])->middleware('throttle:5,1');
+// Поиск города для поля «Города» менеджера: гостю при регистрации и вошедшему в профиле.
+Route::get('/cities', [\App\Http\Admin\ReferenceController::class, 'settlements'])->middleware('throttle:60,1');
 Route::post('/account/password', [PasswordController::class, 'change'])->middleware('auth');
 
 // Ошибка ключа в браузере — гостем и вошедшим, чтобы её было видно в логе.

@@ -40,6 +40,10 @@
             @if ($invite->allows('email'))
                 <input name="email" type="email" @if ($invite->forBuyer()) required @endif inputmode="email" autocomplete="email" class="field-input" placeholder="{{ $invite->forBuyer() ? 'Почта' : 'Почта, если есть' }}" value="{{ old('email') }}">
             @endif
+            @if ($invite->role === \App\Users\Role::Manager)
+                {{-- Города — важное поле менеджера, без него не зарегистрироваться. --}}
+                <x-ui.city-picker :selected="\App\Cars\Settlement::whereIn('id', (array) old('cities', []))->orderBy('name')->get()"/>
+            @endif
             @foreach (['name', 'login', 'password', 'phone', 'email', 'avatar', 'consent'] as $field)
                 @error($field)<p class="text-sm text-danger">{{ $message }}</p>@enderror
             @endforeach

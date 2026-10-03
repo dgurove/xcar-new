@@ -3,6 +3,7 @@
 namespace App\Users;
 
 use App\Billing\Party;
+use App\Cars\Settlement;
 use App\Chats\Chat;
 use App\Media\MediaUrl;
 use App\Offers\Actions\SyncViewers;
@@ -116,6 +117,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function buyers(): HasMany
     {
         return $this->hasMany(User::class, 'manager_id')->where('role', Role::Buyer);
+    }
+
+    /** Города менеджера: где он работает (указывает при регистрации, правит в профиле). */
+    public function settlements(): BelongsToMany
+    {
+        return $this->belongsToMany(Settlement::class, 'user_settlements')->orderBy('name');
     }
 
     /** Группы, в которых состоит покупатель. */

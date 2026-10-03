@@ -26,14 +26,21 @@
                     @if ($user->email)<span class="tag">{{ $user->email }}</span>@endif
                 </div>
             @endif
+            @if ($user->isManager() && $user->settlements->isNotEmpty())
+                <div class="mt-1.5 flex flex-wrap justify-center gap-1.5">@foreach ($user->settlements as $city)<x-ui.place class="tag">{{ $city->name }}</x-ui.place>@endforeach</div>
+            @endif
         </div>
         @error('avatar')<p class="field-error">{{ $message }}</p>@enderror
         <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open"><x-ui.icon name="edit" class="size-4"/> Изменить</button>
-        <x-ui.sheet id="profile-edit" title="Профиль" :open="$errors->has('name') || $errors->has('email')">
+        <x-ui.sheet id="profile-edit" title="Профиль" :open="$errors->has('name') || $errors->has('email') || $errors->has('cities')">
             <form method="post" action="/account" class="flex flex-col gap-3 text-left">
                 @csrf @method('put')
                 <x-ui.field name="name" label="Имя" :value="$user->name" autocomplete="name" required/>
                 @if ($user->mayHave('email'))<x-ui.field name="email" label="Почта" type="email" :value="$user->email" autocomplete="email"/>@endif
+                @if ($user->isManager())
+                    <input type="hidden" name="cities_form" value="1">
+                    <x-ui.city-picker :selected="$user->settlements" label="Города, где вы работаете"/>
+                @endif
                 <x-ui.button class="mt-2">Сохранить</x-ui.button>
                 @if ($user->avatarUrl())
                     <button type="submit" name="remove_avatar" value="1" class="btn btn-ghost text-danger" data-turbo-confirm="Удалить фото?" data-turbo-confirm-label="Удалить">Удалить фото</button>

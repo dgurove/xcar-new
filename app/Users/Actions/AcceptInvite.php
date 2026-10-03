@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  * По ссылке админа для менеджера человек становится менеджером; такая ссылка
  * одноразовая, счётчик закрывает её тут же.
  *
- * @param  array{name: string, login: string, password: string, phone?: ?string, email?: ?string}  $data
+ * @param  array{name: string, login: string, password: string, phone?: ?string, email?: ?string, cities?: list<int>}  $data
  */
 final class AcceptInvite
 {
@@ -48,6 +48,9 @@ final class AcceptInvite
             ]);
             if ($buyer && $invite->group_id) {
                 $user->groups()->attach($invite->group_id, ['created_at' => now()]);
+            }
+            if ($invite->role === Role::Manager) {
+                $user->settlements()->sync(array_unique($data['cities'] ?? []));
             }
             $invite->increment('uses_count');
 

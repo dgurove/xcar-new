@@ -6,6 +6,7 @@ use App\Support\Phone;
 use App\Support\Surface;
 use App\Users\Actions\AcceptInvite;
 use App\Users\Invite;
+use App\Users\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -57,7 +58,14 @@ class InviteController
             // Менеджеру почта не обязательна: покупатели видят его телефон.
             $rules['email'] = [$invite->forBuyer() ? 'required' : 'nullable', 'email', 'max:190', Rule::unique('users', 'email')];
         }
+        if ($invite->role === Role::Manager) {
+            // Города — важное поле менеджера: по ним потом разводят предложения и покупателей.
+            $rules['cities'] = ['required', 'array', 'min:1', 'max:10'];
+            $rules['cities.*'] = ['integer', Rule::exists('settlements', 'id')];
+        }
         $data = $request->validate($rules, [
+            'cities.required' => 'Укажите город, в котором вы работаете',
+            'cities.min' => 'Укажите город, в котором вы работаете',
             'login.regex' => 'Логин — латиницей, от трёх знаков: буквы, цифры, точка',
             'login.unique' => 'Этот логин уже занят',
             'phone.regex' => 'Нужен номер из 11 цифр, например +7 900 123-45-67',
