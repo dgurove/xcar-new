@@ -25,7 +25,7 @@
     // Две колонки, которые не распирает содержимое (дата-время, VIN с кнопкой): иначе окошко листалось вбок.
     $grid = 'grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-2.5';
 @endphp
-<turbo-frame id="peek" target="_top">
+<x-ui.detail>
     <x-ui.peek :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         <x-slot:media>
             <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
@@ -131,7 +131,7 @@
                 @endforeach
             </div>
         @endif
-        <form method="post" action="/offers/{{ $n }}" class="peek-edit mt-5 flex flex-col gap-5" data-controller="vin autosave" data-turbo-frame="peek">
+        <form method="post" action="/offers/{{ $n }}" class="peek-edit mt-5 flex flex-col gap-5" data-controller="vin autosave" data-turbo-frame="detail">
             @csrf @method('put')
             <section>
                 <h2 class="peek-section">Деньги</h2>
@@ -160,4 +160,4 @@
         </x-slot:tools>
         <x-slot:row><x-offer.table-row :offer="$offer" :gallery="$list"/></x-slot:row>
     </x-ui.peek>
-</turbo-frame>
+</x-ui.detail>

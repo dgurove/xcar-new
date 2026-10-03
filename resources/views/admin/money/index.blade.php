@@ -1,7 +1,7 @@
 {{-- Деньги по сделкам: пресеты, сортировка и поиск в тулбаре, «Взаиморасчёты по менеджерам» строкой над списком,
      сами счета и вознаграждения — только таблицей с окошком; действия в окошке, в строках их нет. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
-<x-ui.shell title="Деньги" :heading="false">
+<x-ui.shell title="Деньги" :heading="false" :detail="$detail">
     <x-admin.work-titles current="money" :count="$invoices->total()"/>
     <x-ui.toolbar class="mt-5" :sorts="\App\Http\Admin\MoneyController::SORTS" :sort="$sort" :pills="\App\Http\Admin\MoneyController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['claims' => !empty($counts['claims']) ? 'pill-urgent' : '']" name="money" :facets="$facets" search="Менеджер, № предложения, ТС" search-target="#invoices-list">
         <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::WIDE]" :current="$view"/></x-slot:extra>
@@ -15,7 +15,7 @@
     @if ($invoices->isEmpty())
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : match ($preset) { 'claims' => 'Никто об оплате не сообщал', 'payouts' => 'Выплачивать нечего', default => 'Счетов нет' } }}</x-ui.empty>
     @else
-        <x-ui.table id="invoices" class="mt-6" :view="$view" :open="request('peek')">
+        <x-ui.table id="invoices" class="mt-6" :view="$view">
             <x-slot:head><tr><th class="grow">Менеджер</th><th class="cell-dim hidden sm:table-cell">№</th><th class="cell-dim col-peek-hide hidden lg:table-cell">ТС</th><th class="hidden sm:table-cell">Срок</th><th class="num">Сумма</th><th class="num hidden sm:table-cell">Остаток</th></tr></x-slot:head>
             @foreach ($invoices as $i)<x-money.table-row :invoice="$i"/>@endforeach
         </x-ui.table>

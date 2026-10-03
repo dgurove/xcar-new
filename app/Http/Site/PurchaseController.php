@@ -11,6 +11,7 @@ use App\Purchases\Offer;
 use App\Purchases\OfferState;
 use App\Purchases\Purchase;
 use App\Purchases\Restriction;
+use App\Support\Detail;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,6 +32,10 @@ class PurchaseController
     public function show(Request $request, Purchase $purchase)
     {
         abort_unless($purchase->state->isPublic(), 404);
+        $detail = Detail::of($request, fn (string $key) => ($car = $purchase->cars()->where('ref', $key)->first()) ? $this->peek($request, $purchase, $car) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         ListPrefs::sync($request, 'purchase-cars');
         $filters = $request->only(['preset', 'q', 'kind', 'sort', 'group']);
         $group = $this->group($filters);
@@ -42,7 +47,7 @@ class PurchaseController
         $done = $this->visible($purchase, $request, $group)->whereHas('offers', fn ($o) => $o->where('user_id', $request->user()->id)->whereIn('state', [OfferState::Active, OfferState::Chosen]))->count();
 
         return view('site.purchases.show', [
-            'purchase' => $purchase, 'cars' => $cars, 'filters' => $filters, 'total' => $total, 'done' => $done, 'kinds' => $kinds, 'group' => $group,
+            'purchase' => $purchase, 'cars' => $cars, 'filters' => $filters, 'total' => $total, 'done' => $done, 'kinds' => $kinds, 'group' => $group, 'detail' => $detail,
         ]);
     }
 

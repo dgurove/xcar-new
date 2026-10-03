@@ -4,7 +4,9 @@ namespace App\Http\Admin;
 
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Offer;
+use App\Offers\OfferNumber;
 use App\Offers\OfferState;
+use App\Support\Detail;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -15,8 +17,12 @@ class GalleryController
 {
     public const SORTS = ['fresh' => 'Сначала новые', 'interest' => 'По интересу', 'number' => 'По номеру'];
 
-    public function index(Request $request)
+    public function index(Request $request, OfferController $offers)
     {
+        $detail = Detail::of($request, fn (string $key) => $offers->detailOf($request, OfferNumber::find($key), gallery: true));
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         $facets = Facets::for($request, 'crm-gallery', ...OfferController::facets());
         ListPrefs::sync($request, 'crm-gallery', keep: $facets->keys());
         $sort = $request->query('sort', 'fresh');
@@ -41,6 +47,7 @@ class GalleryController
             'offers' => $offers,
             'sort' => $sort,
             'facets' => $facets,
+            'detail' => $detail,
         ]);
     }
 

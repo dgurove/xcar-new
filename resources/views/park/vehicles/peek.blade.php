@@ -13,7 +13,7 @@
     $scanUrl = $href.'/scan';
     $gaps = ! $vehicle->brand_id || ! $vehicle->model_id || $vehicle->vinProblem() || ! $vehicle->year || ! $vehicle->color;
 @endphp
-<turbo-frame id="peek" target="_top">
+<x-ui.detail>
     <x-ui.peek :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
         <x-slot:marks>
             <x-ui.state :tone="$state->tone()">{{ $state->label() }}</x-ui.state>
@@ -95,4 +95,4 @@
         @endif
         <x-slot:row><x-park.table-row :vehicle="$vehicle" :total="$total"/></x-slot:row>
     </x-ui.peek>
-</turbo-frame>
+</x-ui.detail>

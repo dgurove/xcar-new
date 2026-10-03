@@ -9,8 +9,10 @@
      :back — уточнить (для обоих), :phone-back — только для телефона, :back="false" — убрать; :back-row="false" — «назад» только в шапке телефона, без ряда на десктопе.
      :desktop-heading="false" — ряд с h1 только на телефоне (кабинет: на ПК раздел называет пилюля).
      :phone-heading="false" — на телефоне ряд с h1 спрятан: раздел уже назван в таб-баре, его место
-     занимает лента пилюль тулбара (она же якорь для имени в шапке при прокрутке). --}}
-@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null, 'phoneBack' => null, 'backRow' => true, 'phoneHeading' => true, 'desktopHeading' => true, 'cache' => 'no-preview', 'description' => null, 'index' => false])
+     занимает лента пилюль тулбара (она же якорь для имени в шапке при прокрутке).
+     :detail — список с карточкой строки рядом (App\Support\Detail): всё содержимое слева, фрейм detail справа
+     колонкой на ПК и нижним листом на телефоне; пустой фрейм — список во всю ширину. --}}
+@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null, 'phoneBack' => null, 'backRow' => true, 'phoneHeading' => true, 'desktopHeading' => true, 'cache' => 'no-preview', 'description' => null, 'index' => false, 'detail' => null])
 @php
     $heading = $heading === false ? null : ($heading ?? $title);
     // Пустой слот (кабинет передаёт его всегда) — всё равно что нет.
@@ -33,6 +35,7 @@
             {{ $slot }}
         @else
             <div {{ $attributes->merge(['class' => 'container-site pt-6 pb-10 sm:pt-8 sm:pb-14'.($narrow ? ' max-w-3xl' : '')]) }}>
+                @if ($detail)<div class="split" data-controller="detail" data-action="turbo:frame-load->detail#loaded keydown@window->detail#key click->detail#tap" @if ($detail->open()) data-open @endif><div class="split-main">@endif
                 {{-- Крошки — веб-мебель для гостя и поисковиков; у вошедшего экран приложения, «назад» — в шапке. --}}
                 @if ($site && !$installed && ! auth()->check())<x-ui.crumbs :trail="$trail"/>@endif
                 @if ($heading || isset($actions) || ($back && $backRow))
@@ -44,6 +47,7 @@
                     </div>
                 @endif
                 {{ $slot }}
+                @if ($detail)</div>{{ $detail->html() }}</div>@endif
             </div>
         @endif
     </main>

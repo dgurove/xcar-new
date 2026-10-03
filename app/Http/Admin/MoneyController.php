@@ -14,6 +14,7 @@ use App\Billing\ManagerLedger;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
+use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
@@ -38,6 +39,10 @@ class MoneyController
 
     public function index(Request $request)
     {
+        $detail = Detail::of($request, fn (string $key) => ($invoice = Invoice::find($key)) ? $this->peek($invoice) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         $facets = Facets::for($request, 'crm-money',
             Common::manager('(select buyer_id from deals where deals.id = billing_invoices.deal_id)'),
             Common::vendor('(select o.vendor_id from deals d join offers o on o.id = d.offer_id where d.id = billing_invoices.deal_id)'),
@@ -68,6 +73,7 @@ class MoneyController
         $sort === 'fresh' ? $q->latest('issued_at')->latest('id') : $q->orderBy('due_at')->orderBy('id');
 
         return view('admin.money.index', [
+            'detail' => $detail,
             'invoices' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset, 'sort' => $sort, 'q' => $qs, 'counts' => array_filter(self::counts($facets)), 'facets' => $facets,
         ]);

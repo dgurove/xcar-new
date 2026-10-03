@@ -1,13 +1,18 @@
-{{-- Содержимое окошка строки таблицы (фрейм peek), сверху вниз: лента фото (тап —
-     во весь экран), название с метками и ценой справа (aside), факты чипами, ряд
-     действий (actions: главное лаймовое + чипы; без него — «Открыть»), дальше тело —
-     формы, характеристики, описание. row — свежая строка таблицы <tr>, ею
-     peek_controller заменяет выделенную после действия; flash-сообщение и просьба
-     перейти к следующей (session peek-advance) едут шаблонами — их читает он же.
-     tools — кнопки строки в полосу окошка рядом со стрелками (поделиться).
-     photo — одно фото вместо ленты (старые окошки); :photo="false" — без кадра вовсе (ветка почты).
-     media — свой ряд кадров вместо ленты (окошко предложения CRM: кадры правят прямо тут). --}}
+{{-- Карточка строки списка (во фрейме detail, x-ui.detail), сверху вниз: полоса (ручка листа на телефоне, кнопки
+     строки tools — «Поделиться», ✨; «Открыть страницу», «Закрыть»), лента фото (тап — во весь экран), название с
+     метками и ценой справа (aside), факты чипами, ряд действий (actions: главное лаймовое + чипы; без него —
+     «Открыть»), дальше тело — формы, характеристики, описание. Ответ после формы несёт потоки Turbo: свежая строка
+     таблицы (row — <tr> с тем же data-detail-key), тост из flash, «следующий без цены» (session peek-advance).
+     photo — одно фото вместо ленты (старые карточки); :photo="false" — без кадра вовсе (ветка почты).
+     media — свой ряд кадров вместо ленты (карточка предложения CRM: кадры правят прямо тут). --}}
 @props(['href', 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null])
+<div class="detail-bar">
+    <span class="detail-handle" aria-hidden="true"></span>
+    <span id="peek-tools" class="contents">{{ $tools }}</span>
+    <a class="detail-btn ml-auto" href="{{ $href }}" data-turbo-frame="_top" aria-label="Открыть страницу"><x-ui.icon name="expand" class="size-[18px]"/></a>
+    <a class="detail-btn" href="{{ \App\Support\Detail::close() }}" data-turbo-frame="detail" data-turbo-action="replace" data-turbo-prefetch="false" data-detail-target="close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></a>
+</div>
+<div class="detail-body">
 @if ($photos !== null || $media)
     @if ($media){{ $media }}@else<x-offer.gallery :photos="$photos" :alt="$title" strip/>@endif
     {{-- Шапка с лентой: название, справа цена, под названием метки; на телефоне цена — своей строкой под названием,
@@ -37,8 +42,8 @@
     </div>
 @endif
 {{ $slot }}
-@if ($row)<template data-peek-row>{{ $row }}</template>@endif
-@if ($tools && trim($tools) !== '')<template data-peek-tools>{{ $tools }}</template>@endif
 @if (($errors ?? null)?->any())<p class="field-error mt-3">{{ $errors->first() }}</p>@endif
-@if (session('toast') || session('toast-danger'))<template data-peek-toast data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}" @if (session('toast-undo')) data-undo @endif></template>@endif
-@if (session('peek-advance'))<template data-peek-advance></template>@endif
+</div>
+@if ($row)<turbo-stream action="replace" targets="tr[data-detail-key=&quot;{{ \App\Support\Detail::key() }}&quot;]"><template>{{ $row }}</template></turbo-stream>@endif
+@if (session('toast') || session('toast-danger'))<turbo-stream action="toast" data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}" @if (session('toast-undo')) data-undo @endif></turbo-stream>@endif
+@if (session('peek-advance'))<turbo-stream action="advance"></turbo-stream>@endif

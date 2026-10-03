@@ -48,8 +48,8 @@ export default class extends Controller {
         (dialog ? closeSheet(dialog) : Promise.resolve()).then(() => {
             // Итог показан — фрейм без адреса: перечитка страницы морфом не должна снова его показать.
             frame?.removeAttribute('src');
-            const peek = document.querySelector('.peek:not([hidden]) turbo-frame#peek');
-            if (peek?.src) { peek.reload(); return; }
+            // Открыта карточка строки рядом со списком — перечитывается только она (тот же адрес списка в её фрейм).
+            if (document.querySelector('turbo-frame#detail > .detail-card')) { window.Turbo.visit(location.pathname + location.search, { frame: 'detail', action: 'replace' }); return; }
             const refresh = () => {
                 window.dispatchEvent(new CustomEvent('docs:keep'));
                 // Раскрытое под руками (поля ТС в деле) остаётся раскрытым: морф вернул бы свёрнутое с сервера.

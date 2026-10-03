@@ -23,9 +23,9 @@
     $ref = trim(($offer->vendor?->name ?? '').' '.($offer->claim_ref ?? ''));
     $spent = $car->spent();
 @endphp
-<tr id="garage-{{ $offer->number }}" data-peek-url="/work/garage/{{ $offer->number }}/peek" data-href="{{ $car->url() }}" tabindex="0">
+<tr data-detail-key="{{ $offer->number }}" id="garage-{{ $offer->number }}">
     <td class="grow">
-        <span class="cell-title">{{ $offer->titleWithYear() }}</span>
+        <x-ui.row-link :key="$offer->number"><span class="cell-title">{{ $offer->titleWithYear() }}</span></x-ui.row-link>
         <span class="cell-sub"><span class="{{ $tone }}">{{ $stage }}</span>@if ($ref)<span class="sm:hidden">{{ $ref }}</span>@endif</span>
     </td>
     <td class="cell-dim hidden sm:table-cell"><span class="block max-w-56 truncate">{{ $ref }}</span></td>

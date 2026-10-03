@@ -1,5 +1,5 @@
 @php $view = \App\Support\ListView::pick(request(), $offers->total()); @endphp
-<x-ui.cabinet title="Избранное">
+<x-ui.cabinet title="Избранное" :detail="$detail">
     @if ($offers->isEmpty())
         <x-ui.empty href="/offers" link="В предложения">Пока пусто</x-ui.empty>
     @else

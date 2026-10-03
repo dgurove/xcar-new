@@ -5,6 +5,8 @@ namespace App\Http\Admin;
 use App\Garage\Car;
 use App\Garage\CarState;
 use App\Offers\Offer;
+use App\Offers\OfferNumber;
+use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
@@ -21,6 +23,10 @@ class GarageController
 
     public function index(Request $request)
     {
+        $detail = Detail::of($request, fn (string $key) => ($offer = OfferNumber::find($key)) ? $this->peek($offer) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         $facets = Facets::for($request, 'crm-garage',
             Common::manager('garage_cars.manager_id')->none('Взяли под себя'),
             Facet::column('stage', 'Этап', ['этап', 'этапа', 'этапов'], 'garage_cars.state')->enum(CarState::class)->natural(),
@@ -43,6 +49,7 @@ class GarageController
             ->sortBy(fn ($rows, $id) => $id ? $rows->first()->manager->name : "\u{FFFF}");
 
         return view('admin.garage.index', [
+            'detail' => $detail,
             'groups' => $groups,
             'total' => $cars->count(),
             'preset' => $preset,

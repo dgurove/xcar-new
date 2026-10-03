@@ -18,7 +18,7 @@
     <x-ui.empty class="py-6">{{ $q !== '' ? 'Ничего не нашлось' : 'ТС нет' }}</x-ui.empty>
 @else
     @if (ListView::isTable($view))
-        <x-ui.table id="vehicles" :view="$view" :open="$peek">
+        <x-ui.table id="vehicles" :view="$view">
             <x-slot:head>
                 <tr>
                     <th class="grow">Марка, модель</th>

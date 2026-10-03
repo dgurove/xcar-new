@@ -1,8 +1,8 @@
 {{-- Площадки в три вида: плитка — название, адрес, чип свободных и карта мест; строка — то же без карты (нажатие —
      шторка с картой и формой); таблица — столбцы и окошко строки. Чип занятых мест ведёт к ТС. Цифр-итогов нет. --}}
 @php use App\Support\ListView; $admin = auth()->user()->isAdmin(); $view = ListView::pick(request(), $yards->count()) ?? ListView::GRID; $free = fn ($y) => $y->capacity ? max(0, $y->capacity - $y->stored_vehicles_count) : null; @endphp
-<x-ui.shell title="Парковки" :count="$yards->count()">
-    <x-ui.toolbar :pills="['open' => 'Открытые', 'all' => 'Все']" :pill="$closed ? 'all' : 'open'" pill-param="closed" :counts="['all' => $closedCount ?: null]" :hidden="array_filter([ListView::PARAM => request(ListView::PARAM)])" name="yards">
+<x-ui.shell title="Парковки" :count="$yards->count()" :detail="$detail">
+    <x-ui.toolbar :pills="['open' => 'Открытые', 'all' => 'Все']" :pill="$closed ? 'all' : 'open'" pill-param="closed" :counts="['all' => $closedCount ?: null]" name="yards">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:actions>
             {{-- Заводит и правит парковки только админ: управляющему это настройки. --}}
@@ -20,9 +20,9 @@
         <x-ui.table id="yards" class="mt-6" :view="$view">
             <x-slot:head><tr><th class="grow">Парковка</th><th class="cell-dim hidden sm:table-cell">Город</th><th class="num hidden sm:table-cell">Мест</th><th class="num">Занято</th><th class="num">Свободно</th></tr></x-slot:head>
             @foreach ($yards as $yard)
-                <tr id="yard-{{ $yard->id }}" data-peek-url="/yards/{{ $yard->id }}/peek" data-href="/cars?yard={{ $yard->id }}" tabindex="0" class="{{ $yard->is_active ? '' : 'text-ink-dim' }}">
+                <tr data-detail-key="{{ $yard->id }}" id="yard-{{ $yard->id }}" class="{{ $yard->is_active ? '' : 'text-ink-dim' }}">
                     <td class="grow">
-                        <span class="cell-title">{{ $yard->name }}</span>
+                        <x-ui.row-link :key="$yard->id"><span class="cell-title">{{ $yard->name }}</span></x-ui.row-link>
                         <span class="cell-sub">@unless ($yard->is_active)<span>закрыта</span>@endunless<span class="sm:hidden">{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</span></span>
                     </td>
                     <td class="cell-dim hidden sm:table-cell">{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</td>

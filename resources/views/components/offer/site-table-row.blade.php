@@ -15,9 +15,9 @@
     $since = $offer->published_at ?? $offer->created_at;
     $city = $offer->settlement?->title();
 @endphp
-<tr data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}" data-peek-url="{{ $peek }}" data-href="{{ $href }}" tabindex="0">
+<tr data-detail-key="{{ $n }}" data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}">
     <td class="grow">
-        <span class="cell-title">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
+        <x-ui.row-link :key="$n"><span class="cell-title">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
             @if ($ref = $offer->leaseRef())<span>ДЛ {{ $ref }}</span>@else<span class="sm:hidden">№ {{ $n }}</span>@endif
             @if ($gallery)<span class="sm:hidden text-accent-text">скоро в продаже</span>

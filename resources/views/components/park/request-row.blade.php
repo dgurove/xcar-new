@@ -7,9 +7,9 @@
     $href = '/cars/'.$v->id;
     $late = $req->isOverdue();
 @endphp
-<tr id="request-{{ $req->id }}" data-peek-url="/requests/{{ $req->id }}/peek" data-href="{{ $href }}" tabindex="0">
+<tr data-detail-key="{{ $req->id }}" id="request-{{ $req->id }}">
     <td class="grow">
-        <span class="cell-title"><span class="cell-name">{{ $v->titleWithYear() }}</span><x-ui.plate :value="$v->plate" class="title-plate"/></span>
+        <x-ui.row-link :key="$req->id"><span class="cell-title"><span class="cell-name">{{ $v->titleWithYear() }}</span><x-ui.plate :value="$v->plate" class="title-plate"/></span></x-ui.row-link>
         <span class="cell-sub" data-controller="fitline">
             <span class="sm:hidden {{ $late ? 'text-danger' : 'text-ink' }}">{{ mb_strtolower($req->type->label()) }}</span>
             @if ($req->needsCall())<span class="text-urgent">позвонить</span>@endif

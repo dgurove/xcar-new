@@ -1,5 +1,5 @@
 @php $view = \App\Support\ListView::pick(request(), $offers->total()); @endphp
-<x-ui.shell title="Предложения" :count="$offers->total()" :phone-heading="false">
+<x-ui.shell title="Предложения" :count="$offers->total()" :phone-heading="false" :detail="$detail">
     <x-ui.toolbar :sorts="$sorts" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:actions>
@@ -13,7 +13,7 @@
             <x-ui.empty>Предложений нет</x-ui.empty>
         @else
             @if (\App\Support\ListView::isTable($view))
-                <x-ui.table id="offers" :view="$view" :open="$peek">
+                <x-ui.table id="offers" :view="$view">
                     <x-slot:head><x-offer.table-head/></x-slot:head>
                     @foreach ($offers as $offer)<x-offer.table-row :offer="$offer"/>@endforeach
                 </x-ui.table>

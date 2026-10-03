@@ -1,6 +1,6 @@
 {{-- Окошко счёта: светофор, номер и дата, контрагент, ТС; остаток справа; «Оплачен» формой, «Аннулировать» и документы чипами; строки и оплаты. --}}
 @php use App\Support\Money; use App\Billing\InvoiceState; $i = $invoice; $href = '/money/invoices/'.$i->id; @endphp
-<turbo-frame id="peek" target="_top">
+<x-ui.detail>
     <x-ui.peek :href="$href" :title="$i->party->name" :photo="$i->vehicle?->mainPhoto()">
         <x-slot:marks>
             <x-billing.light :invoice="$i"/>
@@ -32,4 +32,4 @@
         </div>
         <x-slot:row><x-billing.table-row :invoice="$i"/></x-slot:row>
     </x-ui.peek>
-</turbo-frame>
+</x-ui.detail>

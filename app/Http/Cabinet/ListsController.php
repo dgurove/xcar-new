@@ -2,8 +2,11 @@
 
 namespace App\Http\Cabinet;
 
+use App\Http\Site\OfferController;
 use App\Offers\Interest;
 use App\Offers\Offer;
+use App\Offers\OfferNumber;
+use App\Support\Detail;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use Illuminate\Http\Request;
@@ -12,6 +15,10 @@ class ListsController
 {
     public function favorites(Request $request)
     {
+        $detail = Detail::of($request, fn (string $key) => ($offer = OfferNumber::find($key)) && $offer->isVisibleTo($request->user()) ? app(OfferController::class)->peek($request, $offer) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         ListPrefs::sync($request, 'favorites');
         // Избранное — только то, что человеку и сейчас видно: закрытое менеджером покупателю не показываем.
         $offers = Offer::with(['brand', 'model', 'media', 'favorites'])
@@ -19,7 +26,7 @@ class ListsController
             ->when($request->user()->isBuyer(), fn ($q) => $q->visibleTo($request->user())->with(['interests' => fn ($i) => $i->where('user_id', $request->user()->id)]))
             ->latest();
 
-        return view('cabinet.favorites', ['offers' => ListView::paginate($request, $offers)]);
+        return view('cabinet.favorites', ['offers' => ListView::paginate($request, $offers), 'detail' => $detail]);
     }
 
     public function interests(Request $request)

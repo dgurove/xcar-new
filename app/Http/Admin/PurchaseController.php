@@ -19,6 +19,7 @@ use App\Purchases\OfferState;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
 use App\Purchases\Restriction;
+use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
@@ -64,6 +65,11 @@ class PurchaseController
      */
     public function show(Request $request, Purchase $purchase)
     {
+        // ?peek=ref — карточка ТС рядом с таблицей; first — первая без нашей цены (адрес получает её ref ниже).
+        $detail = Detail::of($request, fn (string $key) => ($car = $purchase->cars()->where('ref', $key)->first()) ? $this->peek($purchase, $car) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen]);
         // Числа чипов считаются ниже одним проходом по всей закупке — шторки берут их готовыми.
         $counts = [];
@@ -142,12 +148,14 @@ class PurchaseController
         };
 
         $cars = ListView::paginate($request, $cars);
-        // ?peek=ref (или first) — открыть окошко этой строки сразу: так «Оценить» ведёт в таблицу.
-        $peek = $request->query('peek') ? $cars->first(fn ($c) => $request->query('peek') === 'first' || (string) $c->ref === (string) $request->query('peek')) : null;
+        // «Оценить» ведёт в таблицу: first — первая строка страницы.
+        if (Detail::key($request) === 'first') {
+            return redirect($request->fullUrlWithQuery(['peek' => $cars->first()?->ref]));
+        }
 
         return view('admin.purchases.show', [
             'purchase' => $purchase, 'q' => $q, 'pending' => $pending, 'transitions' => array_filter(PurchaseState::cases(), fn ($s) => $s !== $purchase->state),
-            'cars' => $cars, 'preset' => $preset, 'sort' => $sort, 'peek' => $peek ? 'car-'.$peek->id : null,
+            'cars' => $cars, 'preset' => $preset, 'sort' => $sort, 'detail' => $detail,
             'counts' => $counts, 'kind' => $kind, 'kinds' => $kinds, 'facets' => $facets,
             // Один менеджер выбран — его цена в строке подсвечена.
             'highlight' => count($users) === 1 ? $users[0] : null,

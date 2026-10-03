@@ -1,5 +1,5 @@
 @php $view = \App\Support\ListView::pick(request(), $offers->total()); @endphp
-<x-ui.shell title="Галерея" :count="$offers->total()" :phone-heading="false">
+<x-ui.shell title="Галерея" :count="$offers->total()" :phone-heading="false" :detail="$detail">
     <x-ui.toolbar :sorts="\App\Http\Admin\GalleryController::SORTS" :sort="$sort" name="gallery" :facets="$facets" search="Номер, марка, VIN, убыток">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:actions>

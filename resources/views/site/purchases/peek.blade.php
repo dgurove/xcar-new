@@ -11,7 +11,7 @@
     $suffix = $query ? '?'.$query : '';
     $href = "/purchases/{$purchase->number}/{$car->ref}{$suffix}";
 @endphp
-<turbo-frame id="peek" target="_top">
+<x-ui.detail>
     <x-ui.peek :href="$href" :title="$car->titleWithYear()" :photos="$car->visiblePhotos()" :facts="$car->facts()" :action="false">
         <x-slot:marks>
             <span class="tag nums">№ {{ $car->ref }}</span>
@@ -49,4 +49,4 @@
         @if ($car->description)<p class="mt-3 whitespace-pre-line text-sm text-ink-muted">{{ $car->description }}</p>@endif
         <x-slot:row><x-purchase.site-table-row :car="$car" :purchase="$purchase" :query="$query"/></x-slot:row>
     </x-ui.peek>
-</turbo-frame>
+</x-ui.detail>

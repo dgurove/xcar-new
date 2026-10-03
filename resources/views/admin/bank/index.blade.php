@@ -1,7 +1,7 @@
 {{-- Поступления из выписки Сбера: что легло в счёт само, что ждёт руки, что «не наше». Только таблица с окошком,
      действия (привязать к счёту, «не наше») — в окошке. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
-<x-ui.shell title="Поступления" :back="['Деньги', '/work/money']">
+<x-ui.shell title="Поступления" :back="['Деньги', '/work/money']" :detail="$detail">
     <x-ui.toolbar :pills="\App\Http\Admin\BankController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['unmatched' => !empty($counts['unmatched']) ? 'pill-urgent' : '']" name="bank" search="Плательщик, ИНН, назначение">
         <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::WIDE]" :current="$view"/></x-slot:extra>
     </x-ui.toolbar>
@@ -12,7 +12,7 @@
     @if ($transactions->isEmpty())
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : ($preset === 'unmatched' ? 'Все поступления разобраны' : 'Поступлений нет') }}</x-ui.empty>
     @else
-        <x-ui.table id="bank" class="mt-6" :view="$view" :open="request('peek')">
+        <x-ui.table id="bank" class="mt-6" :view="$view">
             <x-slot:head><tr><th class="grow">Плательщик</th><th class="cell-dim col-peek-hide hidden lg:table-cell">Назначение</th><th class="hidden sm:table-cell">Дата</th><th class="num">Сумма</th></tr></x-slot:head>
             @foreach ($transactions as $tx)<x-bank.table-row :tx="$tx"/>@endforeach
         </x-ui.table>

@@ -1,7 +1,7 @@
 {{-- «Работа → Гараж»: у кого что стоит и во что обошлось — таблицей CRM (как список iOS), группами по менеджеру
      (взятые под себя — последними). Нажатие по строке — окошко: путь машины, деньги, расходы; двойное — карточка
      машины на сайте, где её ведут. --}}
-<x-ui.shell title="Гараж" :heading="false">
+<x-ui.shell title="Гараж" :heading="false" :detail="$detail">
     <x-admin.work-titles current="garage" :count="$total"/>
     <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage" :facets="$facets"/>
 

@@ -36,6 +36,7 @@ use App\Park\Vehicle;
 use App\Park\VehicleFields;
 use App\Park\VehicleState;
 use App\Park\Yard;
+use App\Support\Detail;
 use App\Support\Docs;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
@@ -56,6 +57,10 @@ class RequestController
     /** Главная стоянки и список заявок: пресеты «Просрочено», «Связаться», типы и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с окошком строки. */
     public function index(Request $request)
     {
+        $detail = Detail::of($request, fn (string $key) => ($req = ParkRequest::find($key)) && $req->vehicle && Scope::allows($request->user(), $req->vehicle) ? app(VehicleController::class)->peek($request, $req->vehicle) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         $vehicle = fn (string $col) => "(select v.{$col} from park_vehicles v where v.id = park_requests.vehicle_id)";
         $facets = Facets::for($request, 'park-requests',
             Common::vendor($vehicle('vendor_id')),
@@ -115,6 +120,7 @@ class RequestController
             'sort' => $request->query('sort', 'planned'),
             'q' => $qs,
             'facets' => $facets,
+            'detail' => $detail,
         ]);
     }
 

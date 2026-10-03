@@ -51,6 +51,7 @@ use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Detail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -66,6 +67,10 @@ class VehicleController
      */
     public function index(Request $request)
     {
+        $detail = Detail::of($request, fn (string $key) => ($vehicle = Vehicle::find($key)) && Scope::allows($request->user(), $vehicle) ? $this->peek($request, $vehicle) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         // «Наличие» — таблицей по умолчанию (решение владельца 22.09.2026); выбор строк или плиток помнится.
         $noRate = null;
         $facets = Facets::for($request, 'park-vehicles',
@@ -115,8 +120,6 @@ class VehicleController
             'grouped' => count($yards) !== 1 && $q === '' && ! $state?->isFinal(),
             'q' => $q,
             'view' => ListView::pick($request, $page->total()),
-            // ?peek=id — открыть окошко этой строки сразу: так ведут клетки карты парковки.
-            'peek' => $request->query('peek') && ListView::isTable($request->query('vid')) ? 'vehicle-'.(int) $request->query('peek') : null,
         ];
         // Живой поиск просит только список: тот же кусок, что рисует страницу.
         if ($request->header('X-List')) {
@@ -129,6 +132,7 @@ class VehicleController
             'sort' => $request->query('sort', 'longest'),
             'yard' => $yard,
             'facets' => $facets,
+            'detail' => $detail,
         ]);
     }
 

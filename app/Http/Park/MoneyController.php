@@ -17,6 +17,7 @@ use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\Seller;
 use App\Park\Scope;
+use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
@@ -40,6 +41,10 @@ class MoneyController
 
     public function index(Request $request)
     {
+        $detail = Detail::of($request, fn (string $key) => ($invoice = Invoice::find($key)) ? $this->peek($invoice) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         $facets = Facets::for($request, 'park-money', Common::party('billing_invoices.party_id'));
         ListPrefs::sync($request, 'park-money', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'unpaid';
@@ -66,6 +71,7 @@ class MoneyController
         $parties = Common::ints($facets->selected('party'));
 
         return view('park.money.index', [
+            'detail' => $detail,
             'invoices' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset, 'presets' => self::PRESETS,
             'sort' => $request->query('sort', 'due'),

@@ -4,8 +4,10 @@ namespace App\Http\Site;
 
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
+use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Offers\Showing;
+use App\Support\Detail;
 use App\Support\Facets\Facets;
 use App\Support\ListContext;
 use App\Support\ListPrefs;
@@ -42,6 +44,10 @@ class CatalogController
 
     private function list(Request $request, bool $gallery)
     {
+        $detail = Detail::of($request, fn (string $key) => ($offer = OfferNumber::find($key)) && $offer->isVisibleTo($request->user()) ? app(OfferController::class)->peek($request, $offer) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         $user = $request->user();
         $facets = Facets::for($request, $gallery ? 'gallery' : 'catalog', ...CatalogQuery::facets());
         ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog', keep: $facets->keys());
@@ -81,6 +87,7 @@ class CatalogController
         $view = ListView::pick($request, $offers->total());
 
         return view('site.catalog', [
+            'detail' => $detail,
             'offers' => $offers,
             'filters' => $filters,
             'sort' => $sort,

@@ -14,9 +14,9 @@
     $flag = $car->specs_state->needsAttention() ? $car->specs_state->label() : ($car->photos_state->needsAttention() ? $car->photos_state->label() : null);
     $note = $flag ? mb_strtolower($flag) : (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true) ? 'фото едут' : (! $car->is_published ? 'скрыта' : null));
 @endphp
-<tr data-search-row id="car-{{ $car->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0" class="{{ $car->is_published ? '' : 'text-ink-muted' }}" @if (!$car->price_final && !$car->offer_id) data-unpriced @endif>
+<tr data-detail-key="{{ $car->ref }}" data-search-row id="car-{{ $car->id }}" class="{{ $car->is_published ? '' : 'text-ink-muted' }}" @if (!$car->price_final && !$car->offer_id) data-unpriced @endif>
     <td class="grow">
-        <span class="cell-title"><x-ui.cat-icon :category="$car->kind->category()"/>{{ $car->titleWithYear() }}</span>
+        <x-ui.row-link :key="$car->ref"><span class="cell-title"><x-ui.cat-icon :category="$car->kind->category()"/>{{ $car->titleWithYear() }}</span></x-ui.row-link>
         <span class="cell-sub">
             @if ($note)<span class="{{ $flag ? 'text-urgent' : '' }}">{{ $note }}</span>@endif
             <span class="sm:hidden">{{ $car->dl }}</span>

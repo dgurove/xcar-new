@@ -1,5 +1,5 @@
 @php use App\Purchases\{Kind, PurchaseState}; $n = $purchase->number; $ctl = \App\Http\Admin\PurchaseController::class; $view = \App\Support\ListView::pick(request(), $cars->total()); @endphp
-<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/purchases']" :back-row="false">
+<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/purchases']" :back-row="false" :detail="$detail">
     <div class="has-back mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
         <x-ui.back :back="['Закупки', '/purchases']"/>
         <h1 class="text-xl sm:text-2xl">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
@@ -85,7 +85,7 @@
     @if ($cars->isEmpty())
         <x-ui.empty class="mt-4">Ничего не нашлось</x-ui.empty>
     @elseif (\App\Support\ListView::isTable($view))
-        <x-ui.table id="cars" class="mt-4" :view="$view" :open="$peek">
+        <x-ui.table id="cars" class="mt-4" :view="$view">
             <x-slot:head>
                 <tr>
                     <th class="grow">Марка, модель</th>

@@ -12,6 +12,7 @@ use App\Billing\Bank\Connection;
 use App\Billing\Bank\SberApi;
 use App\Billing\Bank\Transaction;
 use App\Billing\Invoice;
+use App\Support\Detail;
 use App\Support\ListView;
 use App\Support\Money;
 use Illuminate\Http\Request;
@@ -28,6 +29,10 @@ class BankController
 
     public function index(Request $request)
     {
+        $detail = Detail::of($request, fn (string $key) => ($tx = Transaction::find($key)) ? $this->peek($tx) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'unmatched';
         $qs = trim((string) $request->query('q'));
         $q = Transaction::where('direction', 'in')->with('invoice')
@@ -37,6 +42,7 @@ class BankController
             ->latest('booked_at')->latest('id');
 
         return view('admin.bank.index', [
+            'detail' => $detail,
             'transactions' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset, 'q' => $qs, 'counts' => array_filter(['unmatched' => Transaction::where('state', Transaction::UNMATCHED)->count()]),
             'connection' => Connection::sber(),

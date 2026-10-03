@@ -4,7 +4,7 @@ import { Controller } from '@hotwired/stimulus';
 // `_fields[]`), окошко не перерисовывается. Чужие правки остальных полей не перетираются. Середину правки
 // не сохраняем: марка без модели (модель после смены марки сбрасывается) ждёт следующего изменения. Пачку
 // изменений подряд (разбор VIN заполняет поля по очереди) отправляет одним запросом, по одному сохранению за раз. Ответ — редирект на строку: свежая строка
-// таблицы и полоса окошка (peek:refresh); ошибки — у поля и тостом.
+// таблицы и полоса карточки (потоки Turbo); ошибки — у поля и тостом.
 export default class extends Controller {
     connect() {
         this.dirty = new Set();
@@ -67,7 +67,7 @@ export default class extends Controller {
                 sent.forEach((n) => this.dirty.add(n));
                 window.toast?.('Не сохранилось', 'danger');
             } else {
-                window.dispatchEvent(new CustomEvent('peek:refresh', { detail: data }));
+                if (data.streams) window.Turbo.renderStreamMessage(data.streams);
                 window.toast?.('Сохранено');
             }
         } catch {

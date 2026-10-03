@@ -9,9 +9,9 @@
     $href = "/purchases/{$purchase->number}/{$car->ref}".($query ? '?'.$query : '');
     $city = $car->settlement?->title() ?? $car->city;
 @endphp
-<tr data-search-row id="car-{{ $car->id }}" data-peek-url="/purchases/{{ $purchase->number }}/{{ $car->ref }}/peek{{ $query ? '?'.$query : '' }}" data-href="{{ $href }}" tabindex="0">
+<tr data-detail-key="{{ $car->ref }}" data-search-row id="car-{{ $car->id }}">
     <td class="grow">
-        <span class="cell-title">{{ $car->titleWithYear() }}</span>
+        <x-ui.row-link :key="$car->ref"><span class="cell-title">{{ $car->titleWithYear() }}</span></x-ui.row-link>
         <span class="cell-sub">
             <span class="sm:hidden">№ {{ $car->ref }}</span>
             @if ($showKind)<span class="sm:hidden">{{ mb_strtolower($car->kind->label()) }}</span>@endif

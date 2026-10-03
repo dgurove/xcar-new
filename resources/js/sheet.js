@@ -23,9 +23,9 @@ window.addEventListener('popstate', (event) => {
     const d = document.getElementById(inHistory);
     inHistory = lower ? under : null;
     if (d?.open) closeSheet(d, 0, true);
-    // Под шторкой — запись другой шторки или окошка строки: она остаётся своей (Turbo на пустой записи ставит свой
+    // Под шторкой — запись другой шторки: она остаётся своей (Turbo на пустой записи ставит свой
     // ключ — тогда её не снять «Назад»). Страница снова сверху — ключ turbo на месте, «‹ Раздел» пойдёт шагом по истории.
-    if (lower || event.state?.peek) history.replaceState(event.state, '');
+    if (lower) history.replaceState(event.state, '');
     else if (pageTurbo !== undefined) history.replaceState({ ...(history.state || {}), turbo: pageTurbo }, '');
     settle?.();
     settle = null;
@@ -34,8 +34,8 @@ window.addEventListener('popstate', (event) => {
 document.addEventListener('turbo:visit', () => { inHistory = null; });
 
 // Запись шторки ещё в истории. Снимок страницы (turbo:before-cache) в этот момент — не уход со страницы: шторку сняли
-// «Назад» или крестиком, запись под ней без ключа Turbo, и Turbo на этом popstate снимает снимок раньше нас. Окошко
-// строки и шторка документов под ней не закрываются (peek_controller, docs_controller); у визита запись уже снята.
+// «Назад» или крестиком, запись под ней без ключа Turbo, и Turbo на этом popstate снимает снимок раньше нас. Шторка
+// документов под ней не закрывается (docs_controller); у визита запись уже снята.
 export const sheetInHistory = () => inHistory !== null;
 
 export function openSheet(d, { history: withHistory = true } = {}) {

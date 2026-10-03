@@ -12,9 +12,9 @@
     $what = $i->vehicle ? $i->vehicle->titleWithYear() : ($i->deal ? 'сделка' : $i->kind->label());
     $left = $i->remaining();
 @endphp
-<tr data-search-row id="invoice-{{ $i->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
+<tr data-detail-key="{{ $i->id }}" data-search-row id="invoice-{{ $i->id }}">
     <td class="grow">
-        <span class="cell-title"><x-vendor.name :party="$i->party"/></span>
+        <x-ui.row-link :key="$i->id"><span class="cell-title"><x-vendor.name :party="$i->party"/></span></x-ui.row-link>
         <span class="cell-sub">
             @if ($i->isOwed())<span class="text-urgent">мы должны</span>@endif
             <span class="sm:hidden {{ $tone }}">{{ $due }}</span>

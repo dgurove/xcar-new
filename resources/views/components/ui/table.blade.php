@@ -1,29 +1,13 @@
-{{-- Таблица списка (третий вид): плотные строки, по нажатию строка выделяется и
-     рядом открывается окошко (peek_controller): на телефоне — снизу, коротко или во
-     весь экран (ручка), от 1024 — панелью справа от таблицы. Фрейм peek грузит
-     x-ui.peek строки; формы внутри отвечают в окошко (PeekBack), строка таблицы
-     обновляется из ответа. Строка — <tr data-peek-url data-href tabindex="0">:
-     нажатие — окошко, двойное или ⌘Enter — на страницу, Enter — раскрыть/свернуть,
-     ↑/↓ и стрелки у счётчика — по строкам; open — id строки, которую открыть сразу (?peek=);
-     view — вид списка: подробная (wide) на телефоне показывает все столбцы и листается вбок. --}}
-@props(['head', 'id' => null, 'open' => null, 'view' => null])
-<div {{ $attributes->merge(['class' => 'table-wrap'.($view === \App\Support\ListView::WIDE ? ' is-wide' : '')]) }} data-controller="peek" data-action="keydown->peek#key turbo:frame-load->peek#loaded turbo:before-fetch-request->peek#request peek:refresh@window->peek#refresh" @if ($open) data-peek-open-value="{{ $open }}" @endif @if ($id) id="{{ $id }}" @endif>
+{{-- Таблица списка (третий вид): плотные строки. Строка — <tr data-detail-key> со ссылкой a[data-detail-link] в фрейм
+     карточки (x-ui.row-link, App\Support\Detail): нажатие по строке открывает карточку рядом — справа колонкой от 1024,
+     нижним листом на телефоне (x-ui.shell :detail, detail_controller); view — вид списка: подробная (wide) на телефоне
+     показывает все столбцы и листается вбок. --}}
+@props(['head', 'id' => null, 'view' => null])
+<div {{ $attributes->merge(['class' => 'table-wrap'.($view === \App\Support\ListView::WIDE ? ' is-wide' : '')]) }} @if ($id) id="{{ $id }}" @endif>
     <div class="table-box">
         <table class="table">
             <thead>{{ $head }}</thead>
-            <tbody data-peek-target="body" data-action="click->peek#tap dblclick->peek#open">{{ $slot }}</tbody>
+            <tbody>{{ $slot }}</tbody>
         </table>
-    </div>
-    <div class="peek" hidden data-peek-target="panel" role="dialog" aria-label="Транспортное средство" data-action="touchstart->peek#touchStart:passive touchmove->peek#touchMove touchend->peek#touchEnd touchcancel->peek#touchEnd">
-        <div class="peek-bar">
-            <button type="button" class="peek-handle" data-action="peek#toggle" aria-label="Раскрыть или свернуть"></button>
-            <button type="button" class="peek-close" data-action="peek#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
-            <button type="button" class="peek-close" data-action="peek#next" aria-label="Следующая"><x-ui.icon name="chevron-down" class="size-[18px]"/></button>
-            <span class="peek-count nums" data-peek-target="count"></span>
-            <span id="peek-tools" class="contents" data-peek-target="tools"></span>
-            <a class="peek-close" href="#" data-peek-target="open" aria-label="Открыть страницу"><x-ui.icon name="expand" class="size-[18px]"/></a>
-            <button type="button" class="peek-close" data-action="peek#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button>
-        </div>
-        <turbo-frame id="peek" target="_top" data-peek-target="frame" class="peek-body"><x-ui.skeleton :rows="2"/></turbo-frame>
     </div>
 </div>

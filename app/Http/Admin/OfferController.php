@@ -24,10 +24,12 @@ use App\Offers\BidState;
 use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
+use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Offers\Slots;
 use App\Offers\Tag;
+use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
@@ -38,7 +40,6 @@ use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Validation\Rule;
 
 class OfferController
@@ -55,6 +56,11 @@ class OfferController
 
     public function index(Request $request)
     {
+        // ?peek=номер — карточка строки рядом (first — первый неоценённый черновик страницы, адрес получает его номер ниже).
+        $detail = Detail::of($request, fn (string $key) => $this->detailOf($request, OfferNumber::find($key)));
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         $admin = $request->user()->canManageCrm();
         $presets = $admin ? self::PRESETS : self::MODERATOR_PRESETS;
         $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : 'all';
@@ -118,18 +124,16 @@ class OfferController
         }
         // Кто завёл — аватар только у черновика: остальным строкам люди не нужны.
         $offers->getCollection()->where('state', OfferState::Draft)->load('moderator.media');
-        // ?peek=номер (или first) — открыть окошко этой строки сразу: так «Оценить» ведёт по черновикам — first значит
-        // первый неоценённый черновик страницы, а нет таких — первая строка.
-        $want = (string) $request->query('peek');
-        $peek = match (true) {
-            $want === '' => null,
-            $want === 'first' => $offers->first(fn ($o) => $o->state === OfferState::Draft && ! $o->asking_price && $o->brand_id) ?? $offers->first(),
-            default => $offers->first(fn ($o) => (string) $o->number === $want),
-        };
+        // «Оценить» ведёт по черновикам: first — первый неоценённый черновик страницы, а нет таких — первая строка.
+        if (Detail::key($request) === 'first') {
+            $first = $offers->first(fn ($o) => $o->state === OfferState::Draft && ! $o->asking_price && $o->brand_id) ?? $offers->first();
+
+            return redirect($request->fullUrlWithQuery(['peek' => $first?->number]));
+        }
 
         return view('admin.offers.index', [
             'offers' => $offers,
-            'peek' => $peek ? 'admin-offer-'.$peek->number : null,
+            'detail' => $detail,
             'presets' => $presets,
             'sorts' => $admin ? self::SORTS : [],
             'preset' => $preset,
@@ -235,8 +239,14 @@ class OfferController
         return view('admin.offers.twins', ['offers' => $offers, 'user' => $request->user()]);
     }
 
-    /** Окошко строки таблицы: фото, метки, цена, действия, подтверждения, интерес; ?gallery=1 — строка списка галереи. */
-    public function peek(Request $request, Offer $offer)
+    /** Карточка строки рядом со списком (Detail): чужое модератору — как не найдено. */
+    public function detailOf(Request $request, ?Offer $offer, bool $gallery = false)
+    {
+        return $offer && $offer->isEditableBy($request->user()) ? $this->peek($request, $offer, $gallery) : null;
+    }
+
+    /** Карточка строки: фото, метки, цена, действия, подтверждения, интерес; gallery — строка списка галереи. */
+    public function peek(Request $request, Offer $offer, ?bool $gallery = null)
     {
         $admin = $request->user()->canManageCrm();
         $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'parkVehicle:id,offer_id,accepted_at,created_at'] : [])])
@@ -249,7 +259,7 @@ class OfferController
             'audienceOptions' => $admin ? AudienceRules::options() : null,
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'chats' => $admin ? Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']) : collect(),
-            'list' => $request->boolean('gallery'),
+            'list' => $gallery ?? $request->boolean('gallery'),
         ]);
     }
 
@@ -302,15 +312,12 @@ class OfferController
         return redirect('/')->with('toast', 'Снято с продажи');
     }
 
-    /** Строка таблицы и полоса окошка после автосохранения: окошко не перерисовывается, меняются только они. */
+    /** Строка таблицы и полоса карточки после автосохранения — потоками Turbo: карточка не перерисовывается. */
     public function row(Offer $offer)
     {
         $offer->load(['brand', 'model'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
 
-        return response()->json([
-            'row' => Blade::render('<x-offer.table-row :offer="$offer" :gallery="$gallery"/>', ['offer' => $offer, 'gallery' => $offer->isGallery()]),
-            'tools' => view('admin.offers.peek-tools', ['offer' => $offer])->render(),
-        ]);
+        return response()->json(['streams' => view('admin.offers.row-streams', ['offer' => $offer])->render()]);
     }
 
     /** Продлить приём на ходу: от текущего срока, если он ещё не прошёл, иначе от сейчас. */

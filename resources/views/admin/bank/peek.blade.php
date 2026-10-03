@@ -1,7 +1,7 @@
 {{-- Окошко поступления: плательщик, сумма, дата, ИНН и назначение целиком. Не привязано — счета на выбор (сначала
      совпавшие по ИНН и сумме) и «Не наше»; «не наше» можно вернуть; привязанное ведёт в свой счёт. --}}
 @php use App\Support\Money; $href = '/work/money/bank/'.$tx->id; @endphp
-<turbo-frame id="peek" target="_top">
+<x-ui.detail>
     <x-ui.peek :href="$href.'/peek'" :title="$tx->counterparty ?: 'Плательщик не указан'" :photo="false">
         <x-slot:marks>
             <span class="tag nums font-semibold">{{ Money::exact($tx->amount) }}</span>
@@ -50,4 +50,4 @@
         @endif
         <x-slot:row><x-bank.table-row :tx="$tx"/></x-slot:row>
     </x-ui.peek>
-</turbo-frame>
+</x-ui.detail>

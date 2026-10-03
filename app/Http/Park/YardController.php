@@ -5,6 +5,7 @@ namespace App\Http\Park;
 use App\Park\Request as ParkRequest;
 use App\Park\Vehicle;
 use App\Park\Yard;
+use App\Support\Detail;
 use App\Support\ListPrefs;
 use App\Users\User;
 use App\Vendors\Tariff;
@@ -15,11 +16,16 @@ class YardController
 {
     public function index(Request $request)
     {
+        $detail = Detail::of($request, fn (string $key) => ($yard = Yard::find($key)) ? $this->peek($yard) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
         ListPrefs::sync($request, 'park-yards');
         $closed = $request->query('closed') === 'all' || $request->boolean('closed');
         $yards = Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand'])->orderByDesc('is_active')->orderBy('name')->get();
 
         return view('park.yards.index', [
+            'detail' => $detail,
             'yards' => $closed ? $yards : $yards->where('is_active', true), 'closed' => $closed, 'closedCount' => $yards->where('is_active', false)->count(),
         ]);
     }

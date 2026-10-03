@@ -12,7 +12,7 @@
     $offers = $car->activeOfferList()->sortByDesc('amount')->values();
     $amber = '--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d';
 @endphp
-<turbo-frame id="peek" target="_top">
+<x-ui.detail>
     <x-ui.peek :href="$href" :title="$car->titleWithYear()" :photos="$car->visiblePhotos()" :facts="$car->facts()">
         <x-slot:marks>
             <span class="tag nums">{{ $car->dl }}</span>
@@ -59,4 +59,4 @@
         @if ($car->description)<p class="mt-4 whitespace-pre-line text-sm text-ink-muted">{{ $car->description }}</p>@endif
         <x-slot:row><x-purchase.table-row :car="$car" :purchase="$purchase"/></x-slot:row>
     </x-ui.peek>
-</turbo-frame>
+</x-ui.detail>

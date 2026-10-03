@@ -6,7 +6,7 @@
     // Покупателю та же лента и тот же тулбар: у него нет только первого экрана, а пустая лента — с контактом менеджера.
     $buyer = $user?->isBuyer() ?? false;
 @endphp
-<x-ui.shell :title="$gallery ? 'Скоро в продаже' : 'Предложения'" :heading="false" :trail="$trail">
+<x-ui.shell :title="$gallery ? 'Скоро в продаже' : 'Предложения'" :heading="false" :trail="$trail" :detail="$detail">
 
     <div id="catalog-section" @if ($selecting) data-controller="selection" data-selection-url-value="/buyers/showings/new" @endif>
         <div>

@@ -20,7 +20,7 @@
     $min = (int) ($offer->minBid() ?? 0);
     $discounts = array_filter([2, 5], fn ($p) => round($asking * (1 - $p / 100) / 1000) * 1000 >= $min);
 @endphp
-<turbo-frame id="peek" target="_top">
+<x-ui.detail>
     <x-ui.peek :href="$href" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)" :action="false">
         <x-slot:marks>
             @if ($offer->recommended)<x-offer.recommended label/>@endif
@@ -90,4 +90,4 @@
         @if ($offer->description)<p class="mt-3 whitespace-pre-line text-sm text-ink-muted">{{ $offer->description }}</p>@endif
         <x-slot:row><x-offer.site-table-row :offer="$offer" :context="$context"/></x-slot:row>
     </x-ui.peek>
-</turbo-frame>
+</x-ui.detail>

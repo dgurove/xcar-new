@@ -13,7 +13,7 @@
     $voidable = $issued && ! $i->payments()->where('source', '!=', PaymentSource::Offset)->exists();
     $suggest = \App\Billing\Acquiring\PayLink::defaultAmount($i);
 @endphp
-<turbo-frame id="peek" target="_top">
+<x-ui.detail>
     <x-ui.peek :href="$href" :title="$i->isOwed() ? 'Вознаграждение '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :photo="$offer?->mainPhoto()">
         <x-slot:marks>
             <span class="tag nums font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}{{ $i->isPartial() ? ' из '.Money::rub($i->total) : '' }}</span>
@@ -134,4 +134,4 @@
         </div>
         <x-slot:row><x-money.table-row :invoice="$i"/></x-slot:row>
     </x-ui.peek>
-</turbo-frame>
+</x-ui.detail>

@@ -2,7 +2,7 @@
     $qs = http_build_query(array_filter($filters + [\App\Support\ListView::PARAM => request(\App\Support\ListView::PARAM)], fn ($v) => $v !== null && $v !== ''));
     $view = \App\Support\ListView::pick(request(), $cars->total());
 @endphp
-<x-ui.shell :title="$purchase->publicTitle($group)" :back="['Закупки', '/purchases']" :trail="[['Главная', '/'], ['Закупки', '/purchases'], [$purchase->publicTitle($group)]]">
+<x-ui.shell :title="$purchase->publicTitle($group)" :back="['Закупки', '/purchases']" :trail="[['Главная', '/'], ['Закупки', '/purchases'], [$purchase->publicTitle($group)]]" :detail="$detail">
     {{-- Под заголовком — срок и сколько названо строкой, виды техники пилюлями; без коробки-героя и полосы прогресса. --}}
     <div class="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
         <x-purchase.deadline :purchase="$purchase" class="text-sm"/>

@@ -2,7 +2,7 @@
      и только на экранах этих пилюль; раздел шапки (Вендоры, сделка) — полноширинный экран с h1, как шелл.
      Телефон: пилюль нет — разделы кабинета меню строками на его корне (cabinet/profile), экран раздела со своим h1
      и «Назад» в шапке (Nav::phoneBack); :phone-heading="false" — экран, где имя уже крупно в шапке-контакте. «Назад» вложенных экранов (:back) на ПК — ссылкой в колонке содержимого. --}}
-@props(['title', 'heading' => null, 'back' => null, 'root' => false, 'phoneHeading' => null])
+@props(['title', 'heading' => null, 'back' => null, 'root' => false, 'phoneHeading' => null, 'detail' => null])
 @php
     use App\Support\Nav;
     $user = auth()->user();
@@ -15,7 +15,7 @@
 @endphp
 {{-- Шелл рисует «назад» в шапке телефона. h1 — на телефоне всегда, кроме корня (там карточка профиля); на ПК — только
      без пилюль: с ними раздел называет текущая пилюля. --}}
-<x-ui.shell :title="$title" :heading="$root && $pills ? false : $heading" :back="$back ?? false" :phone-back="$phoneBack" :back-row="false" :phone-heading="$phoneHeading ?? ! $root" :desktop-heading="! $pills">
+<x-ui.shell :title="$title" :heading="$root && $pills ? false : $heading" :back="$back ?? false" :phone-back="$phoneBack" :back-row="false" :phone-heading="$phoneHeading ?? ! $root" :desktop-heading="! $pills" :detail="$detail">
     <div @class(['grid gap-6', 'lg:grid-cols-[15rem_minmax(0,56rem)] lg:gap-8' => $pills]) data-title-anchor>
         @if ($pills)
             {{-- min-w-0 обязателен: иначе лента шире экрана растягивает колонку сетки. --}}

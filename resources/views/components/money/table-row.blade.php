@@ -13,9 +13,9 @@
     $tone = match ($i->light()) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => '' };
     $left = $i->remaining();
 @endphp
-<tr data-search-row id="invoice-{{ $i->id }}" data-peek-url="{{ $href }}/peek" data-href="{{ $href }}" tabindex="0">
+<tr data-detail-key="{{ $i->id }}" data-search-row id="invoice-{{ $i->id }}">
     <td class="grow">
-        <span class="cell-title">@if ($i->deal?->buyer){{ $i->deal->buyer->name }}@else<x-vendor.name :party="$i->party"/>@endif</span>
+        <x-ui.row-link :key="$i->id"><span class="cell-title">@if ($i->deal?->buyer){{ $i->deal->buyer->name }}@else<x-vendor.name :party="$i->party"/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
             @if ($claim)<span class="text-urgent">сообщил об оплате</span>@endif
             @if ($i->isOwed())<span class="text-urgent">к выплате</span>@endif

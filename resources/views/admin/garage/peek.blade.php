@@ -12,7 +12,7 @@
     $asks = false;
     $waitingBlock = $offer->stage()?->block?->name;
 @endphp
-<turbo-frame id="peek" target="_top">
+<x-ui.detail>
     <x-ui.peek :href="$car->url()" :title="$offer->titleWithYear()" :photo="$offer->mainPhoto()">
         <x-slot:marks>
             <x-ui.state :tone="$car->state->tone()">{{ mb_strtolower($car->state->label()) }}</x-ui.state>
@@ -41,4 +41,4 @@
             </section>
         @endif
     </div>
-</turbo-frame>
+</x-ui.detail>
