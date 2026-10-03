@@ -3,9 +3,10 @@ import { Controller } from '@hotwired/stimulus';
 // Шторка чипа фильтра (x-ui.facet-chip): галки собираются в одно скрытое поле через запятую, число на «Показать N»
 // переспрашивается тем же адресом с заголовком X-Count (контроллер списка отвечает {count} до страниц и подгрузок).
 // Прежний запрос обрывается, опоздавший ответ отбрасывается. Ничего не найдено — кнопка выключена.
-// Один выбор (single) — радио: отправляется сразу.
+// Фильтр не включён — отмечено всё, снимают лишнее: отмечено всё значит «без фильтра» (в адрес уходит пустое),
+// «Выбрать все» / «Исключить все» — одна кнопка. Один выбор (single) — радио: отправляется сразу.
 export default class extends Controller {
-    static targets = ['value', 'box', 'submit', 'item'];
+    static targets = ['value', 'box', 'submit', 'item', 'all'];
     static values = { single: Boolean, wait: { type: Number, default: 150 } };
 
     connect() {
@@ -23,10 +24,44 @@ export default class extends Controller {
             this.element.requestSubmit();
             return;
         }
-        this.valueTarget.value = this.boxTargets.filter((b) => b.checked).map((b) => b.value).join(',');
+        this.sync();
+    }
+
+    // Все видимые (поиск мог часть спрятать) отмечены — снять, иначе отметить.
+    all() {
+        const boxes = this.visible();
+        const on = !boxes.every((b) => b.checked);
+        boxes.forEach((b) => { b.checked = on; });
+        this.sync();
+    }
+
+    visible() {
+        return this.boxTargets.filter((b) => !b.closest('[data-facets-target="item"]')?.hidden);
+    }
+
+    sync() {
+        const boxes = this.boxTargets;
+        const checked = boxes.filter((b) => b.checked);
+        // Отмечено всё — это «без фильтра».
+        this.valueTarget.value = checked.length === boxes.length ? '' : checked.map((b) => b.value).join(',');
+        this.label();
         clearTimeout(this.timer);
+        this.pending?.abort();
+        this.seq++;
+        if (checked.length === 0) {
+            this.submitTarget.removeAttribute('aria-busy');
+            this.submitTarget.textContent = 'Ничего не выбрано';
+            this.submitTarget.disabled = true;
+            return;
+        }
         this.submitTarget.setAttribute('aria-busy', 'true');
         this.timer = setTimeout(() => this.count(), this.waitValue);
+    }
+
+    label() {
+        if (!this.hasAllTarget) return;
+        const boxes = this.visible();
+        this.allTarget.textContent = boxes.length && boxes.every((b) => b.checked) ? 'Исключить все' : 'Выбрать все';
     }
 
     async count() {
@@ -61,6 +96,7 @@ export default class extends Controller {
     filter(event) {
         const q = event.target.value.trim().toLowerCase();
         this.itemTargets.forEach((el) => { el.hidden = q !== '' && !el.dataset.name.includes(q); });
+        this.label();
     }
 
     // Enter в поиске по вариантам не отправляет форму: выбор ещё не сделан.

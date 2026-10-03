@@ -660,6 +660,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .facet-x { @apply flex items-center self-stretch rounded-r-full pl-1 pr-2.5 opacity-80; }
   @media (hover: hover) { .facet-x:hover { opacity: 1; } }
   .facet-reset { background: none; }
+  .facet-tools { @apply mb-3 flex items-center gap-2; }
+  .facet-all { @apply ml-auto shrink-0 whitespace-nowrap px-1 py-2 text-sm font-medium text-accent-text; }
+  @media (hover: hover) { .facet-all:hover { @apply text-accent; } }
   .facet-submit { @apply sticky bottom-0 -mx-1 bg-surface px-1 pb-1 pt-2; }
   .facet-submit [aria-busy] .nums { opacity: .5; }
   /* Пока список сужен набранным, скрытые строки просто не рисуются — без анимации и скачка. */

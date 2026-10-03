@@ -218,8 +218,11 @@ final class Facets
                 return null;
             }
             $picked = array_values(array_filter($options, fn (Option $o) => $o->selected && $o->key !== $f->default));
+            // Почти всё отмечено — человек исключал: «Кроме Каркаде», а не «4 вендора».
+            $left = array_values(array_filter($options, fn (Option $o) => ! $o->selected));
             $label = match (true) {
                 count($picked) === 1 => $picked[0]->label,
+                ! $f->single && count($picked) >= 3 && $left && count($left) <= 2 => 'Кроме '.implode(', ', array_map(fn (Option $o) => $o->label, $left)),
                 count($picked) > 1 => count($picked).' '.Plural::of(count($picked), $f->plural),
                 default => $f->title,
             };

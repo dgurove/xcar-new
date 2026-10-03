@@ -130,12 +130,6 @@ class OfferController
         return view('admin.offers.index', [
             'offers' => $offers,
             'peek' => $peek ? 'admin-offer-'.$peek->number : null,
-            // Оценивать есть что, когда черновик заполнен хотя бы маркой: пустой «+ Новый» очередь не надувает.
-            // Закупочные — своей очередью на своей пилюле.
-            'unpriced' => $admin ? Offer::where('state', OfferState::Draft)->whereNull('asking_price')->whereNotNull('brand_id')->whereDoesntHave('purchaseCar')->count() : 0,
-            'unpricedPurchase' => $admin && $preset === 'purchase'
-                ? Offer::where('state', OfferState::Draft)->whereNull('asking_price')->whereNotNull('brand_id')->whereHas('purchaseCar')->count()
-                : 0,
             'presets' => $presets,
             'sorts' => $admin ? self::SORTS : [],
             'preset' => $preset,

@@ -23,8 +23,14 @@
         <form method="get" action="{{ $facets->action() }}" data-turbo-action="replace" data-turbo-prefetch="false" data-controller="facets" data-action="change->facets#tick" @if ($f->single) data-facets-single-value="true" @endif>
             @foreach ($facets->carry($key) as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
             @unless ($f->single)<input type="hidden" name="{{ $key }}" value="{{ implode(',', $chip->selected) }}" data-facets-target="value">@endunless
-            @if (count($chip->options) > 8)
-                <input type="search" class="field-input field-s mb-3" placeholder="Найти" autocomplete="off" enterkeyhint="search" data-action="input->facets#filter keydown.enter->facets#stop">
+            {{-- Фильтр не включён — отмечено всё: показано всё, снимают лишнее. Справа кнопка «Выбрать все» / «Исключить все». --}}
+            @if (! $f->single && count($chip->options) > 1)
+                <div class="facet-tools">
+                    @if (count($chip->options) > 8)
+                        <input type="search" class="field-input field-s min-w-0 flex-1" placeholder="Найти" autocomplete="off" enterkeyhint="search" data-action="input->facets#filter keydown.enter->facets#stop">
+                    @endif
+                    <button type="button" class="facet-all" data-facets-target="all" data-action="facets#all">{{ $on ? 'Выбрать все' : 'Исключить все' }}</button>
+                </div>
             @endif
             @foreach ($groups as $label => $keys)
                 @php $rows = collect($keys)->map(fn ($k) => $byKey->get((string) $k))->filter(); @endphp
@@ -46,7 +52,7 @@
                                 @if ($f->single)
                                     <input type="radio" name="{{ $key }}" value="{{ $o->key === $f->default ? '' : $o->key }}" @checked($o->selected) data-facets-target="box">
                                 @else
-                                    <input type="checkbox" value="{{ $o->key }}" @checked($o->selected) data-facets-target="box">
+                                    <input type="checkbox" value="{{ $o->key }}" @checked($o->selected || ! $on) data-facets-target="box">
                                 @endif
                             </span>
                         </label>

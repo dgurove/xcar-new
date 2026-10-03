@@ -1,8 +1,8 @@
 {{-- Предложение в плитках и строках CRM — как ТС парковки (x-park.card): кадр, название, одна строка текста (логотип
      страховой с номером убытка — копируется нажатием, состояние или таймер приёма, подтверждения или интерес; номер
      предложения — в таблице), цена обычным текстом и город приглушённым с меткой: в плитке внизу — город слева, цена
-     справа, в строке — цена справа, город под ней. Неоценённый черновик — лаймовым «оценить» (только админу): ведёт в
-     окошко таблицы черновиков на этой строке, рядом закупочная. Тегов года, коробки и НДС нет — они в окошке и на странице. Кнопок нет: вся
+     справа, в строке — цена справа, город под ней. Неоценённый черновик — чипом «Оценить» (только админу): ведёт в
+     окошко таблицы на этой строке, рядом закупочная. Тегов года, коробки и НДС нет — они в окошке и на странице. Кнопок нет: вся
      карточка — ссылка на предложение. --}}
 @props(['offer', 'gallery' => false])
 @php
@@ -69,7 +69,7 @@
         @if ($offer->settlement)<x-ui.place class="card-city text-sm text-ink-dim">{{ $offer->settlement->title() }}</x-ui.place>@endif
         <span class="card-price">
             @if ($unpriced)
-                @if ($rate)<a href="/?preset=draft&vid=table&peek={{ $n }}" class="text-sm text-accent-text" data-turbo-action="replace">оценить</a>@endif
+                @if ($rate)<x-offer.rate-chip :offer="$offer"/>@endif
                 @if ($offer->floor_price)<span class="nums">{{ Money::nums($offer->floor_price) }}&nbsp;₽</span>@endif
             @elseif ($price->shown())<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>
             @elseif ($gallery)<span class="text-sm text-accent-text">скоро</span>@endif

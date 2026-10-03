@@ -1,9 +1,10 @@
 {{-- Строка таблицы предложений (CRM), по образцу «Наличия» парковки. Ячейка в два этажа: иконка типа ТС и название с
      «рекомендуем», под ним логотип страховой с номером убытка, номер предложения, приём (таймер или состояние, цветом
      по тону) и подтверждения; от 640 они встают своими столбцами (вендор с номером убытка — одним). Справа цена
-     продажи (у черновика без неё — лаймовое «оценить»), последним столбцом закупочная; на телефоне она под ценой.
-     У черновика нет ни номера (он ещё не выставлен), ни слова «черновик»: его и так видно по «оценить» и цене.
-     Черновик из парковки — исключение: на месте состояния «парковка с …» (дата приёма ТС).
+     продажи (у черновика без неё — чип «Оценить»), последним столбцом закупочная; на телефоне она под ценой.
+     У черновика нет ни номера (он ещё не выставлен), ни слова «черновик»: его и так видно по чипу «Оценить» и цене.
+     Черновик из парковки — исключение: на месте состояния «парковка с …» (дата приёма ТС). Последний столбец —
+     когда заведено.
      В галерее вместо подтверждений — интерес. Нажатие — окошко; data-unpriced — черновик без цены продажи,
      по ним окошко идёт «Дальше» («Оценить»). --}}
 @props(['offer', 'gallery' => false])
@@ -57,13 +58,15 @@
         @else<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $park ?? ($offer->state === OfferState::Open ? ($admin ? 'Приём' : 'В продаже') : $offer->state->label()) }}</span>@endif
     </td>
     @if ($admin)<td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>@endif
-    {{-- Цена продажи (у черновика без неё — «оценить»), справа закупочная; на телефоне закупочная — под ценой. --}}
+    {{-- Цена продажи (у черновика без неё — чип «Оценить»), справа закупочная; на телефоне закупочная — под ценой. --}}
     <td class="num nums">
-        @if ($rate)<span class="text-accent-text">оценить</span>
+        @if ($rate)<x-offer.rate-chip :offer="$offer"/>
         @elseif ($unpriced)
         @elseif ($price->shown()){{ $price::money($price->to) }}
         @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
         @if ($offer->floor_price)<span class="cell-sub sm:hidden">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>
     <td class="cell-dim num nums col-peek-hide hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>
+    {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в окошке справа столбца нет. --}}
+    <td class="num nums col-peek-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">{{ $offer->created_at?->translatedFormat($offer->created_at->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}</td>
 </tr>

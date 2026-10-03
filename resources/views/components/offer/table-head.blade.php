@@ -11,4 +11,5 @@
     @if (auth()->user()?->canManageCrm())<th class="num hidden sm:table-cell">{{ $gallery ? 'Интерес' : 'Подтверждения' }}</th>@endif
     <th class="num">Цена</th>
     <th class="num col-peek-hide hidden sm:table-cell">Закупочная</th>
+    <th class="num col-peek-hide hidden sm:table-cell">Создано</th>
 </tr>

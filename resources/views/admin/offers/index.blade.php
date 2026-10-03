@@ -8,14 +8,6 @@
         </x-slot:actions>
     </x-ui.toolbar>
 
-    {{-- Черновики без цены продажи оцениваются в окошке таблицы: цена → «В продажу», и сразу следующий. Кнопка есть, пока
-         есть что оценивать, в любом пресете и виде: открывает окошко первого неоценённого. У закупочных своя очередь. --}}
-    @if ($unpriced)
-        <div class="mt-3 flex"><a href="/?preset=draft&vid=table&peek=first" class="btn btn-s btn-accent w-full sm:ml-auto sm:w-auto" data-turbo-action="replace">Оценить {{ $unpriced }}</a></div>
-    @endif
-    @if (($unpricedPurchase ?? 0) > 0)
-        <div class="mt-3 flex"><a href="/?preset=purchase&vid=table&peek=first" class="btn btn-s btn-accent w-full sm:ml-auto sm:w-auto" data-turbo-action="replace">Оценить {{ $unpricedPurchase }}</a></div>
-    @endif
     <div class="mt-6" id="list">
         @if ($offers->isEmpty())
             <x-ui.empty>Предложений нет</x-ui.empty>
