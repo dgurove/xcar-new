@@ -2,13 +2,6 @@
 
 namespace App\Mail\Scan;
 
-use App\Cars\Brand;
-use App\Cars\CarModel;
-use App\Cars\Colors;
-use App\Cars\Drive;
-use App\Cars\Fuel;
-use App\Cars\Settlement;
-use App\Cars\Transmission;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Account;
@@ -17,13 +10,11 @@ use App\Mail\Extraction\ScanFields;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
-use App\Offers\Actions\UpdateOffer;
+use App\Offers\Actions\ApplyCarFields;
 use App\Offers\Offer;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 
 /**
  * «✨» у предложения CRM: файлы всех писем его веток в ящиках CRM, наших пересылок тоже (как окно писем предложения),
@@ -111,59 +102,10 @@ final class OfferSubject implements Subject
         return ScanFields::ofOffer($this->offer->loadMissing(['brand', 'model', 'settlement']));
     }
 
-    /**
-     * Выбранное — в карточку по правилам формы (`OfferRequest`): VIN заглавными, цвет словарём, марка и модель по
-     * справочнику, город по справочнику городов; сменили марку без модели — модель прежней марки снимается.
-     * Характеристики ложатся только в пустые поля. Не прошедшее правила поле пропускается.
-     */
+    /** Выбранное — в карточку по правилам формы (`ApplyCarFields`): характеристики — только в пустые. */
     public function apply(array $chosen, User $by): void
     {
-        $data = [];
-        foreach ($chosen as $field => $item) {
-            $value = $item['value'];
-            match ($field) {
-                'brand' => ($id = Brand::known((string) $value)?->id) ? $data['brand_id'] = $id : null,
-                'model' => null,
-                'vin' => $data['vin'] = strtoupper((string) $value),
-                'color' => $data['color'] = Colors::normalize((string) $value) ?? (string) $value,
-                'year' => $data['year'] = (int) $value,
-                'mileage', 'engine_volume', 'engine_power' => $data[$field] = (int) $value,
-                'transmission', 'drive', 'fuel' => $data[$field] = (string) $value,
-                'city' => ($id = Settlement::named((string) $value)['id'] ?? null) ? $data['settlement_id'] = $id : null,
-                default => null,
-            };
-        }
-        foreach (['mileage', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power', 'settlement_id'] as $spec) {
-            if (isset($data[$spec]) && ! blank($this->offer->{$spec})) {
-                unset($data[$spec]);
-            }
-        }
-        $brandId = $data['brand_id'] ?? $this->offer->brand_id;
-        // Марки документа нет в справочнике — его модель не заводится под прежней маркой («Kia H5» из документа Hongqi).
-        $unknown = isset($chosen['brand']) && ! Brand::known((string) $chosen['brand']['value']);
-        if (! $unknown && isset($chosen['model']['value']) && ($brand = Brand::find($brandId))) {
-            $data['model_id'] = CarModel::resolve($brand, (string) $chosen['model']['value'])->id;
-        } elseif ($brandId !== $this->offer->brand_id) {
-            $data['model_id'] = null;
-        }
-        $errors = Validator::make($data, array_intersect_key([
-            'brand_id' => ['nullable', 'exists:brands,id'],
-            'model_id' => ['nullable', 'exists:car_models,id'],
-            'year' => ['integer', 'between:1950,'.(now()->year + 1)],
-            'vin' => ['string', 'size:17'],
-            'color' => ['string', 'max:32'],
-            'mileage' => ['integer', 'between:1,5000000'],
-            'transmission' => [Rule::enum(Transmission::class)],
-            'drive' => [Rule::enum(Drive::class)],
-            'fuel' => [Rule::enum(Fuel::class)],
-            'engine_volume' => ['integer', 'between:1,20000'],
-            'engine_power' => ['integer', 'between:1,3000'],
-            'settlement_id' => ['exists:settlements,id'],
-        ], $data))->errors();
-        $data = array_diff_key($data, array_flip($errors->keys()));
-        if ($data) {
-            app(UpdateOffer::class)($this->offer, $data, $by);
-        }
+        app(ApplyCarFields::class)($this->offer, $chosen, $by);
     }
 
     public function refresh(): void

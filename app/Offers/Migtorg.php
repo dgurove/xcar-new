@@ -67,11 +67,17 @@ final class Migtorg
         }
     }
 
-    /** uuid кадров лота по порядку: главный, затем остальные — как в галерее на сайте. */
-    public function photos(int $id): array
+    /** Карточка лота — только со входом: тот же вид, что строка списка, но кадры все. */
+    public function card(int $id): array
     {
         $auction = $this->get("/auctions/{$id}", auth: true)->json();
-        $auction = $auction['data'] ?? $auction;
+
+        return $auction['data'] ?? $auction;
+    }
+
+    /** uuid кадров карточки по порядку: главный, затем остальные — как в галерее на сайте. */
+    public static function photosOf(array $auction): array
+    {
         $order = fn (array $list) => collect($list)->sortBy('order_column')->pluck('uuid')->all();
 
         return array_values(array_unique(array_filter([

@@ -81,7 +81,7 @@ final class Sale
     }
 
     /** Предложение → ТС: правка тождества в CRM (`UpdateOffer`). */
-    public static function toVehicle(Offer $offer, array $changed, User $by): void
+    public static function toVehicle(Offer $offer, array $changed, ?User $by): void
     {
         $vehicle = $offer->parkVehicle;
         $fields = array_intersect_key(array_flip(array_diff_key(self::MAP, ['vendor_id' => 1])), array_flip($changed));

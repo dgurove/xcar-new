@@ -22,7 +22,7 @@ use App\Offers\Actions\UpdateOffer;
 use App\Offers\AudienceRules;
 use App\Offers\BidState;
 use App\Offers\Jobs\DropEmptyDraft;
-use App\Offers\Jobs\FetchMigtorgPhotos;
+use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
@@ -206,9 +206,9 @@ class OfferController
             'window' => str_starts_with((string) request()->query('window'), "/offers/{$offer->number}/letters") ? request()->query('window') : null,
             'docs' => OfferFiles::docs($offer, $threads),
             'chats' => $admin ? Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get() : collect(),
-            'import' => ImportThreadFiles::progress($offer->id) ?? FetchMigtorgPhotos::progress($offer->id),
-            // Лот Мигторга с тем же номером, фото которого ещё не брали, — пилюля «С Мигторга».
-            'migtorg' => FetchMigtorgPhotos::forButton($offer),
+            'import' => ImportThreadFiles::progress($offer->id) ?? ImportMigtorgLot::progress($offer->id),
+            // Лот Мигторга с тем же номером, кадров которого в ряду ещё нет, — пилюля «С Мигторга».
+            'migtorg' => ImportMigtorgLot::forButton($offer),
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'managers' => $admin ? User::where('role', Role::Manager)->orderBy('name')->get() : collect(),
             'audienceOptions' => $admin ? AudienceRules::options() : null,

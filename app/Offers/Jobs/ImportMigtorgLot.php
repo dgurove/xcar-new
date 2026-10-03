@@ -5,8 +5,10 @@ namespace App\Offers\Jobs;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Media\PhotoIngest;
+use App\Offers\Actions\ApplyCarFields;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Migtorg;
+use App\Offers\MigtorgFields;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,11 +20,13 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 
 /**
- * Фото лота Мигторга в предложение — по номеру дела, совпавшему с номером убытка. Кадры по одному: оригинал без их
- * знака, снимать нечего; уже взятые (по uuid) пропускаются, поэтому повтор дочитывает с места обрыва. Ход — пилюлей
- * в шапке редактора (`progress`), по окончании редактор перечитывается сам.
+ * Лот Мигторга в предложение — по номеру дела, совпавшему с номером убытка: одна карточка (со входом) даёт и
+ * характеристики (`MigtorgFields`, только в пустые поля), и кадры. Кадры сами — только в пустой ряд, к своим —
+ * кнопкой «С Мигторга» (`manual`). По одному: оригинал без их знака, снимать нечего; уже взятые (по uuid)
+ * пропускаются, поэтому повтор дочитывает с места обрыва. Ход — пилюлей в шапке редактора (`progress`), по окончании
+ * редактор перечитывается сам.
  */
-final class FetchMigtorgPhotos implements ShouldQueue
+final class ImportMigtorgLot implements ShouldQueue
 {
     use Queueable;
 
@@ -70,12 +74,15 @@ final class FetchMigtorgPhotos implements ShouldQueue
         return ! $strict || preg_match('/\p{L}/u', $offer->claim_ref_key) === 1;
     }
 
-    /** Лот для кнопки «С Мигторга»: есть, ещё не взят и не о другой машине. */
+    /** Лот для кнопки «С Мигторга»: есть, о той же машине, его кадров в ряду ещё нет и задача не идёт. */
     public static function forButton(Offer $offer): ?object
     {
         $lot = self::lotFor($offer);
+        if (! $lot || ! self::sameCar($offer, $lot, strict: false) || self::progress($offer->id)) {
+            return null;
+        }
 
-        return $lot && ! $lot->offer_id && self::sameCar($offer, $lot, strict: false) ? $lot : null;
+        return $offer->media()->where('collection_name', 'photos')->whereNotNull('custom_properties->migtorg')->exists() ? null : $lot;
     }
 
     /** Взять фото лота: лоты с тем же номером помечаются предложением сразу, чтобы синхронизация не ставила задачу второй раз. */
@@ -85,10 +92,10 @@ final class FetchMigtorgPhotos implements ShouldQueue
         self::dispatch($offer->id, $lot->id, $manual);
     }
 
-    /** Сами — только в пустой ряд: к своим кадрам менеджер добавит лот кнопкой, без дублей. */
+    /** Совпавший лот берётся сам один раз: поля нужны и предложению с фото, кадры задача сама кладёт только в пустой ряд. */
     public static function auto(Offer $offer): bool
     {
-        if (! in_array($offer->state, self::STATES, true) || $offer->media()->where('collection_name', 'photos')->exists()) {
+        if (! in_array($offer->state, self::STATES, true)) {
             return false;
         }
         $lot = self::lotFor($offer);
@@ -101,7 +108,7 @@ final class FetchMigtorgPhotos implements ShouldQueue
         return true;
     }
 
-    public function handle(Migtorg $migtorg, PhotoIngest $ingest, Publisher $publish): void
+    public function handle(Migtorg $migtorg, PhotoIngest $ingest, Publisher $publish, ApplyCarFields $apply): void
     {
         $offer = Offer::find($this->offerId);
         if (! $offer) {
@@ -110,10 +117,17 @@ final class FetchMigtorgPhotos implements ShouldQueue
         $key = "migtorg:offer:{$offer->id}";
         $added = 0;
         $failed = 0;
+        $filled = [];
         try {
-            Cache::put($key, ['stage' => 'Фото с Мигторга', 'i' => null, 'n' => null], 1800);
-            $uuids = $migtorg->photos($this->lotId);
-            $uuids || Log::warning("Мигторг: в карточке лота {$this->lotId} нет фото");
+            Cache::put($key, ['stage' => 'С Мигторга', 'i' => null, 'n' => null], 1800);
+            $card = $migtorg->card($this->lotId);
+            self::noteShape($card);
+            // Поля — первыми: кадры идут минутами, а марка и пробег нужны сразу. Правит система, не человек.
+            $filled = $apply($offer, MigtorgFields::of($card), null, onlyEmpty: true);
+            $offer->refresh();
+            // Сами кадры — только в пустой ряд: к своим менеджер добавит лот кнопкой, без дублей.
+            $uuids = $this->manual || ! $offer->media()->where('collection_name', 'photos')->exists() ? Migtorg::photosOf($card) : [];
+            $uuids || ! $this->manual || Log::warning("Мигторг: в карточке лота {$this->lotId} нет фото");
             $have = $offer->media()->where('collection_name', 'photos')->get()
                 ->map(fn (Media $m) => $m->getCustomProperty('migtorg'))->filter()->all();
             foreach ($uuids as $i => $uuid) {
@@ -136,6 +150,7 @@ final class FetchMigtorgPhotos implements ShouldQueue
         } finally {
             Cache::forget($key);
         }
+        Log::info("Мигторг: лот {$this->lotId} → предложение {$offer->id}: полей ".count($filled).", кадров {$added}".($failed ? ", не забрано {$failed}" : ''));
         OfferStateChanged::dispatch($offer->fresh());
         // Тост — только когда нажали кнопку: сами задачи синхронизации всем сотрудникам не звонят.
         if ($this->manual) {
@@ -151,6 +166,14 @@ final class FetchMigtorgPhotos implements ShouldQueue
     {
         // Лоты номера свободны, как их пометил start(): кнопка «С Мигторга» вернётся, сам — через сутки.
         DB::table('migtorg_lots')->where('offer_id', $this->offerId)->update(['offer_id' => null, 'failed_at' => now()]);
-        Log::warning("Мигторг: фото лота {$this->lotId} в предложение {$this->offerId} не взяты: ".$e?->getMessage());
+        Log::warning("Мигторг: лот {$this->lotId} в предложение {$this->offerId} не взят: ".$e?->getMessage());
+    }
+
+    /** Что отдаёт карточка со входом сверх строки списка — ключами, без значений, один раз: по ним дописать поля. */
+    private static function noteShape(array $card): void
+    {
+        if (Cache::add('migtorg:card-shape', true, now()->addMonth())) {
+            Log::info('Мигторг: карточка лота, ключи '.implode(',', array_keys($card)).'; lot: '.implode(',', array_keys($card['lot'] ?? [])).'; media: '.implode(',', array_keys($card['media'] ?? [])));
+        }
     }
 }

@@ -8,7 +8,7 @@ use App\Media\Jobs\StampPhotos;
 use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\BidState;
-use App\Offers\Jobs\FetchMigtorgPhotos;
+use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Sale;
@@ -22,7 +22,7 @@ final class UpdateOffer
 {
     public function __construct(private StartRoute $startRoute) {}
 
-    public function __invoke(Offer $offer, array $data, User $by): Offer
+    public function __invoke(Offer $offer, array $data, ?User $by): Offer
     {
         if (array_key_exists('vin', $data)) {
             $data['vin'] = $data['vin'] ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $data['vin'])) : null;
@@ -50,9 +50,9 @@ final class UpdateOffer
         if (array_intersect(['claim_ref', 'vin'], $changed)) {
             app(LinkThread::class)->forOffer($offer);
         }
-        // Номер убытка нашёлся среди лотов Мигторга — фото оттуда сразу, не дожидаясь синхронизации.
+        // Номер убытка нашёлся среди лотов Мигторга — поля и фото оттуда сразу, не дожидаясь синхронизации.
         if (in_array('claim_ref', $changed, true)) {
-            FetchMigtorgPhotos::auto($offer);
+            ImportMigtorgLot::auto($offer);
         }
         // Гараж запретили — ждущие «В гараж» отклоняются (решение владельца 03.10.2026), принять их уже нельзя.
         if (in_array('garage_allowed', $changed, true) && ! $offer->garage_allowed) {

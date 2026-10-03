@@ -3,7 +3,7 @@
 namespace App\Offers\Console;
 
 use App\Mail\Extraction\Code;
-use App\Offers\Jobs\FetchMigtorgPhotos;
+use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Migtorg;
 use App\Offers\Offer;
 use Illuminate\Console\Command;
@@ -11,14 +11,14 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Номера дел всех лотов Мигторга — открытым списком (5 запросов на всё), затем фото тем предложениям, чей номер
+ * Номера дел всех лотов Мигторга — открытым списком (5 запросов на всё), затем поля и фото тем предложениям, чей номер
  * убытка нашёлся. Так ловятся предложения из любой двери (форма, письма, закупки) и лоты, вышедшие позже предложения.
  */
 class MigtorgSync extends Command
 {
     protected $signature = 'migtorg:sync';
 
-    protected $description = 'Лоты Мигторга по номеру дела и фото совпавшим предложениям';
+    protected $description = 'Лоты Мигторга по номеру дела, поля и фото совпавшим предложениям';
 
     public function handle(Migtorg $migtorg): int
     {
@@ -53,9 +53,9 @@ class MigtorgSync extends Command
         $gone = DB::table('migtorg_lots')->whereNull('gone_at')->where('seen_at', '<', $now)->update(['gone_at' => $now]);
 
         $keys = DB::table('migtorg_lots')->whereNotNull('claim_ref_key')->whereNull('offer_id')->distinct()->pluck('claim_ref_key');
-        $started = Offer::whereIn('state', FetchMigtorgPhotos::STATES)->whereIn('claim_ref_key', $keys)->get()
-            ->filter(fn (Offer $offer) => FetchMigtorgPhotos::auto($offer))->count();
-        $this->line('Лотов: '.count($rows).", ушли: {$gone}, фото взяты у предложений: {$started}");
+        $started = Offer::whereIn('state', ImportMigtorgLot::STATES)->whereIn('claim_ref_key', $keys)->get()
+            ->filter(fn (Offer $offer) => ImportMigtorgLot::auto($offer))->count();
+        $this->line('Лотов: '.count($rows).", ушли: {$gone}, взяты предложениями: {$started}");
 
         return self::SUCCESS;
     }
