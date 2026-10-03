@@ -30,7 +30,7 @@
                         <th class="grow">Марка, модель</th>
                         <th class="cell-dim hidden sm:table-cell">№</th>
                         @if (count($kinds) > 1)<th class="cell-dim hidden sm:table-cell">Тип</th>@endif
-                        <th class="cell-dim col-peek-hide hidden sm:table-cell">Город</th>
+                        <th class="cell-dim col-detail-hide hidden sm:table-cell">Город</th>
                         <th class="num">Цена</th>
                     </tr>
                 </x-slot:head>

@@ -42,7 +42,7 @@
     <div class="card-extra">
         @if ($facts)
             {{-- Одна строка текста вместо ряда чипов, как в таблице: состояние (кроме стоящей), что не так,
-                 госномер, логотип страховой с номером убытка, парковка; не влезает — строка ужимается шрифтом (fit). Ставка — в окошке и деле. --}}
+                 госномер, логотип страховой с номером убытка, парковка; не влезает — строка ужимается шрифтом (fit). Ставка — в карточке и деле. --}}
             <span class="card-sub" data-controller="fitline">
                 @if ($state !== VehicleState::Stored)<span class="text-ink">{{ mb_strtolower($state->label()) }}</span>@endif
                 <span class="fit-core"><x-park.ref :vehicle="$vehicle"/></span>

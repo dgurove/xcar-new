@@ -7,6 +7,7 @@ use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\MergeCarsCommand;
 use App\Http\Middleware\DemoReadOnly;
+use App\Http\Middleware\DetailBack;
 use App\Http\Middleware\EnsureAbility;
 use App\Http\Middleware\EnsureOfferEditable;
 use App\Http\Middleware\EnsureParkArea;
@@ -16,7 +17,6 @@ use App\Http\Middleware\Impersonated;
 use App\Http\Middleware\MarkInstalled;
 use App\Http\Middleware\MarkPrefetch;
 use App\Http\Middleware\NormalizeNumbers;
-use App\Http\Middleware\PeekBack;
 use App\Http\Middleware\ReadNoticesOnVisit;
 use App\Http\Middleware\RedirectLegacyPaths;
 use App\Http\Middleware\ResolveSurface;
@@ -40,9 +40,9 @@ use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
 use App\Offers\Console\TickOffers;
 use App\Park\Console\FillFromDocsCommand;
+use App\Park\Console\MirrorOffersCommand;
 use App\Park\Console\ParkDigestCommand;
 use App\Park\Console\ReleaseByLettersCommand;
-use App\Park\Console\MirrorOffersCommand;
 use App\Park\Console\StoreByLettersCommand;
 use App\Park\Console\TickPark;
 use App\Push\Console\MakeKeys;
@@ -112,7 +112,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend([ServerTiming::class, RedirectLegacyPaths::class, MarkPrefetch::class, ScalarSearch::class]);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
-        $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, MarkInstalled::class, PeekBack::class, Impersonated::class, TouchSeen::class, ReadNoticesOnVisit::class, DemoReadOnly::class]);
+        $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, MarkInstalled::class, DetailBack::class, Impersonated::class, TouchSeen::class, ReadNoticesOnVisit::class, DemoReadOnly::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
         // Уведомления провайдеров: подписи у ЮKassa нет, статус перечитывается по API (`PayController::hook`).
         $middleware->validateCsrfTokens(except: ['hooks/*']);

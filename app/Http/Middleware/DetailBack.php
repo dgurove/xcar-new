@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  * ?peek=, и тот отвечает фреймом: Turbo рисует его на месте карточки, flash и ошибки показывает она же. Контроллеры про
  * карточку не знают. Только свой адрес и только не-GET: загрузка самого фрейма не трогается.
  */
-class PeekBack
+class DetailBack
 {
     public function handle(Request $request, Closure $next)
     {

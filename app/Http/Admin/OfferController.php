@@ -245,20 +245,20 @@ class OfferController
     /** Карточка строки рядом со списком (Detail): чужое модератору — как не найдено. */
     public function detailOf(Request $request, ?Offer $offer, bool $gallery = false)
     {
-        return $offer && $offer->isEditableBy($request->user()) ? $this->peek($request, $offer, $gallery) : null;
+        return $offer && $offer->isEditableBy($request->user()) ? $this->detail($request, $offer, $gallery) : null;
     }
 
     /** Карточка строки: фото, метки, цена, действия, подтверждения, интерес; gallery — строка списка галереи. */
-    public function peek(Request $request, Offer $offer, ?bool $gallery = null)
+    public function detail(Request $request, Offer $offer, ?bool $gallery = null)
     {
         $admin = $request->user()->canManageCrm();
         $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'parkVehicle:id,offer_id,accepted_at,created_at'] : [])])
             ->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
 
-        return view('admin.offers.peek', OfferFiles::letters($offer, Thread::where('offer_id', $offer->id)->get()) + [
+        return view('admin.offers.detail', OfferFiles::letters($offer, Thread::where('offer_id', $offer->id)->get()) + [
             'offer' => $offer,
             'admin' => $admin,
-            // Поля редактора в окошке — те же справочники, что у страницы; модератору денег, кроме закупочной, и круга нет.
+            // Поля редактора в карточке — те же справочники, что у страницы; модератору денег, кроме закупочной, и круга нет.
             'audienceOptions' => $admin ? AudienceRules::options() : null,
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'chats' => $admin ? Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']) : collect(),
@@ -274,7 +274,7 @@ class OfferController
     {
         $update($offer, $request->payload(), $request->user());
         session()->forget("mail-draft.{$offer->id}");
-        // Автосохранение окошка строки идёт fetch-ем: редирект на свежую строку, fetch пройдёт по нему сам.
+        // Автосохранение карточки строки идёт fetch-ем: редирект на свежую строку, fetch пройдёт по нему сам.
         if ($request->expectsJson()) {
             return redirect("/offers/{$offer->number}/row");
         }
@@ -358,20 +358,20 @@ class OfferController
     }
 
     /**
-     * «Оценить» черновик из окошка: цена продажи и в продажу — сейчас или в слот (по умолчанию ближайший), окошко
+     * «Оценить» черновик из карточки: цена продажи и в продажу — сейчас или в слот (по умолчанию ближайший), карточка
      * само переходит к следующему черновику без цены. Пустое поле — просто дальше. Не хватает для публикации (фото
-     * ещё едут) — цена остаётся, ошибка в окошке.
+     * ещё едут) — цена остаётся, ошибка в карточке.
      */
     public function publish(Request $request, Offer $offer, UpdateOffer $update, ScheduleOffer $schedule)
     {
         $raw = preg_replace('/\D+/', '', (string) ($request->validate(['asking_price' => ['nullable', 'string', 'max:20']])['asking_price'] ?? ''));
         if ($raw === '' || $offer->state !== OfferState::Draft) {
-            return back()->with('peek-advance', true);
+            return back()->with('detail-advance', true);
         }
         $update($offer, ['asking_price' => (int) $raw], $request->user());
         $offer = $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user());
 
-        return back()->with('peek-advance', true)->with('toast', $this->published($offer));
+        return back()->with('detail-advance', true)->with('toast', $this->published($offer));
     }
 
     /** Состояние из меню; «Опубликовать» у черновика и галереи — с выбором слота (`when`), без него — сейчас. */

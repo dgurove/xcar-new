@@ -46,12 +46,12 @@ use App\Park\Vehicle;
 use App\Park\VehicleFields;
 use App\Park\VehicleState;
 use App\Park\Yard;
+use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
-use App\Support\Detail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -67,7 +67,7 @@ class VehicleController
      */
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($vehicle = Vehicle::find($key)) && Scope::allows($request->user(), $vehicle) ? $this->peek($request, $vehicle) : null);
+        $detail = Detail::of($request, fn (string $key) => ($vehicle = Vehicle::find($key)) && Scope::allows($request->user(), $vehicle) ? $this->detail($request, $vehicle) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -78,7 +78,7 @@ class VehicleController
             Common::yard('park_vehicles.yard_id'),
             Common::category('park_vehicles.category', 'Без типа'),
             // «Без ставки» — пока такие ТС есть: у них не заполнены тип или стоимость, либо у вендора нет прайса.
-            // Правят их в окошке строки. Число — в границах выбранных парковок, как и прочие числа.
+            // Правят их в карточке строки. Число — в границах выбранных парковок, как и прочие числа.
             Facet::toggle('gap', 'Без ставки', function ($v) use ($request, &$noRate, &$facets) {
                 $v->whereIn('park_vehicles.id', $noRate ??= $this->noRate($request, $facets->selected('yard')));
             })->tone('pill-danger')->counted(function () use ($request, &$noRate, &$facets) {
@@ -102,7 +102,7 @@ class VehicleController
         $facets->apply($vehicles);
         $request->query('sort') === 'fresh' ? $vehicles->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
 
-        // Кадры нужны плиткам и строкам; таблице — нет (миниатюр в ней нет, окошко грузит своё).
+        // Кадры нужны плиткам и строкам; таблице — нет (миниатюр в ней нет, карточка грузит своё).
         $vehicles->when(! ListView::isTable(ListView::fromRequest($request)), fn ($v) => $v->with('media'));
         $page = ListView::paginate($request, $vehicles);
         // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
@@ -154,17 +154,17 @@ class VehicleController
     }
 
     /**
-     * Окошко строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка;
+     * Карточка строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка;
      * «✨» в полосе и расхождения с документами строками «Взять».
      */
-    public function peek(Request $request, Vehicle $vehicle)
+    public function detail(Request $request, Vehicle $vehicle)
     {
         $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user', 'offer.deal'])->loadCount('threads');
 
-        return view('park.vehicles.peek', [
+        return view('park.vehicles.detail', [
             'vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
-            // «Долг» в окошке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
+            // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
             'debt' => Ledger::vehicleDebt($vehicle),
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
             // «✨» и расхождения с документами — тем, кто правит ТС, и только когда письма есть.

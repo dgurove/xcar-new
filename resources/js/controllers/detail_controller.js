@@ -85,7 +85,7 @@ export default class extends Controller {
         this.settle(was);
         if (this.wantFocus) {
             this.wantFocus = false;
-            const el = this.frameTarget.querySelector('[data-peek-focus]');
+            const el = this.frameTarget.querySelector('[data-detail-focus]');
             el?.focus({ preventScroll: true });
             el?.select?.();
         }

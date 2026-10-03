@@ -1,7 +1,7 @@
-{{-- Сам список «Наличия»: таблица с окошком или карточки. Этим же куском отвечает живой поиск
+{{-- Сам список «Наличия»: таблица с карточкам или карточки. Этим же куском отвечает живой поиск
      (заголовок X-List) — он подменяет содержимое #cars целиком. На «Все» без поиска строки собраны
      под заголовками парковок (grouped): столбца «Парковка» нет, «Без парковки» — последней группой.
-     Группы — строки того же tbody: окошко листает ↑/↓ по всем строкам подряд, через границы групп. --}}
+     Группы — строки того же tbody: карточка листает ↑/↓ по всем строкам подряд, через границы групп. --}}
 @php
     use App\Support\ListView;
     $grouped ??= false;
@@ -24,7 +24,7 @@
                     <th class="grow">Марка, модель</th>
                     <th class="hidden sm:table-cell">Вендор, № убытка</th>
                     <th class="hidden sm:table-cell">Статус</th>
-                    <th class="num col-peek-hide hidden lg:table-cell">Принята</th>
+                    <th class="num col-detail-hide hidden lg:table-cell">Принята</th>
                     <th class="num"><a href="{{ $sortBy('longest') }}" data-turbo-action="replace" @if ($sort === 'longest') aria-current="true" @endif>Дней</a></th>
                     <th class="num hidden sm:table-cell">Ставка</th>
                     <th class="num"><a href="{{ $sortBy('amount') }}" data-turbo-action="replace" @if ($sort === 'amount') aria-current="true" @endif>Начислено</a></th>

@@ -55,15 +55,15 @@ class OfferController
     }
 
     /** Лента чата для шторки — отдельным фреймом, по открытию. */
-    /** Окошко строки таблицы: фото, метки, факты, цена как видит человек; подтвердить ценой или проявить интерес прямо тут. */
-    public function peek(Request $request, Offer $offer)
+    /** Карточка строки таблицы: фото, метки, факты, цена как видит человек; подтвердить ценой или проявить интерес прямо тут. */
+    public function detail(Request $request, Offer $offer)
     {
         $user = $request->user();
         abort_unless($offer->isVisibleTo($user), 404);
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
         $canChat = $offer->chatOpenFor($user);
 
-        return view('site.offers.peek', [
+        return view('site.offers.detail', [
             'offer' => $offer,
             'context' => ListContext::fromRequest($request),
             'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])->latest('id')->first() : null,

@@ -39,7 +39,7 @@ final class ListView
 
     public const ALL = [self::GRID, self::LIST, self::TABLE, self::WIDE];
 
-    /** Таблица любого вида — краткая или подробная: одна разметка, одна страница, одно окошко. */
+    /** Таблица любого вида — краткая или подробная: одна разметка, одна страница, одно карточка. */
     public static function isTable(?string $view): bool
     {
         return $view === self::TABLE || $view === self::WIDE;

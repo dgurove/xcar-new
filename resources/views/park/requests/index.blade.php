@@ -1,6 +1,6 @@
 {{-- Главная стоянки — заявки: пилюли «Просрочено», «Нужно позвонить» и типы (каждая — пока такие заявки есть),
      сортировка, лупа (по ТС), чипы вендор, парковка, тип ТС и «Мои»; три вида — плитки/строки x-park.request-card,
-     таблица x-park.request-row с окошком. Страниц нет: список подгружается при листании (endless). --}}
+     таблица x-park.request-row с карточкам. Страниц нет: список подгружается при листании (endless). --}}
 @php use App\Support\ListView; @endphp
 <x-ui.shell title="Заявки" :count="$requests->total()" :phone-heading="false" :detail="$detail">
     <x-ui.toolbar :sorts="\App\Http\Park\RequestController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['overdue' => !empty($counts['overdue']) ? 'pill-danger' : '']" name="requests" :facets="$facets" search="Убыток, VIN, госномер, марка" search-target="#requests" :q="$q">

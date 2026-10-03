@@ -1,6 +1,6 @@
 {{-- Строка таблицы предложений на сайте (менеджер, покупатель, избранное). Ячейка в два этажа: название с
      «рекомендуем», под ним номер, приём (таймер, «новый», «закрыт») и город; от 640 номер, приём и город встают
-     столбцами. Справа цена так, как видит человек, или «Узнать», под ней заявленная, иначе на телефоне сколько прошло. Нажатие — окошко. --}}
+     столбцами. Справа цена так, как видит человек, или «Узнать», под ней заявленная, иначе на телефоне сколько прошло. Нажатие — карточка. --}}
 @props(['offer', 'context' => null])
 @php
     $user = auth()->user();
@@ -9,8 +9,6 @@
     $price = \App\Offers\PriceView::for($offer, $user);
     $bids = $user?->role->canBid() ?? false;
     $left = $gallery || !$bids ? null : $offer->secondsLeft();
-    $href = $context?->offerUrl($offer) ?? "/offers/{$n}";
-    $peek = "/offers/{$n}/peek".($context ? '?'.http_build_query($context->query()) : '');
     $fresh = !$gallery && $offer->isFresh();
     $since = $offer->published_at ?? $offer->created_at;
     $city = $offer->settlement?->title();
@@ -35,12 +33,12 @@
         @elseif ($bids && !$offer->bidsOpen())<span class="text-ink-dim">Приём закрыт</span>
         @elseif ($fresh)<span class="text-accent-text">Новый</span>@endif
     </td>
-    <td class="cell-dim col-peek-hide hidden lg:table-cell">{{ $city }}</td>
+    <td class="cell-dim col-detail-hide hidden lg:table-cell">{{ $city }}</td>
     <td class="num nums">
         @if ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif
         {{-- Заявленная (менеджеру — закупочная для него) под ценой, пока стрелка «от → до» не влезает; время тогда уходит под название. --}}
         @if ($price->shown() && $price->withFrom())<span class="cell-sub lg:hidden">{{ $price::money($price->from) }}</span>
         @else<span class="cell-sub sm:hidden">{!! \App\Support\Ago::time($since) !!}</span>@endif
     </td>
-    <td class="cell-dim num col-peek-hide hidden sm:table-cell">{!! \App\Support\Ago::time($since) !!}</td>
+    <td class="cell-dim num col-detail-hide hidden sm:table-cell">{!! \App\Support\Ago::time($since) !!}</td>
 </tr>

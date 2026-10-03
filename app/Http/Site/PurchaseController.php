@@ -32,7 +32,7 @@ class PurchaseController
     public function show(Request $request, Purchase $purchase)
     {
         abort_unless($purchase->state->isPublic(), 404);
-        $detail = Detail::of($request, fn (string $key) => ($car = $purchase->cars()->where('ref', $key)->first()) ? $this->peek($request, $purchase, $car) : null);
+        $detail = Detail::of($request, fn (string $key) => ($car = $purchase->cars()->where('ref', $key)->first()) ? $this->detail($request, $purchase, $car) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -51,14 +51,14 @@ class PurchaseController
         ]);
     }
 
-    /** Окошко строки таблицы: фото, факты, своя или лучшая цена. */
-    public function peek(Request $request, Purchase $purchase, Car $car)
+    /** Карточка строки таблицы: фото, факты, своя или лучшая цена. */
+    public function detail(Request $request, Purchase $purchase, Car $car)
     {
         abort_unless($purchase->state->isPublic() && $car->purchase_id === $purchase->id && $purchase->showsOnSite($car), 404);
         abort_if(in_array($car->kind->value, Restriction::hiddenFor($request->user()), true), 404);
         $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
 
-        return view('site.purchases.peek', ['purchase' => $purchase, 'car' => $car, 'query' => http_build_query(array_filter($request->only(['preset', 'q', 'kind', 'sort', 'group', ListView::PARAM])))]);
+        return view('site.purchases.detail', ['purchase' => $purchase, 'car' => $car, 'query' => http_build_query(array_filter($request->only(['preset', 'q', 'kind', 'sort', 'group', ListView::PARAM])))]);
     }
 
     public function car(Request $request, Purchase $purchase, Car $car)

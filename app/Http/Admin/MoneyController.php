@@ -39,7 +39,7 @@ class MoneyController
 
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($invoice = Invoice::find($key)) ? $this->peek($invoice) : null);
+        $detail = Detail::of($request, fn (string $key) => ($invoice = Invoice::find($key)) ? $this->detail($invoice) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -92,11 +92,11 @@ class MoneyController
         ];
     }
 
-    public function peek(Invoice $invoice)
+    public function detail(Invoice $invoice)
     {
         $invoice->load(['party', 'charges', 'payments', 'claims.media', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer']);
 
-        return view('admin.money.peek', ['invoice' => $invoice, 'sources' => PaymentSource::options()]);
+        return view('admin.money.detail', ['invoice' => $invoice, 'sources' => PaymentSource::options()]);
     }
 
     /** Взаиморасчёты по менеджерам: нам, мы должны, просрочено, заявки — строка ведёт в карточку на «Деньги». */

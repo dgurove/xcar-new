@@ -60,7 +60,7 @@
     </script>
     @endif
     {{-- «Назад» при открытом просмотре фото — его (lightbox.js). У window popstate идёт по порядку подписки, а модули
-         подписываются позже Turbo: без этого Turbo, шторка и окошко строки приняли бы его за свой. --}}
+         подписываются позже Turbo: без этого Turbo, шторка и карточка строки приняли бы его за свой. --}}
     <script>addEventListener('popstate', (e) => window.lightboxPop?.(e));</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

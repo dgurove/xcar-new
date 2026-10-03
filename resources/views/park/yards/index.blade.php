@@ -1,5 +1,5 @@
 {{-- Площадки в три вида: плитка — название, адрес, чип свободных и карта мест; строка — то же без карты (нажатие —
-     шторка с картой и формой); таблица — столбцы и окошко строки. Чип занятых мест ведёт к ТС. Цифр-итогов нет. --}}
+     шторка с картой и формой); таблица — столбцы и карточка строки. Чип занятых мест ведёт к ТС. Цифр-итогов нет. --}}
 @php use App\Support\ListView; $admin = auth()->user()->isAdmin(); $view = ListView::pick(request(), $yards->count()) ?? ListView::GRID; $free = fn ($y) => $y->capacity ? max(0, $y->capacity - $y->stored_vehicles_count) : null; @endphp
 <x-ui.shell title="Парковки" :count="$yards->count()" :detail="$detail">
     <x-ui.toolbar :pills="['open' => 'Открытые', 'all' => 'Все']" :pill="$closed ? 'all' : 'open'" pill-param="closed" :counts="['all' => $closedCount ?: null]" name="yards">

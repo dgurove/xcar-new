@@ -1,7 +1,7 @@
-{{-- Окошко счёта: светофор, номер и дата, контрагент, ТС; остаток справа; «Оплачен» формой, «Аннулировать» и документы чипами; строки и оплаты. --}}
+{{-- Карточка счёта: светофор, номер и дата, контрагент, ТС; остаток справа; «Оплачен» формой, «Аннулировать» и документы чипами; строки и оплаты. --}}
 @php use App\Support\Money; use App\Billing\InvoiceState; $i = $invoice; $href = '/money/invoices/'.$i->id; @endphp
 <x-ui.detail>
-    <x-ui.peek :href="$href" :title="$i->party->name" :photo="$i->vehicle?->mainPhoto()">
+    <x-ui.row-card :href="$href" :title="$i->party->name" :photo="$i->vehicle?->mainPhoto()">
         <x-slot:marks>
             <x-billing.light :invoice="$i"/>
             <span class="tag nums">{{ $i->isOwed() ? 'мы должны' : $i->label() }} от {{ $i->issued_at->translatedFormat('j M') }}</span>
@@ -31,5 +31,5 @@
             @endforeach
         </div>
         <x-slot:row><x-billing.table-row :invoice="$i"/></x-slot:row>
-    </x-ui.peek>
+    </x-ui.row-card>
 </x-ui.detail>

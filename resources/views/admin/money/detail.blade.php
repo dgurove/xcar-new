@@ -1,4 +1,4 @@
-{{-- Окошко счёта или вознаграждения по сделке: в метках остаток, светофор словом, документ, менеджер, ТС; в ряду действий
+{{-- Карточка счёта или вознаграждения по сделке: в метках остаток, светофор словом, документ, менеджер, ТС; в ряду действий
      «Оплачен» / «Выплатить» и «Ссылка на оплату» — шторками, PDF — шторкой документов, «Аннулировать» — в «···».
      Ниже строками денег: заявки менеджера с «Поступило» / «Не поступила», строки счёта с итогом и НДС, оплаты (у ссылки —
      способ, комиссия, зачислено ли на счёт, «Вернуть»), переплата по ссылке. --}}
@@ -14,7 +14,7 @@
     $suggest = \App\Billing\Acquiring\PayLink::defaultAmount($i);
 @endphp
 <x-ui.detail>
-    <x-ui.peek :href="$href" :title="$i->isOwed() ? 'Вознаграждение '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :photo="$offer?->mainPhoto()">
+    <x-ui.row-card :href="$href" :title="$i->isOwed() ? 'Вознаграждение '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :photo="$offer?->mainPhoto()">
         <x-slot:marks>
             <span class="tag nums font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}{{ $i->isPartial() ? ' из '.Money::rub($i->total) : '' }}</span>
             <x-billing.light :invoice="$i"/>
@@ -133,5 +133,5 @@
             @endforeach
         </div>
         <x-slot:row><x-money.table-row :invoice="$i"/></x-slot:row>
-    </x-ui.peek>
+    </x-ui.row-card>
 </x-ui.detail>

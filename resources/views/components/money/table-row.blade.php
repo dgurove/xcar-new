@@ -1,12 +1,11 @@
 {{-- Строка таблицы денег по сделкам — как счета стоянки: менеджер (или его покупатель), под ним срок
      светофором, номер, ТС и «сообщил об оплате»; от 640 номер, ТС и срок встают столбцами. Вознаграждение к
-     выплате — «к выплате» словом. Справа сумма, у частичной — остаток. Нажатие — окошко. --}}
+     выплате — «к выплате» словом. Справа сумма, у частичной — остаток. Нажатие — карточка. --}}
 @props(['invoice'])
 @php
     use App\Billing\InvoiceState;
     use App\Support\Money;
     $i = $invoice;
-    $href = '/work/money/invoices/'.$i->id;
     $offer = $i->deal?->offer;
     $claim = $i->claims->isNotEmpty();
     $due = $i->state === InvoiceState::Issued ? 'до '.$i->due_at->translatedFormat('j M') : mb_strtolower($i->state->label());
@@ -25,7 +24,7 @@
         </span>
     </td>
     <td class="cell-dim hidden sm:table-cell">{{ $i->isOwed() ? 'вознаграждение' : $i->label() }}</td>
-    <td class="cell-dim col-peek-hide hidden lg:table-cell"><span class="block max-w-56 truncate">{{ $offer?->titleWithYear() }}</span></td>
+    <td class="cell-dim col-detail-hide hidden lg:table-cell"><span class="block max-w-56 truncate">{{ $offer?->titleWithYear() }}</span></td>
     <td class="hidden sm:table-cell {{ $tone }}">{{ $due }}</td>
     <td class="num nums">
         {{ Money::nums($i->isPartial() ? $left : $i->total) }}

@@ -1,4 +1,4 @@
-{{-- Деньги: счета с пресетами, сортировкой, лупой и чипом «Контрагент» — только таблицей с окошком
+{{-- Деньги: счета с пресетами, сортировкой, лупой и чипом «Контрагент» — только таблицей с карточкам
      (плиток и строк у счетов нет); «Долги», «Закрытие месяца» и «Реквизиты» — одной плашкой над списком; счёт выставляется
      из ТС. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
@@ -20,7 +20,7 @@
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Счетов нет' }}</x-ui.empty>
     @else
         <x-ui.table id="invoices" class="mt-6" :view="$view">
-            <x-slot:head><tr><th class="grow">Контрагент</th><th class="cell-dim hidden sm:table-cell">№</th><th class="cell-dim col-peek-hide hidden lg:table-cell">За что</th><th class="hidden sm:table-cell">Срок</th><th class="num">Сумма</th><th class="num hidden sm:table-cell">Остаток</th></tr></x-slot:head>
+            <x-slot:head><tr><th class="grow">Контрагент</th><th class="cell-dim hidden sm:table-cell">№</th><th class="cell-dim col-detail-hide hidden lg:table-cell">За что</th><th class="hidden sm:table-cell">Срок</th><th class="num">Сумма</th><th class="num hidden sm:table-cell">Остаток</th></tr></x-slot:head>
             @foreach ($invoices as $i)<x-billing.table-row :invoice="$i"/>@endforeach
         </x-ui.table>
     @endif

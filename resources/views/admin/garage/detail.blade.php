@@ -1,4 +1,4 @@
-{{-- Окошко машины в «Работе → Гараже»: кадр, название, этап и чья; действие — карточка машины на сайте (там её ведут),
+{{-- Карточка машины в «Работе → Гараже»: кадр, название, этап и чья; действие — карточка машины на сайте (там её ведут),
      у ждущей — ещё сделка в CRM; ниже путь по этапам, деньги (в CRM — с закупочной) и расходы строками. --}}
 @php
     use App\Garage\Payer;
@@ -13,7 +13,7 @@
     $waitingBlock = $offer->stage()?->block?->name;
 @endphp
 <x-ui.detail>
-    <x-ui.peek :href="$car->url()" :title="$offer->titleWithYear()" :photo="$offer->mainPhoto()">
+    <x-ui.row-card :href="$car->url()" :title="$offer->titleWithYear()" :photo="$offer->mainPhoto()">
         <x-slot:marks>
             <x-ui.state :tone="$car->state->tone()">{{ mb_strtolower($car->state->label()) }}</x-ui.state>
             @if ($car->manager)<x-ui.person :user="$car->manager"/>@else<span class="tag">взяли под себя</span>@endif
@@ -23,7 +23,7 @@
             <a href="{{ $car->url() }}" class="btn btn-s btn-accent" data-turbo="false">Открыть машину</a>
             @if ($car->isWaiting() && $car->deal_id)<a href="/work/deals/{{ $car->deal_id }}" class="btn btn-s btn-quiet">Сделка</a>@endif
         </x-slot:actions>
-    </x-ui.peek>
+    </x-ui.row-card>
     <div class="mt-5 flex flex-col gap-5">
         @include('garage.cars.path')
         @unless ($car->isWaiting())@include('garage.cars.money')@endunless

@@ -61,7 +61,7 @@ class Request extends Model
             && (($this->delivery === null && ! $this->contacted_at && ! $this->planned_at) || ($this->next_call_at && $this->next_call_at->lte(now())));
     }
 
-    /** Что делать по заявке следующим — подпись главной кнопки на странице, в карточке и окошке. Закрытая — null. */
+    /** Что делать по заявке следующим — подпись главной кнопки на странице, в карточке и карточке. Закрытая — null. */
     public function verb(): ?string
     {
         return match (true) {

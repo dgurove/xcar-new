@@ -1,10 +1,9 @@
 {{-- Строка таблицы заявок. Ячейка ТС в два этажа: название, под ним тип словом (красным при просрочке),
      «позвонить», госномер и номер убытка; от 640 тип и номер уходят в свои столбцы. Справа срок: день, под
-     ним время. Пересказа «что делать» нет — его говорят тип и срок. Нажатие — окошко. --}}
+     ним время. Пересказа «что делать» нет — его говорят тип и срок. Нажатие — карточка. --}}
 @props(['req'])
 @php
     $v = $req->vehicle;
-    $href = '/cars/'.$v->id;
     $late = $req->isOverdue();
 @endphp
 <tr data-detail-key="{{ $req->id }}" id="request-{{ $req->id }}">
@@ -24,6 +23,6 @@
             <span class="cell-sub sm:ml-1 sm:inline">{{ $req->planned_at->format('H:i') }}</span>
         @endif
     </td>
-    <td class="cell-dim col-peek-hide hidden lg:table-cell">{{ $req->assignee?->name }}</td>
-    <td class="cell-dim col-peek-hide hidden lg:table-cell">{{ ($req->yard ?? $v->yard)?->name }}</td>
+    <td class="cell-dim col-detail-hide hidden lg:table-cell">{{ $req->assignee?->name }}</td>
+    <td class="cell-dim col-detail-hide hidden lg:table-cell">{{ ($req->yard ?? $v->yard)?->name }}</td>
 </tr>

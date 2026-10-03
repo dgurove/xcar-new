@@ -43,7 +43,7 @@ class RouteController
         }
         $offer = $take($offer, $exit, Actor::Staff, $request->user(), $payload);
 
-        // Туда же, откуда нажали: страница сделки, редактор или окошко строки (PeekBack), а не всегда в редактор.
+        // Туда же, откуда нажали: страница сделки, редактор или карточка строки (DetailBack), а не всегда в редактор.
         // Шаг можно отменить — в тосте «Отменить».
         return back(fallback: "/offers/{$offer->number}")->with('toast', $exit->label)
             ->with('toast-undo', (bool) StepBack::undoable($offer, $exit->from->workflow->track));

@@ -1,10 +1,10 @@
-{{-- Окошко строки таблицы предложений и галереи (фрейм peek) — почти весь редактор без ухода на страницу,
+{{-- Карточка строки таблицы предложений и галереи (фрейм detail) — почти весь редактор без ухода на страницу,
      одной лентой: кадры (нажатие прячет или возвращает, порядок перетаскиванием, поворот, «+»; удаления нет),
      шапка с ценой, у черновика «Оценка» с «В продажу», у открытого — продлить приём и состояние; подтверждения
      и интерес; дальше поля редактора (деньги, ТС, состояние, менеджеры) — сохраняются сами при выходе из поля
-     (autosave), без перерисовки окошка; в «Документах» — «Заполнить из документов» (окно «Из документов» поверх,
-     после «Подставить» окошко перечитывается). Документы, маршрут, удаление кадров и история — в полном редакторе.
-     Формы действий отвечают в окошко (PeekBack), строка — свежей из row (gallery — какой список её показывает). --}}
+     (autosave), без перерисовки карточки; в «Документах» — «Заполнить из документов» (окно «Из документов» поверх,
+     после «Подставить» карточка перечитывается). Документы, маршрут, удаление кадров и история — в полном редакторе.
+     Формы действий отвечают в карточку (DetailBack), строка — свежей из row (gallery — какой список её показывает). --}}
 @php
     use App\Offers\{OfferState, BidState, InterestState};
     $n = $offer->number;
@@ -22,15 +22,15 @@
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
     $unread = $chats->sum('unread_for_staff');
-    // Две колонки, которые не распирает содержимое (дата-время, VIN с кнопкой): иначе окошко листалось вбок.
+    // Две колонки, которые не распирает содержимое (дата-время, VIN с кнопкой): иначе карточка листалось вбок.
     $grid = 'grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-2.5';
 @endphp
 <x-ui.detail>
-    <x-ui.peek :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
+    <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         <x-slot:media>
             <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
                 @include('admin.offers.photo-upload')
-                @include('admin.offers.peek-photos')
+                @include('admin.offers.detail-photos')
             </div>
         </x-slot:media>
         <x-slot:marks>
@@ -53,7 +53,7 @@
             @if ($admin && $offer->isScheduled())
                 <x-offer.slot-menu :offer="$offer"/>
             @elseif ($admin && $offer->state === OfferState::Draft)
-                {{-- «Оценить» одним блоком: цена продажи и «В продажу» — сейчас или в слот (по умолчанию ближайший; окошко
+                {{-- «Оценить» одним блоком: цена продажи и «В продажу» — сейчас или в слот (по умолчанию ближайший; карточка
                      переходит к следующему черновику; пустое поле — просто дальше), под ними ориентиры из закупки, если
                      черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
                 <div class="w-full rounded-(--radius-l) bg-surface-2 p-3">
@@ -62,7 +62,7 @@
                         <div class="flex gap-2">
                             <input type="hidden" name="asking_price" data-bid-target="amount" value="{{ $offer->asking_price }}">
                             <input type="text" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
-                                data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-peek-focus>
+                                data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-detail-focus>
                             <button type="submit" class="btn btn-s btn-accent shrink-0">В продажу</button>
                         </div>
                         <div class="segment">
@@ -96,8 +96,8 @@
             @endif
             @if ($transitions->isNotEmpty() || $publishItems)
                 <div class="contents" data-controller="menu">
-                    <button type="button" class="pill pill-plain" data-action="menu#toggle" aria-haspopup="menu" aria-controls="peek-state-{{ $n }}">Состояние <x-ui.icon name="chevron-down" class="size-4"/></button>
-                    <div id="peek-state-{{ $n }}" class="menu" popover data-menu-target="list" role="menu">
+                    <button type="button" class="pill pill-plain" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-state-{{ $n }}">Состояние <x-ui.icon name="chevron-down" class="size-4"/></button>
+                    <div id="detail-state-{{ $n }}" class="menu" popover data-menu-target="list" role="menu">
                         @if ($publishItems)<x-offer.publish-items :offer="$offer"/>@endif
                         @foreach ($transitions as [$next, $label])
                             <form method="post" action="/offers/{{ $n }}/state" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
@@ -131,33 +131,33 @@
                 @endforeach
             </div>
         @endif
-        <form method="post" action="/offers/{{ $n }}" class="peek-edit mt-5 flex flex-col gap-5" data-controller="vin autosave" data-turbo-frame="detail">
+        <form method="post" action="/offers/{{ $n }}" class="detail-edit mt-5 flex flex-col gap-5" data-controller="vin autosave" data-turbo-frame="detail">
             @csrf @method('put')
             <section>
-                <h2 class="peek-section">Деньги</h2>
+                <h2 class="detail-section">Деньги</h2>
                 @include('admin.offers.fields.money', ['askingElsewhere' => $offer->state === OfferState::Draft])
             </section>
             <section>
-                <h2 class="peek-section">Транспортное средство</h2>
+                <h2 class="detail-section">Транспортное средство</h2>
                 @include('admin.offers.fields.car')
             </section>
             @include('admin.offers.fields.show')
         </form>
         <section class="mt-5">
-            <h2 class="peek-section">Документы</h2>
+            <h2 class="detail-section">Документы</h2>
             @include('admin.offers.papers-block')
         </section>
         {{-- Письма — под документами: последнее словами, вся переписка — окном поверх списка. --}}
         @if ($lastLetter && auth()->user()->canCrmMail())
             <section class="mt-5">
-                <h2 class="peek-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
+                <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
                 <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks" compact/>
             </section>
         @endif
-        {{-- Поделиться — в полосу окошка справа, перед «Развернуть»; нечего отдавать (ни фото, ни цены) — кнопки нет. --}}
+        {{-- Поделиться — в полосу карточки справа, перед «Развернуть»; нечего отдавать (ни фото, ни цены) — кнопки нет. --}}
         <x-slot:tools>
-            @include('admin.offers.peek-tools')
+            @include('admin.offers.detail-tools')
         </x-slot:tools>
         <x-slot:row><x-offer.table-row :offer="$offer" :gallery="$list"/></x-slot:row>
-    </x-ui.peek>
+    </x-ui.row-card>
 </x-ui.detail>

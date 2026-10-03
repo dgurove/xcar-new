@@ -1,7 +1,7 @@
-{{-- Окошко строки таблицы машин закупки на сайте (фрейм peek) — цена без страницы:
+{{-- Карточка строки таблицы машин закупки на сайте (фрейм detail) — цена без страницы:
      лента фото, метки, своя цена (менеджер) или лучшая (сотрудник), факты; менеджеру —
      поле «Предложение» с комментарием, «Предложить / Изменить», «Отозвать цену»,
-     выбранная — сообщением; ниже описание. Формы отвечают в окошко (PeekBack),
+     выбранная — сообщением; ниже описание. Формы отвечают в карточку (DetailBack),
      строка — свежей из row. --}}
 @php
     $user = auth()->user();
@@ -12,7 +12,7 @@
     $href = "/purchases/{$purchase->number}/{$car->ref}{$suffix}";
 @endphp
 <x-ui.detail>
-    <x-ui.peek :href="$href" :title="$car->titleWithYear()" :photos="$car->visiblePhotos()" :facts="$car->facts()" :action="false">
+    <x-ui.row-card :href="$href" :title="$car->titleWithYear()" :photos="$car->visiblePhotos()" :facts="$car->facts()" :action="false">
         <x-slot:marks>
             <span class="tag nums">№ {{ $car->ref }}</span>
             <span class="tag">{{ $car->kind->label() }}</span>
@@ -34,7 +34,7 @@
                         @csrf
                         <div class="flex gap-2">
                             <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $mine?->amount) }}">
-                            <input type="text" required autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Предложение, ₽" aria-label="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? \App\Support\Money::nums($mine->amount) : '') }}" data-peek-focus>
+                            <input type="text" required autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Предложение, ₽" aria-label="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? \App\Support\Money::nums($mine->amount) : '') }}" data-detail-focus>
                             <button type="submit" class="btn btn-s btn-accent shrink-0" data-bid-target="submit">{{ $mine ? 'Изменить' : 'Предложить' }}</button>
                         </div>
                         @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror
@@ -48,5 +48,5 @@
         </x-slot:actions>
         @if ($car->description)<p class="mt-3 whitespace-pre-line text-sm text-ink-muted">{{ $car->description }}</p>@endif
         <x-slot:row><x-purchase.site-table-row :car="$car" :purchase="$purchase" :query="$query"/></x-slot:row>
-    </x-ui.peek>
+    </x-ui.row-card>
 </x-ui.detail>

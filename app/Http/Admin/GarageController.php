@@ -23,7 +23,7 @@ class GarageController
 
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($offer = OfferNumber::find($key)) ? $this->peek($offer) : null);
+        $detail = Detail::of($request, fn (string $key) => ($offer = OfferNumber::find($key)) ? $this->detail($offer) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -57,12 +57,12 @@ class GarageController
         ]);
     }
 
-    /** Окошко строки: путь, деньги и расходы машины. */
-    public function peek(Offer $offer)
+    /** Карточка строки: путь, деньги и расходы машины. */
+    public function detail(Offer $offer)
     {
         $car = Car::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal'])
             ->where('offer_id', $offer->id)->firstOrFail();
 
-        return view('admin.garage.peek', ['car' => $car]);
+        return view('admin.garage.detail', ['car' => $car]);
     }
 }

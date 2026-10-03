@@ -32,8 +32,8 @@ export default class extends Controller {
             this.uploadFiles([...e.dataTransfer.files]);
         });
         // Скриншот или кадр, скопированный с портала страховой или из мессенджера: ⌘V — и он в фото. В поле ввода
-        // вставка своя: кусок страницы портала несёт и текст, и картинку — человеку нужен текст. Скрытое окошко
-        // (закрытый peek) кадры не ловит.
+        // вставка своя: кусок страницы портала несёт и текст, и картинку — человеку нужен текст. Скрытое карточка
+        // (закрытая карточка строки) кадры не ловит.
         if (this.anyValue) {
             document.addEventListener('paste', this.paste = (e) => {
                 const files = [...(e.clipboardData?.files || [])].filter(isImage);
@@ -361,7 +361,7 @@ export default class extends Controller {
         });
     }
 
-    // Какой ряд кадров перерисовать ответом: у редактора и у окошка они разные (id у ряда свой).
+    // Какой ряд кадров перерисовать ответом: у редактора и у карточки они разные (id у ряда свой).
     get rowId() {
         return this.element.querySelector('.photo-row[id], .photo-grid[id]')?.id ?? '';
     }

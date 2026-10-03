@@ -65,7 +65,7 @@ final class Slots
         return Str::ucfirst($at->isoFormat('dd')).', '.$at->translatedFormat('j M').', '.$time;
     }
 
-    /** Коротко, для переключателя в окошке строки: «Сегодня 16:00», «Завтра 16:00», «Пн 16:00». */
+    /** Коротко, для переключателя в карточке строки: «Сегодня 16:00», «Завтра 16:00», «Пн 16:00». */
     public static function short(Carbon $at): string
     {
         $day = $at->isToday() ? 'Сегодня' : ($at->isTomorrow() ? 'Завтра' : Str::ucfirst($at->isoFormat('dd')));

@@ -183,7 +183,7 @@
     background-color: var(--color-bar);
     /* Резины у корня нет: iOS тянет с документом и fixed-слои — таб-бар уезжал вверх, под ним
        открывался холст. На body одного правила мало — WebKit слушает html. Внутренние
-       прокрутки (шторки, peek, лента чата) со своим contain. */
+       прокрутки (шторки, карточка строки, лента чата) со своим contain. */
     overscroll-behavior: none;
     scroll-padding-top: calc(var(--spacing-header) + env(safe-area-inset-top) + 1rem);
     -webkit-tap-highlight-color: transparent;
@@ -249,7 +249,7 @@
   @keyframes pop-under  { from { transform: translateX(-30%); filter: brightness(.9); } }
   @media (prefers-reduced-motion: reduce) {
     ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
-    .sheet, .sheet::backdrop, .peek, .tabbar, .toast, .card-media img, .card-dot, .card-star, .card-arrow, .btn, .card, .header-title, .confirm { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    .sheet, .sheet::backdrop, .split-detail, .tabbar, .toast, .card-media img, .card-dot, .card-star, .card-arrow, .btn, .card, .header-title, .confirm { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   }
 
 }
@@ -770,7 +770,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      Детьми плашки бывают и обёртки строки (шторка, свайп) — разделитель рисует сам ребёнок. .list-head —
      заголовок группы над плашкой. */
   .list { @apply flex flex-col overflow-clip rounded-(--radius-l) bg-surface; }
-  .sheet .list, .box .list, .peek .list { @apply bg-surface-2; }
+  .sheet .list, .box .list, .detail-card .list { @apply bg-surface-2; }
   .list .row { border-radius: 0; background: transparent; min-height: 3.5rem; padding: .625rem 1rem; gap: .75rem; }
   .list > * + * { position: relative; }
   .list > * + *::after, .list > * + .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
@@ -874,7 +874,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table td.grow > .cell-sub > * + * { margin-left: 0; }
     .table td.grow > .cell-sub:empty { display: none; }
   }
-  /* Копирование номера — по наведению: иконка в каждой строке была шумом. На телефоне — в окошке. */
+  /* Копирование номера — по наведению: иконка в каждой строке была шумом. На телефоне — в карточке. */
   .table td .vincode > svg { opacity: 0; transition: opacity var(--dur-fast); }
   @media (hover: hover) { .table tr:hover td .vincode > svg { opacity: 1; } }
   /* «Подробной таблицей» (?vid=wide, x-ui.table view): на телефоне шапка и все столбцы, что видны на ПК,
@@ -897,7 +897,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table-wrap.is-wide .table-group-name { display: inline-block; position: sticky; left: .75rem; }
   }
 
-  /* Узкая таблица на широком экране — вид телефона (29.09.2026, владелец): справа окошко строки и документ, таблице
+  /* Узкая таблица на широком экране — вид телефона (29.09.2026, владелец): справа карточка строки и документ, таблице
      остаётся полстолбца. Решает ширина самой таблицы, а не экрана — контейнер .table-box. На телефоне вид и так
      телефонный (правила выше по экрану), здесь — только от 640 px. Подробная таблица (is-wide) не трогается. */
   .table-box { container: tbl / inline-size; }
@@ -1084,7 +1084,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Столбец «Вендор, № убытка»: логотип с именем и номер в одну строку. Логотип перед названием ТС — только пока
      этого столбца нет (краткая таблица телефона). */
   .vendor-ref { display: inline-flex; align-items: center; gap: .5em; min-width: 0; max-width: 100%; }
-  /* Имя вендора подсказкой у логотипа: наведение на ПК, нажатие на телефоне (кнопка — окошко строки не открывается).
+  /* Имя вендора подсказкой у логотипа: наведение на ПК, нажатие на телефоне (кнопка — карточка строки не открывается).
      Справа от логотипа поверх номера, а не сверху: ячейка таблицы режет всё, что выходит за её высоту. */
   .vendor-tip { position: relative; display: inline-flex; line-height: 1; cursor: default; -webkit-tap-highlight-color: transparent; }
   .vendor-tip::after {
@@ -1410,7 +1410,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Полоса карточки: ручка листа (телефон), кнопки строки, «Открыть страницу», «Закрыть». Липнет к верху карточки. */
   .detail-bar { @apply sticky top-0 z-10 flex shrink-0 items-center gap-1 bg-surface px-3 pb-1 pt-2; }
   .detail-handle { display: none; }
-  .detail-btn, .peek-close { @apply relative flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
+  .bar-btn { @apply relative flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   .detail-body { @apply px-4 pb-4 pt-1; }
   .detail-pad { display: none; }
   @media (min-width: 1024px) {
@@ -1426,7 +1426,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     }
     .detail-card { border-radius: inherit; }
     /* Карточка встала справа — такой столбец уже написан в ней, а название снова читается целиком. */
-    .split[data-open] .col-peek-hide { display: none !important; }
+    .split[data-open] .col-detail-hide { display: none !important; }
   }
   @media (max-width: 1023.98px) {
     .split-detail {
@@ -1453,21 +1453,21 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     /* Лист закрывает нижнюю половину — последние строки выезжают из-под него. */
     .split[data-open] .split-main { padding-bottom: 50dvh; }
   }
-  /* Шапка окошка с лентой: название и цена в одну строку, под ними метки с фактами во всю ширину (колонка рядом с ценой
+  /* Шапка карточки с лентой: название и цена в одну строку, под ними метки с фактами во всю ширину (колонка рядом с ценой
      ставила теги столбиком); до 640 цена — своей строкой под названием. */
-  .peek-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .75rem; align-items: start; }
-  .peek-aside { grid-column: 2; grid-row: 1; text-align: right; }
-  .peek-marks { grid-column: 1 / -1; margin-top: .375rem; }
+  .detail-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .75rem; align-items: start; }
+  .detail-aside { grid-column: 2; grid-row: 1; text-align: right; }
+  .detail-marks { grid-column: 1 / -1; margin-top: .375rem; }
   @media (max-width: 639.98px) {
-    .peek-aside { grid-column: 1 / -1; grid-row: auto; text-align: left; margin-top: .125rem; }
-    .peek-marks { grid-column: 1 / -1; }
+    .detail-aside { grid-column: 1 / -1; grid-row: auto; text-align: left; margin-top: .125rem; }
+    .detail-marks { grid-column: 1 / -1; }
   }
-  .peek-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 6rem; height: 4.5rem; }
-  .peek-photo img { @apply size-full object-cover; }
-  /* Лента кадров в окошке: несколько в ряд, тап — во весь экран (Viewer). */
-  .peek-strip { @apply -mx-4 flex snap-x gap-1.5 overflow-x-auto px-4; scrollbar-width: none; }
-  .peek-strip-frame { @apply h-20 w-[6.75rem] shrink-0 snap-start cursor-zoom-in overflow-hidden rounded-(--radius-m) bg-surface-3; }
-  .peek-strip-empty { @apply h-20 w-[6.75rem] overflow-hidden rounded-(--radius-m) bg-surface-3; }
+  .detail-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 6rem; height: 4.5rem; }
+  .detail-photo img { @apply size-full object-cover; }
+  /* Лента кадров в карточке: несколько в ряд, тап — во весь экран (Viewer). */
+  .detail-strip { @apply -mx-4 flex snap-x gap-1.5 overflow-x-auto px-4; scrollbar-width: none; }
+  .detail-strip-frame { @apply h-20 w-[6.75rem] shrink-0 snap-start cursor-zoom-in overflow-hidden rounded-(--radius-m) bg-surface-3; }
+  .detail-strip-empty { @apply h-20 w-[6.75rem] overflow-hidden rounded-(--radius-m) bg-surface-3; }
   .toasts { @apply pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4;
     top: calc(.75rem + env(safe-area-inset-top)); }
   .toast { @apply pointer-events-auto rounded-(--radius-l) bg-chrome px-4 py-3 text-sm text-white shadow-(--shadow-drop); animation: toast-in var(--dur-slow) var(--ease-spring) both; touch-action: pan-x; }
@@ -2260,15 +2260,15 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .photo-star--pick svg { fill: none; stroke: #fff; stroke-width: 1.8; }
   .is-choosing .photo-star--pick { display: flex; animation: fade var(--dur-fast) var(--ease-out); }
   .is-choosing .photo-star--main svg { transform: scale(1.12); }
-  /* Заголовок раздела полей в окошке строки — как заголовок блока в шторке. */
-  .peek-section { @apply mb-2 text-base font-medium; }
-  /* Поля в окошке строки: плотнее, чем в редакторе, и не шире своей колонки (дата-время и VIN распирали её). */
-  .peek-edit .field { min-width: 0; gap: .25rem; }
-  .peek-edit .field-input { min-width: 0; width: 100%; min-height: 2.5rem; padding-block: .375rem; padding-inline: .625rem; }
-  .peek-edit select.field-input { padding-right: 1.75rem; background-position: right 8px center; }
-  .peek-edit textarea.field-input { min-height: 4.5rem; }
-  .peek-edit .vin-box .field-input { padding-right: 3rem; }
-  .peek-edit .choice > span, .peek-edit .choice-add, .peek-edit .choice-input { padding-block: .25rem; }
+  /* Заголовок раздела полей в карточке строки — как заголовок блока в шторке. */
+  .detail-section { @apply mb-2 text-base font-medium; }
+  /* Поля в карточке строки: плотнее, чем в редакторе, и не шире своей колонки (дата-время и VIN распирали её). */
+  .detail-edit .field { min-width: 0; gap: .25rem; }
+  .detail-edit .field-input { min-width: 0; width: 100%; min-height: 2.5rem; padding-block: .375rem; padding-inline: .625rem; }
+  .detail-edit select.field-input { padding-right: 1.75rem; background-position: right 8px center; }
+  .detail-edit textarea.field-input { min-height: 4.5rem; }
+  .detail-edit .vin-box .field-input { padding-right: 3rem; }
+  .detail-edit .choice > span, .detail-edit .choice-add, .detail-edit .choice-input { padding-block: .25rem; }
 
   .sortable-ghost { @apply opacity-40; }
 }

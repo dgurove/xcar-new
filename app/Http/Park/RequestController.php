@@ -54,10 +54,10 @@ class RequestController
 {
     public const SORTS = ['planned' => 'По сроку', 'fresh' => 'Сначала новые', 'type' => 'По типу'];
 
-    /** Главная стоянки и список заявок: пресеты «Просрочено», «Связаться», типы и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с окошком строки. */
+    /** Главная стоянки и список заявок: пресеты «Просрочено», «Связаться», типы и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с карточкам строки. */
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($req = ParkRequest::find($key)) && $req->vehicle && Scope::allows($request->user(), $req->vehicle) ? app(VehicleController::class)->peek($request, $req->vehicle) : null);
+        $detail = Detail::of($request, fn (string $key) => ($req = ParkRequest::find($key)) && $req->vehicle && Scope::allows($request->user(), $req->vehicle) ? app(VehicleController::class)->detail($request, $req->vehicle) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -122,14 +122,6 @@ class RequestController
             'facets' => $facets,
             'detail' => $detail,
         ]);
-    }
-
-    /** Окошко строки таблицы заявок — окошко ТС: заявка и есть текущий этап дела. */
-    public function peek(Request $http, ParkRequest $req, VehicleController $vehicles)
-    {
-        abort_unless(Scope::allows($http->user(), $req->vehicle), 404);
-
-        return $vehicles->peek($http, $req->vehicle);
     }
 
     /**

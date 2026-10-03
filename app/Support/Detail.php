@@ -12,7 +12,7 @@ use Illuminate\Support\HtmlString;
  * на тот же список с ключом в этот фрейм (`url`); Turbo грузит фрейм и сам меняет адрес. Контроллер списка отвечает
  * одним фреймом, когда его просит фрейм (`framed` — заголовок `Turbo-Frame: detail`), не строя список; иначе отдаёт
  * карточку шеллу (`x-ui.shell :detail`), и перезагрузка открывает ту же. Resolver получает ключ и возвращает вид
- * карточки (`…/peek.blade.php` в x-ui.detail) или null — ключ не нашёлся.
+ * карточки (`…/detail.blade.php`: x-ui.detail с x-ui.row-card) или null — ключ не нашёлся.
  */
 final class Detail
 {
@@ -73,7 +73,7 @@ final class Detail
     /**
      * Адрес списка, от которого строятся ссылки строк и «Закрыть»: страница списка или (автосохранение, поток после
      * формы) — адрес, откуда пришли. Поиск лупой и номер подгруженной страницы в адрес не едут: перезагрузка с ними
-     * показала бы не тот список. Возвращает путь и параметры (с peek).
+     * показала бы не тот список. Возвращает путь и параметры (с ?peek=).
      */
     private static function context(): array
     {
@@ -109,11 +109,4 @@ final class Detail
         return self::to(array_diff_key($query, ['peek' => 1]));
     }
 
-    /** Строка открыта сейчас — выделена с сервера (перезагрузка, морф, свежая строка после правки). */
-    public static function selected(string|int $key): bool
-    {
-        [, $query] = self::context();
-
-        return ($query['peek'] ?? null) === (string) $key;
-    }
 }

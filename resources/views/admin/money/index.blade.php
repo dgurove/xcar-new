@@ -1,5 +1,5 @@
 {{-- Деньги по сделкам: пресеты, сортировка и поиск в тулбаре, «Взаиморасчёты по менеджерам» строкой над списком,
-     сами счета и вознаграждения — только таблицей с окошком; действия в окошке, в строках их нет. --}}
+     сами счета и вознаграждения — только таблицей с карточкам; действия в карточке, в строках их нет. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
 <x-ui.shell title="Деньги" :heading="false" :detail="$detail">
     <x-admin.work-titles current="money" :count="$invoices->total()"/>
@@ -16,7 +16,7 @@
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : match ($preset) { 'claims' => 'Никто об оплате не сообщал', 'payouts' => 'Выплачивать нечего', default => 'Счетов нет' } }}</x-ui.empty>
     @else
         <x-ui.table id="invoices" class="mt-6" :view="$view">
-            <x-slot:head><tr><th class="grow">Менеджер</th><th class="cell-dim hidden sm:table-cell">№</th><th class="cell-dim col-peek-hide hidden lg:table-cell">ТС</th><th class="hidden sm:table-cell">Срок</th><th class="num">Сумма</th><th class="num hidden sm:table-cell">Остаток</th></tr></x-slot:head>
+            <x-slot:head><tr><th class="grow">Менеджер</th><th class="cell-dim hidden sm:table-cell">№</th><th class="cell-dim col-detail-hide hidden lg:table-cell">ТС</th><th class="hidden sm:table-cell">Срок</th><th class="num">Сумма</th><th class="num hidden sm:table-cell">Остаток</th></tr></x-slot:head>
             @foreach ($invoices as $i)<x-money.table-row :invoice="$i"/>@endforeach
         </x-ui.table>
     @endif

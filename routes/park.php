@@ -35,7 +35,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/from-mail/{candidate}/scan/apply', [ScanController::class, 'apply']);
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests/{req}', [RequestController::class, 'show']);
-    Route::get('/requests/{req}/peek', [RequestController::class, 'peek']);
     Route::post('/requests/{req}/intake', [RequestController::class, 'intake']);
     Route::post('/requests/{req}/move', [RequestController::class, 'move']);
     Route::post('/requests/{req}/release', [RequestController::class, 'release']);
@@ -48,7 +47,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
 
     Route::get('/cars', [VehicleController::class, 'index']);
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
-    Route::get('/cars/{vehicle}/peek', [VehicleController::class, 'peek']);
     Route::get('/cars/{vehicle}/letters', [VehicleController::class, 'letters']);
     Route::put('/cars/{vehicle}', [VehicleController::class, 'update'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/media', [VehicleController::class, 'upload']);
@@ -98,7 +96,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::put('/money/parties/{party}', [PartyController::class, 'update'])->middleware('park.area:admin');
         Route::delete('/money/parties/{party}', [PartyController::class, 'destroy'])->middleware('park.area:admin');
         Route::get('/money/invoices/{invoice}', [MoneyController::class, 'show']);
-        Route::get('/money/invoices/{invoice}/peek', [MoneyController::class, 'peek']);
         Route::get('/money/invoices/{invoice}/pdf', [MoneyController::class, 'file']);
         Route::get('/money/invoices/{invoice}/print', [MoneyController::class, 'print']);
         Route::get('/money/invoices/{invoice}/act', [MoneyController::class, 'act']);
@@ -121,7 +118,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/acts/{vehicle}/{kind}', [ActController::class, 'show'])->where('kind', 'intake|release|contract|handover');
 
     Route::get('/yards', [YardController::class, 'index']);
-    Route::get('/yards/{yard}/peek', [YardController::class, 'peek']);
     // Настройки парковки — только админу: правка парковок, вендоры, прайс (у управляющего их нет вовсе).
     Route::middleware('park.area:admin')->group(function () {
         Route::post('/yards', [YardController::class, 'store']);

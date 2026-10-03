@@ -32,7 +32,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
-/** Деньги стоянки: счета с пресетами, окошко строки, карточка счёта, долги по контрагентам, месяц. */
+/** Деньги стоянки: счета с пресетами, карточка строки, карточка счёта, долги по контрагентам, месяц. */
 class MoneyController
 {
     public const PRESETS = ['unpaid' => 'Не оплачены', 'overdue' => 'Просрочены', 'owed' => 'Мы должны', 'paid' => 'Оплачены', 'all' => 'Все'];
@@ -41,7 +41,7 @@ class MoneyController
 
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($invoice = Invoice::find($key)) ? $this->peek($invoice) : null);
+        $detail = Detail::of($request, fn (string $key) => ($invoice = Invoice::find($key)) ? $this->detail($invoice) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -104,12 +104,12 @@ class MoneyController
         abort_unless(! $invoice->vehicle || Scope::allows(request()->user(), $invoice->vehicle), 403);
     }
 
-    public function peek(Invoice $invoice)
+    public function detail(Invoice $invoice)
     {
         self::guard($invoice);
         $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'charges', 'payments']);
 
-        return view('park.money.peek', ['invoice' => $invoice, 'sources' => PaymentSource::options()]);
+        return view('park.money.detail', ['invoice' => $invoice, 'sources' => PaymentSource::options()]);
     }
 
     public function show(Invoice $invoice)

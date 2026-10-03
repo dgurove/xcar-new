@@ -6,7 +6,7 @@ import * as Turbo from '@hotwired/turbo';
 // элементе); тот же адрес, уже загруженный, перечитывается. url в значении — открыть сразу (?window=).
 // Отправили письмо из окна — после закрытия страница перечитывается: шаг «Отчёт вендору» становится сделанным.
 // Кнопки предмета в заголовок окна — шаблоном data-window-tools во фрейме (✨ у писем ТС и предложения).
-// reload=false — окно перечитывает страницу само (✨ Распознать: итог scan_controller бережёт окошко строки).
+// reload=false — окно перечитывает страницу само (✨ Распознать: итог scan_controller бережёт карточка строки).
 export default class extends Controller {
     static targets = ['frame', 'tools'];
     static values = { url: String, reload: { type: Boolean, default: true } };

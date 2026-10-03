@@ -1,8 +1,8 @@
-{{-- Окошко поступления: плательщик, сумма, дата, ИНН и назначение целиком. Не привязано — счета на выбор (сначала
+{{-- Карточка поступления: плательщик, сумма, дата, ИНН и назначение целиком. Не привязано — счета на выбор (сначала
      совпавшие по ИНН и сумме) и «Не наше»; «не наше» можно вернуть; привязанное ведёт в свой счёт. --}}
-@php use App\Support\Money; $href = '/work/money/bank/'.$tx->id; @endphp
+@php use App\Support\Money; @endphp
 <x-ui.detail>
-    <x-ui.peek :href="$href.'/peek'" :title="$tx->counterparty ?: 'Плательщик не указан'" :photo="false">
+    <x-ui.row-card :title="$tx->counterparty ?: 'Плательщик не указан'" :photo="false">
         <x-slot:marks>
             <span class="tag nums font-semibold">{{ Money::exact($tx->amount) }}</span>
             <span class="tag nums">{{ $tx->booked_at->translatedFormat('j M Y') }}</span>
@@ -49,5 +49,5 @@
             <div class="mt-4 text-sm text-ink-muted">Открытых счетов на такую сумму нет</div>
         @endif
         <x-slot:row><x-bank.table-row :tx="$tx"/></x-slot:row>
-    </x-ui.peek>
+    </x-ui.row-card>
 </x-ui.detail>

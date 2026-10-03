@@ -2,12 +2,11 @@
      и номер убытка; от 640 второй этаж встаёт в линию за названием, а номер убытка уходит в свой столбец.
      Справа сутки («216 д», одним цветом: долгая стоянка — не беда) и набежавшая сумма; ставка на телефоне под суммой, на ПК своим
      столбцом. Парковки в строке нет — она заголовком группы; place — список без групп (поиск), тогда
-     парковку пишем словом. Вендор — логотипом перед названием, пока его столбца (вместе с номером убытка) не видно, — до 640. Нажатие — окошко (peek). --}}
+     парковку пишем словом. Вендор — логотипом перед названием, пока его столбца (вместе с номером убытка) не видно, — до 640. Нажатие — карточка рядом. --}}
 @props(['vehicle', 'total' => null, 'debt' => 0, 'place' => false])
 @php
     use App\Park\VehicleState;
     use App\Support\Money;
-    $href = '/cars/'.$vehicle->id;
     $state = $vehicle->state;
     $days = $vehicle->daysStored();
     $rate = $total['rate'] ?? null;
@@ -36,7 +35,7 @@
     {{-- Вендор и номер убытка одним столбцом: логотип (имя — подсказкой по наведению или нажатию), номер с копированием. --}}
     <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vehicle->vendor)<button type="button" class="vendor-tip" data-tip="{{ $vehicle->vendor->name }}" aria-label="{{ $vehicle->vendor->name }}"><x-vendor.logo :vendor="$vehicle->vendor"/></button>@endif @if ($vehicle->ref)<x-ui.copy-code :value="$vehicle->ref"/>@endif</span></td>
     <td class="hidden sm:table-cell"><span @class(['status-cell', 'is-act' => $status['act'], 'is-late' => $status['late']])>{{ $status['label'] }}</span></td>
-    <td class="num nums col-peek-hide hidden text-ink-muted lg:table-cell">{{ $vehicle->accepted_at?->translatedFormat('j M Y') }}</td>
+    <td class="num nums col-detail-hide hidden text-ink-muted lg:table-cell">{{ $vehicle->accepted_at?->translatedFormat('j M Y') }}</td>
     <td class="num nums">
         @if ($state === VehicleState::Released && $vehicle->released_at)
             <time class="text-ink-muted" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ $vehicle->released_at->translatedFormat('j M') }}</time>

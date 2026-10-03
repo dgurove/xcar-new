@@ -75,7 +75,7 @@
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
     </x-ui.toolbar>
 
-    {{-- Оценка идёт в окошке таблицы: первая без нашей цены открывается сразу, «Дальше» ведёт по строкам. --}}
+    {{-- Оценка идёт в карточке таблицы: первая без нашей цены открывается сразу, «Дальше» ведёт по строкам. --}}
     @if ($counts['unfinal'] > 0 && !($preset === 'unfinal' && \App\Support\ListView::isTable($view)))
         <div class="mt-3 flex"><a href="/purchases/{{ $n }}?preset=unfinal&vid=table&peek=first{{ $kind ? '&kind='.$kind->value : '' }}" class="btn btn-s btn-accent w-full sm:ml-auto sm:w-auto" data-turbo-action="replace">Оценить</a></div>
     @endif

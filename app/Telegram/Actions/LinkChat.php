@@ -22,7 +22,7 @@ final class LinkChat
             Chat::where('user_id', $user->id)->whereKeyNot($chatId)->update(['user_id' => null]);
             Chat::updateOrCreate(['id' => $chatId], ['user_id' => $user->id, 'username' => $username ?: null]);
         });
-        // Открытая страница с окошком или профилем перерисуется сама.
+        // Открытая страница с карточкам или профилем перерисуется сама.
         ($this->publish)(Topics::user($user), 'telegram', ['state' => 'linked']);
     }
 }

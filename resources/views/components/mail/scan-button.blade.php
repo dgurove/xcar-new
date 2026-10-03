@@ -1,9 +1,9 @@
 {{-- Вход в окно «Из документов» (x-mail.scan-window, одно на приложение) для предмета по адресу окна (ScanController:
      /cars/{v}/scan, /offers/{n}/scan, …/from-mail/{c}/scan). Знак — искра x-ui.spark, та же, что у VIN. Вид по месту:
      Искра белая, при наведении — лаймовая (.scan-spark). round — круглая у правого края блока «Документы» (подсказкой «Заполнить из документов», пока в карточке
-     пусто — fill, иначе «Сверить с документами»); row — строка списка там, где блока «Документы» нет (окошко
+     пусто — fill, иначе «Сверить с документами»); row — строка списка там, где блока «Документы» нет (карточка
      «Наличия», разбор письма), под ней сколько есть документов и фото (files); head — «Распознать» в шапке цепочки и
-     окна писем; icon — значок в полосе окошка строки и шторки документов. data-scan-subject — тот же адрес для ✨
+     окна писем; icon — значок в полосе карточки строки и шторки документов. data-scan-subject — тот же адрес для ✨
      шторки документов: она читает открытый файл; papers — окно читает и документы /files/{id} (предложение), не только
      вложения писем. --}}
 @props(['url', 'look' => 'row', 'fill' => false, 'files' => null, 'papers' => false])
@@ -29,5 +29,5 @@
 @elseif ($look === 'head')
     <button type="button" {{ $attributes->merge(['class' => 'btn btn-s btn-quiet case-do scan-spark gap-1.5']) }} {!! $emit !!}><x-ui.spark class="size-4"/>Распознать</button>
 @else
-    <button type="button" {{ $attributes->merge(['class' => 'peek-close scan-spark']) }} {!! $emit !!} aria-label="Из документов" title="Из документов"><x-ui.spark class="size-[18px]"/></button>
+    <button type="button" {{ $attributes->merge(['class' => 'bar-btn scan-spark']) }} {!! $emit !!} aria-label="Из документов" title="Из документов"><x-ui.spark class="size-[18px]"/></button>
 @endif

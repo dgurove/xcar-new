@@ -1,4 +1,4 @@
-{{-- Сам список заявок: таблица с окошком или карточки, в конце хвост со следующей порцией — его ловит
+{{-- Сам список заявок: таблица с карточкам или карточки, в конце хвост со следующей порцией — его ловит
      endless_controller. Страниц у заявок нет. Этим же куском отвечает лента (заголовок X-List).
      Таблица при сортировке «По сроку» собрана под заголовками, как «Напоминания»: Просрочено, Сегодня, Завтра,
      Позже, Без срока. Таблица целиком на одной странице, поэтому заголовок группы не повторится в ленте. --}}
@@ -22,7 +22,7 @@
 @elseif (ListView::isTable($view))
     <x-ui.table id="requests-table" :view="$view">
         <x-slot:head>
-            <tr><th class="grow">Марка, модель</th><th class="cell-dim hidden sm:table-cell">№ убытка</th><th class="hidden sm:table-cell">Тип</th><th class="num">Срок</th><th class="cell-dim col-peek-hide hidden lg:table-cell">Исполнитель</th><th class="cell-dim col-peek-hide hidden lg:table-cell">Парковка</th></tr>
+            <tr><th class="grow">Марка, модель</th><th class="cell-dim hidden sm:table-cell">№ убытка</th><th class="hidden sm:table-cell">Тип</th><th class="num">Срок</th><th class="cell-dim col-detail-hide hidden lg:table-cell">Исполнитель</th><th class="cell-dim col-detail-hide hidden lg:table-cell">Парковка</th></tr>
         </x-slot:head>
         @foreach ($groups as $name => $group)
             @if ($name)<tr class="table-group"><th colspan="6"><span class="table-group-name">{{ $name }} <span class="nums">{{ $group->count() }}</span></span></th></tr>@endif

@@ -58,7 +58,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::get('/offers/twins', [OfferController::class, 'twins']);
     Route::middleware('offer.edit')->group(function () {
         Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
-        Route::get('/offers/{offer}/peek', [OfferController::class, 'peek']);
         Route::get('/offers/{offer}/letters', [MailController::class, 'offerLetters'])->middleware('ability:canCrmMail');
         // «✨» читает документы предложения, а вложения писем — только тем, кому открыта почта (`OfferSubject::for`).
         Route::get('/offers/{offer}/scan', [ScanController::class, 'offerShow']);
@@ -146,7 +145,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/deals/{deal}', [DealController::class, 'show']);
         // У кого что в гараже и во что обошлось.
         Route::get('/work/garage', [GarageController::class, 'index']);
-        Route::get('/work/garage/{offer}/peek', [GarageController::class, 'peek']);
         Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
         // Деньги по сделкам: заявки менеджеров об оплате, вознаграждения к выплате, счета; карточка счёта — общая со стоянкой.
@@ -158,12 +156,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::delete('/work/money/links/{link}', [PayLinkController::class, 'destroy']);
         Route::post('/work/money/acquiring/{attempt}/refund', [PayLinkController::class, 'refund']);
         Route::get('/work/money/bank', [BankController::class, 'index']);
-        Route::get('/work/money/bank/{transaction}/peek', [BankController::class, 'peek']);
         Route::post('/work/money/bank/{transaction}/match', [BankController::class, 'match']);
         Route::post('/work/money/bank/{transaction}/ignore', [BankController::class, 'ignore']);
         Route::prefix('work/money/invoices/{invoice}')->group(function () {
             Route::get('/', [MoneyController::class, 'show']);
-            Route::get('/peek', [MoneyController::class, 'peek']);
             Route::put('/', [MoneyController::class, 'update']);
             Route::get('/pdf', [MoneyController::class, 'file']);
             Route::get('/print', [MoneyController::class, 'print']);
@@ -204,7 +200,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/purchases/{purchase}/counter', [PurchaseController::class, 'counterPreview']);
         Route::post('/purchases/{purchase}/counter/move', [PurchaseController::class, 'counterMove']);
         Route::redirect('/purchases/{purchase}/offers', '/purchases/{purchase}', 301);
-        Route::get('/purchases/{purchase}/{car}/peek', [PurchaseController::class, 'peek']);
         Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car']);
         Route::match(['get', 'post'], '/purchases/{purchase}/{car}/pdf', [ShareController::class, 'carPdf']);
         Route::put('/purchases/{purchase}/{car}', [PurchaseController::class, 'updateCar']);

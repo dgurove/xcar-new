@@ -1,4 +1,4 @@
-{{-- Выбор файлов и полоса загрузки кадров — внутри data-controller="photos" (редактор и окошко строки). --}}
+{{-- Выбор файлов и полоса загрузки кадров — внутри data-controller="photos" (редактор и карточка строки). --}}
 <input type="file" accept="image/*,.heic,.heif" multiple hidden data-photos-target="input" data-action="change->photos#upload">
 <div hidden data-photos-target="progress" class="mb-3">
     <div class="mb-1 text-sm text-ink-muted" data-label></div>

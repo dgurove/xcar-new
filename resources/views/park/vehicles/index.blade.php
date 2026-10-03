@@ -1,5 +1,5 @@
 {{-- «Наличие»: что стоит на парковках сейчас. Чипы — вендор, парковка, тип ТС и «Без ставки», лупа ищет по ходу
-     набора (по всем состояниям, выданную тоже найдёт) и адрес не меняет; вид — таблица с окошком или карточки. --}}
+     набора (по всем состояниям, выданную тоже найдёт) и адрес не меняет; вид — таблица с карточкам или карточки. --}}
 @php use App\Support\ListView; $view = ListView::pick(request(), $vehicles->total()); @endphp
 <x-ui.shell title="Наличие" :count="$vehicles->total()" :detail="$detail">
     <x-ui.toolbar :sorts="\App\Http\Park\VehicleController::SORTS" :sort="$sort" name="vehicles" :facets="$facets"

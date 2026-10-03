@@ -10,6 +10,6 @@
     {{-- Подтверждения принимает только админ — модератору столбца нет. --}}
     @if (auth()->user()?->canManageCrm())<th class="num hidden sm:table-cell">{{ $gallery ? 'Интерес' : 'Подтверждения' }}</th>@endif
     <th class="num">Цена</th>
-    <th class="num col-peek-hide hidden sm:table-cell">Закупочная</th>
-    <th class="num col-peek-hide hidden sm:table-cell">Создано</th>
+    <th class="num col-detail-hide hidden sm:table-cell">Закупочная</th>
+    <th class="num col-detail-hide hidden sm:table-cell">Создано</th>
 </tr>

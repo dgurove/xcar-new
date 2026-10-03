@@ -66,7 +66,7 @@ class PurchaseController
     public function show(Request $request, Purchase $purchase)
     {
         // ?peek=ref — карточка ТС рядом с таблицей; first — первая без нашей цены (адрес получает её ref ниже).
-        $detail = Detail::of($request, fn (string $key) => ($car = $purchase->cars()->where('ref', $key)->first()) ? $this->peek($purchase, $car) : null);
+        $detail = Detail::of($request, fn (string $key) => ($car = $purchase->cars()->where('ref', $key)->first()) ? $this->detail($purchase, $car) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -342,13 +342,13 @@ class PurchaseController
         return view('admin.purchases.car', ['purchase' => $purchase, 'car' => $car]);
     }
 
-    /** Окошко строки таблицы: фото, факты, цены Carcade, предложения менеджеров, наша цена. */
-    public function peek(Purchase $purchase, Car $car)
+    /** Карточка строки таблицы: фото, факты, цены Carcade, предложения менеджеров, наша цена. */
+    public function detail(Purchase $purchase, Car $car)
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
         $car->load(['brand', 'model', 'settlement', 'media', 'offers.user', 'offer:id,number']);
 
-        return view('admin.purchases.peek', ['purchase' => $purchase, 'car' => $car]);
+        return view('admin.purchases.detail', ['purchase' => $purchase, 'car' => $car]);
     }
 
     public function updateCar(Request $request, Purchase $purchase, Car $car, UpdateCar $update)
@@ -373,7 +373,7 @@ class PurchaseController
         return back()->with('toast', 'Сохранено');
     }
 
-    /** Наша цена из окошка строки («Дальше»): пустое поле ничего не трогает; окошко переходит к следующей без цены само. */
+    /** Наша цена из карточки строки («Дальше»): пустое поле ничего не трогает; карточка переходит к следующей без цены само. */
     public function estimate(Request $request, Purchase $purchase, Car $car)
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
@@ -382,7 +382,7 @@ class PurchaseController
             $car->update(['price_final' => (int) preg_replace('/\D+/', '', $raw) ?: null]);
         }
 
-        return redirect("/purchases/{$purchase->number}?preset=unfinal")->with('peek-advance', true);
+        return redirect("/purchases/{$purchase->number}?preset=unfinal")->with('detail-advance', true);
     }
 
     public function choose(Request $request, Offer $offer, ChooseOffer $choose)

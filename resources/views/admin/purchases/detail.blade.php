@@ -1,9 +1,9 @@
-{{-- Окошко строки таблицы машин закупки (фрейм peek) — здесь же оценка: лента фото,
+{{-- Карточка строки таблицы машин закупки (фрейм detail) — здесь же оценка: лента фото,
      метки, наша цена справа, факты, поле «Наша цена» и «Дальше» (сохраняет и ведёт
      к следующей без цены; пустое поле — просто дальше), ниже предложения менеджеров
      (выбрать/отменить прямо тут), описание. Цены Carcade — подписями под полем,
-     характеристики — метками и фактами наверху, отдельных блоков нет: окошко — полэкрана.
-     Формы отвечают в окошко (PeekBack), строка таблицы — свежей из row. ТС, ушедшая в предложение по
+     характеристики — метками и фактами наверху, отдельных блоков нет: карточка — полэкрана.
+     Формы отвечают в карточку (DetailBack), строка таблицы — свежей из row. ТС, ушедшая в предложение по
      контрпредложению, вместо оценки показывает ссылку на предложение; цены менеджеров остаются. --}}
 @php
     use App\Purchases\ImportState;
@@ -13,7 +13,7 @@
     $amber = '--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d';
 @endphp
 <x-ui.detail>
-    <x-ui.peek :href="$href" :title="$car->titleWithYear()" :photos="$car->visiblePhotos()" :facts="$car->facts()">
+    <x-ui.row-card :href="$href" :title="$car->titleWithYear()" :photos="$car->visiblePhotos()" :facts="$car->facts()">
         <x-slot:marks>
             <span class="tag nums">{{ $car->dl }}</span>
             <span class="tag">{{ $car->kind->label() }}</span>
@@ -35,7 +35,7 @@
                     @csrf
                     <input type="hidden" name="price_final" data-bid-target="amount" value="{{ $car->price_final }}">
                     <input type="text" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Наша цена, ₽" aria-label="Наша цена, ₽"
-                        data-bid-target="display" data-action="input->bid#input" value="{{ $car->price_final ? \App\Support\Money::nums($car->price_final) : '' }}" data-peek-focus>
+                        data-bid-target="display" data-action="input->bid#input" value="{{ $car->price_final ? \App\Support\Money::nums($car->price_final) : '' }}" data-detail-focus>
                     <button type="submit" class="btn btn-s btn-accent shrink-0">Дальше</button>
                 </form>
                 @error('price_final')<p class="w-full text-sm text-danger">{{ $message }}</p>@enderror
@@ -58,5 +58,5 @@
         @endif
         @if ($car->description)<p class="mt-4 whitespace-pre-line text-sm text-ink-muted">{{ $car->description }}</p>@endif
         <x-slot:row><x-purchase.table-row :car="$car" :purchase="$purchase"/></x-slot:row>
-    </x-ui.peek>
+    </x-ui.row-card>
 </x-ui.detail>

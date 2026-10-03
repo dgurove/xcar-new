@@ -29,7 +29,7 @@ class BankController
 
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($tx = Transaction::find($key)) ? $this->peek($tx) : null);
+        $detail = Detail::of($request, fn (string $key) => ($tx = Transaction::find($key)) ? $this->detail($tx) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -49,9 +49,9 @@ class BankController
         ]);
     }
 
-    public function peek(Transaction $transaction)
+    public function detail(Transaction $transaction)
     {
-        return view('admin.bank.peek', [
+        return view('admin.bank.detail', [
             'tx' => $transaction->load(['invoice.party', 'decider']),
             // Перечисление ЮMoney счёт не закрывает — вместо счетов на выбор оплаты по ссылкам, что в него вошли.
             'suggestions' => $transaction->state === Transaction::UNMATCHED && ! MatchTransaction::isPayout($transaction) ? MatchTransaction::suggestions($transaction)->take(12) : collect(),

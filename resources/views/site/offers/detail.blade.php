@@ -1,9 +1,9 @@
-{{-- Окошко строки таблицы предложений на сайте (фрейм peek) — решение без страницы:
+{{-- Карточка строки таблицы предложений на сайте (фрейм detail) — решение без страницы:
      лента фото, метки, цена как видит человек, факты; действия — подтвердить ценой
      (быстрые кнопки полной цены и скидок, поле, комментарий; своя цена и «Отозвать»),
      проявить интерес / узнать цену («Передумал» после), избранное, чат и «Показать
-     покупателям» — ссылками на страницу; ниже описание. Формы отвечают в окошко
-     (PeekBack), строка — свежей из row. --}}
+     покупателям» — ссылками на страницу; ниже описание. Формы отвечают в карточка
+     (DetailBack), строка — свежей из row. --}}
 @php
     use App\Offers\{OfferState, InterestState};
     $user = auth()->user();
@@ -21,7 +21,7 @@
     $discounts = array_filter([2, 5], fn ($p) => round($asking * (1 - $p / 100) / 1000) * 1000 >= $min);
 @endphp
 <x-ui.detail>
-    <x-ui.peek :href="$href" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)" :action="false">
+    <x-ui.row-card :href="$href" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)" :action="false">
         <x-slot:marks>
             @if ($offer->recommended)<x-offer.recommended label/>@endif
             @if (!$gallery && $offer->isFresh())<x-ui.state tone="open">Новый</x-ui.state>@endif
@@ -45,7 +45,7 @@
                     @csrf
                     <div class="flex gap-2">
                         <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $myBid?->amount) }}">
-                        <input type="text" @unless ($garage) required @endunless autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена, ₽" aria-label="Цена, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" data-peek-focus>
+                        <input type="text" @unless ($garage) required @endunless autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена, ₽" aria-label="Цена, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" data-detail-focus>
                         <button type="submit" class="btn btn-s btn-accent shrink-0" data-bid-target="submit">{{ $myBid ? 'Изменить' : 'Подтвердить' }}</button>
                     </div>
                     @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror
@@ -89,5 +89,5 @@
         </x-slot:actions>
         @if ($offer->description)<p class="mt-3 whitespace-pre-line text-sm text-ink-muted">{{ $offer->description }}</p>@endif
         <x-slot:row><x-offer.site-table-row :offer="$offer" :context="$context"/></x-slot:row>
-    </x-ui.peek>
+    </x-ui.row-card>
 </x-ui.detail>

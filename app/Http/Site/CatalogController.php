@@ -44,7 +44,7 @@ class CatalogController
 
     private function list(Request $request, bool $gallery)
     {
-        $detail = Detail::of($request, fn (string $key) => ($offer = OfferNumber::find($key)) && $offer->isVisibleTo($request->user()) ? app(OfferController::class)->peek($request, $offer) : null);
+        $detail = Detail::of($request, fn (string $key) => ($offer = OfferNumber::find($key)) && $offer->isVisibleTo($request->user()) ? app(OfferController::class)->detail($request, $offer) : null);
         if ($detail->framed()) {
             return $detail->response();
         }

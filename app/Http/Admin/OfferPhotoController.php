@@ -198,9 +198,9 @@ class OfferPhotoController
     {
         $offer->unsetRelation('media');
 
-        // Ряд кадров окошка строки — свой (без корзины, нажатие прячет); его id присылает photos_controller.
+        // Ряд кадров карточки строки — свой (без корзины, нажатие прячет); его id присылает photos_controller.
         return response()
-            ->view('admin.offers.gallery-stream', ['offer' => $offer, 'peek' => request()->header('X-Photos-Target') === 'peek-photos'])
+            ->view('admin.offers.gallery-stream', ['offer' => $offer, 'detail' => request()->header('X-Photos-Target') === 'detail-photos'])
             ->header('Content-Type', 'text/vnd.turbo-stream.html');
     }
 

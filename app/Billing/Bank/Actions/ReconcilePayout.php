@@ -74,7 +74,7 @@ final class ReconcilePayout
             ->values();
     }
 
-    /** Оплаты, что вошли в это перечисление, — для окошка поступления. */
+    /** Оплаты, что вошли в это перечисление, — для карточки поступления. */
     public static function payments(Transaction $tx): Collection
     {
         return AcquiringPayment::where('payout_tx_id', $tx->id)->with('link.invoice.party')->orderBy('created_at')->get();

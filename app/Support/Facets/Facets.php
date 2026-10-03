@@ -234,7 +234,7 @@ final class Facets
     /** Адрес с заменой: '' остаётся в адресе — это «снять и забыть» для ListPrefs. */
     public function url(array $set): string
     {
-        // Окошко строки (peek) после смены фильтра не открывается заново: открытая строка могла из списка уйти.
+        // Карточка строки (?peek=) после смены фильтра не открывается заново: открытая строка могла из списка уйти.
         $query = array_merge($this->request->query(), $set, ['page' => null, 'peek' => null]);
         $query = array_filter($query, fn ($v) => $v !== null && (is_string($v) || is_int($v)));
 

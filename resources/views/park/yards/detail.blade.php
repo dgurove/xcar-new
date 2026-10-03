@@ -1,6 +1,6 @@
-{{-- Окошко строки таблицы площадок: чипы, карта мест, форма. --}}
+{{-- Карточка строки таблицы площадок: чипы, карта мест, форма. --}}
 <x-ui.detail>
-    <x-ui.peek :href="'/cars?yard='.$yard->id" :title="$yard->name" :photo="false" action="ТС на парковке">
+    <x-ui.row-card :href="'/cars?yard='.$yard->id" :title="$yard->name" :photo="false" action="ТС на парковке">
         <x-slot:marks>
             @if ($yard->settlement || $yard->address)<x-ui.place class="tag">{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</x-ui.place>@endif
             @if ($yard->capacity)<span class="tag nums">{{ max(0, $yard->capacity - $yard->stored_vehicles_count) }} свободно из {{ $yard->capacity }}</span>@endif
@@ -8,5 +8,5 @@
         </x-slot:marks>
         @if ($yard->rows)<div class="mt-4"><x-park.yard-map :yard="$yard" :occupied="$yard->storedVehicles->whereNotNull('spot')->keyBy('spot')"/></div>@endif
         <div class="mt-4">@include('park.yards.form', ['yard' => $yard])</div>
-    </x-ui.peek>
+    </x-ui.row-card>
 </x-ui.detail>

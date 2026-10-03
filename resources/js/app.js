@@ -10,7 +10,7 @@ import { netGuards } from './net';
 import { live } from './live';
 import { longPressMenu } from './longpress';
 
-// Потоки из ответа карточки строки (x-ui.peek): тост flash-сообщения и «следующий без цены» (detail_controller).
+// Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
 Turbo.StreamActions.toast = function () {
     window.toast?.(this.dataset.message, window.flashOptions?.(this, document.getElementById('detail') ?? document) ?? this.dataset.kind);
 };
@@ -252,7 +252,7 @@ function keyboardInset() {
         document.documentElement.style.setProperty('--kb', `${kb}px`);
         document.documentElement.classList.toggle('kb-open', kb > 100);
     };
-    // iOS: поле с клавиатурой пропало из DOM, не потеряв фокус (ответ формы подменил окошко строки, морф
+    // iOS: поле с клавиатурой пропало из DOM, не потеряв фокус (ответ формы подменил карточка строки, морф
     // страницы), — клавиатура уходит, а viewport остаётся ужатым: таб-бар висит посреди экрана, строки под ним
     // не рисуются. Снимаем фокус до подмены — клавиатура закрывается штатно; и после закрытия клавиатуры
     // тянем прокрутку на месте — WebKit по ней пересчитывает viewport.

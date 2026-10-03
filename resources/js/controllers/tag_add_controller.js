@@ -2,7 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 
 // Своя метка у предложения: «+» открывает поле и цвета, Enter или «Добавить» — отмеченный чип этого цвета перед «+».
 // Такая метка уже есть — её просто отмечаем. Цвета своих меток — JSON в скрытом tag_colors; change с чипа и с
-// tag_colors подхватывает автосохранение окошка, полный редактор шлёт их формой.
+// tag_colors подхватывает автосохранение карточки, полный редактор шлёт их формой.
 export default class extends Controller {
     static targets = ['button', 'draft', 'input', 'dot', 'colors'];
 

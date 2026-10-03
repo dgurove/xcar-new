@@ -5,8 +5,8 @@
      У черновика нет ни номера (он ещё не выставлен), ни слова «черновик»: его и так видно по чипу «Оценить» и цене.
      Черновик из парковки — исключение: на месте состояния «парковка с …» (дата приёма ТС). Последний столбец —
      когда заведено.
-     В галерее вместо подтверждений — интерес. Нажатие — окошко; data-unpriced — черновик без цены продажи,
-     по ним окошко идёт «Дальше» («Оценить»). --}}
+     В галерее вместо подтверждений — интерес. Нажатие — карточка; data-unpriced — черновик без цены продажи,
+     по ним карточка идёт «Дальше» («Оценить»). --}}
 @props(['offer', 'gallery' => false])
 @php
     use App\Offers\OfferState;
@@ -66,7 +66,7 @@
         @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
         @if ($offer->floor_price)<span class="cell-sub sm:hidden">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>
-    <td class="cell-dim num nums col-peek-hide hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>
-    {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в окошке справа столбца нет. --}}
-    <td class="num nums col-peek-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">{{ $offer->created_at?->translatedFormat($offer->created_at->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}</td>
+    <td class="cell-dim num nums col-detail-hide hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>
+    {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет. --}}
+    <td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">{{ $offer->created_at?->translatedFormat($offer->created_at->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}</td>
 </tr>

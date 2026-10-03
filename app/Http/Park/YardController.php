@@ -16,7 +16,7 @@ class YardController
 {
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($yard = Yard::find($key)) ? $this->peek($yard) : null);
+        $detail = Detail::of($request, fn (string $key) => ($yard = Yard::find($key)) ? $this->detail($yard) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -30,12 +30,12 @@ class YardController
         ]);
     }
 
-    /** Окошко строки таблицы: карта мест и форма. */
-    public function peek(Yard $yard)
+    /** Карточка строки таблицы: карта мест и форма. */
+    public function detail(Yard $yard)
     {
         $yard->loadCount('storedVehicles')->load(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand']);
 
-        return view('park.yards.peek', ['yard' => $yard]);
+        return view('park.yards.detail', ['yard' => $yard]);
     }
 
     public function store(Request $request)

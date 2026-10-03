@@ -1,11 +1,11 @@
-{{-- Окошко строки таблицы машин стоянки (фрейм peek) — работа с ТС без страницы:
+{{-- Карточка строки таблицы машин стоянки (фрейм detail) — работа с ТС без страницы:
      лента фото, метки, дней на стоянке; действия по состоянию — «Принять на стоянку»
      (ожидаемая), переставить (стоянка выбором, отправка сразу), выдать (дата, с
      подтверждением), акты; ниже расхождения карточки с документами строками «Взять» (FillFromDocs), заявки строками и
      заметка с последними событиями. Под действиями — группа документов: расхождения и «Заполнить из документов»
-     (пока нет марки, модели, VIN, года или цвета) или «Сверить с документами»; искра — ещё и в полосе окошка (tools).
-     Окно «Из документов» встаёт поверх, окошко остаётся и перечитывается после «Подставить».
-     Формы отвечают в окошко (PeekBack), строка — свежей из row. --}}
+     (пока нет марки, модели, VIN, года или цвета) или «Сверить с документами»; искра — ещё и в полосе карточки (tools).
+     Окно «Из документов» встаёт поверх, карточка остаётся и перечитывается после «Подставить».
+     Формы отвечают в карточку (DetailBack), строка — свежей из row. --}}
 @php
     use App\Park\VehicleState;
     $state = $vehicle->state;
@@ -14,7 +14,7 @@
     $gaps = ! $vehicle->brand_id || ! $vehicle->model_id || $vehicle->vinProblem() || ! $vehicle->year || ! $vehicle->color;
 @endphp
 <x-ui.detail>
-    <x-ui.peek :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
+    <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
         <x-slot:marks>
             <x-ui.state :tone="$state->tone()">{{ $state->label() }}</x-ui.state>
             @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif
@@ -94,5 +94,5 @@
             </div>
         @endif
         <x-slot:row><x-park.table-row :vehicle="$vehicle" :total="$total"/></x-slot:row>
-    </x-ui.peek>
+    </x-ui.row-card>
 </x-ui.detail>

@@ -5,7 +5,7 @@
     $fields = $subject->fields($user);
     $photos = $subject->model->visiblePhotos();
     $id = 'share-'.$subject->model->getTable().'-'.$subject->model->getKey();
-    // Иконкой — круглая кнопка; свой класс (полоса окошка строки) заменяет его целиком.
+    // Иконкой — круглая кнопка; свой класс (полоса карточки строки) заменяет его целиком.
     $iconClass = $attributes->get('class') ?: 'btn btn-s btn-quiet btn-round';
     $iconSize = $attributes->get('class') ? 'size-[18px]' : 'size-5';
 @endphp

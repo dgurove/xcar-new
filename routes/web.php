@@ -81,7 +81,6 @@ Route::middleware('wall')->group(function () {
     Route::get('/gallery', [CatalogController::class, 'gallery']);
     Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
     Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
-    Route::get('/offers/{offer}/peek', [OfferController::class, 'peek']);
 });
 
 Route::middleware(['auth', 'wall'])->group(function () {
@@ -201,7 +200,6 @@ Route::middleware(['auth', 'wall'])->group(function () {
 
     Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('ability:canSeePurchases');
     Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->middleware('ability:canSeePurchases');
-    Route::get('/purchases/{purchase}/{car}/peek', [PurchaseController::class, 'peek'])->middleware('ability:canSeePurchases');
     Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car'])->middleware('ability:canSeePurchases');
     Route::match(['get', 'post'], '/purchases/{purchase}/{car}/pdf', [ShareController::class, 'carPdf'])->middleware('ability:canSeePurchases');
     Route::post('/purchases/{purchase}/{car}/price', [PurchaseController::class, 'offer'])->middleware('ability:canSeePurchases');

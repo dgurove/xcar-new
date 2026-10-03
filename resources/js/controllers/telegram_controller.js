@@ -55,7 +55,7 @@ export default class extends Controller {
         return this.momentsValue.includes(moment);
     }
 
-    // Подтвердил ценой — самое время: «узнайте первым, если выберут вас». Ждём, пока страница или окошко
+    // Подтвердил ценой — самое время: «узнайте первым, если выберут вас». Ждём, пока страница или карточка
     // перерисуются после ответа, иначе морф закрыл бы только что открытую шторку.
     submitted(event) {
         if (!event.detail.success || !event.target.closest('[data-telegram-moment="bid"]') || !this.may('bid')) return;
