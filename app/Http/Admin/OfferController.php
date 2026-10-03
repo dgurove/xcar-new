@@ -41,7 +41,7 @@ class OfferController
 {
     public const PRESETS = [
         'all' => 'Все', 'recommended' => 'Рекомендуем', 'draft' => 'Черновики', 'slot' => 'В слоте', 'open' => 'В продаже',
-        'bids' => 'Выбрать', 'sold' => 'В сделке', 'archive' => 'Архив',
+        'bids' => 'Выбрать', 'sold' => 'В сделке', 'archive' => 'Архив', 'purchase' => 'Из закупок',
     ];
 
     /** Модератору — предложения его группы по состоянию: выбирать победителя и рекомендовать — дело админа. */
@@ -55,7 +55,7 @@ class OfferController
         $presets = $admin ? self::PRESETS : self::MODERATOR_PRESETS;
         $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : 'all';
         // «В слоте» — пилюлей, пока есть что выпускать в 16:00.
-        $scheduled = $admin ? Offer::scheduled()->count() : 0;
+        $scheduled = $admin ? Offer::scheduled()->whereDoesntHave('purchaseCar')->count() : 0;
         if ($admin && ! $scheduled && $preset !== 'slot') {
             unset($presets['slot']);
         }
@@ -76,9 +76,16 @@ class OfferController
             'bids' => $q->where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
             'sold' => $q->whereIn('state', [OfferState::Sold, OfferState::Delivered]),
             'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
+            // Из закупок — только своей пилюлей, в любом состоянии: из остальных они скрыты.
+            'purchase' => $q->whereHas('purchaseCar'),
             // Галерея — свой раздел у админа; у модератора своего раздела нет, его «скоро в продаже» — во «Все».
             default => $q->whereNotIn('state', $admin ? [OfferState::Archived, OfferState::Gallery] : [OfferState::Archived, OfferState::Cancelled]),
         };
+        // Предложения из закупок (контрпредложение Carcade → «В предложения») по умолчанию скрыты — их смотрят
+        // своей пилюлей. Модератор их не видит вовсе (`Offer::scopeVisibleTo`).
+        if ($preset !== 'purchase') {
+            $q->whereDoesntHave('purchaseCar');
+        }
         if ($term = trim((string) $request->query('q'))) {
             $q->search($term);
         }
@@ -113,17 +120,22 @@ class OfferController
             'offers' => $offers,
             'peek' => $peek ? 'admin-offer-'.$peek->number : null,
             // Оценивать есть что, когда черновик заполнен хотя бы маркой: пустой «+ Новый» очередь не надувает.
-            'unpriced' => $admin ? Offer::where('state', OfferState::Draft)->whereNull('asking_price')->whereNotNull('brand_id')->count() : 0,
+            // Закупочные — своей очередью на своей пилюле.
+            'unpriced' => $admin ? Offer::where('state', OfferState::Draft)->whereNull('asking_price')->whereNotNull('brand_id')->whereDoesntHave('purchaseCar')->count() : 0,
+            'unpricedPurchase' => $admin && $preset === 'purchase'
+                ? Offer::where('state', OfferState::Draft)->whereNull('asking_price')->whereNotNull('brand_id')->whereHas('purchaseCar')->count()
+                : 0,
             'presets' => $presets,
             'sorts' => $admin ? self::SORTS : [],
             'preset' => $preset,
             'sort' => $sort,
             // Числа у пилюль; модератору — в пределах его группы.
             'counts' => $admin ? [
-                'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
-                'draft' => Offer::where('state', OfferState::Draft)->whereNull('slot_at')->whereNot(fn ($o) => $o->emptyDraft())->count(),
+                'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->whereDoesntHave('purchaseCar')->count(),
+                'draft' => Offer::where('state', OfferState::Draft)->whereNull('slot_at')->whereNot(fn ($o) => $o->emptyDraft())->whereDoesntHave('purchaseCar')->count(),
                 'slot' => $scheduled,
-                'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->count(),
+                'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->whereDoesntHave('purchaseCar')->count(),
+                'purchase' => Offer::whereHas('purchaseCar')->count(),
             ] : ['draft' => Offer::visibleTo($request->user())->where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())->count()],
         ]);
     }
