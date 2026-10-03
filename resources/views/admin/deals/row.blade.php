@@ -1,4 +1,4 @@
-{{-- Строка сделки в сгруппированном списке: фото, ТС, под ним номер, покупатель (person=false — на его карточке
+{{-- Строка сделки в сгруппированном списке: фото, ТС, под ним логотип вендора с номером убытка (копируется), номер, покупатель (person=false — на его карточке
      не нужен) и чей ход с часами; справа сумма, под ней этап или состояние словом;
      на телефоне этап идущей сделки не показан — чей ход и часы под названием. --}}
 @php
@@ -16,6 +16,7 @@
     <div class="min-w-0 flex-1">
         <div class="truncate">{{ $offer->titleWithYear() }}</div>
         <div class="row-sub">
+            <x-vendor.ref :vendor="$offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null" :ref="$offer->claim_ref" copy/>
             <span class="nums">№ {{ $offer->number }}</span>
             @if ($person && $deal->buyer)<span>{{ $deal->buyer->name }}</span>@endif
         </div>

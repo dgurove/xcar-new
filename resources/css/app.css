@@ -1399,6 +1399,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .table-box { @apply rounded-(--radius-l) bg-surface; overflow: clip; }
   .split-detail:empty { display: none; }
   .row-link { color: inherit; }
+  /* Строка таблицы без карточки рядом (сделки) — ссылка на страницу во всю строку; номер, логотип и прочие кнопки
+     строки — поверх неё. */
+  .table tbody tr.is-link { position: relative; cursor: pointer; }
+  .row-go { color: inherit; }
+  .row-go::after { content: ''; position: absolute; inset: 0; }
+  .table tbody tr.is-link :is(button, [role="button"], a:not(.row-go)) { position: relative; z-index: 1; }
   .row-link:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
   .detail-card { @apply flex flex-col bg-surface text-ink; }
   /* Полоса карточки: ручка листа (телефон), кнопки строки, «Открыть страницу», «Закрыть». Липнет к верху карточки. */

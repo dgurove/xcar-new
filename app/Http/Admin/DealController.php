@@ -37,6 +37,10 @@ class DealController
                 ->selectRaw('distinct left(md5(coalesce(b.name, s.name)), 8) as k, coalesce(b.name, s.name) as name')
                 ->whereRaw('left(md5(coalesce(b.name, s.name)), 8) in ('.implode(',', array_fill(0, max(count($keys), 1), '?')).')', $keys ?: [''])
                 ->get()->mapWithKeys(fn ($r) => [$r->k => new Option($r->k, $r->name)])->all()),
+            // Срок — шаг сделки просрочен или нет; у закрытых сделок срока нет — «в срок».
+            Facet::column('due', 'Срок', ['срок', 'срока', 'сроков'], "(case when deals.state = 'active' and exists (select 1 from offer_positions p
+                where p.offer_id = deals.offer_id and p.track = 'sale' and p.deadline_at < now()) then 'late' else 'ok' end)")
+                ->labels(fn (array $keys) => array_intersect_key(['late' => new Option('late', 'Просрочено'), 'ok' => new Option('ok', 'В срок')], array_flip($keys))),
         );
         ListPrefs::sync($request, 'crm-deals', keep: $facets->keys());
         $preset = $request->query('preset', 'active');
@@ -67,7 +71,8 @@ class DealController
         };
 
         return view('admin.deals.index', [
-            'deals' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+            // Таблица — вся на одной странице; строками — постранично.
+            'deals' => ListView::isTable(ListView::pick($request, 0)) ? ListView::paginate($request, $q) : $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset,
             'sort' => $sort,
             'facets' => $facets,
