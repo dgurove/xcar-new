@@ -4,6 +4,7 @@ namespace App\Telegram;
 
 use App\Users\Role;
 use App\Users\User;
+use GuzzleHttp\Handler\CurlHandler;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
@@ -150,7 +151,7 @@ class Bot
         }
         try {
             $path = (string) $this->guard(fn () => $this->client(10)->get('getFile', ['file_id' => $fileId])->throw()->json('result.file_path'));
-            $contents = $this->guard(fn () => Http::timeout(60)->withOptions($this->ipOptions())->get('https://api.telegram.org/file/bot'.$this->token().'/'.$path)->throw()->body());
+            $contents = $this->guard(fn () => $this->http()->timeout(60)->get('https://api.telegram.org/file/bot'.$this->token().'/'.$path)->throw()->body());
         } catch (Throwable $e) {
             Log::warning('Telegram: файл не скачался', ['file' => $fileId, 'error' => $e->getMessage()]);
 
@@ -241,8 +242,8 @@ class Bot
     }
 
     /**
-     * Путь до Telegram по IPv6 моргает: три попытки с паузой. Ответ 4xx — не сбой сети, его не повторяем; кроме 429
-     * «слишком часто» — тогда ждём, сколько Telegram скажет (`retry_after`, не дольше 10 с): в 21:00 приём слота
+     * Путь до Telegram по IPv6 моргает: четыре попытки, после несостоявшегося соединения — сразу (200 мс), иначе через
+     * 1,5 с. Ответ 4xx — не сбой сети, его не повторяем; кроме 429 «слишком часто» — тогда ждём, сколько Telegram скажет (`retry_after`, не дольше 10 с): в 21:00 приём слота
      * закрывается разом, и «Приём закрыт» владельцу уходят пачкой. Каждый вызов — в журнал переписки (если он есть):
      * принятый — как есть, отказ на отправке — пузырём с причиной.
      *
@@ -250,8 +251,8 @@ class Bot
      */
     protected function call(string $method, array $payload, array $files = []): Response
     {
-        $request = $this->client($files ? 60 : 20)->retry(3,
-            fn (int $attempt, Throwable $e) => self::tooMany($e) ? min(10, (int) ($e->response->json('parameters.retry_after') ?? 1)) * 1000 : 1500,
+        $request = $this->client($files ? 60 : 20)->retry(4,
+            fn (int $attempt, Throwable $e) => self::tooMany($e) ? min(10, (int) ($e->response->json('parameters.retry_after') ?? 1)) * 1000 : ($e instanceof ConnectionException ? 200 : 1500),
             fn (Throwable $e) => ! ($e instanceof RequestException && $e->response->clientError()) || self::tooMany($e));
         foreach ($files as $field => $file) {
             [$contents, $name] = $file instanceof UploadedFile ? [$file->get(), $file->getClientOriginalName()] : $file;
@@ -300,8 +301,20 @@ class Bot
 
     protected function client(int $timeout): PendingRequest
     {
-        return Http::baseUrl('https://api.telegram.org/bot'.$this->token().'/')->timeout($timeout)->withOptions($this->ipOptions());
+        return $this->http()->baseUrl('https://api.telegram.org/bot'.$this->token().'/')->timeout($timeout);
     }
+
+    /**
+     * До Telegram с сервера каждое десятое новое соединение по IPv6 не устанавливается вовсе (замер 03.10.2026): ждать
+     * его 10 с, как по умолчанию, — бот «думает» по 11–23 с. Ждём 2 с и повторяем (`call`), а соединение держим
+     * открытым: один обработчик curl на процесс — дорожка живёт часами, и новых соединений почти нет.
+     */
+    protected function http(): PendingRequest
+    {
+        return Http::setHandler(self::$curl ??= new CurlHandler)->connectTimeout(2)->withOptions($this->ipOptions());
+    }
+
+    private static ?CurlHandler $curl = null;
 
     /** На сервере до Telegram доходит только IPv6; на маке его может не быть — `TELEGRAM_IPV6=false`. */
     protected function ipOptions(): array

@@ -59,7 +59,7 @@ final class Poll extends Command
                     $updates = $bot->updates($offset, max(1, min((int) $this->option('timeout'), $left)));
                 } catch (Throwable $e) {
                     Log::warning('Telegram: опрос сорвался', ['error' => $e->getMessage()]);
-                    sleep(5);
+                    sleep(1);
 
                     continue;
                 }

@@ -69,7 +69,7 @@ final class Run extends Command
                     $updates = $bot->updates($offset, (int) $this->option('timeout'));
                 } catch (Throwable $e) {
                     Log::warning('Бот предложений: опрос сорвался', ['error' => $e->getMessage()]);
-                    sleep(5);
+                    sleep(1);
 
                     continue;
                 }
@@ -78,7 +78,7 @@ final class Run extends Command
                 }
                 foreach ($updates as $update) {
                     $offset = max($offset, (int) ($update['update_id'] ?? 0) + 1);
-                    $this->dispatch(['update' => $update], $n, $handler);
+                    $this->dispatch(['update' => $update, 'at' => microtime(true)], $n, $handler);
                     Cache::forever(self::OFFSET, $offset);
                 }
             }
