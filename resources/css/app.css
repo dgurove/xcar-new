@@ -313,6 +313,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     padding-block: .875rem;
     min-height: 3.25rem;
   }
+  /* Поле не шире своего места — и в сетке, и во флексе: без min-width: 0 содержимое распирает колонку. */
+  .field { min-width: 0; }
+  .field-input { min-width: 0; max-width: 100%; }
+  /* Дата и время на iPhone: Safari рисует их своим контролом с собственной шириной и width: 100% не слушает — поле
+     уезжало за экран («Приём подтверждений до»). Без родного вида оно как остальные поля, текст слева. */
+  input.field-input:is([type="date"], [type="datetime-local"], [type="time"], [type="month"]) { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; }
+  input.field-input::-webkit-date-and-time-value { text-align: left; margin: 0; }
   .field-input:focus-visible { outline-offset: 0; }
   .field-error { @apply text-sm text-danger; }
   .field-invalid .field-input { @apply ring-2 ring-danger/60; }
