@@ -7,7 +7,6 @@ use App\Offers\Jobs\FetchMigtorgPhotos;
 use App\Offers\Migtorg;
 use App\Offers\Offer;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -38,7 +37,6 @@ class MigtorgSync extends Command
                     'claim_ref_key' => $lot['claim_ref'] !== '' ? mb_substr((string) Code::key($lot['claim_ref']), 0, 80) : null,
                     'vin' => $lot['vin'] ? mb_substr($lot['vin'], 0, 20) : null,
                     'title' => mb_substr($lot['title'], 0, 160),
-                    'lot_updated_at' => $lot['updated_at'] ? Carbon::parse($lot['updated_at'])->setTimezone(config('app.timezone')) : null,
                     'seen_at' => $now,
                     'gone_at' => null,
                 ];
@@ -50,7 +48,7 @@ class MigtorgSync extends Command
             return self::FAILURE;
         }
         foreach (array_chunk(array_values($rows), 500) as $chunk) {
-            DB::table('migtorg_lots')->upsert($chunk, ['id'], ['claim_ref', 'claim_ref_key', 'vin', 'title', 'lot_updated_at', 'seen_at', 'gone_at']);
+            DB::table('migtorg_lots')->upsert($chunk, ['id'], ['claim_ref', 'claim_ref_key', 'vin', 'title', 'seen_at', 'gone_at']);
         }
         $gone = DB::table('migtorg_lots')->whereNull('gone_at')->where('seen_at', '<', $now)->update(['gone_at' => $now]);
 

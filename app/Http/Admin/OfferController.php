@@ -206,9 +206,9 @@ class OfferController
             'window' => str_starts_with((string) request()->query('window'), "/offers/{$offer->number}/letters") ? request()->query('window') : null,
             'docs' => OfferFiles::docs($offer, $threads),
             'chats' => $admin ? Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get() : collect(),
-            'import' => ImportThreadFiles::progress($offer->id),
+            'import' => ImportThreadFiles::progress($offer->id) ?? FetchMigtorgPhotos::progress($offer->id),
             // Лот Мигторга с тем же номером, фото которого ещё не брали, — пилюля «С Мигторга».
-            'migtorg' => ($lot = FetchMigtorgPhotos::lotFor($offer)) && ! $lot->offer_id ? $lot : null,
+            'migtorg' => FetchMigtorgPhotos::forButton($offer),
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'managers' => $admin ? User::where('role', Role::Manager)->orderBy('name')->get() : collect(),
             'audienceOptions' => $admin ? AudienceRules::options() : null,

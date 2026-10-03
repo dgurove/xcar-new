@@ -32,6 +32,9 @@ final class Migtorg
 
     private const QUIET = 'migtorg:quiet';
 
+    /** Вход не удался: пароль сменили или ввели неверно — повторять раз в полчаса значит подбирать пароль. */
+    private const LOGIN_FAILED = 'migtorg:login-failed';
+
     private CookieJar $jar;
 
     public function __construct()
@@ -40,9 +43,9 @@ final class Migtorg
     }
 
     /**
-     * Все опубликованные лоты: id, номер дела, VIN, название, время правки.
+     * Все опубликованные лоты: id, номер дела, VIN, название.
      *
-     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, updated_at: ?string}>
+     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string}>
      */
     public function lots(): \Generator
     {
@@ -57,7 +60,6 @@ final class Migtorg
                         'claim_ref' => trim((string) ($lot['insurance_deal_number'] ?? '')),
                         'vin' => strtoupper(trim((string) ($lot['vin'] ?? ''))) ?: null,
                         'title' => trim(($lot['brand']['title'] ?? '').' '.($lot['model']['title'] ?? '').' '.($lot['year'] ?? '')),
-                        'updated_at' => $auction['updated_at'] ?? null,
                     ];
                 }
                 $last = (int) ($json['meta']['last_page'] ?? 1);
@@ -83,10 +85,10 @@ final class Migtorg
         $this->get('/media/'.rawurlencode($uuid), sink: $to);
     }
 
-    /** Можно ходить за фото: вход задан и нас не придержали. */
+    /** Можно ходить за фото: вход задан, не отвергнут и нас не придержали. */
     public static function ready(): bool
     {
-        return config('xcar.migtorg_email') && config('xcar.migtorg_password') && ! self::paused();
+        return config('xcar.migtorg_email') && config('xcar.migtorg_password') && ! Cache::has(self::LOGIN_FAILED) && ! self::paused();
     }
 
     public static function paused(): bool
@@ -133,10 +135,21 @@ final class Migtorg
             if (! $email || ! $password) {
                 throw new RuntimeException('Нет MIGTORG_EMAIL / MIGTORG_PASSWORD');
             }
+            if (Cache::has(self::LOGIN_FAILED)) {
+                throw new RuntimeException('Вход на Мигторг недавно не удался, пауза');
+            }
             usleep(random_int(800, 1800) * 1000);
             $response = $this->http()->post(self::API.'/auth/login', ['email' => $email, 'password' => $password]);
+            if ($token = $response->json('token')) {
+                return $token;
+            }
+            // Сбой связи или их 5xx — не повод молчать полдня; отказ во входе (4xx) — повод.
+            if ($response->clientError()) {
+                Cache::put(self::LOGIN_FAILED, true, now()->addHours(6));
+                Log::warning("Мигторг: вход не удался ({$response->status()}), пауза 6 ч");
+            }
 
-            return $response->json('token') ?: throw new RuntimeException("Вход на Мигторг не удался: {$response->status()}");
+            throw new RuntimeException("Вход на Мигторг не удался: {$response->status()}");
         });
     }
 

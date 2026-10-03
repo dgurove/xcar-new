@@ -4,7 +4,6 @@ namespace App\Offers\Jobs;
 
 use App\Live\Publisher;
 use App\Live\Topics;
-use App\Mail\Jobs\ImportThreadFiles;
 use App\Media\PhotoIngest;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Migtorg;
@@ -21,7 +20,7 @@ use Throwable;
 /**
  * Фото лота Мигторга в предложение — по номеру дела, совпавшему с номером убытка. Кадры по одному: оригинал без их
  * знака, снимать нечего; уже взятые (по uuid) пропускаются, поэтому повтор дочитывает с места обрыва. Ход — пилюлей
- * разбора файлов в редакторе, по окончании редактор перечитывается сам.
+ * в шапке редактора (`progress`), по окончании редактор перечитывается сам.
  */
 final class FetchMigtorgPhotos implements ShouldQueue
 {
@@ -35,22 +34,55 @@ final class FetchMigtorgPhotos implements ShouldQueue
 
     public array $backoff = [300, 1800];
 
-    public function __construct(public int $offerId, public int $lotId)
+    public function __construct(public int $offerId, public int $lotId, public bool $manual = false)
     {
         $this->onConnection('database-long')->onQueue('long')->afterCommit();
     }
 
-    /** Свежий лот по номеру убытка предложения, если он есть в индексе. */
+    /** Ход — своей пилюлей: ключ разбора архива и писем общий, чужая задача стёрла бы его. */
+    public static function progress(int $offerId): ?array
+    {
+        return Cache::get("migtorg:offer:{$offerId}");
+    }
+
+    /** Свежий лот по номеру убытка предложения, если он есть в индексе и за фото можно ходить. */
     public static function lotFor(Offer $offer): ?object
     {
-        return $offer->claim_ref_key && Migtorg::ready() ? DB::table('migtorg_lots')->where('claim_ref_key', $offer->claim_ref_key)->orderByDesc('id')->first() : null;
+        if (! $offer->claim_ref_key) {
+            return null;
+        }
+        $lot = DB::table('migtorg_lots')->where('claim_ref_key', $offer->claim_ref_key)->orderByDesc('id')->first();
+
+        return $lot && Migtorg::ready() ? $lot : null;
+    }
+
+    /**
+     * Лот о той же машине: VIN с обеих сторон — должен совпасть. Номер из одних цифр («7805/2024») бывает у разных
+     * страховых, сам такой лот берётся только при совпавшем VIN; кнопкой — можно, в подтверждении название лота.
+     */
+    public static function sameCar(Offer $offer, object $lot, bool $strict): bool
+    {
+        $vin = strtoupper(trim((string) $offer->vin));
+        if ($vin && $lot->vin) {
+            return $vin === $lot->vin;
+        }
+
+        return ! $strict || preg_match('/\p{L}/u', $offer->claim_ref_key) === 1;
+    }
+
+    /** Лот для кнопки «С Мигторга»: есть, ещё не взят и не о другой машине. */
+    public static function forButton(Offer $offer): ?object
+    {
+        $lot = self::lotFor($offer);
+
+        return $lot && ! $lot->offer_id && self::sameCar($offer, $lot, strict: false) ? $lot : null;
     }
 
     /** Взять фото лота: лоты с тем же номером помечаются предложением сразу, чтобы синхронизация не ставила задачу второй раз. */
-    public static function start(Offer $offer, object $lot): void
+    public static function start(Offer $offer, object $lot, bool $manual = false): void
     {
         DB::table('migtorg_lots')->where('claim_ref_key', $offer->claim_ref_key)->update(['offer_id' => $offer->id]);
-        self::dispatch($offer->id, $lot->id);
+        self::dispatch($offer->id, $lot->id, $manual);
     }
 
     /** Сами — только в пустой ряд: к своим кадрам менеджер добавит лот кнопкой, без дублей. */
@@ -60,7 +92,8 @@ final class FetchMigtorgPhotos implements ShouldQueue
             return false;
         }
         $lot = self::lotFor($offer);
-        if (! $lot || $lot->offer_id) {
+        // Не взялся трижды — сутки сам не берётся: иначе синхронизация ставила бы задачу раз в полчаса без конца.
+        if (! $lot || $lot->offer_id || ($lot->failed_at && now()->subDay()->lt($lot->failed_at)) || ! self::sameCar($offer, $lot, strict: true)) {
             return false;
         }
         self::start($offer, $lot);
@@ -74,7 +107,7 @@ final class FetchMigtorgPhotos implements ShouldQueue
         if (! $offer) {
             return;
         }
-        $key = ImportThreadFiles::key($offer->id);
+        $key = "migtorg:offer:{$offer->id}";
         $added = 0;
         $failed = 0;
         try {
@@ -104,13 +137,20 @@ final class FetchMigtorgPhotos implements ShouldQueue
             Cache::forget($key);
         }
         OfferStateChanged::dispatch($offer->fresh());
-        $publish->toast(Topics::STAFF, $added ? "С Мигторга — фото: {$added}".($failed ? ", не забрано: {$failed}" : '') : 'С Мигторга нового нет', "/offers/{$offer->number}");
+        // Тост — только когда нажали кнопку: сами задачи синхронизации всем сотрудникам не звонят.
+        if ($this->manual) {
+            $publish->toast(Topics::STAFF, match (true) {
+                ! $added => 'С Мигторга нового нет',
+                ! $failed => "Фото с Мигторга: {$added}",
+                default => "Фото с Мигторга: {$added}, не забрано {$failed}",
+            }, "/offers/{$offer->number}");
+        }
     }
 
     public function failed(?Throwable $e): void
     {
-        // Кнопка «С Мигторга» снова появится: лот свободен.
-        DB::table('migtorg_lots')->where('id', $this->lotId)->where('offer_id', $this->offerId)->update(['offer_id' => null]);
+        // Лоты номера свободны, как их пометил start(): кнопка «С Мигторга» вернётся, сам — через сутки.
+        DB::table('migtorg_lots')->where('offer_id', $this->offerId)->update(['offer_id' => null, 'failed_at' => now()]);
         Log::warning("Мигторг: фото лота {$this->lotId} в предложение {$this->offerId} не взяты: ".$e?->getMessage());
     }
 }
