@@ -54,7 +54,7 @@
         @if ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
         @elseif ($slot)<span class="text-accent-text">{{ $slot }}</span>
         @elseif ($pick)<span class="{{ $count ? 'text-urgent' : 'text-ink-muted' }}">{{ $count ? 'Выбрать' : 'Приём закрыт' }}</span>
-        @else<span class="{{ $tone }}">{{ $park ?? ($offer->state === OfferState::Open ? ($admin ? 'Приём' : 'В продаже') : $offer->state->label()) }}</span>@endif
+        @else<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $park ?? ($offer->state === OfferState::Open ? ($admin ? 'Приём' : 'В продаже') : $offer->state->label()) }}</span>@endif
     </td>
     @if ($admin)<td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>@endif
     {{-- Цена продажи (у черновика без неё — «оценить»), справа закупочная; на телефоне закупочная — под ценой. --}}
