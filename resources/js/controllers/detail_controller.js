@@ -11,7 +11,7 @@ export default class extends Controller {
     connect() {
         this.wide = matchMedia('(min-width: 1024px)');
         this.full = false;
-        this.onScroll = () => this.scrolled();
+        this.onScroll = () => { this.clip(); this.scrolled(); };
         this.onAdvance = () => this.advance();
         this.onRender = () => { this.rendering = true; };
         this.onStream = (e) => {
@@ -101,12 +101,54 @@ export default class extends Controller {
         const pad = this.frameTarget.querySelector('.detail-pad');
         if (!pad) { this.rendering = false; return; }
         this.frameTarget.scrollTop = was && this.full ? pad.offsetHeight : pad.offsetHeight / 2;
+        this.clip();
         requestAnimationFrame(() => { this.rendering = false; });
+    }
+
+    // Где сейчас верх карточки: выше обрезано (clip-path), там нажатия достаются таблице.
+    clip() {
+        if (this.wide.matches) return;
+        this.clipping ||= requestAnimationFrame(() => {
+            this.clipping = 0;
+            const pad = this.frameTarget.querySelector('.detail-pad');
+            if (pad) this.frameTarget.style.setProperty('--sheet-top', `${Math.max(0, pad.offsetHeight - this.frameTarget.scrollTop)}px`);
+        });
+    }
+
+    // Тянут за полосу: лист едет за пальцем (или мышью), отпустили — к ближайшей точке с учётом взмаха; до низа — закрыть.
+    grab(event) {
+        const frame = this.frameTarget, pad = frame.querySelector('.detail-pad');
+        if (this.wide.matches || !pad || event.button > 0 || event.target.closest('a, button')) return;
+        event.preventDefault();
+        const y0 = event.clientY, top0 = frame.scrollTop, h = pad.offsetHeight;
+        let lastY = y0, lastT = event.timeStamp, speed = 0;
+        this.dragging = true;
+        frame.style.scrollSnapType = 'none';
+        const move = (e) => {
+            speed = (e.clientY - lastY) / Math.max(1, e.timeStamp - lastT);
+            lastY = e.clientY;
+            lastT = e.timeStamp;
+            frame.scrollTop = top0 - (e.clientY - y0);
+        };
+        const up = () => {
+            removeEventListener('pointermove', move);
+            removeEventListener('pointerup', up);
+            removeEventListener('pointercancel', up);
+            const aim = frame.scrollTop - speed * 250;
+            const stop = aim > h * 0.75 ? h : aim > h * 0.2 ? h / 2 : 0;
+            const settle = () => { frame.style.scrollSnapType = ''; this.dragging = false; this.scrolled(); };
+            if (frame.scrollTop > h + 8 && Math.abs(speed) < 0.3) { settle(); return; }
+            frame.scrollTo({ top: stop, behavior: 'smooth' });
+            setTimeout(settle, 350);
+        };
+        addEventListener('pointermove', move);
+        addEventListener('pointerup', up);
+        addEventListener('pointercancel', up);
     }
 
     // Лист отпустили: у самого низа — закрыть; запоминаем, во весь ли экран.
     scrolled() {
-        if (this.wide.matches || this.rendering || !this.open) return;
+        if (this.wide.matches || this.rendering || this.dragging || !this.open) return;
         clearTimeout(this.timer);
         this.timer = setTimeout(() => {
             const pad = this.frameTarget.querySelector('.detail-pad');

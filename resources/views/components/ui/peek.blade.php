@@ -6,7 +6,7 @@
      photo — одно фото вместо ленты (старые карточки); :photo="false" — без кадра вовсе (ветка почты).
      media — свой ряд кадров вместо ленты (карточка предложения CRM: кадры правят прямо тут). --}}
 @props(['href', 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null])
-<div class="detail-bar">
+<div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
     <span id="peek-tools" class="contents">{{ $tools }}</span>
     <a class="detail-btn ml-auto" href="{{ $href }}" data-turbo-frame="_top" aria-label="Открыть страницу"><x-ui.icon name="expand" class="size-[18px]"/></a>

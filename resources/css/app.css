@@ -1427,18 +1427,22 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       @apply block;
       position: fixed; inset: calc(var(--spacing-header) + env(safe-area-inset-top)) 0 0; z-index: 45;
       overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; scrollbar-width: none;
-      pointer-events: none; animation: sheet-up var(--dur-slow) var(--ease-out) both;
+      /* Пустая часть над карточкой обрезана — нажатия и прокрутка там достаются таблице (pointer-events: none
+         Safari на iPhone не даёт листать вовсе). --sheet-top ставит detail_controller по прокрутке. */
+      clip-path: inset(max(0px, var(--sheet-top, 50%) - 12px) 0 0 0);
+      animation: sheet-up var(--dur-slow) var(--ease-out) both;
     }
     .split-detail::-webkit-scrollbar { display: none; }
     .detail-pad { display: block; position: relative; height: 100%; scroll-snap-align: start; }
     .detail-half { position: absolute; inset-inline: 0; top: 50%; height: 1px; scroll-snap-align: start; scroll-snap-stop: always; }
     .detail-card {
-      pointer-events: auto; min-height: 100%; scroll-snap-align: start; scroll-snap-stop: always;
+      min-height: 100%; scroll-snap-align: start; scroll-snap-stop: always;
       margin-inline: auto; max-width: 36rem;
       border-radius: var(--radius-xl) var(--radius-xl) 0 0; box-shadow: var(--shadow-drop);
       padding-bottom: max(env(safe-area-inset-bottom), 1rem);
     }
-    .detail-bar { @apply rounded-t-(--radius-xl) pt-4; }
+    /* За полосу лист тянется и пальцем, и мышью (detail_controller#grab); прокрутку тут браузер не перехватывает. */
+    .detail-bar { @apply rounded-t-(--radius-xl) pt-4; touch-action: none; cursor: grab; }
     .detail-handle { display: block; position: absolute; inset-inline: 0; top: .375rem; margin: 0 auto; width: 36px; height: 5px; border-radius: 3px; background: var(--color-line); }
     /* Лист закрывает нижнюю половину — последние строки выезжают из-под него. */
     .split[data-open] .split-main { padding-bottom: 50dvh; }
