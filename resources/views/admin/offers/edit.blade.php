@@ -27,6 +27,8 @@
     <div class="offer-head -mt-3 mb-4 flex flex-wrap items-center gap-1.5">
         @if ($garage)
             <x-ui.pill tone="plain" :href="$garage->url()" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
+        @elseif ($admin && $offer->isScheduled())
+            <x-offer.slot-menu :offer="$offer"/>
         @elseif ($admin && $offer->deal)
             {{-- В сделке пилюля состояния и есть вход в сделку: «Идёт сделка ›». --}}
             <x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
@@ -215,7 +217,9 @@
          поля сохраняются, потом публикация; из «···» она уходит, чтобы не стоять дважды. --}}
     @php
         $draft = $offer->state === OfferState::Draft;
-        if ($draft) $transitions = $transitions->except(OfferState::Open->value);
+        // «Опубликовать» — с выбором слота: у черновика шторкой из плашки, у галереи тремя пунктами в «···».
+        $publishItems = $admin && $offer->state === OfferState::Gallery && ! $offer->isScheduled();
+        if ($draft || $offer->state === OfferState::Gallery) $transitions = $transitions->except(OfferState::Open->value);
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
     <x-ui.action-bar data-controller="sheet">
@@ -229,14 +233,19 @@
             <x-ui.button form="offer-form" name="then" value="next" class="min-w-0 flex-1"><x-ui.icon name="plus" class="size-5"/>Новый</x-ui.button>
         @elseif ($draft)
             <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>
-            <x-ui.button form="offer-form" name="then" value="open" class="min-w-0 flex-1">Опубликовать</x-ui.button>
+            {{-- Сначала поля, потом публикация (`then=open`) — сейчас или в слот: шторка с выбором, по умолчанию ближайший. --}}
+            <div class="contents" data-controller="sheet">
+                <x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Опубликовать</x-ui.button>
+                <x-offer.publish-sheet :offer="$offer" id="offer-publish" form="offer-form" :submit="['then' => 'open']"/>
+            </div>
         @else
             <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @endif
-        @if ($transitions->isNotEmpty() && ! $fromMail)
+        @if (($transitions->isNotEmpty() || $publishItems) && ! $fromMail)
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
             <x-ui.sheet id="offer-actions" title="Предложение № {{ $n }}">
                 <div class="flex flex-col gap-2">
+                    @if ($publishItems)<x-offer.publish-items :offer="$offer" button/>@endif
                     @foreach ($transitions as [$next, $label])
                         <form method="post" action="/offers/{{ $n }}/state" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">

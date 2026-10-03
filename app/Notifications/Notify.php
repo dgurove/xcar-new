@@ -119,11 +119,14 @@ final class Notify
     /**
      * Новое предложение — тем, чья волна показа уже наступила (остальным напишут часы, NotifyViewers::due).
      * Снова в продаже (менеджер отказался) — снова всем, кто видит: отметки «писали» сбрасываются.
+     * Вышло слотом — сразу не пишем: часы тем же тиком соберут слот в одно уведомление на человека.
      */
     public function offerPublished(OfferPublished $e): void
     {
         OfferViewer::where('offer_id', $e->offer->id)->update(['notified_at' => null]);
-        app(NotifyViewers::class)($e->offer);
+        if (! $e->slot) {
+            app(NotifyViewers::class)($e->offer);
+        }
     }
 
     /** Покупателям — одно уведомление на пачку: «открыл вам 3 автомобиля». */

@@ -125,6 +125,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
         Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
         Route::post('/offers/{offer}/publish', [OfferController::class, 'publish']);
+        Route::post('/offers/{offer}/unschedule', [OfferController::class, 'unschedule']);
         Route::post('/offers/{offer}/garage', [OfferController::class, 'garage']);
         Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
         Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);

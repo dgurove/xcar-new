@@ -15,6 +15,8 @@ use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
+use App\Offers\Actions\ScheduleOffer;
+use App\Offers\Actions\UnscheduleOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\AudienceRules;
 use App\Offers\BidState;
@@ -23,6 +25,7 @@ use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\OfferState;
 use App\Offers\Showing;
+use App\Offers\Slots;
 use App\Offers\Tag;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -37,7 +40,7 @@ use Illuminate\Validation\Rule;
 class OfferController
 {
     public const PRESETS = [
-        'all' => 'Все', 'recommended' => 'Рекомендуем', 'draft' => 'Черновики', 'open' => 'В продаже',
+        'all' => 'Все', 'recommended' => 'Рекомендуем', 'draft' => 'Черновики', 'slot' => 'В слоте', 'open' => 'В продаже',
         'bids' => 'Выбрать', 'sold' => 'В сделке', 'archive' => 'Архив',
     ];
 
@@ -51,6 +54,11 @@ class OfferController
         $admin = $request->user()->canManageCrm();
         $presets = $admin ? self::PRESETS : self::MODERATOR_PRESETS;
         $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : 'all';
+        // «В слоте» — пилюлей, пока есть что выпускать в 16:00.
+        $scheduled = $admin ? Offer::scheduled()->count() : 0;
+        if ($admin && ! $scheduled && $preset !== 'slot') {
+            unset($presets['slot']);
+        }
         ListPrefs::sync($request, 'crm-offers');
         $sort = $request->query('sort', 'fresh');
 
@@ -60,7 +68,9 @@ class OfferController
 
         match ($preset) {
             'recommended' => $q->where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),
-            'draft' => $q->where('state', OfferState::Draft),
+            // У админа поставленные в слот — своей пилюлей, в «Черновиках» их нет; модератору это всё ещё черновики.
+            'draft' => $q->where('state', OfferState::Draft)->when($admin, fn ($d) => $d->whereNull('slot_at')),
+            'slot' => $q->scheduled(),
             'open' => $q->where('state', OfferState::Open),
             // Выбрать победителя: в продаже и с подтверждениями. У предложения в сделке оставшиеся — резерв, не очередь.
             'bids' => $q->where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
@@ -111,7 +121,8 @@ class OfferController
             // Числа у пилюль; модератору — в пределах его группы.
             'counts' => $admin ? [
                 'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
-                'draft' => Offer::where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())->count(),
+                'draft' => Offer::where('state', OfferState::Draft)->whereNull('slot_at')->whereNot(fn ($o) => $o->emptyDraft())->count(),
+                'slot' => $scheduled,
                 'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->count(),
             ] : ['draft' => Offer::visibleTo($request->user())->where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())->count()],
         ]);
@@ -222,7 +233,7 @@ class OfferController
      * «Сохранить» — и в список предложений; у черновика «Опубликовать» — та же форма с `then=open`: сначала поля, потом
      * в продажу; «+ Новый» (`then=next`) — сразу следующий черновик с тем же вендором: пачку заводят подряд.
      */
-    public function update(OfferRequest $request, Offer $offer, UpdateOffer $update, ChangeOfferState $change, CreateOffer $create)
+    public function update(OfferRequest $request, Offer $offer, UpdateOffer $update, ScheduleOffer $schedule, CreateOffer $create)
     {
         $update($offer, $request->payload(), $request->user());
         session()->forget("mail-draft.{$offer->id}");
@@ -236,9 +247,9 @@ class OfferController
             return redirect("/offers/{$next->number}")->with('toast', 'Сохранено');
         }
         if ($request->input('then') === 'open' && $offer->state === OfferState::Draft && $request->user()->canManageCrm()) {
-            $change($offer->refresh(), OfferState::Open, $request->user());
+            $offer = $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user());
 
-            return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number);
+            return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer));
         }
 
         // «Сохранить» — обратно в список предложений (владелец 02.10.2026): правку сделали, дальше следующее.
@@ -305,30 +316,56 @@ class OfferController
     }
 
     /**
-     * «Оценить» черновик из окошка: цена продажи и сразу в продажу, окошко само переходит к следующему черновику
-     * без цены. Пустое поле — просто дальше. Не хватает для публикации (фото ещё едут) — цена остаётся, ошибка в окошке.
+     * «Оценить» черновик из окошка: цена продажи и в продажу — сейчас или в слот (по умолчанию ближайший), окошко
+     * само переходит к следующему черновику без цены. Пустое поле — просто дальше. Не хватает для публикации (фото
+     * ещё едут) — цена остаётся, ошибка в окошке.
      */
-    public function publish(Request $request, Offer $offer, UpdateOffer $update, ChangeOfferState $change)
+    public function publish(Request $request, Offer $offer, UpdateOffer $update, ScheduleOffer $schedule)
     {
         $raw = preg_replace('/\D+/', '', (string) ($request->validate(['asking_price' => ['nullable', 'string', 'max:20']])['asking_price'] ?? ''));
         if ($raw === '' || $offer->state !== OfferState::Draft) {
             return back()->with('peek-advance', true);
         }
         $update($offer, ['asking_price' => (int) $raw], $request->user());
-        $change($offer->refresh(), OfferState::Open, $request->user());
+        $offer = $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user());
 
-        return back()->with('peek-advance', true)->with('toast', 'В продаже № '.$offer->number);
+        return back()->with('peek-advance', true)->with('toast', $this->published($offer));
     }
 
-    public function state(Request $request, Offer $offer, ChangeOfferState $change)
+    /** Состояние из меню; «Опубликовать» у черновика и галереи — с выбором слота (`when`), без него — сейчас. */
+    public function state(Request $request, Offer $offer, ChangeOfferState $change, ScheduleOffer $schedule)
     {
         $next = OfferState::from($request->validate(['state' => ['required', 'string']])['state']);
         // В сделку руками нельзя: сделку заводит «Принять» у подтверждения.
         if ($next === OfferState::Sold) {
             return back()->withErrors(['state' => 'Примите подтверждение менеджера — сделка заведётся сама']);
         }
+        if ($next === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
+            $offer = $schedule($offer, $this->when($request, Slots::NOW), $request->user());
+
+            return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer));
+        }
         $change($offer, $next, $request->user());
 
         return redirect("/offers/{$offer->number}")->with('toast', $next->label());
+    }
+
+    /** «Убрать из слота»: остаётся черновиком или галереей. */
+    public function unschedule(Request $request, Offer $offer, UnscheduleOffer $unschedule)
+    {
+        $unschedule($offer, $request->user());
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Убрано из слота');
+    }
+
+    private function when(Request $request, string $default): string
+    {
+        return in_array($when = (string) $request->input('when', $default), Slots::WHEN, true) ? $when : $default;
+    }
+
+    /** Тост публикации: номер — уже публичный, у поставленного в слот — когда выйдет. */
+    private function published(Offer $offer): string
+    {
+        return $offer->isScheduled() ? 'Выйдет '.Slots::phrase($offer->slot_at) : 'В продаже № '.$offer->number;
     }
 }

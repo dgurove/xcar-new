@@ -6,6 +6,7 @@ use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
+use App\Offers\Slots;
 use App\Users\User;
 use App\Workflow\DeadlineSource;
 use App\Workflow\Events\StageEntered;
@@ -40,7 +41,8 @@ final class EnterStage
 
         if ($track === Track::Sale && $to->offer_state === OfferState::Open
             && (! $offer->bids_close_at || $offer->bids_close_at->isPast())) {
-            $offer->bids_close_at = $now->copy()->addMinutes($to->limit_minutes ?? (int) config('xcar.bids_window_days') * 1440);
+            // Как у публикации кнопкой: через N дней в 21:00 (`Slots::closeFor`), N — срок этапа «Приём» в днях.
+            $offer->bids_close_at = Slots::closeFor($now, $to->limit_minutes ? max(1, intdiv($to->limit_minutes, 1440)) : null);
             $offer->save();
         }
 

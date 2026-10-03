@@ -10,5 +10,6 @@ final class OfferPublished
 {
     use Dispatchable;
 
-    public function __construct(public Offer $offer, public ?User $by = null) {}
+    /** `slot` — вышло слотом: «Новое предложение» тогда уходит одним на слот (`NotifyViewers::due`), а не сразу. */
+    public function __construct(public Offer $offer, public ?User $by = null, public bool $slot = false) {}
 }

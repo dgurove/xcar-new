@@ -132,7 +132,13 @@
                             @if ($wantsInvoice)<a href="/work/invoices/new?offer={{ $n }}" class="btn btn-s btn-accent" data-turbo-frame="_top">Выставить счёт</a>@endif
                             @foreach ($moves->values() as $i => $exit)
                                 @php $variant = $i === 0 && ! $wantsInvoice ? 'primary' : 'secondary'; @endphp
-                                @if ($exit->to?->staff_fields)
+                                @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
+                                    {{-- «Опубликовать» — сейчас или в слот, как кнопка редактора. --}}
+                                    <div data-controller="sheet">
+                                        <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $exit->label }}</x-ui.button>
+                                        <x-offer.publish-sheet :offer="$offer" id="exit-{{ $exit->id }}" action="/offers/{{ $n }}/exit/{{ $exit->id }}"/>
+                                    </div>
+                                @elseif ($exit->to?->staff_fields)
                                     <div data-controller="sheet">
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $exit->label }}</x-ui.button>
                                         <x-ui.sheet id="exit-{{ $exit->id }}" :title="$exit->label">

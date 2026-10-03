@@ -57,6 +57,7 @@
             {{-- Номер первым и одним куском (fitline ужимает строку, чтобы он влез), состояние — после, его можно обрезать. --}}
             @if ($vendor || $offer->claim_ref)<span class="fit-core"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy/></span>@endif
             @if ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт"></span>
+            @elseif ($offer->isScheduled())<span class="text-accent-text">выйдет {{ \App\Offers\Slots::phrase($offer->slot_at) }}</span>
             @elseif (! $draft)<span class="{{ $tone }}">{{ mb_strtolower($offer->state->labelFor(auth()->user())) }}</span>@endif
             @if ($count)<span class="{{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count }} {{ $gallery ? \App\Support\Plural::of($count, ['интерес', 'интереса', 'интересов']) : 'подтв.' }}</span>@endif
         </span>

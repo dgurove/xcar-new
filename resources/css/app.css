@@ -408,6 +408,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row-check .check { @apply ml-auto shrink-0; }
   .row-check:has(input:checked) { @apply bg-accent-soft; }
   .row-check:has(input:disabled) { @apply cursor-default opacity-60; }
+  /* «Опубликовать»: кнопка называет исход отмеченной строки — «сейчас», «сегодня в 16:00», «завтра в 16:00». */
+  .publish-choice [data-when] { display: none; }
+  .publish-choice:has(input[value="now"]:checked) [data-when="now"],
+  .publish-choice:has(input[value="nearest"]:checked) [data-when="nearest"],
+  .publish-choice:has(input[value="next"]:checked) [data-when="next"] { display: inline; }
   /* Множитель опоздавшего покупателя виден только там, где правило включено галкой. */
   .buyer-rule:has(input[name="buyer_pays_late"]:not(:checked)) [data-late] { display: none !important; }
   /* Ссылка админа: блок «для покупателя» виден только при роли «покупателю». */

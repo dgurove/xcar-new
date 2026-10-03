@@ -84,6 +84,7 @@ class Offer extends Model implements HasMedia
             'incident_date' => 'date',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
+            'slot_at' => 'datetime',
             'floor_price' => 'int',
             'publish_price' => 'int',
             'asking_price' => 'int',
@@ -406,6 +407,17 @@ class Offer extends Model implements HasMedia
         }
 
         return $this->asking_price;
+    }
+
+    /** В слоте: черновик или галерея, которые часы выпустят в `slot_at` (`Offers\Slots`, `PublishDueSlots`). */
+    public function isScheduled(): bool
+    {
+        return $this->slot_at !== null && in_array($this->state, [OfferState::Draft, OfferState::Gallery], true);
+    }
+
+    public function scopeScheduled(Builder $q): Builder
+    {
+        return $q->whereNotNull('slot_at')->whereIn('state', [OfferState::Draft, OfferState::Gallery]);
     }
 
     /** Приём подтверждений — не состояние, а срок: открыт, пока не прошёл bids_close_at (пустой — бессрочно). */

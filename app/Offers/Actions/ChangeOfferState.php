@@ -12,9 +12,11 @@ use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
+use App\Offers\Slots;
 use App\Users\User;
 use App\Workflow\Actions\EnterStage;
 use App\Workflow\Requirement;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -22,13 +24,18 @@ use Illuminate\Validation\ValidationException;
  * Единственная дверь для смены состояния оффера: проверка перехода, метки
  * времени, сделка, лента, событие. Если оффер идёт по маршруту и с текущего
  * этапа есть наш исход на этап с таким состоянием — маршрут догоняет кнопку.
+ * `at` — публикация слотом (часы, `PublishDueSlots`): выход и срок приёма считаются от слота, а не от минуты тика.
  */
 final class ChangeOfferState
 {
-    public function __invoke(Offer $offer, OfferState $next, ?User $by, bool $followRoute = true): Offer
+    public function __invoke(Offer $offer, OfferState $next, ?User $by, bool $followRoute = true, ?Carbon $at = null): Offer
     {
-        return DB::transaction(function () use ($offer, $next, $by, $followRoute) {
+        return DB::transaction(function () use ($offer, $next, $by, $followRoute, $at) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            // Слот могли убрать или перенести в последнюю секунду — тогда часы опоздали, публиковать нечего.
+            if ($at && ! $offer->slot_at?->equalTo($at)) {
+                return $offer;
+            }
             $from = $offer->state;
             // Гаражная сделка кончается не выдачей покупателю, а гаражом: конец маршрута («Сделка закрыта») ставит
             // машину менеджеру в гараж. Одна дверь — здесь, маршруты и их конечные этапы о гараже не знают.
@@ -47,13 +54,26 @@ final class ChangeOfferState
                 throw ValidationException::withMessages(['state' => 'Машина в гараже: сначала «Отдали по ошибке»']);
             }
             if ($next === OfferState::Open) {
-                $this->readyToPublish($offer);
+                self::assertReady($offer);
+                // Номер — до даты выхода: `issue` выдаёт его только тому, кто ещё не выходил наружу.
                 OfferNumber::issue($offer);
-                $offer->published_at ??= now();
-                if (! $offer->bids_close_at || $offer->bids_close_at->isPast()) {
-                    // Срок приёма по умолчанию — вечер, 20:00 (решение владельца 30.09.2026), а не текущая минута.
-                    $offer->bids_close_at = now()->addDays((int) config('xcar.bids_window_days'))->setTime(20, 0);
+                if ($at) {
+                    // Слотом — ровно в 16:00: от этого времени считаются волны показа и срок приёма.
+                    $offer->published_at = $at;
+                    $offer->bids_close_at = Slots::closeFor($at);
+                } else {
+                    $offer->published_at ??= now();
+                    if (! $offer->bids_close_at || $offer->bids_close_at->isPast()) {
+                        // Срок приёма по умолчанию — через 3 дня в 21:00 (владелец 03.10.2026), а не текущая минута.
+                        $offer->bids_close_at = Slots::closeFor(now());
+                    }
                 }
+            }
+            // «Вышло слотом» — только у публикации слотом; любой другой переход слот снимает, иначе возврат в продажу
+            // (менеджер отказался) молча пропустил бы рассылку, а снятый в черновик вышел бы сам.
+            if (! $at) {
+                $offer->slot_at = null;
+                $offer->slot_by = null;
             }
             if ($next === OfferState::Gallery) {
                 $this->readyForGallery($offer);
@@ -70,7 +90,7 @@ final class ChangeOfferState
 
             OfferStateChanged::dispatch($offer, $by);
             if ($next === OfferState::Open) {
-                OfferPublished::dispatch($offer, $by);
+                OfferPublished::dispatch($offer, $by, $at !== null);
             }
 
             if ($followRoute && ($exit = $offer->stage()?->exitInto($next, $offer->deal()->first()))) {
@@ -94,7 +114,8 @@ final class ChangeOfferState
         }
     }
 
-    private function readyToPublish(Offer $offer): void
+    /** Готово ли к продаже: марка, цена продажи, фото. Зовёт и постановка в слот — чтобы не выяснять это в 16:00. */
+    public static function assertReady(Offer $offer): void
     {
         $missing = array_keys(array_filter([
             'марка' => ! $offer->brand_id,

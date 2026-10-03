@@ -2,8 +2,10 @@
 
 namespace App\Http\Admin;
 
+use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Slots;
 use App\Park\Actions\CloseRequest;
 use App\Park\Actions\RequestTowFromOffer;
 use App\Workflow\Actions\DropRoute;
@@ -21,8 +23,17 @@ use Illuminate\Http\Request;
 /** Маршрут на карточке оффера: наши исходы, отмена шага, вывоз и возврат на пройденный шаг. */
 class RouteController
 {
-    public function exit(Request $request, Offer $offer, Outcome $exit, TakeExit $take)
+    public function exit(Request $request, Offer $offer, Outcome $exit, TakeExit $take, ScheduleOffer $schedule)
     {
+        // «Опубликовать» маршрута — с выбором слота, как кнопка редактора: в слот — маршрут догонят часы
+        // (`ChangeOfferState` в 16:00 сам найдёт выход в «Приём»), сейчас — шаг как обычно.
+        $when = (string) $request->input('when', Slots::NOW);
+        if ($when !== Slots::NOW && in_array($when, Slots::WHEN, true) && $exit->to?->offer_state === OfferState::Open
+            && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
+            $offer = $schedule($offer, $when, $request->user());
+
+            return back(fallback: "/offers/{$offer->number}")->with('toast', 'Выйдет '.Slots::phrase($offer->slot_at));
+        }
         $payload = [];
         foreach ($exit->to?->staff_fields ?? [] as $field) {
             $value = trim((string) $request->input("fields.{$field['key']}", ''));

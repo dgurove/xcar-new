@@ -16,6 +16,9 @@
     // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
     // Модератору — поля, кадры и документы: оценки, состояния, подтверждений, интереса и круга показа у него нет.
     $transitions = $admin ? collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
+    // «Опубликовать» у черновика и галереи — тремя пунктами: сейчас, в ближайший слот, в следующий (`x-offer.publish-items`).
+    $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled();
+    $transitions = $transitions->except(OfferState::Open->value);
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
     $unread = $chats->sum('unread_for_staff');
@@ -47,16 +50,26 @@
             @if ($gallery)<span class="text-sm text-accent-text">Скоро в продаже</span>@endif
         </x-slot:aside>
         <x-slot:actions>
-            @if ($admin && $offer->state === OfferState::Draft)
-                {{-- «Оценить» одним блоком: цена продажи и «В продажу» (окошко переходит к следующему черновику; пустое поле —
-                     просто дальше), под ними ориентиры из закупки, если черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
+            @if ($admin && $offer->isScheduled())
+                <x-offer.slot-menu :offer="$offer"/>
+            @elseif ($admin && $offer->state === OfferState::Draft)
+                {{-- «Оценить» одним блоком: цена продажи и «В продажу» — сейчас или в слот (по умолчанию ближайший; окошко
+                     переходит к следующему черновику; пустое поле — просто дальше), под ними ориентиры из закупки, если
+                     черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
                 <div class="w-full rounded-(--radius-l) bg-surface-2 p-3">
-                    <form method="post" action="/offers/{{ $n }}/publish" class="flex gap-2" data-controller="bid" data-bid-asking-value="0">
+                    <form method="post" action="/offers/{{ $n }}/publish" class="flex flex-col gap-2" data-controller="bid" data-bid-asking-value="0">
                         @csrf
-                        <input type="hidden" name="asking_price" data-bid-target="amount" value="{{ $offer->asking_price }}">
-                        <input type="text" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
-                            data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-peek-focus>
-                        <button type="submit" class="btn btn-s btn-accent shrink-0">В продажу</button>
+                        <div class="flex gap-2">
+                            <input type="hidden" name="asking_price" data-bid-target="amount" value="{{ $offer->asking_price }}">
+                            <input type="text" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
+                                data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-peek-focus>
+                            <button type="submit" class="btn btn-s btn-accent shrink-0">В продажу</button>
+                        </div>
+                        <div class="segment">
+                            @foreach (\App\Offers\Slots::choices() as $c)
+                                <label class="!px-2 whitespace-nowrap"><input type="radio" name="when" value="{{ $c['when'] }}" @checked($c['when'] === \App\Offers\Slots::NEAREST)><span class="nums">{{ $c['at'] ? \App\Offers\Slots::short($c['at']) : 'Сейчас' }}</span></label>
+                            @endforeach
+                        </div>
                     </form>
                     @if ($car = $offer->purchaseCar)
                         @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp
@@ -81,10 +94,11 @@
                     <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
                 @endforeach
             @endif
-            @if ($transitions->isNotEmpty())
+            @if ($transitions->isNotEmpty() || $publishItems)
                 <div class="contents" data-controller="menu">
                     <button type="button" class="pill pill-plain" data-action="menu#toggle" aria-haspopup="menu" aria-controls="peek-state-{{ $n }}">Состояние <x-ui.icon name="chevron-down" class="size-4"/></button>
                     <div id="peek-state-{{ $n }}" class="menu" popover data-menu-target="list" role="menu">
+                        @if ($publishItems)<x-offer.publish-items :offer="$offer"/>@endif
                         @foreach ($transitions as [$next, $label])
                             <form method="post" action="/offers/{{ $n }}/state" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
                                 @csrf<input type="hidden" name="state" value="{{ $next->value }}">
