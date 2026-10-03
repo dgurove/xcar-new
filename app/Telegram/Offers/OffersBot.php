@@ -92,7 +92,7 @@ final class OffersBot extends Bot
 
     public function updates(int $offset, int $timeout): array
     {
-        return $this->client($timeout + 10)->get('getUpdates', ['offset' => $offset, 'timeout' => $timeout, 'allowed_updates' => json_encode(['message', 'callback_query', 'my_chat_member'])])->throw()->json('result', []);
+        return $this->guard(fn () => $this->client($timeout + 10)->get('getUpdates', ['offset' => $offset, 'timeout' => $timeout, 'allowed_updates' => json_encode(['message', 'callback_query', 'my_chat_member'])])->throw()->json('result', []));
     }
 
     /** Описание перед «Запустить», короткое описание и меню команд (`offers-bot:profile`). */

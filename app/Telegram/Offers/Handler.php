@@ -131,7 +131,7 @@ final class Handler
     private function choose(Subscriber $sub, string $text): void
     {
         match (true) {
-            in_array($text, ['1 🚀', '1', Keys::SHOW], true) => $this->feed($sub),
+            in_array($text, ['1 🚀', '1', Keys::SHOW], true) => $this->feed($this->resubscribe($sub)),
             $text === Keys::LATER => $this->later($sub),
             $text === '2' && $sub->isSubscribed() => $this->unsubscribe($sub),
             ($text === '3' && $sub->isSubscribed()) || ($text === '2' && ! $sub->isSubscribed()) => $this->invites->show($sub),
@@ -209,6 +209,16 @@ final class Handler
             : "1. Смотреть предложения\n***\n2. Пригласи покупателей — будь в топе ⭐️";
         $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, $text, Keys::menu($sub->isSubscribed())));
         $sub->moveTo(Subscriber::MENU);
+    }
+
+    /** Отписавшийся нажал «1. Смотреть предложения» — снова подписан, молча (владелец 03.10.2026). */
+    private function resubscribe(Subscriber $sub): Subscriber
+    {
+        if ($sub->muted_at) {
+            $sub->forceFill(['muted_at' => null, 'announced_at' => now()])->save();
+        }
+
+        return $sub;
     }
 
     private function unsubscribe(Subscriber $sub): void

@@ -4,6 +4,7 @@ namespace App\Telegram;
 
 use App\Users\Role;
 use App\Users\User;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
@@ -77,7 +78,7 @@ class Bot
             return null;
         }
         try {
-            $name = (string) $this->client(5)->get('getMe')->throw()->json('result.username');
+            $name = (string) $this->guard(fn () => $this->client(5)->get('getMe')->throw()->json('result.username'));
         } catch (Throwable $e) {
             Log::warning('Telegram: getMe не ответил', ['error' => $e->getMessage()]);
         }
@@ -148,8 +149,8 @@ class Bot
             return [$disk->get($cached), $cached];
         }
         try {
-            $path = (string) $this->client(10)->get('getFile', ['file_id' => $fileId])->throw()->json('result.file_path');
-            $contents = Http::timeout(60)->withOptions($this->ipOptions())->get('https://api.telegram.org/file/bot'.$this->token().'/'.$path)->throw()->body();
+            $path = (string) $this->guard(fn () => $this->client(10)->get('getFile', ['file_id' => $fileId])->throw()->json('result.file_path'));
+            $contents = $this->guard(fn () => Http::timeout(60)->withOptions($this->ipOptions())->get('https://api.telegram.org/file/bot'.$this->token().'/'.$path)->throw()->body());
         } catch (Throwable $e) {
             Log::warning('Telegram: файл не скачался', ['file' => $fileId, 'error' => $e->getMessage()]);
 
@@ -207,7 +208,7 @@ class Bot
     /** Длинный опрос: Telegram держит запрос до `$timeout` секунд. @return list<array<string, mixed>> */
     public function updates(int $offset, int $timeout): array
     {
-        return $this->client($timeout + 10)->get('getUpdates', ['offset' => $offset, 'timeout' => $timeout, 'allowed_updates' => json_encode(['message', 'edited_message', 'callback_query', 'my_chat_member'])])->throw()->json('result', []);
+        return $this->guard(fn () => $this->client($timeout + 10)->get('getUpdates', ['offset' => $offset, 'timeout' => $timeout, 'allowed_updates' => json_encode(['message', 'edited_message', 'callback_query', 'my_chat_member'])])->throw()->json('result', []));
     }
 
     /** Перед опросом: при живом вебхуке getUpdates отвечает 409. */
@@ -257,7 +258,7 @@ class Bot
             $request->attach($field, $contents, $name);
         }
         try {
-            $response = ($files ? $request : $request->asForm())->post($method, $payload);
+            $response = $this->guard(fn () => ($files ? $request : $request->asForm())->post($method, $payload));
         } catch (RequestException $e) {
             if ($e->response->clientError()) {
                 $this->journal?->failed($method, $payload, (string) ($e->response->json('description') ?? $e->getMessage()));
@@ -269,6 +270,27 @@ class Bot
         }
 
         return $response;
+    }
+
+    /**
+     * Сбой соединения пишет в текст адрес запроса, а в адресе — токен бота: в лог, в упавшую задачу очереди и в
+     * отчёт об ошибке он уйти не должен. Перебрасываем с вычищенным текстом и без исходного исключения внутри.
+     */
+    protected function guard(callable $request): mixed
+    {
+        try {
+            return $request();
+        } catch (ConnectionException $e) {
+            throw new ConnectionException($this->scrub($e->getMessage()));
+        }
+    }
+
+    /** Токен — звёздочками: для логов. */
+    public function scrub(string $text): string
+    {
+        $token = $this->token();
+
+        return $token === '' ? $text : str_replace($token, '***', $text);
     }
 
     private static function tooMany(Throwable $e): bool

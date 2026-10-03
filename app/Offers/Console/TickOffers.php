@@ -21,7 +21,7 @@ class TickOffers extends Command
     {
         return $this->holdingSingleRun('offers:tick', function () use ($slots, $tick, $closed, $waves) {
             // Слот — первым: выпущенные им предложения тем же тиком уходят менеджерам одним уведомлением (волны).
-            $counts = ['slot' => $slots()] + $tick() + ['closed' => $closed(), 'waves' => $waves->due()];
+            $counts = ['slot' => $slots()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'waves' => $waves->due()];
             $this->line(collect($counts)->filter()->map(fn ($n, $k) => "{$k}: {$n}")->implode(', ') ?: 'тихо');
 
             return self::SUCCESS;
