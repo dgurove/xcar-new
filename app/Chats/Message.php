@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['chat_id', 'seq', 'author_id', 'author_kind', 'text', 'reply_to', 'edited_at', 'deleted_at'])]
+#[Fillable(['chat_id', 'seq', 'author_id', 'author_kind', 'text', 'reply_to', 'edited_at', 'deleted_at', 'via_bot'])]
 class Message extends Model
 {
     public const UPDATED_AT = null;
@@ -19,7 +19,7 @@ class Message extends Model
 
     protected function casts(): array
     {
-        return ['author_kind' => AuthorKind::class, 'created_at' => 'datetime', 'edited_at' => 'datetime', 'deleted_at' => 'datetime'];
+        return ['author_kind' => AuthorKind::class, 'created_at' => 'datetime', 'edited_at' => 'datetime', 'deleted_at' => 'datetime', 'via_bot' => 'bool'];
     }
 
     public function chat(): BelongsTo

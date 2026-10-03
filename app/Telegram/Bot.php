@@ -24,7 +24,19 @@ use Throwable;
  */
 class Bot
 {
-    public function __construct(private Journal $journal) {}
+    /** Журнал переписки — у основного бота; у второго (`Offers\OffersBot`) его нет: `telegram_chats` — один бот. */
+    public function __construct(protected ?Journal $journal) {}
+
+    /** Ключ настроек в `xcar.telegram` и приставка кэша: у бота предложений свои (`offers`, `offers-bot`). */
+    protected function config(string $key): mixed
+    {
+        return config('xcar.telegram.'.$key);
+    }
+
+    protected function cacheKey(string $key): string
+    {
+        return 'telegram:'.$key;
+    }
 
     public function configured(): bool
     {
@@ -33,7 +45,7 @@ class Bot
 
     public function ownerChatId(): ?int
     {
-        $id = trim((string) config('xcar.telegram.owner_chat_id'));
+        $id = trim((string) $this->config('owner_chat_id'));
 
         return $id === '' ? null : (int) $id;
     }
@@ -53,15 +65,15 @@ class Bot
     /** Имя бота для ссылок t.me: из настроек, иначе у самого Telegram (getMe) — один раз, дальше из кэша. */
     public function username(): ?string
     {
-        $name = trim((string) config('xcar.telegram.username'), " @\t");
+        $name = trim((string) $this->config('username'), " @\t");
         if ($name !== '' || ! $this->configured()) {
             return $name ?: null;
         }
-        if ($name = Cache::get('telegram:username')) {
+        if ($name = Cache::get($this->cacheKey('username'))) {
             return $name;
         }
         // Неудачу помним десять минут: страница не должна ждать Telegram на каждом открытии.
-        if (Cache::has('telegram:username:failed')) {
+        if (Cache::has($this->cacheKey('username:failed'))) {
             return null;
         }
         try {
@@ -70,11 +82,11 @@ class Bot
             Log::warning('Telegram: getMe не ответил', ['error' => $e->getMessage()]);
         }
         if (! $name) {
-            Cache::put('telegram:username:failed', true, 600);
+            Cache::put($this->cacheKey('username:failed'), true, 600);
 
             return null;
         }
-        Cache::forever('telegram:username', $name);
+        Cache::forever($this->cacheKey('username'), $name);
 
         return $name;
     }
@@ -137,7 +149,7 @@ class Bot
         }
         try {
             $path = (string) $this->client(10)->get('getFile', ['file_id' => $fileId])->throw()->json('result.file_path');
-            $contents = Http::timeout(60)->withOptions(['force_ip_resolve' => 'v6'])->get('https://api.telegram.org/file/bot'.$this->token().'/'.$path)->throw()->body();
+            $contents = Http::timeout(60)->withOptions($this->ipOptions())->get('https://api.telegram.org/file/bot'.$this->token().'/'.$path)->throw()->body();
         } catch (Throwable $e) {
             Log::warning('Telegram: файл не скачался', ['file' => $fileId, 'error' => $e->getMessage()]);
 
@@ -204,7 +216,7 @@ class Bot
         $this->call('deleteWebhook', [])->throw();
     }
 
-    private function payload(int $chatId, string $text, ?array $keyboard): array
+    protected function payload(int $chatId, string $text, ?array $keyboard): array
     {
         $payload = ['chat_id' => $chatId, 'text' => $text, 'parse_mode' => 'HTML', 'link_preview_options' => json_encode(['is_disabled' => true])];
         if ($keyboard !== null) {
@@ -228,39 +240,55 @@ class Bot
     }
 
     /**
-     * Путь до Telegram по IPv6 моргает: три попытки с паузой. Ответ 4xx — не сбой сети, его не повторяем.
-     * Каждый вызов — в журнал переписки: принятый — как есть, отказ на отправке — пузырём с причиной.
+     * Путь до Telegram по IPv6 моргает: три попытки с паузой. Ответ 4xx — не сбой сети, его не повторяем; кроме 429
+     * «слишком часто» — тогда ждём, сколько Telegram скажет (`retry_after`, не дольше 10 с): в 21:00 приём слота
+     * закрывается разом, и «Приём закрыт» владельцу уходят пачкой. Каждый вызов — в журнал переписки (если он есть):
+     * принятый — как есть, отказ на отправке — пузырём с причиной.
      *
-     * @param  array<string, UploadedFile>  $files
+     * @param  array<string, UploadedFile|array{0: string, 1: string}>  $files  файл или [содержимое, имя]
      */
-    private function call(string $method, array $payload, array $files = []): Response
+    protected function call(string $method, array $payload, array $files = []): Response
     {
-        $request = $this->client($files ? 60 : 20)->retry(3, 1500, fn (Throwable $e) => ! ($e instanceof RequestException && $e->response->clientError()));
+        $request = $this->client($files ? 60 : 20)->retry(3,
+            fn (int $attempt, Throwable $e) => self::tooMany($e) ? min(10, (int) ($e->response->json('parameters.retry_after') ?? 1)) * 1000 : 1500,
+            fn (Throwable $e) => ! ($e instanceof RequestException && $e->response->clientError()) || self::tooMany($e));
         foreach ($files as $field => $file) {
-            $request->attach($field, $file->get(), $file->getClientOriginalName());
+            [$contents, $name] = $file instanceof UploadedFile ? [$file->get(), $file->getClientOriginalName()] : $file;
+            $request->attach($field, $contents, $name);
         }
         try {
             $response = ($files ? $request : $request->asForm())->post($method, $payload);
         } catch (RequestException $e) {
             if ($e->response->clientError()) {
-                $this->journal->failed($method, $payload, (string) ($e->response->json('description') ?? $e->getMessage()));
+                $this->journal?->failed($method, $payload, (string) ($e->response->json('description') ?? $e->getMessage()));
             }
             throw $e;
         }
         if ($response->successful()) {
-            $this->journal->sent($method, $payload, (array) $response->json('result'));
+            $this->journal?->sent($method, $payload, (array) $response->json('result'));
         }
 
         return $response;
     }
 
-    private function client(int $timeout): PendingRequest
+    private static function tooMany(Throwable $e): bool
     {
-        return Http::baseUrl('https://api.telegram.org/bot'.$this->token().'/')->timeout($timeout)->withOptions(['force_ip_resolve' => 'v6']);
+        return $e instanceof RequestException && $e->response->status() === 429;
     }
 
-    private function token(): string
+    protected function client(int $timeout): PendingRequest
     {
-        return trim((string) config('xcar.telegram.token'));
+        return Http::baseUrl('https://api.telegram.org/bot'.$this->token().'/')->timeout($timeout)->withOptions($this->ipOptions());
+    }
+
+    /** На сервере до Telegram доходит только IPv6; на маке его может не быть — `TELEGRAM_IPV6=false`. */
+    protected function ipOptions(): array
+    {
+        return config('xcar.telegram.ipv6', true) ? ['force_ip_resolve' => 'v6'] : [];
+    }
+
+    protected function token(): string
+    {
+        return trim((string) $this->config('token'));
     }
 }

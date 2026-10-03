@@ -9,20 +9,24 @@ import { openSheet, closeSheet } from '../sheet';
 //   login — «Войти через Telegram» на странице входа: ожидание прямо в кнопке, вход после «Войти» в чате.
 // Под «Войти как» (foreign) шторка, строка и карточка те же, а «Подключить» останавливает тостом.
 // Переход в Telegram — сразу в приложение (tg://), а если его нет — через t.me. Ответ приходит событием хаба
-// live:telegram или, когда человек вернулся на вкладку, вопросом серверу.
+// live:telegram или, когда человек вернулся на вкладку, вопросом серверу. Бот предложений (x-offers-bot.connect) —
+// та же шторка со своими событием, открытием и адресом проверки (liveEvent, openEvent, stateUrl).
 export default class extends Controller {
     static targets = ['step', 'scene', 'label', 'cancel', 'title', 'stop'];
-    static values = { mode: String, token: String, moments: Array, app: String, web: String, foreign: Boolean, intro: { type: Array, default: ['/offers', '/deals'] } };
+    static values = {
+        mode: String, token: String, moments: Array, app: String, web: String, foreign: Boolean, intro: { type: Array, default: ['/offers', '/deals'] },
+        liveEvent: { type: String, default: 'live:telegram' }, openEvent: { type: String, default: 'telegram:open' }, stateUrl: { type: String, default: '/account/telegram/state' },
+    };
 
     connect() {
         this.onLive = (e) => this.live(e.detail || {});
         this.onVisible = () => document.visibilityState === 'visible' && this.waiting && this.back();
-        document.addEventListener('live:telegram', this.onLive);
+        document.addEventListener(this.liveEventValue, this.onLive);
         document.addEventListener('visibilitychange', this.onVisible);
         if (this.modeValue !== 'link') return;
         this.onOpen = () => this.open();
         this.onSubmit = (e) => this.submitted(e);
-        window.addEventListener('telegram:open', this.onOpen);
+        window.addEventListener(this.openEventValue, this.onOpen);
         document.addEventListener('turbo:submit-end', this.onSubmit);
         // Шторка постоянная между визитами (data-turbo-permanent): вход проверяем на каждой странице.
         this.onLoad = () => this.intro();
@@ -40,9 +44,9 @@ export default class extends Controller {
 
     disconnect() {
         clearTimeout(this.introTimer);
-        document.removeEventListener('live:telegram', this.onLive);
+        document.removeEventListener(this.liveEventValue, this.onLive);
         document.removeEventListener('visibilitychange', this.onVisible);
-        window.removeEventListener('telegram:open', this.onOpen);
+        window.removeEventListener(this.openEventValue, this.onOpen);
         document.removeEventListener('turbo:load', this.onLoad);
         document.removeEventListener('turbo:submit-end', this.onSubmit);
     }
@@ -135,7 +139,7 @@ export default class extends Controller {
     // Вернулись из Telegram, а события хаба не было (или хаба нет): спросить самим.
     async back() {
         if (this.modeValue === 'login') { this.check(); return; }
-        const r = await this.request('/account/telegram/state', 'GET');
+        const r = await this.request(this.stateUrlValue, 'GET');
         if (r?.ok && (await r.json()).linked) this.done();
     }
 

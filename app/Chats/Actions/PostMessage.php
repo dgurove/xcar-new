@@ -19,8 +19,12 @@ final class PostMessage
 {
     private const MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'application/pdf'];
 
-    /** @param  list<UploadedFile>  $files */
-    public function __invoke(Chat $chat, ?User $by, ?string $text, array $files = [], ?int $replyTo = null): Message
+    /**
+     * `viaBot` — написано в боте предложений (вопрос 💬 или реплай): ответы по этому чату идут человеку туда же.
+     *
+     * @param  list<UploadedFile>  $files
+     */
+    public function __invoke(Chat $chat, ?User $by, ?string $text, array $files = [], ?int $replyTo = null, bool $viaBot = false): Message
     {
         $text = trim((string) $text);
         if ($text === '' && ! $files) {
@@ -32,13 +36,13 @@ final class PostMessage
             }
         }
 
-        $message = DB::transaction(function () use ($chat, $by, $text, $files, $replyTo) {
+        $message = DB::transaction(function () use ($chat, $by, $text, $files, $replyTo, $viaBot) {
             $chat = Chat::whereKey($chat->id)->lockForUpdate()->firstOrFail();
             $kind = $chat->isCounterpart($by) ? AuthorKind::Staff : AuthorKind::Participant;
             $seq = $chat->messages_count + 1;
             // Ответ — только на сообщение этого чата; чужой номер молча отбрасывается.
             $replyTo = $replyTo && $replyTo < $seq ? $replyTo : null;
-            $message = $chat->messages()->create(['seq' => $seq, 'author_id' => $by?->id, 'author_kind' => $kind, 'text' => $text ?: null, 'reply_to' => $replyTo]);
+            $message = $chat->messages()->create(['seq' => $seq, 'author_id' => $by?->id, 'author_kind' => $kind, 'text' => $text ?: null, 'reply_to' => $replyTo, 'via_bot' => $viaBot]);
             foreach ($files as $file) {
                 $mime = (string) $file->getMimeType();
                 if (str_starts_with($mime, 'image/')) {

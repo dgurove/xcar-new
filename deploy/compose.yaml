@@ -92,6 +92,14 @@ services:
     healthcheck:
       disable: true
 
+  # Бот предложений @xcar_offers_bot: длинный опрос, часы (13:00, анонс слота) и дорожки по чатам — внутри команды.
+  # Без токена спит и перезапускается: на сервере без бота сервис безвреден.
+  offers-bot:
+    <<: *app
+    command: php artisan offers-bot:run
+    healthcheck:
+      disable: true
+
   # IMAP IDLE: по процессу на активный ящик, надсмотрщик внутри команды.
   mail-watch:
     <<: *app

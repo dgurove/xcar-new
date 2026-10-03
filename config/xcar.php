@@ -58,6 +58,17 @@ return [
         'token' => env('TELEGRAM_BOT_TOKEN'),
         'owner_chat_id' => env('TELEGRAM_OWNER_CHAT_ID'),
         'username' => env('TELEGRAM_BOT_USERNAME'),
+        // На сервере до api.telegram.org доходит только IPv6; локально на маке его может не быть.
+        'ipv6' => (bool) env('TELEGRAM_IPV6', true),
+        // Бот предложений менеджерам (@xcar_offers_bot, 03.10.2026): свой токен, постоянный сервис `offers-bot`.
+        // lanes — сколько чатов разбираются параллельно; login — кнопки «Открыть в XCar» входом через Telegram
+        // (включать после /setdomain xcar.ru в BotFather: без него Telegram отклоняет всё сообщение с кнопкой).
+        'offers' => [
+            'token' => env('TELEGRAM_OFFERS_BOT_TOKEN'),
+            'username' => env('TELEGRAM_OFFERS_BOT_USERNAME'),
+            'lanes' => (int) env('TELEGRAM_OFFERS_LANES', 3),
+            'login' => (bool) env('TELEGRAM_OFFERS_LOGIN', false),
+        ],
     ],
 
     // Оплата по ссылке — ЮKassa, подключённая в СберБизнесе; чеки 54-ФЗ пробивает она же («Чеки от ЮKassa»).

@@ -3,6 +3,7 @@
 use App\Http\Auth\ImpersonationController;
 use App\Http\Auth\InviteController;
 use App\Http\Auth\LoginController;
+use App\Http\Auth\OffersBotController;
 use App\Http\Auth\PasskeyController;
 use App\Http\Auth\PasswordController;
 use App\Http\Auth\TelegramController;
@@ -37,6 +38,10 @@ Route::middleware('auth')->group(function () {
 });
 
 // Ссылка на новый пароль от менеджера или админа: вошедшего контроллер сам выводит — ссылка должна сработать с любого телефона.
+// Кнопка «Открыть в XCar» из бота предложений: подпись Telegram — вход, затем страница; без подписи — просто страница.
+Route::get('/telegram/open/{target}', [OffersBotController::class, 'open'])->where('target', '[a-z0-9]+')->middleware('throttle:30,1');
+Route::post('/account/offers-bot/hide', [OffersBotController::class, 'hide'])->middleware(['auth', 'throttle:20,1']);
+Route::get('/account/offers-bot/state', [OffersBotController::class, 'state'])->middleware('auth');
 Route::get('/password/link/{token}', [PasswordController::class, 'link'])->middleware('throttle:30,1');
 Route::post('/password/link/{token}', [PasswordController::class, 'setByLink'])->middleware('throttle:5,1');
 

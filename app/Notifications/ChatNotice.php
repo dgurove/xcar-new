@@ -7,6 +7,7 @@ use App\Chats\Chat;
 use App\Chats\Message;
 use App\Push\WebPushChannel;
 use App\Support\Surface;
+use App\Telegram\Offers\OffersBotChannel;
 use App\Telegram\Text;
 use App\Users\User;
 
@@ -23,8 +24,22 @@ final class ChatNotice extends Notice
     public function via(User $user): array
     {
         $via = parent::via($user);
+        // Переписка начата в боте предложений — в Telegram отвечает он, а не основной бот (`OffersBotChannel`).
+        if (OffersBotChannel::routes($this->message, $user)) {
+            $via = [...array_diff($via, [TelegramChannel::class]), OffersBotChannel::class];
+        }
 
-        return $this->first ? $via : array_values(array_intersect($via, [WebPushChannel::class, TelegramChannel::class]));
+        return $this->first ? array_values($via) : array_values(array_intersect($via, [WebPushChannel::class, TelegramChannel::class, OffersBotChannel::class]));
+    }
+
+    public function message(): Message
+    {
+        return $this->message;
+    }
+
+    public function forStaff(): bool
+    {
+        return $this->forStaff;
     }
 
     public function subject(): string

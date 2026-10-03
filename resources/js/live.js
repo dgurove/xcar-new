@@ -69,7 +69,7 @@ function open() {
     on('toast', ({ message, href }) => window.toast?.(message, href ? { href } : undefined));
     on('badges', badges);
     on('chat', chat);
-    ['telegram', 'scan'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
+    ['telegram', 'offers-bot', 'scan'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     ['chat-edit', 'chat-read', 'chat-typing', 'tg-chat', 'tg-chat-edit'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     source.onopen = () => {
         document.documentElement.removeAttribute('data-net');

@@ -11,7 +11,8 @@ final class ScheduleAutoReply
 {
     public function handle(ChatMessagePosted $event): void
     {
-        if (AutoReply::due($event->message)) {
+        // Вопрос из бота предложений: бот уже ответил «ответ придёт сюда» — автоответ на сайте лишний.
+        if (! $event->message->via_bot && AutoReply::due($event->message)) {
             SendAutoReply::dispatch($event->message->id);
         }
     }

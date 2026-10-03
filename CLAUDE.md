@@ -429,6 +429,13 @@ Telegram, с почтой — «Новое из писем» (`OfferLetterNotice
 - Состояния оффера — только `Workflow\ChangeOfferState`. **Приём
   подтверждений — срок, не состояние**: `Offer::bidsOpen()`/`closed()` по
   `bids_close_at`, продление «+15 мин / +1 ч»; у закупок так же.
+- **Слоты публикации** (03.10.2026, `notes/bot-predlozheniy-2026-10-03.md`): «Опубликовать» — сейчас, в ближайший
+  (по умолчанию) или следующий слот 16:00 МСК (`Offers\Slots`, `ScheduleOffer`, шторка `x-offer.publish-sheet`,
+  `.segment` в «Оценить», пункты `x-offer.publish-items`, капсула `x-offer.slot-menu`, пилюля «В слоте»);
+  `offers.slot_at` у черновика или галереи — «выйдет», у открытого — «вышло слотом в этот раз», любой другой переход
+  его обнуляет. Выпускают часы (`PublishDueSlots` первым шагом `offers:tick` → `ChangeOfferState(at:)`: номер,
+  `published_at` ровно 16:00, волны от него). Срок приёма по умолчанию везде `Slots::closeFor` — через 3 дня в 21:00.
+  В слот менеджеру одно «Опубликовано N предложений» (`NotifyViewers::due` по человеку, `SlotPublishedNotice`).
 - **Номер предложения** (29.09.2026) — дата и порядковый слитно, `2609291066`, как на старом сайте: `Offers\OfferNumber`
   выдаёт его при первом выходе наружу (Open или Gallery в `ChangeOfferState`, у демо — нет); до этого у черновика
   временный порядковый из `offer_numbers` — адрес редактора. Номер больше не меняется; прежний лежит в
@@ -1240,6 +1247,15 @@ Telegram, с почтой — «Новое из писем» (`OfferLetterNotice
   (CRM, витрина, выгрузка, новые цены), видна только в «В предложениях». Цену продажи ставят в «Оценить» по
   черновикам (`POST /offers/{n}/publish` из окошка, `peek-advance`); при публикации менеджерам с ценой по ТС в
   закупке — `PurchaseCarOnSaleNotice` вместо «Нового предложения», один раз (`announced_at`).
+- **Бот предложений @xcar_offers_bot** (03.10.2026, «Дайвинчик» для менеджеров, `app/Telegram/Offers`,
+  `notes/bot-predlozheniy-2026-10-03.md`): `OffersBot extends Bot` (свой конфиг `xcar.telegram.offers`, без журнала
+  CRM), сервис compose `offers-bot` — длинный опрос, часы (`Announce`: 13:00, анонс вышедшего слотом, «напомнить»)
+  и дорожки по чатам (`offers-bot:lane`), кадры — один раз и дальше по `file_id` (`PhotoCache`), состояние —
+  `pgsql_async`. Разговор — `Handler` (тексты владельца дословно), лента — `Feed`, карточка — `Card`, вопросы 💬 —
+  в чат по предложению (`Questions`, `PostMessage(viaBot:)`, `ChatNotice::via` → `OffersBotChannel`, реплай админа
+  — ответ, остальным «ответил», `RelayAnswer`), приглашения — `Invites`. На сайте — строка `x-offers-bot.card` в
+  начале каталога и шторка `x-offers-bot.connect`; вход по кнопке — `/telegram/open/{цель}` (`LoginUrl`, после
+  `/setdomain` и `TELEGRAM_OFFERS_LOGIN=true`). «Опубликовать сейчас» бот не анонсирует.
 - Telegram-бот без SDK (`Telegram\Bot`, IPv6, `telegram:poll`): владельцу и привязанным админам — кнопки решения, менеджерам — принятое подтверждение, ваш ход, сроки, деньги и каждое сообщение чата (с 01.10.2026, админам — чаты площадки; `Notice::toTelegram`/`telegramUrl`, `TelegramChannel`), шторка подключения `x-telegram.connect` (сама — один раз при входе и после подтверждения ценой), профиль, вход через бота (`StartLink`), вся переписка бота — Настройки → «Бот Telegram» админам (`Telegram\Journal` в `Bot::call` и `UpdateHandler::handle`, ответ от имени бота `SendAsBot`) — `notes/telegram-2026-09-30.md`.
 - Медиа: `PhotoIngest` — всё входящее в 1600 px webp, `sha` исходника у
   каждого кадра; **просмотр фото один на три хоста** — `resources/js/lightbox.js` (PhotoSwipe 5, с 28.09.2026
@@ -1261,6 +1277,7 @@ Telegram, с почтой — «Новое из писем» (`OfferLetterNotice
 php artisan queue:work database-long --queue=long,mail --stop-when-empty      # почта, фото, закупки
 php artisan queue:work --queue=notifications,default --stop-when-empty       # конверсии, уведомления
 php artisan queue:work database-scan --queue=scan --stop-when-empty         # «✨ Распознать»
+php artisan offers-bot:run | offers-bot:poke announce {user} --fresh | offers-bot:profile   # бот предложений
 php artisan offers:tick | park:tick | park:digest | billing:tick | mail:sync | mail:reconcile | push:keys | media:restamp | vendors:refill
 npm run build                    # ассеты; npm run dev — с горячей перезагрузкой
 node scripts/icons.mjs           # иконки, экраны запуска, водяной знак из resources/icons

@@ -47,6 +47,10 @@ use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
 use App\Telegram\Console\Poll;
 use App\Telegram\Console\SetProfile;
+use App\Telegram\Offers\Console\Lane as OffersBotLane;
+use App\Telegram\Offers\Console\Poke as OffersBotPoke;
+use App\Telegram\Offers\Console\Profile as OffersBotProfile;
+use App\Telegram\Offers\Console\Run as OffersBotRun;
 use App\Users\Console\CreateUser;
 use App\Users\Console\SeedDemo;
 use App\Workflow\Console\RefillVendors;
@@ -88,6 +92,7 @@ return Application::configure(basePath: dirname(__DIR__))
         Gc::class,
         Report::class,
         Poll::class, SetProfile::class,
+        OffersBotRun::class, OffersBotLane::class, OffersBotProfile::class, OffersBotPoke::class,
         SyncAcquiring::class,
         SyncBank::class,
         PerpetualSecret::class,
