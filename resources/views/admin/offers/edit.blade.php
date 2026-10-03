@@ -36,7 +36,7 @@
             <x-ui.pill :tone="$offer->state->tone()">{{ $offer->parkWord() ?? $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
         @endif
         @if ($offer->parkWord())
-            <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Снять с продажи</x-ui.button></form>
+            <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="pill pill-plain">Снять с продажи</button></form>
         @endif
         {{-- Срок приёма и продление — админу: подтверждения принимает только он. --}}
         @if (! $admin)
