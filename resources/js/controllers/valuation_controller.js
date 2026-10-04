@@ -176,8 +176,17 @@ export default class extends Controller {
         this.failTarget.hidden = false;
     }
 
+    overwriteAll(event) {
+        event.preventDefault();
+        this.rowsTarget.querySelectorAll('input[type=radio][value="overwrite"]').forEach((r) => { r.checked = true; });
+        this.count();
+    }
+
+    // Сколько предложений изменится: отмеченные и расхождения — оставленное целиком не меняется, если спорит оценочная.
     count() {
-        const n = this.rowsTarget.querySelectorAll('input[name="offers[]"]:checked').length;
+        const n = this.rowsTarget.querySelectorAll('input[type=checkbox][name="offers[]"]:checked').length
+            + [...this.rowsTarget.querySelectorAll('.valuation-conflict')].filter((row) => row.querySelector('input[value="overwrite"]').checked
+                || !row.querySelector('.valuation-diff dt')?.textContent.includes('Оценочная')).length;
         this.saveTarget.disabled = n === 0;
         this.saveTarget.textContent = n ? `Всё верно, сохранить (${n})` : 'Нечего сохранять';
     }

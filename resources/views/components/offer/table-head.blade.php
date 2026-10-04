@@ -19,6 +19,8 @@
     {{-- Подтверждения принимает только админ — модератору столбца нет. --}}
     @if ($has('bids') && auth()->user()?->canManageCrm())<th class="num col-detail-hide hidden sm:table-cell">{{ $gallery ? 'Интерес' : 'Подтверждения' }}</th>@endif
     {{-- Сначала закупочная, потом продажи (владелец 04.10.2026: так логичнее). --}}
+    {{-- Оценочная — до закупочной: у Альфы закупочная из неё (владелец 05.10.2026: «оценочные тоже надо видеть»). --}}
+    @if ($cols !== null && $has('value'))<th class="num hidden sm:table-cell">Оценочная</th>@endif
     @if ($has('floor'))<th class="num hidden sm:table-cell">Закупочная</th>@endif
     @if ($has('price'))<th class="num">Цена</th>@endif
     @if ($cols !== null && $has('published'))<th class="num col-detail-hide hidden sm:table-cell">Вышло</th>

@@ -25,10 +25,12 @@ final class OfferValuationController
         $parsed = ValuationText::parse($text);
         $items = $match($request->user(), $parsed['rows']);
         $token = Str::random(32);
-        $take = collect($items)->filter(fn ($i) => $i['offer'] && in_array($i['status'], ['fill', 'change', 'check'], true));
+        $take = collect($items)->filter(fn ($i) => $i['offer'] && in_array($i['status'], ['fill', 'conflict', 'check'], true));
         Cache::put("valuation:{$token}", [
             'user' => $request->user()->id,
             'amounts' => $take->mapWithKeys(fn ($i) => [$i['offer']->id => $i['amount']])->all(),
+            // Что вписано иначе: без «Перезаписать» это поле остаётся прежним.
+            'differs' => $take->filter(fn ($i) => $i['status'] === 'conflict')->mapWithKeys(fn ($i) => [$i['offer']->id => ['value' => $i['value_differs'], 'floor' => $i['floor_differs']]])->all(),
         ], now()->addMinutes(30));
         // Строки текста для анимации «убираем лишнее»: остаются номер и сумма, прочее схлопывается.
         $keep = collect($parsed['rows'])->flatMap(fn ($r) => $r['lines'])->flip();
@@ -44,6 +46,7 @@ final class OfferValuationController
                 'found' => collect($items)->filter(fn ($i) => $i['offer'])->unique(fn ($i) => $i['offer']->id)->count(),
                 'missing' => $by['missing'] ?? 0,
                 'take' => $take->where('status', '!=', 'check')->count(),
+                'conflicts' => $by['conflict'] ?? 0,
             ],
             'html' => view('admin.offers.valuation-rows', ['items' => $items])->render(),
         ]);
@@ -51,7 +54,7 @@ final class OfferValuationController
 
     public function apply(Request $request, UpdateOffer $update)
     {
-        $data = $request->validate(['token' => ['required', 'string'], 'offers' => ['array'], 'offers.*' => ['integer']]);
+        $data = $request->validate(['token' => ['required', 'string'], 'offers' => ['array'], 'offers.*' => ['integer'], 'keep' => ['array'], 'keep.*' => ['in:keep,overwrite']]);
         $saved = Cache::pull("valuation:{$data['token']}");
         if (! $saved || $saved['user'] !== $request->user()->id) {
             return back()->with('toast', 'Разбор устарел, вставьте текст ещё раз');
@@ -61,7 +64,16 @@ final class OfferValuationController
         foreach (Offer::query()->inCrm($request->user())->whereKey($ids)->get() as $offer) {
             $value = (int) $saved['amounts'][$offer->id];
             $floor = Sale::floorFrom($value);
-            $update($offer, ['value' => $value, 'floor_price' => $floor], $request->user(), ['source' => 'valuation', 'value' => $value, 'floor' => $floor]);
+            $set = ['value' => $value, 'floor_price' => $floor];
+            // Расхождение без «Перезаписать» — вписанное остаётся; оставили оценочную — закупочная тоже прежняя.
+            $differs = $saved['differs'][$offer->id] ?? null;
+            if ($differs && ($data['keep'][$offer->id] ?? 'keep') === 'keep') {
+                $set = $differs['value'] ? [] : array_diff_key($set, $differs['floor'] ? ['floor_price' => 1] : []);
+            }
+            if ($set === []) {
+                continue;
+            }
+            $update($offer, $set, $request->user(), ['source' => 'valuation', 'value' => $value, 'floor' => $set['floor_price'] ?? null]);
             $done++;
         }
 

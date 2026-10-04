@@ -820,6 +820,21 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .valuation-scroll { @apply -mx-1 min-h-0 flex-1 overflow-y-auto px-1; overscroll-behavior: contain; }
   .valuation-scroll .valuation-group:first-child > summary { @apply pt-0; }
   .valuation-bar { @apply flex flex-none gap-2 pt-3; }
+  /* Расхождение: на ПК строкой — ТС и номер, «было → в тексте», «Оставить | Перезаписать»; на телефоне столбиком,
+     выбор во всю ширину. */
+  .list .row.valuation-conflict { @apply gap-4 text-left; }
+  .valuation-conflict > .min-w-0 { @apply flex-1; }
+  .valuation-diff { @apply grid shrink-0 grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-sm; }
+  .valuation-diff dt { @apply text-ink-muted; }
+  .valuation-diff dd { @apply text-right whitespace-nowrap; }
+  .valuation-choice { @apply shrink-0; }
+  @media (max-width: 639.98px) {
+    .list .row.valuation-conflict { @apply flex-col items-stretch gap-2; }
+    .valuation-diff dd { @apply text-left; }
+    .valuation-diff { @apply justify-start; }
+  }
+  .valuation-group > summary.list-head { @apply flex items-baseline gap-3; }
+  .valuation-group > summary .facet-all { @apply ml-auto; }
   @keyframes valuation-draw { to { stroke-dashoffset: 0; } }
   @media (prefers-reduced-motion: reduce) { .valuation-tick, .valuation-ok circle, .valuation-ok path { animation: none !important; stroke-dashoffset: 0; } }
   .migtorg-field-btn { @apply flex size-9 items-center justify-center rounded-full transition-colors; background: color-mix(in oklab, #D6514A 18%, transparent); }

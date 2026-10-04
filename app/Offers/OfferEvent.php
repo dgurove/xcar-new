@@ -59,7 +59,10 @@ class OfferEvent extends Model
                     default => 'подтвердили',
                 }
             : (($p['source'] ?? null) === 'valuation'
-                ? 'Оценка из текста: оценочная '.Money::rub((int) ($p['value'] ?? 0)).', закупочная '.Money::rub((int) ($p['floor'] ?? 0))
+                ? 'Оценка из текста: '.implode(', ', array_filter([
+                    isset($p['value']) ? 'оценочная '.Money::rub((int) $p['value']) : null,
+                    isset($p['floor']) ? 'закупочная '.Money::rub((int) $p['floor']) : null,
+                ]))
                 : 'Изменён: '.FieldLabels::list($p['fields'] ?? [])),
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
             OfferEventType::StateChanged => OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),

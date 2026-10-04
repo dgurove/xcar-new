@@ -232,9 +232,9 @@ class OfferController
         return match ($preset ?? 'unpriced') {
             // Оценка: закупочная — ориентир, «Оценить» на месте цены; у черновика номера нет, кто завёл — аватаром у даты.
             // Город — сразу за номером убытка (владелец 04.10.2026: «не хватает столбца с городом»).
-            'unpriced', 'priced' => ['vendor', 'city', 'floor', 'price', 'created'],
+            'unpriced', 'priced' => ['vendor', 'city', 'value', 'floor', 'price', 'created'],
             // Когда выйдет — заголовок группы, слова в строке не нужно.
-            'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
+            'slots' => ['vendor', 'city', 'value', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
             'published' => $admin ? ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'] : ['vendor', 'city', 'floor', 'price', 'published'],
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
