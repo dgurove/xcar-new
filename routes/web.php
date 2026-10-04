@@ -158,6 +158,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/deals', [DealController::class, 'index']);
         Route::get('/deals/{deal}', [DealController::class, 'show']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
+        Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);
         Route::post('/deals/{deal}/files', [DealController::class, 'upload']);
         Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
         Route::get('/buyers', [BuyerController::class, 'index']);

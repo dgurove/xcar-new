@@ -95,9 +95,13 @@ final class Path
      * обрывает: у маршрута с двумя ветками покупки была бы видна и та, от которой отказались. Тупики срыва и возвраты
      * назад впереди не считаются. Блоки сравниваются по имени: у двух веток покупки блок «Согласуем с поставщиком» свой.
      *
+     * $guess — менеджеру (04.10.2026, владелец: путь из одного шага ничего не говорит): на развилке путь идёт дальше
+     * главной дорогой — двойник текущего блока (ветка «на себя» с тем же именем) не в счёт, из остальных — раньше
+     * стоящий в маршруте. Пройденное всё равно по журналу; CRM рисует путь «серым до развилки», без догадки.
+     *
      * @return Collection<int, Block>
      */
-    public static function ladder(Stage $stage, array $passedNames, Deal|Destination|null $deal = null): Collection
+    public static function ladder(Stage $stage, array $passedNames, Deal|Destination|null $deal = null, bool $guess = false): Collection
     {
         $all = $stage->workflow->blocks()->with('stages.exits.to.block')->get();
         $current = $all->firstWhere('id', $stage->block_id);
@@ -111,7 +115,12 @@ final class Path
             // Блоки из `to.block` — копии без этапов: берём те же блоки из уже загруженного маршрута, иначе каждый шаг
             // лестницы догружал этапы, исходы и цели по одному.
             $next = $current->nextBlocks($deal)->map(fn (Block $b) => $all->firstWhere('id', $b->id) ?? $b)
-                ->reject(fn (Block $b) => $b->isDeadEnd() || in_array($b->id, $seen, true) || $b->position < $current->position);
+                // Блок конца («Сделка закрыта») стоит в маршруте раньше веток, дописанных после него, — возвратом он не бывает.
+                ->reject(fn (Block $b) => $b->isDeadEnd() || in_array($b->id, $seen, true) || ($b->position < $current->position && ! $b->isFinal()));
+            if ($guess && $next->count() > 1) {
+                $names = $ladder->pluck('name')->all();
+                $next = $next->reject(fn (Block $b) => in_array($b->name, $names, true))->sortBy('position')->take(1);
+            }
             if ($next->count() !== 1) {
                 return $ladder;
             }

@@ -22,6 +22,11 @@
     if ($noInvoice) {
         $waiting = 'ждём нас';
     }
+    // Получение автомобиля (`Offers\Handover`): просьба шага и есть «заберите» — его строки внутри шага, иначе — карточкой под ним.
+    $handover ??= null;
+    $embedHandover = $handover && $requirement && $handover->inStep($position, $deal);
+    // Поля шага, что показаны в получении (контакт, адрес, дата), второй раз в шаге не пишем.
+    $payload = collect($position?->payload ?? [])->except($handover?->open ? $handover->keys : []);
 @endphp
 <div class="space-y-6">
             @if ($deal->state !== DealState::Active)
@@ -37,9 +42,9 @@
                     {{-- Есть просьба — её текст и говорит, что делать; текст блока рядом повторял бы его слово в слово. --}}
                     @php $about = $requirement ? null : $position->stage->managerText(); @endphp
                     @if ($about)<p class="mt-3 whitespace-pre-line text-ink-muted">{{ $about }}</p>@endif
-                    @if ($position->payload)
+                    @if ($payload->isNotEmpty())
                         <dl class="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-                            @foreach ($position->payload as $k => $v)
+                            @foreach ($payload as $k => $v)
                                 <div class="min-w-0"><dt class="text-sm text-ink-dim">{{ collect($position->stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}</dt><dd class="nums mt-0.5 break-words font-normal">{{ $v }}</dd></div>
                             @endforeach
                         </dl>
@@ -58,6 +63,7 @@
                             <h3 class="text-lg">{{ $requirement->title }}</h3>
                             @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ $rejected->paid_at->translatedFormat('j M') }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
                             @if ($requirement->text)<p class="mt-2 whitespace-pre-line text-ink-muted">{{ $requirement->text }}</p>@endif
+                            @if ($embedHandover)@include('cabinet.deals.handover', ['embedded' => true])@endif
                             {{-- Срок просьбы — тот же, что часы в шапке шага: второй раз его не пишем. --}}
                             @if ($requirement->due_at && ! ($position->deadline_at && abs($position->deadline_at->diffInMinutes($requirement->due_at)) < 1))
                                 <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">до {{ $requirement->due_at->translatedFormat('j M, H:i') }}, <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-done-value="срок вышел"></span></p>
@@ -89,8 +95,8 @@
                                     @endforeach
                                 @endif
                                 @if ($errors->has('exit'))<p class="field-error">{{ $errors->first('exit') }}</p>@endif
-                                {{-- Два исхода — в ряд одной ширины, как ответы в диалоге приложения; больше — переносом. --}}
-                                <div @class(['gap-3', 'grid grid-cols-2' => $exits->count() === 2, 'flex flex-wrap' => $exits->count() !== 2])>
+                                {{-- Один исход — во всю ширину, два — в ряд одной ширины, как ответы в диалоге приложения; больше — переносом. --}}
+                                <div @class(['gap-3', 'grid' => $exits->count() <= 2, 'grid-cols-2' => $exits->count() === 2, 'flex flex-wrap' => $exits->count() > 2])>
                                     @foreach ($exits as $exit)
                                         <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="$exit->confirm" class="min-w-0 px-4">{{ $exit->label }}</x-ui.button>
                                     @endforeach
@@ -104,11 +110,13 @@
                 <x-ui.empty>Сделка пока не в работе. Мы напишем, когда что-то изменится</x-ui.empty>
             @endif
 
+            @if ($handover && ! $embedHandover)@include('cabinet.deals.handover', ['embedded' => false])@endif
+
             {{-- В гараже свой путь машины — путь сделки там не повторяется. --}}
             @if (($ladder ?? true) && $blocks->isNotEmpty())
                 <div class="box">
                     <h2 class="box-title">Путь сделки</h2>
-                    <div class="mt-3"><x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :waiting="$waiting"/></div>
+                    <div class="mt-3"><x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :waiting="$waiting" :deal="$deal"/></div>
                 </div>
             @endif
 </div>

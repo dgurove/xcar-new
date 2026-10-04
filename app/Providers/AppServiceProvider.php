@@ -75,6 +75,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);
         Event::subscribe(SyncOffer::class);
+        Event::subscribe(\App\Offers\Listeners\SyncHandover::class);
         Event::listen(VehicleSold::class, SendPickupLink::class);
         Event::listen(PaymentRecorded::class, AdvanceOnPayment::class);
         Event::listen(PaymentRecorded::class, PayoutWhenPaid::class);

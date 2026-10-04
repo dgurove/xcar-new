@@ -18,6 +18,10 @@ class PickupController
 {
     public function show(Request $request, Offer $offer)
     {
+        // Забирает по своей сделке — всё о получении на странице сделки (ссылки «Пора забирать» вели сюда).
+        if (($deal = $offer->deal) && $deal->buyer_id === $request->user()->id && $deal->buyerPicksUp()) {
+            return redirect($deal->href());
+        }
         $offer = $this->offer($request, $offer);
         $position = $offer->position(Track::Service);
 

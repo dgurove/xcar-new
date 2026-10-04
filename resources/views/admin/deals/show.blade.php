@@ -20,6 +20,7 @@
             @if ($offer->positions->isNotEmpty())
                 @include('admin.offers.route')
             @endif
+            <x-deal.handover :deal="$deal" class="order-1"/>
             {{-- Деньги — и у закрытой сделки: вознаграждение и выплата остаются видны. Просьбы и ответы менеджера — в шагах пути. --}}
             <x-deal.money :deal="$deal" class="order-1"/>
 

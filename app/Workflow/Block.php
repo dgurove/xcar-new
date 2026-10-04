@@ -34,6 +34,12 @@ class Block extends Model
             && $this->stages->every(fn (Stage $s) => in_array($s->offer_state, [OfferState::Cancelled, OfferState::Archived], true));
     }
 
+    /** Конец пути: из этапов блока не уходит ни один исход («Сделка закрыта»). Возвратом назад он быть не может. */
+    public function isFinal(): bool
+    {
+        return $this->stages->isNotEmpty() && $this->stages->every(fn (Stage $s) => $s->exits->isEmpty());
+    }
+
     /**
      * Блоки, в которые уводят исходы этого блока. Движение внутри блока для
      * менеджера ничего не меняет, и лестница о нём не знает.

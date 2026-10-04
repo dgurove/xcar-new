@@ -20,6 +20,15 @@ class Outcome extends Model
     /** Ветка покупателя: всем сделкам, кроме гаражной «платим мы». */
     public const BUYER = 'buyer';
 
+    /** Ветка передачи: автомобиль забирает сам менеджер сделки (`Deal::buyerPicksUp`). */
+    public const BUYER_PICKS = 'picks';
+
+    /** Ветка передачи: отдаём мы — со своей парковки или выдачей от поставщика. */
+    public const WE_HAND = 'hands';
+
+    /** Ветки продажи: в маршруте вывоза их не бывает (`Workflow::problems`). */
+    public const SALE_BRANCHES = [self::GARAGE, self::BUYER, self::BUYER_PICKS, self::WE_HAND];
+
     protected function casts(): array
     {
         return ['actor' => Actor::class];
@@ -37,18 +46,22 @@ class Outcome extends Model
 
     /**
      * Годится ли исход: на продаже — этой сделке (гаражный — только гаражной, где поставщику платим мы,
-     * покупательский — всем остальным; нет сделки — гаражных не видно), на вывозе — месту назначения (`Destination`:
+     * покупательский — всем остальным; нет сделки — гаражных не видно; передача — «забирает сам» только сделке, где
+     * менеджер и вывозчик одно лицо, «отдаём мы» — всем остальным), на вывозе — месту назначения (`Destination`:
      * ветки yard, keeper, ours; не назначено — парковка, как было). Без ветки — всем.
      */
     public function fits(Deal|Destination|null $for): bool
     {
         $garage = $for instanceof Deal && $for->isGarageUs();
+        $picks = $for instanceof Deal && $for->buyerPicksUp();
         $to = $for instanceof Destination ? $for : Destination::Yard;
 
         return match ($this->branch) {
             null, '' => true,
             self::GARAGE => $garage,
             self::BUYER => ! $garage,
+            self::BUYER_PICKS => $picks,
+            self::WE_HAND => ! $picks,
             default => $to->value === $this->branch,
         };
     }

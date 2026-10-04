@@ -173,8 +173,10 @@
                                         <x-ui.sheet id="exit-{{ $exit->id }}" :title="$exit->label">
                                             <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="flex flex-col gap-4">
                                                 @csrf
+                                                {{-- Контакт и адрес из письма — уже вписаны (`Handover::prefill`), поправить можно. --}}
+                                                @php $prefill = \App\Offers\Handover::prefill($exit->to, $offer); @endphp
                                                 @foreach ($exit->to->staff_fields as $field)
-                                                    <x-route.field :field="$field" :name="'fields['.$field['key'].']'"/>
+                                                    <x-route.field :field="$field" :name="'fields['.$field['key'].']'" :value="$prefill[$field['key']] ?? null"/>
                                                 @endforeach
                                                 <x-ui.button block>{{ $label($exit) }}</x-ui.button>
                                             </form>

@@ -278,6 +278,17 @@ class Offer extends Model implements HasMedia
         return in_array($this->position(Track::Service)?->stage->car_place, [CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours], true);
     }
 
+    /**
+     * Можно ли при принятии подтверждения выбрать, кто забирает ТС (04.10.2026): у вендора есть вывоз, ТС ещё у
+     * владельца — не забрана и не стоит у нас на парковке.
+     */
+    public function pickupChoosable(): bool
+    {
+        return (bool) $this->vendor?->workflow(Track::Service)?->is_active && ! $this->pickedUp()
+            && $this->parkVehicle?->state !== \App\Park\VehicleState::Stored
+            && ! in_array($this->state, [OfferState::Garage, OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true);
+    }
+
     /** Куда вывозят: не назначено — на парковку, как было до 04.10.2026. */
     public function pickupDestination(): Destination
     {
@@ -334,7 +345,9 @@ class Offer extends Model implements HasMedia
         return $q->whereIn('evacuation_to', [Destination::Keeper->value, Destination::Ours->value])
             ->whereNotIn('state', [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived])
             ->whereHas('positions', fn ($p) => $p->where('track', Track::Service))
-            ->when($user->isAdmin(), fn ($q) => $q->whereNotNull('evacuator_id'), fn ($q) => $q->where('evacuator_id', $user->id));
+            ->when($user->isAdmin(), fn ($q) => $q->whereNotNull('evacuator_id'), fn ($q) => $q->where('evacuator_id', $user->id)
+                // Забирает ТС по своей сделке — это её шаг, а не поручение: живёт на странице сделки (`Handover`).
+                ->whereDoesntHave('deal', fn ($d) => $d->where('buyer_id', $user->id)));
     }
 
     /** Ход ответственного за вывоз — «забрать»: на текущем этапе вывоза есть его кнопка той ветки, куда везём. Одним запросом. */

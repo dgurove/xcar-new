@@ -22,6 +22,7 @@
         @if ($errors->has('exit'))<x-ui.flash tone="danger" class="mt-3">{{ $errors->first('exit') }}</x-ui.flash>@endif
         <div class="mt-4 flex flex-col gap-4">
             @if ($offer->positions->isNotEmpty())@include('admin.offers.route')@endif
+            <x-deal.handover :deal="$deal" compact/>
             <x-deal.money :deal="$deal"/>
             @if ($lastLetter)
                 <section>

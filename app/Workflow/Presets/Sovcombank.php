@@ -23,14 +23,14 @@ final class Sovcombank extends Route
     public function blocks(): array
     {
         return self::withGarageBlocks($this->saleBlocks()) + [
-            'handover' => ['name' => 'Передача автомобиля', 'text' => 'Осталось передать автомобиль покупателю.'],
+            'handover' => ['name' => 'Передача автомобиля', 'text' => 'Осталось передать автомобиль покупателю'],
             // Ветке «на себя» блоки свои: общий на две ветки оборвал бы лестницу
             // на первом же шаге — из него вело бы два продолжения.
-            'agreement_self' => ['name' => 'Согласование с поставщиком', 'text' => 'Уведомили поставщика о покупке и ждём его ответа.'],
-            'handover_self' => ['name' => 'Получение автомобиля', 'text' => 'Автомобиль можно забирать: покупка оформляется на Вас, счёт будет выставлен после передачи.'],
-            'payment_self' => ['name' => 'Оплата после передачи', 'text' => 'Автомобиль передан Вам. Поставщик выставил счёт — оплатите его.'],
-            'signing_self' => ['name' => 'Оформление документов', 'text' => 'Осталось подписать документы и передать их поставщику.'],
-            'insurer_buyer' => ['name' => 'Покупатель от поставщика', 'text' => 'Срок истёк. Автомобиль передаётся покупателю, которого назвал поставщик.'],
+            'agreement_self' => ['name' => 'Согласование с поставщиком', 'text' => 'Согласовываем покупку с поставщиком, обычно до суток'],
+            'handover_self' => ['name' => 'Получение автомобиля', 'text' => 'Автомобиль можно забирать: покупка оформляется на Вас, счёт будет выставлен после передачи'],
+            'payment_self' => ['name' => 'Оплата после передачи', 'text' => 'Автомобиль передан Вам. Поставщик выставил счёт — оплатите его'],
+            'signing_self' => ['name' => 'Оформление документов', 'text' => 'Осталось подписать документы и передать их поставщику'],
+            'insurer_buyer' => ['name' => 'Покупатель от поставщика', 'text' => 'Срок истёк. Автомобиль передаётся покупателю, которого назвал поставщик'],
         ];
     }
 
@@ -48,8 +48,10 @@ final class Sovcombank extends Route
             // Для клиента — деньги вперёд: счёт, документы, передача.
             + ['confirmed' => $this->confirmed('invoice')]
             + $this->invoiceSegment('signing_place')
-            + $this->signingSegment('release')
+            // Автомобиль у страхователя: отдаём мы — или забирает сам менеджер сделки (его ветка, 04.10.2026).
+            + $this->signingSegment('release', picks: 'buyer_pickup')
             + $this->releaseSegment('closed_won')
+            + $this->pickupSegment('closed_won')
             // На себя — можно постоплатой: автомобиль уезжает, счёт следом.
             + $this->self()
             + $this->insurerBuyer()
@@ -60,8 +62,9 @@ final class Sovcombank extends Route
     /** Ветка «на себя»: те же отрезки в другом порядке, названия помечены. */
     private function self(): array
     {
-        $stages = ['confirmed_self' => $this->confirmed('release_self', '_self')]
+        $stages = ['confirmed_self' => $this->confirmed('release_self', '_self', 'buyer_pickup_self')]
             + $this->releaseSegment('invoice_self', '_self')
+            + $this->pickupSegment('invoice_self', '_self')
             + $this->invoiceSegment('signing_place_self', '_self')
             + $this->signingSegment('closed_won', '_self');
         foreach ($stages as &$row) {

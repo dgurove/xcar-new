@@ -53,6 +53,7 @@ use App\Users\User;
 use App\Workflow\Events\StageDue;
 use App\Workflow\Events\StageEntered;
 use App\Offers\Events\PickupAssigned;
+use App\Offers\Handover;
 use App\Workflow\Actor;
 use App\Workflow\Requirement;
 use App\Workflow\Track;
@@ -177,7 +178,11 @@ final class Notify
             $offer = $e->offer->loadMissing('evacuator');
             // Только шагом вперёд: откат «Отменить» и «Вернуть на этот шаг» (без выхода) второй раз не пишут.
             if ($e->exit && $offer->evacuator && $e->to->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()) {
-                $offer->evacuator->notify(new PickupNotice($offer, turn: true));
+                // Забирает сам менеджер сделки: «пора» скажет его шаг сделки, если у продажи он есть («Заберите автомобиль»).
+                $deal = $offer->deal;
+                if (! ($deal?->buyerPicksUp() && ! Handover::for($deal)->servicePick)) {
+                    $offer->evacuator->notify(new PickupNotice($offer, turn: true));
+                }
             }
 
             return;
@@ -187,8 +192,12 @@ final class Notify
             return;
         }
         $requirement = Requirement::where('deal_id', $deal->id)->where('stage_id', $e->to->id)->whereNull('done_at')->latest()->first();
+        // Поставщик согласовал, а забирает сам менеджер — сразу с кем говорить и куда ехать (04.10.2026).
+        $agreed = $e->exit && str_starts_with(mb_strtolower($e->exit->label), 'поставщик согласовал');
         if ($requirement) {
             $deal->buyer->notify(new YourTurnNotice($requirement->load('offer')));
+        } elseif ($agreed && $deal->buyerPicksUp() && ($handover = Handover::for($deal->setRelation('offer', $e->offer)))->open) {
+            $deal->buyer->notify(new HandoverNotice($deal, $handover));
         } elseif ($e->from?->block_id !== $e->to->block_id && $deal->created_at->lt(now()->subMinute())) {
             // Первый шаг только что открытой сделки не пишем: менеджеру уже идёт «подтверждение принято».
             $deal->buyer->notify(new DealStepNotice($deal->load('offer'), $e->to));
@@ -200,6 +209,15 @@ final class Notify
     {
         $offer = $e->offer->loadMissing('evacuator');
         if ($offer->evacuator && $offer->evacuator->isNot($e->previous)) {
+            // Менеджер сделки забирает сам: до согласия поставщика молчим (скажет `HandoverNotice`), после — сразу оно.
+            $deal = $offer->deal;
+            if ($deal?->buyerPicksUp()) {
+                if (($handover = Handover::for($deal))->open) {
+                    $offer->evacuator->notify(new HandoverNotice($deal, $handover));
+                }
+
+                return;
+            }
             $offer->evacuator->notify(new PickupNotice($offer));
         }
     }

@@ -114,6 +114,16 @@ class Deal extends Model
         return $this->state === DealState::Active;
     }
 
+    /**
+     * Автомобиль у страхователя забирает сам менеджер сделки (04.10.2026): он и вывозчик предложения. Админ решает это
+     * при принятии подтверждения (`BidController::accept` → `AssignPickup`), им же меняет в карточке сделки. Ветка
+     * продажи `Outcome::BUYER_PICKS` — его шаг «Заберите автомобиль».
+     */
+    public function buyerPicksUp(): bool
+    {
+        return $this->buyer_id !== null && ! $this->isGarage() && $this->offer?->evacuator_id === $this->buyer_id;
+    }
+
     /** Разница между ценой подтверждения и закупочной; без закупочной — null. */
     public function margin(): ?int
     {

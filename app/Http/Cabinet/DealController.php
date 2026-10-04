@@ -8,7 +8,9 @@ use App\Live\Stream;
 use App\Media\PhotoIngest;
 use App\Offers\Bid;
 use App\Offers\BidState;
+use App\Offers\Actions\PickUp;
 use App\Offers\Deal;
+use App\Offers\Handover;
 use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
@@ -54,7 +56,8 @@ class DealController
         $position = $deal->offer->position(Track::Sale);
         // Журнал с начала сделки, с учётом откатов — тот же, что путь в CRM.
         $steps = Path::journal($deal->offer, Track::Sale, $deal->created_at);
-        $blocks = $position ? Path::ladder($position->stage, $steps->pluck('block')->all(), $deal) : collect();
+        // Менеджеру путь целиком: на развилке — главной дорогой (`guess`), а не обрывом на текущем шаге.
+        $blocks = $position ? Path::ladder($position->stage, $steps->pluck('block')->all(), $deal, guess: true) : collect();
 
         return [
             'deal' => $deal,
@@ -64,6 +67,7 @@ class DealController
             'steps' => $steps,
             'requirement' => $deal->openRequirement,
             'exits' => $deal->openRequirement ? $position?->stage->exitsFor(Actor::Manager, $deal) : collect(),
+            'handover' => Handover::for($deal),
             'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->with('claims')->orderBy('id')->get(),
         ];
     }
@@ -77,6 +81,16 @@ class DealController
 
         // Сразу туда, где сделку смотрят (гаражная — в гараж): второй редирект съел бы тост.
         return redirect($deal->refresh()->href())->with('toast', $exit->label);
+    }
+
+    /** «Автомобиль забрал» из карточки получения — у вывоза, когда шага продажи для этого нет (`Handover::servicePick`). */
+    public function picked(Request $request, Deal $deal, PickUp $pickUp)
+    {
+        abort_unless($deal->buyer_id === $request->user()->id && $deal->isActive(), 404);
+        abort_unless(Handover::for($deal)->servicePick, 422);
+        $pickUp($deal->offer, $request->user());
+
+        return redirect($deal->href())->with('toast', 'Автомобиль у вас');
     }
 
     public function upload(Request $request, Deal $deal, PhotoIngest $ingest)

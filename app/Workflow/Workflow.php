@@ -106,7 +106,7 @@ class Workflow extends Model
                 if ($this->track === Track::Sale && ($exit->actor === Actor::Keeper || $serviceBranch)) {
                     $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» — для вывоза, а стоит в маршруте продажи";
                 }
-                if ($this->track === Track::Service && in_array($exit->branch, [Outcome::GARAGE, Outcome::BUYER], true)) {
+                if ($this->track === Track::Service && in_array($exit->branch, Outcome::SALE_BRANCHES, true)) {
                     $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» — для продажи, а стоит в маршруте вывоза";
                 }
             }

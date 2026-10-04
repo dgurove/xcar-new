@@ -49,7 +49,21 @@
                             <x-ui.button type="submit" variant="primary" block>{{ $give ? 'Отдать' : 'В гараж' }}</x-ui.button>
                         </form>
                     @else
-                        <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null"><input type="hidden" name="bid" value="{{ $bid->id }}"></x-offer.money-form>
+                        <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null">
+                            <input type="hidden" name="bid" value="{{ $bid->id }}">
+                            {{-- ТС ещё у владельца — кто её забирает (04.10.2026): менеджер сделки по умолчанию; поручено
+                                 другому — по умолчанию «Мы», то есть как назначено. --}}
+                            @if ($offer->pickupChoosable())
+                                @php $byBuyer = ! $offer->evacuator_id || $offer->evacuator_id === $bid->user_id; @endphp
+                                <div class="flex flex-col gap-1.5">
+                                    <span class="field-label">Забирает автомобиль</span>
+                                    <div class="flex flex-wrap gap-2">
+                                        <label class="choice"><input type="radio" name="pickup" value="manager" @checked(old('pickup', $byBuyer ? 'manager' : 'us') === 'manager')><span>{{ $bid->user->shortName() }}</span></label>
+                                        <label class="choice"><input type="radio" name="pickup" value="us" @checked(old('pickup', $byBuyer ? 'manager' : 'us') === 'us')><span>Мы</span></label>
+                                    </div>
+                                </div>
+                            @endif
+                        </x-offer.money-form>
                     @endif
                 </x-ui.sheet>
             </div>
