@@ -2,8 +2,8 @@ import { Controller } from '@hotwired/stimulus';
 
 // Мигторг в поле номера убытка (x-offer.migtorg-field): вписали номер — сразу кружок, через полсекунды сервер отвечает
 // значком по этому номеру (`/offers/{n}/migtorg?ref=`): лот нашёлся — горит знак Мигторга. Нажали знак — «Это она»:
-// номер из поля сохраняется вместе с лотом, данные и фото начинают заполняться (`/offers/{n}/media/migtorg`, ответ —
-// страница или карточка строки с тостом). Пока качается — значок переспрашивается раз в три секунды.
+// сама форма предложения уходит с `then=migtorg` — номер и все несохранённые правки (вендор, цены) сохраняются,
+// данные и фото начинают заполняться. Пока качается — значок переспрашивается раз в три секунды.
 export default class extends Controller {
     static targets = ['wait'];
     static values = { url: String, take: String, running: Boolean };
@@ -51,6 +51,21 @@ export default class extends Controller {
     // Знак нажали: своя форма рядом (поле — внутри формы предложения, вложить форму нельзя); в карточке строки —
     // внутри её фрейма, ответ рисуется там же.
     take() {
+        const own = this.field?.form;
+        const bar = own && this.application.getControllerForElementAndIdentifier(own, 'save-bar');
+        if (bar) {
+            // Только тронутые поля и номер (`_fields[]`): пустая марка черновика не валит проверку, а выбранный и не
+            // сохранённый вендор не теряется — 04.10.2026 знак слал один номер, и «Т‑Страхование» возвращалось в «Совком».
+            own.querySelectorAll('[data-migtorg-extra]').forEach((i) => i.remove());
+            bar.dirty.add(this.field.name);
+            bar.touched = true;
+            const put = (name, value) => { const i = document.createElement('input'); i.type = 'hidden'; i.name = name; i.value = value; i.dataset.migtorgExtra = ''; own.append(i); };
+            if (!bar.partialValue) bar.dirty.forEach((name) => put('_fields[]', name));
+            put('then', 'migtorg');
+            this.waiting(true);
+            own.requestSubmit();
+            return;
+        }
         const form = document.createElement('form');
         form.method = 'post';
         form.action = this.takeValue;

@@ -192,8 +192,7 @@
     @endif
 
     {{-- Черновик из писем до первого сохранения: «Отменить» (черновика не было, цепочка снова в «Из писем»), «Не заявка»
-         (и цепочку в архив), «Сохранить». После сохранения у черновика — «Опубликовать» той же формой (`then=open`):
-         поля сохраняются, потом публикация; из «···» она уходит, чтобы не стоять дважды. --}}
+         (и цепочку в архив), «Сохранить». Черновик и дальше только «Сохранить»: публикуют из списка по маршруту. --}}
     @php
         $draft = $offer->state === OfferState::Draft;
         // «Опубликовать» — с выбором слота: у черновика шторкой из плашки, у галереи тремя пунктами в «···».
@@ -216,12 +215,8 @@
             <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
             <x-ui.button form="offer-form" name="then" value="next" class="min-w-0 flex-1"><x-ui.icon name="plus" class="size-5"/>Новый</x-ui.button>
         @elseif ($draft)
-            <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
-            {{-- Сначала поля, потом публикация (`then=open`) — сейчас или в слот: шторка с выбором, по умолчанию ближайший. --}}
-            <div class="contents" data-controller="sheet">
-                <x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Опубликовать</x-ui.button>
-                <x-offer.publish-sheet :offer="$offer" id="offer-publish" form="offer-form" :submit="['then' => 'open']"/>
-            </div>
+            {{-- Заявка заводится черновиком: публикуют по ходу маршрута из списка («Публикация»), не из редактора. --}}
+            <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @else
             <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif

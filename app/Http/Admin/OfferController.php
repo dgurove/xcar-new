@@ -22,6 +22,7 @@ use App\Offers\Actions\UpdateOffer;
 use App\Offers\AudienceRules;
 use App\Offers\BidState;
 use App\Offers\Jobs\DropEmptyDraft;
+use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
@@ -386,6 +387,10 @@ class OfferController
     {
         $update($offer, $request->payload(), $request->user());
         session()->forget("mail-draft.{$offer->id}");
+        // Нажали знак Мигторга в поле номера убытка: несохранённые правки формы (вендор, цены) легли вместе с номером.
+        if ($request->input('then') === 'migtorg') {
+            return back()->with('toast', ImportMigtorgLot::take($offer->refresh(), $request->user()));
+        }
         if ($request->input('then') === 'next') {
             $next = $create($request->user(), $this->carried($request->user()));
 

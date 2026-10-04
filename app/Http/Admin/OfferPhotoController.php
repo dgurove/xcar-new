@@ -14,7 +14,6 @@ use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Jobs\ImportOfferArchive;
 use App\Offers\Migtorg;
 use App\Offers\Offer;
-use App\Offers\OfferEventType;
 use App\Park\Sale;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -67,16 +66,11 @@ class OfferPhotoController
             $update($offer, ['claim_ref' => trim($data['ref'])], $request->user());
             $offer->refresh();
         }
-        $lot = ImportMigtorgLot::available($offer);
-        if ($data['act'] === 'recheck' || ! $lot) {
-            return back()->with('toast', $lot ? 'Лот на Мигторге нашёлся' : 'На Мигторге пока нет');
-        }
-        if (! ImportMigtorgLot::progress($offer->id)) {
-            $offer->log(OfferEventType::Updated, $request->user(), ['source' => 'migtorg', 'lot' => $lot->id]);
-            ImportMigtorgLot::start($offer, $lot, manual: true);
+        if ($data['act'] === 'recheck') {
+            return back()->with('toast', ImportMigtorgLot::available($offer) ? 'Лот на Мигторге нашёлся' : 'На Мигторге пока нет');
         }
 
-        return back()->with('toast', 'Берём с Мигторга');
+        return back()->with('toast', ImportMigtorgLot::take($offer, $request->user()));
     }
 
     /** Чип «Мигторг» по номеру, вписанному в поле и ещё не сохранённому: лот виден сразу, «Это она» его и сохранит. */

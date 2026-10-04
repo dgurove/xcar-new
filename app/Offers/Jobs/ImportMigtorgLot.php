@@ -220,6 +220,21 @@ final class ImportMigtorgLot implements ShouldQueue
         });
     }
 
+    /** «Это она» — человек сверил машину лота: поля и кадры, запись в историю от него. Ответ — тост. */
+    public static function take(Offer $offer, ?User $by): string
+    {
+        $lot = self::available($offer);
+        if (! $lot) {
+            return 'На Мигторге пока нет';
+        }
+        if (! self::progress($offer->id)) {
+            $offer->log(OfferEventType::Updated, $by, ['source' => 'migtorg', 'lot' => $lot->id]);
+            self::start($offer, $lot, manual: true);
+        }
+
+        return 'Берём с Мигторга';
+    }
+
     public function handle(Migtorg $migtorg, PhotoIngest $ingest, Publisher $publish, ApplyCarFields $apply, UnmarkPhoto $unmark): void
     {
         $offer = Offer::find($this->offerId);
