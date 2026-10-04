@@ -28,6 +28,15 @@ enum PhotoStage: string
         };
     }
 
+    /**
+     * Куда добавляют кадры в любой момент (дело ТС, карточка CRM): от страховой — всегда, при приёме — после приёма.
+     * Выдачу снимают в её шаге.
+     */
+    public function addable(Vehicle $vehicle): bool
+    {
+        return $this === self::Vendor || ($this === self::Intake && $vehicle->accepted_at !== null);
+    }
+
     /** Кадр без метки — из старых писем, то есть от страховой. */
     public static function of(Media $media): self
     {

@@ -47,7 +47,9 @@ class OfferPhotoController
             } elseif (! (($uuid = Migtorg::mediaOf($name)) && $offer->media()->where('collection_name', 'photos')->where('custom_properties->migtorg', $uuid)->exists())) {
                 // Добавленное руками сначала скрыто (владелец, 04.10.2026): что показать, решают глазом или «Показать все».
                 // Кадр с сайта Мигторга (уже взятый лотом — пропущен выше) сам называет лот: номер, поля и остальные кадры.
-                $media = $ingest->fromPhone($offer, 'photos', $request, properties: ['hidden' => true]);
+                // Блок, куда добавили (от страховой, при приёме), — стадия кадра у ТС парковки (`SaleMedia::save`).
+                $stage = $offer->parkVehicle ? PhotoStage::tryFrom((string) $request->input('stage')) : null;
+                $media = $ingest->fromPhone($offer, 'photos', $request, properties: array_filter(['stage' => $stage?->value]) + ['hidden' => true]);
                 ($uuid = $media->getCustomProperty('migtorg')) && ImportMigtorgLot::byPhoto($offer, $uuid, $request->user());
             }
         } catch (Throwable $e) {

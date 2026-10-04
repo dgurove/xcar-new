@@ -345,8 +345,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Голое поле без x-ui.field (вход, цена) помечает своя проверка формы (formCheck в app.js) — aria-invalid. */
   .field-invalid .field-input, .field-input[aria-invalid="true"] { @apply ring-2 ring-danger/60; }
   /* Подпись пальцем: холст того же тона, что поле; линия — цветом текста. */
-  .signature-pad { @apply mt-1 block h-36 w-full touch-none rounded-(--radius-m) bg-surface-3 text-ink; }
-  .signature.is-signed .signature-pad { @apply ring-2 ring-accent/50; }
   select.field-input { @apply appearance-none bg-no-repeat pr-10; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23808080' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-position: right 14px center; }
   textarea.field-input { @apply min-h-28; field-sizing: content; }
   /* Компактное поле: поиск в шторке чипа и формы в шторках. */
@@ -2532,16 +2530,6 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   /* Плитка «добавить» — вне ленты: у ленты snap, и всё, что лежит в ней без
      привязки, уезжает за край. */
   /* Чек-лист кадров при приёме: плитка на слот, обязательный пустой — лаймовый контур, заполненный — кадр с подписью снизу. */
-  .photo-slot { @apply relative flex aspect-[4/3] flex-col items-center justify-center gap-1 overflow-hidden rounded-(--radius-m) bg-surface-3 text-ink-muted transition-colors; }
-  .photo-slot.is-required { box-shadow: inset 0 0 0 2px var(--color-accent); }
-  .photo-slot.is-filled { @apply text-white; }
-  .photo-slot img { @apply absolute inset-0 h-full w-full object-cover; }
-  .photo-slot .photo-slot-label { @apply relative z-[1] px-1 text-center text-xs leading-tight; }
-  .photo-slot.is-filled .photo-slot-label { @apply absolute inset-x-0 bottom-0 bg-black/45 py-0.5; }
-  .photo-slot .mark { @apply absolute left-1 top-1 z-[1] bg-black/45 text-white; }
-  .photo-slot.is-filled img { cursor: zoom-in; }
-  .photo-slot.is-filled .photo-slot-label, .photo-slot.is-filled .mark { pointer-events: none; }
-  .photo-slot-camera { @apply absolute right-1 top-1 z-[1] flex size-8 items-center justify-center rounded-full bg-black/45 text-white; }
   /* Добавить — узкая полоса перед кадрами: главное в ряду фото, а не кнопка. */
   .photo-add { @apply flex h-20 w-12 shrink-0 cursor-pointer items-center justify-center rounded-(--radius-m) bg-surface-3 text-ink-muted transition-colors hover:bg-line hover:text-ink sm:h-24; }
   /* Сетка квадратов (дело на стоянке): все кадры видны сразу, в узкой колонке по три в ряд, кадр заполняет клетку. */

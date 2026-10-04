@@ -56,7 +56,7 @@ final class Timeline
             $steps[] = new Step('cancelled', 'Не привезена', Step::DONE, $v->cancel_reason, $v->cancelled_at, [], null, null, true);
         } else {
             $ready = $ir && $ir->isOpen() && ! $ir->needsCall() && ! $callAgain && (! $ir->isTow() || $ir->state === RequestState::InProgress);
-            $hint = $v->state === VehicleState::InTransit ? 'ТС в пути, принять по приезду: место, 6 фото, подпись' : 'Поставить на место, снять 6 фото, взять подпись';
+            $hint = $v->state === VehicleState::InTransit ? 'ТС в пути, принять по приезду: место и фото' : 'Поставить на место и снять фото';
             // Заявки нет (отменили) — шаг всё равно текущий: «Принять» заводит заявку и открывает форму.
             $orphan = ! $ir?->isOpen() && $v->state === VehicleState::Expected;
             $steps[] = new Step('intake', $ready || $orphan ? 'Нужно принять' : 'Приём', $ready || $orphan ? Step::CURRENT : Step::NEXT, $orphan ? 'Заявки нет: принять, когда привезут' : $hint, $ir?->planned_at, [],

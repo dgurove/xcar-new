@@ -149,14 +149,16 @@
             @include('park.vehicles.papers')
         </x-ui.card>
         {{-- Кадры стадиями: от страховой, при приёме, при выдаче. Та, что сейчас снимается, стоит в ленте шага. Кадры
-             письма ещё прикрепляются (ImportThreadFiles) — строка хода и «От страховой» с заглушками, attach_controller
+             письма ещё прикрепляются (ImportThreadFiles) — строка хода и заглушки в «От страховой», attach_controller
              переспрашивает их. --}}
-        @php $attaching = \App\Mail\Jobs\ImportThreadFiles::pending($vehicle) > 0; @endphp
         <div class="contents" data-controller="attach" data-attach-url-value="/cars/{{ $vehicle->id }}/attach">
         <x-mail.attach-line :model="$vehicle"/>
         @foreach (PhotoStage::cases() as $one)
-            @if ($one !== $shooting && ($vehicle->photos()->contains(fn ($m) => PhotoStage::of($m) === $one) || ($attaching && $one === PhotoStage::Vendor)))
-                <x-park.photos :vehicle="$vehicle" :stage="$one"/>
+            {{-- От страховой и (после приёма) при приёме — всегда с добавлением, даже пустые: машина одна, кадры к ней кладут и
+                 в CRM, и тут, в любой момент (владелец, 05.10.2026). --}}
+            @php $editable = $one->addable($vehicle); @endphp
+            @if ($one !== $shooting && ($editable || $vehicle->photos()->contains(fn ($m) => PhotoStage::of($m) === $one)))
+                <x-park.photos :vehicle="$vehicle" :stage="$one" :edit="$editable"/>
             @endif
         @endforeach
         </div>
@@ -334,7 +336,7 @@
         <div data-controller="sheet" data-action="without-qr:open@window->sheet#open" class="contents">
             <x-ui.sheet id="without-qr" title="Выдать без QR-кода?" :open="$errors->has('without_qr_reason')">
                 {{-- Крайний случай: причина от 20 знаков уходит в историю ТС, в акт и владельцу в Telegram. Поле связано с
-                     формой выдачи (form="act-form"): дата, подпись и остальное берутся оттуда. Счётчик — внутри поля,
+                     формой выдачи (form="act-form"): дата и остальное берутся оттуда. Счётчик — внутри поля,
                      кнопка оживает на 20 знаках. --}}
                 <div class="flex flex-col gap-3" data-controller="min-length" data-min-length-min-value="20">
                     <div class="list">

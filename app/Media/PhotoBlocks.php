@@ -14,13 +14,16 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 final class PhotoBlocks
 {
-    /** @return list<array{stage: PhotoStage, photos: Collection<int, Media>}> */
-    public static function of(Collection $photos): array
+    /**
+     * @param  list<PhotoStage>  $always  блоки, что стоят и пустыми (куда добавляют: `PhotoStage::addable`)
+     * @return list<array{stage: PhotoStage, photos: Collection<int, Media>}>
+     */
+    public static function of(Collection $photos, array $always = []): array
     {
         $blocks = [];
         foreach (PhotoStage::cases() as $stage) {
             $own = $photos->filter(fn (Media $m) => PhotoStage::of($m) === $stage)->values();
-            if ($own->isNotEmpty()) {
+            if ($own->isNotEmpty() || in_array($stage, $always, true)) {
                 $blocks[] = ['stage' => $stage, 'photos' => $own];
             }
         }

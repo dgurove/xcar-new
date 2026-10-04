@@ -83,8 +83,6 @@ final class Intake
             'transit_damage' => ($in['transit_damage'] ?? null) ?: null,
             'missing_parts' => ($in['missing_parts'] ?? null) ?: null,
             'replaced_units' => ($in['replaced_units'] ?? null) ?: null,
-            'signer_name' => ($in['signer_name'] ?? null) ?: null,
-            'signature_path' => Inspection::storeSignature($in['signature'] ?? null),
         ];
     }
 }

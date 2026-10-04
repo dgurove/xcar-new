@@ -51,7 +51,7 @@
                         @foreach ($yards as $id => $name)<option value="{{ $id }}" @selected($id == $vehicle->yard_id)>{{ $name }}</option>@endforeach
                     </select>
                 </form>
-                {{-- Выдача — только через заявку с осмотром, подписью и актом; одна дорога. --}}
+                {{-- Выдача — только через заявку с осмотром и актом; одна дорога. --}}
                 @if ($release = $vehicle->openRequest(\App\Park\RequestType::Release))
                     <a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Выдать</a>
                 @else

@@ -2,7 +2,6 @@
 
 namespace App\Media;
 
-use App\Park\PhotoSlot;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -13,7 +12,7 @@ final class Hidden
 {
     public static function is(Media $media): bool
     {
-        return (bool) $media->getCustomProperty('hidden', in_array($media->getCustomProperty('slot'), [PhotoSlot::VinPlate->value, PhotoSlot::Papers->value], true));
+        return (bool) $media->getCustomProperty('hidden', false);
     }
 
     /** «Показать все» / «Скрыть все»: одним значением, без лишней записи у тех, что уже такие. */

@@ -40,7 +40,6 @@ use App\Park\Doc;
 use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\EventType;
-use App\Park\PhotoSlot;
 use App\Park\PhotoStage;
 use App\Park\RequestType;
 use App\Park\Scope;
@@ -282,9 +281,8 @@ class VehicleController
             if ($papers) {
                 $vehicle->addMedia($file)->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $file->getClientOriginalName()) ?: 'dokument')->toMediaCollection('papers');
             } else {
-                $slot = PhotoSlot::tryFrom((string) $request->input('slot'))?->value;
                 // Глаз у ТС — показ в продаже: добавленное сначала скрыто (владелец, 04.10.2026).
-                $ingest->fromPhone($vehicle, 'photos', $request, properties: array_filter(['stage' => $stage->value, 'slot' => $slot, 'source' => 'app']) + ['hidden' => true]);
+                $ingest->fromPhone($vehicle, 'photos', $request, properties: ['stage' => $stage->value, 'source' => 'app'] + ['hidden' => true]);
             }
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);

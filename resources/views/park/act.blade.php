@@ -110,15 +110,15 @@
                 <h2>Фотографии {{ $intake ? 'при приёме' : 'при выдаче' }}</h2>
                 <table class="photos">
                     @foreach ($shots->take(12)->chunk(3) as $row)
-                        <tr>@foreach ($row as $m)<td width="33%"><img src="{{ $src($m) }}" alt="">@if ($slot = \App\Park\PhotoSlot::tryFrom((string) $m->getCustomProperty('slot')))<div class="cap">{{ $slot->label() }}</div>@endif</td>@endforeach</tr>
+                        <tr>@foreach ($row as $m)<td width="33%"><img src="{{ $src($m) }}" alt=""></td>@endforeach</tr>
                     @endforeach
                 </table>
             </div>
         @endif
         <table class="sign"><tr>
-            @php $sig = $inspection?->signatureDataUrl(); @endphp
-            <td><div class="box">@if ($intake && $sig)<img src="{{ $sig }}" alt="">@endif</div><div class="line">{{ $intake ? 'Сдал' : 'Выдал' }}</div>@if ($intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
-            <td><div class="box">@if (!$intake && $sig)<img src="{{ $sig }}" alt="">@endif</div><div class="line">{{ $intake ? 'Принял' : 'Получил' }}</div>@if (!$intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
+            {{-- Подписи — ручкой на бумаге; под «Получил» — кто забрал (из пропуска или письма о продаже, `Release`). --}}
+            <td><div class="box"></div><div class="line">{{ $intake ? 'Сдал' : 'Выдал' }}</div></td>
+            <td><div class="box"></div><div class="line">{{ $intake ? 'Принял' : 'Получил' }}</div>@if (!$intake && $inspection?->signer_name)<div class="who">{{ $inspection->signer_name }}</div>@endif</td>
         </tr></table>
     </article>
 </body>

@@ -434,13 +434,12 @@ class RequestController
         return "/cars/{$vehicle->id}".($report ? '?window='.urlencode($report) : '');
     }
 
-    /** @return array<string, list<mixed>> что спрашивает приём и выдача, пока модуля осмотра нет: ключи, документы, кто сдал и подпись */
+    /** @return array<string, list<mixed>> что спрашивает приём и выдача, пока модуля осмотра нет: ключи и документы */
     public static function inspectionRules(): array
     {
         return [
             'keys_count' => ['nullable', 'integer', 'between:0,9'],
             'docs' => ['nullable', 'array'], 'docs.*' => [Rule::in(array_keys(Inspection::DOCS))],
-            'signer_name' => ['nullable', 'string', 'max:120'], 'signature' => ['nullable', 'string', 'max:700000'],
         ];
     }
 }
