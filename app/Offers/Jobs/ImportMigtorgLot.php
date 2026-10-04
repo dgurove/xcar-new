@@ -151,11 +151,31 @@ final class ImportMigtorgLot implements ShouldQueue
     {
         DB::table('migtorg_lots')->where('claim_ref_key', $offer->claim_ref_key)->update(['offer_id' => $offer->id]);
         if ($fields = self::fieldsOf($lot)) {
-            app(ApplyCarFields::class)($offer, $fields, null, onlyEmpty: true, log: ['source' => 'migtorg']);
+            self::glow($offer, app(ApplyCarFields::class)($offer, $fields, null, onlyEmpty: true, log: ['source' => 'migtorg']));
         }
         // Ход — сразу, а не когда задачу возьмёт воркер: чип крутится с нажатия, второй раз кнопку не нажать.
         Cache::put("migtorg:offer:{$offer->id}", ['i' => 0, 'n' => null, 'at' => time()], 1800);
         self::dispatch($offer->id, $lot->id, $manual);
+    }
+
+    /**
+     * Поля, которые Мигторг только что вписал: редактор, открывшись или перерисовавшись, проигрывает на них вспышку
+     * заполнения (`glow_controller`), как у текста про машину и читалки документов. Две минуты — дальше уже не новость.
+     */
+    public static function glow(Offer $offer, array $fields): void
+    {
+        if ($fields) {
+            Cache::put("migtorg:glow:{$offer->id}", array_values(array_unique([...Cache::get("migtorg:glow:{$offer->id}", []), ...$fields])), 120);
+        }
+    }
+
+    /** Вписанное Мигторгом с прошлого показа редактора — один раз. @return list<string> */
+    public static function glowed(Offer $offer): array
+    {
+        // Turbo подгружает редактор заранее, при наведении на ссылку: такой запрос список не забирает.
+        $prefetch = str_contains((string) request()->header('Sec-Purpose', request()->header('X-Sec-Purpose', '')), 'prefetch');
+
+        return $prefetch ? [] : Cache::pull("migtorg:glow:{$offer->id}", []);
     }
 
     /** Совпавший лот берётся сам один раз: поля нужны и предложению с фото, кадры задача сама кладёт только в пустой ряд. */
@@ -230,6 +250,7 @@ final class ImportMigtorgLot implements ShouldQueue
             MigtorgSync::media([$this->lotId => $files]);
             // Поля из индекса легли в start(); карточка дописывает то, чего в списке не было. Правит система, не человек.
             $filled = $apply($offer, MigtorgFields::of($card), null, onlyEmpty: true, log: ['source' => 'migtorg']);
+            self::glow($offer, $filled);
             $offer->refresh();
             $this->refresh($publish, $offer);
             $photos = $offer->media()->where('collection_name', 'photos')->get();
