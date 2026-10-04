@@ -14,7 +14,7 @@ const plural = (n, one, few, many) => {
 };
 
 export default class extends Controller {
-    static targets = ['paste', 'text', 'work', 'lines', 'done', 'fail', 'reason', 'result', 'rows', 'token', 'save'];
+    static targets = ['paste', 'text', 'work', 'lines', 'done', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'summary'];
     static values = { url: String };
 
     pasted() {
@@ -84,11 +84,15 @@ export default class extends Controller {
         await this.countUp(rows, '[data-f]', 'floor', true);
         this.mark('floor', 'done');
 
-        // 6. Готово.
+        // 6. Готово: галка, потом этапы сворачиваются в строку итога — список получает всю высоту окна.
         this.mark('done', 'done');
-        this.doneTarget.hidden = false;
         rows.forEach((r) => r.classList.remove('is-pending'));
         this.count();
+        await sleep(600);
+        this.summaryTarget.textContent = [`${counts.refs} ${plural(counts.refs, 'номер', 'номера', 'номеров')} в тексте`, `нашли ${counts.found}`, counts.missing ? `нет в CRM ${counts.missing}` : null].filter(Boolean).join(', ');
+        if (!calm()) await this.workTarget.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 }).finished.catch(() => {});
+        this.workTarget.hidden = true;
+        this.doneTarget.hidden = false;
         this.busy = false;
     }
 
