@@ -408,12 +408,13 @@ final class Nav
                 ], 'fresh' => []];
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
-                // Таб — как список без пилюли: у модератора его черновики, у админа — что в продаже.
+                // Таб — как список без пилюли: черновики.
                 return ['totals' => ['/' => Offer::visibleTo($user)->where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())->count()], 'fresh' => []];
             }
             if ($surface === Surface::Crm) {
                 return ['totals' => [
-                    '/' => Offer::where('state', OfferState::Open)->count(),
+                    // Как список без пилюли — черновики, что ждут оценки (без слота и закупок).
+                    '/' => Offer::where('state', OfferState::Draft)->whereNull('slot_at')->whereNot(fn ($o) => $o->emptyDraft())->whereDoesntHave('purchaseCar')->count(),
                     '/gallery' => Offer::where('state', OfferState::Gallery)->count(),
                     '/work' => Deal::where('state', DealState::Active)->count(),
                     '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),

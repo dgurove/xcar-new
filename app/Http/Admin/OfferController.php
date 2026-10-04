@@ -49,7 +49,7 @@ class OfferController
      * одна сторона: в продаже (и её выборки) или черновики. Сделки в предложениях не показываются — они в «Работе».
      */
     public const PRESETS = [
-        'open' => 'В продаже', 'bids' => 'Выбрать', 'recommended' => 'Рекомендуем', 'draft' => 'Черновики', 'slot' => 'В слоте',
+        'draft' => 'Черновики', 'slot' => 'В слоте', 'open' => 'В продаже', 'bids' => 'Выбрать', 'recommended' => 'Рекомендуем',
         'archive' => 'Архив', 'purchase' => 'Из закупок',
     ];
 
@@ -67,8 +67,8 @@ class OfferController
         }
         $admin = $request->user()->canManageCrm();
         $presets = $admin ? self::PRESETS : self::MODERATOR_PRESETS;
-        // Без пилюли: админу — то, что в продаже, модератору — его черновики.
-        $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : ($admin ? 'open' : 'draft');
+        // Без пилюли — черновики (владелец, 04.10.2026): сначала то, что ждёт оценки и публикации, опубликованное — пилюлей.
+        $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : 'draft';
         // «В слоте» — пилюлей, пока есть что выпускать в 16:00.
         $scheduled = $admin ? Offer::scheduled()->whereDoesntHave('purchaseCar')->count() : 0;
         if ($admin && ! $scheduled && $preset !== 'slot') {
