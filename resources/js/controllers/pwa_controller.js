@@ -39,6 +39,8 @@ export default class extends Controller {
             document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && registration.update().catch(() => {}));
             // Тап по уведомлению (Android): воркер просит окно перейти — обычный визит.
             navigator.serviceWorker.addEventListener('message', (e) => e.data?.navigate && Turbo.visit(e.data.navigate));
+            // Вышла новая версия, а окно открыто — воркер просит перезагрузиться (sw.js, activate).
+            navigator.serviceWorker.addEventListener('message', (e) => e.data?.reload && location.reload());
         } catch {}
     }
 

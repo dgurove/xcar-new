@@ -39,12 +39,21 @@ self.addEventListener('install', (event) => {
     })());
 });
 
+// Новая версия после выкладки (был кэш прошлой сборки) — открытые окна перезагружаются сами (04.10.2026, владелец: «у них
+// всё тот же ярлык»): ярлык на iPhone живёт в памяти днями, а старый код страницы ждал бы полного перехода. Набранное в
+// формах не теряется — его возвращает draft_controller. navigate() — где умеет, иначе страница перезагружается по сообщению.
 self.addEventListener('activate', (event) => {
     event.waitUntil((async () => {
         const keys = await caches.keys();
+        const update = keys.some((k) => k.startsWith('static-') && k !== STATIC);
         await Promise.all(keys.filter((k) => ![STATIC, MEDIA, PAGES].includes(k)).map((k) => caches.delete(k)));
         await self.registration.navigationPreload?.enable();
         await self.clients.claim();
+        if (!update) return;
+        for (const client of await self.clients.matchAll({ type: 'window' })) {
+            if (client.navigate) client.navigate(client.url).catch(() => client.postMessage({ reload: true }));
+            else client.postMessage({ reload: true });
+        }
     })());
 });
 
