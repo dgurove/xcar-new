@@ -403,6 +403,7 @@ class OfferController
      */
     public function update(OfferRequest $request, Offer $offer, UpdateOffer $update, ScheduleOffer $schedule, CreateOffer $create)
     {
+        $unpriced = $offer->state === OfferState::Draft && ! $offer->asking_price;
         $update($offer, $request->payload(), $request->user());
         session()->forget("mail-draft.{$offer->id}");
         // Нажали знак Мигторга в поле номера убытка: несохранённые правки формы (вендор, цены) легли вместе с номером.
@@ -422,6 +423,14 @@ class OfferController
             $offer = $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user());
 
             return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer));
+        }
+
+        // «Сохранить изменения» с ценой из «Оценить» — то же, что «Оценить» (владелец 05.10.2026): строка уходит из «Без
+        // цены», карточка — к следующей. Тихое сохранение перед другой кнопкой (save_bar, ajax) этого не делает.
+        if ($unpriced && $offer->refresh()->asking_price && ! $request->ajax()) {
+            $gone = $this->gone($request, $offer);
+
+            return back()->with('toast', 'Оценено: '.Money::rub($offer->asking_price))->with($gone + ($gone ? ['detail-advance' => true] : []));
         }
 
         // «Сохранить изменения» — остаёмся там же (04.10.2026: кнопка выезжает после правки, экран не меняется); из

@@ -76,7 +76,7 @@
                             @csrf
                             <input type="hidden" name="asking_price" data-bid-target="amount" value="">
                             <input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
-                                data-bid-target="display" data-action="input->bid#input" value="" data-detail-focus>
+                                data-bid-target="display" data-action="input->bid#input" value="" data-detail-focus data-save-into="detail-edit-{{ $n }}" data-save-name="asking_price">
                             <button type="submit" class="btn btn-s btn-accent shrink-0">Оценить</button>
                         </form>
                         @if ($car = $offer->purchaseCar)
@@ -192,7 +192,7 @@
                 @endforeach
             </div>
         @endif
-        <form method="post" action="/offers/{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar migtorg-diff" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
+        <form method="post" action="/offers/{{ $n }}" id="detail-edit-{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar migtorg-diff" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
             @csrf @method('put')
             <section>
                 <h2 class="detail-section">Цены</h2>
