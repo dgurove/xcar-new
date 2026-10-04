@@ -1245,6 +1245,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-line) 70%, transparent); transition: background-color var(--dur-fast);
   }
   .menu > .menu-item:first-child, .menu > :first-child > .menu-item { box-shadow: none; }
+  /* Группы меню действий — как в iOS: между группами полоса, у группы подпись мелким серым, первый пункт без линии. */
+  .menu-group + .menu-group { border-top: 6px solid color-mix(in oklab, var(--color-line) 55%, transparent); }
+  .menu-group > :first-child > .menu-item, .menu-group > .menu-head + * > .menu-item { box-shadow: none; }
+  .menu-head { @apply px-4 pb-1 pt-2.5 text-xs text-ink-dim; }
   @media (hover: hover) { .menu-item:hover { background: var(--color-hover); } }
   .menu-item:active { background: var(--color-hover); transition: background-color 0s 60ms; }
   /* Кольцо фокуса — внутри пункта: снаружи его срезал бы край меню. */
