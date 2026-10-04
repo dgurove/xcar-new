@@ -2603,8 +2603,10 @@ dialog.lightbox .lb-pill .pswp__button[hidden], dialog.lightbox .lb-pill--top .p
 dialog.lightbox .lb-pill .pswp__button svg { width: 22px; height: 22px; pointer-events: none; }
 dialog.lightbox:not(.lb-zoomable) .lb-pill .pswp__button--zoom-tool { opacity: .35; pointer-events: none; }
 @media (hover: hover) { dialog.lightbox .lb-pill .pswp__button:hover { background: rgb(255 255 255 / .16); } }
-/* Счётчик остаётся в полосе PhotoSwipe слева — вровень с верхней плашкой. */
-.pswp .pswp__top-bar { padding-top: calc(max(10px, var(--safe-top, 0px), env(safe-area-inset-top)) + 4px); }
+/* Счётчик — третьей плашкой слева сверху, вровень с правой; у одного кадра его нет. */
+dialog.lightbox .lb-pill--left { left: max(10px, env(safe-area-inset-left)); top: max(10px, var(--safe-top, 0px), env(safe-area-inset-top)); padding: 4px 16px; }
+dialog.lightbox .lb-pill--left .pswp__counter { margin: 0; height: 44px; font-size: var(--text-sm); line-height: 44px; color: #fff; text-shadow: none; opacity: 1; }
+dialog.lightbox.lb-one .lb-pill--left { display: none; }
 .pswp .pswp__button.pswp__button--arrow { position: absolute; top: 50%; margin-top: -24px; width: 48px; height: 48px; }
 .pswp.pswp--one-slide .pswp__button.pswp__button--arrow, .pswp .pswp__button.pswp__button--arrow:disabled { display: none; }
 .pswp .pswp__button--arrow--prev { left: max(12px, env(safe-area-inset-left)); }

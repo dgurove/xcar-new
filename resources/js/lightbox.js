@@ -127,11 +127,16 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
         top.className = 'lb-pill lb-pill--top';
         top.append(...[...(pswp.topBar?.children ?? [])].filter((n) => n.classList.contains('pswp__button')));
         const bottom = pswp.element.querySelector('.lb-pill--bottom');
-        view.host.append(top, ...(bottom ? [bottom] : []));
+        // Счётчик «6 / 10» — своей плашкой слева сверху (PhotoSwipe обновляет его по ссылке на узел).
+        const left = document.createElement('div');
+        left.className = 'lb-pill lb-pill--left';
+        left.append(...[...(pswp.topBar?.children ?? [])].filter((n) => n.classList.contains('pswp__counter')));
+        view.host.append(left, top, ...(bottom ? [bottom] : []));
         const mirror = () => {
             const c = pswp.element.classList;
             view.host.classList.toggle('lb-ui', c.contains('pswp--ui-visible') && !pswp.isDestroying && !view.closed);
             view.host.classList.toggle('lb-zoomable', c.contains('pswp--zoom-allowed'));
+            view.host.classList.toggle('lb-one', c.contains('pswp--one-slide'));
         };
         const watch = new MutationObserver(mirror);
         watch.observe(pswp.element, { attributes: true, attributeFilter: ['class'] });
