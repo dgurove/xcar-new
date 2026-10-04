@@ -1,13 +1,14 @@
 {{-- «Опубликовать» с выбором (владелец 03.10.2026): сейчас, в ближайший слот (по умолчанию) или в следующий — строками
      с датой, кнопка называет исход (подпись меняется по отмеченной строке, `.publish-choice` в app.css). Своей формой
      (`action`: выход маршрута) или полями чужой (`form`: редактор, `submit` — then=open). Срок страховой раньше слота —
-     дата красным: таймер черновика уведёт предложение раньше. --}}
-@props(['offer', 'id', 'action' => null, 'form' => null, 'submit' => []])
+     дата красным: таймер черновика уведёт предложение раньше. Без offer — пачкой (галочки «Оцененных» и «Публикации»,
+     `form` — их форма); move — перенос стоящих в слоте: «Перенести на завтра в 16:00». --}}
+@props(['offer' => null, 'id', 'action' => null, 'form' => null, 'submit' => [], 'title' => 'Опубликовать', 'move' => false])
 @php
     $choices = \App\Offers\Slots::choices();
-    $late = fn ($at) => $at && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($at);
+    $late = fn ($at) => $offer && $at && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($at);
 @endphp
-<x-ui.sheet :id="$id" title="Опубликовать">
+<x-ui.sheet :id="$id" :title="$title">
     @if ($action)<form method="post" action="{{ $action }}" class="publish-choice flex flex-col gap-4">@csrf @else<div class="publish-choice flex flex-col gap-4">@endif
         <div class="list">
             @foreach ($choices as $c)
@@ -22,7 +23,7 @@
         </div>
         {{-- Шторка закрывается сразу: ошибка поля (номер убытка, фото) должна быть видна, а не под шторкой. --}}
         <x-ui.button block :form="$form" :name="array_key_first($submit)" :value="$submit ? reset($submit) : null" data-action="sheet#close">
-            @foreach ($choices as $c)<span data-when="{{ $c['when'] }}">{{ $c['at'] ? 'Опубликовать '.\App\Offers\Slots::phrase($c['at']) : 'Опубликовать сейчас' }}</span>@endforeach
+            @foreach ($choices as $c)<span data-when="{{ $c['when'] }}">{{ $c['at'] ? ($move ? 'Перенести на ' : 'Опубликовать ').\App\Offers\Slots::phrase($c['at']) : 'Опубликовать сейчас' }}</span>@endforeach
         </x-ui.button>
     @if ($action)</form>@else</div>@endif
 </x-ui.sheet>

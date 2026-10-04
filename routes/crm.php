@@ -130,7 +130,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
         Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
         Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
-        Route::post('/offers/{offer}/publish', [OfferController::class, 'publish']);
+        Route::post('/offers/{offer}/rate', [OfferController::class, 'rate']);
+        // Пачкой из «Оцененных» и «Публикации»: галочки строк, `offers[]` — номера.
+        Route::post('/offers/schedule', [OfferController::class, 'scheduleMany']);
+        Route::post('/offers/unschedule', [OfferController::class, 'unscheduleMany']);
         Route::post('/offers/{offer}/unschedule', [OfferController::class, 'unschedule']);
         Route::post('/offers/{offer}/garage', [OfferController::class, 'garage']);
         Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);

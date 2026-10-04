@@ -11,6 +11,7 @@ use App\Billing\Seller;
 use App\Chats\Chat;
 use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
+use App\Http\Admin\OfferController;
 use App\Mail\Boxes;
 use App\Mail\Scope;
 use App\Mail\Thread;
@@ -408,13 +409,13 @@ final class Nav
                 ], 'fresh' => []];
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
-                // Таб — как список без пилюли: черновики.
-                return ['totals' => ['/' => Offer::visibleTo($user)->where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())->count()], 'fresh' => []];
+                // Таб — как список без вкладки: «Без цены» его группы.
+                return ['totals' => ['/' => OfferController::scopeFor('unpriced', Offer::visibleTo($user)->whereNot(fn ($o) => $o->emptyDraft()))->count()], 'fresh' => []];
             }
             if ($surface === Surface::Crm) {
                 return ['totals' => [
-                    // Как список без пилюли — черновики, что ждут оценки (без слота и закупок).
-                    '/' => Offer::where('state', OfferState::Draft)->whereNull('slot_at')->whereNot(fn ($o) => $o->emptyDraft())->whereDoesntHave('purchaseCar')->count(),
+                    // Как список без вкладки — «Без цены», вместе с черновиками из закупок.
+                    '/' => OfferController::scopeFor('unpriced', Offer::whereNot(fn ($o) => $o->emptyDraft()))->count(),
                     '/gallery' => Offer::where('state', OfferState::Gallery)->count(),
                     '/work' => Deal::where('state', DealState::Active)->count(),
                     '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),

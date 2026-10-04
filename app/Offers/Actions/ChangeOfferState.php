@@ -25,12 +25,13 @@ use Illuminate\Validation\ValidationException;
  * времени, сделка, лента, событие. Если оффер идёт по маршруту и с текущего
  * этапа есть наш исход на этап с таким состоянием — маршрут догоняет кнопку.
  * `at` — публикация слотом (часы, `PublishDueSlots`): выход и срок приёма считаются от слота, а не от минуты тика.
+ * `batch` — «сейчас» пачкой из «Оцененных»: уведомление, как у слота, — одно на человека тиком часов.
  */
 final class ChangeOfferState
 {
-    public function __invoke(Offer $offer, OfferState $next, ?User $by, bool $followRoute = true, ?Carbon $at = null): Offer
+    public function __invoke(Offer $offer, OfferState $next, ?User $by, bool $followRoute = true, ?Carbon $at = null, bool $batch = false): Offer
     {
-        return DB::transaction(function () use ($offer, $next, $by, $followRoute, $at) {
+        return DB::transaction(function () use ($offer, $next, $by, $followRoute, $at, $batch) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
             // Слот могли убрать или перенести в последнюю секунду — тогда часы опоздали, публиковать нечего.
             if ($at && ! $offer->slot_at?->equalTo($at)) {
@@ -90,7 +91,7 @@ final class ChangeOfferState
 
             OfferStateChanged::dispatch($offer, $by);
             if ($next === OfferState::Open) {
-                OfferPublished::dispatch($offer, $by, $at !== null);
+                OfferPublished::dispatch($offer, $by, $at !== null || $batch);
             }
 
             if ($followRoute && ($exit = $offer->stage()?->exitInto($next, $offer->deal()->first()))) {
@@ -117,14 +118,23 @@ final class ChangeOfferState
     /** Готово ли к продаже: марка, цена продажи, фото. Зовёт и постановка в слот — чтобы не выяснять это в 16:00. */
     public static function assertReady(Offer $offer): void
     {
-        $missing = array_keys(array_filter([
+        if ($missing = self::missing($offer)) {
+            throw ValidationException::withMessages(['state' => 'Для публикации не хватает: '.implode(', ', $missing)]);
+        }
+    }
+
+    /**
+     * Чего не хватает для публикации — и для ошибки, и для строки «Оцененных» («нет фото» вместо галочки).
+     *
+     * @return list<string>
+     */
+    public static function missing(Offer $offer): array
+    {
+        return array_keys(array_filter([
             'марка' => ! $offer->brand_id,
             'цена продажи' => ! $offer->asking_price,
             'фотографии' => $offer->visiblePhotos()->isEmpty(),
         ]));
-        if ($missing) {
-            throw ValidationException::withMessages(['state' => 'Для публикации не хватает: '.implode(', ', $missing)]);
-        }
     }
 
     /**

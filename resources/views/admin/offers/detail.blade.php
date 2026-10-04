@@ -1,6 +1,6 @@
 {{-- Карточка строки таблицы предложений и галереи (фрейм detail) — почти весь редактор без ухода на страницу,
      одной лентой: кадры (нажатие прячет или возвращает, порядок перетаскиванием, поворот, «+»; удаления нет),
-     шапка с ценой, у черновика «Оценка» с «В продажу», у открытого — продлить приём и состояние; подтверждения
+     шапка с ценой, у черновика без цены «Оценить», у открытого — продлить приём и состояние; подтверждения
      и интерес; дальше поля редактора (деньги, ТС, состояние, менеджеры) — сохраняются сами при выходе из поля
      (кнопка «Сохранить изменения» внизу, уходят только тронутые); в «Документах» — «Заполнить из документов» (окно «Из документов» поверх,
      после «Подставить» карточка перечитывается). Документы, маршрут, удаление кадров и история — в полном редакторе.
@@ -19,6 +19,8 @@
     // «Опубликовать» у черновика и галереи — тремя пунктами: сейчас, в ближайший слот, в следующий (`x-offer.publish-items`).
     $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled();
     $transitions = $transitions->except(OfferState::Open->value);
+    // Блок «Оценить» — у черновика без цены продажи; оценённому цену правят в «Ценах».
+    $rate = $admin && $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled();
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
     $unread = $chats->sum('unread_for_staff');
@@ -54,24 +56,17 @@
         <x-slot:actions>
             @if ($admin && $offer->isScheduled())
                 <x-offer.slot-menu :offer="$offer"/>
-            @elseif ($admin && $offer->state === OfferState::Draft)
-                {{-- «Оценить» одним блоком: цена продажи и «В продажу» — сейчас или в слот (по умолчанию ближайший; карточка
-                     переходит к следующему черновику; пустое поле — просто дальше), под ними ориентиры из закупки, если
-                     черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
+            @elseif ($rate)
+                {{-- «Оценить» (вкладка «Без цены»): только цена продажи — машина уходит в «Оцененные», карточка переходит к
+                     следующей без цены; пустое поле — просто дальше. В продажу отправляют пачкой из «Оцененных». Под полем
+                     ориентиры из закупки, если черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
                 <div class="w-full rounded-(--radius-l) bg-surface-2 p-3">
-                    <form method="post" action="/offers/{{ $n }}/publish" class="flex flex-col gap-2" data-controller="bid" data-bid-asking-value="0">
+                    <form method="post" action="/offers/{{ $n }}/rate" class="flex gap-2" data-controller="bid" data-bid-asking-value="0">
                         @csrf
-                        <div class="flex gap-2">
-                            <input type="hidden" name="asking_price" data-bid-target="amount" value="{{ $offer->asking_price }}">
-                            <input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
-                                data-bid-target="display" data-action="input->bid#input" value="{{ $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '' }}" data-detail-focus>
-                            <button type="submit" class="btn btn-s btn-accent shrink-0">В продажу</button>
-                        </div>
-                        <div class="segment">
-                            @foreach (\App\Offers\Slots::choices() as $c)
-                                <label class="!px-2 whitespace-nowrap"><input type="radio" name="when" value="{{ $c['when'] }}" @checked($c['when'] === \App\Offers\Slots::NEAREST)><span class="nums">{{ $c['at'] ? \App\Offers\Slots::short($c['at']) : 'Сейчас' }}</span></label>
-                            @endforeach
-                        </div>
+                        <input type="hidden" name="asking_price" data-bid-target="amount" value="">
+                        <input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
+                            data-bid-target="display" data-action="input->bid#input" value="" data-detail-focus>
+                        <button type="submit" class="btn btn-s btn-accent shrink-0">Оценить</button>
                     </form>
                     @if ($car = $offer->purchaseCar)
                         @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp
@@ -138,7 +133,7 @@
             @csrf @method('put')
             <section>
                 <h2 class="detail-section">Цены</h2>
-                @include('admin.offers.fields.money', ['askingElsewhere' => $offer->state === OfferState::Draft])
+                @include('admin.offers.fields.money', ['askingElsewhere' => $rate])
             </section>
             <section>
                 <h2 class="detail-section">Транспортное средство</h2>
@@ -165,6 +160,7 @@
         <x-slot:tools>
             @include('admin.offers.detail-tools')
         </x-slot:tools>
-        <x-slot:row><x-offer.table-row :offer="$offer" :gallery="$list"/></x-slot:row>
+        {{-- Свежая строка — с галочкой, если список с галочками («Оцененные», «Публикация»). --}}
+        <x-slot:row><x-offer.table-row :offer="$offer" :gallery="$list" :checkable="$admin && ! $list && in_array(request('preset'), ['priced', 'slots'], true) && blank(request('q'))" :group="$offer->slot_at?->format('YmdHi')"/></x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

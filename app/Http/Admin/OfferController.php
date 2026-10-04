@@ -31,9 +31,11 @@ use App\Offers\Slots;
 use App\Offers\Tag;
 use App\Support\Detail;
 use App\Support\Facets\Common;
+use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Money;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -41,95 +43,86 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class OfferController
 {
     /**
-     * Опубликованное и неопубликованное вместе не показываются никогда (04.10.2026, владелец): пилюли «Все» нет, каждая —
-     * одна сторона: в продаже (и её выборки) или черновики. Сделки в предложениях не показываются — они в «Работе».
+     * Вкладки — шаги работы (владелец 04.10.2026): оценили — машина ушла в «Оцененные», отправили пачкой — в «Публикацию»
+     * (по слотам), вышла — в «Опубликованные», где выбирают победителя. Черновики из закупок идут со всеми. Модератору
+     * те же вкладки, но без действий: цены, галочек и отправки у него нет.
      */
     public const PRESETS = [
-        'draft' => 'Черновики', 'slot' => 'В слоте', 'open' => 'В продаже', 'bids' => 'Выбрать', 'recommended' => 'Рекомендуем',
-        'archive' => 'Архив', 'purchase' => 'Из закупок',
+        'unpriced' => 'Без цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные', 'archive' => 'Архив',
     ];
 
-    /** Модератору — предложения его группы по состоянию: выбирать победителя и рекомендовать — дело админа. */
-    public const MODERATOR_PRESETS = ['draft' => 'Черновики', 'open' => 'В продаже', 'archive' => 'Архив'];
+    /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
+    private const LEGACY = [
+        'draft' => 'unpriced', 'purchase' => 'unpriced', 'slot' => 'slots', 'open' => 'published', 'bids' => 'published', 'recommended' => 'published',
+    ];
 
-    public const SORTS = ['fresh' => 'Сначала новые', 'bids' => 'По подтверждениям', 'closing' => 'Скоро закроются', 'number' => 'По номеру'];
+    /** Вкладки, где идёт работа по шагам: всегда таблица, без сортировки — порядок задаёт сам шаг. */
+    private const STEPS = ['unpriced', 'priced', 'slots', 'published'];
+
+    public const SORTS = ['fresh' => 'Сначала новые', 'number' => 'По номеру'];
 
     public function index(Request $request)
     {
-        // ?peek=номер — карточка строки рядом (first — первый неоценённый черновик страницы, адрес получает его номер ниже).
+        $legacy = self::LEGACY[(string) $request->query('preset')] ?? null;
+        if ($legacy) {
+            $query = ['preset' => $legacy] + ($request->query('preset') === 'recommended' ? ['recommended' => '1'] : []) + $request->except(['preset', 'sort']);
+
+            return redirect('/?'.http_build_query($query), 301);
+        }
+        // ?peek=номер — карточка строки рядом (first — первая строка без цены, адрес получает её номер ниже).
         $detail = Detail::of($request, fn (string $key) => $this->detailOf($request, OfferNumber::find($key)));
         if ($detail->framed()) {
             return $detail->response();
         }
         $admin = $request->user()->canManageCrm();
-        $presets = $admin ? self::PRESETS : self::MODERATOR_PRESETS;
-        // Без пилюли — черновики (владелец, 04.10.2026): сначала то, что ждёт оценки и публикации, опубликованное — пилюлей.
-        $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : 'draft';
-        // «В слоте» — пилюлей, пока есть что выпускать в 16:00.
-        $scheduled = $admin ? Offer::scheduled()->whereDoesntHave('purchaseCar')->count() : 0;
-        if ($admin && ! $scheduled && $preset !== 'slot') {
-            unset($presets['slot']);
-        }
-        $facets = Facets::for($request, 'crm-offers', ...self::facets());
-        // Таблица — вид по умолчанию (04.10.2026, владелец): выбор «строками» и обратно помнится.
-        ListPrefs::sync($request, 'crm-offers', rememberTable: true, keep: $facets->keys());
-        $sort = $request->query('sort', 'fresh');
-        // Поиск лупой идёт по всему списку — мимо пилюли и чипов.
+        $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? (string) $request->query('preset') : 'unpriced';
+        $step = in_array($preset, self::STEPS, true);
+        // «Без цены» — ничего лишнего: ни чипов, ни сортировки, ни вида. «Рекомендуем» — переключатель у опубликованных.
+        $facets = Facets::for($request, 'crm-offers', ...match ($preset) {
+            'unpriced' => [],
+            'published' => [...self::facets(), Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true))],
+            default => self::facets(),
+        });
+        ListPrefs::sync($request, 'crm-offers', rememberTable: true, keep: $facets->keys(), view: ! $step);
+        $sort = array_key_exists((string) $request->query('sort'), self::SORTS) ? (string) $request->query('sort') : 'fresh';
+        // Поиск лупой идёт по всему разделу — мимо вкладки и чипов.
         $searching = $facets->searching();
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
         $q = Offer::query()->visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])
             ->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
-        if (! $searching) {
+        if ($searching) {
+            $q->searchCrm(trim((string) $request->query('q')))->orderByDesc('updated_at');
+        } else {
+            self::scopeFor($preset, $q);
             match ($preset) {
-                'recommended' => $q->where('recommended', true)->where('state', OfferState::Open),
-                // У админа поставленные в слот — своей пилюлей, в «Черновиках» их нет; модератору это всё ещё черновики.
-                'draft' => $q->where('state', OfferState::Draft)->when($admin, fn ($d) => $d->whereNull('slot_at')),
-                'slot' => $q->scheduled(),
-                'open' => $q->where('state', OfferState::Open),
-                // Выбрать победителя: в продаже и с подтверждениями. У предложения в сделке оставшиеся — резерв, не очередь.
-                'bids' => $q->where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
-                'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
-                // Из закупок — неопубликованные своей пилюлей (их десятки); опубликованные — в «В продаже» со всеми.
-                'purchase' => $q->whereHas('purchaseCar')->where('state', OfferState::Draft),
+                // Порядок прохода не меняется от правки поля: по заведению, новые сверху.
+                'unpriced', 'priced' => $q->orderByDesc('offers.id'),
+                'slots' => $q->orderBy('slot_at')->orderByDesc('offers.id'),
+                'published' => $admin ? self::byPick($q) : $q->orderByDesc('published_at'),
+                default => $sort === 'number' ? $q->orderByDesc('number') : $q->orderByDesc('updated_at'),
             };
         }
-        // Предложения из закупок (контрпредложение Carcade → «В предложения») по умолчанию скрыты — их смотрят
-        // своей пилюлей. Модератор их не видит вовсе (`Offer::scopeVisibleTo`).
-        if (in_array($preset, ['draft', 'slot'], true) && ! $searching) {
-            $q->whereDoesntHave('purchaseCar');
-        }
-        if ($searching) {
-            $term = trim((string) $request->query('q'));
-            $q->searchCrm($term);
-        }
         $facets->apply($q);
-        // В «Выбрать» сначала те, у кого приём уже закрыт, — по ним решать сейчас.
-        if ($preset === 'bids' && ! $request->has('sort')) {
-            $sort = 'closing';
-        }
-        match ($sort) {
-            'bids' => $q->orderByDesc('active_bids_count')->orderByRaw('top_bid desc nulls last')->orderByDesc('updated_at'),
-            'closing' => $q->orderByRaw('bids_close_at asc nulls last'),
-            'number' => $q->orderByDesc('number'),
-            default => $q->orderByDesc('updated_at'),
-        };
 
-        $offers = ListView::paginate($request, $q);
-        // Кадры нужны плиткам и строкам, в таблице их нет — там это лишние сотни записей медиатеки.
-        if (! ListView::isTable(ListView::pick($request, $offers->total()))) {
+        $count = $q->count();
+        $view = $step || $searching ? ListView::TABLE : ListView::pick($request, $count);
+        $offers = ListView::isTable($view) ? $q->paginate(max($count, 1), total: $count)->withQueryString() : ListView::paginate($request, $q, $count);
+        // Кадры нужны плиткам и строкам; в таблице их нет — кроме «Оцененных»: там по ним видно, готово ли к продаже.
+        if (! ListView::isTable($view) || ($preset === 'priced' && ! $searching)) {
             $offers->loadMissing('media');
         }
         // Кто завёл — аватар только у черновика: остальным строкам люди не нужны.
         $offers->getCollection()->where('state', OfferState::Draft)->load('moderator.media');
-        // «Оценить» ведёт по черновикам: first — первый неоценённый черновик страницы, а нет таких — первая строка.
+        // «Оценить» с чипа или из закупки: first — первая строка без цены.
         if (Detail::key($request) === 'first') {
-            $first = $offers->first(fn ($o) => $o->state === OfferState::Draft && ! $o->asking_price && $o->brand_id) ?? $offers->first();
+            $first = $offers->first(fn ($o) => $o->state === OfferState::Draft && ! $o->asking_price) ?? $offers->first();
 
             return redirect($request->fullUrlWithQuery(['peek' => $first?->number]));
         }
@@ -137,20 +130,74 @@ class OfferController
         return view('admin.offers.index', [
             'offers' => $offers,
             'detail' => $detail,
-            'presets' => $presets,
-            'sorts' => $admin ? self::SORTS : [],
+            'view' => $view,
+            'step' => $step,
+            'searching' => $searching,
+            'presets' => self::PRESETS,
+            'sorts' => $preset === 'archive' ? self::SORTS : [],
             'preset' => $preset,
             'sort' => $sort,
-            // Числа у пилюль; модератору — в пределах его группы.
             'facets' => $facets,
-            'counts' => array_map(fn ($c) => $c instanceof Builder ? $facets->applyTo($c)->count() : $c, $admin ? [
-                'recommended' => Offer::where('recommended', true)->where('state', OfferState::Open),
-                'draft' => Offer::where('state', OfferState::Draft)->whereNull('slot_at')->whereNot(fn ($o) => $o->emptyDraft())->whereDoesntHave('purchaseCar'),
-                'slot' => $scheduled,
-                'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
-                'purchase' => Offer::whereHas('purchaseCar')->where('state', OfferState::Draft),
-            ] : ['draft' => Offer::visibleTo($request->user())->where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())]),
+            // Галочки и отправка — админу, в «Оцененных» и «Публикации».
+            'pick' => $admin && ! $searching && in_array($preset, ['priced', 'slots'], true),
+            'counts' => self::counts($request->user(), $facets),
         ]);
+    }
+
+    /** Условие вкладки — одно место для списка, чисел у вкладок и таб-бара. */
+    public static function scopeFor(string $preset, Builder $q): Builder
+    {
+        return match ($preset) {
+            'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0)),
+            'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0),
+            'slots' => $q->scheduled(),
+            'published' => $q->where('offers.state', OfferState::Open),
+            default => $q->whereIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
+        };
+    }
+
+    /**
+     * Опубликованные — группами по тому, что делать: 0 «Выбрать» (приём закрыт, подтверждения есть), 1 «Идёт приём»
+     * (скоро закроются — выше), 2 «Без подтверждений».
+     */
+    public const PICK_GROUPS = ['Выбрать', 'Идёт приём', 'Без подтверждений'];
+
+    private static function byPick(Builder $q): Builder
+    {
+        $bids = "exists (select 1 from bids where bids.offer_id = offers.id and bids.state = '".BidState::Active->value."')";
+        $group = "case when bids_close_at is not null and bids_close_at <= now() and {$bids} then 0 when bids_close_at is null or bids_close_at > now() then 1 else 2 end";
+
+        return $q->orderByRaw($group)->orderByRaw("case when ({$group}) = 2 then null else bids_close_at end asc nulls last")->orderByDesc('bids_close_at');
+    }
+
+    /** Группа опубликованного (PICK_GROUPS) — то же правило, что у порядка. */
+    public static function pickGroup(Offer $offer): int
+    {
+        if (! $offer->bids_close_at || $offer->bids_close_at->isFuture()) {
+            return 1;
+        }
+
+        return $offer->active_bids_count ? 0 : 2;
+    }
+
+    /**
+     * Числа у вкладок с чипами (их у «Без цены» нет — и число без них); «Рекомендуем» — только у опубликованных.
+     *
+     * @return array<string, int>
+     */
+    public static function counts(User $user, ?Facets $facets = null): array
+    {
+        $base = fn () => Offer::visibleTo($user)->whereNot(fn ($o) => $o->emptyDraft());
+        $counts = [];
+        foreach (array_diff(array_keys(self::PRESETS), ['archive']) as $key) {
+            $q = self::scopeFor($key, $base());
+            if ($facets && $key !== 'unpriced') {
+                $facets->applyTo($q, $key === 'published' ? null : 'recommended');
+            }
+            $counts[$key] = $q->count();
+        }
+
+        return $counts;
     }
 
     /** Чипы списка предложений — те же у галереи. */
@@ -346,20 +393,58 @@ class OfferController
     }
 
     /**
-     * «Оценить» черновик из карточки: цена продажи и в продажу — сейчас или в слот (по умолчанию ближайший), карточка
-     * само переходит к следующему черновику без цены. Пустое поле — просто дальше. Не хватает для публикации (фото
-     * ещё едут) — цена остаётся, ошибка в карточке.
+     * «Оценить» во вкладке «Без цены»: только цена продажи — машина уходит в «Оцененные», карточка переходит к следующей
+     * без цены. Публикации здесь нет: в продажу отправляют пачкой из «Оцененных». Пустое поле — просто дальше.
      */
-    public function publish(Request $request, Offer $offer, UpdateOffer $update, ScheduleOffer $schedule)
+    public function rate(Request $request, Offer $offer, UpdateOffer $update)
     {
-        $raw = preg_replace('/\D+/', '', (string) ($request->validate(['asking_price' => ['nullable', 'string', 'max:20']])['asking_price'] ?? ''));
-        if ($raw === '' || $offer->state !== OfferState::Draft) {
+        $raw = (int) preg_replace('/\D+/', '', (string) ($request->validate(['asking_price' => ['nullable', 'string', 'max:20']])['asking_price'] ?? ''));
+        if (! $raw || $offer->state !== OfferState::Draft) {
             return back()->with('detail-advance', true);
         }
-        $update($offer, ['asking_price' => (int) $raw], $request->user());
-        $offer = $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user());
+        $update($offer, ['asking_price' => $raw], $request->user());
 
-        return back()->with('detail-advance', true)->with('toast', $this->published($offer));
+        return back()->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', self::counts($request->user()))
+            ->with('toast', 'Оценено: '.Money::rub($raw));
+    }
+
+    /**
+     * «Отправить в продажу» пачкой из «Оцененных» и действия «Публикации»: сейчас, в ближайший или следующий слот (у
+     * стоящего в слоте — перенос). Не готовое (нет фото) остаётся на месте, остальные уходят. «Сейчас» пачкой —
+     * менеджеру одно «Опубликовано N» тиком часов, а не по уведомлению на каждое.
+     */
+    public function scheduleMany(Request $request, ScheduleOffer $schedule)
+    {
+        $data = $request->validate(['offers' => ['required', 'array', 'max:500'], 'offers.*' => ['integer'], 'when' => ['nullable', 'string']]);
+        $when = $this->when($request, Slots::NEAREST);
+        $offers = Offer::whereIn('number', $data['offers'])->get();
+        $done = 0;
+        $failed = [];
+        foreach ($offers as $offer) {
+            try {
+                $schedule($offer, $when, $request->user(), batch: $offers->count() > 1);
+                $done++;
+            } catch (ValidationException $e) {
+                $failed[] = $offer->titleWithYear().', нет '.str_replace(['Для публикации не хватает: ', 'фотографии'], ['', 'фото'], (string) collect($e->errors())->flatten()->first());
+            }
+        }
+        $at = Slots::at($when);
+        $toast = $done ? ($at ? 'Выйдут '.Slots::phrase($at).': '.$done : 'Опубликовано: '.$done) : null;
+        $back = back(fallback: '/?preset=priced');
+
+        return $failed
+            ? $back->with('toast-danger', ($toast ? $toast.'. ' : '').'Не вышли '.count($failed).': '.implode('; ', array_slice($failed, 0, 3)))
+            : $back->with('toast', $toast);
+    }
+
+    /** «Убрать из слота» пачкой: машины возвращаются в «Оцененные». */
+    public function unscheduleMany(Request $request, UnscheduleOffer $unschedule)
+    {
+        $data = $request->validate(['offers' => ['required', 'array', 'max:500'], 'offers.*' => ['integer']]);
+        $offers = Offer::whereIn('number', $data['offers'])->get();
+        $offers->each(fn ($o) => $unschedule($o, $request->user()));
+
+        return back(fallback: '/?preset=slots')->with('toast', 'Убрано из слота: '.$offers->count());
     }
 
     /** Состояние из меню; «Опубликовать» у черновика и галереи — с выбором слота (`when`), без него — сейчас. */

@@ -1,8 +1,9 @@
 {{-- Шапка таблицы предложений (видна от 640); столбцы те же, что в x-offer.table-row. На широком экране название не
      растягивается на полтаблицы (title-cap) — остаток забирает «Состояние» (fill): номер убытка и № стоят слева,
      сразу за названием, а не в правой половине. --}}
-@props(['gallery' => false])
+@props(['gallery' => false, 'pick' => false])
 <tr>
+    @if ($pick)<th class="pick-cell"></th>@endif
     <th class="grow title-cap">Марка, модель</th>
     <th class="hidden sm:table-cell">Вендор, № убытка</th>
     <th class="cell-dim hidden sm:table-cell">№</th>

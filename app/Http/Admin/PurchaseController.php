@@ -276,7 +276,7 @@ class PurchaseController
         $path = $this->counterPath($purchase, (string) $request->validate(['path' => ['required', 'string']])['path']);
         $count = $move($purchase, $reader->read(Storage::disk('private')->path($path)), $request->user());
 
-        return redirect('/?preset=draft&vid=table&peek=first')->with('toast', 'Черновиков: '.$count);
+        return redirect('/?preset=unpriced&peek=first')->with('toast', 'Черновиков: '.$count);
     }
 
     private function counterPath(Purchase $purchase, string $path): string

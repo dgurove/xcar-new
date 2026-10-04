@@ -907,6 +907,16 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .table tbody tr.table-group:first-child > th { padding-top: .75rem; }
   @media (min-width: 640px) { .table tr.table-group > th { top: calc(var(--spacing-header) + env(safe-area-inset-top) + 2rem); } }
   .table tr.table-group .nums { margin-left: .25rem; font-weight: 400; color: var(--color-ink-dim); }
+  /* Галочки строк («Оцененные», «Публикация», pick_controller): узкий первый столбец, круг как у .row-check; та же
+     галочка у группы (слот целиком) и строкой «Выбрать все» над таблицей. Соседний столбец к ней не отступает. */
+  /* Число у пилюли обновляется потоком (оценили — «Без цены» минус один); ноль — пусто. */
+  [data-pill-count]:empty { display: none; }
+  .table .pick-cell { width: 1%; padding-right: 0; }
+  .table .pick-cell + :is(td, th) { padding-left: .75rem !important; }
+  .pick-cell .row-check, .pick-all .row-check, .table-group .row-check { display: inline-flex; vertical-align: middle; }
+  .table-group .row-check { margin-right: .75rem; }
+  .pick-all { @apply flex items-center gap-3 pb-2 text-sm text-ink-muted; padding-left: .75rem; }
+  @media (max-width: 639.98px) { .pick-all { padding-left: 0; } }
   /* Ячейка в два этажа; от 640 второй этаж встаёт в линию за названием. */
   .cell-title, .cell-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cell-sub { margin-top: 0; font-size: var(--text-sm); color: var(--color-ink-muted); }

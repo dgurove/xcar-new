@@ -43,7 +43,7 @@
             <div class="flex flex-nowrap items-center gap-2">
                 @foreach ($pills as $key => $label)
                     <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
-                        {{ $label }}@if (!empty($counts[$key])) <span class="nums opacity-70">{{ $counts[$key] }}</span>@endif
+                        {{ $label }}@if (array_key_exists($key, $counts)) <span class="nums opacity-70" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                     </a>
                 @endforeach
                 {{ $pillsExtra ?? '' }}

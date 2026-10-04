@@ -13,6 +13,8 @@ export default class extends Controller {
         this.onAdvance = () => this.advance();
         this.onRender = () => { this.rendering = true; };
         this.onStream = (e) => {
+            // Место выделенной строки — до потока: «remove» уберёт её, а «advance» продолжит с этого места.
+            if (this.current) this.lastIndex = this.rows.indexOf(this.current);
             const render = e.detail.render;
             e.detail.render = async (stream) => { await render(stream); this.mark(); };
         };
@@ -80,11 +82,13 @@ export default class extends Controller {
         if (event.target !== this.frameTarget) return;
         const was = this.element.hasAttribute('data-open');
         this.settle(was);
-        if (this.wantFocus) {
+        // Фокус ждёт карточку, где есть куда его поставить: ответ на «Оценить» сперва рисует уже оценённую (поля нет),
+        // следом приходит следующая без цены.
+        const el = this.wantFocus && this.frameTarget.querySelector('[data-detail-focus]');
+        if (el) {
             this.wantFocus = false;
-            const el = this.frameTarget.querySelector('[data-detail-focus]');
-            el?.focus({ preventScroll: true });
-            el?.select?.();
+            el.focus({ preventScroll: true });
+            el.select?.();
         }
     }
 
@@ -169,16 +173,20 @@ export default class extends Controller {
 
     // Оценили — следующий черновик без цены: дальше по таблице, иначе с начала; кончились — тост, со следующей
     // страницей списка — ссылкой на неё.
+    // Оценённая строка могла уйти из списка («Без цены») — тогда дальше с её места.
     advance() {
-        const rows = this.rows, i = rows.indexOf(this.current);
-        const next = rows.slice(i + 1).find((r) => r.hasAttribute('data-unpriced')) ?? rows.slice(0, i).find((r) => r.hasAttribute('data-unpriced'));
+        const rows = this.rows, cur = this.current;
+        const from = cur ? rows.indexOf(cur) + 1 : (this.lastIndex ?? 0);
+        const next = rows.slice(from).find((r) => r.hasAttribute('data-unpriced')) ?? rows.slice(0, from).find((r) => r.hasAttribute('data-unpriced') && r !== cur);
         if (next) {
             this.wantFocus = true;
             this.show(next);
             return;
         }
         const more = document.querySelector('a[rel="next"]');
-        if (!more) { window.toast?.('Все оценены'); return; }
+        // Кончились — куда дальше, говорит список (`data-advance-done`: «Без цены» → «Оцененные»).
+        const done = document.querySelector('a[data-advance-done]');
+        if (!more) { window.toast?.(done?.textContent || 'Все оценены', done ? { href: done.getAttribute('href') } : undefined); return; }
         const url = new URL(more.href);
         url.searchParams.set('peek', 'first');
         window.toast?.('На этой странице все оценены, дальше следующая', { href: url.pathname + url.search });

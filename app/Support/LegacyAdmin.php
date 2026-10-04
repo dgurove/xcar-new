@@ -11,7 +11,7 @@ final class LegacyAdmin
         'chaty' => '/work/chats',
         'sdelki' => '/work/deals',
         'zakupki' => '/purchases',
-        'stavki' => '/?preset=bids',
+        'stavki' => '/?preset=published',
         'interesy' => '/interests',
         'strahovye' => '/settings/vendors',
         'marshruty' => '/settings/workflows',

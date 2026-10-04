@@ -55,6 +55,6 @@ final class SlotClosing extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Выбрать в CRM', 'url' => Surface::Crm->url('/?preset=open&sort=closing')];
+        return ['text' => 'Выбрать в CRM', 'url' => Surface::Crm->url('/?preset=published')];
     }
 }

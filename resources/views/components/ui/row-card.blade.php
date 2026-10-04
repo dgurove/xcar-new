@@ -48,6 +48,10 @@
 {{ $slot }}
 @if (($errors ?? null)?->any())<p class="field-error mt-3">{{ $errors->first() }}</p>@endif
 </div>
-@if ($row)<turbo-stream action="replace" targets="tr[data-detail-key=&quot;{{ \App\Support\Detail::key() }}&quot;]"><template>{{ $row }}</template></turbo-stream>@endif
+{{-- detail-gone — строка ушла из списка (оценили в «Без цены» — она теперь в «Оцененных»): убрать, а не заменить;
+     detail-counts — новые числа у пилюль. --}}
+@if (session('detail-gone'))<turbo-stream action="remove" targets="tr[data-detail-key=&quot;{{ \App\Support\Detail::key() }}&quot;]"></turbo-stream>
+@foreach ((array) session('detail-counts') as $pill => $n)<turbo-stream action="update" targets="[data-pill-count=&quot;{{ $pill }}&quot;]"><template>{{ $n ?: '' }}</template></turbo-stream>@endforeach
+@elseif ($row)<turbo-stream action="replace" targets="tr[data-detail-key=&quot;{{ \App\Support\Detail::key() }}&quot;]"><template>{{ $row }}</template></turbo-stream>@endif
 @if (session('toast') || session('toast-danger'))<turbo-stream action="toast" data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}" @if (session('toast-undo')) data-undo @endif></turbo-stream>@endif
 @if (session('detail-advance'))<turbo-stream action="advance"></turbo-stream>@endif

@@ -6,8 +6,10 @@
      Черновик из парковки — исключение: на месте состояния «парковка с …» (дата приёма ТС). Последний столбец —
      когда заведено.
      В галерее вместо подтверждений — интерес. Нажатие — карточка; data-unpriced — черновик без цены продажи,
-     по ним карточка идёт «Дальше» («Оценить»). --}}
-@props(['offer', 'gallery' => false])
+     по ним карточка идёт «Дальше» («Оценить»). checkable — галочка первым столбцом («Оцененные», «Публикация»; group — ключ
+     слота для галочки группы); не готовое к продаже вместо галочки получает красное «нет фото» второй строкой, срок
+     страховой раньше ближайшего слота — тоже красным. --}}
+@props(['offer', 'gallery' => false, 'checkable' => false, 'group' => null])
 @php
     use App\Offers\OfferState;
     $n = $offer->number;
@@ -33,8 +35,12 @@
     $rate = $unpriced && auth()->user()?->canManageCrm();
     // Поставлено в слот — «выйдет сегодня в 16:00» на месте состояния.
     $slot = $offer->isScheduled() ? 'выйдет '.\App\Offers\Slots::phrase($offer->slot_at) : null;
+    // Чего не хватает для продажи — у оценённого черновика: галочки у такого нет.
+    $missing = $checkable && $draft && ! $slot ? array_map(fn ($m) => 'нет '.match ($m) { 'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m }, \App\Offers\Actions\ChangeOfferState::missing($offer)) : [];
+    $late = $checkable && $draft && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($offer->slot_at ?? \App\Offers\Slots::nearest());
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($rate) data-unpriced @endif>
+    @if ($checkable)<td class="pick-cell">@unless ($missing)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>@endif
     <td class="grow">
         <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></x-ui.row-link>
         <span class="cell-sub" data-controller="fitline">
@@ -45,6 +51,8 @@
             @elseif ($park)<span class="sm:hidden">{{ mb_strtolower($park) }}</span>
             @elseif (! $draft)<span class="sm:hidden {{ $tone }}">{{ $stateWord }}</span>@endif
             @if ($count)<span class="sm:hidden {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $countWord }}</span>@endif
+            @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
+            @if ($late)<span class="text-danger nums">страховая до {{ $offer->insurer_deadline_at->translatedFormat('j M') }}</span>@endif
         </span>
     </td>
     {{-- Вендор и номер убытка одним столбцом, как в «Наличии»: логотип (имя — подсказкой), номер с копированием. --}}
