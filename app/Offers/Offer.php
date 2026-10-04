@@ -303,24 +303,6 @@ class Offer extends Model implements HasMedia
     }
 
     /**
-     * Состояние словом: черновик, заведённый из парковки, — «Парковка с 22 сен»
-     * (дата приёма ТС). Связь не подгружена — null (ленивой загрузки нет).
-     */
-    public function parkWord(): ?string
-    {
-        if ($this->state !== OfferState::Draft) {
-            return null;
-        }
-        $vehicle = $this->relationLoaded('parkVehicle') ? $this->parkVehicle : null;
-        if (! $vehicle) {
-            return null;
-        }
-        $day = $vehicle->accepted_at ?? $vehicle->created_at;
-
-        return 'Парковка'.($day ? ' с '.$day->translatedFormat('j M') : '');
-    }
-
-    /**
      * Одна дверь видимости. Админ видит всё; модератор — заведённое им и его группой (`User::teamIds`) в любом
      * состоянии, кроме перенесённого из закупки (там цены Carcade и менеджеров); менеджер — открытые и галерею
      * из своего круга, когда его волна показа наступила; покупатель — открытые, которые ему показал его менеджер

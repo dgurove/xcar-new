@@ -24,8 +24,6 @@
     $rate = $unpriced && $admin;
     $left = $gallery || ! $admin ? null : $offer->secondsLeft();
     $timer = $left !== null && $left > 0;
-    // Черновик из парковки — «парковка с …» на месте состояния.
-    $park = $offer->parkWord();
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => 'text-ink' };
     $count = ! $admin ? 0 : ($gallery ? (int) ($offer->interests_count ?? 0) : (int) ($offer->active_bids_count ?? 0));
 @endphp

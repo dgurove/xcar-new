@@ -14,17 +14,21 @@ use App\Users\User;
  */
 final class CarLinks
 {
-    /** Значок есть, когда машина есть ещё где-то, кроме этого экрана. Только админу. */
+    /**
+     * Значок есть, когда машина есть ещё где-то, кроме этого экрана. Только админу. ТС парковки считается, когда её уже
+     * приняли (`accepted_at`, владелец 04.10.2026): заявка на приём — ещё не машина в «Наличии», значка нет.
+     */
     public static function shows(Offer|Vehicle $from, ?User $user): bool
     {
         if (! $user?->isAdmin()) {
             return false;
         }
+        if ($from instanceof Vehicle) {
+            return $from->offer_id && $from->accepted_at;
+        }
+        $parked = $from->relationLoaded('parkVehicle') ? (bool) $from->parkVehicle?->accepted_at : $from->parkVehicle()->whereNotNull('accepted_at')->exists();
 
-        return $from instanceof Vehicle
-            ? (bool) $from->offer_id
-            : ($from->relationLoaded('parkVehicle') ? (bool) $from->parkVehicle : $from->parkVehicle()->exists())
-                || ($from->relationLoaded('purchaseCar') ? (bool) $from->purchaseCar : false);
+        return $parked || ($from->relationLoaded('purchaseCar') && $from->purchaseCar);
     }
 
     /** @return list<array{title: string, state: string, href: string}> */

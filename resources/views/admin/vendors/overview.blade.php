@@ -22,7 +22,7 @@
         <div class="list">
             @foreach ($offers as $o)
                 <a href="/offers/{{ $o->number }}" class="row justify-between">
-                    <span class="min-w-0"><span class="block truncate">{{ $o->titleWithYear() }}</span><span class="block truncate text-sm text-ink-muted">№ {{ $o->number }}, {{ mb_strtolower($o->parkWord() ?? $o->state->label()) }}@if ($o->answer_by), до {{ $o->answer_by->translatedFormat('j M H:i') }}@endif</span></span>
+                    <span class="min-w-0"><span class="block truncate">{{ $o->titleWithYear() }}</span><span class="block truncate text-sm text-ink-muted">№ {{ $o->number }}, {{ mb_strtolower($o->state->label()) }}@if ($o->answer_by), до {{ $o->answer_by->translatedFormat('j M H:i') }}@endif</span></span>
                     @if ($o->floor_price)<span class="nums shrink-0 font-semibold">{{ Money::rub($o->floor_price) }}</span>@endif
                 </a>
             @endforeach

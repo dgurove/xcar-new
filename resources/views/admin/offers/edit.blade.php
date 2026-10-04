@@ -34,9 +34,9 @@
             {{-- В сделке пилюля состояния и есть вход в сделку: «Идёт сделка ›». --}}
             <x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
         @else
-            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->parkWord() ?? $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
+            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
         @endif
-        @if ($offer->parkWord())
+        @if ($offer->state === \App\Offers\OfferState::Draft && $offer->published_at === null && $offer->parkVehicle)
             <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="pill pill-plain">Снять с продажи</button></form>
         @endif
         {{-- Срок приёма и продление — админу: подтверждения принимает только он. --}}

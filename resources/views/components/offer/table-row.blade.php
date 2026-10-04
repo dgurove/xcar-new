@@ -29,8 +29,6 @@
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
     $offer->loadMissing('parkVehicle:id,offer_id,category,accepted_at,created_at');
     $draft = $offer->state === OfferState::Draft;
-    // Черновик из парковки — «парковка с …» на месте состояния.
-    $park = $offer->parkWord();
     $unpriced = $draft && ! $offer->asking_price;
     // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
     $rate = $unpriced && auth()->user()?->canManageCrm();
