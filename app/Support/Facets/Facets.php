@@ -32,6 +32,8 @@ final class Facets
 
     private ?string $path = null;
 
+    private bool $always = false;
+
     /** @var array<string, list<string>> исключение, развёрнутое в варианты (для своего условия `apply`) */
     private array $resolved = [];
 
@@ -45,6 +47,15 @@ final class Facets
     public static function for(Request $request, string $list, Facet ...$facets): self
     {
         return new self($request, $list, ...$facets);
+    }
+
+    /** Чипы видны всегда, даже с одним вариантом: у вкладок с парой строк фильтр иначе пропадал, и неясно, почему
+     * строк мало (владелец 05.10.2026, предложения CRM). Без вариантов и выбора чипа всё равно нет. */
+    public function always(): self
+    {
+        $this->always = true;
+
+        return $this;
     }
 
     /** Адрес списка, если экран другой (чаты: справа открыт чат, а фильтр — у списка). */
@@ -244,7 +255,10 @@ final class Facets
             }
             // Сужать нечего — чипа нет. Но ряд не прыгает от соседних чипов: если без них вариантов больше одного,
             // чип стоит и с одним вариантом.
-            if (! $selected && count(array_filter($options, fn (Option $o) => $o->count > 0)) < 2
+            if ($this->always && ! $selected && $out === null && $options === []) {
+                return null;
+            }
+            if (! $this->always && ! $selected && count(array_filter($options, fn (Option $o) => $o->count > 0)) < 2
                 && ($f->count || ! $this->active() || count(array_filter($f->counts(clone $this->base, $this->countExpr))) < 2)) {
                 return null;
             }

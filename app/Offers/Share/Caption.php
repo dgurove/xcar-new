@@ -29,6 +29,8 @@ final class Caption
             ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
             ['city', 'Город', $offer->settlement?->title(), true],
             ['specs', 'КПП, привод, кузов', implode(', ', array_filter([$offer->transmission?->label(), $offer->drive?->label(), $offer->body?->label()])) ?: null, true],
+            // Топливо — своей галкой, по умолчанию включена (владелец 05.10.2026: «это важно»).
+            ['fuel', 'Топливо', $offer->fuel?->label(), true],
             ['engine', 'Двигатель', $offer->engine_volume ? number_format($offer->engine_volume / 1000, 1, ',', '').' л'.($offer->engine_power ? ', '.$offer->engine_power.' л. с.' : '') : null, true],
             ['mileage', 'Пробег', $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null, false],
             ['vin', 'VIN', $offer->vin ? 'VIN '.($staff ? $offer->vin : $offer->vinFor($user)) : null, true],

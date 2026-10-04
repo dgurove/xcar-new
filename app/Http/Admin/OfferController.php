@@ -90,7 +90,7 @@ class OfferController
         $facets = Facets::for($request, 'crm-offers', ...match ($preset) {
             'published' => [...self::facets(), Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true))],
             default => self::facets(),
-        });
+        })->always();
         ListPrefs::sync($request, 'crm-offers', rememberTable: true, keep: $facets->keys());
         $sort = array_key_exists((string) $request->query('sort'), self::SORTS) ? (string) $request->query('sort') : 'fresh';
         // Поиск лупой идёт по всему разделу — мимо вкладки и чипов.
