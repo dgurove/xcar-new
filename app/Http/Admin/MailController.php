@@ -105,8 +105,8 @@ class MailController
         $accounts = Account::where('scope', $this->scope)->orderBy('title')->get();
         // Открывается «Все» — почта прежде всего почта; «Требуют внимания» стоит первой пилюлей рядом.
         $box = $forced ?? (array_key_exists($request->query('box', ''), Boxes::BOXES) ? $request->query('box') : 'all');
-        // В делах, требующих нас, сверху самое старое: свежее и так на виду.
-        $sort = array_key_exists($request->query('sort', ''), Boxes::SORTS) ? $request->query('sort') : (in_array($box, ['attention', 'register'], true) ? 'waiting' : 'fresh');
+        // Везде по умолчанию — свежие сверху (04.10.2026, владелец: «странная, логики нет»); «Дольше ждут» — выбором.
+        $sort = array_key_exists($request->query('sort', ''), Boxes::SORTS) ? $request->query('sort') : 'fresh';
         $q = trim((string) $request->query('q'));
         // Память — своя у почты CRM и парковки и у «Из писем».
         $list = ($this->scope === Scope::Park ? 'park' : 'offers').($forced ? '-candidates' : '-mail');
@@ -154,9 +154,11 @@ class MailController
         // Дело — машина, цепочка «Из писем» или предложение. Письмо, которому парсер не нашёл машину, — дело само
         // по себе: заголовка у такой секции нет (нечего писать), вендор стоит в строке.
         $group = Boxes::group($this->scope);
-        $groups = (clone $threads)->selectRaw("{$group} as g, max(last_message_at) as at")->groupByRaw($group);
-        $sort === 'waiting' ? $groups->orderBy('at') : $groups->orderByDesc('at');
-        $keys = $groups->get()->pluck('g');
+        // Порядок дел — по последнему письму всего дела, а не только веток, подошедших под пилюлю: карточка показывает
+        // все письма дела, и время в ней должно совпадать с местом в списке.
+        $keys = (clone $threads)->selectRaw("{$group} as g")->groupByRaw($group)->pluck('g');
+        $at = $keys->isEmpty() ? collect() : (clone $all)->selectRaw("{$group} as g, max(last_message_at) as at")->groupByRaw($group)->pluck('at', 'g');
+        $keys = $keys->sortBy(fn ($g) => (string) ($at[$g] ?? ''), SORT_STRING, $sort !== 'waiting')->values();
         $page = max(1, (int) $request->query('page', 1));
         $slice = $keys->forPage($page, self::GROUPS_PER_PAGE)->values();
         $paginator = new LengthAwarePaginator($slice, $keys->count(), self::GROUPS_PER_PAGE, $page, ['path' => $request->url(), 'query' => $request->query()]);

@@ -10,6 +10,7 @@
     @if ($pick)<th class="pick-cell"></th>@endif
     <th class="grow title-cap">Марка, модель</th>
     @if ($has('vendor'))<th class="hidden sm:table-cell">Вендор, № убытка</th>@endif
+    @if ($has('city'))<th class="hidden sm:table-cell">Город</th>@endif
     {{-- Карточка рядом — места мало: № и подтверждения видны в ней, из таблицы они уходят (col-detail-hide). --}}
     @if ($has('no'))<th class="cell-dim col-detail-hide hidden sm:table-cell">№</th>@endif
     @if ($has('state'))<th class="fill hidden sm:table-cell">{{ $cols !== null && $has('bids') ? 'Приём' : 'Состояние' }}</th>
