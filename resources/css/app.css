@@ -2438,6 +2438,11 @@ dialog.lightbox::backdrop { background: transparent; }
   display: flex; gap: 8px; padding: 4px; border-radius: 999px; background: rgb(255 255 255 / .12); backdrop-filter: blur(20px);
   opacity: 0; transition: opacity var(--dur-fast) ease-out; pointer-events: none;
 }
+/* Та же плашка сверху справа: «Скачать», корзина, знак, закрыть. Видимость — полосой (PhotoSwipe прячет её сам). */
+.pswp .pswp__tools--top { position: static; translate: none; margin-left: auto; opacity: 1; pointer-events: auto; transition: none; }
+.pswp .pswp__top-bar .pswp__tools--top .pswp__button { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* Зум — только в нижней плашке. */
+.pswp .pswp__tools--top .pswp__button--zoom { display: none !important; }
 .pswp.pswp--ui-visible .pswp__tools { opacity: 1; pointer-events: auto; }
 .pswp .pswp__tools .pswp__button { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; color: #fff; }
 .pswp .pswp__tools .pswp__button[hidden] { display: none; }

@@ -250,6 +250,14 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
             onClose?.(view.index);
         });
         pswp.init();
+        // Кнопки сверху — одной стеклянной плашкой, как нижняя (владелец, 04.10.2026): узлы переезжают вместе с обработчиками.
+        const bar = pswp.topBar;
+        if (bar) {
+            const group = document.createElement('div');
+            group.className = 'pswp__tools pswp__tools--top';
+            group.append(...[...bar.children].filter((n) => n.classList.contains('pswp__button')));
+            bar.append(group);
+        }
         view.pswp = pswp;
         return pswp;
     };
