@@ -451,12 +451,16 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Ссылка админа: блок «для покупателя» виден только при роли «покупателю». */
   .invite-form:has(select[name="role"] option:checked:not([value="buyer"])) [data-buyer] { display: none !important; }
   .invite-form:has(select[name="role"] option[value="buyer"]:checked) [data-once] { display: none !important; }
-  /* Доступ управляющего парковкой — только при роли «Парковка» (ссылка админа и карточка человека). */
-  :is(.invite-form, .user-form):has(select[name="role"] option:checked:not([value="parking"])) [data-park] { display: none !important; }
-  /* Доступ модератора — только при роли «Модератор». */
-  :is(.invite-form, .user-form):has(select[name="role"] option:checked:not([value="moderator"])) [data-crm] { display: none !important; }
-  /* Группы менеджеров — только при роли «Менеджер». */
-  :is(.invite-form, .user-form):has(select[name="role"] option:checked:not([value="manager"])) [data-managers] { display: none !important; }
+  /* Доступ управляющего парковкой — только при роли «Парковка»; модератора — при «Модераторе»; группы менеджеров — при
+     «Менеджере». В ссылке роль одна (выпадашка), у человека — галками, их бывает несколько. */
+  .invite-form:has(select[name="role"] option:checked:not([value="parking"])) [data-park] { display: none !important; }
+  .invite-form:has(select[name="role"] option:checked:not([value="moderator"])) [data-crm] { display: none !important; }
+  .invite-form:has(select[name="role"] option:checked:not([value="manager"])) [data-managers] { display: none !important; }
+  .user-form:has(input[name="roles[]"][value="parking"]:not(:checked)) [data-park] { display: none !important; }
+  .user-form:has(input[name="roles[]"][value="moderator"]:not(:checked)) [data-crm] { display: none !important; }
+  .user-form:has(input[name="roles[]"][value="manager"]:not(:checked)) [data-managers] { display: none !important; }
+  /* «Кому передать покупателей» — только когда «Менеджер» сняли. */
+  .user-form:has(input[name="roles[]"][value="manager"]:checked) [data-transfer] { display: none !important; }
   .row-sub { @apply mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted; }
   /* Значение строки системным выбором (время показа): текст справа с шевроном, без фона, на телефоне — барабан. */
   .row-select { @apply shrink-0 cursor-pointer appearance-none bg-transparent pr-5 text-right text-ink-muted outline-none; font-size: 16px;
