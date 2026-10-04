@@ -768,10 +768,18 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .box-nested .pill-plain { @apply bg-surface; }
   /* Чип «Мигторг» (`x-offer.migtorg`): знак их флажком, пока лот ждёт или качается — текст обычный, всё взято —
      приглушён (знак того, откуда фото и поля). Кольцо загрузки — тот же лайм и та же скорость, что у плитки. */
-  .pill-migtorg { @apply gap-1.5 text-ink; }
-  .pill-migtorg.is-quiet { @apply text-ink-muted; }
-  .pill-migtorg.is-quiet .migtorg-mark { opacity: .6; }
   .migtorg-mark { display: inline-block; height: .625rem; width: auto; flex: none; }
+  /* Мигторг в поле номера убытка (x-offer.migtorg-field): справа внутри поля, как кнопка у VIN. */
+  .migtorg-field { @apply absolute inset-y-0 right-2 flex items-center gap-1.5; }
+  /* Нашёлся лот — знак на красноватой подложке их цвета: видно, что это кнопка, а не значок. */
+  .migtorg-field-btn { @apply flex size-9 items-center justify-center rounded-full transition-colors; background: color-mix(in oklab, #D6514A 18%, transparent); }
+  .migtorg-field-btn:hover { background: color-mix(in oklab, #D6514A 30%, transparent); }
+  /* «Удалить черновик» в плашке модератора уступает место «Сохранить изменения»: втроём не влезают на телефоне. */
+  .action-bar:has([data-save-bar-button]:not([hidden])) .draft-delete { display: none !important; }
+  .migtorg-field-btn .migtorg-mark { @apply h-3 w-4; }
+  .migtorg-field-state { @apply flex items-center gap-1.5 px-2; }
+  .migtorg-field-state.is-quiet .migtorg-mark { opacity: .45; }
+  .vin-box:has(.migtorg-field) .field-input { padding-right: 3rem; }
   .migtorg-ring { @apply inline-block size-3.5 flex-none rounded-full; border: 2px solid color-mix(in oklab, var(--color-ink) 18%, transparent); border-top-color: var(--color-accent); }
   /* «Ищем» — то же кольцо серым и медленнее: лайм только у того, что реально качается. */
   .migtorg-ring.is-idle { border-top-color: color-mix(in oklab, var(--color-ink) 55%, transparent); }

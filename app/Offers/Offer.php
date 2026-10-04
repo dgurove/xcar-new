@@ -400,6 +400,21 @@ class Offer extends Model implements HasMedia
         return $user->isAdmin() || ($user->isModerator() && self::query()->whereKey($this->id)->inCrm($user)->exists());
     }
 
+    /**
+     * Удалить можно только черновик, который ни разу не выходил наружу: без подтверждений, сделки и закупки. Модератор —
+     * только заведённый им самим (владелец 04.10.2026: «свои можно, чужие нет»), админ — любой. ТС парковки, стоявшая
+     * раньше черновика, — не его: такое снимают «Снять с продажи».
+     */
+    public function isDeletableBy(User $user): bool
+    {
+        if ($this->state !== OfferState::Draft || $this->published_at !== null || ! ($user->isAdmin() || ($user->isModerator() && $this->moderator_id === $user->id))) {
+            return false;
+        }
+
+        return ! $this->bids()->exists() && ! $this->deal()->exists() && ! $this->purchaseCar()->exists()
+            && ! $this->parkVehicle()->where('created_at', '<', $this->created_at)->exists();
+    }
+
     // ------------------------------------------------------------ подписи
 
     public function title(): string

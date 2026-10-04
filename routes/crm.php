@@ -13,6 +13,7 @@ use App\Http\Admin\MailController;
 use App\Http\Admin\MailTemplateController;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
+use App\Http\Admin\OfferDraftController;
 use App\Http\Admin\OfferPhotoController;
 use App\Http\Admin\PayLinkController;
 use App\Http\Admin\PurchaseCarPhotoController;
@@ -73,6 +74,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/drop', [MailController::class, 'dropDraft'])->middleware('ability:canCrmMail');
         // Ушли из пустого черновика «+ Новый» — его нет (sendBeacon при уходе; не пустой сервер не трогает).
         Route::post('/offers/{offer}/drop-empty', [OfferController::class, 'dropEmpty']);
+        Route::delete('/offers/{offer}', [OfferDraftController::class, 'destroy']);
         // Черновик из парковки завели в продажу зря — отвязать ТС и удалить («Снять с продажи»).
         Route::post('/offers/{offer}/unlist', [OfferController::class, 'unlist']);
         Route::post('/offers/{offer}/media', [OfferPhotoController::class, 'store']);

@@ -84,7 +84,7 @@ class OfferPhotoController
             $offer = (clone $offer)->forceFill(['claim_ref' => $ref]);
         }
 
-        return response(Blade::render('<x-offer.migtorg :offer="$offer" :ref="$ref" live/>', ['offer' => $offer, 'ref' => $ref]));
+        return response(Blade::render('<x-offer.migtorg-field :offer="$offer"/>', ['offer' => $offer]));
     }
 
     public function reorder(Request $request, Offer $offer)

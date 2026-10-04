@@ -36,8 +36,6 @@
         @else
             <x-ui.pill :tone="$offer->state->tone()">{{ $offer->parkWord() ?? $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
         @endif
-        {{-- Мигторг — сразу за состоянием: что с фото и данными лота по номеру убытка и куда нажать. --}}
-        <x-offer.migtorg :offer="$offer" live/>
         @if ($offer->parkWord())
             <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="pill pill-plain">Снять с продажи</button></form>
         @endif
@@ -230,13 +228,18 @@
         if ($draft || $offer->state === OfferState::Gallery) $transitions = $transitions->except(OfferState::Open->value);
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
+    @php $deletable = ! $fromMail && $offer->isDeletableBy(auth()->user()); @endphp
     <x-ui.action-bar data-controller="sheet">
         @if ($fromMail)
             <form method="post" action="/offers/{{ $n }}/drop" class="contents">@csrf<x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Отменить</x-ui.button></form>
             <form method="post" action="/offers/{{ $n }}/drop" class="contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<input type="hidden" name="decline" value="1"><x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Не заявка</x-ui.button></form>
             <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @elseif ($draft && ! $admin)
-            {{-- Модератор заводит пачку подряд: «+ Новый» сохраняет и открывает следующий черновик с тем же вендором; публикует админ. --}}
+            {{-- Модератор заводит пачку подряд: «+ Новый» сохраняет и открывает следующий черновик с тем же вендором; публикует админ.
+                 Свой черновик удаляет сам — корзиной с подтверждением; чужой — нет. --}}
+            @if ($deletable)
+                <form method="post" action="/offers/{{ $n }}" class="draft-delete contents" data-turbo-confirm="Удалить черновик? Фото и документы удалятся вместе с ним">@csrf @method('delete')<x-ui.button variant="secondary" round class="btn-lg shrink-0" aria-label="Удалить черновик"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
+            @endif
             <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
             <x-ui.button form="offer-form" name="then" value="next" class="min-w-0 flex-1"><x-ui.icon name="plus" class="size-5"/>Новый</x-ui.button>
         @elseif ($draft)
@@ -249,7 +252,7 @@
         @else
             <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif
-        @if (($transitions->isNotEmpty() || $publishItems) && ! $fromMail)
+        @if (($transitions->isNotEmpty() || $publishItems || ($deletable && $admin)) && ! $fromMail)
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
             <x-ui.sheet id="offer-actions" title="Предложение № {{ $n }}">
                 <div class="flex flex-col gap-2">
@@ -262,6 +265,9 @@
                     @endforeach
                     @if ($canGarage)
                         <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="garage:open">Отдать в гараж</x-ui.button>
+                    @endif
+                    @if ($deletable && $admin)
+                        <form method="post" action="/offers/{{ $n }}" data-turbo-confirm="Удалить черновик? Фото и документы удалятся вместе с ним">@csrf @method('delete')<x-ui.button block variant="danger">Удалить черновик</x-ui.button></form>
                     @endif
                 </div>
             </x-ui.sheet>

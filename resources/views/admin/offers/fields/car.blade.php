@@ -15,7 +15,10 @@
     <x-ui.field name="vendor_id" label="Вендор" :options="$vendors" placeholder="—" :value="$offer->vendor_id" :required="$required"
         data-controller="vendor-vat" data-vendor-vat-ids-value="{{ json_encode($vatVendors) }}" data-action="change->vendor-vat#sync"
         :disabled="! auth()->user()->canManageCrm() && $offer->state !== \App\Offers\OfferState::Draft"/>
-    <x-ui.field name="claim_ref" :label="$offer->leaseRef() ? 'Номер ДЛ' : 'Номер убытка'" :value="$offer->claim_ref" :required="$required" autocapitalize="characters" autocorrect="off" spellcheck="false" copy/>
+    <x-ui.field name="claim_ref" :label="$offer->leaseRef() ? 'Номер ДЛ' : 'Номер убытка'" :value="$offer->claim_ref" :required="$required" autocapitalize="characters" autocorrect="off" spellcheck="false">
+        {{-- Справа в поле — Мигторг: ищет по вписанному номеру, нашёл — знак, нажали — данные и фото заполняются. --}}
+        <x-slot:suffix>@if ($offer->exists)<x-offer.migtorg-field :offer="$offer"/>@endif</x-slot:suffix>
+    </x-ui.field>
     <x-ui.vin :value="$offer->vin" span="col-span-2 lg:col-span-1">
         <x-slot:after-label><x-ui.eye-check name="show_vin" :checked="$offer->show_vin"/></x-slot:after-label>
     </x-ui.vin>

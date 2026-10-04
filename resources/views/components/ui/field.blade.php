@@ -1,4 +1,5 @@
-{{-- copy — иконка внутри поля справа: кладёт в буфер то, что сейчас введено (номер убытка, госномер, ПТС).
+{{-- copy — иконка внутри поля справа: кладёт в буфер то, что сейчас введено (госномер, ПТС). Слот suffix — своё
+     внутри поля справа вместо неё (номер убытка — значок Мигторга, x-offer.migtorg-field).
      required — звёздочка у подписи; без поля сервер не сохранит (атрибута required нет: поле в свёрнутом блоке
      браузер не покажет, и форма молча не уйдёт). --}}
 @props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false, 'required' => false])
@@ -38,6 +39,12 @@
         </select>
     @elseif ($type === 'textarea')
         <textarea id="{{ $id }}" name="{{ $name }}" placeholder="{{ $placeholder }}" {{ $attributes->except('id')->merge(['class' => 'field-input']) }}>{{ $bound }}</textarea>
+    @elseif (isset($suffix) && $suffix->isNotEmpty())
+        <div class="vin-box">
+            <input id="{{ $id }}" name="{{ $name }}" type="{{ $type }}" placeholder="{{ $placeholder }}" value="{{ $bound }}"
+                {{ $attributes->except('id')->merge(['class' => 'field-input'] + $keys) }}>
+            {{ $suffix }}
+        </div>
     @elseif ($copy)
         <div class="vin-box" data-controller="copy" data-copy-done-value="В буфере">
             <input id="{{ $id }}" name="{{ $name }}" type="{{ $type }}" placeholder="{{ $placeholder }}" value="{{ $bound }}" data-copy-target="field"
