@@ -154,10 +154,16 @@ class OfferController
         ]);
     }
 
+    /** Вендор Каркаде: на проде он «Carcade», локально «Каркаде» — как его ищет миграция закупок. */
+    private static function carcadeId(): ?int
+    {
+        return Vendor::whereRaw("name ilike '%каркаде%' or name ilike '%carcade%'")->value('id');
+    }
+
     /** Подставить в запрос «все вендоры „Без цены“, кроме Каркаде» (с «Без вендора»); нечего прятать — false. */
     private function hideCarcade(Request $request): bool
     {
-        $carcade = Vendor::where('name', 'Каркаде')->value('id');
+        $carcade = self::carcadeId();
         $base = self::scopeFor('unpriced', Offer::visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft()));
         $ids = (clone $base)->distinct()->pluck('vendor_id');
         if (! $carcade || ! $ids->contains($carcade)) {
@@ -244,7 +250,7 @@ class OfferController
         foreach (array_diff(array_keys(self::PRESETS), ['archive']) as $key) {
             $q = self::scopeFor($key, $base());
             // Без чипов (поток после «Оценить») «Без цены» считается как вид по умолчанию — без Каркаде.
-            if (! $facets && $key === 'unpriced' && ($carcade = Vendor::where('name', 'Каркаде')->value('id'))) {
+            if (! $facets && $key === 'unpriced' && ($carcade = self::carcadeId())) {
                 $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
             }
             if ($facets) {
