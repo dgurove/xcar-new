@@ -18,7 +18,7 @@ final class Caption
     public static function fields(Offer $offer, ?User $user): array
     {
         $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
-        $staff = $user?->isStaff() ?? false;
+        $staff = $user?->isAdmin() ?? false;
         $price = PriceView::for($offer, $user);
         // Цены — последней строкой: клиент собирает отмеченные сверху вниз, цены склеивает стрелкой «от → до» в конце.
         // VIN менеджеру — как на сайте: скрытый глазиком уходит маской.
@@ -49,7 +49,7 @@ final class Caption
     public static function car(Car $car, ?User $user): array
     {
         $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
-        $prices = $user?->role->canSeePrices() ?? false;
+        $prices = $user?->canSeePrices() ?? false;
         $rows = [
             ['number', 'Номер', str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl, true],
             ['city', 'Город', $car->settlement?->title() ?? $car->city, true],

@@ -2,6 +2,7 @@
 
 namespace App\Mail\Scan;
 
+use App\Mail\Extraction\AttachmentClassifier;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Message;
 use App\Support\Docs;
@@ -41,6 +42,27 @@ final class Files
             ->filter(fn (ScanFile $f) => DocumentText::scannable($f))
             ->unique(fn (ScanFile $f) => $f->scanSha() ?: $f->fileKey())
             ->sortBy(fn (ScanFile $f) => $f->isPhoto() ? 1 : 0)
+            ->values();
+    }
+
+    /**
+     * Документы в порядке чтения «Завести» (`x-mail.reader`): первым — где машина вернее всего. СТС и ПТС (VIN, год,
+     * цвет), потом заявка («Приложение № 3» Альфы Москва — машина только в нём), акт, прочие сканы, а договор,
+     * оценка, соглашение и осмотр — последними. Внутри яруса — порядок писем. Фото сами не читаются.
+     *
+     * @param  Collection<int, ScanFile>  $files
+     * @return Collection<int, ScanFile>
+     */
+    public static function rank(Collection $files): Collection
+    {
+        return $files->reject->isPhoto()
+            ->sortBy(fn (ScanFile $f) => match (true) {
+                in_array($kind = AttachmentClassifier::kindOf($f->scanName()), ['sts', 'pts'], true) => 0,
+                (bool) preg_match('/заявк|направлени|приложени\S*\s*№?\s*3(?!\d)/iu', $f->scanName()) => 1,
+                $kind === 'act' => 2,
+                $kind === null => 3,
+                default => 4,
+            })
             ->values();
     }
 }

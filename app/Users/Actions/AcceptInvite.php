@@ -36,7 +36,7 @@ final class AcceptInvite
                 'password' => $data['password'],
                 'phone' => $invite->allows('phone') ? ($data['phone'] ?? null) : null,
                 'email' => $invite->allows('email') ? ($data['email'] ?? null) : null,
-                'role' => $invite->role,
+                'roles' => [$invite->role],
                 'manager_id' => $buyer ? $invite->manager_id : null,
                 'invite_id' => $invite->id,
                 'contact_fields' => $buyer ? $invite->contactFields() : [],

@@ -9,7 +9,7 @@
     use App\Support\Plural;
     $offer = $car->offer;
     $user = auth()->user();
-    $staff = $user->isStaff();
+    $staff = $user->isAdmin();
     $n = $offer->number;
     $photo = $offer->mainPhoto();
     $s = \App\Garage\Settlement::of($car);

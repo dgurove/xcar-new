@@ -53,7 +53,7 @@ final class SeedDemo extends Command
     public function handle(InvoicePdf $pdf): int
     {
         $user = User::withoutGlobalScope('demo')->where('login', $this->argument('login'))->firstOrFail();
-        $user->forceFill(['role' => Role::Manager, 'is_demo' => true, 'approved_at' => $user->approved_at ?? now()])->save();
+        $user->forceFill(['roles' => [Role::Manager], 'is_demo' => true, 'approved_at' => $user->approved_at ?? now()])->save();
         // Дальше команда смотрит глазами демо-пользователя: демо-записи ей видны.
         Auth::setUser($user);
 
@@ -66,7 +66,7 @@ final class SeedDemo extends Command
 
             foreach ([['Алексей Смирнов', '70000000011'], ['Ольга Иванова', '70000000012']] as [$name, $phone]) {
                 User::withoutGlobalScope('demo')->updateOrCreate(['phone' => $phone], [
-                    'name' => $name, 'role' => Role::Buyer, 'manager_id' => $user->id, 'approved_at' => now(), 'password' => Str::random(32), 'access' => [],
+                    'name' => $name, 'roles' => [Role::Buyer], 'manager_id' => $user->id, 'approved_at' => now(), 'password' => Str::random(32), 'access' => [],
                 ])->forceFill(['is_demo' => true])->save();
             }
 

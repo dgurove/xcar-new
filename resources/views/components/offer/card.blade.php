@@ -13,7 +13,7 @@
     $main = $offer->mainPhoto();
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $hasMedia = $photos->isNotEmpty();
-    $canBid = ($user?->role->canBid() ?? false) && $offer->bidsOpen();
+    $canBid = ($user?->canBid() ?? false) && $offer->bidsOpen();
     // Покупатель: интерес уже отмечен? Каталог грузит его интерес одним запросом, иначе — точечно.
     $myInterest = $user?->isBuyer() ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
     $seen = $user?->isManager() && !$gallery ? \App\Offers\Showing::remembered($offer->id) : null;
@@ -24,7 +24,7 @@
     $nth = request()->attributes->get('card.nth', 0);
     request()->attributes->set('card.nth', $nth + 1);
     $eager = $nth < 2;
-    $bidder = $user?->role->canBid() ?? false;
+    $bidder = $user?->canBid() ?? false;
     $hasMarks = $offer->car_place || (!$gallery && ($offer->isFresh() || ($bidder && ($offer->isEndingSoon() || !$offer->bidsOpen() || $offer->secondsLeft()))));
 @endphp
 <article id="offer-{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card group']) }}>

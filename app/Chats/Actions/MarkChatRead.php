@@ -28,7 +28,7 @@ final class MarkChatRead
         $side = match (true) {
             ! $counterpart => [$chat->user_id],
             $chat->isBuyerChat() => [$chat->manager_id],
-            default => User::where('role', Role::Admin)->pluck('id')->all(),
+            default => User::withRole(Role::Admin)->pluck('id')->all(),
         };
         ($this->readNotices)($side, ['/account/chats/'.$chat->id]);
         $column = $counterpart ? 'unread_for_staff' : 'unread_for_user';

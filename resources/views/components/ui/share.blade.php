@@ -51,7 +51,7 @@
                         </label>
                     @endforeach
                 </div>
-                @if ($user?->isStaff())
+                @if ($user?->isAdmin())
                     <label class="check"><input type="checkbox" data-share-target="watermark" data-action="share#photosChanged"><span>Водяной знак на фото</span></label>
                 @endif
             @endif

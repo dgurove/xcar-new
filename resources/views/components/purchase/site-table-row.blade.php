@@ -3,7 +3,7 @@
      Нажатие — карточка. --}}
 @props(['car', 'purchase', 'query' => '', 'showKind' => false])
 @php
-    $staff = auth()->user()?->isStaff() ?? false;
+    $staff = auth()->user()?->isAdmin() ?? false;
     $mine = $staff ? null : $car->offerOf(auth()->user());
     $best = $staff ? $car->bestOffer() : null;
     $city = $car->settlement?->title() ?? $car->city;

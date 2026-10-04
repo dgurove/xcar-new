@@ -233,7 +233,7 @@ final class Notify
         if ($c->fresh()?->state !== CandidateState::New) {
             return;
         }
-        Notification::send(User::where('role', Role::Moderator)->get()->filter->canCrmMail(), new OfferLetterNotice($c));
+        Notification::send(User::withRole(Role::Moderator)->get()->filter->canCrmMail(), new OfferLetterNotice($c));
     }
 
     /** Письмо в ветку привязанной ТС — исполнителю её открытой заявки, без него — всем со стоянки. */
@@ -376,6 +376,6 @@ final class Notify
     /** Сторона площадки: подтверждения, интерес, сроки, деньги, чаты — админам; модератору их нет. */
     private function staff()
     {
-        return User::where('role', Role::Admin)->get();
+        return User::withRole(Role::Admin)->get();
     }
 }

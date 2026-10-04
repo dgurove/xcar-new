@@ -33,6 +33,10 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/requests/from-mail/{candidate}/scan', [ScanController::class, 'show']);
     Route::post('/requests/from-mail/{candidate}/scan', [ScanController::class, 'scan']);
     Route::post('/requests/from-mail/{candidate}/scan/apply', [ScanController::class, 'apply']);
+    // Читалка «Завести» в разборе письма: документы читаются сами по порядку, поля заполняются по ходу (x-mail.reader).
+    Route::get('/requests/from-mail/{candidate}/scan/live', [ScanController::class, 'readerLive']);
+    Route::post('/requests/from-mail/{candidate}/scan/read', [ScanController::class, 'readerRead']);
+    Route::post('/requests/from-mail/{candidate}/scan/stop', [ScanController::class, 'readerStop']);
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests/{req}', [RequestController::class, 'show']);
     Route::post('/requests/{req}/intake', [RequestController::class, 'intake']);

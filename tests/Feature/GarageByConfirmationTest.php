@@ -49,8 +49,8 @@ class GarageByConfirmationTest extends TestCase
     public function test_garage_confirmation_runs_route_to_garage_and_pays_manager_back(): void
     {
         Storage::fake('private');
-        $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'role' => Role::Admin, 'approved_at' => now()]);
-        $manager = User::create(['name' => 'Менеджер', 'phone' => '79000000002', 'role' => Role::Manager, 'approved_at' => now()]);
+        $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $manager = User::create(['name' => 'Менеджер', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Альфа тест']);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Alfa);
 

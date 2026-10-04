@@ -12,7 +12,7 @@ final class ManagerJoined extends Message
 
     protected function title(): string
     {
-        return $this->manager->isParking() ? 'Новый управляющий парковкой' : 'Новый '.mb_strtolower($this->manager->role->label());
+        return $this->manager->isParking() ? 'Новый управляющий парковкой' : 'Новый '.mb_strtolower($this->manager->rolesLabel());
     }
 
     protected function lines(): array

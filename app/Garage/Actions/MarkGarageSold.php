@@ -21,7 +21,7 @@ final class MarkGarageSold
         if ($car->isFrozen()) {
             throw ValidationException::withMessages(['sold_price' => 'По ТС выставлен счёт: сначала аннулируйте его']);
         }
-        $staff = $by->isStaff();
+        $staff = $by->isAdmin();
         if ($staff ? ! $car->state->isWorking() : ($car->state !== CarState::Selling || $car->manager_id !== $by->id)) {
             throw ValidationException::withMessages(['sold_price' => 'Продать можно машину в продаже']);
         }

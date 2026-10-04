@@ -12,7 +12,7 @@ class InterestController
     public function store(Request $request, Offer $offer, RegisterInterest $register)
     {
         $user = $request->user();
-        abort_unless($user->role->canInterest() && $offer->isVisibleTo($user), 404);
+        abort_unless($user->canInterest() && $offer->isVisibleTo($user), 404);
         $data = $request->validate(['comment' => ['nullable', 'string', 'max:500']]);
         $register($offer, $user, $data['comment'] ?? null);
 

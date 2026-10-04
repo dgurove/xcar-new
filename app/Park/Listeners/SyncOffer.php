@@ -118,6 +118,6 @@ final class SyncOffer
 
     private function system(): User
     {
-        return User::where('role', Role::Admin)->orderBy('id')->firstOrFail();
+        return User::withRole(Role::Admin)->orderBy('id')->firstOrFail();
     }
 }

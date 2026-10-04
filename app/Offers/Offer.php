@@ -335,31 +335,56 @@ class Offer extends Model implements HasMedia
         if ($user->isAdmin()) {
             return $q;
         }
+        // Ролей может быть несколько (менеджер и модератор): видно то, что видно хоть одной из них.
+        $any = false;
+        $q->where(function ($w) use ($user, &$any) {
+            if ($user->isModerator()) {
+                $any = true;
+                $w->orWhere(fn ($m) => $m->whereIn('moderator_id', $user->teamIds())->whereDoesntHave('purchaseCar'));
+            }
+            if ($user->hasRole(Role::Manager)) {
+                $any = true;
+                $w->orWhere(fn ($m) => $m->whereIn('state', [OfferState::Open, OfferState::Gallery])
+                    ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now())));
+            }
+            // Проверяющий: открытые, которые всем сразу и без исключений; без показов и менеджера.
+            if ($user->hasRole(Role::Reviewer)) {
+                $any = true;
+                $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)->where(fn ($r) => $r->whereNull('audience_rules')
+                    ->orWhereRaw("audience_rules = '[{\"id\": null, \"type\": \"rest\", \"delay\": 0}]'::jsonb")));
+            }
+            if ($user->hasRole(Role::Buyer)) {
+                $any = true;
+                if (! $user->manager_id) {
+                    $w->orWhereRaw('false');
+                } else {
+                    $groups = $user->groupIds();
+                    $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
+                        ->whereHas('showings', fn ($s) => $s->where('manager_id', $user->manager_id)
+                            ->where(fn ($g) => $g->where('user_id', $user->id)->when($groups, fn ($g) => $g->orWhereIn('group_id', $groups))))
+                        ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->manager_id)->where('opens_at', '<=', now())));
+                }
+            }
+        });
+
+        // Ни одной роли с предложениями (посетитель, «Парковка») — только галерея.
+        return $any ? $q : $q->where('state', OfferState::Gallery);
+    }
+
+    /**
+     * Предложения в CRM: админу — все, модератору — его группы не из закупки. Не то же, что `visibleTo`: модератор, который
+     * ещё и менеджер, на сайте видит открытое своего круга, но в CRM правит только черновики группы.
+     */
+    public function scopeInCrm(Builder $q, User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return $q;
+        }
         if ($user->isModerator()) {
             return $q->whereIn('moderator_id', $user->teamIds())->whereDoesntHave('purchaseCar');
         }
-        if ($user->role === Role::Manager) {
-            return $q->whereIn('state', [OfferState::Open, OfferState::Gallery])
-                ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now()));
-        }
-        // Проверяющий: открытые, которые всем сразу и без исключений; без показов и менеджера.
-        if ($user->role === Role::Reviewer) {
-            return $q->where('state', OfferState::Open)->where(fn ($w) => $w->whereNull('audience_rules')
-                ->orWhereRaw("audience_rules = '[{\"id\": null, \"type\": \"rest\", \"delay\": 0}]'::jsonb"));
-        }
-        if ($user->role === Role::Buyer) {
-            if (! $user->manager_id) {
-                return $q->whereRaw('false');
-            }
-            $groups = $user->groupIds();
 
-            return $q->where('state', OfferState::Open)
-                ->whereHas('showings', fn ($s) => $s->where('manager_id', $user->manager_id)
-                    ->where(fn ($w) => $w->where('user_id', $user->id)->when($groups, fn ($w) => $w->orWhereIn('group_id', $groups))))
-                ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->manager_id)->where('opens_at', '<=', now()));
-        }
-
-        return $q->where('state', OfferState::Gallery);
+        return $q->whereRaw('false');
     }
 
     /** Страница предложения: круг видимости, а своё подтверждение открывает её в любом состоянии — без 404 после решения. */
@@ -372,7 +397,7 @@ class Offer extends Model implements HasMedia
     /** CRM: что человеку можно открыть и править. Админу — всё, модератору — предложения его группы не из закупки. */
     public function isEditableBy(User $user): bool
     {
-        return $user->isAdmin() || ($user->isModerator() && self::query()->whereKey($this->id)->visibleTo($user)->exists());
+        return $user->isAdmin() || ($user->isModerator() && self::query()->whereKey($this->id)->inCrm($user)->exists());
     }
 
     // ------------------------------------------------------------ подписи

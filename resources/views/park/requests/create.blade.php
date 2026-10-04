@@ -1,8 +1,8 @@
 {{-- Разбор письма (`?candidate=`): поля дела, над ними документы письма — скан заявки страховой открывается
      шторкой сам, читаешь и тут же переписываешь, не уходя со страницы; цепочка писем лентой рядом (ниже на телефоне). Заголовок — сама ТС, под ним теги, как в почте;
      своими словами письмо не пересказывается. Кнопка называет исход: заявка на приём, стоящей, и выдать,
-     привязать письма к уже заведённой ТС. Над полями — строка «Заполнить из документов» (окно «Из документов» этой
-     цепочки): подставленное ложится в выбор цепочки, и форма перерисовывается уже с ним.
+     привязать письма к уже заведённой ТС. Под полями машины — блок «Документы» с читалкой «Завести»: документы письма
+     читаются сами по порядку, пустые поля заполняются по ходу, расхождения — строками над полями.
      Без кандидата это прежняя ручная «Новая заявка» одной колонкой; тип «приём» / «эвакуация» решает «Доставка». --}}
 @php
     use App\Mail\CandidateStage;
@@ -43,15 +43,26 @@
     <div class="@container">
     <div class="grid items-start gap-4 {{ $letters ? '@4xl:grid-cols-[minmax(0,1fr)_28rem]' : '' }}">
         <div class="flex min-w-0 flex-col gap-4 {{ $letters ? '@4xl:sticky @4xl:top-24 @4xl:col-start-2 @4xl:row-start-1 @4xl:max-h-[calc(100dvh-8rem)] @4xl:overflow-y-auto @4xl:-mr-2 @4xl:pr-2' : '' }}">
+        @php
+            // Читалка «Завести» (x-mail.reader-body): документы новой цепочки читаются сами, поля ниже заполняются по
+            // ходу. Её документы — листами в блоке «Документы»; чипами над формой остаётся то, чего она не читает:
+            // письмо, Excel и Word, фото.
+            $reader = $candidate?->state === \App\Mail\CandidateState::New && ! $vehicle && in_array($type, [RequestType::Intake, RequestType::Tow], true) ? new \App\Mail\Scan\CandidateSubject($candidate) : null;
+            $read = $reader ? \App\Mail\Scan\Reader::files($reader) : collect();
+            $reader = $read->isNotEmpty() ? $reader : null;
+            $readUrls = $read->map(fn ($f) => $reader->mail().'/attachments/'.$f->scanId())->all();
+            $docs = array_values(array_filter($docs, fn ($d) => ! in_array($d['url'], $readUrls, true)));
+        @endphp
         @if ($docs)
-            @php $auto = collect($docs)->firstWhere('type', 'pdf'); @endphp
+            @php $auto = $reader ? null : collect($docs)->firstWhere('type', 'pdf'); @endphp
             <div class="pills shrink-0">
                 @foreach ($docs as $doc)
                     <x-ui.doc :doc="$doc" :auto="$doc === $auto" class="pill pill-plain min-w-0 max-w-[14rem] gap-1.5"><x-ui.icon :name="match ($doc['type']) { 'letter' => 'mail', 'photos' => 'photo', default => 'file' }" class="size-4 shrink-0"/><span class="truncate">{{ $doc['label'] }}</span></x-ui.doc>
                 @endforeach
             </div>
         @endif
-        <form method="post" action="/requests" id="request-form" data-controller="vin draft next" class="flex min-w-0 flex-col gap-4">
+        {{-- Черновик — свой у каждой цепочки: адрес формы у всех один, и цвет одной машины вставал в форму другой. --}}
+        <form method="post" action="/requests" id="request-form" data-controller="vin draft next" @if ($candidate) data-draft-key-value="/requests/new/{{ $candidate->id }}" @endif class="flex min-w-0 flex-col gap-4">
             @csrf
             <input type="hidden" name="type" value="{{ $type->value }}">
             @if ($candidate)
@@ -69,14 +80,17 @@
                 <input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}">
             @elseif (in_array($type, [RequestType::Intake, RequestType::Tow], true))
                 <x-ui.card title="Транспортное средство">
-                    @php $scanFiles = $candidate?->state === \App\Mail\CandidateState::New ? (new \App\Mail\Scan\CandidateSubject($candidate))->files() : collect(); @endphp
-                    @if ($scanFiles->isNotEmpty())
-                        <div class="list mb-3"><x-mail.scan-button :url="'/requests/from-mail/'.$candidate->id.'/scan'" :fill="! ($v('brand') && $v('model') && $v('vin') && $v('year') && $v('color'))" :files="$scanFiles"/></div>
-                    @endif
+                    @if ($reader)<x-mail.reader-diffs form="request-form" class="mb-3"/>@endif
                     {{-- Руками (не из письма): первым — поле для текста про машину, поля заполнятся из него. --}}
                     @unless ($candidate)<div class="mb-3"><x-ui.paste/></div>@endunless
                     <x-park.vehicle-fields :values="$p" :brand="$p['brand'] ?? null" :model="$p['model'] ?? null" :vendors="$vendors" :categories="$categories" :cols="$letters ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'" :candidate="$candidate?->id"/>
                 </x-ui.card>
+                @if ($reader)
+                    <x-ui.card title="Документы" data-controller="reader" data-reader-url-value="{{ $reader->url() }}" data-reader-subject-value="{{ $reader->key() }}" data-reader-form-value="request-form" data-reader-auto-value="true" data-scan-subject="{{ $reader->url() }}" data-scan-reader>
+                        <x-slot:actions><x-mail.reader-spark/></x-slot:actions>
+                        <x-mail.reader-body :subject="$reader" keep open/>
+                    </x-ui.card>
+                @endif
             @else
                 <x-ui.card title="Транспортное средство">
                     <x-ui.combobox name="vehicle_id" label="Номер убытка, VIN или госномер" url="/reference/cars"/>

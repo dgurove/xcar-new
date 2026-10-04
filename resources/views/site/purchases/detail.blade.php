@@ -5,7 +5,7 @@
      строка — свежей из row. --}}
 @php
     $user = auth()->user();
-    $staff = $user?->isStaff() ?? false;
+    $staff = $user?->isAdmin() ?? false;
     $mine = $staff ? null : $car->offerOf($user);
     $best = $staff ? $car->bestOffer() : null;
     $suffix = $query ? '?'.$query : '';

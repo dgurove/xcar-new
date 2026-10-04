@@ -1412,6 +1412,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Кнопка в работе — только кольцо: число в ней просвечивало сквозь него. */
   .scan-foot .btn[aria-busy="true"] > * { visibility: hidden; }
   @media (prefers-reduced-motion: reduce) { .scan-spin { animation: none; border-top-color: var(--color-accent); opacity: .5; } }
+  /* Читалка «Завести» (x-mail.reader-body) в блоке «Документы»: строка хода «Читаю 2 из 4» с полосой и «Стоп», под ней
+     лента тех же листов, что в окне. На телефоне лента — прокруткой вбок, листы не мельче трети экрана. Прочитано
+     или не начато — в редакторе предложения читалки не видно (документы — списком ниже), в разборе письма (data-keep)
+     лента остаётся: это и есть документы письма. */
+  .reader-head { @apply mb-3 flex items-center gap-3 text-sm text-ink-muted; }
+  .reader-sheets { @apply -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:grid sm:grid-cols-4 sm:overflow-visible; scrollbar-width: none; }
+  .reader-sheets > .scan-doc { @apply w-[30%] shrink-0 snap-start sm:w-auto; }
+  .reader-sheets > .scan-doc:not(.scan-doc--done, .scan-doc--busy) .scan-sheet img { opacity: .6; }
+  .reader:not([data-keep]):is([data-state="idle"], [data-state="done"]) { display: none; }
   .chain-card > .chain-head { margin-bottom: .375rem; min-height: 1.875rem; }
   @media (min-width: 768px) {
     .chain-card > .chain-head > :first-child { display: flex; align-items: baseline; gap: .75rem; }

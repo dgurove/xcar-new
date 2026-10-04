@@ -26,13 +26,13 @@ final class PriceView
 
     public static function for(Offer $offer, ?User $user, bool $crm = false): self
     {
-        if (! $user || $offer->isGallery() || ! $user->role->canSeePrices()) {
+        if (! $user || $offer->isGallery() || ! $user->canSeePrices()) {
             return new self(false, null, null, (bool) $offer->prices_include_vat, null);
         }
         $staffCrm = $crm && $user->isStaff();
         $from = match (true) {
             $staffCrm => $offer->floor_price,
-            $user->isStaff(), $user->role === Role::Manager => $offer->declaredPrice(),
+            $user->isAdmin(), $user->isManager() => $offer->declaredPrice(),
             default => null,
         };
         $declared = $staffCrm && $offer->declaredPrice() !== $offer->floor_price ? $offer->declaredPrice() : null;

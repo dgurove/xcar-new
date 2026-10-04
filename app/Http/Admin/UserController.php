@@ -45,8 +45,8 @@ class UserController
 {
     public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'park' => 'Парковка', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
 
-    /** Роли, которые админ выставляет в списке; заводят людей только пригласительной ссылкой. */
-    public const ROLES = [Role::Moderator, Role::Admin, Role::Manager, Role::Parking];
+    /** Роли, которые админ отмечает галками (ролей у человека может быть несколько); заводят людей только ссылкой. */
+    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Parking, Role::Reviewer];
 
     /** Один экран на двух хостах: в CRM /settings/users, в кабинете сайта /account/users. */
     public static function base(): string
@@ -74,14 +74,14 @@ class UserController
         // Лупа — по всем людям, мимо пилюли и чипов.
         if (! $searching) {
             match ($preset) {
-                'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->reorder('created_at', 'desc'),
+                'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->withRole(Role::Visitor)->reorder('created_at', 'desc'),
                 'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
-                'managers' => $q->where('role', Role::Manager)->withCount('buyers'),
-                'park' => $q->where('role', Role::Parking),
-                'buyers' => $q->where('role', Role::Buyer)->reorder('created_at', 'desc'),
-                'visitors' => $q->where('role', Role::Visitor)->whereNotNull('approved_at'),
+                'managers' => $q->withRole(Role::Manager)->withCount('buyers'),
+                'park' => $q->withRole(Role::Parking),
+                'buyers' => $q->withRole(Role::Buyer)->reorder('created_at', 'desc'),
+                'visitors' => $q->withRole(Role::Visitor)->whereNotNull('approved_at'),
                 'invites' => $q->whereRaw('false'),
-                default => $q->whereIn('role', [Role::Admin, Role::Moderator]),
+                default => $q->withRole(Role::Admin, Role::Moderator),
             };
         }
         // Группы — над списком своего вида: менеджеров в «Менеджерах», модераторов в «Сотрудниках» (только в CRM).
@@ -95,13 +95,13 @@ class UserController
         }
         $facets->apply($q);
         $counts = [
-            'staff' => User::whereIn('role', [Role::Admin, Role::Moderator])->count(),
-            'managers' => User::where('role', Role::Manager)->count(),
-            'park' => User::where('role', Role::Parking)->count(),
-            'buyers' => User::where('role', Role::Buyer)->count(),
+            'staff' => User::withRole(Role::Admin, Role::Moderator)->count(),
+            'managers' => User::withRole(Role::Manager)->count(),
+            'park' => User::withRole(Role::Parking)->count(),
+            'buyers' => User::withRole(Role::Buyer)->count(),
             'invites' => Invite::whereNull('disabled_at')->where(fn ($w) => $w->whereNull('max_uses')->orWhereColumn('uses_count', '<', 'max_uses'))->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count(),
-            'waiting' => User::whereNull('approved_at')->whereNull('rejected_at')->where('role', Role::Visitor)->count(),
-            'visitors' => User::where('role', Role::Visitor)->whereNotNull('approved_at')->count(),
+            'waiting' => User::whereNull('approved_at')->whereNull('rejected_at')->withRole(Role::Visitor)->count(),
+            'visitors' => User::withRole(Role::Visitor)->whereNotNull('approved_at')->count(),
             'rejected' => User::whereNotNull('rejected_at')->whereNull('approved_at')->count(),
         ];
         // Прежний допуск по заявке остался в коде, но людей там больше не бывает — пустые пилюли не показываем.
@@ -115,7 +115,7 @@ class UserController
             'preset' => $preset,
             'pills' => $pills,
             'counts' => $counts,
-            'managers' => User::where('role', Role::Manager)->orderBy('name')->get(),
+            'managers' => User::withRole(Role::Manager)->orderBy('name')->get(),
             // Все ссылки — и админские, и менеджерские: админ видит, кто кого зовёт.
             'invites' => $preset === 'invites' ? InviteController::listFor($request->user()) : collect(),
             'groupKind' => $kind,
@@ -177,7 +177,7 @@ class UserController
             'buyersCount' => $user->isManager() ? $user->buyers()->count() : 0,
             'interests' => $user->isBuyer() ? $user->interests()->with(['offer.brand', 'offer.model', 'offer.media'])->latest()->get() : collect(),
             'seen' => $user->isBuyer() ? Offer::where('state', OfferState::Open)->visibleTo($user)->count() : null,
-            'managers' => $me->isAdmin() ? User::where('role', Role::Manager)->orderBy('name')->get() : collect(),
+            'managers' => $me->isAdmin() ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
             'link' => session('password_link'),
         ]);
     }
@@ -254,7 +254,7 @@ class UserController
         if (self::traces($user)) {
             return back()->with('toast', 'За '.$user->shortName().' есть история — только закрыть доступ');
         }
-        $preset = $user->isRejected() ? 'rejected' : $this->presetOf($user->role);
+        $preset = $user->isRejected() ? 'rejected' : $this->presetOf($user);
         $decide->reject($user, $request->user());
         $user->delete();
 
@@ -292,7 +292,7 @@ class UserController
         if ($user->isBuyer()) {
             $data = $request->validate([
                 'name' => ['required', 'string', 'max:100'],
-                'manager_id' => ['required', Rule::exists('users', 'id')->where('role', Role::Manager->value)],
+                'manager_id' => ['required', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))],
             ]);
             $user->update(['name' => $data['name']]);
             $transfer($user, User::find($data['manager_id']));
@@ -301,14 +301,26 @@ class UserController
         }
         // Себя из администраторов не разжаловать: иначе в панель никто не зайдёт — data() оставляет Admin.
         $data = $this->data($request, $user);
+        // Сняли «Менеджер» у того, у кого есть покупатели, — они переходят к выбранному менеджеру (без него не сохраняем).
+        $leaving = $user->isManager() && ! in_array(Role::Manager, $data['roles'], true) && $user->buyers()->exists();
+        if ($leaving) {
+            $to = $request->validate(['transfer_to' => ['required', Rule::exists('users', 'id')->whereNot('id', $user->id)->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))]],
+                ['transfer_to.required' => 'Выберите менеджера, к которому перейдут покупатели'])['transfer_to'];
+        }
         // Роль ждущему через шторку — это и есть допуск: без approved_at менеджер остался бы за стеной и пропал бы из «Ждут».
-        if (! $user->isApproved() && $data['role'] !== Role::Visitor) {
+        if (! $user->isApproved() && $data['roles'] !== [Role::Visitor]) {
             $data += ['approved_at' => now(), 'approved_by' => $request->user()->id, 'rejected_at' => null];
         }
-        $user->update($data);
-        // Группы — его вида (UserGroup): менеджеру — для волн показа, модератору — общие предложения.
+        DB::transaction(function () use ($user, $data, $leaving, $transfer) {
+            if ($leaving) {
+                $target = User::find(request()->input('transfer_to'));
+                $user->buyers()->get()->each(fn (User $buyer) => $transfer($buyer, $target));
+            }
+            $user->update($data);
+        });
+        // Группы — видов его ролей (UserGroup): менеджеру — для волн показа, модератору — общие предложения.
         $before = $user->userGroups()->pluck('user_groups.id')->all();
-        $user->syncUserGroups((array) $request->input($user->isModerator() ? 'moderator_groups' : 'manager_groups', []));
+        $user->syncUserGroups([...(array) $request->input('moderator_groups', []), ...(array) $request->input('manager_groups', [])]);
         if ($user->isManager() && $before !== $user->userGroups()->pluck('user_groups.id')->all()) {
             $sync->all();
         }
@@ -330,9 +342,12 @@ class UserController
             'phone' => ['nullable', 'digits:11', Rule::unique('users', 'phone')->ignore($user)],
             'email' => ['nullable', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user)],
             'login' => ['nullable', 'string', \App\Http\Auth\InviteController::LOGIN_RULE, Rule::unique('users', 'login')->ignore($user)],
-            'role' => [$self ? 'nullable' : 'required', Rule::enum(Role::class), Rule::notIn([Role::Buyer->value])],
+            'roles' => [$self ? 'nullable' : 'required', 'array', 'min:1'],
+            'roles.*' => [Rule::in(array_map(fn (Role $r) => $r->value, self::ROLES))],
         ], [
             'login.regex' => 'Логин — латиницей, от трёх знаков: буквы, цифры, точка',
+            'roles.required' => 'Отметьте хотя бы одну роль',
+            'roles.min' => 'Отметьте хотя бы одну роль',
         ]);
         if (! $data['phone'] && ! $data['email'] && ! ($data['login'] ?? null)) {
             throw ValidationException::withMessages(['phone' => 'Нужен телефон, почта или логин — чем-то человек должен входить']);
@@ -340,17 +355,21 @@ class UserController
         $data['email'] = $data['email'] ?: null;
         $data['phone'] = $data['phone'] ?: null;
         $data['login'] = $data['login'] ?? null;
-        $data['role'] = $self ? Role::Admin : Role::from($data['role']);
+        // Ролей бывает несколько; себе админ «Админ» не снимет — остаётся при любых галках.
+        $roles = array_map(fn ($r) => Role::from($r), (array) ($data['roles'] ?? []));
+        if ($self && ! in_array(Role::Admin, $roles, true)) {
+            $roles[] = Role::Admin;
+        }
+        $data['roles'] = array_values(array_unique($roles, SORT_REGULAR));
         // Доступ к парковке — только у роли «Парковка»: что открыто сверх основы, своя парковка, только приёмка.
-        $park = $data['role'] === Role::Parking;
+        $park = in_array(Role::Parking, $data['roles'], true);
         $request->validate(['areas' => ['nullable', 'array'], 'areas.*' => [Rule::in(Area::values())], 'park_yard_id' => ['nullable', Rule::exists('park_yards', 'id')]]);
         $request->validate(['crm_areas' => ['nullable', 'array'], 'crm_areas.*' => [Rule::in(CrmArea::values())]]);
-        $data['access'] = match ($data['role']) {
-            Role::Parking => array_values(array_intersect(Area::values(), (array) $request->input('areas', []))),
-            // Модератору — что открыто сверх черновиков (почта CRM).
-            Role::Moderator => array_values(array_intersect(CrmArea::values(), (array) $request->input('crm_areas', []))),
-            default => [],
-        };
+        // Галки областей — у каждой роли свои, в одном списке: парковке — разделы парковки, модератору — сверх черновиков (почта CRM).
+        $data['access'] = [
+            ...($park ? array_values(array_intersect(Area::values(), (array) $request->input('areas', []))) : []),
+            ...(in_array(Role::Moderator, $data['roles'], true) ? array_values(array_intersect(CrmArea::values(), (array) $request->input('crm_areas', []))) : []),
+        ];
         $data['park_yard_id'] = $park && $request->filled('park_yard_id') ? (int) $request->input('park_yard_id') : null;
         $data['park_readonly'] = $park && $request->boolean('park_readonly');
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
@@ -358,10 +377,10 @@ class UserController
         return $data;
     }
 
-    private function presetOf(Role $role): string
+    private function presetOf(User $user): string
     {
-        return match ($role) {
-            Role::Manager => 'managers', Role::Visitor => 'visitors', Role::Parking => 'park', default => 'staff'
+        return match (true) {
+            $user->isStaff() => 'staff', $user->isManager() => 'managers', $user->isParking() => 'park', $user->hasRole(Role::Visitor) => 'visitors', default => 'staff'
         };
     }
 }

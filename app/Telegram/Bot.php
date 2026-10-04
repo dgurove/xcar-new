@@ -59,7 +59,7 @@ class Bot
      */
     public function ownerChats(): array
     {
-        $admins = User::where('role', Role::Admin)->whereNotNull('telegram_chat_id')->pluck('telegram_chat_id')->map(fn ($id) => (int) $id)->all();
+        $admins = User::withRole(Role::Admin)->whereNotNull('telegram_chat_id')->pluck('telegram_chat_id')->map(fn ($id) => (int) $id)->all();
 
         return array_values(array_unique(array_filter([$this->ownerChatId(), ...$admins])));
     }

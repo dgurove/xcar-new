@@ -3,7 +3,7 @@
 @php
     $gallery = $offer->isGallery();
     // Срок приёма — тем, кто подтверждает ценой; покупателю метки приёма ни о чём.
-    $bids = auth()->user()?->role->canBid() ?? false;
+    $bids = auth()->user()?->canBid() ?? false;
     $left = $gallery || !$bids ? null : $offer->secondsLeft();
     // Срок словами; рядом с «Заканчивается» — голым числом: слово уже сказано, и на кадре плитки две метки иначе не влезают.
     $word = $offer->isEndingSoon() ? '' : 'осталось';

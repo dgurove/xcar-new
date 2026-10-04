@@ -6,7 +6,7 @@
     use App\Garage\CarState;
     use App\Support\Money;
     use App\Support\Plural;
-    $staff = auth()->user()->isStaff();
+    $staff = auth()->user()->isAdmin();
     $days = fn (int $d) => $d.' '.Plural::of($d, ['день', 'дня', 'дней']);
     [$closed, $open] = $cars->partition(fn ($c) => $c->state === CarState::Settled);
     $open = $open->sortBy(fn ($c) => [$c->deal?->openRequirement ? 0 : 1, $c->state->order(), $c->stage_at?->timestamp ?? 0])->values();

@@ -111,7 +111,7 @@ class Showing extends Model
     /** Сводка для CRM: сколько покупателей у скольких менеджеров, по менеджерам. */
     public static function summary(Offer $offer): Collection
     {
-        return User::where('role', Role::Manager)
+        return User::withRole(Role::Manager)
             ->whereIn('id', self::where('offer_id', $offer->id)->select('manager_id'))
             ->orderBy('name')->get()
             ->map(fn (User $m) => ['manager' => $m, 'buyers' => self::buyerIdsOf($offer, $m->id)->count()]);

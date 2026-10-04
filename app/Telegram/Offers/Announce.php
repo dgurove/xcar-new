@@ -35,14 +35,14 @@ final class Announce
         $slot = $now->copy()->setTime((int) config('xcar.slot_hour'), 0);
         if ($now->hour >= 13 && $now->lt($slot)) {
             $chats = DB::connection('pgsql_async')->table('offer_bot_chats as s')->join('users as u', 'u.id', '=', 's.user_id')
-                ->whereNull('s.blocked_at')->whereNull('s.muted_at')->where('u.role', Role::Manager->value)
+                ->whereNull('s.blocked_at')->whereNull('s.muted_at')->whereRaw('jsonb_exists(u.roles, ?)', [Role::Manager->value])
                 ->where(fn ($q) => $q->whereNull('s.morning_on')->orWhere('s.morning_on', '<', $now->toDateString()))->pluck('s.chat_id');
             foreach ($chats as $chat) {
                 $items[] = ['timer' => 'morning', 'chat_id' => (int) $chat];
             }
         }
         $fresh = DB::select("select distinct s.chat_id from offer_bot_chats s
-            join users u on u.id = s.user_id and u.role = ?
+            join users u on u.id = s.user_id and jsonb_exists(u.roles, ?)
             join offer_viewers v on v.user_id = s.user_id
             join offers o on o.id = v.offer_id
             where s.blocked_at is null and s.muted_at is null

@@ -60,8 +60,8 @@ final class Invites
     /** Админ: сколько менеджеров и покупателей на площадке, две кнопки — кого звать, и последняя живая ссылка менеджеру. */
     private function admin(Subscriber $sub): void
     {
-        $managers = User::where('role', Role::Manager)->count();
-        $buyers = User::where('role', Role::Buyer)->count();
+        $managers = User::withRole(Role::Manager)->count();
+        $buyers = User::withRole(Role::Buyer)->count();
         $this->bot->quietly(fn () => $this->bot->say($sub->chat_id,
             $managers.' '.Plural::of($managers, ['менеджер', 'менеджера', 'менеджеров']).', '.$buyers.' '.Plural::of($buyers, ['покупатель', 'покупателя', 'покупателей']),
             Keys::toMenu()));
@@ -81,7 +81,7 @@ final class Invites
     /** Покупатель приходит к менеджеру: сначала — к какому. */
     private function pickManager(Subscriber $sub): void
     {
-        $rows = User::where('role', Role::Manager)->whereNotNull('approved_at')->orderBy('name')->get(['id', 'name'])
+        $rows = User::withRole(Role::Manager)->whereNotNull('approved_at')->orderBy('name')->get(['id', 'name'])
             ->map(fn (User $m) => ['text' => $m->shortName(), 'callback_data' => self::FOR.$m->id])->chunk(2)->map(fn ($r) => $r->values()->all())->values()->all();
         $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, $rows ? 'От какого менеджера?' : 'Менеджеров пока нет', $rows ? Keys::inline($rows) : null));
     }
@@ -89,7 +89,7 @@ final class Invites
     /** «➕ Новая ссылка»: сначала — кому (название видно в кабинете и CRM). У админа — от имени выбранного менеджера. */
     public function ask(Subscriber $sub, ?int $managerId = null): void
     {
-        if ($managerId && ! User::where('role', Role::Manager)->whereKey($managerId)->exists()) {
+        if ($managerId && ! User::withRole(Role::Manager)->whereKey($managerId)->exists()) {
             return;
         }
         $sub->forceFill(['payload' => $managerId ? ['manager_id' => $managerId] : null])->save();

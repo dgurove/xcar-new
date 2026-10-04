@@ -37,7 +37,7 @@ class CatalogController
 
     public function gallery(Request $request)
     {
-        abort_unless($request->user()?->role->canSeeGallery() ?? true, 404);
+        abort_unless($request->user()?->canSeeGallery() ?? true, 404);
 
         return $this->list($request, gallery: true);
     }
@@ -52,7 +52,7 @@ class CatalogController
         $facets = Facets::for($request, $gallery ? 'gallery' : 'catalog', ...CatalogQuery::facets());
         ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog', keep: $facets->keys());
         $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
-        $prices = ! $gallery && ($user?->role->canSeePrices() ?? false);
+        $prices = ! $gallery && ($user?->canSeePrices() ?? false);
         $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
         // Сужено — чем угодно, кроме сортировки: запомненная сортировка (ListPrefs) список не сужает.
         $narrowed = (bool) array_diff_key($filters, ['sort' => 1]);
@@ -68,7 +68,7 @@ class CatalogController
         // Счётчики на каждый запрос списка — полминуты в кэше, слабому серверу легче.
         // Сотруднику — общие; менеджеру и покупателю выдача своя, считаем по ней и без кэша: после «Показать…» число должно сойтись сразу.
         // Везде — только то, что в продаже (`Offer::scopeOnSale`): срок вышел или идёт сделка — с сайта ушло.
-        $counts = $user?->isStaff()
+        $counts = $user?->isAdmin()
             ? Cache::remember('catalog.counts', 30, fn () => [
                 'offers' => Offer::onSale()->count(),
                 'gallery' => Offer::where('state', OfferState::Gallery)->count(),
@@ -78,11 +78,11 @@ class CatalogController
             : [
                 // Без фильтров «Все» — это и есть длина списка: второй раз не считаем.
                 'offers' => ! $gallery && ! $narrowed ? $count : Offer::visibleTo($user)->onSale()->count(),
-                'gallery' => $user?->role->canSeeGallery() ? Offer::visibleTo($user)->where('state', OfferState::Gallery)->count() : 0,
+                'gallery' => $user?->canSeeGallery() ? Offer::visibleTo($user)->where('state', OfferState::Gallery)->count() : 0,
                 'recommended' => Offer::visibleTo($user)->when($gallery, fn ($q) => $q->where('state', OfferState::Gallery), fn ($q) => $q->onSale())->where('recommended', true)->count(),
             ];
         // «Рекомендуем» — сколько отмеченных в этом разделе: пилюля с числом, без отмеченных пилюли нет.
-        $recommended = $counts[$gallery && $user?->isStaff() ? 'recommended_gallery' : 'recommended'] ?? 0;
+        $recommended = $counts[$gallery && $user?->isAdmin() ? 'recommended_gallery' : 'recommended'] ?? 0;
 
         $offers = ListView::paginate($request, $query, $count);
         Showing::remember($user, $offers->pluck('id')->all());

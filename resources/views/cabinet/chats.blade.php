@@ -15,14 +15,14 @@
     // сотруднику из чата площадки — карточка человека на этом же хосте.
     $link = match (true) {
         ! $mine || ! $other => null,
-        $me->isStaff() => '/account/users/'.$other->id.'?chat='.$chat->id,
+        $me->isAdmin() => '/account/users/'.$other->id.'?chat='.$chat->id,
         $other->manager_id === $me->id => '/buyers/'.$other->id.'?chat='.$chat->id,
         default => null,
     };
     $status = $mine ? false : \App\Chats\Hours::presence(feminine: $other === null);
     $others = $mine || ! $other ? collect() : $chats->filter(fn ($c) => $c->manager_id === $other->id && $c->id !== $chat?->id);
     // «Администрация XCar» в списке есть всегда: обращения ещё нет — строка ведёт на пустой экран.
-    $support = !$me->isStaff() && $chats->doesntContain(fn ($c) => $c->isEnquiry());
+    $support = !$me->isAdmin() && $chats->doesntContain(fn ($c) => $c->isEnquiry());
 @endphp
 <x-ui.cabinet :title="$current ? $name : 'Чаты'">
     <div class="chat-split {{ $current ? 'has-current' : '' }}" data-controller="split">

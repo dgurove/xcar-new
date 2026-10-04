@@ -24,7 +24,7 @@ final class AddCost
             'title' => $data['title'],
             'amount' => $data['amount'],
             'spent_at' => $data['spent_at'] ?? now()->toDateString(),
-            'payer' => $by->isStaff() ? Payer::Xcar : Payer::Manager,
+            'payer' => $by->isAdmin() ? Payer::Xcar : Payer::Manager,
             'created_by' => $by->id,
         ]);
         GarageChanged::dispatch($car);

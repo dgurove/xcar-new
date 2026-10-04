@@ -8,7 +8,7 @@
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">
             <x-ui.contact :name="$user->name" :user="$user" sidebar>
                 <x-slot:chips>
-                    <x-ui.state :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')">{{ $user->role->label().' с '.$user->created_at->format('d.m.Y') }}</x-ui.state>
+                    <x-ui.state :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')">{{ $user->rolesLabel().' с '.$user->created_at->format('d.m.Y') }}</x-ui.state>
                     {{-- Группа модератора: с кем он видит и правит предложения друг друга. --}}
                     {{-- Группы человека (менеджеров или модераторов) — ведутся в «Пользователях». --}}
                     @foreach ($user->userGroups as $g)<span class="fact">{{ $g->name }}</span>@endforeach

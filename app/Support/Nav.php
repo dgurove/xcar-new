@@ -89,24 +89,15 @@ final class Nav
             ];
         }
 
-        // Уведомлений в разделах нет: колокольчик в шапке, лента и настройки — строкой кабинета.
-        // Закупки и галерея на сайте пока скрыты (владелец 03.10.2026): прямые ссылки работают.
-        if ($user?->isStaff()) {
-            return [
-                self::item('Предложения', '/offers'),
-                self::item('Гараж', '/garage'),
-            ];
-        }
-
         // Сделки менеджера — раздел таб-бара; покупатели (интерес, приглашения, группы) — его вторая пилюля.
         $deals = self::item('Сделки', '/deals', ['/deals', '/buyers', '/account/invites']);
 
         // Демо-кабинет менеджера: каталог вместо закупок — закупки настоящие и ему закрыты; гаража у демо нет.
-        if ($user?->role === Role::Manager && $user->is_demo) {
+        if ($user?->hasRole(Role::Manager) && $user->is_demo) {
             return [self::item('Предложения', '/offers'), $deals];
         }
 
-        if ($user?->role === Role::Manager) {
+        if ($user?->hasRole(Role::Manager)) {
             return [
                 self::item('Предложения', '/offers'),
                 $deals,
@@ -114,8 +105,18 @@ final class Nav
             ];
         }
 
+        // Уведомлений в разделах нет: колокольчик в шапке, лента и настройки — строкой кабинета.
+        // Закупки и галерея на сайте пока скрыты (владелец 03.10.2026): прямые ссылки работают. На сайте «сотрудник» —
+        // админ (модератору сайт не нужен); админ, который ещё и менеджер, — менеджер (ветка выше).
+        if ($user?->isAdmin()) {
+            return [
+                self::item('Предложения', '/offers'),
+                self::item('Гараж', '/garage'),
+            ];
+        }
+
         // Проверяющий: только посмотреть предложения.
-        if ($user?->role === Role::Reviewer) {
+        if ($user?->hasRole(Role::Reviewer)) {
             return [self::item('Предложения', '/offers')];
         }
 
@@ -190,19 +191,9 @@ final class Nav
     {
         $surface ??= Surface::current();
 
-        if ($surface === Surface::Park) {
-            return [self::item('На сайт', Surface::Site->url())];
-        }
-
-        // Модератору переходить некуда: сайт уводит его обратно в CRM, парковки и гаража у него нет.
-        if ($surface === Surface::Crm && ! $user?->canManageCrm()) {
-            return [];
-        }
-        if ($surface === Surface::Crm) {
-            return [
-                self::item('На сайт', Surface::Site->url()),
-                self::item('Парковка', Surface::Park->url()),
-            ];
+        // С CRM и парковки — переходы на соседние приложения, только открытые человеку (ролей бывает несколько).
+        if ($surface !== Surface::Site) {
+            return self::switchers($user, $surface, fn ($label, $url, $icon) => self::item($label, $url));
         }
 
         if (! $user?->isApproved()) {
@@ -218,6 +209,24 @@ final class Nav
     }
 
     /**
+     * Соседние приложения, открытые человеку: сайт (если он ему нужен — `Surface::onlyFor`), CRM, парковка; кроме
+     * текущего. Ролей бывает несколько: модератор и менеджер ходит между CRM и сайтом, «Парковка» и модератор — между
+     * парковкой и CRM.
+     */
+    private static function switchers(?User $user, Surface $surface, \Closure $make): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        return array_values(array_filter([
+            $surface !== Surface::Site && ! Surface::onlyFor($user) ? $make('На сайт', Surface::Site->url(), 'car') : null,
+            $surface !== Surface::Crm && Surface::Crm->opensFor($user) ? $make('CRM', Surface::Crm->url(), 'deal') : null,
+            $surface !== Surface::Park && Surface::Park->opensFor($user) ? $make('Парковка', Surface::Park->url(), 'park') : null,
+        ]));
+    }
+
+    /**
      * Пилюли кабинета группами.
      *
      * @return array<string, list<array{label: string, href: string, match: string, also: list<string>}>>
@@ -227,18 +236,21 @@ final class Nav
         $surface ??= Surface::current();
 
         if ($surface === Surface::Park) {
-            return ['' => array_values(array_filter([
+            return array_filter(['' => array_values(array_filter([
                 self::link('Профиль', '/account', exact: true),
                 ...($user->isAdmin() ? [self::link('Вендоры', '/vendors', icon: 'deal'), self::link('Тарифы', '/tariffs', icon: 'wallet')] : []),
                 self::link('Парковки', '/yards', icon: 'park'),
                 self::link('Уведомления', '/account/notifications', icon: 'bell'),
                 // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.
                 $user->isStaff() ? self::link('Шаблоны', Surface::Crm->url('/settings/templates'), icon: 'link') : null,
-            ]))];
+            ])), 'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon))]);
         }
 
         if ($surface === Surface::Crm && ! $user->canManageCrm()) {
-            return ['' => [self::link('Профиль', '/settings', exact: true), self::link('Уведомления', '/account/notifications', icon: 'bell')]];
+            return array_filter([
+                '' => [self::link('Профиль', '/settings', exact: true), self::link('Уведомления', '/account/notifications', icon: 'bell')],
+                'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon)),
+            ]);
         }
         if ($surface === Surface::Crm) {
             // Один раздел «Настройки»: профиль — его первый пункт, как /account на сайте.
@@ -255,32 +267,29 @@ final class Nav
                     self::link('Водяные знаки', '/settings/watermarks', icon: 'photo'),
                     self::link('Уведомления', '/account/notifications', icon: 'bell'),
                 ],
-                'Переходы' => [
-                    self::link('На сайт', Surface::Site->url(), icon: 'car'),
-                    self::link('Парковка', Surface::Park->url(), icon: 'park'),
-                ],
+                'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon)),
             ];
         }
 
         $links = [self::link('Профиль', '/account', exact: true)];
-        if ($user->role === Role::Manager) {
+        if ($user->hasRole(Role::Manager)) {
             // Сделки, покупатели и гараж — разделы таб-бара; в кабинете остаются деньги.
             $links[] = self::link('Деньги', '/account/money', also: ['/account/money/details'], icon: 'wallet');
         } elseif ($user->isAdmin()) {
             $links[] = self::link('Пользователи', '/account/users', icon: 'users');
             $links[] = self::link('Приглашения', '/account/invites', icon: 'link');
-        } elseif (! $user->isStaff()) {
+        } elseif (! $user->isAdmin()) {
             $links[] = self::link('Интерес', '/account/interests', icon: 'flag');
         }
         // Сотруднику — чаты площадки здесь же, а не переадресацией в CRM: другой хост в приложении — встроенный браузер.
-        if ($user->canChat() || $user->isStaff()) {
+        if ($user->canChat() || $user->isAdmin()) {
             $links[] = self::link('Чаты', '/account/chats', icon: 'chat');
         }
         $links[] = self::link('Избранное', '/account/favorites', icon: 'bookmark');
         $links[] = self::link('Уведомления', '/account/notifications', icon: 'bell');
 
         // У вошедшего подвала нет (приложение, а не сайт) — о компании и документы живут здесь.
-        return ['' => $links, 'Документы' => [self::link('О компании', '/company'), self::link('Обработка данных', '/privacy'), self::link('Соглашение', '/terms')]];
+        return array_filter(['' => $links, 'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon)), 'Документы' => [self::link('О компании', '/company'), self::link('Обработка данных', '/privacy'), self::link('Соглашение', '/terms')]]);
     }
 
     /**
@@ -389,7 +398,8 @@ final class Nav
 
     private static function counts(User $user, Surface $surface): array
     {
-        $key = "nav.counts:{$surface->value}:".($user->isAdmin() ? 'staff' : $user->id);
+        // Счётчики админа общие на всех админов; админ, который ещё и менеджер, на сайте видит свои — ключ его.
+        $key = "nav.counts:{$surface->value}:".($user->isAdmin() && ! $user->isManager() ? 'staff' : $user->id);
 
         // Кэш в базе — за страницу его читают по два-три раза: из него один раз на запрос.
         return self::perRequest($key, fn () => self::countsCached($user, $surface, $key));
@@ -410,7 +420,7 @@ final class Nav
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
                 // Таб — как список без вкладки: «Без цены» его группы.
-                return ['totals' => ['/' => OfferController::scopeFor('unpriced', Offer::visibleTo($user)->whereNot(fn ($o) => $o->emptyDraft()))->count()], 'fresh' => []];
+                return ['totals' => ['/' => OfferController::scopeFor('unpriced', Offer::inCrm($user)->whereNot(fn ($o) => $o->emptyDraft()))->count()], 'fresh' => []];
             }
             if ($surface === Surface::Crm) {
                 return ['totals' => [
@@ -428,7 +438,7 @@ final class Nav
             // Ноль — тоже число («Покупатели 0»), нет только разделов, которых у роли нет.
             return ['totals' => array_filter([
                 '/offers' => (clone $open)->count(),
-                '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->count() : null,
+                '/gallery' => $user->canSeeGallery() ? (clone $gallery)->count() : null,
                 '/purchases' => $user->canSeePurchases() ? Purchase::cardCount($user) : null,
                 // Всё, что стоит строкой на экране «Сделки»: сделки и подтверждения, ждущие решения.
                 '/deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count() : null,
@@ -439,7 +449,7 @@ final class Nav
                 '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
                 '/offers' => (clone $open)->where('published_at', '>', $day)->count(),
-                '/gallery' => $user->role->canSeeGallery() ? (clone $gallery)->where('published_at', '>', $day)->count() : 0,
+                '/gallery' => $user->canSeeGallery() ? (clone $gallery)->where('published_at', '>', $day)->count() : 0,
             ]];
         });
     }
@@ -469,7 +479,7 @@ final class Nav
             $badges['/deals'] = $badges['/deals/asks'] + $badges['/buyers'];
             $badges['/garage'] = (int) $asks->garage;
         }
-        if ($user->canChat() || $user->isStaff()) {
+        if ($user->canChat() || $user->isAdmin()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.
             $badges['/account/chats'] = $user->unreadChats();
         }

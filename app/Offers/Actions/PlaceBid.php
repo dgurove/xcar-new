@@ -20,7 +20,7 @@ final class PlaceBid
 {
     public function __invoke(Offer $offer, User $by, ?int $amount, ?string $comment = null, BidKind $kind = BidKind::Buyer): Bid
     {
-        if (! $by->role->canBid()) {
+        if (! $by->canBid()) {
             throw ValidationException::withMessages(['amount' => 'Подтверждать могут только менеджеры']);
         }
         if (! $offer->isVisibleTo($by)) {

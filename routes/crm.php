@@ -64,6 +64,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/offers/{offer}/scan', [ScanController::class, 'offerShow']);
         Route::post('/offers/{offer}/scan', [ScanController::class, 'offerScan']);
         Route::post('/offers/{offer}/scan/apply', [ScanController::class, 'offerApply']);
+        // Читалка в блоке «Документы» редактора: читает сама по порядку, поля заполняются по ходу (x-mail.reader).
+        Route::get('/offers/{offer}/scan/live', [ScanController::class, 'offerLive']);
+        Route::post('/offers/{offer}/scan/read', [ScanController::class, 'offerRead']);
+        Route::post('/offers/{offer}/scan/stop', [ScanController::class, 'offerStop']);
         Route::put('/offers/{offer}', [OfferController::class, 'update']);
         // Черновик из писем до первого сохранения: «Отменить» и «Не заявка» (decline) — черновика не было, письма снова ждут.
         Route::post('/offers/{offer}/drop', [MailController::class, 'dropDraft'])->middleware('ability:canCrmMail');

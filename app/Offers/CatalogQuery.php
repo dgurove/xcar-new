@@ -34,7 +34,7 @@ final class CatalogQuery
 
     public static function for(?User $user, array $filters = [], bool $gallery = false): Builder
     {
-        $prices = ! $gallery && ($user?->role->canSeePrices() ?? false);
+        $prices = ! $gallery && ($user?->canSeePrices() ?? false);
 
         $q = Offer::query()
             // Карточкам нужны только фото и своя закладка: все медиа (с документами) и чужое избранное по

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Users\Role;
 use App\Users\Section;
 use App\Users\User;
 
@@ -53,14 +54,19 @@ enum Surface: string
     }
 
     /**
-     * Единственный дом человека: управляющему — парковка, модератору — CRM. С чужого хоста их уводят туда
-     * (SiteWall, ResolveSurface, вход, регистрация по ссылке); остальные работают там, где вошли.
+     * Дом человека, которому сайт не нужен вовсе (ни одной роли сайта: менеджер, админ, покупатель, проверяющий,
+     * посетитель): модератору — CRM, управляющему — парковка. С хоста, который ему закрыт, уводят туда (SiteWall,
+     * ResolveSurface, вход, регистрация по ссылке); с открытого — не уводят: модератор с ролью «Парковка» работает в обоих.
      */
     public static function onlyFor(?User $user): ?self
     {
+        if (! $user || $user->hasRole(Role::Manager, Role::Admin, Role::Buyer, Role::Reviewer, Role::Visitor)) {
+            return null;
+        }
+
         return match (true) {
-            (bool) $user?->isParking() => self::Park,
-            (bool) $user?->isModerator() => self::Crm,
+            $user->isModerator() => self::Crm,
+            $user->isParking() => self::Park,
             default => null,
         };
     }

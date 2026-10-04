@@ -31,7 +31,7 @@ class CarController
         $car = $this->car($request, $offer);
         // Ждёт страховую — шаг сделки и путь, как на её странице: просьбы менеджеру («Забираю», «Отказываюсь») — тут.
         // Сотрудник ведёт маршрут в CRM — ему шаг не нужен.
-        $step = $car->isWaiting() && $car->deal && ! $request->user()->isStaff() ? DealController::stepData($car->deal) : null;
+        $step = $car->isWaiting() && $car->deal && ! $request->user()->isAdmin() ? DealController::stepData($car->deal) : null;
 
         return view('garage.cars.show', ['car' => $car, 'step' => $step]);
     }
@@ -39,7 +39,7 @@ class CarController
     public function storeCost(Request $request, Offer $offer, AddCost $add)
     {
         $car = $this->car($request, $offer);
-        abort_if($car->isSold() && ! $request->user()->isStaff(), 403);
+        abort_if($car->isSold() && ! $request->user()->isAdmin(), 403);
         $data = $this->costData($request);
         $add($car, $data, $request->user());
 
@@ -67,7 +67,7 @@ class CarController
     /** «Отдали по ошибке»: только сотрудник и только пока ничего не записано. */
     public function destroy(Request $request, Offer $offer, ReturnFromGarage $return)
     {
-        abort_unless($request->user()->isStaff(), 403);
+        abort_unless($request->user()->isAdmin(), 403);
         $return($this->car($request, $offer), $request->user());
 
         return redirect('/garage')->with('toast', 'ТС вернулось в черновики');
@@ -78,7 +78,7 @@ class CarController
     {
         $car = Car::where('offer_id', $offer->id)->with(['offer.brand', 'offer.model', 'offer.media', 'manager', 'costs.author', 'invoice', 'payoutInvoice', 'deal'])->firstOrFail();
         $car->costs->each->setRelation('car', $car);
-        abort_unless($request->user()->isStaff() || $car->manager_id === $request->user()->id, 404);
+        abort_unless($request->user()->isAdmin() || $car->manager_id === $request->user()->id, 404);
 
         return $car;
     }

@@ -20,7 +20,8 @@ import { known, shareFile, warm } from '../docs/share';
 // Высота и ширина помнятся (localStorage); форма, отправленная при открытой шторке, вернётся на ту же
 // страницу — шторка откроется снова на том же документе. `a[data-doc-auto]` открывается сам.
 // ✨ — открытое вложение письма (скан, фото) в окно «Распознать» предмета страницы (`[data-scan-subject]` у
-// x-mail.scan-button): окно сразу читает этот файл (`?only=`).
+// x-mail.scan-button): окно сразу читает этот файл (`?only=`); в редакторе с читалкой «Завести» (data-scan-reader) —
+// файл дописывается в её чтение, поля заполнятся по ходу.
 const FILE = /^\/(?:files|(?:[\w-]+\/)*mail\/attachments)\/\d+\/?$/;
 const ATTACHMENT = /\/mail\/attachments\/(\d+)\/?$/;
 const PAPER = /^\/files\/(\d+)\/?$/;
@@ -326,17 +327,29 @@ export default class extends Controller {
     // если предмет их читает — data-scan-papers), скан или фото, и на странице есть предмет с ✨ — вне окон (окно
     // «Распознать» открывается и над шторкой, модальной над окном писем).
     scanUrl(item) {
+        const target = this.scanFile(item);
+        return target ? `${target.button.dataset.scanSubject}?only=${target.id}` : null;
+    }
+
+    // Предмет страницы с ✨ и номер файла для него; читалка «Завести» (data-scan-reader) берёт файл в своё чтение.
+    scanFile(item) {
         if (!['pdf', 'image'].includes(item.type)) return null;
         const url = new URL(item.url, location.href);
         const button = [...document.querySelectorAll('[data-scan-subject]')].find((b) => !b.closest('dialog'));
         const paper = button?.hasAttribute('data-scan-papers') && url.pathname.match(PAPER)?.[1];
         const id = paper ? `m${paper}` : !url.searchParams.has('entry') && url.pathname.match(ATTACHMENT)?.[1];
-        return id && button ? `${button.dataset.scanSubject}?only=${id}` : null;
+        return id && button ? { button, id } : null;
     }
 
     scan() {
-        const url = this.scanUrl(this.items[this.index] ?? {});
-        if (url) window.dispatchEvent(new CustomEvent('scan:open', { detail: { url } }));
+        const target = this.scanFile(this.items[this.index] ?? {});
+        if (!target) return;
+        if (target.button.hasAttribute('data-scan-reader')) {
+            target.button.dispatchEvent(new CustomEvent('reader:add', { detail: { id: target.id } }));
+            window.toast?.('Файл в чтении');
+        } else {
+            window.dispatchEvent(new CustomEvent('scan:open', { detail: { url: `${target.button.dataset.scanSubject}?only=${target.id}` } }));
+        }
     }
 
     reveal(instant) {

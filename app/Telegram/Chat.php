@@ -58,7 +58,7 @@ class Chat extends Model
     /** Кто это для нас: роль аккаунта или «владелец» у чата из настроек. */
     public function roleLabel(): ?string
     {
-        return $this->user ? mb_strtolower($this->user->role->label()) : ($this->isOwner() ? 'владелец' : null);
+        return $this->user ? mb_strtolower($this->user->rolesLabel()) : ($this->isOwner() ? 'владелец' : null);
     }
 
     public function lastPreview(): string

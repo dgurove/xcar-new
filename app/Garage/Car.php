@@ -77,7 +77,7 @@ class Car extends Model
     /** Машины одного человека: менеджеру — его, взятые под себя видит только сотрудник. */
     public function scopeOf(Builder $q, User $user): Builder
     {
-        return $user->isStaff() ? $q : $q->where('manager_id', $user->id);
+        return $user->isAdmin() ? $q : $q->where('manager_id', $user->id);
     }
 
     /** Потрачено: все расходы или только чьи-то. */

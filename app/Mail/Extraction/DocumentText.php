@@ -14,7 +14,7 @@ use Throwable;
  * Текст файла из письма парковки — то, откуда берётся машина у Альфы Москва: «Заявка на приёмку» и акт приходят
  * сканом, часто боком. Файл — вложение письма или документ, загруженный в предложение руками (`Scan\ScanFile`). Два пути:
  * - `layer` — текстовый слой PDF и текст docx/xlsx (`AttachmentText`), миллисекунды: разбор письма берёт его сам;
- * - `read` — OCR по «✨ Распознать» (`ScanController`): слой, если читается (`AttachmentText::readable`), иначе
+ * - `read` — OCR по действию человека (читалка «Завести» `Scan\Reader`, окно «Из документов» `ScanController`): слой, если читается (`AttachmentText::readable`), иначе
  *   скрипт `ocr` (PaddleOCR через RapidOCR, deploy/bin/ocr) по двум первым страницам PDF или по фото. Сам по себе
  *   OCR не запускается: страница на сервере — секунды, и большая часть писем в нём не нуждается.
  * Прочитанное лежит в `cache/scantext/{sha}.txt` навсегда, пустой файл — «текста нет»: одинаковый скан в «ч.1» и в
@@ -92,41 +92,38 @@ final class DocumentText
     }
 
     /**
-     * Прочитать пачку: прочитанное — сразу, слой — если читается, остальное — через `ocr` кусками по CHUNK картинок. `$done($attachment, $text)` зовётся по каждому файлу, как только он готов. Ошибка — пустой
-     * текст в кеш, без повторов. `$timeout` — меньше таймаута задачи: иначе её убьют раньше, чем сработает `finally`.
+     * Прочитать файлы по порядку: прочитанное и слой — сразу, остальное — через `ocr` кусками по CHUNK картинок.
+     * Первый кусок — один первый файл: читалка «Завести» заполняет поля по нему, не дожидаясь пачки. PDF
+     * растеризуется перед своим куском, а не все сразу. `$done($file, $text)` зовётся по каждому файлу, как только он
+     * готов; `null` — не прочитан (упал, не уложился). `$halt()` — «Стоп» человека: проверяется раз в полсекунды,
+     * пока `ocr` работает, `ocr` гасится, недочитанное и не начатое `$done` не получает. `$timeout` — меньше таймаута задачи:
+     * иначе её убьют раньше, чем сработает `finally`.
      *
      * @param  iterable<ScanFile>  $attachments
      */
-    public static function read(iterable $attachments, ?Closure $done = null, int $timeout = 600): void
+    public static function read(iterable $attachments, ?Closure $done = null, int $timeout = 600, ?Closure $halt = null): void
     {
         $done ??= fn () => null;
+        $halt ??= fn () => false;
         $dir = sys_get_temp_dir().'/xcar-ocr-'.bin2hex(random_bytes(6));
         @mkdir($dir, 0700, true);
+        /** @var list<ScanFile> $queue файлы для ocr по порядку */
+        $queue = [];
         /** @var array<string, ScanFile> $owner страница или фото → файл */
         $owner = [];
-        /** @var array<string, array<string, ?string>> $pages файл (`scanId`) → его картинки для ocr и их текст */
+        /** @var array<string, array<string, ?string>> $pages файл (`scanId`) → его картинки и их текст, пока не готов */
         $pages = [];
+        $halted = false;
         try {
             foreach ($attachments as $a) {
+                if ($halted = $halt()) {
+                    return;
+                }
                 if (($text = self::cached($a)) !== null || ($text = self::text($a, true)) !== null) {
                     $done($a, $text);
-
-                    continue;
+                } else {
+                    $queue[] = $a;
                 }
-                $files = self::images($a, $dir);
-                if (! $files) {
-                    self::put($a, '');
-                    $done($a, '');
-
-                    continue;
-                }
-                foreach ($files as $file) {
-                    $owner[$file] = $a;
-                    $pages[$a->scanId()][$file] = null;
-                }
-            }
-            if (! $owner) {
-                return;
             }
             $seen = [];
             $take = function (string $line) use (&$owner, &$pages, &$seen, $done) {
@@ -145,30 +142,67 @@ final class DocumentText
                 }
             };
             // Кусками по CHUNK картинок: на длинной пачке ocr падал (сигнал 11, копится память), по одному — ни разу.
-            // Кусок упал — его непрочитанное дочитывается по одному; что не прочлось и так — пусто в finally.
+            // Кусок упал — его непрочитанное дочитывается по одному; что не прочлось и так — null в finally.
             $deadline = time() + $timeout;
-            foreach (array_chunk(array_keys($owner), self::CHUNK) as $chunk) {
-                if (! self::run($chunk, $deadline, $take)) {
+            $first = true;
+            while ($queue && ! ($halted = $halt()) && $deadline - time() >= 10) {
+                $chunk = [];
+                while ($queue && count($chunk) < self::CHUNK) {
+                    $a = array_shift($queue);
+                    $files = self::images($a, $dir);
+                    if (! $files) {
+                        self::put($a, '');
+                        $done($a, '');
+
+                        continue;
+                    }
+                    foreach ($files as $file) {
+                        $owner[$file] = $a;
+                        $pages[$a->scanId()][$file] = null;
+                        $chunk[] = $file;
+                    }
+                    if ($first) {
+                        break;
+                    }
+                }
+                if (! $chunk) {
+                    continue;
+                }
+                $first = false;
+                if (! self::run($chunk, $deadline, $take, $halt, $halted)) {
                     foreach (array_filter($chunk, fn ($file) => ! isset($seen[$file])) as $file) {
-                        self::run([$file], $deadline, $take);
+                        if (! $halted) {
+                            self::run([$file], $deadline, $take, $halt, $halted);
+                        }
+                    }
+                }
+                // Страницы PDF своего куска больше не нужны; фото — файлы с диска, их не трогаем.
+                foreach ($chunk as $file) {
+                    if (str_starts_with($file, $dir.'/')) {
+                        @unlink($file);
                     }
                 }
             }
         } catch (Throwable $e) {
             Log::warning('Почта: документы не прочитаны', ['error' => $e->getMessage()]);
         } finally {
-            // Чего ocr не вернул (упал, не уложился) — в кеш не кладётся: это сбой, а не «текста нет». Окно покажет
-            // «не прочитан» с «Повторить», задача снимет метку и окно отпустит.
-            foreach (array_keys($pages) as $id) {
-                $done($owner[array_key_first($pages[$id])], null);
+            // Чего ocr не вернул (упал, не уложился) — в кеш не кладётся: это сбой, а не «текста нет». Читалка покажет
+            // «не прочитан» с «Повторить». Остановленное человеком сбоем не считается — его просто не читали.
+            if (! $halted) {
+                foreach ([...array_map(fn ($id) => $owner[array_key_first($pages[$id])], array_keys($pages)), ...$queue] as $a) {
+                    $done($a, null);
+                }
             }
             array_map('unlink', glob($dir.'/*') ?: []);
             @rmdir($dir);
         }
     }
 
-    /** Один вызов `ocr` по картинкам, ответ — построчно в `$take` по мере готовности. false — упал или вышло время. */
-    private static function run(array $files, int $deadline, Closure $take): bool
+    /**
+     * Один вызов `ocr` по картинкам, ответ — построчно в `$take` по мере готовности. false — упал, вышло время или
+     * остановлен (`$halted`).
+     */
+    private static function run(array $files, int $deadline, Closure $take, Closure $halt, bool &$halted): bool
     {
         if ($deadline - time() < 10) {
             return false;
@@ -187,6 +221,17 @@ final class DocumentText
             }
         });
         try {
+            // Ждём сами, а не `wait()`: «Стоп» проверяется и пока ocr молчит над страницей (до ~10 с на проде).
+            while ($process->running()) {
+                $process->ensureNotTimedOut();
+                if ($halt()) {
+                    $process->stop(0);
+                    $halted = true;
+
+                    return false;
+                }
+                usleep(500_000);
+            }
             $result = $process->wait();
         } catch (Throwable $e) {
             // Упал (сигнал) или завис: в stderr — стек faulthandler, по нему видно, где.

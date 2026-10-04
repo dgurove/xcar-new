@@ -16,25 +16,34 @@ final class Categories
 {
     public static function for(User $user): array
     {
-        $role = $user->role;
-
-        return match (true) {
-            $role === Role::Manager => [
+        // Ролей может быть несколько — наборы складываются (менеджер и модератор получают и то, и другое).
+        $on = [];
+        $always = [];
+        $add = function (array $set) use (&$on, &$always) {
+            $on += $set['on'];
+            $always = array_values(array_unique([...$always, ...$set['always']]));
+        };
+        if ($user->hasRole(Role::Manager)) {
+            $add([
                 'on' => ['offers' => 'Новые предложения', 'purchases' => 'Новые закупки', 'interest' => 'Интерес покупателей', 'people' => 'Новые покупатели', 'chats' => 'Чаты'],
                 'always' => ['Ответ на подтверждение', 'Сделки: ваш ход и сроки', 'Счета и вознаграждение', 'Выбор вашей цены в закупке'],
-            ],
-            $role === Role::Buyer => [
-                'on' => ['offers' => 'Новые предложения для вас', 'chats' => 'Чаты'],
-                'always' => ['Сделки'],
-            ],
-            // Модератору — только новые цепочки «Из писем», и то с галкой почты: денег, сделок и чатов у него нет.
-            $role === Role::Moderator => ['on' => $user->canCrmMail() ? ['letters' => 'Новые из писем'] : [], 'always' => []],
-            $role->isStaff() => [
-                'on' => ['bids' => 'Подтверждения', 'interest' => 'Интерес', 'deals' => 'Сроки этапов', 'money' => 'Деньги', 'chats' => 'Чаты', 'park' => 'Парковка'],
-                'always' => [],
-            ],
-            default => ['on' => ['offers' => 'Новые предложения', 'chats' => 'Чаты'], 'always' => []],
-        };
+            ]);
+        }
+        if ($user->hasRole(Role::Buyer)) {
+            $add(['on' => ['offers' => 'Новые предложения для вас', 'chats' => 'Чаты'], 'always' => ['Сделки']]);
+        }
+        // Модератору — только новые цепочки «Из писем», и то с галкой почты: денег, сделок и чатов у него нет.
+        if ($user->hasRole(Role::Moderator) && $user->canCrmMail()) {
+            $add(['on' => ['letters' => 'Новые из писем'], 'always' => []]);
+        }
+        if ($user->hasRole(Role::Admin)) {
+            $add(['on' => ['bids' => 'Подтверждения', 'interest' => 'Интерес', 'deals' => 'Сроки этапов', 'money' => 'Деньги', 'chats' => 'Чаты', 'park' => 'Парковка'], 'always' => []]);
+        }
+        if (! $on && ! $always && ! $user->hasRole(Role::Moderator)) {
+            $add(['on' => ['offers' => 'Новые предложения', 'chats' => 'Чаты'], 'always' => []]);
+        }
+
+        return ['on' => $on, 'always' => $always];
     }
 
     /**
@@ -45,11 +54,10 @@ final class Categories
      */
     public static function telegram(User $user): array
     {
-        $keys = match ($user->role) {
-            Role::Manager, Role::Admin => ['chats'],
-            Role::Moderator => ['letters'],
-            default => [],
-        };
+        $keys = [
+            ...($user->hasRole(Role::Manager, Role::Admin) ? ['chats'] : []),
+            ...($user->hasRole(Role::Moderator) ? ['letters'] : []),
+        ];
 
         return array_intersect_key(self::for($user)['on'], array_flip($keys));
     }

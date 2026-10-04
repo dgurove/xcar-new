@@ -84,9 +84,9 @@ class LoginController
         $user = Auth::user();
         $allowed = $surface->opensFor($user);
 
-        // Управляющий парковкой и модератор, вошедшие не у себя, — сразу к себе.
+        // Управляющий парковкой и модератор, вошедшие там, куда им нельзя, — сразу к себе; с открытого хоста не уводим.
         $only = Surface::onlyFor($user);
-        if ($only && $only !== $surface) {
+        if ($only && $only !== $surface && ! $allowed) {
             return $only->url($only->home());
         }
 

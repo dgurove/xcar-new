@@ -108,26 +108,7 @@ final class ScanFields
     public static function of(array $current, iterable $docs, ?array $fields = null): array
     {
         $labels = $fields === null ? self::LABELS : array_intersect_key(self::LABELS + self::SPECS, array_flip($fields));
-        $found = [];
-        foreach ($docs as $doc) {
-            [$file, $text] = $doc;
-            $from = Files::label($file, (bool) ($doc[2] ?? false));
-            $values = self::values(DocumentFields::extract($text));
-            $nowBrand = isset($current['car']) ? Names::brand((string) $current['car']['value']['brand'])?->id : null;
-            if (self::otherCar($current['vin']['value'] ?? null, $nowBrand, $values['vin'] ?? null, $values['car']['brand'] ?? null)) {
-                continue;
-            }
-            foreach ($values as $field => $value) {
-                $label = self::text($field, $value);
-                if ($label === '') {
-                    continue;
-                }
-                $found[$field][self::key($label)] ??= ['value' => $value, 'text' => $label, 'from' => []];
-                if (! in_array($from, $found[$field][self::key($label)]['from'], true)) {
-                    $found[$field][self::key($label)]['from'][] = $from;
-                }
-            }
-        }
+        $found = self::found($current, $docs);
 
         $out = [];
         foreach ($labels as $field => $label) {
@@ -150,6 +131,40 @@ final class ScanFields
         }
 
         return $out;
+    }
+
+    /**
+     * Что нашлось в документах: поле → варианты по ключу сравнения, у каждого — откуда. Файл о другой машине
+     * (`otherCar` против `$current`) не даёт ничего. Порядок вариантов — порядок файлов: первым идёт найденное в том,
+     * что прочитано первым.
+     *
+     * @param  iterable<array{0: ScanFile, 1: string, 2?: bool}>  $docs
+     * @return array<string, array<string, array{value: mixed, text: string, from: list<string>}>>
+     */
+    public static function found(array $current, iterable $docs): array
+    {
+        $found = [];
+        foreach ($docs as $doc) {
+            [$file, $text] = $doc;
+            $from = Files::label($file, (bool) ($doc[2] ?? false));
+            $values = self::values(DocumentFields::extract($text));
+            $nowBrand = isset($current['car']) ? Names::brand((string) $current['car']['value']['brand'])?->id : null;
+            if (self::otherCar($current['vin']['value'] ?? null, $nowBrand, $values['vin'] ?? null, $values['car']['brand'] ?? null)) {
+                continue;
+            }
+            foreach ($values as $field => $value) {
+                $label = self::text($field, $value);
+                if ($label === '') {
+                    continue;
+                }
+                $found[$field][self::key($label)] ??= ['value' => $value, 'text' => $label, 'from' => []];
+                if (! in_array($from, $found[$field][self::key($label)]['from'], true)) {
+                    $found[$field][self::key($label)]['from'][] = $from;
+                }
+            }
+        }
+
+        return $found;
     }
 
     /**

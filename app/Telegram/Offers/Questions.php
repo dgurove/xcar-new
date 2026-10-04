@@ -108,7 +108,7 @@ final class Questions
         $author = $message->author;
         $chat = $message->chat;
         $subs = Subscriber::with('user')->whereNull('blocked_at')->where('user_id', '!=', $author?->id)
-            ->whereIn('user_id', User::where('role', Role::Admin)->select('id'))->get();
+            ->whereIn('user_id', User::withRole(Role::Admin)->select('id'))->get();
         foreach ($subs as $sub) {
             $question = DB::connection('pgsql_async')->table('offer_bot_links')->where('tg_chat_id', $sub->chat_id)->where('chat_id', $chat->id)
                 ->where('kind', self::QUESTION)->orderByDesc('created_at')->value('tg_message_id');

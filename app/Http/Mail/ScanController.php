@@ -9,6 +9,7 @@ use App\Mail\Extraction\ScanFields;
 use App\Mail\Jobs\ScanAttachments;
 use App\Mail\Scan\CandidateSubject;
 use App\Mail\Scan\OfferSubject;
+use App\Mail\Scan\Reader;
 use App\Mail\Scan\ScanFile;
 use App\Mail\Scan\Subject;
 use App\Mail\Scan\VehicleSubject;
@@ -94,6 +95,38 @@ final class ScanController
         return $this->done($subject, $this->put($request, $subject));
     }
 
+    /** Читалка «Завести» в разборе письма парковки (`x-mail.reader-body`, `Scan\Reader`): ход чтения и найденное — JSON. */
+    public function readerLive(Candidate $candidate)
+    {
+        return response()->json(Reader::live($this->chain($candidate)));
+    }
+
+    public function readerRead(Request $request, Candidate $candidate)
+    {
+        return response()->json(Reader::read($this->chain($candidate), $this->ids($request->input('ids', []))));
+    }
+
+    public function readerStop(Candidate $candidate)
+    {
+        return response()->json(Reader::stop($this->chain($candidate)));
+    }
+
+    /** Читалка в блоке «Документы» редактора предложения. */
+    public function offerLive(Request $request, Offer $offer)
+    {
+        return response()->json(Reader::live(OfferSubject::for($offer, $request->user())));
+    }
+
+    public function offerRead(Request $request, Offer $offer)
+    {
+        return response()->json(Reader::read(OfferSubject::for($offer, $request->user()), $this->ids($request->input('ids', []))));
+    }
+
+    public function offerStop(Request $request, Offer $offer)
+    {
+        return response()->json(Reader::stop(OfferSubject::for($offer, $request->user())));
+    }
+
     /** Чип «в документе …» у поля дела: взять значение документа вместо карточки (`FillFromDocs::take`). */
     public function vehicleTake(Request $request, Vehicle $vehicle, FillFromDocs $fill)
     {
@@ -143,15 +176,12 @@ final class ScanController
     private function start(Request $request, Subject $subject)
     {
         $picked = $this->pick($subject->files(), $this->ids($request->input('ids', [])))->take(ScanAttachments::MAX_FILES);
-        $ids = $picked->map->scanId()->sort()->values()->all();
+        $ids = $picked->map->scanId()->values()->all();
         if (! $ids) {
             return redirect($subject->url());
         }
-        $todo = $picked->filter(fn (ScanFile $f) => DocumentText::cached($f) === null)->map->scanId()->sort()->values()->all();
-        if ($todo) {
-            ScanAttachments::mark($todo);
-            ScanAttachments::dispatch($subject->key(), $todo);
-        }
+        $todo = $picked->filter(fn (ScanFile $f) => DocumentText::cached($f) === null)->map->scanId()->values()->all();
+        ScanAttachments::enqueue($subject, $todo);
 
         return redirect($subject->url().'?'.http_build_query(['ids' => $ids]));
     }

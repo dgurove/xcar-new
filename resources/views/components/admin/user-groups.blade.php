@@ -4,7 +4,7 @@
 @props(['groups', 'kind'])
 @php
     use App\Users\{User, UserGroup};
-    $people = User::where('role', UserGroup::roleOf($kind))->orderBy('name')->get();
+    $people = User::withRole(UserGroup::roleOf($kind))->orderBy('name')->get();
     $who = $kind === UserGroup::MODERATORS ? 'Модераторы' : 'Менеджеры';
 @endphp
 {{-- Заголовок и плашка — один блок: между блоками экрана отступ ставит сам экран (gap), своих отступов тут нет. --}}

@@ -30,7 +30,7 @@ final class ChangePurchaseState
         $wasPublic = $purchase->state->isPublic();
         $purchase->update(['state' => $next]);
         if ($next === PurchaseState::Open && ! $wasPublic) {
-            Notification::send(User::where('role', Role::Manager)->get(), new PurchaseOpenedNotice($purchase));
+            Notification::send(User::withRole(Role::Manager)->get(), new PurchaseOpenedNotice($purchase));
         }
         app(Publisher::class)->refresh(Topics::CATALOG, ['/purchases', "/purchases/{$purchase->number}"]);
 

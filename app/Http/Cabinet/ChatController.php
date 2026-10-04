@@ -65,7 +65,7 @@ class ChatController
     public function support(Request $request)
     {
         $user = $request->user();
-        abort_if($user->isStaff(), 404);
+        abort_if($user->isAdmin(), 404);
         if ($chat = Chat::whereNull('offer_id')->where('user_id', $user->id)->latest('last_message_at')->first()) {
             return redirect('/account/chats/'.$chat->id);
         }

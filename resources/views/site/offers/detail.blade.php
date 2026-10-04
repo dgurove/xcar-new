@@ -10,11 +10,11 @@
     $n = $offer->number;
     $gallery = $offer->isGallery();
     $price = \App\Offers\PriceView::for($offer, $user);
-    $bids = $user?->role->canBid() ?? false;
+    $bids = $user?->canBid() ?? false;
     $left = $gallery || !$bids ? null : $offer->secondsLeft();
     $href = $context?->offerUrl($offer) ?? "/offers/{$n}";
     $canBid = $bids && $offer->bidsOpen() && $price->visible;
-    $wantsInterest = ($user?->role->canInterest() ?? false) && $offer->state->acceptsInterest();
+    $wantsInterest = ($user?->canInterest() ?? false) && $offer->state->acceptsInterest();
     $manager = $user?->isBuyer() ? $user->manager : null;
     $asking = (int) $offer->asking_price;
     $min = (int) ($offer->minBid() ?? 0);

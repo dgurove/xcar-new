@@ -5,7 +5,7 @@
             <x-ui.avatar :user="$as->user" :size="44"/>
             <div class="min-w-0">
                 <div class="font-medium">{{ $as->user->name }}</div>
-                <div class="text-sm text-ink-muted">{{ $as->user->role->label() }}</div>
+                <div class="text-sm text-ink-muted">{{ $as->user->rolesLabel() }}</div>
             </div>
         </div>
         @if ($current)

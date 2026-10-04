@@ -1,7 +1,7 @@
 {{-- Машина закупки: та же карточка, что у оффера; вся карточка — ссылка. Ушедшая в предложение — кнопкой на него. --}}
 @props(['car', 'purchase', 'query' => '', 'showKind' => false])
 @php
-    $staff = auth()->user()?->isStaff() ?? false;
+    $staff = auth()->user()?->isAdmin() ?? false;
     $mine = $staff ? null : $car->offerOf(auth()->user());
     $best = $staff ? $car->bestOffer() : null;
     $active = $staff ? $car->offers->whereIn('state', [\App\Purchases\OfferState::Active, \App\Purchases\OfferState::Chosen]) : collect();

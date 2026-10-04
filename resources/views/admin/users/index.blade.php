@@ -27,7 +27,7 @@
                         <a href="{{ $base }}/{{ $user->id }}" class="block truncate">{{ $user->name }}</a>
                         {{-- Всё о человеке одной строкой текста: роль, чей покупатель, логин, телефон, почта, покупатели, группы. --}}
                         <div class="row-sub">
-                            <span class="{{ $user->isAdmin() ? 'text-accent-text' : '' }}">{{ mb_strtolower($user->role->label()) }}</span>
+                            <span class="{{ $user->isAdmin() ? 'text-accent-text' : '' }}">{{ mb_strtolower($user->rolesLabel()) }}</span>
                             @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}?preset=buyers&manager={{ $user->manager_id }}" class="text-ink">{{ $user->manager->shortName() }}</a>@endif
                             @if ($user->login)<span>{{ $user->login }}</span>@endif
                             @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="nums">{{ $user->phoneFormatted() }}</a>@endif

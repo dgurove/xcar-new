@@ -14,6 +14,8 @@ use App\Telegram\Bot;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -30,7 +32,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'phone', 'login', 'email', 'password', 'role', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_yard_id', 'park_readonly', 'party_id'])]
+#[Fillable(['name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_yard_id', 'park_readonly', 'party_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -43,7 +45,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     protected static function booted(): void
     {
         static::saved(function (self $user) {
-            if ($user->wasChanged('role') || ($user->wasRecentlyCreated && $user->role === Role::Manager)) {
+            if ($user->wasChanged('roles') || ($user->wasRecentlyCreated && $user->isManager())) {
                 app(SyncViewers::class)->all();
             }
         });
@@ -53,7 +55,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     {
         return [
             'password' => 'hashed',
-            'role' => Role::class,
+            'roles' => AsEnumCollection::of(Role::class),
             'access' => 'array',
             'park_readonly' => 'bool',
             'notification_settings' => 'array',
@@ -78,34 +80,94 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         $this->attributes['login'] = $value === null || trim($value) === '' ? null : mb_strtolower(trim($value));
     }
 
+    // -------------------------------------------------------------- роли
+
+    /**
+     * Ролей у человека может быть несколько (04.10.2026): менеджер и модератор, админ и менеджер… Покупатель — только
+     * один (он человек своего менеджера). Способность человека — если её даёт хоть одна его роль (Role::canX).
+     */
+    public function hasRole(Role ...$any): bool
+    {
+        $roles = $this->roles ?? collect();
+
+        return collect($any)->contains(fn (Role $r) => $roles->contains($r));
+    }
+
+    /** Люди с любой из ролей: `User::withRole(Role::Manager)`. */
+    public function scopeWithRole(Builder $query, Role ...$roles): Builder
+    {
+        return $query->where(function ($w) use ($roles) {
+            foreach ($roles as $role) {
+                $w->orWhereJsonContains('roles', $role->value);
+            }
+        });
+    }
+
+    private function roleCan(string $ability): bool
+    {
+        return ($this->roles ?? collect())->contains(fn (Role $r) => $r->{$ability}());
+    }
+
+    /** Роли словами через запятую: «Менеджер, Модератор». */
+    public function rolesLabel(): string
+    {
+        return ($this->roles ?? collect())->map(fn (Role $r) => $r->label())->implode(', ');
+    }
+
+    public function canSeePrices(): bool
+    {
+        return $this->roleCan('canSeePrices');
+    }
+
+    public function canBid(): bool
+    {
+        return $this->roleCan('canBid');
+    }
+
+    public function canSeeGallery(): bool
+    {
+        return $this->roleCan('canSeeGallery');
+    }
+
+    public function canShare(): bool
+    {
+        return $this->roleCan('canShare');
+    }
+
+    /** Интерес — покупателю и гостю; у кого есть подтверждение ценой (менеджер, админ) — интереса нет. */
+    public function canInterest(): bool
+    {
+        return $this->roleCan('canInterest') && ! $this->canBid();
+    }
+
     // -------------------------------------------------------------- покупатели и менеджер
 
     public function isBuyer(): bool
     {
-        return $this->role === Role::Buyer;
+        return $this->hasRole(Role::Buyer);
     }
 
     public function isManager(): bool
     {
-        return $this->role === Role::Manager;
+        return $this->hasRole(Role::Manager);
     }
 
     /** Чат по предложению: по роли, а покупателю — только со своим менеджером. */
     public function canChat(): bool
     {
-        return $this->role->canChat() && (! $this->isBuyer() || $this->manager_id);
+        return $this->roleCan('canChat') && (! $this->isBuyer() || $this->manager_id);
     }
 
     /** Закупки по роли; демо-кабинету закрыты — закупки настоящие. */
     public function canSeePurchases(): bool
     {
-        return $this->role->canSeePurchases() && ! $this->is_demo;
+        return $this->roleCan('canSeePurchases') && ! $this->is_demo;
     }
 
     /** Гараж по роли; демо-кабинету его нет — гаражных машин у него не бывает. */
     public function canGarage(): bool
     {
-        return $this->role->canGarage() && ! $this->is_demo;
+        return $this->roleCan('canGarage') && ! $this->is_demo;
     }
 
     /** Менеджер покупателя — тот, чью пригласительную ссылку он открыл. */
@@ -116,7 +178,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     public function buyers(): HasMany
     {
-        return $this->hasMany(User::class, 'manager_id')->where('role', Role::Buyer);
+        return $this->hasMany(User::class, 'manager_id')->whereJsonContains('roles', Role::Buyer->value);
     }
 
     /** Группы, в которых состоит покупатель. */
@@ -174,23 +236,23 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     public function isStaff(): bool
     {
-        return $this->role->isStaff();
+        return $this->roleCan('isStaff');
     }
 
     public function isAdmin(): bool
     {
-        return $this->role === Role::Admin;
+        return $this->hasRole(Role::Admin);
     }
 
     /** Вся CRM, а не только черновики (Role::canManageCrm) — для `ability:canManageCrm` и проверок в видах. */
     public function canManageCrm(): bool
     {
-        return $this->role->canManageCrm();
+        return $this->roleCan('canManageCrm');
     }
 
     public function isModerator(): bool
     {
-        return $this->role === Role::Moderator;
+        return $this->hasRole(Role::Moderator);
     }
 
     /** Раздел CRM сверх черновиков (почта): админу — всё, модератору — отмеченное. */
@@ -221,11 +283,11 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->belongsToMany(UserGroup::class, 'user_group_user', 'user_id', 'group_id')->orderBy('position')->orderBy('name');
     }
 
-    /** В группы его вида, только они: из ссылки, из шторки «Изменить». Чужого вида id отбрасываются. */
+    /** В группы видов его ролей (менеджер — волны, модератор — общие предложения), только они. Чужого вида id отбрасываются. */
     public function syncUserGroups(array $ids): void
     {
-        $kind = UserGroup::kindFor($this->role);
-        $this->userGroups()->sync($kind ? UserGroup::where('kind', $kind)->whereIn('id', array_map('intval', $ids))->pluck('id')->all() : []);
+        $kinds = ($this->roles ?? collect())->map(fn (Role $r) => UserGroup::kindFor($r))->filter()->values()->all();
+        $this->userGroups()->sync($kinds ? UserGroup::whereIn('kind', $kinds)->whereIn('id', array_map('intval', $ids))->pluck('id')->all() : []);
     }
 
     /** Почта CRM — для `ability:canCrmMail` на маршрутах. */
@@ -259,7 +321,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Управляющий парковкой: только park.xcar, без продаж и настроек. */
     public function isParking(): bool
     {
-        return $this->role === Role::Parking;
+        return $this->hasRole(Role::Parking);
     }
 
     /** Раздел парковки сверх основы (деньги, почта): админу — всё, управляющему — отмеченное. */
@@ -271,7 +333,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Кто работает на парковке: админы и управляющие — список «Кто ведёт», уведомления, закрытие месяца. */
     public function scopeParkStaff($query)
     {
-        return $query->whereIn('role', [Role::Admin, Role::Parking]);
+        return $query->withRole(Role::Admin, Role::Parking);
     }
 
     public function party(): BelongsTo

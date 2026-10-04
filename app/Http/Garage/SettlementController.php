@@ -155,14 +155,14 @@ class SettlementController
     private function car(Request $request, Offer $offer): Car
     {
         $car = Car::where('offer_id', $offer->id)->with(['offer', 'manager', 'costs', 'invoice.payments', 'payoutInvoice', 'deal'])->firstOrFail();
-        abort_unless($request->user()->isStaff() || $car->manager_id === $request->user()->id, 404);
+        abort_unless($request->user()->isAdmin() || $car->manager_id === $request->user()->id, 404);
 
         return $car;
     }
 
     private function staffCar(Request $request, Offer $offer): Car
     {
-        abort_unless($request->user()->isStaff(), 403);
+        abort_unless($request->user()->isAdmin(), 403);
 
         return $this->car($request, $offer);
     }

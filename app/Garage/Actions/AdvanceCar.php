@@ -16,7 +16,7 @@ final class AdvanceCar
         if (! $next) {
             throw ValidationException::withMessages(['car' => 'С этапа «'.$car->state->label().'» кнопкой дальше не уйти']);
         }
-        if (! $by->isStaff() && $car->manager_id !== $by->id) {
+        if (! $by->isAdmin() && $car->manager_id !== $by->id) {
             throw ValidationException::withMessages(['car' => 'Это не ваша машина']);
         }
         $car->moveTo($next[0]);

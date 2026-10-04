@@ -155,6 +155,7 @@
             @csrf @method('put')
 
             <x-ui.card title="Транспортное средство" class="order-2">
+                <x-mail.reader-diffs form="offer-form" class="mb-3"/>
                 @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
                 @include('admin.offers.fields.car')
                 @include('admin.offers.fields.show', ['summary' => $showingSummary])
@@ -169,7 +170,7 @@
         </x-ui.card>
 
         <x-ui.card title="Документы" class="order-4 @4xl:col-span-2">
-            @include('admin.offers.papers-block')
+            @include('admin.offers.papers-block', ['reader' => true, 'auto' => $fromMail])
         </x-ui.card>
 
         {{-- Письма — под документами, как в деле ТС: последнее словами, вся переписка и ответ — окном поверх редактора. --}}

@@ -22,7 +22,7 @@ class ShareController
     public function pdf(Request $request, Offer $offer, SharePdf $pdf)
     {
         $user = $request->user();
-        abort_unless($user->role->canShare() && $offer->isVisibleTo($user), 404);
+        abort_unless($user->canShare() && $offer->isVisibleTo($user), 404);
         if ($offer->share_locked) {
             return response()->json(['message' => Subject::LOCKED], 422);
         }
@@ -48,7 +48,7 @@ class ShareController
     {
         $data = $request->validate(['photos' => ['required', 'array', 'max:30'], 'photos.*' => ['integer'], 'watermark' => ['nullable']]);
         // Знак снимает только сотрудник: файл с витрины уходит человеку, которого мы не знаем.
-        $watermark = $request->user()->isStaff() ? $request->boolean('watermark', true) : true;
+        $watermark = $request->user()->isAdmin() ? $request->boolean('watermark', true) : true;
 
         try {
             $path = $pdf->build($subject, array_map('intval', $data['photos']), $watermark);

@@ -48,7 +48,7 @@ class UserGroupController
         return $request->validate([
             'name' => ['required', 'string', 'max:60'],
             'members' => ['nullable', 'array'],
-            'members.*' => [Rule::exists('users', 'id')->where('role', UserGroup::roleOf($kind)->value)],
+            'members.*' => [Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', UserGroup::roleOf($kind)->value))],
         ]);
     }
 

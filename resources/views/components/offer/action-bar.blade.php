@@ -3,9 +3,9 @@
 @php
     $user = auth()->user();
     $gallery = $offer->isGallery();
-    $prices = !$gallery && ($user?->role->canSeePrices() ?? false);
-    $canBid = ($user?->role->canBid() ?? false) && $offer->bidsOpen();
-    $interest = ($user?->role->canInterest() ?? false) && $offer->state->acceptsInterest() && !$myInterest;
+    $prices = !$gallery && ($user?->canSeePrices() ?? false);
+    $canBid = ($user?->canBid() ?? false) && $offer->bidsOpen();
+    $interest = ($user?->canInterest() ?? false) && $offer->state->acceptsInterest() && !$myInterest;
     $canShow = $user?->isManager() && !$gallery && $offer->state->isPublic();
     // Рядом с кружком «показать» длинная подпись не помещается на 375 px — коротко.
     $label = $canBid && $prices ? ($myBid ? ($canShow ? 'Изменить' : 'Изменить предложение') : ($canShow ? 'Подтвердить' : 'Подтвердить предложение')) : ($interest ? ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') : null);

@@ -24,7 +24,7 @@ class InviteController
         return view('invites.index', [
             'invites' => self::listFor($me),
             'admin' => $me->isAdmin(),
-            'managers' => $me->isAdmin() ? User::where('role', Role::Manager)->orderBy('name')->get() : collect(),
+            'managers' => $me->isAdmin() ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
             'groups' => $me->isAdmin() ? collect() : $me->ownGroups,
             'fresh' => session('invite'),
         ]);

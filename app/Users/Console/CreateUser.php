@@ -32,11 +32,11 @@ class CreateUser extends Command
             'name' => $this->option('name') ?: $this->ask('Имя', 'Администратор'),
             'email' => $this->option('email') ?: null,
             'password' => $this->option('password') ?: $this->secret('Пароль'),
-            'role' => $role,
+            'roles' => [$role],
             'access' => $access,
         ]);
 
-        $this->info("{$user->name}, {$user->phoneFormatted()}, {$user->role->label()}");
+        $this->info("{$user->name}, {$user->phoneFormatted()}, {$user->rolesLabel()}");
 
         return self::SUCCESS;
     }

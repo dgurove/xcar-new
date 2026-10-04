@@ -42,8 +42,8 @@ class MoneyArrivesOnceTest extends TestCase
     {
         parent::setUp();
         Storage::fake('private');
-        User::create(['name' => 'Владелец', 'phone' => '79000000001', 'role' => Role::Admin, 'approved_at' => now()]);
-        $this->manager = User::create(['name' => 'Менеджер', 'phone' => '79000000002', 'email' => 'manager@example.test', 'role' => Role::Manager, 'approved_at' => now()]);
+        User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $this->manager = User::create(['name' => 'Менеджер', 'phone' => '79000000002', 'email' => 'manager@example.test', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $party = Party::create(['kind' => PartyKind::Entrepreneur, 'name' => 'ИП Менеджер', 'inn' => '771234567890', 'phone' => '79000000002']);
         $this->invoice = app(IssueInvoice::class)($party, User::first(), 'issued', ChargeKind::Other, now()->addDays(3), lines: [['title' => 'Разница по сделке', 'price' => 100000]]);
     }

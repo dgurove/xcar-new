@@ -47,7 +47,7 @@ class ChatController
     public function support(Request $request, OpenEnquiry $open, PostMessage $post)
     {
         $user = $request->user();
-        abort_if($user->isStaff(), 404);
+        abort_if($user->isAdmin(), 404);
         $this->validateMessage($request);
         $chat = $open($user, null, null);
         $this->guarded(fn () => $post($chat, $user, $request->input('text'), $request->file('files', []), $request->integer('reply_to') ?: null));

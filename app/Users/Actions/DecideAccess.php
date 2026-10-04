@@ -21,7 +21,7 @@ final class DecideAccess
     public function approve(User $user, Role $role, ?User $by = null): User
     {
         // Парковка — не часть роли сотрудника: её открывает только роль «Парковка» (или админ).
-        $user->forceFill(['role' => $role, 'approved_at' => now(), 'approved_by' => $by?->id, 'rejected_at' => null])->save();
+        $user->forceFill(['roles' => [$role], 'approved_at' => now(), 'approved_by' => $by?->id, 'rejected_at' => null])->save();
         AccessDecided::dispatch($user, true, $by);
 
         return $user;
@@ -30,7 +30,7 @@ final class DecideAccess
     public function reject(User $user, ?User $by = null): User
     {
         $wasManager = $user->isManager();
-        $user->forceFill(['role' => Role::Visitor, 'access' => [], 'approved_at' => null, 'approved_by' => $by?->id, 'rejected_at' => now()])->save();
+        $user->forceFill(['roles' => [Role::Visitor], 'access' => [], 'approved_at' => null, 'approved_by' => $by?->id, 'rejected_at' => now()])->save();
         self::cutOff($user);
         if ($wasManager) {
             Invite::where('manager_id', $user->id)->whereNull('disabled_at')->update(['disabled_at' => now()]);

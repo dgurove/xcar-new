@@ -59,7 +59,7 @@ final class AudienceRules
     {
         $rules = self::normalize($rules ?: self::everyone());
         // Демо-менеджеры тоже видят (кабинет для показа), в списках выбора их нет.
-        $managers = User::withoutGlobalScope('demo')->where('role', Role::Manager)->pluck('id')->all();
+        $managers = User::withoutGlobalScope('demo')->withRole(Role::Manager)->pluck('id')->all();
         $groups = collect($rules)->where('type', 'group');
         $members = $groups->isNotEmpty()
             ? DB::table('user_group_user')->whereIn('group_id', UserGroup::where('kind', UserGroup::MANAGERS)->whereIn('id', $groups->pluck('id'))->select('id'))->get()->groupBy('user_id')->map(fn ($r) => $r->pluck('group_id')->all())
@@ -117,7 +117,7 @@ final class AudienceRules
     {
         return [
             'groups' => UserGroup::ofKind(UserGroup::MANAGERS)->get(['id', 'name'])->map(fn ($g) => ['id' => $g->id, 'name' => $g->name])->all(),
-            'managers' => User::where('role', Role::Manager)->orderBy('name')->get()->map(fn ($u) => ['id' => $u->id, 'name' => $u->shortName()])->all(),
+            'managers' => User::withRole(Role::Manager)->orderBy('name')->get()->map(fn ($u) => ['id' => $u->id, 'name' => $u->shortName()])->all(),
             'delays' => collect(self::DELAYS)->map(fn ($label, $min) => [$min, $label])->values()->all(),
         ];
     }

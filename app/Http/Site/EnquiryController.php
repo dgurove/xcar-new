@@ -18,7 +18,7 @@ class EnquiryController
     public function show(Request $request, GuestEnquiry $guest, MarkChatRead $read)
     {
         $user = $request->user();
-        if ($user?->isStaff()) {
+        if ($user?->isAdmin()) {
             return view('site.pages.kontakty', ['chat' => null, 'messages' => null, 'user' => $user, 'staff' => true]);
         }
         $chat = $user
@@ -44,7 +44,7 @@ class EnquiryController
         }
 
         $user = $request->user();
-        abort_if($user?->isStaff(), 404);
+        abort_if($user?->isAdmin(), 404);
         $data = $request->validate([
             'name' => [$user ? 'nullable' : 'required', 'string', 'max:100'],
             'text' => ['required', 'string', 'max:4000'],

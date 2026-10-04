@@ -102,7 +102,7 @@ class MoneyController
     /** Взаиморасчёты по менеджерам: нам, мы должны, просрочено, заявки — строка ведёт в карточку на «Деньги». */
     public function managers(Request $request)
     {
-        $managers = User::where('role', Role::Manager)->orderBy('name')->get()
+        $managers = User::withRole(Role::Manager)->orderBy('name')->get()
             ->map(fn (User $u) => ['user' => $u, 'position' => (new ManagerLedger($u))->position()])
             ->filter(fn ($m) => $m['position']['pay'] > 0 || $m['position']['payout'] > 0 || $m['position']['paid_out'] > 0 || $m['position']['claimed'] > 0)
             ->sortByDesc(fn ($m) => [$m['position']['overdue'] > 0, $m['position']['claimed'] > 0, $m['position']['pay'] + $m['position']['payout']])->values();

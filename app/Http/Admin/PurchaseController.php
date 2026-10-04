@@ -107,7 +107,7 @@ class PurchaseController
         // фильтра число считается при двух других применённых, так они сходятся между собой.
         // ТС, ушедшие в предложения по контрпредложению, из закупки исключены — видны только в «В предложениях».
         $all = $purchase->cars()->with('offers:id,car_id,user_id,state')->get(['id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state', 'offer_id']);
-        $managers = User::where('role', Role::Manager)->orWhereIn('id', $all->flatMap(fn ($c) => $c->activeOfferList()->pluck('user_id'))->unique())->get();
+        $managers = User::withRole(Role::Manager)->orWhereIn('id', $all->flatMap(fn ($c) => $c->activeOfferList()->pluck('user_id'))->unique())->get();
         $match = [
             'all' => fn ($c) => true,
             'priced' => fn ($c) => $c->activeOfferList()->isNotEmpty(),
@@ -332,7 +332,7 @@ class PurchaseController
     public function restrictions(Request $request)
     {
         return view('admin.purchases.restrictions', [
-            'users' => User::where('role', Role::Manager)->orderBy('name')->get(),
+            'users' => User::withRole(Role::Manager)->orderBy('name')->get(),
             'restrictions' => Restriction::all()->keyBy('user_id'),
         ]);
     }

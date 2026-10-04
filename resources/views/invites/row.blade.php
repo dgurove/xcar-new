@@ -67,7 +67,7 @@
                         <x-ui.avatar :user="$person" :size="40"/>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate font-medium">{{ $person->name }}</span>
-                            <span class="row-sub"><span class="tag">{{ $person->role->label() }}</span><span class="tag nums">{{ $person->created_at->translatedFormat('j M') }}</span></span>
+                            <span class="row-sub"><span class="tag">{{ $person->rolesLabel() }}</span><span class="tag nums">{{ $person->created_at->translatedFormat('j M') }}</span></span>
                         </span>
                         @if ($href)<x-ui.chevron/>@endif
                     </{{ $href ? 'a' : 'div' }}>

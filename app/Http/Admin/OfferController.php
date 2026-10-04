@@ -94,7 +94,7 @@ class OfferController
         $searching = $facets->searching();
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
-        $q = Offer::query()->visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])
+        $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])
             ->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
 
         if ($searching) {
@@ -215,7 +215,7 @@ class OfferController
      */
     public static function counts(User $user, ?Facets $facets = null): array
     {
-        $base = fn () => Offer::visibleTo($user)->whereNot(fn ($o) => $o->emptyDraft());
+        $base = fn () => Offer::inCrm($user)->whereNot(fn ($o) => $o->emptyDraft());
         $counts = [];
         foreach (array_diff(array_keys(self::PRESETS), ['archive']) as $key) {
             $q = self::scopeFor($key, $base());
@@ -285,7 +285,7 @@ class OfferController
             'chats' => $admin ? Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get() : collect(),
             'import' => ImportThreadFiles::progress($offer->id),
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
-            'managers' => $admin ? User::where('role', Role::Manager)->orderBy('name')->get() : collect(),
+            'managers' => $admin ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
             'audienceOptions' => $admin ? AudienceRules::options() : null,
             'showingSummary' => $admin ? Showing::summary($offer) : collect(),
             // Черновик только что заведён из писем и ещё ни разу не сохранён: внизу «Отменить» и «Не заявка».

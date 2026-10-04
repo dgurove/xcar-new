@@ -74,7 +74,7 @@ final class IssueInvite
         $rules = ['label' => ['nullable', 'string', 'max:60']];
         if ($by->isAdmin()) {
             $rules['role'] = ['required', Rule::in(array_map(fn ($r) => $r->value, self::ROLES))];
-            $rules['manager_id'] = ['required_if:role,buyer', 'nullable', Rule::exists('users', 'id')->where('role', Role::Manager->value)];
+            $rules['manager_id'] = ['required_if:role,buyer', 'nullable', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))];
             $rules['expires_at'] = ['exclude_if:role,buyer', 'required', 'date', 'after:now'];
             $rules['areas'] = ['exclude_unless:role,parking', 'nullable', 'array'];
             $rules['areas.*'] = [Rule::in(Area::values())];

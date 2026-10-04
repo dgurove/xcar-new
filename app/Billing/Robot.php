@@ -13,6 +13,6 @@ final class Robot
 {
     public static function user(): User
     {
-        return User::where('role', Role::Admin)->orderBy('id')->firstOrFail();
+        return User::withRole(Role::Admin)->orderBy('id')->firstOrFail();
     }
 }

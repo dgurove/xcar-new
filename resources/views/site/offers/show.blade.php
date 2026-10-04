@@ -20,7 +20,7 @@
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="[$gallery ? 'Галерея' : 'Предложения', $back]" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">
     <x-slot:actions>
-        @if ($user?->role->canShare())<x-offer.share :offer="$offer" icon/>@endif
+        @if ($user?->canShare())<x-offer.share :offer="$offer" icon/>@endif
         @auth<x-offer.favorite :offer="$offer" variant="compact"/>@endauth
         <x-ui.nav-arrows class="ml-auto sm:ml-0"
             :prev="$position['prev'] ? $context->offerUrl($position['prev']) : null"

@@ -5,7 +5,7 @@
 @php
     $user = auth()->user();
     $gallery = $offer->isGallery();
-    $prices = !$gallery && ($user?->role->canSeePrices() ?? false);
+    $prices = !$gallery && ($user?->canSeePrices() ?? false);
     $asSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
 @endphp
 @if ($asSheet)

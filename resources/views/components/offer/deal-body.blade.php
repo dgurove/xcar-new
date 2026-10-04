@@ -6,9 +6,9 @@
     $price = \App\Offers\PriceView::for($offer, $user);
     $prices = $price->visible;
     // Срок приёма — тем, кто подтверждает; покупателю таймер ни о чём.
-    $left = $gallery || !($user?->role->canBid() ?? false) ? null : $offer->secondsLeft();
-    $canBid = ($user?->role->canBid() ?? false) && $offer->bidsOpen();
-    $wantsInterest = ($user?->role->canInterest() ?? false) && $offer->state->acceptsInterest();
+    $left = $gallery || !($user?->canBid() ?? false) ? null : $offer->secondsLeft();
+    $canBid = ($user?->canBid() ?? false) && $offer->bidsOpen();
+    $wantsInterest = ($user?->canInterest() ?? false) && $offer->state->acceptsInterest();
     $manager = $user?->isBuyer() ? $user->manager : null;
 @endphp
 @if ($inSheet)
@@ -29,7 +29,7 @@
         <span class="nums text-base font-semibold {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true" data-timer-word-value="через">{{ \App\Support\Ago::left($offer->bids_close_at, 'через') }}</span>
     </p>
     <p class="mt-3 text-sm text-ink-muted" hidden data-shows-when-closed>Приём подтверждений закрыт</p>
-@elseif (!$gallery && ($user?->role->canBid() ?? false) && !$offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft)
+@elseif (!$gallery && ($user?->canBid() ?? false) && !$offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft)
     <p class="mt-3 text-sm text-ink-muted">Приём подтверждений закрыт</p>
 @endif
 @if ($myBid && ! $canBid)<x-offer.my-bid :offer="$offer" :bid="$myBid" class="mt-3"/>@endif
