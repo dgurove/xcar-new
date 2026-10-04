@@ -21,7 +21,8 @@
     $service = $position->track === \App\Workflow\Track::Service;
     $evacuator = $service ? $offer->evacuator : null;
     $branch = $service ? $offer->pickupDestination() : $deal;
-    $keeperExits = $service ? $stage->exitsFor(Actor::Keeper, $branch)->each(fn ($x) => $evacuator ? null : $x->label = 'Забрали') : collect();
+    $keeperExits = $service ? $stage->exitsFor(Actor::Keeper, $branch) : collect();
+    $label = fn ($x) => $x->actor === Actor::Keeper && ! $evacuator ? 'Забрали' : $x->label;
     $exits = $keeperExits->concat($stage->exitsFor(Actor::Staff, $branch)->reject(fn ($x) => $x->acceptsBid()));
     // Имена блоков как есть: кто вывозит, видно строкой над путём («Стоит у Сергей К.» имя не склоняет).
     $blockName = fn ($block) => $block->name;
@@ -113,7 +114,7 @@
                                         </form>
                                     @endif
                                     @foreach ($breaks as $exit)
-                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="contents" data-turbo-confirm="{{ $exit->confirm ?: $exit->label.'?' }}">@csrf<button class="menu-item w-full text-danger" role="menuitem">{{ $exit->label }}</button></form>
+                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="contents" data-turbo-confirm="{{ $exit->confirm ?: $exit->label.'?' }}">@csrf<button class="menu-item w-full text-danger" role="menuitem">{{ $label($exit) }}</button></form>
                                     @endforeach
                                 </div>
                             </div>
@@ -163,25 +164,25 @@
                                 @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
                                     {{-- «Опубликовать» — сейчас или в слот, как кнопка редактора. --}}
                                     <div data-controller="sheet">
-                                        <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $exit->label }}</x-ui.button>
+                                        <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>
                                         <x-offer.publish-sheet :offer="$offer" id="exit-{{ $exit->id }}" action="/offers/{{ $n }}/exit/{{ $exit->id }}"/>
                                     </div>
                                 @elseif ($exit->to?->staff_fields)
                                     <div data-controller="sheet">
-                                        <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $exit->label }}</x-ui.button>
+                                        <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>
                                         <x-ui.sheet id="exit-{{ $exit->id }}" :title="$exit->label">
                                             <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="flex flex-col gap-4">
                                                 @csrf
                                                 @foreach ($exit->to->staff_fields as $field)
                                                     <x-route.field :field="$field" :name="'fields['.$field['key'].']'"/>
                                                 @endforeach
-                                                <x-ui.button block>{{ $exit->label }}</x-ui.button>
+                                                <x-ui.button block>{{ $label($exit) }}</x-ui.button>
                                             </form>
                                         </x-ui.sheet>
                                     </div>
                                 @else
                                     <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @if ($exit->confirm) data-turbo-confirm="{{ $exit->confirm }}" @endif>
-                                        @csrf<x-ui.button size="sm" :variant="$variant">{{ $exit->label }}</x-ui.button>
+                                        @csrf<x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
                                     </form>
                                 @endif
                             @endforeach

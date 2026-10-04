@@ -4,7 +4,7 @@
 @props(['offer', 'managers', 'prefix' => 'pickup'])
 @php
     $who = old('evacuator_id', $offer->evacuator_id);
-    $to = old('evacuation_to', $offer->evacuation_to ?? ($who ? 'keeper' : 'ours'));
+    $to = old('evacuation_to', $offer->evacuation_to ?? ($who ? 'keeper' : 'yard'));
 @endphp
 <form method="post" action="/offers/{{ $offer->number }}/pickup" {{ $attributes->class(['flex flex-col gap-4']) }} data-controller="reveal">
     @csrf

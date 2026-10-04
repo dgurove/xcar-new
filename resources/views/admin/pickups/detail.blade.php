@@ -2,7 +2,7 @@
      «Забрал» ответственного сотрудник жмёт за него) и «Кто и куда вывозит» шторкой. Страница — редактор предложения. --}}
 @php
     $position = $offer->position(\App\Workflow\Track::Service);
-    $editable = ! in_array($position->stage->car_place?->value, ['keeper', 'with_us', 'ours'], true);
+    $editable = ! $offer->pickedUp();
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="'/offers/'.$offer->number" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :action="false">

@@ -272,6 +272,12 @@ class Offer extends Model implements HasMedia
         return $this->belongsTo(User::class, 'evacuator_id');
     }
 
+    /** ТС уже забрали: вывоз дошёл до места (у менеджера, у нас, на парковке) — кто и куда, менять поздно. */
+    public function pickedUp(): bool
+    {
+        return in_array($this->position(Track::Service)?->stage->car_place, [CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours], true);
+    }
+
     /** Куда вывозят: не назначено — на парковку, как было до 04.10.2026. */
     public function pickupDestination(): Destination
     {
@@ -329,6 +335,13 @@ class Offer extends Model implements HasMedia
             ->whereNotIn('state', [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived])
             ->whereHas('positions', fn ($p) => $p->where('track', Track::Service))
             ->when($user->isAdmin(), fn ($q) => $q->whereNotNull('evacuator_id'), fn ($q) => $q->where('evacuator_id', $user->id));
+    }
+
+    /** Ход ответственного за вывоз — «забрать»: на текущем этапе вывоза есть его кнопка той ветки, куда везём. Одним запросом. */
+    public function scopeAwaitingPickup(Builder $q): Builder
+    {
+        return $q->whereHas('positions', fn ($p) => $p->where('track', Track::Service)
+            ->whereHas('stage.exits', fn ($e) => $e->where('actor', 'keeper')->whereColumn('workflow_exits.branch', 'offers.evacuation_to')));
     }
 
     public function scopeEmptyDraft(Builder $q): Builder

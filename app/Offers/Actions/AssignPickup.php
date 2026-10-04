@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Offers\CarPlace;
 use App\Offers\Destination;
 use App\Offers\Events\PickupAssigned;
 use App\Offers\Offer;
@@ -41,8 +42,14 @@ final class AssignPickup
         }
         $position = $offer->position(Track::Service);
         // Забрали — место уже факт: менять, кто и куда, поздно (назад — «Отменить» шага).
-        if ($position && in_array($position->stage->car_place?->value, ['keeper', 'with_us', 'ours'], true)) {
+        if ($offer->pickedUp()) {
             throw ValidationException::withMessages(['evacuator_id' => 'ТС уже забрали']);
+        }
+        // Развилка «куда» пройдена (перегон на парковку) — кто вывозит, поменять можно, а куда — нет: ветка уже выбрана.
+        $pastFork = $position?->stage->car_place === CarPlace::Moving
+            && ! $position->stage->exits->contains(fn ($e) => Destination::tryFrom((string) $e->branch) !== null);
+        if ($pastFork && $to !== $offer->pickupDestination()) {
+            throw ValidationException::withMessages(['evacuation_to' => 'ТС уже в пути, куда везём — не поменять']);
         }
 
         return DB::transaction(function () use ($offer, $evacuator, $to, $by, $position) {

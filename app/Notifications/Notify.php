@@ -175,7 +175,8 @@ final class Notify
         // Вывоз — наша работа: менеджеру про шаги эвакуатора не пишем. Кроме вывоза, порученного ему: пора забирать.
         if ($e->track === Track::Service) {
             $offer = $e->offer->loadMissing('evacuator');
-            if ($offer->evacuator && $e->to->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()) {
+            // Только шагом вперёд: откат «Отменить» и «Вернуть на этот шаг» (без выхода) второй раз не пишут.
+            if ($e->exit && $offer->evacuator && $e->to->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()) {
                 $offer->evacuator->notify(new PickupNotice($offer, turn: true));
             }
 

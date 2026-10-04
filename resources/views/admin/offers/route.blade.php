@@ -12,7 +12,7 @@
     $canPickup = $service?->is_active && ! $pickup && ! in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived, OfferState::Garage], true);
     $canDrop = $pickup && ! $service?->auto_start && $pickup->stage->is($service?->startStage());
     // Кто и куда правится, пока ТС не забрали: потом место — факт.
-    $canEdit = $pickup && ! in_array($pickup->stage->car_place?->value, ['keeper', 'with_us', 'ours'], true) && $offer->state !== OfferState::Garage;
+    $canEdit = $pickup && ! $offer->pickedUp() && $offer->state !== OfferState::Garage;
     $positions = $offer->positions->sortBy(fn ($p) => $p->track === Track::Sale ? 0 : 1)->values();
     $sheet = $canPickup || $canEdit;
     $pickupManagers = $sheet ? ($managers ?? \App\Users\User::withRole(\App\Users\Role::Manager)->orderBy('name')->get()) : collect();

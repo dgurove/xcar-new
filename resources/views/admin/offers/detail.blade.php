@@ -24,9 +24,7 @@
     // Рядом с «Оценить» — «В гараж»: менеджеру без цены продажи (04.10.2026), та же форма, что в «···» редактора.
     $garage = $rate && $offer->state->allows(OfferState::Garage);
     // И «Вывоз»: кто забирает ТС и куда (`AssignPickup`) — пока не забрали; цену после него всё равно ставить.
-    $servicePosition = $offer->position(\App\Workflow\Track::Service);
-    $pickup = $rate && $offer->vendor?->workflow(\App\Workflow\Track::Service)?->is_active
-        && ! in_array($servicePosition?->stage->car_place?->value, ['keeper', 'with_us', 'ours'], true);
+    $pickup = $rate && $offer->vendor?->workflow(\App\Workflow\Track::Service)?->is_active && ! $offer->pickedUp();
     $ways = $garage || $pickup;
     $way = $errors->hasAny(['evacuator_id', 'evacuation_to']) ? 'pickup' : (old('stage') ? 'garage' : 'rate');
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
@@ -112,7 +110,6 @@
                     @endif
                     @if ($pickup)
                         <div data-reveal-target="pane" data-reveal-key="pickup" hidden>
-                            @if ($offer->evacuation_to)<p class="mb-3 text-sm text-ink-muted">Сейчас: {{ $offer->evacuator?->shortName() ?? 'мы' }}, {{ mb_strtolower($offer->pickupDestination()->label()) }}</p>@endif
                             <x-offer.pickup-form :offer="$offer" :managers="$managers" prefix="detail-pickup-{{ $n }}"/>
                         </div>
                     @endif

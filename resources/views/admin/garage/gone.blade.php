@@ -1,0 +1,3 @@
+{{-- Машины в гараже больше нет («Отдали по ошибке» из карточки строки): карточка закрывается, строка уходит из таблицы,
+     тост — тот, что оставил ответ. Потоки внутри фрейма исполняются и пропадают — пустой фрейм и есть «таблица во всю ширину». --}}
+<turbo-frame id="detail" class="split-detail" target="_top" data-turbo-action="replace" data-detail-target="frame"><turbo-stream action="remove" targets="tr[data-detail-key=&quot;{{ $key }}&quot;]"></turbo-stream>@if (session('toast'))<turbo-stream action="toast" data-message="{{ session('toast') }}" data-kind=""></turbo-stream>@endif</turbo-frame>

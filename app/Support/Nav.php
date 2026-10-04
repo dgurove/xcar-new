@@ -24,7 +24,6 @@ use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
-use App\Offers\PickupState;
 use App\Park\Area;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -480,7 +479,7 @@ final class Nav
             $badges['/deals/asks'] = (int) $asks->deals;
             $badges['/deals'] = $badges['/deals/asks'] + $badges['/buyers'];
             // И «забрать» по вывозу: ход ответственного.
-            $badges['/garage'] = (int) $asks->garage + Offer::pickupsOf($user)->with('positions.stage.exits')->get()->filter(fn ($o) => PickupState::awaits($o))->count();
+            $badges['/garage'] = (int) $asks->garage + Offer::pickupsOf($user)->awaitingPickup()->count();
         }
         if ($user->canChat() || $user->isAdmin()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.

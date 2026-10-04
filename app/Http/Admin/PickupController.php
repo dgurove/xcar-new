@@ -33,12 +33,14 @@ class PickupController
         }
         $facets = Facets::for($request, 'crm-pickups',
             Common::manager('offers.evacuator_id', 'who', 'Кто вывозит')->none('Мы'),
-            Facet::column('to', 'Куда', ['место', 'места', 'мест'], "coalesce(offers.evacuation_to, 'yard')")->enum(Destination::class),
+            Facet::column('to', 'Куда', ['место', 'места', 'мест'], 'offers.evacuation_to')->enum(Destination::class),
         );
         ListPrefs::sync($request, 'crm-pickups', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset'), self::PRESETS) ? $request->query('preset') : 'work';
 
-        $q = Offer::whereHas('positions', fn ($p) => $p->where('track', Track::Service))
+        // Только назначенные вывозы: у вендоров с автозапуском позиция вывоза есть у каждого предложения, а кто и куда
+        // везёт, выбирают руками (`AssignPickup`).
+        $q = Offer::whereNotNull('evacuation_to')->whereHas('positions', fn ($p) => $p->where('track', Track::Service))
             ->whereNotIn('state', [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived])
             ->with(['brand', 'model', 'media', 'vendor', 'evacuator', 'positions.stage.exits', 'positions.stage.block']);
         $offers = $facets->apply($q)->get()

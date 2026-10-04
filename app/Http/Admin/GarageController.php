@@ -62,7 +62,10 @@ class GarageController
     {
         $offer->load(['brand', 'model', 'media', 'positions.stage.block']);
         $view = OfferController::garageView($offer, request()->user());
-        abort_unless($view, 404);
+        // «Отдали по ошибке» из этой же карточки: ответ вернулся сюда (DetailBack), а машины в гараже уже нет.
+        if (! $view) {
+            return view('admin.garage.gone', ['key' => $offer->number]);
+        }
 
         return view('admin.garage.detail', ['garageView' => $view]);
     }

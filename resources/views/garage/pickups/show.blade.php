@@ -15,7 +15,6 @@
     $fields = collect($stage?->staff_fields ?? [])->mapWithKeys(fn ($f) => [$f['label'] => $position->payload[$f['key']] ?? null])->filter();
     if ($canPick && ! $fields->has('Адрес') && $offer->inspection_address) $fields['Адрес'] = $offer->inspection_address;
     if ($canPick && ! $fields->has('Контакт') && ($offer->insured_name || $offer->insured_phone)) $fields['Контакт'] = trim($offer->insured_name.' '.$offer->insured_phone);
-    $phone = fn (string $v) => preg_replace_callback('/\+?[78][\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}/u', fn ($m) => '<a href="tel:'.preg_replace('/[^\d+]/', '', $m[0]).'" class="nums text-accent-text">'.e($m[0]).'</a>', e($v));
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Гараж', '/garage']">
     <div class="-mt-3 mb-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
@@ -30,7 +29,7 @@
                 @foreach ($fields as $label => $value)
                     <div class="row items-start justify-between gap-4">
                         <span class="shrink-0 text-ink-muted">{{ $label }}</span>
-                        <span class="min-w-0 whitespace-pre-line break-words text-right">@if ($label === 'Дата вывоза' && strtotime($value)){{ \Illuminate\Support\Carbon::parse($value)->translatedFormat('j F') }}@else{!! $phone($value) !!}@endif</span>
+                        <span class="min-w-0 whitespace-pre-line break-words text-right">@if ($label === 'Дата вывоза' && strtotime($value)){{ \Illuminate\Support\Carbon::parse($value)->translatedFormat('j F') }}@else{!! \App\Support\Linkify::html($value) !!}@endif</span>
                     </div>
                 @endforeach
             </div>
