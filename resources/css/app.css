@@ -777,6 +777,35 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Поле не совпадает с лотом Мигторга: «!» у подписи, нажатие — строка «На Мигторге: …» под полем. */
   .migtorg-diff { @apply ml-1.5 inline-flex size-4 items-center justify-center rounded-full align-[1px] text-[11px] font-semibold leading-none text-white; background: var(--color-urgent); }
   .field-note { @apply mt-1 text-sm; color: var(--color-urgent); }
+  /* «Оценить → Из текста» (valuation_controller): этапы с кольцом и галкой, строки текста схлопываются, номера и суммы
+     загораются, итог считается счётчиком, в конце большая галка рисуется обводкой. */
+  .valuation-text { @apply min-h-64 resize-y font-mono text-sm; }
+  .valuation-steps { @apply flex flex-col gap-2.5; }
+  .valuation-step { @apply flex items-center gap-3 text-ink-dim transition-colors; }
+  .valuation-step:not([data-state="wait"]) { @apply text-ink; }
+  .valuation-step[data-state="fail"] { color: var(--color-danger); }
+  .valuation-mark { @apply relative flex size-5 flex-none items-center justify-center; }
+  .valuation-ring { @apply size-4 rounded-full; border: 2px solid color-mix(in oklab, var(--color-ink) 14%, transparent); }
+  .valuation-step[data-state="run"] .valuation-ring { border-top-color: var(--color-accent); animation: spin .8s linear infinite; }
+  .valuation-step[data-state="done"] .valuation-ring { @apply hidden; }
+  .valuation-tick { @apply absolute inset-0 hidden size-5; fill: none; stroke: var(--color-accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; }
+  .valuation-step[data-state="done"] .valuation-tick { @apply block; animation: valuation-draw .35s ease-out forwards; }
+  .valuation-lines { @apply mt-4 max-h-[40dvh] overflow-hidden text-sm; mask-image: linear-gradient(to bottom, #000 80%, transparent); }
+  .valuation-line { @apply truncate rounded-md px-2 py-0.5 text-ink-dim transition-colors duration-300; }
+  .valuation-line.is-kept { @apply text-ink; background: var(--color-accent-soft); }
+  .valuation-done { @apply my-4 flex justify-center; }
+  .valuation-done svg { @apply size-16; fill: none; stroke: var(--color-accent); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+  .valuation-done circle { stroke-dasharray: 176; stroke-dashoffset: 176; animation: valuation-draw .6s ease-out forwards; }
+  .valuation-done path { stroke-dasharray: 44; stroke-dashoffset: 44; animation: valuation-draw .35s .45s ease-out forwards; }
+  .valuation-group > summary { @apply cursor-pointer list-none; }
+  .valuation-group > summary::-webkit-details-marker { display: none; }
+  .valuation-sum { @apply flex shrink-0 flex-col items-end text-sm leading-snug; }
+  .valuation-row .valuation-floor { @apply text-ink-muted; }
+  .valuation-row.is-pending:not(.show-floor) .valuation-floor { opacity: 0; }
+  .valuation-row.show-floor .valuation-floor { transition: opacity .3s; }
+  .valuation-bar { @apply sticky bottom-0 -mx-1 mt-2 flex gap-2 px-1 pt-2 pb-[max(.5rem,env(safe-area-inset-bottom))]; background: var(--color-surface); }
+  @keyframes valuation-draw { to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) { .valuation-tick, .valuation-done circle, .valuation-done path { animation: none !important; stroke-dashoffset: 0; } }
   .migtorg-field-btn { @apply flex size-9 items-center justify-center rounded-full transition-colors; background: color-mix(in oklab, #D6514A 18%, transparent); }
   .migtorg-field-btn:hover { background: color-mix(in oklab, #D6514A 30%, transparent); }
   /* «Удалить черновик» в плашке модератора уступает место «Сохранить изменения»: втроём не влезают на телефоне. */

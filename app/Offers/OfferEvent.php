@@ -4,11 +4,13 @@ namespace App\Offers;
 
 use App\Garage\GaragePayer;
 use App\Support\FieldLabels;
+use App\Support\Money;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable(['offer_id', 'user_id', 'type', 'payload'])]
 class OfferEvent extends Model
@@ -25,6 +27,19 @@ class OfferEvent extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Лот Мигторга, откуда запись (`payload.lot`); у записей до 05.10.2026 номера не было — лот, взятый предложением.
+     * Ссылка на объявление стоит в строке истории.
+     */
+    public function migtorgLot(): ?int
+    {
+        if (($this->payload['source'] ?? null) !== 'migtorg') {
+            return null;
+        }
+
+        return ($this->payload['lot'] ?? null) ?: once(fn () => DB::table('migtorg_lots')->where('offer_id', $this->offer_id)->orderByDesc('id')->value('id'));
+    }
+
     /** Строка истории на карточке. */
     public function text(): string
     {
@@ -39,11 +54,13 @@ class OfferEvent extends Model
             // Правка задачи Мигторга: поля лота («ответ до» — тот же конец торгов, что «срок от вендора») или кадры.
             OfferEventType::Updated => ($p['source'] ?? null) === 'migtorg'
                 ? 'С Мигторга: '.match (true) {
-                    isset($p['lot']) => 'подтвердили лот '.$p['lot'],
                     isset($p['photos']) => $p['photos'].' фото',
-                    default => FieldLabels::list(array_values(array_diff($p['fields'] ?? [], ['answer_by']))),
+                    isset($p['fields']) => FieldLabels::list(array_values(array_diff($p['fields'], ['answer_by']))),
+                    default => 'подтвердили',
                 }
-            : 'Изменён: '.FieldLabels::list($p['fields'] ?? []),
+            : (($p['source'] ?? null) === 'valuation'
+                ? 'Оценка из текста: оценочная '.Money::rub((int) ($p['value'] ?? 0)).', закупочная '.Money::rub((int) ($p['floor'] ?? 0))
+                : 'Изменён: '.FieldLabels::list($p['fields'] ?? [])),
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
             OfferEventType::StateChanged => OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),
             OfferEventType::BidPlaced => ! empty($p['garage']) ? 'Подтверждение в гараж' : 'Подтверждение '.number_format($p['amount'] ?? 0, 0, '', ' ').' ₽',

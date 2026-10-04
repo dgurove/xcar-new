@@ -6,7 +6,9 @@ export default class extends Controller {
     static values = { ids: Array };
 
     connect() {
-        this.select = this.element.closest('form')?.querySelector('select[name="vendor_id"]');
+        // Поле бывает вне формы и ходит в неё через form= (деньги редактора): форма — та, куда уходит поле.
+        const form = this.element.querySelector('[name]')?.form ?? this.element.closest('form');
+        this.select = form?.querySelector('select[name="vendor_id"]') ?? (form?.id ? document.querySelector(`select[name="vendor_id"][form="${form.id}"]`) : null);
         this.onChange = () => this.sync();
         this.select?.addEventListener('change', this.onChange);
         this.sync();

@@ -30,7 +30,7 @@ class OfferRequest extends FormRequest
      */
     public const MODERATOR = [
         'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'show_address', 'body', 'transmission', 'drive', 'fuel',
-        'engine_volume', 'engine_power', 'color', 'settlement_id', 'inspection_address', 'description', 'floor_price', 'vendor_id', 'claim_ref',
+        'engine_volume', 'engine_power', 'color', 'settlement_id', 'inspection_address', 'description', 'floor_price', 'value', 'vendor_id', 'claim_ref',
         'prices_include_vat',
     ];
 
@@ -44,7 +44,7 @@ class OfferRequest extends FormRequest
         if ($this->filled('color')) {
             $this->merge(['color' => Colors::normalize($this->input('color'), fuzzy: false) ?? trim((string) $this->input('color'))]);
         }
-        $this->merge(collect($this->only(['mileage', 'floor_price', 'publish_price', 'asking_price', 'min_bid_price', 'engine_power']))
+        $this->merge(collect($this->only(['mileage', 'floor_price', 'value', 'publish_price', 'asking_price', 'min_bid_price', 'engine_power']))
             ->map(fn ($v) => $v === null || $v === '' ? null : (int) preg_replace('/\D+/', '', (string) $v))
             ->all());
     }
@@ -84,6 +84,7 @@ class OfferRequest extends FormRequest
             'settlement_id' => ['nullable', 'exists:settlements,id'],
             'inspection_address' => ['nullable', 'string', 'max:255'],
             'floor_price' => ['nullable', 'integer', 'max:100000000'],
+            'value' => ['nullable', 'integer', 'min:0', 'max:1000000000'],
             'publish_price' => ['nullable', 'integer', 'max:100000000', ...($this->filled('asking_price') ? ['lte:asking_price'] : [])],
             'asking_price' => ['nullable', 'integer', 'max:100000000'],
             'min_bid_price' => ['nullable', 'integer', 'max:100000000'],
@@ -114,7 +115,7 @@ class OfferRequest extends FormRequest
 
     public function attributes(): array
     {
-        return ['brand_id' => 'марка', 'model_id' => 'модель', 'vendor_id' => 'вендор', 'claim_ref' => 'номер', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'publish_price' => 'заявленная цена'];
+        return ['brand_id' => 'марка', 'model_id' => 'модель', 'vendor_id' => 'вендор', 'claim_ref' => 'номер', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена'];
     }
 
     /**

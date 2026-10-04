@@ -151,7 +151,7 @@ final class ImportMigtorgLot implements ShouldQueue
     {
         DB::table('migtorg_lots')->where('claim_ref_key', $offer->claim_ref_key)->update(['offer_id' => $offer->id]);
         if ($fields = self::fieldsOf($lot)) {
-            self::glow($offer, app(ApplyCarFields::class)($offer, $fields, null, onlyEmpty: true, log: ['source' => 'migtorg']));
+            self::glow($offer, app(ApplyCarFields::class)($offer, $fields, null, onlyEmpty: true, log: ['source' => 'migtorg', 'lot' => $lot->id]));
         }
         // Ход — сразу, а не когда задачу возьмёт воркер: чип крутится с нажатия, второй раз кнопку не нажать.
         Cache::put("migtorg:offer:{$offer->id}", ['i' => 0, 'n' => null, 'at' => time()], 1800);
@@ -264,7 +264,7 @@ final class ImportMigtorgLot implements ShouldQueue
             DB::table('migtorg_lots')->where('id', $this->lotId)->update(['photos' => count($lotPhotos), 'data' => json_encode($row['data'], JSON_UNESCAPED_UNICODE)]);
             MigtorgSync::media([$this->lotId => $files]);
             // Поля из индекса легли в start(); карточка дописывает то, чего в списке не было. Правит система, не человек.
-            $filled = $apply($offer, MigtorgFields::of($card), null, onlyEmpty: true, log: ['source' => 'migtorg']);
+            $filled = $apply($offer, MigtorgFields::of($card), null, onlyEmpty: true, log: ['source' => 'migtorg', 'lot' => $this->lotId]);
             self::glow($offer, $filled);
             $offer->refresh();
             $this->refresh($publish, $offer);
@@ -309,7 +309,7 @@ final class ImportMigtorgLot implements ShouldQueue
         }
         Log::info("Мигторг: лот {$this->lotId} → предложение {$offer->id}: полей ".count($filled).", кадров {$added}".($failed ? ", не забрано {$failed}" : ''));
         if ($added) {
-            $offer->log(OfferEventType::Updated, null, ['source' => 'migtorg', 'photos' => $added]);
+            $offer->log(OfferEventType::Updated, null, ['source' => 'migtorg', 'lot' => $this->lotId, 'photos' => $added]);
         }
         OfferStateChanged::dispatch($offer->fresh());
         $this->refresh($publish, $offer);

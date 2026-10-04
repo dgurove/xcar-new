@@ -29,7 +29,12 @@ final class UpdateOffer
         if (array_key_exists('vin', $data)) {
             $data['vin'] = $data['vin'] ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $data['vin'])) : null;
         }
+        $was = $offer->value;
         $offer->fill($data);
+        // Сменили оценочную, закупочную не трогали — закупочная от неё же, если не вписана рукой (`Sale::floorFor`).
+        if ($offer->isDirty('value') && ! $offer->isDirty('floor_price') && ($floor = Sale::floorFor($offer->floor_price, $was, $offer->value))) {
+            $offer->floor_price = $floor;
+        }
         // Сменили вендора, а НДС не прислали (у модератора галки нет) — НДС цен от вендора. Присланный — письмом или
         // галкой админа — не перетирается, даже если совпадает с прежним.
         if ($offer->isDirty('vendor_id') && ! array_key_exists('prices_include_vat', $data) && $offer->vendor_id) {

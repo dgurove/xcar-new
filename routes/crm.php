@@ -6,7 +6,6 @@ use App\Http\Admin\ChatController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
-use App\Http\Admin\PickupController;
 use App\Http\Admin\InterestController;
 use App\Http\Admin\InvoiceController;
 use App\Http\Admin\MailAccountController;
@@ -16,7 +15,9 @@ use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
 use App\Http\Admin\OfferDraftController;
 use App\Http\Admin\OfferPhotoController;
+use App\Http\Admin\OfferValuationController;
 use App\Http\Admin\PayLinkController;
+use App\Http\Admin\PickupController;
 use App\Http\Admin\PurchaseCarPhotoController;
 use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
@@ -61,6 +62,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/from-mail/{candidate}/scan/apply', [ScanController::class, 'apply']);
     });
     Route::get('/offers/twins', [OfferController::class, 'twins']);
+    // «Оценить → Из текста»: оценочные из сообщения — модератору тоже, он ставит закупочную.
+    Route::post('/offers/valuations/preview', [OfferValuationController::class, 'preview']);
+    Route::post('/offers/valuations', [OfferValuationController::class, 'apply']);
     Route::middleware('offer.edit')->group(function () {
         Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
         Route::get('/offers/{offer}/letters', [MailController::class, 'offerLetters'])->middleware('ability:canCrmMail');

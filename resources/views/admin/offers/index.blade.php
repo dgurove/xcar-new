@@ -32,6 +32,17 @@
     <x-ui.toolbar :sorts="$sorts" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
         <x-slot:extra>@unless ($searching)<x-ui.view-switch :current="$view"/>@endunless</x-slot:extra>
         <x-slot:actions>
+            {{-- «Оценить»: по одной — первая без цены в карточке; из текста — сообщение с оценочными стоимостями. --}}
+            @if ($preset === 'unpriced' && ! $searching)
+                <div class="contents" data-controller="menu sheet">
+                    <button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="menu#toggle" aria-haspopup="menu" aria-controls="rate-menu">Оценить<x-ui.icon name="chevron-down" class="size-4"/></button>
+                    <div id="rate-menu" class="menu" popover data-menu-target="list" role="menu">
+                        <a href="/?preset=unpriced&peek=first" class="menu-item" role="menuitem" data-action="menu#close">По одной</a>
+                        <button type="button" class="menu-item w-full" role="menuitem" data-action="menu#close sheet#open">Из текста</button>
+                    </div>
+                    <x-offer.valuation-sheet/>
+                </div>
+            @endif
             @if (auth()->user()->canCrmMail())<a href="/offers/from-mail" class="btn btn-s btn-quiet relative shrink-0 rounded-full" aria-label="Из писем"><x-ui.icon name="mail" class="size-4"/><span class="hidden sm:inline">Из писем</span><x-ui.badge href="/offers/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>@endif
             <form method="post" action="/offers" class="shrink-0">@csrf<button type="submit" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Новый</span></button></form>
         </x-slot:actions>

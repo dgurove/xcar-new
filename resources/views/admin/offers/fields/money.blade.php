@@ -2,10 +2,17 @@
      шапке); срок приёма, кому показывать и галки показа — «Показ» (fields/show) под описанием. В редакторе блок стоит справа над
      «Историей», вне формы — поля ходят в неё через `form` ($form). Серые подсказки заявленной и минимальной считаются на
      ходу (min-bid). Модератору — закупочная и НДС: цены продажи, галки, метки и приём ставит админ (OfferRequest::MODERATOR). --}}
-@php $form ??= null; @endphp
-<div class="grid grid-cols-2 gap-3" data-controller="min-bid">
+@php
+    $form ??= null;
+    $byValue = once(fn () => \App\Vendors\Vendor::where('rate_by_value', true)->pluck('id')->all());
+@endphp
+<div class="grid grid-cols-2 gap-3" data-controller="min-bid value-floor">
     @if (auth()->user()->canManageCrm())
-    <x-ui.field name="floor_price" data-controller="digits" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
+    {{-- Оценочная — у вендора, чья закупочная от неё (`rate_by_value`, Альфа); та же, что у ТС парковки (`Sale::MAP`). --}}
+    <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array($offer->vendor_id, $byValue, true) || $offer->value) hidden @endunless>
+        <x-ui.field name="value" data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" label="Оценочная, ₽" :value="$offer->value" :form="$form"/>
+    </div>
+    <x-ui.field name="floor_price" data-controller="digits" data-value-floor-target="floor" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
         <x-slot:after-label><span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
     </x-ui.field>
     <x-ui.field name="publish_price" data-controller="digits" data-action="input->digits#format" label="Заявленная, ₽" :value="$offer->publish_price" :form="$form" :placeholder="$offer->floor_price ? \App\Support\Money::nums(\App\Offers\Offer::declaredFrom($offer->floor_price)) : null"/>
@@ -16,7 +23,11 @@
     {{-- Метки: в редакторе — в шапке пилюлями, здесь только в карточке строки. --}}
     @if ($withTags ?? true)<div class="col-span-2">@include('admin.offers.fields.tags')</div>@endif
     @else
-    <x-ui.field name="floor_price" data-controller="digits" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
+    {{-- Оценочная — у вендора, чья закупочная от неё (`rate_by_value`, Альфа); та же, что у ТС парковки (`Sale::MAP`). --}}
+    <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array($offer->vendor_id, $byValue, true) || $offer->value) hidden @endunless>
+        <x-ui.field name="value" data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" label="Оценочная, ₽" :value="$offer->value" :form="$form"/>
+    </div>
+    <x-ui.field name="floor_price" data-controller="digits" data-value-floor-target="floor" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
         <x-slot:after-label><span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
     </x-ui.field>
     @endif

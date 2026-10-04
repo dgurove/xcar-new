@@ -19,7 +19,7 @@ final class Sale
 {
     /** Поле ТС => поле предложения. */
     public const MAP = ['ref' => 'claim_ref', 'vin' => 'vin', 'brand_id' => 'brand_id', 'model_id' => 'model_id', 'year' => 'year',
-        'color' => 'color', 'mileage' => 'mileage', 'vendor_id' => 'vendor_id'];
+        'color' => 'color', 'mileage' => 'mileage', 'vendor_id' => 'vendor_id', 'value' => 'value'];
 
     /** Связь сменилась: файлы прежнего предложения, принесённые им, — назад; файлы нового — к ТС, без копий. */
     public static function relinked(Vehicle $vehicle, ?int $was): void
@@ -95,6 +95,20 @@ final class Sale
         return (int) (ceil(round($price, 2) / 1000) * 1000);
     }
 
+    /**
+     * Закупочная после смены оценочной: пустая или посчитанная от прежней оценочной — заново от новой; вписанная рукой
+     * остаётся. null — трогать не нужно.
+     */
+    public static function floorFor(?int $floor, ?int $was, ?int $value): ?int
+    {
+        if (! $value || $value === $was) {
+            return null;
+        }
+        $auto = $floor === null || ($was && $floor === self::floorFrom($was));
+
+        return $auto ? self::floorFrom($value) : null;
+    }
+
     /** ТС → предложение. */
     public static function toOffer(Vehicle $vehicle, ?Offer $offer = null): void
     {
@@ -102,14 +116,15 @@ final class Sale
         if (! $offer) {
             return;
         }
+        $was = $offer->value;
         foreach (self::MAP as $from => $to) {
             if (filled($vehicle->{$from})) {
                 $offer->{$to} = $vehicle->{$from};
             }
         }
         // Закупочная — из оценочной, пока её не вписали (владелец, 04.10.2026); вписанную не трогаем.
-        if ($offer->floor_price === null && $vehicle->value) {
-            $offer->floor_price = self::floorFrom((int) $vehicle->value);
+        if ($floor = self::floorFor($offer->floor_price, $was, $vehicle->value ? (int) $vehicle->value : null) ?? ($offer->floor_price === null && $vehicle->value ? self::floorFrom((int) $vehicle->value) : null)) {
+            $offer->floor_price = $floor;
         }
         if ($offer->isDirty()) {
             $offer->save();
