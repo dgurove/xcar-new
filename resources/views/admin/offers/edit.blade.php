@@ -148,7 +148,7 @@
             </x-ui.card>
         </div>
 
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode(\App\Offers\Jobs\ImportMigtorgLot::glowed($offer)) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode(\App\Offers\Jobs\ImportMigtorgLot::glowed($offer)) }}" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             @csrf @method('put')
 
             <x-ui.card title="Транспортное средство" class="order-2">

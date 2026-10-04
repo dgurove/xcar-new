@@ -771,6 +771,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Мигторг в поле номера убытка (x-offer.migtorg-field): справа внутри поля, как кнопка у VIN. */
   .migtorg-field { @apply absolute inset-y-0 right-2 flex items-center gap-1.5; }
   /* Нашёлся лот — знак на красноватой подложке их цвета: видно, что это кнопка, а не значок. */
+  /* Поле не совпадает с лотом Мигторга: «!» у подписи, нажатие — строка «На Мигторге: …» под полем. */
+  .migtorg-diff { @apply ml-1.5 inline-flex size-4 items-center justify-center rounded-full align-[1px] text-[11px] font-semibold leading-none text-white; background: var(--color-urgent); }
+  .field-note { @apply mt-1 text-sm; color: var(--color-urgent); }
   .migtorg-field-btn { @apply flex size-9 items-center justify-center rounded-full transition-colors; background: color-mix(in oklab, #D6514A 18%, transparent); }
   .migtorg-field-btn:hover { background: color-mix(in oklab, #D6514A 30%, transparent); }
   /* «Удалить черновик» в плашке модератора уступает место «Сохранить изменения»: втроём не влезают на телефоне. */
