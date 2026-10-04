@@ -53,11 +53,11 @@
                     <form method="post" action="/requests" class="contents" data-turbo-frame="_top">@csrf<input type="hidden" name="type" value="release"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Выдать</button></form>
                 @endif
                 @if ($debt > 0)<span class="pill pill-danger !min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</span>@endif
-                <a href="/acts/{{ $vehicle->id }}/intake" class="pill pill-plain" data-turbo="false" target="_blank">Акт приёма</a>
+                <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/intake', 'type' => 'html', 'name' => 'Акт приёма']" class="pill pill-plain"/>
             @endif
             @if ($state === VehicleState::Released)
-                <a href="/acts/{{ $vehicle->id }}/intake" class="pill pill-plain" data-turbo="false" target="_blank">Акт приёма</a>
-                <a href="/acts/{{ $vehicle->id }}/release" class="pill pill-plain" data-turbo="false" target="_blank">Акт выдачи</a>
+                <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/intake', 'type' => 'html', 'name' => 'Акт приёма']" class="pill pill-plain"/>
+                <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/release', 'type' => 'html', 'name' => 'Акт выдачи']" class="pill pill-plain"/>
             @endif
             @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Осмотр</a>@endunless
         </x-slot:actions>

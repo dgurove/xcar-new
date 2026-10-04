@@ -17,13 +17,13 @@
                 </div>
             </div>
             <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                @foreach ($who as $name)<span class="tag">{{ $name }}</span>@endforeach
+                @foreach ($who as $name)<span class="fact">{{ $name }}</span>@endforeach
                 @if ($thread->vehicle)<a href="{{ \App\Support\Surface::Park->url('/cars/'.$thread->vehicle->id) }}" class="tag" @unless ($park) data-turbo="false" @endunless>{{ $thread->vehicle->titleWithYear() }}@if ($thread->vehicle->ref && $thread->vehicle->brand_id) <span class="nums text-ink-muted ml-1">{{ $thread->vehicle->ref }}</span>@endif</a>@endif
                 @if ($thread->offer)<a href="{{ \App\Support\Surface::Crm->url('/offers/'.$thread->offer->number) }}" class="tag" @if ($park) data-turbo="false" @endif>{{ $thread->offer->title() }} <span class="nums text-ink-muted">№ {{ $thread->offer->number }}</span></a>@endif
-                <span class="tag">{{ $thread->account->title }}</span>
+                <span class="fact">{{ $thread->account->title }}</span>
                 @if ($thread->candidate && ! $linked)
-                    @if ($thread->candidate->state === \App\Mail\CandidateState::Rejected)<span class="chip text-ink-muted">Кандидат в архиве</span>
-                    @elseif ($thread->candidate->state === \App\Mail\CandidateState::Closed)<span class="chip text-ink-muted">Цепочка закрыта</span>
+                    @if ($thread->candidate->state === \App\Mail\CandidateState::Rejected)<span class="fact">Кандидат в архиве</span>
+                    @elseif ($thread->candidate->state === \App\Mail\CandidateState::Closed)<span class="fact">Цепочка закрыта</span>
                     @elseif ($park)<a href="/requests/new?candidate={{ $thread->candidate->id }}" class="chip" data-turbo-frame="_top">Завести ›</a>
                     @else<form method="post" action="/offers/from-mail/{{ $thread->candidate->id }}/create" class="contents" data-turbo-frame="_top">@csrf<button class="chip">Завести ›</button></form>@endif
                 @elseif (! $linked)

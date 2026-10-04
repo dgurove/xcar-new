@@ -11,6 +11,8 @@
     $no = $v->contract_no ?: ($v->ref ?: '____');
     $at = ($v->contract_at ?? $v->accepted_at ?? now())->format('d.m.Y');
     $price = $v->assigned_price ?: $v->value;
+    // В шторке документов (?embed=1) — только лист: печать у шторки, серого поля вокруг нет.
+    $embed = request()->boolean('embed');
     $purpose = $vendor?->payment_purpose ?: 'Оплата за поврежденное ТС '.$v->titleWithYear().($v->plate ? ', р/н '.$v->plate : '').' по договору комиссии № '.$no.'. НДС не облагается';
 @endphp
 <!doctype html>
@@ -33,11 +35,15 @@
         .parties > div { flex: 1; font-size: 11px; }
         .sig { margin-top: 28px; }
         .print { position: fixed; top: 12px; right: 12px; }
+        @if ($embed)
+        body { padding: 0; background: #fff; }
+        .doc { max-width: none; padding: 24px 20px; }
+        @endif
         @media print { body { padding: 0; background: #fff; } .doc { max-width: none; padding: 0; } .print { display: none; } }
     </style>
 </head>
 <body>
-    <div class="print"><button type="button" onclick="window.print()">Печать</button></div>
+    @unless ($embed)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     <article class="doc">
     @if ($kind === 'contract')
         <h1>Договор комиссии № {{ $no }}</h1>

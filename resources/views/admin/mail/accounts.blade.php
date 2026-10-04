@@ -7,7 +7,7 @@
         @foreach ($accounts as $account)
             <a href="/settings/mailboxes/{{ $account->slug }}" class="row">
                 <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-2"><span class="font-medium">{{ $account->title }}</span><span class="text-sm text-ink-muted">{{ $account->email }}</span>@unless ($account->is_active)<span class="chip bg-closed-soft text-closed">выключен</span>@endunless</div>
+                    <div class="flex items-center gap-2"><span class="font-medium">{{ $account->title }}</span><span class="text-sm text-ink-muted">{{ $account->email }}</span>@unless ($account->is_active)<x-ui.state tone="closed">выключен</x-ui.state>@endunless</div>
                     <div class="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">
                         <span>{{ $account->scope->label() }}</span><span class="nums">писем {{ $account->messages_count }}</span>
                         @if ($account->last_error)<span class="text-danger">{{ \Illuminate\Support\Str::limit($account->last_error, 60) }}</span>

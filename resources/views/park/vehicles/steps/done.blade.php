@@ -16,7 +16,7 @@
             @foreach ($insp->docs ?? [] as $d)<span class="tag">{{ Inspection::DOCS[$d] ?? $d }}</span>@endforeach
             @if ($insp->signer_name)<span class="tag">{{ $insp->signer_name }}</span>@endif
             @if ($sig = $insp->signatureDataUrl())<img src="{{ $sig }}" alt="Подпись" class="h-10 rounded bg-white px-2">@endif
-            <a href="/acts/{{ $vehicle->id }}/{{ $stage }}" class="tag" data-turbo="false" target="_blank">Акт</a>
+            <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/'.$stage, 'type' => 'html', 'name' => $stage === 'release' ? 'Акт выдачи' : 'Акт приёма']" class="tag">Акт</x-ui.doc>
         </div>
     @endif
     @if ($photos->isNotEmpty())

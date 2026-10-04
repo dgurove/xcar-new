@@ -2,7 +2,8 @@
 @php
     use App\Support\Money;
     $wrap = fn (string $name) => 'data-controller="sheet" data-action="'.$name.':open@window->sheet#open" class="contents"';
-    $sum = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, ',', ''), '0'), ',');
+    // Сумма в поле — разрядами, копейки двумя цифрами: «15 000,50», а не «15000,5».
+    $sum = fn ($v) => Money::nums($v, fmod((float) $v, 1) ? 2 : 0);
     // Плательщик по продаже — любой контрагент или новый, как в счёте сделки.
     $parties = $staff && $car->state === \App\Garage\CarState::Sold && ! $invoice
         ? \App\Billing\Party::where('is_self', false)->orderBy('name')->pluck('name', 'id')->prepend('Новый плательщик', 'new') : collect();
@@ -126,7 +127,7 @@
         <x-ui.sheet id="paid" :title="$current->isOwed() ? 'Выплатили менеджеру' : 'Деньги пришли'" :open="$errors->has('amount')">
             <form method="post" action="/garage/cars/{{ $n }}/payments" class="flex flex-col gap-4">
                 @csrf
-                <x-ui.field name="amount" label="Сколько, ₽" :value="$sum($current->remaining())"/>
+                <x-ui.field name="amount" label="Сколько, ₽" :value="$sum($current->remaining())" data-controller="digits" data-digits-decimals-value="2" data-action="input->digits#format"/>
                 <x-ui.field name="paid_at" label="Когда" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
                 <x-ui.button type="submit" variant="primary" block>Записать</x-ui.button>
             </form>

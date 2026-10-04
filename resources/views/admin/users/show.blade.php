@@ -11,15 +11,15 @@
                     <x-ui.state :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')">{{ $user->role->label().' с '.$user->created_at->format('d.m.Y') }}</x-ui.state>
                     {{-- Группа модератора: с кем он видит и правит предложения друг друга. --}}
                     {{-- Группы человека (менеджеров или модераторов) — ведутся в «Пользователях». --}}
-                    @foreach ($user->userGroups as $g)<span class="tag">{{ $g->name }}</span>@endforeach
+                    @foreach ($user->userGroups as $g)<span class="fact">{{ $g->name }}</span>@endforeach
                     @if ($user->isPending())<x-ui.state tone="urgent">Ждёт</x-ui.state>@elseif ($user->isRejected())<x-ui.state tone="danger">Отклонён</x-ui.state>@endif
                     @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}/{{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
-                    @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif
+                    @if ($user->login)<span class="fact nums">{{ $user->login }}</span>@endif
                     @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="tag nums">{{ $user->phoneFormatted() }}</a>@endif
                     @if ($user->email)<a href="mailto:{{ $user->email }}" class="tag">{{ $user->email }}</a>@endif
-                    @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="tag tag-telegram"><x-telegram.logo plain class="size-3.5"/>{{ $user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span class="tag tag-telegram"><x-telegram.logo plain class="size-3.5"/>Telegram</span>@endif
+                    @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="tag tag-telegram"><x-telegram.logo plain class="size-3.5"/>{{ $user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span class="fact"><x-telegram.logo plain class="size-3.5"/>Telegram</span>@endif
                     @if ($user->isManager())<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="tag">{{ $buyersCount }} {{ \App\Support\Plural::of($buyersCount, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
-                    @if ($seen !== null)<span class="tag">видит {{ $seen }}</span>@endif
+                    @if ($seen !== null)<span class="fact nums">видит {{ $seen }}</span>@endif
                 </x-slot:chips>
                 <x-slot:acts>
                     @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif
@@ -55,7 +55,7 @@
             <section>
                 <h2 class="text-xl">Чаты @if ($chats->isNotEmpty())<span class="nums text-ink-dim">{{ $chats->count() }}</span>@endif</h2>
                 @if ($chats->isEmpty())
-                    <x-ui.empty class="mt-4">Чатов нет</x-ui.empty>
+                    <x-ui.empty line class="mt-2 px-0">Чатов нет</x-ui.empty>
                 @else
                     <div class="chat-rows-list mt-4">
                         @foreach ($chats as $c)

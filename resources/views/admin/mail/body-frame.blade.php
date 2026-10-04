@@ -1,6 +1,6 @@
 {{-- Исходное письмо в ленте (фрейм body-{id}): тело как прислали, в песочнице iframe; картинки из сети — по ссылке. --}}
 <turbo-frame id="body-{{ $message->id }}" target="_top">
-    <div data-controller="frame" class="overflow-hidden rounded-(--radius-l) bg-white">
+    <div data-controller="frame" class="overflow-hidden rounded-(--radius-l) {{ $renderer->isPlain($message) ? '' : 'bg-white' }}">
         <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="{{ $document }}" title="Письмо" class="block w-full" style="height:120px" data-frame-target="frame" data-action="load->frame#fit"></iframe>
     </div>
     @if (! $images && $renderer->hasRemoteImages($message))

@@ -5,7 +5,8 @@
     $i = $invoice; $me = auth()->user();
     $offset = $i->payments->where('source', PaymentSource::Offset)->sum('amount');
 @endphp
-<x-ui.shell :title="($i->isOwed() ? ($i->isAgentFee() ? 'Вознаграждение ' : 'Мы должны ').$i->label() : 'Счёт '.$i->label())" :back="$back" cache="no-cache">
+{{-- Вознаграждение без номера — по имени получателя: label() отдал бы вид, и выходило «Вознаграждение Агентское вознаграждение». --}}
+<x-ui.shell :title="($i->isOwed() ? ($i->isAgentFee() ? 'Вознаграждение '.($i->number || $i->external_no ? $i->label() : $i->party->name) : 'Мы должны '.$i->label()) : 'Счёт '.$i->label())" :back="$back" cache="no-cache">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-billing.light :invoice="$i"/>
         <span class="chip nums">{{ $i->issued_at->translatedFormat('j M Y') }}</span>
@@ -17,9 +18,10 @@
         <x-ui.sheet id="invoice-actions" :title="$i->label()" :open="$errors->has('due_at')">
             <div class="flex flex-col gap-2">
                 @if ($mailUrl ?? null)<x-ui.button :href="$mailUrl" block><x-ui.icon name="send" class="size-4"/> {{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</x-ui.button>@endif
-                @if ($file)<x-ui.button href="{{ $base }}/pdf" variant="secondary" block data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-4"/> PDF</x-ui.button>@endif
-                @if ($i->kind === \App\Billing\ChargeKind::Storage)<x-ui.button href="{{ $base }}/act" variant="ghost" block data-turbo="false" target="_blank">Акт хранения</x-ui.button>@endif
-                @if ($i->number)<x-ui.button href="{{ $base }}/print" variant="ghost" block data-turbo="false" target="_blank">Печать</x-ui.button>@endif
+                {{-- Документы — в шторке документов поверх окна; акт хранения — PDF, если выставлен закрытием месяца, иначе страница. --}}
+                @if ($file)<x-ui.doc :doc="['url' => $base.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="btn btn-quiet btn-block"><x-ui.icon name="file" class="size-4"/> PDF</x-ui.doc>@endif
+                @if ($i->kind === \App\Billing\ChargeKind::Storage)<x-ui.doc :doc="['url' => $base.'/act', 'type' => $i->hasMedia('act') ? 'pdf' : 'html', 'name' => 'Акт хранения']" class="btn btn-ghost btn-block"/>@endif
+                @if ($i->number)<x-ui.doc :doc="['url' => $base.'/print', 'type' => 'html', 'name' => 'Печатная форма']" class="btn btn-ghost btn-block">Печать</x-ui.doc>@endif
                 @if ($i->state === InvoiceState::Issued && $canManage)
                     <form method="post" action="{{ $base }}" class="mt-2 flex flex-col gap-3">
                         @csrf @method('put')
@@ -56,7 +58,7 @@
                                 <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
                                 <span class="tag nums">{{ $p->paid_at->translatedFormat('j M Y') }}</span>
                                 @if ($p->ref)<span class="tag nums">№ {{ $p->ref }}</span>@endif
-                                @if ($p->slip())<a href="{{ $base }}/payments/{{ $p->id }}/slip" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>платёжка</a>@endif
+                                @if ($slip = $p->slip())<x-ui.doc :doc="['url' => $base.'/payments/'.$p->id.'/slip', 'type' => \App\Support\Docs::type($slip->mime_type, $slip->file_name), 'name' => $slip->file_name, 'label' => 'Платёжка']" class="chip"><x-ui.icon name="file" class="size-3.5"/>платёжка</x-ui.doc>@endif
                                 @if ($claims ?? null)
                                     <form method="post" action="{{ $claims }}/{{ $p->id }}/confirm" class="ml-auto contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>
                                     <div data-controller="sheet" class="contents">
@@ -76,7 +78,7 @@
                 <div class="flex flex-col divide-y divide-line/40">
                     @foreach ($i->payments as $p)
                         <div class="flex items-center gap-3 py-2">
-                            <span class="min-w-0 flex-1">{{ $p->source->label() }}{{ $p->ref ? ' № '.$p->ref : '' }}{{ $p->note ? ' — '.$p->note : '' }}@if ($p->slip()) <a href="{{ $base }}/payments/{{ $p->id }}/slip" class="chip" data-turbo="false" target="_blank"><x-ui.icon name="file" class="size-3.5"/>платёжка</a>@endif</span>
+                            <span class="min-w-0 flex-1">{{ $p->source->label() }}{{ $p->ref ? ' № '.$p->ref : '' }}{{ $p->note ? ', '.$p->note : '' }}@if ($slip = $p->slip()) <x-ui.doc :doc="['url' => $base.'/payments/'.$p->id.'/slip', 'type' => \App\Support\Docs::type($slip->mime_type, $slip->file_name), 'name' => $slip->file_name, 'label' => 'Платёжка']" class="chip"><x-ui.icon name="file" class="size-3.5"/>платёжка</x-ui.doc>@endif</span>
                             <span class="nums text-sm text-ink-muted">{{ $p->paid_at->translatedFormat('j M Y') }}</span>
                             <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
                             @if ($canManage)

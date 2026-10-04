@@ -8,6 +8,8 @@
     $offset = $invoice->payments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount');
     // QR для приложения банка: реквизиты, сумма к оплате и назначение, по которому выписка найдёт счёт.
     $qr = \App\Billing\Documents\PaymentQr::text($invoice, $self);
+    // В шторке документов (?embed=1) — только лист: печать у шторки.
+    $embed = ! ($pdf ?? false) && request()->boolean('embed');
 @endphp
 <!doctype html>
 <html lang="ru">
@@ -38,11 +40,14 @@
         .qr { margin-top: 18px; }
         .qr td { vertical-align: middle; padding: 0 12px 0 0; }
         .qr img { width: 140px; height: 140px; }
+        @if ($embed)
+        body { padding: 24px 20px; }
+        @endif
         @media print { .print { display: none; } }
     </style>
 </head>
 <body>
-    @unless ($pdf ?? false)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
+    @unless (($pdf ?? false) || $embed)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     <table class="req">
         <tr><td class="l">Получатель</td><td><b>{{ $self->name }}</b><br>{{ $self->details() }}</td></tr>
         <tr><td class="l">Банк получателя</td><td>{{ $self->bankDetails() ?: '—' }}</td></tr>

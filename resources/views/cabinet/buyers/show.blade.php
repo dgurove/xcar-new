@@ -8,8 +8,8 @@
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">
             <x-ui.contact :name="$buyer->name" :user="$buyer" sidebar>
                 <x-slot:chips>
-                    @if ($buyer->login)<span class="tag nums">{{ $buyer->login }}</span>@endif
-                    <span class="tag nums">с {{ $buyer->created_at->translatedFormat('j M') }}</span>
+                    @if ($buyer->login)<span class="fact nums">{{ $buyer->login }}</span>@endif
+                    <span class="fact nums">с {{ $buyer->created_at->translatedFormat('j M') }}</span>
                     @foreach ($buyer->groups as $g)<a href="/buyers/groups/{{ $g->id }}" class="tag">{{ $g->name }}</a>@endforeach
                 </x-slot:chips>
                 <x-slot:acts>
@@ -19,7 +19,7 @@
                         <div data-controller="sheet" class="contents">
                             <button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="users"/></span>Группы</button>
                             <x-ui.sheet id="buyer-groups" title="Группы">
-                                <form method="post" action="/buyers/{{ $buyer->id }}/groups" class="flex flex-col gap-2" data-controller="autosubmit">
+                                <form method="post" action="/buyers/{{ $buyer->id }}/groups" class="list" data-controller="autosubmit">
                                     @csrf @method('put')
                                     <input type="hidden" name="groups[]" value="" disabled>
                                     @foreach ($groups as $g)
@@ -40,7 +40,7 @@
             <x-ui.sheet id="password-link" title="Ссылка для нового пароля" :open="$link !== null">
                 @if ($link)
                     <x-ui.copy-link :url="$link['url']" title="Новый пароль на xcar">
-                        <p class="flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">{{ $buyer->shortName() }}, логин <span class="tag nums">{{ $buyer->loginLabel() }}</span></p>
+                        <p class="flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">{{ $buyer->shortName() }}, логин <span class="nums font-medium text-ink">{{ $buyer->loginLabel() }}</span></p>
                     </x-ui.copy-link>
                 @endif
             </x-ui.sheet>
@@ -55,7 +55,7 @@
                     </turbo-frame>
                 </x-ui.sheet>
                 @if ($offers->isEmpty())
-                    <x-ui.empty>Пока ничего не открыто</x-ui.empty>
+                    <x-ui.empty line>Пока ничего не открыто</x-ui.empty>
                 @else
                     <div class="list">
                         @foreach ($offers as $offer)

@@ -34,11 +34,11 @@
                         @csrf
                         <div class="flex gap-2">
                             <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $mine?->amount) }}">
-                            <input type="text" required autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Предложение, ₽" aria-label="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? \App\Support\Money::nums($mine->amount) : '') }}" data-detail-focus>
+                            <input type="text" required inputmode="decimal" autocomplete="off" enterkeyhint="go" data-check-text="Укажите цену" class="field-input field-s nums min-w-0 flex-1" placeholder="Предложение, ₽" aria-label="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? \App\Support\Money::nums($mine->amount) : '') }}" data-detail-focus>
                             <button type="submit" class="btn btn-s btn-accent shrink-0" data-bid-target="submit">{{ $mine ? 'Изменить' : 'Предложить' }}</button>
                         </div>
                         @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror
-                        <input name="comment" class="field-input field-s text-sm" placeholder="Комментарий" value="{{ old('comment', $mine?->comment) }}">
+                        <input name="comment" class="field-input field-s sm:text-sm" placeholder="Комментарий" value="{{ old('comment', $mine?->comment) }}">
                     </form>
                     @if ($mine)<form method="post" action="/purchases/prices/{{ $mine->id }}/withdraw" class="contents">@csrf<button type="submit" class="pill pill-plain">Отозвать цену</button></form>@endif
                 @else

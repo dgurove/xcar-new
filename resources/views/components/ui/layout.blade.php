@@ -10,7 +10,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-    <meta name="theme-color" content="{{ $theme === 'dark' ? '#121212' : '#ffffff' }}">
+    <meta name="theme-color" content="{{ $theme === 'dark' ? '#161616' : '#ffffff' }}">
     <meta name="view-transition" content="same-origin">
     {{-- Без превью из кэша: иначе advance на виденный адрес рисует снимок, а через миг молча
          подменяет свежим — скачок после анимации. Ответ обычно уже в руках (префетч). --}}
@@ -55,13 +55,14 @@
             try { saved = localStorage.getItem('theme'); } catch {}
             const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
             if (dark) document.documentElement.classList.add('dark');
-            document.querySelector('meta[name="theme-color"]').content = dark ? '#121212' : '#ffffff';
+            document.querySelector('meta[name="theme-color"]').content = dark ? '#161616' : '#ffffff';
         })();
     </script>
     @endif
-    {{-- «Назад» при открытом просмотре фото — его (lightbox.js). У window popstate идёт по порядку подписки, а модули
-         подписываются позже Turbo: без этого Turbo, шторка и карточка строки приняли бы его за свой. --}}
-    <script>addEventListener('popstate', (e) => window.lightboxPop?.(e));</script>
+    {{-- «Назад» при открытом просмотре фото — его (lightbox.js), под ним — шторки документов (docs_controller). У window
+         popstate идёт по порядку подписки, а модули подписываются позже Turbo: без этого Turbo, шторка и карточка строки
+         приняли бы его за свой. --}}
+    <script>addEventListener('popstate', (e) => { window.lightboxPop?.(e); if (!e.cancelBubble) window.docsPop?.(e); });</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value]) }}>

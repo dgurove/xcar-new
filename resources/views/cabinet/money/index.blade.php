@@ -1,44 +1,29 @@
-{{-- Деньги менеджера: положение строками-кнопками (оплатить / к выплате / реквизиты), пилюли пресетов и
-     список сделок-расчётов — одна сделка, одна фраза, одно число. Реквизиты и документы — в «···» справа от пилюль.
-     Колонка узкая и на компьютере. --}}
-@php use App\Support\Money; use App\Billing\DealMoney; $needDetails = ! $party->filled() || ! $party->payoutReady(); @endphp
+{{-- Деньги менеджера: пилюли пресетов с суммами (оплатить, к выплате), «Реквизиты не указаны» строкой над ними и
+     список сделок-расчётов — одна сделка, одна фраза, одно число; сроки — в строках сделок. Реквизиты и документы —
+     в «···» справа от пилюль. Строки узкой колонкой и на компьютере. --}}
+@php
+    use App\Support\Money; use App\Billing\DealMoney;
+    $needDetails = ! $party->filled() || ! $party->payoutReady();
+    // Просрочка горит, пока о ней не сообщили оплатой.
+    $overdue = $position['overdue'] > 0 && $position['claimed'] < $position['overdue'];
+    // Сумма вместо числа сделок в пилюлях «Оплатить» и «Ждут выплаты» — итогов над списком нет.
+    $counts = array_merge($counts, array_filter(['pay' => $position['pay'] > 0 ? Money::rub($position['pay']) : null, 'payout' => $position['payout'] > 0 ? Money::rub($position['payout']) : null]));
+@endphp
 <x-ui.cabinet title="Деньги">
-    <div class="flex max-w-[30rem] flex-col gap-6">
+    {{-- Узкая колонка — у строк; пилюли с суммами шире её, и на ПК «···» уходило бы за край ленты. --}}
+    <div class="flex flex-col gap-6">
 
-        @if ($position['pay'] > 0 || $position['payout'] > 0 || ($needDetails && ($position['payout'] > 0 || $position['paid_out'] > 0)))
-            <div class="list">
-                @if ($position['pay'] > 0)
-                    @php $overdue = $position['overdue'] > 0 && $position['claimed'] < $position['overdue']; @endphp
-                    <a href="/account/money?preset=pay" class="row" data-turbo-action="replace">
-                        <x-ui.row-icon name="file" :tone="$overdue ? 'danger' : 'urgent'" size="s"/>
-                        <span class="min-w-0 flex-1">
-                            <span class="block">Оплатить <span class="nums font-semibold">{{ Money::rub($position['pay']) }}</span></span>
-                            <span class="row-sub {{ $overdue ? '!text-danger' : '' }}">{{ $position['claimed'] > 0 ? 'сообщили об оплате '.Money::rub($position['claimed']).', ждёт подтверждения' : ($overdue ? 'просрочено '.Money::rub($position['overdue']) : 'до '.$position['pay_due']->translatedFormat('j M')) }}</span>
-                        </span>
-                        <x-ui.chevron/>
-                    </a>
-                @endif
-                @if ($position['payout'] > 0)
-                    <a href="/account/money?preset=payout" class="row" data-turbo-action="replace">
-                        <x-ui.row-icon name="wallet" tone="open" size="s"/>
-                        <span class="min-w-0 flex-1">
-                            <span class="block">Вам к выплате <span class="nums font-semibold text-accent-text">{{ Money::rub($position['payout']) }}</span></span>
-                            <span class="row-sub">до {{ $position['payout_due']->translatedFormat('j M') }}</span>
-                        </span>
-                        <x-ui.chevron/>
-                    </a>
-                @endif
-                @if ($needDetails && ($position['payout'] > 0 || $position['paid_out'] > 0))
-                    <a href="/account/money/details" class="row">
-                        <x-ui.row-icon name="user" tone="urgent" size="s"/>
-                        <span class="min-w-0 flex-1 text-urgent">Реквизиты для выплат не указаны</span>
-                        <x-ui.chevron/>
-                    </a>
-                @endif
+        @if ($needDetails && ($position['payout'] > 0 || $position['paid_out'] > 0))
+            <div class="list max-w-[30rem]">
+                <a href="/account/money/details" class="row">
+                    <x-ui.row-icon name="user" tone="urgent" size="s"/>
+                    <span class="min-w-0 flex-1 text-urgent">Реквизиты для выплат не указаны</span>
+                    <x-ui.chevron/>
+                </a>
             </div>
         @endif
 
-            <x-ui.toolbar :pills="DealMoney::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['pay' => $position['overdue'] > 0 ? 'pill-danger' : '']" name="money" action="/account/money">
+            <x-ui.toolbar :pills="DealMoney::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['pay' => $overdue ? 'pill-danger' : '']" name="money" action="/account/money">
                 <x-slot:pillsExtra>
                     <div class="ml-1 shrink-0 self-center" data-controller="sheet">
                         <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Реквизиты и документы"><x-ui.icon name="more" class="size-5"/></button>
@@ -51,14 +36,15 @@
                                     </span>
                                     <x-ui.chevron/>
                                 </a>
-                                {{-- Акт сверки и Excel — одна форма, две кнопки; на телефоне во встроенный браузер. --}}
-                                <form method="get" action="/account/money/statement" class="mt-2 flex flex-col gap-3" data-turbo="false" data-controller="file" data-action="submit->file#share">
+                                {{-- Акт сверки и Excel за период — шторкой документов; даты в адрес ссылок кладёт doc-query. --}}
+                                @php $period = http_build_query(['from' => now()->startOfMonth()->toDateString(), 'to' => now()->toDateString()]); @endphp
+                                <form method="get" action="/account/money/statement" class="mt-2 flex flex-col gap-3" data-turbo="false" data-controller="doc-query" data-action="change->doc-query#sync submit->doc-query#submit">
                                     <div class="grid grid-cols-2 gap-3">
                                         <x-ui.field name="from" label="С" type="date" :value="now()->startOfMonth()->toDateString()"/>
                                         <x-ui.field name="to" label="По" type="date" :value="now()->toDateString()"/>
                                     </div>
-                                    <x-ui.button block variant="secondary" data-file-any>Акт сверки, PDF</x-ui.button>
-                                    <x-ui.button block variant="secondary" formaction="/account/money/export" data-file-any>Сделки, Excel</x-ui.button>
+                                    <x-ui.doc :doc="['url' => '/account/money/statement?'.$period, 'type' => 'pdf', 'name' => 'akt-sverki.pdf', 'label' => 'Акт сверки']" class="btn btn-quiet btn-block" data-action="doc-query#check">Акт сверки, PDF</x-ui.doc>
+                                    <x-ui.doc :doc="['url' => '/account/money/export?'.$period, 'type' => 'sheet', 'name' => 'sdelki.xlsx', 'label' => 'Сделки, Excel']" class="btn btn-quiet btn-block" data-action="doc-query#check">Сделки, Excel</x-ui.doc>
                                 </form>
                             </div>
                         </x-ui.sheet>
@@ -66,9 +52,9 @@
                 </x-slot:pillsExtra>
             </x-ui.toolbar>
             @if ($deals->isEmpty())
-                <x-ui.empty>{{ match ($preset) { 'pay' => 'Платить нечего', 'payout' => 'Выплат не ждёт', 'closed' => 'Закрытых ещё нет', default => 'Сделок с деньгами пока нет' } }}</x-ui.empty>
+                <x-ui.empty class="max-w-[30rem]">{{ match ($preset) { 'pay' => 'Платить нечего', 'payout' => 'Выплат не ждёт', 'closed' => 'Закрытых ещё нет', default => 'Сделок с деньгами пока нет' } }}</x-ui.empty>
             @else
-                <div class="list">
+                <div class="list max-w-[30rem]">
                     @foreach ($deals as $deal)
                         <x-money.deal-row :deal="$deal" :href="'/account/money/deals/'.$deal->id"/>
                     @endforeach

@@ -8,7 +8,8 @@
     $types = ['text' => 'Строка', 'number' => 'Число', 'date' => 'Дата', 'textarea' => 'Текст'];
 @endphp
 <x-ui.cabinet :title="$stage->exists ? $stage->name : 'Новый этап'" :back="[$w->vendor->name, $back]">
-    <h2 class="text-xl">{{ $stage->exists ? $stage->name : 'Новый этап' }}</h2>
+    {{-- На телефоне это имя уже стоит заголовком экрана (h1 кабинета), на ПК h1 нет — только тут. --}}
+    <h2 class="text-xl max-md:hidden">{{ $stage->exists ? $stage->name : 'Новый этап' }}</h2>
     <form method="post" action="{{ $stage->exists ? '/settings/workflows/stages/'.$stage->id : '/settings/workflows/'.$w->id.'/stages' }}" id="stage-form" class="flex flex-col gap-4">
         @csrf @if ($stage->exists) @method('put') @endif
 

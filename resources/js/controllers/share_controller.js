@@ -7,17 +7,17 @@ import { openSheet, closeSheet } from '../sheet';
 //
 // PDF собирается заранее (fetch при открытии шторки), «Отправить» до готовности
 // выключена: иначе в лист уходил один текст. Файл уходит через
-// navigator.share({files}); где его нет или он однажды упал — window.open на
-// тот же адрес в самом жесте: в установленном приложении это встроенный браузер
-// с предпросмотром и системным «Поделиться», на компьютере — вкладка. Каждый
-// сбой — тостом и на сервер (/share/error): иначе с чужого телефона не видно ничего.
+// navigator.share({files}); где его нет или он однажды упал — тот же адрес
+// в шторке документов поверх окна («Открыть PDF», ссылка `a[data-doc]`): у неё
+// свои «Поделиться» и «Скачать». Каждый сбой — тостом и на сервер (/share/error):
+// иначе с чужого телефона не видно ничего.
 const BROKEN = 'share:open';
 
 const PRICES = ['publish_price', 'price'];
 const FROM = ['publish_price'];
 
 export default class extends Controller {
-    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label', 'all'];
+    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label', 'all', 'pdfLink'];
     static values = { url: String, vat: String, name: String, locked: String };
 
     connect() {
@@ -95,7 +95,7 @@ export default class extends Controller {
         return this.hasWatermarkTarget && !this.watermarkTarget.checked ? '0' : '1';
     }
 
-    // Тот же адрес, что у fetch, но строкой запроса — для window.open.
+    // Тот же адрес, что у fetch, но строкой запроса — для шторки документов.
     openUrl() {
         const params = new URLSearchParams();
         this.selectedPhotos().forEach((id) => params.append('photos[]', id));
@@ -159,9 +159,13 @@ export default class extends Controller {
         } catch { window.toast?.('Не получилось', 'danger'); }
     }
 
-    openPdf() {
-        if (!this.selectedPhotos().length) { window.toast?.('Отметьте фото'); return; }
-        if (!window.open(this.openUrl(), '_blank')) window.toast?.('Не получилось открыть PDF', 'danger');
+    // Нажатие «Открыть PDF» — до перехвата шторкой: ссылка уже с отмеченными фото. Без нажатия (лист не открылся) —
+    // нажимаем её сами.
+    openPdf(event) {
+        if (!this.selectedPhotos().length) { event?.preventDefault(); window.toast?.('Отметьте фото'); return; }
+        if (!this.hasPdfLinkTarget) return;
+        this.pdfLinkTarget.href = this.openUrl();
+        if (!event) this.pdfLinkTarget.click();
     }
 
     async send() {
@@ -181,7 +185,7 @@ export default class extends Controller {
             } catch (e) {
                 if (e.name === 'AbortError') return;
                 sessionStorage.setItem(BROKEN, '1');
-                this.fail('share', e, 'Лист не открылся — нажмите «Открыть PDF»');
+                this.fail('share', e, 'Лист не открылся, нажмите «Открыть PDF»');
             }
             return;
         }

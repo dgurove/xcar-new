@@ -8,7 +8,7 @@ export default class extends Controller {
             document.documentElement.classList.toggle('dark', dark);
             try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch {}
             document.cookie = `theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}${cookieDomain()}`;
-            document.querySelector('meta[name="theme-color"]').content = dark ? '#121212' : '#ffffff';
+            document.querySelector('meta[name="theme-color"]').content = dark ? '#161616' : '#ffffff';
         };
         if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return apply();
         // Круг идёт из самой кнопки, а не из точки события: тап, клавиатура и .click() — одинаково.

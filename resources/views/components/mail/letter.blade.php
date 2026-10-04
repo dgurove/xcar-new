@@ -48,7 +48,7 @@
                 <details class="mt-2">
                     <summary class="letter-link">{{ $files->count() }} {{ \App\Support\Plural::of($files->count(), ['файл в ящике', 'файла в ящике', 'файлов в ящике']) }}</summary>
                     <div class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm">
-                        @foreach ($files as $file)<a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="truncate text-ink-muted hover:text-ink">{{ $file->filename }} <span class="text-xs text-ink-dim">{{ $file->humanSize() }}</span></a>@endforeach
+                        @foreach ($files as $file)<a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="truncate text-ink-muted hover:text-ink" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}" title="{{ $file->filename }}">{{ $file->filename }} <span class="text-xs text-ink-dim">{{ $file->humanSize() }}</span></a>@endforeach
                     </div>
                 </details>
             @else
@@ -56,7 +56,7 @@
             @if ($documents->isNotEmpty())
                 <div class="mt-3 flex flex-wrap gap-2">
                     @foreach ($documents as $file)
-                        <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}">
+                        <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}" title="{{ $file->filename }}">
                             <x-ui.file-icon :name="$file->filename" :mime="$file->mime"/>
                             <span class="min-w-0"><span class="block truncate text-sm">{{ $file->filename }}</span><span class="text-xs text-ink-muted">{{ $file->humanSize() }}</span></span>
                         </a>

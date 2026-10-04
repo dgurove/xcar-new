@@ -25,7 +25,7 @@
         <x-slot:marks>
             @if ($offer->recommended)<x-offer.recommended label/>@endif
             @if (!$gallery && $offer->isFresh())<x-ui.state tone="open">Новый</x-ui.state>@endif
-            @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>@elseif ($bids && !$gallery && !$offer->bidsOpen())<span class="tag">Приём закрыт</span>@endif
+            @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>@elseif ($bids && !$gallery && !$offer->bidsOpen())<span class="tag">Приём закрыт</span>@endif
             @if ($offer->settlement)<x-ui.place class="tag">{{ $offer->settlement->title() }}</x-ui.place>@endif
             <x-ui.vin-code :vin="$offer->vinMasked()" :copy="$offer->show_vin" class="tag"/>
             <x-offer.tags :offer="$offer" :facts="false"/>
@@ -45,7 +45,7 @@
                     @csrf
                     <div class="flex gap-2">
                         <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $myBid?->amount) }}">
-                        <input type="text" @unless ($garage) required @endunless autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена, ₽" aria-label="Цена, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" data-detail-focus>
+                        <input type="text" @unless ($garage) required @endunless inputmode="decimal" autocomplete="off" enterkeyhint="go" data-check-text="Укажите цену" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена, ₽" aria-label="Цена, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" data-detail-focus>
                         <button type="submit" class="btn btn-s btn-accent shrink-0" data-bid-target="submit">{{ $myBid ? 'Изменить' : 'Подтвердить' }}</button>
                     </div>
                     @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror
@@ -54,7 +54,7 @@
                             <button type="button" class="pill pill-plain nums" data-action="bid#set" data-bid-amount-param="{{ $asking }}">{{ \App\Support\Money::nums($asking) }}</button>
                             @foreach ($discounts as $percent)<button type="button" class="pill pill-plain nums" data-action="bid#discount" data-bid-percent-param="{{ $percent }}">−{{ $percent }}%</button>@endforeach
                         @endif
-                        <input name="comment" class="field-input field-s min-w-0 flex-1 text-sm" placeholder="Комментарий" value="{{ old('comment', $myBid?->comment) }}">
+                        <input name="comment" class="field-input field-s min-w-0 flex-1 sm:text-sm" placeholder="Комментарий" value="{{ old('comment', $myBid?->comment) }}">
                     </div>
                     @if ($garage)<x-offer.bid-choice :offer="$offer"/>@endif
                 </form>
@@ -74,7 +74,7 @@
                 @else
                     <form method="post" action="/offers/{{ $n }}/interest" class="flex w-full gap-2">
                         @csrf
-                        <input name="comment" class="field-input field-s min-w-0 flex-1 text-sm" placeholder="{{ $user->isBuyer() ? 'Пара слов менеджеру' : 'Что важно уточнить' }}" value="{{ old('comment') }}">
+                        <input name="comment" class="field-input field-s min-w-0 flex-1 sm:text-sm" placeholder="{{ $user->isBuyer() ? 'Пара слов менеджеру' : 'Что важно уточнить' }}" value="{{ old('comment') }}">
                         <button type="submit" class="btn btn-s btn-accent shrink-0">{{ $gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену' }}</button>
                     </form>
                 @endif

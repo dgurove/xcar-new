@@ -1,10 +1,10 @@
-{{-- Тулбар списка: полоса пилюль (листается вбок), за ней круглые кнопки — сортировка (шторкой), вид, лупа; справа
+{{-- Тулбар списка: полоса пилюль (листается вбок), за ней круглые кнопки — сортировка и вид (меню у кнопки), лупа; справа
      действия экрана. Ниже — ряд чипов фильтра (x-ui.facets: менеджер, вендор, этап…). На телефоне пилюли идут своей
      строкой сверху, во второй кнопки, в третьей чипы. Всё состояние — в адресе, кроме поиска: лупа ставит тулбару
      data-searching, ряд кнопок и чипов уходит, на месте — поле с «Отмена» (как в iOS); список сужается по ходу
      набора по всему списку, мимо пилюль и чипов (live_search_controller), адрес не меняется.
      sorts: ключ → [подпись, есть ли направление] или ключ → подпись;
-     pills: ключ → подпись; counts: ключ → число; tones: ключ → класс пилюли (pill-danger у «Просрочено»);
+     pills: ключ → подпись; counts: ключ → число или сумма строкой («360 500 ₽» в «Деньгах»); tones: ключ → класс пилюли (pill-danger у «Просрочено»);
      pillDefault=false — первая пилюля («Все») не выделяется: зелёное только у сужающего фильтра;
      pillHome — пилюля экрана по умолчанию, её ключа нет в адресе (обычно первая; у почты первая «Требуют внимания», а открывается «Все»);
      facets — App\Support\Facets списка (чипы); search — подсказка в поле поиска (пусто — лупы нет),
@@ -55,19 +55,15 @@
     @endif
 
     @if ($norm->isNotEmpty())
-        {{-- Сортировка — круглая кнопка со шторкой, одинаково на телефоне и на компьютере. --}}
-        <div class="contents" data-controller="sheet">
-            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Сортировка: {{ $norm[$current] ?? 'по умолчанию' }}" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
-            <x-ui.sheet id="sort-{{ $name }}" title="Сортировка">
-                <div class="space-y-2">
-                    @foreach ($norm as $key => $label)
-                        <a href="{{ $sortUrl($key) }}" data-turbo-action="replace" class="flex items-center justify-between rounded-full px-4 py-2.5 text-sm transition-colors active:bg-surface-3 {{ (string) $key === $current ? 'bg-accent text-white' : 'bg-surface-2 text-ink hover:bg-surface-3' }}">
-                            {{ $label }}
-                            @if ((string) $key === $current)<x-ui.icon name="check" class="size-4"/>@endif
-                        </a>
-                    @endforeach
-                </div>
-            </x-ui.sheet>
+        {{-- Сортировка — круглая кнопка с меню у неё, как вид списка: строки через линию, у текущей лаймовая галка
+             справа (.menu-item[aria-current]), одинаково на телефоне и на компьютере. --}}
+        <div class="contents" data-controller="menu">
+            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="menu#toggle" aria-label="Сортировка: {{ $norm[$current] ?? 'по умолчанию' }}" aria-haspopup="menu" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
+            <div id="sort-{{ $name }}" class="menu" popover data-menu-target="list" role="menu" aria-label="Сортировка">
+                @foreach ($norm as $key => $label)
+                    <a href="{{ $sortUrl($key) }}" class="menu-item" role="menuitem" data-turbo-action="replace" data-action="menu#close" @if ((string) $key === $current) aria-current="true" @endif>{{ $label }}</a>
+                @endforeach
+            </div>
         </div>
     @endif
 

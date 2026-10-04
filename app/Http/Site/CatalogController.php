@@ -54,6 +54,8 @@ class CatalogController
         $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
         $prices = ! $gallery && ($user?->role->canSeePrices() ?? false);
         $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
+        // Сужено — чем угодно, кроме сортировки: запомненная сортировка (ListPrefs) список не сужает.
+        $narrowed = (bool) array_diff_key($filters, ['sort' => 1]);
 
         // Чипы кладёт Facets (ему нужна база без них — для вариантов и чисел), остальное — CatalogQuery.
         $query = $facets->apply(CatalogQuery::for($user, array_diff_key($filters, array_flip($facets->keys())) + ['sort' => $sort], $gallery));
@@ -75,7 +77,7 @@ class CatalogController
             ])
             : [
                 // Без фильтров «Все» — это и есть длина списка: второй раз не считаем.
-                'offers' => ! $gallery && ! array_diff_key($filters, ['sort' => 1]) ? $count : Offer::visibleTo($user)->onSale()->count(),
+                'offers' => ! $gallery && ! $narrowed ? $count : Offer::visibleTo($user)->onSale()->count(),
                 'gallery' => $user?->role->canSeeGallery() ? Offer::visibleTo($user)->where('state', OfferState::Gallery)->count() : 0,
                 'recommended' => Offer::visibleTo($user)->when($gallery, fn ($q) => $q->where('state', OfferState::Gallery), fn ($q) => $q->onSale())->where('recommended', true)->count(),
             ];
@@ -90,6 +92,7 @@ class CatalogController
             'detail' => $detail,
             'offers' => $offers,
             'filters' => $filters,
+            'narrowed' => $narrowed,
             'sort' => $sort,
             'sorts' => CatalogQuery::allowedSorts($gallery, $prices, $user),
             'views' => CatalogQuery::allowedViews($user, $gallery, $recommended),

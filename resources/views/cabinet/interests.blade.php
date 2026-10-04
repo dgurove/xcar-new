@@ -18,9 +18,9 @@
                             <span class="truncate font-medium">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
                             @if ($tag)<x-ui.state tone="closed">{{ $tag }}</x-ui.state>@endif
                         </div>
-                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                            <span class="tag">{{ $status }}</span>
-                            <span class="tag nums">{{ $interest->created_at->translatedFormat('j M') }}</span>
+                        <div class="mt-0.5 flex flex-wrap items-center">
+                            <span class="fact">{{ $status }}</span>
+                            <span class="fact nums">{{ $interest->created_at->translatedFormat('j M') }}</span>
                         </div>
                         @if ($interest->comment)<p class="mt-1.5 text-sm text-ink-muted">{{ $interest->comment }}</p>@endif
                     </div>

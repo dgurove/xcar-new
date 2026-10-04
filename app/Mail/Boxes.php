@@ -71,4 +71,13 @@ final class Boxes
             ->where(fn ($w) => self::register($w, $scope))
             ->selectRaw('count(distinct '.self::group($scope).') as n')->value('n');
     }
+
+    /** Сколько дел в пилюле «Все» — итог таба «Почта»: без архива и «Прочего», делами, как в заголовке экрана. */
+    public static function allCount(Scope $scope): int
+    {
+        return (int) Thread::whereIn('account_id', Account::where('scope', $scope)->select('id'))
+            ->where('messages_count', '>', 0)->whereNull('archived_at')
+            ->where(fn ($w) => self::notNoise($w))
+            ->selectRaw('count(distinct '.self::group($scope).') as n')->value('n');
+    }
 }

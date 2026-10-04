@@ -16,8 +16,9 @@
             @if ($i->state === InvoiceState::Issued && auth()->user()->canPark(\App\Park\Area::Money))
                 <details class="w-full"><summary class="btn btn-s btn-accent inline-flex cursor-pointer">{{ $i->isOwed() ? 'Перечислено' : 'Оплачен' }}</summary><div class="mt-3">@include('park.money.pay-form')</div></details>
             @endif
-            @if ($i->number)<a href="{{ $href }}/pdf" class="chip" data-turbo="false" target="_blank">PDF</a>@endif
-            @if ($i->kind === \App\Billing\ChargeKind::Storage)<a href="{{ $href }}/act" class="chip" data-turbo="false" target="_blank">Акт хранения</a>@endif
+            @if ($i->number)<x-ui.doc :doc="['url' => $href.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="chip">PDF</x-ui.doc>@endif
+            {{-- Акт хранения: PDF, если выставлен закрытием месяца, иначе страница на печать. --}}
+            @if ($i->kind === \App\Billing\ChargeKind::Storage)<x-ui.doc :doc="['url' => $href.'/act', 'type' => $i->hasMedia('act') ? 'pdf' : 'html', 'name' => 'Акт хранения']" class="chip"/>@endif
             @if ($i->state === InvoiceState::Issued && $i->paid == 0 && auth()->user()->canPark(\App\Park\Area::Money))
                 <form method="post" action="{{ $href }}/void" class="contents" data-turbo-confirm="Аннулировать счёт?">@csrf<button class="chip text-ink-muted">Аннулировать</button></form>
             @endif

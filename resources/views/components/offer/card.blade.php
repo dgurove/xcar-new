@@ -17,7 +17,7 @@
     // Покупатель: интерес уже отмечен? Каталог грузит его интерес одним запросом, иначе — точечно.
     $myInterest = $user?->isBuyer() ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
     $seen = $user?->isManager() && !$gallery ? \App\Offers\Showing::remembered($offer->id) : null;
-    // «Показать покупателям» — круглой кнопкой рядом с «Подтвердить», число открытых — бейджем на ней (чипа «видят N» тогда нет).
+    // «Показать покупателям» — значком рядом с «Подтвердить», число открытых — бейджем на нём (чипа «видят N» тогда нет).
     $canShow = $user?->isManager() && $offer->state === \App\Offers\OfferState::Open;
     $sizes = \App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request()));
     // Первые две карточки страницы — кадр с высоким приоритетом (счётчик на запросе).
@@ -27,7 +27,7 @@
     $bidder = $user?->role->canBid() ?? false;
     $hasMarks = $offer->car_place || (!$gallery && ($offer->isFresh() || ($bidder && ($offer->isEndingSoon() || !$offer->bidsOpen() || $offer->secondsLeft()))));
 @endphp
-<article id="offer-{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card rise group']) }}>
+<article id="offer-{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card group']) }}>
     @if ($hasMedia)
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
             <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
@@ -80,21 +80,22 @@
     <div class="card-place">@if ($offer->settlement)<x-ui.place class="truncate text-sm text-ink-dim">{{ $offer->settlement->title() }}</x-ui.place>@endif</div>
 
     <div class="card-action">
+        {{-- Глагол — лаймовой капсулой .btn-get, переход («Открыть») и сделанное — тихой; чат и показ — значками. --}}
         @if ($user?->isBuyer())
             {{-- Кнопка ведёт на страницу и сразу открывает форму интереса (?interes=1). --}}
-            <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-s {{ $myInterest ? 'btn-quiet' : 'btn-accent' }} w-full whitespace-nowrap">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
+            <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : '' }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
         @elseif ($gallery || !$prices)
-            <a href="{{ $href }}" class="btn btn-s {{ $offer->state->acceptsInterest() ? 'btn-accent' : 'btn-quiet' }} w-full whitespace-nowrap">{{ $gallery ? 'Проявить интерес' : 'Узнать цену' }}</a>
+            <a href="{{ $href }}" class="btn btn-get {{ $offer->state->acceptsInterest() ? '' : 'btn-get-quiet' }}">{{ $gallery ? 'Проявить интерес' : 'Узнать цену' }}</a>
         @elseif ($canBid)
-            <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Подтвердить</a>
+            <a href="{{ $href }}" class="btn btn-get">Подтвердить</a>
         @else
-            <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Открыть</a>
+            <a href="{{ $href }}" class="btn btn-get btn-get-quiet">Открыть</a>
         @endif
         @if ($canShow)
-            <a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="btn btn-s btn-quiet btn-round relative" aria-label="{{ $seen ? 'Показано '.$seen.' покупателям' : 'Показать покупателям' }}"><x-ui.icon name="users" class="size-5"/>@if ($seen)<span class="badge nums">{{ $seen }}</span>@endif</a>
+            <a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="btn btn-icon relative" aria-label="{{ $seen ? 'Показано '.$seen.' покупателям' : 'Показать покупателям' }}"><x-ui.icon name="users" class="size-[22px]"/>@if ($seen)<span class="badge nums">{{ $seen }}</span>@endif</a>
         @endif
         @if (!$gallery && $user?->canChat() && $offer->chat_enabled)
-            <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-s btn-quiet btn-round" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-5"/></a>
+            <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-icon" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-[22px]"/></a>
         @endif
     </div>
 </article>

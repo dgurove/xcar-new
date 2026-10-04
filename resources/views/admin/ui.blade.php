@@ -11,6 +11,13 @@
                 <x-ui.button type="button" size="s" variant="secondary" round aria-label="Круглая"><x-ui.icon name="filter" class="size-5"/></x-ui.button>
                 <x-ui.button type="button" disabled>Выключена</x-ui.button>
             </div>
+            {{-- Кнопки карточки: капсула-глагол, тихая, сделанное и значок без подложки. --}}
+            <div class="mt-4 flex flex-wrap items-center gap-1">
+                <button type="button" class="btn btn-get">Подтвердить</button>
+                <button type="button" class="btn btn-get btn-get-quiet">Открыть</button>
+                <button type="button" class="btn btn-get btn-get-done">Интерес отмечен</button>
+                <button type="button" class="btn btn-icon" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-[22px]"/></button>
+            </div>
             <div class="mt-4 rounded-(--radius-l) bg-chrome p-4"><x-ui.button type="button" variant="glass">Стеклянная на хроме</x-ui.button></div>
             <div class="mt-4"><x-ui.button type="button" variant="hero">Смотреть предложения</x-ui.button></div>
         </x-ui.card>

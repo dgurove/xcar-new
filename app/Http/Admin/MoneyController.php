@@ -183,6 +183,17 @@ class MoneyController
         return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
     }
 
+    /** Акт хранения, как у парковки: PDF, если выставлен закрытием месяца, иначе страница на печать. */
+    public function act(Invoice $invoice)
+    {
+        if ($media = $invoice->getFirstMedia('act')) {
+            return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
+        }
+        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges']);
+
+        return view('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
+    }
+
     public function print(Invoice $invoice)
     {
         $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'charges', 'payments', 'deal.offer']);

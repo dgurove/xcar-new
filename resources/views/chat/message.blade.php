@@ -28,7 +28,7 @@
                 </div>
             @endif
             @foreach ($docs as $f)
-                <a href="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" target="_blank" data-doc="{{ \App\Support\Docs::type($f->mime, $f->name) }}" data-doc-name="{{ $f->name }}" class="msg-file"><x-ui.file-icon :name="$f->name" :mime="$f->mime"/><span class="min-w-0"><span class="block truncate text-sm">{{ $f->name }}</span>@if ($f->size)<span class="block text-xs text-ink-muted">{{ $kb($f->size) }}</span>@endif</span></a>
+                <a href="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" target="_blank" data-doc="{{ \App\Support\Docs::type($f->mime, $f->name) }}" data-doc-name="{{ \App\Support\Docs::label($f->name) }}" title="{{ $f->name }}" class="msg-file"><x-ui.file-icon :name="$f->name" :mime="$f->mime"/><span class="min-w-0"><span class="block truncate text-sm">{{ $f->name }}</span>@if ($f->size)<span class="block text-xs text-ink-muted">{{ $kb($f->size) }}</span>@endif</span></a>
             @endforeach
             @if ($deleted)
                 <div class="msg-deleted">Сообщение удалено</div>

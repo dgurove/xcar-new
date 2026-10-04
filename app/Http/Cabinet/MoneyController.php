@@ -18,6 +18,7 @@ use App\Billing\PartyRules;
 use App\Billing\Payment;
 use App\Garage\Car as GarageCar;
 use App\Offers\Deal;
+use App\Support\OfficePreview;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -137,8 +138,17 @@ class MoneyController
     {
         [$from, $to] = $this->period($request);
         $path = $xlsx->write($request->user(), $from, $to, tempnam(sys_get_temp_dir(), 'sdelki-').'.xlsx');
+        $name = 'sdelki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.xlsx';
+        // Шторка документов просит Excel HTML-фрагментом.
+        if ($request->boolean('preview')) {
+            try {
+                return OfficePreview::response($path, $name);
+            } finally {
+                @unlink($path);
+            }
+        }
 
-        return response()->download($path, 'sdelki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.xlsx', [], $request->boolean('inline') ? 'inline' : 'attachment')->deleteFileAfterSend();
+        return response()->download($path, $name, [], $request->boolean('inline') ? 'inline' : 'attachment')->deleteFileAfterSend();
     }
 
     /** @return array{Carbon, Carbon} */

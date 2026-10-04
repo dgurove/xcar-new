@@ -10,5 +10,5 @@
         </div>
     @endunless
 </div>
-<x-ui.field name="amount" label="Сколько, ₽" :value="$cost?->amount ? rtrim(rtrim(number_format($cost->amount, 2, ',', ''), '0'), ',') : null" placeholder="15000"/>
+<x-ui.field name="amount" label="Сколько, ₽" :value="$cost?->amount ? \App\Support\Money::nums($cost->amount, fmod((float) $cost->amount, 1) ? 2 : 0) : null" placeholder="15 000" data-controller="digits" data-digits-decimals-value="2" data-action="input->digits#format"/>
 <x-ui.field name="spent_at" label="Когда" type="date" :value="($cost?->spent_at ?? now())->toDateString()" max="{{ now()->toDateString() }}"/>

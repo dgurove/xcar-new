@@ -25,7 +25,7 @@
                     @foreach ($offers->take(3) as $o)<span class="row-photo !w-12 !h-9 ring-2 ring-surface"><x-offer.photo :media="$o->mainPhoto()" sizes="48px"/></span>@endforeach
                 </span>
                 <span class="min-w-0 flex-1">
-                    <span class="block">{{ $count }} {{ \App\Support\Plural::of($count, ['автомобиль', 'автомобиля', 'автомобилей']) }}</span>
+                    <span class="block">{{ $count }} ТС</span>
                     <span class="row-sub"><span class="truncate">{{ $offers->take(3)->map->title()->join(', ') }}{{ $count > 3 ? '…' : '' }}</span></span>
                 </span>
             </div>
@@ -35,7 +35,7 @@
             <x-ui.empty class="!py-12" href="/account/invites" link="Пригласить покупателей">Показывать пока некому</x-ui.empty>
         @else
             @if ($rows > 8)<input type="search" class="field-input field-s" placeholder="Найти" autocomplete="off" data-action="input->select#filter">@endif
-            <div class="flex flex-col gap-2">
+            <div class="list">
                 @foreach ($groups as $g)
                     <label class="row row-check" data-select-target="item" data-name="{{ mb_strtolower($g->name) }}">
                         <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-3"><x-ui.icon name="users" class="size-5"/></span>

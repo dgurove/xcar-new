@@ -5,7 +5,7 @@
         <input type="search" name="q" value="{{ $q }}" placeholder="Марка, модель, номер" class="field-input field-s" autocomplete="off" data-action="input->autosubmit#debounced">
     </form>
     @if ($offers->isEmpty())
-        <x-ui.empty>{{ $q ? 'Ничего не нашлось.' : 'Открытых предложений сейчас нет.' }}</x-ui.empty>
+        <x-ui.empty>{{ $q ? 'Ничего не нашлось' : 'Открытых предложений сейчас нет' }}</x-ui.empty>
     @else
         <form method="post" action="/buyers/showings" data-controller="select" data-turbo-frame="_top">
             @csrf

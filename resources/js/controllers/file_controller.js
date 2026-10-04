@@ -1,23 +1,33 @@
 import { Controller } from '@hotwired/stimulus';
+import { shareFile, warm } from '../docs/share';
 
-// Файл наружу с телефона. В установленном приложении download открывает Quick
-// Look без выхода, а лист navigator.share Safari даёт только внутри жеста —
-// пока файл собирается на сервере, жест истекает. Поэтому на тач-устройстве
-// файл открывается во встроенном браузере (window.open в самом жесте): там
-// предпросмотр с «Поделиться» и кнопка «Готово». Вешается на ссылку или на
-// GET-форму (галки + кнопка формата). На компьютере — обычное скачивание.
+// Файл наружу с телефона — лист «Поделиться» с самим файлом (docs/share.js): в установленном приложении download
+// открывает Quick Look без выхода, а встроенный браузер уводил из приложения. Вешается на ссылку или на GET-форму
+// (галки + кнопка формата). Ссылка греет файл при касании — лист открывается в том же жесте; форма собирает файл
+// по галкам, её файл качается по нажатию. На компьютере — обычное скачивание.
 export default class extends Controller {
     connect() {
-        if (!matchMedia('(pointer: coarse)').matches) this.element.removeAttribute('data-action');
+        if (!matchMedia('(pointer: coarse)').matches) { this.element.removeAttribute('data-action'); return; }
+        if (this.element.tagName === 'A') {
+            this.onDown = () => warm(this.element.href, this.name()).catch(() => {});
+            this.element.addEventListener('pointerdown', this.onDown, { passive: true });
+        }
+    }
+
+    disconnect() {
+        if (this.onDown) this.element.removeEventListener('pointerdown', this.onDown);
     }
 
     share(event) {
         event.preventDefault();
         const url = this.url(event.submitter);
-        if (!url) return;
-        const inline = new URL(url, location.href);
-        inline.searchParams.set('inline', '1');
-        if (!window.open(inline.toString(), '_blank')) window.toast?.('Не получилось', 'danger');
+        if (url) shareFile(url, this.name());
+    }
+
+    // Подпись файла, если сервер не назвал его сам.
+    name() {
+        const el = this.element;
+        return el.dataset.fileName || el.dataset.docName || el.title || (el.tagName === 'A' ? el.textContent.trim() : '') || 'Файл';
     }
 
     // Ссылка — её href; форма — action с полями и нажатой кнопкой.

@@ -20,10 +20,11 @@
         <div class="min-w-0 max-w-full">
             <h1 class="truncate text-xl sm:text-2xl">{{ $user->name }}</h1>
             @if ($user->phone || $user->login || $user->email)
-                <div class="mt-1.5 flex flex-wrap justify-center gap-1.5">
-                    @if ($user->phone)<span class="tag nums">{{ $user->phoneFormatted() }}</span>@endif
-                    @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif
-                    @if ($user->email)<span class="tag">{{ $user->email }}</span>@endif
+                {{-- Чем входит — одной серой строкой под именем: факты, а не капсулы (не нажимаются). --}}
+                <div class="mt-1 flex flex-wrap justify-center gap-y-0.5">
+                    @if ($user->phone)<span class="fact nums">{{ $user->phoneFormatted() }}</span>@endif
+                    @if ($user->login)<span class="fact nums">{{ $user->login }}</span>@endif
+                    @if ($user->email)<span class="fact">{{ $user->email }}</span>@endif
                 </div>
             @endif
         </div>

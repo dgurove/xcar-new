@@ -12,7 +12,7 @@
     $days = $state === VehicleState::Stored ? $vehicle->daysStored() : null;
     $noRequest = $state === VehicleState::Expected && $vehicle->relationLoaded('requests') && ! $vehicle->requests->contains(fn ($r) => $r->isOpen());
 @endphp
-<article id="vehicle-{{ $vehicle->id }}" class="card rise group">
+<article id="vehicle-{{ $vehicle->id }}" class="card group">
     @if ($link)<a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1"></a>@endif
     @if ($photos->isNotEmpty())
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">

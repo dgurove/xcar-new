@@ -1,5 +1,5 @@
 {{-- Акт оказанных услуг хранения: стороны, ТС, период, сутки, ставка, сумма. Та же разметка для PDF (dompdf: без flex, шрифты файлами) и для страницы печати. --}}
-@php use App\Support\Money; $i = $invoice; $v = $i->vehicle; $p = $i->party; $storage = $i->charges->where('kind', \App\Billing\ChargeKind::Storage); $pdf = $pdf ?? false; $fonts = resource_path('fonts/pdf'); @endphp
+@php use App\Support\Money; $i = $invoice; $v = $i->vehicle; $p = $i->party; $storage = $i->charges->where('kind', \App\Billing\ChargeKind::Storage); $pdf = $pdf ?? false; $fonts = resource_path('fonts/pdf'); $embed = ! $pdf && request()->boolean('embed'); @endphp
 <!doctype html>
 <html lang="ru">
 <head>
@@ -16,6 +16,11 @@
         body { font-family: -apple-system, "Onest", sans-serif; font-size: 13px; color: #111; margin: 0; padding: 24px; background: #f4f4f4; }
         .act { max-width: 720px; margin: 0 auto; background: #fff; padding: 32px; }
         @endif
+        {{-- В шторке документов (?embed=1) — только лист: печать у шторки, серого поля вокруг нет. --}}
+        @if ($embed)
+        body { padding: 0; background: #fff; }
+        .act { max-width: none; padding: 24px 20px; }
+        @endif
         h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
         .sub { color: #555; margin: 0 0 18px; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
@@ -31,7 +36,7 @@
     </style>
 </head>
 <body>
-    @unless ($pdf)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
+    @unless ($pdf || $embed)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     <article class="act">
         <h1>Акт оказанных услуг хранения {{ $i->label() }}</h1>
         <p class="sub">{{ $i->issued_at->format('d.m.Y') }}</p>

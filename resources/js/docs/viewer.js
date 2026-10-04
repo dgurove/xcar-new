@@ -1,8 +1,14 @@
-// Содержимое шторки документов (docs_controller). Тип ставит сервер (`Support\Docs`): pdf — pdf.js, image —
-// картинка с тем же масштабом, sheet и word — HTML с сервера (`?preview=1`), letter — тело письма, photos —
-// сетка кадров с просмотром по одному, file — карточка «Скачать». Ссылка без типа — по ответу сервера.
-// Каждый вид возвращает { rotate?, destroy }.
-import { Zoom } from './zoom';
+// Содержимое просмотрщика документов (docs_controller). Тип ставит сервер (`Support\Docs`) или ссылка (`data-doc`):
+// pdf — pdf.js, image — картинка с тем же масштабом, sheet и word — HTML с сервера (`?preview=1`), html — своя
+// страница-документ (акт, счёт на печать) в iframe с `?embed=1`, letter — тело письма, photos — сетка кадров с
+// просмотром по одному, file — карточка «Скачать». Ссылка без типа — по ответу сервера (text/html своего хоста — html).
+// Бумага (PDF, скан, акт, Word) — белыми листами на сером поле с отступом; пока грузится — пустой лист.
+// Каждый вид возвращает { rotate?, print?, destroy }. hooks: count(«2 из 5») — номер страницы, info({ kind, pages,
+// ours, broken, lost }) — тип и объём для полосы, file(File) — скачанный файл для «Поделиться», retry() — «Повторить».
+import { Zoom, PAD } from './zoom';
+import { fileName } from './share';
+
+const ATTACHMENT = /\/mail\/attachments\/\d+\/?$/;
 
 const el = (tag, cls, text) => {
     const node = document.createElement(tag);
@@ -15,19 +21,23 @@ const none = { destroy() {} };
 export async function render(box, item, hooks) {
     try {
         switch (item.type) {
-            case 'photos': return photos(box, item);
-            case 'letter': return await letter(box, item);
-            case 'image': return image(box, item.src || item.url, hooks);
+            case 'photos': return photos(box, item, hooks);
+            case 'letter': return await letter(box, item, hooks);
+            case 'image': return image(box, item.src || item.url, hooks, item);
             case 'sheet':
             case 'word':
-            case 'text': return await office(box, item);
+            case 'text': return await office(box, item, hooks);
+            case 'html': return await page(box, item, hooks);
             case 'pdf': return await pdf(box, item, hooks, await fetchFile(item.url));
-            case 'video': return video(box, item.url);
-            case 'file': return card(box, item);
+            case 'video': return video(box, item.url, hooks);
+            case 'file': return card(box, item, hooks);
             default: return await sniff(box, item, hooks);
         }
     } catch (err) {
-        return card(box, item, err?.status === 404 ? 'Файла нет в ящике' : 'Не открылся');
+        box.classList.remove('docs-wait');
+        // Вложение, которого нет ни на диске, ни в ящике, — повторять бесполезно; остальное — «Повторить».
+        const lost = err?.status === 404 && ATTACHMENT.test(new URL(item.url, location.href).pathname);
+        return card(box, item, hooks, lost ? 'Файла нет в ящике' : 'Документ не открылся', !lost);
     }
 }
 
@@ -38,10 +48,33 @@ async function fetchFile(url) {
 }
 
 async function pdf(box, item, hooks, res) {
+    hooks.info?.({ kind: 'pdf' });
     box.classList.add('docs-wait');
-    const [data, { pdfView }] = await Promise.all([res.arrayBuffer(), import('./pdf.js')]);
+    const [buffer, { pdfView }] = await Promise.all([res.arrayBuffer(), import('./pdf.js')]);
+    // Копия для «Поделиться» и печати — до pdf.js: он забирает буфер себе в воркер.
+    const blob = new Blob([buffer], { type: 'application/pdf' });
+    hooks.file?.(new File([blob], fileName(res, item.name), { type: 'application/pdf' }));
+    const view = await pdfView(box, new Uint8Array(buffer), hooks);
     box.classList.remove('docs-wait');
-    return pdfView(box, new Uint8Array(data), hooks);
+    let frame = null, url = null;
+    return {
+        ...view,
+        // Печать PDF — скрытой рамкой со встроенным просмотром браузера: он и печатает.
+        print() {
+            url ??= URL.createObjectURL(blob);
+            frame?.remove();
+            frame = Object.assign(el('iframe', 'docs-print'), { src: url, title: item.name });
+            frame.addEventListener('load', () => {
+                try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch { window.toast?.('Не получилось', 'danger'); }
+            }, { once: true });
+            document.body.append(frame);
+        },
+        destroy() {
+            view.destroy();
+            frame?.remove();
+            if (url) URL.revokeObjectURL(url);
+        },
+    };
 }
 
 // Ссылка на файл без типа (почта, сделки): решает Content-Type ответа.
@@ -50,18 +83,23 @@ async function sniff(box, item, hooks) {
     const type = res.headers.get('Content-Type') || '';
     if (type.startsWith('application/pdf')) return pdf(box, item, hooks, res);
     res.body?.cancel();
-    if (type.startsWith('image/') && !type.includes('svg')) return image(box, item.url, hooks);
-    if (type.startsWith('video/')) return video(box, item.url);
-    if (/spreadsheetml|wordprocessingml|text\/plain/.test(type)) return office(box, { ...item, type: type.includes('spreadsheetml') ? 'sheet' : 'word' });
-    return card(box, item);
+    if (type.startsWith('image/') && !type.includes('svg')) return image(box, item.url, hooks, item);
+    if (type.startsWith('video/')) return video(box, item.url, hooks);
+    if (/spreadsheetml|wordprocessingml|text\/plain/.test(type)) return office(box, { ...item, type: type.includes('spreadsheetml') ? 'sheet' : 'word' }, hooks);
+    if (type.startsWith('text/html')) return page(box, item, hooks);
+    return card(box, item, hooks);
 }
 
-function image(box, src, { rotation = 0, rotated = () => {} } = {}) {
-    const scroll = el('div', 'docs-scroll'), stage = el('div', 'docs-stage'), img = new Image();
+// Картинка (скан, фото) — листом на сером поле, масштаб раскладкой (zoom.js), поворот помнится у документа.
+function image(box, src, hooks = {}, item = { name: '', type: 'image', url: src }) {
+    const { rotation = 0, rotated = () => {} } = hooks;
+    hooks.info?.({ kind: 'image' });
+    const scroll = el('div', 'docs-scroll'), stack = el('div', 'docs-pages'), stage = el('div', 'docs-stage'), img = new Image();
     img.alt = '';
     img.decoding = 'async';
     stage.append(img);
-    scroll.append(stage);
+    stack.append(stage);
+    scroll.append(stack);
     box.replaceChildren(scroll);
     box.classList.add('docs-wait');
     let rot = rotation, zoom = null;
@@ -69,40 +107,128 @@ function image(box, src, { rotation = 0, rotated = () => {} } = {}) {
         if (!img.naturalWidth) return;
         const turned = rot % 180 !== 0;
         const [w, h] = turned ? [img.naturalHeight, img.naturalWidth] : [img.naturalWidth, img.naturalHeight];
-        const W = Math.max(120, scroll.clientWidth) * z, H = W * h / w;
+        const W = Math.max(120, scroll.clientWidth - 2 * PAD) * z, H = W * h / w;
+        stack.style.padding = `${PAD * z}px`;
+        stack.style.width = `${W + 2 * PAD * z}px`;
         Object.assign(stage.style, { width: `${W}px`, height: `${H}px` });
         Object.assign(img.style, { width: `${turned ? H : W}px`, height: `${turned ? W : H}px`, transform: `translate(-50%, -50%) rotate(${rot}deg)` });
     };
-    img.onload = () => { box.classList.remove('docs-wait'); zoom = new Zoom(scroll, stage, layout); };
-    img.onerror = () => { box.classList.remove('docs-wait'); scroll.replaceChildren(el('p', 'docs-note', 'Не открылся')); };
+    img.onload = () => { box.classList.remove('docs-wait'); zoom = new Zoom(scroll, stack, layout); };
+    // Картинка не пришла: у вложения письма спрашиваем, есть ли файл вообще.
+    img.onerror = async () => {
+        let status = 0;
+        if (ATTACHMENT.test(new URL(item.url, location.href).pathname)) {
+            try { status = (await fetch(item.url, { method: 'HEAD', credentials: 'same-origin' })).status; } catch {}
+        }
+        if (!box.isConnected) return;
+        box.classList.remove('docs-wait');
+        card(box, item, hooks, status === 404 ? 'Файла нет в ящике' : 'Документ не открылся', status !== 404);
+    };
     img.src = src;
     return {
-        rotate() { rot = (rot + 90) % 360; rotated(rot); zoom?.relayout(); },
+        rotate() { rot = (rot + 90) % 360; rotated(rot); zoom?.relayout?.(); },
         destroy() { zoom?.destroy(); img.onload = img.onerror = null; },
     };
 }
 
-async function office(box, item) {
+async function office(box, item, hooks) {
+    hooks.info?.({ kind: item.type });
     const url = new URL(item.url, location.href);
     url.searchParams.set('preview', '1');
-    box.classList.add('docs-wait');
+    // Word и текст — бумага: пустой лист, пока грузится; Excel — таблица на поле интерфейса.
+    const paper = item.type !== 'sheet';
+    if (paper) box.classList.add('docs-wait');
     const res = await fetchFile(url);
     // Word и текст — белым листом и в тёмной теме: это бумага, а не интерфейс.
-    const wrap = el('div', item.type === 'sheet' ? 'docs-html' : 'docs-html docs-paper');
+    const wrap = el('div', paper ? 'docs-html docs-paper' : 'docs-html');
     wrap.innerHTML = await res.text();
     box.classList.remove('docs-wait');
-    box.replaceChildren(wrap);
+    if (paper) {
+        const field = el('div', 'docs-field');
+        field.append(wrap);
+        box.replaceChildren(field);
+    } else box.replaceChildren(wrap);
     return none;
 }
 
-// Тело письма — тот же фрагмент, что «Исходное письмо» в ленте (песочница iframe, высота по содержимому).
-async function letter(box, item) {
+// Свой документ страницей (акт приёма и выдачи, договор, счёт на печать, акт хранения): белый лист на сером поле,
+// высота по содержимому — листается вся шторка. Адрес с `?embed=1`: страница прячет свою кнопку «Печать», печатает
+// полоса. Шире листа (таблицы счёта) — ужимается целиком, как письмо. Масштаб — щипком, как у PDF: на телефоне
+// касания идут мимо рамки (pointer-events), на компьютере текст в ней выделяется.
+async function page(box, item, hooks) {
+    hooks.info?.({ kind: 'html' });
     box.classList.add('docs-wait');
+    const url = new URL(item.url, location.href);
+    url.searchParams.set('embed', '1');
+    const res = await fetchFile(url);
+    // Увело на другую страницу (вход, раздел) — это не документ.
+    if (res.redirected && new URL(res.url).pathname !== url.pathname) throw Object.assign(new Error('moved'), { status: 0 });
+    const html = await res.text();
+    const scroll = el('div', 'docs-scroll'), stack = el('div', 'docs-pages'), sheet = el('div', 'docs-page docs-page-html'), frame = el('iframe', 'docs-frame');
+    frame.title = item.name;
+    // Ссылки и картинки страницы — от её адреса.
+    frame.srcdoc = html.replace(/<head([^>]*)>/i, `<head$1><base href="${url.href.replace(/"/g, '&quot;')}">`);
+    sheet.append(frame);
+    stack.append(sheet);
+    scroll.append(stack);
+    box.replaceChildren(scroll);
+    let base = 0, tall = 0, zoom = null, watch = null, z = 1;
+    const doc = () => { try { return frame.contentDocument; } catch { return null; } };
+    // Ширина, в которую страница раскладывается сама (не уже листа), и её высота при этой ширине.
+    const measure = () => {
+        const d = doc();
+        if (!d?.documentElement) return;
+        const avail = Math.max(120, scroll.clientWidth - 2 * PAD);
+        frame.style.width = `${avail}px`;
+        const wide = d.documentElement.scrollWidth;
+        base = wide > avail + 2 ? wide : avail;
+        frame.style.width = `${base}px`;
+        tall = Math.max(d.documentElement.scrollHeight, d.body?.scrollHeight || 0);
+        frame.style.height = `${tall}px`;
+        layout(z);
+    };
+    const layout = (k) => {
+        z = k;
+        if (!base) return;
+        const W = Math.max(120, scroll.clientWidth - 2 * PAD) * k, s = W / base;
+        stack.style.padding = `${PAD * k}px`;
+        stack.style.width = `${W + 2 * PAD * k}px`;
+        Object.assign(sheet.style, { width: `${W}px`, height: `${Math.ceil(tall * s)}px` });
+        frame.style.transform = s === 1 ? '' : `scale(${s})`;
+    };
+    frame.addEventListener('load', () => {
+        box.classList.remove('docs-wait');
+        measure();
+        zoom = new Zoom(scroll, stack, layout);
+        const d = doc();
+        if (!d?.body) return;
+        // Картинки и шрифты дорисовались — высота другая.
+        watch = new ResizeObserver(() => { const h = Math.max(d.documentElement.scrollHeight, d.body.scrollHeight); if (Math.abs(h - tall) > 1) measure(); });
+        watch.observe(d.body);
+        // ctrl + колесо (щипок трекпада) над листом приходит в рамку — масштаб шторки, а не страницы браузера.
+        d.addEventListener('wheel', (e) => {
+            if (!e.ctrlKey || !zoom) return;
+            const r = frame.getBoundingClientRect(), s = r.width / base;
+            zoom.wheel({ ctrlKey: true, deltaY: e.deltaY, clientX: r.left + e.clientX * s, clientY: r.top + e.clientY * s, preventDefault: () => e.preventDefault() });
+        }, { passive: false });
+    }, { once: true });
+    const resize = new ResizeObserver(() => { if (base) measure(); });
+    resize.observe(scroll);
+    return {
+        print() {
+            try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch { window.toast?.('Не получилось', 'danger'); }
+        },
+        destroy() { zoom?.destroy(); watch?.disconnect(); resize.disconnect(); },
+    };
+}
+
+// Тело письма — тот же фрагмент, что «Исходное письмо» в ленте (песочница iframe, высота по содержимому).
+async function letter(box, item, hooks) {
+    hooks.info?.({ kind: 'letter' });
     const res = await fetchFile(item.url);
     const tpl = document.createElement('template');
     tpl.innerHTML = await res.text();
     const frame = tpl.content.querySelector('[data-controller~="frame"]');
-    box.classList.remove('docs-wait');
     const wrap = el('div', 'docs-letter');
     if (item.thread) {
         const link = el('a', 'docs-thread', 'Вся переписка');
@@ -134,8 +260,9 @@ function fitLetter(iframe) {
 }
 
 // Кадры сеткой; нажатие — кадр во всю шторку с масштабом, листается свайпом вбок и стрелками.
-function photos(box, item) {
+function photos(box, item, hooks) {
     const list = item.photos || [];
+    hooks.info?.({ kind: 'photos', count: list.length });
     let view = null, index = -1;
     const grid = el('div', 'docs-grid');
     list.forEach((p, i) => {
@@ -159,7 +286,7 @@ function photos(box, item) {
         const all = el('button', 'docs-thread', 'Все фото');
         all.type = 'button';
         all.addEventListener('click', back);
-        bar.append(all, el('span', 'docs-one-count', `${index + 1}/${list.length}`));
+        bar.append(all, el('span', 'docs-one-count', `${index + 1} из ${list.length}`));
         const holder = el('div', 'docs-one-body');
         frame.append(bar, holder);
         box.replaceChildren(frame);
@@ -192,28 +319,40 @@ function photos(box, item) {
 }
 
 // Видео с осмотра — своим плеером, во весь лист; playsinline — на айфоне не уходит во весь экран само.
-function video(box, src) {
+function video(box, src, hooks) {
+    hooks.info?.({ kind: 'video' });
     const v = el('video', 'docs-video');
     Object.assign(v, { src, controls: true, playsInline: true, preload: 'metadata' });
     box.replaceChildren(v);
     return { destroy() { v.pause(); v.removeAttribute('src'); v.load(); } };
 }
 
-// Файл, который здесь не показать или не достать: значок типа (как в ленте писем), имя, почему, «Скачать».
-function card(box, item, note) {
+// Файл, который здесь не показать или не открылся: значок типа (как в ленте писем), имя, почему, «Скачать» или
+// «Повторить».
+function card(box, item, hooks = {}, note = null, retry = false) {
+    // Не открылся — ни поворота, ни печати; файла нет в ящике — и «Поделиться» нечем.
+    hooks.info?.(note ? { kind: item.type || 'file', broken: true, lost: !retry } : { kind: 'file' });
     const wrap = el('div', 'docs-card');
-    const ext = ((item.file || item.name).match(/\.([a-z0-9]{1,5})$/i)?.[1] || item.type || '').toLowerCase();
+    const ext = ((item.file || item.name || '').match(/\.([a-z0-9]{1,5})$/i)?.[1] || item.type || '').toLowerCase();
     const kind = ext === 'pdf' ? 'pdf' : ['xls', 'xlsx', 'csv', 'ods'].includes(ext) ? 'sheet'
         : ['doc', 'docx', 'rtf', 'odt', 'txt'].includes(ext) ? 'doc' : ['zip', 'rar', '7z', 'gz', 'tar'].includes(ext) ? 'zip' : null;
     wrap.append(el('span', `file-icon docs-card-icon${kind ? ` file-icon-${kind}` : ''}`, ext.slice(0, 4) || '?'));
     wrap.append(el('div', 'docs-card-name', item.name));
     if (note) wrap.append(el('p', 'docs-note', note));
-    const a = el('a', 'btn btn-quiet btn-s mt-2', 'Скачать');
-    a.href = item.url;
-    a.setAttribute('download', '');
-    a.dataset.controller = 'file';
-    a.dataset.action = 'file#share';
-    wrap.append(a);
+    if (retry && hooks.retry) {
+        const b = el('button', 'btn btn-quiet btn-s mt-2', 'Повторить');
+        b.type = 'button';
+        b.addEventListener('click', () => hooks.retry());
+        wrap.append(b);
+    } else if (!note) {
+        const a = el('a', 'btn btn-quiet btn-s mt-2', 'Скачать');
+        a.href = item.url;
+        a.setAttribute('download', '');
+        a.dataset.controller = 'file';
+        a.dataset.action = 'file#share';
+        a.dataset.fileName = item.file || item.name;
+        wrap.append(a);
+    }
     box.replaceChildren(wrap);
     return none;
 }

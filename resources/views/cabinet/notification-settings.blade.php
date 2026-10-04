@@ -80,7 +80,7 @@
                 @foreach ($categories['always'] as $label)
                     <div class="row">
                         <span class="min-w-0 flex-1 font-medium">{{ $label }}</span>
-                        <span class="tag">всегда</span>
+                        <span class="fact">всегда</span>
                     </div>
                 @endforeach
             </div>

@@ -62,6 +62,8 @@ document.addEventListener('turbo:before-morph-attribute', (event) => {
     if (el.matches('[data-controller~="passkey"]') && attributeName === 'hidden') event.preventDefault();
     // Режим поиска лупой ставит JS; морф по live-обновлению его бы снял.
     if (el.matches('[data-controller~="live-search"]') && attributeName === 'data-searching') event.preventDefault();
+    // Своя проверка формы (formCheck): без novalidate вернулся бы пузырь Safari.
+    if (el instanceof HTMLFormElement && ['novalidate', 'data-check'].includes(attributeName)) event.preventDefault();
 });
 document.addEventListener('turbo:before-morph-element', (event) => {
     const el = event.target;
@@ -76,6 +78,8 @@ live();
 imageFade();
 freshness();
 focusInvalid();
+formCheck();
+enterNext();
 relaunchScroll();
 stalePage();
 keyboardInset();
@@ -217,6 +221,142 @@ function focusInvalid() {
     });
 }
 
+// Своя проверка форм вместо пузыря Safari «Заполните это поле»: формам noValidate (при загрузке, новым из потоков и
+// фреймов, при касании), на отправке — checkValidity(). Первое неверное поле получает фокус и ошибку словами там же,
+// где её рисует сервер: в x-ui.field — .field-invalid и .field-error в конце поля, в строке .form-row — is-invalid и
+// .form-row-error, у голого поля — строкой под ним (под рядом, если поле стоит в ряду с кнопкой). Текст — из
+// data-check-text поля, иначе общий. Ввод снимает ошибку. novalidate в разметке и formnovalidate у кнопки — без проверки.
+function formCheck() {
+    const own = (form) => form instanceof HTMLFormElement && 'check' in form.dataset;
+    const mark = (form) => {
+        if (!(form instanceof HTMLFormElement) || own(form) || form.hasAttribute('novalidate')) return;
+        form.dataset.check = '';
+        form.noValidate = true;
+    };
+    const markAll = (root) => root?.querySelectorAll?.('form').forEach(mark);
+    markAll(document);
+    document.addEventListener('turbo:load', () => markAll(document));
+    new MutationObserver((records) => {
+        for (const r of records) r.addedNodes.forEach((node) => {
+            if (node.nodeType !== 1) return;
+            if (node.tagName === 'FORM') mark(node);
+            else if (node.firstElementChild) markAll(node);
+        });
+    }).observe(document.documentElement, { childList: true, subtree: true });
+    const touched = (event) => mark(event.target.closest?.('button, input, select, textarea')?.form ?? event.target.closest?.('form'));
+    document.addEventListener('focusin', touched, true);
+    document.addEventListener('pointerdown', touched, true);
+
+    const signs = (n) => (n % 10 === 1 && n % 100 !== 11 ? 'знака' : 'знаков');
+    const day = (value) => (/^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10).split('-').reverse().join('.') : value);
+    const text = (el) => {
+        const v = el.validity, dated = ['date', 'datetime-local', 'month', 'time'].includes(el.type);
+        if (v.valueMissing) {
+            if (el.dataset.checkText) return el.dataset.checkText;
+            if (el.type === 'checkbox') return 'Поставьте галку';
+            if (el.type === 'radio' || el.tagName === 'SELECT') return 'Выберите вариант';
+            if (el.type === 'file') return 'Добавьте файл';
+            return 'Заполните поле';
+        }
+        if (v.typeMismatch) return el.type === 'email' ? 'Почта с ошибкой' : el.type === 'url' ? 'Ссылка с ошибкой' : 'Проверьте значение';
+        if (v.tooShort) return `Не короче ${el.minLength} ${signs(el.minLength)}`;
+        if (v.tooLong) return `Не длиннее ${el.maxLength} ${signs(el.maxLength)}`;
+        if (v.rangeUnderflow) return `${dated ? 'Не раньше' : 'Не меньше'} ${day(el.min)}`;
+        if (v.rangeOverflow) return `${dated ? 'Не позже' : 'Не больше'} ${day(el.max)}`;
+        if (v.badInput) return dated ? 'Проверьте дату' : 'Введите число';
+        if (v.customError) return el.validationMessage;
+        return el.title || 'Проверьте значение';
+    };
+
+    // Поле → как снять его ошибку.
+    const shown = new Map();
+    const clear = (el) => { shown.get(el)?.(); shown.delete(el); };
+    const row = (node) => { const s = getComputedStyle(node); return s.display.includes('flex') && !s.flexDirection.startsWith('column'); };
+    const show = (el) => {
+        for (let d = el.closest('details:not([open])'); d; d = d.parentElement?.closest('details:not([open])')) d.open = true;
+        const message = text(el);
+        if (!el.getClientRects().length) { window.toast?.(message, 'danger'); return; }
+        const undo = [];
+        const flag = (node, cls) => { if (node.classList.contains(cls)) return; node.classList.add(cls); undo.push(() => node.classList.remove(cls)); };
+        const say = (box, selector, make) => {
+            let note = box.querySelector(selector);
+            if (note) { const was = note.textContent; undo.push(() => { note.textContent = was; }); }
+            else { note = make(); box.append(note); undo.push(() => note.remove()); }
+            note.textContent = message;
+        };
+        const box = el.closest('.field, .form-row');
+        if (box?.matches('.form-row')) {
+            flag(box, 'is-invalid');
+            say(box, '.form-row-error', () => Object.assign(document.createElement('span'), { className: 'form-row-error' }));
+        } else if (box) {
+            flag(box, 'field-invalid');
+            say(box, ':scope > .field-error', () => Object.assign(document.createElement('p'), { className: 'field-error' }));
+        } else {
+            // Голое поле: под ним, галка — под своей подписью, переключатели — под всей группой, поле в ряду — под рядом
+            // (форма-ряд «поле и кнопка» — под формой).
+            let anchor = ['checkbox', 'radio'].includes(el.type) ? el.closest('label') ?? el : el;
+            if (el.type === 'radio' && el.name) {
+                const group = [...document.getElementsByName(el.name)].filter((r) => r.form === el.form);
+                while (anchor.parentElement && !group.every((r) => anchor.contains(r))) anchor = anchor.parentElement;
+            }
+            while (anchor !== el.form && anchor.parentElement && row(anchor.parentElement)) anchor = anchor.parentElement;
+            const note = Object.assign(document.createElement('p'), { className: 'field-error', textContent: message });
+            // Под подписью галки или рядом — с их отступом слева, как серверная ошибка.
+            if (anchor !== el) note.style.paddingInlineStart = getComputedStyle(anchor).paddingInlineStart;
+            anchor.after(note);
+            // Вплотную к полю, как серверная ошибка (6 px), каким бы ни был зазор между строками формы.
+            const parent = getComputedStyle(anchor.parentElement);
+            const gap = /flex|grid/.test(parent.display) ? parseFloat(parent.rowGap) || 0 : 0;
+            const below = parseFloat(getComputedStyle(anchor).marginBottom) || 0;
+            note.style.marginTop = `${6 - gap - below}px`;
+            // Отступ поля снизу (mb-3 у заметки) переходит к ошибке: следующая строка не прилипает к ней.
+            if (below) note.style.marginBottom = `${below}px`;
+            undo.push(() => note.remove());
+        }
+        el.setAttribute('aria-invalid', 'true');
+        undo.push(() => el.removeAttribute('aria-invalid'));
+        shown.set(el, () => undo.forEach((fn) => fn()));
+        el.focus({ preventScroll: true });
+        el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    };
+
+    // Раньше Turbo и обработчиков формы: неверная форма не отправляется вовсе, как с проверкой браузера.
+    window.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!own(form) || event.submitter?.formNoValidate) return;
+        for (const el of [...shown.keys()]) if (el.form === form || !el.isConnected) clear(el);
+        if (form.checkValidity()) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const bad = [...form.elements].find((el) => el.willValidate && !el.validity.valid);
+        if (bad) show(bad);
+    }, true);
+    const fix = (event) => {
+        const el = event.target;
+        if (shown.has(el)) clear(el);
+        else if (el.type === 'radio') for (const k of [...shown.keys()]) if (k.name === el.name && k.form === el.form) clear(k);
+    };
+    document.addEventListener('input', fix, true);
+    document.addEventListener('change', fix, true);
+}
+
+// Enter в поле с enterkeyhint="next" из разметки (логин) переводит к следующему пустому полю формы (паролю), а не
+// отправляет её; следующее заполнено (пароль подставил менеджер паролей) — отправляет. У форм с next_controller свои правила.
+function enterNext() {
+    const SKIP = ['hidden', 'checkbox', 'radio', 'submit', 'button', 'file', 'image', 'reset'];
+    document.addEventListener('keydown', (event) => {
+        const el = event.target;
+        if (event.key !== 'Enter' || event.defaultPrevented || event.isComposing || el.tagName !== 'INPUT' || el.getAttribute('enterkeyhint') !== 'next') return;
+        const form = el.form;
+        if (!form || form.matches('[data-controller~="next"]')) return;
+        const fields = [...form.elements];
+        const next = fields.slice(fields.indexOf(el) + 1).find((f) => f.matches('input, select, textarea') && !SKIP.includes(f.type) && !f.disabled && f.getClientRects().length);
+        if (!next || next.value !== '') return;
+        event.preventDefault();
+        next.focus();
+    });
+}
+
 // Приложение выгрузили из фона и открыли заново — страница грузится с нуля, а
 // человек стоял на тридцатой карточке. Позиция пишется при уходе в фон и
 // возвращается только на полной загрузке того же адреса, если ей меньше получаса.
@@ -330,7 +470,7 @@ function timerDone() {
 // после переходов Turbo сверяем мету цвета полосы с классом на <html>.
 function systemTheme() {
     const meta = () => document.querySelector('meta[name="theme-color"]');
-    const paint = () => { const dark = document.documentElement.classList.contains('dark'); if (meta()) meta().content = dark ? '#121212' : '#ffffff'; };
+    const paint = () => { const dark = document.documentElement.classList.contains('dark'); if (meta()) meta().content = dark ? '#161616' : '#ffffff'; };
     // Экран мог прийти из кэша воркера с прежней темой — cookie важнее.
     const chosen = document.cookie.match(/(?:^|; )theme=(dark|light)/)?.[1];
     if (chosen) { document.documentElement.classList.toggle('dark', chosen === 'dark'); paint(); }

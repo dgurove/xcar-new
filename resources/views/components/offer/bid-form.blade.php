@@ -28,9 +28,9 @@
     @endif
     <label for="bid-amount" class="mt-4 block text-sm text-ink-dim">Цена, ₽</label>
     <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $myBid?->amount) }}">
-    <input id="bid-amount" type="text" @unless ($garage) required @endunless class="field-input nums mt-1.5 text-lg" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" autocomplete="off">
+    <input id="bid-amount" type="text" @unless ($garage) required @endunless inputmode="decimal" enterkeyhint="go" data-check-text="Укажите цену" class="field-input nums mt-1.5 text-lg" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" autocomplete="off">
     @error('amount')<p class="mt-1.5 text-sm text-danger">{{ $message }}</p>@enderror
-    <textarea name="comment" rows="2" class="field-input mt-4 !min-h-0 text-sm" placeholder="Комментарий">{{ old('comment', $myBid?->comment) }}</textarea>
+    <textarea name="comment" rows="2" class="field-input mt-4 !min-h-0 sm:text-sm" placeholder="Комментарий">{{ old('comment', $myBid?->comment) }}</textarea>
     <button type="submit" class="btn btn-accent mt-4 w-full" data-bid-target="submit">{{ $myBid ? 'Изменить предложение' : 'Подтвердить предложение' }}</button>
     @if ($garage)<x-offer.bid-choice :offer="$offer"/>@endif
 </form>

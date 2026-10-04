@@ -1,6 +1,7 @@
 @php $new = !$account->exists; $enc = ['ssl' => 'SSL', 'tls' => 'STARTTLS', 'none' => 'без шифрования']; @endphp
 <x-ui.cabinet :title="$new ? 'Новый ящик' : $account->title">
-    <h2 class="text-xl">{{ $new ? 'Новый ящик' : $account->title }}</h2>
+    {{-- На телефоне это имя уже стоит заголовком экрана (h1 кабинета), на ПК h1 нет — только тут. --}}
+    <h2 class="text-xl max-md:hidden">{{ $new ? 'Новый ящик' : $account->title }}</h2>
     @if (session('check'))
         <div class="flex flex-col gap-2">
             @foreach (session('check') as $kind => $r)

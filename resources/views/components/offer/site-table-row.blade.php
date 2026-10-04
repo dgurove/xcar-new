@@ -1,5 +1,6 @@
 {{-- Строка таблицы предложений на сайте (менеджер, покупатель, избранное). Ячейка в два этажа: название с
-     «рекомендуем», под ним номер, приём (таймер, «новый», «закрыт») и город; от 640 номер, приём и город встают
+     «рекомендуем», под ним номер, приём (срок голым числом: со словом «осталось» не влезает город, «новый», «закрыт»)
+     и город; от 640 номер, приём и город встают
      столбцами. Справа цена так, как видит человек, или «Узнать», под ней заявленная, иначе на телефоне сколько прошло. Нажатие — карточка. --}}
 @props(['offer', 'context' => null])
 @php
@@ -19,7 +20,7 @@
         <span class="cell-sub">
             @if ($ref = $offer->leaseRef())<span>ДЛ {{ $ref }}</span>@else<span class="sm:hidden">№ {{ $n }}</span>@endif
             @if ($gallery)<span class="sm:hidden text-accent-text">скоро в продаже</span>
-            @elseif ($left !== null && $left > 0)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт"></span>
+            @elseif ($left !== null && $left > 0)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
             @elseif ($bids && !$offer->bidsOpen())<span class="sm:hidden">приём закрыт</span>
             @elseif ($fresh)<span class="sm:hidden text-accent-text">новый</span>@endif
             @if ($city)<span class="sm:hidden">{{ $city }}</span>@endif
@@ -29,7 +30,7 @@
     <td class="cell-dim nums hidden sm:table-cell">{{ $n }}</td>
     <td class="hidden sm:table-cell">
         @if ($gallery)<span class="text-accent-text">Скоро в продаже</span>
-        @elseif ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт"></span>
+        @elseif ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
         @elseif ($bids && !$offer->bidsOpen())<span class="text-ink-dim">Приём закрыт</span>
         @elseif ($fresh)<span class="text-accent-text">Новый</span>@endif
     </td>

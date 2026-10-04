@@ -26,7 +26,7 @@
 @if ($left !== null && $left > 0)
     <p class="mt-3 flex items-baseline justify-between gap-3 text-sm text-ink-muted" data-closes-with-timer>
         Приём закрывается
-        <span class="nums text-base font-semibold {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт"></span>
+        <span class="nums text-base font-semibold {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true" data-timer-word-value="через">{{ \App\Support\Ago::left($offer->bids_close_at, 'через') }}</span>
     </p>
     <p class="mt-3 text-sm text-ink-muted" hidden data-shows-when-closed>Приём подтверждений закрыт</p>
 @elseif (!$gallery && ($user?->role->canBid() ?? false) && !$offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft)
@@ -50,7 +50,7 @@
         @else
             <form method="post" action="/offers/{{ $offer->number }}/interest" class="mt-6 flex flex-col gap-3">
                 @csrf
-                <textarea name="comment" rows="2" class="field-input !min-h-0 text-sm" placeholder="{{ $user->isBuyer() ? 'Пара слов менеджеру' : 'Что важно уточнить' }}">{{ old('comment') }}</textarea>
+                <textarea name="comment" rows="2" class="field-input !min-h-0 sm:text-sm" placeholder="{{ $user->isBuyer() ? 'Пара слов менеджеру' : 'Что важно уточнить' }}">{{ old('comment') }}</textarea>
                 <button type="submit" class="btn btn-accent w-full">{{ $gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену' }}</button>
             </form>
         @endif

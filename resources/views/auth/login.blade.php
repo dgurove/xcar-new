@@ -2,8 +2,8 @@
     @if (session('status'))<x-ui.flash class="mt-5">{{ session('status') }}</x-ui.flash>@endif
     <form method="post" action="/login" class="mt-6 space-y-3">
         @csrf
-        <input name="login" type="text" required autocomplete="username webauthn" inputmode="email" class="field-input" placeholder="Логин, телефон или почта" value="{{ old('login') }}" autofocus>
-        <input name="password" type="password" required autocomplete="current-password" class="field-input" placeholder="Пароль">
+        <input name="login" type="text" required autocomplete="username webauthn" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" data-check-text="Введите логин" class="field-input" placeholder="Логин, телефон или почта" value="{{ old('login') }}" autofocus>
+        <input name="password" type="password" required autocomplete="current-password" enterkeyhint="go" data-check-text="Введите пароль" class="field-input" placeholder="Пароль">
         @error('login')<p class="text-sm text-danger">{{ $message }}</p>@enderror
         @error('password')<p class="text-sm text-danger">{{ $message }}</p>@enderror
         <div class="px-1 text-sm text-ink-muted"><x-ui.check name="remember" :checked="true">Запомнить меня</x-ui.check></div>

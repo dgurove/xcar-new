@@ -62,7 +62,8 @@
                 <div class="flex flex-wrap gap-2">
                     <x-ui.button type="button" variant="secondary" class="min-w-[9rem] flex-1" data-action="share#copy">Текст в буфер</x-ui.button>
                     @if ($link)<x-ui.button type="button" variant="secondary" class="min-w-[9rem] flex-1" data-action="share#copyLink" data-link="{{ $link }}"><x-ui.icon name="link" class="size-5"/> Скопировать ссылку</x-ui.button>@endif
-                    @if ($photos->isNotEmpty())<x-ui.button type="button" variant="secondary" class="min-w-[9rem] flex-1" data-action="share#openPdf">Открыть PDF</x-ui.button>@endif
+                    {{-- PDF — шторкой документов поверх окна; отмеченные фото кладёт в адрес share#openPdf до перехвата. --}}
+                    @if ($photos->isNotEmpty())<x-ui.doc :doc="['url' => $subject->url, 'type' => 'pdf', 'name' => $subject->fileName(), 'label' => \App\Support\Docs::label($subject->fileName())]" class="btn btn-quiet min-w-[9rem] flex-1" data-share-target="pdfLink" data-action="share#openPdf">Открыть PDF</x-ui.doc>@endif
                 </div>
             </div>
         </div>

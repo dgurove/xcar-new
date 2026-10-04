@@ -28,15 +28,17 @@
 <x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
     {{-- Шапка — только положение и люди: состояние с местом и днями, долг, «Продано», исполнитель, письма.
          Всё, что есть в полях (номер, вендор, телефон) и в «Деньгах» (ставка, начислено), тут не повторяется. --}}
-    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
+    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
         <x-park.state :vehicle="$vehicle"/>
         @if ($debt > 0 && $money)<x-ui.pill tone="danger" :href="'/money?preset=all&car='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ Money::rub($debt) }}</x-ui.pill>@endif
         @if ($vehicle->sold_at)
             <button type="button" class="pill pill-urgent !min-h-0 !py-1 text-xs nums" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">На выдачу {{ $vehicle->sold_at->translatedFormat('j M') }}</button>
-            @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->pickup_name ? $vehicle->pickup_name.' ' : 'Заберёт ' }}{{ $vehicle->pickup_phone }}</a>@elseif ($vehicle->pickup_name)<span class="chip">Заберёт {{ $vehicle->pickup_name }}</span>@endif
+            @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->pickup_name ? $vehicle->pickup_name.' ' : 'Заберёт ' }}{{ $vehicle->pickup_phone }}</a>@elseif ($vehicle->pickup_name)<span class="fact">Заберёт {{ $vehicle->pickup_name }}</span>@endif
         @endif
-        {{-- Исполнитель ставится сам первым действием; чип с аватаром, нажатие — передать другому. --}}
+        {{-- Исполнитель ставится сам первым действием; чип с аватаром, нажатие — передать другому. Контроллер шторки —
+             только вместе с ней: без исполнителя шторки нет, и пустой контроллер падал в консоль. --}}
         @if ($open && $req->assignee)
+            <div class="contents" data-controller="sheet">
             <button type="button" class="chip person" data-action="sheet#open"><x-ui.avatar :user="$req->assignee" :size="20"/>{{ $req->assignee->shortName() }}</button>
             <x-ui.sheet id="assignee" title="Передать">
                 <form method="post" action="/requests/{{ $req->id }}/assign" class="flex flex-col gap-2">
@@ -46,6 +48,7 @@
                     @endforeach
                 </form>
             </x-ui.sheet>
+            </div>
         @endif
         <x-ui.docs-pill :docs="$docs" class="!min-h-0 !py-1 text-xs"/>
         {{-- Продажа этой ТС в CRM — админу: предложение ссылкой, нет его — «В продажу» (черновик, фото и документы — её же). --}}
@@ -177,8 +180,8 @@
                     <div class="row justify-between"><span class="text-ink-muted">Выставлено по</span><span class="nums">{{ $vehicle->storage_billed_until->translatedFormat('j F') }}</span></div>
                 @endif
                 @if ($vehicle->contract_kind === 'commission')
-                    <a href="/acts/{{ $vehicle->id }}/contract" class="row justify-between" data-turbo="false" target="_blank"><span>Договор комиссии</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></a>
-                    <a href="/acts/{{ $vehicle->id }}/handover" class="row justify-between" data-turbo="false" target="_blank"><span>Акт приёма-передачи</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></a>
+                    <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/contract', 'type' => 'html', 'name' => 'Договор комиссии']" class="row justify-between"><span>Договор комиссии</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></x-ui.doc>
+                    <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/handover', 'type' => 'html', 'name' => 'Акт приёма-передачи']" class="row justify-between"><span>Акт приёма-передачи</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></x-ui.doc>
                 @endif
             </div>
             @if ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty())
@@ -201,7 +204,7 @@
                 @if ($vehicle->accepted_at || $pendingCharges->isNotEmpty())<a href="/cars/{{ $vehicle->id }}/invoices/new" class="btn btn-quiet btn-s">Выставить счёт</a>@endif
             </div>
             <x-ui.sheet id="charge" title="Начислить" :open="$errors->has('price')">
-                <form method="post" action="/cars/{{ $vehicle->id }}/charges" class="flex flex-col gap-3" data-controller="price" data-price-prices-value="{{ json_encode($chargePrices) }}">
+                <form method="post" action="/cars/{{ $vehicle->id }}/charges" class="flex flex-col gap-3" data-controller="price" data-price-prices-value="{{ json_encode((object) $chargePrices) }}">
                     @csrf
                     <x-ui.field name="kind" label="За что" :options="$chargeKinds" data-price-target="kind" data-action="change->price#sync"/>
                     @if (count($payers) > 1)<x-ui.field name="party_id" label="Кому" :options="$payers" :value="array_key_first($payers)"/>@endif

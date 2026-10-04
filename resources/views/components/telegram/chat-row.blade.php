@@ -7,7 +7,7 @@
     <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">
             <span class="truncate">{{ $chat->displayName() }}</span>
-            @if ($role = $chat->roleLabel())<span class="tag shrink-0">{{ $role }}</span>@endif
+            @if ($role = $chat->roleLabel())<span class="fact shrink-0">{{ $role }}</span>@endif
             @if ($chat->left_at)<span class="tag tag-danger shrink-0">остановил</span>@endif
             @if ($at)<span class="ml-auto shrink-0 text-xs text-ink-dim nums">{{ $at->translatedFormat($at->isToday() ? 'H:i' : ($at->year === now()->year ? 'j M' : 'd.m.y')) }}</span>@endif
         </div>

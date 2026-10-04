@@ -115,7 +115,9 @@ class PurchaseController
     private function cars(Purchase $purchase, Request $request, array $filters): Builder
     {
         $user = $request->user();
-        $q = $this->visible($purchase, $request, $this->group($filters))->with(['brand', 'model', 'settlement', 'media', 'offers' => fn ($o) => $o->where('user_id', $user->id)]);
+        // Менеджеру — только его цена; сотруднику карточка показывает лучшую цену с именем (bestOffer), ему — все.
+        $offers = fn ($o) => $user->isStaff() ? $o->with('user') : $o->where('user_id', $user->id);
+        $q = $this->visible($purchase, $request, $this->group($filters))->with(['brand', 'model', 'settlement', 'media', 'offers' => $offers]);
         // Лупа — по всей закупке, мимо пилюли и типа.
         $search = trim((string) ($filters['q'] ?? ''));
         if ($search === '') {

@@ -241,10 +241,10 @@ final class Facets
         return $this->action().($query ? '?'.str_replace('%2C', ',', http_build_query($query)) : '');
     }
 
-    /** Ссылка «Сбросить»: все выбранные чипы — пустыми. */
-    public function resetUrl(): string
+    /** Ссылка «Сбросить»: все выбранные чипы — пустыми; $also — что снять с ними заодно (пилюля, поиск). */
+    public function resetUrl(array $also = []): string
     {
-        return $this->url(array_fill_keys(array_filter($this->keys(), fn ($k) => $this->on($k)), ''));
+        return $this->url(array_fill_keys(array_filter($this->keys(), fn ($k) => $this->on($k)), '') + $also);
     }
 
     /** @return array<string, string> параметры адреса, которые форма шторки чипа несёт скрытыми полями */

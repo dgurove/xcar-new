@@ -1,22 +1,16 @@
-{{-- Деньги менеджера для сотрудника: положение чипами, реквизиты с правкой, сделки-расчёты, акт сверки и Excel. --}}
+{{-- Деньги менеджера для сотрудника: реквизиты с правкой, сделки-расчёты одной плашкой, акт сверки и Excel. Положение
+     (просрочено, нам, мы должны, выплачено) — словами в строке заголовка «Сделки», а не рядом чипов над экраном. --}}
 @php use App\Support\Money; $p = $position; @endphp
-@if ($p['overdue'] > 0 || $p['claimed'] > 0 || $p['pay'] > 0 || $p['payout'] > 0 || $p['paid_out'] > 0)
-    <div class="flex flex-wrap gap-1.5">
-        @if ($p['overdue'] > 0)<x-ui.state tone="danger" class="nums">просрочено {{ Money::rub($p['overdue']) }}</x-ui.state>@endif
-        @if ($p['claimed'] > 0)<x-ui.state tone="urgent" class="nums">сообщил об оплате {{ Money::rub($p['claimed']) }}</x-ui.state>@endif
-        @if ($p['pay'] > 0)<span class="chip nums">нам {{ Money::rub($p['pay']) }}</span>@endif
-        @if ($p['payout'] > 0)<span class="chip nums text-urgent">мы должны {{ Money::rub($p['payout']) }}</span>@endif
-        @if ($p['paid_out'] > 0)<span class="tag nums">выплачено {{ Money::rub($p['paid_out']) }}</span>@endif
-    </div>
-@endif
 
-<div class="mt-6 box" data-controller="sheet">
+<div class="box" data-controller="sheet">
     <div class="flex items-start gap-3">
         <div class="min-w-0 flex-1">
             <h2 class="text-lg">Реквизиты</h2>
             @if ($party->filled())
-                <div class="mt-1.5 flex flex-wrap gap-1.5"><span class="tag">{{ $party->kind->label() }}</span>@if ($party->details())<span class="tag">{{ $party->details() }}</span>@endif</div>
-                <div class="mt-1 text-sm text-ink-muted">{{ $party->bankDetails() ?: 'Банк не указан' }}</div>
+                {{-- Подпись не отрывается от номера: «ОГРНИП», «р/с» и цифры — одним куском при переносе. --}}
+                @php $glue = fn (?string $t) => str_replace('/', "/\u{2060}", preg_replace('/ (?=\d)/u', "\u{a0}", (string) $t)); @endphp
+                <div class="mt-1 text-sm text-ink-muted">{{ $party->kind->label() }}@if ($party->details()), <span class="nums">{{ $glue($party->details()) }}</span>@endif</div>
+                <div class="text-sm text-ink-muted">{{ $party->bankDetails() ? $glue($party->bankDetails()) : 'Банк не указан' }}</div>
             @else
                 <div class="mt-1 text-sm text-ink-muted">Не указаны</div>
             @endif
@@ -34,21 +28,33 @@
 </div>
 
 <section class="mt-8">
-    <div class="flex flex-wrap items-baseline gap-3">
+    {{-- Строка заголовка: «Сделки N», суммы словами, справа документы. На телефоне суммам места нет — они второй
+         строкой под заголовком; от 640 — между заголовком и документами, переносятся внутри своей колонки. --}}
+    <div class="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1 sm:grid-cols-[auto_1fr_auto]">
         <h2 class="text-xl">Сделки @if ($moneyDeals->isNotEmpty())<span class="nums text-ink-dim">{{ $moneyDeals->count() }}</span>@endif</h2>
-        {{-- Документы за период — та же форма, что у менеджера; на телефоне во встроенный браузер. --}}
-        <form method="get" action="{{ $base }}/{{ $user->id }}/statement" class="ml-auto flex items-center gap-1.5" data-turbo="false" data-controller="file" data-action="submit->file#share">
-            <input type="hidden" name="from" value="{{ now()->startOfYear()->toDateString() }}"><input type="hidden" name="to" value="{{ now()->toDateString() }}">
-            <button class="chip" data-file-any>Акт сверки</button>
-            <button class="chip" formaction="{{ $base }}/{{ $user->id }}/export" data-file-any>Excel</button>
-        </form>
+        @if ($p['overdue'] > 0 || $p['claimed'] > 0 || $p['pay'] > 0 || $p['payout'] > 0 || $p['paid_out'] > 0)
+            <p class="col-span-2 row-start-2 flex flex-wrap gap-x-3 text-sm text-ink-muted sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:justify-end">
+                @if ($p['overdue'] > 0)<span class="nums whitespace-nowrap text-danger">просрочено {{ Money::rub($p['overdue']) }}</span>@endif
+                @if ($p['claimed'] > 0)<span class="nums whitespace-nowrap text-urgent">сообщил об оплате {{ Money::rub($p['claimed']) }}</span>@endif
+                @if ($p['pay'] > 0)<span class="nums whitespace-nowrap">нам {{ Money::rub($p['pay']) }}</span>@endif
+                @if ($p['payout'] > 0)<span class="nums whitespace-nowrap text-urgent">мы должны {{ Money::rub($p['payout']) }}</span>@endif
+                @if ($p['paid_out'] > 0)<span class="nums whitespace-nowrap">выплачено {{ Money::rub($p['paid_out']) }}</span>@endif
+            </p>
+        @endif
+        {{-- Документы с начала года — шторкой документов, как у менеджера. --}}
+        @php $period = http_build_query(['from' => now()->startOfYear()->toDateString(), 'to' => now()->toDateString()]); @endphp
+        <div class="col-start-2 row-start-1 flex items-center gap-1.5 justify-self-end sm:col-start-3">
+            <x-ui.doc :doc="['url' => $base.'/'.$user->id.'/statement?'.$period, 'type' => 'pdf', 'name' => 'akt-sverki.pdf', 'label' => 'Акт сверки']" class="chip"/>
+            <x-ui.doc :doc="['url' => $base.'/'.$user->id.'/export?'.$period, 'type' => 'sheet', 'name' => 'sdelki.xlsx', 'label' => 'Сделки, Excel']" class="chip">Excel</x-ui.doc>
+        </div>
     </div>
     @if ($moneyDeals->isEmpty())
-        <x-ui.empty class="mt-4">Сделок с деньгами нет</x-ui.empty>
+        <x-ui.empty line class="mt-2 px-0">Сделок с деньгами нет</x-ui.empty>
     @else
-        <div class="mt-4 flex flex-col gap-2">
+        <div class="list mt-3">
             @foreach ($moneyDeals as $deal)
-                <x-money.deal-row :deal="$deal" :href="'/work/deals/'.$deal->id"/>
+                {{-- Сделка живёт в CRM: с сайта (/account/users) — с хостом, иначе 404. --}}
+                <x-money.deal-row staff :deal="$deal" :href="$crm ? '/work/deals/'.$deal->id : \App\Support\Surface::Crm->url('/work/deals/'.$deal->id)"/>
             @endforeach
         </div>
     @endif

@@ -7,6 +7,8 @@
     $shots = $shots->isNotEmpty() ? $shots : ($intake ? $vehicle->visiblePhotos() : collect());
     $vendor = $vehicle->vendor;
     $pdf = $pdf ?? false;
+    // В шторке документов (?embed=1) — только лист: печать у шторки, серого поля вокруг нет.
+    $embed = ! $pdf && request()->boolean('embed');
     $fonts = resource_path('fonts/pdf');
     // В PDF картинки — файлами с диска (dompdf наружу не ходит), на странице — обычными адресами.
     $src = fn ($m) => $pdf ? 'file://'.$m->getPath('w640') : \App\Media\MediaUrl::for($m, 'w640');
@@ -40,6 +42,10 @@
         .sign .box img { display: block; height: 56px; width: auto; }
         .print { display: block; max-width: 720px; margin: 0 auto 16px; }
         .print button { font: inherit; padding: 10px 18px; border: 0; border-radius: 12px; background: #97bf0d; color: #fff; }
+        @if ($embed)
+        body { padding: 0; background: #fff; }
+        .act { max-width: none; padding: 24px 20px; }
+        @endif
         @media print { body { padding: 0; background: #fff; } .act { max-width: none; padding: 0; } .print { display: none; } }
         @if ($pdf)
         @font-face { font-family: "Onest"; font-weight: 400; src: url("file://{{ $fonts }}/Onest-Regular.ttf"); }
@@ -50,7 +56,7 @@
     </style>
 </head>
 <body>
-    @unless ($pdf)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
+    @unless ($pdf || $embed)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     <article class="act">
         <h1>{{ $title }}</h1>
         <p class="sub">{{ $vehicle->ref ? 'Номер '.$vehicle->ref.', ' : '' }}{{ $at?->format('d.m.Y H:i') }}</p>

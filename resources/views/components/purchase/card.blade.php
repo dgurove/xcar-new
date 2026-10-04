@@ -11,7 +11,7 @@
     $hasMedia = $photos->isNotEmpty();
     $facts = array_filter([$car->year, $car->mileage !== null ? \App\Support\Money::nums($car->mileage).' км' : null, $car->transmission?->label(), $car->fuel?->label()]);
 @endphp
-<article id="car-{{ $car->id }}" class="card rise group">
+<article id="car-{{ $car->id }}" class="card group">
     @if ($hasMedia)
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
             <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
@@ -49,19 +49,22 @@
     <div class="card-place">@if ($car->settlement?->title() ?? $car->city)<x-ui.place class="truncate text-sm text-ink-dim">{{ $car->settlement?->title() ?? $car->city }}</x-ui.place>@endif</div>
     <div class="card-action">
         {{-- Ссылка на предложение — только тому, кому оно уже открыто: черновик и чужая волна показа дали бы 404. --}}
+        {{-- Тот же язык, что у карточки предложения: глагол «Предложить» — лаймовой капсулой .btn-get, переход и своё —
+             тихой, выбранное и своя цена — лаймовым словом с галкой в тихой капсуле, «Нет предложений» — серым текстом. --}}
         @if ($car->offer_id && $car->offer?->isVisibleTo(auth()->user()))
-            <a href="/offers/{{ $car->offer?->number }}" class="btn btn-s btn-accent nums w-full whitespace-nowrap">Предложение № {{ $car->offer?->number }}</a>
+            <a href="/offers/{{ $car->offer?->number }}" class="btn btn-get btn-get-quiet nums">Предложение № {{ $car->offer?->number }}</a>
         @elseif ($staff)
             @if ($best)
-                <a href="{{ $href }}" class="btn btn-s {{ $best->state === \App\Purchases\OfferState::Chosen ? 'btn-accent' : 'btn-quiet' }} w-full gap-2 whitespace-nowrap"><span class="nums">{{ \App\Support\Money::rub($best->amount) }}</span><span class="truncate font-normal opacity-80">{{ $best->user->shortName() }}{{ $active->count() > 1 ? ' +'.($active->count() - 1) : '' }}</span></a>
+                @php $chosen = $best->state === \App\Purchases\OfferState::Chosen; @endphp
+                <a href="{{ $href }}" class="btn btn-get btn-get-quiet min-w-0 shrink {{ $chosen ? 'text-accent-text' : '' }}">@if ($chosen)<x-ui.icon name="check" class="size-3.5 shrink-0"/>@endif<span class="nums">{{ \App\Support\Money::rub($best->amount) }}</span><span class="truncate font-normal opacity-80">{{ $best->user->shortName() }}{{ $active->count() > 1 ? ' +'.($active->count() - 1) : '' }}</span></a>
             @else
-                <a href="{{ $href }}" class="btn btn-s btn-ghost w-full whitespace-nowrap text-ink-dim">Нет предложений</a>
+                <a href="{{ $href }}" class="whitespace-nowrap text-sm text-ink-dim">Нет предложений</a>
             @endif
         @elseif ($mine)
-            {{-- Своя цена — состояние (лаймовым словом с галкой), а не главная кнопка: лайм-заливка у глагола «Предложить». --}}
-            <a href="{{ $href }}" class="btn btn-s btn-quiet nums w-full gap-1.5 whitespace-nowrap text-accent-text"><x-ui.icon name="check" class="size-4"/>{{ \App\Support\Money::rub($mine->amount) }}</a>
+            {{-- Своя цена — состояние (лаймовым словом с галкой), а не главная кнопка: лайм у глагола «Предложить». --}}
+            <a href="{{ $href }}" class="btn btn-get btn-get-quiet nums text-accent-text"><x-ui.icon name="check" class="size-3.5"/>{{ \App\Support\Money::rub($mine->amount) }}</a>
         @else
-            <a href="{{ $href }}" class="btn btn-s btn-quiet w-full whitespace-nowrap">Предложить</a>
+            <a href="{{ $href }}" class="btn btn-get">Предложить</a>
         @endif
     </div>
 </article>

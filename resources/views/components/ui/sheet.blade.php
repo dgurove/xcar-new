@@ -4,9 +4,11 @@
      (письма): на телефоне во весь экран с «‹» слева, от 640 — 48rem по центру, в высоту
      по содержимому до края экрана, прокрутка внутри; inflow — от 1024 стоит в потоке карточкой;
      bare — без строки заголовка с крестиком: закрывают свайпом, фоном и своей кнопкой (подключение Telegram);
-     tools — кнопки в строке заголовка перед крестиком (окно писем: ✨ своего предмета). --}}
-@props(['id', 'title' => null, 'open' => false, 'wide' => false, 'tall' => false, 'inflow' => false, 'bare' => false, 'tools' => null])
-<dialog id="{{ $id }}" {{ $attributes->class(['sheet', 'sheet-wide' => $wide, 'sheet-tall' => $tall, 'sheet--inflow' => $inflow]) }} data-sheet-target="dialog" data-action="click->sheet#backdrop" @if ($open) data-sheet-open-value="true" @endif>
+     tools — кнопки в строке заголовка перед крестиком (окно писем: ✨ своего предмета);
+     anchor — на ПК с мышью (от 1024, pointer: fine) не шторка с затемнением, а поповер у нажатой кнопки (чипы фильтра):
+     страница видна, клик мимо и Esc закрывают; на телефоне — шторка как обычно (sheet_controller). --}}
+@props(['id', 'title' => null, 'open' => false, 'wide' => false, 'tall' => false, 'inflow' => false, 'bare' => false, 'tools' => null, 'anchor' => false])
+<dialog id="{{ $id }}" {{ $attributes->class(['sheet', 'sheet-wide' => $wide, 'sheet-tall' => $tall, 'sheet--inflow' => $inflow]) }} data-sheet-target="dialog" data-action="click->sheet#backdrop" @if ($anchor) data-sheet-anchor @endif @if ($open) data-sheet-open-value="true" @endif>
     @if (! $bare && ($title || !$inflow))
     <div class="mb-4 flex items-center justify-between gap-3{{ $tall ? ' sheet-head' : '' }}">
         @if ($tall)<button type="button" class="sheet-close sheet-back -ml-2" data-action="sheet#close" aria-label="Назад"><x-ui.icon name="chevron-left" class="size-5"/></button>@endif

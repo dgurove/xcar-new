@@ -3,6 +3,10 @@
 // (`layout(z)`), поэтому прокрутка при любом увеличении обычная. Пока пальцы на экране — живой transform вокруг
 // точки щипка, отпустили — раскладка в новый масштаб, прокрутка так, чтобы точка осталась под пальцами.
 // Страницу целиком не зумит: у прокрутки touch-action pan-x pan-y, iOS-жест gesturestart гасится.
+// Поле вокруг листа и зазор между листами при масштабе 1 (PDF, скан, акт).
+export const PAD = 14;
+export const GAP = 12;
+
 export class Zoom {
     constructor(scroll, content, layout, { max = 5, settled = () => {} } = {}) {
         Object.assign(this, { scroll, content, layout, max, settled, z: 1, width: scroll.clientWidth });

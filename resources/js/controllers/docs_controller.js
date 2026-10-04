@@ -1,15 +1,22 @@
 import { Controller } from '@hotwired/stimulus';
 import { reduce, sheetInHistory } from '../sheet';
+import { known, shareFile, warm } from '../docs/share';
 
-// Шторка документов (x-ui.docs, одна на страницу в x-ui.shell): скан заявки, СТС, Excel, письмо, фото —
+// Шторка документов (x-ui.docs, одна на страницу в x-ui.shell): скан заявки, СТС, Excel, письмо, фото, акт —
 // внутри интерфейса, а не в Quick Look, из которого установленное приложение на iPhone не выпускает.
-// Не модальная: поля под ней заполняются, пока смотришь документ.
+// Не модальная: поля под ней заполняются, пока смотришь документ. Ссылка внутри модального окна (окно писем,
+// шторка «Оплатить», «···» счёта, «Поделиться») открывает её модально поверх этого окна (`showModal` — верхний
+// слой, живая), вкладки — документы того же окна; Esc и «Закрыть» закрывают сначала её.
 // Телефон — лист снизу: высота тянется за шапку (точки 30/55/88 % экрана, ниже нижней — закрыть), страница
 // получает отступ на его высоту, поле с фокусом выезжает над листом, с клавиатурой лист ужимается и потом
-// возвращается. От 1024 — панель справа во всю высоту, ширина тянется за левый край, страница сдвигается.
+// возвращается. «Назад» закрывает лист, а не страницу: своя запись в истории, как у шторок (sheet.js) и фото.
+// От 1024 — панель справа во всю высоту, ширина тянется за левый край, страница сдвигается.
 // Открывает любая ссылка `a[data-doc]` (x-ui.doc) и любая ссылка на файл (`/files/{id}`,
 // `…/mail/attachments/{id}`) без download; вкладки — все документы страницы по порядку, без повторов.
-// Рисует ../docs/viewer.js (pdf.js, картинка, Excel и Word с сервера, письмо, фото) — отдельным куском.
+// Рисует ../docs/viewer.js (pdf.js, картинка, Excel и Word с сервера, свой HTML-документ, письмо, фото) —
+// отдельным куском. Полоса — имя документа (длинное — многоточием посередине) и под ним тип с объёмом; справа
+// ✨, поворот (фото и сканы), «Поделиться» на телефоне (лист с самим файлом, docs/share.js; HTML-документ —
+// печать, в ней «Поделиться» системы) или «Скачать» и «Печать» на компьютере, закрыть.
 // Высота и ширина помнятся (localStorage); форма, отправленная при открытой шторке, вернётся на ту же
 // страницу — шторка откроется снова на том же документе. `a[data-doc-auto]` открывается сам.
 // ✨ — открытое вложение письма (скан, фото) в окно «Распознать» предмета страницы (`[data-scan-subject]` у
@@ -19,6 +26,9 @@ const ATTACHMENT = /\/mail\/attachments\/(\d+)\/?$/;
 const PAPER = /^\/files\/(\d+)\/?$/;
 const SNAPS = [.3, .55, .88];
 const wide = matchMedia('(min-width: 1024px)');
+const coarse = matchMedia('(pointer: coarse)');
+const KINDS = { pdf: 'PDF', image: 'Фото', sheet: 'Excel', word: 'Word', text: 'Текст', html: 'Документ', video: 'Видео', letter: 'Письмо' };
+let seq = 0;
 const store = {
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch {} },
@@ -26,17 +36,24 @@ const store = {
 const html = document.documentElement;
 
 export default class extends Controller {
-    static targets = ['tabs', 'body', 'count', 'rotate', 'download', 'scan'];
+    static targets = ['tabs', 'body', 'count', 'rotate', 'download', 'print', 'scan', 'name', 'meta'];
 
     connect() {
         this.items = [];
         this.token = 0;
+        this.dead = new Set();
         this.onClick = (e) => this.intercept(e);
         this.onFocus = (e) => this.focused(e);
         this.onSubmit = () => this.rememberOpen();
-        this.onCache = () => { if (!sheetInHistory()) this.close(true); };
+        // Уход со страницы (визит) закрывает шторку до снимка Turbo; снимок без визита — это «Назад» со шторки над
+        // ней (запись страницы без ключа Turbo), шторка остаётся.
+        this.onVisit = () => { this.leaving = true; if (this.entry) this.dead.add(this.entry); this.entry = null; };
+        this.onLoad = () => { this.leaving = false; };
+        this.onCache = () => { if (this.leaving) this.close(true); };
+        this.onPop = (e) => this.popped(e);
+        this.onHostClose = () => { if (this.shown && this.host) this.close(true); };
         // «Подставить» в окне «Распознать» перечитывает страницу на месте (docs:keep перед этим) — тот же документ снова.
-        this.onKeep = () => { this.kept = !this.element.hidden && this.items[this.index] ? this.items[this.index].key : null; };
+        this.onKeep = () => { this.kept = this.shown && !this.host && this.items[this.index] ? this.items[this.index].key : null; };
         this.onMorph = () => {
             const key = this.kept;
             this.kept = null;
@@ -53,9 +70,14 @@ export default class extends Controller {
         document.addEventListener('click', this.onClick);
         document.addEventListener('focusin', this.onFocus);
         document.addEventListener('turbo:submit-start', this.onSubmit);
+        document.addEventListener('turbo:visit', this.onVisit);
+        document.addEventListener('turbo:load', this.onLoad);
         document.addEventListener('turbo:before-cache', this.onCache);
         document.addEventListener('turbo:morph', this.onMorph);
         window.addEventListener('docs:keep', this.onKeep);
+        // Раньше Turbo и sheet.js, после просмотра фото: зовёт обработчик из <head> (x-ui.layout) — у window popstate
+        // идёт по порядку подписки, а контроллер подключается позже Turbo.
+        window.docsPop = this.onPop;
         window.visualViewport?.addEventListener('resize', this.onViewport);
         addEventListener('resize', this.onViewport);
         wide.addEventListener('change', this.onWide);
@@ -68,12 +90,17 @@ export default class extends Controller {
         document.removeEventListener('click', this.onClick);
         document.removeEventListener('focusin', this.onFocus);
         document.removeEventListener('turbo:submit-start', this.onSubmit);
+        document.removeEventListener('turbo:visit', this.onVisit);
+        document.removeEventListener('turbo:load', this.onLoad);
         document.removeEventListener('turbo:before-cache', this.onCache);
         document.removeEventListener('turbo:morph', this.onMorph);
         window.removeEventListener('docs:keep', this.onKeep);
+        if (window.docsPop === this.onPop) window.docsPop = null;
         window.visualViewport?.removeEventListener('resize', this.onViewport);
         removeEventListener('resize', this.onViewport);
         wide.removeEventListener('change', this.onWide);
+        this.host?.removeEventListener('close', this.onHostClose);
+        clearTimeout(this.countTimer);
         this.view?.destroy();
         this.view = null;
         html.classList.remove('docs-open');
@@ -98,19 +125,24 @@ export default class extends Controller {
     }
 
     rememberOpen() {
-        if (this.element.hidden || !this.items[this.index]) return;
+        if (!this.shown || this.host || !this.items[this.index]) return;
         try { sessionStorage.setItem('docs:again', JSON.stringify({ path: location.pathname, key: this.items[this.index].key, at: Date.now() })); } catch {}
     }
 
-    links() {
-        return [...document.querySelectorAll('a[data-doc]')].filter((a) => !this.element.contains(a) && !a.closest('dialog'));
+    get shown() { return this.element.open; }
+
+    // Документы страницы (вне окон) или открытого модального окна, из которого открыли.
+    links(host = this.host) {
+        if (host) return [...host.querySelectorAll('a[data-doc]')].filter((a) => a.dataset.doc !== 'off');
+        return [...document.querySelectorAll('a[data-doc]')].filter((a) => a.dataset.doc !== 'off' && !this.element.contains(a) && !a.closest('dialog'));
     }
 
     key(a) {
         if (a.dataset.doc === 'photos') return '#photos';
-        // Файлы одного архива различаются только `?entry=N`.
+        // Файлы одного архива различаются только `?entry=N`, выгрузки одного адреса (Excel и PDF закупки) — `?format=`.
         const url = new URL(a.href, location.href);
-        return url.pathname + (url.searchParams.has('entry') ? `?entry=${url.searchParams.get('entry')}` : '');
+        const own = ['entry', 'format'].filter((k) => url.searchParams.has(k)).map((k) => `${k}=${url.searchParams.get(k)}`);
+        return url.pathname + (own.length ? `?${own.join('&')}` : '');
     }
 
     item(a) {
@@ -130,19 +162,16 @@ export default class extends Controller {
         const url = new URL(a.href, location.href);
         if (url.origin !== location.origin || !('doc' in a.dataset || FILE.test(url.pathname))) return;
         e.preventDefault();
-        // Под модальным окном (окно писем) шторка была бы неживой: там — встроенный браузер с «Готово», как у
-        // file_controller, а на компьютере — новая вкладка.
-        if (a.closest('dialog:modal')) {
-            const inline = new URL(url);
-            inline.searchParams.set('inline', '1');
-            window.open(matchMedia('(pointer: coarse)').matches ? inline.href : url.href, '_blank');
-            return;
-        }
-        this.open(a);
+        // Ссылка в модальном окне (окно писем, «Оплатить») — шторка модально поверх этого окна.
+        this.open(a, { host: a.closest('dialog:modal') });
     }
 
     // auto — открылся сам (скан на разборе письма): не выше середины, чтобы поля под ним были видны.
-    open(a, { instant = false, auto = false } = {}) {
+    // host — модальное окно, из которого открыли: шторка над ним, вкладки — его документы.
+    open(a, { instant = false, auto = false, host = null } = {}) {
+        // Была открыта в другом слое (на странице, а теперь из окна над ней) — заново в нужном.
+        if (this.shown && host !== this.host) this.close(true, false);
+        this.host = host;
         const seen = new Set();
         this.items = [];
         for (const link of [...this.links(), a]) {
@@ -161,6 +190,7 @@ export default class extends Controller {
             b.dataset.index = i;
             return b;
         }));
+        this.tabsTarget.hidden = this.items.length < 2;
         this.reveal(instant);
         if (auto && !wide.matches) this.setHeight(Math.min(this.height, this.snaps()[1]));
         this.show(this.items.findIndex((item) => item.key === this.key(a)));
@@ -177,12 +207,15 @@ export default class extends Controller {
         this.index = i;
         [...this.tabsTarget.children].forEach((b, n) => b.toggleAttribute('aria-current', n === i));
         this.tabsTarget.children[i]?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+        clearTimeout(this.countTimer);
         this.countTarget.textContent = '';
-        this.rotateTarget.hidden = !['pdf', 'image', ''].includes(item.type);
+        this.countTarget.classList.remove('is-shown');
+        this.title(item.name);
         this.scanTarget.hidden = !this.scanUrl(item);
-        const file = !['letter', 'photos'].includes(item.type);
-        this.downloadTarget.hidden = !file;
-        if (file) this.downloadTarget.href = item.url;
+        this.downloadTarget.href = item.url;
+        this.describe({ kind: item.type || null });
+        // Небольшой файл (Excel, Word, текст) телефон берёт сразу — «Поделиться» откроет лист в том же жесте.
+        if (coarse.matches && ['sheet', 'word', 'text'].includes(item.type)) warm(item.url, item.file || item.name).catch(() => {});
         const token = ++this.token;
         this.view?.destroy();
         this.view = null;
@@ -193,8 +226,12 @@ export default class extends Controller {
         if (token !== this.token) return;
         // Поворот помнится у документа: скан, пришедший боком, второй раз поворачивать не надо.
         const turn = `docs:rot:${item.key}`;
+        const mine = (fn) => (...args) => { if (token === this.token) fn(...args); };
         const view = await render(box, item, {
-            count: (text) => { if (token === this.token) this.countTarget.textContent = text; },
+            count: mine((text) => this.pageCount(text)),
+            info: mine((info) => this.describe(info)),
+            file: (file) => known(item.url, file),
+            retry: mine(() => this.show(i)),
             rotation: Number(store.get(turn)) || 0,
             rotated: (deg) => store.set(turn, String(deg)),
         });
@@ -202,13 +239,77 @@ export default class extends Controller {
         this.view = view;
     }
 
+    // Имя в полосе: длинное режется посередине — хвост (номер, дата в имени файла) виден всегда.
+    title(name) {
+        const head = document.createElement('span'), tail = document.createElement('span');
+        head.className = 'docs-name-head';
+        tail.className = 'docs-name-tail';
+        const cut = name.length > 18 ? 8 : 0;
+        head.textContent = cut ? name.slice(0, -cut) : name;
+        tail.textContent = cut ? name.slice(-cut) : '';
+        this.nameTarget.replaceChildren(head, tail);
+        this.nameTarget.title = name;
+    }
+
+    // Тип и объём под именем («PDF, 3 стр.», «Фото», «Excel») и кнопки полосы по тому, что открылось: поворот — у
+    // фото и сканов (не у своих счетов и актов), печать — PDF и свой документ на компьютере.
+    describe({ kind, pages, count, ours, broken, lost } = {}) {
+        this.kind = kind;
+        const item = this.items[this.index] ?? {};
+        const ext = (item.file || '').match(/\.([a-z0-9]{1,5})$/i)?.[1]?.toLowerCase();
+        let text = kind === 'photos' ? `${count ?? item.photos?.length ?? ''} фото`.trim()
+            : kind === 'file' ? (ext ? ext.toUpperCase() : 'Файл')
+            : kind === 'sheet' && ext === 'csv' ? 'CSV' : KINDS[kind] || '';
+        if (kind === 'pdf' && pages) text += `, ${pages} стр.`;
+        // «Письмо» под «Письмом» ничего не говорит.
+        if (text === item.name) text = '';
+        this.metaTarget.textContent = text;
+        this.rotateTarget.hidden = broken || !(kind === 'image' || (kind === 'pdf' && !ours));
+        const file = kind && !['letter', 'photos'].includes(kind);
+        const phone = coarse.matches;
+        this.downloadTarget.hidden = !file || lost || (kind === 'html' && (broken || !phone));
+        this.downloadTarget.setAttribute('aria-label', phone ? 'Поделиться' : 'Скачать');
+        this.downloadTarget.title = phone ? 'Поделиться' : 'Скачать';
+        this.printTarget.hidden = phone || broken || !['pdf', 'html'].includes(kind);
+        if (lost) this.scanTarget.hidden = true;
+    }
+
+    // Номер страницы капсулой внизу: виден, пока листают, гаснет через полторы секунды.
+    pageCount(text) {
+        const c = this.countTarget;
+        c.textContent = text;
+        c.classList.add('is-shown');
+        clearTimeout(this.countTimer);
+        this.countTimer = setTimeout(() => c.classList.remove('is-shown'), 1500);
+    }
+
     rotate() {
         this.view?.rotate?.();
     }
 
+    // «Поделиться» на телефоне — лист с самим файлом; свой HTML-документ файла не имеет — печать, в ней «Поделиться»
+    // системы. На компьютере ссылка просто скачивает (download).
+    share(event) {
+        if (!coarse.matches) return;
+        event.preventDefault();
+        const item = this.items[this.index];
+        if (!item) return;
+        if (this.kind === 'html') { this.view?.print?.(); return; }
+        shareFile(item.url, item.file || item.name);
+    }
+
+    warm() {
+        const item = this.items[this.index];
+        if (coarse.matches && item && this.kind !== 'html') warm(item.url, item.file || item.name).catch(() => {});
+    }
+
+    print() {
+        this.view?.print?.();
+    }
+
     // Адрес окна «Распознать» с этим файлом: вложение письма (не файл из архива) или документ предложения (`m45`,
-    // если предмет их читает — data-scan-papers), скан или фото, и на странице есть предмет с ✨ — вне окон: под окном
-    // писем шторка не открывается.
+    // если предмет их читает — data-scan-papers), скан или фото, и на странице есть предмет с ✨ — вне окон (окно
+    // «Распознать» открывается и над шторкой, модальной над окном писем).
     scanUrl(item) {
         if (!['pdf', 'image'].includes(item.type)) return null;
         const url = new URL(item.url, location.href);
@@ -224,43 +325,134 @@ export default class extends Controller {
     }
 
     reveal(instant) {
-        if (!this.element.hidden) return;
-        this.element.classList.remove('is-closing');
-        this.element.classList.toggle('is-instant', instant || reduce.matches);
-        this.element.hidden = false;
-        html.classList.add('docs-open');
+        if (this.shown) return;
+        const el = this.element;
+        el.classList.remove('is-closing');
+        el.classList.toggle('is-instant', instant || reduce.matches);
+        el.classList.toggle('docs-modal', !!this.host);
+        if (this.host) {
+            // Верхний слой над окном: живая, окно под ней не ловит ни касаний, ни Esc. Закрыли окно — и её.
+            el.showModal();
+            if (matchMedia('(hover: none)').matches && document.activeElement?.matches('button, a')) document.activeElement.blur();
+            this.host.addEventListener('close', this.onHostClose, { once: true });
+        } else {
+            // Не модальная: open без showModal — фокус остаётся в поле, страница живая.
+            el.setAttribute('open', '');
+            html.classList.add('docs-open');
+        }
         this.relayout();
+        this.remember();
     }
 
     relayout() {
-        if (this.element.hidden) return;
+        if (!this.shown) return;
         if (wide.matches) this.setWidth(this.wanted());
         else this.setHeight(this.startHeight());
     }
 
-    close(instant = false) {
-        if (this.element.hidden || this.element.classList.contains('is-closing')) return;
+    // instant — без анимации (уход со страницы, смена слоя); unwind — снять свою запись в истории, если она сверху.
+    close(instant = false, unwind = true) {
+        if (!this.shown || this.element.classList.contains('is-closing')) return;
         this.token++;
+        if (unwind) this.forget();
+        else if (this.entry) { this.dead.add(this.entry); this.entry = null; }
+        // Ждём конца анимации или 400 мс — что раньше; второе снимается. Иначе оставшийся слушатель animationend
+        // ловил конец анимации следующего открытия и тут же закрывал шторку: второй документ из «···» не открывался.
+        let timer;
         const done = () => {
-            if (this.element.hidden) return;
-            this.element.hidden = true;
+            this.element.removeEventListener('animationend', done);
+            clearTimeout(timer);
+            if (!this.shown) return;
             this.element.classList.remove('is-closing');
-            html.classList.remove('docs-open');
-            this.view?.destroy();
-            this.view = null;
-            this.bodyTarget.replaceChildren();
+            this.element.close();
+            this.closed();
         };
         if (instant === true || reduce.matches) { done(); return; }
         this.element.classList.add('is-closing');
-        this.element.addEventListener('animationend', done, { once: true });
-        setTimeout(done, 400);
+        this.element.addEventListener('animationend', done);
+        timer = setTimeout(done, 400);
     }
 
-    // Esc — не поверх фото во весь экран и не поверх шторки-диалога.
+    // Диалог закрылся (своей кнопкой или чужим closeSheet — переход по ссылке из модальной шторки): убрать вид.
+    // Событие close приходит задачей позже — к тому времени шторку могли открыть снова.
+    closed() {
+        if (this.shown) return;
+        this.token++;
+        this.element.classList.remove('is-closing', 'docs-modal');
+        html.classList.remove('docs-open');
+        this.host?.removeEventListener('close', this.onHostClose);
+        this.host = null;
+        if (this.entry) { this.dead.add(this.entry); this.entry = null; }
+        clearTimeout(this.countTimer);
+        this.view?.destroy();
+        this.view = null;
+        this.bodyTarget.replaceChildren();
+    }
+
+    // Esc — не поверх фото во весь экран и не поверх шторки-диалога; модальную закрывает cancel.
     escape(event) {
-        if (this.element.hidden || document.querySelector('dialog:modal')) return;
+        if (!this.shown || this.host || document.querySelector('dialog:modal')) return;
         event.preventDefault();
         this.close();
+    }
+
+    cancel(event) {
+        event.preventDefault();
+        this.close();
+    }
+
+    // Модальная: нажатие мимо листа (по окну под ней) закрывает её.
+    backdrop(event) {
+        if (!this.host || event.target !== this.element) return;
+        const r = this.element.getBoundingClientRect();
+        if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) this.close();
+    }
+
+    // ——— «Назад» на телефоне: своя запись в истории поверх страницы (или окна, над которым шторка)
+
+    remember() {
+        if (this.entry || wide.matches) return;
+        this.entry = `docs-${Date.now()}-${++seq}`;
+        history.pushState({ ...(history.state || {}), docs: this.entry }, '');
+    }
+
+    // Закрыли кнопкой, Esc или жестом: своя запись сверху — шаг назад молча.
+    forget() {
+        const entry = this.entry;
+        if (!entry) return;
+        this.entry = null;
+        this.dead.add(entry);
+        if (history.state?.docs === entry) { this.skip = true; history.back(); }
+    }
+
+    popped(e) {
+        if (this.skip) { this.skip = false; e.stopImmediatePropagation(); return; }
+        const at = e.state?.docs;
+        if (this.entry && at === this.entry) {
+            // Вернулись на запись шторки со шторки или фото над ней — это их «Назад». Turbo и sheet.js перепишут
+            // запись — пометить снова, чтобы «Назад» потом сняло шторку.
+            setTimeout(() => { if (this.entry === at && history.state?.docs !== at) history.replaceState({ ...(history.state || {}), docs: at }, ''); });
+            return;
+        }
+        if (this.entry) {
+            // «Назад» снял запись открытой шторки: закрыть её, дальше событие не идёт (Turbo не перерисует страницу).
+            e.stopImmediatePropagation();
+            const host = this.host;
+            this.dead.add(this.entry);
+            this.entry = null;
+            this.close(false, false);
+            // Окно под шторкой само уходит (его закрыли, оно снимает свою запись) — пропустить и её, к sheet.js.
+            if (host && (!host.open || host.classList.contains('is-closing'))) history.back();
+            return;
+        }
+        // Запись уже закрытой шторки этой страницы («Вперёд» или «Назад» с окна над ней) — шагнуть мимо. Окно над
+        // ней снимает sheet.js — сначала он, потом шаг.
+        if (at && this.dead.has(at)) {
+            const pass = () => { this.skip = true; history.back(); };
+            if (sheetInHistory()) { setTimeout(pass); return; }
+            e.stopImmediatePropagation();
+            pass();
+        }
     }
 
     // ——— высота на телефоне
@@ -301,7 +493,7 @@ export default class extends Controller {
 
     // Экран повернули, клавиатура поменяла высоту — лист не выше доступного.
     fit() {
-        if (this.element.hidden) return;
+        if (!this.shown) return;
         if (wide.matches) { this.setWidth(this.wanted()); return; }
         const max = this.maxHeight();
         if (this.height > max) this.setHeight(max);
@@ -359,7 +551,7 @@ export default class extends Controller {
         const open = html.classList.contains('kb-open');
         if (open === this.kb) return;
         this.kb = open;
-        if (this.element.hidden || wide.matches) return;
+        if (!this.shown || this.host || wide.matches) return;
         if (open) {
             this.beforeKb = this.height;
             const cap = Math.round(this.vh * .42);
@@ -374,7 +566,7 @@ export default class extends Controller {
 
     focused(e) {
         const field = e.target;
-        if (this.element.hidden || wide.matches || !field.matches?.('input, textarea, select') || this.element.contains(field)) return;
+        if (!this.shown || this.host || wide.matches || !field.matches?.('input, textarea, select') || this.element.contains(field)) return;
         // Лист во весь экран, а человек взялся за поле — опускаем до середины, иначе поле некуда поднять.
         const mid = this.snaps()[1];
         if (this.height > mid && !this.kb) this.settle(mid);
@@ -384,7 +576,7 @@ export default class extends Controller {
 
     // Поле с фокусом — над листом и плашкой действий, под шапкой.
     keepVisible(field) {
-        if (this.element.hidden || !field.isConnected || document.activeElement !== field) return;
+        if (!this.shown || !field.isConnected || document.activeElement !== field) return;
         const r = field.getBoundingClientRect();
         let bottom = this.element.getBoundingClientRect().top;
         const bar = document.querySelector('.action-bar');

@@ -149,9 +149,19 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
                 pswp.ui.registerElement({
                     name: 'download', order: 9, isButton: true, tagName: 'a', title: 'Скачать', html: path(ICONS.download),
                     onInit: (el, p) => {
+                        // Как «Скачать» везде (file_controller): на телефоне — лист «Поделиться» с файлом, на компьютере — download.
                         el.setAttribute('download', '');
-                        el.target = '_blank';
-                        const sync = () => { const d = p.currSlide?.data; if (d) el.href = d.item.download || d.full; };
+                        el.dataset.controller = 'file';
+                        el.dataset.action = 'file#share';
+                        el.dataset.fileName = 'Фото';
+                        // Кадр медиатеки приходит адресом сайта, а смотрят его и с парковки и CRM: у чужого адреса
+                        // download не работает (браузер уходит на картинку), а fetch для «Поделиться» упирается в CORS.
+                        // /media и /hot отдаёт любой хост — берём тот же путь у своего.
+                        const own = (href) => {
+                            const u = new URL(href, location.href);
+                            return u.origin !== location.origin && /^\/(media|hot)\//.test(u.pathname) ? u.pathname + u.search : u.href;
+                        };
+                        const sync = () => { const d = p.currSlide?.data; if (d) el.href = own(d.item.download || d.full); };
                         p.on('change', sync);
                         sync();
                     },

@@ -8,18 +8,18 @@
             <span class="step-dot">@if ($step->isDone() && ! $step->danger)<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">
                 @if ($step->key === 'refused')
-                    {{-- Отказ покупателя: раскрывать нечего, причина и кто записал стоят чипами прямо в строке. --}}
+                    {{-- Отказ покупателя: раскрывать нечего, причина и кто записал стоят серым текстом прямо в строке. --}}
                     <div class="step-head">
                         <span class="step-title">{{ $step->title }}</span>
-                        @if ($step->at)<span class="tag nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif
-                        @foreach ($step->chips as $chip)<span class="tag max-w-[14rem] truncate">{{ $chip }}</span>@endforeach
+                        @if ($step->at)<span class="fact nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif
+                        @foreach ($step->chips as $chip)<span class="fact max-w-[14rem]"><span class="truncate">{{ $chip }}</span></span>@endforeach
                     </div>
                 @elseif ($step->isDone())
                     <details class="step-details">
                         <summary class="step-head">
                             <span class="step-title">{{ $step->title }}</span>
-                            @if ($step->at)<span class="tag nums">{{ $step->at->translatedFormat('j M'.($step->key === 'letter' ? '' : ', H:i')) }}</span>@endif
-                            @foreach ($step->chips as $chip)<span class="tag max-w-[14rem] truncate">{{ $chip }}</span>@endforeach
+                            @if ($step->at)<span class="fact nums">{{ $step->at->translatedFormat('j M'.($step->key === 'letter' ? '' : ', H:i')) }}</span>@endif
+                            @foreach ($step->chips as $chip)<span class="fact max-w-[14rem]"><span class="truncate">{{ $chip }}</span></span>@endforeach
                             @if ($step->hint)<span class="min-w-0 truncate text-sm text-ink-muted">{{ $step->hint }}</span>@endif
                             <x-ui.icon name="chevron-down" class="step-chevron ml-auto size-4 shrink-0 self-center text-ink-dim"/>
                         </summary>
@@ -28,8 +28,8 @@
                 @elseif ($step->isCurrent())
                     <div class="step-head">
                         <span class="step-title">{{ $step->title }}</span>
-                        @if ($r?->planned_at && $step->key !== 'tow')<span class="tag nums {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
-                        @if ($step->key === 'intake' && $r?->delivery && ! $r->isTow())<span class="tag">{{ $r->delivery->label() }}</span>@endif
+                        @if ($r?->planned_at && $step->key !== 'tow')<span class="fact nums {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
+                        @if ($step->key === 'intake' && $r?->delivery && ! $r->isTow())<span class="fact">{{ $r->delivery->label() }}</span>@endif
                     </div>
                     @if ($step->hint)<p class="step-hint">{{ $step->hint }}</p>@endif
                     @include('park.vehicles.steps.'.$partial, ['req' => $r, 'step' => $step])
@@ -37,13 +37,13 @@
                     {{-- Анкета покупателя (выдача по QR): не текущий шаг, но с делом — ссылка или «Страховая подтвердила». --}}
                     <div class="step-head">
                         <span class="step-title">{{ $step->title }}</span>
-                        @if ($step->at)<span class="tag nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif
-                        @foreach ($step->chips as $chip)<span class="tag">{{ $chip }}</span>@endforeach
+                        @if ($step->at)<span class="fact nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif
+                        @foreach ($step->chips as $chip)<span class="fact">{{ $chip }}</span>@endforeach
                     </div>
                     @include('park.vehicles.steps.buyer')
                 @elseif ($step->key === 'reply')
                     {{-- Письмо, которое ждёт ответа: текст и два действия, форма текущего шага при этом на месте. --}}
-                    <div class="step-head"><span class="step-title">{{ $step->title }}</span>@if ($step->at)<span class="tag nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif</div>
+                    <div class="step-head"><span class="step-title">{{ $step->title }}</span>@if ($step->at)<span class="fact nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif</div>
                     @include('park.vehicles.steps.reply')
                 @else
                     <div class="step-head">

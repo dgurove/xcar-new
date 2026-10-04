@@ -2,7 +2,7 @@
      пилюли Обзор, Контакты, Маршруты лентой. Шторка «Продажа»: имя и тип (общие с парковкой), условия сделки, почта
      продажи. Реквизиты, хранение, прайс, деньги, заявки на приёмку — на парковке, ссылкой в обзоре. --}}
 @php use App\Vendors\{DealFormat, Kind, Parser, RewardKind}; @endphp
-<x-ui.cabinet :title="$vendor->name" :back="['Вендоры', '/settings/vendors']">
+<x-ui.cabinet :title="$vendor->name" :back="['Вендоры', '/settings/vendors']" :phone-heading="false">
     <div data-controller="sheet">
         <div class="flex items-start gap-3">
             <div class="min-w-0 flex-1">

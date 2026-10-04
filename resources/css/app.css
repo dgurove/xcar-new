@@ -32,6 +32,9 @@
    ========================================================================== */
 
 @import "tailwindcss";
+/* Редактор писем: стили Trix — слоем base, иначе без слоя они перебивали правки кита в components
+   (рамки групп, скрепка и отмена на панели, рамка поля). */
+@import "trix/dist/trix.css" layer(base);
 
 @source "../views";
 @source "../js";
@@ -149,30 +152,33 @@
 :root { color-scheme: light; }
 @media (min-width: 768px) { :root { --spacing-header: 88px; } }
 
+/* Тёмная тема — ступени тёмной iOS: фон чёрный, группа светлее фона (#1c1c1e), внутри группы и в шторке —
+   ещё светлее (#2c2c2e), поле и переключатель — третья ступень (#3a3a3c). Раньше было наоборот: группы темнее
+   фона и выглядели провалами. */
 .dark {
   color-scheme: dark;
-  --color-bar: #121212;
-  --bar-alpha: 62%;
+  --color-bar: #161616;
+  --bar-alpha: 78%;
   --bar-filter: saturate(180%) blur(20px);
-  --color-ground: #161616;
-  --color-surface: #0d0d0d;
-  --color-surface-2: #1a1a1a;
-  --color-surface-3: #242424;
-  --color-hover: #222222;
-  --color-line: #2a2a2a;
+  --color-ground: #000000;
+  --color-surface: #1c1c1e;
+  --color-surface-2: #2c2c2e;
+  --color-surface-3: #3a3a3c;
+  --color-hover: #333336;
+  --color-line: #38383a;
   --color-ink: #ededed;
-  --color-ink-muted: #9a9a9a;
-  --color-ink-dim: #6a6a6a;
+  --color-ink-muted: #a3a3a3;
+  --color-ink-dim: #8a8a8a;
   --color-ink-invert: #161616;
   --color-accent-hover: #7ca30b;
-  --color-accent-soft: #1a2605;
+  --color-accent-soft: #263709;
   --color-accent-text: #a6cf3a;
   --color-open: #a6cf3a;
-  --color-open-soft: #1a2605;
-  --color-urgent-soft: #2a1a00;
-  --color-closed: #9a9a9a;
-  --color-closed-soft: #262626;
-  --color-danger-soft: #33000a;
+  --color-open-soft: #263709;
+  --color-urgent-soft: #3a2504;
+  --color-closed: #a3a3a3;
+  --color-closed-soft: #3a3a3c;
+  --color-danger-soft: #45101b;
   --shadow-drop: 0 0 1px 0 rgb(0 0 0 / .5), 0 2px 6px 0 rgb(0 0 0 / .5),
                  0 16px 24px 0 rgb(0 0 0 / .6);
 }
@@ -208,10 +214,10 @@
   .box > h2, .box > div > h2 { font-size: var(--text-lg); }
   /* Интерфейс, а не текст страницы: строки, пилюли, теги, шаги, подписи и меню не выделяются и не дают курсор-
      каретку, как в приложении. Содержимое (письма, комментарии, чаты, поля) выделяется как было. */
-  .row, .pill, .tag, .chip, .step-head, .step-title, .box-title, .list-head, .menu, .toolbar, .tabbar, .header, dt, label {
+  .row, .pill, .tag, .chip, .fact, .step-head, .step-title, .box-title, .list-head, .menu, .toolbar, .tabbar, .header, dt, label {
     -webkit-user-select: none; user-select: none; cursor: default;
   }
-  a.row, button.row, a.pill, button.pill, a.chip, button.chip, .menu a, .menu button, label:has(input) { cursor: pointer; }
+  a.row, button.row, a.pill, button.pill, a.chip, button.chip, a.tag, button.tag, .menu a, .menu button, label:has(input) { cursor: pointer; }
   /* Заголовок раздела — подписью группы, как в приложении: мелко, серым, без веса статьи. */
   .box h2.box-title { font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-dim); letter-spacing: .01em; }
   .box-nested > h2, .box-nested > div > h2, .box-nested summary h2 { font-size: var(--text-base); }
@@ -299,6 +305,20 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* «Назад» и «Вперёд» полосы страниц: на телефоне одним шевроном, круглые. */
   @media (max-width: 639px) { .pager-step { width: 2.75rem; padding: 0; } }
   .btn-round.btn-lg { width: 3.5rem; height: 3.5rem; }
+  /* Кнопка карточки — как «Загрузить» в App Store: капсула 32 px по ширине надписи, бледный лайм с лаймовым текстом —
+     глагол («Подтвердить», «Предложить»). Тихая — переход или своё («Открыть», своя цена), сделанное — серым словом. */
+  .btn-get { @apply rounded-full bg-accent-soft text-sm font-semibold text-accent-text; height: 2rem; padding-inline: .875rem; gap: .375rem; flex: none; }
+  @media (hover: hover) { .btn-get:hover { background: color-mix(in oklab, var(--color-accent-soft), var(--color-accent) 16%); } }
+  .btn-get-quiet { @apply bg-surface-3 text-ink; }
+  .btn-get-done { @apply bg-surface-3 text-ink-muted; }
+  @media (hover: hover) { .btn-get-quiet:hover, .btn-get-done:hover { background: var(--color-line); } }
+  /* Значок-действие без подложки (чат, «Показать покупателям»): значок 22 px, цель касания 44 px, от 640 — 36.
+     --icon-inset — пустое поле вокруг значка: карточка выравнивает по нему край и высоту ряда. */
+  .btn-icon { @apply relative rounded-full px-0 text-ink-muted; width: 2.75rem; height: 2.75rem; flex: none; --icon-inset: .6875rem; }
+  @media (min-width: 640px) { .btn-icon { width: 2.25rem; height: 2.25rem; --icon-inset: .4375rem; } }
+  @media (hover: hover) { .btn-icon:hover { color: var(--color-ink); } }
+  /* Бейдж — в углу значка, а не пустого поля вокруг него. */
+  .btn.btn-icon .badge { top: calc(var(--icon-inset) - .5rem); inset-inline-end: calc(var(--icon-inset) - .5rem); }
 
   /* ------------------------------------------------------------- поля */
 
@@ -322,7 +342,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   input.field-input::-webkit-date-and-time-value { text-align: left; margin: 0; }
   .field-input:focus-visible { outline-offset: 0; }
   .field-error { @apply text-sm text-danger; }
-  .field-invalid .field-input { @apply ring-2 ring-danger/60; }
+  /* Голое поле без x-ui.field (вход, цена) помечает своя проверка формы (formCheck в app.js) — aria-invalid. */
+  .field-invalid .field-input, .field-input[aria-invalid="true"] { @apply ring-2 ring-danger/60; }
   /* Подпись пальцем: холст того же тона, что поле; линия — цветом текста. */
   .signature-pad { @apply mt-1 block h-36 w-full touch-none rounded-(--radius-m) bg-surface-3 text-ink; }
   .signature.is-signed .signature-pad { @apply ring-2 ring-accent/50; }
@@ -345,12 +366,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .switch:checked::before { translate: 20px 0; }
   .switch:focus-visible { box-shadow: 0 0 0 2px var(--color-accent-soft); }
   .switch:disabled { cursor: default; }
-  .dark .switch { background: var(--color-surface-3); }
+  /* Выключенный тумблер в тёмной — полупрозрачный серый, как в iOS: светлее и группы, и строки шторки под ним. */
+  .dark .switch { background: rgb(120 120 128 / .36); }
   .dark .switch:checked { background: var(--color-accent); }
 
   .check { @apply inline-flex items-center gap-3 select-none; }
   .check input { @apply size-5 shrink-0 appearance-none rounded-(--radius-s) bg-surface-3 bg-center bg-no-repeat outline-none
       checked:bg-accent focus-visible:ring-2 focus-visible:ring-accent/60; }
+  /* Пустая галка в тёмной на второй ступени сливалась с подложкой — волосяной край. Круг строки-выбора — свой. */
+  .dark .check:not(.row-check .check) input:not(:checked) { box-shadow: inset 0 0 0 1.5px #5a5a5a; }
   .check input:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5'%3E%3Cpath d='m3.5 8.5 3 3 6-7'/%3E%3C/svg%3E"); }
   /* Подгруппа полей внутри карточки («Показ» под описанием ТС): подпись тоном подписи поля, чуть крупнее, без линий. */
   .form-subtitle { @apply mb-3 text-sm font-medium text-ink-dim; }
@@ -377,9 +401,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Своя метка: «+» в ряду чипов, по нажатию — поле ввода того же размера. */
   .choice-add { @apply inline-flex min-w-9 items-center justify-center rounded-full bg-surface-3 px-3.5 py-2 text-sm text-ink-muted; }
   .choice-add:hover { @apply text-ink; }
-  .choice-input { @apply w-40 rounded-full bg-surface-3 px-3.5 py-2 text-sm text-ink outline-none; }
+  .choice-input { @apply w-40 rounded-full bg-surface-3 px-3.5 py-2 sm:text-sm text-ink outline-none; }
   .choice-input:focus { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .tri input:checked + span { @apply bg-surface text-ink; }
+  .dark .tri input:checked + span { background: color-mix(in oklab, var(--color-ink) 22%, var(--color-surface-3)); }
 
   /* Мини-карточка выбора предложений (шторка «Открыть…»): фото, название, цена, галка в углу.
      Уже открытое — приглушено и не переключается. */
@@ -404,14 +429,17 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* В шторке и в карточке строки лежат на белом — берут второй фон. */
   .sheet .row, .box .row { @apply bg-surface-2; }
 
-  /* Строка-выбор: вся строка — цель, галка справа, отмеченная — светлый лайм. */
   /* Строка с тумблером справа (настройки): label.row, .switch — ml-auto; выключенный тумблер — строка приглушена. */
   .row-switch { @apply cursor-pointer; }
   .row-switch .switch { @apply ml-auto shrink-0; }
   .row-switch:has(.switch:disabled) { @apply cursor-default opacity-60; }
+  /* Строка-выбор: вся строка — цель, отметка справа кругом, как в iOS: пустой — волосяная обводка, отмеченный —
+     лаймовый круг с белой галкой. Строка не заливается. Квадратные галки форм (.check вне строки) — как были. */
   .row-check { @apply cursor-pointer; }
   .row-check .check { @apply ml-auto shrink-0; }
-  .row-check:has(input:checked) { @apply bg-accent-soft; }
+  .row-check .check input { width: 1.375rem; height: 1.375rem; border-radius: 9999px; background-color: transparent; box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-ink) 24%, transparent); }
+  .row-check .check input:checked { background-color: var(--color-accent); box-shadow: none; }
+  .row-check .check input:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 60%, transparent); }
   .row-check:has(input:disabled) { @apply cursor-default opacity-60; }
   /* «Опубликовать»: кнопка называет исход отмеченной строки — «сейчас», «сегодня в 16:00», «завтра в 16:00». */
   .publish-choice [data-when] { display: none; }
@@ -599,6 +627,19 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .vincode { cursor: pointer; }
   @media (hover: hover) { .vincode:hover > svg { color: var(--color-ink); } }
   .dark .tag { background: var(--tag-bg-d, var(--color-surface-3)); color: var(--tag-text-d, var(--color-ink-muted)); }
+  /* Тег-ссылка (телефон, почта, группа) — нажимается: курсор и тон темнее при наведении, как у пилюли. */
+  a.tag, button.tag { transition: background-color var(--dur-fast); }
+  @media (hover: hover) {
+    a.tag:hover, button.tag:hover { background: color-mix(in oklab, var(--tag-bg, var(--color-surface-3)), var(--color-ink) 8%); }
+    .dark a.tag:hover, .dark button.tag:hover { background: color-mix(in oklab, var(--tag-bg-d, var(--color-surface-3)), var(--color-ink) 10%); }
+  }
+  /* Факт без капсулы — логин, дата, место, «видит 3», участник письма: серый строчный текст. Капсула остаётся только
+     у того, что нажимается (a.tag, a.chip, кнопка). Одно слово-факт, как тег, не ломается посередине. */
+  .fact { @apply inline-flex min-w-0 max-w-full items-center gap-1 text-sm text-ink-muted; white-space: nowrap; }
+  .fact.place > .place-text { @apply truncate; }
+  /* Факт с соседом справа (или состояние словом перед фактом) — текст без подложки: зазора ряда капсул (6 px) между
+     словами мало. Запас справа, а не слева: слева он сдвигал бы перенесённую строку. */
+  .fact:not(:last-child), .state:has(+ .fact) { margin-inline-end: .5rem; }
   /* «Рекомендуем»: синий кружок с галочкой в размер шрифта после названия; тег с подписью — синяя палитра. */
   .recommended { display: inline-flex; flex-shrink: 0; width: 1.05em; height: 1.05em; margin-left: .3em; vertical-align: -.15em; }
   .recommended > svg { width: 100%; height: 100%; }
@@ -618,9 +659,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .toolbar-pills .pill { padding-inline: 1rem; }
     /* В кабинете разделы уже названы своей лентой пилюль — пилюли тулбара остаются обычными. */
     [data-title-anchor] .toolbar-pills .pill { padding-inline: .875rem; }
-    /* Кнопка с подписью, спрятанной на телефоне («+ Новый», «Из писем») — круглая, как соседи. */
-    .toolbar .btn:has(> .hidden) { width: 2.75rem; padding: 0; }
   }
+  /* Кнопка с подписью, спрятанной на телефоне («+ Новый», «Из писем») — круглая, как соседи. Только до 640:
+     от 640 подпись уже видна (sm:inline), и в круге 2,75rem она вылезала на соседнюю кнопку. */
+  @media (max-width: 639px) { .toolbar .btn:has(> .hidden) { width: 2.75rem; padding: 0; } }
 
   /* Поиск в тулбаре: не фильтр, а поле — стоит слева, растёт до своей доли строки, крестик
      появляется с первым знаком. Ищет по ходу набора (live_search_controller), адрес не меняет. */
@@ -705,7 +747,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .pill-closed { @apply bg-closed-soft text-closed; }
   .pill-danger { @apply bg-danger-soft text-danger; }
   .pill-soft   { @apply bg-accent-soft text-accent-text; }
-  .pill-plain  { @apply bg-surface-2 text-ink-muted; }
+  /* Серая капсула-действие («+15 мин», «+ Метка», «Документы 3») на фоне страницы — белая, как пилюли тулбара:
+     surface-2 в светлой теме совпадает с фоном страницы, и нажимаемое не отличалось от текста. В плашке (карточка,
+     шторка, карточка строки) — surface-2, во вложенной серой плашке — снова белая. */
+  .pill-plain  { @apply bg-surface text-ink-muted; }
+  :is(.box, .sheet, .detail-card) .pill-plain { @apply bg-surface-2; }
+  .box-nested .pill-plain { @apply bg-surface; }
   /* Состояние («оплачен», «просрочен», «идёт сделка») — цветным словом, как в приложении, а не капсулой: капсула
      остаётся у того, что нажимается (a, button). Так же теги-предупреждения («ниже минимальной»). */
   span.pill:is(.pill-open, .pill-urgent, .pill-closed, .pill-danger, .pill-soft, .pill-plain),
@@ -720,7 +767,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .offer-head span.pill-closed { background: var(--color-closed-soft) !important; }
   .offer-head span.pill-danger { background: var(--color-danger-soft) !important; }
   .offer-head span.pill-soft { background: var(--color-accent-soft) !important; }
-  .offer-head span.pill-plain { background: var(--color-surface-2) !important; }
+  .offer-head span.pill-plain { background: var(--color-surface) !important; }
   /* x-ui.state — то же словом без капсулы, одним классом вместо «!min-h-0 !py-1 text-xs» у каждой пилюли. */
   .state { @apply inline-flex items-center whitespace-nowrap text-xs font-medium; }
   .state-open { @apply text-open; } .state-urgent { @apply text-urgent; } .state-closed { @apply text-closed; }
@@ -736,8 +783,16 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .box-nested { @apply rounded-(--radius-l) bg-surface-2 p-4; }
   .box-urgent { @apply bg-urgent-soft; }
 
-  .empty { @apply rounded-(--radius-xl) bg-surface px-6 py-24 text-center text-ink-muted; }
-  .empty a { @apply mt-2 inline-block text-accent-text hover:underline; }
+  /* Пустое состояние — фраза серым по центру прямо на фоне экрана, без плашки (плашкой в тёмной теме выходила
+     яма); куда пойти — тихой кнопкой под ней. Пустая группа внутри экрана — .empty-line: одной серой строкой
+     под заголовком группы, вровень с ним. */
+  .empty { @apply px-6 py-12 text-center text-ink-muted; }
+  .empty > .btn { @apply mt-3; }
+  /* В пустой группе строк (forelse) плашки тоже нет — та же фраза на фоне экрана. */
+  .list:has(> .empty:only-child) { @apply bg-transparent; }
+  /* Кнопка справа от фразы; в узкой колонке не ломает фразу, а уходит строкой ниже. */
+  .empty-line { @apply flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2 px-1 text-ink-muted; }
+  .empty-line > p { @apply min-w-0 flex-auto; }
 
   .flash { @apply rounded-(--radius-l) px-4 py-3; }
   .flash-open   { @apply bg-open-soft text-open; }
@@ -1059,11 +1114,29 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .qr-result--wait .qr-result-icon { @apply bg-surface-3 text-ink-muted; }
   .qr-result-spin { animation: spin 1s linear infinite; }
 
-  /* Меню под кнопкой (вид списка): popover в top layer, место ставит menu_controller. */
-  .menu { @apply rounded-(--radius-l) bg-surface p-1.5 text-ink shadow-(--shadow-drop); position: fixed; inset: auto; margin: 0; border: 0; min-width: 11rem; }
+  /* Меню под кнопкой (вид списка, сортировка, «···»): popover в top layer, место ставит menu_controller. Как меню
+     iOS: пункты во всю ширину через волосяную линию, наведение и нажатие — тоном пункта. Текущий пункт (вид,
+     сортировка) — лаймовой галкой справа, без заливки: лайм — глагол, а не отметка выбора. */
+  .menu { @apply rounded-(--radius-l) bg-surface p-0 text-ink shadow-(--shadow-drop); position: fixed; inset: auto; margin: 0; border: 0; min-width: 11rem; max-height: calc(100dvh - 1rem); overflow-y: auto; overscroll-behavior: contain; }
   .menu:popover-open { animation: dialog-in var(--dur) var(--ease-out); }
-  .menu-item { @apply flex items-center gap-3 rounded-(--radius-m) px-3 text-sm text-ink hover:bg-surface-3; min-height: 44px; }
-  .menu-item[aria-current] { @apply bg-accent text-white hover:bg-accent; }
+  /* В тёмной меню висит над группами того же тона — ступенью выше, и подсветка пункта тоже. Подсветка строк
+     на второй ступени (шторка, плашка, карточка строки) — третьей ступенью, иначе её не видно. */
+  .dark .menu, .dark .combobox-list { background: var(--color-surface-2); }
+  .dark :is(.menu, .combobox-list, .sheet, .box, .detail-card) { --color-hover: var(--color-surface-3); }
+  /* Линия — над каждым пунктом, кроме первого; пункт бывает и внутри формы (form > button). */
+  .menu-item {
+    @apply flex w-full items-center gap-3 px-4 text-left text-sm text-ink; min-height: 44px;
+    box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-line) 70%, transparent); transition: background-color var(--dur-fast);
+  }
+  .menu > .menu-item:first-child, .menu > :first-child > .menu-item { box-shadow: none; }
+  @media (hover: hover) { .menu-item:hover { background: var(--color-hover); } }
+  .menu-item:active { background: var(--color-hover); transition: background-color 0s 60ms; }
+  /* Кольцо фокуса — внутри пункта: снаружи его срезал бы край меню. */
+  .menu-item:focus-visible { outline-offset: -2px; }
+  .menu-item[aria-current]::after {
+    content: ''; flex: none; width: 1.125rem; height: 1.125rem; margin-inline-start: auto; background: var(--color-accent);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3.5 8.5 3 3 6-7'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
 
   .legal { @apply text-ink-muted; max-width: 62ch; }
   .legal h2 { @apply mt-10 text-xl text-ink; }
@@ -1192,6 +1265,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .step-details > summary::-webkit-details-marker { display: none; }
   .step-details[open] .step-chevron { rotate: 180deg; }
   .step-chevron { transition: rotate var(--dur-fast); }
+  /* Шеврон — у первой строки справа, а не отдельной строкой, когда дата и факты шага переносятся. */
+  .step-details > summary.step-head { position: relative; padding-inline-end: 1.5rem; }
+  .step-details > summary > .step-chevron { position: absolute; right: 0; top: .4375rem; }
   .step--next .step-body, .step--todo .step-body { padding-bottom: .625rem; }
   .step--done .step-body { padding-bottom: .5rem; }
 
@@ -1393,6 +1469,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   .sheet--inflow[open]:not(:modal) .sheet-close { display: none; }
   @media (max-width: 1023.98px) { .sheet--inflow[open]:not(:modal) { display: none; } }
+  /* Шторка поповером у чипа фильтра (x-ui.sheet anchor, ПК с мышью): парящая панель у кнопки, страница не темнеет и не
+     размывается; место и высоту ставит sheet_controller#placePop переменными. */
+  .sheet:popover-open {
+    display: block; position: fixed; inset: auto; top: var(--pop-top, auto); bottom: var(--pop-bottom, auto); left: var(--pop-left, 8px);
+    margin: 0; width: 22rem; max-width: calc(100vw - 1rem); max-height: var(--pop-max, calc(100dvh - 1rem)); overflow-y: auto;
+    border-radius: var(--radius-l); padding: 1rem 1rem .75rem; animation: dialog-in var(--dur) var(--ease-out);
+  }
+  .sheet:popover-open::before { display: none; }
+  .sheet:popover-open::backdrop { background: none; backdrop-filter: none; }
   .sheet-close { @apply flex size-9 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
 
   /* Список и карточка строки рядом (x-ui.shell :detail, x-ui.detail, detail_controller). Карточка — колонка страницы,
@@ -1474,6 +1559,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @keyframes toast-out { to { translate: 0 -120%; opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { @keyframes toast-in { from { opacity: 0; } } @keyframes toast-out { to { opacity: 0; } } }
   .toast-danger { @apply bg-danger; }
+  /* В тёмной хром почти чёрный и тост сливался со страницей — вторая ступень с волосяным краем. */
+  .dark .toast:not(.toast-danger) { background: var(--color-surface-2); box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .16), var(--shadow-drop); }
   .toast:has(.toast-action) { @apply flex items-center gap-4; }
   .toast-action { @apply rounded-full bg-white/15 px-3 py-1 text-sm font-medium; }
 
@@ -1706,46 +1793,78 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Документ рядом с формой (x-ui.docs, docs_controller): скан, СТС, Excel, письмо, фото. Телефон — лист снизу
      высотой --docs-h поверх таб-бара, над клавиатурой (--kb); высоту тянут за шапку листа, плашка действий
      садится на лист, страница получает отступ на его высоту — любое поле докручивается выше. От 1024 — панель
-     справа шириной --docs-w под шапкой, страница сдвигается влево, ширину тянут за левый край. Не модальная. */
+     справа шириной --docs-w под шапкой, страница сдвигается влево, ширину тянут за левый край. Не модальная;
+     из модального окна (окно писем) — <dialog> модально в верхнем слое над ним (.docs-modal), страница не сдвигается. */
   .docs {
     @apply fixed z-[45] flex flex-col bg-surface text-ink shadow-(--shadow-drop);
-    inset-inline: 0; bottom: var(--kb, 0px); height: var(--docs-h, 55dvh);
+    inset-inline: 0; top: auto; bottom: var(--kb, 0px); height: var(--docs-h, 55dvh);
+    width: auto; max-width: none; max-height: none; margin: 0; border: 0; padding: 0; overflow: visible;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     padding-bottom: max(env(safe-area-inset-bottom), 0px);
     animation: sheet-up var(--dur-slow) var(--ease-out) both;
     overscroll-behavior: contain;
   }
-  .docs[hidden] { display: none; }
-  .docs.is-instant { animation: none; }
+  .docs:not([open]) { display: none; }
+  .docs::backdrop { background: rgb(18 18 18 / .25); }
+  .docs[open]::backdrop { animation: fade var(--dur) both; }
+  .docs.is-instant, .docs.is-instant::backdrop { animation: none; }
   .docs.is-closing { animation: sheet-down var(--dur) var(--ease-in) both; pointer-events: none; }
+  .docs.is-closing::backdrop { animation: fade var(--dur-fast) reverse both; }
   .docs.is-settling { transition: height var(--dur) var(--ease-out); }
   html.kb-open .docs { padding-bottom: 0; }
   .docs-edge { display: none; }
-  /* Шапка листа — ручка: тянется вверх-вниз, вкладки в ней листаются вбок. */
-  .docs-bar { @apply relative flex shrink-0 items-center gap-1 px-2 pb-1.5 pt-4; touch-action: none; user-select: none; -webkit-user-select: none; }
+  /* Шапка листа — ручка: тянется вверх-вниз, вкладки в ней листаются вбок. Полоса — имя документа (длинное режется
+     посередине: хвост с номером виден) и под ним тип с объёмом, справа кнопки значками. */
+  .docs-top { @apply relative shrink-0; touch-action: none; user-select: none; -webkit-user-select: none; }
   .docs-handle { @apply absolute inset-x-0 top-0 h-4 cursor-grab; }
   .docs-handle::before { content: ''; display: block; width: 36px; height: 5px; margin: .375rem auto 0; border-radius: 3px; background: var(--color-line); }
-  .docs-tabs { @apply mr-auto flex min-w-0 gap-1.5 overflow-x-auto px-1; scrollbar-width: none; touch-action: pan-x; }
+  .docs-bar { @apply flex items-center gap-1 pb-2 pl-4 pr-2 pt-4; }
+  .docs-title { @apply mr-auto flex min-w-0 flex-col; }
+  .docs-name { @apply flex min-w-0 text-base font-medium leading-snug text-ink sm:text-lg; }
+  .docs-name-head { @apply min-w-0 truncate; }
+  .docs-name-tail { flex: none; white-space: pre; }
+  .docs-meta { @apply truncate text-sm text-ink-muted; }
+  .docs-meta:empty { display: none; }
+  .docs-share .docs-ico-phone { display: none; }
+  @media (pointer: coarse) { .docs-share .docs-ico-phone { display: block; } .docs-share .docs-ico-desk { display: none; } }
+  /* Несколько документов — сегмент текстовых вкладок, как в iOS: текущая подложкой, остальные серым словом. */
+  .docs-tabs { @apply flex gap-1 overflow-x-auto px-3 pb-2; scrollbar-width: none; touch-action: pan-x; }
   .docs-tabs::-webkit-scrollbar { display: none; }
-  .docs-tab { @apply h-8 max-w-[11rem] shrink-0 truncate rounded-full bg-surface-2 px-3 text-sm text-ink-muted; }
-  .docs-tab[aria-current] { @apply bg-accent font-medium text-white; }
-  @media (hover: hover) { .docs-tab:not([aria-current]):hover { @apply bg-hover text-ink; } }
-  .docs-count { @apply shrink-0 px-1 text-xs text-ink-muted; }
+  .docs-tab { @apply h-8 max-w-[12rem] shrink-0 truncate rounded-full px-3 text-sm text-ink-muted; }
+  .docs-tab[aria-current] { @apply bg-surface-3 font-medium text-ink; }
+  @media (hover: hover) { .docs-tab:not([aria-current]):hover { @apply text-ink; } }
+  /* Номер страницы — капсулой внизу по центру, пока листают (как в «Файлах»), гаснет сама. */
+  .docs-count {
+    position: absolute; left: 50%; bottom: calc(max(env(safe-area-inset-bottom), 0px) + .75rem); translate: -50% 0; z-index: 2;
+    padding: .25rem .625rem; border-radius: 999px; background: rgb(18 18 18 / .55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    color: #fff; font-size: var(--text-xs); pointer-events: none; opacity: 0; transition: opacity var(--dur);
+  }
+  .docs-count.is-shown { opacity: 1; transition-duration: var(--dur-fast); }
   .docs-count:empty { display: none; }
+  html.kb-open .docs-count { bottom: .75rem; }
   .docs-body { @apply relative min-h-0 flex-1; }
   .docs-view { @apply absolute inset-0 overflow-y-auto; overscroll-behavior: contain; }
+  /* Пока документ грузится — пустой лист на сером поле, а не кольцо. */
+  .docs-wait { @apply overflow-hidden bg-surface-2; }
   .docs-wait::after {
-    content: ''; position: absolute; left: calc(50% - 12px); top: 30%; width: 24px; height: 24px; border-radius: 50%;
-    border: 2px solid var(--color-line); border-top-color: var(--color-accent); animation: docs-spin .8s linear infinite;
+    content: ''; position: absolute; left: 14px; right: 14px; top: 14px; aspect-ratio: 1 / 1.414; border-radius: 4px;
+    background: #fff; box-shadow: var(--shadow-paper);
   }
-  @keyframes docs-spin { to { rotate: 1turn; } }
-  /* Масштаб — раскладкой (resources/js/docs/zoom.js): страницу целиком жест не зумит. */
+  /* Масштаб — раскладкой (resources/js/docs/zoom.js): страницу целиком жест не зумит. Листы на сером поле с
+     отступом 14 и зазором 12 (их ставит раскладка, они растут с масштабом), скругление 4 и лёгкая тень — бумага. */
   .docs-scroll { @apply absolute inset-0 overflow-auto bg-surface-2; touch-action: pan-x pan-y; overscroll-behavior: contain; }
-  .docs-pages { display: flex; flex-direction: column; gap: 6px; padding-block: 6px; }
-  .docs-page { position: relative; flex: none; overflow: hidden; background: #fff; }
+  .docs-pages { display: flex; flex-direction: column; }
+  .docs { --shadow-paper: 0 0 0 .5px rgb(0 0 0 / .06), 0 1px 3px rgb(0 0 0 / .1); }
+  .dark .docs { --shadow-paper: 0 1px 3px rgb(0 0 0 / .5); }
+  .docs-page { position: relative; flex: none; overflow: hidden; background: #fff; border-radius: 4px; box-shadow: var(--shadow-paper); }
   .docs-page > canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .docs-stage { position: relative; }
+  .docs-stage { position: relative; flex: none; overflow: hidden; border-radius: 4px; box-shadow: var(--shadow-paper); }
   .docs-stage > img { position: absolute; left: 50%; top: 50%; max-width: none; }
+  /* Свой HTML-документ (акт, счёт на печать): рамка во всю ширину листа, высота по содержимому, шире листа — ужата
+     целиком. На телефоне касания идут мимо рамки — к прокрутке и щипку шторки. */
+  .docs-frame { display: block; border: 0; background: #fff; color-scheme: light; transform-origin: 0 0; }
+  @media (pointer: coarse) { .docs-frame { pointer-events: none; } }
+  .docs-print { position: fixed; right: 0; bottom: 0; width: 0; height: 0; border: 0; visibility: hidden; }
   /* Слой текста pdf.js (из web/pdf_viewer.css): прозрачный текст поверх холста — выделить и скопировать VIN. */
   .docs-page .textLayer {
     position: absolute; inset: 0; overflow: clip; line-height: 1; text-align: initial; text-size-adjust: none; -webkit-text-size-adjust: none;
@@ -1831,7 +1950,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .landing-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
   .landing-bg .parking-photo { transform: scale(calc(1 + var(--lift, 0) * .06)); transform-origin: 50% 60%; }
   .landing-shade { background: linear-gradient(to top, rgb(247 247 247 / .92) 0%, rgb(247 247 247 / .45) 38%, rgb(247 247 247 / 0) 70%), linear-gradient(to right, rgb(255 255 255 / .55), rgb(255 255 255 / 0) 60%); }
-  .dark .landing-shade { background: linear-gradient(to top, rgb(22 22 22 / .95) 0%, rgb(22 22 22 / .5) 38%, rgb(22 22 22 / 0) 70%), linear-gradient(to right, rgb(18 18 18 / .6), rgb(18 18 18 / 0) 60%); }
+  /* Низ тени — цвет фона тёмной темы (--color-ground), чтобы лист с содержимым продолжал фото без шва. */
+  .dark .landing-shade { background: linear-gradient(to top, rgb(0 0 0 / .95) 0%, rgb(0 0 0 / .5) 38%, rgb(0 0 0 / 0) 70%), linear-gradient(to right, rgb(0 0 0 / .6), rgb(0 0 0 / 0) 60%); }
   .landing-hero { position: relative; z-index: 1; display: flex; align-items: flex-end; min-height: 100svh;
     padding-top: var(--spacing-header); padding-bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 12vh); }
   @media (min-width: 768px) { .landing-hero { padding-bottom: 16vh; } }
@@ -1875,8 +1995,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
   @media (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
-      /* Появление по прокрутке — только у первых карточек: с `both` анимация держит каждую карточку отдельным слоем,
-         а на сотне карточек это и память видеокарты, и дёрганая прокрутка на телефоне. */
+      /* Появление по прокрутке — для лендинга; карточки списков не всплывают, это приём сайта, а не приложения.
+         Только у первых: с `both` анимация держит каждый блок отдельным слоем. */
       .rise:nth-child(-n + 12) { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 60%; }
     }
   }
@@ -1893,9 +2013,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .cards {
     display: flex; flex-direction: column; gap: .5rem;
 
-    --card-cols: auto minmax(0, 1fr) auto;
+    /* Четвёртый столбец — ширина закладки: кнопки внизу встают под неё и под третий столбец, а город слева берёт
+       столбцы кадра и названия — иначе ему оставалась ширина кадра. */
+    --card-cols: auto minmax(0, 1fr) auto 2rem;
     --card-rows: auto;
-    --card-areas: "media body star" "extra extra extra" "aside aside aside" "place action action";
+    --card-areas: "media body body star" "extra extra extra extra" "aside aside aside aside" "place place action action";
     --card-align: start;
     --card-gap: .375rem .75rem;
     --card-pad: .75rem;
@@ -1913,7 +2035,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
     --aside-self: end; --aside-align: center; --aside-pad: 0; --place-pad: 0;
     --action-pad: 0; --action-self: end; --action-dir: row;
-    --card-btn-pad: .75rem; --card-btn-size: .8125rem; --card-btn-h: 2.25rem;
     --price-size: 1.125rem; --price-align: right;
   }
   @media (min-width: 640px) {
@@ -1921,13 +2042,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       --card-areas: "media body star" "extra extra aside" "place place action";
       --card-cols: auto minmax(0, 1fr) 13rem;
       --card-align: center; --card-gap: .375rem 1rem; --card-pad: 1rem;
-      --media-w: 6rem; --media-h: 4rem; --blank-h: 4rem; --action-self: stretch;
+      --media-w: 6rem; --media-h: 4rem; --blank-h: 4rem;
     }
   }
-  /* Плитки: по выбору всегда, без выбора — от 640. Переменные плитки в двух местах намеренно. */
+  /* Плитки: по выбору всегда, без выбора — от 640. Переменные плитки в двух местах намеренно.
+     Внизу город уступает кнопкам (столбец от нуля): капсула не сжимается, и иначе в узкой плитке она наезжала на город. */
   .cards--grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem;
-    --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
+    --card-cols: minmax(0, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
     --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
     --card-align: stretch; --card-gap: 0; --card-pad: 0;
     --card-radius: var(--radius-xl);
@@ -1938,13 +2060,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
     --aside-self: start; --aside-align: start; --aside-pad: .5rem 1.25rem 0; --place-pad: .75rem 0 1.25rem 1.25rem;
     --action-pad: .75rem 1.25rem 1.25rem .75rem; --action-self: end;
-    --card-btn-pad: 1.125rem; --card-btn-size: .875rem; --card-btn-h: 2.5rem;
     --price-size: 1.125rem; --price-align: left;
   }
   @media (min-width: 640px) {
     .cards:not(.cards--list) {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem;
-      --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
+      --card-cols: minmax(0, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
       --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
       --card-align: stretch; --card-gap: 0; --card-pad: 0;
       --card-radius: var(--radius-xl);
@@ -1955,7 +2076,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
       --aside-self: start; --aside-align: start; --aside-pad: .5rem 1.25rem 0; --place-pad: .75rem 0 1.25rem 1.25rem;
       --action-pad: .75rem 1.25rem 1.25rem .75rem; --action-self: end;
-      --card-btn-pad: 1.125rem; --card-btn-size: .875rem; --card-btn-h: 2.5rem;
       --price-size: 1.125rem; --price-align: left;
     }
   }
@@ -2012,13 +2132,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card-extra:empty { display: none; }
   .card-place { grid-area: place; min-width: 0; align-self: center; display: flex; padding: var(--place-pad); }
   .card-place > .place { min-width: 0; }
+  /* Кнопки — капсулой .btn-get по ширине надписи и значками .btn-icon, прижаты вправо. Пустое поле значка не
+     раздвигает ряд и не отодвигает значок от края: виден край значка, а не поля под палец. */
   .card-action {
-    grid-area: action; min-width: 0; max-width: 100%; display: flex; flex-direction: var(--action-dir); align-items: center; justify-content: center; gap: .375rem;
+    grid-area: action; min-width: 0; max-width: 100%; display: flex; flex-direction: var(--action-dir); align-items: center; justify-content: flex-end; gap: .25rem;
     justify-self: var(--action-self); align-self: center; padding: var(--action-pad);
   }
-  .card-action .btn { padding-inline: var(--card-btn-pad); font-size: var(--card-btn-size); height: var(--card-btn-h); }
-  .card-action .btn-round { width: var(--card-btn-h); padding: 0; flex: 0 0 auto; aspect-ratio: 1; }
-  .card-action > .btn:not(.btn-round), .card-action > form, .card-action > span:not(.btn-round) { flex: 1 1 auto; min-width: 0; }
+  .card-action > .btn-icon { margin-block: calc(-1 * var(--icon-inset)); }
+  .card-action > .btn-icon:last-child { margin-inline-end: calc(-1 * var(--icon-inset)); }
   .card-aside { grid-area: aside; display: flex; flex-wrap: wrap; min-width: 0; align-items: center; gap: .25rem .5rem; justify-self: var(--aside-self); align-self: var(--aside-align); justify-content: flex-end; padding: var(--aside-pad); }
   .card-aside:empty { display: none; }
   .card-price { font-size: var(--price-size); font-weight: 700; line-height: 1.25; text-align: var(--price-align); white-space: nowrap; display: block; }
@@ -2048,7 +2169,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   gap: .375rem;
   --card-pad: .5rem .75rem .5rem .5rem; --card-gap: .25rem .75rem;
   --media-w: 5rem; --media-h: 3.5rem; --blank-h: 3.5rem;
-  --card-btn-h: 2rem; --price-size: 1rem;
+  --price-size: 1rem;
 }
 @media (min-width: 640px) {
   .surface-crm .cards, .surface-park .cards {
@@ -2100,6 +2221,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .surface-crm .cards:not(.cards--grid) > .card, .surface-park .cards:not(.cards--grid) > .card { border-radius: 0; }
   .surface-crm .cards:not(.cards--grid) > .card + .card, .surface-park .cards:not(.cards--grid) > .card + .card { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
 }
+/* Пустой список (поиск по ходу набора подменяет содержимое того же контейнера) — фраза на фоне экрана: плашки
+   строк под ней нет, в плитках она во всю ширину, а не в первой клетке. */
+.surface-crm .cards:has(> .empty), .surface-park .cards:has(> .empty) { background: none; }
+.cards > .empty { grid-column: 1 / -1; }
 .surface-crm .cards--grid, .surface-park .cards--grid {
   --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
   --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
@@ -2112,7 +2237,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
   --aside-self: start; --aside-align: start; --aside-pad: .375rem .75rem 0; --place-pad: .5rem 0 .75rem .75rem;
   --action-pad: .5rem .75rem .75rem .5rem; --action-self: end;
-  --card-btn-pad: .75rem; --card-btn-size: .8125rem; --card-btn-h: 2rem;
   --price-size: 1rem; --price-align: left;
 }
 @media (min-width: 640px) {
@@ -2128,7 +2252,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
     --aside-self: start; --aside-align: start; --aside-pad: .375rem .75rem 0; --place-pad: .5rem 0 .75rem .75rem;
     --action-pad: .5rem .75rem .75rem .5rem; --action-self: end;
-    --card-btn-pad: .75rem; --card-btn-size: .8125rem; --card-btn-h: 2rem;
     --price-size: 1rem; --price-align: left;
   }
 }
@@ -2136,6 +2259,18 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 .surface-crm .cards--grid, .surface-park .cards--grid { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-self: end; --aside-align: end; --aside-pad: .5rem .75rem .75rem; }
 @media (min-width: 640px) { .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-self: end; --aside-align: end; --aside-pad: .5rem .75rem .75rem; } }
 .surface-crm .cards--grid .card-aside, .surface-crm .cards:not(.cards--list) .card-aside, .surface-park .cards--grid .card-aside, .surface-park .cards:not(.cards--list) .card-aside { flex-direction: row; }
+/* Плитка с кнопкой (ТС закупки в CRM): нижний ряд «место | кнопка», как на витрине. Без своих областей место и
+   кнопка уходили в лишние столбцы — кадр сжимался в угол, город наезжал на «Нет предложений». */
+.surface-crm .cards--grid > .card:has(> .card-action), .surface-park .cards--grid > .card:has(> .card-action) {
+  --card-areas: "media media" "body body" "extra extra" "aside aside" "place action"; --card-rows: auto auto auto 1fr auto;
+  --aside-self: start; --aside-align: start; --aside-pad: .375rem .75rem 0;
+}
+@media (min-width: 640px) {
+  .surface-crm .cards:not(.cards--list) > .card:has(> .card-action), .surface-park .cards:not(.cards--list) > .card:has(> .card-action) {
+    --card-areas: "media media" "body body" "extra extra" "aside aside" "place action"; --card-rows: auto auto auto 1fr auto;
+    --aside-self: start; --aside-align: start; --aside-pad: .375rem .75rem 0;
+  }
+}
 /* Цена и город предложения CRM (x-offer.crm-card): цена обычным текстом, город приглушённым с меткой. В строке — цена
    справа, город под ней; в плитке — одной нижней строкой: город слева, цена справа. */
 .card-price { display: inline-flex; align-items: baseline; gap: .5rem; white-space: nowrap; color: var(--color-ink); }
@@ -2298,18 +2433,22 @@ dialog.lightbox::backdrop { background: transparent; }
 .pswp .pswp__preloader .pswp__icn { top: 12px; left: 4px; width: 20px; height: 20px; }
 .pswp .pswp__error-msg { font-size: var(--text-sm); color: rgb(255 255 255 / .7); }
 
-/* Редактор писем (Trix) в цветах кита */
-@import "trix/dist/trix.css";
+/* Редактор писем (Trix) в цветах кита; сам trix.css подключён слоем base в начале файла */
 @layer components {
   trix-toolbar { @apply mb-2; }
   trix-toolbar .trix-button-group { @apply rounded-(--radius-s) border-0 bg-surface-3; margin-bottom: 4px; }
   trix-toolbar .trix-button { @apply border-0 text-ink; border-bottom: 0; }
   trix-toolbar .trix-button::before { filter: var(--trix-icon-filter, none); }
   .dark trix-toolbar .trix-button::before { filter: invert(1); }
-  trix-toolbar .trix-button.trix-active { @apply bg-accent-soft; }
+  /* Включённое (жирный, цитата) — как выбранное в .segment: лайм — глагол, не отметка. */
+  trix-toolbar .trix-button.trix-active { background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
   trix-toolbar .trix-button-group--file-tools, trix-toolbar .trix-button-group--history-tools { display: none; }
   trix-toolbar .trix-dialog { @apply rounded-(--radius-m) border-0 bg-surface shadow-(--shadow-drop); }
-  trix-editor { @apply min-h-48; }
+  /* Поле письма и ссылка в диалоге — 16 px на телефоне: мельче Safari при касании увеличивает страницу.
+     От 640 поле письма в CRM и на парковке мельче по плотности (.surface-crm .field-input). */
+  trix-editor { @apply min-h-48; border: 0; font-size: 16px; }
+  trix-toolbar .trix-input--dialog { @apply rounded-(--radius-s) border-0 bg-surface-3 text-ink placeholder:text-ink-dim; min-width: 0; font-size: 16px; }
+  @media (min-width: 640px) { trix-toolbar .trix-input--dialog { font-size: var(--text-sm); } }
   trix-editor:empty:not(:focus)::before { color: var(--color-ink-dim); }
   .trix-content blockquote { @apply border-l-2 border-line pl-3 text-ink-muted; }
   .trix-content a { @apply text-accent-text; }
@@ -2555,7 +2694,7 @@ dialog.lightbox::backdrop { background: transparent; }
 
 @layer components {
   .tabbar, .header-btn, .header-back, .header-title, .btn, .pill, .field-input, .field-label, .field-error, .choice span, .check,
-  .chip, .tag, .mark, .badge, .sheet, .toast, .action-bar, .combobox-list, .swipe-btn, .net, .crumbs, .empty {
+  .chip, .tag, .mark, .badge, .sheet, .toast, .action-bar, .combobox-list, .swipe-btn, .net, .crumbs, .empty, .empty-line {
     font-family: var(--font-ui);
     letter-spacing: normal;
   }
@@ -2576,7 +2715,7 @@ dialog.lightbox::backdrop { background: transparent; }
   img, a { -webkit-user-drag: none; }
   .card input, .card textarea, .row input, .sheet input, .sheet textarea, .field-input, .phase-body { -webkit-user-select: text; user-select: text; }
   /* Номера — данные, не хром: выделяются и копируются. */
-  .tag.nums, .chip.nums, .vincode { -webkit-user-select: text; user-select: text; }
+  .tag.nums, .chip.nums, .fact.nums, .vincode { -webkit-user-select: text; user-select: text; }
 }
 
 /* ------------------------------------------------------------- нажатие */

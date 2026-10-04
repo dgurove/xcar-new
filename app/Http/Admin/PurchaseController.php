@@ -26,6 +26,7 @@ use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\OfficePreview;
 use App\Support\Liters;
 use App\Users\Role;
 use App\Users\User;
@@ -295,7 +296,9 @@ class PurchaseController
         ]);
         $format = $data['format'];
         $ext = $format === 'pdf' ? 'pdf' : 'xlsx';
-        $path = storage_path("app/private/purchases/{$purchase->id}/vygruzka-".now()->format('Ymd-His').'.'.$ext);
+        // Имя с хвостом: шторка на телефоне просит файл и его вид одновременно — одна секунда, один путь, и первый
+        // ответ удалял файл из-под второго.
+        $path = storage_path("app/private/purchases/{$purchase->id}/vygruzka-".now()->format('Ymd-His').'-'.bin2hex(random_bytes(3)).'.'.$ext);
         @mkdir(dirname($path), 0775, true);
         try {
             match ($format) {
@@ -304,10 +307,20 @@ class PurchaseController
                 default => $export->xlsx($purchase, $data['parts'], $path),
             };
         } catch (\RuntimeException $e) {
-            return $request->expectsJson() ? response()->json(['message' => $e->getMessage()], 422) : back()->withErrors(['file' => $e->getMessage()]);
+            // Шторка документов ждёт файл, а не страницу с ошибкой: ей — 422, она покажет «Скачать».
+            return $request->expectsJson() || $request->boolean('preview') ? response()->json(['message' => $e->getMessage()], 422) : back()->withErrors(['file' => $e->getMessage()]);
+        }
+        $name = "zakupka-{$purchase->number}".($format === 'dl' ? '-ceny' : '').".{$ext}";
+        // Excel в шторке документов — HTML-фрагментом.
+        if ($request->boolean('preview') && $ext === 'xlsx') {
+            try {
+                return OfficePreview::response($path, $name);
+            } finally {
+                @unlink($path);
+            }
         }
 
-        return $this->file($request, $path, "zakupka-{$purchase->number}".($format === 'dl' ? '-ceny' : '').".{$ext}");
+        return $this->file($request, $path, $name);
     }
 
     /** В приложении на телефоне файл открывается во встроенном браузере — там нужен inline, иначе Quick Look без выхода. */

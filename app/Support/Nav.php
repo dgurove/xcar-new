@@ -237,26 +237,26 @@ final class Nav
         }
 
         if ($surface === Surface::Crm && ! $user->canManageCrm()) {
-            return ['' => [self::link('Профиль', '/settings', exact: true), self::link('Уведомления', '/account/notifications')]];
+            return ['' => [self::link('Профиль', '/settings', exact: true), self::link('Уведомления', '/account/notifications', icon: 'bell')]];
         }
         if ($surface === Surface::Crm) {
             // Один раздел «Настройки»: профиль — его первый пункт, как /account на сайте.
             return [
                 '' => [
                     self::link('Профиль', '/settings', exact: true),
-                    ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users')] : []),
-                    self::link('Вендоры', '/settings/vendors'),
-                    ...($user->isAdmin() ? [self::link('Банк', '/settings/bank')] : []),
-                    ...($user->isAdmin() ? [self::link('Бот Telegram', '/settings/telegram')] : []),
-                    self::link('Ящики', '/settings/mailboxes'),
-                    self::link('Шаблоны', '/settings/templates'),
-                    self::link('Метки', '/settings/tags'),
-                    self::link('Водяные знаки', '/settings/watermarks'),
-                    self::link('Уведомления', '/account/notifications'),
+                    ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users', icon: 'users')] : []),
+                    self::link('Вендоры', '/settings/vendors', icon: 'deal'),
+                    ...($user->isAdmin() ? [self::link('Банк', '/settings/bank', icon: 'bank')] : []),
+                    ...($user->isAdmin() ? [self::link('Бот Telegram', '/settings/telegram', icon: 'send')] : []),
+                    self::link('Ящики', '/settings/mailboxes', icon: 'mail'),
+                    self::link('Шаблоны', '/settings/templates', icon: 'link'),
+                    self::link('Метки', '/settings/tags', icon: 'flag'),
+                    self::link('Водяные знаки', '/settings/watermarks', icon: 'photo'),
+                    self::link('Уведомления', '/account/notifications', icon: 'bell'),
                 ],
                 'Переходы' => [
-                    self::link('На сайт', Surface::Site->url()),
-                    self::link('Парковка', Surface::Park->url()),
+                    self::link('На сайт', Surface::Site->url(), icon: 'car'),
+                    self::link('Парковка', Surface::Park->url(), icon: 'park'),
                 ],
             ];
         }
@@ -404,7 +404,7 @@ final class Nav
                     '/cars' => Vehicle::where('state', VehicleState::Stored)->count(),
                     '/yards' => Yard::count(),
                     '/money' => Invoice::ofSeller(Seller::Park)->where('state', InvoiceState::Issued)->count(),
-                    '/mail' => Thread::whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
+                    '/mail' => Boxes::allCount(Scope::Park),
                 ], 'fresh' => []];
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {

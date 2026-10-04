@@ -5,7 +5,9 @@ import { Controller } from '@hotwired/stimulus';
 // Один такт на все таймеры страницы, поправка на часы сервера (live.js читает
 // заголовок Date), при возврате из фона — тик сразу. На нуле шлёт timer:done
 // (bubbles) — экран закрывает приём сам, не дожидаясь серверного тика. coarse — без секунд, «21 ч 22 мин»: часы этапа
-// в строках списков и в шаге пути не тикают секундами.
+// в строках списков и в шаге пути не тикают секундами; у until — словами «осталось 15 ч 42 мин», в последнюю минуту
+// секунды «0:45». word — слово перед отсчётом: «через», пустое — голое число (слово уже стоит рядом или места нет).
+// Первый кадр — с сервера той же строкой (Support\Ago::left), чтобы не мигало пустым.
 // Текст пишется только у видимых таймеров и только когда он поменялся: в длинном списке таймеры в каждой строке
 // (часть — скрытые копии для другой ширины) иначе каждую секунду перекладывали таблицу. Срок «вышел» проверяется у всех.
 const timers = new Set();
@@ -23,7 +25,7 @@ document.addEventListener('visibilitychange', () => document.visibilityState ===
 export const serverNow = () => Date.now() + (window.clockOffset || 0);
 
 export default class extends Controller {
-    static values = { until: String, since: String, done: { type: String, default: 'закрыт' }, human: Boolean, coarse: Boolean };
+    static values = { until: String, since: String, done: { type: String, default: 'закрыт' }, human: Boolean, coarse: Boolean, word: { type: String, default: 'осталось' } };
     static classes = ['last'];
 
     connect() {
@@ -51,7 +53,7 @@ export default class extends Controller {
         if (this.hasUntilValue && this.untilValue) {
             const left = Math.floor((new Date(this.untilValue) - serverNow()) / 1000);
             if (left <= 0) {
-                this.write(this.doneValue === '-' ? '−' + this.format(-left) : this.doneValue);
+                this.write(this.doneValue === '-' ? '−' + (this.coarseValue ? this.rough(-left) : this.format(-left)) : this.doneValue);
                 if (this.doneValue !== '-' && !this.finished) {
                     this.finished = true;
                     this.dispatch('done', { bubbles: true });
@@ -59,7 +61,7 @@ export default class extends Controller {
                 return;
             }
             if (this.visible) this.element.classList.toggle('is-last', left < 60);
-            this.write(this.coarseValue ? this.rough(left) : this.format(left));
+            this.write(this.coarseValue ? this.remaining(left) : this.format(left));
         } else if (this.hasSinceValue && this.sinceValue) {
             const passed = Math.max(0, Math.floor((serverNow() - new Date(this.sinceValue)) / 1000));
             this.write(this.humanValue ? this.human(passed) : this.coarseValue ? this.rough(passed) : this.format(passed));
@@ -71,9 +73,16 @@ export default class extends Controller {
         return d > 0 ? `${d} д ${h} ч` : h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
     }
 
+    // Нулевой хвост не пишем: «3 ч», а не «3 ч 0 мин».
     rough(total) {
         const d = Math.floor(total / 86400), h = Math.floor((total % 86400) / 3600), m = Math.floor((total % 3600) / 60);
-        return d > 0 ? `${d} д ${h} ч` : h > 0 ? `${h} ч ${m} мин` : `${Math.max(1, m)} мин`;
+        return d > 0 ? (h ? `${d} д ${h} ч` : `${d} д`) : h > 0 ? (m ? `${h} ч ${m} мин` : `${h} ч`) : `${Math.max(1, m)} мин`;
+    }
+
+    // Сколько осталось словами; та же строка у сервера — Support\Ago::left.
+    remaining(total) {
+        const text = total < 60 ? `0:${String(total).padStart(2, '0')}` : this.rough(total);
+        return this.wordValue ? `${this.wordValue} ${text}` : text;
     }
 
     human(seconds) {

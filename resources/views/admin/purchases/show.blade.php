@@ -50,19 +50,21 @@
                     <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="file" class="size-5"/> Загрузить контрпредложение<input type="file" name="file" accept=".xlsx" hidden data-action="change->autosubmit#submit"></label>
                 </form>
                 @if ($purchase->cars()->exists())
-                    {{-- Файл — через file: в установленном приложении download открывает Quick Look без выхода, системный лист закрывается. --}}
-                    <form method="get" action="/purchases/{{ $n }}/export" class="flex flex-col gap-3 rounded-(--radius-m) bg-surface-2 p-3" data-turbo="false" data-controller="file" data-action="submit->file#share">
+                    {{-- Файл — шторкой документов: в установленном приложении download открывает Quick Look без выхода. Галки в адрес
+                         ссылок кладёт doc-query. --}}
+                    <form method="get" action="/purchases/{{ $n }}/export" class="flex flex-col gap-3 rounded-(--radius-m) bg-surface-2 p-3" data-turbo="false" data-controller="doc-query" data-action="change->doc-query#sync submit->doc-query#submit">
                         <span class="text-sm text-ink-dim">Выгрузка поставщику</span>
                         <div class="flex flex-col gap-2 text-sm">
                             @foreach (\App\Purchases\Export::PARTS as $key => $label)
                                 <x-ui.check name="parts[]" :value="$key" :checked="$key !== 'managers'">{{ $label }}</x-ui.check>
                             @endforeach
                         </div>
+                        @php $export = '/purchases/'.$n.'/export?format='; @endphp
                         <div class="flex gap-2">
-                            <button name="format" value="xlsx" class="btn btn-quiet flex-1"><x-ui.icon name="file" class="size-5"/> Excel</button>
-                            <button name="format" value="pdf" class="btn btn-quiet flex-1"><x-ui.icon name="file" class="size-5"/> PDF</button>
+                            <x-ui.doc :doc="['url' => $export.'xlsx', 'type' => 'sheet', 'name' => 'zakupka-'.$n.'.xlsx', 'label' => 'Выгрузка, Excel']" class="btn btn-quiet flex-1" data-doc-query="format=xlsx" data-action="doc-query#check"><x-ui.icon name="file" class="size-5"/> Excel</x-ui.doc>
+                            <x-ui.doc :doc="['url' => $export.'pdf', 'type' => 'pdf', 'name' => 'zakupka-'.$n.'.pdf', 'label' => 'Выгрузка, PDF']" class="btn btn-quiet flex-1" data-doc-query="format=pdf" data-action="doc-query#check"><x-ui.icon name="file" class="size-5"/> PDF</x-ui.doc>
                         </div>
-                        <button name="format" value="dl" class="btn btn-quiet w-full" data-file-any><x-ui.icon name="file" class="size-5"/> Упрощённая</button>
+                        <x-ui.doc :doc="['url' => $export.'dl', 'type' => 'sheet', 'name' => 'zakupka-'.$n.'-ceny.xlsx', 'label' => 'Выгрузка упрощённая']" class="btn btn-quiet w-full" data-doc-query="format=dl" data-doc-query-any data-action="doc-query#check"><x-ui.icon name="file" class="size-5"/> Упрощённая</x-ui.doc>
                     </form>
                 @endif
             </div>

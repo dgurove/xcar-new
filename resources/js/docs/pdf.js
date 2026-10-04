@@ -7,7 +7,7 @@
 // Шрифты, cmaps и wasm (JBIG2 и JPEG 2000 у сканов) — /build/pdfjs, кладёт сборка (vite.config.js).
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import worker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker&url';
-import { Zoom } from './zoom';
+import { Zoom, PAD, GAP } from './zoom';
 
 pdfjs.GlobalWorkerOptions.workerSrc = worker;
 const ASSETS = '/build/pdfjs/';
@@ -16,13 +16,16 @@ const MAX_PIXELS = 8e6;
 const el = (tag, cls) => Object.assign(document.createElement(tag), { className: cls });
 const free = (canvas) => { canvas.width = 0; canvas.height = 0; canvas.remove(); };
 
-export async function pdfView(box, data, { count, rotation: turned = 0, rotated = () => {} }) {
+export async function pdfView(box, data, { count, info, rotation: turned = 0, rotated = () => {} }) {
     const task = pdfjs.getDocument({
         data, cMapUrl: `${ASSETS}cmaps/`, cMapPacked: true, standardFontDataUrl: `${ASSETS}standard_fonts/`,
         wasmUrl: `${ASSETS}wasm/`, iccUrl: `${ASSETS}iccs/`, isEvalSupported: false, enableXfa: false,
     });
     const doc = await task.promise;
     const total = Math.min(doc.numPages, 300);
+    // Объём — в полосу; свой документ (счёт, акт, выписка — dompdf) поворачивать незачем.
+    info?.({ kind: 'pdf', pages: doc.numPages });
+    doc.getMetadata().then(({ info: meta }) => info?.({ kind: 'pdf', pages: doc.numPages, ours: /dompdf/i.test(meta?.Producer || '') })).catch(() => {});
     const scroll = el('div', 'docs-scroll'), stack = el('div', 'docs-pages');
     scroll.append(stack);
     const pages = await Promise.all(Array.from({ length: total }, (_, i) => doc.getPage(i + 1)));
@@ -36,9 +39,10 @@ export async function pdfView(box, data, { count, rotation: turned = 0, rotated 
     let rot = turned, dead = false;
     const rotation = (p) => (p.page.rotate + rot) % 360;
 
+    // Листы на сером поле: поле и зазор растут с масштабом — точка под пальцами остаётся на месте.
     const layout = (z) => {
-        const w = Math.max(120, scroll.clientWidth) * z;
-        stack.style.width = `${w}px`;
+        const w = Math.max(120, scroll.clientWidth - 2 * PAD) * z;
+        Object.assign(stack.style, { width: `${w + 2 * PAD * z}px`, padding: `${PAD * z}px`, gap: `${GAP * z}px` });
         for (const p of list) {
             const vp = p.page.getViewport({ scale: 1, rotation: rotation(p) });
             p.w = w;
@@ -120,14 +124,14 @@ export async function pdfView(box, data, { count, rotation: turned = 0, rotated 
     }, { root: scroll, rootMargin: '100% 0px' });
     list.forEach((p) => watch.observe(p.div));
 
-    // Номер страницы у верхней трети окна.
+    // Номер страницы у верхней трети окна — капсулой внизу шторки, пока листают.
     let ticking = false;
     const counter = () => {
         ticking = false;
         if (total < 2) return;
         const line = scroll.scrollTop + scroll.clientHeight / 3;
         const i = list.findIndex((p) => p.div.offsetTop + p.div.offsetHeight > line);
-        count(`${(i < 0 ? total - 1 : i) + 1}/${total}`);
+        count?.(`${(i < 0 ? total - 1 : i) + 1} из ${total}`);
     };
     const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(counter); } };
     scroll.addEventListener('scroll', onScroll, { passive: true });

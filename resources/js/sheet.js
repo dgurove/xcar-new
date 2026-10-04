@@ -30,6 +30,11 @@ window.addEventListener('popstate', (event) => {
     settle?.();
     settle = null;
 });
+// Чем открыли последнее: пальцем или мышью — кольцо фокуса на «×» после showModal снимаем, клавиатуре оставляем.
+let byPointer = false;
+addEventListener('pointerdown', () => { byPointer = true; }, { capture: true, passive: true });
+addEventListener('keydown', () => { byPointer = false; }, { capture: true, passive: true });
+
 // Визит уводит со страницы (или заменяет запись) — верхняя запись больше не шторка.
 document.addEventListener('turbo:visit', () => { inHistory = null; });
 
@@ -43,8 +48,8 @@ export function openSheet(d, { history: withHistory = true } = {}) {
     d.classList.remove('is-closing');
     d.style.translate = '';
     d.showModal();
-    // На телефоне showModal ставит фокус на первую кнопку и та рисует кольцо — снимаем.
-    if (matchMedia('(hover: none)').matches && document.activeElement?.matches('button, a')) document.activeElement.blur();
+    // showModal ставит фокус на первую кнопку («×»), и та рисует кольцо — у открытых пальцем или мышью снимаем.
+    if ((byPointer || matchMedia('(hover: none)').matches) && document.activeElement?.matches('button, a')) document.activeElement.blur();
     attachDrag(d);
     if (!d.dataset.cancel) {
         d.dataset.cancel = '1';

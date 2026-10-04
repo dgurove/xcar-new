@@ -15,7 +15,7 @@
         </x-slot:actions>
     </x-ui.toolbar>
     @if ($yards->isEmpty())
-        <x-ui.empty class="mt-6">Площадок нет</x-ui.empty>
+        <x-ui.empty class="mt-6">Парковок нет</x-ui.empty>
     @elseif (ListView::isTable($view))
         <x-ui.table id="yards" class="mt-6" :view="$view">
             <x-slot:head><tr><th class="grow">Парковка</th><th class="cell-dim hidden sm:table-cell">Город</th><th class="num hidden sm:table-cell">Мест</th><th class="num">Занято</th><th class="num">Свободно</th></tr></x-slot:head>

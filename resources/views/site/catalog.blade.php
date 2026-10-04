@@ -27,13 +27,15 @@
                 {{-- Подписка на бот предложений — строкой в начале списка (владелец 03.10.2026), только в каталоге. --}}
                 @unless ($gallery)<x-offers-bot.card/>@endunless
                 @if ($offers->isEmpty())
-                    @if ($buyer && !$filters)
+                    @if ($buyer && ! $narrowed)
                         {{-- Покупателю пока ничего не открыли: одна фраза и контакт менеджера строкой. --}}
-                        <x-ui.empty id="catalog-empty" class="!py-16">{{ $manager ? $manager->shortName().' пока ничего вам не открыл' : 'Вам пока ничего не открыли' }}</x-ui.empty>
+                        <x-ui.empty id="catalog-empty" class="pb-0">{{ $manager ? $manager->shortName().' пока ничего вам не открыл' : 'Вам пока ничего не открыли' }}</x-ui.empty>
                         @if ($manager)<div class="list mx-auto mt-4 max-w-sm"><x-ui.person-row :user="$manager" :size="44" class="row"/></div>@endif
                     @else
-                    <x-ui.empty :href="$gallery ? '/gallery' : '/offers'" :link="$filters ? 'Сбросить фильтры' : null" id="catalog-empty">
-                        @if ($filters) По этим условиям ничего нет @elseif ($gallery) Пока пусто @else Предложений пока нет @endif
+                    {{-- «Сбросить» снимает чипы пустыми значениями, иначе ListPrefs вернёт запомненный город; пилюля и поиск — тоже.
+                         Без предзагрузки: курсор над ссылкой стирал бы память фильтра. --}}
+                    <x-ui.empty :href="$facets->resetUrl(['view' => null, 'q' => null])" :link="$narrowed ? 'Сбросить фильтры' : null" id="catalog-empty" data-turbo-prefetch="false">
+                        @if ($narrowed) По этим условиям ничего нет @elseif ($gallery) Пока пусто @else Предложений пока нет @endif
                     </x-ui.empty>
                     @endif
                 @else

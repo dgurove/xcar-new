@@ -29,6 +29,7 @@ use App\Http\Admin\WatermarkController;
 use App\Http\Admin\WorkflowController;
 use App\Http\Cabinet\InviteController;
 use App\Http\Cabinet\ProfileController;
+use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Mail\ScanController;
 use App\Http\Site\ShareController;
 use App\Purchases\Car;
@@ -123,6 +124,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/invoices', [InvoiceController::class, 'store']);
         // Шеринг PDF: маршруты без домена на хосте CRM отбивает ResolveSurface — свои копии.
         Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
+        // Карточка «Гаража» зовёт счёт машины и отмену ссылки оплаты путём без хоста — на CRM тоже свои копии.
+        Route::get('/garage/cars/{offer}/invoice/pdf', [GarageSettlementController::class, 'pdf']);
+        Route::delete('/garage/cars/{offer}/links/{link}', [GarageSettlementController::class, 'cancelLink']);
         Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
         Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
         Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
@@ -163,6 +167,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::put('/', [MoneyController::class, 'update']);
             Route::get('/pdf', [MoneyController::class, 'file']);
             Route::get('/print', [MoneyController::class, 'print']);
+            Route::get('/act', [MoneyController::class, 'act']);
             Route::post('/payments', [MoneyController::class, 'pay']);
             Route::get('/payments/{payment}/slip', [MoneyController::class, 'slip']);
             Route::delete('/payments/{payment}', [MoneyController::class, 'unpay']);

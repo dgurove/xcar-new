@@ -29,7 +29,7 @@
             @elseif ($file && $m->kind === 'voice')
                 <audio class="msg-audio" controls preload="none" src="{{ $file }}"></audio>
             @elseif ($file)
-                <a href="{{ $file }}" target="_blank" class="msg-file"><x-ui.file-icon :name="$m->file_name ?? 'file'" :mime="$m->file_mime"/><span class="min-w-0"><span class="block truncate text-sm">{{ $m->file_name ?? 'Файл' }}</span>@if ($m->file_size)<span class="block text-xs text-ink-muted">{{ $kb($m->file_size) }}</span>@endif</span></a>
+                <a href="{{ $file }}" target="_blank" class="msg-file" data-doc="{{ \App\Support\Docs::type($m->file_mime, $m->file_name) }}" data-doc-name="{{ \App\Support\Docs::label($m->file_name ?? 'Файл') }}" title="{{ $m->file_name }}"><x-ui.file-icon :name="$m->file_name ?? 'file'" :mime="$m->file_mime"/><span class="min-w-0"><span class="block truncate text-sm">{{ $m->file_name ?? 'Файл' }}</span>@if ($m->file_size)<span class="block text-xs text-ink-muted">{{ $kb($m->file_size) }}</span>@endif</span></a>
             @elseif ($m->kind === 'sticker' || $m->kind === 'voice')
                 <div class="msg-text">{{ $m->preview() }}</div>
             @endif

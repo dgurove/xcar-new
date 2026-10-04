@@ -41,7 +41,7 @@
     @elseif ($message->parse_state === ParseState::Pending)
         <div class="mb-3 text-sm text-ink-muted">Разбирается…</div>
     @else
-        <div data-controller="frame" class="overflow-hidden rounded-(--radius-l) bg-white">
+        <div data-controller="frame" class="overflow-hidden rounded-(--radius-l) {{ $renderer->isPlain($message) ? '' : 'bg-white' }}">
             <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="{{ $document }}" title="Письмо" class="block w-full" style="height:120px" data-frame-target="frame" data-action="load->frame#fit"></iframe>
         </div>
         @if (!request()->boolean('images') && $renderer->hasRemoteImages($message))
@@ -61,7 +61,7 @@
     @if ($documents->isNotEmpty())
         <div class="mt-3 flex flex-wrap gap-2">
             @foreach ($documents as $file)
-                <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3">
+                <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}" title="{{ $file->filename }}">
                     <x-ui.file-icon :name="$file->filename" :mime="$file->mime"/>
                     <span class="min-w-0"><span class="block truncate text-sm">{{ $file->filename }}</span><span class="text-xs text-ink-muted">{{ $file->humanSize() }}</span></span>
                 </a>

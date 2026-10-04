@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Support\ListView;
+use App\Support\OfficePreview;
 use App\Telegram\Actions\SendAsBot;
 use App\Telegram\Bot;
 use App\Telegram\Chat;
@@ -103,11 +104,21 @@ class TelegramChatController
     }
 
     /** Фото и файлы переписки: у Telegram по file_id, дальше с приватного диска. */
-    public function file(ChatMessage $message, Bot $bot)
+    public function file(Request $request, ChatMessage $message, Bot $bot)
     {
         abort_unless($message->file_id, 404);
         [$contents, $path] = $bot->file($message->file_id, $message->file_unique_id ?? $message->file_id) ?? abort(404);
         $name = $message->file_name ?: basename($path);
+        // Шторка документов просит Word, Excel и текст HTML-фрагментом — как у файлов чата и закрытого диска.
+        if ($request->boolean('preview')) {
+            $tmp = tempnam(sys_get_temp_dir(), 'tg-');
+            file_put_contents($tmp, $contents);
+            try {
+                return OfficePreview::response($tmp, $name);
+            } finally {
+                @unlink($tmp);
+            }
+        }
         $mime = $message->file_mime ?: 'application/octet-stream';
         $inline = str_starts_with($mime, 'image/') || $mime === 'application/pdf' || str_starts_with($mime, 'audio/') || str_starts_with($mime, 'video/');
 

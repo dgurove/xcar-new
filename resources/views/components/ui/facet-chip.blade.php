@@ -1,7 +1,8 @@
 {{-- Чип фильтра со шторкой. Не выбран — «Менеджер ▾»; выбран — само значение лаймом («Иван Петров», «2 менеджера»)
      и × рядом: кнопка в кнопке не бывает, поэтому чип — две части в одной капсуле. В шторке — галки по вариантам
      списка с числом справа, поиск сверху, когда вариантов больше 8, и «Показать N»: число переспрашивает
-     facets_controller тем же адресом с X-Count. Один выбор (single) — радио, применяется сразу. --}}
+     facets_controller тем же адресом с X-Count. Один выбор (single) — радио, применяется сразу. На ПК с мышью шторка
+     открывается поповером у чипа (x-ui.sheet anchor), на телефоне — снизу. --}}
 @props(['chip', 'facets', 'id'])
 @php
     $f = $chip->facet;
@@ -19,7 +20,7 @@
     @else
         <button type="button" class="pill !pr-2.5" data-action="sheet#open" aria-controls="{{ $id }}" @if ($on) aria-current="true" @endif>{{ $chip->label }}<x-ui.icon name="chevron-down" class="size-4"/></button>
     @endif
-    <x-ui.sheet :id="$id" :title="$f->title">
+    <x-ui.sheet :id="$id" :title="$f->title" anchor>
         <form method="get" action="{{ $facets->action() }}" data-turbo-action="replace" data-turbo-prefetch="false" data-controller="facets" data-action="change->facets#tick" @if ($f->single) data-facets-single-value="true" @endif>
             @foreach ($facets->carry($key) as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
             @unless ($f->single)<input type="hidden" name="{{ $key }}" value="{{ implode(',', $chip->selected) }}" data-facets-target="value">@endunless

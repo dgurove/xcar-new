@@ -14,6 +14,7 @@
     $base = strtolower(preg_replace('/\[.*$/', '', $name));
     $keys = match (true) {
         // Цифровой клавиатуры нет нигде (решение владельца 29.09.2026): на iOS в ней нет запятой, «1,6» не набрать.
+        // У цены — клавиатура с запятой (decimal, 04.10.2026): поля цены подтверждения и предложения (bid_controller).
         in_array($base, ['price', 'amount', 'mileage', 'year', 'power', 'volume', 'sum', 'cost'], true) || str_ends_with($base, '_price') || str_ends_with($base, '_km') => ['autocomplete' => 'off'],
         in_array($base, ['vin', 'plate'], true) => ['autocapitalize' => 'characters', 'autocorrect' => 'off', 'spellcheck' => 'false', 'autocomplete' => 'off'],
         in_array($base, ['phone', 'tel'], true) => ['type' => 'tel', 'inputmode' => 'tel', 'autocomplete' => 'tel'],

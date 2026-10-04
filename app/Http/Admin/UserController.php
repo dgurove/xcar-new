@@ -21,6 +21,7 @@ use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\OfficePreview;
 use App\Support\Phone;
 use App\Support\Surface;
 use App\Users\Actions\DecideAccess;
@@ -206,8 +207,17 @@ class UserController
         abort_unless($request->user()->isAdmin() && $user->isManager(), 404);
         [$from, $to] = $this->period($request);
         $path = $xlsx->write($user, $from, $to, tempnam(sys_get_temp_dir(), 'sdelki-').'.xlsx');
+        $name = 'sdelki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.xlsx';
+        // Шторка документов просит Excel HTML-фрагментом.
+        if ($request->boolean('preview')) {
+            try {
+                return OfficePreview::response($path, $name);
+            } finally {
+                @unlink($path);
+            }
+        }
 
-        return response()->download($path, 'sdelki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.xlsx', [], $request->boolean('inline') ? 'inline' : 'attachment')->deleteFileAfterSend();
+        return response()->download($path, $name, [], $request->boolean('inline') ? 'inline' : 'attachment')->deleteFileAfterSend();
     }
 
     /** @return array{Carbon, Carbon} */
