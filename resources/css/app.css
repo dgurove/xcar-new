@@ -918,7 +918,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      второй этаж и так в линию за названием — там номер во втором этаже, в названии его нет. */
   .cell-title > .title-plate { display: none; }
   @media (max-width: 639.98px) {
-    .table td.grow > .cell-title:has(> .title-plate) { display: flex; align-items: center; }
+    .table td.grow .cell-title:has(> .title-plate) { display: flex; align-items: center; }
     .cell-title > .cell-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cell-title > .title-plate { display: inline; flex-shrink: 0; margin-left: .3em; font-size: var(--text-sm); }
     .cell-sub .sub-plate { display: none; }
@@ -939,7 +939,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table-wrap.is-wide .alerts-inline > * { margin-left: .375rem; }
   }
   @media (min-width: 640px) {
-    .table td.grow > .cell-title, .table td.grow > .cell-sub { display: inline; }
+    /* Название лежит в ссылке строки (x-ui.row-link) — правило по потомку, иначе оно вставало своей строкой сверху
+       и строка таблицы на ПК раздувалась в два этажа. */
+    .table td.grow .cell-title, .table td.grow > .cell-sub { display: inline; }
     /* Второй этаж в линию за названием — flex с ровным шагом: скрытые на ПК куски (sm:hidden) и пробелы разметки
        не дают лишнего отступа, как давали margin соседей. */
     .table td.grow > .cell-sub { display: inline-flex; align-items: baseline; gap: .375rem; margin: 0 0 0 .125rem; vertical-align: baseline; }
