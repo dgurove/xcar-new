@@ -31,10 +31,30 @@
         $moves = $moves->reject($paidExit);
     }
     $undo = \App\Workflow\Actions\StepBack::undoable($offer, $position->track);
+    // Черновик без цены продажи (владелец 04.10.2026): первый шаг продажи — назначить цену, а не «Опубликовать». Шаг не
+    // из маршрута — он стоит перед ним текущим с «Оценить» (`/offers/{n}/rate`), а этап маршрута ждёт впереди серым.
+    $pricing = $position->track === \App\Workflow\Track::Sale && $offer->state === \App\Offers\OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled() && auth()->user()?->canManageCrm();
 @endphp
 <div class="steps">
+    @if ($pricing)
+        <div class="step step--{{ Path::CURRENT }}">
+            <span class="step-dot"></span>
+            <div class="step-body">
+                <div class="step-head"><span class="step-title">Назначение цены</span></div>
+                <p class="step-hint text-urgent">Ждём нас</p>
+                <form method="post" action="/offers/{{ $n }}/rate" class="mt-3 flex max-w-sm gap-2" data-controller="bid" data-bid-asking-value="0">
+                    @csrf
+                    <input type="hidden" name="asking_price" data-bid-target="amount" value="">
+                    <input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽" data-bid-target="display" data-action="input->bid#input">
+                    <x-ui.button size="sm" class="shrink-0">Оценить</x-ui.button>
+                </form>
+            </div>
+        </div>
+    @endif
     @foreach ($path as $step)
         @php
+            // Пока цена не назначена, этап маршрута — впереди, без кнопок.
+            if ($pricing && $step['state'] === Path::CURRENT) $step['state'] = Path::NEXT;
             $block = $step['block'];
             $answers = $requirements->filter(fn ($r) => $r->done_at && $r->stage?->block_id === $block->id)
                 // Вернулись на этап («Оплата не поступила») — прежний ответ на нём уже не в силе, в текущем шаге его нет.
