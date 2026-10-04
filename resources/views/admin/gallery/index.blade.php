@@ -12,7 +12,7 @@
             <x-ui.empty>В галерее пусто</x-ui.empty>
         @else
             @if (\App\Support\ListView::isTable($view))
-                <x-ui.table id="gallery" :view="$view">
+                <x-ui.table id="gallery" :view="$view" :titles="$offers->getCollection()->map->titleWithYear()">
                     <x-slot:head><x-offer.table-head gallery/></x-slot:head>
                     @foreach ($offers as $offer)<x-offer.table-row :offer="$offer" gallery/>@endforeach
                 </x-ui.table>

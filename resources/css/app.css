@@ -885,10 +885,22 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Режется только название: столбец .grow забирает остаток ширины, цифры — ровно по содержимому. */
   .table th.grow { width: 100%; }
   .table td.grow { max-width: 0; }
-  /* Название не растягивается на полтаблицы (20rem, сжимается до 12rem, когда рядом открыта карточка), запас ширины
+  /* Название — шириной в самое длинное в списке (--title-ch от x-ui.table :titles; сжимается до 12rem, только когда места
+     нет: рядом карточка). Раньше было 20rem насмерть, и при пустой половине таблицы марки резались. Запас ширины
      забирает столбец .fill («Состояние», «Этап» или пустой перед числами) — между прочими столбцами ровный шаг, а не
      дыры. Раньше от 1280 было min-width 20rem и запас уходил в «Вендора»: с открытой карточкой числа обрезались. */
-  @media (min-width: 640px) { .table th.grow.title-cap { width: 20rem; min-width: 12rem; } .table th.fill { width: 100%; } }
+  /* Сколько места у названия, считает сама таблица: ширина обёртки (контейнер, cqw) минус прочие столбцы (--rest от
+     x-ui.table — оценка по набору столбцов вкладки). Есть место — название целиком, нет (узкий экран, карточка рядом) —
+     сжимается до 12rem, но числа за край не уезжают. */
+  .table-wrap[style*="--title-ch"] { container-type: inline-size; }
+  @media (min-width: 640px) {
+    .table th.grow.title-cap {
+      /* Буква названия (15px Onest) в среднем .5rem — не ch: у шапки свой мелкий шрифт; 3.5rem — иконка типа ТС и поля. */
+      --title-w: calc(var(--title-ch, 24) * .5rem + 3.5rem);
+      width: var(--title-w); min-width: min(var(--title-w), max(12rem, calc(100cqw - var(--rest, 40rem))));
+    }
+    .table th.fill { width: 100%; }
+  }
   .table th, .table td { @apply text-left align-middle; padding: .375rem .25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .table th:first-child, .table td:first-child { padding-left: .75rem; }
   .table th:last-child, .table td:last-child { padding-right: .75rem; }
