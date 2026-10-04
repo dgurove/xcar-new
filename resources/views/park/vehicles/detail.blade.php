@@ -61,9 +61,6 @@
             @endif
             @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Осмотр</a>@endunless
         </x-slot:actions>
-        @if ($scanFiles->isNotEmpty())
-            <x-slot:tools><x-mail.scan-button :url="$scanUrl" look="icon"/></x-slot:tools>
-        @endif
         @if ($differences || $scanFiles->isNotEmpty())
             <form method="post" action="{{ $href }}/take" class="mt-3">@csrf
                 <x-park.doc-differences :vehicle="$vehicle" :differences="$differences">

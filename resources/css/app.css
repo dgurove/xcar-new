@@ -1504,6 +1504,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Полоса карточки: ручка листа (телефон), кнопки строки, «Открыть страницу», «Закрыть». Липнет к верху карточки. */
   .detail-bar { @apply sticky top-0 z-10 flex shrink-0 items-center gap-1 bg-surface px-3 pb-1 pt-2; }
   .detail-handle { display: none; }
+  .detail-count { @apply ml-1 text-xs leading-none text-ink-muted; }
   .bar-btn { @apply relative flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   .detail-body { @apply px-4 pb-4 pt-1; }
   @media (min-width: 1024px) {

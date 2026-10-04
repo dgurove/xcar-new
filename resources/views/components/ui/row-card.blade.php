@@ -1,5 +1,5 @@
 {{-- Карточка строки списка (во фрейме detail, x-ui.detail), сверху вниз: полоса (ручка листа на телефоне, кнопки
-     строки tools — «Поделиться», ✨; «Открыть страницу», «Закрыть»), лента фото (тап — во весь экран), название с
+     слева стрелки по строкам и «3 из 20», справа кнопки строки tools («Поделиться»), «Открыть страницу», «Закрыть»), лента фото (тап — во весь экран), название с
      метками и ценой справа (aside), факты чипами, ряд действий (actions: главное лаймовое + чипы; без него —
      «Открыть»), дальше тело — формы, характеристики, описание. Ответ после формы несёт потоки Turbo: свежая строка
      таблицы (row — <tr> с тем же data-detail-key), тост из flash, «следующий без цены» (session detail-advance).
@@ -8,9 +8,12 @@
 @props(['href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
+    <button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
+    <button type="button" class="bar-btn" data-action="detail#next" aria-label="Следующая"><x-ui.icon name="chevron-down" class="size-[18px]"/></button>
+    <span class="detail-count nums mr-auto" data-detail-target="count"></span>
     <span id="detail-tools" class="contents">{{ $tools }}</span>
-    @if ($href)<a class="bar-btn ml-auto" href="{{ $href }}" data-turbo-frame="_top" aria-label="Открыть страницу"><x-ui.icon name="expand" class="size-[18px]"/></a>@endif
-    <a @class(['bar-btn', 'ml-auto' => ! $href]) href="{{ \App\Support\Detail::close() }}" data-turbo-frame="detail" data-turbo-action="replace" data-turbo-prefetch="false" data-detail-target="close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></a>
+    @if ($href)<a class="bar-btn" href="{{ $href }}" data-turbo-frame="_top" aria-label="Открыть страницу"><x-ui.icon name="expand" class="size-[18px]"/></a>@endif
+    <a class="bar-btn" href="{{ \App\Support\Detail::close() }}" data-turbo-frame="detail" data-turbo-action="replace" data-turbo-prefetch="false" data-detail-target="close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></a>
 </div>
 <div class="detail-body">
 @if ($photos !== null || $media)

@@ -6,7 +6,7 @@ import { Controller } from '@hotwired/stimulus';
 // «следующий без цены» (поток advance). Телефон: лист полэкрана или во весь экран, высоту меняет только полоса сверху
 // (grab), тело карточки листается внутри само.
 export default class extends Controller {
-    static targets = ['frame', 'close'];
+    static targets = ['frame', 'close', 'count'];
 
     connect() {
         this.wide = matchMedia('(min-width: 1024px)');
@@ -71,6 +71,8 @@ export default class extends Controller {
         const row = key && this.rows.find((r) => r.dataset.detailKey === key);
         if (row && row !== this.current) this.select(row);
         if (!this.open) this.current?.removeAttribute('aria-selected');
+        // «3 из 20» — место строки в таблице.
+        if (this.hasCountTarget && this.current) this.countTarget.textContent = `${this.rows.indexOf(this.current) + 1} из ${this.rows.length}`;
     }
 
     // Фрейм перерисован: строка, атрибут раскладки, формы, фокус, точка листа.
@@ -151,10 +153,18 @@ export default class extends Controller {
         if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
         if (event.target.closest?.('input, textarea, select, [contenteditable]')) return;
         const rows = this.rows, i = rows.indexOf(this.current);
-        const row = rows[Math.min(rows.length - 1, Math.max(0, i + (event.key === 'ArrowDown' ? 1 : -1)))];
-        if (!row || row === this.current) return;
         event.preventDefault();
-        this.show(row);
+        this.step(event.key === 'ArrowDown' ? 1 : -1);
+    }
+
+    // Стрелки в полосе карточки и ↑/↓: соседняя строка.
+    prev() { this.step(-1); }
+    next() { this.step(1); }
+
+    step(delta) {
+        const rows = this.rows, i = rows.indexOf(this.current);
+        const row = rows[Math.min(rows.length - 1, Math.max(0, i + delta))];
+        if (row && row !== this.current) this.show(row);
     }
 
     // Оценили — следующий черновик без цены: дальше по таблице, иначе с начала; кончились — тост, со следующей
