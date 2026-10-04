@@ -14,7 +14,7 @@
             <x-ui.card title="Транспортное средство" class="order-1">
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
                     <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$car->brand_id" :text="$car->brand?->name ?? $car->brand_raw" resets="#cb-model_id"/>
-                    <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#f-brand_id" :value="$car->model_id" :text="$car->model?->name ?? $car->model_raw"/>
+                    <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#cb-brand_id [name=brand_id]" :value="$car->model_id" :text="$car->model?->name ?? $car->model_raw"/>
                     <x-ui.field name="year" label="Год" :value="$car->year"/>
                     <x-ui.field name="mileage" label="Пробег, км" :value="$car->mileage"/>
                     <x-ui.vin :value="$car->vin" span="col-span-2 lg:col-span-1"/>

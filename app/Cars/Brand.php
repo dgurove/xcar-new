@@ -40,9 +40,14 @@ class Brand extends Model
     public static function known(string $name): ?self
     {
         $name = trim($name);
-
-        return Names::brand($name)
+        $found = Names::brand($name)
             ?? self::query()->where('slug', self::slugFor($name))->orWhereRaw('lower(name) = ?', [mb_strtolower($name)])->orWhereRaw('lower(name_ru) = ?', [mb_strtolower($name)])->first();
+        // «ВАЗ (Lada)» Мигторга — та же запись, что наша «Lada (ВАЗ)»: каждое из двух написаний по отдельности.
+        if (! $found && preg_match('/^(.+?)\s*\((.+)\)$/u', $name, $m)) {
+            $found = self::known($m[1]) ?? self::known($m[2]);
+        }
+
+        return $found;
     }
 
     /** Найти по любому написанию, иначе завести. */
