@@ -7,7 +7,7 @@
 @php
     $f = $chip->facet;
     $key = $f->key;
-    $on = $chip->selected !== [];
+    $on = $chip->on ?? $chip->selected !== [];
     $groups = $f->groups ?: ['' => array_map(fn ($o) => $o->key, $chip->options)];
     $byKey = collect($chip->options)->keyBy('key');
 @endphp
@@ -23,7 +23,7 @@
     <x-ui.sheet :id="$id" :title="$f->title" anchor>
         <form method="get" action="{{ $facets->action() }}" data-turbo-action="replace" data-turbo-prefetch="false" data-controller="facets" data-action="change->facets#tick" @if ($f->single) data-facets-single-value="true" @endif>
             @foreach ($facets->carry($key) as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
-            @unless ($f->single)<input type="hidden" name="{{ $key }}" value="{{ implode(',', $chip->selected) }}" data-facets-target="value">@endunless
+            @unless ($f->single)<input type="hidden" name="{{ $key }}" value="{{ $chip->value ?? implode(',', $chip->selected) }}" data-facets-target="value">@endunless
             {{-- Фильтр не включён — отмечено всё: показано всё, снимают лишнее. Справа кнопка «Выбрать все» / «Исключить все». --}}
             @if (! $f->single && count($chip->options) > 1)
                 <div class="facet-tools">

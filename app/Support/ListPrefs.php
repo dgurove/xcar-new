@@ -19,7 +19,8 @@ final class ListPrefs
 
     /**
      * $keep — ключи чипов фильтра (Facets::keys): помнятся так же. Чип сняли (× и «Сбросить» ведут на `?vendor=` —
-     * параметр есть, но пустой) — значение забывается и больше не подставляется. $view = false — только чипы
+     * параметр есть, но пустой) — помнится пустым и подставляется пустым: умолчание экрана («Кроме Каркаде») после
+     * этого не встаёт ни на одной вкладке (владелец 04.10.2026: «убрал фильтр, переключился — опять фильтр»). $view = false — только чипы
      * (у почты сортировка своя у каждой пилюли и не помнится).
      */
     public static function sync(Request $request, string $list, bool $rememberTable = false, array $keep = [], bool $view = true): void
@@ -40,7 +41,7 @@ final class ListPrefs
         $cleared = array_values(array_filter($keep, fn ($k) => $request->query->has($k) && blank($request->query($k))));
         // Пришли по адресу с параметрами — это выбор, запоминаем. Админ за человека его память не трогает, а «сколько
         // будет» из шторки чипа (X-Count) — ещё не выбор.
-        $next = array_diff_key($given + $raw, array_flip($cleared));
+        $next = array_merge($given + $raw, array_fill_keys($cleared, ''));
         // Предзагрузку Turbo берёт за клик (`touch-prefetch.js` отдаёт тот же ответ), поэтому её нельзя отбрасывать здесь;
         // у «×» и «Сбросить» предзагрузки нет (`data-turbo-prefetch="false"`), иначе курсор над ними стирал бы фильтр.
         if (($given || $cleared) && ! Impersonation::active() && ! $request->headers->has('X-Count') && $next != $raw) {

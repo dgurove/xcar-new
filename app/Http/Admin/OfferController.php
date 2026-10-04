@@ -93,9 +93,10 @@ class OfferController
         $sort = array_key_exists((string) $request->query('sort'), self::SORTS) ? (string) $request->query('sort') : 'fresh';
         // Поиск лупой идёт по всему разделу — мимо вкладки и чипов.
         $searching = $facets->searching();
-        // «Без цены» без выбранного вендора — все, кроме Каркаде (их десятки из закупки, оценивают отдельно). Выбор не
-        // запоминается и в ссылки вкладок не едет: после чипов параметр убирается (ниже).
-        $carcadeHidden = $preset === 'unpriced' && ! $searching && ! $request->query->has('vendor') && $this->hideCarcade($request);
+        // Вендор ни разу не выбирали — все, кроме Каркаде (их десятки из закупки, оценивают отдельно), на любой вкладке:
+        // фильтр при переключении вкладок не меняется (владелец 04.10.2026). Сняли чип — ListPrefs помнит пустое, и
+        // умолчание больше не встаёт. В ссылки вкладок оно не едет: после чипов параметр убирается (ниже).
+        $carcadeHidden = ! $searching && ! $request->query->has('vendor') && $this->hideCarcade($request, $preset);
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
         $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])
@@ -161,17 +162,14 @@ class OfferController
         return Vendor::whereRaw("name ilike '%каркаде%' or name ilike '%carcade%'")->value('id');
     }
 
-    /** Подставить в запрос «все вендоры „Без цены“, кроме Каркаде» (с «Без вендора»); нечего прятать — false. */
-    private function hideCarcade(Request $request): bool
+    /** Подставить в запрос «все, кроме Каркаде» (`!id` — исключение, Facets); Каркаде на вкладке нет — false. */
+    private function hideCarcade(Request $request, string $preset): bool
     {
         $carcade = self::carcadeId();
-        $base = self::scopeFor('unpriced', Offer::visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft()));
-        $ids = (clone $base)->distinct()->pluck('vendor_id');
-        if (! $carcade || ! $ids->contains($carcade)) {
+        if (! $carcade || ! self::scopeFor($preset, Offer::visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft()))->where('vendor_id', $carcade)->exists()) {
             return false;
         }
-        $keep = $ids->reject(fn ($id) => $id === $carcade)->map(fn ($id) => $id === null ? 'none' : (string) $id)->values();
-        $request->query->set('vendor', $keep->isEmpty() ? 'none' : $keep->implode(','));
+        $request->query->set('vendor', '!'.$carcade);
 
         return true;
     }

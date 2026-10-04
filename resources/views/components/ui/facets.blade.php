@@ -8,7 +8,7 @@
         <div class="flex flex-nowrap items-center gap-2">
             @foreach ($chips as $chip)
                 @if ($chip->facet->toggle)
-                    @php $on = $chip->selected !== []; @endphp
+                    @php $on = $chip->on ?? $chip->selected !== []; @endphp
                     <a href="{{ $facets->url([$chip->facet->key => $on ? '' : '1']) }}" class="pill {{ $on ? '' : ($chip->facet->tone ?? '') }}" data-turbo-action="replace" data-turbo-prefetch="false" @if ($on) aria-current="true" @endif>{{ $chip->label }}@if ($chip->count) <span class="nums opacity-70">{{ $chip->count }}</span>@endif</a>
                 @else
                     <x-ui.facet-chip :chip="$chip" :facets="$facets" :id="'facet-'.$name.'-'.$chip->facet->key"/>

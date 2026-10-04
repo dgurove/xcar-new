@@ -12,6 +12,8 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  * - custom — своё условие и свой подсчёт (многие ко многим: группы, ТС закупки с ценой менеджера);
  * - toggle — переключатель без шторки («Непрочитанные», «Мои»).
  * Значения в адресе — через запятую (`?vendor=3,5`): одно значение выглядит как прежние `?yard=2`, ссылки живут.
+ * С `!` впереди — исключение (`?vendor=!22` — все, кроме Каркаде): так фильтр «кроме» одинаков на любой вкладке, а не
+ * застывает списком вендоров, которые были на той, где его выбрали.
  */
 final class Facet
 {
@@ -182,6 +184,25 @@ final class Facet
             }
             if (! $keys && ! $none) {
                 $w->whereRaw('false');
+            }
+        });
+    }
+
+    /** Исключение (`!22`): всё, кроме этих. Своё условие (`apply`) получает список оставшихся — его считает Facets. */
+    public function exclude(Builder $q, array $values): void
+    {
+        $none = $this->none !== null && in_array('none', $values, true);
+        $keys = array_values(array_filter($values, fn ($v) => $v !== 'none' && (! $this->numeric || ctype_digit($v))));
+        if ($this->numeric) {
+            $keys = array_map('intval', $keys);
+        }
+        $q->where(function (Builder $w) use ($keys, $none) {
+            if ($keys) {
+                $w->whereRaw("{$this->expr} not in (".implode(',', array_fill(0, count($keys), '?')).')', $keys);
+                // NULL в «not in» не проходит — «Без вендора» остаётся, пока его не исключили.
+                $none || $w->orWhereRaw("({$this->expr}) is null");
+            } elseif ($none) {
+                $w->whereRaw("({$this->expr}) is not null");
             }
         });
     }

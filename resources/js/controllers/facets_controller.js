@@ -4,6 +4,7 @@ import { Controller } from '@hotwired/stimulus';
 // переспрашивается тем же адресом с заголовком X-Count (контроллер списка отвечает {count} до страниц и подгрузок).
 // Прежний запрос обрывается, опоздавший ответ отбрасывается. Ничего не найдено — кнопка выключена.
 // Фильтр не включён — отмечено всё, снимают лишнее: отмечено всё значит «без фильтра» (в адрес уходит пустое),
+// снятых меньше, чем отмеченных, — исключение `!22,5` («кроме»: на другой вкладке и с новыми вендорами значит то же),
 // «Выбрать все» / «Исключить все» — одна кнопка. Один выбор (single) — радио: отправляется сразу.
 export default class extends Controller {
     static targets = ['value', 'box', 'submit', 'item', 'all'];
@@ -43,7 +44,8 @@ export default class extends Controller {
         const boxes = this.boxTargets;
         const checked = boxes.filter((b) => b.checked);
         // Отмечено всё — это «без фильтра».
-        this.valueTarget.value = checked.length === boxes.length ? '' : checked.map((b) => b.value).join(',');
+        const off = boxes.filter((b) => !b.checked);
+        this.valueTarget.value = off.length === 0 ? '' : off.length < checked.length ? `!${off.map((b) => b.value).join(',')}` : checked.map((b) => b.value).join(',');
         this.label();
         clearTimeout(this.timer);
         this.pending?.abort();

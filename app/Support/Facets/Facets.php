@@ -32,6 +32,9 @@ final class Facets
 
     private ?string $path = null;
 
+    /** @var array<string, list<string>> исключение, развёрнутое в варианты (для своего условия `apply`) */
+    private array $resolved = [];
+
     public function __construct(private Request $request, public string $list, Facet ...$facets)
     {
         foreach ($facets as $f) {
@@ -83,12 +86,27 @@ final class Facets
         return is_string($q) && trim($q) !== '';
     }
 
-    /** @return list<string> */
+    /** Исключённое (`?vendor=!22`) или null — выбор обычный. @return list<string>|null */
+    public function excluded(string $key): ?array
+    {
+        $raw = $this->request->query($key);
+        if (! is_string($raw) || ! str_starts_with($raw, '!') || ! isset($this->facets[$key]) || $this->facets[$key]->toggle || $this->facets[$key]->single) {
+            return null;
+        }
+
+        return array_values(array_unique(array_filter(array_map('trim', explode(',', substr($raw, 1))), fn ($v) => $v !== '')));
+    }
+
+    /** @return list<string> выбранное; у исключения — все варианты списка, кроме исключённых */
     public function selected(string $key): array
     {
         $raw = $this->request->query($key);
         if (! is_string($raw) || $raw === '' || ! isset($this->facets[$key])) {
             return [];
+        }
+        if (($out = $this->excluded($key)) !== null) {
+            return $out === [] || $this->base === null ? [] : $this->resolved[$key] ??= array_values(array_diff(
+                array_map('strval', array_keys($this->facets[$key]->counts(clone $this->base, $this->countExpr))), $out));
         }
         if ($this->facets[$key]->toggle) {
             return $raw === '0' ? [] : ['1'];
@@ -102,7 +120,7 @@ final class Facets
 
     public function on(string $key): bool
     {
-        return $this->selected($key) !== [];
+        return $this->excluded($key) !== null || $this->selected($key) !== [];
     }
 
     public function active(): bool
@@ -120,7 +138,7 @@ final class Facets
         $this->base = clone $b;
         if (! $this->searching()) {
             foreach ($this->facets as $key => $f) {
-                $f->constrain($b, $this->selected($key));
+                $this->narrow($b, $key, $f);
             }
         }
         $this->applied = clone $b;
@@ -138,12 +156,19 @@ final class Facets
         if (! $this->searching()) {
             foreach ($this->facets as $key => $f) {
                 if ($key !== $except) {
-                    $f->constrain($b, $this->selected($key));
+                    $this->narrow($b, $key, $f);
                 }
             }
         }
 
         return $q;
+    }
+
+    /** Колонка с исключением — `not in` (новый вендор появился — он в списке); своё условие — развёрнутым выбором. */
+    private function narrow(Builder $b, string $key, Facet $f): void
+    {
+        $out = $this->excluded($key);
+        $out !== null && $f->apply === null ? $f->exclude($b, $out) : $f->constrain($b, $this->selected($key));
     }
 
     /** Сколько строк при текущем выборе — начальное число на «Показать N». */
@@ -185,9 +210,15 @@ final class Facets
             $sub = clone $this->base;
             $this->applyTo($sub, $key);
             $counts = $f->counts($sub, $this->countExpr);
-            foreach ($selected as $s) {
+            $out = $this->excluded($key);
+            // Исключённые — в шторке без галки (даже с нулём: вернуть), остальные варианты этого списка — с галкой.
+            if ($out !== null) {
+                $selected = array_values(array_diff(array_map('strval', array_keys($counts)), $out));
+            }
+            foreach ([...$selected, ...($out ?? [])] as $s) {
                 $counts[$s] ??= 0;
             }
+
             $keys = array_map('strval', array_keys($counts));
             $named = $f->labels ? ($f->labels)(array_values(array_diff($keys, ['none']))) : [];
             $options = [];
@@ -220,14 +251,19 @@ final class Facets
             $picked = array_values(array_filter($options, fn (Option $o) => $o->selected && $o->key !== $f->default));
             // Почти всё отмечено — человек исключал: «Кроме Каркаде», а не «4 вендора».
             $left = array_values(array_filter($options, fn (Option $o) => ! $o->selected));
+            $outNames = collect($options)->only($out ?? [])->map(fn (Option $o) => $o->label)->values();
             $label = match (true) {
+                $out !== null && $outNames->isNotEmpty() && $outNames->count() <= 2 => 'Кроме '.$outNames->implode(', '),
                 count($picked) === 1 => $picked[0]->label,
                 ! $f->single && count($picked) >= 2 && $left && count($left) <= 2 && count($left) < count($picked) => 'Кроме '.implode(', ', array_map(fn (Option $o) => $o->label, $left)),
                 count($picked) > 1 => count($picked).' '.Plural::of(count($picked), $f->plural),
                 default => $f->title,
             };
 
-            return (object) ['facet' => $f, 'options' => array_values($options), 'selected' => $selected, 'label' => $label];
+            // Исключение помнит, кого исключили, — шторка отправляет его тем же видом (`!22`), не списком оставшихся.
+            $on = $selected !== [] || $out !== null;
+
+            return (object) ['facet' => $f, 'options' => array_values($options), 'selected' => $selected, 'on' => $on, 'value' => $out !== null ? '!'.implode(',', $out) : implode(',', $selected), 'label' => $label];
         })->filter()->values();
     }
 
