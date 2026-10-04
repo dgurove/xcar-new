@@ -1101,6 +1101,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      от неё, а не от страницы, — отступ под шапку сайта уводил их вниз, поверх строк. Внутри такой таблицы — от её верха. */
   @media (min-width: 640px) and (max-width: 1023.98px) { .table-box .table :is(thead th, tr.table-group > th) { top: 0; } }
   @media (min-width: 1024px) { .split[data-open] .table-box .table :is(thead th, tr.table-group > th) { top: 0; } }
+  /* То же на любой ширине, когда таблица не влезла и листается вбок (table_scroll_controller, подробная): шапка съезжала. */
+  @media (min-width: 640px) { :is(.table-box.is-scroll, .table-wrap.is-wide .table-box) .table :is(thead th, tr.table-group > th) { top: 0; } }
 
   /* Страницы покупателя (x-pickup.layout): колонка до 28rem на фоне страницы, знак сверху. */
   .pickup-main { @apply mx-auto flex min-h-dvh w-full max-w-md flex-col px-4; padding-top: calc(env(safe-area-inset-top) + 1.25rem); padding-bottom: calc(env(safe-area-inset-bottom) + 2rem); }
