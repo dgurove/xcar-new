@@ -1651,8 +1651,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       animation: dialog-in var(--dur) var(--ease-out);
     }
     .detail-card { border-radius: inherit; }
-    /* Карточка встала справа — такой столбец уже написан в ней, а название снова читается целиком. */
-    .split[data-open] .col-detail-hide { display: none !important; }
+    /* Карточка встала справа — такой столбец уже написан в ней, а название снова читается целиком. Подробная таблица
+       (`is-wide`) не прячет ничего — листается вбок (владелец 05.10.2026: «если подробная — чтобы все столбцы было видно»). */
+    .split[data-open] .table-wrap:not(.is-wide) .col-detail-hide { display: none !important; }
     /* Не влезла таблица рядом с карточкой — листается вбок, столбцы не режутся. */
     .split[data-open] .table-box { overflow-x: auto; overscroll-behavior-x: contain; }
   }

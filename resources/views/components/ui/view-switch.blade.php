@@ -1,6 +1,6 @@
 {{-- Вид списка: круглая кнопка с иконкой текущего вида, по нажатию — меню
-     «Плитками · Строками · Таблицей · Подробной таблицей» (x-ui.menu). Подробная — только на телефоне:
-     на ПК она совпадает с таблицей, и пункта там нет, а кнопка при ней рисует значок таблицы.
+     «Плитками · Строками · Таблицей · Подробной таблицей» (x-ui.menu). Подробная на телефоне — все столбцы ПК, на ПК —
+     все столбцы и рядом с открытой карточкой (краткая тогда прячет `col-detail-hide`).
      Пока вид не выбран, его решает ширина экрана: две кнопки, видна одна. views — какие виды есть. --}}
 @props(['views' => \App\Support\ListView::ALL, 'current' => false])
 @php
@@ -13,9 +13,8 @@
     // Подробная без краткой не бывает: это та же таблица.
     $views = in_array(ListView::TABLE, $views, true) ? $views : array_diff($views, [ListView::WIDE]);
     $items = array_intersect_key($all, array_flip($views));
-    // Без выбора — на телефоне строки, от 640 плитки (если плиток нет — строки); подробная на ПК — значком таблицы.
+    // Без выбора — на телефоне строки, от 640 плитки (если плиток нет — строки).
     $shown = match (true) {
-        $current === ListView::WIDE => ['wide' => 'sm:hidden', 'table' => 'hidden sm:inline-flex'],
         (bool) $current => [$current => ''],
         isset($items['grid']) => ['list' => 'sm:hidden', 'grid' => 'hidden sm:inline-flex'],
         default => ['list' => ''],
@@ -33,7 +32,7 @@
     @endforeach
     <div id="{{ $id }}" class="menu" popover data-menu-target="list" role="menu">
         @foreach ($items as $view => [$label, $icon])
-            <a href="{{ $url($view) }}" @class(['menu-item', 'sm:hidden' => $view === ListView::WIDE]) role="menuitem" data-turbo-action="replace" data-action="menu#close" @if ($view === $current || (!$current && array_key_first($shown) === $view && count($shown) === 1)) aria-current="true" @endif><x-ui.icon :name="$icon" class="size-5"/>{{ $label }}</a>
+            <a href="{{ $url($view) }}" @class(['menu-item', 'sm:hidden' => $view === ListView::WIDE && $phoneOnly]) role="menuitem" data-turbo-action="replace" data-action="menu#close" @if ($view === $current || (!$current && array_key_first($shown) === $view && count($shown) === 1)) aria-current="true" @endif><x-ui.icon :name="$icon" class="size-5"/>{{ $label }}</a>
         @endforeach
     </div>
 </div>

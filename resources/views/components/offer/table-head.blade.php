@@ -10,18 +10,19 @@
     @if ($pick)<th class="pick-cell"></th>@endif
     <th class="grow title-cap">Марка, модель</th>
     @if ($has('vendor'))<th class="hidden sm:table-cell">Вендор, № убытка</th>@endif
-    @if ($has('city'))<th class="hidden sm:table-cell">Город</th>@endif
-    {{-- Карточка рядом — места мало: подтверждения видны в ней, из таблицы они уходят (col-detail-hide). Столбца «№» нет
+    @if ($has('city'))<th class="col-detail-hide hidden sm:table-cell">Город</th>@endif
+    {{-- Карточка рядом — места мало: город, закупочная, оценочная и дата уходят (col-detail-hide, они в карточке), подтверждения
+         и цена остаются (владелец 05.10.2026); в подробной таблице не уходит ничего — листается вбок. Столбца «№» нет
          (владелец 04.10.2026): по номеру ищут, а смотреть его в таблице незачем. --}}
     @if ($has('state'))<th class="fill hidden sm:table-cell">{{ $cols !== null && $has('bids') ? 'Приём' : 'Состояние' }}</th>
     {{-- Без «Состояния» запас ширины уходит в пустой столбец перед числами, а не в промежутки между столбцами. --}}
     @else<th class="fill hidden sm:table-cell"></th>@endif
     {{-- Подтверждения принимает только админ — модератору столбца нет. --}}
-    @if ($has('bids') && auth()->user()?->canManageCrm())<th class="num col-detail-hide hidden sm:table-cell">{{ $gallery ? 'Интерес' : 'Подтверждения' }}</th>@endif
+    @if ($has('bids') && auth()->user()?->canManageCrm())<th class="num hidden sm:table-cell">{{ $gallery ? 'Интерес' : 'Подтверждения' }}</th>@endif
     {{-- Сначала закупочная, потом продажи (владелец 04.10.2026: так логичнее). --}}
     {{-- Оценочная — до закупочной: у Альфы закупочная из неё (владелец 05.10.2026: «оценочные тоже надо видеть»). --}}
-    @if ($cols !== null && $has('value'))<th class="num hidden sm:table-cell">Оценочная</th>@endif
-    @if ($has('floor'))<th class="num hidden sm:table-cell">Закупочная</th>@endif
+    @if ($cols !== null && $has('value'))<th class="num col-detail-hide hidden sm:table-cell">Оценочная</th>@endif
+    @if ($has('floor'))<th class="num col-detail-hide hidden sm:table-cell">Закупочная</th>@endif
     @if ($has('price'))<th class="num">Цена</th>@endif
     @if ($cols !== null && $has('published'))<th class="num col-detail-hide hidden sm:table-cell">Вышло</th>
     @elseif ($has('created'))<th class="num col-detail-hide hidden sm:table-cell">Создано</th>@endif
