@@ -35,6 +35,9 @@ final class Migtorg
     /** Вход не удался: пароль сменили или ввели неверно — повторять раз в полчаса значит подбирать пароль. */
     private const LOGIN_FAILED = 'migtorg:login-failed';
 
+    /** Когда получен ключ: 403 со свежим ключом — честный отказ, нового входа не надо. */
+    private const TOKEN_AT = 'migtorg:token-at';
+
     private CookieJar $jar;
 
     public function __construct()
@@ -128,8 +131,11 @@ final class Migtorg
         };
         $response = $send();
         // Протухший ключ Мигторг отдаёт и 401, и 403 «Доступ запрещен для неавторизованного» (04.10.2026: сутки ключ
-        // жил, потом карточки шли 403) — входим заново и повторяем один раз; 403 и после входа — правда закрыто.
-        if ($auth && in_array($response->status(), [401, 403], true)) {
+        // жил, потом карточки шли 403) — входим заново и повторяем один раз. Но 403 бывает и честным (лот не наш:
+        // недвижимость, чужой раздел), а обход архива встречает их пачками: со свежим ключом (моложе 10 минут) 403 —
+        // правда закрыто, без нового входа, иначе частые входы Мигторг отбивает и вход встаёт на паузу.
+        $stale = Cache::get(self::TOKEN_AT, 0) < time() - 600;
+        if ($auth && ($response->status() === 401 || ($response->status() === 403 && $stale))) {
             Cache::forget(self::TOKEN);
             $response = $send();
         }
@@ -160,10 +166,14 @@ final class Migtorg
             usleep(random_int(800, 1800) * 1000);
             $response = $this->http()->post(self::API.'/auth/login', ['email' => $email, 'password' => $password]);
             if ($token = $response->json('token')) {
+                Cache::put(self::TOKEN_AT, time(), now()->addDay());
+
                 return $token;
             }
-            // Сбой связи или их 5xx — не повод молчать полдня; отказ во входе (4xx) — повод.
-            if ($response->clientError()) {
+            // Слишком часто (429) — пауза на час, как у любого запроса; отказ во входе (неверный пароль, 4xx) — на 6 ч.
+            if ($response->status() === 429) {
+                Cache::put(self::QUIET, true, 3600);
+            } elseif ($response->clientError()) {
                 Cache::put(self::LOGIN_FAILED, true, now()->addHours(6));
                 Log::warning("Мигторг: вход не удался ({$response->status()}), пауза 6 ч");
             }
