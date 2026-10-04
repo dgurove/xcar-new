@@ -396,6 +396,10 @@ class OfferController
 
             return redirect("/offers/{$next->number}")->with('toast', 'Сохранено');
         }
+        // «Сохранить» у черновика — и закрыть редактор: следующий шаг черновика в списке.
+        if ($request->input('then') === 'close') {
+            return redirect('/')->with('toast', 'Сохранено');
+        }
         if ($request->input('then') === 'open' && $offer->state === OfferState::Draft && $request->user()->canManageCrm()) {
             $offer = $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user());
 

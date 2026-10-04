@@ -206,17 +206,15 @@
             <form method="post" action="/offers/{{ $n }}/drop" class="contents">@csrf<x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Отменить</x-ui.button></form>
             <form method="post" action="/offers/{{ $n }}/drop" class="contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<input type="hidden" name="decline" value="1"><x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Не заявка</x-ui.button></form>
             <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
-        @elseif ($draft && ! $admin)
-            {{-- Модератор заводит пачку подряд: «+ Новый» сохраняет и открывает следующий черновик с тем же вендором; публикует админ.
-                 Свой черновик удаляет сам — корзиной с подтверждением; чужой — нет. --}}
-            @if ($deletable)
+        @elseif ($draft)
+            {{-- Черновик заводят пачкой подряд — и модератор, и админ (владелец 04.10.2026): «Сохранить» сохраняет и закрывает
+                 редактор (в список), «+ Новый» сохраняет и открывает следующий черновик с тем же вендором. Публикуют из
+                 списка («Оцененные» → «Отправить в продажу»). Модератор свой черновик удаляет корзиной, админ — в «···». --}}
+            @if ($deletable && ! $admin)
                 <form method="post" action="/offers/{{ $n }}" class="draft-delete contents" data-turbo-confirm="Удалить черновик? Фото и документы удалятся вместе с ним">@csrf @method('delete')<x-ui.button variant="secondary" round class="btn-lg shrink-0" aria-label="Удалить черновик"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
             @endif
-            <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
+            <x-ui.button form="offer-form" name="then" value="close" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>
             <x-ui.button form="offer-form" name="then" value="next" class="min-w-0 flex-1"><x-ui.icon name="plus" class="size-5"/>Новый</x-ui.button>
-        @elseif ($draft)
-            {{-- Заявка заводится черновиком: публикуют по ходу маршрута из списка («Публикация»), не из редактора. --}}
-            <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @else
             <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif
