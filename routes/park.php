@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Admin\ReferenceController;
+use App\Http\Mail\AttachController;
 use App\Http\Mail\ScanController;
 use App\Http\Park\ActController;
 use App\Http\Park\MailController;
@@ -52,6 +53,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/cars', [VehicleController::class, 'index']);
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
     Route::get('/cars/{vehicle}/letters', [VehicleController::class, 'letters']);
+    // Кадры письма прикрепляются: строка хода и ряд «От страховой», пока ImportThreadFiles идёт (attach_controller).
+    Route::get('/cars/{vehicle}/attach', [AttachController::class, 'vehicle']);
     Route::put('/cars/{vehicle}', [VehicleController::class, 'update'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/fields', [VehicleController::class, 'fields'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/media', [VehicleController::class, 'upload']);

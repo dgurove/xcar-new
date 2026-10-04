@@ -1422,15 +1422,21 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Кнопка в работе — только кольцо: число в ней просвечивало сквозь него. */
   .scan-foot .btn[aria-busy="true"] > * { visibility: hidden; }
   @media (prefers-reduced-motion: reduce) { .scan-spin { animation: none; border-top-color: var(--color-accent); opacity: .5; } }
-  /* Читалка «Завести» (x-mail.reader-body) в блоке «Документы»: строка хода «Читаю 2 из 4» с полосой и «Стоп», под ней
-     лента тех же листов, что в окне. На телефоне лента — прокруткой вбок, листы не мельче трети экрана. Прочитано
-     или не начато — в редакторе предложения читалки не видно (документы — списком ниже), в разборе письма (data-keep)
-     лента остаётся: это и есть документы письма. */
+  /* Читалка «Завести» (x-mail.reader-body) в блоке «Документы»: строка хода «Читаю 2 из 4» с полосой и «Стоп», ход —
+     на строках документов (`data-scan`): по значку читаемого бежит полоса скана, ждущий притушен, прочитанный — с
+     лаймовой галкой в углу значка, без текста — серый. Превью нет. В редакторе предложения своих строк у читалки нет
+     (ход ставится на строки его «Документов»), в разборе письма (data-keep) её строки и есть документы письма. */
   .reader-head { @apply mb-3 flex items-center gap-3 text-sm text-ink-muted; }
-  .reader-sheets { @apply -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:grid sm:grid-cols-4 sm:overflow-visible; scrollbar-width: none; }
-  .reader-sheets > .scan-doc { @apply w-[30%] shrink-0 snap-start sm:w-auto; }
-  .reader-sheets > .scan-doc:not(.scan-doc--done, .scan-doc--busy) .scan-sheet img { opacity: .6; }
+  .reader-files { display: flex; flex-direction: column; }
+  .reader:not([data-keep]) .reader-files { display: none; }
   .reader:not([data-keep]):is([data-state="idle"], [data-state="done"]) { display: none; }
+  .file-row[data-scan] .file-icon { position: relative; transition: opacity var(--dur-fast); }
+  .file-row:is([data-scan="wait"], [data-scan="idle"], [data-scan="empty"]) .file-icon { opacity: .5; }
+  .file-row[data-scan="empty"] { @apply text-ink-muted; }
+  .file-row[data-scan="busy"] .file-icon::after { content: ''; position: absolute; inset-inline: 0; height: 40%; top: -40%; background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--color-accent) 55%, transparent), transparent); }
+  @media (prefers-reduced-motion: no-preference) { .file-row[data-scan="busy"] .file-icon::after { animation: scan-sweep 1.4s ease-in-out infinite; } }
+  .file-row[data-scan="done"] .file-icon::after { content: ''; position: absolute; right: 2px; bottom: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 10px no-repeat; }
+  .file-row[data-scan="lost"] .file-icon { box-shadow: inset 0 0 0 1.5px var(--color-danger); }
   .chain-card > .chain-head { margin-bottom: .375rem; min-height: 1.875rem; }
   @media (min-width: 768px) {
     .chain-card > .chain-head > :first-child { display: flex; align-items: baseline; gap: .75rem; }

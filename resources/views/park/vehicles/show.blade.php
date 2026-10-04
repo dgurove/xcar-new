@@ -148,12 +148,18 @@
             </div>
             @include('park.vehicles.papers')
         </x-ui.card>
-        {{-- Кадры стадиями: от страховой, при приёме, при выдаче. Та, что сейчас снимается, стоит в ленте шага. --}}
+        {{-- Кадры стадиями: от страховой, при приёме, при выдаче. Та, что сейчас снимается, стоит в ленте шага. Кадры
+             письма ещё прикрепляются (ImportThreadFiles) — строка хода и «От страховой» с заглушками, attach_controller
+             переспрашивает их. --}}
+        @php $attaching = \App\Mail\Jobs\ImportThreadFiles::pending($vehicle) > 0; @endphp
+        <div class="contents" data-controller="attach" data-attach-url-value="/cars/{{ $vehicle->id }}/attach">
+        <x-mail.attach-line :model="$vehicle"/>
         @foreach (PhotoStage::cases() as $one)
-            @if ($one !== $shooting && $vehicle->photos()->contains(fn ($m) => PhotoStage::of($m) === $one))
+            @if ($one !== $shooting && ($vehicle->photos()->contains(fn ($m) => PhotoStage::of($m) === $one) || ($attaching && $one === PhotoStage::Vendor)))
                 <x-park.photos :vehicle="$vehicle" :stage="$one"/>
             @endif
         @endforeach
+        </div>
 
         @if ($money && ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty() || $vehicle->accepted_at))
         <x-ui.card title="Оплаты" data-controller="sheet">

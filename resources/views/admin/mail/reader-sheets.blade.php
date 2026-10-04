@@ -1,9 +1,9 @@
-{{-- Читалка «Завести» (Scan\Reader::live, x-mail.reader-body): строка хода и лента листов — то, что reader_controller
+{{-- Читалка «Завести» (Scan\Reader::live, x-mail.reader-body): строка хода и документы строками — то, что reader_controller
      перерисовывает морфом по событию scan. Строка хода — пока читается, ждёт очереди или остановлено: «Читаю 2 из 4» с
      полосой и «Стоп»; остановлено — «Прочитано 2 из 4» и «Дочитать» («Повторить», если осталось только не прочтённое).
-     Лист — документ в порядке чтения: первая страница, у читаемого — колдующая искра и бегущая полоса, прочитанный —
-     с галкой, ждущий — притушен; нажатие открывает его в шторке документов. Когда всё прочитано, ленту прячет CSS
-     (кроме разбора письма — там лента и есть список документов письма). --}}
+     Документ — строкой файла, ход на ней самой (`data-scan`: по значку бежит полоса скана, прочитанный — с галкой). Превью
+     нет: в редакторе предложения строк читалки не видно вовсе, ход ставится на строки его «Документов» по отпечатку
+     (`data-scan-key`), в разборе письма (data-keep) строки читалки и есть документы письма. --}}
 @php
     use App\Mail\Scan\Paper;
     use App\Support\Docs;
@@ -29,26 +29,9 @@
         @endif
     </div>
 @endif
-<div class="reader-sheets">
+<div class="reader-files">
     @foreach ($files as $f)
-        @php
-            $s = $states[$f->scanId()];
-            $doc = $f instanceof Paper ? Docs::media($f->media) : Docs::attachment($f, $subject->mail());
-            $thumb = $f instanceof Paper ? '/files/'.$f->media->id.'?thumb=1' : $subject->mail().'/attachments/'.$f->scanId().'?thumb=1';
-        @endphp
-        <x-ui.doc :doc="$doc" :auto="$f === $first" class="scan-doc scan-doc--{{ $s }}" id="reader-{{ $f->scanId() }}">
-            <span class="scan-sheet">
-                <x-ui.file-icon :name="$f->scanName()" :mime="$f->scanMime()" class="scan-icon"/>
-                <img src="{{ $thumb }}" alt="" loading="lazy" onerror="this.remove()">
-                @if ($s === 'busy')<span class="scan-veil spark-busy" aria-label="Читается"><x-ui.spark class="size-7"/></span>
-                @elseif ($s === 'done')<span class="scan-check"><x-ui.icon name="check" class="size-3.5"/></span>
-                @endif
-            </span>
-            <span class="scan-name">
-                @if ($s === 'empty')<span class="text-ink-dim">текста нет</span>
-                @elseif ($s === 'lost')<span class="text-danger">не прочитан</span>
-                @else{{ $f->isPhoto() ? 'Фото' : Docs::label($f->scanName()) }}@endif
-            </span>
-        </x-ui.doc>
+        @php $href = $f instanceof Paper ? '/files/'.$f->media->id : $subject->mail().'/attachments/'.$f->scanId(); @endphp
+        <x-ui.file :name="$f->scanName()" :mime="$f->scanMime()" :href="$href" :auto="$f === $first" data-scan-key="{{ \App\Mail\Scan\Reader::mark($f) }}" data-scan="{{ $states[$f->scanId()] }}"/>
     @endforeach
 </div>

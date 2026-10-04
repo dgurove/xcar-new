@@ -25,7 +25,7 @@ restic() { # $1 — каталог хоста, куда restic пишет (/out 
         "$RESTIC_IMAGE" -o "s3.region=$AWS_DEFAULT_REGION" "$@"
 }
 
-stop_app()  { (cd "$ROOT/current/deploy" && docker compose stop app queue queue-scan queue-long scheduler mail-watch); }
+stop_app()  { (cd "$ROOT/current/deploy" && docker compose stop app queue queue-scan queue-long queue-files scheduler mail-watch); }
 start_app() { (cd "$ROOT/current/deploy" && docker compose up -d); }
 
 case "${1:-}" in

@@ -53,7 +53,6 @@
             @endforeach
         @endif
         @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
-        @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
         @if ($admin)
             <div class="contents" data-controller="sheet tag-chips" data-action="change->tag-chips#render">
                 <span class="contents" data-tag-chips-target="chips">
@@ -161,8 +160,11 @@
 
         </form>
 
-        <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
+        {{-- Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и заглушки в ряду, attach_controller
+             переспрашивает их, пока строка есть. --}}
+        <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="photos attach" data-attach-url-value="/offers/{{ $n }}/attach" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
             <x-slot:actions><div class="flex items-center gap-4"><x-ui.photos-expand/><x-ui.photos-all/></div></x-slot:actions>
+            <x-mail.attach-line :model="$offer"/>
             @include('admin.offers.photo-upload')
             @include('admin.offers.gallery')
         </x-ui.card>

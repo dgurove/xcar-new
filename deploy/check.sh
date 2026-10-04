@@ -27,7 +27,7 @@ for addr in ${ADDRESSES//,/ }; do
     first=0
 done
 
-for name in app queue queue-scan queue-long scheduler mail-watch offers-bot postgres; do
+for name in app queue queue-scan queue-long queue-files scheduler mail-watch offers-bot postgres; do
     state="$(docker inspect -f '{{.State.Status}}' "xcar-$name-1" 2>/dev/null || echo missing)"
     [ "$state" = running ] || problems+=("контейнер $name: $state")
 done

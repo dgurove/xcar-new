@@ -8,4 +8,4 @@
 @endif
 @if ($collapsed ?? false)<div class="photos-over"><x-ui.photos-all/></div>@endif
 {{-- Глаз — показ в продаже: в деле ТС видны все кадры, скрытый только сереет. --}}
-<x-ui.photos :photos="$photos" :readonly="! $edit" grid hide :main="false" :id="'gallery-'.$stage->value"/>
+<x-ui.photos :photos="$photos" :readonly="! $edit" grid hide :main="false" :id="'gallery-'.$stage->value" :pending="$pending ?? 0"/>

@@ -7,13 +7,13 @@ import { liveOpen } from '../live.js';
 // предложения. Документы читаются сами по порядку (autoValue: открыли из «Завести»), поля формы formValue
 // заполняются по мере чтения: пустое — со вспышкой (fill.js), совпадающее — молча, другое — строкой расхождения
 // «в форме → в документе» с «Взять» в [data-reader-diffs="<форма>"] над полями; документы спорят о пустом поле —
-// строка на каждый вариант. Взятое и снятое не возвращается. Ход чтения (строка хода и лента листов) — HTML с сервера,
-// морфом. Новое — по событию live:scan своего предмета, при возврате на вкладку и, пока хаб недоступен, раз в 3 с.
+// строка на каждый вариант. Взятое и снятое не возвращается. Ход чтения — строка хода с сервера морфом и отметки на
+// строках документов (`data-scan`). Новое — по событию live:scan своего предмета, при возврате на вкладку и, пока хаб недоступен, раз в 3 с.
 // Искра шторки документов дописывает открытый файл в чтение (reader:add, docs_controller).
 const norm = (v) => String(v ?? '').toLowerCase().replace(/[\s\-.]+/g, '');
 
 export default class extends Controller {
-    static targets = ['body', 'values', 'row', 'spark'];
+    static targets = ['body', 'values', 'marks', 'row', 'spark'];
     static values = { url: String, subject: String, form: String, auto: Boolean };
 
     connect() {
@@ -29,7 +29,7 @@ export default class extends Controller {
         document.addEventListener('visibilitychange', this.onVisible);
         this.element.addEventListener('reader:add', this.onAdd);
         this.form?.addEventListener('change', this.onChange);
-        this.apply({ state: this.bodyTarget.dataset.state, values: JSON.parse(this.valuesTarget.textContent || '{}') });
+        this.apply({ state: this.bodyTarget.dataset.state, values: JSON.parse(this.valuesTarget.textContent || '{}'), marks: JSON.parse(this.marksTarget.textContent || '{}') });
         if (this.autoValue && this.state === 'idle') this.read();
     }
 
@@ -87,7 +87,7 @@ export default class extends Controller {
         if (this.again) { this.again = false; this.refresh(); }
     }
 
-    apply({ state, html, values }) {
+    apply({ state, html, values, marks }) {
         this.state = state;
         this.bodyTarget.dataset.state = state;
         if (html != null) {
@@ -95,6 +95,7 @@ export default class extends Controller {
             next.innerHTML = html;
             Turbo.morphChildren(this.bodyTarget, next);
         }
+        if (marks) this.mark(marks);
         if (this.hasSparkTarget) this.sparkTarget.classList.toggle('spark-busy', this.active);
         clearTimeout(this.timer);
         if (this.active && !liveOpen()) this.timer = setTimeout(() => this.refresh(), 3000);
@@ -102,6 +103,18 @@ export default class extends Controller {
             this.values = values;
             this.fill();
         }
+    }
+
+    // Ход чтения — на строках документов страницы (`data-scan-key` — отпечаток файла): читаемый, ждущий, прочитанный.
+    // Пока не читали, строки как строки; прочитанное на этой странице остаётся с галкой.
+    mark(marks) {
+        if (['reading', 'queued', 'stopped'].includes(this.state)) this.seen = true;
+        document.querySelectorAll('[data-scan-key]').forEach((row) => {
+            if (this.bodyTarget.contains(row)) return;
+            const scan = this.seen ? marks[row.dataset.scanKey] : null;
+            if (scan) row.dataset.scan = scan;
+            else delete row.dataset.scan;
+        });
     }
 
     // Пустые поля — значением документа, если он один; дальше — сравнение.

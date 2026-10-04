@@ -60,12 +60,13 @@ final class Reader
      * Ход чтения и найденное:
      * - `state` — `idle` (не начинали), `queued` (ждёт очереди за чужим чтением), `reading`, `stopped` (остановили или
      *   что-то не прочлось), `done`;
-     * - `html` — строка хода и лента листов (`admin/mail/reader-sheets`);
+     * - `html` — строка хода и документы строками (`admin/mail/reader-sheets`);
+     * - `marks` — ход по отпечатку файла: его ставят на строки «Документов» редактора (`data-scan-key`);
      * - `values` — найденное в прочитанном, в именах полей формы (`FormValues`): с формой сравнивает читалка.
      *
      * `$open` — первый PDF открывается в шторке сам (разбор письма: начальник заполняет, глядя в скан).
      *
-     * @return array{state: string, html: string, values: array}
+     * @return array{state: string, marks: array<string, string>, html: string, values: array}
      */
     public static function live(Subject $subject, bool $open = false): array
     {
@@ -92,9 +93,19 @@ final class Reader
 
         return [
             'state' => $state,
+            'marks' => $files->mapWithKeys(fn (ScanFile $f) => [self::mark($f) => $states[$f->scanId()]])->all(),
             'html' => view('admin.mail.reader-sheets', ['subject' => $subject, 'files' => $files, 'states' => $states, 'state' => $state, 'auto' => $open])->render(),
             'values' => FormValues::of($found, $subject->fields()),
         ];
+    }
+
+    /**
+     * Метка файла для хода чтения на строке документа (`data-scan-key`): отпечаток содержимого — он один у вложения
+     * письма и у того же файла в документах предложения или ТС; без отпечатка — номер.
+     */
+    public static function mark(ScanFile $file): string
+    {
+        return $file->scanSha() ?: 'id-'.$file->scanId();
     }
 
     /** @return list<string> */

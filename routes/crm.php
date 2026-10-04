@@ -31,6 +31,7 @@ use App\Http\Admin\WorkflowController;
 use App\Http\Cabinet\InviteController;
 use App\Http\Cabinet\ProfileController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
+use App\Http\Mail\AttachController;
 use App\Http\Mail\ScanController;
 use App\Http\Site\ShareController;
 use App\Purchases\Car;
@@ -69,6 +70,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/offers/{offer}/scan/live', [ScanController::class, 'offerLive']);
         Route::post('/offers/{offer}/scan/read', [ScanController::class, 'offerRead']);
         Route::post('/offers/{offer}/scan/stop', [ScanController::class, 'offerStop']);
+        // Кадры письма прикрепляются: строка хода и ряд фото, пока ImportThreadFiles идёт (attach_controller).
+        Route::get('/offers/{offer}/attach', [AttachController::class, 'offer']);
         Route::put('/offers/{offer}', [OfferController::class, 'update']);
         // Черновик из писем до первого сохранения: «Отменить» и «Не заявка» (decline) — черновика не было, письма снова ждут.
         Route::post('/offers/{offer}/drop', [MailController::class, 'dropDraft'])->middleware('ability:canCrmMail');
