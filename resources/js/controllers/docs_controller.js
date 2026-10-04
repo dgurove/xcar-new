@@ -180,6 +180,21 @@ export default class extends Controller {
             seen.add(item.key);
             this.items.push(item);
         }
+        // Фото из писем — одной вкладкой «Фото N» с сеткой, а не вкладкой на каждый кадр (в ящике ТС их бывает под сотню).
+        let start = this.items.findIndex((item) => item.key === this.key(a));
+        const shots = this.items.filter((item) => item.type === 'image' && /\/attachments\/\d+/.test(new URL(item.url).pathname));
+        if (shots.length > 1) {
+            const first = this.items.indexOf(shots[0]);
+            const opened = shots.indexOf(this.items[start]);
+            const pic = (item, p) => { const u = new URL(item.url); u.search = ''; u.searchParams.set(p, '1'); return u.href; };
+            const group = {
+                key: '#mail-photos', url: '#photos', type: 'photos', name: `Фото ${shots.length}`, file: '',
+                photos: shots.map((item) => ({ t: pic(item, 'thumb'), s: pic(item, 'large') })), start: opened >= 0 ? opened : null,
+            };
+            this.items = this.items.filter((item) => !shots.includes(item));
+            this.items.splice(first, 0, group);
+            start = opened >= 0 ? first : this.items.findIndex((item) => item.key === this.key(a));
+        }
         this.tabsTarget.replaceChildren(...this.items.map((item, i) => {
             const b = document.createElement('button');
             b.type = 'button';
@@ -193,7 +208,7 @@ export default class extends Controller {
         this.tabsTarget.hidden = this.items.length < 2;
         this.reveal(instant);
         if (auto && !wide.matches) this.setHeight(Math.min(this.height, this.snaps()[1]));
-        this.show(this.items.findIndex((item) => item.key === this.key(a)));
+        this.show(start);
     }
 
     pick(event) {

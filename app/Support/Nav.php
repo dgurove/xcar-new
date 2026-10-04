@@ -505,7 +505,8 @@ final class Nav
                 '/work/money' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereNotNull('deal_id'))->count()
                     + BankTransaction::where('state', BankTransaction::UNMATCHED)->count(),
             ];
-            $badges['/work'] = $badges['/work/deals'] + $badges['/work/mail'] + $badges['/work/chats'] + $badges['/work/money'];
+            // На табе «Работа» — только сделки (владелец, 04.10.2026): почта, чаты и деньги горят у своих разделов.
+            $badges['/work'] = $badges['/work/deals'];
 
             return $badges;
         });

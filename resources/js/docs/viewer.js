@@ -293,6 +293,9 @@ function photos(box, item, hooks) {
         view = image(holder, list[index].s);
         swipe(holder);
     };
+    // Открыли с конкретного кадра (фото из письма) — сразу он, «Все фото» ведёт в сетку.
+    const begin = item.start;
+    item.start = null;
     const swipe = (holder) => {
         let start = null;
         holder.addEventListener('touchstart', (e) => { start = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
@@ -312,6 +315,7 @@ function photos(box, item, hooks) {
     };
     addEventListener('keydown', key);
     box.replaceChildren(grid);
+    if (begin != null && list[begin]) one(begin);
     return {
         rotate() { view?.rotate(); },
         destroy() { view?.destroy(); removeEventListener('keydown', key); },

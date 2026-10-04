@@ -1521,6 +1521,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .detail-card { border-radius: inherit; }
     /* Карточка встала справа — такой столбец уже написан в ней, а название снова читается целиком. */
     .split[data-open] .col-detail-hide { display: none !important; }
+    /* Не влезла таблица рядом с карточкой — листается вбок, столбцы не режутся. */
+    .split[data-open] .table-box { overflow-x: auto; overscroll-behavior-x: contain; }
   }
   @media (max-width: 1023.98px) {
     /* Лист снизу: полэкрана или во весь экран (data-full), высоту меняет только полоса сверху (detail_controller#grab,
@@ -1534,8 +1536,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .split-detail[data-full] { height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top)); }
     .detail-card {
       height: 100%; overflow: hidden;
-      border-radius: var(--radius-xl) var(--radius-xl) 0 0; box-shadow: var(--shadow-drop);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      box-shadow: 0 -.5px 0 var(--color-line), 0 -6px 28px rgb(0 0 0 / .2);
     }
+    /* Лист над таблицей того же цвета сливался с ней. В тёмной теме он на ступень светлее, как приподнятые
+       поверхности iOS: всё внутри поднимается вместе с ним (поля, капсулы), тень на тёмном не видна. */
+    .dark .split-detail {
+      --color-surface: #2c2c2e; --color-surface-2: #3a3a3c; --color-surface-3: #48484a; --color-line: #48484a;
+    }
+    .dark .split-detail .detail-card { box-shadow: 0 -.5px 0 var(--color-line), 0 -8px 32px rgb(0 0 0 / .6); }
     .detail-body {
       flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
       padding-bottom: max(env(safe-area-inset-bottom), 1rem);
