@@ -23,7 +23,8 @@ final class Caption
         // Цены — последней строкой: клиент собирает отмеченные сверху вниз, цены склеивает стрелкой «от → до» в конце.
         // VIN менеджеру — как на сайте: скрытый глазиком уходит маской.
         $rows = [
-            ['number', 'Номер', '#'.$offer->number, true],
+            // У черновика номер временный (`OfferNumber`): настоящий выдаётся при публикации — в тексте его ещё нет.
+            ['number', 'Номер', $offer->published_at ? '#'.$offer->number : null, true],
             ['dl', 'ДЛ', $offer->leaseRef() ? 'ДЛ '.$offer->leaseRef() : null, true],
             ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
             ['city', 'Город', $offer->settlement?->title(), true],

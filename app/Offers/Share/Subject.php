@@ -27,7 +27,8 @@ final class Subject
 
     public static function offer(Offer $offer): self
     {
-        return new self($offer, (string) $offer->number, $offer->published_at ?? $offer->created_at, $offer->titleWithYear(), "/offers/{$offer->number}/pdf");
+        // Номер черновика временный (`OfferNumber`) — ни в знаке PDF, ни в имени файла его нет.
+        return new self($offer, $offer->published_at ? (string) $offer->number : '', $offer->published_at ?? $offer->created_at, $offer->titleWithYear(), "/offers/{$offer->number}/pdf");
     }
 
     public static function car(Car $car): self

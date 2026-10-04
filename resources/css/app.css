@@ -643,7 +643,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* «Рекомендуем»: синий кружок с галочкой в размер шрифта после названия; тег с подписью — синяя палитра. */
   .recommended { display: inline-flex; flex-shrink: 0; width: 1.05em; height: 1.05em; margin-left: .3em; vertical-align: -.15em; }
   .recommended > svg { width: 100%; height: 100%; }
-  /* Значок связи (x-ui.links): машина есть ещё где-то (парковка, CRM, гараж) — зелёная цепочка у названия, только
+  /* Значок связи (x-ui.links): машина есть ещё где-то (парковка, CRM, гараж) — зелёные три точки у названия, только
      админу. Мелкий, вровень с буквами, как «Рекомендуем»; палец ловит поле шире значка. */
   .car-links { display: inline-flex; flex-shrink: 0; margin-left: .3em; vertical-align: -.15em; }
   .car-links-btn { position: relative; z-index: 1; display: inline-flex; width: 1.1em; height: 1.1em; color: var(--color-accent-text); }
