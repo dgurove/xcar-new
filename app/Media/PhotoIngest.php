@@ -57,8 +57,9 @@ final class PhotoIngest
         $clean = null;
         $marked = null;
         try {
-            // Кадр, скачанный с сайта Мигторга со знаком (`{uuid}_watermark.webp`), — их оригинал без знака и крупнее.
-            if ($collection === 'photos' && $model instanceof Offer && ! isset($properties['migtorg']) && ($uuid = Migtorg::uuidOf($name)) && ($original = $this->migtorgOriginal($uuid))) {
+            // Кадр, скачанный с сайта Мигторга со знаком (`{файл}_watermark.webp`), лот которого в индексе, — их
+            // оригинал без знака и крупнее.
+            if ($collection === 'photos' && $model instanceof Offer && ! isset($properties['migtorg']) && ($uuid = Migtorg::mediaOf($name)) && ($original = $this->migtorgOriginal($uuid))) {
                 @unlink($path);
                 [$path, $properties['migtorg']] = [$original, $uuid];
             }

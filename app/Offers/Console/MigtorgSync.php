@@ -42,21 +42,22 @@ class MigtorgSync extends Command
     }
 
     /**
-     * Кадры лотов в `migtorg_media`: скачанный с их сайта кадр сам называет лот. Перевыставленный лот несёт те же
-     * кадры под новым номером — `$newest` (синхронизация, карточка) отдаёт кадр ему, обход архива вниз — не трогает.
+     * Кадры лотов в `migtorg_media`: скачанный с их сайта кадр (по имени файла) сам называет кадр и лот.
+     * Перевыставленный лот несёт те же кадры под новым номером — `$newest` (синхронизация, карточка) отдаёт кадр ему,
+     * обход архива вниз — не трогает.
      *
-     * @param  array<int, list<string>>  $photos  лот → uuid кадров
+     * @param  array<int, array<string, string>>  $photos  лот → файл → uuid кадра
      */
     public static function media(array $photos, bool $newest = true): void
     {
         $rows = [];
         foreach ($photos as $lotId => $uuids) {
-            foreach ($uuids as $uuid) {
-                $rows[$uuid] = ['uuid' => $uuid, 'lot_id' => $lotId];
+            foreach ($uuids as $file => $uuid) {
+                $rows[$file] = ['file' => $file, 'uuid' => $uuid, 'lot_id' => $lotId];
             }
         }
         foreach (array_chunk(array_values($rows), 1000) as $chunk) {
-            $newest ? DB::table('migtorg_media')->upsert($chunk, ['uuid'], ['lot_id']) : DB::table('migtorg_media')->insertOrIgnore($chunk);
+            $newest ? DB::table('migtorg_media')->upsert($chunk, ['file'], ['uuid', 'lot_id']) : DB::table('migtorg_media')->insertOrIgnore($chunk);
         }
     }
 

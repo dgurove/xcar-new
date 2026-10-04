@@ -42,7 +42,7 @@ class OfferPhotoController
             } elseif ($request->input('collection') === 'papers' || ! $this->isImage($file, $ingest)) {
                 // Отпечаток — как у документов из писем: «✨» читает один и тот же скан один раз (кеш текста по sha).
                 $offer->addMedia($file)->usingFileName(self::safeName($name))->withCustomProperties(['sha' => hash_file('sha256', $file->getRealPath())])->toMediaCollection('papers');
-            } elseif (! (($uuid = Migtorg::uuidOf($name)) && $offer->media()->where('collection_name', 'photos')->where('custom_properties->migtorg', $uuid)->exists())) {
+            } elseif (! (($uuid = Migtorg::mediaOf($name)) && $offer->media()->where('collection_name', 'photos')->where('custom_properties->migtorg', $uuid)->exists())) {
                 // Добавленное руками сначала скрыто (владелец, 04.10.2026): что показать, решают глазом или «Показать все».
                 // Кадр с сайта Мигторга (уже взятый лотом — пропущен выше) сам называет лот: номер, поля и остальные кадры.
                 $media = $ingest->fromPhone($offer, 'photos', $request, properties: ['hidden' => true]);

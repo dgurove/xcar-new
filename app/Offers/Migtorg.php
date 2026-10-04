@@ -10,6 +10,7 @@ use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -56,7 +57,7 @@ final class Migtorg
     /**
      * Все опубликованные лоты: id, номер дела, VIN, название, конец торгов (московское время).
      *
-     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string, status: ?string, city: ?string, data: array, photos: list<string>}>
+     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string, status: ?string, city: ?string, data: array, photos: array<string, string>}>
      */
     public function lots(): \Generator
     {
@@ -74,7 +75,7 @@ final class Migtorg
 
     /**
      * Строка списка или карточка — то, что идёт в индекс `migtorg_lots`: `data` — поля машины для `MigtorgFields`,
-     * `photos` — кадры (в списке главный и три, в карточке все) для `migtorg_media`.
+     * `photos` — кадры файл → uuid (в списке главный и три, в карточке все) для `migtorg_media`.
      */
     public static function row(array $auction): array
     {
@@ -89,14 +90,25 @@ final class Migtorg
             'status' => $auction['status'] ?? null,
             'city' => trim((string) ($lot['city']['title'] ?? '')) ?: null,
             'data' => ['lot' => array_intersect_key($lot, array_flip(self::LOT_KEYS)), 'end_date' => $auction['end_date'] ?? null],
-            'photos' => self::photosOf($auction),
+            'photos' => self::filesOf($auction),
         ];
     }
 
-    /** Кадр, скачанный с их сайта, назван своим uuid: `0f59…b1_watermark.webp` (так его кладёт браузер). */
-    public static function uuidOf(string $name): ?string
+    /**
+     * Кадр, скачанный с их сайта, назван именем файла в их хранилище, не uuid кадра: `cbc7…2f_watermark.webp` →
+     * `cbc7…2f`. Кадр по нему — через индекс `migtorg_media` (`mediaOf`).
+     */
+    public static function fileOf(string $name): ?string
     {
         return preg_match('/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_watermark\b/i', basename($name), $m) ? strtolower($m[1]) : null;
+    }
+
+    /** uuid кадра Мигторга по имени скачанного с их сайта файла, если его лот уже в индексе. */
+    public static function mediaOf(string $name): ?string
+    {
+        $file = self::fileOf($name);
+
+        return $file ? DB::table('migtorg_media')->where('file', $file)->value('uuid') : null;
     }
 
     /** Карточка лота — только со входом: тот же вид, что строка списка, но кадры все. */
@@ -107,15 +119,32 @@ final class Migtorg
         return $auction['data'] ?? $auction;
     }
 
-    /** uuid кадров карточки по порядку: главный, затем остальные — как в галерее на сайте. Заглушка «not_available» — не кадр. */
+    /** uuid кадров карточки по порядку: главный, затем остальные — как в галерее на сайте. */
     public static function photosOf(array $auction): array
     {
-        $order = fn (array $list) => collect($list)->sortBy('order_column')->pluck('uuid')->all();
+        return array_values(self::filesOf($auction));
+    }
 
-        return array_values(array_unique(array_filter([
-            ...$order($auction['media']['main_photos'] ?? []),
-            ...$order($auction['media']['photos'] ?? []),
-        ], fn ($uuid) => is_string($uuid) && Str::isUuid($uuid))));
+    /**
+     * Кадры по порядку, имя файла в их хранилище → uuid кадра. Заглушка «not_available» — не кадр.
+     *
+     * @return array<string, string>
+     */
+    public static function filesOf(array $auction): array
+    {
+        $files = [];
+        foreach (['main_photos', 'photos'] as $list) {
+            foreach (collect($auction['media'][$list] ?? [])->sortBy('order_column') as $media) {
+                $uuid = $media['uuid'] ?? null;
+                if (! is_string($uuid) || ! Str::isUuid($uuid) || in_array($uuid, $files, true)) {
+                    continue;
+                }
+                $file = strtolower(pathinfo((string) ($media['file_name'] ?? ''), PATHINFO_FILENAME));
+                $files[Str::isUuid($file) ? $file : $uuid] = $uuid;
+            }
+        }
+
+        return $files;
     }
 
     public function download(string $uuid, string $to): void

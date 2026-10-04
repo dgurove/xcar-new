@@ -223,19 +223,20 @@ final class ImportMigtorgLot implements ShouldQueue
             $card = $migtorg->card($this->lotId);
             self::noteShape($card);
             $row = Migtorg::row($card);
-            $lotPhotos = $row['photos'];
+            $files = $row['photos'];
+            $lotPhotos = array_values($files);
             // Карточка полнее строки списка: поля и все кадры — в индекс, им пользуются поле номера и загрузка кадров.
             DB::table('migtorg_lots')->where('id', $this->lotId)->update(['photos' => count($lotPhotos), 'data' => json_encode($row['data'], JSON_UNESCAPED_UNICODE)]);
-            MigtorgSync::media([$this->lotId => $lotPhotos]);
+            MigtorgSync::media([$this->lotId => $files]);
             // Поля из индекса легли в start(); карточка дописывает то, чего в списке не было. Правит система, не человек.
             $filled = $apply($offer, MigtorgFields::of($card), null, onlyEmpty: true, log: ['source' => 'migtorg']);
             $offer->refresh();
             $this->refresh($publish, $offer);
             $photos = $offer->media()->where('collection_name', 'photos')->get();
             $have = $photos->map(fn (Media $m) => $m->getCustomProperty('migtorg'))->filter()->flip();
-            // Скачанные с их сайта руками — со знаком (снятым сетью): меняются на оригинал на том же месте.
+            // Скачанные с их сайта руками — со знаком (снятым сетью), по имени файла: меняются на оригинал на том же месте.
             $named = $photos->reject(fn (Media $m) => $m->getCustomProperty('migtorg'))
-                ->keyBy(fn (Media $m) => Migtorg::uuidOf($m->file_name) ?? 'own-'.$m->id);
+                ->keyBy(fn (Media $m) => $files[Migtorg::fileOf($m->file_name) ?? ''] ?? 'own-'.$m->id);
             // Сами кадры — если в ряду нет чужих (из писем, с телефона): к своим менеджер добавит лот кнопкой, без дублей.
             $own = $named->keys()->diff($lotPhotos)->isNotEmpty();
             $todo = $this->manual || ! $own ? array_values(array_filter($lotPhotos, fn ($u) => ! $have->has($u))) : [];
