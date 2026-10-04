@@ -82,9 +82,9 @@ class OfferController
         $admin = $request->user()->canManageCrm();
         $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? (string) $request->query('preset') : 'unpriced';
         $step = in_array($preset, self::STEPS, true);
-        // «Без цены» — ничего лишнего: ни чипов, ни сортировки, ни вида. «Рекомендуем» — переключатель у опубликованных.
+        // «Без цены» — без сортировки и вида, чипы есть (владелец 04.10.2026: «не хватает фильтров»), по умолчанию — без
+        // Каркаде. «Рекомендуем» — переключатель у опубликованных.
         $facets = Facets::for($request, 'crm-offers', ...match ($preset) {
-            'unpriced' => [],
             'published' => [...self::facets(), Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true))],
             default => self::facets(),
         });
@@ -92,6 +92,9 @@ class OfferController
         $sort = array_key_exists((string) $request->query('sort'), self::SORTS) ? (string) $request->query('sort') : 'fresh';
         // Поиск лупой идёт по всему разделу — мимо вкладки и чипов.
         $searching = $facets->searching();
+        // «Без цены» без выбранного вендора — все, кроме Каркаде (их десятки из закупки, оценивают отдельно). Выбор не
+        // запоминается и в ссылки вкладок не едет: после чипов параметр убирается (ниже).
+        $carcadeHidden = $preset === 'unpriced' && ! $searching && ! $request->query->has('vendor') && $this->hideCarcade($request);
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
         $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])
@@ -110,6 +113,12 @@ class OfferController
             };
         }
         $facets->apply($q);
+        // Числа вкладок — с тем же выбором, что и список (и «кроме Каркаде» по умолчанию).
+        $counts = self::counts($request->user(), $facets);
+        if ($carcadeHidden) {
+            $facets->chips();
+            $request->query->remove('vendor');
+        }
 
         $count = $q->count();
         $view = $step || $searching ? ListView::TABLE : ListView::pick($request, $count);
@@ -141,8 +150,23 @@ class OfferController
             // Галочки и отправка — админу, в «Оцененных» и «Публикации».
             'pick' => $admin && ! $searching && in_array($preset, ['priced', 'slots'], true),
             'cols' => self::columns($preset, $request->user(), $searching),
-            'counts' => self::counts($request->user(), $facets),
+            'counts' => $counts,
         ]);
+    }
+
+    /** Подставить в запрос «все вендоры „Без цены“, кроме Каркаде» (с «Без вендора»); нечего прятать — false. */
+    private function hideCarcade(Request $request): bool
+    {
+        $carcade = Vendor::where('name', 'Каркаде')->value('id');
+        $base = self::scopeFor('unpriced', Offer::visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft()));
+        $ids = (clone $base)->distinct()->pluck('vendor_id');
+        if (! $carcade || ! $ids->contains($carcade)) {
+            return false;
+        }
+        $keep = $ids->reject(fn ($id) => $id === $carcade)->map(fn ($id) => $id === null ? 'none' : (string) $id)->values();
+        $request->query->set('vendor', $keep->isEmpty() ? 'none' : $keep->implode(','));
+
+        return true;
     }
 
     /** Условие вкладки — одно место для списка, чисел у вкладок и таб-бара. */
@@ -219,7 +243,11 @@ class OfferController
         $counts = [];
         foreach (array_diff(array_keys(self::PRESETS), ['archive']) as $key) {
             $q = self::scopeFor($key, $base());
-            if ($facets && $key !== 'unpriced') {
+            // Без чипов (поток после «Оценить») «Без цены» считается как вид по умолчанию — без Каркаде.
+            if (! $facets && $key === 'unpriced' && ($carcade = Vendor::where('name', 'Каркаде')->value('id'))) {
+                $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
+            }
+            if ($facets) {
                 $facets->applyTo($q, $key === 'published' ? null : 'recommended');
             }
             $counts[$key] = $q->count();
@@ -231,7 +259,7 @@ class OfferController
     /** Чипы списка предложений — те же у галереи. */
     public static function facets(): array
     {
-        return [Common::vendor('offers.vendor_id'), Common::city('offers.settlement_id'), Common::category('offers.vehicle_category')];
+        return [Common::vendor('offers.vendor_id')->none('Без вендора'), Common::city('offers.settlement_id'), Common::category('offers.vehicle_category')];
     }
 
     public function store(Request $request, CreateOffer $create)

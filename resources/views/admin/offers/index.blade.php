@@ -28,7 +28,7 @@
     };
 @endphp
 <x-ui.shell title="Предложения" :count="$step ? null : $offers->total()" :phone-heading="false" :detail="$detail">
-    <x-ui.toolbar :sorts="$sorts" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="offers" :facets="$preset === 'unpriced' ? null : $facets" search="Номер, марка, VIN, убыток">
+    <x-ui.toolbar :sorts="$sorts" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
         @if (! $step)
             <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         @endif
