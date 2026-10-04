@@ -60,12 +60,12 @@ final class ImportMigtorgLot implements ShouldQueue
         return $p && time() - ($p['at'] ?? 0) < 300 ? $p : null;
     }
 
-    /** Ещё не скачанные кадры — заглушками в ряду фото, не больше шести: остальное скажет счётчик чипа. */
+    /** Ещё не скачанные кадры — заглушками в ряду фото, не больше восьми (как у кадров письма): остальное скажет строка хода. */
     public static function pending(int $offerId): int
     {
         $p = self::progress($offerId);
 
-        return ($p['n'] ?? null) ? max(0, min(6, $p['n'] - $p['i'])) : 0;
+        return ($p['n'] ?? null) ? max(0, min(8, $p['n'] - $p['i'])) : 0;
     }
 
     /** Свежий лот по номеру убытка предложения, если он есть в индексе и за фото можно ходить. */
