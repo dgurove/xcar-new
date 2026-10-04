@@ -33,7 +33,8 @@ final class Caption
             ['mileage', 'Пробег', $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null, false],
             ['vin', 'VIN', $offer->vin ? 'VIN '.($staff ? $offer->vin : $offer->vinMasked()) : null, true],
             ['tags', 'Метки', $offer->tags ? implode(', ', $offer->tags) : null, false],
-            ['until', 'Приём подтверждений до', $offer->bids_close_at?->translatedFormat('d.m.Y H:i'), false],
+            // Строкой с глаголом, а не голой датой (владелец 04.10.2026): в тексте без подписей «07.10.2026 17:00» ни о чём не говорит.
+            ['until', 'Приём подтверждений до', $offer->bids_close_at ? 'Подтвердить до '.$offer->bids_close_at->translatedFormat('d.m.Y H:i') : null, false],
             // Заявленная — «от», по умолчанию выключена: покупателю уходит одна цена. Закупочной в тексте нет ни у кого:
             // сотруднику заявленная та же, что на сайте (пустая — закупочная вверх до тысячи).
             ['publish_price', 'Заявленная', $staff ? $money($offer->declaredPrice()) : ($price->visible ? $money($price->declared) : null), false],

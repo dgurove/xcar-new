@@ -107,10 +107,10 @@ return [
     'migtorg_password' => env('MIGTORG_PASSWORD'),
     'migtorg_proxy' => env('MIGTORG_PROXY'),
 
-    // Слот публикации — каждый день в 16:00 МСК; приём подтверждений — через 3 дня после выхода, до 21:00
+    // Слот публикации — каждый день в 16:00 МСК; приём подтверждений — через 3 дня после выхода, до 17:00
     // (владелец 03.10.2026, `Offers\Slots`). Напоминание перед сроком этапа.
     'slot_hour' => 16,
     'bids_window_days' => 3,
-    'bids_close_hour' => 21,
+    'bids_close_hour' => 17,
     'remind_before_minutes' => 60,
 ];

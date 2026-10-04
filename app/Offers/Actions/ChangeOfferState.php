@@ -65,7 +65,7 @@ final class ChangeOfferState
                 } else {
                     $offer->published_at ??= now();
                     if (! $offer->bids_close_at || $offer->bids_close_at->isPast()) {
-                        // Срок приёма по умолчанию — через 3 дня в 21:00 (владелец 03.10.2026), а не текущая минута.
+                        // Срок приёма по умолчанию — через 3 дня в 17:00 (владелец 04.10.2026), а не текущая минута.
                         $offer->bids_close_at = Slots::closeFor(now());
                     }
                 }

@@ -41,7 +41,7 @@ final class EnterStage
 
         if ($track === Track::Sale && $to->offer_state === OfferState::Open
             && (! $offer->bids_close_at || $offer->bids_close_at->isPast())) {
-            // Как у публикации кнопкой: через N дней в 21:00 (`Slots::closeFor`), N — срок этапа «Приём» в днях.
+            // Как у публикации кнопкой: через N дней в 17:00 (`Slots::closeFor`), N — срок этапа «Приём» в днях.
             $offer->bids_close_at = Slots::closeFor($now, $to->limit_minutes ? max(1, intdiv($to->limit_minutes, 1440)) : null);
             $offer->save();
         }
