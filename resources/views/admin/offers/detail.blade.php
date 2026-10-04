@@ -29,9 +29,10 @@
     <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         <x-slot:media>
             <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
+                {{-- Над лентой, а не под ней: развёрнутая плиткой лента уносила бы кнопки вниз. --}}
+                <div class="photos-over"><x-ui.photos-expand/><x-ui.photos-all/></div>
                 @include('admin.offers.photo-upload')
                 @include('admin.offers.detail-photos')
-                <div class="photos-under"><x-ui.photos-expand/><x-ui.photos-all/></div>
             </div>
         </x-slot:media>
         <x-slot:marks>

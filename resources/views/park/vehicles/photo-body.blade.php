@@ -6,6 +6,6 @@
         <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
     </div>
 @endif
+@if ($collapsed ?? false)<div class="photos-over"><x-ui.photos-all/></div>@endif
 {{-- Глаз — показ в продаже: в деле ТС видны все кадры, скрытый только сереет. --}}
 <x-ui.photos :photos="$photos" :readonly="! $edit" grid hide :main="false" :id="'gallery-'.$stage->value"/>
-@if ($collapsed ?? false)<x-ui.photos-all class="photos-all--under"/>@endif

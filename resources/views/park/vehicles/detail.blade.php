@@ -19,8 +19,8 @@
         @if ($vehicle->photos()->isNotEmpty())
             <x-slot:media>
                 <div data-controller="photos" data-photos-url-value="{{ $href }}/media" data-photos-group-value="car-{{ $vehicle->id }}">
+                    <div class="photos-over"><x-ui.photos-expand/><x-ui.photos-all/></div>
                     <x-ui.photos :photos="$vehicle->photos()" :add="false" :deletable="false" :main="false" id="detail-photos"/>
-                    <div class="photos-under"><x-ui.photos-expand/><x-ui.photos-all/></div>
                 </div>
             </x-slot:media>
         @endif

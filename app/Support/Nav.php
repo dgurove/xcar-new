@@ -408,11 +408,12 @@ final class Nav
                 ], 'fresh' => []];
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
-                return ['totals' => ['/' => Offer::visibleTo($user)->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])->count()], 'fresh' => []];
+                // Таб — как список без пилюли: у модератора его черновики, у админа — что в продаже.
+                return ['totals' => ['/' => Offer::visibleTo($user)->where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())->count()], 'fresh' => []];
             }
             if ($surface === Surface::Crm) {
                 return ['totals' => [
-                    '/' => Offer::whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->count(),
+                    '/' => Offer::where('state', OfferState::Open)->count(),
                     '/gallery' => Offer::where('state', OfferState::Gallery)->count(),
                     '/work' => Deal::where('state', DealState::Active)->count(),
                     '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),

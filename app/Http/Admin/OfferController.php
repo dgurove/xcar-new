@@ -44,13 +44,17 @@ use Illuminate\Validation\Rule;
 
 class OfferController
 {
+    /**
+     * Опубликованное и неопубликованное вместе не показываются никогда (04.10.2026, владелец): пилюли «Все» нет, каждая —
+     * одна сторона: в продаже (и её выборки) или черновики. Сделки в предложениях не показываются — они в «Работе».
+     */
     public const PRESETS = [
-        'all' => 'Все', 'recommended' => 'Рекомендуем', 'draft' => 'Черновики', 'slot' => 'В слоте', 'open' => 'В продаже',
-        'bids' => 'Выбрать', 'sold' => 'В сделке', 'archive' => 'Архив', 'purchase' => 'Из закупок',
+        'open' => 'В продаже', 'bids' => 'Выбрать', 'recommended' => 'Рекомендуем', 'draft' => 'Черновики', 'slot' => 'В слоте',
+        'archive' => 'Архив', 'purchase' => 'Из закупок',
     ];
 
     /** Модератору — предложения его группы по состоянию: выбирать победителя и рекомендовать — дело админа. */
-    public const MODERATOR_PRESETS = ['all' => 'Все', 'draft' => 'Черновики', 'open' => 'В продаже', 'sold' => 'В сделке', 'archive' => 'Архив'];
+    public const MODERATOR_PRESETS = ['draft' => 'Черновики', 'open' => 'В продаже', 'archive' => 'Архив'];
 
     public const SORTS = ['fresh' => 'Сначала новые', 'bids' => 'По подтверждениям', 'closing' => 'Скоро закроются', 'number' => 'По номеру'];
 
@@ -63,7 +67,8 @@ class OfferController
         }
         $admin = $request->user()->canManageCrm();
         $presets = $admin ? self::PRESETS : self::MODERATOR_PRESETS;
-        $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : 'all';
+        // Без пилюли: админу — то, что в продаже, модератору — его черновики.
+        $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : ($admin ? 'open' : 'draft');
         // «В слоте» — пилюлей, пока есть что выпускать в 16:00.
         $scheduled = $admin ? Offer::scheduled()->whereDoesntHave('purchaseCar')->count() : 0;
         if ($admin && ! $scheduled && $preset !== 'slot') {
@@ -82,24 +87,21 @@ class OfferController
 
         if (! $searching) {
             match ($preset) {
-                'recommended' => $q->where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery]),
+                'recommended' => $q->where('recommended', true)->where('state', OfferState::Open),
                 // У админа поставленные в слот — своей пилюлей, в «Черновиках» их нет; модератору это всё ещё черновики.
                 'draft' => $q->where('state', OfferState::Draft)->when($admin, fn ($d) => $d->whereNull('slot_at')),
                 'slot' => $q->scheduled(),
                 'open' => $q->where('state', OfferState::Open),
                 // Выбрать победителя: в продаже и с подтверждениями. У предложения в сделке оставшиеся — резерв, не очередь.
                 'bids' => $q->where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
-                'sold' => $q->whereIn('state', [OfferState::Sold, OfferState::Delivered]),
                 'archive' => $q->whereIn('state', [OfferState::Archived, OfferState::Cancelled]),
-                // Из закупок — только своей пилюлей, в любом состоянии: из остальных они скрыты.
-                'purchase' => $q->whereHas('purchaseCar'),
-                // Галерея — свой раздел у админа; у модератора своего раздела нет, его «скоро в продаже» — во «Все».
-                default => $q->whereNotIn('state', $admin ? [OfferState::Archived, OfferState::Gallery] : [OfferState::Archived, OfferState::Cancelled]),
+                // Из закупок — неопубликованные своей пилюлей (их десятки); опубликованные — в «В продаже» со всеми.
+                'purchase' => $q->whereHas('purchaseCar')->where('state', OfferState::Draft),
             };
         }
         // Предложения из закупок (контрпредложение Carcade → «В предложения») по умолчанию скрыты — их смотрят
         // своей пилюлей. Модератор их не видит вовсе (`Offer::scopeVisibleTo`).
-        if ($preset !== 'purchase' && ! $searching) {
+        if (in_array($preset, ['draft', 'slot'], true) && ! $searching) {
             $q->whereDoesntHave('purchaseCar');
         }
         if ($searching) {
@@ -142,11 +144,11 @@ class OfferController
             // Числа у пилюль; модератору — в пределах его группы.
             'facets' => $facets,
             'counts' => array_map(fn ($c) => $c instanceof Builder ? $facets->applyTo($c)->count() : $c, $admin ? [
-                'recommended' => Offer::where('recommended', true)->whereNotIn('state', [OfferState::Archived, OfferState::Gallery])->whereDoesntHave('purchaseCar'),
+                'recommended' => Offer::where('recommended', true)->where('state', OfferState::Open),
                 'draft' => Offer::where('state', OfferState::Draft)->whereNull('slot_at')->whereNot(fn ($o) => $o->emptyDraft())->whereDoesntHave('purchaseCar'),
                 'slot' => $scheduled,
-                'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active))->whereDoesntHave('purchaseCar'),
-                'purchase' => Offer::whereHas('purchaseCar'),
+                'bids' => Offer::where('state', OfferState::Open)->whereHas('bids', fn ($b) => $b->where('state', BidState::Active)),
+                'purchase' => Offer::whereHas('purchaseCar')->where('state', OfferState::Draft),
             ] : ['draft' => Offer::visibleTo($request->user())->where('state', OfferState::Draft)->whereNot(fn ($o) => $o->emptyDraft())]),
         ]);
     }
