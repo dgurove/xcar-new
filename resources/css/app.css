@@ -1585,8 +1585,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .split-detail {
       @apply block;
       position: fixed; inset-inline: 0; bottom: 0; z-index: 45; margin-inline: auto; max-width: 36rem;
-      height: 50dvh; overflow: hidden; touch-action: pan-y;
-      animation: sheet-up var(--dur-slow) var(--ease-out) both;
+      height: 50dvh; overflow: hidden;
+      /* backwards, а не both: заполненная анимация оставляла листу сдвиг слоем, и Safari на iPhone не доставлял нажатия в
+         верх листа (кадры, кнопки на них, полоса) — у админа в предложениях, 04.10.2026. touch-action — только у полосы. */
+      animation: sheet-up var(--dur-slow) var(--ease-out) backwards;
     }
     .split-detail[data-full] { height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top)); }
     .detail-card {
