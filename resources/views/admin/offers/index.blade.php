@@ -30,9 +30,7 @@
 @endphp
 <x-ui.shell title="Предложения" :count="$step ? null : $offers->total()" :phone-heading="false" :detail="$detail">
     <x-ui.toolbar :sorts="$sorts" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
-        @if (! $step)
-            <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
-        @endif
+        <x-slot:extra>@unless ($searching)<x-ui.view-switch :current="$view"/>@endunless</x-slot:extra>
         <x-slot:actions>
             @if (auth()->user()->canCrmMail())<a href="/offers/from-mail" class="btn btn-s btn-quiet relative shrink-0 rounded-full" aria-label="Из писем"><x-ui.icon name="mail" class="size-4"/><span class="hidden sm:inline">Из писем</span><x-ui.badge href="/offers/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>@endif
             <form method="post" action="/offers" class="shrink-0">@csrf<button type="submit" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Новый</span></button></form>
@@ -59,9 +57,9 @@
                 </x-ui.table>
             @else
                 @foreach ($groups as $key => $list)
-                    @if ($title = $groupTitle($key, $list))<h2 class="box-title {{ $loop->first ? '' : 'mt-6' }}">{{ $title }} <span class="nums text-ink-dim">{{ $list->count() }}</span></h2>@endif
+                    @if ($title = $groupTitle($key, $list))<h2 class="box-title flex items-center gap-2 {{ $loop->first ? '' : 'mt-6' }}">@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums text-ink-dim">{{ $list->count() }}</span></h2>@endif
                     <div @if ($loop->first) id="offers" @endif class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
-                        @foreach ($list as $offer)<x-offer.crm-card :offer="$offer"/>@endforeach
+                        @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$preset === 'slots' ? $key : null"/>@endforeach
                     </div>
                 @endforeach
             @endif

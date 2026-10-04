@@ -481,6 +481,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card-check span { @apply flex size-7 items-center justify-center rounded-full bg-white/85 text-transparent shadow-(--shadow-drop) transition-colors; }
   .card-check input:checked + span { @apply bg-accent text-white; }
   [data-selecting] .card-check { display: block; }
+  /* CRM, «Оцененные» и «Публикация» плитками и строками: галочка выбора пачкой видна всегда. */
+  .card-check--on { display: block; }
+  .card:has(.card-check--on input:checked) { box-shadow: inset 0 0 0 3px var(--color-accent); }
   [data-selecting] .card:has(.card-check input:checked) { box-shadow: inset 0 0 0 3px var(--color-accent); }
   [data-selecting] .card-action, [data-selecting] .card-star { pointer-events: none; opacity: .5; }
 
@@ -985,7 +988,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .cell-sub > * + * { margin-left: .375rem; }
   /* Строка фактов предложения на телефоне переносится, а не режется: ни подтверждения, ни номер, ни город не уходят в «…». */
   @media (max-width: 639.98px) {
-    .cell-sub--wrap { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .375rem; white-space: normal; text-overflow: clip; }
+    .cell-sub--wrap { display: flex; flex-wrap: wrap; align-items: center; column-gap: .375rem; white-space: normal; text-overflow: clip; }
     .cell-sub--wrap > * { white-space: nowrap; }
     .cell-sub--wrap > * + * { margin-left: 0; }
   }

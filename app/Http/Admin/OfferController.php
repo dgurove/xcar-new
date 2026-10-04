@@ -91,7 +91,7 @@ class OfferController
             'published' => [...self::facets(), Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true))],
             default => self::facets(),
         });
-        ListPrefs::sync($request, 'crm-offers', rememberTable: true, keep: $facets->keys(), view: ! $step);
+        ListPrefs::sync($request, 'crm-offers', rememberTable: true, keep: $facets->keys());
         $sort = array_key_exists((string) $request->query('sort'), self::SORTS) ? (string) $request->query('sort') : 'fresh';
         // Поиск лупой идёт по всему разделу — мимо вкладки и чипов.
         $searching = $facets->searching();
@@ -125,7 +125,8 @@ class OfferController
         }
 
         $count = $q->count();
-        $view = $step || $searching ? ListView::TABLE : ListView::pick($request, $count);
+        // Вид — на любой вкладке (начальник 04.10.2026: «вернуть кнопку видов»); по умолчанию в CRM таблица, поиск — таблицей.
+        $view = $searching ? ListView::TABLE : ListView::pick($request, $count);
         $offers = ListView::isTable($view) ? $q->paginate(max($count, 1), total: $count)->withQueryString() : ListView::paginate($request, $q, $count);
         // Кадры нужны плиткам и строкам; в таблице их нет — кроме «Оцененных»: там по ним видно, готово ли к продаже.
         if (! ListView::isTable($view) || ($preset === 'priced' && ! $searching)) {

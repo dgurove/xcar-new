@@ -4,7 +4,7 @@
      справа, в строке — цена справа, город под ней. Неоценённый черновик — чипом «Оценить» (только админу): ведёт в
      карточка таблицы на этой строке, рядом закупочная. Тегов года, коробки и НДС нет — они в карточке и на странице. Кнопок нет: вся
      карточка — ссылка на предложение. --}}
-@props(['offer', 'gallery' => false])
+@props(['offer', 'gallery' => false, 'checkable' => false, 'group' => null])
 @php
     use App\Offers\OfferState;
     use App\Support\Money;
@@ -26,9 +26,13 @@
     $timer = $left !== null && $left > 0;
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => 'text-ink' };
     $count = ! $admin ? 0 : ($gallery ? (int) ($offer->interests_count ?? 0) : (int) ($offer->active_bids_count ?? 0));
+    // Выбор пачкой («Оцененные», «Публикация») — галочкой в углу кадра, как в строке таблицы; не готовое к продаже —
+    // без галочки, «нет фото» красным в строке текста.
+    $missing = $checkable && $draft && ! $offer->isScheduled() ? array_map(fn ($m) => 'нет '.match ($m) { 'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m }, \App\Offers\Actions\ChangeOfferState::missing($offer)) : [];
 @endphp
 <article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" data-detail-key="{{ $n }}" class="card group">
     <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1" {!! $peek !!}></a>
+    @if ($checkable && ! $missing)<label class="card-check card-check--on" aria-label="Выбрать"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"><span><x-ui.icon name="check" class="size-4"/></span></label>@endif
     @if ($photos->isNotEmpty())
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
             <a href="{{ $href }}" {!! $peek !!} class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
@@ -62,6 +66,7 @@
             @elseif ($offer->isScheduled())<span class="text-accent-text">выйдет {{ \App\Offers\Slots::phrase($offer->slot_at) }}</span>
             @elseif (! $draft)<span class="{{ $tone }}">{{ mb_strtolower($offer->state->labelFor(auth()->user())) }}</span>@endif
             @if ($count)<span class="{{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count }} {{ $gallery ? \App\Support\Plural::of($count, ['интерес', 'интереса', 'интересов']) : 'подтв.' }}</span>@endif
+            @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
         </span>
     </div>
     <div class="card-aside">
