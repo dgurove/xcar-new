@@ -161,7 +161,7 @@
         </form>
 
         <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
-            <x-slot:actions><x-ui.photos-all/></x-slot:actions>
+            <x-slot:actions><div class="flex items-center gap-4"><x-ui.photos-expand/><x-ui.photos-all/></div></x-slot:actions>
             @include('admin.offers.photo-upload')
             @include('admin.offers.gallery')
         </x-ui.card>

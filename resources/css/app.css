@@ -2347,6 +2347,13 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .photos-all { @apply -my-1 inline-flex min-h-8 shrink-0 items-center text-sm font-medium text-accent-text hover:text-accent-hover; }
   .photos-all[hidden] { display: none; }
   .photos-all--under { @apply mt-1.5 ml-auto flex w-fit; }
+  .photos-under { @apply mt-1.5 flex justify-end gap-4; }
+  .photos-under:not(:has(> button:not([hidden]))) { display: none; }
+  /* «Развернуть»: лента — плиткой, плитка «добавить» — первой клеткой; перетаскивание то же. */
+  .photo-row.is-open { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); }
+  .photo-row.is-open .photo-strip { display: contents; }
+  .photo-row.is-open :is(.photo-cell, .photo-add) { aspect-ratio: 1 / 1; height: auto; width: auto; min-width: 0; }
+  .photo-row.is-open .photo-cell img { height: 100%; width: 100%; max-width: none; object-fit: cover; }
   .photo-strip { @apply -mr-4 flex min-w-0 flex-1 snap-x gap-1 overflow-x-auto pr-4 sm:mr-0 sm:pr-0 sm:pb-1; scrollbar-width: none; }
   @media (hover: hover) { .photo-strip { scrollbar-width: thin; } }
   /* Внутри карточки лента не вылезает за края: отрицательные поля — только на голой странице. */

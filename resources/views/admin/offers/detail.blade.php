@@ -31,7 +31,7 @@
             <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
                 @include('admin.offers.photo-upload')
                 @include('admin.offers.detail-photos')
-                <x-ui.photos-all class="photos-all--under"/>
+                <div class="photos-under"><x-ui.photos-expand/><x-ui.photos-all/></div>
             </div>
         </x-slot:media>
         <x-slot:marks>

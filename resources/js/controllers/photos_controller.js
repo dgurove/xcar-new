@@ -17,7 +17,7 @@ import { openSheet, closeSheet } from '../sheet';
 let shown = null;
 
 export default class extends Controller {
-    static targets = ['input', 'progress', 'grid', 'all'];
+    static targets = ['input', 'progress', 'grid', 'all', 'expand'];
     static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, mark: Boolean };
 
     connect() {
@@ -47,6 +47,7 @@ export default class extends Controller {
 
     async gridTargetConnected(grid) {
         this.syncAll();
+        this.syncExpand();
         if (this.readonlyValue) return;
         const Sortable = await loadSortable();
         if (!grid.isConnected) return;
@@ -78,6 +79,25 @@ export default class extends Controller {
     eyeCells() { return [...this.element.querySelectorAll('.photo-cell[data-id]')].filter((c) => c.querySelector('[data-act="hide"]')); }
 
     allTargetConnected() { this.syncAll(); }
+
+    // «Развернуть» / «Свернуть»: лента кадров плиткой. Выбор один на устройство — у всех лент сразу.
+    expandTargetConnected() { this.syncExpand(); }
+
+    get expanded() { try { return localStorage.getItem('photos:open') === '1'; } catch { return false; } }
+
+    syncExpand() {
+        const row = this.element.querySelector('.photo-row');
+        if (!row) return;
+        const open = this.expanded;
+        row.classList.toggle('is-open', open);
+        const n = row.querySelectorAll('.photo-cell').length;
+        this.expandTargets.forEach((b) => { b.hidden = n < 2; b.textContent = open ? 'Свернуть' : 'Развернуть'; });
+    }
+
+    expand() {
+        try { localStorage.setItem('photos:open', this.expanded ? '0' : '1'); } catch {}
+        this.syncExpand();
+    }
 
     syncAll() {
         if (!this.hasAllTarget) return;
