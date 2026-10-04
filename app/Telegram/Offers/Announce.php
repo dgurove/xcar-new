@@ -18,8 +18,8 @@ use Illuminate\Support\Facades\DB;
  * - 13:00–16:00 — «В 16:00 (МСК) будет опубликовано N предложений. Не пропустите», раз в день, если N > 0: в слоте на
  *   сегодня и этому менеджеру показывают сразу (волна 0).
  * - Вышло слотом и стало видно менеджеру (сам слот или его поздняя волна) — «Опубликовано N предложений, показать их?».
- * - «Опубликовать сейчас» (владелец 04.10.2026) — «Появились новые предложения», те же «показать» и «напомнить». Ждём
- *   3 минуты тишины после последнего: админ публикует подряд — одно сообщение на пачку, а не на каждое.
+ * - «Опубликовать сейчас» (владелец 04.10.2026) — сразу, на ближайшем такте часов: «Появились новые предложения», те же
+ *   «показать» и «напомнить». Опубликованное за эти ~20 секунд уходит одним сообщением.
  * - «Напомнить через 1 ч».
  *
  * Рассылки — только менеджерам, подписанным и не остановившим бота.
@@ -42,7 +42,7 @@ final class Announce
                 $items[] = ['timer' => 'morning', 'chat_id' => (int) $chat];
             }
         }
-        $fresh = DB::select("select s.chat_id from offer_bot_chats s
+        $fresh = DB::select("select distinct s.chat_id from offer_bot_chats s
             join users u on u.id = s.user_id and jsonb_exists(u.roles, ?)
             join offer_viewers v on v.user_id = s.user_id
             join offers o on o.id = v.offer_id
@@ -51,8 +51,7 @@ final class Announce
               and (o.bids_close_at is null or o.bids_close_at > ?)
               and v.opens_at <= ? and (s.announced_at is null or v.opens_at > s.announced_at)
               and not exists (select 1 from offer_bot_seen x where x.user_id = s.user_id and x.offer_id = o.id)
-            group by s.chat_id
-            having coalesce(max(v.opens_at) filter (where o.slot_at is null), '-infinity') <= ?", [Role::Manager->value, $now, $now, $now->copy()->subMinutes(3)]);
+", [Role::Manager->value, $now, $now]);
         foreach ($fresh as $row) {
             $items[] = ['timer' => 'announce', 'chat_id' => (int) $row->chat_id];
         }
