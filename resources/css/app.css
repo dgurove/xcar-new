@@ -723,7 +723,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .facet-open { @apply py-1 pl-3.5 pr-1.5; min-height: 1.875rem; }
   .facet-x { @apply flex items-center self-stretch rounded-r-full pl-1 pr-2.5 opacity-80; }
   @media (hover: hover) { .facet-x:hover { opacity: 1; } }
-  .facet-reset { background: none; }
+  /* «Сбросить» — серым текстом, не капсулой: капсула в ряду читалась ещё одним фильтром. */
+  .facet-reset { @apply shrink-0 self-center whitespace-nowrap px-1.5 text-sm text-ink-muted; }
+  @media (hover: hover) { .facet-reset:hover { @apply text-ink; } }
   .facet-tools { @apply mb-3 flex items-center gap-2; }
   .facet-all { @apply ml-auto shrink-0 whitespace-nowrap px-1 py-2 text-sm font-medium text-accent-text; }
   @media (hover: hover) { .facet-all:hover { @apply text-accent; } }

@@ -15,7 +15,7 @@
                 @endif
             @endforeach
             @if ($facets->active())
-                <a href="{{ $facets->resetUrl() }}" class="pill facet-reset" data-turbo-action="replace" data-turbo-prefetch="false">Сбросить</a>
+                <a href="{{ $facets->resetUrl() }}" class="facet-reset" data-turbo-action="replace" data-turbo-prefetch="false">Сбросить</a>
             @endif
         </div>
     </div>
