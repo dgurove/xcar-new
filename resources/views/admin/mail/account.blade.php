@@ -9,7 +9,7 @@
             @endforeach
         </div>
     @endif
-    <form method="post" action="{{ $new ? '/settings/mailboxes' : '/settings/mailboxes/'.$account->slug }}" id="account-form" class="flex flex-col gap-4">
+    <form method="post" action="{{ $new ? '/settings/mailboxes' : '/settings/mailboxes/'.$account->slug }}" id="account-form" class="flex flex-col gap-4" data-controller="save-bar" data-save-bar-dirty-value="{{ $errors->any() || $new ? 'true' : 'false' }}">
         @csrf @unless ($new) @method('put') @endunless
         <x-ui.card title="Ящик">
             <div class="grid gap-4 sm:grid-cols-2">
@@ -54,7 +54,7 @@
         @endif
     </form>
     <x-ui.action-bar>
-        <x-ui.button form="account-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
+        <x-ui.button form="account-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="account-form" hidden>{{ ($new) ? 'Сохранить' : 'Сохранить изменения' }}</x-ui.button>
         @unless ($new)
             <form method="post" action="/settings/mailboxes/{{ $account->slug }}/check">@csrf<x-ui.button variant="secondary">Проверить</x-ui.button></form>
             <form method="post" action="/settings/mailboxes/{{ $account->slug }}/sync">@csrf<x-ui.button variant="secondary" aria-label="Синхронизировать"><x-ui.icon name="refresh" class="size-5"/></x-ui.button></form>

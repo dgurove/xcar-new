@@ -77,9 +77,10 @@
             } : null;
             $confirm = $submit?->key === 'tow' && $submit->request->state === RequestState::Scheduled ? 'Эвакуатор погрузил ТС?' : null;
         @endphp
-        {{-- Одна форма на поля ТС и текущий шаг: кнопка в плашке сохраняет всё. Внутри сделанных шагов форм нет. --}}
+        {{-- Одна форма на поля ТС и текущий шаг: кнопка шага сохраняет всё, «Сохранить изменения» у полей — только поля ТС.
+             Внутри сделанных шагов форм нет. --}}
         @if ($submit)
-            <form method="post" action="{{ $action }}" id="act-form" class="flex flex-col gap-4" data-controller="vin draft next reveal" data-reveal-label-selector-value="#act-submit" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
+            <form method="post" action="{{ $action }}" id="act-form" class="flex flex-col gap-4" data-controller="vin save-bar draft next reveal" data-save-bar-scope-value="[data-save-scope]" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" data-reveal-label-selector-value="#act-submit" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
                 @csrf
                 @if ($canManage)
                     <input type="hidden" name="vehicle_form" value="1">
@@ -90,7 +91,7 @@
             </form>
         @else
             @if ($canManage && ! $state->isFinal())
-                <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin draft next">
+                <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin save-bar draft next" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}">
                     @csrf @method('put')
                     @include('park.vehicles.fields-block', ['save' => true])
                 </form>

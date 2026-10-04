@@ -1,5 +1,6 @@
 {{-- Поля ТС в деле: пока ТС ожидается — карточка сверху (данные из письма сверяют); после приёма — строка среди фаз,
-     раскрывается в ту же форму. save — своя кнопка (когда формы этапа нет). Над полями — расхождения «в карточке →
+     раскрывается в ту же форму. Правка полей — «Сохранить изменения» (x-ui.save-bar): в своей форме — она и есть; в форме
+     шага — тем же нажатием, но адресом /cars/{id}/fields: сохраняются только поля ТС, шаг не выполняется. Над полями — расхождения «в карточке →
      в документе» с «Взять», в свёрнутой строке — оранжевое «в документе иначе». Вход в окно «Из документов» — в блоке
      «Документы» (park/vehicles/scan-row). --}}
 @php
@@ -9,8 +10,8 @@
 @if ($vehicleOpen)
     <x-ui.card title="Транспортное средство">
         <x-park.doc-differences :vehicle="$vehicle" :differences="$differences" class="mb-3"/>
-        <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/>
-        @if ($save)<div class="mt-3 flex justify-end"><x-ui.button variant="secondary" size="sm">Сохранить</x-ui.button></div>@endif
+        <div data-save-scope><x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/></div>
+        <x-ui.save-bar page class="mt-3" :action="$save ? null : '/cars/'.$vehicle->id.'/fields'"/>
     </x-ui.card>
 @else
     <details class="phase" id="vehicle-fields">
@@ -27,8 +28,8 @@
         </summary>
         <div class="phase-body px-3 pb-3 pt-1">
             <x-park.doc-differences :vehicle="$vehicle" :differences="$differences" class="mb-3"/>
-            <x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/>
-            @if ($save)<div class="mt-3 flex justify-end"><x-ui.button variant="secondary" size="sm">Сохранить</x-ui.button></div>@endif
+            <div data-save-scope><x-park.vehicle-fields :vehicle="$vehicle" :vendors="$vendors" :categories="$categories"/></div>
+            <x-ui.save-bar page class="mt-3" :action="$save ? null : '/cars/'.$vehicle->id.'/fields'"/>
         </div>
     </details>
 @endif

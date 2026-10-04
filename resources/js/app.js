@@ -47,7 +47,8 @@ new MutationObserver((records) => {
 // Полоса — только у долгих визитов: с префетчем на touchstart быстрые укладываются в 400 мс.
 Turbo.config.drive.progressBarDelay = 400;
 // data-turbo-confirm — своей шторкой, не системным диалогом.
-Turbo.config.forms.confirm = (message, form, submitter) => confirmSheet(message, { form, submitter });
+// Пустой data-turbo-confirm у кнопки — «без подтверждения», даже если оно стоит на форме (сохранить поля ТС в форме шага).
+Turbo.config.forms.confirm = (message, form, submitter) => (message === '' ? Promise.resolve(true) : confirmSheet(message, { form, submitter }));
 
 // Морф бережёт то, что живёт на клиенте и серверному HTML неизвестно:
 // open у диалогов (блок в потоке, открытая шторка), точки и подгрузка кадров,

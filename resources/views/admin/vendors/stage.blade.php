@@ -10,7 +10,7 @@
 <x-ui.cabinet :title="$stage->exists ? $stage->name : 'Новый этап'" :back="[$w->vendor->name, $back]">
     {{-- На телефоне это имя уже стоит заголовком экрана (h1 кабинета), на ПК h1 нет — только тут. --}}
     <h2 class="text-xl max-md:hidden">{{ $stage->exists ? $stage->name : 'Новый этап' }}</h2>
-    <form method="post" action="{{ $stage->exists ? '/settings/workflows/stages/'.$stage->id : '/settings/workflows/'.$w->id.'/stages' }}" id="stage-form" class="flex flex-col gap-4">
+    <form method="post" action="{{ $stage->exists ? '/settings/workflows/stages/'.$stage->id : '/settings/workflows/'.$w->id.'/stages' }}" id="stage-form" class="flex flex-col gap-4" data-controller="save-bar" data-save-bar-dirty-value="{{ $errors->any() || ! $stage->exists ? 'true' : 'false' }}">
         @csrf @if ($stage->exists) @method('put') @endif
 
         <x-ui.card title="Этап">
@@ -134,7 +134,7 @@
     </form>
 
     <x-ui.action-bar>
-        <x-ui.button form="stage-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
+        <x-ui.button form="stage-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="stage-form" hidden>{{ (! $stage->exists) ? 'Сохранить' : 'Сохранить изменения' }}</x-ui.button>
         @if ($stage->exists)
             <form method="post" action="/settings/workflows/stages/{{ $stage->id }}" data-turbo-confirm="Удалить этап «{{ $stage->name }}»?">@csrf @method('delete')<x-ui.button variant="danger"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
         @endif

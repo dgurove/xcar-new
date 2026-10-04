@@ -150,7 +150,7 @@
             </x-ui.card>
         </div>
 
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft next{{ $empty ? ' drop-empty' : '' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next{{ $empty ? ' drop-empty' : '' }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             @csrf @method('put')
 
             <x-ui.card title="Транспортное средство" class="order-2">
@@ -235,17 +235,17 @@
             <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @elseif ($draft && ! $admin)
             {{-- Модератор заводит пачку подряд: «+ Новый» сохраняет и открывает следующий черновик с тем же вендором; публикует админ. --}}
-            <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>
+            <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
             <x-ui.button form="offer-form" name="then" value="next" class="min-w-0 flex-1"><x-ui.icon name="plus" class="size-5"/>Новый</x-ui.button>
         @elseif ($draft)
-            <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1">Сохранить</x-ui.button>
+            <x-ui.button form="offer-form" variant="secondary" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
             {{-- Сначала поля, потом публикация (`then=open`) — сейчас или в слот: шторка с выбором, по умолчанию ближайший. --}}
             <div class="contents" data-controller="sheet">
                 <x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Опубликовать</x-ui.button>
                 <x-offer.publish-sheet :offer="$offer" id="offer-publish" form="offer-form" :submit="['then' => 'open']"/>
             </div>
         @else
-            <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
+            <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif
         @if (($transitions->isNotEmpty() || $publishItems) && ! $fromMail)
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>

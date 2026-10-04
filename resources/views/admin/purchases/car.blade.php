@@ -9,7 +9,7 @@
         @if ($errors->any())<span class="field-error w-full">{{ $errors->first() }}</span>@endif
     </div>
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <form method="post" action="/purchases/{{ $n }}/{{ $car->ref }}" id="car-form" data-controller="vin" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+        <form method="post" action="/purchases/{{ $n }}/{{ $car->ref }}" id="car-form" data-controller="vin save-bar" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             @csrf @method('put')
             <x-ui.card title="Транспортное средство" class="order-1">
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
@@ -77,5 +77,5 @@
             @endif
         </div>
     </div>
-    <x-ui.action-bar><x-ui.button form="car-form" class="min-w-0 flex-1">Сохранить</x-ui.button></x-ui.action-bar>
+    <x-ui.action-bar><x-ui.button form="car-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="car-form" hidden>Сохранить изменения</x-ui.button></x-ui.action-bar>
 </x-ui.shell>

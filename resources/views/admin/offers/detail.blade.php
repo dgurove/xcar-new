@@ -132,7 +132,7 @@
                 @endforeach
             </div>
         @endif
-        <form method="post" action="/offers/{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar" data-action="submit->save-bar#submit" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
+        <form method="post" action="/offers/{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
             @csrf @method('put')
             <section>
                 <h2 class="detail-section">Цены</h2>
@@ -144,9 +144,7 @@
             </section>
             @include('admin.offers.fields.show')
             {{-- Тронули поле — снизу выезжает «Сохранить изменения» (save_bar_controller); уходят только тронутые. --}}
-            <div class="save-bar" data-save-bar-target="bar" hidden>
-                <button type="submit" class="btn btn-accent w-full" data-save-bar-target="button">Сохранить изменения</button>
-            </div>
+            <x-ui.save-bar/>
         </form>
         <section class="mt-5">
             <h2 class="detail-section">Документы</h2>

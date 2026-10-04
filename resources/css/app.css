@@ -1525,6 +1525,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .detail-handle { display: none; }
   /* «Сохранить изменения» в карточке строки: липнет к низу карточки, пока есть несохранённое (save_bar_controller). */
   .save-bar { @apply sticky bottom-0 z-10 -mx-4 bg-surface px-4 pb-3 pt-3; animation: sheet-up var(--dur) var(--ease-out) both; }
+  /* На странице — над таб-баром (телефон) или у низа экрана, пока форма на экране; фона нет, только кнопка. */
+  .save-bar--page { @apply mx-0 bg-transparent px-0 pb-0; bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + .75rem); }
+  @media (min-width: 768px) { .save-bar--page { bottom: 1.5rem; } }
   .detail-count { @apply ml-1 text-xs leading-none text-ink-muted; }
   .bar-btn { @apply relative flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   .detail-body { @apply px-4 pb-4 pt-1; }
@@ -1633,6 +1636,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 @layer components {
   /* Стекло хрома — одно на шапку, таб-бар и плашку действий: полоса `--bar-alpha`
      над размытым содержимым, над первым экраном — над фото. Без размытия — глухая полоса. */
+  /* Плашка, в которой видимых кнопок нет («Сохранить изменения» ждёт правки), не рисуется. */
+  .action-bar:not(:has(.action-bar-inner > :not([hidden]))) { display: none; }
   .header, .tabbar, .action-bar { background: var(--color-bar); }
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
     .header, .tabbar, .action-bar {

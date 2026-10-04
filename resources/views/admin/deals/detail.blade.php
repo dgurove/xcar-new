@@ -31,10 +31,10 @@
             @endif
             <section>
                 <h2 class="detail-section">Заметка</h2>
-                <form method="post" action="/work/deals/{{ $deal->id }}/note" class="flex flex-col gap-2">
+                <form method="post" action="/work/deals/{{ $deal->id }}/note" class="flex flex-col gap-2" data-controller="save-bar">
                     @csrf
                     <textarea name="notes" class="field-input" placeholder="Что важно помнить по этой сделке">{{ old('notes', $deal->notes) }}</textarea>
-                    <x-ui.button size="sm" variant="secondary" class="self-end">Сохранить</x-ui.button>
+                    <x-ui.save-bar/>
                 </form>
             </section>
         </div>

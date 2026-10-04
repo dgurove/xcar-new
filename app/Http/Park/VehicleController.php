@@ -54,6 +54,7 @@ use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -200,6 +201,17 @@ class VehicleController
         return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null, $request->boolean('call')) + [
             'window' => preg_match('#^/(mail|cars)/#', $window) ? $window : null,
         ]);
+    }
+
+    /**
+     * «Сохранить изменения» у полей ТС внутри формы шага дела: та же форма, но сохраняются только поля ТС (VehicleFields),
+     * шаг не выполняется. Ошибки и тост — как у update.
+     */
+    public function fields(Request $request, Vehicle $vehicle, UpdateVehicle $update, LinkThread $link, PromoteCandidate $promote)
+    {
+        $request->replace(Arr::only($request->all(), [...VehicleFields::KEYS, '_token']));
+
+        return $this->update($request, $vehicle, $update, $link, $promote);
     }
 
     public function update(Request $request, Vehicle $vehicle, UpdateVehicle $update, LinkThread $link, PromoteCandidate $promote)
