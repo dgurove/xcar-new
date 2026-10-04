@@ -12,6 +12,7 @@ use App\Media\Watermarks;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Jobs\ImportOfferArchive;
+use App\Offers\Migtorg;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Sale;
@@ -41,9 +42,11 @@ class OfferPhotoController
             } elseif ($request->input('collection') === 'papers' || ! $this->isImage($file, $ingest)) {
                 // Отпечаток — как у документов из писем: «✨» читает один и тот же скан один раз (кеш текста по sha).
                 $offer->addMedia($file)->usingFileName(self::safeName($name))->withCustomProperties(['sha' => hash_file('sha256', $file->getRealPath())])->toMediaCollection('papers');
-            } else {
+            } elseif (! (($uuid = Migtorg::uuidOf($name)) && $offer->media()->where('collection_name', 'photos')->where('custom_properties->migtorg', $uuid)->exists())) {
                 // Добавленное руками сначала скрыто (владелец, 04.10.2026): что показать, решают глазом или «Показать все».
-                $ingest->fromPhone($offer, 'photos', $request, properties: ['hidden' => true]);
+                // Кадр с сайта Мигторга (уже взятый лотом — пропущен выше) сам называет лот: номер, поля и остальные кадры.
+                $media = $ingest->fromPhone($offer, 'photos', $request, properties: ['hidden' => true]);
+                ($uuid = $media->getCustomProperty('migtorg')) && ImportMigtorgLot::byPhoto($offer, $uuid, $request->user());
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);

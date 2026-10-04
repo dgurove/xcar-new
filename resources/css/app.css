@@ -784,8 +784,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* «Ищем» — то же кольцо серым и медленнее: лайм только у того, что реально качается. */
   .migtorg-ring.is-idle { border-top-color: color-mix(in oklab, var(--color-ink) 55%, transparent); }
   @media (prefers-reduced-motion: no-preference) { .migtorg-ring { animation: spin .9s linear infinite; } .migtorg-ring.is-idle { animation-duration: 2.4s; } }
-  /* Флажок у названия в таблице предложений: лот на Мигторге найден, ничего не взято — здесь нажать. */
-  .migtorg-flag { @apply ml-1.5 inline-flex items-center align-middle; }
   /* Состояние («оплачен», «просрочен», «идёт сделка») — цветным словом, как в приложении, а не капсулой: капсула
      остаётся у того, что нажимается (a, button). Так же теги-предупреждения («ниже минимальной»). */
   span.pill:is(.pill-open, .pill-urgent, .pill-closed, .pill-danger, .pill-soft, .pill-plain),

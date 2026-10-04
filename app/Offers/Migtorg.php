@@ -6,6 +6,7 @@ use App\Purchases\Carcade;
 use GuzzleHttp\Cookie\CookieJar;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
@@ -16,14 +17,20 @@ use RuntimeException;
 /**
  * migtorg.com — приложение Angular поверх JSON API, впереди DDoS-Guard. Список лотов открыт и сразу несёт номер дела
  * (`lot.insurance_deal_number`), 100 на страницу — потолок; карточка с полным набором фото — только с токеном; оригинал
- * кадра (`/api/media/{uuid}`) открыт и без их знака. Ходим как их приложение: по одному запросу с паузой, токен живёт
- * в кэше (частый вход похож на перебор пароля), отказ DDoS-Guard — час тишины.
+ * кадра (`/api/media/{uuid}`) открыт и без их знака. Ходим как их приложение: по одному запросу с паузой (кадры — пачкой
+ * по четыре, как их галерея), токен живёт в кэше (частый вход похож на перебор пароля), отказ DDoS-Guard — час тишины.
  */
 final class Migtorg
 {
     private const API = 'https://site-prod-back.migtorg.com/api';
 
     private const SITE = 'https://www.migtorg.com';
+
+    /** Поля `lot`, которые читает `MigtorgFields`: в индекс ложатся только они, без телефона и почты собственника. */
+    private const LOT_KEYS = ['brand', 'model', 'year', 'vin', 'color', 'mileage', 'transmission', 'gear', 'engine_type', 'engine_volume', 'engine_power', 'power', 'horse_power', 'carcass', 'city', 'keys_count', 'pts'];
+
+    /** Кадры качаются пачкой — как галерею грузит их сайт; больше четырёх разом браузер к одному хосту не шлёт. */
+    public const BATCH = 4;
 
     /** Битые по КАСКО и по ОСАГО: у обоих номер дела страховой. Целые без номера. */
     private const SECTIONS = ['casco', 'osago'];
@@ -48,7 +55,7 @@ final class Migtorg
     /**
      * Все опубликованные лоты: id, номер дела, VIN, название, конец торгов (московское время).
      *
-     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string, status: ?string, city: ?string}>
+     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string, status: ?string, city: ?string, data: array, photos: list<string>}>
      */
     public function lots(): \Generator
     {
@@ -64,7 +71,10 @@ final class Migtorg
         }
     }
 
-    /** Строка списка или карточка — то, что идёт в индекс `migtorg_lots`. */
+    /**
+     * Строка списка или карточка — то, что идёт в индекс `migtorg_lots`: `data` — поля машины для `MigtorgFields`,
+     * `photos` — кадры (в списке главный и три, в карточке все) для `migtorg_media`.
+     */
     public static function row(array $auction): array
     {
         $lot = $auction['lot'] ?? [];
@@ -77,7 +87,15 @@ final class Migtorg
             'ends_at' => $auction['end_date'] ?? null,
             'status' => $auction['status'] ?? null,
             'city' => trim((string) ($lot['city']['title'] ?? '')) ?: null,
+            'data' => ['lot' => array_intersect_key($lot, array_flip(self::LOT_KEYS)), 'end_date' => $auction['end_date'] ?? null],
+            'photos' => self::photosOf($auction),
         ];
+    }
+
+    /** Кадр, скачанный с их сайта, назван своим uuid: `0f59…b1_watermark.webp` (так его кладёт браузер). */
+    public static function uuidOf(string $name): ?string
+    {
+        return preg_match('/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_watermark\b/i', basename($name), $m) ? strtolower($m[1]) : null;
     }
 
     /** Карточка лота — только со входом: тот же вид, что строка списка, но кадры все. */
@@ -102,6 +120,42 @@ final class Migtorg
     public function download(string $uuid, string $to): void
     {
         $this->get('/media/'.rawurlencode($uuid), sink: $to);
+    }
+
+    /**
+     * Оригиналы пачкой до `BATCH` разом: uuid → временный файл, не скачанный — null (его докачает `download`).
+     * Отказ DDoS-Guard — час тишины, как у одиночного запроса.
+     *
+     * @param  list<string>  $uuids
+     * @return array<string, ?string>
+     */
+    public function downloadMany(array $uuids): array
+    {
+        if (self::paused()) {
+            throw new RuntimeException('Мигторг отказал в доступе, пауза час');
+        }
+        usleep(random_int(300, 600) * 1000);
+        $paths = [];
+        foreach ($uuids as $uuid) {
+            $paths[$uuid] = tempnam(sys_get_temp_dir(), 'kadr-');
+        }
+        $responses = Http::pool(fn (Pool $pool) => array_map(
+            fn (string $uuid) => $this->headers($pool->as($uuid))->sink($paths[$uuid])->timeout(120)->get(self::API.'/media/'.rawurlencode($uuid)),
+            $uuids,
+        ), self::BATCH);
+        foreach ($paths as $uuid => $path) {
+            $response = $responses[$uuid] ?? null;
+            if ($response instanceof Response && $response->successful() && filesize($path) > 0) {
+                continue;
+            }
+            @unlink($path);
+            $paths[$uuid] = null;
+            if ($response instanceof Response) {
+                $this->quietOn($response, '/media');
+            }
+        }
+
+        return $paths;
     }
 
     /** Можно ходить за фото: вход задан, не отвергнут и нас не придержали. */
@@ -143,14 +197,19 @@ final class Migtorg
             return $response;
         }
         $sink && @unlink($sink);
-        // 429 или 403 не из их API (страница DDoS-Guard) — нас придержали: замолчать на час, а не долбить.
+        $this->quietOn($response, $path);
+
+        // Код исключения — код ответа: обход архива отличает «лота нет» (404) от отказа.
+        throw new RuntimeException("Мигторг ответил {$response->status()} на {$path}", $response->status());
+    }
+
+    /** 429 или 403 не из их API (страница DDoS-Guard) — нас придержали: замолчать на час, а не долбить. */
+    private function quietOn(Response $response, string $path): void
+    {
         if ($response->status() === 429 || ($response->status() === 403 && ! str_contains((string) $response->header('Content-Type'), 'json'))) {
             Cache::put(self::QUIET, true, 3600);
             Log::warning("Мигторг: {$response->status()} на {$path}, пауза час");
         }
-
-        // Код исключения — код ответа: обход архива отличает «лота нет» (404) от отказа.
-        throw new RuntimeException("Мигторг ответил {$response->status()} на {$path}", $response->status());
     }
 
     private function token(): string
@@ -184,18 +243,24 @@ final class Migtorg
 
     private function http(): PendingRequest
     {
+        return $this->headers(Http::createPendingRequest())
+            ->timeout(30)
+            // Обрыв связи и 5xx — ещё два раза с растущей паузой; 4xx не повторяем.
+            ->retry([2000, 6000], when: fn ($e) => $e instanceof ConnectionException || ($e instanceof RequestException && $e->response->serverError()), throw: false);
+    }
+
+    /** Как их приложение в браузере: те же заголовки и cookie DDoS-Guard — и для одиночного запроса, и для пачки. */
+    private function headers(PendingRequest $request): PendingRequest
+    {
         $proxy = config('xcar.migtorg_proxy');
 
-        return Http::withOptions(['cookies' => $this->jar] + ($proxy ? ['proxy' => $proxy] : []))
+        return $request->withOptions(['cookies' => $this->jar] + ($proxy ? ['proxy' => $proxy] : []))
             ->withHeaders([
                 'User-Agent' => Carcade::AGENT,
                 'Accept' => 'application/json, text/plain, */*',
                 'Accept-Language' => 'ru-RU,ru;q=0.9',
                 'Origin' => self::SITE,
                 'Referer' => self::SITE.'/',
-            ])
-            ->timeout(30)
-            // Обрыв связи и 5xx — ещё два раза с растущей паузой; 4xx не повторяем.
-            ->retry([2000, 6000], when: fn ($e) => $e instanceof ConnectionException || ($e instanceof RequestException && $e->response->serverError()), throw: false);
+            ]);
     }
 }

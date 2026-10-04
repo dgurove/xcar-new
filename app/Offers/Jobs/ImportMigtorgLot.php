@@ -2,16 +2,21 @@
 
 namespace App\Offers\Jobs;
 
+use App\Cars\Brand;
 use App\Live\Publisher;
 use App\Live\Topics;
+use App\Media\Actions\UnmarkPhoto;
 use App\Media\PhotoIngest;
 use App\Offers\Actions\ApplyCarFields;
+use App\Offers\Actions\UpdateOffer;
+use App\Offers\Console\MigtorgSync;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Migtorg;
 use App\Offers\MigtorgFields;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
+use App\Users\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
@@ -21,11 +26,12 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 
 /**
- * Лот Мигторга в предложение — по номеру дела, совпавшему с номером убытка: одна карточка (со входом) даёт и
- * характеристики (`MigtorgFields`, только в пустые поля), и кадры. Кадры сами — только в пустой ряд, к своим —
- * кнопкой «С Мигторга» (`manual`). По одному: оригинал без их знака, снимать нечего; уже взятые (по uuid)
- * пропускаются, поэтому повтор дочитывает с места обрыва. Ход — пилюлей в шапке редактора (`progress`), по окончании
- * редактор перечитывается сам.
+ * Лот Мигторга в предложение — по номеру дела, совпавшему с номером убытка. Поля (`MigtorgFields`, только в пустые)
+ * ложатся сразу в `start()` из индекса, задача дочитывает карточку со входом ради кадров. Кадры сами — в пустой ряд
+ * или в ряд из кадров этого же лота (скачанных с их сайта руками: `{uuid}_watermark` — такой кадр меняется на
+ * оригинал на том же месте); к чужим кадрам — только кнопкой (`manual`). Оригиналы без их знака, пачками по четыре;
+ * уже взятые (по uuid) пропускаются, поэтому повтор дочитывает с места обрыва. Ход — кольцом в поле номера убытка
+ * (`progress`), по ходу редактор перечитывается сам.
  */
 final class ImportMigtorgLot implements ShouldQueue
 {
@@ -41,7 +47,8 @@ final class ImportMigtorgLot implements ShouldQueue
 
     public function __construct(public int $offerId, public int $lotId, public bool $manual = false)
     {
-        $this->onConnection('database-long')->onQueue('long')->afterCommit();
+        // Своя очередь первой у воркера: нажатие не ждёт за спиной архивов Carcade и писем.
+        $this->onConnection('database-long')->onQueue('migtorg')->afterCommit();
     }
 
     /** Ход — своей пилюлей: ключ разбора архива и писем общий, чужая задача стёрла бы его. */
@@ -73,8 +80,10 @@ final class ImportMigtorgLot implements ShouldQueue
     }
 
     /**
-     * Лот о той же машине: VIN с обеих сторон — должен совпасть. Номер из одних цифр («7805/2024») бывает у разных
-     * страховых, сам такой лот берётся только при совпавшем VIN; кнопкой — можно, в подтверждении название лота.
+     * Лот о той же машине. VIN с обеих сторон — должен совпасть (у Мигторга VIN скрыт, так бывает редко). Иначе марка и
+     * год: вписанные в предложение не должны спорить с лотом. Сам (`$strict`) берётся номер с буквами или длинный
+     * («0760/046/14575/26» — 14 знаков, у разных машин не совпадает); короткий из цифр («7805/2024» бывает у разных
+     * страховых) — только при совпавших и марке, и годе. Кнопкой — и при споре: в поле видно название лота.
      */
     public static function sameCar(Offer $offer, object $lot, bool $strict): bool
     {
@@ -82,8 +91,48 @@ final class ImportMigtorgLot implements ShouldQueue
         if ($vin && $lot->vin) {
             return $vin === $lot->vin;
         }
+        $lotBrand = $offer->brand_id ? self::brandOf($lot) : null;
+        $brand = $lotBrand ? $lotBrand->id === $offer->brand_id : null;
+        $lotYear = self::yearOf($lot);
+        $year = $offer->year && $lotYear ? (int) $offer->year === $lotYear : null;
+        if ($brand === false || $year === false) {
+            return ! $strict;
+        }
+        $long = preg_match('/\p{L}/u', $offer->claim_ref_key) === 1 || strlen($offer->claim_ref_key) >= 12;
 
-        return ! $strict || preg_match('/\p{L}/u', $offer->claim_ref_key) === 1;
+        return ! $strict || $long || ($brand && $year);
+    }
+
+    /** Поля машины лота из индекса (`data`) — без карточки и входа; у строки без `data` — пусто. */
+    public static function fieldsOf(object $lot): array
+    {
+        $data = $lot->data ? json_decode($lot->data, true) : null;
+
+        return $data ? MigtorgFields::of($data) : [];
+    }
+
+    /** Марка лота по справочнику: из `data`, у старых строк — по началу названия («ВАЗ (Lada) Vesta 2025»). */
+    private static function brandOf(object $lot): ?Brand
+    {
+        $title = json_decode((string) $lot->data, true)['lot']['brand']['title'] ?? null;
+        if ($title) {
+            return Brand::known($title);
+        }
+        $words = preg_split('/\s+/u', trim(preg_replace('/\s\d{4}$/', '', (string) $lot->title)));
+        for ($n = min(3, count($words)); $n > 0; $n--) {
+            if ($brand = Brand::known(implode(' ', array_slice($words, 0, $n)))) {
+                return $brand;
+            }
+        }
+
+        return null;
+    }
+
+    private static function yearOf(object $lot): ?int
+    {
+        $year = json_decode((string) $lot->data, true)['lot']['year'] ?? null;
+
+        return $year ? (int) $year : (preg_match('/\s(\d{4})$/', (string) $lot->title, $m) ? (int) $m[1] : null);
     }
 
     /** Лот для чипа «Мигторг» и кнопки шторки: есть в индексе и не о другой машине. */
@@ -94,10 +143,16 @@ final class ImportMigtorgLot implements ShouldQueue
         return $lot && self::sameCar($offer, $lot, strict: false) ? $lot : null;
     }
 
-    /** Взять фото лота: лоты с тем же номером помечаются предложением сразу, чтобы синхронизация не ставила задачу второй раз. */
+    /**
+     * Взять лот: поля — сразу из индекса (марка и пробег в форме уже в ответе на нажатие), кадры — задачей. Лоты с тем
+     * же номером помечаются предложением сразу, чтобы синхронизация не ставила задачу второй раз.
+     */
     public static function start(Offer $offer, object $lot, bool $manual = false): void
     {
         DB::table('migtorg_lots')->where('claim_ref_key', $offer->claim_ref_key)->update(['offer_id' => $offer->id]);
+        if ($fields = self::fieldsOf($lot)) {
+            app(ApplyCarFields::class)($offer, $fields, null, onlyEmpty: true, log: ['source' => 'migtorg']);
+        }
         // Ход — сразу, а не когда задачу возьмёт воркер: чип крутится с нажатия, второй раз кнопку не нажать.
         Cache::put("migtorg:offer:{$offer->id}", ['i' => 0, 'n' => null, 'at' => time()], 1800);
         self::dispatch($offer->id, $lot->id, $manual);
@@ -119,7 +174,33 @@ final class ImportMigtorgLot implements ShouldQueue
         return true;
     }
 
-    public function handle(Migtorg $migtorg, PhotoIngest $ingest, Publisher $publish, ApplyCarFields $apply): void
+    /**
+     * Кадр, скачанный с сайта Мигторга и брошенный в предложение, сам называет лот (`migtorg_media`): номер убытка
+     * вписывается из лота, поля и остальные кадры — как по «Это она» (человек сам принёс кадр этой машины). Номер уже
+     * другой — лот не наш, ничего не трогаем. Кадры летят пачкой: замок, чтобы задача встала один раз.
+     */
+    public static function byPhoto(Offer $offer, string $uuid, ?User $by): void
+    {
+        $lot = DB::table('migtorg_lots')->whereIn('id', DB::table('migtorg_media')->where('uuid', $uuid)->select('lot_id'))->whereNotNull('claim_ref_key')->first();
+        if (! $lot || ! Migtorg::ready() || ! in_array($offer->state, self::STATES, true) || ($offer->claim_ref_key && $offer->claim_ref_key !== $lot->claim_ref_key)) {
+            return;
+        }
+        Cache::lock("migtorg:take:{$offer->id}", 30)->get(function () use ($offer, $lot, $by) {
+            $offer->refresh();
+            if (! $offer->claim_ref) {
+                // Номер ставит и сам берёт лот (`auto`), если правило «та же машина» пропускает.
+                app(UpdateOffer::class)($offer, ['claim_ref' => $lot->claim_ref], $by);
+                $offer->refresh();
+            }
+            $lot = self::lotFor($offer);
+            if ($lot && ! $lot->offer_id && ! self::progress($offer->id)) {
+                $offer->log(OfferEventType::Updated, $by, ['source' => 'migtorg', 'lot' => $lot->id]);
+                self::start($offer, $lot, manual: true);
+            }
+        });
+    }
+
+    public function handle(Migtorg $migtorg, PhotoIngest $ingest, Publisher $publish, ApplyCarFields $apply, UnmarkPhoto $unmark): void
     {
         $offer = Offer::find($this->offerId);
         if (! $offer) {
@@ -141,39 +222,49 @@ final class ImportMigtorgLot implements ShouldQueue
             Cache::put($key, ['i' => 0, 'n' => null, 'at' => time()], 1800);
             $card = $migtorg->card($this->lotId);
             self::noteShape($card);
-            DB::table('migtorg_lots')->where('id', $this->lotId)->update(['photos' => count(Migtorg::photosOf($card))]);
-            // Поля — первыми: кадры идут минутами, а марка и пробег нужны сразу. Правит система, не человек.
+            $row = Migtorg::row($card);
+            $lotPhotos = $row['photos'];
+            // Карточка полнее строки списка: поля и все кадры — в индекс, им пользуются поле номера и загрузка кадров.
+            DB::table('migtorg_lots')->where('id', $this->lotId)->update(['photos' => count($lotPhotos), 'data' => json_encode($row['data'], JSON_UNESCAPED_UNICODE)]);
+            MigtorgSync::media([$this->lotId => $lotPhotos]);
+            // Поля из индекса легли в start(); карточка дописывает то, чего в списке не было. Правит система, не человек.
             $filled = $apply($offer, MigtorgFields::of($card), null, onlyEmpty: true, log: ['source' => 'migtorg']);
             $offer->refresh();
-            // Сами кадры — только в пустой ряд: к своим менеджер добавит лот кнопкой, без дублей.
-            // Поля встают в форму сразу, не дожидаясь кадров.
             $this->refresh($publish, $offer);
-            // Кадры Мигторга, загруженные руками (знак снят при приёме, uuid нет), — уже есть: лот их не задваивает.
-            $byHand = $offer->media()->where('collection_name', 'photos')->whereNull('custom_properties->migtorg')->where('custom_properties->unmarked', 'migtorg')->exists();
-            $uuids = ! $byHand && ($this->manual || ! $offer->media()->where('collection_name', 'photos')->exists()) ? Migtorg::photosOf($card) : [];
-            $uuids || ! $this->manual || Log::warning("Мигторг: в карточке лота {$this->lotId} нет фото");
-            $have = $offer->media()->where('collection_name', 'photos')->get()
-                ->map(fn (Media $m) => $m->getCustomProperty('migtorg'))->filter()->all();
-            $this->refresh($publish, $offer);
-            foreach ($uuids as $i => $uuid) {
-                Cache::put($key, ['i' => $i, 'n' => count($uuids), 'at' => time()], 1800);
-                // Кадры пачками по шесть: редактор морфом меняет заглушки на настоящие, чип считает «12 из 54».
-                if ($i && $i % 6 === 0) {
+            $photos = $offer->media()->where('collection_name', 'photos')->get();
+            $have = $photos->map(fn (Media $m) => $m->getCustomProperty('migtorg'))->filter()->flip();
+            // Скачанные с их сайта руками — со знаком (снятым сетью): меняются на оригинал на том же месте.
+            $named = $photos->reject(fn (Media $m) => $m->getCustomProperty('migtorg'))
+                ->keyBy(fn (Media $m) => Migtorg::uuidOf($m->file_name) ?? 'own-'.$m->id);
+            // Сами кадры — если в ряду нет чужих (из писем, с телефона): к своим менеджер добавит лот кнопкой, без дублей.
+            $own = $named->keys()->diff($lotPhotos)->isNotEmpty();
+            $todo = $this->manual || ! $own ? array_values(array_filter($lotPhotos, fn ($u) => ! $have->has($u))) : [];
+            $lotPhotos || ! $this->manual || Log::warning("Мигторг: в карточке лота {$this->lotId} нет фото");
+            foreach (array_chunk($todo, Migtorg::BATCH) as $b => $batch) {
+                // Две пачки — восемь кадров: редактор морфом меняет заглушки на настоящие, кольцо считает «12 из 54».
+                if ($b && $b % 2 === 0) {
                     $this->refresh($publish, $offer);
                 }
-                if (in_array($uuid, $have, true)) {
-                    continue;
-                }
-                $temp = tempnam(sys_get_temp_dir(), 'kadr-');
-                try {
-                    $migtorg->download($uuid, $temp);
-                    $ingest->add($offer, 'photos', $temp, 'migtorg-'.($i + 1).'.jpg', ['migtorg' => $uuid]);
-                    $added++;
-                } catch (Throwable $e) {
-                    $failed++;
-                    Log::warning("Мигторг: кадр {$uuid} лота {$this->lotId} не забран: ".$e->getMessage());
-                } finally {
-                    @unlink($temp);
+                foreach ($migtorg->downloadMany($batch) as $uuid => $temp) {
+                    Cache::put($key, ['i' => $added + $failed, 'n' => count($todo), 'at' => time()], 1800);
+                    try {
+                        // Не пришедший пачкой — ещё раз по одному, с паузой.
+                        $temp ??= tap(tempnam(sys_get_temp_dir(), 'kadr-'), fn ($t) => $migtorg->download($uuid, $t));
+                        if ($old = $named->get($uuid)) {
+                            $this->original($old, $uuid, $temp, $ingest, $unmark);
+                        } elseif ($offer->media()->where('collection_name', 'photos')->where('custom_properties->migtorg', $uuid)->exists()) {
+                            // Тот же кадр принесли руками, пока шла задача (`PhotoIngest` взял оригинал) — второй не нужен.
+                            continue;
+                        } else {
+                            $ingest->add($offer, 'photos', $temp, 'migtorg-'.(array_search($uuid, $lotPhotos, true) + 1).'.jpg', ['migtorg' => $uuid]);
+                        }
+                        $added++;
+                    } catch (Throwable $e) {
+                        $failed++;
+                        Log::warning("Мигторг: кадр {$uuid} лота {$this->lotId} не забран: ".$e->getMessage());
+                    } finally {
+                        $temp && @unlink($temp);
+                    }
                 }
             }
         } finally {
@@ -200,6 +291,19 @@ final class ImportMigtorgLot implements ShouldQueue
         // Лоты номера свободны, как их пометил start(): кнопка «С Мигторга» вернётся, сам — через сутки.
         DB::table('migtorg_lots')->where('offer_id', $this->offerId)->update(['offer_id' => null, 'failed_at' => now()]);
         Log::warning("Мигторг: лот {$this->lotId} в предложение {$this->offerId} не взят: ".$e?->getMessage());
+    }
+
+    /**
+     * Оригинал вместо кадра, скачанного с их сайта со знаком: тот же media — порядок, «скрыт», главный кадр, наш знак
+     * (`UnmarkPhoto::replace`). Знак снимать было не с чего — копия со знаком не нужна.
+     */
+    private function original(Media $media, string $uuid, string $file, PhotoIngest $ingest, UnmarkPhoto $unmark): void
+    {
+        $unmark->replace($media, $file, $ingest);
+        @unlink(UnmarkPhoto::markedPath($media));
+        $media->forgetCustomProperty('unmarked');
+        $media->setCustomProperty('migtorg', $uuid);
+        $media->save();
     }
 
     /** Открытый редактор предложения перечитывается морфом (без Mercure локально — молча ничего). */

@@ -3,6 +3,7 @@
 namespace App\Media;
 
 use App\Media\Actions\UnmarkPhoto;
+use App\Offers\Migtorg;
 use App\Offers\Offer;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -56,6 +57,11 @@ final class PhotoIngest
         $clean = null;
         $marked = null;
         try {
+            // Кадр, скачанный с сайта Мигторга со знаком (`{uuid}_watermark.webp`), — их оригинал без знака и крупнее.
+            if ($collection === 'photos' && $model instanceof Offer && ! isset($properties['migtorg']) && ($uuid = Migtorg::uuidOf($name)) && ($original = $this->migtorgOriginal($uuid))) {
+                @unlink($path);
+                [$path, $properties['migtorg']] = [$original, $uuid];
+            }
             $path = $this->fromHeic($path);
             $this->checkSize($path);
             // Отпечаток исходника — чтобы тот же файл (из письма, с телефона, из архива) не лёг второй раз.
@@ -92,6 +98,21 @@ final class PhotoIngest
             if ($webp && is_file($webp)) {
                 @unlink($webp);
             }
+        }
+    }
+
+    /** Оригинал кадра Мигторга во временный файл; не отдали — null, кадр со знаком снимется сетью, как прежде. */
+    private function migtorgOriginal(string $uuid): ?string
+    {
+        $temp = tempnam(sys_get_temp_dir(), 'kadr-');
+        try {
+            app(Migtorg::class)->download($uuid, $temp);
+
+            return $temp;
+        } catch (Throwable) {
+            @unlink($temp);
+
+            return null;
         }
     }
 

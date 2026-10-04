@@ -6,7 +6,6 @@ use App\Offers\Console\MigtorgArchive;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Support\FieldLabels;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Чип «Мигторг» в шапке редактора и карточки строки — одно состояние на предложение с номером убытка:
@@ -23,7 +22,6 @@ final class MigtorgChip
         public readonly ?array $progress = null,
         public readonly int $taken = 0,
         public readonly array $fields = [],
-        public readonly bool $byHand = false,
         public readonly ?object $scan = null,
     ) {}
 
@@ -40,7 +38,6 @@ final class MigtorgChip
         }
         $photos = $offer->exists ? $offer->media()->where('collection_name', 'photos')->get() : collect();
         $taken = $photos->filter(fn ($m) => $m->getCustomProperty('migtorg'))->count();
-        $byHand = $photos->contains(fn ($m) => ! $m->getCustomProperty('migtorg') && $m->getCustomProperty('unmarked') === 'migtorg');
         $fields = $offer->exists ? ($offer->events()->where('type', OfferEventType::Updated)->where('payload->source', 'migtorg')
             ->whereNotNull('payload->fields')->latest('id')->value('payload')['fields'] ?? []) : [];
         $progress = $offer->exists ? ImportMigtorgLot::progress($offer->id) : null;
@@ -50,21 +47,7 @@ final class MigtorgChip
             default => 'found',
         };
 
-        return new self($state, (string) $offer->claim_ref, $lot, $progress, $taken, $fields, $byHand);
-    }
-
-    /**
-     * Флажок в строке списка: лот найден, а ничего не взято — видно, где нажать. Один запрос на страницу: номера
-     * лотов, никем не взятых.
-     */
-    public static function waits(Offer $offer): bool
-    {
-        if (! $offer->claim_ref_key) {
-            return false;
-        }
-        $free = once(fn () => Migtorg::ready() ? DB::table('migtorg_lots')->whereNotNull('claim_ref_key')->whereNull('offer_id')->pluck('claim_ref_key')->flip() : collect());
-
-        return $free->has($offer->claim_ref_key);
+        return new self($state, (string) $offer->claim_ref, $lot, $progress, $taken, $fields);
     }
 
     public function is(string ...$states): bool
@@ -98,8 +81,8 @@ final class MigtorgChip
     public function action(): ?array
     {
         return match (true) {
-            $this->is('found') => ['take', $this->byHand ? 'Это она, взять данные' : 'Это она, взять фото и данные'],
-            $this->is('done') && ! $this->byHand && $this->lot->photos && $this->taken < $this->lot->photos => ['take', $this->taken ? 'Докачать фото' : 'Взять фото'],
+            $this->is('found') => ['take', 'Это она, взять фото и данные'],
+            $this->is('done') && $this->lot->photos && $this->taken < $this->lot->photos => ['take', $this->taken ? 'Докачать фото' : 'Взять фото'],
             $this->is('missing') => ['recheck', 'Проверить ещё раз'],
             default => null,
         };
@@ -149,7 +132,6 @@ final class MigtorgChip
     {
         return match (true) {
             (bool) $this->counter() => $this->counter(),
-            $this->byHand => 'загружены руками',
             (bool) $this->lot->photos => $this->taken && $this->taken < $this->lot->photos ? "{$this->taken} из {$this->lot->photos}" : (string) $this->lot->photos,
             default => $this->taken ? (string) $this->taken : null,
         };

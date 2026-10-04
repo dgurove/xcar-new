@@ -56,7 +56,8 @@ class MigtorgArchive extends Command
             $opened++;
             $state['checked']++;
             try {
-                $row = MigtorgSync::toIndex(Migtorg::row($migtorg->card($id)), now());
+                $lot = Migtorg::row($migtorg->card($id));
+                $row = MigtorgSync::toIndex($lot, now());
             } catch (RuntimeException $e) {
                 if (Migtorg::paused() || ! Migtorg::ready() || ! in_array($e->getCode(), [403, 404], true)) {
                     // Придержали или сбой связи — номер не потерян: следующий кусок начнёт с него же.
@@ -69,7 +70,8 @@ class MigtorgArchive extends Command
 
                 continue;
             }
-            DB::table('migtorg_lots')->upsert([$row], ['id'], ['claim_ref', 'claim_ref_key', 'vin', 'title', 'city', 'ends_at', 'seen_at', 'gone_at']);
+            DB::table('migtorg_lots')->upsert([$row], ['id'], MigtorgSync::COLUMNS);
+            MigtorgSync::media([$id => $lot['photos']], newest: false);
             if ($row['claim_ref_key']) {
                 $keys[] = $row['claim_ref_key'];
                 $state['found']++;
