@@ -374,7 +374,7 @@ final class Handler
     }
 
     /**
-     * «Опубликовано N предложений, показать их?». Того, кто сейчас листает или пишет вопрос, не перебиваем —
+     * «Опубликовано N предложений, показать их?» (слот) или «Появились новые предложения: N» (опубликовано сейчас). Того, кто сейчас листает или пишет вопрос, не перебиваем —
      * клавиатуру не сбиваем; отметка не ставится, анонс дождётся, пока он выйдет (новое он и так увидит в ленте).
      */
     private function prompt(Subscriber $sub, bool $remind): void
@@ -383,15 +383,17 @@ final class Handler
         if (in_array($sub->mode, [Subscriber::FEED, Subscriber::ASKING, Subscriber::INVITE], true) && $sub->updated_at?->gt(now()->subMinutes(10))) {
             return;
         }
-        $fresh = $remind ? null : $this->announce->fresh($sub);
+        [$n, $slot] = $remind ? [Feed::left($sub->user), 0] : $this->announce->fresh($sub);
         $sub->forceFill($remind ? ['remind_at' => null] : ['announced_at' => now()])->save();
-        $n = $remind ? Feed::left($sub->user) : $fresh;
         if (! $n || ($remind && $sub->muted_at)) {
             return;
         }
-        $word = Plural::of($n, ['предложение', 'предложения', 'предложений']);
+        // Всё из слота — «Опубликовано N»; есть опубликованное сейчас (или это напоминание) — «Появились новые».
+        $head = ! $remind && $slot === $n
+            ? "Опубликовано {$n} ".Plural::of($n, ['предложение', 'предложения', 'предложений']).', показать '.($n === 1 ? 'его' : 'их').'?'
+            : ($n === 1 ? 'Появилось новое предложение, показать его?' : "Появились новые предложения: {$n}, показать их?");
         $this->bot->quietly(fn () => $this->bot->say($sub->chat_id,
-            "Опубликовано {$n} {$word}, показать ".($n === 1 ? 'его' : 'их')."?\n\n1. Показать\n2. Напомнить через 1 ч",
+            $head."\n\n1. Показать\n2. Напомнить через 1 ч",
             Keys::prompt(), $sub->user->quietHours() ? ['disable_notification' => 'true'] : []));
         $sub->moveTo(Subscriber::PROMPT);
     }

@@ -18,7 +18,8 @@ use Illuminate\Support\Facades\DB;
  * - 13:00–16:00 — «В 16:00 (МСК) будет опубликовано N предложений. Не пропустите», раз в день, если N > 0: в слоте на
  *   сегодня и этому менеджеру показывают сразу (волна 0).
  * - Вышло слотом и стало видно менеджеру (сам слот или его поздняя волна) — «Опубликовано N предложений, показать их?».
- *   «Опубликовать сейчас» бот не анонсирует (владелец 03.10.2026): такое просто ждёт в ленте.
+ * - «Опубликовать сейчас» (владелец 04.10.2026) — «Появились новые предложения», те же «показать» и «напомнить». Ждём
+ *   3 минуты тишины после последнего: админ публикует подряд — одно сообщение на пачку, а не на каждое.
  * - «Напомнить через 1 ч».
  *
  * Рассылки — только менеджерам, подписанным и не остановившим бота.
@@ -41,15 +42,17 @@ final class Announce
                 $items[] = ['timer' => 'morning', 'chat_id' => (int) $chat];
             }
         }
-        $fresh = DB::select("select distinct s.chat_id from offer_bot_chats s
+        $fresh = DB::select("select s.chat_id from offer_bot_chats s
             join users u on u.id = s.user_id and jsonb_exists(u.roles, ?)
             join offer_viewers v on v.user_id = s.user_id
             join offers o on o.id = v.offer_id
             where s.blocked_at is null and s.muted_at is null
-              and o.state = 'open' and o.slot_at is not null and o.is_demo = false
+              and o.state = 'open' and o.is_demo = false
               and (o.bids_close_at is null or o.bids_close_at > ?)
               and v.opens_at <= ? and (s.announced_at is null or v.opens_at > s.announced_at)
-              and not exists (select 1 from offer_bot_seen x where x.user_id = s.user_id and x.offer_id = o.id)", [Role::Manager->value, $now, $now]);
+              and not exists (select 1 from offer_bot_seen x where x.user_id = s.user_id and x.offer_id = o.id)
+            group by s.chat_id
+            having coalesce(max(v.opens_at) filter (where o.slot_at is null), '-infinity') <= ?", [Role::Manager->value, $now, $now, $now->copy()->subMinutes(3)]);
         foreach ($fresh as $row) {
             $items[] = ['timer' => 'announce', 'chat_id' => (int) $row->chat_id];
         }
@@ -60,15 +63,20 @@ final class Announce
         return $items;
     }
 
-    /** Сколько вышедшего слотом открылось ему с прошлого анонса и ещё не показано. */
-    public function fresh(Subscriber $sub): int
+    /**
+     * Что открылось ему с прошлого анонса и ещё не показано: всего и сколько из них слотом.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public function fresh(Subscriber $sub): array
     {
         $since = $sub->announced_at;
-
-        return Feed::query($sub->user)->whereNotNull('offers.slot_at')
+        $offers = Feed::query($sub->user)
             ->whereHas('viewers', fn ($v) => $v->where('user_id', $sub->user_id)->where('opens_at', '<=', now())
                 ->when($since, fn ($w) => $w->where('opens_at', '>', $since)))
-            ->count();
+            ->pluck('offers.slot_at');
+
+        return [$offers->count(), $offers->filter()->count()];
     }
 
     /** 13:00: что выйдет сегодня в 16:00 и откроется ему сразу. Отметка дня — в любом случае, считать раз в день. */
