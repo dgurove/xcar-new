@@ -17,7 +17,7 @@ import { openSheet, closeSheet } from '../sheet';
 let shown = null;
 
 export default class extends Controller {
-    static targets = ['input', 'progress', 'grid'];
+    static targets = ['input', 'progress', 'grid', 'all'];
     static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, mark: Boolean };
 
     connect() {
@@ -46,6 +46,7 @@ export default class extends Controller {
     }
 
     async gridTargetConnected(grid) {
+        this.syncAll();
         if (this.readonlyValue) return;
         const Sortable = await loadSortable();
         if (!grid.isConnected) return;
@@ -71,6 +72,40 @@ export default class extends Controller {
     }
 
     pick() { this.inputTarget.click(); }
+
+    // «Показать все» / «Скрыть все» (владелец, 04.10.2026): хоть один кадр скрыт — показать все, иначе скрыть все.
+    // Кадры с глазом этого ряда; меньше двух — кнопки нет.
+    eyeCells() { return [...this.element.querySelectorAll('.photo-cell[data-id]')].filter((c) => c.querySelector('[data-act="hide"]')); }
+
+    allTargetConnected() { this.syncAll(); }
+
+    syncAll() {
+        if (!this.hasAllTarget) return;
+        const cells = this.eyeCells();
+        const any = cells.some((c) => c.dataset.hidden === '1');
+        this.allTargets.forEach((b) => { b.hidden = cells.length < 2; b.textContent = any ? 'Показать все' : 'Скрыть все'; });
+    }
+
+    async all() {
+        const cells = this.eyeCells();
+        if (!cells.length || this.busy) return;
+        const hide = !cells.some((c) => c.dataset.hidden === '1');
+        const paint = (to) => cells.forEach((c) => {
+            c.dataset.hidden = to ? '1' : '0';
+            c.classList.toggle('is-hidden', to);
+            c.querySelector('[data-act="hide"]')?.setAttribute('aria-label', to ? 'Показать' : 'Скрыть');
+        });
+        paint(hide);
+        this.syncAll();
+        this.busy = true;
+        try {
+            const body = `hidden=${hide ? 1 : 0}` + (this.stageValue ? `&stage=${encodeURIComponent(this.stageValue)}` : '');
+            const r = await this.post(`${this.urlValue}/visibility`, body, 'application/x-www-form-urlencoded');
+            if (!r.ok) { paint(!hide); this.syncAll(); window.toast?.('Не получилось', 'danger'); return; }
+            // Карточку только для просмотра ответ не перерисовывает: он вернул бы ей плитку «добавить».
+            if (!this.readonlyValue) this.apply(await r.text());
+        } finally { this.busy = false; }
+    }
 
     upload() {
         const files = [...this.inputTarget.files];
@@ -292,8 +327,9 @@ export default class extends Controller {
             cell.querySelector('[data-act="hide"]')?.setAttribute('aria-label', hidden ? 'Показать' : 'Скрыть');
         };
         flip();
+        this.syncAll();
         shown?.lb.redraw();
-        this.queue(id, () => this.post(`${this.urlValue}/${id}/hide`, '', 'application/x-www-form-urlencoded'), () => { flip(); shown?.lb.redraw(); });
+        this.queue(id, () => this.post(`${this.urlValue}/${id}/hide`, '', 'application/x-www-form-urlencoded'), () => { flip(); this.syncAll(); shown?.lb.redraw(); });
         return true;
     }
 
@@ -444,7 +480,9 @@ export default class extends Controller {
     async show(index, items) {
         const can = (i, act) => {
             const it = (this.viewer?.items ?? items)[i];
-            if (!it?.id || it.owner.readonlyValue) return false;
+            if (!it?.id) return false;
+            // Карточка только для просмотра (дело ТС парковки) — один глаз: показ в продаже.
+            if (it.owner.readonlyValue) return act === 'hide' && !!it.owner.element.querySelector(`.photo-cell[data-id="${it.id}"] [data-act="hide"]`);
             if (act === 'mark') return it.owner.markValue;
             return act !== 'hide' || !!it.owner.element.querySelector(`.photo-cell[data-id="${it.id}"] [data-act="hide"]`);
         };
@@ -461,8 +499,9 @@ export default class extends Controller {
         const lightbox = await openLightbox({
             items, index, download: true,
             actions: [
-                { name: 'eye', icon: 'eye-off', title: 'Скрыть', iconFor: (i) => (hidden(i) ? 'eye' : 'eye-off'), titleFor: (i) => (hidden(i) ? 'Показать' : 'Скрыть'), shown: (i) => can(i, 'hide'), run: act('hide') },
-                { name: 'rotate', icon: 'rotate', title: 'Повернуть', shown: (i) => can(i, 'rotate'), run: act('rotate') },
+                // Глаз показывает состояние: открыт — фото видно, перечёркнут — скрыто.
+                { name: 'eye', icon: 'eye', title: 'Скрыть', bottom: true, iconFor: (i) => (hidden(i) ? 'eye-off' : 'eye'), titleFor: (i) => (hidden(i) ? 'Показать' : 'Скрыть'), shown: (i) => can(i, 'hide'), run: act('hide') },
+                { name: 'rotate', icon: 'rotate', title: 'Повернуть', bottom: true, shown: (i) => can(i, 'rotate'), run: act('rotate') },
                 { name: 'trash', icon: 'trash', title: 'Удалить', shown: (i) => can(i, 'delete'), run: act('delete', 'Удалить фото?') },
                 { name: 'mark', icon: 'mark', title: 'Водяной знак', shown: (i) => can(i, 'mark'), run: (i) => this.markSheet(this.viewer.items[i]) },
             ],

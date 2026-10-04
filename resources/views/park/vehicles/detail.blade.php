@@ -15,6 +15,15 @@
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
+        {{-- Кадры с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
+        @if ($vehicle->photos()->isNotEmpty())
+            <x-slot:media>
+                <div data-controller="photos" data-photos-url-value="{{ $href }}/media" data-photos-group-value="car-{{ $vehicle->id }}">
+                    <x-ui.photos :photos="$vehicle->photos()" :add="false" :deletable="false" :main="false" id="detail-photos"/>
+                    <x-ui.photos-all class="photos-all--under"/>
+                </div>
+            </x-slot:media>
+        @endif
         <x-slot:marks>
             <x-ui.state :tone="$state->tone()">{{ $state->label() }}</x-ui.state>
             @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif

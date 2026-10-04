@@ -75,6 +75,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/media', [OfferPhotoController::class, 'store']);
         Route::post('/offers/{offer}/media/migtorg', [OfferPhotoController::class, 'migtorg']);
         Route::post('/offers/{offer}/media/order', [OfferPhotoController::class, 'reorder']);
+        Route::post('/offers/{offer}/media/visibility', [OfferPhotoController::class, 'visibility']);
         Route::post('/offers/{offer}/media/{media}/hide', [OfferPhotoController::class, 'toggle']);
         Route::post('/offers/{offer}/media/{media}/rotate', [OfferPhotoController::class, 'rotate']);
         // Чужой водяной знак кадра: шторка из просмотрщика, кадр со знаком для сравнения, «Вернуть» и свой файл.

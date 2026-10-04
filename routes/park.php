@@ -51,6 +51,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::put('/cars/{vehicle}', [VehicleController::class, 'update'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/media', [VehicleController::class, 'upload']);
     Route::post('/cars/{vehicle}/media/order', [VehicleController::class, 'reorder']);
+    Route::post('/cars/{vehicle}/media/visibility', [VehicleController::class, 'visibility']);
+    Route::post('/cars/{vehicle}/media/{media}/hide', [VehicleController::class, 'hideMedia']);
     Route::post('/cars/{vehicle}/media/{media}/rotate', [VehicleController::class, 'rotateMedia']);
     Route::delete('/cars/{vehicle}/media/{media}', [VehicleController::class, 'destroyMedia']);
     Route::post('/cars/{vehicle}/note', [VehicleController::class, 'note']);

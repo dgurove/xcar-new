@@ -31,6 +31,7 @@
             <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
                 @include('admin.offers.photo-upload')
                 @include('admin.offers.detail-photos')
+                <x-ui.photos-all class="photos-all--under"/>
             </div>
         </x-slot:media>
         <x-slot:marks>
@@ -132,10 +133,10 @@
                 @endforeach
             </div>
         @endif
-        <form method="post" action="/offers/{{ $n }}" class="detail-edit mt-5 flex flex-col gap-5" data-controller="vin autosave" data-turbo-frame="detail">
+        <form method="post" action="/offers/{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin autosave" data-turbo-frame="detail">
             @csrf @method('put')
             <section>
-                <h2 class="detail-section">Деньги</h2>
+                <h2 class="detail-section">Цены</h2>
                 @include('admin.offers.fields.money', ['askingElsewhere' => $offer->state === OfferState::Draft])
             </section>
             <section>

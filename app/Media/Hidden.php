@@ -16,6 +16,16 @@ final class Hidden
         return (bool) $media->getCustomProperty('hidden', in_array($media->getCustomProperty('slot'), [PhotoSlot::VinPlate->value, PhotoSlot::Papers->value], true));
     }
 
+    /** «Показать все» / «Скрыть все»: одним значением, без лишней записи у тех, что уже такие. */
+    public static function set(iterable $media, bool $hidden): void
+    {
+        foreach ($media as $m) {
+            if (self::is($m) !== $hidden) {
+                $m->setCustomProperty('hidden', $hidden)->save();
+            }
+        }
+    }
+
     /** Глаз: переключить и сохранить. */
     public static function toggle(Media $media): void
     {

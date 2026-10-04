@@ -9,7 +9,7 @@
 @endphp
 <x-ui.card :nested="$nested" :id="'photos-'.$stage->value" {{ $attributes->merge(['data-controller' => 'photos', 'data-photos-group-value' => 'car-'.$vehicle->id, 'data-photos-order' => array_search($stage, PhotoStage::cases(), true)] + ($edit
     ? ['data-photos-url-value' => '/cars/'.$vehicle->id.'/media', 'data-photos-stage-value' => $stage->value]
-    : ['data-photos-readonly-value' => 'true'])) }}>
+    : ['data-photos-readonly-value' => 'true', 'data-photos-url-value' => '/cars/'.$vehicle->id.'/media'])) }}>
     @if ($collapsed)
         <details class="step-details" @if ($n) open @endif>
             <summary class="flex items-center gap-2">
@@ -21,6 +21,7 @@
     @else
         <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <h2>{{ $stage->label() }}@if ($n) <span class="nums text-sm font-normal text-ink-dim">{{ $n }}</span>@endif</h2>
+            <x-ui.photos-all class="ml-auto"/>
         </div>
         @include('park.vehicles.photo-body')
     @endif

@@ -167,7 +167,35 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
                     },
                 });
             }
-            actions.forEach((a, k) => pswp.ui.registerElement({
+            // Скрыть, повернуть и увеличить — внизу по центру, под большим пальцем (владелец, 04.10.2026); остальное — сверху.
+            const tools = actions.filter((a) => a.bottom);
+            pswp.ui.registerElement({
+                name: 'tools', appendTo: 'root', className: 'pswp__tools pswp__hide-on-close',
+                onInit: (el, p) => {
+                    const syncs = [];
+                    const add = (name, title, icon, run, sync) => {
+                        const b = document.createElement('button');
+                        b.type = 'button';
+                        b.className = `pswp__button pswp__button--${name}`;
+                        b.title = title;
+                        b.setAttribute('aria-label', title);
+                        b.innerHTML = path(icon);
+                        b.addEventListener('click', (e) => { e.stopPropagation(); run(); });
+                        el.append(b);
+                        if (sync) syncs.push(() => sync(b));
+                    };
+                    tools.forEach((a) => add(a.name, a.title, ICONS[a.icon] || a.icon, () => a.run(p.currIndex), (b) => {
+                        if (a.iconFor) b.innerHTML = path(ICONS[a.iconFor(p.currIndex)]);
+                        if (a.titleFor) { b.title = a.titleFor(p.currIndex); b.setAttribute('aria-label', b.title); }
+                        if (a.shown) b.hidden = !a.shown(p.currIndex);
+                    }));
+                    add('zoom-tool', 'Увеличить', ICONS.zoom, () => p.toggleZoom());
+                    const sync = () => syncs.forEach((f) => f());
+                    p.on('change', sync);
+                    sync();
+                },
+            });
+            actions.filter((a) => !a.bottom).forEach((a, k) => pswp.ui.registerElement({
                 name: a.name, order: 12 + k, isButton: true, title: a.title, html: path(ICONS[a.icon] || a.icon),
                 onInit: (el, p) => {
                     const sync = () => {
@@ -289,6 +317,12 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
     // Esc закрывает просмотр сам (keydown PhotoSwipe), окну закрываться нечего.
     view.host = Object.assign(document.createElement('dialog'), { className: 'lightbox' });
     view.host.addEventListener('cancel', (e) => e.preventDefault());
+    // Отступ под строку состояния меряется на странице: в верхнем слое (dialog) установленного приложения на iPhone
+    // env(safe-area-inset-top) отдавал 0, и кнопки уезжали под часы.
+    const ruler = Object.assign(document.createElement('div'), { style: 'position:fixed;top:0;height:0;padding-top:env(safe-area-inset-top);visibility:hidden' });
+    document.body.append(ruler);
+    view.host.style.setProperty('--safe-top', getComputedStyle(ruler).paddingTop);
+    ruler.remove();
     document.body.append(view.host);
     view.host.showModal();
     document.body.classList.add('viewer-open');

@@ -16,6 +16,7 @@ use App\Mail\Scan\VehicleSubject;
 use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\Actions\RotatePhoto;
+use App\Media\Hidden;
 use App\Media\PhotoIngest;
 use App\Offers\OfferNumber;
 use App\Park\Actions\CancelVehicle;
@@ -269,7 +270,8 @@ class VehicleController
                 $vehicle->addMedia($file)->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $file->getClientOriginalName()) ?: 'dokument')->toMediaCollection('papers');
             } else {
                 $slot = PhotoSlot::tryFrom((string) $request->input('slot'))?->value;
-                $ingest->fromPhone($vehicle, 'photos', $request, properties: array_filter(['stage' => $stage->value, 'slot' => $slot, 'source' => 'app']));
+                // Глаз у ТС — показ в продаже: добавленное сначала скрыто (владелец, 04.10.2026).
+                $ingest->fromPhone($vehicle, 'photos', $request, properties: array_filter(['stage' => $stage->value, 'slot' => $slot, 'source' => 'app']) + ['hidden' => true]);
             }
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -298,6 +300,25 @@ class VehicleController
 
         // Переставляли внутри одной карточки — ей и возвращаем кнопку камеры.
         return $this->gallery($vehicle, PhotoStage::of($photos->firstWhere('id', $ids[0]))->value);
+    }
+
+    /** Глаз: показывать кадр в продаже или нет. В деле ТС видны все. */
+    public function hideMedia(Vehicle $vehicle, Media $media)
+    {
+        abort_unless($media->model_id === $vehicle->id && $media->model_type === $vehicle::class && $media->collection_name === 'photos', 404);
+        Hidden::toggle($media);
+
+        return $this->gallery($vehicle, PhotoStage::of($media)->value);
+    }
+
+    /** «Показать все» / «Скрыть все» — кадры карточки стадии, без стадии (карточка строки) — все. */
+    public function visibility(Request $request, Vehicle $vehicle)
+    {
+        $stage = PhotoStage::tryFrom((string) $request->input('stage'));
+        $photos = $vehicle->photos()->filter(fn ($m) => ! $stage || PhotoStage::of($m) === $stage);
+        Hidden::set($photos, $request->boolean('hidden'));
+
+        return $this->gallery($vehicle, $stage?->value);
     }
 
     public function rotateMedia(Request $request, Vehicle $vehicle, Media $media, RotatePhoto $rotate)

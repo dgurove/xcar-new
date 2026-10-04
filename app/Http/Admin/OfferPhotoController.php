@@ -39,7 +39,8 @@ class OfferPhotoController
                 // Отпечаток — как у документов из писем: «✨» читает один и тот же скан один раз (кеш текста по sha).
                 $offer->addMedia($file)->usingFileName(self::safeName($name))->withCustomProperties(['sha' => hash_file('sha256', $file->getRealPath())])->toMediaCollection('papers');
             } else {
-                $ingest->fromPhone($offer, 'photos', $request);
+                // Добавленное руками сначала скрыто (владелец, 04.10.2026): что показать, решают глазом или «Показать все».
+                $ingest->fromPhone($offer, 'photos', $request, properties: ['hidden' => true]);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -70,6 +71,13 @@ class OfferPhotoController
     {
         $this->own($offer, $media);
         Hidden::toggle($media);
+
+        return $this->gallery($offer->refresh());
+    }
+
+    public function visibility(Request $request, Offer $offer)
+    {
+        Hidden::set($offer->photos(), $request->boolean('hidden'));
 
         return $this->gallery($offer->refresh());
     }

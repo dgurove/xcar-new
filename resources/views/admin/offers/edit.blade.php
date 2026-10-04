@@ -128,7 +128,7 @@
 
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС.
                  Срок приёма, кому показывать и галки показа — «Показ» под описанием ТС. --}}
-            <x-ui.card title="Деньги" class="order-3">
+            <x-ui.card title="Цены" class="order-3">
                 @include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false])
             </x-ui.card>
 
@@ -161,6 +161,7 @@
         </form>
 
         <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
+            <x-slot:actions><x-ui.photos-all/></x-slot:actions>
             @include('admin.offers.photo-upload')
             @include('admin.offers.gallery')
         </x-ui.card>

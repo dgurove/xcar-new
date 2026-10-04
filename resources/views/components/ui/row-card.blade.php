@@ -36,7 +36,8 @@
 </div>
 @endif
 @if ($photos === null && ($facts = array_filter($facts)))<div class="mt-3 flex flex-wrap gap-1.5">@foreach ($facts as $fact)<span class="tag nums">{{ $fact }}</span>@endforeach</div>@endif
-@if ($actions)
+{{-- Пустой слот (черновик без кнопок) не рисует ряд: иначе над «Ценами» лишний отступ. --}}
+@if ($actions && (! $actions instanceof \Illuminate\View\ComponentSlot || $actions->hasActualContent()))
     <div class="mt-3 flex flex-wrap items-center gap-2">{{ $actions }}</div>
 @elseif ($action && $href)
     <div class="mt-3 flex items-center gap-3">

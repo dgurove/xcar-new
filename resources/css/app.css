@@ -2342,8 +2342,12 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
 
   /* Полоса фото: прокрутка вбок, плитка фиксированной высоты, первая — «добавить».
      Действия снизу на стекле: глаз · поворот · корзина. */
-  .photo-row { @apply -mx-4 flex gap-2 px-4 sm:mx-0 sm:px-0; }
-  .photo-strip { @apply -mr-4 flex min-w-0 flex-1 snap-x gap-2 overflow-x-auto pr-4 sm:mr-0 sm:pr-0 sm:pb-1; scrollbar-width: none; }
+  .photo-row { @apply -mx-4 flex gap-1 px-4 sm:mx-0 sm:px-0; }
+  /* «Показать все» / «Скрыть все» — текстовая кнопка, как «Выбрать» в «Фото»: в заголовке карточки или под лентой справа. */
+  .photos-all { @apply -my-1 inline-flex min-h-8 shrink-0 items-center text-sm font-medium text-accent-text hover:text-accent-hover; }
+  .photos-all[hidden] { display: none; }
+  .photos-all--under { @apply mt-1.5 ml-auto flex w-fit; }
+  .photo-strip { @apply -mr-4 flex min-w-0 flex-1 snap-x gap-1 overflow-x-auto pr-4 sm:mr-0 sm:pr-0 sm:pb-1; scrollbar-width: none; }
   @media (hover: hover) { .photo-strip { scrollbar-width: thin; } }
   /* Внутри карточки лента не вылезает за края: отрицательные поля — только на голой странице. */
   .box .photo-row, .box-nested .photo-row, .phase .photo-row { @apply mx-0 px-0; }
@@ -2353,8 +2357,9 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .photo-cell.is-hidden img { @apply opacity-40 grayscale; }
   /* Глаз и поворот — сразу на экране, сервер догоняет (photos_controller#hide/#rotate): иконка — по классу плитки,
      поворот — CSS по --turn (четверти) и --fit (вписать боком), пока не пришёл повёрнутый файл. */
-  .photo-cell .photo-eye-on, .photo-cell.is-hidden .photo-eye-off, .photo-cell.is-hidden .photo-star { display: none; }
-  .photo-cell.is-hidden .photo-eye-on { display: block; }
+  /* Глаз — состояние кадра: открыт — фото видно, перечёркнут — скрыто. */
+  .photo-cell .photo-eye-off, .photo-cell.is-hidden .photo-eye-on, .photo-cell.is-hidden .photo-star { display: none; }
+  .photo-cell.is-hidden .photo-eye-off { display: block; }
   .photo-cell.is-turning img { rotate: calc(var(--turn, 0) * 90deg); scale: var(--fit, 1); }
   @media (prefers-reduced-motion: no-preference) { .photo-cell.is-turning img { transition: rotate var(--dur-fast) var(--ease-out), scale var(--dur-fast) var(--ease-out); } }
   /* Кадр в очереди: превью сразу, кольцо прогресса (--p от 0 до 1), красная точка — не ушёл, тап — повтор. */
@@ -2397,7 +2402,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   /* Добавить — узкая полоса перед кадрами: главное в ряду фото, а не кнопка. */
   .photo-add { @apply flex h-20 w-12 shrink-0 cursor-pointer items-center justify-center rounded-(--radius-m) bg-surface-3 text-ink-muted transition-colors hover:bg-line hover:text-ink sm:h-24; }
   /* Сетка квадратов (дело на стоянке): все кадры видны сразу, в узкой колонке по три в ряд, кадр заполняет клетку. */
-  .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: .375rem; }
+  .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: .1875rem; }
   .photo-grid .photo-cell, .photo-grid .photo-add { aspect-ratio: 1 / 1; height: auto; width: auto; min-width: 0; }
   .photo-grid .photo-cell img { height: 100%; width: 100%; max-width: none; object-fit: cover; }
   .is-dropping .photo-add { @apply bg-accent-soft text-accent-text; box-shadow: inset 0 0 0 2px var(--color-accent); }
@@ -2432,7 +2437,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
 dialog.lightbox { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: hidden; }
 dialog.lightbox::backdrop { background: transparent; }
 .pswp.pswp { --pswp-bg: #121212; --pswp-placeholder-bg: rgb(255 255 255 / .06); --pswp-icon-color: #fff; }
-.pswp .pswp__top-bar { height: auto; align-items: center; gap: 6px; padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); }
+.pswp .pswp__top-bar { height: auto; align-items: center; gap: 6px; padding: max(10px, var(--safe-top, 0px), env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); }
 .pswp .pswp__top-bar .pswp__button, .pswp .pswp__button.pswp__button--arrow {
   display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 0; border-radius: 999px;
   color: #fff; opacity: 1; background: rgb(255 255 255 / .12); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
@@ -2442,7 +2447,17 @@ dialog.lightbox::backdrop { background: transparent; }
 @media (hover: hover) { .pswp .pswp__top-bar .pswp__button:hover, .pswp .pswp__button.pswp__button--arrow:hover { background: rgb(255 255 255 / .24); } }
 .pswp .pswp__button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 .pswp .pswp__top-bar .pswp__button--zoom { display: none; }
-.pswp.pswp--has_mouse.pswp--zoom-allowed .pswp__top-bar .pswp__button--zoom { display: flex; }
+/* Нижняя полоса: скрыть, повернуть, увеличить — по центру над краем экрана, под пальцем. */
+.pswp .pswp__tools {
+  position: absolute; left: 50%; translate: -50% 0; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 10;
+  display: flex; gap: 8px; padding: 4px; border-radius: 999px; background: rgb(255 255 255 / .12); backdrop-filter: blur(20px);
+  opacity: 0; transition: opacity var(--dur-fast) ease-out; pointer-events: none;
+}
+.pswp.pswp--ui-visible .pswp__tools { opacity: 1; pointer-events: auto; }
+.pswp .pswp__tools .pswp__button { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; color: #fff; }
+.pswp .pswp__tools .pswp__button[hidden] { display: none; }
+.pswp:not(.pswp--zoom-allowed) .pswp__tools .pswp__button--zoom-tool { opacity: .35; pointer-events: none; }
+@media (hover: hover) { .pswp .pswp__tools .pswp__button:hover { background: rgb(255 255 255 / .16); } }
 .pswp .pswp__button.pswp__button--arrow { position: absolute; top: 50%; margin-top: -24px; width: 48px; height: 48px; }
 .pswp.pswp--one-slide .pswp__button.pswp__button--arrow, .pswp .pswp__button.pswp__button--arrow:disabled { display: none; }
 .pswp .pswp__button--arrow--prev { left: max(12px, env(safe-area-inset-left)); }
