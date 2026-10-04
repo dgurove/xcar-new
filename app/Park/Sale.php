@@ -48,6 +48,23 @@ final class Sale
         }
     }
 
+    /**
+     * Продажа кончилась — предложение в архиве, снято или удаляется: ТС отвязывается, её кадры и документы остаются у неё,
+     * и принесённые предложением тоже (метка `offer` снимается, `relinked` их не увезёт; увозит только ручная отвязка
+     * ошибочной связи). В истории ТС — «Снята с продажи». Парковку больше ничего не трогает.
+     */
+    public static function end(Offer $offer, ?User $by = null): void
+    {
+        $vehicle = Vehicle::where('offer_id', $offer->id)->first();
+        if (! $vehicle) {
+            return;
+        }
+        Media::where('model_type', Vehicle::class)->where('model_id', $vehicle->id)->where('custom_properties->offer', (string) $offer->id)->get()
+            ->each(fn (Media $m) => $m->forgetCustomProperty('offer')->save());
+        $vehicle->update(['offer_id' => null]);
+        $vehicle->log(EventType::Unlinked, $by ?? auth()->user(), ['number' => $offer->number]);
+    }
+
     /** Файл парковки, а не продажи (снят при приёме, пришёл письмом её ящиков): CRM его прячет, но не удаляет. */
     public static function parkOwned(Media $media): bool
     {

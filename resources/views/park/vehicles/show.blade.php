@@ -52,11 +52,8 @@
             </div>
         @endif
         <x-ui.docs-pill :docs="$docs" class="!min-h-0 !py-1 text-xs"/>
-        {{-- «Выставить в продажу» — админу, пока ТС не в продаже: лаймовая кнопка, а не чип-статус (черновик в CRM, фото и
-             документы — её же). Выставлена — у названия значок связи (x-ui.links), он и ведёт в CRM. --}}
-        @if (auth()->user()->isAdmin() && ! $vehicle->offer_id && ! $state->isFinal())
-            <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf<button class="btn btn-s btn-accent">Выставить в продажу</button></form>
-        @endif
+        {{-- Продажа — админу: «Выставить в продажу» или капсула состояния со шторкой «Убрать из продажи» (x-park.sale). --}}
+        <x-park.sale :vehicle="$vehicle"/>
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif

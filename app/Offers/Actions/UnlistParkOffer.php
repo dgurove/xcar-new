@@ -7,8 +7,7 @@ use App\Mail\Thread;
 use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
-use App\Park\EventType;
-use App\Park\Vehicle;
+use App\Park\Sale;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
@@ -27,10 +26,8 @@ final class UnlistParkOffer
             && ! $offer->bids()->where('state', BidState::Active)->exists(), 404);
 
         DB::transaction(function () use ($offer, $by) {
-            foreach (Vehicle::where('offer_id', $offer->id)->get() as $vehicle) {
-                $vehicle->update(['offer_id' => null]);
-                $vehicle->log(EventType::Unlinked, $by, ['number' => $offer->number]);
-            }
+            // ТС отвязывается, всё её (и принесённое предложением) остаётся у неё.
+            Sale::end($offer, $by);
             Thread::where('offer_id', $offer->id)->update(['offer_id' => null]);
             Candidate::where('offer_id', $offer->id)->update(['offer_id' => null]);
             $offer->delete();

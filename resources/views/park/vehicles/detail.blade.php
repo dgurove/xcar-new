@@ -65,11 +65,8 @@
                 <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/release', 'type' => 'html', 'name' => 'Акт выдачи']" class="pill pill-plain"/>
             @endif
             @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Осмотр</a>@endunless
-            {{-- «Выставить в продажу» — админу, как в деле ТС: лаймовая кнопка с подтверждением, где названы машина, госномер и
-                 убыток. Выставлена — значок связи у названия (x-ui.links). --}}
-            @if (auth()->user()->isAdmin() && ! $vehicle->offer_id && ! $state->isFinal())
-                <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf<button class="btn btn-s btn-accent">Выставить в продажу</button></form>
-            @endif
+            {{-- Продажа — как в деле ТС (x-park.sale): выставить или убрать, только админу. --}}
+            <x-park.sale :vehicle="$vehicle"/>
         </x-slot:actions>
         @if ($differences || $scanFiles->isNotEmpty())
             <form method="post" action="{{ $href }}/take" class="mt-3">@csrf

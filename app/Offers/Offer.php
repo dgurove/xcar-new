@@ -76,6 +76,17 @@ class Offer extends Model implements HasMedia
         // Машина одна: вписали номер убытка или VIN машины, что стоит на парковке, — предложение связывается с ней, и
         // фото с документами становятся общими (`Park\Sale::adopt`), а не живут двумя машинами.
         static::saved(fn (self $o) => $o->wasChanged(['claim_ref_key', 'vin']) || ($o->wasRecentlyCreated && ($o->claim_ref_key || $o->vin)) ? Sale::adopt($o) : null);
+        // Продажа кончилась (в архив, снят) — ТС парковки отвязывается, всё её остаётся у неё; вернули из архива — связь
+        // возвращается сама, если ТС та же и свободна (владелец 05.10.2026: «удаление предложения отменяет продажу, а
+        // парковку не трогает»).
+        static::saved(function (self $o) {
+            if (! $o->wasChanged('state')) {
+                return;
+            }
+            in_array($o->state, [OfferState::Archived, OfferState::Cancelled], true) ? Sale::end($o) : Sale::adopt($o);
+        });
+        // Черновик удаляют (бросили, «Отменить», ночная уборка) — отвязать по-человечески, с записью в истории ТС.
+        static::deleting(fn (self $o) => Sale::end($o));
     }
 
     protected function casts(): array

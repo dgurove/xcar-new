@@ -31,6 +31,7 @@ use App\Park\Actions\PromoteCandidate;
 use App\Park\Actions\PutOnSale;
 use App\Park\Actions\RestoreVehicle;
 use App\Park\Actions\SetYard;
+use App\Park\Actions\TakeOffSale;
 use App\Park\Actions\UndoIntake;
 use App\Park\Actions\UndoRelease;
 use App\Park\Actions\UnwindVehicle;
@@ -426,6 +427,15 @@ class VehicleController
         $sell($vehicle, $request->user());
 
         return back()->with('toast', 'Черновик продажи в CRM');
+    }
+
+    /** «Убрать из продажи»: черновик удаляется, опубликованное — в архив; ТС с файлами остаётся (`TakeOffSale`). */
+    public function unsell(Request $request, Vehicle $vehicle, TakeOffSale $takeOff)
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $takeOff($vehicle, $request->user());
+
+        return back()->with('toast', 'Снята с продажи');
     }
 
     /** Связать с предложением CRM: по номеру, руками. */

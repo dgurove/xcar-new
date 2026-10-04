@@ -24,6 +24,11 @@ class MirrorOffersCommand extends Command
     public function handle(): int
     {
         $apply = (bool) $this->option('apply');
+        // Продажа кончилась раньше хука (предложение уже в архиве или снято), а ТС всё ещё связана — отвязать, файлы у ТС.
+        foreach (Offer::whereIn('state', [OfferState::Archived, OfferState::Cancelled])->whereHas('parkVehicle')->get() as $offer) {
+            $this->line("снять с продажи № {$offer->number} {$offer->title()} ({$offer->state->value})");
+            $apply && Sale::end($offer);
+        }
         // Предложения той же машины, что стоит на парковке, но не связанные (заведены в CRM руками до `Sale::adopt`).
         $loose = Offer::whereDoesntHave('parkVehicle')->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])
             ->where(fn ($q) => $q->whereNotNull('claim_ref_key')->orWhereNotNull('vin'))->orderBy('id')->get();

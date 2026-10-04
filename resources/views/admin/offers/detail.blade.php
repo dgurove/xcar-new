@@ -119,7 +119,7 @@
                     <div id="detail-state-{{ $n }}" class="menu" popover data-menu-target="list" role="menu">
                         @if ($publishItems)<x-offer.publish-items :offer="$offer"/>@endif
                         @foreach ($transitions as [$next, $label])
-                            <form method="post" action="/offers/{{ $n }}/state" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
+                            <form method="post" action="/offers/{{ $n }}/state" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @if ($offer->parkVehicle) data-turbo-confirm-text="ТС снимется с продажи, на парковке она остаётся с фото и документами" @endif @endif>
                                 @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                                 <button class="menu-item w-full {{ $next->tone() === 'danger' || $next === OfferState::Archived ? 'text-danger' : '' }}" role="menuitem" data-action="menu#close">{{ $label }}</button>
                             </form>
