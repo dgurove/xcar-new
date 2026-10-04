@@ -108,29 +108,41 @@
                     @endif
                 </div>
             @endif
-            @if ($admin && $offer->state === OfferState::Open && $offer->bids_close_at)
-                @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
-                    <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
-                @endforeach
-            @endif
-            @if ($transitions->isNotEmpty() || $publishItems)
-                <div class="contents" data-controller="menu">
-                    <button type="button" class="pill pill-plain" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-state-{{ $n }}">Состояние <x-ui.icon name="chevron-down" class="size-4"/></button>
-                    <div id="detail-state-{{ $n }}" class="menu" popover data-menu-target="list" role="menu">
-                        @if ($publishItems)<x-offer.publish-items :offer="$offer"/>@endif
-                        @foreach ($transitions as [$next, $label])
-                            <form method="post" action="/offers/{{ $n }}/state" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @if ($offer->parkVehicle) data-turbo-confirm-text="ТС снимется с продажи, на парковке она остаётся с фото и документами" @endif @endif>
-                                @csrf<input type="hidden" name="state" value="{{ $next->value }}">
-                                <button class="menu-item w-full {{ $next->tone() === 'danger' || $next === OfferState::Archived ? 'text-danger' : '' }}" role="menuitem" data-action="menu#close">{{ $label }}</button>
+            {{-- Состояние — не меню, а сами действия строкой текста (владелец 05.10.2026: «скрывает мало кнопок, нет смысла в
+                 дропдаун»): их от двух до пяти. Продлить приём — первыми, публикация — лаймом, архив и удаление — красным. --}}
+            @php
+                $act = 'whitespace-nowrap py-1 font-medium';
+                $extend = $admin && $offer->state === OfferState::Open && $offer->bids_close_at;
+                $purge = $admin && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true);
+            @endphp
+            @if ($extend || $transitions->isNotEmpty() || $publishItems)
+                <div class="flex w-full flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    @if ($extend)
+                        @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
+                            <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="{{ $act }} nums text-accent-text">{{ $label }}</button></form>
+                        @endforeach
+                    @endif
+                    @if ($publishItems)
+                        @foreach (\App\Offers\Slots::choices() as $c)
+                            <form method="post" action="/offers/{{ $n }}/state" class="contents">
+                                @csrf<input type="hidden" name="state" value="open"><input type="hidden" name="when" value="{{ $c['when'] }}">
+                                <button class="{{ $act }} text-accent-text">{{ $c['at'] ? str_replace(', ', ' в ', \App\Offers\Slots::label($c['at'])) : 'Опубликовать сейчас' }}</button>
                             </form>
                         @endforeach
-                        {{-- Из архива — навсегда, со всем связанным (PurgeOffer): кадры, документы, сделки, чаты, счета. --}}
-                        @if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true))
-                            <form method="post" action="/offers/{{ $n }}/purge" data-turbo-frame="_top" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по нему удалятся без возврата" data-turbo-confirm-label="Удалить">
-                                @csrf<button class="menu-item w-full text-danger" role="menuitem" data-action="menu#close">Удалить навсегда</button>
-                            </form>
-                        @endif
-                    </div>
+                    @endif
+                    @foreach ($transitions as [$next, $label])
+                        @php $danger = $next->tone() === 'danger' || $next === OfferState::Archived; @endphp
+                        <form method="post" action="/offers/{{ $n }}/state" class="contents" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @endif>
+                            @csrf<input type="hidden" name="state" value="{{ $next->value }}">
+                            <button class="{{ $act }} {{ $danger ? 'text-danger' : 'text-ink' }}">{{ $label }}</button>
+                        </form>
+                    @endforeach
+                    {{-- Из архива — навсегда, со всем связанным (PurgeOffer): кадры, документы, сделки, чаты, счета. --}}
+                    @if ($purge)
+                        <form method="post" action="/offers/{{ $n }}/purge" class="contents" data-turbo-frame="_top" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по нему удалятся без возврата" data-turbo-confirm-label="Удалить">
+                            @csrf<button class="{{ $act }} text-danger">Удалить навсегда</button>
+                        </form>
+                    @endif
                 </div>
             @endif
             @if ($admin && $offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
