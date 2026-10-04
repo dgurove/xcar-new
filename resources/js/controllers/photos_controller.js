@@ -280,31 +280,34 @@ export default class extends Controller {
         });
     }
 
-    async reorder() {
+    // main — звезда: кадр, вставший первым в ряду, становится главным во всей машине (блоки по стадиям, PhotoBlocks).
+    async reorder(main = false) {
         const order = this.cells().map((el) => el.dataset.id);
-        const r = await this.post(this.urlValue + '/order', JSON.stringify({ order }), 'application/json');
+        const r = await this.post(this.urlValue + '/order', JSON.stringify({ order, main }), 'application/json');
         if (r.ok) this.apply(await r.text());
     }
 
-    // Звезда главного: у главного — открыть выбор (контурные звёзды на остальных), у контурной — сделать этот кадр
-    // главным: он встаёт первым, дальше тот же порядок, что после перетаскивания. Нажали мимо — выбор закрывается.
+    // Звезда главного: у главного — открыть выбор (контурные звёзды на остальных, во всех блоках машины), у контурной —
+    // сделать этот кадр главным: он встаёт первым, дальше тот же порядок, что после перетаскивания. Нажали мимо — выбор
+    // закрывается.
     star(event) {
         event.preventDefault();
         event.stopPropagation();
         const button = event.currentTarget, grid = this.gridTarget;
+        const scope = this.element.closest('.photo-blocks') ?? grid;
         if (button.classList.contains('photo-star--main')) {
-            const on = grid.classList.toggle('is-choosing');
+            const on = scope.classList.toggle('is-choosing');
             if (on) setTimeout(() => document.addEventListener('click', this.stopChoosing ??= (e) => {
-                if (!e.target.closest?.('.photo-star') && this.hasGridTarget) this.gridTarget.classList.remove('is-choosing');
+                if (!e.target.closest?.('.photo-star')) scope.classList.remove('is-choosing');
                 document.removeEventListener('click', this.stopChoosing);
             }), 0);
             return;
         }
-        grid.classList.remove('is-choosing');
-        grid.querySelector('.photo-star--main')?.classList.replace('photo-star--main', 'photo-star--pick');
+        scope.classList.remove('is-choosing');
+        scope.querySelectorAll('.photo-star--main').forEach((s) => s.classList.replace('photo-star--main', 'photo-star--pick'));
         button.classList.replace('photo-star--pick', 'photo-star--main');
         grid.prepend(button.closest('.photo-cell'));
-        this.reorder();
+        this.reorder(true);
     }
 
     // Кнопка на плитке: hide / rotate / delete.
@@ -454,10 +457,14 @@ export default class extends Controller {
             }
         });
         if (this.pendingCells?.size) this.restorePending();
-        // Морф берёт ряд с сервера как есть: «развёрнуто плиткой» и подпись «Показать все» ставит только этот контроллер,
-        // без них глаз или поворот сворачивали плитку обратно в ленту.
-        this.syncExpand();
-        this.syncAll();
+        // Морф берёт ряд с сервера как есть: «развёрнуто плиткой» и подпись «Показать все» ставит только контроллер,
+        // без них глаз или поворот сворачивали плитку обратно в ленту. Ответ подменяет и соседние блоки той же машины
+        // (PhotoBlocks) — синхронизируются все контроллеры кадров на странице.
+        document.querySelectorAll('[data-controller~="photos"]').forEach((el) => {
+            const c = this.application.getControllerForElementAndIdentifier(el, 'photos');
+            c?.syncExpand();
+            c?.syncAll();
+        });
         if (quiet) shown?.lb.redraw();
     }
 

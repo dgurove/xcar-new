@@ -2481,7 +2481,10 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .photos-all { @apply -my-1 inline-flex min-h-8 shrink-0 items-center text-sm font-medium text-accent-text hover:text-accent-hover; }
   .photos-all[hidden] { display: none; }
   .photos-over { @apply mb-1.5 flex justify-end gap-4; }
-  .photos-over:not(:has(> button:not([hidden]))) { display: none; }
+  .photos-over:not(:has(> button:not([hidden]), > .photo-block-title)) { display: none; }
+  /* Кадры блоками по стадии (PhotoBlocks): подпись блока слева над лентой, кнопки справа; с подписью ряд виден всегда. */
+  .photo-blocks { display: flex; flex-direction: column; gap: .875rem; }
+  .photo-block-title { @apply mr-auto self-center text-sm text-ink-muted; }
   /* «Развернуть»: лента — плиткой, плитка «добавить» — первой клеткой; перетаскивание то же. */
   .photo-row.is-open { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); }
   .photo-row.is-open .photo-strip { display: contents; }

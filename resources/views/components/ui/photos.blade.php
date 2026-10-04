@@ -7,8 +7,10 @@
      grid — сетка квадратов вместо ленты (дело на стоянке: все кадры видны сразу и в узкой колонке).
      deletable=false — без корзины (удаляют только в полном редакторе); замыкание — решает по кадру.
      pending — сколько заглушек «качается» в конце ряда. add=false — без плитки «добавить» (карточка строки парковки).
-     Кнопка «Показать все» / «Скрыть все» — отдельно, x-ui.photos-all, там, где ей место по вёрстке. --}}
-@props(['photos', 'hide' => true, 'main' => true, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true, 'pending' => 0, 'add' => true])
+     Кнопка «Показать все» / «Скрыть все» — отдельно, x-ui.photos-all, там, где ей место по вёрстке.
+     mainId — главный кадр всей машины, когда кадры разложены блоками по стадиям (PhotoBlocks): звезда у него, в чужом
+     блоке — только контурные «сделать главным». --}}
+@props(['photos', 'hide' => true, 'main' => true, 'mainId' => null, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true, 'pending' => 0, 'add' => true])
 <div id="{{ $id }}" class="{{ $grid ? 'photo-grid' : 'photo-row' }}">
     @if (! $readonly && $add)<button type="button" class="photo-add" data-action="photos#pick" aria-label="Добавить фото"><x-ui.icon name="camera" class="size-6"/></button>@endif
     <div class="{{ $grid ? 'contents' : 'photo-strip' }}" data-photos-target="grid">
@@ -19,7 +21,7 @@
             <img src="{{ \App\Media\MediaUrl::for($media, 'w320') }}" data-full="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" alt="" loading="lazy" data-action="click->photos#open">
             {{-- Главное — лаймовая звезда в углу; нажали — у остальных кадров контурные звёзды, нажатая становится главной. --}}
             @if ($main && !$hidden)
-                @php $isMain = ! $mainShown; $mainShown = true; @endphp
+                @php $isMain = $mainId !== null ? $media->id === $mainId : ! $mainShown; $mainShown = true; @endphp
                 @if ($readonly)
                     @if ($isMain)<span class="photo-star photo-star--main" aria-label="Главное">@include('components.ui.star')</span>@endif
                 @else

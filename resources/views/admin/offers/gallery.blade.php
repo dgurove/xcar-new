@@ -1,3 +1,4 @@
-{{-- Кадр парковки (приём, письма её ящиков) — запись парковки о машине: из продажи его убирает глаз, корзины нет.
-     Заглушки в конце — кадры, которые ещё качаются с Мигторга и прикрепляются из письма. --}}
-<x-ui.photos :photos="$offer->photos()" :deletable="fn ($m) => ! \App\Park\Sale::parkOwned($m)" :pending="\App\Offers\Jobs\ImportMigtorgLot::pending($offer->id) + \App\Mail\Jobs\ImportThreadFiles::pending($offer)"/>
+{{-- Кадры в полном редакторе — блоками по стадии (admin.offers.photo-blocks). Кадр парковки (приём, письма её ящиков) —
+     запись парковки о машине: из продажи его убирает глаз, корзины нет. Заглушки в конце первого блока — кадры, которые
+     ещё качаются с Мигторга и прикрепляются из письма. --}}
+@include('admin.offers.photo-blocks', ['offer' => $offer, 'detail' => false])

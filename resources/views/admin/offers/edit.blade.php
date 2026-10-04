@@ -168,10 +168,8 @@
 
         {{-- Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и заглушки в ряду, attach_controller
              переспрашивает их, пока строка есть. --}}
-        <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="photos attach" data-attach-url-value="/offers/{{ $n }}/attach" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
-            <x-slot:actions><div class="flex items-center gap-4"><x-ui.photos-expand/><x-ui.photos-all/></div></x-slot:actions>
+        <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach">
             <x-mail.attach-line :model="$offer"/>
-            @include('admin.offers.photo-upload')
             @include('admin.offers.gallery')
         </x-ui.card>
 

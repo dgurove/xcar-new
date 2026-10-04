@@ -7,6 +7,7 @@ use App\Media\Actions\RotatePhoto;
 use App\Media\Actions\UnmarkPhoto;
 use App\Media\ForManagers;
 use App\Media\Hidden;
+use App\Media\PhotoBlocks;
 use App\Media\PhotoIngest;
 use App\Media\Unmark;
 use App\Media\Watermarks;
@@ -15,6 +16,7 @@ use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Jobs\ImportOfferArchive;
 use App\Offers\Migtorg;
 use App\Offers\Offer;
+use App\Park\PhotoStage;
 use App\Park\Sale;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -88,7 +90,13 @@ class OfferPhotoController
     public function reorder(Request $request, Offer $offer)
     {
         $order = $request->validate(['order' => ['required', 'array'], 'order.*' => ['integer']])['order'];
-        Media::setNewOrder(array_values(array_intersect($order, $offer->photos()->pluck('id')->all())));
+        // Порядок присылает один блок (от страховой, при приёме): его кадры встают на свои места в общей ленте;
+        // звезда (`main`) ставит выбранный кадр первым во всей ленте.
+        $all = $offer->photos()->pluck('id')->all();
+        $ids = array_values(array_intersect($order, $all));
+        if ($ids) {
+            Media::setNewOrder(PhotoBlocks::order($all, $ids, $request->boolean('main')));
+        }
 
         return $this->gallery($offer->refresh());
     }
@@ -113,7 +121,9 @@ class OfferPhotoController
 
     public function visibility(Request $request, Offer $offer)
     {
-        Hidden::set($offer->photos(), $request->boolean('hidden'));
+        // «Показать все» / «Скрыть все» блока — его стадии; без стадии — все кадры.
+        $stage = PhotoStage::tryFrom((string) $request->input('stage'));
+        Hidden::set($offer->photos()->filter(fn ($m) => ! $stage || PhotoStage::of($m) === $stage), $request->boolean('hidden'));
 
         return $this->gallery($offer->refresh());
     }
@@ -244,7 +254,7 @@ class OfferPhotoController
 
         // Ряд кадров карточки строки — свой (без корзины, нажатие прячет); его id присылает photos_controller.
         return response()
-            ->view('admin.offers.gallery-stream', ['offer' => $offer, 'detail' => request()->header('X-Photos-Target') === 'detail-photos'])
+            ->view('admin.offers.gallery-stream', ['offer' => $offer, 'detail' => str_starts_with((string) request()->header('X-Photos-Target'), 'detail-photos')])
             ->header('Content-Type', 'text/vnd.turbo-stream.html');
     }
 

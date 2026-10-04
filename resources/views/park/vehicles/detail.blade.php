@@ -16,14 +16,9 @@
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
         <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
-        {{-- Кадры с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
+        {{-- Кадры блоками по стадии с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
         @if ($vehicle->photos()->isNotEmpty())
-            <x-slot:media>
-                <div data-controller="photos" data-photos-url-value="{{ $href }}/media" data-photos-group-value="car-{{ $vehicle->id }}">
-                    <div class="photos-over"><x-ui.photos-expand/><x-ui.photos-all/></div>
-                    <x-ui.photos :photos="$vehicle->photos()" :add="false" :deletable="false" :main="false" id="detail-photos"/>
-                </div>
-            </x-slot:media>
+            <x-slot:media>@include('park.vehicles.detail-photos')</x-slot:media>
         @endif
         <x-slot:marks>
             <x-ui.state :tone="$state->tone()">{{ $state->label() }}</x-ui.state>

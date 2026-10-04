@@ -17,6 +17,7 @@ use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\Actions\RotatePhoto;
 use App\Media\Hidden;
+use App\Media\PhotoBlocks;
 use App\Media\PhotoIngest;
 use App\Offers\OfferNumber;
 use App\Park\Actions\CancelVehicle;
@@ -302,13 +303,7 @@ class VehicleController
         }
         // Карточка отдаёт порядок только своей стадии: её кадры встают на свои же места в общей ленте, остальные
         // не двигаются — иначе перестановка в одной карточке переставила бы всю галерею и сменила главный кадр ТС.
-        $moving = array_flip($ids);
-        $queue = $ids;
-        $full = [];
-        foreach ($photos->pluck('id') as $id) {
-            $full[] = isset($moving[$id]) ? array_shift($queue) : $id;
-        }
-        Media::setNewOrder($full);
+        Media::setNewOrder(PhotoBlocks::order($photos->pluck('id')->all(), $ids));
 
         // Переставляли внутри одной карточки — ей и возвращаем кнопку камеры.
         return $this->gallery($vehicle, PhotoStage::of($photos->firstWhere('id', $ids[0]))->value);

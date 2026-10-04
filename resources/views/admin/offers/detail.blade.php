@@ -36,14 +36,7 @@
 <x-ui.detail>
     <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         <x-slot:badge><x-ui.links :offer="$offer"/></x-slot:badge>
-        <x-slot:media>
-            <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
-                {{-- Над лентой, а не под ней: развёрнутая плиткой лента уносила бы кнопки вниз. --}}
-                <div class="photos-over"><x-ui.photos-expand/><x-ui.photos-all/></div>
-                @include('admin.offers.photo-upload')
-                @include('admin.offers.detail-photos')
-            </div>
-        </x-slot:media>
+        <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
         <x-slot:marks>
             {{-- Номер предложения и номер ДЛ или убытка копируются нажатием, как VIN. --}}
             @unless ($offer->state === OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $n" done="Номер в буфере"/></span>@endunless
