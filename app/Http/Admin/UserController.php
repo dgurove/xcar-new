@@ -291,10 +291,11 @@ class UserController
         abort_unless($request->user()->isAdmin(), 404);
         if ($user->isBuyer()) {
             $data = $request->validate([
-                'name' => ['required', 'string', 'max:100'],
+                'first_name' => ['required', 'string', 'max:60'],
+                'last_name' => ['required', 'string', 'max:60'],
                 'manager_id' => ['required', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))],
             ]);
-            $user->update(['name' => $data['name']]);
+            $user->update(['first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name'])]);
             $transfer($user, User::find($data['manager_id']));
 
             return back()->with('toast', 'Сохранено');
@@ -338,7 +339,8 @@ class UserController
         // У себя роль не меняется — селект отключён и в запрос не попадает.
         $self = $user?->is($request->user()) ?? false;
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
+            'first_name' => ['required', 'string', 'max:60'],
+            'last_name' => ['required', 'string', 'max:60'],
             'phone' => ['nullable', 'digits:11', Rule::unique('users', 'phone')->ignore($user)],
             'email' => ['nullable', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user)],
             'login' => ['nullable', 'string', \App\Http\Auth\InviteController::LOGIN_RULE, Rule::unique('users', 'login')->ignore($user)],

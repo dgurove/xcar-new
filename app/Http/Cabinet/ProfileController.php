@@ -20,7 +20,9 @@ class ProfileController
     public function update(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
+            // Имя и фамилия — из шторки «Изменить»; форма аватара их не шлёт.
+            'first_name' => ['sometimes', 'required', 'string', 'max:60'],
+            'last_name' => ['sometimes', 'required', 'string', 'max:60'],
             'email' => ['nullable', 'email', 'max:190', 'unique:users,email,'.$request->user()->id],
             'avatar' => ['nullable', 'image', 'max:8192'],
             'remove_avatar' => ['nullable', 'boolean'],
@@ -28,7 +30,7 @@ class ProfileController
 
         $user = $request->user();
         // Почту покупатель меняет, только если менеджер разрешил её в приглашении; нет поля в запросе — почту не трогаем.
-        $user->update(['name' => $data['name']] + ($user->mayHave('email') && $request->has('email') ? ['email' => ($data['email'] ?? null) ?: null] : []));
+        $user->update(array_map('trim', array_intersect_key($data, array_flip(['first_name', 'last_name']))) + ($user->mayHave('email') && $request->has('email') ? ['email' => ($data['email'] ?? null) ?: null] : []));
         if ($request->boolean('remove_avatar')) {
             $user->clearMediaCollection('avatar');
         }

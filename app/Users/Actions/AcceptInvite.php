@@ -31,7 +31,8 @@ final class AcceptInvite
         $user = DB::transaction(function () use ($invite, $data) {
             $buyer = $invite->forBuyer();
             $user = User::create([
-                'name' => trim($data['name']),
+                'first_name' => trim($data['first_name']),
+                'last_name' => trim($data['last_name']),
                 'login' => $data['login'],
                 'password' => $data['password'],
                 'phone' => $invite->allows('phone') ? ($data['phone'] ?? null) : null,

@@ -44,7 +44,8 @@ class InviteController
             'phone' => $request->filled('phone') ? (Phone::normalize($request->input('phone')) ?? $request->input('phone')) : null,
         ]);
         $rules = [
-            'name' => ['required', 'string', 'max:100'],
+            'first_name' => ['required', 'string', 'max:60'],
+            'last_name' => ['required', 'string', 'max:60'],
             'login' => ['required', 'string', self::LOGIN_RULE, Rule::unique('users', 'login')],
             'password' => ['required', 'string', 'min:8'],
             'avatar' => ['nullable', 'image', 'max:8192'],
@@ -58,6 +59,8 @@ class InviteController
             $rules['email'] = [$invite->forBuyer() ? 'required' : 'nullable', 'email', 'max:190', Rule::unique('users', 'email')];
         }
         $data = $request->validate($rules, [
+            'first_name.required' => 'Введите имя',
+            'last_name.required' => 'Введите фамилию',
             'login.regex' => 'Логин — латиницей, от трёх знаков: буквы, цифры, точка',
             'login.unique' => 'Этот логин уже занят',
             'phone.regex' => 'Нужен номер из 11 цифр, например +7 900 123-45-67',

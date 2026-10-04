@@ -23,7 +23,10 @@
     <form method="post" action="{{ $base }}/{{ $user->id }}" class="user-form flex flex-col gap-4">
         @csrf @method('put')
         <input type="hidden" name="_user" value="{{ $user->id }}">
-        <x-ui.field name="name" label="Имя" :value="$user->name" required/>
+        <div class="grid grid-cols-2 gap-3">
+            <x-ui.field name="first_name" id="user-first-{{ $user->id }}" label="Имя" :value="$user->first_name" required/>
+            <x-ui.field name="last_name" id="user-last-{{ $user->id }}" label="Фамилия" :value="$user->last_name" required/>
+        </div>
         @if ($user->isBuyer())
             <div class="flex flex-wrap gap-1.5">
                 @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif

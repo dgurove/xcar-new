@@ -33,7 +33,8 @@
             <x-ui.field name="group_id" label="Сразу в группу" :options="$groups->pluck('name', 'id')" placeholder="Без группы"/>
         @endif
         <div class="flex flex-col gap-2">
-            <x-ui.check name="phone">Покупатель указывает телефон</x-ui.check>
+            {{-- Телефон по умолчанию спрашивается (владелец 05.10.2026); снять — если менеджер не хочет отдавать номер покупателя. --}}
+            <x-ui.check name="phone" :checked="old('_token') ? (bool) old('phone') : true">Покупатель указывает телефон</x-ui.check>
             <x-ui.check name="email">Покупатель указывает почту</x-ui.check>
         </div>
     </div>

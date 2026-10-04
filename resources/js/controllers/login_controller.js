@@ -9,7 +9,7 @@ const MAP = {
 };
 
 export default class extends Controller {
-    static targets = ['name', 'login', 'avatar'];
+    static targets = ['name', 'login', 'avatar', 'last'];
 
     connect() {
         this.dirty = this.loginTarget.value !== '';
@@ -22,7 +22,8 @@ export default class extends Controller {
 
     suggest() {
         if (this.dirty) return;
-        const parts = this.nameTarget.value.trim().toLowerCase().split(/\s+/).filter(Boolean).slice(0, 2);
+        const full = `${this.nameTarget.value} ${this.hasLastTarget ? this.lastTarget.value : ''}`;
+        const parts = full.trim().toLowerCase().split(/\s+/).filter(Boolean).slice(0, 2);
         const latin = parts.map((p) => [...p].map((c) => MAP[c] ?? (/[a-z0-9]/.test(c) ? c : '')).join('')).filter(Boolean);
         this.loginTarget.value = latin.join('.').slice(0, 32);
     }

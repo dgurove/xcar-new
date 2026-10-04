@@ -32,7 +32,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_yard_id', 'park_readonly', 'party_id'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_yard_id', 'park_readonly', 'party_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -44,6 +44,17 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Стал менеджером или перестал — круги показа опубликованных пересчитываются: правило «все» его касается. */
     protected static function booted(): void
     {
+        // Имя и фамилия — два поля (05.10.2026), `name` — их сборка «Имя Фамилия»: по нему ищут, сортируют и рисуют
+        // короткое имя. Код, что пишет только `name` (команды, фабрика), получает разбивку по первому слову.
+        static::saving(function (self $user) {
+            if ($user->isDirty(['first_name', 'last_name'])) {
+                $user->name = trim($user->first_name.' '.$user->last_name);
+            } elseif ($user->isDirty('name') || $user->first_name === null) {
+                $parts = preg_split('/\s+/u', trim((string) $user->name), 2) ?: [];
+                $user->first_name = $parts[0] ?? '';
+                $user->last_name = $parts[1] ?? null;
+            }
+        });
         static::saved(function (self $user) {
             if ($user->wasChanged('roles') || ($user->wasRecentlyCreated && $user->isManager())) {
                 app(SyncViewers::class)->all();

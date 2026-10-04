@@ -10,7 +10,6 @@
         {{-- Аватар — кружок с камерой: выбрал фото — оно сразу встаёт в кружок и сохраняется. --}}
         <form method="post" action="/account" enctype="multipart/form-data" data-controller="avatar">
             @csrf @method('put')
-            <input type="hidden" name="name" value="{{ $user->name }}">
             <button type="button" class="relative block" data-action="avatar#pick" aria-label="Сменить фото">
                 <x-ui.avatar :user="$user" :size="88" class="text-3xl" data-avatar-target="circle"/>
                 <span class="absolute -bottom-0.5 -right-0.5 flex size-8 items-center justify-center rounded-full bg-accent text-white ring-2 ring-surface"><x-ui.icon name="camera" class="size-4"/></span>
@@ -30,10 +29,11 @@
         </div>
         @error('avatar')<p class="field-error">{{ $message }}</p>@enderror
         <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open"><x-ui.icon name="edit" class="size-4"/> Изменить</button>
-        <x-ui.sheet id="profile-edit" title="Профиль" :open="$errors->has('name') || $errors->has('email')">
+        <x-ui.sheet id="profile-edit" title="Профиль" :open="$errors->hasAny(['first_name', 'last_name', 'email'])">
             <form method="post" action="/account" class="flex flex-col gap-3 text-left">
                 @csrf @method('put')
-                <x-ui.field name="name" label="Имя" :value="$user->name" autocomplete="name" required/>
+                <x-ui.field name="first_name" label="Имя" :value="$user->first_name" autocomplete="given-name" required/>
+                <x-ui.field name="last_name" label="Фамилия" :value="$user->last_name" autocomplete="family-name" required/>
                 @if ($user->mayHave('email'))<x-ui.field name="email" label="Почта" type="email" :value="$user->email" autocomplete="email"/>@endif
                 <x-ui.button class="mt-2">Сохранить</x-ui.button>
                 @if ($user->avatarUrl())

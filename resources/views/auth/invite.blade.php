@@ -27,8 +27,9 @@
                     <x-ui.avatar :user="null" :size="56" class="text-xl" data-login-target="avatar"/>
                     <span class="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="camera" class="size-3.5"/></span>
                 </span>
-                <span class="flex-1">
-                    <input name="name" required autocomplete="name" class="field-input" placeholder="Имя и фамилия" value="{{ old('name') }}" autofocus data-login-target="name" data-action="input->login#suggest">
+                <span class="flex flex-1 flex-col gap-2">
+                    <input name="first_name" required autocomplete="given-name" class="field-input" placeholder="Имя" value="{{ old('first_name') }}" autofocus data-login-target="name" data-action="input->login#suggest">
+                    <input name="last_name" required autocomplete="family-name" class="field-input" placeholder="Фамилия" value="{{ old('last_name') }}" data-login-target="last" data-action="input->login#suggest">
                 </span>
                 <input type="file" name="avatar" accept="image/*" class="sr-only" data-action="change->login#preview">
             </label>
@@ -40,7 +41,7 @@
             @if ($invite->allows('email'))
                 <input name="email" type="email" @if ($invite->forBuyer()) required @endif inputmode="email" autocomplete="email" class="field-input" placeholder="{{ $invite->forBuyer() ? 'Почта' : 'Почта, если есть' }}" value="{{ old('email') }}">
             @endif
-            @foreach (['name', 'login', 'password', 'phone', 'email', 'avatar', 'consent'] as $field)
+            @foreach (['first_name', 'last_name', 'login', 'password', 'phone', 'email', 'avatar', 'consent'] as $field)
                 @error($field)<p class="text-sm text-danger">{{ $message }}</p>@enderror
             @endforeach
             <label class="flex items-start gap-2.5 px-1 pt-1 text-sm text-ink-muted">
