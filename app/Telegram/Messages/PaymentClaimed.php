@@ -40,7 +40,7 @@ final class PaymentClaimed extends Message
     {
         // Гаражный счёт живёт на машине в гараже: в «Деньгах» CRM только счета сделок.
         if ($car = Car::ofInvoice($this->payment->invoice)) {
-            return ['text' => 'Машина в гараже', 'url' => $car->url()];
+            return ['text' => 'ТС в CRM', 'url' => $car->crmUrl()];
         }
 
         return ['text' => 'Счёт в CRM', 'url' => Surface::Crm->url('/work/money/invoices/'.$this->payment->invoice_id)];

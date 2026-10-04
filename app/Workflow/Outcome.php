@@ -3,6 +3,7 @@
 namespace App\Workflow;
 
 use App\Offers\Deal;
+use App\Offers\Destination;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,24 +36,27 @@ class Outcome extends Model
     }
 
     /**
-     * «Подтверждение принято» — исход, которым маршрут догоняет AcceptBid. Кнопкой его не жмут: сделку заводит
-     * только «Принять» у самого подтверждения, иначе предложение уходит «в сделку» без сделки и менеджера.
+     * Годится ли исход: на продаже — этой сделке (гаражный — только гаражной, где поставщику платим мы,
+     * покупательский — всем остальным; нет сделки — гаражных не видно), на вывозе — месту назначения (`Destination`:
+     * ветки yard, keeper, ours; не назначено — парковка, как было). Без ветки — всем.
      */
-    /**
-     * Годится ли исход этой сделке: гаражный — только гаражной, где поставщику платим мы, покупательский — всем
-     * остальным, без ветки — всем. Нет сделки (черновик, приём) — гаражных исходов не видно.
-     */
-    public function fits(?Deal $deal): bool
+    public function fits(Deal|Destination|null $for): bool
     {
-        $garage = $deal?->isGarageUs() ?? false;
+        $garage = $for instanceof Deal && $for->isGarageUs();
+        $to = $for instanceof Destination ? $for : Destination::Yard;
 
         return match ($this->branch) {
+            null, '' => true,
             self::GARAGE => $garage,
             self::BUYER => ! $garage,
-            default => true,
+            default => $to->value === $this->branch,
         };
     }
 
+    /**
+     * «Подтверждение принято» — исход, которым маршрут догоняет AcceptBid. Кнопкой его не жмут: сделку заводит
+     * только «Принять» у самого подтверждения, иначе предложение уходит «в сделку» без сделки и менеджера.
+     */
     public function acceptsBid(): bool
     {
         return mb_strtolower(trim($this->label)) === 'подтверждение принято';

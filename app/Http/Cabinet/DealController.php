@@ -50,7 +50,7 @@ class DealController
     /** Сделка с текущим шагом, путём и счетами — для её страницы и карточки машины в гараже. */
     public static function stepData(Deal $deal): array
     {
-        $deal->load(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'openRequirement.media', 'requirements']);
+        $deal->load(['offer.brand', 'offer.model', 'offer.media', 'offer.settlement', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'openRequirement.media', 'requirements']);
         $position = $deal->offer->position(Track::Sale);
         // Журнал с начала сделки, с учётом откатов — тот же, что путь в CRM.
         $steps = Path::journal($deal->offer, Track::Sale, $deal->created_at);

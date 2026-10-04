@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 
 /**
  * «Работа → Гараж»: у кого что стоит в гараже и во что обошлось — группами по менеджеру, этап и дни на нём в строке.
- * Машину ведут на её карточке (сайт, `/garage/cars/{n}`), ждущую страховую — на странице сделки в CRM.
+ * Машину ведут здесь же, в карточке строки, или в редакторе предложения (карточка «Гараж»); ждущую страховую — в сделке.
  */
 class GarageController
 {
@@ -57,12 +57,13 @@ class GarageController
         ]);
     }
 
-    /** Карточка строки: путь, деньги и расходы машины. */
+    /** Карточка строки: путь, деньги, расходы и действия сотрудника — как карточка «Гараж» редактора. */
     public function detail(Offer $offer)
     {
-        $car = Car::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal'])
-            ->where('offer_id', $offer->id)->firstOrFail();
+        $offer->load(['brand', 'model', 'media', 'positions.stage.block']);
+        $view = OfferController::garageView($offer, request()->user());
+        abort_unless($view, 404);
 
-        return view('admin.garage.detail', ['car' => $car]);
+        return view('admin.garage.detail', ['garageView' => $view]);
     }
 }

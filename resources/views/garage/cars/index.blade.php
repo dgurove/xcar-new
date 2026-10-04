@@ -1,7 +1,8 @@
 {{-- Машины одним списком, как в приложении: сначала то, где ход менеджера, дальше по пути (ждёт страховую → … →
      продана), внутри — дольше стоящие первыми; рассчитанные — своей группой ниже. Строка — кадр, название, этап цветным
      словом с днями на нём (ждут ответа — «ваш ход» и что сделать) и справа главное число: расходы, отдать нам, к выплате.
-     Менеджер закупочную не видит: у него расходы, а не «вложено». Сотрудник видит всех и чьи. --}}
+     Менеджер закупочную не видит: у него расходы, а не «вложено». Сотрудник видит всех и чьи. Сверху — «Вывоз»: ТС,
+     что менеджеру поручили забрать или что стоят у него (не его гараж: продаёт не обязательно он). --}}
 @php
     use App\Garage\CarState;
     use App\Support\Money;
@@ -10,10 +11,34 @@
     $days = fn (int $d) => $d.' '.Plural::of($d, ['день', 'дня', 'дней']);
     [$closed, $open] = $cars->partition(fn ($c) => $c->state === CarState::Settled);
     $open = $open->sortBy(fn ($c) => [$c->deal?->openRequirement ? 0 : 1, $c->state->order(), $c->stage_at?->timestamp ?? 0])->values();
-    $groups = array_filter(['' => $open, 'Рассчитались' => $closed], fn ($g) => $g->isNotEmpty());
+    // Над «Вывозом» своя группа машин гаража тоже подписана — иначе она читалась бы продолжением вывоза.
+    $groups = array_filter([($pickups->isNotEmpty() ? 'В гараже' : '') => $open, 'Рассчитались' => $closed], fn ($g) => $g->isNotEmpty());
 @endphp
-<x-ui.shell title="Гараж" :count="$open->count() ?: null">
-    @if ($cars->isEmpty())
+<x-ui.shell title="Гараж" :count="$open->count() + $pickups->count() ?: null">
+    @if ($pickups->isNotEmpty())
+        <div class="flex max-w-[56rem] flex-col">
+            <h2 class="list-head">Вывоз<span class="nums text-base font-normal text-ink-muted">{{ $pickups->count() }}</span></h2>
+            <div class="list mb-4">
+                @foreach ($pickups as $offer)
+                    @php
+                        [$word, $tone] = \App\Offers\PickupState::of($offer, auth()->user());
+                        $color = match ($tone) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted' };
+                        $d = \App\Offers\PickupState::days($offer);
+                        $photo = $offer->mainPhoto();
+                    @endphp
+                    <a href="/garage/pickups/{{ $offer->number }}" class="row">
+                        <span class="row-photo flex items-center justify-center text-ink-dim">@if ($photo)<x-offer.photo :media="$photo" sizes="72px"/>@else<x-ui.icon name="cat-car" class="size-7"/>@endif</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate">{{ $offer->titleWithYear() }}</span>
+                            <span class="row-sub block truncate"><span class="{{ $color }}">{{ $word }}</span>@if ($d), {{ $days($d) }}@endif</span>
+                        </span>
+                        <x-ui.chevron/>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    @endif
+    @if ($cars->isEmpty() && $pickups->isEmpty())
         <x-ui.empty class="mt-2">В гараже пусто</x-ui.empty>
     @else
         <div class="flex max-w-[56rem] flex-col">

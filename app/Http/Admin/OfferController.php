@@ -6,8 +6,10 @@ use App\Chats\Chat;
 use App\Chats\Message as ChatMessage;
 use App\Garage\Actions\SendViaRoute;
 use App\Garage\Actions\TakeToGarage;
+use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
 use App\Garage\GaragePayer;
+use App\Garage\GarageView;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Jobs\ImportThreadFiles;
@@ -325,7 +327,22 @@ class OfferController
             // Черновик только что заведён из писем и ещё ни разу не сохранён: внизу «Отменить» и «Не заявка».
             'fromMail' => $fromMail,
             'empty' => $empty,
+            // Машина в гараже ведётся здесь же, карточкой «Гараж»: путь, деньги, расходы и все действия сотрудника.
+            'garageView' => $admin ? self::garageView($offer, $request->user()) : null,
         ]);
+    }
+
+    /** Карточка «Гараж» в редакторе и в «Работе → Гараж»: что рисовать и какие действия доступны. */
+    public static function garageView(Offer $offer, User $user): ?array
+    {
+        $car = GarageCar::with(['manager', 'costs.author', 'invoice', 'payoutInvoice', 'deal'])->where('offer_id', $offer->id)->first();
+        if (! $car) {
+            return null;
+        }
+        $car->setRelation('offer', $offer);
+        $car->costs->each->setRelation('car', $car);
+
+        return GarageView::for($car, $user);
     }
 
     /**
@@ -361,7 +378,7 @@ class OfferController
     public function detail(Request $request, Offer $offer, ?bool $gallery = null)
     {
         $admin = $request->user()->canManageCrm();
-        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'parkVehicle:id,offer_id,accepted_at,created_at'] : [])])
+        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'parkVehicle:id,offer_id,accepted_at,created_at', 'vendor.workflows', 'positions.stage', 'evacuator'] : [])])
             ->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
 
         return view('admin.offers.detail', OfferFiles::letters($offer, Thread::where('offer_id', $offer->id)->get()) + [

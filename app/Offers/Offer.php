@@ -46,7 +46,7 @@ use Spatie\MediaLibrary\HasMedia;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed',
+    'garage_allowed', 'evacuator_id', 'evacuation_to',
 ])]
 class Offer extends Model implements HasMedia
 {
@@ -260,6 +260,41 @@ class Offer extends Model implements HasMedia
         return $this->hasOne(Deal::class)->where('state', DealState::Active);
     }
 
+    /** Строка гаража: у кого машина «на подготовке» (менеджер продаёт сам). */
+    public function garageCar(): HasOne
+    {
+        return $this->hasOne(\App\Garage\Car::class);
+    }
+
+    /** Кто вывозит; пусто при живом вывозе — мы. */
+    public function evacuator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'evacuator_id');
+    }
+
+    /** Куда вывозят: не назначено — на парковку, как было до 04.10.2026. */
+    public function pickupDestination(): Destination
+    {
+        return Destination::tryFrom((string) $this->evacuation_to) ?? Destination::Yard;
+    }
+
+    /** Чем ветка маршрута выбирает исходы (`Outcome::fits`): на продаже — идущая сделка, на вывозе — куда везём. */
+    public function branchFor(Track $track): Deal|Destination|null
+    {
+        return $track === Track::Sale ? $this->deal : $this->pickupDestination();
+    }
+
+    /**
+     * Работает ли менеджер с этой ТС: держит её в гараже, вывозит или ведёт по ней сделку (идущую или закрытую).
+     * Им открываются отмеченные документы (`Media\ForManagers`) и кадры.
+     */
+    public function worksWith(User $user): bool
+    {
+        return $this->evacuator_id === $user->id
+            || \App\Garage\Car::where('offer_id', $this->id)->where('manager_id', $user->id)->exists()
+            || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->whereIn('state', [DealState::Active, DealState::Done])->exists();
+    }
+
     public function favorites(): HasMany
     {
         return $this->hasMany(Favorite::class);
@@ -284,6 +319,18 @@ class Offer extends Model implements HasMedia
      * прошлого черновика, работой не считается. Такой не показывается в списке, удаляется при уходе из редактора
      * (`OfferController::dropEmpty`) и ночью (`offers:prune-drafts`).
      */
+    /**
+     * Вывозы мимо парковки (к менеджеру, к нам), что ещё живы: менеджеру — порученные ему, сотруднику — все с менеджером.
+     * Продали и выдали, сняли — из списка ушла.
+     */
+    public function scopePickupsOf(Builder $q, User $user): Builder
+    {
+        return $q->whereIn('evacuation_to', [Destination::Keeper->value, Destination::Ours->value])
+            ->whereNotIn('state', [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived])
+            ->whereHas('positions', fn ($p) => $p->where('track', Track::Service))
+            ->when($user->isAdmin(), fn ($q) => $q->whereNotNull('evacuator_id'), fn ($q) => $q->where('evacuator_id', $user->id));
+    }
+
     public function scopeEmptyDraft(Builder $q): Builder
     {
         return $q->where('state', OfferState::Draft)->whereNull('published_at')

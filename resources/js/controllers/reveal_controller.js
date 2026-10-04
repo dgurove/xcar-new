@@ -33,6 +33,21 @@ export default class extends Controller {
         this.show(event.currentTarget.value, event.currentTarget.dataset.revealLabel);
     }
 
+    // Выбор в списке открывает панели ключа (`data-reveal-key-param`), пока выбрано непустое: «Кто вывозит» — менеджер,
+    // и тогда есть «К менеджеру». Спрятанное радио, если было выбрано, уступает соседнему.
+    toggle(event) {
+        const on = event.currentTarget.value !== '';
+        for (const pane of this.paneTargets.filter((p) => this.owns(p) && p.dataset.revealKey === event.params.key)) {
+            pane.hidden = !on;
+            const radio = pane.querySelector('input[type=radio]');
+            if (!on && radio?.checked) {
+                radio.checked = false;
+                const next = [...this.element.querySelectorAll(`input[name="${radio.name}"]`)].find((r) => r !== radio);
+                if (next) next.checked = true;
+            }
+        }
+    }
+
     show(key, label) {
         for (const pane of this.paneTargets.filter((p) => this.owns(p))) {
             const on = pane.dataset.revealKey === key;

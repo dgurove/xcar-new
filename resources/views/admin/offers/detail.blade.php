@@ -23,6 +23,12 @@
     $rate = $admin && $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled();
     // Рядом с «Оценить» — «В гараж»: менеджеру без цены продажи (04.10.2026), та же форма, что в «···» редактора.
     $garage = $rate && $offer->state->allows(OfferState::Garage);
+    // И «Вывоз»: кто забирает ТС и куда (`AssignPickup`) — пока не забрали; цену после него всё равно ставить.
+    $servicePosition = $offer->position(\App\Workflow\Track::Service);
+    $pickup = $rate && $offer->vendor?->workflow(\App\Workflow\Track::Service)?->is_active
+        && ! in_array($servicePosition?->stage->car_place?->value, ['keeper', 'with_us', 'ours'], true);
+    $ways = $garage || $pickup;
+    $way = $errors->hasAny(['evacuator_id', 'evacuation_to']) ? 'pickup' : (old('stage') ? 'garage' : 'rate');
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
     $unread = $chats->sum('unread_for_staff');
@@ -66,11 +72,12 @@
                      ориентиры из закупки, если черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
                 {{-- Или «В гараж»: менеджеру сразу, без цены продажи; строка так же уходит, карточка — к следующей. После
                      ошибки (не выбран менеджер) открыт снова гараж. --}}
-                <div class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3" @if ($garage) data-controller="reveal" @endif>
-                    @if ($garage)
+                <div class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3" @if ($ways) data-controller="reveal" @endif>
+                    @if ($ways)
                         <div class="segment">
-                            <label><input type="radio" name="_way" value="rate" @checked(! old('stage')) data-action="reveal#pick"><span>Оценить</span></label>
-                            <label><input type="radio" name="_way" value="garage" @checked((bool) old('stage')) data-action="reveal#pick"><span>В гараж</span></label>
+                            <label><input type="radio" name="_way" value="rate" @checked($way === 'rate') data-action="reveal#pick"><span>Оценить</span></label>
+                            @if ($garage)<label><input type="radio" name="_way" value="garage" @checked($way === 'garage') data-action="reveal#pick"><span>В гараж</span></label>@endif
+                            @if ($pickup)<label><input type="radio" name="_way" value="pickup" @checked($way === 'pickup') data-action="reveal#pick"><span>Вывоз</span></label>@endif
                         </div>
                     @endif
                     <div data-reveal-target="pane" data-reveal-key="rate">
@@ -101,6 +108,12 @@
                     @if ($garage)
                         <div data-reveal-target="pane" data-reveal-key="garage" hidden>
                             <x-offer.garage-form :offer="$offer" :managers="$managers" prefix="detail-garage-{{ $n }}"/>
+                        </div>
+                    @endif
+                    @if ($pickup)
+                        <div data-reveal-target="pane" data-reveal-key="pickup" hidden>
+                            @if ($offer->evacuation_to)<p class="mb-3 text-sm text-ink-muted">Сейчас: {{ $offer->evacuator?->shortName() ?? 'мы' }}, {{ mb_strtolower($offer->pickupDestination()->label()) }}</p>@endif
+                            <x-offer.pickup-form :offer="$offer" :managers="$managers" prefix="detail-pickup-{{ $n }}"/>
                         </div>
                     @endif
                 </div>

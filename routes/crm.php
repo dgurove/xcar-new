@@ -6,6 +6,7 @@ use App\Http\Admin\ChatController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
+use App\Http\Admin\PickupController;
 use App\Http\Admin\InterestController;
 use App\Http\Admin\InvoiceController;
 use App\Http\Admin\MailAccountController;
@@ -30,6 +31,7 @@ use App\Http\Admin\WatermarkController;
 use App\Http\Admin\WorkflowController;
 use App\Http\Cabinet\InviteController;
 use App\Http\Cabinet\ProfileController;
+use App\Http\Garage\CarController as GarageCarController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Mail\AttachController;
 use App\Http\Mail\ScanController;
@@ -137,6 +139,18 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Карточка «Гаража» зовёт счёт машины и отмену ссылки оплаты путём без хоста — на CRM тоже свои копии.
         Route::get('/garage/cars/{offer}/invoice/pdf', [GarageSettlementController::class, 'pdf']);
         Route::delete('/garage/cars/{offer}/links/{link}', [GarageSettlementController::class, 'cancelLink']);
+        // Машину в гараже сотрудник ведёт в CRM (карточка «Гараж» редактора и «Работа → Гараж») — теми же адресами, что на сайте.
+        Route::post('/garage/cars/{offer}/costs', [GarageCarController::class, 'storeCost']);
+        Route::delete('/garage/cars/{offer}', [GarageCarController::class, 'destroy']);
+        Route::put('/garage/costs/{cost}', [GarageCarController::class, 'updateCost']);
+        Route::delete('/garage/costs/{cost}', [GarageCarController::class, 'destroyCost']);
+        Route::post('/garage/cars/{offer}/advance', [GarageSettlementController::class, 'advance']);
+        Route::post('/garage/cars/{offer}/sold', [GarageSettlementController::class, 'sold']);
+        Route::delete('/garage/cars/{offer}/sold', [GarageSettlementController::class, 'unsold']);
+        Route::post('/garage/cars/{offer}/settle', [GarageSettlementController::class, 'settle']);
+        Route::post('/garage/cars/{offer}/payout', [GarageSettlementController::class, 'payout']);
+        Route::post('/garage/cars/{offer}/payments', [GarageSettlementController::class, 'pay']);
+        Route::delete('/garage/cars/{offer}/invoice', [GarageSettlementController::class, 'voidInvoice']);
         Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
         Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
         Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
@@ -150,6 +164,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
         Route::post('/offers/{offer}/back', [RouteController::class, 'back']);
         Route::post('/offers/{offer}/pickup', [RouteController::class, 'pickup']);
+        // «Видно менеджеру» у документа — решает админ (модератору документ менеджерам не открыть).
+        Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);
         Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);
 
         Route::post('/confirmations/{bid}/accept', [BidController::class, 'accept']);
@@ -162,6 +178,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/deals/{deal}', [DealController::class, 'show']);
         // У кого что в гараже и во что обошлось.
         Route::get('/work/garage', [GarageController::class, 'index']);
+        // Кто что вывозит: мы или менеджер, к нему, к нам или на парковку.
+        Route::get('/work/pickups', [PickupController::class, 'index']);
         Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
         // Деньги по сделкам: заявки менеджеров об оплате, вознаграждения к выплате, счета; карточка счёта — общая со стоянкой.

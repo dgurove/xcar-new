@@ -5,18 +5,6 @@
     $prices = $price->visible;
     $back = $context?->backUrl() ?? ($gallery ? '/gallery' : '/offers');
     $dealInSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
-    $facts = array_filter([
-        'Год' => $offer->year,
-        'Пробег' => $offer->mileage !== null ? \App\Support\Money::nums($offer->mileage).' км' : null,
-        'Кузов' => $offer->body?->label(), 'КПП' => $offer->transmission?->label(), 'Привод' => $offer->drive?->label(),
-        'Топливо' => $offer->fuel?->label(), 'Объём' => $offer->engine_volume ? \App\Support\Liters::format($offer->engine_volume).' л' : null,
-        'Мощность' => $offer->engine_power ? $offer->engine_power.' л. с.' : null, 'Цвет' => $offer->color,
-        'VIN' => $offer->vinMasked(), 'Причина' => $offer->damage_cause?->label(),
-        'Повреждения' => $offer->damage_zones ? implode(', ', array_map(fn ($z) => \App\Cars\DamageZone::labelOf($z), $offer->damage_zones)) : null,
-        'На ходу' => $offer->is_runnable === null ? null : ($offer->is_runnable ? 'Да' : 'Нет'),
-        'Ключи' => $offer->has_keys === null ? null : ($offer->has_keys ? 'Есть' : 'Нет'), 'Документы' => $offer->papers?->label(),
-        'Город' => $offer->settlement?->title(), 'Осмотр' => $offer->show_address ? $offer->inspection_address : null,
-    ], fn ($v) => $v !== null && $v !== '');
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="[$gallery ? 'Галерея' : 'Предложения', $back]" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">
     <x-slot:actions>
@@ -83,23 +71,7 @@
                 <div class="nums order-1 text-2xl leading-none lg:hidden" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
             @endif
 
-            @if ($facts)
-                <section class="box order-2 lg:order-3">
-                    <h2 class="box-title">Характеристики</h2>
-                    <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
-                        @foreach ($facts as $label => $value)
-                            <div @class(['min-w-0', 'col-span-2' => in_array($label, ['VIN', 'Осмотр', 'Повреждения'], true)])>
-                                <dt class="text-sm text-ink-dim">{{ $label }}</dt>
-                                <dd @class(['mt-0.5 font-medium', 'nums whitespace-nowrap' => $label === 'VIN', 'break-words' => $label !== 'VIN'])>
-                                    @if ($label === 'VIN')<x-ui.vin-code :vin="$value" :copy="$offer->show_vin"/>
-                                    @elseif (in_array($label, ['Город', 'Осмотр'], true))<x-ui.place>{{ $value }}</x-ui.place>
-                                    @else{{ $value }}@endif
-                                </dd>
-                            </div>
-                        @endforeach
-                    </dl>
-                </section>
-            @endif
+            <x-offer.facts :offer="$offer" class="order-2 lg:order-3"/>
         </aside>
 
         @if ($offer->description)

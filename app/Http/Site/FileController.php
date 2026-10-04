@@ -4,6 +4,7 @@ namespace App\Http\Site;
 
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
+use App\Media\ForManagers;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Support\OfficePreview;
@@ -75,14 +76,14 @@ final class FileController
         if ($user->isModerator()) {
             return (bool) $offer?->isEditableBy($user);
         }
-        // Документы предложения — менеджеру по сделке.
-        $dealt = fn () => $offer && $offer->deal()->where('buyer_id', $user->id)->exists();
+        // Файлы ТС — менеджеру, который с ней работает (гараж, вывоз, сделка); документы — только отмеченные админом.
+        $works = fn () => $offer && $offer->worksWith($user) && ($media->collection_name !== 'papers' || ForManagers::is($media));
 
         return match ($media->model_type) {
-            Offer::class => $dealt(),
+            Offer::class => $works(),
             // Файл просьбы — тому, кого просили.
             Requirement::class => Requirement::whereKey($media->model_id)->where('user_id', $user->id)->exists(),
-            Vehicle::class => $user->canAccess(Section::Park) || $dealt(),
+            Vehicle::class => $user->canAccess(Section::Park) || $works(),
             default => false,
         };
     }

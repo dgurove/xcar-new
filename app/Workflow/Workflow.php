@@ -100,6 +100,16 @@ class Workflow extends Model
             if ($this->track === Track::Service && $stage->waits_for === WaitsFor::Manager) {
                 $problems[] = "Этап «{$stage->name}» ждёт менеджера, а в вывозе менеджер не участвует";
             }
+            // Ответственный за вывоз и места назначения — только у вывоза; гаражная ветка — только у продажи.
+            foreach ($stage->exits as $exit) {
+                $serviceBranch = in_array($exit->branch, ['yard', 'keeper', 'ours'], true);
+                if ($this->track === Track::Sale && ($exit->actor === Actor::Keeper || $serviceBranch)) {
+                    $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» — для вывоза, а стоит в маршруте продажи";
+                }
+                if ($this->track === Track::Service && in_array($exit->branch, [Outcome::GARAGE, Outcome::BUYER], true)) {
+                    $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» — для продажи, а стоит в маршруте вывоза";
+                }
+            }
             if ($stage->exits->contains(fn (Outcome $e) => $e->actor === Actor::Timer) && $stage->timerMode() !== 'countdown') {
                 $problems[] = "У этапа «{$stage->name}» есть исход по времени, но срока нет";
             }

@@ -116,7 +116,7 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        return (new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' по счёту '.$i->label(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), Car::ofInvoice($i)?->url() ?? '/work/money', $i->deal?->offer?->number, true))->about($i);
+        return (new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' по счёту '.$i->label(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), Car::ofInvoice($i)?->crmUrl() ?? '/work/money', $i->deal?->offer?->number, true))->about($i);
     }
 
     /** Оплатили по ссылке — менеджеру: его счёт закрылся или уменьшился сам. */
@@ -135,7 +135,7 @@ final class MoneyNotice extends Notice
         $i = $p->invoice;
 
         return (new self('По ссылке оплачено '.Money::rub($p->amount).', счёт '.$i->label().', платил '.$link->payerLabel(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(),
-            Car::ofInvoice($i)?->url() ?? '/work/money?preset=paid', $i->deal?->offer?->number, true))->about($i);
+            Car::ofInvoice($i)?->crmUrl() ?? '/work/money?preset=paid', $i->deal?->offer?->number, true))->about($i);
     }
 
     /** Из выписки пришли деньги, которые сами к счёту не легли. */

@@ -125,10 +125,16 @@ class Car extends Model
             ->where(fn ($q) => $q->where('invoice_id', $invoice->id)->orWhere('payout_invoice_id', $invoice->id))->first();
     }
 
-    /** Адрес машины в гараже — из уведомлений, писем, Telegram и CRM: с хостом сайта, откуда бы ни открыли. */
+    /** Адрес машины в гараже для менеджера — из уведомлений, писем, Telegram: с хостом сайта, откуда бы ни открыли. */
     public function url(): string
     {
         return Surface::Site->url('/garage/cars/'.$this->offer->number);
+    }
+
+    /** Адрес для сотрудника: машину в гараже ведут в CRM — редактор предложения с карточкой «Гараж». */
+    public function crmUrl(): string
+    {
+        return Surface::Crm->url('/offers/'.$this->offer->number.'#garage');
     }
 
     public function isSold(): bool

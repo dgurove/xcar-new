@@ -27,7 +27,7 @@
     @endphp
     <div class="offer-head -mt-3 mb-4 flex flex-wrap items-center gap-1.5">
         @if ($garage)
-            <x-ui.pill tone="plain" :href="$garage->url()" data-turbo="false">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
+            <x-ui.pill tone="plain" href="#garage">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
         @elseif ($admin && $offer->isScheduled())
             <x-offer.slot-menu :offer="$offer"/>
         @elseif ($admin && $offer->deal)
@@ -84,6 +84,12 @@
             <x-ui.card :title="$offer->deal ? 'Сделка' : 'Подтверждения'.($waiting->isNotEmpty() ? ' '.$waiting->count() : '')" class="order-1 {{ ! $offer->deal && $waiting->isNotEmpty() ? 'box-urgent' : '' }}">
                 @include('admin.offers.bids')
             </x-ui.card>
+            @endif
+
+            @if ($garageView)
+                <x-ui.card title="Гараж" id="garage" class="order-1 scroll-mt-24">
+                    @include('admin.offers.garage-card')
+                </x-ui.card>
             @endif
 
             @if ($admin && $offer->positions->isNotEmpty())

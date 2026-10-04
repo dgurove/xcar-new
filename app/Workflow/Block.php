@@ -3,6 +3,7 @@
 namespace App\Workflow;
 
 use App\Offers\Deal;
+use App\Offers\Destination;
 use App\Offers\OfferState;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -39,7 +40,7 @@ class Block extends Model
      *
      * @return Collection<int, self>
      */
-    public function nextBlocks(?Deal $deal = null): Collection
+    public function nextBlocks(Deal|Destination|null $deal = null): Collection
     {
         // Ветка не этой сделки — не путь вперёд: иначе развилка «Покупаю / Забираю в гараж» обрывала бы лестницу всем.
         // И уходят только с этапов, до которых эта сделка в блоке доходит: «Подтвердили покупку поставщику» за
@@ -54,7 +55,7 @@ class Block extends Model
      *
      * @return Collection<int, Stage>
      */
-    private function reachable(?Deal $deal): Collection
+    private function reachable(Deal|Destination|null $deal): Collection
     {
         $inner = $this->stages->flatMap(fn (Stage $s) => $s->exits->pluck('to_stage_id'))->all();
         $queue = $this->stages->reject(fn (Stage $s) => in_array($s->id, $inner, true))->values()->all();

@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Media\Actions\RotatePhoto;
 use App\Media\Actions\UnmarkPhoto;
+use App\Media\ForManagers;
 use App\Media\Hidden;
 use App\Media\PhotoIngest;
 use App\Media\Unmark;
@@ -96,6 +97,16 @@ class OfferPhotoController
     {
         $this->own($offer, $media);
         Hidden::toggle($media);
+
+        return $this->gallery($offer->refresh());
+    }
+
+    /** «Видно менеджеру» у документа: открыть его держателю гаража, вывозчику и менеджеру сделки — или закрыть. */
+    public function managers(Offer $offer, Media $media)
+    {
+        $this->own($offer, $media);
+        abort_unless($media->collection_name === 'papers', 404);
+        ForManagers::toggle($media);
 
         return $this->gallery($offer->refresh());
     }

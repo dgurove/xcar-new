@@ -109,7 +109,11 @@ final class PublishLiveUpdates
     public function stage(StageEntered $e): void
     {
         $n = $e->offer->number;
-        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals', '/work/garage']);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals', '/work/garage', '/work/pickups']);
+        // Вывоз, порученный менеджеру: его «Гараж» и страница вывоза.
+        if ($e->track === \App\Workflow\Track::Service && $e->offer->evacuator_id) {
+            $this->publish->refresh(Topics::user($e->offer->evacuator_id), ['/garage', "/garage/pickups/{$n}"]);
+        }
         if ($deal = $e->deal ?? $e->offer->deal()->first()) {
             // Гаражная сделка живёт в гараже: шаг со страховой менеджер видит в карточке машины.
             $this->publish->refresh(Topics::user($deal->buyer_id), $deal->isGarage() ? ['/garage', "/garage/cars/{$n}"] : ['/deals', "/deals/{$deal->id}"]);
@@ -181,7 +185,7 @@ final class PublishLiveUpdates
     public function garage(GarageChanged $e): void
     {
         $paths = ['/garage', '/garage/cars/'.$e->car->offer->number];
-        $this->publish->refresh(Topics::STAFF, [...$paths, '/work/garage']);
+        $this->publish->refresh(Topics::STAFF, [...$paths, '/work/garage', '/offers/'.$e->car->offer->number]);
         if ($e->car->manager_id) {
             $this->publish->refresh(Topics::user($e->car->manager_id), $paths);
         }

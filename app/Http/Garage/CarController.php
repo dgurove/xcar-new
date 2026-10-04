@@ -8,9 +8,14 @@ use App\Garage\Actions\ReturnFromGarage;
 use App\Garage\Actions\UpdateCost;
 use App\Garage\Car;
 use App\Garage\Cost;
+use App\Garage\GarageView;
 use App\Http\Cabinet\DealController;
 use App\Offers\Offer;
+use App\Offers\OfferFiles;
+use App\Offers\PickupState;
+use App\Workflow\Track;
 use App\Support\Money;
+use App\Support\Surface;
 use Illuminate\Http\Request;
 
 class CarController
@@ -23,7 +28,12 @@ class CarController
             ->orderBy('stage_at')
             ->get();
 
-        return view('garage.cars.index', ['cars' => $cars]);
+        // Вывозы, порученные менеджеру, — своей группой сверху: ТС у него физически, но продаёт не обязательно он.
+        $pickups = Offer::pickupsOf($request->user())
+            ->with(['brand', 'model', 'media', 'evacuator', 'positions.stage.exits', 'positions.stage.block'])
+            ->get()->sortBy(fn (Offer $o) => [PickupState::awaits($o) ? 0 : 1, $o->position(Track::Service)?->block_entered_at?->timestamp ?? 0])->values();
+
+        return view('garage.cars.index', ['cars' => $cars, 'pickups' => $pickups]);
     }
 
     public function show(Request $request, Offer $offer)
@@ -33,7 +43,11 @@ class CarController
         // Сотрудник ведёт маршрут в CRM — ему шаг не нужен.
         $step = $car->isWaiting() && $car->deal && ! $request->user()->isAdmin() ? DealController::stepData($car->deal) : null;
 
-        return view('garage.cars.show', ['car' => $car, 'step' => $step]);
+        return view('garage.cars.show', [
+            'view' => GarageView::for($car, $request->user(), $step),
+            'photos' => $offer->visiblePhotos(),
+            'docs' => OfferFiles::forManagers($offer, $request->user()),
+        ]);
     }
 
     public function storeCost(Request $request, Offer $offer, AddCost $add)
@@ -70,13 +84,14 @@ class CarController
         abort_unless($request->user()->isAdmin(), 403);
         $return($this->car($request, $offer), $request->user());
 
-        return redirect('/garage')->with('toast', 'ТС вернулось в черновики');
+        // Из CRM «Отдали по ошибке» жмут в редакторе предложения — туда и возвращаемся.
+        return redirect(Surface::current() === Surface::Crm ? '/offers/'.$offer->number : '/garage')->with('toast', 'ТС вернулось в черновики');
     }
 
     /** Машина этого человека или любая — сотруднику; чужая для менеджера не существует. */
     private function car(Request $request, Offer $offer): Car
     {
-        $car = Car::where('offer_id', $offer->id)->with(['offer.brand', 'offer.model', 'offer.media', 'manager', 'costs.author', 'invoice', 'payoutInvoice', 'deal'])->firstOrFail();
+        $car = Car::where('offer_id', $offer->id)->with(['offer.brand', 'offer.model', 'offer.media', 'offer.settlement', 'manager', 'costs.author', 'invoice', 'payoutInvoice', 'deal'])->firstOrFail();
         $car->costs->each->setRelation('car', $car);
         abort_unless($request->user()->isAdmin() || $car->manager_id === $request->user()->id, 404);
 

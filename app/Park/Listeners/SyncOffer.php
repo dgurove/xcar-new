@@ -3,6 +3,7 @@
 namespace App\Park\Listeners;
 
 use App\Offers\CarPlace;
+use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Events\TowScheduled;
@@ -46,7 +47,7 @@ final class SyncOffer
 
     public function scheduled(TowScheduled $e): void
     {
-        if (! ($offer = $this->offer($e->vehicle)) || $offer->car_place !== CarPlace::Owner) {
+        if (! ($offer = $this->offer($e->vehicle)) || $offer->car_place !== CarPlace::Owner || ! $this->toYard($offer)) {
             return;
         }
         $position = $offer->position(Track::Service);
@@ -99,7 +100,8 @@ final class SyncOffer
 
     private function moveTo(Vehicle $vehicle, CarPlace $place, ?User $by): void
     {
-        if (! ($offer = $this->offer($vehicle))) {
+        // ТС вывозят мимо парковки (к менеджеру, к нам) — правда о её месте у ответственного, а не у стоянки.
+        if (! ($offer = $this->offer($vehicle)) || ! $this->toYard($offer)) {
             return;
         }
         $position = $offer->position(Track::Service);
@@ -109,6 +111,11 @@ final class SyncOffer
         } else {
             ($this->setPlace)($offer, $place, $by);
         }
+    }
+
+    private function toYard(Offer $offer): bool
+    {
+        return $offer->pickupDestination() === Destination::Yard;
     }
 
     private function offer(Vehicle $vehicle): ?Offer

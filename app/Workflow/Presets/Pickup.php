@@ -15,6 +15,10 @@ namespace App\Workflow\Presets;
  * Страхователь, адрес, дата вывоза, осмотр и площадка живут на стоянке
  * (заявка на эвакуацию, осмотр, ТС) — полей для них здесь нет, этапы
  * двигает сама стоянка (`Park\Listeners\SyncOffer`).
+ *
+ * Куда везём (04.10.2026, `Offers\Destination`) — ветка исхода «Вывоз и осмотр»: на парковку — прежний путь; к
+ * менеджеру и к нам вне парковки — «Забрал» жмёт ответственный за вывоз (менеджер, а без него мы), и ТС встаёт
+ * «Стоит у менеджера» / «Стоит у нас». Дату, адрес и контакт вписываем на «Дата назначена» — их видит и менеджер.
  */
 final class Pickup extends Route
 {
@@ -25,6 +29,8 @@ final class Pickup extends Route
             'collecting' => ['name' => 'Вывоз автомобиля', 'text' => 'Выезжаем за автомобилем и проводим осмотр.'],
             'moving' => ['name' => 'Перегон на парковку', 'text' => 'Автомобиль перемещается на нашу парковку.'],
             'at_yard' => ['name' => 'Автомобиль на парковке', 'text' => 'Автомобиль находится на нашей парковке.'],
+            'at_keeper' => ['name' => 'Стоит у менеджера', 'text' => 'Автомобиль вывез и держит у себя менеджер.'],
+            'at_ours' => ['name' => 'Стоит у нас', 'text' => 'Автомобиль стоит у нас, не на парковке.'],
         ];
     }
 
@@ -55,13 +61,20 @@ final class Pickup extends Route
             ],
             'pickup' => [
                 'name' => 'Вывоз и осмотр', 'block' => 'collecting', 'waits_for' => 'us', 'limit_minutes' => 3 * self::DAY, 'car_place' => 'moving',
-                'exits' => [['Автомобиль вывезен, осмотр проведён', 'staff', 'transfer']],
+                'staff_fields' => [['label' => 'Дата вывоза', 'type' => 'date'], ['label' => 'Адрес', 'type' => 'textarea'], ['label' => 'Контакт']],
+                'exits' => [
+                    ['Автомобиль вывезен, осмотр проведён', 'staff', 'transfer', 'yard'],
+                    ['Забрал', 'keeper', 'at_keeper', 'keeper'],
+                    ['Забрал', 'keeper', 'at_ours', 'ours'],
+                ],
             ],
             'transfer' => [
                 'name' => 'Перегон в город присутствия', 'block' => 'moving', 'waits_for' => 'us', 'limit_minutes' => 5 * self::DAY, 'car_place' => 'moving',
                 'exits' => [['Автомобиль на парковке', 'staff', 'at_yard']],
             ],
             'at_yard' => ['name' => 'Автомобиль на парковке', 'block' => 'at_yard', 'waits_for' => 'nobody', 'car_place' => 'ours'],
+            'at_keeper' => ['name' => 'Стоит у менеджера', 'block' => 'at_keeper', 'waits_for' => 'nobody', 'car_place' => 'keeper'],
+            'at_ours' => ['name' => 'Стоит у нас', 'block' => 'at_ours', 'waits_for' => 'nobody', 'car_place' => 'with_us'],
         ];
     }
 }

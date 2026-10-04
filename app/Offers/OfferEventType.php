@@ -20,4 +20,5 @@ enum OfferEventType: string
     case RequirementAnswered = 'requirement_answered';
     case RouteDropped = 'route_dropped';
     case Scheduled = 'scheduled';
+    case PickupAssigned = 'pickup_assigned';
 }

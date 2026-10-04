@@ -5,6 +5,8 @@ namespace App\Offers;
 use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Thread;
+use App\Media\ForManagers;
+use App\Users\User;
 use App\Support\Docs;
 use Illuminate\Support\Collection;
 
@@ -58,5 +60,13 @@ final class OfferFiles
             ...array_filter($files, fn ($d) => ! in_array(Docs::norm($d['name']), $names, true)),
             $photos->isNotEmpty() ? Docs::photos($photos) : Docs::photos($pictures, '/work/mail'),
         ]));
+    }
+
+    /** Документы ТС тому, кто с ней работает: сотруднику — все, менеджеру — отмеченные «Видно менеджеру». Писем нет. */
+    public static function forManagers(Offer $offer, User $user): Collection
+    {
+        $papers = $offer->papers();
+
+        return $user->isAdmin() ? $papers : $papers->filter(fn ($m) => ForManagers::is($m))->values();
     }
 }

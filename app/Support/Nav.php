@@ -24,6 +24,7 @@ use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\PickupState;
 use App\Park\Area;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -444,7 +445,8 @@ final class Nav
                 '/deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count() : null,
                 '/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
                 // Как в заголовке «Гаража»: машины в работе, рассчитанные не считаются.
-                '/garage' => $user->canGarage() ? GarageCar::of($user)->where('state', '!=', CarState::Settled)->count() : null,
+                // И вывозы, порученные менеджеру (группа «Вывоз»): ТС у него, хоть и не его гаража.
+                '/garage' => $user->canGarage() ? GarageCar::of($user)->where('state', '!=', CarState::Settled)->count() + Offer::pickupsOf($user)->count() : null,
                 '/account/interests' => $user->isBuyer() ? Interest::where('user_id', $user->id)->count() : null,
                 '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
@@ -477,7 +479,8 @@ final class Nav
                 ->selectRaw('count(*) filter (where deals.garage_payer is null) as deals, count(*) filter (where deals.garage_payer is not null) as garage')->first();
             $badges['/deals/asks'] = (int) $asks->deals;
             $badges['/deals'] = $badges['/deals/asks'] + $badges['/buyers'];
-            $badges['/garage'] = (int) $asks->garage;
+            // И «забрать» по вывозу: ход ответственного.
+            $badges['/garage'] = (int) $asks->garage + Offer::pickupsOf($user)->with('positions.stage.exits')->get()->filter(fn ($o) => PickupState::awaits($o))->count();
         }
         if ($user->canChat() || $user->isAdmin()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.
@@ -602,7 +605,7 @@ final class Nav
             }
         }
         if ($surface === Surface::Crm) {
-            array_push($items, self::link('Сделки', '/work/deals'), self::link('Гараж', '/work/garage'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Деньги', '/work/money'));
+            array_push($items, self::link('Сделки', '/work/deals'), self::link('Гараж', '/work/garage'), self::link('Вывоз', '/work/pickups'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Деньги', '/work/money'));
         }
 
         // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен.

@@ -1,6 +1,7 @@
 <?php
 
 use App\Users\Actions\CloseStaleImpersonations;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('offers:tick')->everyMinute()->withoutOverlapping();
@@ -28,3 +29,23 @@ Schedule::command('migtorg:sync')->everyThirtyMinutes()->withoutOverlapping()->r
 Schedule::command('migtorg:archive')->everyFiveMinutes()->withoutOverlapping(10)->runInBackground();
 // Входы админа за человека, из которых не вышли кнопкой, — закрыть сроком сессии.
 Schedule::call(fn () => app(CloseStaleImpersonations::class)())->hourly()->name('impersonations:close');
+
+// Разовая правка 04.10.2026: ТС, отданная в гараж «взяли под себя», — на деле вывоз «Мы → К нам» (предложение снова
+// черновиком, продаётся обычным путём). Без --apply только печатает. Удалить после прогона на проде.
+Artisan::command('garage:to-pickup {offer} {--apply}', function (string $offer) {
+    $o = \App\Offers\OfferNumber::find($offer) ?? abort(1, 'Нет предложения');
+    $car = \App\Garage\Car::where('offer_id', $o->id)->first();
+    $this->line("№ {$o->number} {$o->titleWithYear()}: гараж ".($car ? $car->state->value.', менеджер '.($car->manager_id ?? '—').', сделка '.($car->deal_id ?? '—').', расходов '.$car->costs()->count() : 'нет'));
+    $this->line('Маршрут вывоза у вендора: '.($o->vendor?->workflow(\App\Workflow\Track::Service)?->is_active ? 'есть' : 'нет'));
+    if (! $car || $car->manager_id || $car->deal_id || $car->costs()->exists()) {
+        return $this->error('Не подходит: нужна строка гаража без менеджера, сделки и расходов');
+    }
+    if (! $this->option('apply')) {
+        return $this->info('Проверка прошла, запустите с --apply');
+    }
+    $by = \App\Users\User::withRole(\App\Users\Role::Admin)->orderBy('id')->firstOrFail();
+    app(\App\Garage\Actions\ReturnFromGarage::class)($car, $by);
+    $o = $o->fresh()->load('vendor.workflows', 'positions.stage.workflow', 'parkVehicle.requests');
+    app(\App\Offers\Actions\AssignPickup::class)($o, null, \App\Offers\Destination::Ours, $by);
+    $this->info('Готово: '.$o->fresh()->state->value.', вывоз '.$o->fresh()->evacuation_to);
+});

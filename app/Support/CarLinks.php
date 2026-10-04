@@ -53,7 +53,7 @@ final class CarLinks
             $links[] = ['title' => 'Сделка', 'state' => $deal->buyer?->name ?? 'идёт', 'href' => Surface::Crm->url('/work/deals/'.$deal->id)];
         }
         if ($car = GarageCar::where('offer_id', $offer->id)->latest('id')->first()) {
-            $links[] = ['title' => 'Гараж', 'state' => mb_strtolower($car->state->label()), 'href' => $car->url()];
+            $links[] = ['title' => 'Гараж', 'state' => mb_strtolower($car->state->label()), 'href' => $car->crmUrl()];
         }
         if ($purchase = $offer->purchaseCar?->load('purchase')) {
             $links[] = ['title' => 'Закупка', 'state' => '№ '.$purchase->purchase->number.', ДЛ '.$purchase->dl,

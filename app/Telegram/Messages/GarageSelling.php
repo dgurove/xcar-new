@@ -35,6 +35,6 @@ final class GarageSelling extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Машина в гараже', 'url' => $this->car->url()];
+        return ['text' => 'ТС в CRM', 'url' => $this->car->crmUrl()];
     }
 }

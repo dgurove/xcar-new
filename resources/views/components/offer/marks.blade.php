@@ -14,4 +14,4 @@
     @if (!$offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft && $bids)<span class="mark mark-glass">Приём закрыт</span>@endif
     @if ($left !== null && $left > 0)<span class="mark mark-glass nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true" data-timer-word-value="{{ $word }}">{{ \App\Support\Ago::left($offer->bids_close_at, $word) }}</span>@endif
 @endunless
-@if ($offer->car_place)<x-ui.place class="mark mark-glass">{{ $offer->car_place->label() }}</x-ui.place>@endif
+@if ($offer->car_place)<x-ui.place class="mark mark-glass">{{ $offer->car_place->publicLabel() }}</x-ui.place>@endif

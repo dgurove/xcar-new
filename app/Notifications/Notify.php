@@ -52,6 +52,8 @@ use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Events\StageDue;
 use App\Workflow\Events\StageEntered;
+use App\Offers\Events\PickupAssigned;
+use App\Workflow\Actor;
 use App\Workflow\Requirement;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
@@ -71,6 +73,7 @@ final class Notify
             InterestRegistered::class => 'interest',
             OffersShown::class => 'offersShown',
             StageEntered::class => 'stageEntered',
+            PickupAssigned::class => 'pickupAssigned',
             StageDue::class => 'stageDue',
             ChatMessagePosted::class => 'chat',
             BuyerJoined::class => 'buyerJoined',
@@ -169,8 +172,13 @@ final class Notify
 
     public function stageEntered(StageEntered $e): void
     {
-        // Вывоз — наша работа: менеджеру про шаги эвакуатора не пишем.
+        // Вывоз — наша работа: менеджеру про шаги эвакуатора не пишем. Кроме вывоза, порученного ему: пора забирать.
         if ($e->track === Track::Service) {
+            $offer = $e->offer->loadMissing('evacuator');
+            if ($offer->evacuator && $e->to->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()) {
+                $offer->evacuator->notify(new PickupNotice($offer, turn: true));
+            }
+
             return;
         }
         $deal = $e->deal ?? $e->offer->deal()->with('buyer')->first();
@@ -183,6 +191,15 @@ final class Notify
         } elseif ($e->from?->block_id !== $e->to->block_id && $deal->created_at->lt(now()->subMinute())) {
             // Первый шаг только что открытой сделки не пишем: менеджеру уже идёт «подтверждение принято».
             $deal->buyer->notify(new DealStepNotice($deal->load('offer'), $e->to));
+        }
+    }
+
+    /** Поручили вывоз — новому ответственному; прежнему поручение снято молча (строка ленты погаснет при визите). */
+    public function pickupAssigned(PickupAssigned $e): void
+    {
+        $offer = $e->offer->loadMissing('evacuator');
+        if ($offer->evacuator && $offer->evacuator->isNot($e->previous)) {
+            $offer->evacuator->notify(new PickupNotice($offer));
         }
     }
 

@@ -13,6 +13,7 @@ use App\Http\Cabinet\NotificationController;
 use App\Http\Cabinet\ProfileController;
 use App\Http\Cabinet\ShowingController;
 use App\Http\Garage\CarController as GarageCarController;
+use App\Http\Garage\PickupController as GaragePickupController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Live\FragmentController;
 use App\Http\Pwa\PushController;
@@ -196,6 +197,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::delete('/cars/{offer}/links/{link}', [GarageSettlementController::class, 'cancelLink']);
         Route::get('/cars/{offer}/invoice/pdf', [GarageSettlementController::class, 'pdf']);
         Route::delete('/cars/{offer}/invoice', [GarageSettlementController::class, 'voidInvoice']);
+        // Вывоз, порученный менеджеру (04.10.2026): страница ТС и «Забрал».
+        Route::get('/pickups/{offer}', [GaragePickupController::class, 'show']);
+        Route::post('/pickups/{offer}/picked', [GaragePickupController::class, 'picked']);
     });
 
     Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('ability:canSeePurchases');

@@ -2,15 +2,15 @@
 
 namespace App\Http\Admin;
 
+use App\Offers\Actions\AssignPickup;
 use App\Offers\Actions\ScheduleOffer;
+use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Slots;
 use App\Park\Actions\CloseRequest;
-use App\Park\Actions\RequestTowFromOffer;
 use App\Workflow\Actions\DropRoute;
 use App\Workflow\Actions\PlaceOnStage;
-use App\Workflow\Actions\StartRoute;
 use App\Workflow\Actions\StepBack;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
@@ -18,7 +18,9 @@ use App\Workflow\Outcome;
 use App\Workflow\Path;
 use App\Workflow\Stage;
 use App\Workflow\Track;
+use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /** Маршрут на карточке оффера: наши исходы, отмена шага, вывоз и возврат на пройденный шаг. */
 class RouteController
@@ -41,7 +43,8 @@ class RouteController
                 $payload[$field['key']] = $value;
             }
         }
-        $offer = $take($offer, $exit, Actor::Staff, $request->user(), $payload);
+        // «Забрал» ответственного за вывоз сотрудник жмёт за него (или за нас, когда вывозим сами).
+        $offer = $take($offer, $exit, $exit->actor === Actor::Keeper ? Actor::Keeper : Actor::Staff, $request->user(), $payload);
 
         // Туда же, откуда нажали: страница сделки, редактор или карточка строки (DetailBack), а не всегда в редактор.
         // Шаг можно отменить — в тосте «Отменить».
@@ -73,13 +76,27 @@ class RouteController
         return back(fallback: "/offers/{$offer->number}")->with('toast', $undo['label'] ? 'Отменено «'.$undo['label'].'»' : 'Снова «'.$undo['to']->name.'»');
     }
 
-    /** Вывоз по решению сотрудника — там, где он исключение, а не правило. */
-    public function pickup(Request $request, Offer $offer, StartRoute $start, RequestTowFromOffer $tow)
+    /**
+     * «Нужен вывоз» и его правка: кто вывозит (пусто — мы) и куда (`Destination`). На парковку — с заявкой на эвакуацию,
+     * к менеджеру и к нам — мимо парковки. Отвечает туда, откуда нажали: редактор, «Без цены», «Работа → Вывоз».
+     */
+    public function pickup(Request $request, Offer $offer, AssignPickup $assign)
     {
-        $start($offer->load('vendor.workflows'), $request->user(), Track::Service);
-        $tow($offer, $request->user());
+        $data = $request->validate([
+            'evacuator_id' => ['nullable', 'integer', 'exists:users,id'],
+            'evacuation_to' => ['nullable', Rule::enum(Destination::class)],
+        ]);
+        $evacuator = isset($data['evacuator_id']) ? User::find($data['evacuator_id']) : null;
+        $to = Destination::tryFrom((string) ($data['evacuation_to'] ?? '')) ?? ($evacuator ? Destination::Keeper : Destination::Yard);
+        // «К менеджеру» без менеджера не бывает: сегмент спрятан, но мог остаться выбранным.
+        if ($to === Destination::Keeper && ! $evacuator) {
+            $to = Destination::Ours;
+        }
+        $offer->loadMissing('vendor.workflows', 'positions.stage.workflow', 'parkVehicle.requests');
+        $assign($offer, $evacuator, $to, $request->user());
+        $toast = 'Вывоз: '.($evacuator?->shortName() ?? 'мы').', '.mb_strtolower($to->label());
 
-        return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз запущен, заявка на парковке');
+        return back(fallback: "/offers/{$offer->number}")->with('toast', $toast);
     }
 
     public function dropPickup(Request $request, Offer $offer, DropRoute $drop, CloseRequest $close)
