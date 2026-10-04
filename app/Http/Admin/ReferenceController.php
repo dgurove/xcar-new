@@ -79,14 +79,16 @@ class ReferenceController
         $plate = preg_match('/\s(\d{2,3})$/u', $q, $m) ? str_pad($m[1], 2, '0', STR_PAD_LEFT) : null;
         $q = trim((string) preg_replace('/\s\d{2,3}$/u', '', $q));
         $places = Settlement::query()->with('region:id,short')
-            ->when($q, fn ($s) => $s->whereRaw('lower(name) like ?', [str_replace(['%', '_'], ['\\%', '\\_'], $q).'%']))
+            // Место-регион («Республика Татарстан», тип `рег`) находится и по второму слову: ищут «татарстан».
+            ->when($q, fn ($s) => $s->where(fn ($w) => $w->whereRaw('lower(name) like ?', [str_replace(['%', '_'], ['\\%', '\\_'], $q).'%'])
+                ->orWhere(fn ($r) => $r->where('type', 'рег')->whereRaw('lower(name) like ?', ['% '.str_replace(['%', '_'], ['\\%', '\\_'], $q).'%']))))
             ->when($plate, fn ($s) => $s->where('region_code', $plate))
-            ->orderBy('rank')->orderBy('name')->limit(20)->get(['id', 'name', 'region_code', 'region_id', 'district']);
+            ->orderBy('rank')->orderBy('name')->limit(20)->get(['id', 'name', 'type', 'region_code', 'region_id', 'district']);
 
         return response()->json($places->map(fn (Settlement $s) => [
             'id' => $s->id,
             'label' => $s->title(),
-            'hint' => implode(', ', array_filter([$s->districtShort(), $s->region?->short])),
+            'hint' => $s->type === 'рег' ? 'регион' : implode(', ', array_filter([$s->districtShort(), $s->region?->short])),
         ]));
     }
 

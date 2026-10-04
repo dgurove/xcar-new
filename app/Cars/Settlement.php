@@ -28,10 +28,10 @@ class Settlement extends Model
         return $this->belongsTo(Region::class);
     }
 
-    /** «Серпухов, 50» — имя и номер региона: одно имя бывает в двух сотнях регионов. */
+    /** «Серпухов, 50» — имя и номер региона: одно имя бывает в двух сотнях регионов; место-регион (`рег`) — без номера. */
     public function title(): string
     {
-        return $this->region_code ? $this->name.', '.$this->region_code : $this->name;
+        return $this->region_code && $this->type !== 'рег' ? $this->name.', '.$this->region_code : $this->name;
     }
 
     /** Район коротко: «Тосненский р-н», «Пермский м. о.», «г. о. Химки»; район — сам город — пусто. */
