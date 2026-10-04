@@ -51,8 +51,8 @@ class OfferPhotoController
     /** «С Мигторга»: фото лота по номеру убытка к тем, что уже есть (сами они берутся только в пустой ряд). */
     public function migtorg(Offer $offer)
     {
-        $lot = ImportMigtorgLot::forButton($offer);
-        abort_unless($lot, 404);
+        $lot = ImportMigtorgLot::available($offer);
+        abort_unless($lot && ! ImportMigtorgLot::progress($offer->id), 404);
         ImportMigtorgLot::start($offer, $lot, manual: true);
 
         return back()->with('toast', 'Фото с Мигторга скоро будут');

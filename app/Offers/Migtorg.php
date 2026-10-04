@@ -43,9 +43,9 @@ final class Migtorg
     }
 
     /**
-     * Все опубликованные лоты: id, номер дела, VIN, название.
+     * Все опубликованные лоты: id, номер дела, VIN, название, конец торгов (московское время).
      *
-     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string}>
+     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string}>
      */
     public function lots(): \Generator
     {
@@ -60,6 +60,7 @@ final class Migtorg
                         'claim_ref' => trim((string) ($lot['insurance_deal_number'] ?? '')),
                         'vin' => strtoupper(trim((string) ($lot['vin'] ?? ''))) ?: null,
                         'title' => trim(($lot['brand']['title'] ?? '').' '.($lot['model']['title'] ?? '').' '.($lot['year'] ?? '')),
+                        'ends_at' => $auction['end_date'] ?? null,
                     ];
                 }
                 $last = (int) ($json['meta']['last_page'] ?? 1);

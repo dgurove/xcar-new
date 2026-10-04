@@ -30,7 +30,7 @@ final class ApplyCarFields
     private const SPECS = ['mileage', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power', 'settlement_id', 'body', 'has_keys', 'papers', 'insurer_deadline_at', 'answer_by'];
 
     /** @return list<string> поля, которые записаны */
-    public function __invoke(Offer $offer, array $chosen, ?User $by, bool $onlyEmpty = false): array
+    public function __invoke(Offer $offer, array $chosen, ?User $by, bool $onlyEmpty = false, array $log = []): array
     {
         $data = [];
         foreach ($chosen as $field => $item) {
@@ -89,7 +89,7 @@ final class ApplyCarFields
         ], $data))->errors();
         $data = array_diff_key($data, array_flip($errors->keys()));
         if ($data) {
-            app(UpdateOffer::class)($offer, $data, $by);
+            app(UpdateOffer::class)($offer, $data, $by, $log);
         }
 
         return array_keys($data);

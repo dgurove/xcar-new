@@ -5,8 +5,9 @@
      data-controller="photos"; turbo-stream подменяет ряд целиком.
      readonly — только смотреть (кадры из письма рядом с приёмом): без плитки «добавить» и без действий.
      grid — сетка квадратов вместо ленты (дело на стоянке: все кадры видны сразу и в узкой колонке).
-     deletable=false — без корзины (удаляют только в полном редакторе); замыкание — решает по кадру. --}}
-@props(['photos', 'hide' => true, 'main' => true, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true])
+     deletable=false — без корзины (удаляют только в полном редакторе); замыкание — решает по кадру.
+     pending — сколько заглушек «качается» в конце ряда. --}}
+@props(['photos', 'hide' => true, 'main' => true, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true, 'pending' => 0])
 <div id="{{ $id }}" class="{{ $grid ? 'photo-grid' : 'photo-row' }}">
     @unless ($readonly)<button type="button" class="photo-add" data-action="photos#pick" aria-label="Добавить фото"><x-ui.icon name="camera" class="size-6"/></button>@endunless
     <div class="{{ $grid ? 'contents' : 'photo-strip' }}" data-photos-target="grid">
@@ -34,5 +35,7 @@
             @endunless
         </div>
     @endforeach
+    {{-- Кадры, которые ещё качаются (лот Мигторга): заглушки с той же полосой скана, что у загрузки. --}}
+    @for ($i = 0; $i < $pending; $i++)<div class="photo-cell photo-pending is-uploading is-processing" aria-hidden="true"></div>@endfor
     </div>
 </div>

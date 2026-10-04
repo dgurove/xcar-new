@@ -36,7 +36,10 @@ class OfferEvent extends Model
                 isset($p['park']) => 'Выставлен с парковки',
                 default => 'Создан',
             },
-            OfferEventType::Updated => 'Изменён: '.FieldLabels::list($p['fields'] ?? []),
+            // Правка задачи Мигторга: поля лота («ответ до» — тот же конец торгов, что «срок от вендора») или кадры.
+            OfferEventType::Updated => ($p['source'] ?? null) === 'migtorg'
+                ? 'С Мигторга: '.(isset($p['photos']) ? $p['photos'].' фото' : FieldLabels::list(array_values(array_diff($p['fields'] ?? [], ['answer_by']))))
+                : 'Изменён: '.FieldLabels::list($p['fields'] ?? []),
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
             OfferEventType::StateChanged => OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),
             OfferEventType::BidPlaced => ! empty($p['garage']) ? 'Подтверждение в гараж' : 'Подтверждение '.number_format($p['amount'] ?? 0, 0, '', ' ').' ₽',

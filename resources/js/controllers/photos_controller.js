@@ -407,7 +407,8 @@ export default class extends Controller {
         img.dataset.full = stamp(img.dataset.full);
     }
 
-    cells() { return [...this.gridTarget.querySelectorAll('.photo-cell')]; }
+    // Только кадры с номером: заглушки качающихся (лот Мигторга) и плитки в загрузке в порядок не идут.
+    cells() { return [...this.gridTarget.querySelectorAll('.photo-cell[data-id]')]; }
 
     cell(id) { return this.gridTarget.querySelector(`.photo-cell[data-id="${id}"]`); }
 

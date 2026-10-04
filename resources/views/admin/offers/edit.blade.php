@@ -52,7 +52,7 @@
             @endforeach
         @endif
         @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
-        @if (($migtorg ?? null) && ! $import)<form method="post" action="/offers/{{ $n }}/media/migtorg" class="contents" data-turbo-confirm="Добавить фото лота {{ $migtorg->title }} с Мигторга?">@csrf<button class="pill pill-plain">С Мигторга</button></form>@endif
+        <x-offer.migtorg :offer="$offer"/>
         @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
         @if ($admin)
             <div class="contents" data-controller="sheet tag-chips" data-action="change->tag-chips#render">

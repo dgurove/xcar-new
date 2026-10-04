@@ -22,7 +22,8 @@ final class UpdateOffer
 {
     public function __construct(private StartRoute $startRoute) {}
 
-    public function __invoke(Offer $offer, array $data, ?User $by): Offer
+    /** @param array $log к записи «Изменён» в историю — откуда правка (`source: migtorg`) */
+    public function __invoke(Offer $offer, array $data, ?User $by, array $log = []): Offer
     {
         if (array_key_exists('vin', $data)) {
             $data['vin'] = $data['vin'] ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $data['vin'])) : null;
@@ -41,7 +42,7 @@ final class UpdateOffer
         }
         if ($changed) {
             // Ключ номера убытка — производная колонка, в истории это тот же «номер убытка».
-            $offer->log(OfferEventType::Updated, $by, ['fields' => array_values(array_diff($changed, ['claim_ref_key']))]);
+            $offer->log(OfferEventType::Updated, $by, ['fields' => array_values(array_diff($changed, ['claim_ref_key']))] + $log);
             (new RememberVin)($offer);
             // Машина одна: тождество связанной ТС парковки правится там же, предложение — её зеркало.
             Sale::toVehicle($offer, $changed, $by);
