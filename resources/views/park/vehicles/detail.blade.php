@@ -15,6 +15,7 @@
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
+        <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
         {{-- Кадры с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
         @if ($vehicle->photos()->isNotEmpty())
             <x-slot:media>
@@ -69,14 +70,10 @@
                 <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/release', 'type' => 'html', 'name' => 'Акт выдачи']" class="pill pill-plain"/>
             @endif
             @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Осмотр</a>@endunless
-            {{-- Продажа этой ТС в CRM — админу, как в деле ТС: есть предложение — ссылкой, нет — «В продажу» с подтверждением,
-                 где названы машина, госномер и убыток: видно, что выставляешь. --}}
-            @if (auth()->user()->isAdmin())
-                @if ($vehicle->offer)
-                    <a href="{{ \App\Support\Surface::Crm->url('/offers/'.$vehicle->offer->number) }}" class="pill pill-plain" data-turbo="false">Продажа: {{ mb_strtolower($vehicle->offer->state->label()) }}</a>
-                @elseif (! $state->isFinal())
-                    <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf<button class="pill pill-plain">В продажу</button></form>
-                @endif
+            {{-- «Выставить в продажу» — админу, как в деле ТС: лаймовая кнопка с подтверждением, где названы машина, госномер и
+                 убыток. Выставлена — значок связи у названия (x-ui.links). --}}
+            @if (auth()->user()->isAdmin() && ! $vehicle->offer_id && ! $state->isFinal())
+                <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf<button class="btn btn-s btn-accent">Выставить в продажу</button></form>
             @endif
         </x-slot:actions>
         @if ($differences || $scanFiles->isNotEmpty())

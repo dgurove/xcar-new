@@ -650,6 +650,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .car-links-btn::before { content: ''; position: absolute; inset: -8px; }
   .car-links-btn > svg { width: 100%; height: 100%; }
   @media (hover: hover) { .car-links-btn:hover { color: var(--color-ink); } }
+  /* Меню вложено в заголовок (h1, название в строке таблицы): его шрифт, жирность и запрет переноса не наследуются. */
+  .car-links-menu { font-size: var(--text-sm); font-weight: 400; line-height: 1.3; white-space: normal; letter-spacing: normal; }
   .tag-recommended { --tag-bg: #e3f1fb; --tag-text: #1878b8; --tag-bg-d: #0f2537; --tag-text-d: #6cc0ff; }
 
   /* Пилюля: пресет, раздел, состояние. Активная — лайм с белым. */

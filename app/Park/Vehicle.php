@@ -58,7 +58,7 @@ class Vehicle extends Model implements HasMedia
             if ($v->wasChanged('offer_id') || ($v->wasRecentlyCreated && $v->offer_id)) {
                 Sale::relinked($v, $v->wasRecentlyCreated ? null : $v->getOriginal('offer_id'));
             }
-            if ($v->offer_id && ($v->wasRecentlyCreated || $v->wasChanged(['offer_id', ...array_keys(Sale::MAP)]))) {
+            if ($v->offer_id && ($v->wasRecentlyCreated || $v->wasChanged(['offer_id', 'value', ...array_keys(Sale::MAP)]))) {
                 Sale::toOffer($v);
             }
         });

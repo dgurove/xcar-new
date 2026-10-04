@@ -36,7 +36,7 @@
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $vehicle->titleWithYear() }}</span><x-ui.plate :value="$vehicle->plate" class="shrink-0 text-sm font-normal"/></a>
+            <a href="{{ $href }}" class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $vehicle->titleWithYear() }}</span><x-ui.links :vehicle="$vehicle"/><x-ui.plate :value="$vehicle->plate" class="shrink-0 text-sm font-normal"/></a>
         </div>
     </div>
     <div class="card-extra">

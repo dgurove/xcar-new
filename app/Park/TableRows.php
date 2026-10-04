@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
  * Готовый HTML строк таблицы «Наличия» (`x-park.table-row`): полторы сотни строк по пять-шесть компонентов в каждой
  * слабый сервер рисовал больше полусекунды. Строка берётся из кэша, пока не поменялось то, из чего она собрана:
  * сама ТС, её заявки и число веток писем (теги «что не так»), прайс («Нет тарифа»), имя и логотип вендора,
- * парковка, сумма, долг, метка «в документе иначе» и вид (с парковкой словом или без). Ключ у каждой строки свой: правка одной ТС
+ * парковка, сумма, долг, метка «в документе иначе», вид (с парковкой словом или без) и админ ли смотрит (значок связи). Ключ у каждой строки свой: правка одной ТС
  * перерисовывает только её. Все строки — одним чтением кэша.
  */
 final class TableRows
@@ -22,7 +22,8 @@ final class TableRows
         if ($vehicles->isEmpty()) {
             return [];
         }
-        $common = Accrual::mark('park_tariffs').'|'.self::templates();
+        // Значок связи (x-ui.links) — только админу: строка админа и управляющего — разные строки кэша.
+        $common = Accrual::mark('park_tariffs').'|'.self::templates().'|'.(int) (auth()->user()?->isAdmin() ?? false);
         $docs = FillFromDocs::flags($vehicles);
         $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.row:'.md5(implode('|', [
             $common, $v->id, $v->updated_at?->getTimestamp(), $v->threads_count, $v->waiting_count ?? 0,
@@ -54,6 +55,6 @@ final class TableRows
     private static function templates(): string
     {
         return once(fn () => (@filemtime(app_path('Park/Status.php')) ?: 0).','.implode(',', array_map(fn ($f) => @filemtime(resource_path("views/components/{$f}.blade.php")) ?: 0,
-            ['park/table-row', 'park/alerts', 'park/ref', 'ui/plate', 'ui/copy-code', 'ui/icon', 'vendor/logo', 'vendor/name'])));
+            ['park/table-row', 'park/alerts', 'park/ref', 'ui/plate', 'ui/copy-code', 'ui/icon', 'ui/links', 'vendor/logo', 'vendor/name'])));
     }
 }

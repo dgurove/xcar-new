@@ -80,6 +80,21 @@ final class Sale
         return $moved->count();
     }
 
+    /**
+     * Закупочная из оценочной стоимости (владелец, 04.10.2026): до 500 000 — плюс 50 000, от 500 000 до 2 000 000 — плюс
+     * 10 %, от 2 000 000 — плюс 200 000; вверх до тысячи.
+     */
+    public static function floorFrom(int $value): int
+    {
+        $price = match (true) {
+            $value < 500_000 => $value + 50_000,
+            $value < 2_000_000 => $value * 1.1,
+            default => $value + 200_000,
+        };
+
+        return (int) (ceil(round($price, 2) / 1000) * 1000);
+    }
+
     /** ТС → предложение. */
     public static function toOffer(Vehicle $vehicle, ?Offer $offer = null): void
     {
@@ -91,6 +106,10 @@ final class Sale
             if (filled($vehicle->{$from})) {
                 $offer->{$to} = $vehicle->{$from};
             }
+        }
+        // Закупочная — из оценочной, пока её не вписали (владелец, 04.10.2026); вписанную не трогаем.
+        if ($offer->floor_price === null && $vehicle->value) {
+            $offer->floor_price = self::floorFrom((int) $vehicle->value);
         }
         if ($offer->isDirty()) {
             $offer->save();

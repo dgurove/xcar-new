@@ -26,6 +26,7 @@
     $shooting = match ($cur?->key) { 'intake' => PhotoStage::Intake, 'release' => PhotoStage::Release, default => null };
 @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
+    <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
     {{-- Шапка — только положение и люди: состояние с местом и днями, долг, «Продано», исполнитель, письма.
          Всё, что есть в полях (номер, вендор, телефон) и в «Деньгах» (ставка, начислено), тут не повторяется. --}}
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
@@ -51,13 +52,10 @@
             </div>
         @endif
         <x-ui.docs-pill :docs="$docs" class="!min-h-0 !py-1 text-xs"/>
-        {{-- Продажа этой ТС в CRM — админу: предложение ссылкой, нет его — «В продажу» (черновик, фото и документы — её же). --}}
-        @if (auth()->user()->isAdmin())
-            @if ($vehicle->offer)
-                <a href="{{ \App\Support\Surface::Crm->url('/offers/'.$vehicle->offer->number) }}" class="chip" data-turbo="false">Продажа: {{ mb_strtolower($vehicle->offer->state->label()) }}</a>
-            @elseif (! $state->isFinal())
-                <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf<button class="chip">В продажу</button></form>
-            @endif
+        {{-- «Выставить в продажу» — админу, пока ТС не в продаже: лаймовая кнопка, а не чип-статус (черновик в CRM, фото и
+             документы — её же). Выставлена — у названия значок связи (x-ui.links), он и ведёт в CRM. --}}
+        @if (auth()->user()->isAdmin() && ! $vehicle->offer_id && ! $state->isFinal())
+            <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf<button class="btn btn-s btn-accent">Выставить в продажу</button></form>
         @endif
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
     </div>

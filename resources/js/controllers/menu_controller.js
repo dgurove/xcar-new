@@ -22,6 +22,13 @@ export default class extends Controller {
         list.querySelector('[aria-current]')?.focus({ preventScroll: true });
     }
 
+    // Пункт-переход без <a> (меню внутри ссылки — значок связи x-ui.links): адрес в data-href, другой хост — без Turbo.
+    go(event) {
+        event.preventDefault();
+        this.close();
+        window.location.href = event.currentTarget.dataset.href;
+    }
+
     close() {
         if (this.listTarget.matches(':popover-open')) this.listTarget.hidePopover();
     }

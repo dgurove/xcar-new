@@ -30,6 +30,7 @@
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
+        <x-slot:badge><x-ui.links :offer="$offer"/></x-slot:badge>
         <x-slot:media>
             <div data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-any-value="true" data-photos-mark-value="true">
                 {{-- Над лентой, а не под ней: развёрнутая плиткой лента уносила бы кнопки вниз. --}}

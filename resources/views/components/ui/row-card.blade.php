@@ -21,7 +21,7 @@
     {{-- Шапка с лентой: название, справа цена, под названием метки; на телефоне цена — своей строкой под названием,
          метки — во всю ширину рядом (узкая колонка рядом с ценой ставила их столбиком). --}}
     <div class="detail-head mt-3">
-        <a @if ($href) href="{{ $href }}" @endif class="detail-title block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}</span></a>
+        <a @if ($href) href="{{ $href }}" @endif class="detail-title block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}{{ $badge ?? '' }}</span></a>
         @if ($aside && trim($aside) !== '')<div class="detail-aside">{{ $aside }}</div>@endif
         {{-- Метки и факты — одной строкой с одним шагом: два ряда тегов с разными отступами смотрелись вразнобой. --}}
         @if ($marks || array_filter($facts))<div class="detail-marks flex flex-wrap items-center gap-1.5">{{ $marks }}@foreach (array_filter($facts) as $fact)<span class="tag nums">{{ $fact }}</span>@endforeach</div>@endif
@@ -30,7 +30,7 @@
 <div class="flex items-start gap-3">
     @if ($photo !== false)<a href="{{ $href }}" class="detail-photo">@if ($photo)<x-offer.photo :media="$photo" sizes="96px" eager/>@else<x-ui.car-blank/>@endif</a>@endif
     <div class="min-w-0 flex-1">
-        <a @if ($href) href="{{ $href }}" @endif class="block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}</span></a>
+        <a @if ($href) href="{{ $href }}" @endif class="block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}{{ $badge ?? '' }}</span></a>
         @if ($marks)<div class="mt-1.5 flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
     </div>
 </div>

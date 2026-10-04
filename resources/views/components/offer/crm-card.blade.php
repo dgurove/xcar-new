@@ -53,7 +53,7 @@
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" {!! $peek !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif</a>
+            <a href="{{ $href }}" {!! $peek !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif<x-ui.links :offer="$offer"/></a>
         </div>
     </div>
     <div class="card-extra">
