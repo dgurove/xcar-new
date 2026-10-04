@@ -972,6 +972,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* На компьютере строка таблицы всегда в одну линию (04.10.2026, владелец): узкая таблица (справа карточка строки,
      узкое окно) не переходит в два этажа, а листается вбок (.split[data-open] .table-box). Двухэтажная — только на телефоне. */
   @media (min-width: 640px) and (max-width: 1023.98px) { .table-box { overflow-x: auto; overscroll-behavior-x: contain; } }
+  /* Таблица, что листается вбок, сама стала прокручиваемым блоком: липкая шапка и заголовки групп отсчитывают отступ
+     от неё, а не от страницы, — отступ под шапку сайта уводил их вниз, поверх строк. Внутри такой таблицы — от её верха. */
+  @media (min-width: 640px) and (max-width: 1023.98px) { .table-box .table :is(thead th, tr.table-group > th) { top: 0; } }
+  @media (min-width: 1024px) { .split[data-open] .table-box .table :is(thead th, tr.table-group > th) { top: 0; } }
 
   /* Страницы покупателя (x-pickup.layout): колонка до 28rem на фоне страницы, знак сверху. */
   .pickup-main { @apply mx-auto flex min-h-dvh w-full max-w-md flex-col px-4; padding-top: calc(env(safe-area-inset-top) + 1.25rem); padding-bottom: calc(env(safe-area-inset-bottom) + 2rem); }

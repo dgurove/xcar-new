@@ -331,6 +331,12 @@ class Vehicle extends Model implements HasMedia
         return null;
     }
 
+    /** Подпись в подтверждении «В продажу»: машина, госномер, убыток — чтобы видеть, что выставляешь. */
+    public function saleLabel(): string
+    {
+        return implode(', ', array_filter([$this->titleWithYear(), $this->plate, $this->ref ? 'убыток '.$this->ref : null]));
+    }
+
     public function titleWithYear(): string
     {
         $name = trim(($this->brand?->name ?? '').' '.($this->model?->name ?? ''));

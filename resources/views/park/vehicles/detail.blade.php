@@ -69,6 +69,15 @@
                 <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/release', 'type' => 'html', 'name' => 'Акт выдачи']" class="pill pill-plain"/>
             @endif
             @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Осмотр</a>@endunless
+            {{-- Продажа этой ТС в CRM — админу, как в деле ТС: есть предложение — ссылкой, нет — «В продажу» с подтверждением,
+                 где названы машина, госномер и убыток: видно, что выставляешь. --}}
+            @if (auth()->user()->isAdmin())
+                @if ($vehicle->offer)
+                    <a href="{{ \App\Support\Surface::Crm->url('/offers/'.$vehicle->offer->number) }}" class="pill pill-plain" data-turbo="false">Продажа: {{ mb_strtolower($vehicle->offer->state->label()) }}</a>
+                @elseif (! $state->isFinal())
+                    <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf<button class="pill pill-plain">В продажу</button></form>
+                @endif
+            @endif
         </x-slot:actions>
         @if ($differences || $scanFiles->isNotEmpty())
             <form method="post" action="{{ $href }}/take" class="mt-3">@csrf
