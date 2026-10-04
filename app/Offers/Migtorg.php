@@ -127,7 +127,9 @@ final class Migtorg
             return $request->get(self::API.$path, $query);
         };
         $response = $send();
-        if ($auth && $response->status() === 401) {
+        // Протухший ключ Мигторг отдаёт и 401, и 403 «Доступ запрещен для неавторизованного» (04.10.2026: сутки ключ
+        // жил, потом карточки шли 403) — входим заново и повторяем один раз; 403 и после входа — правда закрыто.
+        if ($auth && in_array($response->status(), [401, 403], true)) {
             Cache::forget(self::TOKEN);
             $response = $send();
         }
