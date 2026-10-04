@@ -92,6 +92,8 @@ noticeSeen();
 longPressMenu();
 heroTransition();
 timerDone();
+transitionsWhenAnimated();
+viewportProbe();
 
 // View Transitions роняют промис, когда вкладка скрыта или переход перебит
 // следующим: страница при этом в порядке, в консоли этому не место.
@@ -445,6 +447,63 @@ function heroTransition() {
     document.addEventListener('turbo:load', () => {
         document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => { el.style.viewTransitionName = ''; });
     });
+}
+
+// Turbo оборачивает в view transition каждый визит, хотя едут только соседи по списку (data-nav-dir) и фото
+// карточки (hero). Снимок без анимации не нужен, а в установленном приложении iOS 26–27 вредит: viewport там
+// короче экрана на верхний вырез, и снимок таб-бара встаёт по другой высоте — бар подпрыгивает на каждом
+// переходе. Turbo спрашивает мету текущей страницы до рендера; новая страница приносит её обратно.
+function transitionsWhenAnimated() {
+    document.addEventListener('turbo:visit', () => {
+        const animated = 'navDir' in document.documentElement.dataset || document.querySelector('[style*="view-transition-name"]');
+        document.querySelector('meta[name="view-transition"]')?.setAttribute('content', animated ? 'same-origin' : 'none');
+    });
+}
+
+// Временный замер для таб-бара на iPhone (убрать после проверки): ?vp=1 включает плашку, ?vp=0 — выключает.
+// Пишет высоты viewport и низ таб-бара, а за последний переход — разброс низа бара и число view transitions.
+function viewportProbe() {
+    const flag = new URLSearchParams(location.search).get('vp');
+    try { if (flag === '1') localStorage.setItem('vp', '1'); if (flag === '0') localStorage.removeItem('vp'); } catch {}
+    let on = false;
+    try { on = localStorage.getItem('vp') === '1'; } catch {}
+    if (!on) return;
+    const probe = (css) => {
+        const el = document.createElement('div');
+        el.style.cssText = `position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;${css}`;
+        document.documentElement.append(el);
+        return el;
+    };
+    const lvh = probe('height:100lvh'), dvh = probe('height:100dvh'), svh = probe('height:100svh');
+    const safe = probe('padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)');
+    const box = document.createElement('pre');
+    box.style.cssText = 'position:fixed;z-index:9999;left:4px;top:calc(env(safe-area-inset-top) + 4px);margin:0;padding:4px 6px;'
+        + 'font:10px/1.3 ui-monospace,monospace;color:#fff;background:rgb(0 0 0 / .75);border-radius:6px;pointer-events:none;white-space:pre';
+    document.documentElement.append(box);
+    let vt = 0;
+    const start = document.startViewTransition?.bind(document);
+    if (start) document.startViewTransition = (...args) => { vt++; return start(...args); };
+    let span = null, until = 0;
+    const r = (n) => Math.round(n * 10) / 10;
+    const frame = () => {
+        const bar = document.getElementById('tabbar')?.getBoundingClientRect().bottom ?? NaN;
+        if (span) { span.min = Math.min(span.min, bar); span.max = Math.max(span.max, bar); }
+        const vv = window.visualViewport, cs = getComputedStyle(safe);
+        box.textContent = [
+            `${matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'} ${navigator.userAgent.match(/OS (\d+[_\d]*)/)?.[1] ?? ''}`,
+            `screen ${screen.height}  inner ${innerHeight}  client ${document.documentElement.clientHeight}`,
+            `vv ${r(vv?.height ?? 0)} +${r(vv?.offsetTop ?? 0)}  lvh ${lvh.offsetHeight} dvh ${dvh.offsetHeight} svh ${svh.offsetHeight}`,
+            `safe ${cs.paddingTop} / ${cs.paddingBottom}  bar.bottom ${r(bar)}`,
+            span ? `переход: bar ${r(span.min)}…${r(span.max)}  vt ${span.vt}→${vt}` : `vt ${vt}`,
+        ].join('\n');
+        if (performance.now() < until) requestAnimationFrame(frame);
+    };
+    const watch = (ms) => { until = Math.max(until, performance.now() + ms); requestAnimationFrame(frame); };
+    document.addEventListener('turbo:visit', () => { span = { min: Infinity, max: -Infinity, vt }; watch(10000); });
+    document.addEventListener('turbo:load', () => { until = performance.now() + 600; watch(0); });
+    addEventListener('scroll', () => watch(100), { passive: true });
+    window.visualViewport?.addEventListener('resize', () => watch(300));
+    watch(600);
 }
 
 // Таймер дошёл до нуля: всё, что помечено data-closes-with-timer, гаснет сразу

@@ -1,6 +1,8 @@
 {{-- Нижний таб-бар телефона: до четырёх разделов и «Кабинет». У раздела вместо иконки —
      капсула с числом позиций (серая; у текущего лаймовая и одной ширины под три цифры),
-     сверху справа лаймовый бейдж нового; у кабинета — аватар. Без позиций — точка. --}}
+     сверху справа лаймовый бейдж нового; у кабинета — аватар. Без позиций — точка.
+     Бар один на всё приложение (data-turbo-permanent): Turbo не пересоздаёт его на переходе, числа и текущий таб
+     новой страницы переносит tabbar_controller. --}}
 @php
     $user = auth()->user();
     $path = '/'.ltrim(request()->path(), '/');
@@ -10,7 +12,7 @@
     // Активен самый точный пункт: «Деньги» в /account/money — «Кабинет», «Покупатели» в /buyers — «Сделки».
     $current = collect($tabs)->filter(fn ($t) => \App\Support\Nav::isCurrent($t, $path))->sortByDesc(fn ($t) => \App\Support\Nav::matchLength($t, $path))->first()['href'] ?? null;
 @endphp
-<nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-target="bar" data-tabbar-shown-value="{{ $current }}">
+<nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-target="bar" data-tabbar-shown-value="{{ $current }}" data-turbo-permanent>
     @foreach ($tabs as $tab)
         @if ($tab['logout'] ?? false)
             <form method="post" action="/logout" class="contents">@csrf<button type="submit" class="tab"><span class="tab-mark"><span class="tab-dot"></span></span><span>{{ $tab['label'] }}</span></button></form>

@@ -4,7 +4,7 @@ import * as Turbo from '@hotwired/turbo';
 // Ключ памяти табов; «tab:» — прежний, в нём могли остаться чужие адреса, его не читаем.
 const KEY = 'tabs:';
 
-// Прокрутка, которую надо вернуть после ближайшего рендера (контроллер к тому моменту новый).
+// Прокрутка, которую надо вернуть после ближайшего рендера.
 let restoreScroll;
 document.addEventListener('turbo:load', () => {
     if (restoreScroll === undefined) return;
@@ -13,16 +13,21 @@ document.addEventListener('turbo:load', () => {
     requestAnimationFrame(() => scrollTo(0, y));
 });
 
-// Бар рендерится с каждой страницей; пока фокус в поле (поиск по мере ввода, чат), новый
-// бар приходит без is-hidden и выскакивал над клавиатурой. Класс переезжает на новый узел,
-// а морф его не трогает.
 const isField = (el) => el instanceof HTMLElement && el.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select, [contenteditable="true"], trix-editor');
+
+// Бар постоянный (data-turbo-permanent): Turbo переносит живой узел, а бар новой страницы выбрасывает. Из него
+// берём числа, бейджи и текущий таб — морфом детей, чтобы не трогать сам fixed-узел: пересозданный бар iOS
+// заново раскладывала по viewport, а is-hidden (фокус в поле) иначе пришлось бы переносить руками.
 document.addEventListener('turbo:before-render', (event) => {
-    if (!isField(document.activeElement)) return;
-    event.detail.newBody.querySelector('#tabbar')?.classList.add('is-hidden');
+    const bar = document.getElementById('tabbar');
+    const next = event.detail.newBody.querySelector('#tabbar');
+    if (!bar || !next || bar === next) return;
+    bar.dataset.tabbarShownValue = next.dataset.tabbarShownValue;
+    Turbo.morphChildren(bar, next);
 });
-document.addEventListener('turbo:before-morph-attribute', (event) => {
-    if (event.target.id === 'tabbar' && event.detail.attributeName === 'class') event.preventDefault();
+// Поле, ради которого бар уходил, пропало вместе со старой страницей без focusout — бар возвращается.
+document.addEventListener('turbo:load', () => {
+    if (!isField(document.activeElement)) document.getElementById('tabbar')?.classList.remove('is-hidden');
 });
 
 // Таб-бар ведёт себя как нативный: при фокусе в поле уходит под клавиатуру,
