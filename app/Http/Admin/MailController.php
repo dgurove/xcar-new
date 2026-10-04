@@ -22,6 +22,7 @@ use App\Mail\Chains\ChainBuilder;
 use App\Mail\Composer;
 use App\Mail\Direction;
 use App\Mail\Extraction\ArchivePhotoExtractor;
+use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\Keys;
 use App\Mail\Jobs\ImportCandidateFiles;
@@ -136,11 +137,15 @@ class MailController
         $threads = $q !== '' && ! $forced ? (clone $all) : $pick($box);
         if ($q !== '') {
             $tsquery = self::tsquery($q);
+            // Кусок номера («05481» из «0890/046/05481/26»): полнотекст держит номер с косыми одним словом, а
+            // `Keys::fromQuery` ищет номер целиком — ищем в номерах ветки подстрокой, как «Наличие».
+            $part = Code::key($q);
             $threads->where(fn ($w) => $w
                 ->when($tsquery, fn ($w, $ts) => $w->whereHas('messages', fn ($m) => $m->whereRaw("search @@ to_tsquery('russian', ?)", [$ts])))
                 ->orWhereRaw('participants::text ilike ?', ['%'.$q.'%'])
                 ->orWhereHas('attachments', fn ($a) => $a->where('filename', 'ilike', '%'.$q.'%'))
-                ->when(Keys::fromQuery($q), fn ($w, $keys) => $w->orWhere(fn ($k) => $k->withAnyKey($keys))));
+                ->when(Keys::fromQuery($q), fn ($w, $keys) => $w->orWhere(fn ($k) => $k->withAnyKey($keys)))
+                ->when($part && mb_strlen($part) >= 4, fn ($w) => $w->orWhereRaw('mail_threads.keys::text ilike ?', ['%'.$part.'%'])));
         }
         $facets->apply($threads);
         $order = fn ($t) => $sort === 'waiting' ? $t->orderBy('last_message_at') : $t->orderByDesc('last_message_at');
