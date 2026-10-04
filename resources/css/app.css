@@ -981,6 +981,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      строчных, и иконка у «Scania», «Mercedes» уезжала вниз. */
   .cell-title .cat-icon { vertical-align: -.28em; }
   .cell-sub > * + * { margin-left: .375rem; }
+  /* Строка фактов предложения на телефоне переносится, а не режется: ни подтверждения, ни номер, ни город не уходят в «…». */
+  @media (max-width: 639.98px) {
+    .cell-sub--wrap { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .375rem; white-space: normal; text-overflow: clip; }
+    .cell-sub--wrap > * { white-space: nowrap; }
+    .cell-sub--wrap > * + * { margin-left: 0; }
+  }
   /* Третья строка краткой таблицы телефона: задача чипом, ошибки данных словами. Во второй строке эти ошибки тогда
      не повторяются; на ПК и в подробной таблице — наоборот, ошибки во второй строке, третьей нет. */
   .cell-extra { display: none; }

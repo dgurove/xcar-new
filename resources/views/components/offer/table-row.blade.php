@@ -37,13 +37,16 @@
     // Чего не хватает для продажи — у оценённого черновика: галочки у такого нет.
     $missing = $checkable && $draft && ! $slot ? array_map(fn ($m) => 'нет '.match ($m) { 'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m }, \App\Offers\Actions\ChangeOfferState::missing($offer)) : [];
     $has = fn (string $k) => $cols === null || in_array($k, $cols, true);
+    $when = $cols !== null && $has('published') ? $offer->published_at : ($has('created') ? $offer->created_at : null);
     $late = $checkable && $draft && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($offer->slot_at ?? \App\Offers\Slots::nearest());
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($rate) data-unpriced @endif>
     @if ($checkable)<td class="pick-cell">@unless ($missing)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>@endif
     <td class="grow">
         <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif<x-ui.links :offer="$offer"/></span></x-ui.row-link>
-        <span class="cell-sub" data-controller="fitline">
+        {{-- Телефон: столбцов справа нет — всё, что в них, стоит тут же, и строка переносится, а не режется «…» (владелец
+             04.10.2026: «поля не должны исчезать»). --}}
+        <span class="cell-sub cell-sub--wrap" data-controller="fitline">
             {{-- Номера — одним неразрывным куском: не влезают — строка ужимается (fitline), а не переносится. --}}
             <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/>@unless ($draft)<span>№ {{ $n }}</span>@endunless</span>
             @if ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
@@ -51,6 +54,8 @@
             {{-- Телефон, «Опубликованные»: у ждущих решения важнее число подтверждений, дата закрытия — у остальных. --}}
             @elseif ($pick && $cols !== null && ! $count)<span class="sm:hidden nums text-ink-muted">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
             @elseif (! $draft && ! ($pick && $cols !== null))<span class="sm:hidden {{ $tone }}">{{ $stateWord }}</span>@endif
+            @if ($has('city') && $offer->settlement)<span class="sm:hidden">{{ $offer->settlement->name }}</span>@endif
+            @if ($when)<span class="sm:hidden nums text-ink-dim">{{ $when->translatedFormat($when->isCurrentYear() ? 'j M' : 'j M Y') }}</span>@endif
             @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
             @if ($late)<span class="text-danger nums">страховая до {{ $offer->insurer_deadline_at->translatedFormat('j M') }}</span>@endif
         </span>
@@ -87,7 +92,6 @@
         @elseif ($offer->floor_price && $has('floor'))<span class="cell-sub sm:hidden">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>@endif
     {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет. --}}
-    @php $when = $cols !== null && $has('published') ? $offer->published_at : ($has('created') ? $offer->created_at : null); @endphp
     @if ($has('created') || ($cols !== null && $has('published')))<td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">
         {{-- Без столбца № кто завёл черновик — аватаром перед датой. --}}
         @if ($draft && $offer->moderator && ! $has('no'))<span class="inline-flex items-center gap-2 align-middle"><x-ui.avatar :user="$offer->moderator" :size="20" title="{{ $offer->moderator->name }}"/>@endif{{ $when?->translatedFormat($when->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}@if ($draft && $offer->moderator && ! $has('no'))</span>@endif
