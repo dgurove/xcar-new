@@ -76,7 +76,7 @@
     @if ($admin && $has('bids'))<td class="num nums col-detail-hide hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>@endif
     {{-- Закупочная, справа от неё цена продажи (у черновика без неё — чип «Оценить»); на телефоне столбца закупочной нет —
          она под ценой. --}}
-    @if ($cols !== null && $has('value'))<td class="cell-dim num nums hidden sm:table-cell">{{ $offer->value ? \App\Support\Money::nums($offer->value) : '' }}</td>@endif
+    @if ($cols !== null && $has('value'))<td class="cell-dim num nums hidden sm:table-cell">{{ $offer->value && \App\Vendors\Vendor::ratesByValue($offer->vendor_id) ? \App\Support\Money::nums($offer->value) : '' }}</td>@endif
     @if ($has('floor'))<td class="cell-dim num nums hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>@endif
     @if ($has('price'))<td class="num nums">
         @if ($rate)<x-offer.rate-chip :offer="$offer"/>

@@ -6,6 +6,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Sale;
 use App\Users\User;
+use App\Vendors\Vendor;
 
 /**
  * Пары «номер убытка — оценочная» из сообщения (`ValuationText`) против предложений CRM, которые человек правит
@@ -32,7 +33,9 @@ final class MatchValuations
         foreach ($rows as $r) {
             $amounts[$r['key']][$r['amount']] = true;
         }
+        // Оценочная есть только у вендоров, чья закупочная от неё (Альфа): Совкомбанк с тем же номером не трогаем.
         $offers = $rows ? Offer::query()->inCrm($user)->whereIn('claim_ref_key', array_keys($amounts))
+            ->whereIn('vendor_id', Vendor::where('rate_by_value', true)->select('id'))
             ->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])
             ->with(['brand', 'model', 'vendor'])->get()->groupBy('claim_ref_key') : collect();
 

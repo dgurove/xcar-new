@@ -8,8 +8,9 @@
 @endphp
 <div class="grid grid-cols-2 gap-3" data-controller="min-bid value-floor">
     @if (auth()->user()->canManageCrm())
-    {{-- Оценочная — у вендора, чья закупочная от неё (`rate_by_value`, Альфа); та же, что у ТС парковки (`Sale::MAP`). --}}
-    <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array($offer->vendor_id, $byValue, true) || $offer->value) hidden @endunless>
+    {{-- Оценочная — только у вендора, чья закупочная от неё (`rate_by_value`, Альфа; владелец 05.10.2026: «у Совкомбанка
+         поля быть не должно»), даже если с парковки она пришла; та же, что у ТС парковки (`Sale::MAP`). --}}
+    <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array($offer->vendor_id, $byValue, true)) hidden @endunless>
         <x-ui.field name="value" data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" label="Оценочная, ₽" :value="$offer->value" :form="$form"/>
     </div>
     <x-ui.field name="floor_price" data-controller="digits" data-value-floor-target="floor" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">

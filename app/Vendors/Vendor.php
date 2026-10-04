@@ -101,6 +101,12 @@ class Vendor extends Model implements HasMedia
         return $id ? (once(fn () => self::whereNotNull('crm_vendor_id')->pluck('crm_vendor_id', 'id')->all())[$id] ?? $id) : null;
     }
 
+    /** Закупочная от оценочной стоимости (`rate_by_value`, Альфа): только у такого вендора поле «Оценочная» в CRM. */
+    public static function ratesByValue(?int $id): bool
+    {
+        return $id !== null && in_array($id, once(fn () => self::where('rate_by_value', true)->pluck('id')->all()), true);
+    }
+
     /** НДС цен предложений этого вендора по умолчанию — одна дверь для письма, ручного черновика и смены вендора. */
     public static function offersVat(?int $id): bool
     {
