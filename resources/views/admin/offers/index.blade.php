@@ -7,7 +7,7 @@
     use App\Offers\Slots;
     $table = \App\Support\ListView::isTable($view);
     $admin = auth()->user()->canManageCrm();
-    $cols = 8 + ($admin ? 1 : 0) + ($pick ? 1 : 0);
+    $span = ($cols === null ? 8 + ($admin ? 1 : 0) : count($cols) + 1) + ($pick ? 1 : 0);
     // Группы: «Публикация» — по слоту, «Опубликованные» у админа — по тому, что делать. Остальное одной группой.
     $groups = match (true) {
         $searching => collect(['' => $offers->getCollection()]),
@@ -42,12 +42,12 @@
             @endif
             @if ($table)
                 <x-ui.table id="offers" :view="$view">
-                    <x-slot:head><x-offer.table-head :pick="$pick"/></x-slot:head>
+                    <x-slot:head><x-offer.table-head :pick="$pick" :cols="$cols"/></x-slot:head>
                     @foreach ($groups as $key => $list)
                         @if ($title = $groupTitle($key, $list))
-                            <tr class="table-group"><th colspan="{{ $cols }}"><span class="table-group-name">@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums">{{ $list->count() }}</span></span></th></tr>
+                            <tr class="table-group"><th colspan="{{ $span }}"><span class="table-group-name">@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums">{{ $list->count() }}</span></span></th></tr>
                         @endif
-                        @foreach ($list as $offer)<x-offer.table-row :offer="$offer" :checkable="$pick" :group="$preset === 'slots' ? $key : null"/>@endforeach
+                        @foreach ($list as $offer)<x-offer.table-row :offer="$offer" :cols="$cols" :checkable="$pick" :group="$preset === 'slots' ? $key : null"/>@endforeach
                     @endforeach
                 </x-ui.table>
             @else

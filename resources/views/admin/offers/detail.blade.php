@@ -17,7 +17,8 @@
     // Модератору — поля, кадры и документы: оценки, состояния, подтверждений, интереса и круга показа у него нет.
     $transitions = $admin ? collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
     // «Опубликовать» у черновика и галереи — тремя пунктами: сейчас, в ближайший слот, в следующий (`x-offer.publish-items`).
-    $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled();
+    // Без цены продажи публиковать нечего — пунктов нет, пока её не поставили.
+    $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled() && $offer->asking_price;
     $transitions = $transitions->except(OfferState::Open->value);
     // Блок «Оценить» — у черновика без цены продажи; оценённому цену правят в «Ценах».
     $rate = $admin && $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled();
@@ -41,7 +42,8 @@
             {{-- Номер предложения и номер ДЛ или убытка копируются нажатием, как VIN. --}}
             @unless ($offer->state === OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $n" done="Номер в буфере"/></span>@endunless
             @if ($offer->claim_ref)<span class="tag nums gap-1">{{ $offer->leaseRef() ? 'ДЛ' : 'Убыток' }}<x-ui.copy-code :value="$offer->claim_ref"/></span>@endif
-            <span class="tag {{ match ($offer->state->tone()) { 'open' => 'tag-accent', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' } }} {{ $offer->state === OfferState::Draft ? 'text-ink-dim' : '' }}">{{ $offer->parkWord() ?? $offer->state->labelFor(auth()->user()) }}</span>
+            {{-- Слова «черновик» нет, как и в строке: вкладка и так говорит, на каком он шаге; у черновика с парковки — «парковка с …». --}}
+            @if ($offer->state !== OfferState::Draft || $offer->parkWord())<span class="tag {{ match ($offer->state->tone()) { 'open' => 'tag-accent', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' } }} {{ $offer->state === OfferState::Draft ? 'text-ink-dim' : '' }}">{{ $offer->parkWord() ?? $offer->state->labelFor(auth()->user()) }}</span>@endif
             @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
             @elseif (! $gallery && $offer->closed() && auth()->user()->canManageCrm())<span class="tag">приём закрыт</span>@endif
             @if ($offer->car_place)<x-ui.place class="tag">{{ $offer->car_place->label() }}</x-ui.place>@endif
@@ -161,6 +163,6 @@
             @include('admin.offers.detail-tools')
         </x-slot:tools>
         {{-- Свежая строка — с галочкой, если список с галочками («Оцененные», «Публикация»). --}}
-        <x-slot:row><x-offer.table-row :offer="$offer" :gallery="$list" :checkable="$admin && ! $list && in_array(request('preset'), ['priced', 'slots'], true) && blank(request('q'))" :group="$offer->slot_at?->format('YmdHi')"/></x-slot:row>
+        <x-slot:row><x-offer.table-row :offer="$offer" :gallery="$list" :checkable="$admin && ! $list && in_array(request('preset'), ['priced', 'slots'], true) && blank(request('q'))" :group="$offer->slot_at?->format('YmdHi')" :cols="$list ? null : \App\Http\Admin\OfferController::columns(request('preset'), auth()->user(), filled(request('q')))"/></x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

@@ -140,6 +140,7 @@ class OfferController
             'facets' => $facets,
             // Галочки и отправка — админу, в «Оцененных» и «Публикации».
             'pick' => $admin && ! $searching && in_array($preset, ['priced', 'slots'], true),
+            'cols' => self::columns($preset, $request->user(), $searching),
             'counts' => self::counts($request->user(), $facets),
         ]);
     }
@@ -178,6 +179,33 @@ class OfferController
         }
 
         return $offer->active_bids_count ? 0 : 2;
+    }
+
+    /**
+     * Столбцы таблицы по вкладке — только то, что на этом шаге что-то значит (владелец 04.10.2026: «в „Без цены“ не может
+     * быть подтверждений»). Ключи: vendor — вендор и № убытка, no — № (у черновика — кто завёл), state — приём или
+     * состояние, bids — подтверждения, price, floor — закупочная, created / published — когда заведено / вышло.
+     * null — все (поиск по разделу, галерея).
+     *
+     * @return list<string>|null
+     */
+    public static function columns(?string $preset, User $user, bool $searching = false): ?array
+    {
+        if ($searching || ! array_key_exists((string) $preset, self::PRESETS) && $preset !== null) {
+            return null;
+        }
+        $admin = $user->canManageCrm();
+
+        return match ($preset ?? 'unpriced') {
+            // Оценка: чьё, «Оценить» на месте цены, закупочная — ориентир, сколько ждёт.
+            'unpriced' => ['vendor', 'no', 'price', 'floor', 'created'],
+            'priced' => ['vendor', 'no', 'price', 'floor', 'created'],
+            // Когда выйдет — заголовок группы, слова в строке не нужно.
+            'slots' => ['vendor', 'no', 'price', 'floor'],
+            // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
+            'published' => $admin ? ['vendor', 'no', 'state', 'bids', 'price', 'floor', 'published'] : ['vendor', 'no', 'price', 'floor', 'published'],
+            default => ['vendor', 'no', 'state', 'price', 'floor', 'created'],
+        };
     }
 
     /**
