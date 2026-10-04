@@ -18,6 +18,7 @@ use App\Mail\Thread;
 use App\Media\HasPhotos;
 use App\Park\Sale;
 use App\Park\Vehicle;
+use App\Park\VehicleState;
 use App\Purchases\Car;
 use App\Support\Demo\HidesDemo;
 use App\Users\Role;
@@ -285,7 +286,7 @@ class Offer extends Model implements HasMedia
     public function pickupChoosable(): bool
     {
         return (bool) $this->vendor?->workflow(Track::Service)?->is_active && ! $this->pickedUp()
-            && $this->parkVehicle?->state !== \App\Park\VehicleState::Stored
+            && $this->parkVehicle?->state !== VehicleState::Stored
             && ! in_array($this->state, [OfferState::Garage, OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true);
     }
 
@@ -526,13 +527,30 @@ class Offer extends Model implements HasMedia
         return $this->hasOne(Car::class, 'offer_id');
     }
 
-    public function vinMasked(): ?string
+    /**
+     * VIN целиком этому человеку. Покупателю — только если менеджер открыл ему предложение с VIN (`showings.show_vin`,
+     * лично или группе; владелец 04.10.2026: «менеджер должен решать»); остальным — по глазику в редакторе (`show_vin`).
+     */
+    public function vinOpenTo(?User $user): bool
+    {
+        if ($user?->isBuyer()) {
+            return Showing::where('offer_id', $this->id)->where('show_vin', true)
+                ->where(fn ($w) => $w->where('user_id', $user->id)->orWhereIn('group_id', DB::table('buyer_group_user')->where('user_id', $user->id)->select('group_id')))
+                ->exists();
+        }
+
+        return (bool) $this->show_vin;
+    }
+
+    /** VIN, каким его видит человек: целиком или только первые пять знаков. */
+    public function vinFor(?User $user): ?string
     {
         if (! $this->vin) {
             return null;
         }
 
-        return $this->show_vin ? $this->vin : substr($this->vin, 0, 5).'********'.substr($this->vin, -4);
+        // Скрытый — только первые пять знаков (производитель), середина и конец звёздочками: по хвосту VIN машину находят.
+        return $this->vinOpenTo($user) ? $this->vin : substr($this->vin, 0, 5).str_repeat('*', max(0, strlen($this->vin) - 5));
     }
 
     // -------------------------------------------------------------- деньги

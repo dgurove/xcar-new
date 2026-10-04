@@ -16,7 +16,8 @@ use Illuminate\Validation\ValidationException;
  * Менеджер открывает предложения покупателям и группам. Пачка — только
  * добавляет; `sync` для одного предложения — приводит показы к отмеченному
  * списку, снимая лишние. Уведомление получают только те, кому предложение
- * стало видно впервые (лично или через группу).
+ * стало видно впервые (лично или через группу). vin — видят ли они VIN целиком (решает менеджер): ставится
+ * отмеченным показам этого предложения, у `sync` — всем его показам у менеджера.
  */
 final class ShowOffers
 {
@@ -26,7 +27,7 @@ final class ShowOffers
      * @param  list<int>  $groupIds
      * @return array{shown: int, buyers: int}
      */
-    public function __invoke(User $manager, array $offerIds, array $userIds, array $groupIds, bool $sync = false): array
+    public function __invoke(User $manager, array $offerIds, array $userIds, array $groupIds, bool $sync = false, bool $vin = false): array
     {
         $offers = Offer::whereIn('id', $offerIds)->where('state', OfferState::Open)->visibleTo($manager)->get();
         if ($offers->isEmpty()) {
@@ -37,7 +38,7 @@ final class ShowOffers
 
         $fresh = [];
         $gone = [];
-        DB::transaction(function () use ($manager, $offers, $users, $groups, $sync, &$fresh, &$gone) {
+        DB::transaction(function () use ($manager, $offers, $users, $groups, $sync, $vin, &$fresh, &$gone) {
             foreach ($offers as $offer) {
                 $before = Showing::buyerIdsOf($offer, $manager->id)->all();
                 if ($sync) {
@@ -54,6 +55,9 @@ final class ShowOffers
                     // Повтор — не ошибка: частичные уникальные индексы Eloquent не знает, поэтому вставка с игнором.
                     Showing::insertOrIgnore($rows);
                 }
+                Showing::where('offer_id', $offer->id)->where('manager_id', $manager->id)
+                    ->when(! $sync, fn ($q) => $q->where(fn ($w) => $w->whereIn('user_id', $users ?: [0])->orWhereIn('group_id', $groups ?: [0])))
+                    ->update(['show_vin' => $vin]);
                 $after = Showing::buyerIdsOf($offer, $manager->id)->all();
                 foreach (array_diff($after, $before) as $buyer) {
                     $fresh[$buyer][] = $offer->id;

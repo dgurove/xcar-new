@@ -27,7 +27,7 @@
             @if (!$gallery && $offer->isFresh())<x-ui.state tone="open">Новый</x-ui.state>@endif
             @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>@elseif ($bids && !$gallery && !$offer->bidsOpen())<span class="tag">Приём закрыт</span>@endif
             @if ($offer->settlement)<x-ui.place class="tag">{{ $offer->settlement->title() }}</x-ui.place>@endif
-            <x-ui.vin-code :vin="$offer->vinMasked()" :copy="$offer->show_vin" class="tag"/>
+            <x-ui.vin-code :vin="$offer->vinFor(auth()->user())" :copy="$offer->vinOpenTo(auth()->user())" class="tag"/>
             <x-offer.tags :offer="$offer" :facts="false"/>
         </x-slot:marks>
         <x-slot:aside>

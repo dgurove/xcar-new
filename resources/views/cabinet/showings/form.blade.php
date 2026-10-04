@@ -35,6 +35,13 @@
             <x-ui.empty class="!py-12" href="/account/invites" link="Пригласить покупателей">Показывать пока некому</x-ui.empty>
         @else
             @if ($rows > 8)<input type="search" class="field-input field-s" placeholder="Найти" autocomplete="off" data-action="input->select#filter">@endif
+            {{-- Видят ли отмеченные VIN целиком — решает менеджер (владелец 04.10.2026); не отмечено — звёздочки. --}}
+            <div class="list">
+                <label class="row row-check">
+                    <span class="min-w-0 flex-1">Показать VIN</span>
+                    <span class="check"><input type="checkbox" name="show_vin" value="1" @checked($showVin)></span>
+                </label>
+            </div>
             <div class="list">
                 @foreach ($groups as $g)
                     <label class="row row-check" data-select-target="item" data-name="{{ mb_strtolower($g->name) }}">

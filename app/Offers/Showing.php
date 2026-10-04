@@ -15,14 +15,14 @@ use Illuminate\Support\Facades\DB;
  * Показ: менеджер открыл предложение покупателю лично или группе. Ровно одно из
  * user_id / group_id. Видимость покупателю считается от показов его менеджера.
  */
-#[Fillable(['offer_id', 'manager_id', 'user_id', 'group_id', 'created_at'])]
+#[Fillable(['offer_id', 'manager_id', 'user_id', 'group_id', 'show_vin', 'created_at'])]
 class Showing extends Model
 {
     public $timestamps = false;
 
     protected function casts(): array
     {
-        return ['created_at' => 'datetime'];
+        return ['created_at' => 'datetime', 'show_vin' => 'bool'];
     }
 
     public function offer(): BelongsTo

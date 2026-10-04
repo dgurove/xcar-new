@@ -32,6 +32,7 @@ class ShowingController
             'buyers' => $me->buyers()->with(User::withAvatar())->orderBy('name')->get(),
             'checkedUsers' => $current->pluck('user_id')->filter()->all(),
             'checkedGroups' => $current->pluck('group_id')->filter()->all(),
+            'showVin' => $current->contains('show_vin', true),
             'back' => $request->query('back', url()->previous()),
         ]);
     }
@@ -66,10 +67,11 @@ class ShowingController
             'groups' => ['nullable', 'array'],
             'groups.*' => ['integer'],
             'sync' => ['nullable', 'boolean'],
+            'show_vin' => ['nullable', 'boolean'],
         ]);
         $users = array_map('intval', $data['users'] ?? []);
         $groups = array_map('intval', $data['groups'] ?? []);
-        $result = $show($me, array_map('intval', $data['offers']), $users, $groups, $request->boolean('sync'));
+        $result = $show($me, array_map('intval', $data['offers']), $users, $groups, $request->boolean('sync'), $request->boolean('show_vin'));
 
         $toast = $request->boolean('sync')
             ? 'Сохранено'

@@ -24,7 +24,9 @@
                     </label>
                 @endforeach
             </div>
-            <div class="sticky bottom-0 -mx-1 mt-4 bg-surface px-1 pb-1 pt-3">
+            <div class="sticky bottom-0 -mx-1 mt-4 flex flex-col gap-3 bg-surface px-1 pb-1 pt-3">
+                {{-- VIN целиком отмеченным — решает менеджер; не отмечено — звёздочки. --}}
+                <label class="row-check flex items-center gap-3"><span class="min-w-0 flex-1">Показать VIN</span><span class="check"><input type="checkbox" name="show_vin" value="1"></span></label>
                 <button type="submit" class="btn btn-accent w-full" data-select-target="submit" disabled>Открыть <span class="nums" data-select-target="count"></span></button>
             </div>
         </form>

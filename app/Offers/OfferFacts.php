@@ -8,7 +8,7 @@ use App\Support\Money;
 
 /**
  * «Характеристики» ТС словами — одна дверь на витрину, страницу ТС в гараже, вывоз и сделку менеджера.
- * $fullVin — VIN целиком (тем, кто с машиной работает), иначе как на витрине (`vinMasked`).
+ * $fullVin — VIN целиком (тем, кто с машиной работает), иначе как этому человеку положено (`Offer::vinFor`).
  */
 final class OfferFacts
 {
@@ -24,7 +24,7 @@ final class OfferFacts
             'Кузов' => $offer->body?->label(), 'КПП' => $offer->transmission?->label(), 'Привод' => $offer->drive?->label(),
             'Топливо' => $offer->fuel?->label(), 'Объём' => $offer->engine_volume ? Liters::format($offer->engine_volume).' л' : null,
             'Мощность' => $offer->engine_power ? $offer->engine_power.' л. с.' : null, 'Цвет' => $offer->color,
-            'VIN' => $fullVin ? $offer->vin : $offer->vinMasked(), 'Причина' => $offer->damage_cause?->label(),
+            'VIN' => $fullVin ? $offer->vin : $offer->vinFor(auth()->user()), 'Причина' => $offer->damage_cause?->label(),
             'Повреждения' => $offer->damage_zones ? implode(', ', array_map(fn ($z) => DamageZone::labelOf($z), $offer->damage_zones)) : null,
             'На ходу' => $offer->is_runnable === null ? null : ($offer->is_runnable ? 'Да' : 'Нет'),
             'Ключи' => $offer->has_keys === null ? null : ($offer->has_keys ? 'Есть' : 'Нет'), 'Документы' => $offer->papers?->label(),

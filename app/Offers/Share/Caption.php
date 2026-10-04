@@ -21,7 +21,7 @@ final class Caption
         $staff = $user?->isAdmin() ?? false;
         $price = PriceView::for($offer, $user);
         // Цены — последней строкой: клиент собирает отмеченные сверху вниз, цены склеивает стрелкой «от → до» в конце.
-        // VIN менеджеру — как на сайте: скрытый глазиком уходит маской.
+        // VIN — как этому человеку на сайте (`Offer::vinFor`): скрытый уходит маской.
         $rows = [
             // У черновика номер временный (`OfferNumber`): настоящий выдаётся при публикации — в тексте его ещё нет.
             ['number', 'Номер', $offer->published_at ? '#'.$offer->number : null, true],
@@ -31,7 +31,7 @@ final class Caption
             ['specs', 'КПП, привод, кузов', implode(', ', array_filter([$offer->transmission?->label(), $offer->drive?->label(), $offer->body?->label()])) ?: null, true],
             ['engine', 'Двигатель', $offer->engine_volume ? number_format($offer->engine_volume / 1000, 1, ',', '').' л'.($offer->engine_power ? ', '.$offer->engine_power.' л. с.' : '') : null, true],
             ['mileage', 'Пробег', $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null, false],
-            ['vin', 'VIN', $offer->vin ? 'VIN '.($staff ? $offer->vin : $offer->vinMasked()) : null, true],
+            ['vin', 'VIN', $offer->vin ? 'VIN '.($staff ? $offer->vin : $offer->vinFor($user)) : null, true],
             ['tags', 'Метки', $offer->tags ? implode(', ', $offer->tags) : null, false],
             // Строкой с глаголом, а не голой датой (владелец 04.10.2026): в тексте без подписей «07.10.2026 17:00» ни о чём не говорит.
             ['until', 'Приём подтверждений до', $offer->bids_close_at ? 'Подтвердить до '.$offer->bids_close_at->translatedFormat('d.m.Y H:i') : null, false],
