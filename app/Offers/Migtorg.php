@@ -12,6 +12,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -106,7 +107,7 @@ final class Migtorg
         return $auction['data'] ?? $auction;
     }
 
-    /** uuid кадров карточки по порядку: главный, затем остальные — как в галерее на сайте. */
+    /** uuid кадров карточки по порядку: главный, затем остальные — как в галерее на сайте. Заглушка «not_available» — не кадр. */
     public static function photosOf(array $auction): array
     {
         $order = fn (array $list) => collect($list)->sortBy('order_column')->pluck('uuid')->all();
@@ -114,7 +115,7 @@ final class Migtorg
         return array_values(array_unique(array_filter([
             ...$order($auction['media']['main_photos'] ?? []),
             ...$order($auction['media']['photos'] ?? []),
-        ])));
+        ], fn ($uuid) => is_string($uuid) && Str::isUuid($uuid))));
     }
 
     public function download(string $uuid, string $to): void

@@ -29,7 +29,7 @@ final class LinkThread
     {
         $thread->update(($to instanceof Offer ? ['offer_id' => $to->id] : ['vehicle_id' => $to->id]) + ['unlinked_at' => null]);
         if ($files) {
-            ImportThreadFiles::dispatch($thread->id);
+            ImportThreadFiles::attachNow($thread);
         }
     }
 

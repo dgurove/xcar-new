@@ -86,6 +86,15 @@ services:
     healthcheck:
       disable: true
 
+  # Фото и архивы из писем в машину (ImportThreadFiles): человек только что нажал «Завести» и смотрит на ряд фото —
+  # не ждать за Мигторгом и разбором ящика в queue-long. Документы к этому времени уже прикреплены (LinkThread).
+  queue-files:
+    <<: *app
+    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=2 --queue=files
+    stop_grace_period: 60s
+    healthcheck:
+      disable: true
+
   scheduler:
     <<: *app
     command: php artisan schedule:work

@@ -81,6 +81,32 @@ final class AttachmentImporter
     }
 
     /**
+     * Только документы, которые уже лежат у нас (закреплены при приходе письма): их кладут сразу при «Завести», пока
+     * человек открывает редактор. Документ без файла на диске, архивы и фото — работа `ImportThreadFiles`.
+     *
+     * @return int сколько добавлено
+     */
+    public function importDocuments(HasMedia $model, Collection $attachments, string $collection): int
+    {
+        $added = 0;
+        foreach ($this->classifier->classify($attachments)['documents'] as $document) {
+            if ($document->isOnDisk()) {
+                $added += (int) $this->addDocument($model, $collection, $document);
+            }
+        }
+
+        return $added;
+    }
+
+    /** Сколько фото и архивов ветки ещё прикрепит `ImportThreadFiles` — заглушки в ряду фото, пока она не дошла. */
+    public function photosToCome(Collection $attachments): int
+    {
+        $classified = $this->classifier->classify($attachments);
+
+        return count($classified['photos']) + count($classified['archives']);
+    }
+
+    /**
      * Архив с диска (брошен руками в «Фотографии»): кадры — к фото, остальное (PDF, СТС, Excel) — к документам, как архив
      * письма; что уже лежит — пропускается. Не открылся (битый, с паролем) — null.
      *

@@ -10,12 +10,16 @@ use App\Mail\Extraction\AttachmentImporter;
 use App\Mail\Extraction\Intent;
 use App\Mail\Thread;
 use App\Offers\Events\OfferStateChanged;
+use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\PhotoStage;
+use App\Park\Vehicle;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Ветка привязана к машине — её файлы в медиатеке этой машины. Одна джоба на
@@ -35,10 +39,13 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
 
     public int $tries = 2;
 
+    /** Замок «эта ветка уже стоит» — не дольше задачи: не поставленная не держит его вечно. */
+    public int $uniqueFor = 1800;
+
     /** @param ?int $messageId только одно письмо (пришло в привязанную ветку); null — вся ветка */
     public function __construct(public int $threadId, public ?int $messageId = null)
     {
-        $this->onConnection('database-long')->onQueue('long')->afterCommit();
+        $this->onConnection('database-long')->onQueue('files')->afterCommit();
     }
 
     /** Замок на ветку и письмо: ждущая джоба одного письма не должна глотать джобу следующего. */
@@ -50,20 +57,16 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
     public function handle(PinThread $pin, AttachmentImporter $importer, Publisher $publish): void
     {
         $thread = Thread::find($this->threadId);
-        // Машина одна: ветка ящика парковки — в медиатеку ТС со стадией кадра; ветка предложения — в предложение, а
-        // `SaleMedia` кладёт файл к его ТС («от страховой»), если она есть. Ветка с ТС и чужим предложением — к предложению.
-        $vehicle = $thread?->vehicle;
-        $offer = $thread?->offer ?? $vehicle?->offer;
-        if ($vehicle && $thread->offer_id && $thread->offer_id !== $vehicle->offer_id) {
-            $vehicle = null;
-        }
-        $model = $vehicle ?? $offer;
+        [$model, $vehicle, $offer, $car] = self::target($thread);
         if (! $model) {
             return;
         }
-        $car = $vehicle ?? $offer->parkVehicle;
-        $key = $offer ? self::key($offer->id) : null;
-        $report = fn (string $stage, ?int $i = null, ?int $n = null) => $key && Cache::put($key, ['stage' => $stage, 'i' => $i, 'n' => $n], 1800);
+        $key = self::keyFor($model);
+        // Сколько всего — из прошлого шага, пока свой счёт не начался: заглушки в ряду фото не мигают.
+        $report = function (string $stage, ?int $i = null, ?int $n = null) use ($key) {
+            $was = Cache::get($key) ?? [];
+            Cache::put($key, ['stage' => $stage, 'i' => $i ?? ($was['i'] ?? 0), 'n' => $n ?? ($was['n'] ?? null)], 1800);
+        };
         try {
             $report('Забираем файлы из ящика');
             $pin($thread);
@@ -73,7 +76,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $properties = $vehicle ? fn (Attachment $a) => self::stageOf($a) + $hidden : $hidden;
             $added = $importer->import($model, $attachments, 'photos', 'papers', $properties, $report);
         } finally {
-            $key && Cache::forget($key);
+            Cache::forget($key);
         }
         if ($offer) {
             OfferStateChanged::dispatch($offer->fresh());
@@ -113,5 +116,66 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
     public static function key(int $offerId): string
     {
         return "import:offer:{$offerId}";
+    }
+
+    /** Ход разбора у машины: предложение — тот же ключ, что у пилюли редактора, ТС — свой. */
+    public static function keyFor(Offer|Vehicle $model): string
+    {
+        return $model instanceof Offer ? self::key($model->id) : "import:vehicle:{$model->id}";
+    }
+
+    /** Что ещё прикрепляется: `{stage, i, n}` или null, если ничего. */
+    public static function progressOf(Offer|Vehicle $model): ?array
+    {
+        return Cache::get(self::keyFor($model));
+    }
+
+    /** Заглушек «прикрепляется» в ряду фото: сколько кадров осталось, не больше восьми — остальное скажет строка хода. */
+    public static function pending(Offer|Vehicle $model): int
+    {
+        $p = self::progressOf($model);
+
+        return ($p['n'] ?? null) ? max(0, min(8, $p['n'] - $p['i'])) : 0;
+    }
+
+    /**
+     * Куда ветка кладёт файлы: машина одна. Ветка ящика парковки — в ТС со стадией кадра; ветка предложения — в
+     * предложение, а `SaleMedia` кладёт файл к его ТС («от страховой»), если она есть. Ветка с ТС и чужим предложением
+     * — к предложению. @return array{0: Offer|Vehicle|null, 1: ?Vehicle, 2: ?Offer, 3: ?Vehicle}
+     */
+    public static function target(?Thread $thread): array
+    {
+        $vehicle = $thread?->vehicle;
+        $offer = $thread?->offer ?? $vehicle?->offer;
+        if ($vehicle && $thread->offer_id && $thread->offer_id !== $vehicle->offer_id) {
+            $vehicle = null;
+        }
+        $model = $vehicle ?? $offer;
+
+        return [$model, $vehicle, $offer, $vehicle ?? $offer?->parkVehicle];
+    }
+
+    /**
+     * Ветку привязали (`LinkThread`): документы, что уже лежат у нас, — сразу, в этом же запросе, человек открывает
+     * редактор с ними. Фото (знак, обрезка, сжатие — ~1,5 с на кадр) — задачей своего работника `queue-files`, а пока
+     * она идёт, ряд фото показывает заглушки и строку хода (`progressOf`).
+     */
+    public static function attachNow(Thread $thread): void
+    {
+        [$model] = self::target($thread->fresh());
+        if (! $model) {
+            return;
+        }
+        $importer = app(AttachmentImporter::class);
+        $attachments = $importer->attachmentsOf(null, $thread->id);
+        try {
+            $importer->importDocuments($model, $attachments, 'papers');
+        } catch (Throwable $e) {
+            Log::warning('Документы письма не прикрепились сразу', ['thread' => $thread->id, 'error' => $e->getMessage()]);
+        }
+        if ($n = $importer->photosToCome($attachments)) {
+            Cache::put(self::keyFor($model), ['stage' => 'Прикрепляем фото', 'i' => 0, 'n' => $n], 1800);
+        }
+        self::dispatch($thread->id);
     }
 }
