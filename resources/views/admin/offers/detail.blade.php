@@ -12,7 +12,6 @@
     $price = \App\Offers\PriceView::for($offer, auth()->user(), crm: true);
     // Срок приёма — админу: подтверждения принимает только он; модератору открытое — «В продаже».
     $left = $gallery || ! auth()->user()->canManageCrm() ? null : $offer->secondsLeft();
-    // «В гараже» ставится на странице предложения: там выбирают менеджера и цену, одной кнопкой не обойтись.
     // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
     // Модератору — поля, кадры и документы: оценки, состояния, подтверждений, интереса и круга показа у него нет.
     $transitions = $admin ? collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
@@ -22,6 +21,8 @@
     $transitions = $transitions->except(OfferState::Open->value);
     // Блок «Оценить» — у черновика без цены продажи; оценённому цену правят в «Ценах».
     $rate = $admin && $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled();
+    // Рядом с «Оценить» — «В гараж»: менеджеру без цены продажи (04.10.2026), та же форма, что в «···» редактора.
+    $garage = $rate && $offer->state->allows(OfferState::Garage);
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
     $unread = $chats->sum('unread_for_staff');
@@ -63,29 +64,44 @@
                 {{-- «Оценить» (вкладка «Без цены»): только цена продажи — машина уходит в «Оцененные», карточка переходит к
                      следующей без цены; пустое поле — просто дальше. В продажу отправляют пачкой из «Оцененных». Под полем
                      ориентиры из закупки, если черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
-                <div class="w-full rounded-(--radius-l) bg-surface-2 p-3">
-                    <form method="post" action="/offers/{{ $n }}/rate" class="flex gap-2" data-controller="bid" data-bid-asking-value="0">
-                        @csrf
-                        <input type="hidden" name="asking_price" data-bid-target="amount" value="">
-                        <input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
-                            data-bid-target="display" data-action="input->bid#input" value="" data-detail-focus>
-                        <button type="submit" class="btn btn-s btn-accent shrink-0">Оценить</button>
-                    </form>
-                    @if ($car = $offer->purchaseCar)
-                        @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp
-                        @if ($car->price_final || $named->isNotEmpty())
-                            <dl class="mt-3 flex flex-col gap-2 text-sm">
-                                @foreach ($named as $one)
-                                    <div class="flex items-center justify-between gap-3">
-                                        <dt class="flex min-w-0 items-center gap-2"><x-ui.avatar :user="$one->user" :size="20"/><span class="truncate">{{ $one->user->shortName() }}</span></dt>
-                                        <dd class="nums whitespace-nowrap">{{ \App\Support\Money::rub($one->amount) }}</dd>
-                                    </div>
-                                @endforeach
-                                @if ($car->price_final)
-                                    <div class="flex items-center justify-between gap-3"><dt class="text-ink-dim">Админская цена</dt><dd class="nums font-medium">{{ \App\Support\Money::rub($car->price_final) }}</dd></div>
-                                @endif
-                            </dl>
+                {{-- Или «В гараж»: менеджеру сразу, без цены продажи; строка так же уходит, карточка — к следующей. После
+                     ошибки (не выбран менеджер) открыт снова гараж. --}}
+                <div class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3" @if ($garage) data-controller="reveal" @endif>
+                    @if ($garage)
+                        <div class="segment">
+                            <label><input type="radio" name="_way" value="rate" @checked(! old('stage')) data-action="reveal#pick"><span>Оценить</span></label>
+                            <label><input type="radio" name="_way" value="garage" @checked((bool) old('stage')) data-action="reveal#pick"><span>В гараж</span></label>
+                        </div>
+                    @endif
+                    <div data-reveal-target="pane" data-reveal-key="rate">
+                        <form method="post" action="/offers/{{ $n }}/rate" class="flex gap-2" data-controller="bid" data-bid-asking-value="0">
+                            @csrf
+                            <input type="hidden" name="asking_price" data-bid-target="amount" value="">
+                            <input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
+                                data-bid-target="display" data-action="input->bid#input" value="" data-detail-focus>
+                            <button type="submit" class="btn btn-s btn-accent shrink-0">Оценить</button>
+                        </form>
+                        @if ($car = $offer->purchaseCar)
+                            @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp
+                            @if ($car->price_final || $named->isNotEmpty())
+                                <dl class="mt-3 flex flex-col gap-2 text-sm">
+                                    @foreach ($named as $one)
+                                        <div class="flex items-center justify-between gap-3">
+                                            <dt class="flex min-w-0 items-center gap-2"><x-ui.avatar :user="$one->user" :size="20"/><span class="truncate">{{ $one->user->shortName() }}</span></dt>
+                                            <dd class="nums whitespace-nowrap">{{ \App\Support\Money::rub($one->amount) }}</dd>
+                                        </div>
+                                    @endforeach
+                                    @if ($car->price_final)
+                                        <div class="flex items-center justify-between gap-3"><dt class="text-ink-dim">Админская цена</dt><dd class="nums font-medium">{{ \App\Support\Money::rub($car->price_final) }}</dd></div>
+                                    @endif
+                                </dl>
+                            @endif
                         @endif
+                    </div>
+                    @if ($garage)
+                        <div data-reveal-target="pane" data-reveal-key="garage" hidden>
+                            <x-offer.garage-form :offer="$offer" :managers="$managers" prefix="detail-garage-{{ $n }}"/>
+                        </div>
                     @endif
                 </div>
             @endif
@@ -131,7 +147,7 @@
                 @endforeach
             </div>
         @endif
-        <form method="post" action="/offers/{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
+        <form method="post" action="/offers/{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
             @csrf @method('put')
             <section>
                 <h2 class="detail-section">Цены</h2>

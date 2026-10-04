@@ -372,6 +372,8 @@ class OfferController
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'chats' => $admin ? Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']) : collect(),
             'list' => $gallery ?? $request->boolean('gallery'),
+            // Кому отдать в гараж — только у черновика без цены (блок «Оценить» / «В гараж»).
+            'managers' => $admin && $offer->state === OfferState::Draft && ! $offer->asking_price ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
         ]);
     }
 
@@ -452,7 +454,9 @@ class OfferController
             $take($offer, $manager, $data['cost'] ?? null, $request->user(), $data['note'] ?? null, $stage);
         }
 
-        return redirect("/offers/{$offer->number}")->with('toast', 'В гараже');
+        // Из карточки «Без цены» (DetailBack): строка уходит из списка, карточка — к следующей без цены.
+        return redirect("/offers/{$offer->number}")->with('toast', $manager ? 'В гараже у '.$manager->shortName() : 'В гараже')
+            ->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', self::counts($request->user()));
     }
 
     /**

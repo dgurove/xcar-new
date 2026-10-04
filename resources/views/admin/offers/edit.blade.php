@@ -180,40 +180,11 @@
     </div>
     </div>
 
-    {{-- Гараж минуя подтверждение: этап, с которого начать. «Ждёт страховую» — гаражная сделка по маршруту (нужен
-         менеджер и кто платит поставщику), остальное — сразу: машина уже у нас или у менеджера. --}}
+    {{-- Гараж минуя подтверждение (x-offer.garage-form): этап, кому, кто платит поставщику. --}}
     @if ($canGarage)
-        @php $branch = $offer->garageBranch(); @endphp
         <div data-controller="sheet" data-action="garage:open@window->sheet#open" class="contents">
             <x-ui.sheet id="offer-garage" title="Отдать в гараж">
-                <form method="post" action="/offers/{{ $n }}/garage" class="flex flex-col gap-4" data-controller="reveal">
-                    @csrf
-                    <div class="flex flex-wrap gap-2">
-                        @foreach ([\App\Garage\CarState::Waiting, \App\Garage\CarState::Delivery, \App\Garage\CarState::Repair, \App\Garage\CarState::Selling] as $stage)
-                            <label class="choice"><input type="radio" name="stage" value="{{ $stage->value }}" @checked(old('stage', 'waiting') === $stage->value) data-action="reveal#pick"><span>{{ $stage->label() }}</span></label>
-                        @endforeach
-                    </div>
-                    <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="waiting">
-                        <x-ui.field name="manager_id" id="garage-manager-route" label="Кому" :options="$managers->pluck('name', 'id')" required/>
-                        @if ($branch)
-                            <div class="flex flex-col gap-1.5">
-                                <span class="field-label">Платит поставщику</span>
-                                <div class="flex flex-wrap gap-2">
-                                    @foreach (\App\Garage\GaragePayer::cases() as $payer)
-                                        <label class="choice"><input type="radio" name="payer" value="{{ $payer->value }}" @checked(old('payer', 'us') === $payer->value)><span>{{ $payer->label() }}</span></label>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-                    @foreach (['delivery', 'repair', 'selling'] as $key)
-                        <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="{{ $key }}" hidden>
-                            <x-ui.field name="manager_id" id="garage-manager-{{ $key }}" label="Кому" :options="$managers->pluck('name', 'id')" placeholder="Взяли под себя"/>
-                            <x-ui.field name="cost" id="garage-cost-{{ $key }}" label="Отдали за, ₽" :value="$offer->floor_price"/>
-                        </div>
-                    @endforeach
-                    <x-ui.button type="submit" variant="primary" block>Отдать в гараж</x-ui.button>
-                </form>
+                <x-offer.garage-form :offer="$offer" :managers="$managers"/>
             </x-ui.sheet>
         </div>
     @endif
