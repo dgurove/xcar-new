@@ -12,9 +12,9 @@
     // поля 3rem), не меньше подписи столбца.
     $refCh = (int) $offers->getCollection()->max(fn ($o) => mb_strlen((string) $o->claim_ref));
     $cityCh = (int) $offers->getCollection()->max(fn ($o) => mb_strlen((string) $o->settlement?->name));
-    $restOf = ['vendor' => max(8.5, $refCh * .55 + 3), 'city' => max(5, $cityCh * .5 + 2.5), 'no' => 6, 'state' => 10, 'bids' => 7, 'floor' => 5.5, 'price' => 6, 'created' => 7.5, 'published' => 6.5];
+    $restOf = ['vendor' => max(8.5, $refCh * .55 + 3), 'city' => max(5, $cityCh * .5 + 2.5), 'state' => 10, 'bids' => 7, 'floor' => 5.5, 'price' => 6, 'created' => 7.5, 'published' => 6.5];
     $rest = ($cols === null ? array_sum($restOf) : array_sum(array_intersect_key($restOf, array_flip($cols)))) + ($pick ? 2.5 : 0);
-    $span = ($cols === null ? 9 + ($admin ? 1 : 0) : count($cols) + 1 + (in_array('state', $cols, true) ? 0 : 1)) + ($pick ? 1 : 0);
+    $span = ($cols === null ? 8 + ($admin ? 1 : 0) : count($cols) + 1 + (in_array('state', $cols, true) ? 0 : 1)) + ($pick ? 1 : 0);
     // Группы: «Публикация» — по слоту, «Опубликованные» у админа — по тому, что делать. Остальное одной группой.
     $groups = match (true) {
         $searching => collect(['' => $offers->getCollection()]),

@@ -3,10 +3,10 @@
      нижним листом на телефоне (x-ui.shell :detail, detail_controller); view — вид списка: подробная (wide) на телефоне
      показывает все столбцы и листается вбок. titles — названия строк: столбец «Марка, модель» (title-cap) шириной в самое
      длинное из них (или число знаков — когда за названием значки), чтобы они не сокращались, пока справа есть место; сжимается он, только когда места нет; rest — сколько
-     rem занимают прочие столбцы (без него — 40). --}}
+     rem занимают прочие столбцы (без него — 40). Не влезла в ширину — листается вбок (table_scroll_controller). --}}
 @props(['head', 'id' => null, 'view' => null, 'titles' => null, 'rest' => null])
 @php $titleCh = $titles ? collect($titles)->map(fn ($t) => is_int($t) ? $t : mb_strlen((string) $t))->max() : null; @endphp
-<div {{ $attributes->merge(['class' => 'table-wrap'.($view === \App\Support\ListView::WIDE ? ' is-wide' : '')]) }} @if ($id) id="{{ $id }}" @endif @if ($titleCh) style="--title-ch: {{ $titleCh }};@if ($rest) --rest: {{ $rest }}rem;@endif" @endif>
+<div {{ $attributes->merge(['class' => 'table-wrap'.($view === \App\Support\ListView::WIDE ? ' is-wide' : ''), 'data-controller' => 'table-scroll']) }} @if ($id) id="{{ $id }}" @endif @if ($titleCh) style="--title-ch: {{ $titleCh }};@if ($rest) --rest: {{ $rest }}rem;@endif" @endif>
     <div class="table-box">
         <table class="table">
             <thead>{{ $head }}</thead>

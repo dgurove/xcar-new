@@ -896,6 +896,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      второй строке, — sm:hidden. Зебры нет — волосяные разделители; группы — строки .table-group, липнут
      под шапкой. Размеры — по шкале: 17 группа, 15 название и цифры, 13 вторичное, 12 шапка. */
   .table-wrap { @apply min-w-0; }
+  /* Столбцы не влезли — плашка листается вбок (table_scroll_controller ставит is-scroll только тогда). */
+  .table-box.is-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
   .table { @apply w-full border-collapse; table-layout: auto; font-size: var(--text-base); line-height: 1.25; }
   @media (max-width: 639.98px) { .table-box { margin-inline: -1rem; border-radius: 0 !important; } }
   /* Режется только название: столбец .grow забирает остаток ширины, цифры — ровно по содержимому. */

@@ -11,8 +11,8 @@
     <th class="grow title-cap">Марка, модель</th>
     @if ($has('vendor'))<th class="hidden sm:table-cell">Вендор, № убытка</th>@endif
     @if ($has('city'))<th class="hidden sm:table-cell">Город</th>@endif
-    {{-- Карточка рядом — места мало: № и подтверждения видны в ней, из таблицы они уходят (col-detail-hide). --}}
-    @if ($has('no'))<th class="cell-dim col-detail-hide hidden sm:table-cell">№</th>@endif
+    {{-- Карточка рядом — места мало: подтверждения видны в ней, из таблицы они уходят (col-detail-hide). Столбца «№» нет
+         (владелец 04.10.2026): по номеру ищут, а смотреть его в таблице незачем. --}}
     @if ($has('state'))<th class="fill hidden sm:table-cell">{{ $cols !== null && $has('bids') ? 'Приём' : 'Состояние' }}</th>
     {{-- Без «Состояния» запас ширины уходит в пустой столбец перед числами, а не в промежутки между столбцами. --}}
     @else<th class="fill hidden sm:table-cell"></th>@endif

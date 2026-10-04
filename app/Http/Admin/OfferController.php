@@ -235,8 +235,8 @@ class OfferController
             // Когда выйдет — заголовок группы, слова в строке не нужно.
             'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
-            'published' => $admin ? ['vendor', 'city', 'no', 'state', 'bids', 'floor', 'price', 'published'] : ['vendor', 'city', 'no', 'floor', 'price', 'published'],
-            default => ['vendor', 'city', 'no', 'state', 'floor', 'price', 'created'],
+            'published' => $admin ? ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'] : ['vendor', 'city', 'floor', 'price', 'published'],
+            default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
     }
 

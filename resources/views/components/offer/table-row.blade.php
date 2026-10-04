@@ -48,7 +48,7 @@
              04.10.2026: «поля не должны исчезать»). --}}
         <span class="cell-sub cell-sub--wrap" data-controller="fitline">
             {{-- Номера — одним неразрывным куском: не влезают — строка ужимается (fitline), а не переносится. --}}
-            <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/>@unless ($draft)<span>№ {{ $n }}</span>@endunless</span>
+            <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>
             @if ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
             @elseif ($slot && $has('state'))<span class="sm:hidden text-accent-text">{{ $slot }}</span>
             {{-- Телефон, «Опубликованные»: у ждущих решения важнее число подтверждений, дата закрытия — у остальных. --}}
@@ -64,8 +64,6 @@
     @if ($has('vendor'))<td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</span></td>@endif
     {{-- Город — именем без номера региона: столбец узкий, регион виден в карточке. --}}
     @if ($has('city'))<td class="hidden sm:table-cell">@if ($offer->settlement)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $offer->settlement->name }}</x-ui.place>@endif</td>@endif
-    {{-- У черновика номера ещё нет — на его месте тот, кто завёл: девчонки заводят пачками, админ видит чьё. --}}
-    @if ($has('no'))<td class="cell-dim col-detail-hide nums hidden sm:table-cell">@if (! $draft){{ $n }}@elseif ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="22" title="{{ $offer->moderator->name }}"/>@endif</td>@endif
     @if (! $has('state'))<td class="hidden sm:table-cell"></td>
     @else
     <td class="hidden sm:table-cell">
@@ -94,6 +92,6 @@
     {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет. --}}
     @if ($has('created') || ($cols !== null && $has('published')))<td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">
         {{-- Без столбца № кто завёл черновик — аватаром перед датой. --}}
-        @if ($draft && $offer->moderator && ! $has('no'))<span class="inline-flex items-center gap-2 align-middle"><x-ui.avatar :user="$offer->moderator" :size="20" title="{{ $offer->moderator->name }}"/>@endif{{ $when?->translatedFormat($when->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}@if ($draft && $offer->moderator && ! $has('no'))</span>@endif
+        @if ($draft && $offer->moderator)<span class="inline-flex items-center gap-2 align-middle"><x-ui.avatar :user="$offer->moderator" :size="20" title="{{ $offer->moderator->name }}"/>@endif{{ $when?->translatedFormat($when->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}@if ($draft && $offer->moderator)</span>@endif
     </td>@endif
 </tr>
