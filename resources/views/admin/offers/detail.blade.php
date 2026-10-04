@@ -124,6 +124,12 @@
                                 <button class="menu-item w-full {{ $next->tone() === 'danger' || $next === OfferState::Archived ? 'text-danger' : '' }}" role="menuitem" data-action="menu#close">{{ $label }}</button>
                             </form>
                         @endforeach
+                        {{-- Из архива — навсегда, со всем связанным (PurgeOffer): кадры, документы, сделки, чаты, счета. --}}
+                        @if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true))
+                            <form method="post" action="/offers/{{ $n }}/purge" data-turbo-frame="_top" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по нему удалятся без возврата" data-turbo-confirm-label="Удалить">
+                                @csrf<button class="menu-item w-full text-danger" role="menuitem" data-action="menu#close">Удалить навсегда</button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             @endif

@@ -162,6 +162,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Пачкой из «Оцененных» и «Публикации»: галочки строк, `offers[]` — номера.
         Route::post('/offers/schedule', [OfferController::class, 'scheduleMany']);
         Route::post('/offers/unschedule', [OfferController::class, 'unscheduleMany']);
+        // Архив — навсегда, со всем связанным: пачкой из вкладки и по одному из карточки и редактора (PurgeOffer).
+        Route::post('/offers/purge', [OfferController::class, 'purgeMany']);
+        Route::post('/offers/{offer}/purge', [OfferController::class, 'purge']);
         Route::post('/offers/{offer}/unschedule', [OfferController::class, 'unschedule']);
         Route::post('/offers/{offer}/garage', [OfferController::class, 'garage']);
         Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);

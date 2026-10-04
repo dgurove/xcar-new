@@ -86,6 +86,11 @@
                         <x-offer.publish-sheet id="offers-send" form="offers-pick"/>
                     </div>
                 </x-ui.action-bar>
+            @elseif ($pick && $preset === 'archive')
+                {{-- Архив — навсегда, со всем связанным (кадры, документы, сделки, чаты, счета): только админу, с подтверждением. --}}
+                <x-ui.action-bar data-pick-target="bar" hidden>
+                    <x-ui.button form="offers-pick" formaction="/offers/purge" variant="danger" class="min-w-0 flex-1" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по ним удалятся без возврата" data-turbo-confirm-label="Удалить">Удалить навсегда <span class="nums" data-pick-target="count"></span></x-ui.button>
+                </x-ui.action-bar>
             @elseif ($pick)
                 <x-ui.action-bar data-pick-target="bar" hidden>
                     <x-ui.button form="offers-pick" formaction="/offers/unschedule" variant="secondary" class="min-w-0 flex-1">Убрать из слота</x-ui.button>

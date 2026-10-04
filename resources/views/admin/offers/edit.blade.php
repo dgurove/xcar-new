@@ -236,6 +236,9 @@
                     @if ($canGarage)
                         <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="garage:open">Отдать в гараж</x-ui.button>
                     @endif
+                    @if ($admin && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true))
+                        <form method="post" action="/offers/{{ $n }}/purge" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по нему удалятся без возврата" data-turbo-confirm-label="Удалить">@csrf<x-ui.button block variant="danger">Удалить навсегда</x-ui.button></form>
+                    @endif
                     @if ($deletable && $admin)
                         <form method="post" action="/offers/{{ $n }}" data-turbo-confirm="Удалить черновик? Фото и документы удалятся вместе с ним">@csrf @method('delete')<x-ui.button block variant="danger">Удалить черновик</x-ui.button></form>
                     @endif

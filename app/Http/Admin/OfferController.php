@@ -16,6 +16,7 @@ use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
+use App\Offers\Actions\PurgeOffer;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Actions\UnlistParkOffer;
@@ -153,7 +154,7 @@ class OfferController
             'sort' => $sort,
             'facets' => $facets,
             // Галочки и отправка — админу, в «Оцененных» и «Публикации».
-            'pick' => $admin && ! $searching && in_array($preset, ['priced', 'slots'], true),
+            'pick' => $admin && ! $searching && in_array($preset, ['priced', 'slots', 'archive'], true),
             'cols' => self::columns($preset, $request->user(), $searching),
             'counts' => $counts,
         ]);
@@ -538,6 +539,28 @@ class OfferController
         $offers->each(fn ($o) => $unschedule($o, $request->user()));
 
         return back(fallback: '/?preset=slots')->with('toast', 'Убрано из слота: '.$offers->count());
+    }
+
+    /** «Удалить навсегда» из архива — одно предложение (карточка, редактор) со всем связанным (`PurgeOffer`). */
+    public function purge(Offer $offer, PurgeOffer $purge)
+    {
+        $title = $offer->titleWithYear();
+        $purge($offer);
+
+        return redirect('/?preset=archive')->with('toast', 'Удалено навсегда: '.$title);
+    }
+
+    /** «Удалить навсегда» пачкой из вкладки «Архив»: не из архива (успели вернуть) пропускается. */
+    public function purgeMany(Request $request, PurgeOffer $purge)
+    {
+        $data = $request->validate(['offers' => ['required', 'array', 'max:500'], 'offers.*' => ['integer']]);
+        $done = 0;
+        foreach (Offer::whereIn('number', $data['offers'])->whereIn('state', [OfferState::Archived, OfferState::Cancelled])->get() as $offer) {
+            $purge($offer);
+            $done++;
+        }
+
+        return redirect('/?preset=archive')->with('toast', 'Удалено навсегда: '.$done);
     }
 
     /** Состояние из меню; «Опубликовать» у черновика и галереи — с выбором слота (`when`), без него — сейчас. */
