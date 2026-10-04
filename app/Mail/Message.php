@@ -99,6 +99,12 @@ class Message extends Model
         return $this->parsed['own_text'] ?? Extraction\Intent::excerpt($this->text_body ?: strip_tags((string) $this->html_body), 2000);
     }
 
+    /** Примечание сотрудника над пересланным письмом (`QuotationStripper::forwardNote`). */
+    public function forwardNote(): ?string
+    {
+        return $this->parsed['forward_note'] ?? null;
+    }
+
     public function isRead(): bool
     {
         return (int) $this->parser_version === Reading\ReadLetter::VERSION;

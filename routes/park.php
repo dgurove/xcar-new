@@ -154,7 +154,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/mail/new', [MailController::class, 'compose']);
     Route::post('/mail', [MailController::class, 'send']);
     Route::post('/mail/file', [MailController::class, 'file']);
-    Route::post('/mail/sync', [MailController::class, 'sync'])->middleware('park.area:mail');
+    // «Проверить почту» стоит и на «Из писем» — у заявок он без раздела «Почта».
+    Route::post('/mail/sync', [MailController::class, 'sync']);
     Route::get('/mail/attachments/{attachment}', [MailController::class, 'attachment']);
     Route::get('/mail/messages/{message}/body', [MailController::class, 'body']);
     Route::post('/mail/messages/{message}/flag', [MailController::class, 'flag']);

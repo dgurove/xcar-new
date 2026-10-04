@@ -37,10 +37,16 @@
             @elseif ($m->parse_state === ParseState::Pending)
                 <div class="text-sm text-ink-muted">Разбирается…</div>
             @elseif ($continuation)
-            @elseif ($text !== '')
+            @else
+            @if ($note = $m->forwardNote())
+                {{-- Примечание сотрудника над пересылкой — репликой, как заметка в истории. --}}
+                <div class="history-note mb-2"><div class="text-sm text-ink-muted">{{ \App\Mail\Chains\NodeTitle::forwarder($m) }}</div><div class="whitespace-pre-line break-words">{{ $note }}</div></div>
+            @endif
+            @if ($text !== '')
                 <div class="whitespace-pre-line break-words">{{ $text }}</div>
             @else
                 <div class="text-sm text-ink-muted">{{ $m->has_attachments ? 'Только вложения' : 'Без своих слов' }}</div>
+            @endif
             @endif
 
             @if ($files->isNotEmpty() && $m->filesFrozen())

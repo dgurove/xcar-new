@@ -29,10 +29,10 @@ use App\Mail\Jobs\ImportCandidateFiles;
 use App\Mail\Jobs\ParseMessage;
 use App\Mail\Jobs\PushFlag;
 use App\Mail\Jobs\SendMessage;
-use App\Mail\Jobs\SyncAccount;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\SendState;
+use App\Mail\Sync;
 use App\Mail\Template;
 use App\Mail\Thread;
 use App\Media\PhotoIngest;
@@ -67,6 +67,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Mime\MimeTypes;
+use Throwable;
 
 /**
  * Почта — рабочий список дел: Требуют внимания · Все · Прочее · Отправленные · Архив (ветка там, где её последнее
@@ -663,7 +664,7 @@ class MailController
                     $jpeg = $photos->toJpeg($file);
                     @unlink($file);
                     [$file, $mime] = [$jpeg, 'image/jpeg'];
-                } catch (\Throwable) {
+                } catch (Throwable) {
                 }
             }
             // Временный файл снимается сразу после ответа: под Octane shutdown-функции ждали бы конца воркера.
@@ -692,7 +693,7 @@ class MailController
             if (! is_file($jpeg) && $photos->isHeic($file)) {
                 try {
                     rename($photos->toJpeg($file), $jpeg);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                     // Не перекодировался — отдаём как есть, скачать можно.
                 }
             }
@@ -798,13 +799,28 @@ class MailController
         return back()->with('toast', 'Отправляем снова');
     }
 
-    public function sync(Request $request)
+    /**
+     * «Проверить почту» (04.10.2026, начальник: письма «очень долго падают в систему»): ящики своей стороны забираются
+     * тут же, не очередью — новое сразу в списке, и в тосте сколько пришло.
+     */
+    public function sync(Sync $sync)
     {
+        $new = 0;
+        $failed = false;
         foreach (Account::where('scope', $this->scope)->where('is_active', true)->get() as $account) {
-            SyncAccount::dispatch($account->id);
+            try {
+                $new += $sync->account($account, wait: 30);
+            } catch (Throwable $e) {
+                report($e);
+                $failed = true;
+            }
         }
 
-        return back()->with('toast', 'Проверяем ящики');
+        return back()->with('toast', match (true) {
+            $failed => 'Ящик не ответил, попробуйте ещё раз',
+            $new > 0 => 'Новых писем: '.$new,
+            default => 'Новых писем нет',
+        });
     }
 
     /** Подстановки шаблона из оффера. */

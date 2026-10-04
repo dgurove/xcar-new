@@ -56,6 +56,12 @@ final class NodeTitle
         return $m->from_name ?: $m->from_email;
     }
 
+    /** Кто переслал письмо со своим примечанием: имя ящика сотрудника («Андрей Кузнецов»), иначе адрес. */
+    public static function forwarder(Message $m): string
+    {
+        return $m->from_name ?: $m->from_email;
+    }
+
     /** Первые свои слова письма одной строкой. */
     public static function words(Message $m, int $limit = 90): string
     {

@@ -2,6 +2,8 @@
 
 namespace App\Mail;
 
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -18,7 +20,28 @@ final class Sync
 
     public function __construct(private Receiver $receiver, private Ingest $ingest, private Threads $threads, private Reading\ReadLetter $reader) {}
 
-    public function account(Account $account, bool $full = false): int
+    /**
+     * Забрать новое из ящика. Один ящик за раз: IDLE, расписание раз в минуту и «Проверить почту» сходятся на одном
+     * замке; занят — расписание просто пропускает ход, кнопка ждёт `$wait` секунд и забирает, что осталось.
+     */
+    public function account(Account $account, bool $full = false, int $wait = 0): int
+    {
+        $lock = Cache::lock('mail:sync-account:'.$account->id, 600);
+        try {
+            if (! ($wait ? $lock->block($wait) : $lock->get())) {
+                return 0;
+            }
+        } catch (LockTimeoutException) {
+            return 0;
+        }
+        try {
+            return $this->pull($account, $full);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function pull(Account $account, bool $full): int
     {
         $imap = new Imap($account);
         try {

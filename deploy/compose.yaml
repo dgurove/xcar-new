@@ -80,8 +80,17 @@ services:
   # retry_after, чтобы работник не считал их зависшими.
   queue-long:
     <<: *app
-    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=migtorg,long,mail
+    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=migtorg,long
     # Минута на SIGTERM: короткие задачи дочитываются, длинную выкачку добирает повтор джобы.
+    stop_grace_period: 60s
+    healthcheck:
+      disable: true
+
+  # Почта своим работником (04.10.2026): в queue-long она стояла последней за Мигторгом и выкачкой, и письмо, о котором
+  # IDLE сообщил сразу, ждало час (37 задач Мигторга впереди) — приходило только расписанием раз в минуту.
+  queue-mail:
+    <<: *app
+    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=1 --queue=mail
     stop_grace_period: 60s
     healthcheck:
       disable: true

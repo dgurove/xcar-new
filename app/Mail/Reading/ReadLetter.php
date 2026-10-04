@@ -22,11 +22,11 @@ use Illuminate\Support\Facades\DB;
  */
 final class ReadLetter
 {
-    public const VERSION = 14;
+    public const VERSION = 15;
 
     public function __construct(private ParkExtractor $park, private Extractor $offers, private CodeMatcher $codes) {}
 
-    /** @return array{fields: array, keys: list<string>, intent: ?string, own_text: string} */
+    /** @return array{fields: array, keys: list<string>, intent: ?string, own_text: string, forward_note: ?string} */
     public function read(Message $message): array
     {
         $message->loadMissing(['account', 'attachments']);
@@ -44,6 +44,7 @@ final class ReadLetter
             'keys' => $this->keys($message, $fields, $intent),
             'intent' => $intent?->value,
             'own_text' => mb_substr(Intent::excerpt($own !== '' ? $own : $body, 2000), 0, 2000),
+            'forward_note' => QuotationStripper::forwardNote($body),
         ];
     }
 

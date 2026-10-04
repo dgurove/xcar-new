@@ -33,7 +33,7 @@ final class FreezeMessages
         DB::transaction(function () use ($ids, $cache) {
             foreach (Message::whereIn('id', $ids)->select(['id', 'parsed'])->get() as $m) {
                 $parsed = $m->parsed ?? [];
-                $m->forceFill(['parsed' => array_intersect_key($parsed, array_flip(['intent', 'own_text', 'keys'])), 'frozen_at' => now()])->saveQuietly();
+                $m->forceFill(['parsed' => array_intersect_key($parsed, array_flip(['intent', 'own_text', 'forward_note', 'keys'])), 'frozen_at' => now()])->saveQuietly();
             }
             $pinned = Attachment::whereIn('message_id', $ids)->whereNotNull('blob_sha')->get();
             foreach ($pinned as $a) {

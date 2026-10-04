@@ -5,6 +5,8 @@ namespace App\Mail\Extraction;
 /** Письма приходят пересылкой: настоящий отправитель и тема сидят в теле за «От:» и «Тема:». */
 final class QuotationStripper
 {
+    private const FORWARD_MARK = '-+\s*(?:Пересылаемое сообщение|Forwarded message|Begin forwarded message)\s*-+';
+
     public static function strip(?string $body): string
     {
         if ($body === null) {
@@ -27,11 +29,34 @@ final class QuotationStripper
             return null;
         }
         $own = substr($text, 0, (int) $m[0][1]); // смещение preg в байтах
+        // Явная пересылка («-------- Пересылаемое сообщение --------» прямо над «От:») — пересылка, сколько бы сотрудник
+        // ни написал над ней: его примечание — `forwardNote`, а не повод считать письмо ответом.
+        if (preg_match('/(?:^|\n)\s*'.self::FORWARD_MARK.'\s*$/iu', $own)) {
+            return substr($text, (int) $m[0][1]);
+        }
         $own = (string) preg_replace('/^-+\s*(?:Пересылаемое сообщение|Forwarded message|Original Message|Исходное сообщение)\s*-+\s*$/imu', '', $own);
         $own = (string) preg_replace('/(?:добрый\s+(?:день|вечер)|здравствуйте|коллеги|партн[её]ры|отправлено из[^\n]*|см\.\s*ниже|во вложении|fyi|fwd?)[!,.:\s]*/iu', '', $own);
         $own = trim((string) preg_replace('/[\s\p{P}]+/u', ' ', $own));
 
         return mb_strlen($own) < 25 ? substr($text, (int) $m[0][1]) : null;
+    }
+
+    /**
+     * Примечание того, кто переслал (Андрей пишет над пересылкой «Ростовские, 1190 отдали»): его слова до блока «От:»
+     * без строки «Пересылаемое сообщение» и подписи телефона «Отправлено из…». Не пересылка или слов нет — null.
+     */
+    public static function forwardNote(?string $body): ?string
+    {
+        $forwarded = self::forwardedBody($body);
+        if ($forwarded === null) {
+            return null;
+        }
+        $text = self::strip($body);
+        $note = substr($text, 0, strlen($text) - strlen($forwarded));
+        $note = (string) preg_replace(['/^\s*'.self::FORWARD_MARK.'\s*$/imu', '/^\s*(?:Отправлено из|Sent from)[^\n]*$/imu'], '', $note);
+        $note = trim((string) preg_replace("/\n{3,}/u", "\n\n", $note));
+
+        return $note !== '' ? mb_substr($note, 0, 1000) : null;
     }
 
     /** Свои слова письма: до цитаты прежней переписки («From: … Subject: …», «-----Original Message-----»). У пересылки — всё. */

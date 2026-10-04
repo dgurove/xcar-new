@@ -706,7 +706,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .toolbar-chips::-webkit-scrollbar { display: none; }
   @media (max-width: 767px) { .toolbar-chips { @apply -mx-4 px-4; scroll-padding-inline: 1rem; } }
   @media (min-width: 768px) {
-    .toolbar:not(:has(> .toolbar-pills)) > .toolbar-spacer { display: none; }
     .toolbar:has(> .toolbar-chips) { flex-wrap: wrap; row-gap: .75rem; }
     .toolbar:not(:has(> .toolbar-pills)) > .toolbar-chips { order: 4; flex: 1 1 0; }
     .toolbar:not(:has(> .toolbar-pills)) > .toolbar-actions { order: 5; }
