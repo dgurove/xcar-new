@@ -2,7 +2,7 @@
      одной лентой: кадры (нажатие прячет или возвращает, порядок перетаскиванием, поворот, «+»; удаления нет),
      шапка с ценой, у черновика «Оценка» с «В продажу», у открытого — продлить приём и состояние; подтверждения
      и интерес; дальше поля редактора (деньги, ТС, состояние, менеджеры) — сохраняются сами при выходе из поля
-     (autosave), без перерисовки карточки; в «Документах» — «Заполнить из документов» (окно «Из документов» поверх,
+     (кнопка «Сохранить изменения» внизу, уходят только тронутые); в «Документах» — «Заполнить из документов» (окно «Из документов» поверх,
      после «Подставить» карточка перечитывается). Документы, маршрут, удаление кадров и история — в полном редакторе.
      Формы действий отвечают в карточку (DetailBack), строка — свежей из row (gallery — какой список её показывает). --}}
 @php
@@ -134,7 +134,7 @@
                 @endforeach
             </div>
         @endif
-        <form method="post" action="/offers/{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin autosave" data-turbo-frame="detail">
+        <form method="post" action="/offers/{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar" data-action="submit->save-bar#submit" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
             @csrf @method('put')
             <section>
                 <h2 class="detail-section">Цены</h2>
@@ -145,6 +145,10 @@
                 @include('admin.offers.fields.car')
             </section>
             @include('admin.offers.fields.show')
+            {{-- Тронули поле — снизу выезжает «Сохранить изменения» (save_bar_controller); уходят только тронутые. --}}
+            <div class="save-bar" data-save-bar-target="bar" hidden>
+                <button type="submit" class="btn btn-accent w-full" data-save-bar-target="button">Сохранить изменения</button>
+            </div>
         </form>
         <section class="mt-5">
             <h2 class="detail-section">Документы</h2>

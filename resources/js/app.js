@@ -24,9 +24,9 @@ window.Stimulus = application;
 // Контроллеры, нужные только на своих экранах (чат, фото, сканер QR, подпись, редактор…), — отдельными кусками:
 // грузятся, когда на странице появился их data-controller. Остальные — в основной сборке, сразу.
 const controllerName = (path) => path.match(/\/([\w-]+)_controller\.js$/)[1].replace(/_/g, '-');
-const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,photo_slot,qr_release,signature,share,passkey,vin,draft,editor,combobox,gallery,audience,autosave,landing,login,tariff_form,car_text,drop_empty}_controller.js'], { eager: true });
+const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,photo_slot,qr_release,signature,share,passkey,vin,draft,editor,combobox,gallery,audience,landing,login,tariff_form,car_text,drop_empty}_controller.js'], { eager: true });
 for (const [path, module] of Object.entries(controllers)) application.register(controllerName(path), module.default);
-const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,photo_slot,qr_release,signature,share,passkey,vin,draft,editor,combobox,gallery,audience,autosave,landing,login,tariff_form,car_text,drop_empty}_controller.js')).map(([path, load]) => [controllerName(path), load]));
+const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,photo_slot,qr_release,signature,share,passkey,vin,draft,editor,combobox,gallery,audience,landing,login,tariff_form,car_text,drop_empty}_controller.js')).map(([path, load]) => [controllerName(path), load]));
 const loadLazy = (root) => {
     for (const [name, load] of lazy) {
         const selector = `[data-controller~="${name}"]`;

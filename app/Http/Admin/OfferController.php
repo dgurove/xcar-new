@@ -274,10 +274,6 @@ class OfferController
     {
         $update($offer, $request->payload(), $request->user());
         session()->forget("mail-draft.{$offer->id}");
-        // Автосохранение карточки строки идёт fetch-ем: редирект на свежую строку, fetch пройдёт по нему сам.
-        if ($request->expectsJson()) {
-            return redirect("/offers/{$offer->number}/row");
-        }
         if ($request->input('then') === 'next') {
             $next = $create($request->user(), $this->carried($request->user()));
 
@@ -313,14 +309,6 @@ class OfferController
         $unlist($offer, request()->user());
 
         return redirect('/')->with('toast', 'Снято с продажи');
-    }
-
-    /** Строка таблицы и полоса карточки после автосохранения — потоками Turbo: карточка не перерисовывается. */
-    public function row(Offer $offer)
-    {
-        $offer->load(['brand', 'model'])->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
-
-        return response()->json(['streams' => view('admin.offers.row-streams', ['offer' => $offer])->render()]);
     }
 
     /** Продлить приём на ходу: от текущего срока, если он ещё не прошёл, иначе от сейчас. */
