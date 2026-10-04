@@ -48,7 +48,6 @@
             <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/>@unless ($draft)<span>№ {{ $n }}</span>@endunless</span>
             @if ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
             @elseif ($slot && $has('state'))<span class="sm:hidden text-accent-text">{{ $slot }}</span>
-            @elseif ($park)<span @class(['sm:hidden' => $has('state')])>{{ mb_strtolower($park) }}</span>
             {{-- Телефон, «Опубликованные»: у ждущих решения важнее число подтверждений, дата закрытия — у остальных. --}}
             @elseif ($pick && $cols !== null && ! $count)<span class="sm:hidden nums text-ink-muted">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
             @elseif (! $draft && ! ($pick && $cols !== null))<span class="sm:hidden {{ $tone }}">{{ $stateWord }}</span>@endif
@@ -69,7 +68,7 @@
         {{-- Во вкладке «Опубликованные» «выбрать» говорит заголовок группы — в строке когда закрылся приём. --}}
         @elseif ($pick && $cols !== null)<span class="nums {{ $count ? 'text-urgent' : 'text-ink-muted' }}">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
         @elseif ($pick)<span class="{{ $count ? 'text-urgent' : 'text-ink-muted' }}">{{ $count ? 'Выбрать' : 'Приём закрыт' }}</span>
-        @else<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $park ?? ($offer->state === OfferState::Open ? ($admin ? 'Приём' : 'В продаже') : $offer->state->label()) }}</span>@endif
+        @else<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $offer->state === OfferState::Open ? ($admin ? 'Приём' : 'В продаже') : $offer->state->label() }}</span>@endif
     </td>
     @endif
     @if ($admin && $has('bids'))<td class="num nums col-detail-hide hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>@endif
