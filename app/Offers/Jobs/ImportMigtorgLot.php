@@ -125,6 +125,14 @@ final class ImportMigtorgLot implements ShouldQueue
         if (! $offer) {
             return;
         }
+        // Номер убытка сменили, пока задача ждала очереди (или повтора после сбоя), — лот уже о другой машине: не брать.
+        // 04.10.2026 так в черновик 1148 с Tenet T7 легли поля и кадры Kia Rio по прежнему номеру.
+        $lotKey = DB::table('migtorg_lots')->where('id', $this->lotId)->value('claim_ref_key');
+        if (! $lotKey || $lotKey !== $offer->claim_ref_key) {
+            Log::info("Мигторг: лот {$this->lotId} не взят в предложение {$offer->id} — номер убытка уже другой");
+
+            return;
+        }
         $key = "migtorg:offer:{$offer->id}";
         $added = 0;
         $failed = 0;

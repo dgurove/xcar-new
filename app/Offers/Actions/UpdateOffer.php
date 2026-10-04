@@ -17,6 +17,7 @@ use App\Vendors\Vendor;
 use App\Workflow\Actions\StartRoute;
 use App\Workflow\DeadlineSource;
 use App\Workflow\Position;
+use Illuminate\Support\Facades\DB;
 
 final class UpdateOffer
 {
@@ -53,6 +54,8 @@ final class UpdateOffer
         }
         // Номер убытка нашёлся среди лотов Мигторга — поля и фото оттуда сразу, не дожидаясь синхронизации.
         if (in_array('claim_ref', $changed, true)) {
+            // Лоты прежнего номера больше не этого предложения — свободны для своего.
+            DB::table('migtorg_lots')->where('offer_id', $offer->id)->where(fn ($q) => $q->whereNull('claim_ref_key')->orWhere('claim_ref_key', '!=', (string) $offer->claim_ref_key))->update(['offer_id' => null]);
             ImportMigtorgLot::auto($offer);
         }
         // Гараж запретили — ждущие «В гараж» отклоняются (решение владельца 03.10.2026), принять их уже нельзя.
