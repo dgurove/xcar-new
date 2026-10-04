@@ -7,7 +7,7 @@
     use App\Offers\Slots;
     $table = \App\Support\ListView::isTable($view);
     $admin = auth()->user()->canManageCrm();
-    $span = ($cols === null ? 8 + ($admin ? 1 : 0) : count($cols) + 1) + ($pick ? 1 : 0);
+    $span = ($cols === null ? 8 + ($admin ? 1 : 0) : count($cols) + 1 + (in_array('state', $cols, true) ? 0 : 1)) + ($pick ? 1 : 0);
     // Группы: «Публикация» — по слоту, «Опубликованные» у админа — по тому, что делать. Остальное одной группой.
     $groups = match (true) {
         $searching => collect(['' => $offers->getCollection()]),

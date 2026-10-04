@@ -643,6 +643,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* «Рекомендуем»: синий кружок с галочкой в размер шрифта после названия; тег с подписью — синяя палитра. */
   .recommended { display: inline-flex; flex-shrink: 0; width: 1.05em; height: 1.05em; margin-left: .3em; vertical-align: -.15em; }
   .recommended > svg { width: 100%; height: 100%; }
+  /* Значок связи (x-ui.links): машина есть ещё где-то (парковка, CRM, гараж) — зелёная цепочка у названия, только
+     админу. Мелкий, вровень с буквами, как «Рекомендуем»; палец ловит поле шире значка. */
+  .car-links { display: inline-flex; flex-shrink: 0; margin-left: .3em; vertical-align: -.15em; }
+  .car-links-btn { position: relative; z-index: 1; display: inline-flex; width: 1.1em; height: 1.1em; color: var(--color-accent-text); }
+  .car-links-btn::before { content: ''; position: absolute; inset: -8px; }
+  .car-links-btn > svg { width: 100%; height: 100%; }
+  @media (hover: hover) { .car-links-btn:hover { color: var(--color-ink); } }
   .tag-recommended { --tag-bg: #e3f1fb; --tag-text: #1878b8; --tag-bg-d: #0f2537; --tag-text-d: #6cc0ff; }
 
   /* Пилюля: пресет, раздел, состояние. Активная — лайм с белым. */
@@ -876,7 +883,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Режется только название: столбец .grow забирает остаток ширины, цифры — ровно по содержимому. */
   .table th.grow { width: 100%; }
   .table td.grow { max-width: 0; }
-  @media (min-width: 1280px) { .table th.grow.title-cap { width: 20rem; min-width: 20rem; } .table th.fill { width: 100%; } }
+  /* Название не растягивается на полтаблицы (20rem, сжимается до 12rem, когда рядом открыта карточка), запас ширины
+     забирает столбец .fill («Состояние», «Этап» или пустой перед числами) — между прочими столбцами ровный шаг, а не
+     дыры. Раньше от 1280 было min-width 20rem и запас уходил в «Вендора»: с открытой карточкой числа обрезались. */
+  @media (min-width: 640px) { .table th.grow.title-cap { width: 20rem; min-width: 12rem; } .table th.fill { width: 100%; } }
   .table th, .table td { @apply text-left align-middle; padding: .375rem .25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .table th:first-child, .table td:first-child { padding-left: .75rem; }
   .table th:last-child, .table td:last-child { padding-right: .75rem; }
