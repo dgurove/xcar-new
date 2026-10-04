@@ -1094,6 +1094,31 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table-wrap.is-wide .table-group-name { display: inline-block; position: sticky; left: .75rem; }
   }
 
+  /* Открыли карточку справа на ПК — таблица становится краткой, как на телефоне (05.10.2026, владелец: «при открытии
+     бокового окна таблица обязана стать упрощённой»): без шапки и столбцов, что на телефоне спрятаны, название в два
+     этажа, номер и факты — во второй строке, справа цена. Подробная (`is-wide`) остаётся вся и листается вбок. */
+  @media (min-width: 1024px) {
+    .split[data-open] .table-wrap:not(.is-wide) {
+      & .table thead { display: none; }
+      & .table :is(th, td).hidden { display: none !important; }
+      & .table .sm\:hidden { display: revert !important; }
+      & .table tbody tr { height: 3rem; }
+      & .table td.grow .cell-title { display: block; }
+      & .table td.grow .cell-title:has(> .cell-name) { display: flex; max-width: none; }
+      & .table td.grow > .cell-sub { display: block; margin: 0; }
+      & .table td.grow > .cell-sub > * + * { margin-left: .375rem; }
+      & .cell-sub--wrap { display: flex; flex-wrap: wrap; align-items: center; column-gap: .375rem; white-space: normal; text-overflow: clip; }
+      & .cell-sub--wrap > * { white-space: nowrap; }
+      & .cell-sub--wrap > * + * { margin-left: 0 !important; }
+      & .cell-title > .title-plate { display: inline; flex-shrink: 0; margin-left: .3em; font-size: var(--text-sm); }
+      & .cell-sub .sub-plate { display: none; }
+      & .cell-extra { display: flex; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; align-items: center; gap: .25rem .375rem; font-size: var(--text-sm); }
+      & .alerts-inline { display: none; }
+      & .table-box { overflow-x: clip; }
+      & .table tr.table-group > th { top: calc(var(--spacing-header) + env(safe-area-inset-top)); }
+    }
+  }
+
   /* На компьютере строка таблицы всегда в одну линию (04.10.2026, владелец): узкая таблица (справа карточка строки,
      узкое окно) не переходит в два этажа, а листается вбок (.split[data-open] .table-box). Двухэтажная — только на телефоне. */
   @media (min-width: 640px) and (max-width: 1023.98px) { .table-box { overflow-x: auto; overscroll-behavior-x: contain; } }
