@@ -16,8 +16,8 @@ use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
-use App\Offers\Actions\PurgeOffer;
 use App\Offers\Actions\CreateOffer;
+use App\Offers\Actions\PurgeOffer;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Actions\UnlistParkOffer;
 use App\Offers\Actions\UnscheduleOffer;
@@ -575,11 +575,32 @@ class OfferController
         if ($next === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
             $offer = $schedule($offer, $this->when($request, Slots::NOW), $request->user());
 
-            return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer));
+            return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer))->with($this->gone($request, $offer));
         }
         $change($offer, $next, $request->user());
 
-        return redirect("/offers/{$offer->number}")->with('toast', $next->label());
+        return redirect("/offers/{$offer->number}")->with('toast', $next->label())->with($this->gone($request, $offer));
+    }
+
+    /**
+     * Сменили состояние из карточки рядом со списком (в архив, опубликовали, вернули в черновики): строка ушла из
+     * открытой вкладки — убрать её сразу и поправить числа пилюль (`detail-gone`, как после «Оценить»), а не ждать
+     * обновления страницы (владелец 05.10.2026). Вкладку и галерею берём из адреса списка; в поиске строка остаётся.
+     */
+    private function gone(Request $request, Offer $offer): array
+    {
+        $ref = parse_url((string) $request->header('Referer'));
+        parse_str($ref['query'] ?? '', $q);
+        if (! isset($q['peek']) || filled($q['q'] ?? null)) {
+            return [];
+        }
+        $still = match ($ref['path'] ?? '/') {
+            '/' => self::scopeFor(array_key_exists((string) ($q['preset'] ?? ''), self::PRESETS) ? (string) $q['preset'] : 'unpriced', Offer::whereKey($offer->id))->exists(),
+            '/gallery' => $offer->fresh()?->state === OfferState::Gallery,
+            default => true,
+        };
+
+        return $still ? [] : ['detail-gone' => true, 'detail-counts' => self::counts($request->user())];
     }
 
     /** «Убрать из слота»: остаётся черновиком или галереей. */
