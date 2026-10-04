@@ -36,6 +36,7 @@ use App\Media\Console\MoveConversionsHot;
 use App\Media\Console\Restamp;
 use App\Media\Console\TuneWatermarks;
 use App\Media\Console\UnmarkPhotos;
+use App\Offers\Console\MigtorgFind;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
 use App\Offers\Console\TickOffers;
@@ -74,6 +75,7 @@ return Application::configure(basePath: dirname(__DIR__))
         TickOffers::class,
         PruneEmptyDrafts::class,
         MigtorgSync::class,
+        MigtorgFind::class,
         RefillVendors::class,
         TickPark::class,
         ParkDigestCommand::class,

@@ -17,6 +17,7 @@ final class MigtorgChip
         public readonly ?array $progress,
         public readonly int $taken,
         public readonly array $fields,
+        public readonly bool $manual = false,
     ) {}
 
     public static function of(Offer $offer): ?self
@@ -28,7 +29,10 @@ final class MigtorgChip
         $fields = $offer->events()->where('type', OfferEventType::Updated)->where('payload->source', 'migtorg')
             ->whereNotNull('payload->fields')->latest('id')->value('payload')['fields'] ?? [];
 
-        return new self($lot, ImportMigtorgLot::progress($offer->id), $taken, $fields);
+        // Кадры Мигторга, загруженные руками (знак снят при приёме, uuid лота нет): докачка их задвоила бы.
+        $manual = $offer->media()->where('collection_name', 'photos')->whereNull('custom_properties->migtorg')->where('custom_properties->unmarked', 'migtorg')->exists();
+
+        return new self($lot, ImportMigtorgLot::progress($offer->id), $taken, $fields, $manual);
     }
 
     public function running(): bool
@@ -45,14 +49,14 @@ final class MigtorgChip
     /** Всё взято — чип приглушён: он только знак, откуда фото и поля. */
     public function done(): bool
     {
-        return ! $this->running() && ($this->taken > 0 || $this->fields) && ! $this->action();
+        return ! $this->running() && ($this->taken > 0 || $this->fields || $this->manual) && ! $this->action();
     }
 
     /** Кнопка шторки: «Взять фото» — кадров лота в ряду нет, «Докачать фото» — взялись не все. */
     public function action(): ?string
     {
         return match (true) {
-            $this->running() => null,
+            $this->running(), $this->manual => null,
             $this->taken === 0 => 'Взять фото',
             $this->lot->photos && $this->taken < $this->lot->photos => 'Докачать фото',
             default => null,

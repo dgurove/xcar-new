@@ -45,7 +45,7 @@ final class Migtorg
     /**
      * Все опубликованные лоты: id, номер дела, VIN, название, конец торгов (московское время).
      *
-     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string}>
+     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string, status: ?string}>
      */
     public function lots(): \Generator
     {
@@ -54,18 +54,26 @@ final class Migtorg
             do {
                 $json = $this->get('/auctions', ['page' => $page, 'limit' => 100, 'insurance_type' => $section])->json();
                 foreach ($json['data'] ?? [] as $auction) {
-                    $lot = $auction['lot'] ?? [];
-                    yield [
-                        'id' => (int) $auction['id'],
-                        'claim_ref' => trim((string) ($lot['insurance_deal_number'] ?? '')),
-                        'vin' => strtoupper(trim((string) ($lot['vin'] ?? ''))) ?: null,
-                        'title' => trim(($lot['brand']['title'] ?? '').' '.($lot['model']['title'] ?? '').' '.($lot['year'] ?? '')),
-                        'ends_at' => $auction['end_date'] ?? null,
-                    ];
+                    yield self::row($auction);
                 }
                 $last = (int) ($json['meta']['last_page'] ?? 1);
             } while ($page++ < $last);
         }
+    }
+
+    /** Строка списка или карточка — то, что идёт в индекс `migtorg_lots`. */
+    public static function row(array $auction): array
+    {
+        $lot = $auction['lot'] ?? [];
+
+        return [
+            'id' => (int) $auction['id'],
+            'claim_ref' => trim((string) ($lot['insurance_deal_number'] ?? '')),
+            'vin' => strtoupper(trim((string) ($lot['vin'] ?? ''))) ?: null,
+            'title' => trim(($lot['brand']['title'] ?? '').' '.($lot['model']['title'] ?? '').' '.($lot['year'] ?? '')),
+            'ends_at' => $auction['end_date'] ?? null,
+            'status' => $auction['status'] ?? null,
+        ];
     }
 
     /** Карточка лота — только со входом: тот же вид, что строка списка, но кадры все. */

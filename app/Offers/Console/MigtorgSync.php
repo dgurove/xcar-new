@@ -21,6 +21,21 @@ class MigtorgSync extends Command
 
     protected $description = 'Лоты Мигторга по номеру дела, поля и фото совпавшим предложениям';
 
+    /** Строка индекса `migtorg_lots` из строки списка или карточки (`Migtorg::row`). Не опубликованный — сразу ушедший. */
+    public static function toIndex(array $lot, Carbon $now): array
+    {
+        return [
+            'id' => $lot['id'],
+            'claim_ref' => mb_substr($lot['claim_ref'], 0, 80),
+            'claim_ref_key' => $lot['claim_ref'] !== '' ? mb_substr((string) Code::key($lot['claim_ref']), 0, 80) : null,
+            'vin' => $lot['vin'] ? mb_substr($lot['vin'], 0, 20) : null,
+            'title' => mb_substr($lot['title'], 0, 160),
+            'ends_at' => $lot['ends_at'] ? Carbon::parse($lot['ends_at'], 'Europe/Moscow') : null,
+            'seen_at' => $now,
+            'gone_at' => ($lot['status'] ?? 'PUBLISHED') === 'PUBLISHED' ? null : $now,
+        ];
+    }
+
     public function handle(Migtorg $migtorg): int
     {
         if (Migtorg::paused()) {
@@ -32,16 +47,7 @@ class MigtorgSync extends Command
         $rows = [];
         try {
             foreach ($migtorg->lots() as $lot) {
-                $rows[$lot['id']] = [
-                    'id' => $lot['id'],
-                    'claim_ref' => mb_substr($lot['claim_ref'], 0, 80),
-                    'claim_ref_key' => $lot['claim_ref'] !== '' ? mb_substr((string) Code::key($lot['claim_ref']), 0, 80) : null,
-                    'vin' => $lot['vin'] ? mb_substr($lot['vin'], 0, 20) : null,
-                    'title' => mb_substr($lot['title'], 0, 160),
-                    'ends_at' => $lot['ends_at'] ? Carbon::parse($lot['ends_at'], 'Europe/Moscow') : null,
-                    'seen_at' => $now,
-                    'gone_at' => null,
-                ];
+                $rows[$lot['id']] = self::toIndex($lot, $now);
             }
         } catch (Throwable $e) {
             // Список не дочитан — ушедшими никого не помечаем, индекс как был.
