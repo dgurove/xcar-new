@@ -5,21 +5,20 @@
 @props(['gallery' => false, 'pick' => false, 'cols' => null])
 @php
     $has = fn (string $k) => $cols === null || in_array($k, $cols, true);
-    // У черновиков вместо номера — кто завёл.
-    $drafts = $cols !== null && ! $has('state') && ! $has('published');
 @endphp
 <tr>
     @if ($pick)<th class="pick-cell"></th>@endif
     <th class="grow title-cap">Марка, модель</th>
     @if ($has('vendor'))<th class="hidden sm:table-cell">Вендор, № убытка</th>@endif
-    @if ($has('no'))<th class="cell-dim hidden sm:table-cell">{{ $drafts ? 'Завёл' : '№' }}</th>@endif
+    @if ($has('no'))<th class="cell-dim hidden sm:table-cell">№</th>@endif
     @if ($has('state'))<th class="fill hidden sm:table-cell">{{ $cols !== null && $has('bids') ? 'Приём' : 'Состояние' }}</th>
     {{-- Без «Состояния» запас ширины уходит в пустой столбец перед числами, а не в промежутки между столбцами. --}}
     @else<th class="fill hidden sm:table-cell"></th>@endif
     {{-- Подтверждения принимает только админ — модератору столбца нет. --}}
     @if ($has('bids') && auth()->user()?->canManageCrm())<th class="num hidden sm:table-cell">{{ $gallery ? 'Интерес' : 'Подтверждения' }}</th>@endif
-    @if ($has('price'))<th class="num">Цена</th>@endif
+    {{-- Сначала закупочная, потом продажи (владелец 04.10.2026: так логичнее). --}}
     @if ($has('floor'))<th class="num hidden sm:table-cell">Закупочная</th>@endif
+    @if ($has('price'))<th class="num">Цена</th>@endif
     @if ($cols !== null && $has('published'))<th class="num col-detail-hide hidden sm:table-cell">Вышло</th>
     @elseif ($has('created'))<th class="num col-detail-hide hidden sm:table-cell">Создано</th>@endif
 </tr>

@@ -75,7 +75,9 @@
     </td>
     @endif
     @if ($admin && $has('bids'))<td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>@endif
-    {{-- Цена продажи (у черновика без неё — чип «Оценить»), справа закупочная; на телефоне закупочная — под ценой. --}}
+    {{-- Закупочная, справа от неё цена продажи (у черновика без неё — чип «Оценить»); на телефоне столбца закупочной нет —
+         она под ценой. --}}
+    @if ($has('floor'))<td class="cell-dim num nums hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>@endif
     @if ($has('price'))<td class="num nums">
         @if ($rate)<x-offer.rate-chip :offer="$offer"/>
         @elseif ($unpriced)
@@ -83,8 +85,10 @@
         @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
         @if ($offer->floor_price && $has('floor'))<span class="cell-sub sm:hidden">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>@endif
-    @if ($has('floor'))<td class="cell-dim num nums hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>@endif
     {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет. --}}
     @php $when = $cols !== null && $has('published') ? $offer->published_at : ($has('created') ? $offer->created_at : null); @endphp
-    @if ($has('created') || ($cols !== null && $has('published')))<td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">{{ $when?->translatedFormat($when->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}</td>@endif
+    @if ($has('created') || ($cols !== null && $has('published')))<td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">
+        {{-- Без столбца № кто завёл черновик — аватаром перед датой. --}}
+        @if ($draft && $offer->moderator && ! $has('no'))<span class="inline-flex items-center gap-2 align-middle"><x-ui.avatar :user="$offer->moderator" :size="20" title="{{ $offer->moderator->name }}"/>@endif{{ $when?->translatedFormat($when->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}@if ($draft && $offer->moderator && ! $has('no'))</span>@endif
+    </td>@endif
 </tr>

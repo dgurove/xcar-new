@@ -25,6 +25,10 @@ final class ListPrefs
     public static function sync(Request $request, string $list, bool $rememberTable = false, array $keep = [], bool $view = true): void
     {
         $keys = [...($view ? self::KEYS : []), ...$keep];
+        // В CRM вид не помнится вовсе (владелец 04.10.2026): по умолчанию везде таблица, плитки и строки — на этот раз.
+        if (Surface::current() === Surface::Crm) {
+            $keys = array_values(array_diff($keys, [ListView::PARAM]));
+        }
         // Таблица не запоминается: сама она включается только у длинного списка (ListView::pick),
         // а запомненная включалась бы и на трёх строках; вид в адресе — на этот раз.
         // rememberTable — у списков, где таблица и есть вид по умолчанию (почта): выбор «строками» и обратно помнится.

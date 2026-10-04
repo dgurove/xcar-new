@@ -183,8 +183,9 @@ class OfferController
 
     /**
      * Столбцы таблицы по вкладке — только то, что на этом шаге что-то значит (владелец 04.10.2026: «в „Без цены“ не может
-     * быть подтверждений»). Ключи: vendor — вендор и № убытка, no — № (у черновика — кто завёл), state — приём или
-     * состояние, bids — подтверждения, price, floor — закупочная, created / published — когда заведено / вышло.
+     * быть подтверждений»). Ключи: vendor — вендор и № убытка, no — № (у черновика — кто завёл; без него аватар — у даты),
+     * state — приём или состояние, bids — подтверждения, floor — закупочная, price, created / published — когда заведено
+     * / вышло. Порядок столбцов задаёт шаблон: закупочная перед ценой продажи.
      * null — все (поиск по разделу, галерея).
      *
      * @return list<string>|null
@@ -197,14 +198,13 @@ class OfferController
         $admin = $user->canManageCrm();
 
         return match ($preset ?? 'unpriced') {
-            // Оценка: чьё, «Оценить» на месте цены, закупочная — ориентир, сколько ждёт.
-            'unpriced' => ['vendor', 'no', 'price', 'floor', 'created'],
-            'priced' => ['vendor', 'no', 'price', 'floor', 'created'],
+            // Оценка: закупочная — ориентир, «Оценить» на месте цены; у черновика номера нет, кто завёл — аватаром у даты.
+            'unpriced', 'priced' => ['vendor', 'floor', 'price', 'created'],
             // Когда выйдет — заголовок группы, слова в строке не нужно.
-            'slots' => ['vendor', 'no', 'price', 'floor'],
+            'slots' => ['vendor', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
-            'published' => $admin ? ['vendor', 'no', 'state', 'bids', 'price', 'floor', 'published'] : ['vendor', 'no', 'price', 'floor', 'published'],
-            default => ['vendor', 'no', 'state', 'price', 'floor', 'created'],
+            'published' => $admin ? ['vendor', 'no', 'state', 'bids', 'floor', 'price', 'published'] : ['vendor', 'no', 'floor', 'price', 'published'],
+            default => ['vendor', 'no', 'state', 'floor', 'price', 'created'],
         };
     }
 
