@@ -92,6 +92,15 @@ class Vendor extends Model implements HasMedia
         return once(fn () => self::with(['media' => fn ($q) => $q->where('collection_name', 'logo')])->get(['id', 'name', 'kind', 'party_id'])->keyBy('id'));
     }
 
+    /**
+     * Вендор предложения: у вендора парковки, который в CRM — другой (`crm_vendor_id`: «АльфаСтрахование СПб» →
+     * «АльфаСтрахование»), — тот. Ставит `Offer::saving` — из письма, с парковки (`Sale::toOffer`) или руками.
+     */
+    public static function forCrm(?int $id): ?int
+    {
+        return $id ? (once(fn () => self::whereNotNull('crm_vendor_id')->pluck('crm_vendor_id', 'id')->all())[$id] ?? $id) : null;
+    }
+
     /** НДС цен предложений этого вендора по умолчанию — одна дверь для письма, ручного черновика и смены вендора. */
     public static function offersVat(?int $id): bool
     {

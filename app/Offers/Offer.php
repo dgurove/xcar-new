@@ -59,6 +59,10 @@ class Offer extends Model implements HasMedia
     {
         // Тип ТС колонкой — для фильтра; марка сменилась — прежняя связь уже не та.
         static::saving(function (self $o) {
+            // У продажи свой вендор: «АльфаСтрахование СПб» парковки здесь — «АльфаСтрахование».
+            if ($o->isDirty('vendor_id')) {
+                $o->vendor_id = Vendor::forCrm($o->vendor_id);
+            }
             if ($o->vehicle_category === null || $o->isDirty(['body', 'brand_id', 'model_id'])) {
                 foreach (['brand' => 'brand_id', 'model' => 'model_id'] as $rel => $col) {
                     if ($o->isDirty($col)) {

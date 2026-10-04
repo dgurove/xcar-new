@@ -4,7 +4,7 @@
      VIN или номером убытка — строкой под полями сразу при вводе (twins_controller). --}}
 @php
     use App\Cars\{Body, Transmission, Drive, Fuel};
-    $vendors = once(fn () => \App\Vendors\Vendor::where('is_active', true)->orWhere('id', $offer->vendor_id)->orderBy('name')->pluck('name', 'id'));
+    $vendors = once(fn () => \App\Vendors\Vendor::where('is_active', true)->whereNull('crm_vendor_id')->orWhere('id', $offer->vendor_id)->orderBy('name')->pluck('name', 'id'));
     // Вендоры с ценами «с НДС» — сменили вендора, и галка у закупочной встаёт по нему (vendor_vat_controller).
     $vatVendors = once(fn () => \App\Vendors\Vendor::where('offers_include_vat', true)->pluck('id')->all());
     // Без них черновик не сохраняется (`OfferRequest::rules`); у опубликованного — уже есть.

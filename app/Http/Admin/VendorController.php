@@ -38,7 +38,8 @@ class VendorController
     {
         $kind = Kind::tryFrom($request->query('kind', ''));
         $off = $request->boolean('off');
-        $q = Vendor::with('workflows')->withCount('offers')
+        // Вендор парковки, который в CRM — другой (`crm_vendor_id`), в списке CRM не стоит.
+        $q = Vendor::with('workflows')->withCount('offers')->whereNull('crm_vendor_id')
             ->orderByDesc('is_active')->orderBy('name');
         if ($off) {
             $q->where('is_active', false);
@@ -50,7 +51,7 @@ class VendorController
             'vendors' => $q->get(),
             'kind' => $kind,
             'off' => $off,
-            'counts' => Vendor::where('is_active', true)->selectRaw('kind, count(*) as n')->groupBy('kind')->pluck('n', 'kind'),
+            'counts' => Vendor::where('is_active', true)->whereNull('crm_vendor_id')->selectRaw('kind, count(*) as n')->groupBy('kind')->pluck('n', 'kind'),
             'offCount' => Vendor::where('is_active', false)->count(),
         ]);
     }
