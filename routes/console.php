@@ -24,5 +24,7 @@ Schedule::command('storage:gc')->dailyAt('04:30');
 Schedule::command('offers:prune-drafts')->dailyAt('04:40');
 // Номера дел лотов Мигторга и фото совпавшим предложениям: пять запросов списка раз в полчаса.
 Schedule::command('migtorg:sync')->everyThirtyMinutes()->withoutOverlapping()->runInBackground();
+// Архив Мигторга кусками: до 150 карточек раз в 5 минут, пока не пройдены 60 дней торгов назад (потом молчит).
+Schedule::command('migtorg:archive')->everyFiveMinutes()->withoutOverlapping(10)->runInBackground();
 // Входы админа за человека, из которых не вышли кнопкой, — закрыть сроком сессии.
 Schedule::call(fn () => app(CloseStaleImpersonations::class)())->hourly()->name('impersonations:close');

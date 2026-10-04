@@ -45,7 +45,7 @@ final class Migtorg
     /**
      * Все опубликованные лоты: id, номер дела, VIN, название, конец торгов (московское время).
      *
-     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string, status: ?string}>
+     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string, status: ?string, city: ?string}>
      */
     public function lots(): \Generator
     {
@@ -73,6 +73,7 @@ final class Migtorg
             'title' => trim(($lot['brand']['title'] ?? '').' '.($lot['model']['title'] ?? '').' '.($lot['year'] ?? '')),
             'ends_at' => $auction['end_date'] ?? null,
             'status' => $auction['status'] ?? null,
+            'city' => trim((string) ($lot['city']['title'] ?? '')) ?: null,
         ];
     }
 
@@ -140,7 +141,8 @@ final class Migtorg
             Log::warning("Мигторг: {$response->status()} на {$path}, пауза час");
         }
 
-        throw new RuntimeException("Мигторг ответил {$response->status()} на {$path}");
+        // Код исключения — код ответа: обход архива отличает «лота нет» (404) от отказа.
+        throw new RuntimeException("Мигторг ответил {$response->status()} на {$path}", $response->status());
     }
 
     private function token(): string

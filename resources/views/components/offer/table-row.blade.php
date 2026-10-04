@@ -44,7 +44,7 @@
 <tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($rate) data-unpriced @endif>
     @if ($checkable)<td class="pick-cell">@unless ($missing)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>@endif
     <td class="grow">
-        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif<x-ui.links :offer="$offer"/></span></x-ui.row-link>
+        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif<x-ui.links :offer="$offer"/>@if (\App\Offers\MigtorgChip::waits($offer))<span class="migtorg-flag" title="Лот на Мигторге ждёт"><x-offer.migtorg-mark/></span>@endif</span></x-ui.row-link>
         <span class="cell-sub" data-controller="fitline">
             {{-- Номера — одним неразрывным куском: не влезают — строка ужимается (fitline), а не переносится. --}}
             <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/>@unless ($draft)<span>№ {{ $n }}</span>@endunless</span>

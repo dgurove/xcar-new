@@ -36,6 +36,8 @@
         @else
             <x-ui.pill :tone="$offer->state->tone()">{{ $offer->parkWord() ?? $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
         @endif
+        {{-- Мигторг — сразу за состоянием: что с фото и данными лота по номеру убытка и куда нажать. --}}
+        <x-offer.migtorg :offer="$offer" live/>
         @if ($offer->parkWord())
             <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="pill pill-plain">Снять с продажи</button></form>
         @endif
@@ -53,7 +55,6 @@
             @endforeach
         @endif
         @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
-        <x-offer.migtorg :offer="$offer"/>
         @if ($import)<x-ui.pill tone="urgent">{{ $import['stage'] }}{{ isset($import['n']) ? ' '.($import['i'] + 1).'/'.$import['n'] : '' }}</x-ui.pill>@endif
         @if ($admin)
             <div class="contents" data-controller="sheet tag-chips" data-action="change->tag-chips#render">

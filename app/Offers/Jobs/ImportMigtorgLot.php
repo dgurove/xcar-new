@@ -47,7 +47,10 @@ final class ImportMigtorgLot implements ShouldQueue
     /** Ход — своей пилюлей: ключ разбора архива и писем общий, чужая задача стёрла бы его. */
     public static function progress(int $offerId): ?array
     {
-        return Cache::get("migtorg:offer:{$offerId}");
+        $p = Cache::get("migtorg:offer:{$offerId}");
+
+        // Пять минут без движения — задачу убили (выкладка) или она ждёт повтора: не крутить кольцо вечно.
+        return $p && time() - ($p['at'] ?? 0) < 300 ? $p : null;
     }
 
     /** Ещё не скачанные кадры — заглушками в ряду фото, не больше шести: остальное скажет счётчик чипа. */
@@ -96,7 +99,7 @@ final class ImportMigtorgLot implements ShouldQueue
     {
         DB::table('migtorg_lots')->where('claim_ref_key', $offer->claim_ref_key)->update(['offer_id' => $offer->id]);
         // Ход — сразу, а не когда задачу возьмёт воркер: чип крутится с нажатия, второй раз кнопку не нажать.
-        Cache::put("migtorg:offer:{$offer->id}", ['i' => 0, 'n' => null], 1800);
+        Cache::put("migtorg:offer:{$offer->id}", ['i' => 0, 'n' => null, 'at' => time()], 1800);
         self::dispatch($offer->id, $lot->id, $manual);
     }
 
@@ -127,7 +130,7 @@ final class ImportMigtorgLot implements ShouldQueue
         $failed = 0;
         $filled = [];
         try {
-            Cache::put($key, ['i' => 0, 'n' => null], 1800);
+            Cache::put($key, ['i' => 0, 'n' => null, 'at' => time()], 1800);
             $card = $migtorg->card($this->lotId);
             self::noteShape($card);
             DB::table('migtorg_lots')->where('id', $this->lotId)->update(['photos' => count(Migtorg::photosOf($card))]);
@@ -135,13 +138,17 @@ final class ImportMigtorgLot implements ShouldQueue
             $filled = $apply($offer, MigtorgFields::of($card), null, onlyEmpty: true, log: ['source' => 'migtorg']);
             $offer->refresh();
             // Сами кадры — только в пустой ряд: к своим менеджер добавит лот кнопкой, без дублей.
-            $uuids = $this->manual || ! $offer->media()->where('collection_name', 'photos')->exists() ? Migtorg::photosOf($card) : [];
+            // Поля встают в форму сразу, не дожидаясь кадров.
+            $this->refresh($publish, $offer);
+            // Кадры Мигторга, загруженные руками (знак снят при приёме, uuid нет), — уже есть: лот их не задваивает.
+            $byHand = $offer->media()->where('collection_name', 'photos')->whereNull('custom_properties->migtorg')->where('custom_properties->unmarked', 'migtorg')->exists();
+            $uuids = ! $byHand && ($this->manual || ! $offer->media()->where('collection_name', 'photos')->exists()) ? Migtorg::photosOf($card) : [];
             $uuids || ! $this->manual || Log::warning("Мигторг: в карточке лота {$this->lotId} нет фото");
             $have = $offer->media()->where('collection_name', 'photos')->get()
                 ->map(fn (Media $m) => $m->getCustomProperty('migtorg'))->filter()->all();
             $this->refresh($publish, $offer);
             foreach ($uuids as $i => $uuid) {
-                Cache::put($key, ['i' => $i, 'n' => count($uuids)], 1800);
+                Cache::put($key, ['i' => $i, 'n' => count($uuids), 'at' => time()], 1800);
                 // Кадры пачками по шесть: редактор морфом меняет заглушки на настоящие, чип считает «12 из 54».
                 if ($i && $i % 6 === 0) {
                     $this->refresh($publish, $offer);

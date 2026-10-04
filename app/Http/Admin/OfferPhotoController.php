@@ -9,12 +9,15 @@ use App\Media\Hidden;
 use App\Media\PhotoIngest;
 use App\Media\Unmark;
 use App\Media\Watermarks;
+use App\Offers\Actions\UpdateOffer;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Jobs\ImportOfferArchive;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Park\Sale;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
@@ -49,14 +52,39 @@ class OfferPhotoController
         return $this->gallery($offer);
     }
 
-    /** «С Мигторга»: фото лота по номеру убытка к тем, что уже есть (сами они берутся только в пустой ряд). */
-    public function migtorg(Offer $offer)
+    /**
+     * Шторка «Мигторг»: `take` — «Это она»: человек сверил машину лота и берёт поля и кадры (номер из одних цифр сам не
+     * берётся); `recheck` — «Проверить ещё раз». Номер убытка, вписанный и ещё не сохранённый, приходит полем `ref` —
+     * сначала он ложится в предложение.
+     */
+    public function migtorg(Request $request, Offer $offer, UpdateOffer $update)
     {
+        $data = $request->validate(['act' => ['required', 'in:take,recheck'], 'ref' => ['nullable', 'string', 'max:60']]);
+        if (filled($data['ref'] ?? null) && trim($data['ref']) !== (string) $offer->claim_ref) {
+            $update($offer, ['claim_ref' => trim($data['ref'])], $request->user());
+            $offer->refresh();
+        }
         $lot = ImportMigtorgLot::available($offer);
-        abort_unless($lot && ! ImportMigtorgLot::progress($offer->id), 404);
-        ImportMigtorgLot::start($offer, $lot, manual: true);
+        if ($data['act'] === 'recheck' || ! $lot) {
+            return back()->with('toast', $lot ? 'Лот на Мигторге нашёлся' : 'На Мигторге пока нет');
+        }
+        if (! ImportMigtorgLot::progress($offer->id)) {
+            $offer->log(OfferEventType::Updated, $request->user(), ['source' => 'migtorg', 'lot' => $lot->id]);
+            ImportMigtorgLot::start($offer, $lot, manual: true);
+        }
 
-        return back()->with('toast', 'Фото с Мигторга скоро будут');
+        return back()->with('toast', 'Берём с Мигторга');
+    }
+
+    /** Чип «Мигторг» по номеру, вписанному в поле и ещё не сохранённому: лот виден сразу, «Это она» его и сохранит. */
+    public function migtorgChip(Request $request, Offer $offer)
+    {
+        $ref = trim((string) $request->query('ref'));
+        if ($ref !== '' && $ref !== (string) $offer->claim_ref) {
+            $offer = (clone $offer)->forceFill(['claim_ref' => $ref]);
+        }
+
+        return response(Blade::render('<x-offer.migtorg :offer="$offer" :ref="$ref" live/>', ['offer' => $offer, 'ref' => $ref]));
     }
 
     public function reorder(Request $request, Offer $offer)
