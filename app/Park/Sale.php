@@ -3,6 +3,8 @@
 namespace App\Park;
 
 use App\Offers\Offer;
+use App\Offers\OfferState;
+use App\Park\Actions\LinkOffer;
 use App\Park\Actions\UpdateVehicle;
 use App\Users\User;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -28,6 +30,21 @@ final class Sale
         }
         if ($vehicle->offer_id) {
             self::bring($vehicle);
+        }
+    }
+
+    /**
+     * Предложение, заведённое в CRM руками или из писем, — той же машины, что стоит на парковке (номер убытка или VIN, ровно
+     * одна живая ТС без предложения): связать. Связь сама переносит файлы предложения к ТС (`relinked`).
+     */
+    public static function adopt(Offer $offer): void
+    {
+        if ($offer->is_demo || in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true) || Vehicle::where('offer_id', $offer->id)->exists()) {
+            return;
+        }
+        $vehicle = LinkOffer::guessVehicle($offer);
+        if ($vehicle && ! $vehicle->state->isFinal()) {
+            app(LinkOffer::class)($vehicle, $offer);
         }
     }
 

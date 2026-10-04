@@ -16,6 +16,7 @@ use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Thread;
 use App\Media\HasPhotos;
+use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Purchases\Car;
 use App\Support\Demo\HidesDemo;
@@ -67,6 +68,9 @@ class Offer extends Model implements HasMedia
                 $o->vehicle_category = $o->guessCategory()->value;
             }
         });
+        // Машина одна: вписали номер убытка или VIN машины, что стоит на парковке, — предложение связывается с ней, и
+        // фото с документами становятся общими (`Park\Sale::adopt`), а не живут двумя машинами.
+        static::saved(fn (self $o) => $o->wasChanged(['claim_ref_key', 'vin']) || ($o->wasRecentlyCreated && ($o->claim_ref_key || $o->vin)) ? Sale::adopt($o) : null);
     }
 
     protected function casts(): array

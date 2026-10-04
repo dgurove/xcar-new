@@ -110,6 +110,9 @@ export default class extends Controller {
         const cells = this.eyeCells();
         if (!cells.length || this.busy) return;
         const hide = !cells.some((c) => c.dataset.hidden === '1');
+        // Одно нажатие стирает разметку глазом по каждому кадру — сначала спросить.
+        const n = cells.filter((c) => (c.dataset.hidden === '1') !== hide).length;
+        if (!(await confirmSheet(hide ? `Скрыть все фото (${n})?` : `Показать все фото (${n})?`, { danger: hide }))) return;
         const paint = (to) => cells.forEach((c) => {
             c.dataset.hidden = to ? '1' : '0';
             c.classList.toggle('is-hidden', to);
@@ -451,6 +454,10 @@ export default class extends Controller {
             }
         });
         if (this.pendingCells?.size) this.restorePending();
+        // Морф берёт ряд с сервера как есть: «развёрнуто плиткой» и подпись «Показать все» ставит только этот контроллер,
+        // без них глаз или поворот сворачивали плитку обратно в ленту.
+        this.syncExpand();
+        this.syncAll();
         if (quiet) shown?.lb.redraw();
     }
 
