@@ -116,6 +116,29 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
             if (d && !d.sized) { Object.assign(d, { width: s.w, height: s.h, sized: true }); pswp.refreshSlideContent(i); }
         });
     };
+    // Плашки кнопок — сверху («Скачать», корзина, знак, закрыть) и снизу (глаз, поворот, зум) — прямо в окне просмотра,
+    // поверх PhotoSwipe, а не внутри его полос (владелец 05.10.2026: обе должны размывать кадр). У корня и полос
+    // PhotoSwipe will-change: opacity — для backdrop-filter это граница фона: внутри неё размывать нечего, плашка выходит
+    // просто полупрозрачной. Снаружи она размывает уже нарисованный кадр. Видимость и «можно увеличить» зеркалим
+    // классами окна. Узлы переезжают вместе с обработчиками; пересборка (reload) снимает прежние плашки.
+    const pills = (pswp) => {
+        view.host.querySelectorAll('.lb-pill').forEach((n) => n.isConnected && !pswp.element.contains(n) && n.remove());
+        const top = document.createElement('div');
+        top.className = 'lb-pill lb-pill--top';
+        top.append(...[...(pswp.topBar?.children ?? [])].filter((n) => n.classList.contains('pswp__button')));
+        const bottom = pswp.element.querySelector('.lb-pill--bottom');
+        view.host.append(top, ...(bottom ? [bottom] : []));
+        const mirror = () => {
+            const c = pswp.element.classList;
+            view.host.classList.toggle('lb-ui', c.contains('pswp--ui-visible') && !pswp.isDestroying && !view.closed);
+            view.host.classList.toggle('lb-zoomable', c.contains('pswp--zoom-allowed'));
+        };
+        const watch = new MutationObserver(mirror);
+        watch.observe(pswp.element, { attributes: true, attributeFilter: ['class'] });
+        pswp.on('close', () => view.host.classList.remove('lb-ui'));
+        pswp.on('destroy', () => watch.disconnect());
+        mirror();
+    };
     const around = (i) => { for (let k = -1; k <= 2; k++) measure(((i + k) % view.items.length + view.items.length) % view.items.length); };
 
     const build = (list, at, animate) => {
@@ -170,7 +193,7 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
             // Скрыть, повернуть и увеличить — внизу по центру, под большим пальцем (владелец, 04.10.2026); остальное — сверху.
             const tools = actions.filter((a) => a.bottom);
             pswp.ui.registerElement({
-                name: 'tools', appendTo: 'root', className: 'pswp__tools pswp__hide-on-close',
+                name: 'tools', appendTo: 'root', className: 'lb-pill lb-pill--bottom',
                 onInit: (el, p) => {
                     const syncs = [];
                     const add = (name, title, icon, run, sync) => {
@@ -250,14 +273,7 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
             onClose?.(view.index);
         });
         pswp.init();
-        // Кнопки сверху — одной стеклянной плашкой, как нижняя (владелец, 04.10.2026): узлы переезжают вместе с обработчиками.
-        const bar = pswp.topBar;
-        if (bar) {
-            const group = document.createElement('div');
-            group.className = 'pswp__tools pswp__tools--top';
-            group.append(...[...bar.children].filter((n) => n.classList.contains('pswp__button')));
-            bar.append(group);
-        }
+        pills(pswp);
         view.pswp = pswp;
         return pswp;
     };
@@ -329,7 +345,10 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
     // env(safe-area-inset-top) отдавал 0, и кнопки уезжали под часы.
     const ruler = Object.assign(document.createElement('div'), { style: 'position:fixed;top:0;height:0;padding-top:env(safe-area-inset-top);visibility:hidden' });
     document.body.append(ruler);
-    view.host.style.setProperty('--safe-top', getComputedStyle(ruler).paddingTop);
+    // Шапка страницы стоит с тем же отступом и точно его получила — берём большее из двух замеров.
+    const header = document.querySelector('.header');
+    const safe = Math.max(parseFloat(getComputedStyle(ruler).paddingTop) || 0, header ? parseFloat(getComputedStyle(header).paddingTop) || 0 : 0);
+    view.host.style.setProperty('--safe-top', `${safe}px`);
     ruler.remove();
     document.body.append(view.host);
     view.host.showModal();
