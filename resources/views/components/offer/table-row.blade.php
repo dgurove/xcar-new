@@ -66,7 +66,7 @@
         @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
         @if ($offer->floor_price)<span class="cell-sub sm:hidden">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>
-    <td class="cell-dim num nums col-detail-hide hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>
+    <td class="cell-dim num nums hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>
     {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет. --}}
     <td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">{{ $offer->created_at?->translatedFormat($offer->created_at->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}</td>
 </tr>

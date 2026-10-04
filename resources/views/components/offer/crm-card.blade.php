@@ -9,7 +9,9 @@
     use App\Offers\OfferState;
     use App\Support\Money;
     $n = $offer->number;
-    $href = '/offers/'.$n;
+    // Нажатие — карточка строки рядом со списком, как в таблице (04.10.2026, владелец), а не страница.
+    $href = \App\Support\Detail::url($n);
+    $peek = 'data-detail-link data-turbo-frame="detail" data-turbo-action="replace" data-turbo-prefetch="false"';
     $price = \App\Offers\PriceView::for($offer, auth()->user());
     $main = $offer->mainPhoto();
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
@@ -27,11 +29,11 @@
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => 'text-ink' };
     $count = ! $admin ? 0 : ($gallery ? (int) ($offer->interests_count ?? 0) : (int) ($offer->active_bids_count ?? 0));
 @endphp
-<article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" class="card group">
-    <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1"></a>
+<article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" data-detail-key="{{ $n }}" class="card group">
+    <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1" {!! $peek !!}></a>
     @if ($photos->isNotEmpty())
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
-            <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
+            <a href="{{ $href }}" {!! $peek !!} class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
                 @foreach ($photos as $frame)
                     <x-offer.photo :media="$frame" :sizes="\App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request()))" data-frames-target="frame"/>
                 @endforeach
@@ -47,11 +49,11 @@
             @endif
         </div>
     @else
-        <a href="{{ $href }}" class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
+        <a href="{{ $href }}" {!! $peek !!} class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif</a>
+            <a href="{{ $href }}" {!! $peek !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif</a>
         </div>
     </div>
     <div class="card-extra">
@@ -71,7 +73,9 @@
             @if ($unpriced)
                 @if ($rate)<x-offer.rate-chip :offer="$offer"/>@endif
                 @if ($offer->floor_price)<span class="nums">{{ Money::nums($offer->floor_price) }}&nbsp;₽</span>@endif
-            @elseif ($price->shown())<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>
+            {{-- Закупочная — слева от цены стрелкой (04.10.2026, владелец: «очень важно»), как в таблице. --}}
+            @elseif ($price->shown())@if ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;→&nbsp;</span>@endif<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>
+            @elseif ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;₽</span>
             @elseif ($gallery)<span class="text-sm text-accent-text">скоро</span>@endif
         </span>
     </div>

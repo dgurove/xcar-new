@@ -29,12 +29,12 @@ export default class extends Controller {
     }
 
     get open() { return this.frameTarget.childElementCount > 0; }
-    get rows() { return [...this.element.querySelectorAll('tr[data-detail-key]')]; }
-    get current() { return this.element.querySelector('tr[data-detail-key][aria-selected="true"]'); }
+    get rows() { return [...this.element.querySelectorAll('[data-detail-key]')]; }
+    get current() { return this.element.querySelector('[data-detail-key][aria-selected="true"]'); }
 
     // Нажатие по строке мимо её кнопок — её ссылка; по открытой — закрыть.
     tap(event) {
-        const row = event.target.closest('tr[data-detail-key]');
+        const row = event.target.closest('[data-detail-key]');
         if (!row || !this.element.contains(row)) return;
         const link = event.target.closest('a[data-detail-link]');
         if (!link && event.target.closest('a, button, input, select, textarea, label, form')) return;

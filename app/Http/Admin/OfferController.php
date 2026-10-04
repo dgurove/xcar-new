@@ -70,7 +70,8 @@ class OfferController
             unset($presets['slot']);
         }
         $facets = Facets::for($request, 'crm-offers', ...self::facets());
-        ListPrefs::sync($request, 'crm-offers', keep: $facets->keys());
+        // Таблица — вид по умолчанию (04.10.2026, владелец): выбор «строками» и обратно помнится.
+        ListPrefs::sync($request, 'crm-offers', rememberTable: true, keep: $facets->keys());
         $sort = $request->query('sort', 'fresh');
         // Поиск лупой идёт по всему списку — мимо пилюли и чипов.
         $searching = $facets->searching();

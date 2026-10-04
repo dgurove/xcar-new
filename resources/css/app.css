@@ -895,6 +895,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .table tbody tr.table-group + tr > *, .table tbody tr + tr.table-group > * { border-top: 0; }
   @media (hover: hover) { .table tbody tr:hover { background: var(--color-hover); } }
   .table tbody tr[aria-selected="true"], .table tbody tr[aria-selected="true"]:hover { background: var(--color-accent-soft); }
+  /* Плитка и строка, чья карточка открыта рядом, — как выбранная строка таблицы. */
+  .card[aria-selected="true"] { background: var(--color-accent-soft); box-shadow: inset 0 0 0 2px var(--color-accent); }
   .table tbody tr:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
   .table tbody tr.table-group, .table tbody tr.table-group:hover { height: auto; cursor: default; background: var(--color-surface); }
   .table tr.table-group > th {
@@ -967,32 +969,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table-wrap.is-wide .table-group-name { display: inline-block; position: sticky; left: .75rem; }
   }
 
-  /* Узкая таблица на широком экране — вид телефона (29.09.2026, владелец): справа карточка строки и документ, таблице
-     остаётся полстолбца. Решает ширина самой таблицы, а не экрана — контейнер .table-box. На телефоне вид и так
-     телефонный (правила выше по экрану), здесь — только от 640 px. Подробная таблица (is-wide) не трогается. */
-  .table-box { container: tbl / inline-size; }
-  @media (min-width: 640px) {
-    @container tbl (max-width: 639.98px) {
-      .table-wrap:not(.is-wide) .table thead { display: none; }
-      .table-wrap:not(.is-wide) .table :is(th, td).hidden { display: none !important; }
-      .table-wrap:not(.is-wide) .table .sm\:hidden { display: inline !important; }
-      .table-wrap:not(.is-wide) .table .cell-sub.sm\:hidden { display: block !important; }
-      .table-wrap:not(.is-wide) .table .hidden.sm\:inline { display: none !important; }
-      .table-wrap:not(.is-wide) .table tbody tr { height: 3rem; }
-      .table-wrap:not(.is-wide) .table :is(th, td):not(:first-child) { padding-left: .25rem; }
-      .table-wrap:not(.is-wide) .table .num { padding-left: .625rem; }
-      .table-wrap:not(.is-wide) .table td.grow > .cell-title { display: block; }
-      .table-wrap:not(.is-wide) .table td.grow > .cell-sub { display: block; margin: 0; }
-      .table-wrap:not(.is-wide) .table td.grow > .cell-sub > * + * { margin-left: .375rem; }
-      .table-wrap:not(.is-wide) .table td.grow > .cell-title:has(> .title-plate) { display: flex; align-items: center; }
-      .table-wrap:not(.is-wide) .cell-title > .cell-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .table-wrap:not(.is-wide) .cell-title > .title-plate { display: inline; flex-shrink: 0; margin-left: .3em; font-size: var(--text-sm); }
-      .table-wrap:not(.is-wide) .cell-sub .sub-plate { display: none; }
-      .table-wrap:not(.is-wide) .cell-extra { display: flex; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; align-items: center; gap: .25rem .375rem; margin-top: 0; font-size: var(--text-sm); }
-      .table-wrap:not(.is-wide) .cell-extra .tag { padding: 0 .4375rem; line-height: 1.35; }
-      .table-wrap:not(.is-wide) .alerts-inline { display: none; }
-    }
-  }
+  /* На компьютере строка таблицы всегда в одну линию (04.10.2026, владелец): узкая таблица (справа карточка строки,
+     узкое окно) не переходит в два этажа, а листается вбок (.split[data-open] .table-box). Двухэтажная — только на телефоне. */
+  @media (min-width: 640px) and (max-width: 1023.98px) { .table-box { overflow-x: auto; overscroll-behavior-x: contain; } }
 
   /* Страницы покупателя (x-pickup.layout): колонка до 28rem на фоне страницы, знак сверху. */
   .pickup-main { @apply mx-auto flex min-h-dvh w-full max-w-md flex-col px-4; padding-top: calc(env(safe-area-inset-top) + 1.25rem); padding-bottom: calc(env(safe-area-inset-bottom) + 2rem); }
