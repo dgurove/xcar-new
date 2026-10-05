@@ -36,7 +36,8 @@ final class ApplyCarFields
         foreach ($chosen as $field => $item) {
             $value = $item['value'];
             match ($field) {
-                'brand' => ($id = Brand::known((string) $value)?->id) ? $data['brand_id'] = $id : null,
+                // Новую марку заводит только источник со своим справочником марок (`create`: Мигторг) — документы и письма нет.
+                'brand' => ($id = (! empty($item['create']) ? Brand::resolve((string) $value) : Brand::known((string) $value))?->id) ? $data['brand_id'] = $id : null,
                 'model' => null,
                 'vin' => $data['vin'] = strtoupper((string) $value),
                 'color' => $data['color'] = Colors::normalize((string) $value) ?? (string) $value,

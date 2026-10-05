@@ -3,6 +3,7 @@
 namespace App\Offers;
 
 use App\Cars\Body;
+use App\Cars\Brand;
 use App\Cars\Drive;
 use App\Cars\Fuel;
 use App\Cars\Papers;
@@ -40,7 +41,14 @@ final class MigtorgFields
                 $f[$field] = ['value' => $value];
             }
         };
-        $put('brand', trim((string) ($lot['brand']['title'] ?? '')));
+        // Марка — из их справочника (у неё id на Мигторге): нашей нет — заводится (05.10.2026: JELAND J6 вставал «ТС»).
+        // «JELAND» капслоком — «Jeland», как прочие марки справочника; короткие («BMW», «FAW») — как есть.
+        $brand = trim((string) ($lot['brand']['title'] ?? ''));
+        if ($brand !== '' && ! Brand::known($brand) && preg_match('/\p{L}{2}/u', $brand)) {
+            $f['brand'] = ['value' => mb_strlen($brand) > 3 && $brand === mb_strtoupper($brand) ? mb_convert_case($brand, MB_CASE_TITLE) : $brand, 'create' => true];
+        } else {
+            $put('brand', $brand);
+        }
         $put('model', trim((string) ($lot['model']['title'] ?? '')));
         $put('year', ($lot['year'] ?? 0) ?: null);
         $vin = strtoupper(trim((string) ($lot['vin'] ?? '')));
