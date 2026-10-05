@@ -167,6 +167,8 @@ class OfferController
             'presets' => self::PRESETS,
             'sorts' => $preset === 'archive' ? self::SORTS : [],
             'preset' => $preset,
+            // Вкладка по умолчанию у человека — у её пилюли ключа в адресе нет; остальные, и первая тоже, — с ключом.
+            'home' => self::home($request->user()),
             'sort' => $sort,
             'facets' => $facets,
             // Галочки и отправка — админу, в «Оцененных» и «Публикации».
