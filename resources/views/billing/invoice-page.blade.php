@@ -1,12 +1,14 @@
 {{-- Карточка счёта, одна на стоянку и CRM: строки, оплаты и заявленные оплаты слева, контрагент, ТС и сделка справа;
-     плашка — «Оплачен» / «Перечислено». base — адрес счёта на этом хосте, claims — адрес действий по заявкам (только CRM). --}}
+     плашка — «Оплачен» / «Выплачено» (менеджеру) / «Перечислено» (вендору). base — адрес счёта на этом хосте, claims — адрес действий по заявкам (только CRM). --}}
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource;
     $i = $invoice; $me = auth()->user();
+    // Вознаграждение менеджеру — «выплата», долг стоянки вендору — «перечисление».
+    $fee = $i->isAgentFee();
     $offset = $i->payments->where('source', PaymentSource::Offset)->sum('amount');
 @endphp
-{{-- Вознаграждение без номера — по имени получателя: label() отдал бы вид, и выходило «Вознаграждение Агентское вознаграждение». --}}
-<x-ui.shell :title="($i->isOwed() ? ($i->isAgentFee() ? 'Вознаграждение '.($i->number || $i->external_no ? $i->label() : $i->party->name) : 'Мы должны '.$i->label()) : 'Счёт '.$i->label())" :back="$back" cache="no-cache">
+{{-- Выплата без номера — по имени получателя: label() отдал бы вид («Агентское вознаграждение»). --}}
+<x-ui.shell :title="($i->isOwed() ? ($i->isAgentFee() ? 'Выплата менеджеру '.$i->party->name : 'Перечисление вендору '.$i->label()) : 'Счёт '.$i->label())" :back="$back" cache="no-cache">
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
         <x-billing.light :invoice="$i"/>
         <span class="chip nums">{{ $i->issued_at->translatedFormat('j M Y') }}</span>
@@ -26,7 +28,7 @@
                     <form method="post" action="{{ $base }}" class="mt-2 flex flex-col gap-3">
                         @csrf @method('put')
                         <div class="grid grid-cols-2 gap-3">
-                            <x-ui.field name="due_at" :label="$i->isOwed() ? 'Перечислить до' : 'Оплатить до'" type="date" :value="$i->due_at->toDateString()" required/>
+                            <x-ui.field name="due_at" :label="$i->isOwed() ? ($fee ? 'Выплатить до' : 'Перечислить до') : 'Оплатить до'" type="date" :value="$i->due_at->toDateString()" required/>
                             <x-ui.field name="external_no" :label="$i->isOwed() ? 'Чужой номер' : 'Чужой номер'" :value="$i->external_no"/>
                             <x-ui.field name="notes" label="Заметка в счёт" type="textarea" :value="$i->notes" span="col-span-2"/>
                         </div>
@@ -46,7 +48,7 @@
                     @if ($i->vat_on_top)<div class="flex items-baseline gap-3 py-2"><span class="flex-1">{{ $i->vatLabel() }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->vatAmount()) }}</span></div>@endif
                     <div class="flex items-baseline gap-3 py-2"><span class="flex-1">Итого</span><span class="nums text-lg font-semibold">{{ Money::rub($i->total) }}</span></div>
                     @if ($i->vatRate() && ! $i->vat_on_top)<div class="text-sm text-ink-muted">{{ mb_strtolower($i->vatLabel()) }} {{ Money::rub($i->vatAmount()) }}</div>@endif
-                    @if ($offset > 0)<div class="flex items-baseline gap-3 py-2 text-sm text-ink-muted"><span class="flex-1">Удержано агентское вознаграждение</span><span class="nums">{{ Money::rub($offset) }}</span></div>@endif
+                    @if ($offset > 0)<div class="flex items-baseline gap-3 py-2 text-sm text-ink-muted"><span class="flex-1">Менеджер оставил себе вознаграждение</span><span class="nums">{{ Money::rub($offset) }}</span></div>@endif
                 </div>
             </x-ui.card>
             @if ($i->claims->isNotEmpty())
@@ -77,8 +79,8 @@
                 {{-- CRM: ссылка на оплату счёта — адрес, «Отправить», что делал плательщик (`x-billing.pay-status`). --}}
                 <div class="list"><x-billing.pay-status :invoice="$i" staff/></div>
             @endif
-            <x-ui.card :title="$i->isOwed() ? 'Перечисления' : 'Оплаты'">
-                @if ($i->payments->isEmpty())<p class="text-ink-muted">{{ $i->isOwed() ? 'Перечислений нет' : 'Оплат нет' }}</p>@endif
+            <x-ui.card :title="$i->isOwed() ? ($fee ? 'Выплаты' : 'Перечисления') : 'Оплаты'">
+                @if ($i->payments->isEmpty())<p class="text-ink-muted">{{ $i->isOwed() ? ($fee ? 'Выплат нет' : 'Перечислений нет') : 'Оплат нет' }}</p>@endif
                 <div class="flex flex-col divide-y divide-line/40">
                     @foreach ($i->payments as $p)
                         <div class="flex items-center gap-3 py-2">
@@ -99,7 +101,7 @@
             @if ($i->notes)<x-ui.card title="Заметка"><p class="whitespace-pre-line">{{ $i->notes }}</p></x-ui.card>@endif
         </div>
         <div class="flex flex-col gap-4">
-            <x-ui.card :title="$i->isOwed() ? 'Кому должны' : 'Плательщик'">
+            <x-ui.card :title="$i->isOwed() ? 'Кому выплатить' : 'Плательщик'">
                 <div class="font-medium"><x-vendor.name :party="$i->party"/></div>
                 @if ($i->party->details())<div class="mt-1 text-sm text-ink-muted">{{ $i->party->details() }}</div>@endif
                 @if ($i->party->bankDetails())<div class="mt-1 text-sm text-ink-muted">{{ $i->party->bankDetails() }}</div>@endif
@@ -120,14 +122,14 @@
                 </x-ui.card>
             @endif
             @if ($i->state === InvoiceState::Issued && $canManage && ! $i->payments()->where('source', '!=', PaymentSource::Offset)->exists())
-                <form method="post" action="{{ $base }}/void" data-turbo-confirm="Аннулировать {{ $i->isOwed() ? 'обязательство' : 'счёт' }} {{ $i->label() }}?">@csrf<x-ui.button variant="ghost" block>Аннулировать</x-ui.button></form>
+                <form method="post" action="{{ $base }}/void" data-turbo-confirm="Аннулировать {{ $i->isOwed() ? ($fee ? 'выплату' : 'перечисление') : 'счёт' }} {{ $i->label() }}?">@csrf<x-ui.button variant="ghost" block>Аннулировать</x-ui.button></form>
             @endif
         </div>
     </div>
     @if ($i->state === InvoiceState::Issued && $canManage)
         <div data-controller="sheet">
-            <x-ui.action-bar><x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">{{ $i->isOwed() ? 'Перечислено' : 'Оплачен' }}</x-ui.button></x-ui.action-bar>
-            <x-ui.sheet id="pay" :title="$i->isOwed() ? 'Перечисление' : 'Оплата'" :open="$errors->has('amount')"><x-billing.pay-form :invoice="$i" :action="$base.'/payments'" :sources="$sources"/></x-ui.sheet>
+            <x-ui.action-bar><x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">{{ $i->isOwed() ? ($fee ? 'Выплачено' : 'Перечислено') : 'Оплачен' }}</x-ui.button></x-ui.action-bar>
+            <x-ui.sheet id="pay" :title="$i->isOwed() ? ($fee ? 'Выплата' : 'Перечисление') : 'Оплата'" :open="$errors->has('amount')"><x-billing.pay-form :invoice="$i" :action="$base.'/payments'" :sources="$sources"/></x-ui.sheet>
         </div>
     @endif
 </x-ui.shell>

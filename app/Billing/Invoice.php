@@ -4,6 +4,7 @@ namespace App\Billing;
 
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Acquiring\PayLinkState;
+use App\Garage\Car as GarageCar;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Park\Vehicle;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -207,11 +209,33 @@ class Invoice extends Model implements HasMedia
         return trim('Подбор ТС '.($this->offer?->titleWithYear() ?? ''));
     }
 
-    /** Счета раздела «Оплаты» в CRM: по сделкам и разовые оплаты услуг. */
+    /**
+     * Счета раздела «Оплаты» в CRM: по сделкам, по машинам гаража (счёт и выплата менеджеру — без сделки, но в
+     * «Расчётах с менеджерами» они есть, 06.10.2026) и разовые оплаты услуг.
+     */
     public function scopeCrmMoney($q)
     {
         return $q->where(fn ($w) => $w->whereNotNull('deal_id')
+            ->orWhereIn('id', fn ($g) => $g->select('invoice_id')->from('garage_cars')->whereNotNull('invoice_id'))
+            ->orWhereIn('id', fn ($g) => $g->select('payout_invoice_id')->from('garage_cars')->whereNotNull('payout_invoice_id'))
             ->orWhere(fn ($s) => $s->where('kind', ChargeKind::Service->value)->whereNull('vehicle_id')));
+    }
+
+    /** Машина гаража, чей это счёт или выплата (у гаражных сделки нет). */
+    public function garageCar(): HasOne
+    {
+        return $this->hasOne(GarageCar::class, 'invoice_id');
+    }
+
+    public function garagePayoutCar(): HasOne
+    {
+        return $this->hasOne(GarageCar::class, 'payout_invoice_id');
+    }
+
+    /** Менеджер, с которым этот счёт: покупатель сделки или держатель машины гаража. */
+    public function manager(): ?User
+    {
+        return $this->deal?->buyer ?? ($this->garageCar ?? $this->garagePayoutCar)?->manager;
     }
 
     public function label(): string

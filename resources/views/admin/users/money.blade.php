@@ -1,5 +1,5 @@
 {{-- Деньги менеджера для сотрудника: реквизиты с правкой, сделки-расчёты одной плашкой, акт сверки и Excel. Положение
-     (просрочено, нам, мы должны, выплачено) — словами в строке заголовка «Сделки», а не рядом чипов над экраном. --}}
+     (просрочил, должен нам, должны ему, выплатили — кто кому словом) — словами в строке заголовка «Сделки», а не рядом чипов над экраном. --}}
 @php use App\Support\Money; $p = $position; @endphp
 
 <div class="box" data-controller="sheet">
@@ -34,11 +34,11 @@
         <h2 class="text-xl">Сделки @if ($moneyDeals->isNotEmpty())<span class="nums text-ink-dim">{{ $moneyDeals->count() }}</span>@endif</h2>
         @if ($p['overdue'] > 0 || $p['claimed'] > 0 || $p['pay'] > 0 || $p['payout'] > 0 || $p['paid_out'] > 0)
             <p class="col-span-2 row-start-2 flex flex-wrap gap-x-3 text-sm text-ink-muted sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:justify-end">
-                @if ($p['overdue'] > 0)<span class="nums whitespace-nowrap text-danger">просрочено {{ Money::rub($p['overdue']) }}</span>@endif
+                @if ($p['overdue'] > 0)<span class="nums whitespace-nowrap text-danger">просрочил {{ Money::rub($p['overdue']) }}</span>@endif
                 @if ($p['claimed'] > 0)<span class="nums whitespace-nowrap text-urgent">сообщил об оплате {{ Money::rub($p['claimed']) }}</span>@endif
-                @if ($p['pay'] > 0)<span class="nums whitespace-nowrap">нам {{ Money::rub($p['pay']) }}</span>@endif
-                @if ($p['payout'] > 0)<span class="nums whitespace-nowrap text-urgent">мы должны {{ Money::rub($p['payout']) }}</span>@endif
-                @if ($p['paid_out'] > 0)<span class="nums whitespace-nowrap">выплачено {{ Money::rub($p['paid_out']) }}</span>@endif
+                @if ($p['pay'] > 0)<span class="nums whitespace-nowrap">должен нам {{ Money::rub($p['pay']) }}</span>@endif
+                @if ($p['payout'] > 0)<span class="nums whitespace-nowrap text-urgent">должны ему {{ Money::rub($p['payout']) }}</span>@endif
+                @if ($p['paid_out'] > 0)<span class="nums whitespace-nowrap">выплатили {{ Money::rub($p['paid_out']) }}</span>@endif
             </p>
         @endif
         {{-- Документы с начала года — шторкой документов, как у менеджера. --}}
@@ -52,9 +52,10 @@
         <x-ui.empty line class="mt-2 px-0">Сделок с деньгами нет</x-ui.empty>
     @else
         <div class="list mt-3">
-            @foreach ($moneyDeals as $deal)
-                {{-- Сделка живёт в CRM: с сайта (/account/users) — с хостом, иначе 404. --}}
-                <x-money.deal-row staff :deal="$deal" :href="$crm ? '/work/deals/'.$deal->id : \App\Support\Surface::Crm->url('/work/deals/'.$deal->id)"/>
+            @foreach ($moneyDeals as $row)
+                {{-- Сделка живёт в CRM: с сайта (/account/users) — с хостом, иначе 404. Машина гаража — в гараж CRM. --}}
+                @php $path = $row instanceof \App\Garage\Car ? '/work/garage?preset=all&peek='.$row->offer->number : '/work/deals/'.$row->id; @endphp
+                <x-money.deal-row :deal="$row" :href="$crm ? $path : \App\Support\Surface::Crm->url($path)"/>
             @endforeach
         </div>
     @endif

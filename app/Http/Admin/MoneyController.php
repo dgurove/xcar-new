@@ -38,7 +38,8 @@ use Illuminate\Validation\Rule;
  */
 class MoneyController
 {
-    public const PRESETS = ['claims' => 'Сообщили об оплате', 'tried' => 'Не прошла по ссылке', 'payouts' => 'К выплате', 'unpaid' => 'Не оплачены', 'paid' => 'Оплачены', 'all' => 'Все'];
+    // «Выплатить» — наш ход (выплата менеджеру), «Ждём оплату» — их (06.10.2026: «к выплате» не говорило, кто кому).
+    public const PRESETS = ['claims' => 'Сообщили об оплате', 'tried' => 'Не прошла по ссылке', 'payouts' => 'Выплатить', 'unpaid' => 'Ждём оплату', 'paid' => 'Оплачены', 'all' => 'Все'];
 
     public const SORTS = ['due' => 'По сроку', 'fresh' => 'Сначала новые'];
 
@@ -49,21 +50,22 @@ class MoneyController
             return $detail->response();
         }
         $facets = Facets::for($request, 'crm-money',
-            Common::manager('(select buyer_id from deals where deals.id = billing_invoices.deal_id)'),
-            Common::vendor('(select o.vendor_id from deals d join offers o on o.id = d.offer_id where d.id = billing_invoices.deal_id)'),
+            // Менеджер — покупатель сделки, у гаражной — держатель машины; вендор — по ТС счёта.
+            Common::manager('coalesce((select buyer_id from deals where deals.id = billing_invoices.deal_id), (select g.manager_id from garage_cars g where g.invoice_id = billing_invoices.id or g.payout_invoice_id = billing_invoices.id limit 1))'),
+            Common::vendor('(select o.vendor_id from offers o where o.id = billing_invoices.offer_id)'),
             Facet::column('kind', 'Вид счёта', ['вида', 'вида', 'видов'], 'billing_invoices.kind')->enum(ChargeKind::class),
         );
         ListPrefs::sync($request, 'crm-money', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'claims';
         $qs = trim((string) $request->query('q'));
-        $q = Invoice::crmMoney()->with(['party', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer', 'claims', 'payLinks.attempts', 'charges'])
+        $q = Invoice::crmMoney()->with(['party', 'offer.brand', 'offer.model', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer', 'garageCar.manager', 'garagePayoutCar.manager', 'claims', 'payLinks.attempts', 'charges'])
             ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s
-                ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs)->orWhereHas('deal.offer', fn ($o) => $o->where('number', (int) $qs)))
+                ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs)->orWhereHas('offer', fn ($o) => $o->where('number', (int) $qs)))
                 ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', "%{$qs}%"))
                 ->orWhereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Service->value)->where('title', 'ilike', "%{$qs}%"))
                 ->orWhereHas('deal.buyer', fn ($u) => $u->where('name', 'ilike', "%{$qs}%"))
-                ->orWhereHas('deal.offer.brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%"))
-                ->orWhereHas('deal.offer.model', fn ($m) => $m->where('name', 'ilike', "%{$qs}%"))));
+                ->orWhereHas('offer.brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%"))
+                ->orWhereHas('offer.model', fn ($m) => $m->where('name', 'ilike', "%{$qs}%"))));
         // Лупа — по всем счетам, мимо пилюли и чипов.
         if ($qs === '') {
             match ($preset) {
@@ -84,6 +86,12 @@ class MoneyController
             'invoices' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset, 'sort' => $sort, 'q' => $qs, 'counts' => array_filter(self::counts($facets)), 'facets' => $facets,
         ]);
+    }
+
+    /** Откуда деньги в ручной оплате: зачёт вознаграждения ставит только система, руками его не выбрать. */
+    private static function sources(): array
+    {
+        return array_diff_key(PaymentSource::options(), [PaymentSource::Offset->value => true]);
     }
 
     /** Числа пилюль: заявки, к выплате, не оплачены. */
@@ -114,7 +122,7 @@ class MoneyController
     {
         $invoice->load(['party', 'charges', 'payments', 'claims.media', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer']);
 
-        return view('admin.money.detail', ['invoice' => $invoice, 'sources' => PaymentSource::options()]);
+        return view('admin.money.detail', ['invoice' => $invoice, 'sources' => self::sources()]);
     }
 
     /**
@@ -141,11 +149,11 @@ class MoneyController
         return redirect('/work/money?preset=all&peek='.$invoice->id)->with('toast', 'Счёт '.$invoice->label().' выставлен, ссылка готова');
     }
 
-    /** Взаиморасчёты по менеджерам: нам, мы должны, просрочено, заявки — строка ведёт в карточку на «Деньги». */
+    /** Расчёты с менеджерами: должен нам, должны ему, просрочил, сообщил об оплате — строка ведёт в карточку на «Деньги». */
     public function managers(Request $request)
     {
         $managers = User::withRole(Role::Manager)->orderBy('name')->get()
-            ->map(fn (User $u) => ['user' => $u, 'position' => (new ManagerLedger($u))->position()])
+            ->map(fn (User $u) => ['user' => $u, 'position' => (new ManagerLedger($u, staff: true))->position()])
             ->filter(fn ($m) => $m['position']['pay'] > 0 || $m['position']['payout'] > 0 || $m['position']['paid_out'] > 0 || $m['position']['claimed'] > 0)
             ->sortByDesc(fn ($m) => [$m['position']['overdue'] > 0, $m['position']['claimed'] > 0, $m['position']['pay'] + $m['position']['payout']])->values();
 
@@ -156,7 +164,7 @@ class MoneyController
     {
         $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer', 'deal.buyer', 'creator', 'media']);
 
-        return view('admin.money.invoice', ['invoice' => $invoice, 'sources' => PaymentSource::options(), 'file' => $invoice->getFirstMedia('file')]);
+        return view('admin.money.invoice', ['invoice' => $invoice, 'sources' => self::sources(), 'file' => $invoice->getFirstMedia('file')]);
     }
 
     public function pay(Request $request, Invoice $invoice, RecordPayment $record)

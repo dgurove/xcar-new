@@ -38,7 +38,7 @@
                 <dt class="text-sm" data-deal-invoice-target="first">Транспортное средство</dt><dd class="nums text-right" data-deal-invoice-target="firstSum"></dd>
                 <div class="contents" data-deal-invoice-target="fee"><dt class="text-sm">Агентское вознаграждение</dt><dd class="nums text-right">{{ Money::rub($fee) }}<span hidden data-deal-invoice-target="feeSum"></span></dd></div>
                 <dt class="font-medium">Итого</dt><dd class="nums text-right font-semibold" data-deal-invoice-target="total"></dd>
-                <div class="contents" data-deal-invoice-target="withheld" hidden><dt class="text-sm text-ink-muted">Удерживает сам, к оплате</dt><dd class="nums text-right text-ink-muted" data-deal-invoice-target="due"></dd></div>
+                <div class="contents" data-deal-invoice-target="withheld" hidden><dt class="text-sm text-ink-muted">Оставляет себе, к оплате</dt><dd class="nums text-right text-ink-muted" data-deal-invoice-target="due"></dd></div>
             </dl>
         </x-ui.card>
         <x-ui.field name="notes" label="Заметка в счёт" type="textarea"/>

@@ -56,13 +56,19 @@
                 </div>
             @endif
             @if ($prime && ! $isMe && $editable)
-                {{-- Кто платит по счёту ПРАЙМ: покупатель (вознаграждение выплатим) или сам менеджер за вычетом своего. --}}
+                {{-- Кто платит по счёту ПРАЙМ: покупатель (вознаграждение выплатим) или сам менеджер за вычетом своего. На
+                     вариантах — суммы (06.10.2026): без пояснений видно, что «я» платит меньше. Вознаграждение менеджеру
+                     открыто со счёта — до него суммы не пишем. --}}
+                @php
+                    $full = $deal->showsCommission() && $deal->amount ? (int) $deal->amount : null;
+                    $net = $full !== null && $deal->commission_mode === \App\Offers\CommissionMode::Withheld ? $full - min((int) $deal->commission, max(0, $full - (int) $deal->cost)) : $full;
+                @endphp
                 <form method="post" action="/deals/{{ $deal->id }}/contract" class="row flex-wrap" data-controller="autosubmit">
                     @csrf @method('put')
                     <span class="min-w-0 flex-1">Платит по счёту</span>
                     <span class="flex gap-1.5">
-                        <label class="choice"><input type="radio" name="payer" value="buyer" @checked(! $contract->managerPays()) data-action="change->autosubmit#submit"><span>покупатель</span></label>
-                        <label class="choice"><input type="radio" name="payer" value="manager" @checked($contract->managerPays()) data-action="change->autosubmit#submit"><span>я</span></label>
+                        <label class="choice"><input type="radio" name="payer" value="buyer" @checked(! $contract->managerPays()) data-action="change->autosubmit#submit"><span>покупатель@if ($full) <span class="nums">{{ \App\Support\Money::rub($full) }}</span>@endif</span></label>
+                        <label class="choice"><input type="radio" name="payer" value="manager" @checked($contract->managerPays()) data-action="change->autosubmit#submit"><span>я@if ($net) <span class="nums">{{ \App\Support\Money::rub($net) }}</span>@endif</span></label>
                     </span>
                 </form>
             @endif

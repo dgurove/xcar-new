@@ -6,8 +6,8 @@
     $needDetails = ! $party->filled() || ! $party->payoutReady();
     // Просрочка горит, пока о ней не сообщили оплатой.
     $overdue = $position['overdue'] > 0 && $position['claimed'] < $position['overdue'];
-    // Сумма вместо числа сделок в пилюлях «Оплатить» и «Ждут выплаты» — итогов над списком нет.
-    $counts = array_merge($counts, array_filter(['pay' => $position['pay'] > 0 ? Money::rub($position['pay']) : null, 'payout' => $position['payout'] > 0 ? Money::rub($position['payout']) : null]));
+    // Сумма вместо числа сделок в пилюлях «Оплатить» и «Ждут выплаты» — ровно сумма строк пилюли (`ManagerLedger::sums`).
+    $counts = array_merge($counts, array_filter(array_map(fn ($v) => $v > 0 ? Money::rub($v) : null, $sums)));
 @endphp
 <x-ui.cabinet title="Деньги">
     {{-- Узкая колонка — у строк; пилюли с суммами шире её, и на ПК «···» уходило бы за край ленты. --}}

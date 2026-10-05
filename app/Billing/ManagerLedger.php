@@ -19,15 +19,8 @@ final class ManagerLedger
     /** Все сделки-расчёты с раскладом: экран берёт и список пресета, и числа пилюль — считаем раз. */
     private ?Collection $all = null;
 
-    public function __construct(private User $manager) {}
-
-    /** Наши счета к оплате: его контрагенту или по его сделкам (платит его покупатель). */
-    public function toPay(): Collection
-    {
-        return Invoice::visibleToManager($this->manager)->where('direction', 'issued')->where('state', InvoiceState::Issued)
-            // Для положения нужны суммы, сроки и заявки — ТС и фото сделки не рисуются.
-            ->with(['claims'])->orderBy('due_at')->orderBy('id')->get();
-    }
+    /** staff — смотрит сотрудник: фразы третьим лицом («должен нам», «должны ему»), а не «Оплатите». */
+    public function __construct(private User $manager, private bool $staff = false) {}
 
     /** Все счета, что ему видны, — для истории и акта. */
     public function invoices(): Collection
@@ -50,7 +43,7 @@ final class ManagerLedger
                 ->where(fn ($q) => $q->where('state', DealState::Active)->orWhereHas('invoices'))
                 ->where(fn ($q) => $q->whereNull('garage_payer')->orWhereHas('invoices'))
                 ->with(['offer.brand', 'offer.model', 'offer.media', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
-            $this->all->each(fn (Deal $d) => $d->setAttribute('money', DealMoney::of($d)));
+            $this->all->each(fn (Deal $d) => $d->setAttribute('money', DealMoney::of($d, $this->staff)));
         }
         $deals = $this->all->filter(fn (Deal $d) => match ($preset) {
             'pay', 'payout', 'closed' => $d->money->preset === $preset,
@@ -69,7 +62,7 @@ final class ManagerLedger
         $this->cars ??= GarageCar::where('manager_id', $this->manager->id)
             ->where(fn ($q) => $q->whereNotNull('invoice_id')->orWhereNotNull('payout_invoice_id'))
             ->with(['offer.brand', 'offer.model', 'offer.media', 'invoice.claims', 'payoutInvoice'])->latest('stage_at')->get()
-            ->each(fn (GarageCar $c) => $c->setAttribute('money', DealMoney::garage($c, $this->manager)))
+            ->each(fn (GarageCar $c) => $c->setAttribute('money', DealMoney::garage($c, $this->manager, $this->staff)))
             ->filter(fn (GarageCar $c) => $c->money)->values();
 
         return $preset === 'all' ? $this->cars : $this->cars->filter(fn (GarageCar $c) => $c->money->preset === $preset)->values();
@@ -94,24 +87,33 @@ final class ManagerLedger
         return array_filter(['all' => $all->count()] + $all->countBy(fn ($r) => $r->money->preset)->all());
     }
 
+    /** Суммы пилюль «Оплатить» и «Ждут выплаты» — ровно то, что в их списке. */
+    public function sums(): array
+    {
+        $rows = $this->rows();
+
+        return ['pay' => round($rows->where('money.preset', 'pay')->sum('money.toUs'), 2), 'payout' => round($rows->where('money.preset', 'payout')->sum('money.toHim'), 2)];
+    }
+
     /**
-     * Положение: сколько платить нам и до какого числа, сколько причитается ему и до какого, есть ли просрочка.
+     * Положение: сколько он должен нам, сколько мы ему, есть ли просрочка. Сумма строк `rows()` —
+     * число над списком всегда сходится со списком (06.10.2026: «Оплатить 440 500», а строк на 81 000 — счёт гаража
+     * считался, а строкой не показывался).
      *
-     * @return array{pay: float, pay_due: ?CarbonInterface, overdue: float, claimed: float, payout: float, payout_due: ?CarbonInterface, paid_out: float}
+     * @return array{pay: float, pay_due: ?CarbonInterface, overdue: float, claimed: float, payout: float, paid_out: float}
      */
     public function position(): array
     {
-        $toPay = $this->toPay();
+        $rows = $this->rows();
         $fees = $this->manager->party_id ? Invoice::where('party_id', $this->manager->party_id)->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', '!=', InvoiceState::Void)->get() : collect();
-        $due = $fees->where('state', InvoiceState::Issued);
+        $sum = fn (string $key) => round($rows->sum(fn ($r) => $r->money->{$key}), 2);
 
         return [
-            'pay' => round($toPay->sum(fn (Invoice $i) => $i->remaining()), 2),
-            'pay_due' => $toPay->min('due_at'),
-            'overdue' => round($toPay->filter->isOverdue()->sum(fn (Invoice $i) => $i->remaining()), 2),
-            'claimed' => round($toPay->sum(fn (Invoice $i) => $i->claimed()), 2),
-            'payout' => round($due->sum(fn (Invoice $i) => $i->remaining()), 2),
-            'payout_due' => $due->min('due_at'),
+            'pay' => $sum('toUs'),
+            'pay_due' => $rows->filter(fn ($r) => $r->money->toUs > 0)->map(fn ($r) => $r->money->due)->filter()->min(),
+            'overdue' => $sum('overdue'),
+            'claimed' => $sum('claimed'),
+            'payout' => $sum('toHim'),
             'paid_out' => round($fees->sum('paid'), 2),
         ];
     }

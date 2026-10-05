@@ -14,7 +14,7 @@
     $sale = $live->first(fn ($i) => $i->kind === ChargeKind::Sale);
     $state = $deal->commissionState();
     $feeWord = match (true) {
-        $deal->paysSelection() || $deal->withholds() => 'удерживаете из оплаты',
+        $deal->paysSelection() || $deal->withholds() => $live->contains(fn ($i) => $i->state === InvoiceState::Issued) ? 'оставляете себе' : 'оставили себе',
         $state === CommissionState::Paid => 'выплачено',
         $state === CommissionState::Payable => 'к выплате',
         default => 'к выплате после оплаты счёта',

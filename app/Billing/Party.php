@@ -110,6 +110,9 @@ class Party extends Model
         if ($create) {
             $party->save();
             $user->update(['party_id' => $party->id]);
+            // Связь `party` у этого экземпляра уже загружена пустой — без неё второй вызов в той же операции (гаражная
+            // сделка: счёт за машину и доля) заводил второго контрагента тому же менеджеру (06.10.2026).
+            $user->setRelation('party', $party);
         }
 
         return $party;

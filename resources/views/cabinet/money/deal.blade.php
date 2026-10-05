@@ -26,7 +26,8 @@
         @php $byLink = $invoices->filter(fn ($i) => $i->openLink() || (\App\Billing\Acquiring\PayLink::eligible($i) && $i->remaining() - $i->claimed() > 0)); @endphp
         @if ($byLink->isNotEmpty())
             <div class="list">
-                @foreach ($byLink as $i)<x-billing.pay-status :invoice="$i"/>@endforeach
+                {{-- Строкой: сумма уже крупно сверху и в «Остатке» счёта — третий раз её не пишем. --}}
+                @foreach ($byLink as $i)<x-billing.pay-status :invoice="$i" compact/>@endforeach
             </div>
         @endif
 
@@ -58,12 +59,14 @@
             </section>
         @endforeach
 
-        @if ($shows)
+        {{-- Крупное число сверху уже про вознаграждение — секция нужна, только чтобы перечислить выплаты. --}}
+        @if ($shows && (! in_array($m->caption, ['Вам к выплате', 'Ваше вознаграждение'], true) || $fee?->payments->isNotEmpty()))
             <section>
-                <div class="list-cap"><span class="min-w-0 flex-1">Вознаграждение</span></div>
+                {{-- «Ваше» — чтобы не путать со строкой счёта ПРАЙМ «Агентское вознаграждение» на всю разницу. --}}
+                <div class="list-cap"><span class="min-w-0 flex-1">Ваше вознаграждение</span></div>
                 <div class="list">
                     <div class="row">
-                        <span class="min-w-0 flex-1">Агентское вознаграждение<span class="row-sub {{ match ($state) { CommissionState::Payable => '!text-accent-text', default => '' } }}">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}</span></span>
+                        <span class="min-w-0 flex-1 {{ $state === CommissionState::Payable ? 'text-accent-text' : '' }}">{{ $state->label() }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}</span>
                         <span class="nums shrink-0 font-semibold {{ $state === CommissionState::Payable ? 'text-accent-text' : '' }}">{{ Money::rub($deal->commission) }}</span>
                     </div>
                     @foreach ($fee?->payments ?? [] as $p)

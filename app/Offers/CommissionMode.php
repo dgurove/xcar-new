@@ -16,7 +16,7 @@ enum CommissionMode: string
     {
         return match ($this) {
             self::Payout => 'Выплачиваем',
-            self::Withheld => 'Удерживает сам',
+            self::Withheld => 'Оставляет себе',
         };
     }
 }

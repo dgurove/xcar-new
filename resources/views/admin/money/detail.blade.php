@@ -5,21 +5,22 @@
      способ, комиссия, зачислено ли на счёт, «Вернуть»), переплата по ссылке. --}}
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource;
-    $i = $invoice; $href = '/work/money/invoices/'.$i->id; $offer = $i->deal?->offer;
+    $i = $invoice; $href = '/work/money/invoices/'.$i->id; $offer = $i->deal?->offer ?? $i->offer; $manager = $i->manager();
     $attempts = \App\Billing\Acquiring\AcquiringPayment::whereIn('link_id', $i->payLinks()->pluck('id'))->where('status', 'succeeded')->with('payout')->get();
     $overpaid = $attempts->filter(fn ($a) => $a->overpaid() > 0);
     $issued = $i->state === InvoiceState::Issued;
     $voidable = $issued && ! $i->payments()->where('source', '!=', PaymentSource::Offset)->exists();
 @endphp
 <x-ui.detail>
-    <x-ui.row-card :href="$href" :title="$i->isOwed() ? 'Вознаграждение '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :photo="$offer?->mainPhoto()">
+    <x-ui.row-card :href="$href" :title="$i->isOwed() ? 'Выплата менеджеру '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :photo="$offer?->mainPhoto()">
         <x-slot:marks>
-            <span class="tag nums font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}{{ $i->isPartial() ? ' из '.Money::rub($i->total) : '' }}</span>
+            {{-- Кто кому — словом у самой суммы (06.10.2026). --}}
+            <span class="tag nums font-semibold">{{ $i->state === InvoiceState::Issued ? ($i->isOwed() ? 'должны ему ' : 'должен нам ') : '' }}{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}{{ $i->isPartial() ? ' из '.Money::rub($i->total) : '' }}</span>
             <x-billing.light :invoice="$i"/>
-            <span class="tag nums">{{ $i->isOwed() ? 'обязательство' : $i->label() }} от {{ $i->issued_at->translatedFormat('j M') }}</span>
+            <span class="tag nums">{{ $i->isOwed() ? 'выплата' : $i->label() }} от {{ $i->issued_at->translatedFormat('j M') }}</span>
             <span class="tag">{{ $i->kind->label() }}</span>
-            @if ($i->deal?->buyer)<x-ui.person :user="$i->deal->buyer"/>@endif
-            @if ($offer)<a href="/work/deals/{{ $i->deal_id }}" class="tag">{{ $offer->titleWithYear() }}</a>@endif
+            @if ($manager)<x-ui.person :user="$manager"/>@endif
+            @if ($offer)<a href="{{ $i->deal_id ? '/work/deals/'.$i->deal_id : '/work/garage?preset=all&peek='.$offer->number }}" class="tag">{{ $offer->titleWithYear() }}</a>@endif
             @if ($i->isOwed() && ! $i->party->payoutReady())<span class="tag text-urgent">реквизитов нет</span>@endif
         </x-slot:marks>
         <x-slot:actions>
@@ -36,7 +37,7 @@
                 <div class="contents" data-controller="menu">
                     <button type="button" class="btn btn-s btn-quiet btn-round" data-action="menu#toggle" aria-haspopup="menu" aria-controls="invoice-more-{{ $i->id }}" aria-label="Ещё"><x-ui.icon name="more" class="size-5"/></button>
                     <div id="invoice-more-{{ $i->id }}" class="menu" popover data-menu-target="list" role="menu">
-                        <form method="post" action="{{ $href }}/void" data-turbo-confirm="Аннулировать {{ $i->isOwed() ? 'обязательство' : 'счёт' }}?">@csrf<button class="menu-item w-full text-danger" role="menuitem" data-action="menu#close">Аннулировать</button></form>
+                        <form method="post" action="{{ $href }}/void" data-turbo-confirm="Аннулировать {{ $i->isOwed() ? 'выплату' : 'счёт' }}?">@csrf<button class="menu-item w-full text-danger" role="menuitem" data-action="menu#close">Аннулировать</button></form>
                     </div>
                 </div>
             @endif

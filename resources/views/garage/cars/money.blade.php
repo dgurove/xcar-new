@@ -10,13 +10,15 @@
     $buyerPays = $car->invoice_to === 'buyer';
     [$label, $value, $tone] = match (true) {
         ! $car->isSold() => $staff ? ['Вложено в ТС', $s['invested'], ''] : ['Расходы', $s['manager_costs'] + $s['our_costs'], ''],
-        $unpaid && $current->isOwed() => [$staff ? 'Отдаём менеджеру' : 'Вам к выплате', $current->remaining(), 'text-accent-text'],
+        $unpaid && $current->isOwed() => [$staff ? 'Должны менеджеру' : 'Вам к выплате', $current->remaining(), 'text-accent-text'],
         $unpaid && $buyerPays => ['Покупатель платит', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
-        $unpaid => [$staff ? 'Менеджер отдаёт нам' : 'Отдать нам', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
+        $unpaid => [$staff ? 'Менеджер должен нам' : 'Отдать нам', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
         $car->state === \App\Garage\CarState::Sold && $staff => ['Прибыль', $s['profit'], $s['profit'] < 0 ? 'text-danger' : ''],
         default => ['Продана за', $car->sold_price, ''],
     };
     $row = 'row justify-between';
+    // Состояние выплаты менеджеру — словом выплаты, а не счёта («Выставлен» про наш долг ему не говорит ничего).
+    $payoutWord = fn ($i) => $i->state === \App\Billing\InvoiceState::Paid ? 'выплачено' : 'ждёт выплаты'.($i->remaining() > 0 ? ' до '.$i->due_at->translatedFormat('j M') : '');
 @endphp
 <div class="list">
     <div class="row flex-col items-start gap-1 py-4">
@@ -55,19 +57,20 @@
     @if ($car->buyer_name || $car->buyer_phone)
         <div class="{{ $row }}"><span>Покупатель</span><span class="min-w-0 truncate text-right">{{ $car->buyer_name }}@if ($car->buyer_phone) <a href="tel:{{ $car->buyer_phone }}" class="text-accent-text nums">{{ $car->buyer_phone }}</a>@endif</span></div>
     @endif
-    @if ($invoice)
+    {{-- Выплата, что уже крупно сверху, второй строкой не повторяется. --}}
+    @if ($invoice && ! ($invoice->isOwed() && $unpaid && $invoice->is($current)))
         @php $pdf = $invoice->getFirstMedia('file'); @endphp
         <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="/garage/cars/{{ $car->offer->number }}/invoice/pdf" data-doc="pdf" data-doc-name="Счёт {{ $invoice?->label() }}" @endif class="{{ $row }}">
             <span class="min-w-0">
-                <span class="block">{{ $invoice->isOwed() ? 'К выплате менеджеру' : 'Счёт '.$invoice->label() }}@if ($buyerPays) <span class="text-ink-muted">{{ $invoice->party?->name }}</span>@endif</span>
-                <span class="row-sub">{{ $invoice->state->label() }}@if ($invoice->remaining() > 0), до {{ $invoice->due_at->translatedFormat('j M') }}@endif</span>
+                <span class="block">{{ $invoice->isOwed() ? ($staff ? 'Выплата менеджеру' : 'Выплата вам') : 'Счёт '.$invoice->label() }}@if ($buyerPays) <span class="text-ink-muted">{{ $invoice->party?->name }}</span>@endif</span>
+                <span class="row-sub">@if ($invoice->isOwed()){{ $payoutWord($invoice) }}@else{{ $invoice->state->label() }}@if ($invoice->remaining() > 0), до {{ $invoice->due_at->translatedFormat('j M') }}@endif @endif</span>
             </span>
             @if ($pdf)<span class="flex shrink-0 items-center gap-1 text-accent-text"><x-ui.icon name="file" class="size-4"/>PDF</span>@endif
         </{{ $pdf ? 'a' : 'div' }}>
     @endif
-    @if ($car->payoutInvoice)
+    @if ($car->payoutInvoice && ! ($unpaid && $car->payoutInvoice->is($current)))
         <div class="{{ $row }}">
-            <span class="min-w-0"><span class="block">{{ $staff ? 'Выплата менеджеру' : 'Вам к выплате' }}</span><span class="row-sub">{{ $car->payoutInvoice->state->label() }}</span></span>
+            <span class="min-w-0"><span class="block">{{ $staff ? 'Выплата менеджеру' : 'Выплата вам' }}</span><span class="row-sub">{{ $payoutWord($car->payoutInvoice) }}</span></span>
             <span class="nums">{{ Money::exact($car->payoutInvoice->total) }}</span>
         </div>
     @endif

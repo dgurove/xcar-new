@@ -1,4 +1,4 @@
-{{-- Оплаты (раздел CRM, бывшие «Деньги»; адрес прежний): по сделкам и разовые оплаты услуг по ссылке («+» — только админу); пресеты, сортировка и поиск в тулбаре, «Взаиморасчёты по менеджерам» строкой над списком,
+{{-- Оплаты (раздел CRM, бывшие «Деньги»; адрес прежний): по сделкам и разовые оплаты услуг по ссылке («+» — только админу); пресеты, сортировка и поиск в тулбаре, «Расчёты с менеджерами» строкой над списком,
      сами счета и вознаграждения — только таблицей с карточкам; действия в карточке, в строках их нет. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
 <x-ui.shell title="Оплаты" :heading="false" :detail="$detail">
@@ -12,7 +12,7 @@
         @endif
     </x-ui.toolbar>
     <div class="list mt-4">
-        <a href="/work/money/managers" class="row"><span class="min-w-0 flex-1">Взаиморасчёты по менеджерам</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
+        <a href="/work/money/managers" class="row"><span class="min-w-0 flex-1">Расчёты с менеджерами</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
         @php $unmatched = \App\Billing\Bank\Transaction::where('state', \App\Billing\Bank\Transaction::UNMATCHED)->count(); @endphp
         <a href="/work/money/bank" class="row"><span class="min-w-0 flex-1">Поступления</span>@if ($unmatched)<span class="badge nums">{{ $unmatched }}</span>@endif<x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
     </div>
@@ -21,7 +21,7 @@
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : match ($preset) { 'claims' => 'Никто об оплате не сообщал', 'payouts' => 'Выплачивать нечего', default => 'Счетов нет' } }}</x-ui.empty>
     @else
         <x-ui.table id="invoices" class="mt-6" :view="$view">
-            <x-slot:head><tr><th class="grow">Менеджер</th><th class="cell-dim hidden sm:table-cell">№</th><th class="cell-dim col-detail-hide hidden lg:table-cell">ТС</th><th class="hidden sm:table-cell">Срок</th><th class="num">Сумма</th><th class="num hidden sm:table-cell">Остаток</th></tr></x-slot:head>
+            <x-slot:head><tr><th class="grow">Кто</th><th class="cell-dim hidden sm:table-cell">№</th><th class="cell-dim col-detail-hide hidden lg:table-cell">ТС</th><th class="hidden sm:table-cell">Срок</th><th class="num">Сумма</th><th class="num hidden sm:table-cell">Остаток</th></tr></x-slot:head>
             @foreach ($invoices as $i)<x-money.table-row :invoice="$i"/>@endforeach
         </x-ui.table>
     @endif

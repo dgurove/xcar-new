@@ -24,7 +24,11 @@
     if ($link) {
         $link->loadMissing('attempts');
         [$state, $tone] = $link->stateLine();
-        $who = $link->payer_name ?: $i->party->name;
+        // Менеджер платит сам — «платите вы», а не своё имя (06.10.2026).
+        // Ссылка, заведённая вместе со счётом, — на имя плательщика счёта: если это он сам, тоже «вы».
+        $self = ! $staff && ($link->payer_kind === \App\Billing\Acquiring\PayerKind::Self
+            || (auth()->user()?->party_id && $i->party_id === auth()->user()->party_id && in_array($link->payer_name, [null, '', $i->party->name], true)));
+        $pays = $self ? 'платите вы' : 'платит '.($link->payer_name ?: $i->party->name);
         $offer = $i->deal?->offer ?? \App\Garage\Car::ofInvoice($i)?->offer;
         $text = 'Оплата по счёту '.$i->label().($offer ? ' за '.$offer->titleWithYear() : '').': '.Money::exact($link->amount).'. Картой, СБП или SberPay по ссылке:';
     }
@@ -37,7 +41,7 @@
                 <input type="hidden" value="{{ $text }}" data-copy-target="message">
                 <button type="button" class="min-w-0 flex-1 text-left" data-action="sheet#open">
                     <span class="block">Ссылка на оплату@if ($other) <span class="nums">на {{ Money::rub($link->amount) }}</span>@endif</span>
-                    <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">платит {{ $who }}, {{ preg_replace('/^ждём оплату, /u', '', $state) }}</span>
+                    <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $pays }}, {{ preg_replace('/^ждём оплату, /u', '', $state) }}</span>
                 </button>
                 <button type="button" class="btn btn-quiet btn-round shrink-0" data-action="copy#copy" aria-label="Скопировать ссылку"><x-ui.icon name="copy" class="size-5"/></button>
                 <button type="button" class="btn btn-accent btn-round shrink-0" data-action="copy#share" data-copy-target="share" aria-label="Отправить ссылку"><x-ui.icon name="share" class="size-5"/></button>
@@ -46,7 +50,7 @@
         <button type="button" class="row money-line w-full text-left" data-action="sheet#open">
             <x-ui.row-icon name="qr" :tone="$tone === 'danger' ? 'danger' : 'urgent'" size="s"/>
             <span class="min-w-0 flex-1">
-                <span class="block">Оплата по ссылке<span class="text-ink-muted">, платит {{ $who }}</span></span>
+                <span class="block">Оплата по ссылке<span class="text-ink-muted">, {{ $pays }}</span></span>
                 <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $state }}</span>
             </span>
             <span class="nums shrink-0 text-urgent">{{ Money::rub($link->amount) }}</span>
@@ -62,7 +66,7 @@
             <div class="flex flex-col gap-4">
                 <div class="money-hero">
                     <span class="nums text-[32px] font-semibold leading-tight">{{ Money::rub($link->amount) }}</span>
-                    <span class="text-ink-muted">платит {{ $who }}@if ($link->payer_email), чек на {{ $link->payer_email }}@endif</span>
+                    <span class="text-ink-muted">{{ $pays }}@if ($link->payer_email), чек на {{ $link->payer_email }}@endif</span>
                 </div>
                 <div class="mx-auto w-52 rounded-(--radius-l) bg-white p-3 text-black">{!! \App\Support\Qr::svg($link->url()) !!}</div>
                 <x-ui.copy-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :message="$text"/>

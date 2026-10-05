@@ -152,7 +152,9 @@ class Deal extends Model
     /** Обязательство перед менеджером — вознаграждение к выплате. */
     public function agentFee(): HasOne
     {
-        return $this->hasOne(Invoice::class)->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', '!=', InvoiceState::Void)->latestOfMany();
+        // Условия — внутри ofMany: снаружи они ложатся после подзапроса «последний счёт сделки», и счёт за хранение,
+        // выставленный позже, прятал вознаграждение — `IssueAgentFee` начислял его заново (06.10.2026).
+        return $this->hasOne(Invoice::class)->ofMany(['id' => 'max'], fn ($q) => $q->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', '!=', InvoiceState::Void));
     }
 
     /** Машина в гараже по этой сделке: пока ждёт страховую, маршрут сделки и есть её этап. */

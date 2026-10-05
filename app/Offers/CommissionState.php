@@ -18,7 +18,7 @@ enum CommissionState: string
             self::Awaiting => 'Ждёт оплаты счёта',
             self::Payable => 'К выплате',
             self::Paid => 'Выплачено',
-            self::Withheld => 'Удержано',
+            self::Withheld => 'Оставили себе',
         };
     }
 

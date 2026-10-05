@@ -99,7 +99,7 @@
 
             @if ($stepInvoices->isNotEmpty())
                 <div class="list mt-5">
-                    @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])<x-billing.pay-status :invoice="$i"/>@endforeach
+                    @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])<x-billing.pay-status :invoice="$i" compact/>@endforeach
                 </div>
             @elseif ($payStep && $unpaid->isNotEmpty())
                 {{-- Ссылка на оплату — тут, с «Отправить»; ждёт подтверждения — словом. --}}

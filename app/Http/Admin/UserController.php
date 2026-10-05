@@ -163,14 +163,15 @@ class UserController
         $chat = $request->integer('chat') ? Chat::find($request->integer('chat')) : null;
 
         $pill = $user->isManager() && $request->query('pill') === 'money' ? 'money' : 'overview';
-        $ledger = $pill === 'money' ? new ManagerLedger($user) : null;
+        $ledger = $pill === 'money' ? new ManagerLedger($user, staff: true) : null;
 
         return view('admin.users.show', [
             'user' => $user,
             'pill' => $pill,
             'position' => $ledger?->position(),
             'party' => $pill === 'money' ? Party::forUser($user, false) : null,
-            'moneyDeals' => $ledger?->deals() ?? collect(),
+            // Сделки и машины гаража — те же строки, из которых сложены суммы в заголовке.
+            'moneyDeals' => $ledger?->rows() ?? collect(),
             'back' => $chat ? ['Чат', (Surface::current() === Surface::Crm ? '/work/chats/' : '/account/chats/').$chat->id] : null,
             'chats' => $chats,
             'deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->with(['offer.brand', 'offer.model', 'offer.media', 'buyer'])->latest()->get() : collect(),
