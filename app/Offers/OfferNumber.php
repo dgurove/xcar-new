@@ -18,14 +18,39 @@ final class OfferNumber
         return (int) (now()->format('ymd').DB::selectOne("SELECT nextval('offer_numbers') AS n")->n);
     }
 
+    /** Номер с датой (2610041229), а не временный порядковый черновика. */
+    public static function isPublic(Offer $offer): bool
+    {
+        return $offer->number >= 1_000_000_000;
+    }
+
     /** Выдать публичный номер, если его ещё не было; прежний — в псевдонимы. Вызывать под замком строки. */
     public static function issue(Offer $offer): void
     {
-        if ($offer->published_at !== null || $offer->is_demo) {
+        if ($offer->published_at !== null || $offer->is_demo || self::isPublic($offer)) {
             return;
         }
         DB::table('offer_number_aliases')->insertOrIgnore(['number' => $offer->number, 'offer_id' => $offer->id]);
         $offer->number = self::next();
+    }
+
+    /**
+     * Черновиком поделились (05.10.2026, владелец: «верни публичный айди с датой») — номер с датой выдаётся сразу, а
+     * не при публикации: в тексте и PDF он тот же, что будет на сайте, публикация его уже не меняет (`issue`).
+     */
+    public static function reserve(Offer $offer): void
+    {
+        if (self::isPublic($offer) || $offer->is_demo) {
+            return;
+        }
+        DB::transaction(function () use ($offer) {
+            $fresh = Offer::whereKey($offer->id)->lockForUpdate()->first();
+            if ($fresh && ! self::isPublic($fresh)) {
+                DB::table('offer_number_aliases')->insertOrIgnore(['number' => $fresh->number, 'offer_id' => $fresh->id]);
+                Offer::whereKey($fresh->id)->update(['number' => self::next()]);
+            }
+            $offer->number = Offer::whereKey($offer->id)->value('number');
+        });
     }
 
     /** Предложение по номеру — нынешнему или прежнему. */

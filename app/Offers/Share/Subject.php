@@ -27,8 +27,14 @@ final class Subject
 
     public static function offer(Offer $offer): self
     {
-        // Номер черновика временный (`OfferNumber`) — ни в знаке PDF, ни в имени файла его нет.
-        return new self($offer, $offer->published_at ? (string) $offer->number : '', $offer->published_at ?? $offer->created_at, $offer->titleWithYear(), "/offers/{$offer->number}/pdf");
+        // Оценённым черновиком делятся — номер с датой выдаётся сразу (`OfferNumber::reserve`): в тексте, знаке PDF и имени
+        // файла он тот же, что будет на сайте. Без цены — нет: кнопка рисуется в каждой карточке, мусорный черновик из
+        // письма боевого номера не съедает, а временный в текст не идёт.
+        if ($offer->asking_price) {
+            \App\Offers\OfferNumber::reserve($offer);
+        }
+
+        return new self($offer, \App\Offers\OfferNumber::isPublic($offer) ? (string) $offer->number : '', $offer->published_at ?? $offer->created_at, $offer->titleWithYear(), "/offers/{$offer->number}/pdf");
     }
 
     public static function car(Car $car): self

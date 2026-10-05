@@ -3,6 +3,7 @@
 namespace App\Offers\Share;
 
 use App\Offers\Offer;
+use App\Offers\OfferNumber;
 use App\Offers\PriceView;
 use App\Purchases\Car;
 use App\Support\Surface;
@@ -23,8 +24,8 @@ final class Caption
         // Цены — последней строкой: клиент собирает отмеченные сверху вниз, цены склеивает стрелкой «от → до» в конце.
         // VIN — как этому человеку на сайте (`Offer::vinFor`): скрытый уходит маской.
         $rows = [
-            // У черновика номер временный (`OfferNumber`): настоящий выдаётся при публикации — в тексте его ещё нет.
-            ['number', 'Номер', $offer->published_at ? '#'.$offer->number : null, true],
+            // Номер с датой — первой строкой с решёткой (`#2610041229`); черновику его выдаёт `Subject::offer` при шеринге.
+            ['number', 'Номер', OfferNumber::isPublic($offer) ? '#'.$offer->number : null, true],
             ['dl', 'ДЛ', $offer->leaseRef() ? 'ДЛ '.$offer->leaseRef() : null, true],
             ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
             ['city', 'Город', $offer->settlement?->title(), true],
@@ -41,7 +42,7 @@ final class Caption
             // сотруднику заявленная та же, что на сайте (пустая — закупочная вверх до тысячи).
             ['publish_price', 'Заявленная', $staff ? $money($offer->declaredPrice()) : ($price->visible ? $money($price->declared) : null), false],
             ['price', 'Цена', $price->visible ? $money($offer->asking_price) : null, true],
-            // Ссылка на машину на сайте — последней строкой; у черновика своего адреса ещё нет (номер при публикации).
+            // Ссылка на машину на сайте — последней строкой, по умолчанию выключена.
             ['link', 'Ссылка', self::link($offer), false],
         ];
 
@@ -73,7 +74,7 @@ final class Caption
     /** Адрес предложения на сайте — для текста и «Скопировать ссылку». */
     public static function link(Offer $offer): ?string
     {
-        return $offer->published_at ? Surface::Site->url("/offers/{$offer->number}") : null;
+        return OfferNumber::isPublic($offer) ? Surface::Site->url("/offers/{$offer->number}") : null;
     }
 
     private static function rows(array $rows): array
