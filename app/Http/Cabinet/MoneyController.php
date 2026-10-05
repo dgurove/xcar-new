@@ -83,8 +83,10 @@ class MoneyController
         abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed() && $invoice->kind !== ChargeKind::Reward, 404);
 
         [$toast, $link] = $choice($request, $invoice, $me);
+        // «Оплатить» есть и в задаче сделки — ответ туда, откуда платили.
+        $from = parse_url(url()->previous(), PHP_URL_PATH) === '/deals/'.$deal->id ? '/deals/'.$deal->id : '/account/money/deals/'.$deal->id;
 
-        return redirect('/account/money/deals/'.$deal->id)->with('toast', $toast)->with('open-link', $link?->id);
+        return redirect($from)->with('toast', $toast)->with('open-link', $link?->id);
     }
 
     /**

@@ -1,18 +1,23 @@
 {{-- Задача сделки — одна карточка на страницу сделки и карточку машины в гараже, пока она ждёт страховую (гаражная
      сделка идёт по тому же маршруту). Данные — `Cabinet\DealController::stepData`. Порядок как у задачи в приложении
      (05.10.2026, владелец): что сделать → где и у кого → ответы страховой (с кем связаться, что прислали) → действия.
-     Счетов здесь нет — они в «Расчёте» справа; гараж, где «Расчёта» нет, передаёт `withInvoices`. Путь — `cabinet.deals.path`. --}}
+     Пояснений нет (владелец: «зачем эссе в интерфейсе»): заголовок просьбы и сам инструмент — на шаге оплаты счёт со
+     ссылкой и «Оплатить» шторкой прямо здесь; тексты этапов маршрута менеджеру не рисуются, они для уведомлений.
+     Вне оплаты счетов здесь нет — они в «Расчёте»; гараж, где «Расчёта» нет, передаёт `withInvoices`. Путь —
+     `cabinet.deals.path`. --}}
 @php
     use App\Offers\DealState;
     use App\Workflow\Asks;
-    // Шаг «оплатите счёт»: платёжка живёт у счёта в «Деньгах», а не у просьбы — кнопка ведёт туда.
+    // Шаг «оплатите счёт»: оплата тут же — счёт, ссылка, «Оплатить» шторкой (`x-billing.pay-sheet`).
     $payStep = $requirement && $position?->stage->isPayStep();
     $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
     // Оплата, а счёта ещё нет: ход наш (`Position::awaitsInvoice`), просить оплатить нечего — счёт готовим.
     $noInvoice = (bool) $position?->awaitsInvoice();
     // ПРАЙМ без покупателя — ход менеджера: счёт встанет сам, как только он укажет, кому (`Deal::invoiceGap`).
     $needsBuyer = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() && $deal->invoiceGap() === 'buyer';
+    // Строки счетов — только в гараже, где «Расчёта» нет; на странице сделки счёт в «Расчёте», а здесь — сама оплата.
     $stepInvoices = ($withInvoices ?? false) ? $unpaid : collect();
+    $claimable = $payStep ? $unpaid->filter(fn ($i) => $i->kind !== \App\Billing\ChargeKind::Reward && $i->remaining() - $i->claimed() > 0)->values() : collect();
     // Вернули на оплату («Оплата не поступила») — менеджер видит почему, пока не сообщил об оплате заново.
     $rejected = $payStep && $unpaid->every(fn ($i) => $i->claimed() == 0)
         ? \App\Billing\Payment::whereIn('invoice_id', $unpaid->pluck('id'))->where('state', \App\Billing\PaymentState::Rejected)->latest('id')->first() : null;
@@ -40,19 +45,15 @@
 
             @if ($needsBuyer)
                 <h3 class="mt-5 text-lg">Укажите покупателя</h3>
-                <p class="mt-1 text-ink-muted">Счёт и договор встанут сами</p>
             @elseif ($requirement)
                 <h3 class="mt-5 text-lg">{{ $requirement->title }}</h3>
                 @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ $rejected->paid_at->translatedFormat('j M') }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
-                @if ($requirement->text)<p class="mt-1 whitespace-pre-line text-ink-muted">{{ $requirement->text }}</p>@endif
                 {{-- Срок просьбы — тот же, что часы в шапке шага: второй раз его не пишем. --}}
                 @if ($requirement->due_at && ! ($position->deadline_at && abs($position->deadline_at->diffInMinutes($requirement->due_at)) < 1))
                     <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">до {{ $requirement->due_at->translatedFormat('j M, H:i') }}, <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-done-value="срок вышел"></span></p>
                 @endif
             @elseif ($noInvoice)
                 <p class="mt-3 font-medium">Готовим счёт</p>
-            @elseif ($about = $position->stage->managerText())
-                <p class="mt-3 whitespace-pre-line text-ink-muted">{{ $about }}</p>
             @endif
 
             @if ($showHandover)@include('cabinet.deals.handover')@endif
@@ -71,6 +72,11 @@
                 <div class="list mt-5">
                     @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])<x-billing.pay-status :invoice="$i"/>@endforeach
                 </div>
+            @elseif ($payStep && $unpaid->isNotEmpty())
+                {{-- Ссылка на оплату — тут, с «Отправить»; ждёт подтверждения — словом. --}}
+                @php $links = $unpaid->filter(fn ($i) => $i->openLink() || \App\Billing\Acquiring\PayLink::eligible($i)); @endphp
+                @if ($links->isNotEmpty())<div class="list mt-5">@foreach ($links as $i)<x-billing.pay-status :invoice="$i"/>@endforeach</div>@endif
+                @if ($claimable->isEmpty())<p class="mt-4 font-medium">Оплата ждёт подтверждения</p>@endif
             @endif
 
             {{-- Действия — после всего, что нужно прочитать. --}}
@@ -79,9 +85,14 @@
             @endif
             @if ($requirement && ! $needsBuyer)
                 @if ($payStep && $unpaid->isNotEmpty())
-                    <div class="mt-5 flex flex-wrap gap-2">
-                        @foreach ($unpaid as $i)<x-ui.button :href="'/account/money/deals/'.$deal->id" size="s">Оплатить{{ $unpaid->count() > 1 ? ' '.$i->label() : '' }}</x-ui.button>@endforeach
-                    </div>
+                    @if ($claimable->isNotEmpty())
+                        {{-- Та же шторка, что в «Деньгах»: ссылкой (кто платит), по счёту с платёжкой, наличными. Ответ — сюда же. --}}
+                        <div data-controller="sheet" class="mt-5">
+                            <x-ui.button type="button" block data-action="sheet#open">Оплатить{!! $claimable->count() === 1 ? ' <span class="nums">'.\App\Support\Money::rub($claimable->first()->remaining() - $claimable->first()->claimed()).'</span>' : '' !!}</x-ui.button>
+                            <x-billing.pay-sheet :invoices="$claimable" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf"
+                                :buyers="auth()->user()->buyers()->with(\App\Users\User::withAvatar())->orderBy('name')->get()" :open="$errors->any() && old('way')"/>
+                        </div>
+                    @endif
                 @else
                     @if ($requirement->asks === Asks::Document)
                         <div class="mt-5" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files">
@@ -119,7 +130,7 @@
             @endif
         </div>
     @elseif ($deal->state === DealState::Active)
-        <x-ui.empty>Сделка пока не в работе. Мы напишем, когда что-то изменится</x-ui.empty>
+        <x-ui.empty>Сделка ещё не началась</x-ui.empty>
     @endif
 
     {{-- Нет текущего шага (сделка закрыта или ещё не в работе) — ответы своей карточкой. --}}

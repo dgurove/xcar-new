@@ -69,5 +69,6 @@
             </div>
         @endif
     </div>
-    @if ($selection && $selection->state === InvoiceState::Issued)<div class="mt-3"><x-billing.pay-status :invoice="$selection"/></div>@endif
+    {{-- На шаге оплаты ссылка стоит в задаче вместе с «Оплатить» — второй раз её здесь нет. --}}
+    @if ($selection && $selection->state === InvoiceState::Issued && ! ($requirement && $position?->stage->isPayStep()))<div class="mt-3"><x-billing.pay-status :invoice="$selection"/></div>@endif
 </div>

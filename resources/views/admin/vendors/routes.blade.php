@@ -50,7 +50,7 @@
                         <form method="post" action="/settings/workflows/blocks/{{ $block->id }}" class="flex flex-col gap-4">
                             @csrf @method('put')
                             <x-ui.field name="name" label="Название для менеджера" :value="$block->name" required/>
-                            <x-ui.field name="text" label="Что менеджер читает на этом шаге" type="textarea" :value="$block->text"/>
+                            <x-ui.field name="text" label="Текст уведомления" type="textarea" :value="$block->text"/>
                             <x-ui.button block>Сохранить</x-ui.button>
                         </form>
                         @if ($block->stages->isEmpty())
@@ -102,7 +102,7 @@
             <form method="post" action="/settings/workflows/{{ $w->id }}/blocks" class="flex flex-col gap-4">
                 @csrf
                 <x-ui.field name="name" label="Название для менеджера" required autofocus/>
-                <x-ui.field name="text" label="Что менеджер читает на этом шаге" type="textarea"/>
+                <x-ui.field name="text" label="Текст уведомления" type="textarea"/>
                 <x-ui.button block>Добавить</x-ui.button>
             </form>
         </x-ui.sheet>

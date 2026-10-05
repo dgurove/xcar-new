@@ -46,7 +46,7 @@
         <x-ui.card title="Просьба к менеджеру" data-controller="repeater">
             <div class="grid gap-4 sm:grid-cols-2">
                 <x-ui.field name="ask_title" label="Заголовок" :value="$stage->ask_title" placeholder="Подтвердите сделку" class="sm:col-span-2"/>
-                <x-ui.field name="ask_text" label="Текст" type="textarea" :value="$stage->ask_text" class="sm:col-span-2"/>
+                <x-ui.field name="ask_text" label="Текст уведомления" type="textarea" :value="$stage->ask_text" class="sm:col-span-2"/>
                 <x-ui.field name="asks" label="Что приложить" :options="Asks::options()" :value="$stage->asks?->value ?? 'nothing'"/>
             </div>
             <div class="mt-4 flex flex-col gap-2" data-repeater-target="list">
