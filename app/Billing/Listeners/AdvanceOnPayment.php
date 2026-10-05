@@ -35,7 +35,7 @@ final class AdvanceOnPayment
             return;
         }
         $position = $offer->position(Track::Sale);
-        $slip = $position?->stage->exitsFor(Actor::Manager, $deal)->first(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
+        $slip = $position?->stage->payExit($deal);
         if ($slip) {
             $deal->openRequirement()->where('stage_id', $position->stage_id)->first()?->update(['done_at' => now(), 'answer' => ['exit' => $slip->label, 'fields' => []]]);
             ($this->take)($offer, $slip, Actor::Manager, $e->by);

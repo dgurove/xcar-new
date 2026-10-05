@@ -57,4 +57,21 @@ class Requirement extends Model implements HasMedia
     {
         return $this->done_at === null;
     }
+
+    /** Просьба менеджеру сделки на этапе, со сроком позиции. Зовут вход в этап и выставленный счёт на этапе оплаты. */
+    public static function askFor(Deal $deal, Stage $stage, Position $position): self
+    {
+        return self::create([
+            'offer_id' => $deal->offer_id,
+            'deal_id' => $deal->id,
+            'stage_id' => $stage->id,
+            'user_id' => $deal->buyer_id,
+            'title' => $stage->managerTitle(),
+            // Гаражная сделка цены не называла: «по Вашей цене» из общего текста ей не про неё.
+            'text' => $deal->isGarage() ? preg_replace('/ по Вашей цене/u', '', (string) $stage->managerText()) ?: null : $stage->managerText(),
+            'asks' => $stage->asks,
+            'fields' => $stage->fields ?? [],
+            'due_at' => $position->deadline_at,
+        ]);
+    }
 }

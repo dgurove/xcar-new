@@ -15,7 +15,7 @@
     // Этап «Проверка оплаты» сам показывает заявку менеджера с «Поступило» — здесь она только строкой, без второй пары кнопок.
     $inStep = $deal->isActive() && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Staff, $deal)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата получена'));
     // Первый счёт на этапе оплаты предлагает сам шаг пути — здесь его второй раз не ставим.
-    $stepInvoices = $deal->isActive() && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Manager, $deal)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
+    $stepInvoices = $deal->isActive() && $offer->position()?->stage->payExit($deal);
 @endphp
 <x-ui.card title="Деньги" {{ $attributes }}>
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">

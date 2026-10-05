@@ -6,22 +6,19 @@
     // Конечный этап (выходов нет — «Сделка закрыта») пройден: в пути он галочкой, как в CRM.
     $currentBlock = $position?->stage->exits->isNotEmpty() ? $position->stage->block_id : null;
     // Шаг «оплатите счёт»: платёжка живёт у счёта в «Деньгах», а не у просьбы — кнопка ведёт туда.
-    $payStep = $requirement && $exits->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
+    $payStep = $requirement && $position?->stage->isPayStep();
     $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
-    // Оплата, а счёта ещё нет: просить оплатить и приложить платёжку нечего — счёт готовим.
-    $noInvoice = $payStep && $invoices->reject(fn ($i) => $i->isOwed())->isEmpty();
+    // Оплата, а счёта ещё нет: ход наш (`Position::awaitsInvoice`), просить оплатить нечего — счёт готовим.
+    $noInvoice = (bool) $position?->awaitsInvoice();
     // В шаге — счета, которые ещё ждут оплаты; оплаченные и аннулированные — отдельной карточкой «Счета» ниже пути.
     $stepInvoices = $invoices->filter(fn ($i) => $i->state === \App\Billing\InvoiceState::Issued);
     $pastInvoices = $invoices->diff($stepInvoices);
     // Вернули на оплату («Оплата не поступила») — менеджер видит почему, пока не сообщил об оплате заново.
     $rejected = $payStep && $stepInvoices->every(fn ($i) => $i->claimed() == 0)
         ? \App\Billing\Payment::whereIn('invoice_id', $stepInvoices->pluck('id'))->where('state', \App\Billing\PaymentState::Rejected)->latest('id')->first() : null;
-    $waiting = $position ? match ($position->stage->waits_for) {
+    $waiting = $position ? match ($position->waitsFor()) {
         \App\Workflow\WaitsFor::Manager => 'Ваш ход', \App\Workflow\WaitsFor::Supplier => 'ждём поставщика', \App\Workflow\WaitsFor::Us => 'ждём нас', default => null,
     } : null;
-    if ($noInvoice) {
-        $waiting = 'ждём нас';
-    }
     // Получение автомобиля (`Offers\Handover`): просьба шага и есть «заберите» — его строки внутри шага, иначе — карточкой под ним.
     $handover ??= null;
     $embedHandover = $handover && $requirement && $handover->inStep($position, $deal);
@@ -40,7 +37,7 @@
                         @if ($noInvoice)<p class="text-sm text-ink-muted">ждём нас</p>@else<x-route.clock :position="$position"/>@endif
                     </div>
                     {{-- Есть просьба — её текст и говорит, что делать; текст блока рядом повторял бы его слово в слово. --}}
-                    @php $about = $requirement ? null : $position->stage->managerText(); @endphp
+                    @php $about = $requirement || $noInvoice ? null : $position->stage->managerText(); @endphp
                     @if ($about)<p class="mt-3 whitespace-pre-line text-ink-muted">{{ $about }}</p>@endif
                     @if ($payload->isNotEmpty())
                         <dl class="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">

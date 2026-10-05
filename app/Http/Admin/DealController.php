@@ -62,8 +62,9 @@ class DealController
         } else {
             match ($preset) {
                 'hot' => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->where(fn ($w) => $w
-                    ->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))),
-                'manager' => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->whereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Manager))),
+                    ->where('deadline_at', '<', now())->orWhere(fn ($x) => $x->waiting(WaitsFor::Us)))),
+                // Чей ход — позиции (`Position::waiting`): этап оплаты без счёта ждёт нас, а не менеджера.
+                'manager' => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->waiting(WaitsFor::Manager)),
                 'done' => $q->whereIn('state', [DealState::Done, DealState::Cancelled]),
                 default => $q->where('state', DealState::Active),
             };

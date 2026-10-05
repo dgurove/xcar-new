@@ -28,12 +28,13 @@
     $blockName = fn ($block) => $block->name;
     [$breaks, $moves] = $exits->partition(fn ($x) => $x->to?->block && $x->to->block_id !== $stage->block_id && $x->to->block->isDeadEnd())->all();
     $overdue = $position->isOverdue();
-    $tone = $overdue ? 'text-danger' : match ($stage->waits_for->tone()) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted' };
+    $tone = $overdue ? 'text-danger' : match ($position->waitsFor()->tone()) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted' };
     $clock = $position->deadline_at || $stage->timerMode() === 'stopwatch';
     $requirements = $offer->requirements()->with(['media', 'stage'])->get();
     $menu = 'route-more-'.$position->id;
     $invoices = $deal ? $deal->invoices()->with('claims.media')->get()->reject(fn ($i) => $i->isOwed() || $i->state === InvoiceState::Void) : collect();
-    $wantsInvoice = $deal && $invoices->isEmpty() && $stage->exitsFor(Actor::Manager, $deal)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'платёжное поручение'));
+    // Этап оплаты без счёта — ход наш (`Position::awaitsInvoice`): «Выставить счёт» первой кнопкой.
+    $wantsInvoice = $deal && $position->awaitsInvoice();
     $paidExit = fn ($x) => preg_match('/^оплата (получена|не поступила)/u', mb_strtolower($x->label)) === 1;
     $claims = $moves->contains($paidExit) ? $invoices->flatMap(fn ($i) => $i->claims->map(fn ($p) => [$i, $p])) : collect();
     if ($claims->isNotEmpty()) {
@@ -122,9 +123,9 @@
                     </div>
                     @if ($wantsInvoice)<div>Счёт ещё не выставлен</div>
                     @elseif ($stage->name !== $block->name)<div>{{ $stage->name }}</div>@endif
-                    @if (! $wantsInvoice && ($overdue || $stage->waits_for !== WaitsFor::Nobody || $clock))
+                    @if (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock))
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
-                        <p class="step-hint {{ $tone }}">@if ($keeperExits->isNotEmpty() && $evacuator && ! $overdue)Ждём {{ $evacuator->shortName() }}@elseif ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $stage->waits_for->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
+                        <p class="step-hint {{ $tone }}">@if ($keeperExits->isNotEmpty() && $evacuator && ! $overdue)Ждём {{ $evacuator->shortName() }}@elseif ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
                     @endif
                     @if ($position->payload)
                         <div class="mt-2 text-sm">@foreach ($position->payload as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>

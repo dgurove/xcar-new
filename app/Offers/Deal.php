@@ -145,6 +145,15 @@ class Deal extends Model
 
     /** Менеджеру вознаграждение открывается с первого живого счёта по сделке. */
     /** Есть ли живой счёт — для экранов: по загруженным счетам, если они уже есть (списки «Денег»), иначе запросом. */
+    /**
+     * Есть ли счёт, который платит менеджер (или его покупатель): наш, живой, не вознаграждение от вендора. Без него
+     * этап оплаты ждёт нас — выставить счёт (`Position::awaitsInvoice`).
+     */
+    public function hasManagerInvoice(): bool
+    {
+        return $this->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->exists();
+    }
+
     public function hasInvoices(): bool
     {
         return $this->relationLoaded('invoices') ? $this->invoices->isNotEmpty() : $this->invoices()->exists();

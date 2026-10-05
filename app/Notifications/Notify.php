@@ -42,6 +42,7 @@ use App\Park\RequestState;
 use App\Support\Money;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\AgentFeeDue as AgentFeeDueMessage;
+use App\Telegram\Messages\InvoiceNeeded as InvoiceNeededMessage;
 use App\Telegram\Messages\OnlinePayment as OnlinePaymentMessage;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
@@ -58,6 +59,7 @@ use App\Workflow\Events\StageEntered;
 use App\Offers\Events\PickupAssigned;
 use App\Offers\Handover;
 use App\Workflow\Actor;
+use App\Workflow\Position;
 use App\Workflow\Requirement;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
@@ -192,6 +194,12 @@ final class Notify
             return;
         }
         $deal = $e->deal ?? $e->offer->deal()->with('buyer')->first();
+        // Дошли до оплаты без счёта — ход наш (`EnterStage`): сотрудникам и владельцу «Выставите счёт».
+        if ($deal?->isActive() && Position::where('offer_id', $e->offer->id)->where('track', Track::Sale)->with('stage.exits')->first()?->awaitsInvoice()) {
+            $deal->setRelation('offer', $e->offer)->loadMissing('buyer');
+            Notification::send($this->staff(), new InvoiceNeededNotice($deal));
+            NotifyOwner::dispatch(new InvoiceNeededMessage($deal));
+        }
         if (! $deal?->buyer) {
             return;
         }
@@ -229,7 +237,7 @@ final class Notify
     public function stageDue(StageDue $e): void
     {
         $stage = $e->position->stage;
-        if ($stage->waits_for === WaitsFor::Manager) {
+        if ($e->position->waitsFor() === WaitsFor::Manager) {
             // Менеджеру — пока его просьба на этапе не выполнена: ответил — напоминать не о чем.
             $deal = $e->offer->deal()->with('buyer')->first();
             if ($deal?->buyer && Requirement::where('deal_id', $deal->id)->where('stage_id', $stage->id)->whereNull('done_at')->exists()) {

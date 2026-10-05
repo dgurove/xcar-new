@@ -514,7 +514,7 @@ final class Nav
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
                 '/work/deals' => Position::where('track', 'sale')
                     ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
-                    ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhereHas('stage', fn ($s) => $s->where('waits_for', WaitsFor::Us)))
+                    ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhere(fn ($x) => $x->waiting(WaitsFor::Us)))
                     ->count(),
                 // Деньги горят, когда менеджер сообщил об оплате, а мы ещё не подтвердили.
                 '/work/money' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereNotNull('deal_id'))->count()

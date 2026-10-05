@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** Где оффер стоит на ветке маршрута. */
-#[Fillable(['offer_id', 'track', 'stage_id', 'entered_at', 'block_entered_at', 'deadline_at', 'reminded_at', 'overdue_at', 'payload'])]
+/**
+ * Где оффер стоит на ветке маршрута. Чей ход — `waitsFor()`: этап задаёт его, позиция может перебить (`waits_for`) —
+ * этап оплаты без счёта ждёт нас, а не менеджера (05.10.2026: обе стороны ждали друг друга).
+ */
+#[Fillable(['offer_id', 'track', 'stage_id', 'waits_for', 'entered_at', 'block_entered_at', 'deadline_at', 'reminded_at', 'overdue_at', 'payload'])]
 class Position extends Model
 {
     protected $table = 'offer_positions';
@@ -17,6 +20,7 @@ class Position extends Model
     {
         return [
             'track' => Track::class,
+            'waits_for' => WaitsFor::class,
             'entered_at' => 'datetime',
             'block_entered_at' => 'datetime',
             'deadline_at' => 'datetime',
@@ -39,5 +43,24 @@ class Position extends Model
     public function isOverdue(): bool
     {
         return $this->deadline_at?->isPast() ?? false;
+    }
+
+    /** Чей ход сейчас: свой у позиции, иначе этапа. Читать только так, не `stage->waits_for`. */
+    public function waitsFor(): WaitsFor
+    {
+        return $this->waits_for ?? $this->stage->waits_for;
+    }
+
+    /** Этап оплаты, а счёта ещё нет: наш ход — выставить счёт. */
+    public function awaitsInvoice(): bool
+    {
+        return $this->waits_for === WaitsFor::Us && $this->stage->isPayStep();
+    }
+
+    /** Позиции, где ход за этим участником, — тем же правилом, что `waitsFor()`, в SQL. */
+    public function scopeWaiting($q, WaitsFor $who)
+    {
+        return $q->where(fn ($w) => $w->where('offer_positions.waits_for', $who->value)
+            ->orWhere(fn ($x) => $x->whereNull('offer_positions.waits_for')->whereHas('stage', fn ($s) => $s->where('waits_for', $who))));
     }
 }

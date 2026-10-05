@@ -6,6 +6,7 @@ use App\Mail\Template;
 use App\Offers\CarPlace;
 use App\Offers\Deal;
 use App\Offers\Destination;
+use App\Offers\Offer;
 use App\Offers\OfferState;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -73,6 +74,22 @@ class Stage extends Model
         return $this->loadedExits()->where('actor', $actor)->filter(fn (Outcome $e) => $e->fits($deal))->values();
     }
 
+    /**
+     * Этап оплаты: менеджер выходит из него «Платёжное поручение приложено». Ход на нём зависит от счёта — без счёта
+     * ждём нас (`Position::awaitsInvoice`). Одна дверь вместо сравнения подписи по месту.
+     */
+    public function isPayStep(): bool
+    {
+        // По всем веткам: у гаражной «платим мы» тот же этап, а без сделки её выходы `exitsFor` не отдаёт.
+        return $this->loadedExits()->contains(fn (Outcome $e) => $e->actor === Actor::Manager && str_starts_with(mb_strtolower($e->label), 'платёжное поручение'));
+    }
+
+    /** Выход менеджера «Платёжное поручение приложено» этого этапа — его жмут заявка об оплате и сама оплата. */
+    public function payExit(Deal|Destination|null $deal = null): ?Outcome
+    {
+        return $this->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $e) => str_starts_with(mb_strtolower($e->label), 'платёжное поручение'));
+    }
+
     public function awaitsManager(Deal|Destination|null $deal = null): bool
     {
         return $this->exitsFor(Actor::Manager, $deal)->isNotEmpty();
@@ -104,6 +121,16 @@ class Stage extends Model
         return $this->limit_minutes !== null && $this->waits_for !== WaitsFor::Nobody
             ? $enteredAt->copy()->addMinutes($this->limit_minutes)
             : null;
+    }
+
+    /** Срок этапа для оффера, если войти в него сейчас: свой, конец приёма подтверждений или срок страховой. */
+    public function deadlineFor(Offer $offer, Carbon $now): ?Carbon
+    {
+        return match ($this->deadline_source) {
+            DeadlineSource::BidsClose => $offer->bids_close_at,
+            DeadlineSource::InsurerDeadline => $offer->insurer_deadline_at?->copy()->endOfDay(),
+            DeadlineSource::Own => $this->deadlineFrom($now),
+        };
     }
 
     public function managerTitle(): string

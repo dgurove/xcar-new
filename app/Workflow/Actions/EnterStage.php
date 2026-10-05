@@ -8,16 +8,20 @@ use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Offers\Slots;
 use App\Users\User;
-use App\Workflow\DeadlineSource;
 use App\Workflow\Events\StageEntered;
 use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Requirement;
 use App\Workflow\Stage;
 use App\Workflow\Track;
+use App\Workflow\WaitsFor;
 use Illuminate\Support\Carbon;
 
-/** Поставить оффер на этап: позиция и срок, состояние или место машины, просьба к менеджеру, лента, событие. */
+/**
+ * Поставить оффер на этап: позиция и срок, состояние или место машины, просьба к менеджеру, лента, событие.
+ * Этап оплаты, а счёта у сделки нет — ход наш (`waits_for = us`): без часов и без просьбы менеджеру, её заведёт
+ * выставленный счёт (`PassTurnOnInvoice`). Иначе обе стороны ждали друг друга.
+ */
 final class EnterStage
 {
     public function __construct(private ChangeOfferState $changeState, private SetCarPlace $setPlace) {}
@@ -46,11 +50,13 @@ final class EnterStage
             $offer->save();
         }
 
+        $ours = $track === Track::Sale && $deal?->isActive() && $to->isPayStep() && ! $deal->hasManagerInvoice();
         $position = Position::updateOrCreate(['offer_id' => $offer->id, 'track' => $track->value], [
             'stage_id' => $to->id,
+            'waits_for' => $ours ? WaitsFor::Us : null,
             'entered_at' => $now,
             'block_entered_at' => $from && $from->block_id === $to->block_id && $position?->block_entered_at ? $position->block_entered_at : $now,
-            'deadline_at' => $this->deadline($offer, $to, $now),
+            'deadline_at' => $ours ? null : $to->deadlineFor($offer, $now),
             'reminded_at' => null,
             'overdue_at' => null,
             'payload' => $payload ?: null,
@@ -64,19 +70,8 @@ final class EnterStage
             $offer = ($this->setPlace)($offer, $to->car_place, $by);
         }
 
-        if ($deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
-            Requirement::create([
-                'offer_id' => $offer->id,
-                'deal_id' => $deal->id,
-                'stage_id' => $to->id,
-                'user_id' => $deal->buyer_id,
-                'title' => $to->managerTitle(),
-                // Гаражная сделка цены не называла: «по Вашей цене» из общего текста ей не про неё.
-                'text' => $deal->isGarage() ? preg_replace('/ по Вашей цене/u', '', (string) $to->managerText()) ?: null : $to->managerText(),
-                'asks' => $to->asks,
-                'fields' => $to->fields ?? [],
-                'due_at' => $position->deadline_at,
-            ]);
+        if (! $ours && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
+            Requirement::askFor($deal, $to, $position);
         }
 
         $offer->log(OfferEventType::StageEntered, $by, [
@@ -86,14 +81,5 @@ final class EnterStage
         StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal);
 
         return $offer;
-    }
-
-    private function deadline(Offer $offer, Stage $to, Carbon $now): ?Carbon
-    {
-        return match ($to->deadline_source) {
-            DeadlineSource::BidsClose => $offer->bids_close_at,
-            DeadlineSource::InsurerDeadline => $offer->insurer_deadline_at?->copy()->endOfDay(),
-            DeadlineSource::Own => $to->deadlineFrom($now),
-        };
     }
 }
