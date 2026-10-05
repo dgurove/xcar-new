@@ -3,6 +3,7 @@
 namespace App\Offers\Jobs;
 
 use App\Cars\Brand;
+use App\Cars\IdentityTaken;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Media\Actions\UnmarkPhoto;
@@ -208,8 +209,15 @@ final class ImportMigtorgLot implements ShouldQueue
         Cache::lock("migtorg:take:{$offer->id}", 30)->get(function () use ($offer, $lot, $by) {
             $offer->refresh();
             if (! $offer->claim_ref) {
-                // Номер ставит и сам берёт лот (`auto`), если правило «та же машина» пропускает.
-                app(UpdateOffer::class)($offer, ['claim_ref' => $lot->claim_ref], $by);
+                // Номер ставит и сам берёт лот (`auto`), если правило «та же машина» пропускает. Номер уже у другого
+                // предложения — это его машина: номер не встаёт, под полями строка с «Это она» (`OfferController::twins`).
+                try {
+                    app(UpdateOffer::class)($offer, ['claim_ref' => $lot->claim_ref], $by);
+                } catch (IdentityTaken $e) {
+                    Cache::put("offer:twin:{$offer->id}", $e->holder->getKey(), 86400);
+
+                    return;
+                }
                 $offer->refresh();
             }
             $lot = self::lotFor($offer);

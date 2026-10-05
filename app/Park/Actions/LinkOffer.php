@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Cars\IdentityTaken;
 use App\Offers\Offer;
 use App\Park\EventType;
 use App\Park\Vehicle;
@@ -20,7 +21,12 @@ final class LinkOffer
         if (! $offer || Vehicle::where('offer_id', $offer->id)->where('id', '!=', $vehicle->id)->exists()) {
             return null;
         }
-        $vehicle->update(['offer_id' => $offer->id]);
+        try {
+            $vehicle->update(['offer_id' => $offer->id]);
+        } catch (IdentityTaken) {
+            // VIN ТС — у другого живого предложения: связь сделала бы двойника, не связываем (`Identity`).
+            return null;
+        }
         $vehicle->log(EventType::Linked, $by, ['number' => $offer->number]);
 
         return $offer;

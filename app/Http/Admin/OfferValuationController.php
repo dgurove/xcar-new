@@ -2,7 +2,9 @@
 
 namespace App\Http\Admin;
 
+use App\Cars\Identity;
 use App\Cars\Settlement;
+use App\Cars\Vin\Vin;
 use App\Offers\Actions\MatchValuations;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
@@ -74,8 +76,8 @@ final class OfferValuationController
         }
         $ids = array_values(array_intersect(array_map('intval', $data['offers'] ?? []), array_keys($saved['amounts'])));
         // Вписанное руками — только там, где его не было ни у предложения, ни в тексте (`gaps`), и только годное.
-        $typedVin = collect($data['vin'] ?? [])->map(fn ($v) => strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $v)))
-            ->filter(fn ($v, $id) => strlen($v) === 17 && in_array('vin', $saved['gaps'][$id] ?? [], true));
+        $typedVin = collect($data['vin'] ?? [])->map(fn ($v) => Vin::full((string) $v))
+            ->filter(fn ($v, $id) => $v && in_array('vin', $saved['gaps'][$id] ?? [], true));
         $typedCity = collect($data['city'] ?? [])->filter(fn ($v, $id) => $v && in_array('city', $saved['gaps'][$id] ?? [], true) && Settlement::whereKey($v)->exists());
         $vins = ($saved['vin'] ?? []) + $typedVin->all();
         $cities = ($saved['city'] ?? []) + $typedCity->map(fn ($v) => (int) $v)->all();
@@ -84,7 +86,7 @@ final class OfferValuationController
         $vins = array_diff_key($vins, array_flip($off));
         $cities = array_diff_key($cities, array_flip($off));
         $touch = array_values(array_unique([...$ids, ...array_keys($vins), ...array_keys($cities)]));
-        $done = $vinDone = $cityDone = 0;
+        $done = $vinDone = $cityDone = $vinTaken = 0;
         foreach (Offer::query()->inCrm($request->user())->whereKey($touch)->get() as $offer) {
             $set = [];
             if (in_array($offer->id, $ids, true)) {
@@ -99,9 +101,14 @@ final class OfferValuationController
                 (isset($set['value']) && (int) $offer->value !== $set['value']) || (isset($set['floor_price']) && (int) $offer->floor_price !== $set['floor_price']) ? $done++ : null;
             }
             // VIN — только в пустой (другой — перепроверить); город из текста главнее (Мигторг бывает устаревшим).
+            // VIN другого живого предложения не встанет (`Identity`) — строка без него, в тосте «VIN занят».
             if (isset($vins[$offer->id]) && blank($offer->vin)) {
-                $set['vin'] = $vins[$offer->id];
-                $vinDone++;
+                if (Identity::offerByVin($vins[$offer->id], $offer->id)) {
+                    $vinTaken++;
+                } else {
+                    $set['vin'] = $vins[$offer->id];
+                    $vinDone++;
+                }
             }
             if (isset($cities[$offer->id]) && $cities[$offer->id] !== $offer->settlement_id) {
                 $set['settlement_id'] = $cities[$offer->id];
@@ -112,7 +119,7 @@ final class OfferValuationController
             }
             $update($offer, $set, $request->user(), ['source' => 'valuation', 'value' => $set['value'] ?? null, 'floor' => $set['floor_price'] ?? null]);
         }
-        $parts = array_filter([$done ? 'оценено '.$done : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null]);
+        $parts = array_filter([$done ? 'оценено '.$done : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
 
         return back()->with('toast', $parts ? Str::ucfirst(implode(', ', $parts)) : 'Ничего не выбрано');
     }

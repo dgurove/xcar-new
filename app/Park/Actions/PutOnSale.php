@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Cars\Identity;
 use App\Mail\Actions\LinkThread;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
@@ -15,6 +16,7 @@ use App\Park\VehicleState;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * «В продажу» в деле ТС: черновик предложения этой машины. Своих файлов у него нет — фото и документы ТС он видит сам
@@ -33,6 +35,16 @@ final class PutOnSale
         }
 
         return DB::transaction(function () use ($vehicle, $by) {
+            // Предложение этой машины уже завели в CRM (номер убытка или VIN, `Identity`) — связать с ним, второго нет.
+            if ($holder = Identity::offerFor($vehicle->ref_key, $vehicle->vin)) {
+                if (Vehicle::where('offer_id', $holder->id)->exists() || in_array($holder->state, [OfferState::Cancelled, OfferState::Delivered], true)) {
+                    throw ValidationException::withMessages(['vehicle' => 'Эта машина уже в продаже: '.Identity::offerName($holder)]);
+                }
+                $holder->state === OfferState::Archived && ($this->change)($holder, OfferState::Draft, $by);
+                ($this->link)($vehicle, $holder->refresh(), $by);
+
+                return $holder->refresh();
+            }
             // Убирали из продажи, а предложение лежит в архиве — возвращаем его в черновики (номер, цены, история те же),
             // а не заводим второе.
             if ($prev = $this->archived($vehicle)) {

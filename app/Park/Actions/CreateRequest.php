@@ -4,8 +4,11 @@ namespace App\Park\Actions;
 
 use App\Cars\Brand;
 use App\Cars\CarModel;
+use App\Cars\Identity;
+use App\Cars\IdentityTaken;
 use App\Cars\Vin\RememberVin;
 use App\Park\Delivery;
+use App\Park\Events\VehicleRestored;
 use App\Park\EventType;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -22,6 +25,19 @@ final class CreateRequest
 {
     public function __invoke(?User $by, RequestType $type, ?Vehicle $vehicle, array $data): Request
     {
+        // Одна машина — одна ТС (`Identity`): номер убытка или VIN уже у заведённой — заявка встаёт на неё. Не привезённая
+        // по тому же номеру снова ждёт; выданная с тем же номером — ошибка поля (номер — одно событие).
+        if (! $vehicle && ($twin = Identity::vehicleFor(Vehicle::keyFor((string) ($data['ref'] ?? '')) ?: null, $data['vin'] ?? null))) {
+            if ($twin->state === VehicleState::Cancelled) {
+                $twin->update(['state' => VehicleState::Expected, 'cancelled_at' => null, 'cancel_reason' => null]);
+                $twin->log(EventType::Restored, $by, ['reason' => 'Новая заявка с тем же номером']);
+                VehicleRestored::dispatch($twin, $by);
+            }
+            $vehicle = $twin->state === VehicleState::Released ? null : $twin;
+        }
+        if ($vehicle && ! $type->allowedFor($vehicle->state) && isset($twin)) {
+            throw IdentityTaken::of($vehicle, 'ref', 'Эта ТС уже заведена: '.Identity::vehicleName($vehicle).', '.mb_strtolower($vehicle->state->label()));
+        }
         if ($vehicle && ! $type->allowedFor($vehicle->state)) {
             throw ValidationException::withMessages(['type' => 'Для ТС «'.mb_strtolower($vehicle->state->label()).'» заявка «'.mb_strtolower($type->label()).'» невозможна']);
         }

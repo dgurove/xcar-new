@@ -9,9 +9,11 @@ use App\Cars\Category;
 use App\Cars\DamageCause;
 use App\Cars\Drive;
 use App\Cars\Fuel;
+use App\Cars\Identity;
 use App\Cars\Papers;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
+use App\Cars\Vin\Vin;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Thread;
@@ -59,6 +61,8 @@ class Offer extends Model implements HasMedia
     protected static function booted(): void
     {
         // Тип ТС колонкой — для фильтра; марка сменилась — прежняя связь уже не та.
+        // Одна машина — одна запись: номер убытка или VIN другого предложения не встанет (`Identity`).
+        static::saving(fn (self $o) => Identity::guardOffer($o));
         static::saving(function (self $o) {
             // У продажи свой вендор: «АльфаСтрахование СПб» парковки здесь — «АльфаСтрахование».
             if ($o->isDirty('vendor_id')) {
@@ -146,6 +150,11 @@ class Offer extends Model implements HasMedia
         $value = trim((string) $value) ?: null;
         $this->attributes['claim_ref'] = $value;
         $this->attributes['claim_ref_key'] = Code::key($value);
+    }
+
+    public function setVinAttribute(?string $value): void
+    {
+        $this->attributes['vin'] = Vin::normalize($value);
     }
 
     public function vendor(): BelongsTo

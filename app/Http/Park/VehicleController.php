@@ -5,6 +5,7 @@ namespace App\Http\Park;
 use App\Billing\Accrual;
 use App\Billing\Cadence;
 use App\Billing\Ledger;
+use App\Cars\Vin\Vin;
 use App\Http\Admin\OfferPhotoController;
 use App\Live\Stream;
 use App\Mail\Actions\LinkThread;
@@ -522,9 +523,8 @@ class VehicleController
     public function twins(Request $request)
     {
         $ref = mb_strlen((string) $request->query('ref')) >= 4 ? Vehicle::keyFor((string) $request->query('ref')) : '';
-        $vin = strtoupper(trim((string) $request->query('vin')));
         $plate = mb_strlen((string) $request->query('plate')) >= 6 ? Patterns::plateKey($request->query('plate')) : null;
-        $vin = strlen($vin) === 17 ? $vin : '';
+        $vin = Vin::full((string) $request->query('vin')) ?? '';
         $vehicles = $ref === '' && $vin === '' && ! $plate ? collect() : Vehicle::with(['brand', 'model', 'yard', 'media'])
             ->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])
             ->when($request->query('except'), fn ($q, $id) => $q->whereKeyNot((int) $id))

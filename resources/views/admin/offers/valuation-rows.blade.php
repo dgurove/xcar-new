@@ -72,7 +72,10 @@
                                 <span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span>
                             </dd>
                         @endif
-                        @if ($status === 'check')
+                        @if ($item['vin_taken'] ?? null)
+                            <dt>VIN</dt>
+                            <dd class="text-urgent"><span class="nums">{{ $item['vin'] }}</span> уже у {{ \App\Cars\Identity::offerName($item['vin_taken']) }}</dd>
+                        @elseif ($status === 'check')
                             <dt>VIN</dt>
                             <dd class="text-urgent"><span class="nums">{{ $o->vin }}</span> в CRM, <span class="nums">{{ $item['vin'] }}</span> в тексте</dd>
                         @elseif ($item['vin_fill'])

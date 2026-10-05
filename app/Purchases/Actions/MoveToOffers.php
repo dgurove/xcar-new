@@ -2,7 +2,10 @@
 
 namespace App\Purchases\Actions;
 
+use App\Cars\Identity;
+use App\Mail\Extraction\Code;
 use App\Offers\Actions\CreateOffer;
+use App\Offers\OfferEventType;
 use App\Purchases\Car;
 use App\Purchases\Purchase;
 use App\Users\User;
@@ -30,6 +33,14 @@ final class MoveToOffers
         $prices = collect($rows)->filter(fn ($r) => $r['price'])->mapWithKeys(fn ($r) => [mb_strtolower(trim($r['dl'])) => $r['price']]);
         $cars = $purchase->cars()->whereNull('offer_id')->get()->filter(fn (Car $c) => $prices->has(mb_strtolower(trim($c->dl))));
         foreach ($cars as $car) {
+            // Предложение с этим ДЛ или VIN уже есть (одна машина — одна запись, `Identity`): ТС закупки встаёт к нему,
+            // второго не заводим; фото остаются у ТС закупки.
+            if ($holder = Identity::offerFor(Code::key($car->dl), $car->vin)) {
+                $car->update(['offer_id' => $holder->id]);
+                $holder->log(OfferEventType::Note, $by, ['text' => "Закупка {$purchase->number}, ДЛ {$car->dl}: контрпредложение — к этому предложению"]);
+
+                continue;
+            }
             DB::transaction(function () use ($car, $purchase, $vendor, $prices, $by) {
                 $offer = ($this->create)($by, [
                     'brand_id' => $car->brand_id, 'model_id' => $car->model_id, 'year' => $car->year, 'vin' => $car->vin, 'mileage' => $car->mileage,

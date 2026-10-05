@@ -10,6 +10,7 @@ use App\Cars\Drive;
 use App\Cars\Fuel;
 use App\Cars\Papers;
 use App\Cars\Transmission;
+use App\Cars\Vin\Vin;
 use App\Offers\AudienceRules;
 use App\Offers\Flag;
 use App\Offers\OfferState;
@@ -40,6 +41,10 @@ class OfferRequest extends FormRequest
         if ($this->has('engine_volume')) {
             $this->merge(['engine_volume' => Liters::parse($this->input('engine_volume'), $this->route('offer')?->engine_volume)]);
         }
+        // VIN одной записью с парковкой и поиском двойников: кириллица того же начертания — латиница (`Vin`).
+        if ($this->has('vin')) {
+            $this->merge(['vin' => Vin::normalize((string) $this->input('vin'))]);
+        }
         // Цвет — как в форме ТС парковки: словарь пишет его одинаково («черный» → «Черный»), опечаток не правит.
         if ($this->filled('color')) {
             $this->merge(['color' => Colors::normalize($this->input('color'), fuzzy: false) ?? trim((string) $this->input('color'))]);
@@ -63,7 +68,7 @@ class OfferRequest extends FormRequest
             'model_id' => [$need(), 'exists:car_models,id'],
             'year' => ['nullable', 'integer', 'between:1950,'.(now()->year + 1)],
             'mileage' => ['nullable', 'integer', 'max:5000000'],
-            'vin' => ['nullable', 'string', 'max:17'],
+            'vin' => ['nullable', 'string', 'size:17'],
             'show_vin' => ['boolean'],
             'show_address' => ['boolean'],
             'body' => ['nullable', Rule::enum(Body::class)],

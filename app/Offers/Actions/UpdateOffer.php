@@ -26,9 +26,6 @@ final class UpdateOffer
     /** @param array $log к записи «Изменён» в историю — откуда правка (`source: migtorg`) */
     public function __invoke(Offer $offer, array $data, ?User $by, array $log = []): Offer
     {
-        if (array_key_exists('vin', $data)) {
-            $data['vin'] = $data['vin'] ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $data['vin'])) : null;
-        }
         $was = $offer->value;
         $offer->fill($data);
         // Сменили оценочную, закупочную не трогали — закупочная от неё же, если не вписана рукой (`Sale::floorFor`).

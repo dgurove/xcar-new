@@ -172,6 +172,7 @@ export default class extends Controller {
         await Promise.all(Array.from({ length: Math.min(3, queue.length) }, worker));
         wake?.release?.().catch(() => {});
         this.uploading = false;
+        window.dispatchEvent(new CustomEvent('photos:uploaded'));
         if (other.length) await this.uploadWithBar(other);
     }
 

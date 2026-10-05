@@ -86,6 +86,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/drop', [MailController::class, 'dropDraft'])->middleware('ability:canCrmMail');
         // Ушли из пустого черновика «+ Новый» — его нет (sendBeacon при уходе; не пустой сервер не трогает).
         Route::post('/offers/{offer}/drop-empty', [OfferController::class, 'dropEmpty']);
+        // Черновик оказался двойником (тот же номер убытка или VIN): «Это она» — всё его к найденному, черновика нет.
+        Route::post('/offers/{offer}/into/{target}', [OfferController::class, 'mergeInto']);
         Route::delete('/offers/{offer}', [OfferDraftController::class, 'destroy']);
         // Черновик из парковки завели в продажу зря — отвязать ТС и удалить («Снять с продажи»).
         Route::post('/offers/{offer}/unlist', [OfferController::class, 'unlist']);

@@ -10,11 +10,15 @@ export default class extends Controller {
 
     connect() {
         this.check();
+        // Загрузили кадры: кадр Мигторга мог назвать номер, который уже у другого предложения.
+        this.recheck = () => { this.last = null; this.check(); };
+        window.addEventListener('photos:uploaded', this.recheck);
     }
 
     disconnect() {
         clearTimeout(this.timer);
         this.abort?.abort();
+        window.removeEventListener('photos:uploaded', this.recheck);
     }
 
     changed(event) {
@@ -23,13 +27,25 @@ export default class extends Controller {
         this.timer = setTimeout(() => this.check(), 400);
     }
 
+    // «Это она» у черновика-двойника: строка стоит внутри формы редактора, поэтому своя форма — в body, а не вложенная.
+    into(event) {
+        const { url, confirm } = event.currentTarget.dataset;
+        const form = Object.assign(document.createElement('form'), { method: 'post', action: url, hidden: true });
+        form.dataset.turboConfirm = confirm;
+        form.dataset.saveSkip = '';
+        form.append(Object.assign(document.createElement('input'), { type: 'hidden', name: '_token', value: document.querySelector('meta[name=csrf-token]')?.content }));
+        document.body.append(form);
+        form.requestSubmit();
+    }
+
     async check() {
         const url = new URL(this.urlValue, location.href);
         for (const name of ['ref', 'claim_ref', 'vin', 'plate']) {
             const value = this.element.querySelector(`[name="${name}"]`)?.value.trim();
             if (value) url.searchParams.set(name, value);
         }
-        if (![...url.searchParams.keys()].length) { this.boxTarget.replaceChildren(); return; }
+        // Своё предложение (`except`) спрашиваем и с пустыми полями: двойника мог назвать кадр Мигторга.
+        if (![...url.searchParams.keys()].length && !this.exceptValue) { this.boxTarget.replaceChildren(); return; }
         if (this.exceptValue) url.searchParams.set('except', this.exceptValue);
         if (this.candidateValue) url.searchParams.set('candidate', this.candidateValue);
         if (url.href === this.last) return;

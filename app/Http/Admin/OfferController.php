@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Cars\Vin\Vin;
 use App\Chats\Chat;
 use App\Chats\Message as ChatMessage;
 use App\Garage\Actions\SendViaRoute;
@@ -17,6 +18,7 @@ use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
+use App\Offers\Actions\MergeOffers;
 use App\Offers\Actions\PurgeOffer;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Actions\UnlistParkOffer;
@@ -47,6 +49,7 @@ use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -387,14 +390,31 @@ class OfferController
      */
     public function twins(Request $request)
     {
-        $vin = strtoupper(trim((string) $request->query('vin')));
+        $vin = Vin::full((string) $request->query('vin'));
         $claim = Code::key((string) $request->query('claim_ref'));
-        $vin = strlen($vin) === 17 ? $vin : null;
-        $offers = ! $vin && ! $claim ? collect() : Offer::with(['brand', 'model'])
-            ->where(fn ($w) => $w->when($vin, fn ($w) => $w->where('vin', $vin))->when($claim, fn ($w) => $w->orWhere('claim_ref_key', $claim)))
-            ->when($request->query('except'), fn ($q, $id) => $q->whereKeyNot((int) $id))->latest('id')->limit(3)->get();
+        $except = (int) $request->query('except') ?: null;
+        // Кадр Мигторга назвал номер, а он уже у другого предложения (`ImportMigtorgLot::byPhoto`) — та же строка.
+        $twin = $except ? Cache::get("offer:twin:{$except}") : null;
+        $offers = ! $vin && ! $claim && ! $twin ? collect() : Offer::with(['brand', 'model'])
+            ->where(fn ($w) => $w->when($vin, fn ($w) => $w->where('vin', $vin))->when($claim, fn ($w) => $w->orWhere('claim_ref_key', $claim))->when($twin, fn ($w) => $w->orWhereKey($twin)))
+            ->when($except, fn ($q, $id) => $q->whereKeyNot($id))->latest('id')->limit(3)->get();
+        $self = $except ? Offer::find($except) : null;
 
-        return view('admin.offers.twins', ['offers' => $offers, 'user' => $request->user()]);
+        return view('admin.offers.twins', ['offers' => $offers, 'user' => $request->user(), 'self' => $self?->state === OfferState::Draft ? $self : null]);
+    }
+
+    /**
+     * «Это она» у двойника: черновик — та же машина, что найденное предложение. Его кадры, документы, письма и поля
+     * уходят туда (`MergeOffers`), черновика нет, редактор открывается на найденном.
+     */
+    public function mergeInto(Request $request, Offer $offer, Offer $target, MergeOffers $merge)
+    {
+        abort_unless($offer->state === OfferState::Draft && $target->isEditableBy($request->user()) && ! $offer->bids()->exists(), 404);
+        session()->forget("mail-draft.{$offer->id}");
+        Cache::forget("offer:twin:{$offer->id}");
+        $moved = $merge($target, $offer, $request->user())['photos'];
+
+        return redirect("/offers/{$target->number}")->with('toast', $moved ? "Это №{$target->number}, фото перенесены" : "Это №{$target->number}");
     }
 
     /** Карточка строки рядом со списком (Detail): чужое модератору — как не найдено. */

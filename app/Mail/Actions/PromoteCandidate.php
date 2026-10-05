@@ -4,12 +4,15 @@ namespace App\Mail\Actions;
 
 use App\Cars\Brand;
 use App\Cars\CarModel;
+use App\Cars\Identity;
+use App\Cars\IdentityTaken;
 use App\Cars\Settlement;
 use App\Cars\Vin\VinAutofill;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Extraction\Code;
 use App\Mail\Scope;
+use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
@@ -30,18 +33,20 @@ final class PromoteCandidate
     public function __invoke(Candidate $candidate, User $by): Offer
     {
         if ($offer = $this->existing($candidate)) {
-            $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
-            $this->linkAll($candidate, $offer);
-
-            return $offer;
+            return $this->into($candidate, $offer, $by);
         }
-        $offer = DB::transaction(function () use ($candidate, $by) {
-            $offer = ($this->create)($by);
-            ($this->update)($offer, $this->data($candidate), $by);
-            $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
+        try {
+            $offer = DB::transaction(function () use ($candidate, $by) {
+                $offer = ($this->create)($by);
+                ($this->update)($offer, $this->data($candidate), $by);
+                $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
 
-            return $offer;
-        });
+                return $offer;
+            });
+        } catch (IdentityTaken $e) {
+            // VIN письма — у предложения с другим номером (или номер заняли только что): это оно, черновика нет.
+            return $this->into($candidate, $e->holder, $by);
+        }
         // Ветки — после транзакции: импорт файлов берёт уникальную блокировку в базе, и если прежний импорт этой ветки
         // ещё в очереди (черновик завели, отменили и завели снова), неудачная вставка блокировки обрывала транзакцию.
         $this->linkAll($candidate, $offer);
@@ -122,14 +127,22 @@ final class PromoteCandidate
         $this->link->forOffer($offer);
     }
 
-    /** Предложение с тем же убытком или VIN, не в архиве. */
+    /** Предложение с тем же убытком (любое, и из архива) или VIN (живое) — `Identity`. */
     public function existing(Candidate $candidate): ?Offer
     {
-        $live = fn () => Offer::where('state', '!=', OfferState::Archived)->latest();
-        $vin = $candidate->value('vin') ? strtoupper((string) $candidate->value('vin')) : null;
+        return Identity::offerFor(Code::key($candidate->code), $candidate->value('vin'));
+    }
 
-        return ($candidate->code ? $live()->where('claim_ref_key', Code::key($candidate->code))->first() : null)
-            ?? ($vin ? $live()->where('vin', $vin)->first() : null);
+    /** Письма — к уже заведённому; из архива по тому же номеру оно возвращается в черновики (номер — одно событие). */
+    private function into(Candidate $candidate, Offer $offer, User $by): Offer
+    {
+        if ($offer->state === OfferState::Archived) {
+            $offer = app(ChangeOfferState::class)($offer, OfferState::Draft, $by);
+        }
+        $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
+        $this->linkAll($candidate, $offer);
+
+        return $offer;
     }
 
     /** Мобильный Mail рвёт «T 7» на два слова и оборачивает в звёздочки. */

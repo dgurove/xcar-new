@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Cars\Identity;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Sale;
@@ -54,7 +55,7 @@ final class MatchValuations
             $seen[$r['key']][$r['amount']] = true;
             $found = $offers->get($r['key'], collect());
             if ($found->isEmpty()) {
-                $out[] = $r + ['status' => 'missing', 'offer' => null, 'floor' => null, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'city_fill' => null, 'gaps' => []];
+                $out[] = $r + ['status' => 'missing', 'offer' => null, 'floor' => null, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
 
                 continue;
             }
@@ -68,22 +69,24 @@ final class MatchValuations
                     && ! ($offer->value && (int) $offer->floor_price === Sale::floorFrom((int) $offer->value));
                 $city = $r['city'] ?? null;
                 $vinFill = $vin === '' && $r['vin'] ? $r['vin'] : null;
+                // VIN из текста — у другого живого предложения: это не та машина или двойник, не записываем (`Identity`).
+                $vinTaken = $vinFill ? Identity::offerByVin($vinFill, $offer->id) : null;
+                $vinFill = $vinTaken ? null : $vinFill;
                 $cityFill = $city && $city['id'] !== $offer->settlement_id ? $city + ['from' => $offer->settlement?->title()] : null;
                 $gaps = array_values(array_filter([$vin === '' && ! $r['vin'] ? 'vin' : null, ! $offer->settlement_id && ! $city ? 'city' : null]));
                 $status = match (true) {
                     count($amounts[$r['key']]) > 1 => 'dispute',
-                    $vin !== '' && $r['vin'] && $vin !== $r['vin'] => 'check',
+                    $vinTaken || ($vin !== '' && $r['vin'] && $vin !== $r['vin']) => 'check',
                     (int) $offer->value === $r['amount'] && (int) $offer->floor_price === $floor => $vinFill || $cityFill || $gaps ? 'fill' : 'same',
                     $valueDiffers || $floorDiffers => 'conflict',
                     default => 'fill',
                 };
                 $out[] = $r + ['status' => $status, 'offer' => $offer, 'floor' => $floor, 'value_differs' => $valueDiffers, 'floor_differs' => $floorDiffers,
-                    'vin_fill' => $vinFill, 'city_fill' => $cityFill, 'gaps' => $gaps];
+                    'vin_fill' => $vinFill, 'vin_taken' => $vinTaken, 'city_fill' => $cityFill, 'gaps' => $gaps];
             }
         }
         usort($out, fn ($a, $b) => array_search($a['status'], self::ORDER, true) <=> array_search($b['status'], self::ORDER, true));
 
         return $out;
     }
-
 }

@@ -117,6 +117,8 @@ export default class extends Controller {
     before(event) {
         const form = event.target;
         if (form === this.element || !this.touched || this.saving || (form.method || '').toLowerCase() === 'get') return;
+        // Форма, которой несохранённое не нужно (`data-save-skip`: «Это она» у двойника — черновика после неё не будет).
+        if ('saveSkip' in form.dataset) return;
         const frame = this.element.closest('turbo-frame');
         if (frame ? !frame.contains(form) : form.closest('turbo-frame#detail')) return;
         // Тронута только цена из «Оценить» — её несёт сама та форма: пусть уходит как есть. Повторная отправка изнутри

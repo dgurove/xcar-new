@@ -10,6 +10,8 @@ use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Category;
 use App\Cars\DamageZone;
+use App\Cars\Identity;
+use App\Cars\Vin\Vin;
 use App\Cars\Vin\VinDecoder;
 use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Patterns;
@@ -51,6 +53,8 @@ class Vehicle extends Model implements HasMedia
 
     protected static function booted(): void
     {
+        // Одна машина — одна запись: номер убытка или VIN другой ТС не встанет (`Identity`).
+        static::saving(fn (self $v) => Identity::guardVehicle($v));
         // ТС вендора на парковке — вендор становится её вендором (раздел «Вендоры» парковки).
         static::saved(fn (self $v) => $v->wasChanged('vendor_id') || $v->wasRecentlyCreated ? Vendor::markOnPark($v->vendor_id) : null);
         // Машина одна (`Sale`): связали или отвязали предложение — файлы переходят, тождество ТС зеркалит предложение.
@@ -90,7 +94,7 @@ class Vehicle extends Model implements HasMedia
 
     public function setVinAttribute(?string $value): void
     {
-        $this->attributes['vin'] = $value ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $value)) ?: null : null;
+        $this->attributes['vin'] = Vin::normalize($value);
     }
 
     public function setPlateAttribute(?string $value): void

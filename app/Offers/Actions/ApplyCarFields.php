@@ -8,10 +8,13 @@ use App\Cars\CarModel;
 use App\Cars\Colors;
 use App\Cars\Drive;
 use App\Cars\Fuel;
+use App\Cars\Identity;
 use App\Cars\Papers;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
+use App\Cars\Vin\Vin;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Users\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
@@ -39,7 +42,7 @@ final class ApplyCarFields
                 // Новую марку заводит только источник со своим справочником марок (`create`: Мигторг) — документы и письма нет.
                 'brand' => ($id = (! empty($item['create']) ? Brand::resolve((string) $value) : Brand::known((string) $value))?->id) ? $data['brand_id'] = $id : null,
                 'model' => null,
-                'vin' => $data['vin'] = strtoupper((string) $value),
+                'vin' => ($vin = Vin::full((string) $value)) ? $data['vin'] = $vin : null,
                 'color' => $data['color'] = Colors::normalize((string) $value) ?? (string) $value,
                 'year' => $data['year'] = (int) $value,
                 'mileage', 'engine_volume', 'engine_power' => $data[$field] = (int) $value,
@@ -89,6 +92,11 @@ final class ApplyCarFields
             'answer_by' => ['date'],
         ], $data))->errors();
         $data = array_diff_key($data, array_flip($errors->keys()));
+        // VIN другого живого предложения — не этой машины (одна машина — одна запись, `Identity`): не пишем, в историю.
+        if (isset($data['vin']) && ($holder = Identity::offerByVin($data['vin'], $offer->id))) {
+            $offer->log(OfferEventType::Note, $by, ['text' => "VIN {$data['vin']} уже у ".Identity::offerName($holder).', не записан']);
+            unset($data['vin']);
+        }
         if ($data) {
             app(UpdateOffer::class)($offer, $data, $by, $log);
         }

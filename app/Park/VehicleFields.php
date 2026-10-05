@@ -4,6 +4,7 @@ namespace App\Park;
 
 use App\Cars\Category;
 use App\Cars\Colors;
+use App\Cars\Vin\Vin;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -27,7 +28,7 @@ final class VehicleFields
         $name = $identity ? 'required' : 'nullable';
 
         return [
-            'ref' => ['nullable', 'string', 'max:60'], 'vin' => ['nullable', 'string', 'max:17'], 'plate' => ['nullable', 'string', 'max:12'],
+            'ref' => ['nullable', 'string', 'max:60'], 'vin' => ['nullable', 'string', 'size:17'], 'plate' => ['nullable', 'string', 'max:12'],
             'year' => ['nullable', 'integer', 'between:1950,'.(now()->year + 1)],
             'brand_id' => [$name, 'exists:brands,id'], 'model_id' => [$name, 'exists:car_models,id'], 'vendor_id' => ['nullable', 'exists:vendors,id'],
             'category' => ['nullable', Rule::enum(Category::class)], 'color' => ['nullable', 'string', 'max:32'], 'policy_no' => ['nullable', 'string', 'max:60'],
@@ -41,6 +42,10 @@ final class VehicleFields
      */
     public static function clean(Request $request): void
     {
+        // VIN одной записью с предложением и поиском двойников: кириллица того же начертания — латиница (`Vin`).
+        if ($request->has('vin')) {
+            $request->merge(['vin' => Vin::normalize((string) $request->input('vin'))]);
+        }
         if ($request->has('value')) {
             $digits = preg_replace('/\D+/', '', (string) $request->input('value'));
             $request->merge(['value' => $digits === '' ? null : $digits]);

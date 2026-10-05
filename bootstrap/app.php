@@ -7,6 +7,7 @@ use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\MergeCarsCommand;
+use App\Cars\Console\MergeDuplicatesCommand;
 use App\Http\Middleware\DemoReadOnly;
 use App\Http\Middleware\DetailBack;
 use App\Http\Middleware\EnsureAbility;
@@ -60,10 +61,12 @@ use App\Users\Console\CreateUser;
 use App\Users\Console\SeedDemo;
 use App\Workflow\Console\RefillVendors;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -107,6 +110,7 @@ return Application::configure(basePath: dirname(__DIR__))
         PerpetualSecret::class,
         SeedDemo::class,
         MergeCarsCommand::class,
+        MergeDuplicatesCommand::class,
         FillFromDocsCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
@@ -125,4 +129,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        // Два сохранения одной машины в одну секунду: сторож (`Cars\Identity`) пропустил оба, второе упёрлось в индекс —
+        // ошибка поля, как у сторожа, а не 500.
+        $exceptions->map(UniqueConstraintViolationException::class, function (UniqueConstraintViolationException $e) {
+            $field = match (true) {
+                str_contains($e->getMessage(), 'offers_claim_ref_key_unique') => 'claim_ref',
+                str_contains($e->getMessage(), 'park_vehicles_ref_key_unique') => 'ref',
+                str_contains($e->getMessage(), '_vin_live_unique') => 'vin',
+                default => null,
+            };
+
+            return $field ? ValidationException::withMessages([$field => ($field === 'vin' ? 'VIN' : 'Номер убытка').' уже у другой записи, обновите страницу']) : $e;
+        });
     })->create();

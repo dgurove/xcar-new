@@ -2,10 +2,11 @@
 
 namespace App\Park\Actions;
 
+use App\Cars\IdentityTaken;
 use App\Mail\Candidate;
-use App\Mail\Message;
 use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
+use App\Mail\Message;
 use App\Mail\Scope;
 use App\Park\Vehicle;
 use App\Park\Yard;
@@ -74,13 +75,18 @@ final class StoreByLetters
             return $vehicle;
         }
         $sold = $candidate->stageOf(CandidateStage::Sold);
-        $vehicle = ($this->register)(null, $candidate, $candidate->vehicleData(), [
-            'stored' => true,
-            'yard_id' => $this->yard($candidate)?->id,
-            'sold' => (bool) $sold,
-            'pickup_name' => $sold['name'] ?? null,
-            'pickup_phone' => $sold['phone'] ?? null,
-        ]);
+        try {
+            $vehicle = ($this->register)(null, $candidate, $candidate->vehicleData(), [
+                'stored' => true,
+                'yard_id' => $this->yard($candidate)?->id,
+                'sold' => (bool) $sold,
+                'pickup_name' => $sold['name'] ?? null,
+                'pickup_phone' => $sold['phone'] ?? null,
+            ]);
+        } catch (IdentityTaken) {
+            // Номер уже у выданной или отменённой ТС — сам не заводим: второй ТС с тем же номером не бывает, решит человек.
+            return null;
+        }
         $this->promote->attach($candidate, $vehicle);
 
         return $vehicle;

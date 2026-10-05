@@ -8,6 +8,7 @@ use App\Cars\Drive;
 use App\Cars\Fuel;
 use App\Cars\Papers;
 use App\Cars\Transmission;
+use App\Cars\Vin\Vin;
 use Illuminate\Support\Carbon;
 
 /**
@@ -51,8 +52,8 @@ final class MigtorgFields
         }
         $put('model', trim((string) ($lot['model']['title'] ?? '')));
         $put('year', ($lot['year'] ?? 0) ?: null);
-        $vin = strtoupper(trim((string) ($lot['vin'] ?? '')));
-        $put('vin', strlen($vin) === 17 ? $vin : null);
+        // Мигторг прячет VIN звёздочками — маска VIN не даёт (`Vin::full`).
+        $put('vin', Vin::full((string) ($lot['vin'] ?? '')));
         $put('color', trim((string) ($lot['color']['title'] ?? '')));
         $put('mileage', ($lot['mileage'] ?? 0) ?: null);
         $put('transmission', (self::TRANSMISSION[strtoupper((string) ($lot['transmission'] ?? ''))] ?? null)?->value);

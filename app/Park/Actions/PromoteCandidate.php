@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Cars\Vin\Vin;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Candidate;
@@ -64,7 +65,7 @@ final class PromoteCandidate
     public function existing(Candidate $candidate): ?Vehicle
     {
         $live = fn () => Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->latest();
-        $vin = $candidate->value('vin') ? strtoupper((string) $candidate->value('vin')) : null;
+        $vin = Vin::full((string) $candidate->value('vin'));
         $plate = Patterns::plateKey($candidate->value('plate'));
 
         return ($candidate->code ? $live()->where('ref_key', Vehicle::keyFor($candidate->code))->first() : null)

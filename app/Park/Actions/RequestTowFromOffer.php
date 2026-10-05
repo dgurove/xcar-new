@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Cars\Identity;
 use App\Offers\Offer;
 use App\Park\Request;
 use App\Park\RequestType;
@@ -15,8 +16,9 @@ final class RequestTowFromOffer
 
     public function __invoke(Offer $offer, User $by): ?Request
     {
-        $vehicle = Vehicle::where('offer_id', $offer->id)->first() ?? LinkOffer::guessVehicle($offer);
-        if ($vehicle && ($vehicle->state->isFinal() || $vehicle->openRequest(RequestType::Tow))) {
+        // ТС этой машины уже есть (номер убытка или VIN, `Identity`) — вывоз на неё, второй ТС не заводим.
+        $vehicle = Vehicle::where('offer_id', $offer->id)->first() ?? Identity::vehicleFor($offer->claim_ref_key, $offer->vin);
+        if ($vehicle && (($vehicle->offer_id && $vehicle->offer_id !== $offer->id) || $vehicle->state->isFinal() || $vehicle->openRequest(RequestType::Tow))) {
             return null;
         }
         if ($vehicle && ! $vehicle->offer_id) {
