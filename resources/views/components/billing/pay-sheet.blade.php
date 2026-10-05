@@ -10,8 +10,8 @@
     use App\Support\Money; use App\Billing\Acquiring\PayLink;
     $first = $invoices->first();
     $one = $invoices->count() === 1;
-    // Без договора эквайринга способа «Ссылкой» нет вовсе. Ссылка у счёта уже есть (заводится вместе с ним на менеджера) —
-    // «Ссылкой» всё равно здесь: выбрать, кто платит (05.10.2026, владелец), новая заменит прежнюю.
+    // Без договора эквайринга способа «По ссылке» нет вовсе. Ссылка у счёта уже есть (заводится вместе с ним на менеджера) —
+    // «По ссылке» всё равно здесь: выбрать, кто платит (05.10.2026, владелец), новая заменит прежнюю.
     // У счёта ПРАЙМ по сделке ссылки нет вовсе (Совкомбанк: «ссылка не используется», `PayLink::eligible`).
     // offline — ссылка уже стоит рядом (расчёт сделки): здесь только «по счёту» и «наличными».
     $online = ! $offline && app(\App\Billing\Acquiring\Gateway::class)->configured() && $invoices->every(fn ($i) => PayLink::eligible($i));
@@ -21,7 +21,7 @@
     $fmt = fn ($v) => Money::nums($v, fmod($v, 1) ? 2 : 0);
     // Поле не зовётся `method`: оно перекрыло бы form.method, и Turbo с обработчиками отправки ломались бы.
     $way = old('way', $online ? 'link' : 'transfer');
-    $ways = array_filter(['link' => $online ? ['Ссылкой', 'Получить ссылку'] : null, 'transfer' => ['По счёту', 'Я оплатил'], 'cash' => ['Наличными', 'Отдал наличными']]);
+    $ways = array_filter(['link' => $online ? ['По ссылке', 'Получить ссылку'] : null, 'transfer' => ['По счёту', 'Я оплатил'], 'cash' => ['Наличными', 'Отдал наличными']]);
     $payer = (string) old('payer', $current?->payer_kind === \App\Billing\Acquiring\PayerKind::Buyer && $current->payer_user_id ? (string) $current->payer_user_id : 'self');
     $me = auth()->user();
 @endphp
