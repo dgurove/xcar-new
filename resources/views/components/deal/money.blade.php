@@ -31,7 +31,7 @@
             {{-- По ДКП: собственнику платит покупатель менеджера, меньше закупочной — взаимозачёт со страховой. --}}
             @if ($deal->offset())<dt class="text-sm text-ink-dim">Взаимозачёт</dt><dd class="nums text-right">{{ Money::rub($deal->offset()) }}</dd>@endif
             <dt class="text-sm text-ink-dim">Собственнику по ДКП</dt><dd class="nums text-right">{{ Money::rub((int) $deal->ownerPrice()) }}</dd>
-            <dt class="text-sm text-ink-dim">Подбор</dt><dd class="nums text-right {{ $deal->selectionBase() < 0 ? 'text-danger' : '' }}">{{ Money::rub((int) $deal->selectionBase()) }}</dd>
+            <dt class="text-sm text-ink-dim">Разница</dt><dd class="nums text-right {{ $deal->selectionBase() < 0 ? 'text-danger' : '' }}">{{ Money::rub((int) $deal->selectionBase()) }}</dd>
         @elseif ($deal->margin() !== null)<dt class="text-sm text-ink-dim">Разница</dt><dd class="nums text-right {{ $deal->margin() < 0 ? 'text-danger' : '' }}">{{ Money::rub($deal->margin()) }}</dd>@endif
         <dt class="text-sm text-ink-dim">Вознаграждение</dt><dd class="nums text-right">{{ $deal->commission ? Money::rub($deal->commission) : 'нет' }}</dd>
         @if ($deal->ours() !== null)<dt class="text-sm text-ink-dim">Нам</dt><dd class="nums text-right text-lg font-semibold {{ $deal->ours() < 0 ? 'text-danger' : '' }}">{{ Money::rub($deal->ours()) }}</dd>@endif

@@ -14,8 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Счёт «Подбор ТС» сделки «страхователю по ДКП» (05.10.2026): на разницу цены подтверждения и того, что покупатель
- * отдаёт страхователю (`Deal::selectionBase`, не закупочной: взаимозачёт — наш), двумя строками — «Подбор ТС» и
- * «Агентское вознаграждение», которое менеджер удерживает (зачёт). К оплате — подбор (850 − 750 − 20 = 80 000). Выставляется при принятии; правка денег сделки перевыставляет его, пока за него не
+ * отдаёт страхователю (`Deal::selectionBase`, не закупочной: взаимозачёт — наш), за вычетом вознаграждения, которое
+ * менеджер оставляет себе, — одной строкой «Подбор ТС» (850 − 750 − 20 = 80 000). Выставляется при принятии; правка денег сделки перевыставляет его, пока за него не
  * платили (зачёт вознаграждения — не оплата).
  */
 final class IssueSelectionInvoice
@@ -31,13 +31,15 @@ final class IssueSelectionInvoice
         foreach ($current as $invoice) {
             ($this->void)($invoice, $by, 'Деньги сделки изменены');
         }
-        $base = (int) $deal->selectionBase();
-        if ($base <= 0) {
+        // Одной строкой ровно то, что менеджер платит нам: подбор за вычетом его вознаграждения (850 − 750 − 20 = 80 000).
+        // Строка вознаграждения с зачётом путала: в счёте и ссылке стояло 100 000 (05.10.2026, Kuga).
+        $due = (int) $deal->selectionBase() - (int) $deal->commission;
+        if ($due <= 0) {
             return null;
         }
         $deal->loadMissing(['offer', 'buyer']);
 
-        return ($this->issue)($deal, $by, Party::forUser($deal->buyer), ChargeKind::Selection, $base, now()->addDays(3));
+        return ($this->issue)($deal, $by, Party::forUser($deal->buyer), ChargeKind::Selection, $due, now()->addDays(3), withFee: false);
     }
 
     /** Оплата, кроме зачёта удержанного вознаграждения. */

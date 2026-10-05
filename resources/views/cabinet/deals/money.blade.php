@@ -26,7 +26,7 @@
                 <span class="block">XCar за подбор</span>
                 <span class="row-sub">@if ($paid)<span class="text-open">оплачено</span>@elseif ($selection)<x-billing.light :invoice="$selection"/>@else готовим счёт @endif</span>
             </span>
-            <span class="nums font-semibold">{{ Money::rub($selection ? ($paid ? $selection->total - (float) $deal->commission : $selection->remaining()) : (int) $deal->ours()) }}</span>
+            <span class="nums font-semibold">{{ Money::rub($selection ? ($paid ? $selection->total : $selection->remaining()) : (int) $deal->ours()) }}</span>
         </a>
         <div class="row profit">
             <span class="min-w-0 flex-1 font-medium">Ваше вознаграждение</span>

@@ -24,10 +24,16 @@ final class EnsurePayLink
         if (! PayLink::eligible($invoice)) {
             return null;
         }
+        $amount = PayLink::defaultAmount($invoice);
         if ($open = PayLink::where('invoice_id', $invoice->id)->where('state', PayLinkState::Open)->first()) {
+            // Своя ссылка, которую ещё не открывали, — на текущий остаток: зачёт удержанного вознаграждения ложится после
+            // выставления, и ссылка оставалась на всю сумму счёта (Kuga, 100 000 вместо 80 000).
+            if ((int) $open->created_by === Robot::user()->id && $amount > 0 && abs((float) $open->amount - $amount) >= 0.01 && ! $open->attempts()->exists()) {
+                $open->update(['amount' => $amount]);
+            }
+
             return $open;
         }
-        $amount = PayLink::defaultAmount($invoice);
         if ($amount <= 0) {
             return null;
         }

@@ -26,11 +26,12 @@ final class IssueDealInvoice
 {
     public function __construct(private IssueInvoice $issue, private RecordPayment $record, private InvoicePdf $pdf) {}
 
-    public function __invoke(Deal $deal, User $by, Party $party, ChargeKind $kind, float $base, CarbonInterface $dueAt, ?string $notes = null, ?string $title = null): Invoice
+    /** @param  bool  $withFee  строка вознаграждения в счёте; подбор по ДКП — без неё: менеджер платит ровно подбор */
+    public function __invoke(Deal $deal, User $by, Party $party, ChargeKind $kind, float $base, CarbonInterface $dueAt, ?string $notes = null, ?string $title = null, bool $withFee = true): Invoice
     {
         $offer = $deal->offer;
         $car = $offer->titleWithYear();
-        $fee = $kind === ChargeKind::Reward ? 0 : (int) $deal->commission;
+        $fee = $kind === ChargeKind::Reward || ! $withFee ? 0 : (int) $deal->commission;
         $title ??= match ($kind) {
             ChargeKind::Sale => 'Транспортное средство '.$car,
             ChargeKind::Selection => 'Подбор ТС '.$car,

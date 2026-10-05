@@ -84,8 +84,10 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame(80000, $deal->ours());
         $invoice = $deal->issuedInvoices()->sole();
         $this->assertSame(ChargeKind::Selection, $invoice->kind);
-        $this->assertEqualsWithDelta(100000, $invoice->total, 0.01);
+        // Одной строкой ровно то, что менеджер платит нам: без строки вознаграждения и зачёта.
+        $this->assertEqualsWithDelta(80000, $invoice->total, 0.01);
         $this->assertEqualsWithDelta(80000, $invoice->remaining(), 0.01);
+        $this->assertSame(1, $invoice->charges()->count());
         $this->assertFalse($invoice->isPartial());
 
         $this->walkTo($offer, $deal, 'Оплата подбора');
