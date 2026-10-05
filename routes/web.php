@@ -153,7 +153,6 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::post('/account/money/deals/{deal}/pay', [MoneyController::class, 'pay']);
         Route::post('/account/money/invoices/{invoice}/links', [MoneyController::class, 'link']);
         Route::delete('/account/money/links/{link}', [MoneyController::class, 'cancelLink']);
-        Route::put('/account/money/links/{link}/payer', [MoneyController::class, 'payer']);
         Route::get('/account/money/invoices/{invoice}/payments/{payment}/slip', [MoneyController::class, 'slip']);
         Route::get('/account/money/deals/{deal}', [MoneyController::class, 'deal']);
 

@@ -52,9 +52,9 @@
         @error('link')<div class="mt-2 text-center text-sm text-danger">{{ $message }}</div>@enderror
         @if ($failed)<div class="mt-2 text-center text-sm text-danger">Оплата сейчас недоступна, попробуйте через несколько минут</div>@endif
         <div class="pay-methods mt-3">
-            <span><x-ui.icon name="sbp" class="size-4"/>СБП</span>
-            <span><x-ui.icon name="sberpay" class="size-4"/>SberPay</span>
-            <span><x-ui.icon name="card" class="size-4"/>Карта</span>
+            <span><x-ui.pay-mark name="sbp" class="h-4 w-auto"/>СБП</span>
+            <span><x-ui.pay-mark name="sberpay" class="h-4 w-auto"/>SberPay</span>
+            <span><x-ui.pay-mark name="card" class="h-4 w-auto"/>Карта</span>
         </div>
     @endif
 

@@ -1,7 +1,7 @@
 {{-- Расчёт сделки менеджеру (05.10.2026) по схеме оплаты, вознаграждение — зелёным, это его прибыль:
-     — ДКП и «страховой напрямую»: продажа, закупочная, взаимозачёт со страховой, «Оплатить собственнику по ДКП» (или
-       страховой), вознаграждение, ниже — «Оплатите XCar за подбор» со ссылкой (`cabinet.deals.selection-pay`). Закупочную
-       тут менеджер видит — она в его ДКП (исключение из «закупочной на xcar нет»);
+     — ДКП и «страховой напрямую»: продажа, закупочная, взаимозачёт, «Оплатить собственнику по ДКП» (или страховой),
+       остаток, «Ваша доля» и «Оплата услуг подбора», кнопка «Оплатить». Закупочную тут менеджер видит — она в его ДКП
+       (исключение из «закупочной на xcar нет»);
      — ПРАЙМ: продажа, счёт ПРАЙМ (кому, сколько, оплачен ли); закупочной нет.
      Только деньги: договор — в задаче или своим блоком (`cabinet.deals.contract`). Ссылка — внутри `.list`, иначе её
      стили не срабатывают и адрес в узкой колонке шёл по букве в строку. --}}
@@ -26,26 +26,43 @@
     <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ Money::rub($deal->amount) }}</a>
     <span class="mt-1 block text-sm text-ink-muted">продажа</span>
     @if ($deal->paysSelection())
-        {{-- Что куда платить — по порядку и глаголом (06.10.2026, владелец): закупочная, взаимозачёт, «Оплатить
-             собственнику по ДКП», его вознаграждение; ниже своей группой — «Оплатите XCar за подбор» со ссылкой. --}}
+        {{-- Деньги по порядку (06.10.2026, владелец: «+20 вознаграждения и оплатите 80 — покажется, что выйдет −60»):
+             закупочная, взаимозачёт, «Оплатить собственнику по ДКП», под ними остаток — вся разница; ниже, как она
+             делится: «Ваша доля» и «Оплата услуг подбора», и одна кнопка «Оплатить» (`cabinet.deals.selection-pay`). --}}
         <div class="list mt-4">
             <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Закупочная</span><span class="nums">{{ Money::rub((int) $deal->cost) }}</span></div>
             @if ($deal->offset())
                 <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Взаимозачёт со страховой</span><span class="nums text-ink-muted">−{{ Money::rub($deal->offset()) }}</span></div>
             @endif
             <div class="row"><span class="min-w-0 flex-1">{{ $deal->schemeOf()->payLabel() }}</span><span class="nums font-semibold">{{ Money::rub((int) $deal->ownerPrice()) }}</span></div>
-            @if ($deal->commission)
-                <div class="row profit">
-                    <span class="min-w-0 flex-1"><span class="block font-medium">Ваше вознаграждение</span><span class="row-sub">{{ $feeWord }}</span></span>
-                    <span class="profit-sum nums">+{{ Money::rub((int) $deal->commission) }}</span>
-                </div>
-            @endif
         </div>
-        {{-- На шаге оплаты оплата стоит в задаче (`cabinet.deals.step`) — тут её второй раз нет. --}}
+        @if ($deal->selectionBase() !== null)
+            <div class="mt-3 flex items-baseline justify-between gap-3 px-4"><span class="text-ink-muted">Остаток</span><span class="nums font-semibold">{{ Money::rub((int) $deal->selectionBase()) }}</span></div>
+        @endif
+        <div class="list mt-3">
+            @if ($deal->commission)
+                <div class="row profit"><span class="min-w-0 flex-1 font-medium">Ваша доля</span><span class="profit-sum nums">+{{ Money::rub((int) $deal->commission) }}</span></div>
+            @endif
+            <div class="row">
+                <span class="min-w-0 flex-1">
+                    <span class="block">Оплата услуг подбора</span>
+                    @php
+                        $when = match (true) {
+                            ! $selection => 'готовим счёт',
+                            $selection->state === InvoiceState::Paid => 'оплачено',
+                            $selection->claimed() > 0 => 'оплата ждёт подтверждения',
+                            default => null,
+                        };
+                    @endphp
+                    @if ($when)<span @class(['row-sub', 'text-open' => $selection?->state === InvoiceState::Paid])>{{ $when }}</span>
+                    @elseif ($selection->due_at)<span class="row-sub"><x-billing.light :invoice="$selection"/></span>@endif
+                </span>
+                <span class="nums font-semibold">{{ Money::rub($selection ? ($selection->state === InvoiceState::Paid ? $selection->total : $selection->remaining()) : (int) $deal->ours()) }}</span>
+            </div>
+        </div>
+        {{-- На шаге оплаты «Оплатить» стоит в задаче (`cabinet.deals.step`) — тут его второй раз нет. --}}
         @if ($selection && ! ($requirement && $position?->stage->isPayStep()))
             @include('cabinet.deals.selection-pay', ['invoice' => $selection])
-        @elseif (! $selection)
-            <div class="list mt-4"><div class="row"><span class="min-w-0 flex-1"><span class="block">XCar за подбор</span><span class="row-sub">готовим счёт</span></span><span class="nums font-semibold">{{ Money::rub((int) $deal->ours()) }}</span></div></div>
         @endif
     @else
         <div class="list mt-4">

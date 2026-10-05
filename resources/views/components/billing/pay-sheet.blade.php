@@ -2,7 +2,8 @@
      крупно по центру, у ссылки — кто платит строками с аватарами (я, мои покупатели, новый покупатель — заводится в его
      «Покупателях»). Почта для чека —
      только у того, у кого её нет в профиле: чек ЮKassa приходит только на почту. По счёту — PDF с QR строкой документа,
-     дата, номер и платёжка; наличными — дата. Кнопка одна внизу и называет исход (reveal подменяет подпись).
+     дата, номер и платёжка; наличными — дата. Кнопка — у каждого способа своя и называет исход; у ссылки её нет: выбор
+     плательщика сам заводит новую ссылку, и она тут же, с «Скопировать» и «Отправить».
      Поля в скрытых панелях reveal выключает; обязательность проверяет сервер, `required` на них заблокировал бы отправку. --}}
 @props(['id' => 'pay', 'invoices', 'action', 'pdf', 'buyers' => collect(), 'open' => false, 'otherName' => null, 'offline' => false])
 @php
@@ -23,14 +24,13 @@
     $ways = array_filter(['link' => $online ? ['Ссылкой', 'Получить ссылку'] : null, 'transfer' => ['По счёту', 'Я оплатил'], 'cash' => ['Наличными', 'Отдал наличными']]);
     $payer = (string) old('payer', $current?->payer_kind === \App\Billing\Acquiring\PayerKind::Buyer && $current->payer_user_id ? (string) $current->payer_user_id : 'self');
     $me = auth()->user();
-    $submit = $id.'-submit';
 @endphp
 <x-ui.sheet :id="$id" title="Оплатить" :open="$open">
-    <form method="post" action="{{ $action }}" enctype="multipart/form-data" class="flex flex-col gap-5" data-controller="reveal pay-amount" data-reveal-label-selector-value="#{{ $submit }}">
+    <form method="post" action="{{ $action }}" enctype="multipart/form-data" class="flex flex-col gap-5" data-controller="reveal pay-amount autosubmit">
         @csrf
         <div class="segment">
             @foreach ($ways as $k => [$label, $verb])
-                <label><input type="radio" name="way" value="{{ $k }}" @checked($way === $k) data-action="reveal#pick" data-reveal-label="{{ $verb }}"><span>{{ $label }}</span></label>
+                <label><input type="radio" name="way" value="{{ $k }}" @checked($way === $k) data-action="reveal#pick"><span>{{ $label }}</span></label>
             @endforeach
         </div>
 
@@ -57,7 +57,18 @@
 
         @if ($online)
             <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="link" @if ($way !== 'link') hidden @endif>
-                <x-billing.payer-pick :id="$id" :buyers="$buyers" :payer="$payer" :other-name="$otherName"/>
+                {{-- Кто платит — выбор сразу заводит новую ссылку на него, прежняя гаснет (`CreatePayLink`, 06.10.2026,
+                     владелец); новому покупателю — после ФИО, кнопкой. Ниже — сама ссылка. --}}
+                <x-billing.payer-pick :id="$id" :buyers="$buyers" :payer="$payer" :other-name="$otherName" autosubmit/>
+                @if ($current)
+                    @php [$state] = $current->stateLine(); @endphp
+                    <div>
+                        <div class="list-cap">Ссылка на оплату, {{ preg_replace('/^ждём оплату, /u', '', $state) }}</div>
+                        <x-ui.copy-link :url="$current->url()" :title="'Оплата по счёту '.$first->label()"/>
+                    </div>
+                @else
+                    <x-ui.button block>Получить ссылку</x-ui.button>
+                @endif
             </div>
         @endif
 
@@ -76,12 +87,12 @@
                 <x-ui.field name="ref" id="{{ $id }}-ref" label="№ платёжки"/>
                 <x-ui.file-field name="slip" label="Платёжка" accept=".pdf,.jpg,.jpeg,.png,.heic,image/*" span="col-span-2"/>
             </div>
+            <x-ui.button block>Я оплатил</x-ui.button>
         </div>
 
         <div data-reveal-target="pane" data-reveal-key="cash" @if ($way !== 'cash') hidden @endif>
             <x-ui.field name="paid_at" id="{{ $id }}-date-cash" label="Когда отдали" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
+            <x-ui.button block class="mt-5">Отдал наличными</x-ui.button>
         </div>
-
-        <x-ui.button block id="{{ $submit }}">{{ $ways[$way][1] ?? 'Оплатить' }}</x-ui.button>
     </form>
 </x-ui.sheet>

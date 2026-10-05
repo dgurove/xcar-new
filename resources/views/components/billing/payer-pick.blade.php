@@ -1,24 +1,26 @@
 {{-- Кто платит по ссылке — строками с аватарами: я, мои покупатели, новый покупатель по ФИО (заводится в его
      «Покупателях», `PayChoice`). Почта для чека — только у того, у кого её нет: чек ЮKassa приходит на почту. Одно на
      шторку «Оплатить» и смену плательщика в расчёте сделки. --}}
-@props(['id' => 'pay', 'buyers' => collect(), 'payer' => 'self', 'otherName' => null, 'cap' => true])
+@props(['id' => 'pay', 'buyers' => collect(), 'payer' => 'self', 'otherName' => null, 'cap' => true, 'autosubmit' => false])
 @php
     $me = auth()->user();
     $picked = fn ($b) => $payer === (string) $b->id || ($payer === 'buyer' && (int) old('payer_user_id') === $b->id);
+    // autosubmit — выбор сразу отправляет форму (новая ссылка на этого плательщика); новому покупателю — кнопкой после ФИО.
+    $go = $autosubmit ? 'reveal#pick change->autosubmit#submit' : 'reveal#pick';
 @endphp
 <div data-controller="reveal">
     @if ($cap)<div class="list-cap">Кто платит</div>@endif
     <div class="list max-h-72 overflow-y-auto">
         <label class="row row-check">
             <x-ui.avatar :user="$me" :size="36"/>
-            <span class="min-w-0 flex-1"><span class="block truncate">Я</span>@if ($me->email)<span class="row-sub">{{ $me->email }}</span>@endif</span>
-            <span class="check"><input type="radio" name="payer" value="self" @checked($payer === 'self') data-action="reveal#pick"></span>
+            <span class="min-w-0 flex-1"><span class="block truncate">Я сам</span>@if ($me->email)<span class="row-sub">{{ $me->email }}</span>@endif</span>
+            <span class="check"><input type="radio" name="payer" value="self" @checked($payer === 'self') data-action="{{ $go }}"></span>
         </label>
         @foreach ($buyers as $b)
             <label class="row row-check">
                 <x-ui.avatar :user="$b" :size="36"/>
                 <span class="min-w-0 flex-1"><span class="block truncate">{{ $b->name }}</span>@if ($b->email)<span class="row-sub">{{ $b->email }}</span>@endif</span>
-                <span class="check"><input type="radio" name="payer" value="{{ $b->id }}" @checked($picked($b)) data-action="reveal#pick"></span>
+                <span class="check"><input type="radio" name="payer" value="{{ $b->id }}" @checked($picked($b)) data-action="{{ $go }}"></span>
             </label>
         @endforeach
         <label class="row row-check">
@@ -37,5 +39,6 @@
     <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" data-reveal-target="pane" data-reveal-key="other" @if ($payer !== 'other') hidden @endif>
         <x-ui.field name="name" id="{{ $id }}-name" label="ФИО" :value="$otherName"/>
         <x-ui.field name="email" id="{{ $id }}-email-other" label="Почта для чека" type="email"/>
+        @if ($autosubmit)<x-ui.button block class="sm:col-span-2">Получить ссылку</x-ui.button>@endif
     </div>
 </div>
