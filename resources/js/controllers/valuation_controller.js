@@ -26,6 +26,8 @@ export default class extends Controller {
         const text = this.textTarget.value.trim();
         if (!text || this.busy) return;
         this.busy = true;
+        // Шторка во весь рост — с началом разбора; пока вставляют, она по содержимому.
+        this.element.classList.add('is-working');
         this.pasteTarget.hidden = true;
         this.workTarget.hidden = false;
         this.steps().forEach((s) => this.mark(s.dataset.step, 'wait', ''));
@@ -183,20 +185,30 @@ export default class extends Controller {
         this.count();
     }
 
-    // Сколько предложений изменится: отмеченные и расхождения — оставленное целиком не меняется, если спорит оценочная
-    // и нечего дописать (VIN, город).
+    // Что сохранится — по карточкам: галка, «Оставить / Перезаписать» в строке суммы, VIN и город из текста и вписанные.
+    // Кнопка называет исход: «Сохранить: оценка 8, VIN 5, город 4».
     count() {
-        const n = this.rowsTarget.querySelectorAll('input[type=checkbox][name="offers[]"]:checked').length
-            + [...this.rowsTarget.querySelectorAll('.valuation-conflict')].filter((row) => row.querySelector('input[value="overwrite"]').checked
-                || !row.querySelector('.valuation-diff dt')?.textContent.includes('Оценочная')
-                // Сумму оставили, а VIN или город из текста всё равно лягут.
-                || 'extra' in row.dataset).length;
-        this.saveTarget.disabled = n === 0;
-        this.saveTarget.textContent = n ? `Всё верно, сохранить (${n})` : 'Нечего сохранять';
+        let price = 0, vin = 0, city = 0;
+        for (const card of this.rowsTarget.querySelectorAll('.valuation-card')) {
+            const box = card.querySelector('input[type=checkbox][name="offers[]"]');
+            const conflict = 'conflict' in card.dataset;
+            const keep = conflict && card.querySelector('input[value="keep"]')?.checked;
+            card.classList.toggle('is-keep', !!keep);
+            if (box && !box.checked) continue;
+            if ('priceChange' in card.dataset && !(keep && 'valueDiffers' in card.dataset)) price++;
+            const typedVin = card.querySelector('input[name^="vin["]')?.value.replace(/[^A-Za-z0-9]/g, '').length === 17;
+            const typedCity = !!card.querySelector('input[type=hidden][name^="city["]')?.value;
+            if ('vinFill' in card.dataset || typedVin) vin++;
+            if ('cityFill' in card.dataset || typedCity) city++;
+        }
+        const parts = [price ? `оценка ${price}` : null, vin ? `VIN ${vin}` : null, city ? `город ${city}` : null].filter(Boolean);
+        this.saveTarget.disabled = parts.length === 0;
+        this.saveTarget.textContent = parts.length ? `Сохранить: ${parts.join(', ')}` : 'Нечего сохранять';
     }
 
     reset() {
         this.busy = false;
+        this.element.classList.remove('is-working');
         this.textTarget.value = '';
         this.pasteTarget.hidden = false;
         this.workTarget.hidden = true;

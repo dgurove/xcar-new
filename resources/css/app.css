@@ -779,7 +779,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .field-note { @apply mt-1 text-sm; color: var(--color-urgent); }
   /* «Оценить → Из текста» (valuation_controller): этапы с кольцом и галкой, строки текста схлопываются, номера и суммы
      загораются, итог считается счётчиком, в конце большая галка рисуется обводкой. */
-  .valuation-text { @apply min-h-48 resize-none font-mono text-sm; }
+  .valuation-text { @apply resize-none font-mono text-sm; height: 18rem; }
   .valuation-steps { @apply flex flex-col gap-2.5; }
   .valuation-step { @apply flex items-center gap-3 text-ink-dim transition-colors; }
   .valuation-step:not([data-state="wait"]) { @apply text-ink; }
@@ -805,6 +805,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Окно одной высоты: прокручивается только то, что внутри шага (строки текста, итог), плашка кнопок всегда внизу. */
   .sheet-valuation[open] { @apply flex flex-col overflow-hidden; }
   @media (min-width: 640px) { .sheet-valuation { height: min(46rem, calc(100dvh - 4rem)); } }
+  /* Пока только вставляют — шторка по содержимому, поле в шесть строк (владелец 05.10.2026: «вдвое меньше»); во весь
+     рост — с началом разбора (`is-working`, valuation_controller). */
+  .sheet-valuation:not(:has(.valuation.is-working)) { height: fit-content; }
+  @media (max-width: 639.98px) {
+    .sheet-valuation.sheet-tall:not(:has(.valuation.is-working)) { height: fit-content; border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-top: 1.25rem; }
+  }
   .sheet-valuation > .valuation { @apply flex min-h-0 flex-1 flex-col; }
   .valuation-pane { @apply flex min-h-0 flex-1 flex-col; }
   .valuation-pane[hidden] { display: none; }
@@ -812,24 +818,30 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .valuation-work { @apply flex min-h-0 flex-none flex-col overflow-y-auto pb-3; }
   .valuation-work[hidden] { display: none; }
   .sheet-valuation .valuation:not(:has(> [data-valuation-target="result"]:not([hidden]))) .valuation-work { @apply flex-1; }
-  .valuation-pane .valuation-text { @apply flex-1; }
   .valuation-summary { @apply flex flex-none items-center gap-2 px-1 pb-3 text-sm text-ink-muted; }
   .valuation-summary[hidden] { display: none; }
   .valuation-scroll { @apply -mx-1 min-h-0 flex-1 overflow-y-auto px-1; overscroll-behavior: contain; }
   .valuation-scroll .valuation-group:first-child > summary { @apply pt-0; }
   .valuation-bar { @apply flex flex-none gap-2 pt-3; }
-  /* Расхождение: на ПК строкой — ТС и номер, «было → в тексте», «Оставить | Перезаписать»; на телефоне столбиком,
-     выбор во всю ширину. */
-  .list .row.valuation-conflict { @apply gap-4 text-left; }
-  .valuation-conflict > .min-w-0 { @apply flex-1; }
-  .valuation-diff { @apply grid shrink-0 grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-sm; }
-  .valuation-diff dt { @apply text-ink-muted; }
-  .valuation-diff dd { @apply text-right whitespace-nowrap; }
-  .valuation-choice { @apply shrink-0; }
+  /* Карточка изменений на машину: шапка (ТС, номер убытка, галка) и строки «поле — было → станет». Новое — лаймом,
+     заменяемое — зачёркнутым; «Оставить» в споре по сумме меняет их местами (`is-keep` на карточке). */
+  .valuation-card { @apply px-4 py-3; }
+  .valuation-card-head { @apply flex items-start gap-3; }
+  .valuation-fields { @apply mt-2 grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 text-sm; }
+  .valuation-fields dt { @apply text-ink-muted; }
+  .valuation-fields dd { @apply flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1; }
+  .valuation-old { @apply text-ink-dim line-through; }
+  .valuation-new { @apply text-accent-text; }
+  .valuation-card.is-keep dd[data-disputed] .valuation-old { @apply text-ink no-underline; }
+  .valuation-card.is-keep dd[data-disputed] .valuation-new { @apply text-ink-dim line-through; }
+  .valuation-choice { @apply ml-auto; }
+  .valuation-choice label { @apply min-h-7 px-2.5 text-xs; }
+  .valuation-input input, input.valuation-input { @apply w-full max-w-[18rem]; }
+  .valuation-input .field { @apply m-0; }
+  .valuation-input::placeholder, .valuation-input input::placeholder { text-transform: none; }
   @media (max-width: 639.98px) {
-    .list .row.valuation-conflict { @apply flex-col items-stretch gap-2; }
-    .valuation-diff dd { @apply text-left; }
-    .valuation-diff { @apply justify-start; }
+    .valuation-fields { @apply grid-cols-[5.5rem_minmax(0,1fr)]; }
+    .valuation-choice { @apply w-full; }
   }
   .valuation-group > summary.list-head { @apply flex items-baseline gap-3; }
   .valuation-group > summary .facet-all { @apply ml-auto; }

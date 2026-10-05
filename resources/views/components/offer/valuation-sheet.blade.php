@@ -6,7 +6,7 @@
 <x-ui.sheet id="valuation" title="Оценка из текста" tall class="sheet-valuation">
     <div class="valuation" data-controller="valuation" data-valuation-url-value="/offers/valuations/preview">
         <section class="valuation-pane" data-valuation-target="paste">
-            <textarea class="field-input valuation-text" rows="12" placeholder="Вставьте сообщение с оценками" autocomplete="off" spellcheck="false"
+            <textarea class="field-input valuation-text" rows="6" placeholder="Вставьте сообщение страховой: номер убытка, сумма, VIN, город" autocomplete="off" spellcheck="false"
                       data-valuation-target="text" data-action="paste->valuation#pasted"></textarea>
             <x-ui.button type="button" block class="mt-3" data-action="valuation#run">Разобрать</x-ui.button>
         </section>

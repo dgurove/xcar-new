@@ -1,69 +1,99 @@
-{{-- Итог «Оценить → Из текста» (OfferValuationController::preview): группы строк, у тех, что можно взять, — галка.
-     data-value / data-floor — числа, которые valuation_controller прогоняет счётчиком. Второй строкой — что ещё ляжет из
-     текста («+ VIN …», «Тверь → Москва») и чего нет нигде: красным, и под строкой поля вписать тут же (05.10.2026). --}}
+{{-- Итог «Оценить → Из текста» (OfferValuationController::preview). Карточка изменений на машину (05.10.2026, владелец:
+     «схалтурил»): шапка — ТС и номер убытка с галкой, ниже строки «поле — было → станет» только того, что меняется:
+     оценочная, закупочная, VIN, город. Новое — лаймом, заменяемое — зачёркнутым. Спор по сумме — сегментом «Оставить /
+     Перезаписать» в строке суммы, а не на всю машину: VIN и город ложатся в любом случае. Чего нет ни у предложения, ни
+     в тексте — поле прямо в строке. Группы: «Заполним» (и споры), «Проверьте» (VIN другой, номер дважды), свёрнутые
+     «Уже так» и «Нет в CRM». data-v / data-f — числа, которые valuation_controller прогоняет счётчиком. --}}
 @php
     use App\Support\Money;
-    $groups = collect($items)->groupBy('status');
-    // Что ещё ляжет из текста — VIN в пустой, город (текст главнее) — и чего не будет и после сохранения.
-    $extras = function (array $item) {
-        $out = [];
-        if ($v = $item['vin_fill'] ?? null) $out[] = '<span class="text-accent-text">+ VIN <span class="nums">'.e($v).'</span></span>';
-        if ($c = $item['city_fill'] ?? null) $out[] = '<span class="text-accent-text">'.($c['from'] ? e($c['from']).' → ' : '+ ').e($c['title']).'</span>';
-        foreach ($item['gaps'] ?? [] as $g) $out[] = '<span class="text-danger">'.($g === 'vin' ? 'нет VIN' : 'нет города').'</span>';
-
-        return implode('', $out);
-    };
-    $titles = ['conflict' => 'Не совпадает с вписанным', 'fill' => 'Заполним', 'check' => 'Проверьте', 'dispute' => 'Разные суммы', 'same' => 'Уже так', 'missing' => 'Нет в CRM'];
+    $all = collect($items);
+    $groups = [
+        'fill' => ['Заполним', $all->whereIn('status', ['conflict', 'fill'])->sortBy(fn ($i) => ($i['status'] === 'conflict' || $i['gaps']) ? 0 : 1)->values(), false],
+        'check' => ['Проверьте', $all->whereIn('status', ['check', 'dispute'])->values(), false],
+        'same' => ['Уже так', $all->where('status', 'same')->values(), true],
+        'missing' => ['Нет в CRM', $all->where('status', 'missing')->values(), true],
+    ];
 @endphp
-@foreach (\App\Offers\Actions\MatchValuations::ORDER as $status)
-    @continue(! $groups->has($status))
-    @php $rows = $groups[$status]; $folded = in_array($status, ['same', 'missing'], true); @endphp
-    <details class="valuation-group" data-status="{{ $status }}" @unless ($folded) open @endunless>
-        <summary class="list-head"><span>{{ $titles[$status] }} <span class="nums text-ink-dim">{{ $rows->count() }}</span></span>
-            @if ($status === 'conflict' && $rows->count() > 1)<button type="button" class="facet-all ml-auto !py-0" data-action="valuation#overwriteAll">Перезаписать все</button>@endif
+@foreach ($groups as $key => [$title, $rows, $folded])
+    @continue($rows->isEmpty())
+    <details class="valuation-group" data-status="{{ $key }}" @unless ($folded) open @endunless>
+        <summary class="list-head"><span>{{ $title }} <span class="nums text-ink-dim">{{ $rows->count() }}</span></span>
+            @if ($key === 'fill' && $rows->where('status', 'conflict')->count() > 1)<button type="button" class="facet-all ml-auto !py-0" data-action="valuation#overwriteAll">Перезаписать все суммы</button>@endif
         </summary>
         <div class="list mb-3">
             @foreach ($rows as $item)
-                @php $o = $item['offer']; $take = $o && in_array($status, ['fill', 'check'], true); @endphp
-                {{-- Расхождение: что вписано и что в тексте, выбор «Оставить» (по умолчанию) или «Перезаписать». --}}
-                @if ($status === 'conflict')
-                    <div class="row valuation-row valuation-conflict" @if ($item['vin_fill'] || $item['city_fill']) data-extra @endif data-valuation-row data-value="{{ $item['amount'] }}" data-floor="{{ $item['floor'] }}">
-                        <input type="hidden" name="offers[]" value="{{ $o->id }}">
-                        <span class="min-w-0">
-                            <span class="block truncate">{{ $o->titleWithYear() }}</span>
-                            <span class="row-sub nums">{{ $item['ref'] }}</span>
-                            @if ($x = $extras($item))<span class="row-sub">{!! $x !!}</span>@endif
-                        </span>
-                        <dl class="valuation-diff">
-                            @if ($item['value_differs'])<dt>Оценочная</dt><dd><span class="nums">{{ Money::nums($o->value) }}</span> → <span class="nums text-urgent">{{ Money::nums($item['amount']) }}</span></dd>@endif
-                            @if ($item['floor_differs'])<dt>Закупочная</dt><dd><span class="nums">{{ Money::nums($o->floor_price) }}</span> → <span class="nums text-urgent">{{ Money::nums($item['floor']) }}</span></dd>@endif
-                        </dl>
-                        <span class="segment valuation-choice">
-                            <label><input type="radio" name="keep[{{ $o->id }}]" value="keep" checked data-action="valuation#count">Оставить</label>
-                            <label><input type="radio" name="keep[{{ $o->id }}]" value="overwrite" data-action="valuation#count">Перезаписать</label>
-                        </span>
+                @php
+                    $o = $item['offer'];
+                    $status = $item['status'];
+                @endphp
+                {{-- Свёрнутые группы и «нет в CRM» — строкой: менять там нечего. --}}
+                @if ($folded || ! $o)
+                    <div class="row valuation-row" data-valuation-row data-value="{{ $item['amount'] }}" data-floor="{{ $item['floor'] }}">
+                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $o?->titleWithYear() ?? $item['ref'] }}</span>@if ($o)<span class="row-sub nums">{{ $item['ref'] }}</span>@endif</span>
+                        <span class="nums text-sm text-ink-muted" data-v>{{ Money::nums($item['amount']) }}</span>
                     </div>
-                    @if ($item['gaps'] ?? [])@include('admin.offers.valuation-gaps', ['offer' => $o, 'gaps' => $item['gaps']])@endif
                     @continue
                 @endif
-                <label @class(['row valuation-row', 'row-check' => $take]) data-valuation-row data-value="{{ $item['amount'] }}" data-floor="{{ $item['floor'] }}">
-                    <span class="min-w-0 flex-1">
-                        <span class="block truncate">{{ $o?->titleWithYear() ?? $item['ref'] }}</span>
-                        <span class="row-sub">
-                            @if ($o)<span class="nums">{{ $item['ref'] }}</span>@endif
-                            @if ($status === 'check')<span class="text-urgent">VIN другой <span class="nums">{{ $item['vin'] }}</span></span>@endif
-                            @if ($status === 'dispute')<span class="text-urgent">номер в тексте дважды</span>@endif
+                @php
+                    $conflict = $status === 'conflict';
+                    $take = in_array($status, ['fill', 'check'], true);
+                    $valueChanges = (int) $o->value !== (int) $item['amount'];
+                    $floorChanges = (int) $o->floor_price !== (int) $item['floor'];
+                    // Спор «Оставить / Перезаписать» — в строке оценочной, а если спорит одна закупочная — в её строке.
+                    $disputeValue = $conflict && $item['value_differs'];
+                    $disputeFloor = $conflict && ($item['value_differs'] || $item['floor_differs']);
+                    $segmentOn = $conflict ? ($item['value_differs'] ? 'value' : 'floor') : null;
+                @endphp
+                <div @class(['valuation-card valuation-row', 'is-keep' => $conflict]) data-valuation-row data-value="{{ $item['amount'] }}" data-floor="{{ $item['floor'] }}"
+                     @if ($conflict) data-conflict @if ($item['value_differs']) data-value-differs @endif @endif
+                     @if ($item['vin_fill']) data-vin-fill @endif @if ($item['city_fill']) data-city-fill @endif
+                     @if ($valueChanges || $floorChanges) data-price-change @endif>
+                    <div class="valuation-card-head">
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate">{{ $o->titleWithYear() }}</span>
+                            <span class="block text-sm text-ink-muted"><span class="nums">{{ $item['ref'] }}</span>@if ($status === 'dispute')<span class="ml-2 text-urgent">номер в тексте дважды</span>@endif</span>
                         </span>
-                        @if ($o && $status !== 'check' && ($x = $extras($item)))<span class="row-sub">{!! $x !!}</span>@endif
-                    </span>
-                    <span class="valuation-sum nums">
-                        <span data-v>{{ Money::nums($item['amount']) }}</span>@if ($o)<span class="valuation-floor">→ <span data-f>{{ Money::rub($item['floor']) }}</span></span>@endif
-                    </span>
-                    @if ($take)<span class="check"><input type="checkbox" name="offers[]" value="{{ $o->id }}" @checked($status !== 'check') data-action="valuation#count"></span>@endif
-                </label>
-                @if ($o && ($item['gaps'] ?? []) && $status !== 'check')
-                    @include('admin.offers.valuation-gaps', ['offer' => $o, 'gaps' => $item['gaps']])
-                @endif
+                        @if ($take)<label class="check shrink-0" aria-label="Взять"><input type="checkbox" name="offers[]" value="{{ $o->id }}" @checked($status === 'fill') data-action="valuation#count"></label>@endif
+                        @if ($conflict)<input type="hidden" name="offers[]" value="{{ $o->id }}">@endif
+                    </div>
+                    <dl class="valuation-fields">
+                        @if ($valueChanges && $status !== 'dispute')
+                            <dt>Оценочная</dt>
+                            <dd @if ($disputeValue) data-disputed @endif>
+                                @if ($o->value)<s class="valuation-old nums">{{ Money::nums($o->value) }}</s>@endif
+                                <span class="valuation-new nums" data-v>{{ Money::nums($item['amount']) }}</span>
+                                @if ($segmentOn === 'value')@include('admin.offers.valuation-keep', ['offer' => $o])@endif
+                            </dd>
+                        @endif
+                        @if ($floorChanges && $status !== 'dispute')
+                            <dt>Закупочная</dt>
+                            <dd @if ($disputeFloor) data-disputed @endif>
+                                @if ($o->floor_price)<s class="valuation-old nums">{{ Money::nums($o->floor_price) }}</s>@endif
+                                <span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span>
+                                @if ($segmentOn === 'floor')@include('admin.offers.valuation-keep', ['offer' => $o])@endif
+                            </dd>
+                        @endif
+                        @if ($status === 'check')
+                            <dt>VIN</dt>
+                            <dd class="text-urgent"><span class="nums">{{ $o->vin }}</span> в CRM, <span class="nums">{{ $item['vin'] }}</span> в тексте</dd>
+                        @elseif ($item['vin_fill'])
+                            <dt>VIN</dt><dd><span class="valuation-new nums">{{ $item['vin_fill'] }}</span></dd>
+                        @elseif (in_array('vin', $item['gaps'], true))
+                            <dt class="text-danger">VIN</dt>
+                            <dd><input type="text" name="vin[{{ $o->id }}]" maxlength="17" class="field-input field-s valuation-input nums uppercase" placeholder="Впишите VIN"
+                                       autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" data-action="input->valuation#count"></dd>
+                        @endif
+                        @if ($status !== 'check')
+                            @if ($c = $item['city_fill'])
+                                <dt>Город</dt>
+                                <dd>@if ($c['from'])<s class="valuation-old">{{ $c['from'] }}</s>@endif<span class="valuation-new">{{ $c['title'] }}</span></dd>
+                            @elseif (in_array('city', $item['gaps'], true))
+                                <dt class="text-danger">Город</dt>
+                                <dd class="valuation-input" data-action="change->valuation#count"><x-ui.combobox name="city[{{ $o->id }}]" label="" url="/reference/settlements" placeholder="Впишите город"/></dd>
+                            @endif
+                        @endif
+                    </dl>
+                </div>
             @endforeach
         </div>
     </details>
