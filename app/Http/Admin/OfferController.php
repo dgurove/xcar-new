@@ -23,6 +23,7 @@ use App\Offers\Actions\UnlistParkOffer;
 use App\Offers\Actions\UnscheduleOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\AudienceRules;
+use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
@@ -124,7 +125,7 @@ class OfferController
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
         $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])
-            ->withCount(['activeBids', 'interests'])->withMax('activeBids as top_bid', 'amount');
+            ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
 
         if ($searching) {
             $q->searchCrm(trim((string) $request->query('q')))->orderByDesc('updated_at');
@@ -407,7 +408,7 @@ class OfferController
     {
         $admin = $request->user()->canManageCrm();
         $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'parkVehicle:id,offer_id,accepted_at,created_at', 'vendor.workflows', 'positions.stage', 'evacuator'] : [])])
-            ->loadCount(['activeBids', 'interests'])->loadMax('activeBids as top_bid', 'amount');
+            ->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->loadMax('activeBids as top_bid', 'amount');
 
         return view('admin.offers.detail', OfferFiles::letters($offer, Thread::where('offer_id', $offer->id)->get()) + [
             'offer' => $offer,

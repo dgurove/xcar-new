@@ -20,7 +20,10 @@
     $left = $gallery || ! $admin ? null : $offer->secondsLeft();
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' };
     $count = ! $admin ? 0 : ($gallery ? (int) $offer->interests_count : (int) $offer->active_bids_count);
-    $countWord = $gallery ? 'интерес '.$count : $count.' подтв.';
+    // Гаражные подтверждения без суммы — отдельно словом (владелец 05.10.2026: «непонятно, что такое 1»).
+    $garageBids = $gallery ? 0 : min($count, (int) $offer->garage_bids_count);
+    $priceBids = $count - $garageBids;
+    $countWord = $gallery ? 'интерес '.$count : implode(', ', array_filter([$priceBids ? $priceBids.' подтв.' : null, $garageBids ? $garageBids.' в гараж' : null]));
     $timer = $left !== null && $left > 0;
     // Приём закрылся, а подтверждения есть — ход наш: «выбрать» оранжевым; без них — «приём закрыт».
     $pick = $admin && $offer->state === OfferState::Open && ! $timer && $offer->bids_close_at;
@@ -81,7 +84,8 @@
         @else<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $offer->state === OfferState::Open ? ($admin ? 'Приём' : 'В продаже') : $offer->state->label() }}</span>@endif
     </td>
     @endif
-    @if ($admin && $has('bids'))<td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count ?: '' }}@if (! $gallery && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif</td>@endif
+    {{-- «2 до 5 440 000, 1 в гараж». --}}
+    @if ($admin && $has('bids'))<td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">@if ($gallery){{ $count ?: '' }}@else{{ $priceBids ?: '' }}@if ($priceBids && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif{{ $priceBids && $garageBids ? ',' : '' }}@if ($garageBids)<span class="ml-1 whitespace-nowrap">{{ $garageBids }} <span class="text-sm">в гараж</span></span>@endif @endif</td>@endif
     {{-- Закупочная, справа от неё цена продажи (у черновика без неё — чип «Оценить»); на телефоне столбца закупочной нет —
          она под ценой. --}}
     @if ($cols !== null && $has('value'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">{{ $offer->value && \App\Vendors\Vendor::ratesByValue($offer->vendor_id) ? \App\Support\Money::nums($offer->value) : '' }}</td>@endif
