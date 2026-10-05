@@ -150,6 +150,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/account/money/export', [MoneyController::class, 'export']);
         Route::get('/account/money/invoices/{invoice}', [MoneyController::class, 'invoice']);
         Route::post('/account/money/deals/{deal}/pay', [MoneyController::class, 'pay']);
+        Route::post('/account/money/invoices/{invoice}/links', [MoneyController::class, 'link']);
         Route::delete('/account/money/links/{link}', [MoneyController::class, 'cancelLink']);
         Route::get('/account/money/invoices/{invoice}/payments/{payment}/slip', [MoneyController::class, 'slip']);
         Route::get('/account/money/deals/{deal}', [MoneyController::class, 'deal']);
@@ -195,6 +196,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::post('/cars/{offer}/payout', [GarageSettlementController::class, 'payout']);
         Route::post('/cars/{offer}/payments', [GarageSettlementController::class, 'pay']);
         Route::post('/cars/{offer}/checkout', [GarageSettlementController::class, 'checkout']);
+        Route::post('/cars/{offer}/links', [GarageSettlementController::class, 'link']);
         Route::delete('/cars/{offer}/links/{link}', [GarageSettlementController::class, 'cancelLink']);
         Route::get('/cars/{offer}/invoice/pdf', [GarageSettlementController::class, 'pdf']);
         Route::delete('/cars/{offer}/invoice', [GarageSettlementController::class, 'voidInvoice']);

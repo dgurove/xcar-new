@@ -3,6 +3,8 @@
 namespace App\Http\Garage;
 
 use App\Billing\Acquiring\Actions\CancelPayLink;
+use App\Billing\Acquiring\Actions\CreatePayLink;
+use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
@@ -109,6 +111,20 @@ class SettlementController
         [$toast, $link] = $choice($request, $car->invoice, $request->user());
 
         return back()->with('toast', $toast)->with('open-link', $link?->id);
+    }
+
+    /** Новая ссылка на счёт машины: без суммы — на остаток, с суммой — на неё; прежняя гаснет. */
+    public function link(Request $request, Offer $offer, CreatePayLink $create)
+    {
+        $car = $this->car($request, $offer);
+        $invoice = $car->invoice;
+        abort_unless($invoice && ! $invoice->isOwed() && $car->manager_id === $request->user()->id, 404);
+        $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
+        $data = $request->validate(['amount' => ['nullable', 'numeric', 'min:0.01']]);
+        $party = $invoice->party;
+        $link = $create($invoice, $request->user(), isset($data['amount']) ? (float) $data['amount'] : PayLink::defaultAmount($invoice), PayerKind::Other, null, $party->name, $party->phone, $party->email);
+
+        return back()->with('toast', 'Ссылка готова')->with('open-link', $link->id);
     }
 
     public function cancelLink(Request $request, Offer $offer, PayLink $link, CancelPayLink $cancel)

@@ -1,12 +1,13 @@
 {{-- Деньги сделки для сотрудника: расклад (цена, закупочная снимком, разница, вознаграждение, нам), чипы —
      режим, состояние вознаграждения, «Изменить» до счёта, «Счёт»; ниже счета строками, заявка менеджера
-     об оплате с решением под своим счётом, у вознаграждения к выплате — «Выплатить» в самой строке.
-     Менеджеру ничего из этого не показывается. --}}
+     об оплате с решением под своим счётом, у вознаграждения к выплате — «Выплатить» в самой строке. Под неоплаченным
+     счётом — его ссылка на оплату с адресом и «Отправить» (`x-billing.pay-status`): начальник открыл сделку и сразу
+     видит, оплатили ли и чем поделиться. Менеджеру ничего из этого не показывается. --}}
 @props(['deal'])
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState;
     $offer = $deal->offer;
-    $invoices = $deal->invoices()->with(['party', 'claims.media'])->get();
+    $invoices = $deal->invoices()->with(['party', 'claims.media', 'payLinks.attempts', 'deal.offer'])->get();
     $fee = $invoices->first(fn ($i) => $i->isAgentFee());
     $issued = $invoices->reject(fn ($i) => $i->isOwed());
     $state = $deal->commissionState();
@@ -64,6 +65,7 @@
                         </span>
                     @endif
                 </div>
+                @unless ($i->isOwed())<x-billing.pay-status :invoice="$i" staff/>@endunless
                 @foreach ($i->claims as $p)
                     <x-money.payment :payment="$p" :slip="'/work/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'" staff>
                         @unless ($inStep)

@@ -1258,6 +1258,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .money-line { flex-wrap: wrap; }
   .money-acts { @apply flex basis-full flex-wrap items-center gap-2 pl-12; }
   .money-hero { @apply flex flex-col items-center gap-0.5 pb-2 text-center; }
+  /* Адрес ссылки на оплату строкой под «Оплата по ссылке» (x-billing.pay-status): текст вровень с названием над ним,
+     нажатие копирует; линии между ними нет — это одна вещь. */
+  .list .row.pay-url { min-height: 0; padding-top: 0; padding-left: 4rem; gap: .5rem; flex-wrap: wrap; }
+  .pay-url-text { @apply basis-full break-all text-left text-sm text-accent-text; }
+  .list .row.pay-url::after { display: none; }
   .money-hero-photo { @apply mb-2 size-16 overflow-hidden rounded-full bg-surface-3; }
   .money-hero-photo img { @apply size-full object-cover; }
   .pay-amount { @apply bg-transparent text-center font-semibold outline-none; font-size: 32px; line-height: 1.2; field-sizing: content; min-width: 2ch; max-width: 100%; }

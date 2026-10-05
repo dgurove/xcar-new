@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Billing\Acquiring\PayLinkState;
 use App\Billing\Actions\ConfirmPayment;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\RejectPayment;
@@ -33,7 +34,7 @@ use Illuminate\Validation\Rule;
  */
 class MoneyController
 {
-    public const PRESETS = ['claims' => 'Сообщили об оплате', 'payouts' => 'К выплате', 'unpaid' => 'Не оплачены', 'paid' => 'Оплачены', 'all' => 'Все'];
+    public const PRESETS = ['claims' => 'Сообщили об оплате', 'tried' => 'Не прошла по ссылке', 'payouts' => 'К выплате', 'unpaid' => 'Не оплачены', 'paid' => 'Оплачены', 'all' => 'Все'];
 
     public const SORTS = ['due' => 'По сроку', 'fresh' => 'Сначала новые'];
 
@@ -51,7 +52,7 @@ class MoneyController
         ListPrefs::sync($request, 'crm-money', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'claims';
         $qs = trim((string) $request->query('q'));
-        $q = Invoice::whereNotNull('deal_id')->with(['party', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer', 'claims'])
+        $q = Invoice::whereNotNull('deal_id')->with(['party', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer', 'claims', 'payLinks.attempts'])
             ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s
                 ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs)->orWhereHas('deal.offer', fn ($o) => $o->where('number', (int) $qs)))
                 ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', "%{$qs}%"))
@@ -62,6 +63,7 @@ class MoneyController
         if ($qs === '') {
             match ($preset) {
                 'claims' => $q->whereHas('claims'),
+                'tried' => self::tried($q),
                 'payouts' => $q->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued),
                 'unpaid' => $q->where('direction', 'issued')->where('state', InvoiceState::Issued),
                 'paid' => $q->where('state', InvoiceState::Paid),
@@ -88,8 +90,19 @@ class MoneyController
             // Заявки — оплаты, а не счета: то же число, что на табе «Работа» (`Nav::totals`), но с выбранными чипами.
             'claims' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $f($i->whereNotNull('deal_id')))->count(),
             'payouts' => $f(Invoice::whereNotNull('deal_id')->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued))->count(),
+            'tried' => $f(self::tried(Invoice::whereNotNull('deal_id')))->count(),
             'unpaid' => $f(Invoice::whereNotNull('deal_id')->where('direction', 'issued')->where('state', InvoiceState::Issued))->count(),
         ];
+    }
+
+    /**
+     * Счёт ждёт денег, а по его открытой ссылке платить пытались и не вышло: банк отклонил, бросили, ЮKassa не открыла
+     * оплату (05.10.2026: «непонятно, оплатили или нет») — тут надо позвонить, а не ждать.
+     */
+    private static function tried($q)
+    {
+        return $q->where('direction', 'issued')->where('state', InvoiceState::Issued)->whereHas('payLinks', fn ($l) => $l->where('state', PayLinkState::Open)
+            ->where(fn ($w) => $w->whereNotNull('error_at')->orWhereHas('attempts', fn ($a) => $a->where('status', 'canceled'))));
     }
 
     public function detail(Invoice $invoice)

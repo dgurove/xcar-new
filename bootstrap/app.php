@@ -1,5 +1,6 @@
 <?php
 
+use App\Billing\Acquiring\Console\BackfillPayLinks;
 use App\Billing\Acquiring\Console\SyncAcquiring;
 use App\Billing\Bank\Console\PerpetualSecret;
 use App\Billing\Bank\Console\SyncBank;
@@ -101,6 +102,7 @@ return Application::configure(basePath: dirname(__DIR__))
         Poll::class, SetProfile::class,
         OffersBotRun::class, OffersBotLane::class, OffersBotProfile::class, OffersBotPoke::class,
         SyncAcquiring::class,
+        BackfillPayLinks::class,
         SyncBank::class,
         PerpetualSecret::class,
         SeedDemo::class,

@@ -43,9 +43,6 @@ final class DealMoney
             if ($unpaid->claimed() > 0) {
                 return new self('Оплата ждёт подтверждения', $left, 'muted', 'pay', 'К оплате');
             }
-            if ($unpaid->openLink()) {
-                return new self('Ссылка отправлена, ждём оплату', $left, 'muted', 'pay', 'К оплате');
-            }
             if ($unpaid->isOverdue()) {
                 return new self('Просрочен на '.$unpaid->overdueDays().' дн', $left, 'urgent', 'pay', 'К оплате');
             }
@@ -99,8 +96,10 @@ final class DealMoney
                 $steps[] = $step('Счёт оплачен', 'done', $issued->max('paid_at'));
             } elseif ($unpaid->claimed() > 0) {
                 $steps[] = $step('Оплата', 'current', null, 'Сообщили об оплате, ждём поступления', 'urgent');
-            } elseif ($link = $unpaid->openLink()) {
-                $steps[] = $step('Оплата', 'current', null, 'Ссылка на оплату отправлена '.$link->created_at->translatedFormat('j M'));
+            } elseif (($link = $unpaid->openLink()) && $link->attempts()->exists()) {
+                // Ссылка есть у каждого счёта (заводится с ним) — в путь идёт, только когда плательщик её открывал.
+                [$line, $tone] = $link->stateLine();
+                $steps[] = $step('Оплата', 'current', null, 'По ссылке: '.$line, $tone === 'danger' ? 'danger' : 'urgent');
             } elseif ($unpaid->isOverdue()) {
                 $steps[] = $step('Оплата', 'current', null, 'Просрочена на '.$unpaid->overdueDays().' дн', 'danger');
             } else {

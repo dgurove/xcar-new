@@ -52,7 +52,8 @@
 
                     @if ($stepInvoices->isNotEmpty())
                         <div class="list mt-5">
-                            @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@endforeach
+                            {{-- Под счётом — его ссылка на оплату с «Отправить»: её не надо делать, она уже есть. --}}
+                            @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@unless ($i->isOwed())<x-billing.pay-status :invoice="$i"/>@endunless @endforeach
                         </div>
                     @endif
                     {{-- Просьба — продолжение той же карточки, без плашки в плашке. --}}

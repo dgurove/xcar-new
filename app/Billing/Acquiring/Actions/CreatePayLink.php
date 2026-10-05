@@ -16,17 +16,18 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Ссылка на оплату счёта: сумма — не больше остатка за вычетом заявленного и не больше лимита одного платежа
- * (СБП и SberPay — 700 000 ₽), плательщик — сам менеджер, его покупатель или человек по имени. Почта нужна
- * всегда: чек ЮKassa приходит только на неё; у себя и у покупателя — из профиля, пусто — введённая в шторке.
- * Прежняя открытая ссылка счёта гаснет.
+ * (СБП и SberPay — 700 000 ₽), плательщик — сам менеджер, его покупатель или человек по имени. Почта для чека —
+ * из профиля или введённая; не знаем — её введёт плательщик на `/pay` (чек ЮKassa приходит только на почту).
+ * Прежняя открытая ссылка счёта гаснет. Ссылку, заведённую вместе со счётом (`EnsurePayLink`), в историю
+ * предложения не пишем: её никто не делал.
  */
 final class CreatePayLink
 {
     public function __construct(private CancelPayLink $cancel) {}
 
-    public function __invoke(Invoice $invoice, User $by, float $amount, PayerKind $kind, ?User $payer = null, ?string $name = null, ?string $phone = null, ?string $email = null): PayLink
+    public function __invoke(Invoice $invoice, User $by, float $amount, PayerKind $kind, ?User $payer = null, ?string $name = null, ?string $phone = null, ?string $email = null, bool $auto = false): PayLink
     {
-        return DB::transaction(function () use ($invoice, $by, $amount, $kind, $payer, $name, $phone, $email) {
+        return DB::transaction(function () use ($invoice, $by, $amount, $kind, $payer, $name, $phone, $email, $auto) {
             $invoice = Invoice::withoutGlobalScope('demo')->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             // Вознаграждение от поставщика платит вендор по счёту, не человек по ссылке.
             if ($invoice->state !== InvoiceState::Issued || $invoice->isOwed() || $invoice->kind === ChargeKind::Reward) {
@@ -46,8 +47,8 @@ final class CreatePayLink
                 PayerKind::Buyer => [$payer?->name, $payer?->phone, $payer?->email ?: $email],
                 PayerKind::Other => [$name, $phone, $email],
             };
-            if (! filter_var((string) $email, FILTER_VALIDATE_EMAIL)) {
-                throw ValidationException::withMessages(['email' => 'Нужна почта плательщика: на неё придёт чек']);
+            if (filled($email) && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw ValidationException::withMessages(['email' => 'Проверьте почту: на неё придёт чек']);
             }
             PayLink::where('invoice_id', $invoice->id)->where('state', PayLinkState::Open)->get()->each(fn (PayLink $old) => ($this->cancel)($old, $by));
             $link = PayLink::create([
@@ -55,6 +56,9 @@ final class CreatePayLink
                 'payer_user_id' => $kind === PayerKind::Buyer ? $payer?->id : null, 'payer_name' => $name, 'payer_phone' => $phone, 'payer_email' => $email,
                 'state' => PayLinkState::Open, 'created_by' => $by->id,
             ]);
+            if ($auto) {
+                return $link;
+            }
             $invoice->offer?->log(OfferEventType::Note, $by, ['text' => 'Ссылка на оплату '.Money::exact($amount).' по счёту '.$invoice->label().', платит '.$link->payerLabel()]);
 
             return $link;

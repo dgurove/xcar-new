@@ -24,11 +24,13 @@ final class RefundAcquiring
         if ($amount <= 0) {
             throw ValidationException::withMessages(['refund' => 'Возвращать нечего']);
         }
-        $this->gateway->refund($attempt, $amount);
+        // Сбой между ответом провайдера и нашей записью — повтор «Вернуть» идёт с тем же ключом (`refunded` не сдвинулся),
+        // и ЮKassa отдаёт тот же возврат, а не второй.
+        $refund = $this->gateway->refund($attempt, $amount);
 
-        return DB::transaction(function () use ($attempt, $by, $amount, $surplus) {
+        return DB::transaction(function () use ($attempt, $by, $amount, $surplus, $refund) {
             $attempt = AcquiringPayment::whereKey($attempt->id)->lockForUpdate()->with('payment', 'link')->firstOrFail();
-            $attempt->update(['refunded' => round($attempt->refunded + $amount, 2)]);
+            $attempt->update(['refunded' => round($attempt->refunded + $amount, 2), 'refund_id' => $refund['id'], 'refund_status' => $refund['status']]);
             if ($surplus) {
                 return $attempt;
             }

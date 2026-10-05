@@ -3,8 +3,10 @@
 namespace App\Http\Cabinet;
 
 use App\Billing\Acquiring\Actions\CancelPayLink;
+use App\Billing\Acquiring\Actions\CreatePayLink;
+use App\Billing\Acquiring\Gateway;
+use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
-use App\Billing\Acquiring\PayLinkState;
 use App\Billing\ChargeKind;
 use App\Billing\DealMoney;
 use App\Billing\Documents\StatementPdf;
@@ -18,6 +20,7 @@ use App\Billing\PartyRules;
 use App\Billing\Payment;
 use App\Garage\Car as GarageCar;
 use App\Offers\Deal;
+use App\Support\Money;
 use App\Support\OfficePreview;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -61,14 +64,13 @@ class MoneyController
         // Счета сделки с заявками и ссылками — сразу: расклад (`DealMoney`) и состояние вознаграждения читают их по
         // нескольку раз за страницу, без загрузки каждый раз шли в базу.
         $deal->load(['offer.brand', 'offer.model', 'offer.media', 'agentFee.payments.media', 'invoices.claims', 'invoices.payLinks']);
-        $invoices = $deal->issuedInvoices()->with(['party', 'charges', 'allPayments.media', 'claims', 'payLinks'])->get();
-        $links = PayLink::whereIn('invoice_id', $invoices->pluck('id'))->where('state', PayLinkState::Open)->with(['invoice', 'payerUser', 'creator'])->get();
+        $invoices = $deal->issuedInvoices()->with(['party', 'charges', 'allPayments.media', 'claims', 'payLinks.attempts'])->get()->each->setRelation('deal', $deal);
 
         return view('cabinet.money.deal', [
             'deal' => $deal, 'offer' => $deal->offer, 'invoices' => $invoices, 'fee' => $deal->agentFee, 'state' => $deal->commissionState(),
             // Счёт вендору (вознаграждение от поставщика) платит не менеджер: его в «Оплатить» нет.
             'claimable' => $invoices->filter(fn (Invoice $i) => $i->state === InvoiceState::Issued && $i->kind !== ChargeKind::Reward && $i->remaining() - $i->claimed() > 0)->values(),
-            'links' => $links, 'buyers' => $me->buyers()->with(User::withAvatar())->orderBy('name')->get(),
+            'buyers' => $me->buyers()->with(User::withAvatar())->orderBy('name')->get(),
         ]);
     }
 
@@ -83,6 +85,23 @@ class MoneyController
         [$toast, $link] = $choice($request, $invoice, $me);
 
         return redirect('/account/money/deals/'.$deal->id)->with('toast', $toast)->with('open-link', $link?->id);
+    }
+
+    /**
+     * Новая ссылка своего счёта: без суммы — на остаток (как при выставлении), с суммой — на неё (часть, лимит
+     * одного платежа). Плательщик — контрагент счёта, почту спросит `/pay`. Прежняя открытая гаснет.
+     */
+    public function link(Request $request, Invoice $invoice, CreatePayLink $create)
+    {
+        $me = $request->user();
+        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed() && $invoice->kind !== ChargeKind::Reward, 404);
+        abort_unless(app(Gateway::class)->configured(), 422, 'Оплата по ссылке не подключена');
+        $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
+        $data = $request->validate(['amount' => ['nullable', 'numeric', 'min:0.01']]);
+        $party = $invoice->party;
+        $link = $create($invoice, $me, isset($data['amount']) ? (float) $data['amount'] : PayLink::defaultAmount($invoice), PayerKind::Other, null, $party->name, $party->phone, $party->email);
+
+        return back()->with('toast', 'Ссылка готова')->with('open-link', $link->id);
     }
 
     public function cancelLink(Request $request, PayLink $link, CancelPayLink $cancel)

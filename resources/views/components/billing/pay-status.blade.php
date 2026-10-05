@@ -1,0 +1,94 @@
+{{-- Оплата счёта по ссылке — строками `.list`, одинаково сотруднику и менеджеру (05.10.2026, владелец: начальник не
+     находит ссылку и не понимает, оплатили или нет). Ссылка заводится вместе со счётом (`EnsurePayLink`), поэтому здесь
+     её не «делают», а берут:
+     - строка «Оплата по ссылке» — кто платит и что сейчас (`PayLink::stateLine`: ждём, открывали, не прошла), сумма; нажатие — шторка: QR, текст для
+       отправки, попытки плательщика, другая сумма, «Отменить ссылку»;
+     - строка самого адреса — нажатие копирует его, справа «Отправить» (системный лист с готовым текстом).
+     Ссылки нет (отменили руками) — «Новая ссылка на оплату» одним нажатием на остаток. Счёт, который ссылкой не платят
+     (парковка, вознаграждение, обязательство, шлюз не подключён), — ничего. Адреса действий — по стороне: сотруднику
+     `/work/money`, менеджеру `/account/money`; у гаража менеджеру свои (`create` — новая ссылка, `cancel` — адрес
+     отмены без id): счёт его покупателю он видит только через машину. --}}
+@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null])
+@php
+    use App\Support\Money; use App\Billing\Acquiring\PayMethod;
+    $i = $invoice;
+    $link = $i->openLink();
+    $payable = ! $link && \App\Billing\Acquiring\PayLink::eligible($i) && $i->remaining() - $i->claimed() > 0;
+    $base = $staff ? '/work/money' : '/account/money';
+    $create ??= $base.'/invoices/'.$i->id.'/links';
+    $cancel ??= $base.'/links';
+    if ($link) {
+        $link->loadMissing('attempts');
+        [$state, $tone] = $link->stateLine();
+        $who = $link->payer_name ?: $i->party->name;
+        $offer = $i->deal?->offer ?? \App\Garage\Car::ofInvoice($i)?->offer;
+        $text = 'Оплата по счёту '.$i->label().($offer ? ' за '.$offer->titleWithYear() : '').': '.Money::exact($link->amount).'. Картой, СБП или SberPay по ссылке:';
+    }
+@endphp
+@if ($link)
+    <div data-controller="sheet" class="contents">
+        <button type="button" class="row money-line w-full text-left" data-action="sheet#open">
+            <x-ui.row-icon name="qr" :tone="$tone === 'danger' ? 'danger' : 'urgent'" size="s"/>
+            <span class="min-w-0 flex-1">
+                <span class="block">Оплата по ссылке<span class="text-ink-muted">, платит {{ $who }}</span></span>
+                <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $state }}</span>
+            </span>
+            <span class="nums shrink-0 text-urgent">{{ Money::rub($link->amount) }}</span>
+        </button>
+        <div class="row pay-url" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по счёту {{ $i->label() }}">
+            <input type="hidden" value="{{ $text }}" data-copy-target="message">
+            <button type="button" class="pay-url-text" data-action="copy#copy" title="Скопировать">{{ $link->shortUrl() }}</button>
+            <button type="button" class="btn btn-s btn-quiet" data-action="copy#copy"><x-ui.icon name="copy" class="size-4"/>Скопировать</button>
+            <button type="button" class="btn btn-s btn-accent" data-action="copy#share" data-copy-target="share"><x-ui.icon name="share" class="size-4"/>Отправить</button>
+        </div>
+        <x-ui.sheet :id="'link-'.$link->id" title="Оплата по ссылке" :open="session('open-link') === $link->id">
+            <div class="flex flex-col gap-4">
+                <div class="money-hero">
+                    <span class="nums text-[32px] font-semibold leading-tight">{{ Money::rub($link->amount) }}</span>
+                    <span class="text-ink-muted">платит {{ $who }}@if ($link->payer_email), чек на {{ $link->payer_email }}@endif</span>
+                </div>
+                <div class="mx-auto w-52 rounded-(--radius-l) bg-white p-3 text-black">{!! \App\Support\Qr::svg($link->url()) !!}</div>
+                <x-ui.copy-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :message="$text"/>
+                @if ($link->attempts->isNotEmpty())
+                    <section>
+                        <div class="list-cap">Плательщик открывал оплату</div>
+                        <div class="list">
+                            @foreach ($link->attempts->reverse()->take(5) as $a)
+                                @php [$aText, $aTone] = match (true) { $a->succeeded() => ['оплачено', 'open'], $a->isPending() => ['не завершил', 'urgent'], $a->cancel_reason === 'expired_on_confirmation' => ['бросил', 'muted'], default => [$a->cancelLabel() ?? 'отклонено', 'danger'] }; @endphp
+                                <x-money.line :icon="PayMethod::icon($a->method)" :title="$a->created_at->translatedFormat('j M, H:i')" :sub="$a->method ? PayMethod::label($a->method) : null" :tone="$aTone">
+                                    <x-slot:acts><x-ui.state :tone="$aTone">{{ $aText }}</x-ui.state></x-slot:acts>
+                                </x-money.line>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+                <details class="list">
+                    <summary class="row cursor-pointer"><span class="min-w-0 flex-1">Другая сумма</span><x-ui.chevron/></summary>
+                    <form method="post" action="{{ $create }}" class="flex flex-col gap-3 p-4">
+                        @csrf
+                        <label class="flex items-baseline justify-center gap-2">
+                            <input name="amount" inputmode="decimal" autocomplete="off" class="pay-amount nums" aria-label="Сумма, ₽" placeholder="0"
+                                value="{{ Money::nums($link->amount, fmod($link->amount, 1) ? 2 : 0) }}" data-controller="digits" data-action="input->digits#format">
+                            <span class="text-2xl text-ink-muted">₽</span>
+                        </label>
+                        @error('amount')<div class="text-center text-sm text-danger">{{ $message }}</div>@enderror
+                        <x-ui.button variant="secondary" block>Новая ссылка на эту сумму</x-ui.button>
+                    </form>
+                </details>
+                <form method="post" action="{{ $cancel }}/{{ $link->id }}" data-turbo-confirm="Отменить ссылку? Оплатить по ней будет нельзя">
+                    @csrf @method('delete')
+                    <x-ui.button variant="ghost" block class="text-ink-muted">Отменить ссылку</x-ui.button>
+                </form>
+            </div>
+        </x-ui.sheet>
+    </div>
+@elseif ($payable)
+    <form method="post" action="{{ $create }}" class="contents">
+        @csrf
+        <button class="row w-full text-left">
+            <x-ui.row-icon name="qr" tone="accent" size="s"/>
+            <span class="min-w-0 flex-1">Новая ссылка на оплату</span>
+            <span class="nums shrink-0 text-ink-muted">{{ Money::rub(\App\Billing\Acquiring\PayLink::defaultAmount($i)) }}</span>
+        </button>
+    </form>
+@endif

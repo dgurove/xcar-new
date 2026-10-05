@@ -2,10 +2,12 @@
 
 namespace App\Notifications;
 
+use App\Billing\Acquiring\AcquiringPayment;
 use App\Billing\ChargeKind;
 use App\Billing\Events\AgentFeeDue;
 use App\Billing\Events\InvoiceIssued;
 use App\Billing\Events\InvoiceOverdue;
+use App\Billing\Events\OnlinePaymentTrouble;
 use App\Billing\Events\PaidOnline;
 use App\Billing\Events\PaymentClaimed;
 use App\Billing\Events\PaymentConfirmed;
@@ -40,6 +42,7 @@ use App\Park\RequestState;
 use App\Support\Money;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\AgentFeeDue as AgentFeeDueMessage;
+use App\Telegram\Messages\OnlinePayment as OnlinePaymentMessage;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
 use App\Telegram\Messages\ParkLetter;
@@ -97,6 +100,7 @@ final class Notify
             PaymentRecorded::class => 'paymentRecorded',
             AgentFeeDue::class => 'agentFeeDue',
             PaidOnline::class => 'paidOnline',
+            OnlinePaymentTrouble::class => 'onlinePaymentTrouble',
         ];
     }
 
@@ -388,12 +392,32 @@ final class Notify
         }
     }
 
-    /** Оплатили по ссылке: менеджеру счёта и сотрудникам в «Деньги». */
+    /** Оплатили по ссылке: менеджеру счёта, сотрудникам в «Деньги», владельцу строкой в Telegram (05.10.2026: «непонятно, оплатили или нет»). */
     public function paidOnline(PaidOnline $e): void
     {
         $p = $e->payment->load(['invoice.party', 'invoice.deal.offer', 'invoice.deal.buyer']);
         ($p->invoice->deal?->buyer ?? GarageCar::ofInvoice($p->invoice)?->manager)?->notify(MoneyNotice::paidOnline($e->link, $p));
         Notification::send($this->staff(), MoneyNotice::paidOnlineStaff($e->link, $p));
+        if ($attempt = AcquiringPayment::where('payment_id', $p->id)->with('link.invoice')->first()) {
+            NotifyOwner::dispatch(new OnlinePaymentMessage($attempt, 'paid'));
+        }
+    }
+
+    /**
+     * Банк отклонил оплату — менеджеру счёта (он скажет покупателю); переплата и непробитый чек — сотрудникам в ленту
+     * и владельцу в Telegram: вернуть деньги и разобраться с чеком может только он.
+     */
+    public function onlinePaymentTrouble(OnlinePaymentTrouble $e): void
+    {
+        $a = $e->attempt->load(['link.invoice.party', 'link.invoice.deal.offer', 'link.invoice.deal.buyer']);
+        $i = $a->link->invoice;
+        if ($e->what === 'declined') {
+            ($i->deal?->buyer ?? GarageCar::ofInvoice($i)?->manager)?->notify(MoneyNotice::declined($a));
+
+            return;
+        }
+        Notification::send($this->staff(), MoneyNotice::onlineTroubleStaff($a, $e->what));
+        NotifyOwner::dispatch(new OnlinePaymentMessage($a, $e->what));
     }
 
     /** Вознаграждение к выплате: сотрудникам в ленту, владельцу в Telegram с «Выплачено». */

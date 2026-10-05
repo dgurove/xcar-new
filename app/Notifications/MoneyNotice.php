@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Billing\Acquiring\AcquiringPayment;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Invoice;
 use App\Billing\Payment;
@@ -9,6 +10,7 @@ use App\Garage\Car;
 use App\Support\Money;
 use App\Support\Surface;
 use App\Telegram\Text;
+use Illuminate\Support\Str;
 
 /**
  * Деньги по сделке: менеджеру — счёт выставлен, оплата принята или не поступила, выплачено;
@@ -136,6 +138,31 @@ final class MoneyNotice extends Notice
 
         return (new self('По ссылке оплачено '.Money::rub($p->amount).', счёт '.$i->label().', платил '.$link->payerLabel(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(),
             Car::ofInvoice($i)?->crmUrl() ?? '/work/money?preset=paid', $i->deal?->offer?->number, true))->about($i);
+    }
+
+    /** Банк отклонил оплату по ссылке — менеджеру: покупатель пытался, не вышло; почему — словами ЮKassa. */
+    public static function declined(AcquiringPayment $a): self
+    {
+        $i = $a->link->invoice;
+        $why = $a->cancelLabel() ?? 'отклонено';
+
+        return (new self('Оплата по ссылке не прошла: '.$why, 'Счёт '.$i->label().', '.Money::rub($a->amount), self::path($i), $i->deal?->offer?->number))
+            ->tg($i, 'Оплата не прошла: :car', 'Оплата по ссылке не прошла, счёт '.$i->label(), Money::rub($a->amount).', '.$why.'. Ссылка работает, можно оплатить ещё раз')->about($i);
+    }
+
+    /** Переплата по ссылке или непробитый чек — сотрудникам в «Деньги». */
+    public static function onlineTroubleStaff(AcquiringPayment $a, string $what): self
+    {
+        $i = $a->link->invoice;
+        $title = $what === 'overpaid' ? 'Переплата по ссылке '.Money::rub($a->overpaid()).', счёт '.$i->label().', нужно вернуть' : 'Чек не пробился: оплата '.Money::rub($a->amount).', счёт '.$i->label();
+
+        return (new self($title, $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), '/work/money/invoices/'.$i->id, $i->deal?->offer?->number, true))->about($i);
+    }
+
+    /** «Оплатить» дважды подряд упало на стороне ЮKassa — сотрудникам: покупатели сейчас заплатить не могут. */
+    public static function gatewayDown(string $error): self
+    {
+        return new self('ЮKassa не принимает оплату по ссылкам', Str::limit($error, 160), '/work/money', null, true);
     }
 
     /** Из выписки пришли деньги, которые сами к счёту не легли. */

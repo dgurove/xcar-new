@@ -1,6 +1,7 @@
 {{-- Расчёт по сделке, как экран операции в банковском приложении: сверху фото ТС и число, которое сейчас важно, со
      словом состояния; путь денег точками (подтверждение → счёт → оплата → вознаграждение); дальше группы строк —
-     счёт (строки, итог с НДС, оплаты, ссылка, PDF) и вознаграждение с выплатами. Плашка «Оплатить» — пока есть что
+     счёт (строки, итог с НДС, оплаты, PDF) и вознаграждение с выплатами. Ссылка на оплату — сразу под числом
+     (`x-billing.pay-status`: она заводится вместе со счётом, её только отправить). Плашка «Оплатить» — пока есть что
      платить. Закупочной и «нам» здесь нет. --}}
 @php
     use App\Support\Money; use App\Offers\CommissionState; use App\Billing\InvoiceState; use App\Billing\DealMoney;
@@ -16,6 +17,13 @@
     <div class="flex max-w-[30rem] flex-col gap-6">
         @if ($m->amount !== null)
             <x-money.hero :offer="$offer" :caption="$m->caption" :amount="$m->amount" :phrase="$phrase" :tone="$tone"/>
+        @endif
+
+        @php $byLink = $invoices->filter(fn ($i) => $i->openLink() || (\App\Billing\Acquiring\PayLink::eligible($i) && $i->remaining() - $i->claimed() > 0)); @endphp
+        @if ($byLink->isNotEmpty())
+            <div class="list">
+                @foreach ($byLink as $i)<x-billing.pay-status :invoice="$i"/>@endforeach
+            </div>
         @endif
 
         <div class="box"><x-money.track :steps="DealMoney::track($deal)"/></div>
@@ -34,13 +42,8 @@
                     @foreach ($i->allPayments as $p)
                         <x-money.payment :payment="$p" :slip="'/account/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'"/>
                     @endforeach
-                    @if ($i->state === InvoiceState::Issued && $i->remaining() > 0)
-                        @foreach ($links->where('invoice_id', $i->id) as $link)
-                            <x-billing.pay-link :link="$link" :cancel="'/account/money/links/'.$link->id"/>
-                        @endforeach
-                        @if ($i->paid > 0)
-                            <div class="row"><span class="min-w-0 flex-1 font-medium">Остаток</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining()) }}</span></div>
-                        @endif
+                    @if ($i->state === InvoiceState::Issued && $i->paid > 0 && $i->remaining() > 0)
+                        <div class="row"><span class="min-w-0 flex-1 font-medium">Остаток</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining()) }}</span></div>
                     @endif
                     @if ($i->getFirstMedia('file'))
                         <x-ui.doc :doc="['url' => '/account/invoices/'.$i->id.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="row">

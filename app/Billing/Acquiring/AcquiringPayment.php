@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * (`income_amount` — за вычетом комиссии). Успешная связана с оплатой счёта на `applied`; всё сверх
  * (счёт закрыли раньше иначе, целиком или частью) — переплата, её возвращают из CRM.
  */
-#[Fillable(['link_id', 'provider', 'external_id', 'status', 'amount', 'income_amount', 'method', 'confirmation_url', 'receipt_status', 'applied', 'refunded', 'payment_id', 'payout_tx_id', 'payload', 'checked_at'])]
+#[Fillable(['link_id', 'provider', 'external_id', 'status', 'cancel_reason', 'refund_id', 'refund_status', 'amount', 'income_amount', 'method', 'confirmation_url', 'receipt_status', 'applied', 'refunded', 'payment_id', 'payout_tx_id', 'payload', 'checked_at'])]
 class AcquiringPayment extends Model
 {
     protected $table = 'billing_acquiring_payments';
@@ -24,6 +24,41 @@ class AcquiringPayment extends Model
     protected function casts(): array
     {
         return ['amount' => 'float', 'income_amount' => 'float', 'applied' => 'float', 'refunded' => 'float', 'payload' => 'array', 'checked_at' => 'datetime'];
+    }
+
+    /**
+     * Попытка по платежу провайдера — та же строка, если он у нас уже есть. Повтор создания с тем же ключом
+     * идемпотентности возвращает тот же платёж, а платёж, ответ о котором потерялся, приходит уведомлением: обоих
+     * узнаём по id, второго — по `metadata.link`. Чужой платёж (ссылки нет) — null.
+     */
+    public static function adopt(Checkout $c, string $provider): ?self
+    {
+        $link = $c->linkId() ? PayLink::find($c->linkId()) : null;
+        if (! $link) {
+            return self::where('external_id', $c->id)->first();
+        }
+
+        return self::firstOrCreate(['external_id' => $c->id], [
+            'link_id' => $link->id, 'provider' => $provider, 'status' => $c->status, 'cancel_reason' => $c->cancelReason, 'amount' => $c->amount,
+            'confirmation_url' => $c->url, 'payload' => $c->raw, 'checked_at' => now(),
+        ]);
+    }
+
+    /** Почему не прошла — словами для плательщика и менеджера (`cancellation_details.reason` ЮKassa). */
+    public function cancelLabel(): ?string
+    {
+        return match ($this->cancel_reason) {
+            null => null,
+            'insufficient_funds' => 'недостаточно денег',
+            'expired_on_confirmation' => 'не оплатил вовремя',
+            'card_expired' => 'срок карты истёк',
+            'payment_method_limit_exceeded' => 'лимит по карте',
+            'payment_method_restricted', 'issuer_unavailable', 'country_forbidden', 'fraud_suspected', 'permission_revoked' => 'банк отклонил',
+            'call_issuer' => 'банк просит позвонить ему',
+            '3d_secure_failed' => 'не прошла проверка банка',
+            'canceled_by_merchant' => 'отменили мы',
+            default => 'отклонено',
+        };
     }
 
     public function link(): BelongsTo

@@ -29,11 +29,11 @@ class SlotsTest extends TestCase
         $this->assertNull(Slots::at(Slots::NOW, $morning));
     }
 
-    public function test_bids_close_three_days_later_at_21(): void
+    public function test_bids_close_three_days_later_at_17(): void
     {
-        $this->assertSame('2026-10-07 21:00', Slots::closeFor(Carbon::parse('2026-10-04 16:00'))->format('Y-m-d H:i'));
-        // «Сейчас» поздно вечером — всё равно третий день после публикации, 21:00.
-        $this->assertSame('2026-10-06 21:00', Slots::closeFor(Carbon::parse('2026-10-03 23:40'))->format('Y-m-d H:i'));
-        $this->assertSame('2026-10-04 21:00', Slots::closeFor(Carbon::parse('2026-10-03 10:00'), 1)->format('Y-m-d H:i'));
+        $this->assertSame('2026-10-07 17:00', Slots::closeFor(Carbon::parse('2026-10-04 16:00'))->format('Y-m-d H:i'));
+        // «Сейчас» поздно вечером — всё равно третий день после публикации, 17:00.
+        $this->assertSame('2026-10-06 17:00', Slots::closeFor(Carbon::parse('2026-10-03 23:40'))->format('Y-m-d H:i'));
+        $this->assertSame('2026-10-04 17:00', Slots::closeFor(Carbon::parse('2026-10-03 10:00'), 1)->format('Y-m-d H:i'));
     }
 }

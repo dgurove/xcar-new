@@ -73,6 +73,10 @@
                     </div>
                 </x-ui.card>
             @endif
+            @if (($claims ?? null) && ! $i->isOwed() && ($i->openLink() || (\App\Billing\Acquiring\PayLink::eligible($i) && $i->remaining() - $i->claimed() > 0)))
+                {{-- CRM: ссылка на оплату счёта — адрес, «Отправить», что делал плательщик (`x-billing.pay-status`). --}}
+                <div class="list"><x-billing.pay-status :invoice="$i" staff/></div>
+            @endif
             <x-ui.card :title="$i->isOwed() ? 'Перечисления' : 'Оплаты'">
                 @if ($i->payments->isEmpty())<p class="text-ink-muted">{{ $i->isOwed() ? 'Перечислений нет' : 'Оплат нет' }}</p>@endif
                 <div class="flex flex-col divide-y divide-line/40">

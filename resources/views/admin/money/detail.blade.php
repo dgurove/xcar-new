@@ -1,17 +1,15 @@
 {{-- Карточка счёта или вознаграждения по сделке: в метках остаток, светофор словом, документ, менеджер, ТС; в ряду действий
-     «Оплачен» / «Выплатить» и «Ссылка на оплату» — шторками, PDF — шторкой документов, «Аннулировать» — в «···».
+     «Оплачен» / «Выплатить» — шторкой, PDF — шторкой документов, «Аннулировать» — в «···»; ссылка на оплату — первой
+     строкой денег (`x-billing.pay-status`: адрес, «Отправить», что делал плательщик).
      Ниже строками денег: заявки менеджера с «Поступило» / «Не поступила», строки счёта с итогом и НДС, оплаты (у ссылки —
      способ, комиссия, зачислено ли на счёт, «Вернуть»), переплата по ссылке. --}}
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource;
     $i = $invoice; $href = '/work/money/invoices/'.$i->id; $offer = $i->deal?->offer;
-    $link = $i->openLink();
     $attempts = \App\Billing\Acquiring\AcquiringPayment::whereIn('link_id', $i->payLinks()->pluck('id'))->where('status', 'succeeded')->with('payout')->get();
     $overpaid = $attempts->filter(fn ($a) => $a->overpaid() > 0);
     $issued = $i->state === InvoiceState::Issued;
-    $online = $issued && ! $i->isOwed() && app(\App\Billing\Acquiring\Gateway::class)->configured();
     $voidable = $issued && ! $i->payments()->where('source', '!=', PaymentSource::Offset)->exists();
-    $suggest = \App\Billing\Acquiring\PayLink::defaultAmount($i);
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$i->isOwed() ? 'Вознаграждение '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :photo="$offer?->mainPhoto()">
@@ -30,46 +28,6 @@
                     <button type="button" class="btn btn-s btn-accent" data-action="sheet#open">{{ $i->isOwed() ? 'Выплатить' : 'Оплачен' }}</button>
                     <x-ui.sheet :id="'paid-'.$i->id" :title="$i->isOwed() ? 'Выплата '.$i->party->name : 'Оплата по счёту '.$i->label()" :open="$errors->hasAny(['source', 'paid_at', 'slip'])">
                         <x-billing.pay-form :invoice="$i" :action="$href.'/payments'" :sources="$sources"/>
-                    </x-ui.sheet>
-                </div>
-            @endif
-            @if ($link)
-                <div data-controller="sheet" class="contents">
-                    <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open"><x-ui.icon name="qr" class="size-4"/>Ссылка {{ Money::rub($link->amount) }}</button>
-                    <x-ui.sheet :id="'link-'.$link->id" title="Ссылка на оплату" :open="session('open-link') === $link->id">
-                        <div class="flex flex-col gap-4">
-                            <div class="money-hero">
-                                <span class="nums text-[32px] font-semibold leading-tight">{{ Money::rub($link->amount) }}</span>
-                                <span class="text-ink-muted">платит {{ $link->payerLabel() }}@if ($link->payer_email), чек на {{ $link->payer_email }}@endif</span>
-                            </div>
-                            <div class="mx-auto w-52 rounded-(--radius-l) bg-white p-3 text-black">{!! \App\Support\Qr::svg($link->url()) !!}</div>
-                            <x-ui.copy-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()"/>
-                            <form method="post" action="/work/money/links/{{ $link->id }}" data-turbo-confirm="Отменить ссылку? Оплатить по ней будет нельзя">
-                                @csrf @method('delete')
-                                <x-ui.button variant="ghost" block class="text-ink-muted">Отменить ссылку</x-ui.button>
-                            </form>
-                        </div>
-                    </x-ui.sheet>
-                </div>
-            @elseif ($online)
-                <div data-controller="sheet" class="contents">
-                    <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open"><x-ui.icon name="qr" class="size-4"/>Ссылка на оплату</button>
-                    <x-ui.sheet :id="'new-link-'.$i->id" title="Ссылка на оплату" :open="$errors->hasAny(['email', 'phone', 'amount'])">
-                        <form method="post" action="{{ $href }}/links" class="flex flex-col gap-4">
-                            @csrf
-                            <label class="flex items-baseline justify-center gap-2">
-                                <input name="amount" inputmode="decimal" autocomplete="off" class="pay-amount nums" aria-label="Сумма, ₽" placeholder="0"
-                                    value="{{ old('amount', Money::nums($suggest, fmod($suggest, 1) ? 2 : 0)) }}" data-controller="digits" data-action="input->digits#format">
-                                <span class="text-2xl text-ink-muted">₽</span>
-                            </label>
-                            @error('amount')<div class="-mt-2 text-center text-sm text-danger">{{ $message }}</div>@enderror
-                            <x-ui.field name="name" id="link-name" label="Плательщик" :value="$i->party->name"/>
-                            <div class="grid grid-cols-2 gap-3">
-                                <x-ui.field name="email" id="link-email" label="Почта для чека" type="email" :value="$i->party->email"/>
-                                <x-ui.field name="phone" id="link-phone" label="Телефон" :value="$i->party->phone"/>
-                            </div>
-                            <x-ui.button block>Получить ссылку</x-ui.button>
-                        </form>
                     </x-ui.sheet>
                 </div>
             @endif
@@ -107,6 +65,7 @@
         @endif
 
         <div class="list mt-4">
+            @unless ($i->isOwed())<x-billing.pay-status :invoice="$i" staff/>@endunless
             @foreach ($i->charges as $c)
                 <div class="row"><span class="min-w-0 flex-1 text-ink-muted">{{ $c->title }}</span><span class="nums shrink-0">{{ Money::rub($c->amount) }}</span></div>
             @endforeach

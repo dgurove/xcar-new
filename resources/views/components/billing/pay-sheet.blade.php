@@ -6,10 +6,11 @@
 @props(['id' => 'pay', 'invoices', 'action', 'pdf', 'buyers' => collect(), 'open' => false, 'otherName' => null, 'otherPhone' => null])
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayLink;
-    // Без договора эквайринга способа «Ссылкой» нет вовсе.
-    $online = app(\App\Billing\Acquiring\Gateway::class)->configured();
     $first = $invoices->first();
     $one = $invoices->count() === 1;
+    // Без договора эквайринга способа «Ссылкой» нет вовсе; у счёта уже есть ссылка (она заводится вместе со счётом и
+    // стоит на экране с «Отправить») — второй тоже не делаем: тут остаются «По счёту» и «Наличными».
+    $online = app(\App\Billing\Acquiring\Gateway::class)->configured() && ! $invoices->every(fn ($i) => $i->openLink());
     $left = $one ? max(0, round($first->remaining() - $first->claimed(), 2)) : null;
     $max = (float) config('xcar.yookassa.max_amount');
     $fmt = fn ($v) => Money::nums($v, fmod($v, 1) ? 2 : 0);

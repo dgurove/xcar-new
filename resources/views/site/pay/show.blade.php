@@ -1,7 +1,9 @@
 {{-- Оплата по ссылке, как экран оплаты в приложении: карточка — фото ТС кружком, что это, счёт и сумма крупно; ниже кому,
      кто платит и куда придёт чек; «Оплатить N» и способы значками. Оплачено, проверяется, ссылка не действует — экран
      состояния с большим кружком вместо кнопки. Строк счёта и вознаграждения нет: их видит только менеджер. Внизу мелко —
-     чья это оплата и документы: страница открыта без входа. --}}
+     чья это оплата и документы: страница открыта без входа. Кто платит и почту для чека спрашиваем здесь, у самого
+     плательщика: ссылка заводится вместе со счётом, и почты может не быть. Известные — уже в полях. Вернулся с ЮKassa
+     с отказом — над кнопкой «Оплата не прошла» и почему, кнопка та же. --}}
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayLinkState; use App\Billing\Acquiring\PayMethod;
     $attempt = $link->state === PayLinkState::Paid ? $link->attempts->firstWhere('payment_id', $link->payment_id) : null;
@@ -35,9 +37,17 @@
             <span class="text-sm text-ink-muted">Счёт {{ $invoice->label() }} от {{ $invoice->issued_at->translatedFormat('j F Y') }}</span>
             <span class="nums mt-2 text-[32px] font-semibold leading-tight">{{ Money::exact($amount) }}</span>
         </div>
-        <form method="post" action="/pay/{{ $link->code }}" class="mt-4" data-turbo="false">
+        @if ($declined)
+            <div class="mt-4 flex items-center gap-3 rounded-(--radius-l) bg-danger/10 p-4">
+                <x-ui.icon name="x" class="size-5 shrink-0 text-danger"/>
+                <span class="min-w-0 flex-1"><span class="block font-medium">Оплата не прошла</span><span class="text-sm text-ink-muted">{{ Str::ucfirst($declined->cancelLabel() ?? 'отклонено') }}, деньги не списаны</span></span>
+            </div>
+        @endif
+        <form method="post" action="/pay/{{ $link->code }}" class="mt-4 flex flex-col gap-3" data-turbo="false">
             @csrf
-            <x-ui.button block>Оплатить {{ Money::exact($amount) }}</x-ui.button>
+            <x-ui.field name="name" id="pay-name" label="Кто платит" :value="old('name', $link->payer_name)" autocomplete="name"/>
+            <x-ui.field name="email" id="pay-email" label="Почта для чека" type="email" :value="old('email', $link->payer_email)" required/>
+            <x-ui.button block>{{ $declined ? 'Оплатить ещё раз' : 'Оплатить '.Money::exact($amount) }}</x-ui.button>
         </form>
         @error('link')<div class="mt-2 text-center text-sm text-danger">{{ $message }}</div>@enderror
         @if ($failed)<div class="mt-2 text-center text-sm text-danger">Оплата сейчас недоступна, попробуйте через несколько минут</div>@endif
@@ -50,8 +60,8 @@
 
     <div class="list mt-6">
         <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Получатель</span><span class="text-right">{{ $self->name }}</span></div>
-        @if ($link->payer_name)<div class="row"><span class="min-w-0 flex-1 text-ink-muted">Плательщик</span><span class="text-right">{{ $link->payer_name }}</span></div>@endif
-        @if ($mail && $link->state !== PayLinkState::Canceled)<div class="row"><span class="min-w-0 flex-1 text-ink-muted">{{ $link->state === PayLinkState::Paid ? 'Чек отправлен' : 'Чек придёт' }}</span><span class="text-right">{{ $mail }}</span></div>@endif
+        @if ($link->payer_name && $icon)<div class="row"><span class="min-w-0 flex-1 text-ink-muted">Плательщик</span><span class="text-right">{{ $link->payer_name }}</span></div>@endif
+        @if ($mail && $link->state === PayLinkState::Paid)<div class="row"><span class="min-w-0 flex-1 text-ink-muted">Чек отправлен</span><span class="text-right">{{ $mail }}</span></div>@endif
     </div>
 
     <div class="mt-auto flex flex-col items-center gap-1 pt-8 text-center text-xs text-ink-dim">

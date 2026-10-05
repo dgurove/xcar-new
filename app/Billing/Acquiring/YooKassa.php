@@ -3,7 +3,9 @@
 namespace App\Billing\Acquiring;
 
 use App\Billing\Vat;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -12,7 +14,9 @@ use RuntimeException;
  * ЮKassa, Payments API v3 без SDK: платёж с `capture: true` и переходом на её страницу (карта, СБП, SberPay),
  * чек 54-ФЗ одной позицией «Подбор ТС …» на сумму платежа (услуга оказана — полный расчёт, НДС ставкой счёта) — строк
  * счёта плательщик не видит. «Чеки от ЮKassa» уходят только на почту: без неё платёж с чеком не создаётся.
- * Каждое создание — свой `Idempotence-Key`: повтор запроса при обрыве не заведёт второй платёж.
+ * `Idempotence-Key` создания — от тела запроса и получасового окна: обрыв или 5xx повторяются тем же ключом, и ЮKassa
+ * отдаёт уже заведённый платёж, а не второй. Платёж, о котором мы так и не узнали, найдётся по `metadata.link`
+ * (уведомление, `AcquiringPayment::adopt`).
  */
 final class YooKassa implements Gateway
 {
@@ -41,7 +45,9 @@ final class YooKassa implements Gateway
             $body['receipt'] = $this->receipt($link, $amount);
         }
 
-        return $this->checkout($this->http()->withHeaders(['Idempotence-Key' => (string) Str::uuid()])->post('/payments', $body)->throw()->json());
+        $key = 'pay-'.$link->id.'-'.sha1(json_encode($body).'|'.intdiv(time(), AcquiringPayment::FRESH_MINUTES * 60));
+
+        return $this->checkout($this->http()->retry(3, 1500, self::transient(...))->withHeaders(['Idempotence-Key' => $key])->post('/payments', $body)->throw()->json());
     }
 
     public function fetch(string $id): Checkout
@@ -49,7 +55,7 @@ final class YooKassa implements Gateway
         return $this->checkout($this->http()->get('/payments/'.rawurlencode($id))->throw()->json());
     }
 
-    public function refund(AcquiringPayment $attempt, float $amount): void
+    public function refund(AcquiringPayment $attempt, float $amount): array
     {
         $body = ['payment_id' => $attempt->external_id, 'amount' => self::money($amount)];
         // Полный возврат ЮKassa пробивает по чеку платежа сама; частичный (переплата) — только со своим чеком.
@@ -57,10 +63,26 @@ final class YooKassa implements Gateway
         if (config('xcar.yookassa.receipt') && ! $full) {
             $body['receipt'] = $this->receipt($attempt->link, $amount);
         }
-        $refund = $this->http()->withHeaders(['Idempotence-Key' => 'refund-'.$attempt->id.'-'.round($attempt->refunded * 100)])->post('/refunds', $body)->throw()->json();
+        $refund = $this->http()->retry(3, 1500, self::transient(...))
+            ->withHeaders(['Idempotence-Key' => 'refund-'.$attempt->id.'-'.round($attempt->refunded * 100)])->post('/refunds', $body)->throw()->json();
         if (($refund['status'] ?? null) === 'canceled') {
             throw new RuntimeException('ЮKassa отклонила возврат: '.data_get($refund, 'cancellation_details.reason', 'без причины'));
         }
+
+        return ['id' => (string) $refund['id'], 'status' => (string) $refund['status']];
+    }
+
+    public function fetchRefund(string $id): array
+    {
+        $r = $this->http()->get('/refunds/'.rawurlencode($id))->throw()->json();
+
+        return ['id' => (string) $r['id'], 'status' => (string) $r['status'], 'payment_id' => (string) ($r['payment_id'] ?? '')];
+    }
+
+    /** Повторять стоит обрыв и 5xx: с тем же ключом ЮKassa не заведёт второй платёж или возврат. */
+    private static function transient(\Throwable $e): bool
+    {
+        return $e instanceof ConnectionException || ($e instanceof RequestException && $e->response->serverError());
     }
 
     /** Чек: покупатель — почта (обязательна) и телефон плательщика по ссылке, позиция одна. */
@@ -104,6 +126,7 @@ final class YooKassa implements Gateway
             url: data_get($p, 'confirmation.confirmation_url'),
             receipt: data_get($p, 'receipt_registration'),
             raw: $p,
+            cancelReason: data_get($p, 'cancellation_details.reason'),
         );
     }
 

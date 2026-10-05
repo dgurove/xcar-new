@@ -11,12 +11,16 @@
     $due = $i->state === InvoiceState::Issued ? 'до '.$i->due_at->translatedFormat('j M') : mb_strtolower($i->state->label());
     $tone = match ($i->light()) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => '' };
     $left = $i->remaining();
+    // Ссылку открывали, а денег нет — что вышло, цветом прямо в строке (заводится у каждого счёта, сама по себе не новость).
+    $link = $i->state === InvoiceState::Issued && ! $i->isOwed() ? $i->openLink() : null;
+    [$linkLine, $linkTone] = $link && ($link->error_at || $link->attempts->isNotEmpty()) ? $link->stateLine() : [null, null];
 @endphp
 <tr data-detail-key="{{ $i->id }}" data-search-row id="invoice-{{ $i->id }}">
     <td class="grow">
         <x-ui.row-link :key="$i->id"><span class="cell-title">@if ($i->deal?->buyer){{ $i->deal->buyer->name }}@else<x-vendor.name :party="$i->party"/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
             @if ($claim)<span class="text-urgent">сообщил об оплате</span>@endif
+            @if ($linkLine)<span class="{{ $linkTone === 'danger' ? 'text-danger' : 'text-urgent' }}">по ссылке {{ $linkLine }}</span>@endif
             @if ($i->isOwed())<span class="text-urgent">к выплате</span>@endif
             <span class="sm:hidden {{ $tone }}">{{ $due }}</span>
             <span class="sm:hidden">{{ $i->isOwed() ? 'вознаграждение' : $i->label() }}</span>

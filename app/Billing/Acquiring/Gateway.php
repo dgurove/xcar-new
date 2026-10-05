@@ -13,5 +13,9 @@ interface Gateway
 
     public function fetch(string $id): Checkout;
 
-    public function refund(AcquiringPayment $attempt, float $amount): void;
+    /** @return array{id: string, status: string} возврат у провайдера; «pending» — ещё не вернули */
+    public function refund(AcquiringPayment $attempt, float $amount): array;
+
+    /** @return array{id: string, status: string, payment_id: string} */
+    public function fetchRefund(string $id): array;
 }
