@@ -12,7 +12,7 @@ use Minishlink\WebPush\WebPush;
 /**
  * Пуш подписчикам человека. Формат — Declarative Web Push: Safari 18.4+
  * показывает его сам, без воркера; на Android тот же JSON читает sw.js.
- * Отвалившаяся подписка (404/410) удаляется.
+ * Отвалившаяся подписка (404/410) удаляется. Значок приложения — число того хоста, чья подписка.
  */
 final class WebPushChannel
 {
@@ -22,14 +22,20 @@ final class WebPushChannel
         if ($subs->isEmpty() || ! config('xcar.vapid.public')) {
             return;
         }
+        // Парковка — отдельное приложение: её пуш только на подписки её хоста, остальное — не на них.
+        $park = $notice->surface() === Surface::Park;
+        $subs = $subs->filter(fn ($sub) => ($sub->host && Surface::fromHost($sub->host) === Surface::Park) === $park);
+        if ($subs->isEmpty()) {
+            return;
+        }
         $notification = [
             'title' => $notice->title(),
             'body' => (string) $notice->text(),
             'tag' => $notice->tag(),
-            'app_badge' => $user->badgeCount(),
             'lang' => 'ru',
         ];
         $href = $notice->href();
+        $badges = [];
 
         $push = new WebPush(['VAPID' => ['subject' => config('xcar.vapid.subject'), 'publicKey' => config('xcar.vapid.public'), 'privateKey' => config('xcar.vapid.private')]]);
         $push->setReuseVAPIDHeaders(true);
@@ -37,7 +43,9 @@ final class WebPushChannel
             // Адрес — на хосте подписки: у трёх приложений три scope, чужой хост iOS открыл бы во встроенном браузере.
             $surface = $sub->host ? Surface::fromHost($sub->host) : Surface::Site;
             $navigate = str_starts_with($href, 'http') ? $href : $surface->url($href);
-            $payload = json_encode(['web_push' => 8030, 'notification' => $notification + ['navigate' => $navigate]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $badge = $badges[$surface->value] ??= $user->badgeCount($surface);
+            // Важное (рядом с web_push, не внутри notification — декларативный пуш Safari его не знает) sw.js держит до нажатия.
+            $payload = json_encode(['web_push' => 8030, 'important' => $notice->important(), 'notification' => $notification + ['navigate' => $navigate, 'app_badge' => $badge]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             $push->queueNotification(PushSubscription::create(['endpoint' => $sub->endpoint, 'publicKey' => $sub->p256dh, 'authToken' => $sub->auth, 'contentEncoding' => 'aes128gcm']), $payload, ['TTL' => 86400, 'urgency' => 'normal']);
         }
         foreach ($push->flush() as $report) {

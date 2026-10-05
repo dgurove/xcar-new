@@ -173,6 +173,9 @@ self.addEventListener('push', (event) => {
         icon: `/pwa/${surface()}/icon-192.png`,
         badge: `/pwa/${surface()}/icon-mono-512.png`, // Android рисует бейдж силуэтом
         tag: n.tag,
+        // Важное висит, пока его не нажмут или не смахнут (Chrome на ПК); новое с тем же tag снова звенит.
+        requireInteraction: !!data.important,
+        renotify: !!(data.important && n.tag),
         data: { navigate: n.navigate || '/' },
     }));
 });

@@ -11,6 +11,7 @@ use App\Chats\Events\ChatRead;
 use App\Garage\Car as GarageCar;
 use App\Garage\Events\GarageChanged;
 use App\Notifications\ChatNotice;
+use App\Notifications\Notice;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
@@ -132,8 +133,10 @@ final class PublishLiveUpdates
         $other = $this->otherSide($chat);
         $sides = [$other, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
         // Кому какой адрес: участнику — его экран, второй стороне — свой; тост берёт по своей теме.
-        ($this->publish)($sides[1], 'chat', $data + ['from' => $chat->manager?->shortName() ?? Chat::PLATFORM, 'href' => ChatNotice::hrefFor($chat, false)]);
-        ($this->publish)($other, 'chat', $data + ['from' => $chat->displayName(), 'href' => ChatNotice::hrefFor($chat, true)]);
+        // Карточка — готовой разметкой: кто написал (аватар автора), что, куда вести.
+        $card = fn (string $from, string $href) => ['from' => $from, 'href' => $href, 'banner' => Banner::chat($from, $m->preview(120), $href, $m->author_id ? $m->author : null, $chat->id)];
+        ($this->publish)($sides[1], 'chat', $data + $card($chat->manager?->shortName() ?? Chat::PLATFORM, ChatNotice::hrefFor($chat, false)));
+        ($this->publish)($other, 'chat', $data + $card($chat->displayName(), ChatNotice::hrefFor($chat, true)));
         if ($chat->manager_id) {
             ($this->publish)(Topics::STAFF, 'chat', $data);
         }
@@ -208,12 +211,12 @@ final class PublishLiveUpdates
         if ($e->channel !== 'database' || ! $e->notifiable instanceof User) {
             return;
         }
-        // Сообщение чата тостом показывает сам live-канал (событие chat) — второй раз не надо.
-        if ($e->notification instanceof ChatNotice) {
-            return;
-        }
         $topic = Topics::user($e->notifiable);
-        $this->publish->toast($topic, $e->notification->title(), $e->notification->href());
+        // Сообщение чата карточкой показывает сам live-канал (событие chat) — второй раз не надо; тихое — только строка
+        // в ленте и бейдж.
+        if ($e->notification instanceof Notice && ! $e->notification instanceof ChatNotice && ! $e->notification->quiet()) {
+            $this->publish->notice($topic, Banner::of($e->notification, (string) $e->notification->id));
+        }
         $this->publish->badges($topic);
     }
 }

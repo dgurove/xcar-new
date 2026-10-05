@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Interest;
+use App\Users\User;
 
 /** Менеджеру: его покупатель проявил интерес. Ведёт на страницу оффера на сайте. */
 final class BuyerInterestNotice extends Notice
@@ -27,6 +28,11 @@ final class BuyerInterestNotice extends Notice
     public function offerNumber(): ?int
     {
         return $this->interest->offer->number;
+    }
+
+    public function actor(): ?User
+    {
+        return $this->interest->user;
     }
 
     public function category(): string

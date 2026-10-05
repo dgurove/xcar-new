@@ -6,3 +6,7 @@
 @if (session('toast') || session('toast-danger'))
 <template id="flash" data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}" @if (session('toast-undo')) data-undo @endif></template>
 @endif
+{{-- Уведомления карточками (banner_controller): ПК — справа снизу, телефон — сверху. Тоже постоянный узел. --}}
+<div class="banners" id="banners" data-controller="banner" data-turbo-permanent>
+    <button type="button" class="banners-clear" data-banner-target="clear" data-action="banner#clearAll" hidden>Закрыть все</button>
+</div>

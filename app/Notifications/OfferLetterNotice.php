@@ -30,6 +30,12 @@ final class OfferLetterNotice extends Notice
         return Surface::Crm->url('/offers/from-mail?candidate='.$this->candidate->id);
     }
 
+    /** Письма — тихо (владелец, 05.10.2026), хоть и идут в Telegram. */
+    public function important(): bool
+    {
+        return false;
+    }
+
     public function category(): string
     {
         return 'letters';

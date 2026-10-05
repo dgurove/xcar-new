@@ -85,9 +85,9 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $publish->refresh(Topics::PARK, ["/cars/{$car->id}"]);
         }
         if ($added['photos'] || $added['documents']) {
-            $what = 'Из письма — '.implode(', ', array_filter([$added['photos'] ? "фото: {$added['photos']}" : null, $added['documents'] ? "документов: {$added['documents']}" : null]));
-            $offer && $publish->toast(Topics::STAFF, $what, "/offers/{$offer->number}");
-            $car && $publish->toast(Topics::PARK, $what, "/cars/{$car->id}");
+            $what = 'Из письма: '.implode(', ', array_filter([$added['photos'] ? "фото: {$added['photos']}" : null, $added['documents'] ? "документов: {$added['documents']}" : null]));
+            $offer && $publish->toast(Topics::STAFF, $what, "/offers/{$offer->number}", 'photo');
+            $car && $publish->toast(Topics::PARK, $what, "/cars/{$car->id}", 'photo');
         }
     }
 

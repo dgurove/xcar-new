@@ -30,7 +30,9 @@ final class ReadNotices
             ->where(fn ($q) => $q->whereIn('data->subject', $subjects)->orWhereIn('data->href', $subjects))
             ->update(['read_at' => now()]);
         if ($read > 0) {
-            $this->publish->badges(array_map(Topics::user(...), $userIds));
+            $topics = array_map(Topics::user(...), $userIds);
+            $this->publish->badges($topics);
+            $this->publish->noticesRead($topics, $subjects);
         }
 
         return $read;

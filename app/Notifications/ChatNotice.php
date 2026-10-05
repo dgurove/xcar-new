@@ -116,4 +116,10 @@ final class ChatNotice extends Notice
     {
         return 'chats';
     }
+
+    /** Автор сообщения; автоответ площадки без автора — знак приложения. */
+    public function actor(): ?User
+    {
+        return $this->message->author_id ? $this->message->author : null;
+    }
 }

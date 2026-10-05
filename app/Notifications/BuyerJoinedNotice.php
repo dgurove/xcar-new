@@ -24,6 +24,11 @@ final class BuyerJoinedNotice extends Notice
         return "/buyers/{$this->buyer->id}";
     }
 
+    public function actor(): ?User
+    {
+        return $this->buyer;
+    }
+
     public function category(): string
     {
         return 'people';

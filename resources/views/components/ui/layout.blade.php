@@ -21,7 +21,7 @@
     <meta name="rendered-at" content="{{ now()->timestamp }}">
     @if (config('xcar.mercure.subscriber_key'))
     <meta name="mercure-hub" content="/.well-known/mercure">
-    <meta name="mercure-topics" content="{{ implode(',', \App\Live\Topics::for(auth()->user(), app(\App\Chats\GuestEnquiry::class)->chat(request())?->id)) }}">
+    <meta name="mercure-topics" content="{{ implode(',', \App\Live\Topics::here(auth()->user(), app(\App\Chats\GuestEnquiry::class)->chat(request())?->id)) }}">
     @endif
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -35,7 +35,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/pwa/{{ $surface->value }}/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
     <x-ui.startup/>
-    @auth<meta name="badge-count" content="{{ auth()->user()->badgeCount() }}"><meta name="user-id" content="{{ auth()->id() }}">@endauth
+    @auth<meta name="badge-count" content="{{ auth()->user()->badgeCount() }}"><meta name="user-id" content="{{ auth()->id() }}">@unless (auth()->user()->wantsSound())<meta name="banner-sound" content="off">@endunless @endauth
+    <meta name="surface" content="{{ $surface->value }}">
     @if (config('xcar.vapid.public'))<meta name="vapid-key" content="{{ config('xcar.vapid.public') }}">@endif
     <link rel="preload" href="/fonts/onest-var.woff2" as="font" type="font/woff2" crossorigin>
     @if ($surface !== \App\Support\Surface::Site && ! $index)

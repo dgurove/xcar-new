@@ -1805,6 +1805,62 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .toast:has(.toast-action) { @apply flex items-center gap-4; }
   .toast-action { @apply rounded-full bg-white/15 px-3 py-1 text-sm font-medium; }
 
+  /* Уведомления карточками, как в iOS и macOS (x-ui.banner, banner_controller). Телефон — сверху во всю ширину, новая
+     поверх, две прежние выглядывают из-под неё; от 768 — стопка справа снизу, новая ближе к углу, над парящими
+     кнопками действий. Стекло — то же, что у шапки. --depth ставит контроллер: 0 — новая; --top-h — её высота, прежние
+     на телефоне той же высоты, чтобы выглядывать снизу. */
+  .banners { @apply pointer-events-none fixed z-[55] grid;
+    inset-inline: .5rem; top: calc(env(safe-area-inset-top) + .5rem); }
+  .banner { @apply pointer-events-auto relative rounded-(--radius-xl); grid-area: 1 / 1; align-self: start;
+    background: var(--color-surface); box-shadow: var(--shadow-drop); touch-action: none;
+    translate: 0 calc(var(--depth, 0) * 9px); scale: calc(1 - var(--depth, 0) * .05); transform-origin: 50% 0;
+    z-index: calc(10 - var(--depth, 0));
+    transition: translate var(--dur) var(--ease-spring), scale var(--dur) var(--ease-spring), opacity var(--dur-fast) linear;
+    animation: banner-in-top var(--dur-slow) var(--ease-spring) backwards; }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .banner { background: color-mix(in srgb, var(--color-bar) 82%, transparent); -webkit-backdrop-filter: var(--bar-filter); backdrop-filter: var(--bar-filter); }
+  }
+  @media (prefers-reduced-transparency: reduce) { .banner { background: var(--color-surface); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+  .dark .banner { box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .16), var(--shadow-drop); }
+  .banner:not([data-depth="0"]) { height: var(--top-h, auto); overflow: hidden; }
+  .banner:not([data-depth="0"]) > * { opacity: 0; }
+  .banner[data-buried] { display: none; }
+  .banner.is-dragging { transition: none; }
+  .banner.is-restored { animation: none; }
+  .banner.is-leaving { @apply pointer-events-none; animation: banner-out-top var(--dur) var(--ease-in) forwards; }
+  .banner-main { @apply flex items-center gap-3 py-3 pr-4 pl-3 text-ink; -webkit-user-drag: none; }
+  .banner-body { @apply min-w-0 flex-1; }
+  .banner-head { @apply flex items-baseline gap-2; }
+  .banner-title { @apply min-w-0 flex-1 font-medium; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .banner-time { @apply shrink-0 text-sm text-ink-dim; }
+  .banner-text { @apply mt-0.5 text-ink-muted; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+  .banner-close { @apply absolute -top-1.5 -left-1.5 hidden size-6 items-center justify-center rounded-full bg-surface text-ink-muted transition-opacity;
+    box-shadow: 0 0 0 .5px var(--color-line), 0 1px 3px rgb(0 0 0 / .12); }
+  .banners-clear { @apply hidden; }
+  @keyframes banner-in-top { from { translate: 0 -130%; opacity: 0; } }
+  @keyframes banner-out-top { to { translate: 0 -130%; opacity: 0; } }
+  @keyframes banner-in-side { from { translate: 110% 0; opacity: 0; } }
+  @keyframes banner-out-side { to { translate: 110% 0; opacity: 0; } }
+  @media (min-width: 768px) {
+    .banners { @apply flex flex-col items-stretch gap-2; inset-inline: auto; top: auto; right: 1.5rem; bottom: 1.5rem; width: 22.5rem; }
+    body:has(.action-bar) .banners { bottom: 6rem; }
+    .banner { @apply rounded-[18px]; translate: none; scale: none; z-index: auto; max-height: none; animation-name: banner-in-side; }
+    .banner:not([data-depth="0"]) { height: auto; overflow: visible; }
+    .banner:not([data-depth="0"]) > * { opacity: 1; }
+    .banner.is-leaving { animation-name: banner-out-side; }
+    .banner-close { @apply flex opacity-0; }
+    .banner:hover .banner-close, .banner:focus-within .banner-close { @apply opacity-100; }
+    .banners-clear { @apply pointer-events-auto block self-end rounded-full bg-surface px-3 py-1 text-sm font-medium text-ink-muted opacity-0 transition-opacity;
+      box-shadow: 0 0 0 .5px var(--color-line), var(--shadow-drop); }
+    .banners:hover .banners-clear { @apply opacity-100; }
+    .banners-clear[hidden] { display: none; }
+  }
+  @media (min-width: 768px) and (hover: none) { .banner-close { @apply opacity-100; } }
+  @media (prefers-reduced-motion: reduce) {
+    @keyframes banner-in-top { from { opacity: 0; } } @keyframes banner-out-top { to { opacity: 0; } }
+    @keyframes banner-in-side { from { opacity: 0; } } @keyframes banner-out-side { to { opacity: 0; } }
+  }
+
   /* Админ в чужом кабинете: плашка на каждом экране. Телефон — над таб-баром (и над полосой кнопок, если она
      есть), в чате — под баром собеседника: внизу там поле ввода; с клавиатурой прячется. ПК — левый нижний
      угол, кнопки действий парят справа. Запас под ней — .impersonation-room в конце страницы. */
@@ -2967,7 +3023,7 @@ dialog.lightbox.lb-one .lb-pill--left { display: none; }
 
 @layer components {
   .tabbar, .header-btn, .header-back, .header-title, .btn, .pill, .field-input, .field-label, .field-error, .choice span, .check,
-  .chip, .tag, .mark, .badge, .sheet, .toast, .action-bar, .combobox-list, .swipe-btn, .net, .crumbs, .empty, .empty-line {
+  .chip, .tag, .mark, .badge, .sheet, .toast, .banner, .action-bar, .combobox-list, .swipe-btn, .net, .crumbs, .empty, .empty-line {
     font-family: var(--font-ui);
     letter-spacing: normal;
   }
@@ -2981,7 +3037,7 @@ dialog.lightbox.lb-one .lb-pill--left { display: none; }
    «Открыть / Копировать / Поделиться»; картинки и ссылки не поднимаются призраком.
    Текст объекта, цены, VIN, чат остаются выделяемыми — это не хром. */
 @layer components {
-  .header, .tabbar, .action-bar, .card, .row, .stat, .pills, .pill, .crumbs, .toolbar, .toast,
+  .header, .tabbar, .action-bar, .card, .row, .stat, .pills, .pill, .crumbs, .toolbar, .toast, .banner,
   .sheet > div:first-child, .sheet::before, .photo-strip, .photo-row, [data-gallery-target="strip"], main h1, .btn, .header-btn {
     -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
   }

@@ -10,6 +10,7 @@ use App\Garage\Car;
 use App\Support\Money;
 use App\Support\Surface;
 use App\Telegram\Text;
+use App\Users\User;
 use Illuminate\Support\Str;
 
 /**
@@ -24,6 +25,11 @@ final class MoneyNotice extends Notice
     private ?array $telegram = null;
 
     private ?string $subject = null;
+
+    /** Сотрудникам важна только заявленная оплата: её ждут подтвердить. */
+    private bool $loud = false;
+
+    private ?User $actor = null;
 
     /** Строка ленты, которую заменяет уведомление: деньги по сделке — строка сделки, сотрудникам — счёт. */
     private function about(Invoice $i): self
@@ -118,7 +124,11 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        return (new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' по счёту '.$i->label(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), Car::ofInvoice($i)?->crmUrl() ?? '/work/money', $i->deal?->offer?->number, true))->about($i);
+        $notice = (new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' по счёту '.$i->label(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), Car::ofInvoice($i)?->crmUrl() ?? '/work/money', $i->deal?->offer?->number, true))->about($i);
+        $notice->loud = true;
+        $notice->actor = $i->deal?->buyer;
+
+        return $notice;
     }
 
     /** Оплатили по ссылке — менеджеру: его счёт закрылся или уменьшился сам. */
@@ -211,5 +221,15 @@ final class MoneyNotice extends Notice
     public function critical(): bool
     {
         return ! $this->toStaff;
+    }
+
+    public function important(): bool
+    {
+        return $this->loud || parent::important();
+    }
+
+    public function actor(): ?User
+    {
+        return $this->actor;
     }
 }

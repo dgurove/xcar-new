@@ -9,10 +9,12 @@ import * as Turbo from '@hotwired/turbo';
 // По каналу приходит только событие; за содержимым идём на сервер:
 //   card    {number} — плитка оффера в каталоге: заменить или добавить
 //   refresh {paths}  — если открыта одна из страниц, перечитать её (morph)
-//   toast   {message, href}
+//   notice  {id, subject, important, surface, html} — карточка уведомления (banner_controller, window.notify)
+//   notices-read {subjects} — объекты открыли: их карточки закрываются
+//   toast   {message, href} — прежний вид, пока в очереди события старой выкладки
 //   badges           — счётчики таб-бара
-//   chat    {chat, seq, author, from, text, href} — live:chat на document для chat_controller;
-//           если ни одна лента этого чата не на экране (handled) и это не своё — тост
+//   chat    {chat, seq, author, from, text, href, banner} — live:chat на document для chat_controller;
+//           если ни одна лента этого чата не на экране (handled) и это не своё — карточка banner
 //   chat-edit / chat-read / chat-typing {chat, ...} — тем же путём, без тоста
 //   telegram {state} — live:telegram для telegram_controller: чат привязан, вход подтверждён или отклонён
 //   scan {candidate} — live:scan для scan_controller: «✨ Распознать» прочитал файл или закончил
@@ -67,6 +69,8 @@ function open() {
     on('card', card);
     on('refresh', refresh);
     on('toast', ({ message, href }) => window.toast?.(message, href ? { href } : undefined));
+    on('notice', (detail) => window.notify?.(detail));
+    on('notices-read', ({ subjects }) => window.noticesRead?.(subjects));
     on('badges', badges);
     on('chat', chat);
     ['telegram', 'offers-bot', 'scan'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
@@ -93,11 +97,12 @@ async function reopen(delay) {
     }, delay);
 }
 
-// Сообщение чата: лента на экране забирает его сама (ставит handled), иначе — тост с переходом.
+// Сообщение чата: лента на экране забирает его сама (ставит handled), иначе — карточка уведомления.
 function chat(detail) {
     document.dispatchEvent(new CustomEvent('live:chat', { detail }));
     if (detail.handled || !detail.from || String(detail.author) === document.querySelector('meta[name="user-id"]')?.content) return;
-    window.toast?.(`${detail.from}: ${detail.text}`, detail.href ? { href: detail.href } : undefined);
+    if (detail.banner && window.notify) window.notify(detail.banner);
+    else window.toast?.(`${detail.from}: ${detail.text}`, detail.href ? { href: detail.href } : undefined);
 }
 
 async function card({ number }) {

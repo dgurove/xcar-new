@@ -15,7 +15,7 @@ class NotificationController
     public function index(Request $request)
     {
         return view('cabinet.notifications', [
-            'items' => $request->user()->notifications()->latest()->paginate(40),
+            'items' => $request->user()->noticesHere()->latest()->paginate(40),
             'unread' => $request->user()->unreadCount(),
         ]);
     }
@@ -24,7 +24,7 @@ class NotificationController
     public function latest(Request $request)
     {
         return view('cabinet.notifications-latest', [
-            'items' => $request->user()->notifications()->latest()->limit(5)->get(),
+            'items' => $request->user()->noticesHere()->latest()->limit(5)->get(),
             'frame' => $request->header('Turbo-Frame', 'notifications-latest'),
         ]);
     }
@@ -65,7 +65,7 @@ class NotificationController
     {
         // Колокольчик сам шлёт «прочитано» при открытии (ajax): за человека это не отмечается.
         // Кнопка «Всё прочитано» — осознанное действие, её слушаемся, как свайпа по строке.
-        if (! ($request->ajax() && Impersonation::active()) && $request->user()->unreadNotifications()->update(['read_at' => now()])) {
+        if (! ($request->ajax() && Impersonation::active()) && $request->user()->noticesHere()->whereNull('read_at')->update(['read_at' => now()])) {
             $publish->badges(Topics::user($request->user()));
         }
 
@@ -93,6 +93,7 @@ class NotificationController
         // Прочие ключи (пуш, «напомнить позже» про Telegram) форма не присылает — их не теряем.
         $user->update(['notification_settings' => [
             'mail' => $request->boolean('mail'),
+            'sound' => $request->boolean('sound'),
             'quiet' => $request->boolean('quiet'),
             // Форма присылает включённые категории — выключенные считаем от разрешённых.
             'off' => array_values(array_diff($allowed, array_map('strval', (array) $request->input('on', [])))),

@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Bid;
+use App\Users\User;
 
 final class BidPlacedNotice extends Notice
 {
@@ -35,5 +36,16 @@ final class BidPlacedNotice extends Notice
     public function category(): string
     {
         return 'bids';
+    }
+
+    /** Новое подтверждение ждёт решения админа — важное. */
+    public function important(): bool
+    {
+        return true;
+    }
+
+    public function actor(): ?User
+    {
+        return $this->bid->user;
     }
 }

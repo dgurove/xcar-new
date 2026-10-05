@@ -55,7 +55,7 @@ final class ImportOfferArchive implements ShouldQueue
         $publish->toast(Topics::STAFF, match (true) {
             $added === null => "Архив {$this->name} не открылся",
             ! $what => "В архиве {$this->name} нового нет",
-            default => 'Из архива — '.implode(', ', $what),
-        }, "/offers/{$offer->number}");
+            default => 'Из архива: '.implode(', ', $what),
+        }, "/offers/{$offer->number}", 'photo');
     }
 }

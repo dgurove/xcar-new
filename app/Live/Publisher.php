@@ -3,6 +3,7 @@
 namespace App\Live;
 
 use App\Support\Nav;
+use App\Support\Surface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -33,9 +34,26 @@ final class Publisher
         }
     }
 
-    public function toast(array|string $topics, string $message, ?string $href = null): void
+    /**
+     * Событие без строки в ленте (письмо в ящик, файлы из письма, импорт) — тихая карточка уведомления. Живёт там,
+     * чью тему слушают: `park` — на парковке, `staff` — в CRM.
+     */
+    public function toast(array|string $topics, string $message, ?string $href = null, string $icon = 'mail'): void
     {
-        $this($topics, 'toast', ['message' => $message, 'href' => $href]);
+        $surface = in_array(Topics::PARK, (array) $topics, true) ? Surface::Park : (in_array(Topics::STAFF, (array) $topics, true) ? Surface::Crm : null);
+        $this->notice($topics, Banner::plain($message, $href, $icon, $surface));
+    }
+
+    /** Карточка уведомления (`Banner`): клиент ставит её в угол, важную — со звуком и до нажатия. */
+    public function notice(array|string $topics, array $banner): void
+    {
+        $this($topics, 'notice', $banner);
+    }
+
+    /** Строки ленты об этих объектах погасли — их карточки закрываются во всех вкладках и на всех устройствах. */
+    public function noticesRead(array|string $topics, array $subjects): void
+    {
+        $this($topics, 'notices-read', ['subjects' => array_values($subjects)]);
     }
 
     public function refresh(array|string $topics, array $paths): void

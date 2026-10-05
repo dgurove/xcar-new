@@ -10,6 +10,7 @@ use App\Offers\Interest;
 use App\Park\Area;
 use App\Support\Demo\HidesDemo;
 use App\Support\Phone;
+use App\Support\Surface;
 use App\Telegram\Bot;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -363,6 +364,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return ($this->notification_settings['mail'] ?? true) !== false;
     }
 
+    /** Звук важных уведомлений в приложении — по умолчанию включён. */
+    public function wantsSound(): bool
+    {
+        return ($this->notification_settings['sound'] ?? true) !== false;
+    }
+
     /** Категория уведомлений не выключена (Notifications\Categories). */
     public function wants(string $category): bool
     {
@@ -435,19 +442,32 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return URL::signedRoute('mail.unsubscribe', ['user' => $this->id]);
     }
 
-    /** Непрочитанные уведомления; в запросе считаются раз — их читают значок приложения, шапка и таб-бар. */
-    public function unreadCount(): int
+    /**
+     * Уведомления этого приложения: парковка — отдельное (владелец, 05.10.2026), её строки (`data.surface`) видны только
+     * на её хосте, а в CRM и на сайте — всё остальное. Вне запроса хост называют явно (пуш — по хосту подписки).
+     */
+    public function noticesHere(?Surface $surface = null)
     {
-        $count = fn () => $this->unreadNotifications()->count();
+        $park = ($surface ?? Surface::current()) === Surface::Park;
 
-        // В очереди объект человека живёт весь job — там считаем каждый раз (значок пуша после нового уведомления).
-        return app()->runningInConsole() ? $count() : once($count);
+        return $this->notifications()->when($park,
+            fn ($q) => $q->where('data->surface', 'park'),
+            fn ($q) => $q->whereNull('data->surface'));
     }
 
-    /** Бейдж приложения: непрочитанные уведомления и сообщения в чатах вместе. */
-    public function badgeCount(): int
+    /** Непрочитанные уведомления; в запросе считаются раз — их читают значок приложения, шапка и таб-бар. */
+    public function unreadCount(?Surface $surface = null): int
     {
-        return $this->unreadCount() + $this->unreadChats();
+        $count = fn () => $this->noticesHere($surface)->whereNull('read_at')->count();
+
+        // В очереди объект человека живёт весь job — там считаем каждый раз (значок пуша после нового уведомления).
+        return app()->runningInConsole() || $surface ? $count() : once($count);
+    }
+
+    /** Бейдж приложения: непрочитанные уведомления и сообщения в чатах вместе; у парковки чатов нет. */
+    public function badgeCount(?Surface $surface = null): int
+    {
+        return $this->unreadCount($surface) + (($surface ?? Surface::current()) === Surface::Park ? 0 : $this->unreadChats());
     }
 
     /** Непрочитанное в чатах: свои чаты и чаты покупателей, где человек — вторая сторона. */

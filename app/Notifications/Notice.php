@@ -59,6 +59,43 @@ abstract class Notice extends Notification implements ShouldQueue
         return false;
     }
 
+    /**
+     * Важное — то, где нужен сам человек: карточка в приложении со звуком и висит, пока её не нажмут или не смахнут,
+     * системный пуш тоже ждёт нажатия. По умолчанию — критичное и то, что просится в Telegram (туда идёт только то, что
+     * требует человека). Остальное — та же карточка, тихо, уходит сама.
+     */
+    public function important(): bool
+    {
+        return ! $this->quiet() && ($this->critical() || $this->toTelegram() !== null);
+    }
+
+    /** Кто совершил действие — его аватар на карточке; нет человека — иконка (`icon`). */
+    public function actor(): ?User
+    {
+        return null;
+    }
+
+    /** Иконка карточки без человека — из `x-ui.icon`, по категории. */
+    public function icon(): string
+    {
+        return match ($this->category()) {
+            'bids', 'deals' => 'deal',
+            'money' => 'wallet',
+            'park' => 'park',
+            'offers', 'purchases', 'interest' => 'car',
+            'letters' => 'mail',
+            'people' => 'user',
+            'chats' => 'chat',
+            default => 'bell',
+        };
+    }
+
+    /** Приложение, где уведомление живёт: парковка — отдельно от CRM и сайта (владелец, 05.10.2026), остальное — null. */
+    public function surface(): ?Surface
+    {
+        return $this->category() === 'park' ? Surface::Park : null;
+    }
+
     /** Категория для настроек (Categories): что человек может выключить. */
     public function category(): string
     {
@@ -130,7 +167,8 @@ abstract class Notice extends Notification implements ShouldQueue
 
     public function toArray(User $user): array
     {
-        return ['title' => $this->title(), 'text' => $this->text(), 'href' => $this->href(), 'offer' => $this->offerNumber(), 'subject' => $this->subject()];
+        return ['title' => $this->title(), 'text' => $this->text(), 'href' => $this->href(), 'offer' => $this->offerNumber(), 'subject' => $this->subject()]
+            + ($this->surface() ? ['surface' => $this->surface()->value] : []);
     }
 
     public function toMail(User $user): MailMessage

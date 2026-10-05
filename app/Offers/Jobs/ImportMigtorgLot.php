@@ -319,7 +319,7 @@ final class ImportMigtorgLot implements ShouldQueue
                 ! $added => 'С Мигторга нового нет',
                 ! $failed => "Фото с Мигторга: {$added}",
                 default => "Фото с Мигторга: {$added}, не забрано {$failed}",
-            }, "/offers/{$offer->number}");
+            }, "/offers/{$offer->number}", 'photo');
         }
     }
 
