@@ -15,9 +15,9 @@
         {{-- Способы — справа от кнопки, знаками без подписей (06.10.2026, владелец: «не в кнопке, а справа, компактно»). --}}
         <div class="flex items-center gap-4">
             <x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">К оплате <span class="nums">{{ \App\Support\Money::rub($left) }}</span></x-ui.button>
-            {{-- Высоты разные, чтобы на глаз знаки были одного размера: карта в своей сетке 24 занимает 15 по высоте. --}}
+            {{-- Высоты подобраны на глаз: карта в своей сетке 24 занимает 21 × 15 и плотнее, иначе кажется крупнее СБП и Сбера. --}}
             <span class="flex shrink-0 items-center gap-2 text-ink" aria-label="СБП, SberPay, карта">
-                <x-ui.pay-mark name="sbp" class="h-3.5 w-auto"/><x-ui.pay-mark name="sberpay" class="h-3.5 w-auto"/><x-ui.pay-mark name="card" class="h-5 w-auto"/>
+                <x-ui.pay-mark name="sbp" class="h-4 w-auto"/><x-ui.pay-mark name="sberpay" class="h-4 w-auto"/><x-ui.pay-mark name="card" class="h-[17px] w-auto"/>
             </span>
         </div>
         <x-billing.pay-sheet id="pay-selection" :invoices="collect([$i])" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf"
