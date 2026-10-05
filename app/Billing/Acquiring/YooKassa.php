@@ -85,20 +85,12 @@ final class YooKassa implements Gateway
         return $e instanceof ConnectionException || ($e instanceof RequestException && $e->response->serverError());
     }
 
-    /** Чек: покупатель — почта (обязательна) и телефон плательщика по ссылке, позиция одна. */
+    /** Чек: покупатель — почта плательщика (чеки от ЮKassa уходят только на неё, телефон не нужен), позиция одна. */
     private function receipt(PayLink $link, float $amount): array
     {
         $invoice = $link->invoice;
-        $phone = preg_replace('/\D/', '', (string) $link->payer_phone);
-        if (strlen($phone) === 11 && $phone[0] === '8') {
-            $phone = '7'.substr($phone, 1);
-        } elseif (strlen($phone) === 10) {
-            // Набрали без кода страны — чеку нужен полный номер, иначе ЮKassa отклоняет платёж целиком.
-            $phone = '7'.$phone;
-        }
         $customer = array_filter([
             'full_name' => $link->payer_name ?: null,
-            'phone' => strlen($phone) >= 11 ? $phone : null,
             'email' => $link->payer_email ?: null,
         ]);
 

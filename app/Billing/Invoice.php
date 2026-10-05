@@ -201,7 +201,7 @@ class Invoice extends Model implements HasMedia
     public function receiptTitle(): string
     {
         if ($this->isService()) {
-            return (string) $this->charges()->value('title');
+            return (string) ($this->relationLoaded('charges') ? $this->charges->first()?->title : $this->charges()->value('title'));
         }
 
         return trim('Подбор ТС '.($this->offer?->titleWithYear() ?? ''));

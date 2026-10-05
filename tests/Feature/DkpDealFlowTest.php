@@ -110,7 +110,7 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame('Сделка закрыта', $offer->fresh()->stage()->name);
     }
 
-    /** Ссылка при принятии — на менеджера и ровно 80 000; менеджер переделывает её на нового покупателя по ФИО. */
+    /** Ссылка при принятии — на менеджера и ровно 80 000; менеджер переделывает её на нового покупателя по ФИО и почте (телефон ссылке не нужен). */
     public function test_link_is_80_and_manager_picks_new_buyer_as_payer(): void
     {
         config(['xcar.yookassa.shop_id' => '1', 'xcar.yookassa.secret' => 'test']);
@@ -118,10 +118,10 @@ class DkpDealFlowTest extends TestCase
         $invoice = $deal->issuedInvoices()->sole();
         $this->assertEqualsWithDelta(80000, $invoice->openLink()->amount, 0.01);
 
-        $this->actingAs($this->manager)->post('/account/money/deals/'.$deal->id.'/pay', ['invoice' => $invoice->id, 'way' => 'link', 'payer' => 'other', 'name' => 'Покупаев Пётр', 'phone' => '+7 900 111-22-33'])
+        $this->actingAs($this->manager)->post('/account/money/deals/'.$deal->id.'/pay', ['invoice' => $invoice->id, 'way' => 'link', 'payer' => 'other', 'name' => 'Покупаев Пётр', 'email' => 'petr@example.test'])
             ->assertSessionHasNoErrors();
 
-        $buyer = User::where('phone', '79001112233')->sole();
+        $buyer = User::where('email', 'petr@example.test')->sole();
         $this->assertSame($this->manager->id, $buyer->manager_id);
         $this->assertTrue($buyer->isBuyer());
         $link = $invoice->fresh()->openLink();

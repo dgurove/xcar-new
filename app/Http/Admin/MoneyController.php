@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayLinkState;
 use App\Billing\Actions\ConfirmPayment;
 use App\Billing\Actions\IssueServiceInvoice;
@@ -14,7 +15,6 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\ManagerLedger;
 use App\Billing\Party;
-use App\Billing\PartyKind;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
@@ -120,21 +120,23 @@ class MoneyController
     /**
      * Разовая оплата по ссылке: счёт ПРАЙМ на услугу без сделки (`IssueServiceInvoice`) — плательщик из заведённых или
      * новый по имени, почта по желанию (нет — спросит `/pay`). Дальше открывается карточка счёта со ссылкой.
+     * Без подключённой ЮKassa ссылки не будет — и счёт не выставляется.
      */
-    public function service(Request $request, IssueServiceInvoice $issue)
+    public function service(Request $request, IssueServiceInvoice $issue, Gateway $gateway)
     {
+        abort_unless($gateway->configured(), 422, 'Оплата по ссылке не подключена');
         $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:1'], 'title' => ['required', 'string', 'max:200'],
             'party_id' => ['required', Rule::when(fn () => $request->input('party_id') !== 'new', ['exists:billing_parties,id'])],
             'party_name' => ['required_if:party_id,new', 'nullable', 'string', 'max:200'],
-            'party_email' => ['nullable', 'email', 'max:120'], 'party_phone' => ['nullable', 'string', 'max:20', 'regex:/^[\d\s()+\-]{10,20}$/'],
+            'party_email' => ['nullable', 'email', 'max:120'],
         ], ['amount.required' => 'Сколько платят', 'title.required' => 'Назовите услугу', 'party_name.required_if' => 'Кто платит',
-            'party_email.email' => 'Проверьте почту', 'party_phone.regex' => 'Проверьте номер телефона']);
-        $party = $data['party_id'] === 'new'
-            ? Party::create(['kind' => PartyKind::Person, 'name' => $data['party_name'], 'email' => $data['party_email'] ?? null, 'phone' => $data['party_phone'] ?? null])
+            'party_email.email' => 'Проверьте почту']);
+        $payer = $data['party_id'] === 'new'
+            ? ['name' => $data['party_name'], 'email' => $data['party_email'] ?? null]
             : Party::where('is_self', false)->findOrFail($data['party_id']);
-        $invoice = $issue($party, $request->user(), (float) $data['amount'], $data['title']);
+        $invoice = $issue($payer, $request->user(), (float) $data['amount'], $data['title']);
 
         return redirect('/work/money?preset=all&peek='.$invoice->id)->with('toast', 'Счёт '.$invoice->label().' выставлен, ссылка готова');
     }

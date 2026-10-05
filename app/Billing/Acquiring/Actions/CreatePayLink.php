@@ -27,7 +27,7 @@ final class CreatePayLink
 
     public function __invoke(Invoice $invoice, User $by, float $amount, PayerKind $kind, ?User $payer = null, ?string $name = null, ?string $phone = null, ?string $email = null, bool $auto = false): PayLink
     {
-        return DB::transaction(function () use ($invoice, $by, $amount, $kind, $payer, $name, $phone, $email, $auto) {
+        return DB::transaction(function () use ($invoice, $by, $amount, $kind, $payer, $name, $email, $auto) {
             $invoice = Invoice::withoutGlobalScope('demo')->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             // Вознаграждение от поставщика платит вендор по счёту, не человек по ссылке.
             if ($invoice->state !== InvoiceState::Issued || $invoice->isOwed() || $invoice->kind === ChargeKind::Reward) {
@@ -42,10 +42,11 @@ final class CreatePayLink
             if ($max > 0 && $amount > $max + 0.005) {
                 throw ValidationException::withMessages(['amount' => 'Не больше '.Money::exact($max).' за один платёж, остальное второй ссылкой или по счёту']);
             }
-            [$name, $phone, $email] = match ($kind) {
-                PayerKind::Self => [$by->name, $by->phone, $by->email ?: $email],
-                PayerKind::Buyer => [$payer?->name, $payer?->phone, $payer?->email ?: $email],
-                PayerKind::Other => [$name, $phone, $email],
+            // Телефон ссылке не нужен (владелец, 06.10.2026): чек ЮKassa приходит только на почту — его не храним и не шлём.
+            [$name, $email] = match ($kind) {
+                PayerKind::Self => [$by->name, $by->email ?: $email],
+                PayerKind::Buyer => [$payer?->name, $payer?->email ?: $email],
+                PayerKind::Other => [$name, $email],
             };
             if (filled($email) && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw ValidationException::withMessages(['email' => 'Проверьте почту: на неё придёт чек']);
@@ -53,7 +54,7 @@ final class CreatePayLink
             PayLink::where('invoice_id', $invoice->id)->where('state', PayLinkState::Open)->get()->each(fn (PayLink $old) => ($this->cancel)($old, $by));
             $link = PayLink::create([
                 'code' => PayLink::freshCode(), 'invoice_id' => $invoice->id, 'amount' => $amount, 'payer_kind' => $kind,
-                'payer_user_id' => $kind === PayerKind::Buyer ? $payer?->id : null, 'payer_name' => $name, 'payer_phone' => $phone, 'payer_email' => $email,
+                'payer_user_id' => $kind === PayerKind::Buyer ? $payer?->id : null, 'payer_name' => $name, 'payer_phone' => null, 'payer_email' => $email,
                 'state' => PayLinkState::Open, 'created_by' => $by->id,
             ]);
             if ($auto) {

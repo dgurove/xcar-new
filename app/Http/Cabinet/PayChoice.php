@@ -10,7 +10,6 @@ use App\Billing\Actions\ClaimPayment;
 use App\Billing\Invoice;
 use App\Billing\PaymentSource;
 use App\Support\Money;
-use App\Support\Phone;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -27,21 +26,23 @@ final class PayChoice
 {
     public function __construct(private CreatePayLink $link, private ClaimPayment $claim) {}
 
-    /** Покупатель менеджера по ФИО и телефону: свой с этим телефоном — он же, чужой — ошибка, иначе новый без пароля. */
-    private function newBuyer(User $me, string $name, ?string $phone, ?string $email): User
+    /**
+     * Покупатель менеджера по ФИО и почте (телефон ссылке не нужен — чек приходит только на почту): свой с этой почтой — он
+     * же, чужой — ошибка, иначе новый без пароля.
+     */
+    private function newBuyer(User $me, string $name, ?string $email): User
     {
-        $phone = Phone::normalize($phone);
-        if ($phone && ($known = User::where('phone', $phone)->first())) {
+        $email = $email ? mb_strtolower(trim($email)) : null;
+        if ($email && ($known = User::whereRaw('lower(email) = ?', [$email])->first())) {
             if ($known->manager_id === $me->id) {
                 return $known;
             }
-            throw ValidationException::withMessages(['phone' => 'С этим телефоном уже есть человек в xcar']);
+            throw ValidationException::withMessages(['email' => 'С этой почтой уже есть человек в xcar']);
         }
         $name = trim($name);
         [$last, $first] = array_pad(preg_split('/\s+/u', $name, 2) ?: [], 2, null);
 
-        return User::create(['name' => $name, 'last_name' => $last, 'first_name' => $first, 'phone' => $phone,
-            'email' => $email && ! User::where('email', $email)->exists() ? $email : null,
+        return User::create(['name' => $name, 'last_name' => $last, 'first_name' => $first, 'email' => $email,
             'roles' => [Role::Buyer], 'manager_id' => $me->id, 'approved_at' => now(), 'approved_by' => $me->id, 'access' => []]);
     }
 
@@ -59,14 +60,13 @@ final class PayChoice
             'payer' => ['exclude_unless:way,link', 'required', Rule::in(['self', 'buyer', 'other'])],
             'payer_user_id' => ['exclude_unless:payer,buyer', 'required', Rule::exists('users', 'id')->where('manager_id', $me->id)],
             'name' => ['exclude_unless:payer,other', 'required', 'string', 'max:160'],
-            'phone' => ['exclude_unless:payer,other', 'nullable', 'string', 'max:20', 'regex:/^[\d\s()+\-]{10,20}$/'],
             'email' => ['exclude_unless:way,link', 'nullable', 'email', 'max:120'],
             'paid_at' => ['exclude_if:way,link', 'nullable', 'date', 'before_or_equal:today'],
             'ref' => ['exclude_unless:way,transfer', 'nullable', 'string', 'max:60'],
             'slip' => ['exclude_unless:way,transfer', 'nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic'],
         ], [
             'payer_user_id.required' => 'Выберите покупателя', 'name.required' => 'Укажите, кто платит',
-            'phone.regex' => 'Проверьте номер телефона', 'email.email' => 'Проверьте почту',
+            'email.email' => 'Проверьте почту',
         ]);
         $amount = isset($data['amount']) ? (float) $data['amount'] : ($data['way'] === 'link' ? PayLink::defaultAmount($invoice) : round($invoice->remaining() - $invoice->claimed(), 2));
         if ($amount <= 0) {
@@ -79,9 +79,9 @@ final class PayChoice
             $buyer = $kind === PayerKind::Buyer ? User::find($data['payer_user_id']) : null;
             // Новый покупатель — сразу в «Покупатели» менеджера (05.10.2026): платит он, а не безымянный «другой человек».
             if ($kind === PayerKind::Other) {
-                [$buyer, $kind] = [$this->newBuyer($me, $data['name'], $data['phone'] ?? null, $data['email'] ?? null), PayerKind::Buyer];
+                [$buyer, $kind] = [$this->newBuyer($me, $data['name'], $data['email'] ?? null), PayerKind::Buyer];
             }
-            $link = ($this->link)($invoice, $me, $amount, $kind, $buyer, $data['name'] ?? null, $data['phone'] ?? null, $data['email'] ?? null);
+            $link = ($this->link)($invoice, $me, $amount, $kind, $buyer, $data['name'] ?? null, null, $data['email'] ?? null);
 
             return ['Ссылка готова', $link];
         }

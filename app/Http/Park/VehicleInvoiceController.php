@@ -34,7 +34,7 @@ class VehicleInvoiceController
             'vehicle' => $vehicle, 'segments' => $segments->where('payer', $payer)->values(), 'payer' => $payer, 'payers' => $payers,
             'party' => $party, 'parties' => Party::where('is_self', false)->orderBy('name')->pluck('name', 'id'), 'pending' => $pending,
             'dueDays' => $vehicle->vendor?->payment_days ?? 5,
-            'kinds' => collect(ChargeKind::cases())->reject(fn ($k) => in_array($k, [ChargeKind::Sale, ChargeKind::Selection, ChargeKind::Transfer], true))->mapWithKeys(fn ($k) => [$k->value => $k->label()]),
+            'kinds' => collect(ChargeKind::cases())->reject(fn ($k) => in_array($k, [ChargeKind::Sale, ChargeKind::Selection, ChargeKind::Transfer, ChargeKind::Service], true))->mapWithKeys(fn ($k) => [$k->value => $k->label()]),
         ]);
     }
 

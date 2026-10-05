@@ -4,7 +4,7 @@
      только у того, у кого её нет в профиле: чек ЮKassa приходит только на почту. По счёту — PDF с QR строкой документа,
      дата, номер и платёжка; наличными — дата. Кнопка одна внизу и называет исход (reveal подменяет подпись).
      Поля в скрытых панелях reveal выключает; обязательность проверяет сервер, `required` на них заблокировал бы отправку. --}}
-@props(['id' => 'pay', 'invoices', 'action', 'pdf', 'buyers' => collect(), 'open' => false, 'otherName' => null, 'otherPhone' => null])
+@props(['id' => 'pay', 'invoices', 'action', 'pdf', 'buyers' => collect(), 'open' => false, 'otherName' => null])
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayLink;
     $first = $invoices->first();
@@ -68,7 +68,7 @@
                         @foreach ($buyers as $b)
                             <label class="row row-check">
                                 <x-ui.avatar :user="$b" :size="36"/>
-                                <span class="min-w-0 flex-1"><span class="block truncate">{{ $b->name }}</span>@if ($b->email || $b->phone)<span class="row-sub">{{ $b->email ?: $b->phone }}</span>@endif</span>
+                                <span class="min-w-0 flex-1"><span class="block truncate">{{ $b->name }}</span>@if ($b->email)<span class="row-sub">{{ $b->email }}</span>@endif</span>
                                 <span class="check"><input type="radio" name="payer" value="{{ $b->id }}" @checked($picked($b)) data-action="reveal#pick"></span>
                             </label>
                         @endforeach
@@ -86,9 +86,8 @@
                         <div class="mt-3" data-reveal-target="pane" data-reveal-key="{{ $b->id }}" @unless ($picked($b)) hidden @endunless><x-ui.field name="email" id="{{ $id }}-email-{{ $b->id }}" label="Почта для чека" type="email"/></div>
                     @endforeach
                     <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" data-reveal-target="pane" data-reveal-key="other" @if ($payer !== 'other') hidden @endif>
-                        <x-ui.field name="name" id="{{ $id }}-name" label="ФИО" :value="$otherName" span="sm:col-span-2"/>
+                        <x-ui.field name="name" id="{{ $id }}-name" label="ФИО" :value="$otherName"/>
                         <x-ui.field name="email" id="{{ $id }}-email-other" label="Почта для чека" type="email"/>
-                        <x-ui.field name="phone" id="{{ $id }}-phone" label="Телефон" :value="$otherPhone"/>
                     </div>
                 </div>
             </div>

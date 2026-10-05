@@ -21,6 +21,7 @@ use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Billing\PaymentState;
+use App\Billing\ServiceTitle;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -166,7 +167,7 @@ class MoneyArrivesOnceTest extends TestCase
     public function test_service_payment_refuses_what_is_not_our_service(): void
     {
         $payer = Party::create(['kind' => PartyKind::Person, 'name' => 'Иван Петров']);
-        foreach (['Возврат займа Петрову', 'Оплата'] as $title) {
+        foreach (['Возврат займа Петрову', 'Оплата', 'Оплата по счёту № 15', 'Оплата услуг за октябрь 2026', 'Перевод денег за машину'] as $title) {
             try {
                 app(IssueServiceInvoice::class)($payer, User::first(), 1000, $title);
                 $this->fail('Принят текст «'.$title.'»');
@@ -174,6 +175,24 @@ class MoneyArrivesOnceTest extends TestCase
                 $this->assertArrayHasKey('title', $e->errors());
             }
         }
+        foreach (['Долгосрочное сопровождение подбора ТС', 'Перевод документов на ТС', 'Проверка ТС перед покупкой'] as $title) {
+            $this->assertNull(ServiceTitle::problem($title), $title);
+        }
+    }
+
+    public function test_service_payment_limit_counts_vat_on_top_and_reuses_payer_by_email(): void
+    {
+        $top = Party::create(['kind' => PartyKind::Company, 'name' => 'ООО Сверху', 'vat_on_top' => true]);
+        try {
+            app(IssueServiceInvoice::class)($top, User::first(), 690000, 'Консультационные услуги по подбору ТС');
+            $this->fail('Итог с НДС сверху больше лимита');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('amount', $e->errors());
+        }
+
+        $first = app(IssueServiceInvoice::class)(['name' => 'Иван Петров', 'email' => 'Ivan@Example.test'], User::first(), 1000, 'Консультационные услуги по подбору ТС');
+        $second = app(IssueServiceInvoice::class)(['name' => 'Иван П.', 'email' => 'ivan@example.test'], User::first(), 2000, 'Услуга подбора ТС');
+        $this->assertSame($first->party_id, $second->party_id);
     }
 
     private function incoming(float $amount, string $purpose, ?string $inn): Transaction
