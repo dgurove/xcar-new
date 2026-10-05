@@ -80,7 +80,7 @@
     @if ($claimable->isNotEmpty())
         <div data-controller="sheet">
             <x-ui.action-bar><x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Оплатить</x-ui.button></x-ui.action-bar>
-            <x-billing.pay-sheet :invoices="$claimable" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf" :buyers="$buyers" :open="$errors->any()"/>
+            <x-billing.pay-sheet :invoices="$claimable" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf" :buyers="$buyers" :open="$errors->any() || request()->boolean('pay')"/>
         </div>
     @endif
 </x-ui.cabinet>

@@ -1,5 +1,6 @@
 {{-- «Оплатить» у менеджера, как перевод в банковском приложении: способ сегментом (ссылкой, по счёту, наличными), сумма
-     крупно по центру, у ссылки — кто платит строками с аватарами (я, мои покупатели, другой человек). Почта для чека —
+     крупно по центру, у ссылки — кто платит строками с аватарами (я, мои покупатели, новый покупатель — заводится в его
+     «Покупателях»). Почта для чека —
      только у того, у кого её нет в профиле: чек ЮKassa приходит только на почту. По счёту — PDF с QR строкой документа,
      дата, номер и платёжка; наличными — дата. Кнопка одна внизу и называет исход (reveal подменяет подпись).
      Поля в скрытых панелях reveal выключает; обязательность проверяет сервер, `required` на них заблокировал бы отправку. --}}
@@ -8,16 +9,17 @@
     use App\Support\Money; use App\Billing\Acquiring\PayLink;
     $first = $invoices->first();
     $one = $invoices->count() === 1;
-    // Без договора эквайринга способа «Ссылкой» нет вовсе; у счёта уже есть ссылка (она заводится вместе со счётом и
-    // стоит на экране с «Отправить») — второй тоже не делаем: тут остаются «По счёту» и «Наличными».
-    $online = app(\App\Billing\Acquiring\Gateway::class)->configured() && ! $invoices->every(fn ($i) => $i->openLink());
+    // Без договора эквайринга способа «Ссылкой» нет вовсе. Ссылка у счёта уже есть (заводится вместе с ним на менеджера) —
+    // «Ссылкой» всё равно здесь: выбрать, кто платит (05.10.2026, владелец), новая заменит прежнюю.
+    $online = app(\App\Billing\Acquiring\Gateway::class)->configured();
+    $current = $one ? $first->openLink() : null;
     $left = $one ? max(0, round($first->remaining() - $first->claimed(), 2)) : null;
     $max = (float) config('xcar.yookassa.max_amount');
     $fmt = fn ($v) => Money::nums($v, fmod($v, 1) ? 2 : 0);
     // Поле не зовётся `method`: оно перекрыло бы form.method, и Turbo с обработчиками отправки ломались бы.
     $way = old('way', $online ? 'link' : 'transfer');
     $ways = array_filter(['link' => $online ? ['Ссылкой', 'Получить ссылку'] : null, 'transfer' => ['По счёту', 'Я оплатил'], 'cash' => ['Наличными', 'Отдал наличными']]);
-    $payer = (string) old('payer', 'self');
+    $payer = (string) old('payer', $current?->payer_user_id ? (string) $current->payer_user_id : 'self');
     $picked = fn ($b) => $payer === (string) $b->id || ($payer === 'buyer' && (int) old('payer_user_id') === $b->id);
     $me = auth()->user();
     $submit = $id.'-submit';
@@ -71,7 +73,7 @@
                         @endforeach
                         <label class="row row-check">
                             <x-ui.row-icon name="plus" size="s"/>
-                            <span class="min-w-0 flex-1">Другой человек</span>
+                            <span class="min-w-0 flex-1">Новый покупатель</span>
                             <span class="check"><input type="radio" name="payer" value="other" @checked($payer === 'other') data-action="reveal#pick"></span>
                         </label>
                     </div>
@@ -83,7 +85,7 @@
                         <div class="mt-3" data-reveal-target="pane" data-reveal-key="{{ $b->id }}" @unless ($picked($b)) hidden @endunless><x-ui.field name="email" id="{{ $id }}-email-{{ $b->id }}" label="Почта для чека" type="email"/></div>
                     @endforeach
                     <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" data-reveal-target="pane" data-reveal-key="other" @if ($payer !== 'other') hidden @endif>
-                        <x-ui.field name="name" id="{{ $id }}-name" label="Имя" :value="$otherName" span="sm:col-span-2"/>
+                        <x-ui.field name="name" id="{{ $id }}-name" label="ФИО" :value="$otherName" span="sm:col-span-2"/>
                         <x-ui.field name="email" id="{{ $id }}-email-other" label="Почта для чека" type="email"/>
                         <x-ui.field name="phone" id="{{ $id }}-phone" label="Телефон" :value="$otherPhone"/>
                     </div>

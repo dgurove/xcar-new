@@ -110,6 +110,25 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame('Сделка закрыта', $offer->fresh()->stage()->name);
     }
 
+    /** Ссылка при принятии — на менеджера и ровно 80 000; менеджер переделывает её на нового покупателя по ФИО. */
+    public function test_link_is_80_and_manager_picks_new_buyer_as_payer(): void
+    {
+        config(['xcar.yookassa.shop_id' => '1', 'xcar.yookassa.secret' => 'test']);
+        [, $deal] = $this->deal();
+        $invoice = $deal->issuedInvoices()->sole();
+        $this->assertEqualsWithDelta(80000, $invoice->openLink()->amount, 0.01);
+
+        $this->actingAs($this->manager)->post('/account/money/deals/'.$deal->id.'/pay', ['invoice' => $invoice->id, 'way' => 'link', 'payer' => 'other', 'name' => 'Покупаев Пётр', 'phone' => '+7 900 111-22-33'])
+            ->assertSessionHasNoErrors();
+
+        $buyer = User::where('phone', '79001112233')->sole();
+        $this->assertSame($this->manager->id, $buyer->manager_id);
+        $this->assertTrue($buyer->isBuyer());
+        $link = $invoice->fresh()->openLink();
+        $this->assertSame($buyer->id, $link->payer_user_id);
+        $this->assertEqualsWithDelta(80000, $link->amount, 0.01);
+    }
+
     public function test_cancelled_deal_voids_unpaid_selection_invoice(): void
     {
         [, $deal] = $this->deal();

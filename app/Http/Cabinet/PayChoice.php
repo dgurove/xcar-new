@@ -10,6 +10,8 @@ use App\Billing\Actions\ClaimPayment;
 use App\Billing\Invoice;
 use App\Billing\PaymentSource;
 use App\Support\Money;
+use App\Support\Phone;
+use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -24,6 +26,24 @@ use Illuminate\Validation\ValidationException;
 final class PayChoice
 {
     public function __construct(private CreatePayLink $link, private ClaimPayment $claim) {}
+
+    /** Покупатель менеджера по ФИО и телефону: свой с этим телефоном — он же, чужой — ошибка, иначе новый без пароля. */
+    private function newBuyer(User $me, string $name, ?string $phone, ?string $email): User
+    {
+        $phone = Phone::normalize($phone);
+        if ($phone && ($known = User::where('phone', $phone)->first())) {
+            if ($known->manager_id === $me->id) {
+                return $known;
+            }
+            throw ValidationException::withMessages(['phone' => 'С этим телефоном уже есть человек в xcar']);
+        }
+        $name = trim($name);
+        [$last, $first] = array_pad(preg_split('/\s+/u', $name, 2) ?: [], 2, null);
+
+        return User::create(['name' => $name, 'last_name' => $last, 'first_name' => $first, 'phone' => $phone,
+            'email' => $email && ! User::where('email', $email)->exists() ? $email : null,
+            'roles' => [Role::Buyer], 'manager_id' => $me->id, 'approved_at' => now(), 'approved_by' => $me->id, 'access' => []]);
+    }
 
     /** @return array{string, ?PayLink} */
     public function __invoke(Request $request, Invoice $invoice, User $me): array
@@ -56,7 +76,12 @@ final class PayChoice
         if ($data['way'] === 'link') {
             abort_unless(app(Gateway::class)->configured(), 422, 'Оплата по ссылке не подключена');
             $kind = PayerKind::from($data['payer']);
-            $link = ($this->link)($invoice, $me, $amount, $kind, $kind === PayerKind::Buyer ? User::find($data['payer_user_id']) : null, $data['name'] ?? null, $data['phone'] ?? null, $data['email'] ?? null);
+            $buyer = $kind === PayerKind::Buyer ? User::find($data['payer_user_id']) : null;
+            // Новый покупатель — сразу в «Покупатели» менеджера (05.10.2026): платит он, а не безымянный «другой человек».
+            if ($kind === PayerKind::Other) {
+                [$buyer, $kind] = [$this->newBuyer($me, $data['name'], $data['phone'] ?? null, $data['email'] ?? null), PayerKind::Buyer];
+            }
+            $link = ($this->link)($invoice, $me, $amount, $kind, $buyer, $data['name'] ?? null, $data['phone'] ?? null, $data['email'] ?? null);
 
             return ['Ссылка готова', $link];
         }

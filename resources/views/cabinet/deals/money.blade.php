@@ -21,7 +21,7 @@
             <span class="min-w-0 flex-1"><span class="block">Собственнику по ДКП</span><span class="row-sub">@if ($contract->isReady())<span class="text-open">договор готов</span>@else договор: нет {{ implode(', ', $contract->missing()) }}@endif</span></span>
             <span class="nums font-semibold">{{ Money::rub((int) $deal->ownerPrice()) }}</span>
         </x-ui.doc>
-        <a href="/account/money/deals/{{ $deal->id }}" class="row">
+        <a href="/account/money/deals/{{ $deal->id }}{{ $selection && ! $paid ? '?pay=1' : '' }}" class="row">
             <span class="min-w-0 flex-1">
                 <span class="block">XCar за подбор</span>
                 <span class="row-sub">@if ($paid)<span class="text-open">оплачено</span>@elseif ($selection)<x-billing.light :invoice="$selection"/>@else готовим счёт @endif</span>
