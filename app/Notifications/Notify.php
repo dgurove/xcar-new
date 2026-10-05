@@ -149,6 +149,9 @@ final class Notify
 
     public function bidPlaced(BidPlaced $e): void
     {
+        if ($e->byStaff) {
+            return; // внёс сам админ — он и так знает
+        }
         Notification::send($this->staff(), new BidPlacedNotice($e->bid->load('offer', 'user')));
     }
 

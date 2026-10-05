@@ -10,5 +10,6 @@ final class BidPlaced
 {
     use Dispatchable;
 
-    public function __construct(public Bid $bid, public ?User $by = null) {}
+    /** @param  bool  $byStaff  внёс админ за менеджера — сотрудникам «новое подтверждение» не шлём */
+    public function __construct(public Bid $bid, public ?User $by = null, public bool $byStaff = false) {}
 }

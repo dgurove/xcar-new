@@ -15,7 +15,10 @@ final class DeclineBid
         if ($bid->state === BidState::Active) {
             $bid->update(['state' => BidState::Declined, 'decided_at' => now(), 'decided_by' => $by->id]);
             $bid->offer->log(OfferEventType::BidDeclined, $by, ['bid_id' => $bid->id]);
-            BidDeclined::dispatch($bid, $by);
+            // Внесённое админом за менеджера и снятое — ошибка ввода: менеджеру «отклонено» не шлём.
+            if (! $bid->byStaff()) {
+                BidDeclined::dispatch($bid, $by);
+            }
         }
 
         return $bid;

@@ -78,7 +78,7 @@
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
-            @if ($bids->isNotEmpty())
+            @if ($bids->isNotEmpty() || ($admin && $offer->state === OfferState::Open))
             {{-- Подтверждения: без сделки — выбрать победителя (оранжевым, пока ждут). Со сделкой это и есть карточка «Сделка»:
                  принятое, «Открыть сделку» и резерв; деньги и заметка — на странице сделки. --}}
             <x-ui.card :title="$offer->deal ? 'Сделка' : 'Подтверждения'.($waiting->isNotEmpty() ? ' '.$waiting->count() : '')" class="order-1 {{ ! $offer->deal && $waiting->isNotEmpty() ? 'box-urgent' : '' }}">

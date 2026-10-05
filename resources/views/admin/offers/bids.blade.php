@@ -1,6 +1,7 @@
 {{-- Подтверждения предложения — одно на редактор и карточка строки. Без сделки — ждущие по сумме вниз, лучшая
      отмечена. Со сделкой — принятое сверху со ссылкой в сделку, ниже «Резерв N»: остальные ждущие не отклоняются,
-     выбранный передумал — «Отдать» другому. Отклонённые и отозванные — свёрнуто. --}}
+     выбранный передумал — «Отдать» другому. Отклонённые и отозванные — свёрнуто. Внизу — «+ За менеджера» (админ вносит
+     подтверждение сам, `x-offer.bid-for`), у предложения в продаже и в сделке. --}}
 @php
     use App\Offers\BidState;
     $deal = $offer->deal;
@@ -35,5 +36,8 @@
             <summary class="letter-link cursor-pointer">Ещё {{ $rest->count() }}</summary>
             <div class="list mt-2">@foreach ($rest as $bid)<x-offer.bid :bid="$bid" :offer="$offer" :parked="$parked" :branch="$branch"/>@endforeach</div>
         </details>
+    @endif
+    @if (auth()->user()?->canManageCrm() && in_array($offer->state, [\App\Offers\OfferState::Open, \App\Offers\OfferState::Sold], true))
+        <x-offer.bid-for :offer="$offer"/>
     @endif
 </div>

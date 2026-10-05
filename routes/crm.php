@@ -178,6 +178,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);
 
         Route::post('/confirmations/{bid}/accept', [BidController::class, 'accept']);
+        Route::post('/offers/{offer}/confirmations', [BidController::class, 'storeFor']);
+        Route::get('/reference/managers', [ReferenceController::class, 'managers']);
         Route::post('/confirmations/{bid}/decline', [BidController::class, 'decline']);
         Route::post('/interests/{interest}', [InterestController::class, 'update']);
 

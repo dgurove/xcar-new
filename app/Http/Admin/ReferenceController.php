@@ -92,6 +92,19 @@ class ReferenceController
         ]));
     }
 
+    /** Менеджеры по имени или телефону — «Подтверждение за менеджера». */
+    public function managers(Request $request)
+    {
+        $q = mb_strtolower(trim((string) $request->query('q', '')));
+        $digits = preg_replace('/\D+/', '', $q);
+        $users = \App\Users\User::withRole(\App\Users\Role::Manager)
+            ->when($q, fn ($u) => $u->where(fn ($w) => $w->whereRaw('lower(name) like ?', ['%'.str_replace(['%', '_'], ['\\%', '\\_'], $q).'%'])
+                ->when(strlen($digits) >= 3, fn ($w) => $w->orWhere('phone', 'like', '%'.$digits.'%'))))
+            ->orderBy('name')->limit(20)->get(['id', 'name', 'phone']);
+
+        return response()->json($users->map(fn ($u) => ['id' => $u->id, 'label' => $u->name, 'hint' => $u->phone ? $u->phoneFormatted() : null]));
+    }
+
     public function models(Request $request)
     {
         $q = mb_strtolower(trim($request->query('q', '')));

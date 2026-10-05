@@ -196,7 +196,7 @@
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
         </x-slot:actions>
         {{-- Последнее письмо, как в редакторе и деле ТС; вся переписка — окном поверх списка (x-mail.window на странице). --}}
-        @if ($bids->isNotEmpty())
+        @if ($bids->isNotEmpty() || ($admin && $offer->state === OfferState::Open))
             <div class="mt-4">@include('admin.offers.bids')</div>
         @endif
         @if ($admin && $offer->interests->isNotEmpty())

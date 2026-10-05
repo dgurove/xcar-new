@@ -47,13 +47,23 @@ final class PlaceBid
                 }
             }
 
-            $offer->bids()->where('user_id', $by->id)->where('state', BidState::Active)->update(['state' => BidState::Withdrawn]);
-
-            $bid = $offer->bids()->create(['user_id' => $by->id, 'kind' => $kind, 'amount' => $amount, 'comment' => $comment, 'state' => BidState::Active]);
-            $offer->log(OfferEventType::BidPlaced, $by, ['bid_id' => $bid->id, 'amount' => $amount, ...($kind === BidKind::Garage ? ['garage' => true] : [])]);
-            BidPlaced::dispatch($bid, $by);
-
-            return $bid;
+            return self::record($offer, $by, $by, $amount, $comment, $kind);
         });
+    }
+
+    /**
+     * Записать живое подтверждение менеджера, прежнее его — отозвать. Общий шаг с `PlaceBidFor` (админ за менеджера:
+     * $by — админ, `placed_by`). Вызывать под замком строки предложения.
+     */
+    public static function record(Offer $offer, User $manager, User $by, ?int $amount, ?string $comment, BidKind $kind): Bid
+    {
+        $staff = ! $manager->is($by);
+        $offer->bids()->where('user_id', $manager->id)->where('state', BidState::Active)->update(['state' => BidState::Withdrawn]);
+        $bid = $offer->bids()->create(['user_id' => $manager->id, 'placed_by' => $staff ? $by->id : null, 'kind' => $kind, 'amount' => $amount, 'comment' => $comment, 'state' => BidState::Active]);
+        $offer->log(OfferEventType::BidPlaced, $by, ['bid_id' => $bid->id, 'amount' => $amount, ...($kind === BidKind::Garage ? ['garage' => true] : []),
+            ...($staff ? ['by_staff' => true, 'manager' => $manager->name] : [])]);
+        BidPlaced::dispatch($bid, $by, $staff);
+
+        return $bid;
     }
 }
