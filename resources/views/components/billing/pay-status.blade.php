@@ -7,8 +7,12 @@
      Ссылки нет (отменили руками) — «Новая ссылка на оплату» одним нажатием на остаток. Счёт, который ссылкой не платят
      (парковка, вознаграждение, обязательство, шлюз не подключён), — ничего. Адреса действий — по стороне: сотруднику
      `/work/money`, менеджеру `/account/money`; у гаража менеджеру свои (`create` — новая ссылка, `cancel` — адрес
-     отмены без id): счёт его покупателю он видит только через машину. --}}
-@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null])
+     отмены без id): счёт его покупателю он видит только через машину.
+     compact — узкое место (расчёт сделки, деньги машины в гараже, задача): ссылка — свойство счёта строкой под ним, без
+     второй суммы (она строкой выше; другая — словами «на N ₽»): «Ссылка на оплату», под ней кто платит и что с ней,
+     справа круглые «Скопировать» и «Отправить»; нажатие — та же шторка с QR (05.10.2026, владелец про карточку на три
+     строки текста и две кнопки во всю ширину). --}}
+@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null, 'compact' => false])
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayMethod;
     $i = $invoice;
@@ -27,6 +31,18 @@
 @endphp
 @if ($link)
     <div data-controller="sheet" class="contents">
+        @if ($compact)
+            @php $other = abs($link->amount - ($i->remaining() - $i->claimed())) >= 0.01; @endphp
+            <div class="row pay-link" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по счёту {{ $i->label() }}">
+                <input type="hidden" value="{{ $text }}" data-copy-target="message">
+                <button type="button" class="min-w-0 flex-1 text-left" data-action="sheet#open">
+                    <span class="block">Ссылка на оплату@if ($other) <span class="nums">на {{ Money::rub($link->amount) }}</span>@endif</span>
+                    <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">платит {{ $who }}, {{ preg_replace('/^ждём оплату, /u', '', $state) }}</span>
+                </button>
+                <button type="button" class="btn btn-quiet btn-round shrink-0" data-action="copy#copy" aria-label="Скопировать ссылку"><x-ui.icon name="copy" class="size-5"/></button>
+                <button type="button" class="btn btn-accent btn-round shrink-0" data-action="copy#share" data-copy-target="share" aria-label="Отправить ссылку"><x-ui.icon name="share" class="size-5"/></button>
+            </div>
+        @else
         <button type="button" class="row money-line w-full text-left" data-action="sheet#open">
             <x-ui.row-icon name="qr" :tone="$tone === 'danger' ? 'danger' : 'urgent'" size="s"/>
             <span class="min-w-0 flex-1">
@@ -41,6 +57,7 @@
             <button type="button" class="btn btn-s btn-quiet" data-action="copy#copy"><x-ui.icon name="copy" class="size-4"/>Скопировать</button>
             <button type="button" class="btn btn-s btn-accent" data-action="copy#share" data-copy-target="share"><x-ui.icon name="share" class="size-4"/>Отправить</button>
         </div>
+        @endif
         <x-ui.sheet :id="'link-'.$link->id" title="Оплата по ссылке" :open="session('open-link') === $link->id">
             <div class="flex flex-col gap-4">
                 <div class="money-hero">

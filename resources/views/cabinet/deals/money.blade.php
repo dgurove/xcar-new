@@ -38,6 +38,8 @@
                 </span>
                 <span class="nums font-semibold">{{ Money::rub($selection ? ($selection->state === InvoiceState::Paid ? $selection->total : $selection->remaining()) : (int) $deal->ours()) }}</span>
             </a>
+            {{-- Ссылка — свойство счёта подбора: строкой под ним. На шаге оплаты она стоит в задаче рядом с «Оплатить». --}}
+            @if ($selection && $selection->state === InvoiceState::Issued && ! ($requirement && $position?->stage->isPayStep()))<x-billing.pay-status :invoice="$selection" compact/>@endif
         @else
             <a href="{{ $sale ? $pay($sale) : '#dkp-buyer' }}" class="row">
                 <span class="min-w-0 flex-1">
@@ -54,6 +56,4 @@
             </div>
         @endif
     </div>
-    {{-- На шаге оплаты ссылка стоит в задаче вместе с «Оплатить» — второй раз её здесь нет. --}}
-    @if ($selection && $selection->state === InvoiceState::Issued && ! ($requirement && $position?->stage->isPayStep()))<div class="list mt-3"><x-billing.pay-status :invoice="$selection"/></div>@endif
 </div>

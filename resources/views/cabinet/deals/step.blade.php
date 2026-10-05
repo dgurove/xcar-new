@@ -104,7 +104,7 @@
             @elseif ($payStep && $unpaid->isNotEmpty())
                 {{-- Ссылка на оплату — тут, с «Отправить»; ждёт подтверждения — словом. --}}
                 @php $links = $unpaid->filter(fn ($i) => $i->openLink() || \App\Billing\Acquiring\PayLink::eligible($i)); @endphp
-                @if ($links->isNotEmpty())<div class="list mt-5">@foreach ($links as $i)<x-billing.pay-status :invoice="$i"/>@endforeach</div>@endif
+                @if ($links->isNotEmpty())<div class="list mt-5">@foreach ($links as $i)<x-billing.pay-status :invoice="$i" compact/>@endforeach</div>@endif
                 @if ($claimable->isEmpty())<p class="mt-4 font-medium">Оплата ждёт подтверждения</p>@endif
             @endif
 

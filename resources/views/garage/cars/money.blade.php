@@ -25,7 +25,7 @@
         @if ($claimed > 0)<span class="mt-1 text-sm text-urgent">Сообщили об оплате {{ Money::exact($claimed) }}, ждём подтверждения</span>@endif
     </div>
     @if ($unpaid && ! $current->isOwed())
-        <x-billing.pay-status :invoice="$current" :staff="$staff" :create="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'" :cancel="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'"/>
+        <x-billing.pay-status compact :invoice="$current" :staff="$staff" :create="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'" :cancel="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'"/>
     @endif
 
     @if ($car->isSold() && $label !== 'Продана за')
