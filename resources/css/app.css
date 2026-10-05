@@ -946,7 +946,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Кружок значка в начале строки (x-ui.row-icon): 44 — раздел или действие, s (36) — строка «Настроек» и «Денег». */
   .row-icon { @apply flex size-11 shrink-0 items-center justify-center rounded-full; }
   .row-icon-s { @apply size-9; }
-  .row-icon-brand { @apply bg-white; }
   .row-icon-plain { @apply bg-surface-3 text-ink; } .row-icon-accent { @apply bg-accent text-white; } .row-icon-soft { @apply bg-accent-soft text-accent-text; }
   .row-icon-open { @apply bg-open-soft text-open; } .row-icon-urgent { @apply bg-urgent-soft text-urgent; }
   .row-icon-danger { @apply bg-danger-soft text-danger; } .row-icon-muted { @apply bg-surface-3 text-ink-dim; }
@@ -1298,8 +1297,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .segment label:has(input:checked) { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
   .pay-methods { @apply flex items-center justify-center gap-4 text-sm text-ink-muted; }
   .pay-methods span { @apply flex items-center gap-1.5; }
-  /* Знаки способов в кнопке «Оплатить»: на лаймовой кнопке — белой подложкой-капсулой, чтобы цвета брендов читались. */
-  .pay-marks { @apply ml-1.5 inline-flex items-center gap-2 rounded-full bg-white px-2.5 py-1; }
+  /* Знаки способов в кнопке «Оплатить» — белые, цветом текста кнопки, без подложки. */
+  .pay-marks { @apply ml-2 inline-flex items-center gap-2.5; }
   .pay-marks .pay-mark { @apply h-5 w-auto; }
   .qr-result-again { @apply flex size-10 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-hover; }
   .qr-result-again svg { width: 1.25rem; height: 1.25rem; }
