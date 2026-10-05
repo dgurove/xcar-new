@@ -27,9 +27,10 @@ use Illuminate\Validation\ValidationException;
  * Деньги фиксируются тут же: закупочная снимком, агентское вознаграждение и режим —
  * менеджер их не увидит, пока по сделке не выставлен счёт.
  *
- * «Страхователю по ДКП» (05.10.2026, `DealScheme::OwnerDkp`): сколько покупатель отдаст собственнику по договору —
- * своей суммой (`owner_price`; Т-Страхование отдаёт дешевле закупочной — взаимозачёт), вознаграждение менеджер удерживает сам,
- * а счёт «Подбор ТС» на разницу выставляется сразу — со ссылкой на оплату (`EnsurePayLink`).
+ * Схема оплаты (05.10.2026, `DealScheme`): ДКП и «страховой напрямую» — сколько покупатель отдаёт не нам (`owner_price`;
+ * меньше закупочной — взаимозачёт), вознаграждение менеджер удерживает сам, счёт «Подбор ТС» со ссылкой — сразу;
+ * ПРАЙМ — счёт плательщику, когда менеджер его укажет. Гаражная «платит менеджер» — наша доля (`share`) сразу по ссылке,
+ * у ПРАЙМ ещё счёт за машину на закупочную (`SyncDealInvoices`).
  *
  * Гаражное подтверждение («В гараж») — та же сделка без цены и вознаграждения, но с тем, кто платит поставщику:
  * маршрут вендора ведёт её как обычную (или гаражной веткой, когда платим мы), машина сразу встаёт менеджеру в
@@ -37,11 +38,11 @@ use Illuminate\Validation\ValidationException;
  */
 final class AcceptBid
 {
-    public function __construct(private ChangeOfferState $changeState, private CancelDeal $cancelDeal, private EnterStage $enterStage, private ReserveCar $reserve, private IssueSelectionInvoice $selection) {}
+    public function __construct(private ChangeOfferState $changeState, private CancelDeal $cancelDeal, private EnterStage $enterStage, private ReserveCar $reserve, private SyncDealInvoices $invoices) {}
 
-    public function __invoke(Bid $bid, User $by, ?int $commission = null, CommissionMode $mode = CommissionMode::Payout, ?GaragePayer $payer = null, DealScheme $scheme = DealScheme::Ours, ?int $ownerPrice = null): Deal
+    public function __invoke(Bid $bid, User $by, ?int $commission = null, CommissionMode $mode = CommissionMode::Payout, ?GaragePayer $payer = null, DealScheme $scheme = DealScheme::Prime, ?int $ownerPrice = null, ?int $share = null): Deal
     {
-        return DB::transaction(function () use ($bid, $by, $commission, $mode, $payer, $scheme, $ownerPrice) {
+        return DB::transaction(function () use ($bid, $by, $commission, $mode, $payer, $scheme, $ownerPrice, $share) {
             $bid = Bid::whereKey($bid->id)->lockForUpdate()->firstOrFail();
             if ($bid->state !== BidState::Active) {
                 throw ValidationException::withMessages(['bid' => 'Подтверждение уже '.mb_strtolower($bid->state->label())]);
@@ -62,23 +63,23 @@ final class AcceptBid
             if ($bid->isGarage()) {
                 // Без гаражной ветки у маршрута (Т-Страхование) поставщику платит менеджер — путём обычной сделки.
                 $payer = $offer->garageBranch() ? ($payer ?? GaragePayer::Us) : GaragePayer::Manager;
-                [$commission, $mode, $scheme] = [null, CommissionMode::Payout, DealScheme::Ours];
+                [$commission, $mode] = [null, CommissionMode::Payout];
+                // Наша доля — только у «платит менеджер»: он платит её по ссылке сразу (05.10.2026).
+                $share = $payer === GaragePayer::Manager ? $share : null;
             } else {
-                $payer = null;
+                [$payer, $share] = [null, null];
             }
-            // По ДКП вознаграждение остаётся у менеджера: покупатель отдаёт ему, а нам он платит только подбор.
-            if ($scheme === DealScheme::OwnerDkp) {
+            // Покупатель платит не нам (ДКП, страховой) — вознаграждение остаётся у менеджера, нам он платит подбор.
+            if ($scheme->paysSelection()) {
                 $mode = CommissionMode::Withheld;
             }
             $deal = Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid->id, 'buyer_id' => $bid->user_id, 'amount' => $bid->amount, 'state' => DealState::Active,
-                'cost' => $offer->floor_price, 'owner_price' => $scheme === DealScheme::OwnerDkp ? ($ownerPrice ?? $offer->owner_price ?? $offer->floor_price) : null,
-                'commission' => $commission, 'commission_mode' => $mode,
-                'scheme' => $scheme, 'garage_payer' => $payer]);
+                'cost' => $offer->floor_price, 'owner_price' => $scheme->paysSelection() && ! $bid->isGarage() ? ($ownerPrice ?? $offer->owner_price ?? $offer->floor_price) : null,
+                'share' => $share, 'commission' => $commission, 'commission_mode' => $mode, 'scheme' => $scheme, 'garage_payer' => $payer]);
             $offer->log(OfferEventType::BidAccepted, $by, array_filter(['bid_id' => $bid->id, 'amount' => $bid->amount, 'commission' => $commission, 'mode' => $mode->value, 'garage' => $payer?->value,
-                'dkp' => $deal->ownerPrice()], fn ($v) => $v !== null));
-            if ($deal->isDkp()) {
-                ($this->selection)($deal->setRelation('offer', $offer), $by);
-            }
+                'scheme' => $scheme->value, 'dkp' => $deal->ownerPrice(), 'share' => $share], fn ($v) => $v !== null));
+            // Счета, что известны уже сейчас (подбор, гаражная доля и машина), — сразу; ПРАЙМ — когда менеджер укажет плательщика.
+            ($this->invoices)($deal->setRelation('offer', $offer), $by);
             if ($deal->isGarage()) {
                 ($this->reserve)($deal, $by);
             }

@@ -98,6 +98,8 @@ class PayLink extends Model
     {
         return $invoice->state === InvoiceState::Issued && ! $invoice->isOwed() && ! $invoice->is_demo
             && $invoice->seller === Seller::Prime && $invoice->kind !== ChargeKind::Reward
+            // Счёт ПРАЙМ за машину по сделке платят по счёту, без ссылки (Совкомбанк, 05.10.2026); ссылка — у подбора и доли.
+            && ! ($invoice->deal_id && $invoice->kind === ChargeKind::Sale)
             && ($invoice->deal_id || Car::ofInvoice($invoice)) && app(Gateway::class)->configured();
     }
 

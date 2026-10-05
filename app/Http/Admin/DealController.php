@@ -120,11 +120,12 @@ class DealController
     /** Деньги сделки — пока по ней нет счёта или есть только неоплаченный подбор по ДКП (`Deal::moneyEditable`). */
     public function money(Request $request, Deal $deal, UpdateDealMoney $update)
     {
-        $request->merge(['owner_price' => preg_replace('/\D+/', '', (string) $request->input('owner_price')) ?: null]);
+        $request->merge(['owner_price' => preg_replace('/\D+/', '', (string) $request->input('owner_price')) ?: null, 'share' => preg_replace('/\D+/', '', (string) $request->input('share')) ?: null]);
         $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'mode' => ['nullable', Rule::enum(CommissionMode::class)],
-            'scheme' => ['nullable', Rule::enum(DealScheme::class)], 'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.(int) $deal->amount]]);
-        $update($deal, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, CommissionMode::tryFrom($data['mode'] ?? '') ?? $deal->commission_mode,
-            DealScheme::tryFrom($data['scheme'] ?? ''), isset($data['owner_price']) ? (int) $data['owner_price'] : null);
+            'scheme' => ['nullable', Rule::enum(DealScheme::class)], 'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.(int) ($deal->amount ?? PHP_INT_MAX)],
+            'share' => ['nullable', 'integer', 'min:1']]);
+        $update($deal, $request->user(), isset($data['commission']) ? (int) $data['commission'] : $deal->commission, CommissionMode::tryFrom($data['mode'] ?? '') ?? $deal->commission_mode,
+            DealScheme::tryFrom($data['scheme'] ?? ''), isset($data['owner_price']) ? (int) $data['owner_price'] : null, isset($data['share']) ? (int) $data['share'] : null);
 
         return back()->with('toast', 'Сохранено');
     }

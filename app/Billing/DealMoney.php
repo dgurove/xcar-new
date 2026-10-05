@@ -47,9 +47,15 @@ final class DealMoney
                 return new self('Просрочен на '.$unpaid->overdueDays().' дн', $left, 'urgent', 'pay', 'К оплате');
             }
             // По ДКП менеджер платит нам только подбор: так и говорим.
-            $paid = $unpaid->paidMoney() > 0 ? 'Оплачено '.Money::rub($unpaid->paidMoney()).', остаток до ' : ($deal->isDkp() ? 'Оплатите подбор до ' : 'Оплатите до ');
+            // По ДКП и страховой менеджер платит нам только подбор; у ПРАЙМ счёт может платить его покупатель.
+            $byBuyer = $deal->isPrime() && $deal->buyer && $unpaid->party_id !== $deal->buyer->party_id;
+            $paid = $unpaid->paidMoney() > 0 ? 'Оплачено '.Money::rub($unpaid->paidMoney()).', остаток до '
+                : ($unpaid->kind === ChargeKind::Selection ? 'Оплатите подбор до ' : ($byBuyer ? 'Покупатель оплачивает до ' : 'Оплатите до '));
 
             return new self($paid.$unpaid->due_at->translatedFormat('j M'), $left, $unpaid->light() === 'urgent' ? 'urgent' : 'plain', 'pay', 'К оплате');
+        }
+        if ($issued->isEmpty() && $deal->isActive() && $deal->invoiceGap() === 'buyer') {
+            return new self('Укажите покупателя', (float) $deal->base(), 'urgent', 'open', $label);
         }
         if ($issued->isEmpty()) {
             return $deal->state === DealState::Done
@@ -57,8 +63,8 @@ final class DealMoney
                 : new self('Счёт ещё не выставлен', (float) $deal->base(), 'muted', 'open', $label);
         }
 
-        // По ДКП вознаграждение — его прибыль, оставленная себе: зелёным, а не серым «удержано».
-        if ($deal->isDkp() && $deal->commission) {
+        // Вознаграждение — его прибыль: оставленное себе (ДКП, страховой, удержал из счёта) — зелёным, а не серым «удержано».
+        if (($deal->paysSelection() || $deal->withholds()) && $deal->commission) {
             return new self('Ваше вознаграждение', (float) $deal->commission, 'profit', 'closed', 'Вознаграждение');
         }
 

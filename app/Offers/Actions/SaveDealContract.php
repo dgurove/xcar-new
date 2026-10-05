@@ -15,12 +15,15 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Данные ДКП (05.10.2026). Сотрудник по сканам страховой вносит продавца (`seller`: паспорт собственника) и ТС
- * (`vehicle`: госномер, СТС, ПТС, номера агрегатов, цена, город). Менеджер — покупателя: своего (`buyer_id`) или нового
- * (`new_buyer`: заводится в его «Покупателях» без пароля), с паспортом (`buyer`), если его ещё нет. Договор собрался
- * впервые — менеджеру «ДКП готов».
+ * (`vehicle`: госномер, СТС, ПТС, номера агрегатов, цена, город). Менеджер — покупателя: своего (`buyer_id`), себя
+ * (`me`) или нового (`new_buyer`: заводится в его «Покупателях» без пароля), с паспортом или реквизитами организации
+ * (`buyer`), и у ПРАЙМ — кто платит по счёту (`payer`). Счёт ПРАЙМ ставится тут же сам (`SyncDealInvoices`). Договор
+ * собрался впервые — менеджеру «ДКП готов».
  */
 final class SaveDealContract
 {
+    public function __construct(private SyncDealInvoices $invoices) {}
+
     public function __invoke(DealContract $contract, array $data, User $by): DealContract
     {
         $deal = $contract->deal;
@@ -43,14 +46,23 @@ final class SaveDealContract
                 $buyer = User::create(['name' => $name, 'last_name' => $last, 'first_name' => $first, 'phone' => $phone, 'roles' => [Role::Buyer],
                     'manager_id' => $deal->buyer_id, 'approved_at' => now(), 'approved_by' => $by->id, 'access' => []]);
                 $contract->buyer_user_id = $buyer->id;
+            } elseif (($data['buyer_id'] ?? null) === 'me') {
+                // Покупатель — сам менеджер: он же и платит по счёту ПРАЙМ.
+                [$contract->buyer_user_id, $contract->payer] = [$deal->buyer_id, 'manager'];
             } elseif (! empty($data['buyer_id'])) {
                 $buyer = User::whereKey($data['buyer_id'])->where('manager_id', $deal->buyer_id)->first()
                     ?? throw ValidationException::withMessages(['buyer_id' => 'Это не ваш покупатель']);
                 $contract->buyer_user_id = $buyer->id;
             }
+            if (in_array($data['payer'] ?? null, ['buyer', 'manager'], true)) {
+                $contract->payer = $data['payer'];
+            }
             if (isset($data['buyer']) && ($buyer = $contract->buyer()->first())) {
                 $party = Party::forUser($buyer);
-                $party->fill(['kind' => PartyKind::Person] + self::passport($data['buyer']))->save();
+                $company = ($data['buyer']['kind'] ?? 'person') === 'company';
+                // Покупатель — сам менеджер-ИП или самозанятый: паспорт дописываем, вид его реквизитов для выплат не трогаем.
+                $keep = $buyer->id === $deal->buyer_id && in_array($party->kind, [PartyKind::Entrepreneur, PartyKind::SelfEmployed], true);
+                $party->fill(($keep ? [] : ['kind' => $company ? PartyKind::Company : PartyKind::Person]) + ($company ? self::company($data['buyer']) : self::passport($data['buyer'])))->save();
             }
             $contract->save();
             $deal->offer->log(OfferEventType::Note, $by, ['text' => 'ДКП: '.implode(', ', array_filter([
@@ -58,6 +70,8 @@ final class SaveDealContract
                 isset($data['buyer']) && ! $contract->wasChanged('buyer_user_id') ? 'паспорт покупателя' : null,
             ]))]);
         });
+        // Плательщик или его данные сменились — счёт ПРАЙМ встаёт сам (или перевыставляется, если за него не платили).
+        ($this->invoices)($deal->fresh(['offer', 'buyer', 'contract.buyer']), $by);
         $contract = $contract->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer']);
         if (! $contract->ready_at && $contract->isReady()) {
             $contract->update(['ready_at' => now()]);
@@ -65,6 +79,14 @@ final class SaveDealContract
         }
 
         return $contract;
+    }
+
+    /** Реквизиты организации из набора формы. */
+    private static function company(array $data): array
+    {
+        $fields = array_intersect_key($data, array_flip(['name', 'inn', 'kpp', 'ogrn', 'legal_address', 'director']));
+
+        return array_map(fn ($v) => is_string($v) && trim($v) === '' ? null : (is_string($v) ? trim($v) : $v), $fields);
     }
 
     /** Поля паспорта из набора формы — только они, пустые строки как null. */

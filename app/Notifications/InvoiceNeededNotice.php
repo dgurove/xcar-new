@@ -10,11 +10,12 @@ use App\Offers\Deal;
  */
 final class InvoiceNeededNotice extends Notice
 {
-    public function __construct(private Deal $deal) {}
+    /** @param  ?string  $gap  `share` — гаражной не вписана наша доля (счёт со ссылкой встанет сам), иначе счёт руками */
+    public function __construct(private Deal $deal, private ?string $gap = null) {}
 
     public function title(): string
     {
-        return 'Выставите счёт: '.$this->deal->offer->titleWithYear();
+        return ($this->gap === 'share' ? 'Впишите нашу долю: ' : 'Выставите счёт: ').$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string
@@ -24,7 +25,7 @@ final class InvoiceNeededNotice extends Notice
 
     public function href(): string
     {
-        return '/work/invoices/new?offer='.$this->deal->offer->number;
+        return $this->gap === 'share' ? '/work/deals/'.$this->deal->id.'#money' : '/work/invoices/new?offer='.$this->deal->offer->number;
     }
 
     public function offerNumber(): ?int

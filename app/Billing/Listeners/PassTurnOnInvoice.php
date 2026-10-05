@@ -32,7 +32,8 @@ final class PassTurnOnInvoice
             return;
         }
 
-        if ($e instanceof InvoiceIssued && $position->waits_for === WaitsFor::Us) {
+        // Ход наш (выставить) или менеджера «Укажите покупателя» (ПРАЙМ) — счёт встал: «Оплатите счёт» с часами.
+        if ($e instanceof InvoiceIssued && in_array($position->waits_for, [WaitsFor::Us, WaitsFor::Manager], true)) {
             $position->update([
                 'waits_for' => null, 'deadline_at' => $position->stage->deadlineFor($deal->offer, Carbon::now()),
                 'reminded_at' => null, 'overdue_at' => null,
@@ -42,7 +43,7 @@ final class PassTurnOnInvoice
                 Requirement::askFor($deal, $position->stage, $position);
             }
         } elseif ($e instanceof InvoiceVoided && $position->waits_for === null && ! $deal->hasManagerInvoice()) {
-            $position->update(['waits_for' => WaitsFor::Us, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null]);
+            $position->update(['waits_for' => $deal->invoiceGap() === 'buyer' ? WaitsFor::Manager : WaitsFor::Us, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null]);
             Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->delete();
         }
     }

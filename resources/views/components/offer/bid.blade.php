@@ -28,23 +28,27 @@
         <div class="mt-2 flex items-start gap-2">
             <div data-controller="sheet">
                 <x-ui.button type="button" size="sm" data-action="sheet#open">{{ $give ? 'Отдать' : 'Принять' }}</x-ui.button>
-                <x-ui.sheet id="accept-{{ $bid->id }}" :title="$give ? 'Отдать другому' : ($garage ? 'Отдать в гараж' : 'Принять подтверждение')" :open="($errors->has('commission') || $errors->has('payer')) && old('bid') == $bid->id">
+                <x-ui.sheet id="accept-{{ $bid->id }}" :title="$give ? 'Отдать другому' : ($garage ? 'Отдать в гараж' : 'Принять подтверждение')" :open="$errors->hasAny(['commission', 'payer', 'share', 'owner_price']) && old('bid') == $bid->id">
                     <div class="mb-4 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$bid->user" full/><span class="tag">{{ $offer->titleWithYear() }}</span></div>
                     @if ($garage)
                         {{-- Вознаграждения тут нет: его назначают, когда менеджер продаст машину из гаража. Без гаражной
                              ветки у маршрута (Т-Страхование) поставщику платит менеджер — выбора нет. --}}
-                        <form method="post" action="/confirmations/{{ $bid->id }}/accept" class="flex flex-col gap-4">
+                        <form method="post" action="/confirmations/{{ $bid->id }}/accept" class="flex flex-col gap-4" data-controller="reveal">
                             @csrf<input type="hidden" name="bid" value="{{ $bid->id }}">
                             @if ($branch)
                                 <div class="flex flex-col gap-1.5">
                                     <span class="field-label">Платит поставщику</span>
                                     <div class="flex flex-wrap gap-2">
                                         @foreach (\App\Garage\GaragePayer::cases() as $payer)
-                                            <label class="choice"><input type="radio" name="payer" value="{{ $payer->value }}" @checked(old('payer', 'us') === $payer->value)><span>{{ $payer->label() }}</span></label>
+                                            <label class="choice"><input type="radio" name="payer" value="{{ $payer->value }}" @checked(old('payer', 'us') === $payer->value) data-action="reveal#pick"><span>{{ $payer->label() }}</span></label>
                                         @endforeach
                                     </div>
                                 </div>
                             @endif
+                            {{-- Платит поставщику менеджер — нашу долю он платит по ссылке сразу (05.10.2026). --}}
+                            <div data-reveal-target="pane" data-reveal-key="manager" @if ($branch && old('payer', 'us') !== 'manager') hidden @endif>
+                                <x-ui.field name="share" label="Наша доля, ₽" :value="old('share')" data-controller="digits" data-action="input->digits#format"/>
+                            </div>
                             {{-- Везут к нему в гараж: сам или мы (05.10.2026); выбрано, кто уже вывозит. --}}
                             @if ($offer->pickupChoosable())
                                 @php $byBuyer = ! $offer->evacuator_id || $offer->evacuator_id === $bid->user_id; @endphp
@@ -60,7 +64,7 @@
                             <x-ui.button type="submit" variant="primary" block>{{ $give ? 'Отдать' : 'В гараж' }}</x-ui.button>
                         </form>
                     @else
-                        <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :scheme="$offer->vendor?->deal_format === \App\Vendors\DealFormat::Direct ? \App\Offers\DealScheme::OwnerDkp : \App\Offers\DealScheme::Ours" :owner-price="$offer->owner_price" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null">
+                        <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :scheme="\App\Offers\DealScheme::forVendor($offer->vendor?->deal_format)" :owner-price="$offer->owner_price" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null">
                             <input type="hidden" name="bid" value="{{ $bid->id }}">
                             {{-- ТС ещё у владельца — кто её забирает (04.10.2026): менеджер сделки по умолчанию; поручено
                                  другому — по умолчанию «Мы», то есть как назначено. --}}

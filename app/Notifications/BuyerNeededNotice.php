@@ -5,24 +5,27 @@ namespace App\Notifications;
 use App\Offers\Deal;
 use App\Telegram\Text;
 
-/** Менеджеру: продавец, ТС и покупатель внесены — договор (ДКП собственника или ПРАЙМ) можно скачать и распечатать. */
-final class ContractReadyNotice extends Notice
+/**
+ * Менеджеру сделки ПРАЙМ на этапе оплаты (05.10.2026): укажите покупателя — счёт ПРАЙМ и ДКП соберутся сами. Раньше в
+ * этом месте сотрудникам приходило «Выставите счёт», а менеджер ждал счёт.
+ */
+final class BuyerNeededNotice extends Notice
 {
     public function __construct(private Deal $deal) {}
 
     public function title(): string
     {
-        return 'ДКП готов: '.$this->deal->offer->titleWithYear();
+        return 'Укажите покупателя: '.$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string
     {
-        return $this->deal->isDkp() ? 'Скачайте, распечатайте в трёх экземплярах и подпишите с собственником' : 'Скачайте и распечатайте в трёх экземплярах';
+        return 'Счёт и ДКП соберутся по его данным';
     }
 
     public function href(): string
     {
-        return $this->deal->href();
+        return $this->deal->href().'#dkp-buyer';
     }
 
     public function offerNumber(): ?int
@@ -38,6 +41,11 @@ final class ContractReadyNotice extends Notice
     public function critical(): bool
     {
         return true;
+    }
+
+    public function subject(): string
+    {
+        return $this->deal->href();
     }
 
     public function toTelegram(): ?array

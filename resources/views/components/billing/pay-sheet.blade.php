@@ -11,7 +11,8 @@
     $one = $invoices->count() === 1;
     // Без договора эквайринга способа «Ссылкой» нет вовсе. Ссылка у счёта уже есть (заводится вместе с ним на менеджера) —
     // «Ссылкой» всё равно здесь: выбрать, кто платит (05.10.2026, владелец), новая заменит прежнюю.
-    $online = app(\App\Billing\Acquiring\Gateway::class)->configured();
+    // У счёта ПРАЙМ по сделке ссылки нет вовсе (Совкомбанк: «ссылка не используется», `PayLink::eligible`).
+    $online = app(\App\Billing\Acquiring\Gateway::class)->configured() && $invoices->every(fn ($i) => PayLink::eligible($i));
     $current = $one ? $first->openLink() : null;
     $left = $one ? max(0, round($first->remaining() - $first->claimed(), 2)) : null;
     $max = (float) config('xcar.yookassa.max_amount');

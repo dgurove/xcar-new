@@ -6,7 +6,7 @@ import { Controller } from '@hotwired/stimulus';
 // меняется на data-negative: тогда отдаём мы. payout — сколько выплатим менеджеру, когда за машину из гаража платит
 // его покупатель: его расходы (spent) плюс вознаграждение.
 export default class extends Controller {
-    static targets = ['display', 'amount', 'ours', 'oursLabel', 'due', 'dueLabel', 'payout', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset'];
+    static targets = ['display', 'amount', 'ours', 'oursLabel', 'due', 'dueLabel', 'payout', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset', 'payee'];
     static values = { margin: Number, base: Number, spent: Number, amount: Number, cost: Number };
 
     connect() {
@@ -18,12 +18,15 @@ export default class extends Controller {
         return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: kopecks ? 2 : 0, maximumFractionDigits: 2 }).format(v) + ' ₽';
     }
 
-    // «За ТС платят»: нам — разница и режим; страхователю по ДКП — сколько собственнику, нам — подбор (05.10.2026).
+    // «За ТС платят»: ПРАЙМ — разница и режим; ДКП и страховой — сколько им, нам — подбор (05.10.2026).
+    // Схема, где покупатель платит не нам (ДКП, страховой): сумма ему, нам — подбор.
     get dkp() {
-        return this.element.querySelector('input[name=scheme]:checked')?.value === 'owner_dkp';
+        return this.element.querySelector('input[name=scheme]:checked')?.dataset.selection === '1';
     }
 
     scheme() {
+        const picked = this.element.querySelector('input[name=scheme]:checked');
+        if (this.hasPayeeTarget && picked?.dataset.payee) this.payeeTarget.textContent = picked.dataset.payee;
         this.oursOnlyTargets.forEach((el) => { el.hidden = this.dkp; });
         this.dkpOnlyTargets.forEach((el) => { el.hidden = !this.dkp; });
         if (this.hasOursLabelTarget) this.oursLabelTarget.textContent = this.dkp ? this.oursLabelTarget.dataset.dkp : this.oursLabelTarget.dataset.ours;

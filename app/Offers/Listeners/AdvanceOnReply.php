@@ -47,7 +47,8 @@ final class AdvanceOnReply
         $contact = InsurerReplies::hasContact($message);
         $files = InsurerReplies::hasFiles($message);
         // Контакт дали, а документов нет — сами просим их ответом на это же письмо (05.10.2026).
-        $asked = $e->live && $contact && ! $files && $this->askForDocuments($deal, $message);
+        // Только по ДКП: у ПРАЙМ и «страховой напрямую» данные страхователя не нужны (05.10.2026).
+        $asked = $e->live && $deal->isDkp() && $contact && ! $files && $this->askForDocuments($deal, $message);
         $offer->log(OfferEventType::InsurerReplied, null, array_filter(['letter' => $message->id, 'contact' => $contact, 'files' => $files, 'asked' => $asked]));
         if ($files) {
             ShareReplyFiles::dispatch($message->id);

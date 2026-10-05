@@ -24,7 +24,7 @@
             @if ($offer->positions->isNotEmpty())@include('admin.offers.route')@endif
             <x-deal.handover :deal="$deal" compact/>
             <x-deal.money :deal="$deal"/>
-            @if ($deal->isDkp())<x-deal.contract :deal="$deal"/>@endif
+            @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif
             @if ($lastLetter)
                 <section>
                     <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>

@@ -22,8 +22,8 @@
             @endif
             <x-deal.handover :deal="$deal" class="order-1"/>
             {{-- Деньги — и у закрытой сделки: вознаграждение и выплата остаются видны. Просьбы и ответы менеджера — в шагах пути. --}}
-            <x-deal.money :deal="$deal" class="order-1"/>
-            @if ($deal->isDkp())<x-deal.contract :deal="$deal" class="order-1"/>@endif
+            <x-deal.money :deal="$deal" class="order-1" id="money"/>
+            @if ($deal->hasContract())<x-deal.contract :deal="$deal" class="order-1"/>@endif
 
             @if ($lastLetter)
                 <x-ui.card title="Письма" :count="$letters" class="order-3">

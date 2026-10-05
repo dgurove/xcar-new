@@ -17,9 +17,10 @@ class DealContractController
 {
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
-        abort_unless($deal->isDkp(), 404);
+        abort_unless($deal->hasContract(), 404);
         $request->merge(['vehicle' => array_merge((array) $request->input('vehicle'), ['price' => preg_replace('/\D+/', '', (string) $request->input('vehicle.price')) ?: null])]);
-        $data = $request->validate(PartyRules::passport('seller') + [
+        // Продавец вносится только у ДКП (собственник по сканам); у ПРАЙМ продавец — ПРАЙМ.
+        $data = $request->validate(($deal->isDkp() ? PartyRules::passport('seller') : []) + [
             'vehicle' => ['required', 'array'], 'vehicle.price' => ['nullable', 'integer', 'min:1'], 'vehicle.city' => ['nullable', 'string', 'max:80'],
         ] + collect(DealContract::VEHICLE)->keys()->mapWithKeys(fn ($k) => ["vehicle.{$k}" => ['nullable', 'string', 'max:'.($k === 'pts_issued' ? 255 : 40)]])->all(),
             [], ['seller.name' => 'ФИО продавца']);
@@ -30,7 +31,7 @@ class DealContractController
 
     public function show(Request $request, Deal $deal)
     {
-        abort_unless($deal->isDkp(), 404);
+        abort_unless($deal->hasContract(), 404);
 
         return self::document($deal, $request->routeIs('*.pdf') || str_ends_with($request->path(), '.pdf'));
     }
@@ -38,7 +39,7 @@ class DealContractController
     /** Договор страницей или PDF — одна дверь для CRM и кабинета менеджера. */
     public static function document(Deal $deal, bool $pdf)
     {
-        $contract = DealContract::for($deal)->load(['seller', 'buyer.party', 'deal.offer.brand', 'deal.offer.model']);
+        $contract = DealContract::for($deal)->load(['seller', 'buyer.party', 'deal.offer.brand', 'deal.offer.model', 'deal.buyer']);
         if (! $pdf) {
             return view('deals.docs.dkp', ['contract' => $contract]);
         }

@@ -10,11 +10,11 @@ use App\Telegram\Text;
 /** Владельцу: сделка дошла до оплаты, счёта нет — кнопка ведёт прямо в «Выставить счёт». */
 final class InvoiceNeeded extends Message
 {
-    public function __construct(private Deal $deal) {}
+    public function __construct(private Deal $deal, private ?string $gap = null) {}
 
     protected function title(): string
     {
-        return 'Выставите счёт: '.$this->deal->offer->titleWithYear();
+        return ($this->gap === 'share' ? 'Впишите нашу долю: ' : 'Выставите счёт: ').$this->deal->offer->titleWithYear();
     }
 
     protected function lines(): array
@@ -31,6 +31,8 @@ final class InvoiceNeeded extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Выставить счёт', 'url' => Surface::Crm->url('/work/invoices/new?offer='.$this->deal->offer->number)];
+        return $this->gap === 'share'
+            ? ['text' => 'Вписать долю', 'url' => Surface::Crm->url('/work/deals/'.$this->deal->id.'#money')]
+            : ['text' => 'Выставить счёт', 'url' => Surface::Crm->url('/work/invoices/new?offer='.$this->deal->offer->number)];
     }
 }

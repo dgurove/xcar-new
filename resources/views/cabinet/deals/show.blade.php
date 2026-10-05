@@ -11,7 +11,7 @@
     <div data-deal-offer="{{ $offer->number }}">
     <x-offer.object :offer="$offer" :photos="$offer->visiblePhotos()" :docs="\App\Offers\OfferFiles::forManagers($offer, auth()->user())">
         <x-slot:aside>
-            @if ($deal->isDkp())
+            @if (! $deal->isGarage())
                 @include('cabinet.deals.money')
             @else
             <div class="box">
@@ -35,7 +35,7 @@
 
         @include('cabinet.deals.step')
 
-        @if ($deal->isDkp())@include('cabinet.deals.contract')@endif
+        @if ($deal->hasContract())@include('cabinet.deals.contract')@endif
 
         @if ($pastInvoices->isNotEmpty())
             {{-- Счета и ответы — группами строк, как в «Настройках», а не списком внутри коробки. --}}

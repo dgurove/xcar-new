@@ -1,8 +1,9 @@
 {{-- Деньги сделки одной формой: цена подтверждения, закупочная, разница, поле
      «Агентское вознаграждение» с живым «нам остаётся» и режим — выплачиваем или
      менеджер удерживает сам. Та же форма принимает подтверждение и правит сделку.
-     С `scheme` — ещё кому платят за ТС (05.10.2026): «нам» или «страхователю по ДКП». По ДКП — сколько собственнику
-     (меньше закупочной — взаимозачёт), нам — подбор (цена минус собственнику минус вознаграждение), режим — удерживает сам. --}}
+     С `scheme` — ещё кому платят за ТС (05.10.2026): ПРАЙМ по счёту, страхователю по ДКП или страховой напрямую. У двух
+     последних — сколько собственнику или страховой (меньше закупочной — взаимозачёт), нам — подбор (цена минус эта сумма
+     минус вознаграждение), режим — удерживает сам. --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
     'scheme' => null, 'ownerPrice' => null])
 @php
@@ -13,7 +14,9 @@
     $current = old('commission', $commission);
     $id ??= 'commission-'.uniqid();
     $scheme = DealScheme::tryFrom((string) old('scheme', $scheme?->value ?? '')) ?? $scheme;
-    $dkp = $scheme === DealScheme::OwnerDkp;
+    // ДКП и «страховой напрямую»: покупатель платит не нам — сумма ему, нам подбор, вознаграждение удерживает менеджер.
+    $dkp = (bool) $scheme?->paysSelection();
+    $payee = $scheme?->payeeLabel() ?? DealScheme::OwnerDkp->payeeLabel();
     $owner = old('owner_price', $ownerPrice ?? $cost);
 @endphp
 <form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="commission" data-commission-amount-value="{{ $amount }}" @if ($cost !== null) data-commission-cost-value="{{ $cost }}" @endif
@@ -26,7 +29,7 @@
             <span class="field-label">За ТС платят</span>
             <div class="flex flex-wrap gap-2">
                 @foreach (DealScheme::cases() as $s)
-                    <label class="choice"><input type="radio" name="scheme" value="{{ $s->value }}" @checked($scheme === $s) data-action="commission#scheme"><span>{{ $s->label() }}</span></label>
+                    <label class="choice"><input type="radio" name="scheme" value="{{ $s->value }}" @checked($scheme === $s) data-action="commission#scheme" data-selection="{{ $s->paysSelection() ? 1 : 0 }}" data-payee="{{ $s->payeeLabel() }}"><span>{{ $s->label() }}</span></label>
                 @endforeach
             </div>
         </div>
@@ -38,7 +41,7 @@
     </dl>
     @if ($scheme)
         <div class="field" data-commission-target="dkpOnly" @unless ($dkp) hidden @endunless>
-            <label for="{{ $id }}-owner" class="field-label">Собственнику по ДКП, ₽</label>
+            <label for="{{ $id }}-owner" class="field-label"><span data-commission-target="payee">{{ $payee }}</span>, ₽</label>
             <input type="hidden" name="owner_price" data-commission-target="ownerAmount" value="{{ $owner }}">
             <input id="{{ $id }}-owner" type="text" class="field-input nums text-lg" data-commission-target="ownerDisplay" data-action="input->commission#input" value="{{ $owner ? Money::nums((int) $owner) : '' }}" autocomplete="off">
             <p class="mt-1 text-sm text-ink-muted" data-commission-target="offset"></p>

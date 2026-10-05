@@ -12,35 +12,43 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Поправить деньги сделки: вознаграждение, режим, кому платят за ТС и сколько собственнику по ДКП. Пока счёта нет — как
- * угодно. Счёт по ДКП («Подбор ТС», выставлен при принятии) перевыставляется сам, пока за него не платили
- * (`IssueSelectionInvoice`); любой другой живой счёт — сначала аннулировать.
+ * Поправить деньги сделки: схему оплаты, сумму собственнику или страховой, вознаграждение, режим, гаражной — нашу долю.
+ * Пока за наши счета не платили (`Deal::moneyEditable`): счета, что ставятся сами, перевыставит `SyncDealInvoices`.
  */
 final class UpdateDealMoney
 {
-    public function __construct(private IssueSelectionInvoice $selection) {}
+    public function __construct(private SyncDealInvoices $invoices) {}
 
-    public function __invoke(Deal $deal, User $by, ?int $commission, CommissionMode $mode, ?DealScheme $scheme = null, ?int $ownerPrice = null): void
+    public function __invoke(Deal $deal, User $by, ?int $commission, CommissionMode $mode, ?DealScheme $scheme = null, ?int $ownerPrice = null, ?int $share = null): void
     {
         if (! $deal->moneyEditable()) {
-            throw ValidationException::withMessages(['commission' => 'По сделке уже выставлен счёт — сначала аннулируйте его']);
+            throw ValidationException::withMessages(['commission' => 'По счёту сделки уже платили — сначала отмените оплату']);
         }
-        if ($commission !== null && $commission > $deal->amount) {
+        if ($commission !== null && $deal->amount !== null && $commission > $deal->amount) {
             throw ValidationException::withMessages(['commission' => 'Не больше цены подтверждения '.Money::rub($deal->amount)]);
         }
-        $scheme ??= $deal->scheme ?? DealScheme::Ours;
-        $dkp = $scheme === DealScheme::OwnerDkp;
-        $wasDkp = $deal->isDkp();
-        DB::transaction(function () use ($deal, $by, $commission, $mode, $scheme, $dkp, $wasDkp, $ownerPrice) {
-            $deal->update(['commission' => $commission, 'commission_mode' => $dkp ? CommissionMode::Withheld : $mode, 'scheme' => $scheme,
-                'owner_price' => $dkp ? ($ownerPrice ?? $deal->owner_price ?? $deal->cost) : null]);
-            $deal->offer->log(OfferEventType::Note, $by, ['text' => $dkp
-                ? 'По ДКП: собственнику '.Money::rub((int) $deal->ownerPrice()).', вознаграждение '.($commission ? Money::rub($commission) : 'нет')
-                : 'Агентское вознаграждение: '.($commission ? Money::rub($commission) : 'нет').', '.mb_strtolower($mode->label())]);
-            // Счёт за подбор — по новым деньгам; ушли с ДКП — неоплаченный гаснет.
-            if ($dkp || $wasDkp) {
-                ($this->selection)($deal->fresh(), $by);
+        $scheme ??= $deal->schemeOf();
+        $selection = $scheme->paysSelection() && ! $deal->isGarage();
+        $wasSelection = $deal->paysSelection();
+        DB::transaction(function () use ($deal, $by, $commission, $mode, $scheme, $selection, $wasSelection, $ownerPrice, $share) {
+            $deal->update($deal->isGarage()
+                ? ['scheme' => $scheme, 'share' => $deal->isGarageManager() ? $share : null]
+                : ['commission' => $commission, 'commission_mode' => $selection ? CommissionMode::Withheld : $mode, 'scheme' => $scheme,
+                    'owner_price' => $selection ? ($ownerPrice ?? $deal->owner_price ?? $deal->cost) : null]);
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => match (true) {
+                $deal->isGarage() => 'Наша доля: '.($deal->share ? Money::rub($deal->share) : 'нет'),
+                $selection => $scheme->payeeLabel().' '.Money::rub((int) $deal->ownerPrice()).', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),
+                default => 'ПРАЙМ по счёту, вознаграждение '.($commission ? Money::rub($commission) : 'нет').', '.mb_strtolower($deal->commission_mode->label()),
+            }]);
+            // Ушли со схемы, где менеджер платит подбор, — неоплаченный подбор гаснет (ссылка с ним).
+            if ($wasSelection && ! $deal->fresh()->paysSelection()) {
+                foreach ($deal->issuedInvoices()->where('kind', \App\Billing\ChargeKind::Selection)->where('state', \App\Billing\InvoiceState::Issued)->get() as $old) {
+                    if ($old->paidMoney() == 0) {
+                        app(\App\Billing\Actions\VoidInvoice::class)($old, $by, 'Схема оплаты изменена');
+                    }
+                }
             }
+            ($this->invoices)($deal->fresh(), $by);
         });
     }
 }

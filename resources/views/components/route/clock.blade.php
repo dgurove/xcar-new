@@ -5,7 +5,8 @@
     $stage = $position->stage;
     $overdue = $position->isOverdue();
     $invoice = $position->awaitsInvoice();
-    $who = $invoice ? ($side === 'manager' ? 'Готовим счёт' : 'Выставить счёт') : match ($position->waitsFor()) {
+    $gap = $invoice ? $position->gap() : null;
+    $who = $invoice ? ($side === 'manager' ? 'Готовим счёт' : ($gap === 'share' ? 'Вписать нашу долю' : 'Выставить счёт')) : match ($position->waitsFor()) {
         \App\Workflow\WaitsFor::Manager => $side === 'manager' ? 'Ваш ход' : 'Ждём менеджера',
         \App\Workflow\WaitsFor::Supplier => 'Ждём поставщика',
         \App\Workflow\WaitsFor::Us => $side === 'manager' ? 'Ждём нас' : 'Наш ход',

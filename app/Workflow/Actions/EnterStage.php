@@ -20,7 +20,8 @@ use Illuminate\Support\Carbon;
 /**
  * Поставить оффер на этап: позиция и срок, состояние или место машины, просьба к менеджеру, лента, событие.
  * Этап оплаты, а счёта у сделки нет — ход наш (`waits_for = us`): без часов и без просьбы менеджеру, её заведёт
- * выставленный счёт (`PassTurnOnInvoice`). Иначе обе стороны ждали друг друга.
+ * выставленный счёт (`PassTurnOnInvoice`). Иначе обе стороны ждали друг друга. У ПРАЙМ без покупателя — ход менеджера
+ * (`waits_for = manager`, «Укажите покупателя»): счёт встанет сам, когда он его укажет.
  */
 final class EnterStage
 {
@@ -53,13 +54,16 @@ final class EnterStage
             $offer->save();
         }
 
-        $ours = $track === Track::Sale && $deal?->isActive() && $to->isPayStep() && ! $deal->hasManagerInvoice();
+        $noInvoice = $track === Track::Sale && $deal?->isActive() && $to->isPayStep() && ! $deal->hasManagerInvoice();
+        // ПРАЙМ: счёт встанет сам, как только менеджер укажет, кому он (05.10.2026) — ход его, а не наш «Выставите счёт».
+        $needsBuyer = $noInvoice && $deal->invoiceGap() === 'buyer';
+        $ours = $noInvoice && ! $needsBuyer;
         $position = Position::updateOrCreate(['offer_id' => $offer->id, 'track' => $track->value], [
             'stage_id' => $to->id,
-            'waits_for' => $ours ? WaitsFor::Us : null,
+            'waits_for' => $ours ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null),
             'entered_at' => $now,
             'block_entered_at' => $from && $from->block_id === $to->block_id && $position?->block_entered_at ? $position->block_entered_at : $now,
-            'deadline_at' => $ours ? null : $to->deadlineFor($offer, $now),
+            'deadline_at' => $noInvoice ? null : $to->deadlineFor($offer, $now),
             'reminded_at' => null,
             'overdue_at' => null,
             'payload' => $payload ?: null,
@@ -73,7 +77,7 @@ final class EnterStage
             $offer = ($this->setPlace)($offer, $to->car_place, $by);
         }
 
-        if (! $ours && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
+        if (! $noInvoice && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
             Requirement::askFor($deal, $to, $position);
         }
 

@@ -28,12 +28,15 @@ class BidController
     public function accept(Request $request, Bid $bid, AcceptBid $accept)
     {
         $switch = $bid->offer->deal()->exists();
+        $default = DealScheme::forVendor($bid->offer->vendor?->deal_format);
         if ($bid->isGarage()) {
-            $data = $request->validate(['payer' => ['nullable', Rule::enum(GaragePayer::class)], 'pickup' => ['nullable', Rule::in(['manager', 'us'])]]);
-            DB::transaction(function () use ($bid, $data, $request, $accept) {
+            $request->merge(['share' => preg_replace('/\D+/', '', (string) $request->input('share')) ?: null]);
+            $data = $request->validate(['payer' => ['nullable', Rule::enum(GaragePayer::class)], 'pickup' => ['nullable', Rule::in(['manager', 'us'])],
+                'share' => ['nullable', 'integer', 'min:1']]);
+            DB::transaction(function () use ($bid, $data, $request, $accept, $default) {
                 $offer = $bid->offer->loadMissing('vendor.workflows', 'parkVehicle');
                 $choosable = $offer->pickupChoosable();
-                $accept($bid, $request->user(), payer: GaragePayer::tryFrom($data['payer'] ?? '') ?? GaragePayer::Us);
+                $accept($bid, $request->user(), payer: GaragePayer::tryFrom($data['payer'] ?? '') ?? GaragePayer::Us, scheme: $default, share: isset($data['share']) ? (int) $data['share'] : null);
                 // Машина едет к менеджеру в гараж (05.10.2026, Бородин: был вывоз «к нам»), везёт он сам или мы.
                 $offer = $offer->fresh(['vendor.workflows', 'positions.stage.workflow', 'parkVehicle.requests']);
                 if ($choosable && $offer->pickupChoosable()) {
@@ -52,9 +55,9 @@ class BidController
             'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.$bid->amount],
             'pickup' => ['nullable', Rule::in(['manager', 'us'])],
         ]);
-        $scheme = DealScheme::tryFrom($data['scheme'] ?? '') ?? DealScheme::Ours;
-        if ($scheme === DealScheme::OwnerDkp && ! isset($data['owner_price']) && ! $bid->offer->owner_price && ! $bid->offer->floor_price) {
-            return back()->withErrors(['owner_price' => 'Сколько покупатель отдаёт страхователю по ДКП'])->withInput();
+        $scheme = DealScheme::tryFrom($data['scheme'] ?? '') ?? $default;
+        if ($scheme->paysSelection() && ! isset($data['owner_price']) && ! $bid->offer->owner_price && ! $bid->offer->floor_price) {
+            return back()->withErrors(['owner_price' => $scheme === DealScheme::OwnerDkp ? 'Сколько покупатель отдаёт страхователю по ДКП' : 'Сколько покупатель отдаёт страховой'])->withInput();
         }
         DB::transaction(function () use ($bid, $data, $request, $accept, $scheme) {
             $offer = $bid->offer->loadMissing('vendor.workflows', 'parkVehicle');

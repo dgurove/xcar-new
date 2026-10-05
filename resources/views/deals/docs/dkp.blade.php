@@ -5,10 +5,21 @@
 @php
     use App\Support\Money;
     use App\Support\Words;
-    $deal = $contract->deal; $offer = $deal->offer; $s = $contract->seller; $b = $contract->buyerParty();
+    $deal = $contract->deal; $offer = $deal->offer; $s = $contract->sellerParty(); $b = $contract->buyerParty();
+    // ПРАЙМ продаёт по счёту: оплата безналичная до передачи, а не «деньги получил» при подписании.
+    $prime = $deal->isPrime();
     $blank = '________________';
     $price = $contract->price;
     $person = function ($p) use ($blank) {
+        // Организация или ИП: «ООО «ПРАЙМ», ИНН …, ОГРН …, адрес: …, в лице …, действующего на основании Устава».
+        if ($p && in_array($p->kind, [\App\Billing\PartyKind::Company, \App\Billing\PartyKind::Entrepreneur], true)) {
+            $ip = $p->kind === \App\Billing\PartyKind::Entrepreneur;
+            return implode(', ', array_filter([
+                '<b>'.e($p->name).'</b>', $p->inn ? 'ИНН '.e($p->inn) : null, $p->kpp ? 'КПП '.e($p->kpp) : null, $p->ogrn ? ($ip ? 'ОГРНИП ' : 'ОГРН ').e($p->ogrn) : null,
+                $p->legal_address ? 'адрес: '.e($p->legal_address) : null,
+                $ip ? null : 'в лице '.e($p->director ?: $blank).', действующего на основании '.e($p->director_basis ?: 'Устава'),
+            ]));
+        }
         if (! $p) {
             return $blank.', дата рождения '.$blank.', паспорт '.$blank.', выдан '.$blank.', зарегистрирован(а) по адресу: '.$blank;
         }
@@ -34,13 +45,14 @@
     ];
     $date = $contract->signed_at ? $contract->signed_at->translatedFormat('«j» F Y г.') : '«___» ______________ 20___ г.';
     $embed = ! ($pdf ?? false) && request()->boolean('embed');
+    $title = $prime ? 'ДКП ПРАЙМ' : 'ДКП';
 @endphp
 <!doctype html>
 <html lang="ru">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ДКП {{ $offer->titleWithYear() }}</title>
+    <title>{{ $title }} {{ $offer->titleWithYear() }}</title>
     <style>
         body { font-family: {{ ($pdf ?? false) ? '"Onest", sans-serif' : '"Times New Roman", serif' }}; font-size: 12px; color: #000; margin: 0; padding: 24px; background: #f4f4f4; line-height: 1.45; }
         .doc { max-width: 720px; margin: 0 auto; background: #fff; padding: 36px 40px; }
@@ -80,13 +92,17 @@
         <p>3. До заключения настоящего договора ТС никому не продано, не заложено, в споре и под арестом (запрещением) не состоит.</p>
         <p>4. ТС передаётся в повреждённом состоянии. Покупатель осмотрел ТС, его техническое состояние и комплектность ему известны, претензий Покупатель не имеет.</p>
         <p>5. Стоимость ТС составляет <b>{{ $price ? Money::nums($price).' ('.Words::rub($price).') рублей 00 копеек' : '________________ рублей' }}</b>.</p>
-        <p>6. Покупатель передал, а Продавец получил денежные средства в сумме, указанной в п. 5, полностью. Продавец передал, а Покупатель получил ТС, ключи и документы на него: паспорт ТС и свидетельство о регистрации ТС.</p>
+        @if ($prime)
+            <p>6. Покупатель оплачивает стоимость ТС, указанную в п. 5, перечислением на расчётный счёт Продавца по выставленному счёту. Продавец передаёт ТС, ключи и документы на него (паспорт ТС и свидетельство о регистрации ТС) после поступления оплаты полностью.</p>
+        @else
+            <p>6. Покупатель передал, а Продавец получил денежные средства в сумме, указанной в п. 5, полностью. Продавец передал, а Покупатель получил ТС, ключи и документы на него: паспорт ТС и свидетельство о регистрации ТС.</p>
+        @endif
         <p>7. Право собственности на ТС переходит к Покупателю с момента подписания настоящего договора. Покупатель в течение 10 дней обязан изменить регистрационные данные о собственнике ТС в ГИБДД.</p>
         <p>8. Договор вступает в силу с момента подписания и составлен в трёх экземплярах, имеющих равную юридическую силу: по одному для Продавца, Покупателя и ГИБДД.</p>
         <table class="sign">
             <tr>
-                <td><b>Продавец</b><br>Деньги в сумме, указанной в п. 5, получил, ТС передал<div class="line"></div>{{ $s?->name ?: '' }}</td>
-                <td><b>Покупатель</b><br>Деньги передал, ТС и документы получил<div class="line"></div>{{ $b?->name ?: '' }}</td>
+                <td><b>Продавец</b><br>{{ $prime ? '' : 'Деньги в сумме, указанной в п. 5, получил, ТС передал' }}<div class="line"></div>{{ $prime ? ($s?->director ?: '') : ($s?->name ?: '') }}@if ($prime)<br>М.П.@endif</td>
+                <td><b>Покупатель</b><br>{{ $prime ? '' : 'Деньги передал, ТС и документы получил' }}<div class="line"></div>{{ $b?->kind === \App\Billing\PartyKind::Company ? ($b->director ?: '') : ($b?->name ?: '') }}</td>
             </tr>
         </table>
     </article>

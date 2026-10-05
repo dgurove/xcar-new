@@ -162,7 +162,11 @@
                     @endforeach
                     @if ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id)
                         <div class="mt-3 flex flex-wrap gap-2">
-                            @if ($wantsInvoice)<a href="/work/invoices/new?offer={{ $n }}" class="btn btn-s btn-accent" data-turbo-frame="_top">Выставить счёт</a>@endif
+                            @if ($wantsInvoice)
+                                {{-- Счета ставятся сами (`SyncDealInvoices`); гаражной не хватает нашей доли — вписать её в «Деньгах» сделки. --}}
+                                @if ($position->gap() === 'share')<a href="/work/deals/{{ $deal->id }}#money" class="btn btn-s btn-accent" data-turbo-frame="_top">Вписать нашу долю</a>
+                                @else<a href="/work/invoices/new?offer={{ $n }}" class="btn btn-s btn-accent" data-turbo-frame="_top">Выставить счёт</a>@endif
+                            @endif
                             @foreach ($moves->values() as $i => $exit)
                                 @php $variant = $i === 0 && ! $wantsInvoice ? 'primary' : 'secondary'; @endphp
                                 @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))

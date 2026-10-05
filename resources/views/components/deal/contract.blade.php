@@ -1,5 +1,6 @@
 {{-- ДКП сделки «страхователю по ДКП» для сотрудника (05.10.2026): чего договору не хватает, сканы из писем страховой
-     (паспорт собственника, СТС, ПТС) и форма — продавец и ТС; покупателя вносит менеджер. Договор — PDF в шторке
+     (паспорт собственника, СТС, ПТС) и форма — продавец и ТС; покупателя вносит менеджер. У ПРАЙМ продавец — ПРАЙМ,
+     формы продавца нет. Договор — PDF в шторке
      документов (`DealContractController::document`). --}}
 @props(['deal'])
 @php
@@ -10,7 +11,7 @@
     $scans = $deal->offer->papers()->filter(fn ($m) => $m->getCustomProperty('letter'))->values();
     $pdf = ['url' => '/work/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => 'ДКП '.$deal->offer->titleWithYear().'.pdf', 'label' => 'ДКП'];
 @endphp
-<x-ui.card title="ДКП" {{ $attributes }}>
+<x-ui.card :title="$deal->isPrime() ? 'ДКП ПРАЙМ' : 'ДКП'" {{ $attributes }}>
     <div class="list">
         <x-ui.doc :doc="$pdf" class="row">
             <span class="min-w-0 flex-1">
@@ -21,7 +22,7 @@
         </x-ui.doc>
         <div class="row">
             <span class="shrink-0 text-ink-muted">Покупатель</span>
-            <span class="min-w-0 flex-1 text-right">{{ $contract->buyer?->name ?? 'выбирает менеджер' }}</span>
+            <span class="min-w-0 flex-1 text-right">{{ $contract->buyer ? ($contract->buyer->party?->name ?: $contract->buyer->name) : 'выбирает менеджер' }}</span>
         </div>
     </div>
     @if ($scans->isNotEmpty())
@@ -32,8 +33,10 @@
     @endif
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="mt-4 flex flex-col gap-4" data-controller="save-bar">
         @csrf @method('put')
-        <div class="list-cap">Продавец, собственник по СТС</div>
-        <x-billing.passport-fields :party="$contract->seller" prefix="seller"/>
+        @if ($deal->isDkp())
+            <div class="list-cap">Продавец, собственник по СТС</div>
+            <x-billing.passport-fields :party="$contract->seller" prefix="seller"/>
+        @endif
         <div class="list-cap">Транспортное средство</div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             @foreach (DealContract::VEHICLE as $key => $label)

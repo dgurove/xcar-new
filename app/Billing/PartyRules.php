@@ -16,6 +16,10 @@ final class PartyRules
             $prefix.'.passport' => ['nullable', 'string', 'max:60'], $prefix.'.passport_issued' => ['nullable', 'string', 'max:255'],
             $prefix.'.passport_issued_at' => ['nullable', 'date', 'before_or_equal:today'], $prefix.'.passport_code' => ['nullable', 'string', 'max:10'],
             $prefix.'.reg_address' => ['nullable', 'string', 'max:255'],
+            // Покупатель-организация (`x-billing.buyer-fields`).
+            $prefix.'.kind' => ['nullable', Rule::in(['person', 'company'])], $prefix.'.inn' => ['nullable', 'digits_between:10,12'],
+            $prefix.'.kpp' => ['nullable', 'digits:9'], $prefix.'.ogrn' => ['nullable', 'digits_between:13,15'],
+            $prefix.'.legal_address' => ['nullable', 'string', 'max:255'], $prefix.'.director' => ['nullable', 'string', 'max:120'],
         ];
     }
 

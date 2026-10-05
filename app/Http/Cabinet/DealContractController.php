@@ -17,9 +17,9 @@ class DealContractController
 {
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
-        abort_unless($deal->buyer_id === $request->user()->id && $deal->isDkp() && $deal->isActive(), 404);
+        abort_unless($deal->buyer_id === $request->user()->id && $deal->hasContract() && $deal->isActive(), 404);
         $new = $request->input('buyer_id') === 'new';
-        $rules = ['buyer_id' => ['nullable', 'string']];
+        $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager']];
         if ($new) {
             $rules += ['new_buyer.phone' => ['nullable', 'string', 'max:20']];
         }
@@ -33,12 +33,16 @@ class DealContractController
         }
         $save(DealContract::for($deal), $data, $request->user());
 
-        return back()->with('toast', $new ? 'Покупатель добавлен' : 'Сохранено');
+        return back()->with('toast', match (true) {
+            $new => 'Покупатель добавлен',
+            $deal->isPrime() && $deal->fresh()->hasManagerInvoice() => 'Сохранено, счёт выставлен',
+            default => 'Сохранено',
+        });
     }
 
     public function show(Request $request, Deal $deal)
     {
-        abort_unless($deal->buyer_id === $request->user()->id && $deal->isDkp(), 404);
+        abort_unless($deal->buyer_id === $request->user()->id && $deal->hasContract(), 404);
 
         return Document::document($deal, str_ends_with($request->path(), '.pdf'));
     }

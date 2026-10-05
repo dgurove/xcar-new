@@ -60,6 +60,16 @@ class Party extends Model
         return filled($this->name) && $this->birth_at && filled($this->passport) && filled($this->passport_issued) && $this->passport_issued_at && filled($this->reg_address);
     }
 
+    /** Сторона договора внесена: у физлица — паспорт, у организации и ИП — название, ИНН, адрес (у юрлица и руководитель). */
+    public function readyForContract(): bool
+    {
+        return match ($this->kind) {
+            PartyKind::Company => filled($this->name) && filled($this->inn) && filled($this->legal_address) && filled($this->director),
+            PartyKind::Entrepreneur => filled($this->name) && filled($this->inn) && filled($this->legal_address),
+            default => $this->hasPassport(),
+        };
+    }
+
     /** Реквизитов для счёта не хватает — печатается с прочерком. */
     public function bankMissing(): bool
     {

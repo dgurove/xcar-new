@@ -197,11 +197,18 @@ final class Notify
             return;
         }
         $deal = $e->deal ?? $e->offer->deal()->with('buyer')->first();
-        // Дошли до оплаты без счёта — ход наш (`EnterStage`): сотрудникам и владельцу «Выставите счёт».
-        if ($deal?->isActive() && Position::where('offer_id', $e->offer->id)->where('track', Track::Sale)->with('stage.exits')->first()?->awaitsInvoice()) {
+        // Дошли до оплаты без счёта (`EnterStage`): счета ставятся сами, так что ход наш — только когда гаражной не вписана
+        // доля или счёт не встал (сотрудникам и владельцу — словами того, что нужно); ПРАЙМ без покупателя — ход менеджера.
+        $position = $deal?->isActive() ? Position::where('offer_id', $e->offer->id)->where('track', Track::Sale)->with('stage.exits')->first() : null;
+        if ($position?->awaitsInvoice()) {
             $deal->setRelation('offer', $e->offer)->loadMissing('buyer');
-            Notification::send($this->staff(), new InvoiceNeededNotice($deal));
-            NotifyOwner::dispatch(new InvoiceNeededMessage($deal));
+            $gap = $position->gap();
+            Notification::send($this->staff(), new InvoiceNeededNotice($deal, $gap));
+            NotifyOwner::dispatch(new InvoiceNeededMessage($deal, $gap));
+        } elseif ($position && $e->to->isPayStep() && $deal->buyer && $deal->invoiceGap() === 'buyer') {
+            $deal->setRelation('offer', $e->offer)->buyer->notify(new BuyerNeededNotice($deal));
+
+            return;
         }
         // Шаг сдвинуло письмо страховой — менеджеру пишет «Страховая ответила» с этим ходом (`AdvanceOnReply`).
         if (! $deal?->buyer || $e->letter) {

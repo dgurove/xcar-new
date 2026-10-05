@@ -22,14 +22,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'owner_price', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at'])]
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at'])]
 class Deal extends Model
 {
     use HidesDemo;
 
     protected function casts(): array
     {
-        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'owner_price' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime'];
+        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -57,10 +57,16 @@ class Deal extends Model
         return $this->hasOne(Requirement::class)->whereNull('done_at')->latestOfMany();
     }
 
-    /** Договор купли-продажи страхователя с покупателем менеджера — у сделки «страхователю по ДКП». */
+    /** Договор купли-продажи: собственника (ДКП) или ПРАЙМ с покупателем менеджера (`DealContract`). */
     public function contract(): HasOne
     {
         return $this->hasOne(DealContract::class);
+    }
+
+    /** Схема оплаты (`DealScheme`); у старых строк — ПРАЙМ по счёту. */
+    public function schemeOf(): DealScheme
+    {
+        return $this->scheme ?? DealScheme::Prime;
     }
 
     /**
@@ -69,25 +75,66 @@ class Deal extends Model
      */
     public function isDkp(): bool
     {
-        return $this->scheme === DealScheme::OwnerDkp;
+        return $this->schemeOf() === DealScheme::OwnerDkp;
     }
 
-    /** По ДКП — сколько покупатель отдаёт собственнику: своя сумма, а без неё закупочная. */
+    /** Покупатель (или менеджер) платит ПРАЙМ по счёту, ПРАЙМ — страховой (Совкомбанк; Альфа бывает). */
+    public function isPrime(): bool
+    {
+        return $this->schemeOf() === DealScheme::Prime;
+    }
+
+    /** Менеджер платит нам подбор по ссылке — у ДКП и «страховой напрямую»; гаражная — не по цене, а долей (`share`). */
+    public function paysSelection(): bool
+    {
+        return ! $this->isGarage() && $this->schemeOf()->paysSelection();
+    }
+
+    /** Гаражная «платит менеджер»: за машину — счёт ПРАЙМ на закупочную (у ПРАЙМ), наша доля — по ссылке. */
+    public function isGarageManager(): bool
+    {
+        return $this->garage_payer === GaragePayer::Manager;
+    }
+
+    /** Договор собираем мы: ДКП собственника или ПРАЙМ (в том числе с менеджером гаражной); «страховой» — нет. */
+    public function hasContract(): bool
+    {
+        return $this->isDkp() || ($this->isPrime() && (! $this->isGarage() || $this->isGarageManager()));
+    }
+
+    /** Сколько покупатель отдаёт не нам — собственнику по ДКП или страховой: своя сумма, а без неё закупочная. */
     public function ownerPrice(): ?int
     {
-        return $this->isDkp() ? ($this->owner_price ?? $this->cost) : null;
+        return $this->paysSelection() ? ($this->owner_price ?? $this->cost) : null;
     }
 
-    /** Взаимозачёт: закупочная больше того, что получает собственник, — страховая гасит разницей долг перед нами. */
+    /** Взаимозачёт: закупочная больше того, что получает собственник или страховая, — разницей гасится долг перед нами. */
     public function offset(): int
     {
-        return $this->isDkp() && $this->cost !== null ? max(0, $this->cost - (int) $this->ownerPrice()) : 0;
+        return $this->paysSelection() && $this->cost !== null ? max(0, $this->cost - (int) $this->ownerPrice()) : 0;
     }
 
-    /** Подбор по ДКП: цена подтверждения минус то, что отдают собственнику, — менеджер платит это нам (с вознаграждением). */
+    /** Подбор: цена подтверждения минус то, что отдают собственнику или страховой, — из этого и вознаграждение менеджера. */
     public function selectionBase(): ?int
     {
         return $this->amount === null || $this->ownerPrice() === null ? null : $this->amount - $this->ownerPrice();
+    }
+
+    /**
+     * Почему этапу оплаты нечем платить: `buyer` — ПРАЙМ, а менеджер ещё не указал, кому счёт (ход его); `share` —
+     * гаражной не вписана наша доля (ход наш); `invoice` — счёт не встал сам, выставить руками. Есть счёт — null.
+     */
+    public function invoiceGap(): ?string
+    {
+        if ($this->hasManagerInvoice()) {
+            return null;
+        }
+
+        return match (true) {
+            $this->isGarageManager() && ! $this->share => 'share',
+            $this->isPrime() && ! $this->isGarage() && ! $this->contract?->buyer_user_id => 'buyer',
+            default => 'invoice',
+        };
     }
 
     /** Живые счета по сделке в обе стороны, старые первыми. */
@@ -164,10 +211,16 @@ class Deal extends Model
         return $this->cost === null || $this->amount === null ? null : $this->amount - $this->cost;
     }
 
-    /** Что остаётся нам после вознаграждения менеджера; по ДКП — что менеджер платит нам за подбор (взаимозачёт внутри). */
+    /**
+     * Что остаётся нам: ПРАЙМ — разница минус вознаграждение менеджера; ДКП и страховой — подбор, который менеджер платит
+     * нам (взаимозачёт внутри); гаражная «платит менеджер» — наша доля.
+     */
     public function ours(): ?int
     {
-        $margin = $this->isDkp() ? $this->selectionBase() : $this->margin();
+        if ($this->isGarageManager()) {
+            return $this->share;
+        }
+        $margin = $this->paysSelection() ? $this->selectionBase() : $this->margin();
 
         return $margin === null ? null : $margin - (int) $this->commission;
     }
@@ -206,17 +259,14 @@ class Deal extends Model
     }
 
     /**
-     * Деньги сделки правятся: счетов нет — или живые только «Подбор ТС» по ДКП, за которые ещё не платили (зачёт
-     * удержанного вознаграждения — не оплата): их перевыставит `IssueSelectionInvoice`.
+     * Деньги сделки правятся, пока за наши счета не платили (зачёт удержанного вознаграждения — не оплата) и нет
+     * выплаты менеджеру: счета, что ставятся сами, перевыставит `SyncDealInvoices`.
      */
     public function moneyEditable(): bool
     {
-        if (! $this->isDkp()) {
-            return $this->commissionEditable();
-        }
-        $invoices = $this->invoices()->with('payments')->get();
+        $invoices = $this->invoices()->with(['payments', 'claims'])->get();
 
-        return $invoices->every(fn (Invoice $i) => $i->kind === ChargeKind::Selection && $i->direction === 'issued'
+        return $invoices->every(fn (Invoice $i) => $i->direction === 'issued' && $i->kind !== ChargeKind::Reward && $i->claims->isEmpty()
             && $i->payments->every(fn ($p) => $p->source === \App\Billing\PaymentSource::Offset));
     }
 

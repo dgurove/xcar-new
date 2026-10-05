@@ -31,8 +31,8 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Этап оплаты ждёт того, у кого ход на самом деле: без счёта — нас (выставить счёт), со счётом — менеджера
- * (оплатить). Владелец 05.10.2026: сделка Belgee X50 пять дней стояла «Ждём менеджера» в CRM и «ждём нас» у
+ * Этап оплаты ждёт того, у кого ход на самом деле: без счёта у ПРАЙМ — менеджера (указать покупателя, счёт встанет
+ * сам), со счётом — менеджера (оплатить). Владелец 05.10.2026: сделка Belgee X50 пять дней стояла «Ждём менеджера» в CRM и «ждём нас» у
  * менеджера, и никто ничего не делал. Ошибка молчалива и стоит сделки — поэтому тест.
  */
 class PayStepTurnTest extends TestCase
@@ -65,14 +65,15 @@ class PayStepTurnTest extends TestCase
         $position = Position::where('offer_id', $offer->id)->where('track', Track::Sale)->firstOrFail();
         $this->assertTrue($position->stage->isPayStep());
 
-        // Счёта нет — ход наш: без часов, без просьбы менеджеру, сотрудникам «Выставите счёт».
-        $this->assertSame(WaitsFor::Us, $position->waitsFor());
-        $this->assertTrue($position->awaitsInvoice());
+        // Счёта нет, а схема — ПРАЙМ по счёту: счёт встанет сам, когда менеджер укажет покупателя (05.10.2026). Ход его,
+        // без часов и без просьбы «Оплатите»; сотрудникам «Выставите счёт» не пишем.
+        $this->assertSame(WaitsFor::Manager, $position->waitsFor());
+        $this->assertFalse($position->awaitsInvoice());
         $this->assertNull($position->deadline_at);
         $this->assertFalse(Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->exists());
-        $this->assertTrue(Position::whereKey($position->id)->waiting(WaitsFor::Us)->exists());
-        $this->assertFalse(Position::whereKey($position->id)->waiting(WaitsFor::Manager)->exists());
-        Notification::assertSentTo($admin, InvoiceNeededNotice::class);
+        $this->assertTrue(Position::whereKey($position->id)->waiting(WaitsFor::Manager)->exists());
+        Notification::assertSentTo($manager, \App\Notifications\BuyerNeededNotice::class);
+        Notification::assertNotSentTo($admin, InvoiceNeededNotice::class);
 
         // Выставили — ход менеджера: часы этапа от сейчас, просьба «Оплатите счёт».
         $party = Party::create(['kind' => PartyKind::Person, 'name' => 'Менеджер']);
@@ -84,10 +85,10 @@ class PayStepTurnTest extends TestCase
         $this->assertTrue($position->deadline_at->isFuture());
         $this->assertTrue(Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->exists());
 
-        // Аннулировали единственный счёт — снова наш ход, просьбы нет.
+        // Аннулировали единственный счёт — снова ход менеджера «Укажите покупателя», просьбы нет.
         app(VoidInvoice::class)($invoice->fresh(), $admin);
         $position->refresh();
-        $this->assertTrue($position->awaitsInvoice());
+        $this->assertSame(WaitsFor::Manager, $position->waits_for);
         $this->assertNull($position->deadline_at);
         $this->assertFalse(Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->exists());
     }

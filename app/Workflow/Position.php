@@ -57,6 +57,20 @@ class Position extends Model
         return $this->waits_for === WaitsFor::Us && $this->stage->isPayStep();
     }
 
+    /**
+     * Чего не хватает этапу оплаты, когда ход наш: `share` — гаражной не вписана наша доля, `invoice` — счёт не встал
+     * сам (`Deal::invoiceGap`). «Укажите покупателя» у ПРАЙМ — ход менеджера, сюда не попадает.
+     */
+    public function gap(): ?string
+    {
+        if (! $this->awaitsInvoice()) {
+            return null;
+        }
+        $deal = \App\Offers\Deal::where('offer_id', $this->offer_id)->where('state', \App\Offers\DealState::Active)->first();
+
+        return $deal?->invoiceGap() === 'share' ? 'share' : 'invoice';
+    }
+
     /** Позиции, где ход за этим участником, — тем же правилом, что `waitsFor()`, в SQL. */
     public function scopeWaiting($q, WaitsFor $who)
     {
