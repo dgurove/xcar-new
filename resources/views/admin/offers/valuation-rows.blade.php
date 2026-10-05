@@ -39,10 +39,9 @@
                     $take = in_array($status, ['fill', 'check'], true);
                     $valueChanges = (int) $o->value !== (int) $item['amount'];
                     $floorChanges = (int) $o->floor_price !== (int) $item['floor'];
-                    // Спор «Оставить / Перезаписать» — в строке оценочной, а если спорит одна закупочная — в её строке.
+                    // Спорное поле — зачёркнуто прежнее, решение — переключателем в шапке.
                     $disputeValue = $conflict && $item['value_differs'];
                     $disputeFloor = $conflict && ($item['value_differs'] || $item['floor_differs']);
-                    $segmentOn = $conflict ? ($item['value_differs'] ? 'value' : 'floor') : null;
                 @endphp
                 <div @class(['valuation-card valuation-row', 'is-keep' => $conflict]) data-valuation-row data-value="{{ $item['amount'] }}" data-floor="{{ $item['floor'] }}"
                      @if ($conflict) data-conflict @if ($item['value_differs']) data-value-differs @endif @endif
@@ -54,7 +53,9 @@
                             <span class="block text-sm text-ink-muted"><span class="nums">{{ $item['ref'] }}</span>@if ($status === 'dispute')<span class="ml-2 text-urgent">номер в тексте дважды</span>@endif</span>
                         </span>
                         @if ($take)<label class="check shrink-0" aria-label="Взять"><input type="checkbox" name="offers[]" value="{{ $o->id }}" @checked($status === 'fill') data-action="valuation#count"></label>@endif
-                        @if ($conflict)<input type="hidden" name="offers[]" value="{{ $o->id }}">@endif
+                        {{-- Спор по сумме — переключателем справа в шапке, на месте галки: в строке суммы он раздувал её
+                             высоту, и между оценочной и закупочной вставала пустая строка (владелец 05.10.2026). --}}
+                        @if ($conflict)<input type="hidden" name="offers[]" value="{{ $o->id }}">@include('admin.offers.valuation-keep', ['offer' => $o])@endif
                     </div>
                     <dl class="valuation-fields">
                         @if ($valueChanges && $status !== 'dispute')
@@ -62,7 +63,6 @@
                             <dd @if ($disputeValue) data-disputed @endif>
                                 @if ($o->value)<s class="valuation-old nums">{{ Money::nums($o->value) }}</s>@endif
                                 <span class="valuation-new nums" data-v>{{ Money::nums($item['amount']) }}</span>
-                                @if ($segmentOn === 'value')@include('admin.offers.valuation-keep', ['offer' => $o])@endif
                             </dd>
                         @endif
                         @if ($floorChanges && $status !== 'dispute')
@@ -70,7 +70,6 @@
                             <dd @if ($disputeFloor) data-disputed @endif>
                                 @if ($o->floor_price)<s class="valuation-old nums">{{ Money::nums($o->floor_price) }}</s>@endif
                                 <span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span>
-                                @if ($segmentOn === 'floor')@include('admin.offers.valuation-keep', ['offer' => $o])@endif
                             </dd>
                         @endif
                         @if ($status === 'check')

@@ -834,23 +834,27 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .valuation-bar { @apply flex flex-none gap-2 pt-3; }
   /* Карточка изменений на машину: шапка (ТС, номер убытка, галка) и строки «поле — было → станет». Новое — лаймом,
      заменяемое — зачёркнутым; «Оставить» в споре по сумме меняет их местами (`is-keep` на карточке). */
-  .valuation-card { @apply px-4 py-3; }
-  .valuation-card-head { @apply flex items-start gap-3; }
-  .valuation-fields { @apply mt-2 grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 text-sm; }
+  .valuation-card { @apply px-4 py-2.5; }
+  .valuation-card-head { @apply flex items-start gap-3 leading-snug; }
+  .valuation-fields { @apply mt-1.5 grid grid-cols-[6.5rem_minmax(0,1fr)] items-baseline gap-x-3 gap-y-0.5 text-sm leading-snug; }
   .valuation-fields dt { @apply text-ink-muted; }
   .valuation-fields dd { @apply flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1; }
   .valuation-old { @apply text-ink-dim line-through; }
   .valuation-new { @apply text-accent-text; }
   .valuation-card.is-keep dd[data-disputed] .valuation-old { @apply text-ink no-underline; }
   .valuation-card.is-keep dd[data-disputed] .valuation-new { @apply text-ink-dim line-through; }
-  .valuation-choice { @apply ml-auto; }
+  .valuation-choice { @apply shrink-0 p-0.5; }
   .valuation-choice label { @apply min-h-7 px-2.5 text-xs; }
   .valuation-input input, input.valuation-input { @apply w-full max-w-[18rem]; }
   .valuation-input .field { @apply m-0; }
   .valuation-input::placeholder, .valuation-input input::placeholder { text-transform: none; }
   @media (max-width: 639.98px) {
     .valuation-fields { @apply grid-cols-[5.5rem_minmax(0,1fr)]; }
-    .valuation-choice { @apply w-full; }
+    /* Телефон: переключатель спора — узкой строкой под номером, название не съедает. */
+    .valuation-card-head { @apply flex-wrap gap-y-1.5; }
+    .valuation-card-head .valuation-choice { @apply w-full; }
+    .valuation-choice label { @apply min-h-6; }
+    .valuation-bar .btn { @apply whitespace-normal text-center leading-tight; }
   }
   .valuation-group > summary.list-head { @apply flex items-baseline gap-3; }
   .valuation-group > summary .facet-all { @apply ml-auto; }
