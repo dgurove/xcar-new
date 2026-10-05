@@ -2,72 +2,95 @@
     use App\Offers\CommissionState;
     use App\Offers\DealState;
     $feeState = $deal->commissionState();
-    // Ждущие оплаты счета — в карточке шага (`cabinet.deals.step`), оплаченные и аннулированные — отдельной карточкой ниже пути.
+    // Ждущие оплаты счета — в «Расчёте» справа, оплаченные и аннулированные — карточкой «Счета» ниже пути.
     $pastInvoices = $invoices->reject(fn ($i) => $i->state === \App\Billing\InvoiceState::Issued);
+    // Файлы из ответов страховой стоят в задаче под своим письмом — в «Документах» второй раз их нет.
+    $replyIds = ($replies ?? collect())->pluck('id')->all();
+    $docs = \App\Offers\OfferFiles::forManagers($offer, auth()->user())->reject(fn ($m) => in_array($m->getCustomProperty('letter'), $replyIds));
+    $photos = $offer->visiblePhotos();
 @endphp
 <x-ui.cabinet :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
-    {{-- Страница ТС, как в гараже (`x-offer.object`): кадры листаются, характеристики с полным VIN, документы, открытые
-         менеджеру; справа сверху — сумма, номера и вознаграждение; под кадрами — шаг сделки, счета и ответы. --}}
-    <div data-deal-offer="{{ $offer->number }}">
-    <x-offer.object :offer="$offer" :photos="$offer->visiblePhotos()" :docs="\App\Offers\OfferFiles::forManagers($offer, auth()->user())">
-        <x-slot:aside>
-            @if (! $deal->isGarage())
-                @include('cabinet.deals.money')
-            @else
-            <div class="box">
-                <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ \App\Support\Money::rub($deal->amount) }}</a>
-                @if ($deal->state !== DealState::Active)<x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="mt-2">{{ mb_strtolower($deal->state->label()) }}</x-ui.state>@endif
-                <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
-                    @foreach (['Предложение' => $offer->number, 'ДЛ' => $offer->leaseRef()] as $label => $value)
-                        @if ($value)<div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal"><x-ui.copy-code :value="(string) $value"/></dd></div>@endif
-                    @endforeach
-                    {{-- Вознаграждение открывается со счёта (до него менеджер видит только цену) — фактом карточки, ссылкой на расчёт. --}}
-                    @if ($feeState !== CommissionState::Hidden)
-                        <div class="col-span-2 min-w-0"><dt class="text-sm text-ink-dim">Агентское вознаграждение</dt><dd class="mt-0.5 flex flex-wrap items-baseline justify-between gap-2"><a href="/account/money/deals/{{ $deal->id }}" class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</a><x-ui.state :tone="$feeState->tone()">{{ mb_strtolower($feeState->label()) }}</x-ui.state></dd></div>
-                    @endif
-                </dl>
-            </div>
+    {{-- Сделка — не объявление (05.10.2026, владелец): первым делом задача, справа расчёт, кадры — плиткой в самом низу
+         колонки. ПК: слева работа (задача, покупатель, путь, счета), справа липко расчёт, характеристики, документы, фото.
+         Телефон — одна колонка: задача, расчёт, покупатель, «Написать», путь, характеристики, документы, фото. --}}
+    <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
+        <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
+            <div class="order-1 min-w-0">@include('cabinet.deals.step')</div>
+            @if ($deal->hasContract())<div class="order-3 min-w-0">@include('cabinet.deals.contract')</div>@endif
+            @include('cabinet.deals.path', ['class' => 'order-5'])
+
+            @if ($pastInvoices->isNotEmpty())
+                {{-- Счета и ответы — группами строк, как в «Настройках», а не списком внутри коробки. --}}
+                <section class="order-6 min-w-0">
+                    <h2 class="list-head">Счета</h2>
+                    <div class="list">
+                        @foreach ($pastInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@endforeach
+                    </div>
+                </section>
             @endif
-            @if ($offer->chatOpenFor(auth()->user()))
-                <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet w-full"><x-ui.icon name="chat" class="size-5"/> Написать по сделке</a>
-            @endif
-        </x-slot:aside>
 
-        @include('cabinet.deals.step')
-
-        @if ($deal->hasContract())@include('cabinet.deals.contract')@endif
-
-        @if ($pastInvoices->isNotEmpty())
-            {{-- Счета и ответы — группами строк, как в «Настройках», а не списком внутри коробки. --}}
-            <section>
-                <h2 class="list-head">Счета</h2>
-                <div class="list">
-                    @foreach ($pastInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@endforeach
-                </div>
-            </section>
-        @endif
-
-        @if ($deal->requirements->whereNotNull('done_at')->isNotEmpty())
-            <section>
-                <h2 class="list-head">Ваши ответы</h2>
-                <div class="list">
-                    @foreach ($deal->requirements->whereNotNull('done_at') as $req)
-                        @if (!empty($req->answer['exit']))
-                            <div class="px-4 py-3">
-                                <div class="flex items-baseline justify-between gap-3">
-                                    <span class="min-w-0 break-words">{{ $req->title }}: «{{ $req->answer['exit'] }}»@if (!empty($req->answer['fields'])), {{ implode(', ', $req->answer['fields']) }}@endif</span>
-                                    <span class="nums shrink-0 text-sm font-normal text-ink-dim">{{ $req->done_at->translatedFormat('j M') }}</span>
+            @if ($deal->requirements->whereNotNull('done_at')->isNotEmpty())
+                <section class="order-6 min-w-0">
+                    <h2 class="list-head">Ваши ответы</h2>
+                    <div class="list">
+                        @foreach ($deal->requirements->whereNotNull('done_at') as $req)
+                            @if (!empty($req->answer['exit']))
+                                <div class="px-4 py-3">
+                                    <div class="flex items-baseline justify-between gap-3">
+                                        <span class="min-w-0 break-words">{{ $req->title }}: «{{ $req->answer['exit'] }}»@if (!empty($req->answer['fields'])), {{ implode(', ', $req->answer['fields']) }}@endif</span>
+                                        <span class="nums shrink-0 text-sm font-normal text-ink-dim">{{ $req->done_at->translatedFormat('j M') }}</span>
+                                    </div>
+                                    {{-- Приложенное остаётся видно и после ответа. --}}
+                                    @foreach ($req->getMedia('files') as $media)
+                                        <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" class="mt-2"/>
+                                    @endforeach
                                 </div>
-                                {{-- Приложенное остаётся видно и после ответа. --}}
-                                @foreach ($req->getMedia('files') as $media)
-                                    <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" class="mt-2"/>
-                                @endforeach
-                            </div>
-                        @endif
-                    @endforeach
-                </div>
-            </section>
-        @endif
-    </x-offer.object>
+                            @endif
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+        </section>
+
+        <aside class="contents lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6 lg:self-start">
+            <div class="order-2 min-w-0">
+                @if (! $deal->isGarage())
+                    @include('cabinet.deals.money')
+                @else
+                    <div class="box">
+                        <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ \App\Support\Money::rub($deal->amount) }}</a>
+                        @if ($deal->state !== DealState::Active)<x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="mt-2">{{ mb_strtolower($deal->state->label()) }}</x-ui.state>@endif
+                        <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
+                            @foreach (['Предложение' => $offer->number, 'ДЛ' => $offer->leaseRef()] as $label => $value)
+                                @if ($value)<div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal"><x-ui.copy-code :value="(string) $value"/></dd></div>@endif
+                            @endforeach
+                            @if ($feeState !== CommissionState::Hidden)
+                                <div class="col-span-2 min-w-0"><dt class="text-sm text-ink-dim">Агентское вознаграждение</dt><dd class="mt-0.5 flex flex-wrap items-baseline justify-between gap-2"><a href="/account/money/deals/{{ $deal->id }}" class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</a><x-ui.state :tone="$feeState->tone()">{{ mb_strtolower($feeState->label()) }}</x-ui.state></dd></div>
+                            @endif
+                        </dl>
+                    </div>
+                @endif
+            </div>
+            @if ($offer->chatOpenFor(auth()->user()))
+                <a href="/account/chats/offer/{{ $offer->number }}" class="order-4 btn btn-quiet w-full"><x-ui.icon name="chat" class="size-5"/> Написать по сделке</a>
+            @endif
+            <x-offer.facts :offer="$offer" :full="true" class="order-7"/>
+            @if ($docs->isNotEmpty())
+                <section class="order-8 min-w-0">
+                    <h2 class="list-head lg:pt-0">Документы</h2>
+                    <div class="flex flex-col">
+                        @foreach ($docs as $media)
+                            <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}"/>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+            @if ($photos->isNotEmpty())
+                <section class="order-9 min-w-0">
+                    <h2 class="list-head lg:pt-0">Фото <span class="nums">{{ $photos->count() }}</span></h2>
+                    <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" tiles/>
+                </section>
+            @endif
+        </aside>
     </div>
 </x-ui.cabinet>

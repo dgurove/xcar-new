@@ -1,7 +1,9 @@
 {{-- Покупатель для договора у менеджера (05.10.2026): у ДКП — с кем подписывает собственник, у ПРАЙМ — кому счёт и ДКП
-     ПРАЙМ. Свой покупатель из «Покупателей», сам менеджер или новый; физлицо с паспортом или организация — данных нет,
-     поля прямо тут. У ПРАЙМ — кто платит по счёту: покупатель или менеджер за вычетом своего вознаграждения. Счёт и
-     договор собираются сами (`SaveDealContract` → `SyncDealInvoices`). Пригласить по ссылке — его приглашения. --}}
+     ПРАЙМ. На странице — одна строка (кто, есть ли данные), выбор и данные — шторками, как в приложении, а не форма
+     паспорта во весь экран. «Покупатель»: «Я сам» и свои покупатели строками с галкой (нажатие сохраняет), новый — формой
+     внизу, «Пригласить по ссылке». Данных для договора нет — строка открывает «Данные для договора». У ПРАЙМ — кто платит
+     по счёту: покупатель или менеджер за вычетом своего вознаграждения. Счёт и договор собираются сами
+     (`SaveDealContract` → `SyncDealInvoices`). Шторку выбора открывает и задача («Укажите покупателя», событие `buyer:open`). --}}
 @php
     $contract = \App\Offers\DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
     $buyer = $contract->buyer;
@@ -11,54 +13,87 @@
     $mine = $me->buyers()->orderBy('name')->get(['id', 'name']);
     $prime = $deal->isPrime();
     $editable = $deal->isActive();
-    $options = ['me' => 'Я сам'] + $mine->pluck('name', 'id')->all();
+    $current = $isMe ? 'me' : $buyer?->id;
+    // Ошибки формы открывают ту шторку, откуда она ушла: поля у новой и у данных одни (`buyer.*`), различает `buyer_id`.
+    $newErrors = $errors->any() && old('buyer_id') === 'new';
+    $dataErrors = $errors->any() && ! old('buyer_id') && ! old('payer');
 @endphp
-<section class="box" id="dkp-buyer">
-    <h2 class="box-title">{{ $prime ? 'Покупатель: счёт и ДКП' : 'Покупатель по ДКП' }}</h2>
-    @if ($buyer)
-        <div class="list mt-3">
-            <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" class="row">
-                <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? 'Я сам' : ($buyer->party?->name ?: $buyer->name) }}</span>
-                    <span class="row-sub">@if ($ready)<span class="text-open">данные есть</span>@else<span class="text-urgent">нужны данные для договора</span>@endif</span></span>
-                <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
-            </a>
-        </div>
-        @if ($prime && ! $isMe && $editable)
-            {{-- Кто платит по счёту ПРАЙМ: покупатель (вознаграждение выплатим) или сам менеджер за вычетом своего. --}}
-            <form method="post" action="/deals/{{ $deal->id }}/contract" class="mt-3 flex flex-wrap items-center gap-2" data-controller="autosubmit">
-                @csrf @method('put')
-                <span class="text-sm text-ink-muted">Платит по счёту</span>
-                <label class="choice"><input type="radio" name="payer" value="buyer" @checked(! $contract->managerPays()) data-action="change->autosubmit#submit"><span>покупатель</span></label>
-                <label class="choice"><input type="radio" name="payer" value="manager" @checked($contract->managerPays()) data-action="change->autosubmit#submit"><span>я</span></label>
-            </form>
-        @endif
-    @endif
-    @if ($editable)
-        @if ($buyer && ! $ready)
-            <form method="post" action="/deals/{{ $deal->id }}/contract" class="mt-4 flex flex-col gap-3">
-                @csrf @method('put')
-                <x-billing.buyer-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" key="buyer-now"/>
-                <x-ui.button block>Сохранить</x-ui.button>
-            </form>
-        @endif
-        <details class="mt-4" @if (! $buyer || $errors->hasAny(['buyer_id', 'buyer.name', 'new_buyer.phone'])) open @endif>
-            <summary class="chip">{{ $buyer ? 'Другой покупатель' : 'Выбрать покупателя' }}</summary>
-            <div class="mt-3 flex flex-col gap-4">
-                <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3">
+<section id="dkp-buyer">
+    <h2 class="list-head">{{ $prime ? 'Покупатель: счёт и ДКП' : 'Покупатель по ДКП' }}</h2>
+    <div class="list">
+        @if ($buyer)
+            @if ($ready || ! $editable)
+                <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" class="row">
+                    <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? 'Я сам' : ($buyer->party?->name ?: $buyer->name) }}</span>
+                        <span class="row-sub">@if ($ready)<span class="text-open">данные есть</span>@else<span class="text-urgent">нужны данные для договора</span>@endif</span></span>
+                    <x-ui.chevron/>
+                </a>
+            @else
+                <div data-controller="sheet" class="contents">
+                    <button type="button" class="row w-full text-left" data-action="sheet#open">
+                        <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? 'Я сам' : ($buyer->party?->name ?: $buyer->name) }}</span>
+                            <span class="row-sub text-urgent">нужны данные для договора</span></span>
+                        <x-ui.chevron/>
+                    </button>
+                    <x-ui.sheet id="deal-buyer-data" title="Данные для договора" :open="$dataErrors">
+                        <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-4">
+                            @csrf @method('put')
+                            <x-billing.buyer-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" key="buyer-now"/>
+                            <x-ui.button block>Сохранить</x-ui.button>
+                        </form>
+                    </x-ui.sheet>
+                </div>
+            @endif
+            @if ($prime && ! $isMe && $editable)
+                {{-- Кто платит по счёту ПРАЙМ: покупатель (вознаграждение выплатим) или сам менеджер за вычетом своего. --}}
+                <form method="post" action="/deals/{{ $deal->id }}/contract" class="row flex-wrap" data-controller="autosubmit">
                     @csrf @method('put')
-                    <x-ui.field name="buyer_id" label="Покупатель" :options="$options" :value="$isMe ? 'me' : $buyer?->id"/>
-                    <x-ui.button block variant="secondary">Выбрать</x-ui.button>
+                    <span class="min-w-0 flex-1">Платит по счёту</span>
+                    <span class="flex gap-1.5">
+                        <label class="choice"><input type="radio" name="payer" value="buyer" @checked(! $contract->managerPays()) data-action="change->autosubmit#submit"><span>покупатель</span></label>
+                        <label class="choice"><input type="radio" name="payer" value="manager" @checked($contract->managerPays()) data-action="change->autosubmit#submit"><span>я</span></label>
+                    </span>
                 </form>
-                <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3">
-                    @csrf @method('put')
-                    <input type="hidden" name="buyer_id" value="new">
-                    <div class="list-cap !px-0">Новый покупатель</div>
-                    <x-ui.field name="new_buyer[phone]" label="Телефон" type="tel"/>
-                    <x-billing.buyer-fields key="new-buyer"/>
-                    <x-ui.button block>Добавить покупателя</x-ui.button>
-                </form>
-                <a href="/account/invites" class="chip self-start">Пригласить по ссылке</a>
+            @endif
+        @endif
+        @if ($editable)
+            <div data-controller="sheet" data-action="buyer:open@window->sheet#open" class="contents">
+                <button type="button" class="row w-full text-left" data-action="sheet#open">
+                    <span @class(['min-w-0 flex-1', 'font-medium text-accent-text' => ! $buyer])>{{ $buyer ? 'Другой покупатель' : 'Выбрать покупателя' }}</span>
+                    <x-ui.chevron/>
+                </button>
+                <x-ui.sheet id="deal-buyer" title="Покупатель" :open="$newErrors || $errors->has('buyer_id')">
+                    <div class="flex flex-col gap-4">
+                        <form method="post" action="/deals/{{ $deal->id }}/contract" data-controller="autosubmit">
+                            @csrf @method('put')
+                            <div class="list">
+                                <label class="row row-check">
+                                    <span class="min-w-0 flex-1">Я сам</span>
+                                    <span class="check"><input type="radio" name="buyer_id" value="me" @checked($current === 'me') data-action="change->autosubmit#submit"></span>
+                                </label>
+                                @foreach ($mine as $b)
+                                    <label class="row row-check">
+                                        <span class="min-w-0 flex-1 break-words">{{ $b->name }}</span>
+                                        <span class="check"><input type="radio" name="buyer_id" value="{{ $b->id }}" @checked($current === $b->id) data-action="change->autosubmit#submit"></span>
+                                    </label>
+                                @endforeach
+                                <a href="/account/invites" class="row"><span class="min-w-0 flex-1">Пригласить по ссылке</span><x-ui.chevron/></a>
+                            </div>
+                            @error('buyer_id')<p class="field-error mt-2">{{ $message }}</p>@enderror
+                        </form>
+                        <details @if ($newErrors) open @endif>
+                            <summary class="list-head cursor-pointer list-none">+ Новый покупатель</summary>
+                            <form method="post" action="/deals/{{ $deal->id }}/contract" class="mt-2 flex flex-col gap-3">
+                                @csrf @method('put')
+                                <input type="hidden" name="buyer_id" value="new">
+                                <x-ui.field name="new_buyer[phone]" label="Телефон" type="tel"/>
+                                <x-billing.buyer-fields key="new-buyer"/>
+                                <x-ui.button block>Добавить покупателя</x-ui.button>
+                            </form>
+                        </details>
+                    </div>
+                </x-ui.sheet>
             </div>
-        </details>
-    @endif
+        @endif
+    </div>
 </section>

@@ -1,9 +1,19 @@
 {{-- Кадры оффера: лента со snap, стрелки, счётчик, полноэкранный просмотр, миниатюры 4/6 в ряд
      (:thumbs="false" — миниатюры только от lg). strip — узкая лента кадров в карточке
-     строки таблицы: несколько в ряд, без стрелок, тап — во весь экран. --}}
-@props(['photos', 'alt' => '', 'thumbs' => true, 'strip' => false])
+     строки таблицы: несколько в ряд, без стрелок, тап — во весь экран. tiles — плитка 3 в ряд в сделке: шесть кадров,
+     на шестом «+N», остальные скрытыми ссылками той же ленты — просмотр листает все. --}}
+@props(['photos', 'alt' => '', 'thumbs' => true, 'strip' => false, 'tiles' => false])
 @if ($photos->isEmpty())
     @if ($strip)<div class="detail-strip-empty"><x-ui.car-blank/></div>@else<div class="flex aspect-[4/3] items-center justify-center rounded-(--radius-xl) bg-surface-3 text-ink-dim">Фотографий нет</div>@endif
+@elseif ($tiles)
+    <div class="photo-tiles" data-controller="gallery" data-gallery-target="strip">
+        @foreach ($photos as $i => $media)
+            <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" class="photo-tile" data-action="click->gallery#open" data-index="{{ $i }}" @if ($i > 5) hidden @endif>
+                @if ($i <= 5)<x-offer.photo :media="$media" sizes="120px" class="size-full object-cover"/>@endif
+                @if ($i === 5 && $photos->count() > 6)<span class="photo-tile-more nums">+{{ $photos->count() - 6 }}</span>@endif
+            </a>
+        @endforeach
+    </div>
 @elseif ($strip)
     <div class="detail-strip" data-controller="gallery" data-gallery-target="strip">
         @foreach ($photos as $i => $media)

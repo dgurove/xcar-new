@@ -22,7 +22,7 @@
         @endif
 
         @if ($step && ! $staff)
-            @include('cabinet.deals.step', $step + ['ladder' => false])
+            @include('cabinet.deals.step', $step + ['withInvoices' => true])
             {{-- Гаражная «платит менеджер» у ПРАЙМ: ДКП ПРАЙМ с ним самим — его данные для договора тут же. --}}
             @if ($step['deal']->hasContract())@include('cabinet.deals.contract', ['deal' => $step['deal']])@endif
         @endif

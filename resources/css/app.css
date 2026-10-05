@@ -1776,6 +1776,22 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .detail-strip { @apply -mx-4 flex snap-x gap-1.5 overflow-x-auto px-4; scrollbar-width: none; }
   .detail-strip-frame { @apply h-20 w-[6.75rem] shrink-0 snap-start cursor-zoom-in overflow-hidden rounded-(--radius-m) bg-surface-3; }
   .detail-strip-empty { @apply h-20 w-[6.75rem] overflow-hidden rounded-(--radius-m) bg-surface-3; }
+  /* Кадры в сделке плиткой (05.10.2026, «сделка — не объявление»): 3 в ряд, на шестой «+N», остальные — скрытыми
+     ссылками той же ленты, просмотр листает все. */
+  .photo-tiles { @apply grid grid-cols-3 gap-1.5; }
+  .photo-tile { @apply relative aspect-square cursor-zoom-in overflow-hidden rounded-(--radius-s) bg-surface-3; }
+  .photo-tile img { @apply size-full object-cover; }
+  .photo-tile-more { @apply absolute inset-0 flex items-center justify-center bg-black/55 text-lg font-medium text-white; }
+  /* Задача сделки: получение фактами одной строкой, ответы страховой подложками. */
+  .handover-facts { @apply flex flex-wrap items-center gap-x-4 gap-y-1.5; }
+  .handover-facts > span { @apply inline-flex min-w-0 items-center gap-1.5; }
+  .handover-facts > span > svg, .handover-facts > .place > svg { @apply size-4 shrink-0 text-ink-dim; }
+  .reply { @apply min-w-0 rounded-(--radius-m) bg-surface-2 px-4 py-3; }
+  .reply p a { @apply text-accent-text; }
+  /* Телефон — капсулой (контакт получения и телефон в ответе): нажатие звонит, с кем связаться, видно сразу. */
+  .call, .reply p a[href^="tel:"] { @apply inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 font-medium text-accent-text; }
+  .reply-more > summary { @apply cursor-pointer list-none; }
+  .reply-more > summary::-webkit-details-marker { display: none; }
   .toasts { @apply pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4;
     top: calc(.75rem + env(safe-area-inset-top)); }
   .toast { @apply pointer-events-auto rounded-(--radius-l) bg-chrome px-4 py-3 text-sm text-white shadow-(--shadow-drop); animation: toast-in var(--dur-slow) var(--ease-spring) both; touch-action: pan-x; }

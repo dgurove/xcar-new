@@ -2,7 +2,7 @@
      экран), справа липко деньги, характеристики и документы; под кадрами — шаг, путь, расходы и описание.
      Телефон: кадры, деньги, работа, характеристики, документы. Документы — строками, открываются шторкой. --}}
 @props(['offer', 'photos', 'docs' => collect(), 'full' => true])
-<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
+<div class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
     {{-- Пустой блок не рисуется: без кадров нет и заглушки «Фотографий нет» на пол-экрана. --}}
     @if ($photos->isNotEmpty())
         <div class="order-1 min-w-0 lg:col-start-1 lg:row-start-1">
