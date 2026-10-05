@@ -12,8 +12,13 @@
     @error('car')<x-ui.flash tone="danger" class="mb-4">{{ $message }}</x-ui.flash>@enderror
 
     <x-offer.object :offer="$offer" :photos="$photos" :docs="$docs">
-        @if ($money)
-            <x-slot:aside>@include('garage.cars.money')</x-slot:aside>
+        @php $chat = ! $staff && $offer->chatOpenFor($user); @endphp
+        @if ($money || $chat)
+            <x-slot:aside>
+                @if ($money)@include('garage.cars.money')@endif
+                {{-- Вопросы по машине — тем же чатом, что и до гаража: на всех этапах до продажи. --}}
+                @if ($chat)<a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet w-full"><x-ui.icon name="chat" class="size-5"/> Написать</a>@endif
+            </x-slot:aside>
         @endif
 
         @if ($step && ! $staff)

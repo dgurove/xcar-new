@@ -78,7 +78,7 @@ class ChatController
 
     private function list(User $me)
     {
-        return Chat::where(fn ($w) => $w->where('user_id', $me->id)->orWhere('manager_id', $me->id)->when($me->isAdmin(), fn ($w) => $w->orWhereNull('manager_id')))
+        return Chat::where('messages_count', '>', 0)->where(fn ($w) => $w->where('user_id', $me->id)->orWhere('manager_id', $me->id)->when($me->isAdmin(), fn ($w) => $w->orWhereNull('manager_id')))
             ->withLast()->orderByDesc('last_message_at')->paginate(30)->withPath('/account/chats');
     }
 }

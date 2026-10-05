@@ -45,6 +45,17 @@
                                     </div>
                                 </div>
                             @endif
+                            {{-- Везут к нему в гараж: сам или мы (05.10.2026); выбрано, кто уже вывозит. --}}
+                            @if ($offer->pickupChoosable())
+                                @php $byBuyer = ! $offer->evacuator_id || $offer->evacuator_id === $bid->user_id; @endphp
+                                <div class="flex flex-col gap-1.5">
+                                    <span class="field-label">Везёт в гараж</span>
+                                    <div class="flex flex-wrap gap-2">
+                                        <label class="choice"><input type="radio" name="pickup" value="manager" @checked(old('pickup', $byBuyer ? 'manager' : 'us') === 'manager')><span>{{ $bid->user->shortName() }}</span></label>
+                                        <label class="choice"><input type="radio" name="pickup" value="us" @checked(old('pickup', $byBuyer ? 'manager' : 'us') === 'us')><span>Мы</span></label>
+                                    </div>
+                                </div>
+                            @endif
                             @if ($give)<p class="text-sm text-ink-muted">Сделка с {{ $offer->deal->buyer?->shortName() }} отменится</p>@endif
                             <x-ui.button type="submit" variant="primary" block>{{ $give ? 'Отдать' : 'В гараж' }}</x-ui.button>
                         </form>

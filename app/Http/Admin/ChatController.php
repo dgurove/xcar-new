@@ -3,13 +3,16 @@
 namespace App\Http\Admin;
 
 use App\Chats\Actions\MarkChatRead;
+use App\Chats\Actions\OpenChat;
 use App\Chats\Chat;
 use App\Chats\Presence;
 use App\Http\Site\ChatController as Feed;
+use App\Offers\Offer;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Users\User;
 use Illuminate\Http\Request;
 
 /**
@@ -41,6 +44,18 @@ class ChatController
         ]);
     }
 
+    /**
+     * «Написать менеджеру» из карточки гаража, сделки или вывоза (05.10.2026): площадка пишет первой тому, кто с машиной
+     * работает. Чат по машине у пары один — есть, откроется он же.
+     */
+    public function start(Request $request, Offer $offer, User $user, OpenChat $open)
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        abort_unless($user->isManager() && ($offer->worksWith($user) || Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->exists()), 404);
+
+        return redirect('/work/chats/'.$open($offer, $user, greet: false)->id);
+    }
+
     /** Список по пресету и поиску из адреса; открытый чат его не меняет. */
     private function list(Request $request): array
     {
@@ -50,7 +65,8 @@ class ChatController
         $q = trim((string) $request->query('q'));
         $like = '%'.mb_strtolower($q).'%';
         // Лупа — по всем чатам, мимо пилюли и чипа.
-        $chats = Chat::withLast()->when($q === '', fn ($all) => $all
+        // Заведённый кнопкой «Написать» и брошенный без сообщения — не строка списка.
+        $chats = Chat::withLast()->where('messages_count', '>', 0)->when($q === '', fn ($all) => $all
             ->when($preset === 'buyers', fn ($c) => $c->whereNotNull('manager_id'), fn ($c) => $c->when($preset !== 'all', fn ($c) => $c->whereNull('manager_id')))
             ->when($preset === 'unread', fn ($c) => $c->where('unread_for_staff', '>', 0))
             ->when($preset === 'offers', fn ($c) => $c->whereNotNull('offer_id'))

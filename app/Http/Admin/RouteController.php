@@ -9,6 +9,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Slots;
 use App\Park\Actions\CloseRequest;
+use App\Users\User;
 use App\Workflow\Actions\DropRoute;
 use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\StepBack;
@@ -18,7 +19,6 @@ use App\Workflow\Outcome;
 use App\Workflow\Path;
 use App\Workflow\Stage;
 use App\Workflow\Track;
-use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -88,13 +88,14 @@ class RouteController
         ]);
         $evacuator = isset($data['evacuator_id']) ? User::find($data['evacuator_id']) : null;
         $to = Destination::tryFrom((string) ($data['evacuation_to'] ?? '')) ?? ($evacuator ? Destination::Keeper : Destination::Yard);
-        // «К менеджеру» без менеджера не бывает: сегмент спрятан, но мог остаться выбранным.
-        if ($to === Destination::Keeper && ! $evacuator) {
+        // «К менеджеру» без менеджера бывает только у машины в гараже — к её держателю; иначе сегмент спрятан, но мог
+        // остаться выбранным.
+        if ($to === Destination::Keeper && ! $evacuator && ! $offer->garageCar()->exists()) {
             $to = Destination::Ours;
         }
         $offer->loadMissing('vendor.workflows', 'positions.stage.workflow', 'parkVehicle.requests');
         $assign($offer, $evacuator, $to, $request->user());
-        $toast = 'Вывоз: '.($evacuator?->shortName() ?? 'мы').', '.mb_strtolower($to->label());
+        $toast = 'Вывоз: '.($evacuator?->shortName() ?? 'мы').', '.($to === Destination::Keeper && ($keeper = $offer->keeper()) ? 'к '.$keeper->shortName() : mb_strtolower($to->label()));
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', $toast);
     }

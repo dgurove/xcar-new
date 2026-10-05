@@ -11,65 +11,46 @@ namespace App\Workflow\Presets;
  * страховой сгорает и черновик — непубликовавшийся автомобиль тоже должен
  * уйти.
  *
- * Третье — на кого менеджер оформляет покупку (выбирает сотрудник выходом «Поставщик согласовал»: отдельного
- * «Согласия менеджера» у Совкомбанка нет). Взял на себя — автомобиль
- * можно отдать до оплаты; для клиента — только после. Это разный порядок одних
- * отрезков, и выражен он двумя ветками с суффиксом `_self`: скрытого
- * признака редактор не покажет, а человек увидел бы одну лестницу там, где
- * их две.
+ * Третье — согласовывать покупку с поставщиком нечего (владелец, 05.10.2026:
+ * «Совком обязывает нас вывозить все тачки без их подтверждения»): принятое
+ * подтверждение сразу ведёт к счёту менеджеру, гаражная сделка «платим мы» —
+ * к оплате поставщику.
  */
 final class Sovcombank extends Route
 {
     public function blocks(): array
     {
-        return self::withGarageBlocks($this->saleBlocks()) + [
+        $blocks = self::withGarageBlocks($this->saleBlocks());
+        unset($blocks['agreement'], $blocks['declined']);
+        $blocks['agreement_garage']['text'] = 'Машина уходит к Вам в гараж: оплачиваем её поставщику и оформляем документы на нас';
+
+        return $blocks + [
             'handover' => ['name' => 'Передача автомобиля', 'text' => 'Осталось передать автомобиль покупателю'],
-            // Ветке «на себя» блоки свои: общий на две ветки оборвал бы лестницу
-            // на первом же шаге — из него вело бы два продолжения.
-            'agreement_self' => ['name' => 'Согласование с поставщиком', 'text' => 'Согласовываем покупку с поставщиком, обычно до суток'],
-            'handover_self' => ['name' => 'Получение автомобиля', 'text' => 'Автомобиль можно забирать: покупка оформляется на Вас, счёт будет выставлен после передачи'],
-            'payment_self' => ['name' => 'Оплата после передачи', 'text' => 'Автомобиль передан Вам. Оплатите счёт по ссылке под ним или по реквизитам'],
-            'signing_self' => ['name' => 'Оформление документов', 'text' => 'Осталось подписать документы и передать их поставщику'],
             'insurer_buyer' => ['name' => 'Покупатель от поставщика', 'text' => 'Срок истёк. Автомобиль передаётся покупателю, которого назвал поставщик'],
         ];
     }
 
     public function stages(): array
     {
-        return $this->head(
+        $stages = $this->head(
             nobody: 'insurer_buyer',
             draftExits: [['Срок страховой истёк', 'timer', 'insurer_buyer']],
             draftDeadline: 'insurer_deadline',
-            // Согласовал поставщик — покупка решена, второй раз менеджера не спрашиваем (владелец, 30.09.2026).
-            // На кого оформляется, сотрудник знает от менеджера и выбирает выходом.
-            // Гаражная сделка «платим мы» — третьим выходом в свою ветку, покупательские ей не видны.
-            agreed: [['Поставщик согласовал', 'staff', 'confirmed', 'buyer'], ['Поставщик согласовал, на себя', 'staff', 'confirmed_self', 'buyer'], ['Поставщик согласовал, в гараж', 'staff', 'garage_confirmed', 'garage']],
+            accepted: [['invoice', 'buyer'], ['garage_payment', 'garage']],
         )
-            // Для клиента — деньги вперёд: счёт, документы, передача.
-            + ['confirmed' => $this->confirmed('invoice')]
+            // Деньги вперёд: счёт, документы, передача.
             + $this->invoiceSegment('signing_place')
-            // Автомобиль у страхователя: отдаём мы — или забирает сам менеджер сделки (его ветка, 04.10.2026).
+            // Автомобиль у страхователя или у нас: отдаём мы — или забирает сам менеджер сделки (его ветка, 04.10.2026).
             + $this->signingSegment('release', picks: 'buyer_pickup')
             + $this->releaseSegment('closed_won')
             + $this->pickupSegment('closed_won')
-            // На себя — можно постоплатой: автомобиль уезжает, счёт следом.
-            + $this->self()
             + $this->insurerBuyer()
-            + self::garageSegment()
+            + self::garageSegment(confirm: false)
             + $this->tail();
-    }
-
-    /** Ветка «на себя»: те же отрезки в другом порядке, названия помечены. */
-    private function self(): array
-    {
-        $stages = ['confirmed_self' => $this->confirmed('release_self', '_self', 'buyer_pickup_self')]
-            + $this->releaseSegment('invoice_self', '_self')
-            + $this->pickupSegment('invoice_self', '_self')
-            + $this->invoiceSegment('signing_place_self', '_self')
-            + $this->signingSegment('closed_won', '_self');
-        foreach ($stages as &$row) {
-            $row['name'] .= ' — на себя';
-        }
+        // Принятие продаёт предложение: вход на первый этап ветки — уже сделка.
+        $stages['invoice']['offer_state'] = 'sold';
+        $stages['garage_payment']['offer_state'] = 'sold';
+        unset($stages['supplier_declined']);
 
         return $stages;
     }

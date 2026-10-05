@@ -4,6 +4,7 @@ namespace App\Offers\Listeners;
 
 use App\Offers\CarPlace;
 use App\Offers\Deal;
+use App\Offers\Destination;
 use App\Offers\Handover;
 use App\Users\Role;
 use App\Users\User;
@@ -11,6 +12,7 @@ use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Events\StageEntered;
+use App\Workflow\Outcome;
 use App\Workflow\Track;
 use Illuminate\Events\Dispatcher;
 
@@ -21,6 +23,8 @@ use Illuminate\Events\Dispatcher;
  * — продажа ушла с шага получения → вывоз встаёт на «Стоит у менеджера»;
  * — вывоз дошёл до «Стоит у менеджера» (админ нажал «Забрал» за него) → продажа жмёт свой «Автомобиль забрал»;
  * — продажа пришла на шаг получения, а ТС уже у него → шаг проходит сам.
+ * С 05.10.2026 так же машина в гараж: везём её к менеджеру мы — «Автомобиль передан» продажи и «Стоит у менеджера»
+ * вывоза догоняют друг друга, конец маршрута ставит машину на «Подготовку» (`ReceiveFromRoute`).
  */
 final class SyncHandover
 {
@@ -35,7 +39,8 @@ final class SyncHandover
     {
         $offer = $e->offer;
         $deal = $e->deal ?? $offer->deal()->first();
-        if (! $deal || $deal->isGarage() || $offer->evacuator_id !== $deal->buyer_id) {
+        // ТС едет к самому менеджеру сделки: забирает он сам или (гараж) везём ему мы.
+        if (! $deal || $offer->pickupDestination() !== Destination::Keeper || $offer->keeper()?->id !== $deal->buyer_id) {
             return;
         }
         $deal->setRelation('offer', $offer);
@@ -43,7 +48,7 @@ final class SyncHandover
 
         if ($e->track === Track::Sale) {
             // Ушли с шага получения вперёд — ТС у менеджера.
-            if ($e->exit && $e->from && $e->from->exits->contains(fn ($x) => $x->actor === Actor::Manager && Handover::picked($x))
+            if ($e->exit && $e->from && $e->from->exits->contains(fn ($x) => self::handsOver($x))
                 && ($service = $offer->position(Track::Service)) && ! $offer->pickedUp()
                 && ($keeper = $service->stage->workflow->stageForPlace(CarPlace::Keeper))) {
                 ($this->place)($offer, $keeper, $by);
@@ -65,10 +70,20 @@ final class SyncHandover
     private function pressSale(Deal $deal, User $by): void
     {
         $offer = $deal->offer->unsetRelation('positions');
-        $exit = $offer->position(Track::Sale)?->stage->exitsFor(Actor::Manager, $deal)->first(fn ($x) => Handover::picked($x));
+        $stage = $offer->position(Track::Sale)?->stage;
+        // Шаг его — «Автомобиль забрал»; отдавали мы (гараж, везём ему сами) — «Автомобиль передан».
+        $exit = $stage?->exitsFor(Actor::Manager, $deal)->first(fn ($x) => Handover::picked($x))
+            ?? $stage?->exitsFor(Actor::Staff, $deal)->first(fn ($x) => self::handsOver($x));
         if ($exit) {
-            ($this->take)($offer, $exit, Actor::Manager, $by);
+            ($this->take)($offer, $exit, $exit->actor, $by);
         }
+    }
+
+    /** Исход шага передачи: менеджер забрал или мы передали. */
+    private static function handsOver(Outcome $exit): bool
+    {
+        return ($exit->actor === Actor::Manager && Handover::picked($exit))
+            || ($exit->actor === Actor::Staff && mb_strtolower(trim($exit->label)) === 'автомобиль передан');
     }
 
     private function system(): User

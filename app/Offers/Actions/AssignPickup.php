@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Кто вывозит ТС и куда (04.10.2026). Это не гараж: предложение живёт обычной жизнью, менеджер только забирает ТС и
- * держит у себя (или мы — у себя вне парковки). На парковку — прежний путь: дело на park.xcar с заявкой на эвакуацию.
+ * Кто вывозит ТС и куда (04.10.2026). Без гаража предложение живёт обычной жизнью, менеджер только забирает ТС и
+ * держит у себя (или мы — у себя вне парковки). Машину в гараже везут к её менеджеру (`Offer::keeper`), сам он или мы. На парковку — прежний путь: дело на park.xcar с заявкой на эвакуацию.
  * Запускает маршрут вывоза, если его ещё нет; поменять можно, пока ТС не забрали.
  */
 final class AssignPickup
@@ -30,8 +30,9 @@ final class AssignPickup
         if ($evacuator && ! ($evacuator->isManager() && $evacuator->canGarage())) {
             throw ValidationException::withMessages(['evacuator_id' => 'Вывозить может только менеджер']);
         }
-        if ($to === Destination::Keeper && ! $evacuator) {
-            throw ValidationException::withMessages(['evacuation_to' => 'К менеджеру — когда вывозит менеджер']);
+        // К менеджеру без вывозчика-менеджера — только к держателю гаража: везём мы, стоять у него.
+        if ($to === Destination::Keeper && ! $evacuator && ! $offer->garageCar()->exists()) {
+            throw ValidationException::withMessages(['evacuation_to' => 'К менеджеру — когда вывозит менеджер или машина у него в гараже']);
         }
         if (in_array($offer->state, [OfferState::Garage, OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)) {
             throw ValidationException::withMessages(['evacuator_id' => 'Предложение '.mb_strtolower($offer->state->label()).', вывоз уже не назначить']);

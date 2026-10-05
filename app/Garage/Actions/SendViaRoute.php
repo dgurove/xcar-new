@@ -44,12 +44,13 @@ final class SendViaRoute
                 'garage_payer' => $offer->garageBranch() ? $payer : GaragePayer::Manager]);
             $offer->log(OfferEventType::BidAccepted, $by, ['garage' => $deal->garage_payer->value, 'manager' => $manager->id]);
             $car = ($this->reserve)($deal, $by);
+            app(PickupToKeeper::class)($offer, $by);
 
             $offer = ($this->state)($offer, OfferState::Sold, $by, followRoute: false);
-            // Маршрут — с начала сделки: первый этап с «Идёт сделка». Не стоял на маршруте — ставим (StartRoute
+            // Маршрут — с начала сделки: куда ведёт принятие (`Workflow::dealEntry`). Не стоял на маршруте — ставим (StartRoute
             // встаёт на этап своего состояния); маршрута нет вовсе — ждать со страховой нечего, сразу на доставку.
             $position = $offer->position(Track::Sale);
-            if ($position && ($entry = $position->stage->workflow->stages()->get()->first(fn ($s) => $s->offer_state === OfferState::Sold))) {
+            if ($position && ($entry = $position->stage->workflow->dealEntry($deal))) {
                 $offer = ($this->enter)($offer, $entry, $by);
             } elseif (! $position) {
                 $offer = ($this->start)($offer, $by, Track::Sale);

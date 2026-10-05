@@ -12,12 +12,13 @@ use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Billing\PaymentSource;
-use App\Garage\Actions\AdvanceCar;
 use App\Garage\Actions\ClearGarageSold;
 use App\Garage\Actions\IssueGaragePayout;
 use App\Garage\Actions\MarkGarageSold;
+use App\Garage\Actions\MoveCar;
 use App\Garage\Actions\SettleGarageCar;
 use App\Garage\Car;
+use App\Garage\CarState;
 use App\Http\Cabinet\PayChoice;
 use App\Offers\Offer;
 use App\Support\Money;
@@ -44,14 +45,18 @@ class SettlementController
         return back()->with('toast', 'Продана за '.Money::rub($data['sold_price']));
     }
 
-    /** «Привёз», «Готова» — следующий этап кнопкой; менеджер или сотрудник. */
-    public function advance(Request $request, Offer $offer, AdvanceCar $advance)
+    /**
+     * Этап машины: «Привёз», «Готова» — следующий кнопкой (менеджер или сотрудник, без `state`); сотрудник — и на любой
+     * из доставки, подготовки, продажи, назад тоже.
+     */
+    public function stage(Request $request, Offer $offer, MoveCar $move)
     {
         $car = $this->car($request, $offer);
-        $label = $car->state->advance()[1] ?? null;
-        $advance($car, $request->user());
+        $data = $request->validate(['state' => ['nullable', Rule::enum(CarState::class)]]);
+        $to = CarState::tryFrom($data['state'] ?? '') ?? $car->state->advance()[0] ?? $car->state;
+        $move($car, $to, $request->user());
 
-        return back()->with('toast', $label ?? 'Готово');
+        return back()->with('toast', $to->label());
     }
 
     public function unsold(Request $request, Offer $offer, ClearGarageSold $clear)

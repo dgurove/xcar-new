@@ -16,12 +16,13 @@ final class OpenChat
 {
     public const GREETING = 'Добрый день! Спрашивайте про ТС — ответим здесь.';
 
-    public function __invoke(Offer $offer, User $user): Chat
+    /** @param  bool  $greet  приветствие площадки; сотрудник, что пишет менеджеру первым (05.10.2026), обходится без него */
+    public function __invoke(Offer $offer, User $user, bool $greet = true): Chat
     {
-        return DB::transaction(function () use ($offer, $user) {
+        return DB::transaction(function () use ($offer, $user, $greet) {
             $manager = $user->isBuyer() ? $user->manager_id : null;
             $chat = Chat::firstOrCreate(['offer_id' => $offer->id, 'user_id' => $user->id], ['manager_id' => $manager]);
-            if ($chat->wasRecentlyCreated && ! $manager) {
+            if ($chat->wasRecentlyCreated && ! $manager && $greet) {
                 $chat->messages()->create(['seq' => 1, 'author_kind' => AuthorKind::System, 'text' => self::GREETING]);
                 $chat->update(['messages_count' => 1, 'last_message_at' => now()]);
             } elseif ($manager && $chat->manager_id !== $manager) {

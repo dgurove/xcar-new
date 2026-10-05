@@ -22,11 +22,14 @@
     };
     $ref = trim(($offer->vendor?->name ?? '').' '.($offer->claim_ref ?? ''));
     $spent = $car->spent();
+    $sale = $car->isWaiting() ? $offer->positions->first(fn ($p) => $p->track === \App\Workflow\Track::Sale) : null;
 @endphp
 <tr data-detail-key="{{ $offer->number }}" id="garage-{{ $offer->number }}">
     <td class="grow">
         <x-ui.row-link :key="$offer->number"><span class="cell-title">{{ $offer->titleWithYear() }}</span></x-ui.row-link>
-        <span class="cell-sub"><span class="{{ $tone }}">{{ $stage }}</span>@if ($ref)<span class="sm:hidden">{{ $ref }}</span>@endif</span>
+        <span class="cell-sub"><span class="{{ $tone }}">{{ $sale ? mb_strtolower($car->state->label()).', '.mb_strtolower($sale->stage->block?->name ?? $sale->stage->name) : $stage }}</span>@if ($ref)<span class="sm:hidden">{{ $ref }}</span>@endif</span>
+        {{-- Ждёт страховую — чей ход на шаге сделки, как в «Сделках»: «Выставить счёт», «Ждём поставщика». --}}
+        @if ($sale)<x-route.clock :position="$sale" side="staff" class="mt-0.5 line-clamp-2 sm:truncate"/>@endif
     </td>
     <td class="cell-dim hidden sm:table-cell"><span class="block max-w-56 truncate">{{ $ref }}</span></td>
     <td class="num nums hidden sm:table-cell col-detail-hide">@if ($spent > 0){{ Money::nums($spent) }}@if ($car->spent(Payer::Xcar) > 0)<span class="cell-sub">наши {{ Money::nums($car->spent(Payer::Xcar)) }}</span>@endif @endif</td>

@@ -10,6 +10,7 @@ use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Stage;
 use App\Workflow\Track;
+use Illuminate\Support\Carbon;
 
 /**
  * Получение автомобиля по сделке (04.10.2026, владелец: «согласовали, он должен вывезти, а у него 0 инфы»): где стоит
@@ -95,7 +96,7 @@ final class Handover
         $vehicle = $offer->parkVehicle;
         $atYard = $vehicle?->state === VehicleState::Stored && $vehicle->yard;
         $where = match (true) {
-            $place === CarPlace::Keeper => $offer->evacuator_id === $deal->buyer_id ? 'У вас' : CarPlace::WithUs->label(),
+            $place === CarPlace::Keeper => $offer->keeper()?->id === $deal->buyer_id ? 'У вас' : CarPlace::WithUs->label(),
             $place === CarPlace::WithUs => CarPlace::WithUs->label(),
             $place === CarPlace::Ours || $atYard => 'На парковке',
             $place === CarPlace::Moving && ! $picks && $offer->pickupDestination() === Destination::Yard => 'Везём на парковку',
@@ -167,7 +168,7 @@ final class Handover
             return null;
         }
         try {
-            return preg_match('/^\d{4}-\d{2}-\d{2}/', $this->date) ? \Illuminate\Support\Carbon::parse($this->date)->translatedFormat('j F') : $this->date;
+            return preg_match('/^\d{4}-\d{2}-\d{2}/', $this->date) ? Carbon::parse($this->date)->translatedFormat('j F') : $this->date;
         } catch (\Throwable) {
             return $this->date;
         }

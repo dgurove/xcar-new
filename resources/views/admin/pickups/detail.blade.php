@@ -8,13 +8,14 @@
     <x-ui.row-card :href="'/offers/'.$offer->number" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :action="false">
         <x-slot:marks>
             @if ($offer->evacuator)<x-ui.person :user="$offer->evacuator"/>@else<span class="tag">вывозим мы</span>@endif
-            <span class="tag">{{ mb_strtolower($offer->pickupDestination()->label()) }}</span>
+            <span class="tag">{{ $offer->pickupDestination() === \App\Offers\Destination::Keeper && $offer->garageCar ? 'к '.$offer->keeper()?->shortName().' в гараж' : mb_strtolower($offer->pickupDestination()->label()) }}</span>
         </x-slot:marks>
         <x-slot:actions>
             @if ($editable)<button type="button" class="pill" data-controller="emit" data-action="emit#send" data-emit-event-param="pickup-{{ $offer->number }}:open">Кто и куда вывозит</button>@endif
         </x-slot:actions>
         @if ($errors->has('exit'))<x-ui.flash tone="danger" class="mt-3">{{ $errors->first('exit') }}</x-ui.flash>@endif
         <div class="mt-4"><x-route.path :offer="$offer" :position="$position"/></div>
+        @if ($offer->evacuator)<x-chat.staff-line :offer="$offer" :user="$offer->evacuator" class="mt-4"/>@endif
     </x-ui.row-card>
     @if ($editable)
         <div data-controller="sheet" data-action="pickup-{{ $offer->number }}:open@window->sheet#open" class="contents">

@@ -3,6 +3,7 @@
 namespace App\Workflow;
 
 use App\Offers\CarPlace;
+use App\Offers\Deal;
 use App\Offers\OfferState;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -45,6 +46,18 @@ class Workflow extends Model
     public function startStage(): ?Stage
     {
         return $this->stages()->with(['exits', 'block'])->first();
+    }
+
+    /**
+     * Начало сделки на продаже — куда ведёт принятие подтверждения этой сделке. У Совкомбанка ветки начинаются сразу с
+     * него (счёт или оплата поставщику), поэтому «первый этап «Идёт сделка»» тут не годится — только запасным.
+     */
+    public function dealEntry(Deal $deal): ?Stage
+    {
+        $stages = $this->stages()->with('exits.to')->get();
+
+        return $stages->flatMap(fn (Stage $s) => $s->exitsFor(Actor::Staff, $deal))->first(fn (Outcome $e) => $e->acceptsBid())?->to
+            ?? $stages->first(fn (Stage $s) => $s->offer_state === OfferState::Sold);
     }
 
     /** Первый этап ветки вывоза, где машина в этом месте; для «назначили дату» — этап перед первым «в пути». */

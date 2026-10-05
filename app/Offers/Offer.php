@@ -285,6 +285,17 @@ class Offer extends Model implements HasMedia
         return $this->belongsTo(User::class, 'evacuator_id');
     }
 
+    /**
+     * У кого ТС стоит «у менеджера» (`Destination::Keeper`): машина в гараже — у её менеджера, кто бы её ни вёз (05.10.2026,
+     * Бородин: везёт наш Алексей, а стоять ей у Бородина), иначе — у вывозчика.
+     */
+    public function keeper(): ?User
+    {
+        $garage = $this->relationLoaded('garageCar') ? $this->garageCar : $this->garageCar()->with('manager')->first();
+
+        return $garage?->manager ?? $this->evacuator;
+    }
+
     /** ТС уже забрали: вывоз дошёл до места (у менеджера, у нас, на парковке) — кто и куда, менять поздно. */
     public function pickedUp(): bool
     {
@@ -571,11 +582,15 @@ class Offer extends Model implements HasMedia
      * Заявленная цена — та, что менеджер считает закупочной. По умолчанию равна
      * закупочной; задана отдельно — менеджер видит её, настоящая остаётся у нас.
      */
-    /** Чат по предложению с площадкой: пока оно на витрине или в галерее, а у менеджера со сделкой — и после продажи. */
+    /**
+     * Чат по предложению с площадкой: пока оно на витрине или в галерее, а тому, кто с машиной работает (`worksWith`:
+     * сделка, гараж, вывоз), — на всех этапах до продажи из гаража и после (05.10.2026, владелец: «пока тачка в гараже у
+     * менеджера, писать ему, задавать вопросы»). Галка «Чат с покупателями» таких не закрывает.
+     */
     public function chatOpenFor(?User $user): bool
     {
-        return $user && $user->canChat() && $this->chat_enabled
-            && ($this->state->isPublic() || $this->state->acceptsInterest() || $this->deal()->where('buyer_id', $user->id)->exists());
+        return $user && $user->canChat()
+            && (($this->chat_enabled && ($this->state->isPublic() || $this->state->acceptsInterest())) || $this->worksWith($user));
     }
 
     /** Номер договора лизинга (ДЛ) — у предложений лизинговых вендоров в claim_ref; его видят и менеджеры. */

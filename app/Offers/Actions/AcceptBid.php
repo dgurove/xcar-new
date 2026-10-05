@@ -72,7 +72,7 @@ final class AcceptBid
                 // (гараж «платим мы» ↔ остальные) — с начала сделки: этап чужой ветки этой сделке не подходит.
                 $stage = $offer->stage();
                 if ($stage && $previous->isGarageUs() !== $deal->isGarageUs()) {
-                    $stage = $stage->workflow->stages()->get()->first(fn ($s) => $s->offer_state === OfferState::Sold) ?? $stage;
+                    $stage = $stage->workflow->dealEntry($deal) ?? $stage;
                 }
                 if ($stage) {
                     ($this->enterStage)($offer, $stage, $by);

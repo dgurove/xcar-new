@@ -1,5 +1,6 @@
 {{-- Путь машины в гараже, как трекинг посылки (`.steps`, тот же вид, что путь сделки): пройденные этапы галочкой с
-     датой, текущий крупнее с тем, что сейчас происходит, впереди серым. Начинается с этапа, с которого машина пришла. --}}
+     датой, текущий крупнее с тем, что сейчас происходит, впереди серым. Начинается с этапа, с которого машина пришла.
+     Сотруднику пройденные этапы работы с машиной — с «Вернуть» (`GarageView` → `back`, `MoveCar`). --}}
 @php
     use App\Garage\CarState;
     use App\Support\Money;
@@ -26,6 +27,9 @@
                 <div class="step-head">
                     <span class="step-title min-w-0 flex-1">{{ $p['state']->label() }}</span>
                     @if ($p['status'] === 'done' && $p['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ $p['at']->translatedFormat('j M') }}</span>@endif
+                    @if (in_array($p['state'], $back ?? [], true))
+                        <form method="post" action="/garage/cars/{{ $n }}/stage" class="contents" data-turbo-confirm="Вернуть на «{{ $p['state']->label() }}»?">@csrf<input type="hidden" name="state" value="{{ $p['state']->value }}"><button class="btn btn-s btn-quiet shrink-0">Вернуть</button></form>
+                    @endif
                 </div>
                 @if ($p['status'] === 'current' && $hint)<p class="step-hint">{{ $hint }}</p>@endif
             </div>

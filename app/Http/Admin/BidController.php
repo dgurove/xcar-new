@@ -9,10 +9,10 @@ use App\Offers\Actions\DeclineBid;
 use App\Offers\Actions\PlaceBidFor;
 use App\Offers\Bid;
 use App\Offers\BidKind;
-use App\Offers\Offer;
-use App\Users\User;
 use App\Offers\CommissionMode;
 use App\Offers\Destination;
+use App\Offers\Offer;
+use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -27,8 +27,17 @@ class BidController
     {
         $switch = $bid->offer->deal()->exists();
         if ($bid->isGarage()) {
-            $data = $request->validate(['payer' => ['nullable', Rule::enum(GaragePayer::class)]]);
-            $accept($bid, $request->user(), payer: GaragePayer::tryFrom($data['payer'] ?? '') ?? GaragePayer::Us);
+            $data = $request->validate(['payer' => ['nullable', Rule::enum(GaragePayer::class)], 'pickup' => ['nullable', Rule::in(['manager', 'us'])]]);
+            DB::transaction(function () use ($bid, $data, $request, $accept) {
+                $offer = $bid->offer->loadMissing('vendor.workflows', 'parkVehicle');
+                $choosable = $offer->pickupChoosable();
+                $accept($bid, $request->user(), payer: GaragePayer::tryFrom($data['payer'] ?? '') ?? GaragePayer::Us);
+                // Машина едет к менеджеру в гараж (05.10.2026, Бородин: был вывоз «к нам»), везёт он сам или мы.
+                $offer = $offer->fresh(['vendor.workflows', 'positions.stage.workflow', 'parkVehicle.requests']);
+                if ($choosable && $offer->pickupChoosable()) {
+                    app(AssignPickup::class)($offer, ($data['pickup'] ?? 'manager') === 'manager' ? $bid->user : null, Destination::Keeper, $request->user());
+                }
+            });
 
             return back()->with('toast', ($switch ? 'Отдали ' : 'В гараж — ').$bid->user->shortName());
         }

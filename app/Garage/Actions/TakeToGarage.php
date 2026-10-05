@@ -37,10 +37,6 @@ final class TakeToGarage
         }
 
         return DB::transaction(function () use ($offer, $manager, $cost, $by, $note, $stage) {
-            ($this->state)($offer, OfferState::Garage, $by);
-            // Машина ушла из продажи — ждущие подтверждения менеджеров закрываются, как при принятии чужого.
-            $offer->bids()->where('state', BidState::Active)->get()->each(fn (Bid $bid) => app(DeclineBid::class)($bid, $by));
-
             $car = Car::create([
                 'offer_id' => $offer->id,
                 'manager_id' => $manager?->id,
@@ -52,6 +48,13 @@ final class TakeToGarage
                 'note' => $note,
                 'created_by' => $by->id,
             ]);
+            // Вывоз ещё идёт — к менеджеру в гараж; пока не «В гараже»: туда вывоз уже не назначить.
+            if ($manager) {
+                app(PickupToKeeper::class)($offer, $by);
+            }
+            ($this->state)($offer->fresh(), OfferState::Garage, $by);
+            // Машина ушла из продажи — ждущие подтверждения менеджеров закрываются, как при принятии чужого.
+            $offer->bids()->where('state', BidState::Active)->get()->each(fn (Bid $bid) => app(DeclineBid::class)($bid, $by));
             GarageChanged::dispatch($car);
 
             return $car;

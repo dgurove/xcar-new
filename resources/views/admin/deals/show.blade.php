@@ -54,6 +54,7 @@
                     @if ($deal->bid?->comment)<div class="mt-2 text-sm">{{ $deal->bid->comment }}</div>@endif
                 </div>
             </x-ui.card>
+            @if ($deal->buyer?->isManager())<x-chat.staff-line :offer="$offer" :user="$deal->buyer" class="order-1"/>@endif
 
             <x-ui.card title="История" class="order-5">
                 <div class="flex flex-col gap-3 text-sm">

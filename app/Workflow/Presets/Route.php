@@ -13,8 +13,9 @@ use App\Workflow\Outcome;
  * попадают.
  *
  * До подтверждения поставщику все продажи совпадают, дальше расходятся:
- * Т-Страхование присылает контакты владельца автомобиля, Альфа и Совкомбанк — счёт
- * на оплату и развилку «Москва или нет».
+ * Т-Страхование присылает контакты владельца автомобиля, Альфа — счёт на оплату
+ * и развилку «Москва или нет». Совкомбанк поставщика не спрашивает: счёт сразу
+ * после принятия.
  *
  * Строка этапа: name, block, waits_for, limit_minutes, deadline_source,
  * offer_state, car_place, ask_title, ask_text, asks, fields, staff_fields,
@@ -91,10 +92,11 @@ abstract class Route
      * @param  list<array>  $draftExits  что ещё уводит с черновика
      */
     /**
-     * @param  ?array  $agreed  выходы «Поставщик согласовал» сразу дальше, без «Согласия менеджера»: у Совкомбанка
-     *                          согласие поставщика и есть покупка, второй раз менеджера не спрашивают
+     * @param  ?array  $agreed  выходы «Поставщик согласовал» сразу дальше, без «Согласия менеджера»
+     * @param  ?array  $accepted  куда ведёт «Подтверждение принято», если согласовывать с поставщиком нечего (Совкомбанк:
+     *                            вывезти обязаны мы, покупка решена принятием) — без «Уведомили поставщика» и согласия
      */
-    protected function head(string $nobody = 'no_bids', ?array $confirm = null, array $draftExits = [], string $draftDeadline = 'own', ?array $agreed = null, bool $garage = false): array
+    protected function head(string $nobody = 'no_bids', ?array $confirm = null, array $draftExits = [], string $draftDeadline = 'own', ?array $agreed = null, bool $garage = false, ?array $accepted = null): array
     {
         $head = [
             'draft' => [
@@ -128,6 +130,12 @@ abstract class Route
         if ($agreed) {
             $head['claimed']['exits'] = [...$agreed, ['Поставщик отказал', 'staff', 'supplier_declined']];
             unset($head['manager_confirm']);
+        }
+        if ($accepted) {
+            $accept = array_map(fn (array $to) => ['Подтверждение принято', 'staff', ...$to], $accepted);
+            $head['bidding']['exits'] = [...$accept, ['Срок приёма истёк', 'timer', 'choosing']];
+            $head['choosing']['exits'] = [...$accept, ...array_slice($head['choosing']['exits'], 1)];
+            unset($head['claimed'], $head['manager_confirm']);
         }
 
         return $head;
@@ -185,7 +193,7 @@ abstract class Route
         if (! $confirm) {
             unset($rows['garage_confirmed']);
         }
-        // Имена этапов в маршруте уникальны: у веток «на себя» и «в гараж» — пометка.
+        // Имена этапов в маршруте уникальны: у гаражной ветки — пометка.
         foreach ($rows as &$row) {
             $row['name'] .= ' — в гараж';
         }
@@ -194,7 +202,7 @@ abstract class Route
     }
 
     /**
-     * Подтвердили поставщику — этап ветки, а не общего начала: у Совкомбанка их два. $picks — куда, если автомобиль
+     * Подтвердили поставщику — этап ветки, а не общего начала. $picks — куда, если автомобиль
      * забирает сам менеджер сделки (`Outcome::BUYER_PICKS`): дальше передача, и у неё два этапа.
      */
     protected function confirmed(string $after, string $suffix = '', ?string $picks = null): array

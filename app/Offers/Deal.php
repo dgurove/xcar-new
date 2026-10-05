@@ -121,7 +121,8 @@ class Deal extends Model
      */
     public function buyerPicksUp(): bool
     {
-        return $this->buyer_id !== null && ! $this->isGarage() && $this->offer?->evacuator_id === $this->buyer_id;
+        // Гаражная «платит менеджер» идёт путём обычной сделки: везёт сам — его шаг «Заберите автомобиль».
+        return $this->buyer_id !== null && ! $this->isGarageUs() && $this->offer?->evacuator_id === $this->buyer_id;
     }
 
     /** Разница между ценой подтверждения и закупочной; без закупочной — null. */

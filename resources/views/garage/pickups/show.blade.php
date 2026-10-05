@@ -24,6 +24,9 @@
     @error('exit')<x-ui.flash tone="danger" class="mb-4">{{ $message }}</x-ui.flash>@enderror
 
     <x-offer.object :offer="$offer" :photos="$photos" :docs="$docs">
+        @if ($offer->chatOpenFor($user))
+            <x-slot:aside><a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet w-full"><x-ui.icon name="chat" class="size-5"/> Написать</a></x-slot:aside>
+        @endif
         @if ($fields->isNotEmpty())
             <div class="list">
                 @foreach ($fields as $label => $value)

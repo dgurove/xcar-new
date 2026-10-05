@@ -150,7 +150,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::delete('/garage/cars/{offer}', [GarageCarController::class, 'destroy']);
         Route::put('/garage/costs/{cost}', [GarageCarController::class, 'updateCost']);
         Route::delete('/garage/costs/{cost}', [GarageCarController::class, 'destroyCost']);
-        Route::post('/garage/cars/{offer}/advance', [GarageSettlementController::class, 'advance']);
+        Route::post('/garage/cars/{offer}/stage', [GarageSettlementController::class, 'stage']);
+        Route::post('/garage/cars/{offer}/advance', [GarageSettlementController::class, 'stage']);
         Route::post('/garage/cars/{offer}/sold', [GarageSettlementController::class, 'sold']);
         Route::delete('/garage/cars/{offer}/sold', [GarageSettlementController::class, 'unsold']);
         Route::post('/garage/cars/{offer}/settle', [GarageSettlementController::class, 'settle']);
@@ -217,6 +218,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         });
         Route::get('/work/chats', [ChatController::class, 'index']);
         Route::get('/work/chats/{chat}', [ChatController::class, 'show']);
+        Route::post('/work/chats/offer/{offer}/{user}', [ChatController::class, 'start']);
 
         Route::get('/gallery', [GalleryController::class, 'index']);
         Route::post('/gallery', [GalleryController::class, 'store']);
