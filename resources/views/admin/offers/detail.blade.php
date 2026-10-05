@@ -44,7 +44,8 @@
         <x-slot:marks>
             {{-- Номер предложения и номер ДЛ или убытка копируются нажатием, как VIN. --}}
             @unless ($offer->state === OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $n" done="Номер в буфере"/></span>@endunless
-            @if ($offer->claim_ref)<span class="tag nums gap-1">{{ $offer->leaseRef() ? 'ДЛ' : 'Убыток' }}<x-ui.copy-code :value="$offer->claim_ref"/></span>@endif
+            {{-- Номер убытка — без слова «Убыток» (владелец 05.10.2026), у лизинга — «ДЛ». --}}
+            @if ($offer->claim_ref)<span class="tag nums gap-1">@if ($offer->leaseRef())ДЛ @endif<x-ui.copy-code :value="$offer->claim_ref"/></span>@endif
             {{-- Слова «черновик» нет, как и в строке: вкладка и так говорит, на каком он шаге; у черновика с парковки — «парковка с …». --}}
             @if ($offer->state !== OfferState::Draft)<span class="tag {{ match ($offer->state->tone()) { 'open' => 'tag-accent', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' } }} {{ $offer->state === OfferState::Draft ? 'text-ink-dim' : '' }}">{{ $offer->state->labelFor(auth()->user()) }}</span>@endif
             @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
