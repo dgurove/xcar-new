@@ -29,6 +29,9 @@ final class EnterStage
     /** @param  bool  $back  откат («Отменить шаг», «Вернуть на этот шаг»): журнал пути сматывается до прежнего входа сюда */
     public function __invoke(Offer $offer, Stage $to, ?User $by = null, array $payload = [], ?Outcome $exit = null, bool $back = false): Offer
     {
+        // Письмо, которое сдвинуло шаг, — в журнал и событие, не в поля этапа.
+        $letter = isset($payload['letter']) ? (int) $payload['letter'] : null;
+        unset($payload['letter']);
         $to->loadMissing(['workflow', 'block', 'exits.to']);
         $track = $to->workflow->track;
         $now = Carbon::now();
@@ -76,9 +79,9 @@ final class EnterStage
 
         $offer->log(OfferEventType::StageEntered, $by, [
             'track' => $track->value, 'from' => $from?->name, 'to' => $to->name, 'block' => $to->block?->name, 'exit' => $exit?->label,
-            'from_id' => $from?->id, 'to_id' => $to->id, ...($back ? ['back' => true] : []),
+            'from_id' => $from?->id, 'to_id' => $to->id, ...($back ? ['back' => true] : []), ...($letter ? ['letter' => $letter] : []),
         ]);
-        StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal);
+        StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter);
 
         return $offer;
     }

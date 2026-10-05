@@ -488,7 +488,8 @@ class MailController
 
     public function compose(Request $request, Composer $composer, StoreOutboxFile $outbox, ActPdf $act, StorageActPdf $actPdf)
     {
-        $accounts = Account::where('scope', $this->scope)->where('is_active', true)->orderBy('title')->get();
+        // Ящики, что только принимают (offer@), не пишут: с них не начинают и не отвечают.
+        $accounts = Account::where('scope', $this->scope)->sending()->orderBy('title')->get();
         $account = $accounts->firstWhere('slug', $request->query('account')) ?? $accounts->first();
         abort_unless($account, 404);
         $template = $request->query('template') ? Template::where('scope', $this->scope)->find($request->query('template')) : null;
@@ -513,7 +514,13 @@ class MailController
                 'cc' => implode(', ', $offer->vendor?->ccEmails(sale: true) ?? []),
             ];
             if (! $request->query('account') && $offer->vendor?->mail_account_id) {
-                $account = $accounts->firstWhere('id', $offer->vendor->mail_account_id) ?? $account;
+                $account = $accounts->firstWhere('id', $offer->vendor->mailAccount?->sender()->id ?? $offer->vendor->mail_account_id) ?? $account;
+            }
+            // Письмо вендору — ответом на его последнее письмо (а без него — на то, которым пришло предложение): у
+            // страховой оно встаёт в ту же переписку, а ответ приходит на deal@ (05.10.2026).
+            $parent = self::vendorLetter($offer);
+            if ($parent && ! $request->query('account') && ! $offer->vendor?->mail_account_id) {
+                $account = $accounts->firstWhere('id', $parent->account->sender()->id) ?? $account;
             }
         }
         if ($vehicle) {
@@ -531,8 +538,8 @@ class MailController
         if ($vehicle && $template && $vehicle->releasesByQr() && $request->query('act') === 'intake' && ! str_contains((string) $template->body, 'pickup_link')) {
             $template = (clone $template)->forceFill(['body' => self::withPickupNotice((string) $template->body)]);
         }
-        $defaults = $composer->fresh($account, $template, $values);
-        if ($parent) {
+        $defaults = $offer && $parent ? $composer->replyWith($parent, $account, $template, $values) : $composer->fresh($account, $template, $values);
+        if ($parent && ! $offer) {
             $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
         }
         // Письмо о принятой ТС уходит с актом и фото приёма (Альфа и Совкомбанк просят именно их); лишнее снимают в форме.
@@ -577,11 +584,13 @@ class MailController
         if ($request->boolean('cancel') && str_starts_with((string) $request->header('Turbo-Frame'), 'reply')) {
             return view('admin.mail.reply-frame', ['message' => $message, 'base' => $this->base, 'frame' => $request->header('Turbo-Frame')]);
         }
-        $message->load(['account', 'addresses', 'attachments']);
+        $message->load(['account.replyAccount', 'addresses', 'attachments']);
         $mode = $request->query('mode', 'reply');
         $defaults = $mode === 'forward' ? $composer->forward($message) : $composer->reply($message, $mode === 'all');
+        // Ящик, что только принимает (offer@), отвечает через свой «Отвечаем с ящика» (deal@).
+        $sender = $message->account->sender();
 
-        return view($request->header('Turbo-Frame') ? 'admin.mail.compose-frame' : 'admin.mail.compose', ['frame' => $request->header('Turbo-Frame'), 'account' => $message->account, 'accounts' => collect([$message->account]), 'thread' => $thread, 'parent' => $message,
+        return view($request->header('Turbo-Frame') ? 'admin.mail.compose-frame' : 'admin.mail.compose', ['frame' => $request->header('Turbo-Frame'), 'account' => $sender, 'accounts' => collect([$sender]), 'thread' => $thread, 'parent' => $message,
             'defaults' => $defaults, 'mode' => $mode, 'templates' => collect(), 'offer' => $thread->offer, 'vehicle' => $thread->vehicle, 'base' => $this->base]);
     }
 
@@ -603,7 +612,9 @@ class MailController
             return redirect($retry ?: url()->previous())->withInput()->withErrors(['to' => 'Нужен хотя бы один адрес']);
         }
 
-        $parent = ! empty($data['parent']) ? Message::with(['thread', 'attachments'])->where('account_id', $account->id)->find($data['parent']) : null;
+        // Родитель — из ящика отправки или из ящика, который отвечает через него (письмо в offer@, ответ с deal@).
+        $boxes = Account::where('id', $account->id)->orWhere('reply_account_id', $account->id)->pluck('id');
+        $parent = ! empty($data['parent']) ? Message::with(['thread', 'attachments', 'account'])->whereIn('account_id', $boxes)->find($data['parent']) : null;
         $thread = ! empty($data['thread']) ? Thread::where('account_id', $account->id)->find($data['thread']) : null;
 
         $message = $composer->create($account, $data, $parent, $request->user(), $thread);
@@ -879,6 +890,19 @@ class MailController
             'today' => now()->translatedFormat('j F Y'),
             'pickup_link' => $vehicle->releasesByQr() ? $vehicle->pickupUrl() : '',
         ];
+    }
+
+    /**
+     * Последнее письмо вендора по предложению из всех его веток стороны «Предложения» — на него отвечает письмо этапа.
+     * Пересылка сотрудника с личного ящика — тоже письмо вендора (`Message::isFromVendor`).
+     */
+    private static function vendorLetter(Offer $offer): ?Message
+    {
+        $threads = Thread::where('offer_id', $offer->id)->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'))->pluck('id');
+
+        return $threads->isEmpty() ? null : Message::whereIn('thread_id', $threads)->where('direction', Direction::In)
+            ->with(['account.replyAccount', 'addresses', 'thread'])->orderByDesc('date_at')->orderByDesc('id')->get()
+            ->first(fn (Message $m) => $m->isFromVendor());
     }
 
     private function sendRules(Request $request): array

@@ -99,6 +99,18 @@ class Message extends Model
         return $this->parsed['own_text'] ?? Extraction\Intent::excerpt($this->text_body ?: strip_tags((string) $this->html_body), 2000);
     }
 
+    /** Ответ вендора текстом до подписи — менеджеру сделки (`Intent::reply`). */
+    public function replyText(bool $marks = false): string
+    {
+        return Extraction\Intent::reply($this->text_body ?: app(Parser::class)->htmlToText((string) $this->html_body), $marks);
+    }
+
+    /** Письмо вендора: входящее не от нас — или пересланное сотрудником с личного ящика (`isForwardedByStaff`). */
+    public function isFromVendor(): bool
+    {
+        return $this->direction === Direction::In && (! $this->isOurs() || $this->isForwardedByStaff());
+    }
+
     /** Примечание сотрудника над пересланным письмом (`QuotationStripper::forwardNote`). */
     public function forwardNote(): ?string
     {

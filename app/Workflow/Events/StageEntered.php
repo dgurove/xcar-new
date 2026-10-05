@@ -22,5 +22,6 @@ final class StageEntered
         public ?Outcome $exit = null,
         public ?User $by = null,
         public ?Deal $deal = null,
+        public ?int $letter = null,   // шаг сдвинуло письмо поставщика (`AdvanceOnReply`): менеджеру пишет оно само
     ) {}
 }

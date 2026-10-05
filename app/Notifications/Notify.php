@@ -203,7 +203,8 @@ final class Notify
             Notification::send($this->staff(), new InvoiceNeededNotice($deal));
             NotifyOwner::dispatch(new InvoiceNeededMessage($deal));
         }
-        if (! $deal?->buyer) {
+        // Шаг сдвинуло письмо страховой — менеджеру пишет «Страховая ответила» с этим ходом (`AdvanceOnReply`).
+        if (! $deal?->buyer || $e->letter) {
             return;
         }
         $requirement = Requirement::where('deal_id', $deal->id)->where('stage_id', $e->to->id)->whereNull('done_at')->latest()->first();

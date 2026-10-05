@@ -81,7 +81,7 @@ class VendorController
             // Ссылка на парковочную карточку — только тем, кого туда пустят.
             'park' => $request->user()->canAccess(Section::Park) ? Surface::Park->url("/vendors/{$vendor->id}") : null,
             'audienceOptions' => AudienceRules::options(),
-            'accounts' => Account::where('scope', Scope::Offers)->where('is_active', true)->orderBy('title')->get()->mapWithKeys(fn ($a) => [$a->id => $a->title.' ('.$a->email.')']),
+            'accounts' => Account::where('scope', Scope::Offers)->sending()->orderBy('title')->get()->mapWithKeys(fn ($a) => [$a->id => $a->title.' ('.$a->email.')']),
         ];
 
         if ($pill === 'contacts') {
@@ -123,7 +123,7 @@ class VendorController
             'offers_include_vat' => ['boolean'],
             'audience_rules' => ['nullable', 'json'],
             // Ящик продажи — только из ящиков CRM: парковочный отсюда не выбрать.
-            'mail_account_id' => ['nullable', Rule::exists('mail_accounts', 'id')->where('scope', Scope::Offers->value)],
+            'mail_account_id' => ['nullable', Rule::exists('mail_accounts', 'id')->where('scope', Scope::Offers->value)->whereNull('reply_account_id')],
             'senders' => ['nullable', 'string', 'max:2000'],
             'parser' => ['required', Rule::enum(Parser::class)],
         ] + SetLogo::RULES);

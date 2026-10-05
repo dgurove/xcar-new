@@ -184,6 +184,19 @@ enum Intent: string
         return mb_strlen($text) > $limit ? rtrim(mb_substr($text, 0, $limit)).'…' : $text;
     }
 
+    /**
+     * Ответ вендора менеджеру (05.10.2026): свой текст письма целиком — с приветствием, до подписи, без цитаты; у
+     * пересылки сотрудника — текст пересланного. Разметку mail.ru (`*Петров*`) и пустые строки снимаем.
+     */
+    public static function reply(?string $body, bool $marks = false): string
+    {
+        // $marks — оставить звёздочки как есть: в них бывает пароль к архиву («пароль: Z*9aK»).
+        $text = $marks ? self::body($body) : (string) preg_replace('/(?<!\S)\*+|\*+(?!\S)/u', '', self::body($body));
+        $lines = array_filter(array_map('trim', preg_split('/\R/u', $text) ?: []), fn ($l) => $l !== '');
+
+        return implode("\n", $lines);
+    }
+
     /** Заголовок шага «Нужно ответить» и уведомления. */
     public function title(): string
     {

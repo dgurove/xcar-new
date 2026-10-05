@@ -13,6 +13,9 @@ use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Reading\ReadLetter;
 use App\Offers\Actions\TakeContactFromLetter;
+use App\Offers\Events\InsurerReplied;
+use App\Offers\InsurerReplies;
+use App\Offers\OfferEventType;
 use App\Offers\Offer;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\ReleaseByLetters;
@@ -53,6 +56,13 @@ final class OnMessage
         // Письмо по заведённому предложению — с кем и где забирать ТС, если этого ещё не знали.
         if ($offer = $linked instanceof Offer ? $linked : $thread?->offer) {
             app(TakeContactFromLetter::class)($offer, $message);
+            // Ответ страховой по идущей сделке на ящик, который пишет (deal@): менеджеру и шагу сделки.
+            $deal = $offer->deal;
+            if ($deal && $message->account->scope === Scope::Offers && $message->account->reply_account_id === null
+                && $message->date_at?->gte($deal->created_at) && InsurerReplies::counts($message)
+                && ! $offer->events()->where('type', OfferEventType::InsurerReplied)->where('payload->letter', $message->id)->exists()) {
+                InsurerReplied::dispatch($deal, $message);
+            }
         }
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;
         $base = $message->account->scope === Scope::Park ? '/mail' : '/work/mail';

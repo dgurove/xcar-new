@@ -71,10 +71,11 @@ class OfferEvent extends Model
             OfferEventType::BidDeclined => 'Подтверждение отклонено',
             OfferEventType::BidWithdrawn => 'Подтверждение отозвано',
             OfferEventType::Interest => ! empty($p['withdrawn']) ? 'Интерес снят' : 'Интерес',
-            OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['back']) ? ', шаг отменён' : (! empty($p['exit']) ? ' («'.$p['exit'].'»)' : '')),
+            OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['back']) ? ', шаг отменён' : (! empty($p['exit']) ? ' («'.$p['exit'].'»'.(! empty($p['letter']) ? ' по письму' : '').')' : '')),
             OfferEventType::StageOverdue => 'Срок вышел: '.($p['stage'] ?? ''),
             OfferEventType::StageReminded => 'Срок подходит: '.($p['stage'] ?? ''),
             OfferEventType::RouteDropped => 'Вывоз отменён',
+            OfferEventType::InsurerReplied => 'Страховая ответила'.(! empty($p['contact']) ? ', есть контакт' : ''),
             OfferEventType::PickupAssigned => 'Вывоз: '.($p['who'] ?? 'мы').', '.mb_strtolower(Destination::tryFrom($p['to'] ?? '')?->label() ?? ''),
             // Слот: поставили («В слот 4 окт, 16:00»), убрали или часы не смогли выпустить (`error` — чего не хватило).
             OfferEventType::Scheduled => isset($p['error']) ? 'Не вышло в слот: '.$p['error'] : (isset($p['at']) ? 'В слот '.Carbon::parse($p['at'])->translatedFormat('j M, H:i') : 'Убрано из слота'),

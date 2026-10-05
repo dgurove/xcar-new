@@ -4,12 +4,14 @@ namespace App\Mail;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** Ящик: доступы лежат в базе (пароли зашифрованы ключом приложения), заводятся в админке. */
 #[Fillable([
-    'slug', 'title', 'email', 'from_name', 'scope', 'imap_host', 'imap_port', 'imap_encryption', 'imap_validate_cert',
+    'slug', 'title', 'email', 'from_name', 'scope', 'reply_account_id', 'imap_host', 'imap_port', 'imap_encryption', 'imap_validate_cert',
     'imap_username', 'imap_password', 'smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password',
     'signature', 'is_active', 'sync_from', 'files_from',
 ])]
@@ -38,6 +40,26 @@ class Account extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /** Ящик, с которого уходят ответы на письма этого: offer@ только принимает, отвечаем с deal@ (05.10.2026). */
+    public function replyAccount(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reply_account_id');
+    }
+
+    /** С какого ящика отвечать на письма этого ящика: «Отвечаем с ящика», если он включён, иначе сам. */
+    public function sender(): self
+    {
+        $to = $this->replyAccount;
+
+        return $to && $to->is_active && $to->scope === $this->scope ? $to : $this;
+    }
+
+    /** Ящики, с которых можно писать: без тех, что только принимают. */
+    public function scopeSending(Builder $query): void
+    {
+        $query->where('is_active', true)->whereNull('reply_account_id');
     }
 
     public function folders(): HasMany

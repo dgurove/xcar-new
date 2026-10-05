@@ -11,6 +11,7 @@ use App\Offers\BidState;
 use App\Offers\Actions\PickUp;
 use App\Offers\Deal;
 use App\Offers\Handover;
+use App\Offers\InsurerReplies;
 use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
@@ -68,6 +69,10 @@ class DealController
             'requirement' => $deal->openRequirement,
             'exits' => $deal->openRequirement ? $position?->stage->exitsFor(Actor::Manager, $deal) : collect(),
             'handover' => Handover::for($deal),
+            // Ответы страховой по сделке — текстом до подписи (05.10.2026), новые сверху.
+            'replies' => InsurerReplies::for($deal),
+            // Документы, что пришли с ответом (вложения, облако по ссылке, `ShareReplyFiles`), — под этим ответом.
+            'replyFiles' => $deal->offer->papers()->filter(fn ($m) => $m->getCustomProperty('letter'))->groupBy(fn ($m) => $m->getCustomProperty('letter')),
             'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->with('claims')->orderBy('id')->get(),
         ];
     }

@@ -20,12 +20,12 @@ class MailAccountController
 
     public function create()
     {
-        return view('admin.mail.account', ['account' => new Account(['imap_port' => 993, 'imap_encryption' => 'ssl', 'smtp_port' => 2525, 'smtp_encryption' => 'tls', 'imap_host' => 'imap.mail.ru', 'smtp_host' => 'smtp.mail.ru', 'is_active' => true, 'scope' => Scope::Offers])]);
+        return view('admin.mail.account', ['replyOptions' => $this->replyOptions(), 'account' => new Account(['imap_port' => 993, 'imap_encryption' => 'ssl', 'smtp_port' => 2525, 'smtp_encryption' => 'tls', 'imap_host' => 'imap.mail.ru', 'smtp_host' => 'smtp.mail.ru', 'is_active' => true, 'scope' => Scope::Offers])]);
     }
 
     public function edit(Account $account)
     {
-        return view('admin.mail.account', ['account' => $account, 'folders' => $account->folders()->orderBy('name')->get()]);
+        return view('admin.mail.account', ['replyOptions' => $this->replyOptions($account), 'account' => $account, 'folders' => $account->folders()->orderBy('name')->get()]);
     }
 
     public function store(Request $request)
@@ -72,6 +72,13 @@ class MailAccountController
         return redirect('/settings/mailboxes')->with('toast', 'Ящик удалён');
     }
 
+    /** «Отвечаем с ящика»: другие ящики той же стороны, которые пишут сами. @return array<int, string> */
+    private function replyOptions(?Account $account = null): array
+    {
+        return Account::whereNull('reply_account_id')->where('scope', $account?->scope ?? Scope::Offers)->when($account?->exists, fn ($q) => $q->where('id', '!=', $account->id))
+            ->orderBy('title')->get()->mapWithKeys(fn (Account $a) => [$a->id => $a->email])->all();
+    }
+
     private function data(Request $request, ?Account $account = null): array
     {
         $data = $request->validate([
@@ -79,6 +86,8 @@ class MailAccountController
             'email' => ['required', 'email', 'max:120', Rule::unique('mail_accounts', 'email')->ignore($account?->id)],
             'from_name' => ['nullable', 'string', 'max:80'],
             'scope' => ['required', Rule::enum(Scope::class)],
+            // Отвечаем с другого ящика той же стороны, который сам пишет (цепочек «принимает → принимает» нет).
+            'reply_account_id' => ['nullable', 'integer', Rule::exists('mail_accounts', 'id')->where(fn ($q) => $q->where('scope', $request->input('scope'))->whereNull('reply_account_id')->where('id', '!=', $account?->id ?? 0))],
             'imap_host' => ['required', 'string', 'max:120'],
             'imap_port' => ['required', 'integer', 'between:1,65535'],
             'imap_encryption' => ['required', Rule::in(['ssl', 'tls', 'none'])],

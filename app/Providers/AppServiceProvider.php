@@ -33,6 +33,7 @@ use App\Mail\OnMessage;
 use App\Media\StampOnAdd;
 use App\Notifications\CollapseNotices;
 use App\Notifications\Notify;
+use App\Offers\Listeners\AdvanceOnReply;
 use App\Offers\Listeners\SyncHandover;
 use App\Park\Actions\SendPickupLink;
 use App\Park\Events\VehicleSold;
@@ -82,6 +83,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(OnMessage::class);
         Event::subscribe(SyncOffer::class);
         Event::subscribe(SyncHandover::class);
+        Event::subscribe(AdvanceOnReply::class);
         Event::listen(StageEntered::class, ArrivedAtKeeper::class);
         Event::listen(VehicleSold::class, SendPickupLink::class);
         Event::listen(PaymentRecorded::class, AdvanceOnPayment::class);

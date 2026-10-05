@@ -23,9 +23,10 @@ final class AttachmentImporter
     /**
      * @param  array|callable(Attachment): array  $photoProperties  свойства кадра: одни на всех (оффер) либо по письму
      *                                                              вложения (стоянка: чьё письмо — такая и стадия)
+     * @param  array  $documentProperties  свойства документов (ответ страховой по сделке: `managers`, `letter`)
      * @return array{photos: int, documents: int} сколько добавлено
      */
-    public function import(HasMedia $model, Collection $attachments, string $photosCollection, string $documentsCollection, array|callable $photoProperties = [], ?callable $progress = null): array
+    public function import(HasMedia $model, Collection $attachments, string $photosCollection, string $documentsCollection, array|callable $photoProperties = [], ?callable $progress = null, array $documentProperties = []): array
     {
         $added = ['photos' => 0, 'documents' => 0];
         if ($attachments->isEmpty()) {
@@ -33,7 +34,7 @@ final class AttachmentImporter
         }
         $classified = $this->classifier->classify($attachments);
         foreach ($classified['documents'] as $document) {
-            $added['documents'] += (int) $this->addDocument($model, $documentsCollection, $document);
+            $added['documents'] += (int) $this->addDocument($model, $documentsCollection, $document, $documentProperties);
         }
         $propertiesOf = is_array($photoProperties) ? fn () => $photoProperties : $photoProperties;
         $sources = [];
@@ -48,7 +49,7 @@ final class AttachmentImporter
             // не открылся (битый, с паролем) — лежит документом, как пришёл.
             $extracted = $this->archives->extractFiles($archive);
             if (! $extracted) {
-                $added['documents'] += (int) $this->addDocument($model, $documentsCollection, $archive);
+                $added['documents'] += (int) $this->addDocument($model, $documentsCollection, $archive, $documentProperties);
 
                 continue;
             }
@@ -57,7 +58,7 @@ final class AttachmentImporter
                 if ($file['photo'] && ! $this->classifier->looksLikeDocument(mb_strtolower($file['name']))) {
                     $sources[] = ['name' => $file['name'], 'contents' => $file['contents'], 'properties' => $propertiesOf($archive)];
                 } else {
-                    $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $file['name'], $file['contents']);
+                    $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $file['name'], $file['contents'], 'mail', $documentProperties);
                 }
             }
         }
@@ -112,7 +113,7 @@ final class AttachmentImporter
      *
      * @return array{photos: int, documents: int}|null
      */
-    public function importArchive(HasMedia $model, string $path, string $photosCollection, string $documentsCollection, ?callable $progress = null): ?array
+    public function importArchive(HasMedia $model, string $path, string $photosCollection, string $documentsCollection, ?callable $progress = null, array $documentProperties = [], ?string $source = null): ?array
     {
         $extracted = $this->archives->extractPath($path);
         if (! $extracted) {
@@ -126,7 +127,7 @@ final class AttachmentImporter
                     $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $file['contents'], $file['name'], []);
                 });
             } else {
-                $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $file['name'], $file['contents'], null);
+                $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $file['name'], $file['contents'], $source, $documentProperties);
             }
         }
 
@@ -158,7 +159,13 @@ final class AttachmentImporter
             ->unique(fn (Attachment $a) => $a->blob_sha ?? 'id:'.$a->id)->values();
     }
 
-    private function addDocument(HasMedia $model, string $collection, Attachment $document): bool
+    /** Один файл документом (скачан по ссылке из письма, не архив). */
+    public function importDocument(HasMedia $model, string $collection, string $name, string $contents, ?string $source = null, array $properties = []): bool
+    {
+        return $this->addDocumentFile($model, $collection, $name, $contents, $source, $properties);
+    }
+
+    private function addDocument(HasMedia $model, string $collection, Attachment $document, array $properties = []): bool
     {
         // Пустая коллекция — документы этому получателю не нужны (кандидат: только кадры).
         if ($collection === '') {
@@ -166,19 +173,30 @@ final class AttachmentImporter
         }
         $contents = $document->contents();
 
-        return $contents !== null && $this->addDocumentFile($model, $collection, $document->filename, $contents);
+        return $contents !== null && $this->addDocumentFile($model, $collection, $document->filename, $contents, 'mail', $properties);
     }
 
-    /** `source: null` — файл не из письма (архив, загруженный руками). */
-    private function addDocumentFile(HasMedia $model, string $collection, string $name, string $contents, ?string $source = 'mail'): bool
+    /**
+     * `source: null` — файл не из письма (архив, загруженный руками). Файл уже лежит, а свойства есть (ответ страховой
+     * открывает его менеджеру) — свойства ложатся на тот, что лежит: кто первым положил файл, не важно.
+     */
+    private function addDocumentFile(HasMedia $model, string $collection, string $name, string $contents, ?string $source = 'mail', array $properties = []): bool
     {
-        if ($collection === '' || $model->hasFile($sha = hash('sha256', $contents))) {
+        if ($collection === '') {
+            return false;
+        }
+        if ($model->hasFile($sha = hash('sha256', $contents))) {
+            if ($properties) {
+                $model->media()->where('collection_name', $collection)->where('custom_properties->sha', $sha)->get()
+                    ->each(fn ($m) => $m->forceFill(['custom_properties' => [...$m->custom_properties, ...$properties]])->save());
+            }
+
             return false;
         }
         $this->guard(fn () => $model->addMediaFromString($contents)
             ->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $name) ?: 'dokument')
             ->usingName(pathinfo($name, PATHINFO_FILENAME))
-            ->withCustomProperties(array_filter(['sha' => $sha, 'kind' => AttachmentClassifier::kindOf($name), 'source' => $source]))
+            ->withCustomProperties(array_filter(['sha' => $sha, 'kind' => AttachmentClassifier::kindOf($name), 'source' => $source]) + $properties)
             ->toMediaCollection($collection));
 
         return true;

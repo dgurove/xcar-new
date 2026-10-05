@@ -108,6 +108,24 @@
                 <x-ui.empty>Сделка пока не в работе. Мы напишем, когда что-то изменится</x-ui.empty>
             @endif
 
+            {{-- Ответ страховой — её текст до подписи, как пришёл: с кем связаться, что прислать. Телефон нажимается. --}}
+            @if (($replies ?? collect())->isNotEmpty())
+                <div class="box">
+                    <h2 class="box-title">{{ $replies->count() > 1 ? 'Ответы страховой' : 'Ответ страховой' }}</h2>
+                    <div class="mt-3 flex flex-col gap-4">
+                        @foreach ($replies as $reply)
+                            <div class="min-w-0">
+                                <p class="nums text-sm text-ink-dim">{{ $reply->date_at?->translatedFormat('j M, H:i') }}</p>
+                                <p class="mt-1 whitespace-pre-line break-words">{!! \App\Support\Linkify::html($reply->replyText()) !!}</p>
+                                @foreach (($replyFiles ?? collect())->get($reply->id, []) as $media)
+                                    <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" class="mt-2"/>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             @if ($handover && ! $embedHandover)@include('cabinet.deals.handover', ['embedded' => false])@endif
 
             {{-- В гараже свой путь машины — путь сделки там не повторяется. --}}

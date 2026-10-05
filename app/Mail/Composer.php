@@ -13,9 +13,10 @@ final class Composer
 {
     public function __construct(private Parser $parser, private Threads $threads) {}
 
+    /** Ответ уходит с ящика, через который отвечает ящик родителя (`Account::sender`): на письмо в offer@ — с deal@. */
     public function reply(Message $parent, bool $all = false): array
     {
-        $account = $parent->account;
+        $account = $parent->account->sender();
         // Письмо вендора, пересланное сотрудником со своего ящика: отвечаем вендору, а не сотруднику, темой из цитаты.
         $forwarded = $parent->isForwardedByStaff();
         $to = array_filter([$forwarded ? $parent->field('sender') : $parent->replyToAddress()]);
@@ -43,8 +44,25 @@ final class Composer
             'to' => '',
             'cc' => '',
             'subject' => $this->prefix($parent->subject, 'Fwd'),
-            'body' => $this->signature($parent->account).$this->quote($parent, 'Пересылаемое письмо'),
+            'body' => $this->signature($parent->account->sender()).$this->quote($parent, 'Пересылаемое письмо'),
             'forward' => $parent->files()->pluck('id')->all(),
+        ];
+    }
+
+    /**
+     * Письмо этапа ответом на письмо вендора (05.10.2026): текст шаблона, подпись и цитата, кому и тема «Re: …» — как у
+     * ответа. Ящик — тот, с которого отвечаем ($account уже `sender()`).
+     */
+    public function replyWith(Message $parent, Account $account, ?Template $template = null, array $values = []): array
+    {
+        $reply = $this->reply($parent);
+        $rendered = $template?->render($values) ?? ['subject' => '', 'body' => ''];
+
+        return [
+            'to' => $reply['to'] ?: ($values['to'] ?? ''),
+            'cc' => $values['cc'] ?? '',
+            'subject' => $reply['subject'],
+            'body' => $rendered['body'].$this->signature($account).$this->quote($parent),
         ];
     }
 
@@ -69,9 +87,13 @@ final class Composer
 
         $message = DB::transaction(function () use ($account, $data, $parent, $by, $thread, $messageId, $html, $text, $to) {
             $subject = trim((string) ($data['subject'] ?? '')) ?: '(без темы)';
-            $thread ??= $parent?->thread ?? Thread::create([
+            // Ветка родителя — только своего ящика. Ответ с другого ящика (на письмо в offer@ — с deal@) — новая ветка
+            // ящика отправки за тем же предложением: ответ вендора на неё придёт туда и найдёт её по In-Reply-To.
+            $own = $parent?->account_id === $account->id ? $parent->thread : null;
+            $thread ??= $own ?? Thread::create([
                 'account_id' => $account->id, 'root_message_id' => $messageId, 'subject' => $subject,
                 'subject_normalized' => $this->parser->normalizeSubject($subject), 'last_message_at' => now(),
+                'offer_id' => $parent?->thread?->offer_id, 'vendor_id' => $parent?->thread?->vendor_id,
             ]);
             $message = Message::create([
                 'account_id' => $account->id,
@@ -168,7 +190,13 @@ final class Composer
     private function quote(Message $parent, string $title = 'Исходное письмо'): string
     {
         $source = $parent->text_body ?: $this->parser->htmlToText((string) $parent->html_body);
-        $header = sprintf('%s, %s, %s:', $title, $parent->date_at?->format('d.m.Y H:i') ?? '', $parent->from_name ? "{$parent->from_name} <{$parent->from_email}>" : (string) $parent->from_email);
+        $from = $parent->from_name ? "{$parent->from_name} <{$parent->from_email}>" : (string) $parent->from_email;
+        // Письмо вендора, пересланное сотрудником с личного ящика: цитируем само письмо вендора, без пересылки.
+        if ($parent->isForwardedByStaff() && ($forwarded = Extraction\QuotationStripper::forwardedBody($source)) !== null) {
+            $source = $forwarded;
+            $from = (string) $parent->field('sender');
+        }
+        $header = sprintf('%s, %s, %s:', $title, $parent->date_at?->format('d.m.Y H:i') ?? '', $from);
         $lines = array_slice(preg_split('/\R/u', trim($source)) ?: [], 0, 200);
 
         return '<blockquote>'.e($header).'<br>'.implode('<br>', array_map(fn ($l) => e($l), $lines)).'</blockquote>';
