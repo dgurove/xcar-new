@@ -4,6 +4,7 @@ namespace App\Http\Admin;
 
 use App\Billing\Acquiring\PayLinkState;
 use App\Billing\Actions\ConfirmPayment;
+use App\Billing\Actions\IssueServiceInvoice;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\RejectPayment;
 use App\Billing\Actions\VoidInvoice;
@@ -12,6 +13,8 @@ use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\ManagerLedger;
+use App\Billing\Party;
+use App\Billing\PartyKind;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
@@ -21,6 +24,7 @@ use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Money;
 use App\Support\Nav;
 use App\Users\Role;
 use App\Users\User;
@@ -52,10 +56,11 @@ class MoneyController
         ListPrefs::sync($request, 'crm-money', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'claims';
         $qs = trim((string) $request->query('q'));
-        $q = Invoice::whereNotNull('deal_id')->with(['party', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer', 'claims', 'payLinks.attempts'])
+        $q = Invoice::crmMoney()->with(['party', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer', 'claims', 'payLinks.attempts', 'charges'])
             ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s
                 ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs)->orWhereHas('deal.offer', fn ($o) => $o->where('number', (int) $qs)))
                 ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', "%{$qs}%"))
+                ->orWhereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Service->value)->where('title', 'ilike', "%{$qs}%"))
                 ->orWhereHas('deal.buyer', fn ($u) => $u->where('name', 'ilike', "%{$qs}%"))
                 ->orWhereHas('deal.offer.brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%"))
                 ->orWhereHas('deal.offer.model', fn ($m) => $m->where('name', 'ilike', "%{$qs}%"))));
@@ -88,10 +93,10 @@ class MoneyController
 
         return [
             // Заявки — оплаты, а не счета: то же число, что на табе «Работа» (`Nav::totals`), но с выбранными чипами.
-            'claims' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $f($i->whereNotNull('deal_id')))->count(),
-            'payouts' => $f(Invoice::whereNotNull('deal_id')->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued))->count(),
-            'tried' => $f(self::tried(Invoice::whereNotNull('deal_id')))->count(),
-            'unpaid' => $f(Invoice::whereNotNull('deal_id')->where('direction', 'issued')->where('state', InvoiceState::Issued))->count(),
+            'claims' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $f($i->crmMoney()))->count(),
+            'payouts' => $f(Invoice::crmMoney()->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued))->count(),
+            'tried' => $f(self::tried(Invoice::crmMoney()))->count(),
+            'unpaid' => $f(Invoice::crmMoney()->where('direction', 'issued')->where('state', InvoiceState::Issued))->count(),
         ];
     }
 
@@ -110,6 +115,28 @@ class MoneyController
         $invoice->load(['party', 'charges', 'payments', 'claims.media', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer']);
 
         return view('admin.money.detail', ['invoice' => $invoice, 'sources' => PaymentSource::options()]);
+    }
+
+    /**
+     * Разовая оплата по ссылке: счёт ПРАЙМ на услугу без сделки (`IssueServiceInvoice`) — плательщик из заведённых или
+     * новый по имени, почта по желанию (нет — спросит `/pay`). Дальше открывается карточка счёта со ссылкой.
+     */
+    public function service(Request $request, IssueServiceInvoice $issue)
+    {
+        $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:1'], 'title' => ['required', 'string', 'max:200'],
+            'party_id' => ['required', Rule::when(fn () => $request->input('party_id') !== 'new', ['exists:billing_parties,id'])],
+            'party_name' => ['required_if:party_id,new', 'nullable', 'string', 'max:200'],
+            'party_email' => ['nullable', 'email', 'max:120'], 'party_phone' => ['nullable', 'string', 'max:20', 'regex:/^[\d\s()+\-]{10,20}$/'],
+        ], ['amount.required' => 'Сколько платят', 'title.required' => 'Назовите услугу', 'party_name.required_if' => 'Кто платит',
+            'party_email.email' => 'Проверьте почту', 'party_phone.regex' => 'Проверьте номер телефона']);
+        $party = $data['party_id'] === 'new'
+            ? Party::create(['kind' => PartyKind::Person, 'name' => $data['party_name'], 'email' => $data['party_email'] ?? null, 'phone' => $data['party_phone'] ?? null])
+            : Party::where('is_self', false)->findOrFail($data['party_id']);
+        $invoice = $issue($party, $request->user(), (float) $data['amount'], $data['title']);
+
+        return redirect('/work/money?preset=all&peek='.$invoice->id)->with('toast', 'Счёт '.$invoice->label().' выставлен, ссылка готова');
     }
 
     /** Взаиморасчёты по менеджерам: нам, мы должны, просрочено, заявки — строка ведёт в карточку на «Деньги». */

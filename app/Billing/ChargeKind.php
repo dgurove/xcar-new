@@ -22,6 +22,8 @@ enum ChargeKind: string
     case AgentFee = 'agent_fee';
     case Reward = 'reward';
     case Other = 'other';
+    // Разовая оплата наших услуг по ссылке из CRM — без сделки и машины (`IssueServiceInvoice`).
+    case Service = 'service';
 
     public function label(): string
     {
@@ -39,6 +41,7 @@ enum ChargeKind: string
             self::AgentFee => 'Агентское вознаграждение',
             self::Reward => 'Вознаграждение от поставщика',
             self::Other => 'Прочее',
+            self::Service => 'Услуги',
         };
     }
 }

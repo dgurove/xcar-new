@@ -5,11 +5,14 @@ namespace Tests\Feature;
 use App\Billing\Acquiring\AcquiringPayment;
 use App\Billing\Acquiring\Actions\CreatePayLink;
 use App\Billing\Acquiring\Actions\SettleAcquiring;
+use App\Billing\Acquiring\Actions\StartCheckout;
 use App\Billing\Acquiring\Checkout;
 use App\Billing\Acquiring\PayerKind;
+use App\Billing\Acquiring\PayLink;
 use App\Billing\Acquiring\PayLinkState;
 use App\Billing\Actions\ClaimPayment;
 use App\Billing\Actions\IssueInvoice;
+use App\Billing\Actions\IssueServiceInvoice;
 use App\Billing\Bank\Actions\MatchTransaction;
 use App\Billing\Bank\Transaction;
 use App\Billing\ChargeKind;
@@ -21,7 +24,9 @@ use App\Billing\PaymentState;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
@@ -139,6 +144,36 @@ class MoneyArrivesOnceTest extends TestCase
         $attempt->forceFill(['created_at' => $at])->save();
 
         return $attempt;
+    }
+
+    public function test_service_payment_gets_link_and_receipt_names_the_service(): void
+    {
+        config(['xcar.yookassa.shop_id' => 'test', 'xcar.yookassa.secret' => 'test']);
+        Http::fake(['*' => Http::response(['id' => 'p-9', 'status' => 'pending', 'amount' => ['value' => '15000.00'], 'confirmation' => ['confirmation_url' => 'https://pay.test']])]);
+        $payer = Party::create(['kind' => PartyKind::Person, 'name' => 'Иван Петров', 'email' => 'ivan@example.test']);
+
+        $invoice = app(IssueServiceInvoice::class)($payer, User::first(), 15000, 'Консультационные услуги по подбору ТС');
+        $link = PayLink::where('invoice_id', $invoice->id)->firstOrFail();
+        app(StartCheckout::class)($link);
+
+        $this->assertSame(ChargeKind::Service, $invoice->kind);
+        $this->assertSame(1, Invoice::crmMoney()->whereKey($invoice->id)->count());
+        Http::assertSent(fn ($r) => data_get($r->data(), 'receipt.items.0.description') === 'Консультационные услуги по подбору ТС'
+            && data_get($r->data(), 'receipt.items.0.vat_code') === 7 && data_get($r->data(), 'receipt.items.0.payment_subject') === 'service'
+            && data_get($r->data(), 'receipt.items.0.payment_mode') === 'full_payment');
+    }
+
+    public function test_service_payment_refuses_what_is_not_our_service(): void
+    {
+        $payer = Party::create(['kind' => PartyKind::Person, 'name' => 'Иван Петров']);
+        foreach (['Возврат займа Петрову', 'Оплата'] as $title) {
+            try {
+                app(IssueServiceInvoice::class)($payer, User::first(), 1000, $title);
+                $this->fail('Принят текст «'.$title.'»');
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey('title', $e->errors());
+            }
+        }
     }
 
     private function incoming(float $amount, string $purpose, ?string $inn): Transaction

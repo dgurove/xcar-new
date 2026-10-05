@@ -517,7 +517,7 @@ final class Nav
                     ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhere(fn ($x) => $x->waiting(WaitsFor::Us)))
                     ->count(),
                 // Деньги горят, когда менеджер сообщил об оплате, а мы ещё не подтвердили.
-                '/work/money' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereNotNull('deal_id'))->count()
+                '/work/money' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->crmMoney())->count()
                     + BankTransaction::where('state', BankTransaction::UNMATCHED)->count(),
             ];
             // На табе «Работа» — только сделки (владелец, 04.10.2026): почта, чаты и деньги горят у своих разделов.
@@ -604,7 +604,7 @@ final class Nav
             }
         }
         if ($surface === Surface::Crm) {
-            array_push($items, self::link('Сделки', '/work/deals'), self::link('Гараж', '/work/garage'), self::link('Вывоз', '/work/pickups'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Деньги', '/work/money'));
+            array_push($items, self::link('Сделки', '/work/deals'), self::link('Гараж', '/work/garage'), self::link('Вывоз', '/work/pickups'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Оплаты', '/work/money'));
         }
 
         // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен.

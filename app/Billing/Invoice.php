@@ -191,6 +191,29 @@ class Invoice extends Model implements HasMedia
         };
     }
 
+    /** Разовая оплата наших услуг из CRM — без сделки и машины (`IssueServiceInvoice`). */
+    public function isService(): bool
+    {
+        return $this->kind === ChargeKind::Service && ! $this->deal_id && ! $this->vehicle_id;
+    }
+
+    /** Наименование позиции в чеке ЮKassa: у разовой оплаты — её услуга, у сделки — «Подбор ТС марка модель». */
+    public function receiptTitle(): string
+    {
+        if ($this->isService()) {
+            return (string) $this->charges()->value('title');
+        }
+
+        return trim('Подбор ТС '.($this->offer?->titleWithYear() ?? ''));
+    }
+
+    /** Счета раздела «Оплаты» в CRM: по сделкам и разовые оплаты услуг. */
+    public function scopeCrmMoney($q)
+    {
+        return $q->where(fn ($w) => $w->whereNotNull('deal_id')
+            ->orWhere(fn ($s) => $s->where('kind', ChargeKind::Service->value)->whereNull('vehicle_id')));
+    }
+
     public function label(): string
     {
         return $this->number ? '№ '.$this->number : ($this->external_no ? $this->external_no : $this->kind->label());

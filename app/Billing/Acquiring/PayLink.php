@@ -5,9 +5,9 @@ namespace App\Billing\Acquiring;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\Payment;
 use App\Billing\Seller;
 use App\Garage\Car;
-use App\Billing\Payment;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -100,7 +100,7 @@ class PayLink extends Model
             && $invoice->seller === Seller::Prime && $invoice->kind !== ChargeKind::Reward
             // Счёт ПРАЙМ за машину по сделке платят по счёту, без ссылки (Совкомбанк, 05.10.2026); ссылка — у подбора и доли.
             && ! ($invoice->deal_id && $invoice->kind === ChargeKind::Sale)
-            && ($invoice->deal_id || Car::ofInvoice($invoice)) && app(Gateway::class)->configured();
+            && ($invoice->deal_id || $invoice->isService() || Car::ofInvoice($invoice)) && app(Gateway::class)->configured();
     }
 
     /** Адрес без схемы — так его читают и диктуют: «xcar.ru/pay/k3m…». */

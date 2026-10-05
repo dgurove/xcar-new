@@ -42,7 +42,7 @@ class Charge extends Model
     public function unitLabel(): string
     {
         return match ($this->unit) {
-            'day' => 'сут', 'km' => 'км', 'h' => 'ч', default => 'шт'
+            'day' => 'сут', 'km' => 'км', 'h' => 'ч', 'svc' => 'усл', default => 'шт'
         };
     }
 }

@@ -105,7 +105,7 @@ final class YooKassa implements Gateway
         return [
             'customer' => $customer,
             'items' => [[
-                'description' => Str::limit(trim('Подбор ТС '.($invoice->offer?->titleWithYear() ?? '')), 128, ''),
+                'description' => Str::limit($invoice->receiptTitle(), 128, ''),
                 'quantity' => 1,
                 'amount' => self::money($amount),
                 'vat_code' => Vat::receiptCode($invoice->vatRate()),

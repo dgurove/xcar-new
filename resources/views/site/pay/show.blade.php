@@ -33,7 +33,7 @@
         @endif
     @else
         <div class="box money-hero !p-6">
-            @if ($offer)<span class="money-hero-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="64px"/></span><span class="font-medium">{{ $offer->titleWithYear() }}</span>@endif
+            @if ($offer)<span class="money-hero-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="64px"/></span><span class="font-medium">{{ $offer->titleWithYear() }}</span>@elseif ($invoice->isService())<span class="font-medium">{{ $invoice->receiptTitle() }}</span>@endif
             <span class="text-sm text-ink-muted">Счёт {{ $invoice->label() }} от {{ $invoice->issued_at->translatedFormat('j F Y') }}</span>
             <span class="nums mt-2 text-[32px] font-semibold leading-tight">{{ Money::exact($amount) }}</span>
         </div>

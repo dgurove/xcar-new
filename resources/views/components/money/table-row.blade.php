@@ -7,6 +7,8 @@
     use App\Support\Money;
     $i = $invoice;
     $offer = $i->deal?->offer;
+    // Разовая оплата — без машины: на месте ТС её услуга.
+    $what = $offer?->titleWithYear() ?? ($i->isService() ? $i->charges->first()?->title : null);
     $claim = $i->claims->isNotEmpty();
     $due = $i->state === InvoiceState::Issued ? 'до '.$i->due_at->translatedFormat('j M') : mb_strtolower($i->state->label());
     $tone = match ($i->light()) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => '' };
@@ -24,11 +26,11 @@
             @if ($i->isOwed())<span class="text-urgent">к выплате</span>@endif
             <span class="sm:hidden {{ $tone }}">{{ $due }}</span>
             <span class="sm:hidden">{{ $i->isOwed() ? 'вознаграждение' : $i->label() }}</span>
-            @if ($offer)<span class="sm:hidden">{{ $offer->titleWithYear() }}</span>@endif
+            @if ($what)<span class="sm:hidden">{{ $what }}</span>@endif
         </span>
     </td>
     <td class="cell-dim hidden sm:table-cell">{{ $i->isOwed() ? 'вознаграждение' : $i->label() }}</td>
-    <td class="cell-dim col-detail-hide hidden lg:table-cell"><span class="block max-w-56 truncate">{{ $offer?->titleWithYear() }}</span></td>
+    <td class="cell-dim col-detail-hide hidden lg:table-cell"><span class="block max-w-56 truncate">{{ $what }}</span></td>
     <td class="hidden sm:table-cell {{ $tone }}">{{ $due }}</td>
     <td class="num nums">
         {{ Money::nums($i->isPartial() ? $left : $i->total) }}
