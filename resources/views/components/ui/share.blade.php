@@ -33,7 +33,7 @@
         <div class="flex flex-col gap-4">
             <div class="flex flex-col gap-2">
                 @foreach ($fields as $f)
-                    <label class="check"><input type="checkbox" data-share-target="field" data-key="{{ $f['key'] }}" data-value="{{ $f['value'] }}" @checked($f['on']) data-action="share#pick"><span>{{ $f['label'] }} <span class="text-ink-muted">{{ \Illuminate\Support\Str::limit($f['value'], 40) }}</span></span></label>
+                    <label class="check"><input type="checkbox" data-share-target="field" data-key="{{ $f['key'] }}" data-value="{{ $f['value'] }}" @if ($f['group'] ?? null) data-group="{{ $f['group'] }}" @endif @checked($f['on']) data-action="share#pick"><span>{{ $f['label'] }} <span class="text-ink-muted">{{ \Illuminate\Support\Str::limit($f['value'], 40) }}</span></span></label>
                 @endforeach
             </div>
             <pre class="box-nested whitespace-pre-wrap font-sans text-sm" data-share-target="preview"></pre>

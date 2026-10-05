@@ -49,11 +49,15 @@ export default class extends Controller {
         const lines = [];
         const price = [];
         let link = null;
+        let group = null;
         for (const f of this.fieldTargets) {
             if (!f.checked || !f.dataset.value) continue;
             if (PRICES.includes(f.dataset.key)) price.push(f.dataset.value);
             else if (f.dataset.key === 'link') link = f.dataset.value;
+            // Соседние строки одной группы (характеристики) — одной строкой через «; ».
+            else if (f.dataset.group && f.dataset.group === group) lines[lines.length - 1] += '; ' + f.dataset.value;
             else lines.push(f.dataset.value);
+            group = f.dataset.group || null;
         }
         if (price.length) lines.push(price.join(' → ') + this.vatValue);
         // Ссылка — самой последней, после цены.
